@@ -1,0 +1,11 @@
+Predictive processing theory suggests the brain is fundamentally a prediction
+machine. Rather than passively receiving sensory input, the brain constantly
+generates predictions about what it will perceive next. When predictions
+match reality, little processing is needed. When they fail, prediction errors
+propagate up the hierarchy to update internal models. This framework explains
+many perceptual phenomena, from optical illusions to attention. In artificial
+intelligence, predictive coding has inspired architectures where each layer
+tries to predict the activity of the layer below. These models achieve
+impressive results in video prediction and anomaly detection. The brain
+may minimize surprise as its fundamental objective, constantly refining
+its world model through experience.

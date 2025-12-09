@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cortical-text-processor"
+version = "2.0.0"
+description = "Neocortex-inspired text processing for semantic analysis and document retrieval"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "Claude", email = "claude@anthropic.com"}
+]
+keywords = [
+    "nlp",
+    "text-processing",
+    "semantic-analysis",
+    "document-retrieval",
+    "knowledge-graph",
+    "neural-inspired"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+[project.urls]
+Homepage = "https://github.com/anthropic/cortical-text-processor"
+Documentation = "https://github.com/anthropic/cortical-text-processor#readme"
+Repository = "https://github.com/anthropic/cortical-text-processor"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cortical*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+
+[tool.isort]
+profile = "black"
+line_length = 100

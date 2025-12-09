@@ -1,0 +1,17 @@
+Enterprise .NET Development Patterns
+
+Modern .NET applications leverage dependency injection, asynchronous programming, and clean architecture principles. ASP.NET Core middleware pipelines process requests through composable components. Minimal APIs reduce ceremony for microservice endpoints.
+
+Domain-driven design structures complex business logic around bounded contexts and aggregates. Entity Framework Core maps domain objects to relational databases with migrations tracking schema evolution. Repository patterns abstract data access behind interfaces enabling testing and flexibility.
+
+Message-driven architectures decouple components through event publishing. MassTransit and NServiceBus provide saga orchestration, retry policies, and dead letter handling. Outbox patterns ensure exactly-once delivery coordinating database transactions with message publication.
+
+Multi-tenant systems isolate customer data through database-per-tenant, schema-per-tenant, or discriminator column approaches. Tenant resolution middleware identifies context from subdomain, header, or claim. Resource quotas prevent noisy neighbor problems.
+
+Health checks expose endpoint status for load balancer integration. Readiness probes gate traffic until dependencies initialize. Liveness probes trigger restarts when applications become unresponsive.
+
+Structured logging with Serilog captures contextual properties. Correlation identifiers trace requests across service boundaries. Application Insights and OpenTelemetry provide distributed tracing and metric aggregation.
+
+Configuration providers load settings from JSON files, environment variables, and secret managers. Options patterns bind configuration sections to strongly-typed classes with validation. Feature flags enable progressive rollouts and experimentation.
+
+Testing strategies span unit tests with mocking frameworks, integration tests against test containers, and contract tests verifying API compatibility.

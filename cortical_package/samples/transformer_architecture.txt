@@ -1,0 +1,11 @@
+The transformer architecture has become the foundation of modern natural
+language processing. Unlike recurrent networks that process sequences
+step by step, transformers use self-attention mechanisms to relate all
+positions in a sequence simultaneously. This parallel processing enables
+efficient training on massive datasets. The attention mechanism computes
+weighted combinations of input representations, allowing the model to
+focus on relevant context regardless of distance. Large language models
+built on transformers demonstrate emergent capabilities including reasoning,
+translation, and code generation. Some researchers see parallels between
+attention mechanisms and how the brain selectively processes information,
+though the biological analogy remains debated.

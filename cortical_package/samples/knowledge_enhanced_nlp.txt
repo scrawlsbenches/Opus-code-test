@@ -1,0 +1,13 @@
+Knowledge-enhanced natural language processing combines structured knowledge bases with neural language models. Pure neural approaches learn patterns from text but lack explicit world knowledge. Knowledge graphs provide factual grounding that constrains and improves model predictions.
+
+Entity linking connects textual mentions to knowledge graph nodes. When text refers to Apple, the system must determine whether it means the fruit or the technology company. Context and entity properties from the knowledge graph disambiguate these references. Linked entities enable reasoning with structured knowledge about mentioned concepts.
+
+Knowledge graph embeddings represent entities and relations as vectors. TransE models relations as translations between entity vectors. More complex models like RotatE and ConvE capture richer relational patterns. These embeddings integrate seamlessly with neural architectures while preserving graph structure.
+
+Retrofitting adjusts pretrained word embeddings using knowledge graph relations. The process pulls synonyms closer together and pushes antonyms apart in vector space. ConceptNet Numberbatch applies this technique using diverse semantic relations. The resulting embeddings outperform purely distributional vectors on semantic benchmarks.
+
+Graph neural networks process knowledge graphs through message passing. Each node aggregates information from neighbors to update its representation. Multiple layers propagate information across longer paths. This enables reasoning over graph structure within differentiable neural frameworks.
+
+Knowledge distillation transfers structured knowledge into language model parameters. Training objectives encourage models to predict knowledge graph relations from text. The resulting models implicitly encode factual knowledge accessible through natural language queries. This bridges explicit knowledge bases with implicit neural representations.
+
+Neuro-symbolic systems maintain explicit symbolic reasoning alongside neural components. The neural subsystem handles perception and pattern matching while symbolic reasoning ensures logical consistency. This hybrid architecture combines the flexibility of learning with the reliability of structured knowledge.

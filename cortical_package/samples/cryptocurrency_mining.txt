@@ -1,0 +1,15 @@
+Cryptocurrency Mining Operations
+
+Cryptocurrency mining validates transactions and secures blockchain networks through computational work. ASIC miners dominate Bitcoin with SHA-256 optimization; GPUs remain viable for memory-hard algorithms like Ethash and Equihash.
+
+Mining profitability depends on hash rate, power consumption, electricity costs, and coin prices. Difficulty adjustments maintain target block intervals despite fluctuating network hash power. Pool mining aggregates hash rate, distributing rewards proportionally through PPLNS or PPS schemes.
+
+Hardware optimization maximizes efficiency measured in hashes per watt. Firmware modifications unlock higher clock speeds and lower voltages. Thermal management through adequate airflow, heatsinks, and immersion cooling extends equipment lifespan.
+
+Power infrastructure sizing accounts for peak draw plus safety margins. Dedicated circuits prevent breaker trips; PDUs distribute load evenly. Electricity arbitrage exploits rate differentials—time-of-use plans, industrial rates, or renewable generation.
+
+Mining software connects workers to pools via stratum protocol. Monitoring dashboards track hash rates, temperatures, and rejection rates. Watchdog processes restart crashed miners; auto-switching algorithms chase most profitable coins.
+
+Solar integration offsets electricity costs during peak generation hours. Battery storage enables mining during grid outages or peak pricing periods. Net metering arrangements may credit excess generation against consumption.
+
+Revenue optimization considers transaction fees during network congestion, merge-mining compatible chains, and staking rewards for proof-of-stake transitions.

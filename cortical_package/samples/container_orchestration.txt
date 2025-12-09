@@ -1,0 +1,13 @@
+Container Orchestration and Kubernetes
+
+Container orchestration automates deployment, scaling, and management of containerized applications. Docker packages applications with dependencies into portable images. Layers cache intermediate build steps, reducing image size through multi-stage builds.
+
+Kubernetes clusters comprise control plane nodes and worker nodes. The API server processes all requests; etcd stores cluster state. Schedulers place pods on nodes considering resource requests, affinity rules, and taints. Kubelet agents on each node manage container lifecycle.
+
+Pods group containers sharing network namespace and storage volumes. Deployments manage replica sets, enabling rolling updates and rollbacks. StatefulSets handle persistent workloads requiring stable network identities and ordered deployment.
+
+Services abstract pod networking through stable DNS names and load balancing. Ingress controllers route external traffic based on hostname and path rules. Network policies implement microsegmentation restricting pod-to-pod communication.
+
+Horizontal pod autoscaling adjusts replica counts based on CPU utilization or custom metrics. Cluster autoscaler provisions additional nodes when pods remain pending. Vertical pod autoscaler recommends resource requests based on historical usage.
+
+Helm charts package Kubernetes manifests with templating and dependency management. Operators encode operational knowledge for complex applications, automating backup, scaling, and recovery procedures. GitOps workflows synchronize cluster state from version-controlled repositories.

@@ -1,0 +1,15 @@
+Distributed Systems Architecture Patterns
+
+Distributed systems coordinate multiple machines to achieve scalability, fault tolerance, and geographic distribution. CAP theorem constraints force tradeoffs between consistency, availability, and partition tolerance. Most systems choose eventual consistency, converging to agreement after network healing.
+
+Consensus protocols like Raft elect leaders managing replicated state machines. Log replication ensures followers apply entries in identical order. Heartbeat timeouts trigger leader election when failures occur. Paxos variants handle Byzantine faults but incur complexity overhead.
+
+Service mesh architectures inject sidecar proxies handling cross-cutting concerns. Envoy proxies manage service discovery, load balancing, retries, and circuit breaking. Mutual TLS authenticates service-to-service communication without application changes.
+
+Message queues decouple producers from consumers enabling asynchronous processing. Kafka partitions provide ordered, durable streams with consumer group semantics. Dead letter queues capture failed messages for investigation and reprocessing.
+
+Database sharding horizontally partitions data across nodes. Consistent hashing minimizes redistribution when cluster membership changes. Cross-shard transactions require coordination protocols adding latency.
+
+Observability pillars—logs, metrics, traces—illuminate distributed system behavior. Structured logging enables efficient querying. Prometheus scrapes metrics endpoints; Grafana visualizes dashboards. Distributed tracing correlates requests spanning multiple services through propagated context.
+
+Chaos engineering deliberately injects failures verifying system resilience. Network partitions, latency injection, and node termination reveal weaknesses before production incidents expose them.

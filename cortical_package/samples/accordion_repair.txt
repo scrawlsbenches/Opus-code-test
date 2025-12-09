@@ -1,0 +1,18 @@
+Accordion repair demands understanding of bellows mechanics, reed voicing,
+and keyboard action. The bellows assembly connects treble and bass sections,
+with pleated cardboard, cloth tape, and leather corners requiring periodic
+resealing. Air leakage compromises responsiveness and tone, necessitating
+systematic leak detection with the instrument pressurized.
+
+Reed blocks house individual tongue assemblies mounted on aluminum plates.
+Each reed tongue vibrates at specific frequency determined by length, width,
+and thickness. Voicing adjustments tune response characteristics by filing
+metal or adjusting tip clearance above the vent slot. Wax seals reed plates
+to wooden blocks, softening with age and permitting air bypass.
+
+Keyboard mechanisms employ pallets, springs, and pushrod linkages connecting
+keys to tone chamber valves. Sticky keys indicate worn felt bushings, broken
+springs, or warped wooden components. Bass machine assemblies multiply
+mechanical complexity with chord button matrices triggering multiple reeds
+simultaneously. Register switches redirect airflow through different reed
+ranks, enabling timbral variation from mellow musette to bright piccolo voicing.

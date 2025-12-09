@@ -1,0 +1,15 @@
+Virtualization and Hypervisor Technologies
+
+Hypervisors abstract physical hardware enabling multiple operating systems on single machines. Type-1 hypervisors like ESXi and Hyper-V run directly on hardware; Type-2 hypervisors like VirtualBox run atop host operating systems.
+
+Apple's Virtualization framework enables lightweight VMs on Apple Silicon Macs. ARM64 guest operating systems—Linux distributions, macOS—run with near-native performance. Rosetta 2 translation allows x86_64 Linux binaries within ARM guests.
+
+KVM transforms Linux kernels into hypervisors with QEMU providing device emulation. VirtIO paravirtualized drivers optimize disk and network performance. Libvirt provides unified management API across hypervisor backends.
+
+Memory management techniques maximize density. Transparent huge pages reduce TLB pressure. Memory ballooning reclaims unused guest memory. Kernel same-page merging deduplicates identical pages across VMs.
+
+CPU scheduling affects latency-sensitive workloads. Pinning vCPUs to physical cores ensures consistent performance. NUMA-aware placement keeps memory close to processing cores. CPU governors balance power consumption against responsiveness.
+
+Storage virtualization presents block devices from various backends. Thin provisioning allocates space on demand. Copy-on-write snapshots enable instant clones. Live migration relocates running VMs between hosts with minimal downtime.
+
+Nested virtualization enables hypervisors within VMs—useful for testing and development. Hardware-assisted extensions like VT-x and AMD-V provide efficient instruction interception. Performance overhead compounds with nesting depth.

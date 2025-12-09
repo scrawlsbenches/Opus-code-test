@@ -1,0 +1,13 @@
+Home Lab Server Infrastructure
+
+Home lab environments provide hands-on experience with enterprise hardware and software. Dell PowerEdge servers like R710s offer dual-socket Xeon processors, hot-swap drive bays, and iDRAC remote management. VRTX chassis house M630 blade servers with shared storage and networking in compact form factors.
+
+Server procurement from secondary markets yields significant cost savings. Evaluate processor generation, memory capacity, and storage controller compatibility. DDR3 registered ECC memory remains economical; DDR4 systems command premiums but offer improved density and efficiency.
+
+Storage architectures range from direct-attached RAID arrays to networked solutions. ZFS on TrueNAS provides software RAID with snapshots, replication, and data integrity verification. SSD caching accelerates spinning disk pools for mixed workloads.
+
+Virtualization hypervisors—Proxmox, ESXi, Hyper-V—consolidate multiple workloads onto physical hosts. Resource pools allocate CPU and memory quotas. High availability clustering enables automatic VM failover between nodes.
+
+Network segmentation through VLANs isolates management, storage, and application traffic. PfSense or OPNsense firewalls provide routing, VPN termination, and intrusion detection. Ten-gigabit interconnects support storage traffic demands.
+
+Power consumption monitoring reveals efficiency opportunities. IPMI sensors report real-time wattage; smart PDUs enable per-outlet metering. Undervolting experiments reduce thermal output without sacrificing stability. UPS systems protect against outages and power quality issues.

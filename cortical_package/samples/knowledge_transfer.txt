@@ -1,0 +1,199 @@
+# Cortical Text Processor: Knowledge Transfer Document
+
+## Executive Summary
+
+The Cortical Text Processor is a neocortex-inspired text analysis system that models hierarchical processing, lateral connections, and importance propagation to discover relationships between concepts and documents. It combines neuroscience principles with PageRank algorithms to extract meaningful insights from text corpora.
+
+## Architecture Overview
+
+### Biological Inspiration
+
+The system models four key properties of the mammalian neocortex:
+
+1. **Hierarchical Processing**: Information flows through increasingly abstract layers, mirroring the visual pathway from V1 (edge detection) through V4 (shape recognition) to IT cortex (object identification).
+
+2. **Minicolumns**: Basic computational units containing approximately 80-120 neurons that fire together. Each minicolumn represents a concept, token, or document.
+
+3. **Lateral Connections**: Horizontal connections between minicolumns enable contextual processing and pattern completion, modeled through co-occurrence graphs.
+
+4. **Sparse Distributed Representations**: Only small percentages of neurons activate simultaneously, enabling efficient storage and noise robustness.
+
+### System Layers
+
+| Layer | Biological Analog | Function | Content |
+|-------|------------------|----------|---------|
+| 0 (Tokens) | V1 simple cells | Extract atomic features | Individual words |
+| 1 (Bigrams) | V2 complex cells | Detect feature combinations | Word pairs |
+| 2 (Concepts) | V4 hypercolumns | Cluster semantics | Topic groups |
+| 3 (Documents) | IT cortex | Holistic recognition | Full documents |
+
+## Core Components
+
+### Tokenizer Class
+
+Handles text preprocessing with configurable stop word filtering:
+
+- Removes punctuation and normalizes case
+- Filters common English words (articles, prepositions, auxiliaries)
+- Extracts n-grams for higher-order patterns
+- Minimum word length filtering (default: 3 characters)
+
+The expanded stop word list now includes transitional words like "through", "while", "across" that previously created spurious document connections.
+
+### Minicolumn Class
+
+Represents individual computational units with:
+
+- **activation**: Log-scaled firing rate (log1p of occurrence count)
+- **pagerank**: Importance score from lateral connection structure
+- **lateral_connections**: Dictionary mapping neighbor IDs to weights
+- **feedforward_connections**: Links to higher processing layers
+- **feedback_connections**: Top-down modulation from higher layers
+
+### CorticalLayer Class
+
+Manages collections of minicolumns at each hierarchical level:
+
+- Creates and retrieves minicolumns by content
+- Computes PageRank across lateral connection graph
+- Provides activation statistics (min, max, mean, sparsity)
+- Returns top concepts ranked by importance
+
+### CorticalTextProcessor Class
+
+Orchestrates the complete processing pipeline:
+
+1. **Document Processing**: Tokenizes content, builds co-occurrence graphs
+2. **Connection Building**: Creates lateral links based on vocabulary overlap
+3. **Activation Propagation**: Spreads activation through connections
+4. **Importance Computation**: Runs PageRank on each layer
+5. **Query Processing**: Activates matching concepts and retrieves related terms
+
+## PageRank Integration
+
+### Mathematical Foundation
+
+PageRank computes the principal eigenvector of the web's link matrix:
+
+```
+PR(p) = (1-d)/N + d × Σ(PR(i) / L(i))
+```
+
+Where:
+- d = damping factor (0.85 default)
+- N = total pages/concepts
+- L(i) = outbound links from page i
+
+### Application to Text
+
+In this system, PageRank identifies central concepts based on co-occurrence patterns rather than hyperlinks:
+
+- Concepts appearing frequently with other important concepts rank higher
+- Hub concepts bridging multiple topics accumulate importance
+- Isolated concepts with few connections rank lower
+
+The damping factor models the probability that a "random surfer" following connections continues versus jumping to a random concept.
+
+## Processing Pipeline
+
+### Document Ingestion
+
+```python
+processor = CorticalTextProcessor()
+processor.process_document(doc_id, content)
+```
+
+For each document:
+1. Layer 0 receives tokenized words with occurrence counts
+2. Layer 1 receives bigrams with feedforward links to constituent tokens
+3. Layer 3 receives document node linking to all unique tokens
+
+### Connection Building
+
+```python
+processor.build_document_connections(min_shared_tokens=3)
+```
+
+Documents connect based on Jaccard similarity of tokenized content. The threshold parameter controls connection sparsity.
+
+### Analysis Execution
+
+```python
+processor.propagate_activation(iterations=5)
+processor.compute_importance()
+```
+
+Activation propagation models spreading neural activity:
+- Feedforward: Higher layers aggregate from lower (0.7 existing + 0.3 sources)
+- Lateral: Spreads through connections (0.7 self + 0.2 neighbors + 0.1 boost)
+
+## Query System
+
+Queries activate matching minicolumns and spread to connected concepts:
+
+```python
+results = processor.query("hierarchical processing", top_n=10)
+```
+
+The system:
+1. Tokenizes query terms
+2. Activates matching Layer 0 minicolumns
+3. Spreads activation to lateral neighbors (0.5 weight)
+4. Returns top concepts sorted by combined activation
+
+## Demo Application
+
+The demo.py script provides comprehensive analysis:
+
+- **Document Ingestion**: Loads .txt files from specified directory
+- **Hierarchical Structure**: Displays layer statistics and sparsity
+- **Key Concepts**: Shows top tokens and bigrams by PageRank
+- **Concept Associations**: Reveals lateral connection patterns
+- **Document Relationships**: Identifies thematic clusters
+- **Topic Analysis**: Shows unique vocabulary and overlap matrices
+- **Query Demonstration**: Activates concepts and shows spreading
+
+## Performance Characteristics
+
+### Scalability
+
+- Token layer: O(V) minicolumns where V = vocabulary size
+- Bigram layer: O(V²) potential but sparse in practice
+- Connections: O(E) where E = co-occurrence edges
+- PageRank: O(iterations × E) per layer
+
+### Memory Usage
+
+For a 12-document corpus with ~150 words each:
+- ~1,200 token minicolumns
+- ~1,500 bigram minicolumns
+- ~18,000 lateral connections
+- ~2MB total memory
+
+## Future Enhancements
+
+### Layer 2 Implementation
+
+The concept layer (Layer 2) remains unimplemented. Potential approaches:
+
+1. **PageRank Communities**: Cluster tokens by connection structure
+2. **Embedding Similarity**: Group semantically similar tokens
+3. **LDA Topics**: Discover latent topic distributions
+
+### Biological Fidelity
+
+Current sparsity (~60%) falls short of biological targets (95-98%). Improvements could include:
+
+- Winner-take-all competition within layers
+- Adaptive threshold mechanisms
+- Inhibitory interneuron modeling
+
+### Integration Possibilities
+
+- **RAG Systems**: Use as semantic index for retrieval
+- **Knowledge Graphs**: Export connections for graph databases
+- **Visualization**: Interactive network exploration tools
+
+## Conclusion
+
+The Cortical Text Processor demonstrates how neuroscience-inspired architectures can extract meaningful structure from text. By combining hierarchical processing with PageRank importance propagation, the system discovers central concepts, reveals document relationships, and enables semantic queries through a biologically-plausible computational framework.
