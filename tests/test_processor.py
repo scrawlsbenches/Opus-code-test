@@ -153,9 +153,111 @@ class TestProcessorPersistence(unittest.TestCase):
             self.assertIn("doc1", loaded.documents)
 
 
+class TestProcessorPassageRetrieval(unittest.TestCase):
+    """Test chunk-level passage retrieval for RAG systems."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.processor = CorticalTextProcessor()
+        # Create documents with distinct content for testing passage retrieval
+        cls.processor.process_document("neural_doc", """
+            Neural networks are computational models inspired by biological neurons.
+            They process information through interconnected layers of nodes.
+            Deep learning uses many layers to learn hierarchical representations.
+            Backpropagation is the key algorithm for training neural networks.
+            Convolutional neural networks excel at image recognition tasks.
+        """)
+        cls.processor.process_document("ml_doc", """
+            Machine learning algorithms learn patterns from data automatically.
+            Supervised learning requires labeled training examples.
+            Unsupervised learning discovers hidden structure in unlabeled data.
+            Reinforcement learning trains agents through rewards and penalties.
+            Model evaluation uses metrics like accuracy and precision.
+        """)
+        cls.processor.process_document("data_doc", """
+            Data preprocessing is essential for machine learning pipelines.
+            Feature engineering creates meaningful input representations.
+            Data normalization scales features to similar ranges.
+            Missing value imputation handles incomplete datasets.
+            Cross-validation ensures robust model performance estimates.
+        """)
+        cls.processor.compute_all(verbose=False)
+
+    def test_find_passages_returns_list(self):
+        """Test that find_passages_for_query returns a list."""
+        results = self.processor.find_passages_for_query("neural networks")
+        self.assertIsInstance(results, list)
+
+    def test_find_passages_returns_tuples(self):
+        """Test that results are tuples with correct structure."""
+        results = self.processor.find_passages_for_query("neural networks", top_n=1)
+        self.assertGreater(len(results), 0)
+        passage, doc_id, start, end, score = results[0]
+        self.assertIsInstance(passage, str)
+        self.assertIsInstance(doc_id, str)
+        self.assertIsInstance(start, int)
+        self.assertIsInstance(end, int)
+        self.assertIsInstance(score, float)
+
+    def test_find_passages_contains_text(self):
+        """Test that passages contain actual text."""
+        results = self.processor.find_passages_for_query("neural", top_n=3)
+        self.assertGreater(len(results), 0)
+        passage, _, _, _, _ = results[0]
+        self.assertGreater(len(passage), 0)
+
+    def test_find_passages_position_valid(self):
+        """Test that start/end positions are valid."""
+        results = self.processor.find_passages_for_query("learning", top_n=3)
+        for passage, doc_id, start, end, score in results:
+            self.assertGreaterEqual(start, 0)
+            self.assertGreater(end, start)
+            self.assertEqual(len(passage), end - start)
+
+    def test_find_passages_top_n_limit(self):
+        """Test that top_n parameter limits results."""
+        results = self.processor.find_passages_for_query("learning", top_n=2)
+        self.assertLessEqual(len(results), 2)
+
+    def test_find_passages_chunk_size(self):
+        """Test that chunk_size parameter is respected."""
+        results = self.processor.find_passages_for_query(
+            "neural", top_n=5, chunk_size=100, overlap=20
+        )
+        for passage, _, _, _, _ in results:
+            self.assertLessEqual(len(passage), 100)
+
+    def test_find_passages_doc_filter(self):
+        """Test that doc_filter restricts search."""
+        results = self.processor.find_passages_for_query(
+            "learning", top_n=10, doc_filter=["neural_doc"]
+        )
+        for _, doc_id, _, _, _ in results:
+            self.assertEqual(doc_id, "neural_doc")
+
+    def test_find_passages_scores_descending(self):
+        """Test that results are sorted by score descending."""
+        results = self.processor.find_passages_for_query("neural networks", top_n=5)
+        if len(results) > 1:
+            scores = [score for _, _, _, _, score in results]
+            self.assertEqual(scores, sorted(scores, reverse=True))
+
+    def test_find_passages_no_expansion(self):
+        """Test passage retrieval without query expansion."""
+        results = self.processor.find_passages_for_query(
+            "neural", top_n=3, use_expansion=False
+        )
+        self.assertIsInstance(results, list)
+
+    def test_find_passages_empty_query(self):
+        """Test handling of queries with no matching terms."""
+        results = self.processor.find_passages_for_query("xyznonexistent123")
+        self.assertEqual(len(results), 0)
+
+
 class TestProcessorGaps(unittest.TestCase):
     """Test gap detection functionality."""
-    
+
     @classmethod
     def setUpClass(cls):
         cls.processor = CorticalTextProcessor()
@@ -169,14 +271,14 @@ class TestProcessorGaps(unittest.TestCase):
             Falcons hawks eagles training.
         """)
         cls.processor.compute_all(verbose=False)
-    
+
     def test_analyze_knowledge_gaps(self):
         """Test gap analysis returns expected structure."""
         gaps = self.processor.analyze_knowledge_gaps()
         self.assertIn('isolated_documents', gaps)
         self.assertIn('weak_topics', gaps)
         self.assertIn('coverage_score', gaps)
-    
+
     def test_detect_anomalies(self):
         """Test anomaly detection."""
         anomalies = self.processor.detect_anomalies(threshold=0.1)
