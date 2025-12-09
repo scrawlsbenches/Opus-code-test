@@ -21,6 +21,15 @@ from . import persistence
 class CorticalTextProcessor:
     """Neocortex-inspired text processing system."""
 
+    # Computation types for tracking staleness
+    COMP_TFIDF = 'tfidf'
+    COMP_PAGERANK = 'pagerank'
+    COMP_ACTIVATION = 'activation'
+    COMP_DOC_CONNECTIONS = 'doc_connections'
+    COMP_CONCEPTS = 'concepts'
+    COMP_EMBEDDINGS = 'embeddings'
+    COMP_SEMANTICS = 'semantics'
+
     def __init__(self, tokenizer: Optional[Tokenizer] = None):
         self.tokenizer = tokenizer or Tokenizer()
         self.layers: Dict[CorticalLayer, HierarchicalLayer] = {
@@ -33,6 +42,8 @@ class CorticalTextProcessor:
         self.document_metadata: Dict[str, Dict[str, Any]] = {}
         self.embeddings: Dict[str, List[float]] = {}
         self.semantic_relations: List[Tuple[str, str, str, float]] = []
+        # Track which computations are stale and need recomputation
+        self._stale_computations: set = set()
 
     def process_document(
         self,
@@ -96,7 +107,10 @@ class CorticalTextProcessor:
                 token_col = layer0.get_minicolumn(part)
                 if token_col:
                     col.feedforward_sources.add(token_col.id)
-        
+
+        # Mark all computations as stale since document corpus changed
+        self._mark_all_stale()
+
         return {'tokens': len(tokens), 'bigrams': len(bigrams), 'unique_tokens': len(set(tokens))}
 
     def set_document_metadata(self, doc_id: str, **kwargs) -> None:
@@ -140,6 +154,247 @@ class CorticalTextProcessor:
         import copy
         return copy.deepcopy(self.document_metadata)
 
+    def _mark_all_stale(self) -> None:
+        """Mark all computations as stale (needing recomputation)."""
+        self._stale_computations = {
+            self.COMP_TFIDF,
+            self.COMP_PAGERANK,
+            self.COMP_ACTIVATION,
+            self.COMP_DOC_CONNECTIONS,
+            self.COMP_CONCEPTS,
+            self.COMP_EMBEDDINGS,
+            self.COMP_SEMANTICS,
+        }
+
+    def _mark_fresh(self, *computation_types: str) -> None:
+        """Mark specified computations as fresh (up-to-date)."""
+        for comp in computation_types:
+            self._stale_computations.discard(comp)
+
+    def is_stale(self, computation_type: str) -> bool:
+        """
+        Check if a specific computation is stale.
+
+        Args:
+            computation_type: One of COMP_TFIDF, COMP_PAGERANK, etc.
+
+        Returns:
+            True if the computation needs to be run again
+        """
+        return computation_type in self._stale_computations
+
+    def get_stale_computations(self) -> set:
+        """
+        Get the set of computations that are currently stale.
+
+        Returns:
+            Set of computation type strings that need recomputation
+        """
+        return self._stale_computations.copy()
+
+    def add_document_incremental(
+        self,
+        doc_id: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        recompute: str = 'tfidf'
+    ) -> Dict[str, int]:
+        """
+        Add a document with selective recomputation for efficiency.
+
+        Unlike process_document() + compute_all(), this method only recomputes
+        what's necessary based on the recompute parameter. This is more efficient
+        for RAG systems with frequent document updates.
+
+        Args:
+            doc_id: Unique identifier for the document
+            content: Document text content
+            metadata: Optional metadata dict (source, timestamp, author, etc.)
+            recompute: Level of recomputation to perform:
+                - 'none': Just add document, mark all computations stale
+                - 'tfidf': Recompute TF-IDF only (fast, updates term weights)
+                - 'full': Run compute_all() (slowest, most accurate)
+
+        Returns:
+            Dict with processing statistics (tokens, bigrams, unique_tokens)
+
+        Example:
+            >>> # Quick update for search without full recomputation
+            >>> processor.add_document_incremental("new_doc", "content", recompute='tfidf')
+            >>>
+            >>> # Just queue document, recompute later in batch
+            >>> processor.add_document_incremental("doc1", "content1", recompute='none')
+            >>> processor.add_document_incremental("doc2", "content2", recompute='none')
+            >>> processor.recompute(level='full')  # Batch recomputation
+        """
+        stats = self.process_document(doc_id, content, metadata)
+
+        if recompute == 'tfidf':
+            self.compute_tfidf(verbose=False)
+            self._mark_fresh(self.COMP_TFIDF)
+        elif recompute == 'full':
+            self.compute_all(verbose=False)
+            self._stale_computations.clear()
+        # 'none' leaves all computations marked as stale
+
+        return stats
+
+    def add_documents_batch(
+        self,
+        documents: List[Tuple[str, str, Optional[Dict[str, Any]]]],
+        recompute: str = 'full',
+        verbose: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Add multiple documents with a single recomputation.
+
+        More efficient than calling add_document_incremental() multiple times
+        when adding many documents at once.
+
+        Args:
+            documents: List of (doc_id, content, metadata) tuples.
+                       metadata can be None for documents without metadata.
+            recompute: Level of recomputation after all documents are added:
+                - 'none': Just add documents, mark all computations stale
+                - 'tfidf': Recompute TF-IDF only
+                - 'full': Run compute_all()
+            verbose: Print progress messages
+
+        Returns:
+            Dict with batch statistics:
+                - documents_added: Number of documents added
+                - total_tokens: Total tokens across all documents
+                - recomputation: Type of recomputation performed
+
+        Example:
+            >>> docs = [
+            ...     ("doc1", "First document content", {"source": "web"}),
+            ...     ("doc2", "Second document content", None),
+            ...     ("doc3", "Third document content", {"author": "AI"}),
+            ... ]
+            >>> processor.add_documents_batch(docs, recompute='full')
+        """
+        total_tokens = 0
+        total_bigrams = 0
+
+        if verbose:
+            print(f"Adding {len(documents)} documents...")
+
+        for doc_id, content, metadata in documents:
+            # Use process_document directly (not add_document_incremental)
+            # to avoid per-document recomputation
+            stats = self.process_document(doc_id, content, metadata)
+            total_tokens += stats['tokens']
+            total_bigrams += stats['bigrams']
+
+        if verbose:
+            print(f"Processed {total_tokens} tokens, {total_bigrams} bigrams")
+
+        # Perform single recomputation for entire batch
+        if recompute == 'tfidf':
+            if verbose:
+                print("Recomputing TF-IDF...")
+            self.compute_tfidf(verbose=False)
+            self._mark_fresh(self.COMP_TFIDF)
+        elif recompute == 'full':
+            if verbose:
+                print("Running full recomputation...")
+            self.compute_all(verbose=False)
+            self._stale_computations.clear()
+
+        if verbose:
+            print("Done.")
+
+        return {
+            'documents_added': len(documents),
+            'total_tokens': total_tokens,
+            'total_bigrams': total_bigrams,
+            'recomputation': recompute
+        }
+
+    def recompute(
+        self,
+        level: str = 'stale',
+        verbose: bool = True
+    ) -> Dict[str, bool]:
+        """
+        Recompute specified analysis levels.
+
+        Use this after adding documents with recompute='none' to batch
+        the recomputation step.
+
+        Args:
+            level: What to recompute:
+                - 'stale': Only recompute what's marked as stale
+                - 'tfidf': Only TF-IDF (marks others stale)
+                - 'full': Run complete compute_all()
+            verbose: Print progress messages
+
+        Returns:
+            Dict indicating what was recomputed
+
+        Example:
+            >>> # Add documents without recomputation
+            >>> processor.add_document_incremental("doc1", "content", recompute='none')
+            >>> processor.add_document_incremental("doc2", "content", recompute='none')
+            >>> # Batch recompute
+            >>> processor.recompute(level='full')
+        """
+        recomputed = {}
+
+        if level == 'full':
+            self.compute_all(verbose=verbose)
+            self._stale_computations.clear()
+            recomputed = {
+                self.COMP_ACTIVATION: True,
+                self.COMP_PAGERANK: True,
+                self.COMP_TFIDF: True,
+                self.COMP_DOC_CONNECTIONS: True,
+                self.COMP_CONCEPTS: True,
+            }
+        elif level == 'tfidf':
+            self.compute_tfidf(verbose=verbose)
+            self._mark_fresh(self.COMP_TFIDF)
+            recomputed[self.COMP_TFIDF] = True
+        elif level == 'stale':
+            # Recompute only what's stale, in dependency order
+            if self.COMP_ACTIVATION in self._stale_computations:
+                self.propagate_activation(verbose=verbose)
+                self._mark_fresh(self.COMP_ACTIVATION)
+                recomputed[self.COMP_ACTIVATION] = True
+
+            if self.COMP_PAGERANK in self._stale_computations:
+                self.compute_importance(verbose=verbose)
+                self._mark_fresh(self.COMP_PAGERANK)
+                recomputed[self.COMP_PAGERANK] = True
+
+            if self.COMP_TFIDF in self._stale_computations:
+                self.compute_tfidf(verbose=verbose)
+                self._mark_fresh(self.COMP_TFIDF)
+                recomputed[self.COMP_TFIDF] = True
+
+            if self.COMP_DOC_CONNECTIONS in self._stale_computations:
+                self.compute_document_connections(verbose=verbose)
+                self._mark_fresh(self.COMP_DOC_CONNECTIONS)
+                recomputed[self.COMP_DOC_CONNECTIONS] = True
+
+            if self.COMP_CONCEPTS in self._stale_computations:
+                self.build_concept_clusters(verbose=verbose)
+                self._mark_fresh(self.COMP_CONCEPTS)
+                recomputed[self.COMP_CONCEPTS] = True
+
+            if self.COMP_EMBEDDINGS in self._stale_computations:
+                self.compute_graph_embeddings(verbose=verbose)
+                self._mark_fresh(self.COMP_EMBEDDINGS)
+                recomputed[self.COMP_EMBEDDINGS] = True
+
+            if self.COMP_SEMANTICS in self._stale_computations:
+                self.extract_corpus_semantics(verbose=verbose)
+                self._mark_fresh(self.COMP_SEMANTICS)
+                recomputed[self.COMP_SEMANTICS] = True
+
+        return recomputed
+
     def compute_all(self, verbose: bool = True, build_concepts: bool = True) -> None:
         """
         Run all computation steps.
@@ -165,6 +420,16 @@ class CorticalTextProcessor:
             if verbose:
                 print("Building concept clusters...")
             self.build_concept_clusters(verbose=False)
+        # Mark core computations as fresh
+        fresh_comps = [
+            self.COMP_ACTIVATION,
+            self.COMP_PAGERANK,
+            self.COMP_TFIDF,
+            self.COMP_DOC_CONNECTIONS,
+        ]
+        if build_concepts:
+            fresh_comps.append(self.COMP_CONCEPTS)
+        self._mark_fresh(*fresh_comps)
         if verbose:
             print("Done.")
     

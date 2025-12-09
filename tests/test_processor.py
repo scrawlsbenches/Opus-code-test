@@ -360,5 +360,168 @@ class TestProcessorGaps(unittest.TestCase):
         self.assertIsInstance(anomalies, list)
 
 
+class TestProcessorIncrementalIndexing(unittest.TestCase):
+    """Test incremental document indexing functionality."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor()
+
+    def test_add_document_incremental_returns_stats(self):
+        """Test that add_document_incremental returns processing stats."""
+        stats = self.processor.add_document_incremental(
+            "doc1", "Neural networks process information.", recompute='tfidf'
+        )
+        self.assertIn('tokens', stats)
+        self.assertIn('bigrams', stats)
+        self.assertIn('unique_tokens', stats)
+        self.assertGreater(stats['tokens'], 0)
+
+    def test_add_document_incremental_with_metadata(self):
+        """Test incremental add with metadata."""
+        self.processor.add_document_incremental(
+            "doc1",
+            "Test content.",
+            metadata={"source": "test", "author": "AI"},
+            recompute='tfidf'
+        )
+        metadata = self.processor.get_document_metadata("doc1")
+        self.assertEqual(metadata["source"], "test")
+        self.assertEqual(metadata["author"], "AI")
+
+    def test_add_document_incremental_recompute_none(self):
+        """Test that recompute='none' marks computations as stale."""
+        self.processor.add_document_incremental(
+            "doc1", "Test content.", recompute='none'
+        )
+        # Should be stale
+        self.assertTrue(self.processor.is_stale(CorticalTextProcessor.COMP_TFIDF))
+        self.assertTrue(self.processor.is_stale(CorticalTextProcessor.COMP_PAGERANK))
+
+    def test_add_document_incremental_recompute_tfidf(self):
+        """Test that recompute='tfidf' only recomputes TF-IDF."""
+        self.processor.add_document_incremental(
+            "doc1", "Test content.", recompute='tfidf'
+        )
+        # TF-IDF should be fresh
+        self.assertFalse(self.processor.is_stale(CorticalTextProcessor.COMP_TFIDF))
+        # Other computations should be stale
+        self.assertTrue(self.processor.is_stale(CorticalTextProcessor.COMP_PAGERANK))
+
+    def test_add_document_incremental_recompute_full(self):
+        """Test that recompute='full' clears all staleness."""
+        self.processor.add_document_incremental(
+            "doc1", "Test content.", recompute='full'
+        )
+        # All should be fresh
+        self.assertFalse(self.processor.is_stale(CorticalTextProcessor.COMP_TFIDF))
+        self.assertFalse(self.processor.is_stale(CorticalTextProcessor.COMP_PAGERANK))
+        self.assertFalse(self.processor.is_stale(CorticalTextProcessor.COMP_ACTIVATION))
+
+    def test_add_documents_batch_returns_stats(self):
+        """Test that add_documents_batch returns batch statistics."""
+        docs = [
+            ("doc1", "First document content.", {"source": "web"}),
+            ("doc2", "Second document content.", None),
+            ("doc3", "Third document content.", {"author": "AI"}),
+        ]
+        stats = self.processor.add_documents_batch(docs, recompute='full', verbose=False)
+        self.assertEqual(stats['documents_added'], 3)
+        self.assertIn('total_tokens', stats)
+        self.assertIn('total_bigrams', stats)
+        self.assertEqual(stats['recomputation'], 'full')
+
+    def test_add_documents_batch_preserves_metadata(self):
+        """Test that batch add preserves metadata for all documents."""
+        docs = [
+            ("doc1", "First content.", {"type": "article"}),
+            ("doc2", "Second content.", {"type": "paper"}),
+        ]
+        self.processor.add_documents_batch(docs, recompute='tfidf', verbose=False)
+        self.assertEqual(self.processor.get_document_metadata("doc1")["type"], "article")
+        self.assertEqual(self.processor.get_document_metadata("doc2")["type"], "paper")
+
+    def test_add_documents_batch_recompute_none(self):
+        """Test batch add with no recomputation."""
+        docs = [("doc1", "Content one.", None), ("doc2", "Content two.", None)]
+        self.processor.add_documents_batch(docs, recompute='none', verbose=False)
+        self.assertTrue(self.processor.is_stale(CorticalTextProcessor.COMP_TFIDF))
+        self.assertEqual(len(self.processor.documents), 2)
+
+    def test_recompute_full(self):
+        """Test recompute with level='full'."""
+        self.processor.add_document_incremental("doc1", "Test content.", recompute='none')
+        recomputed = self.processor.recompute(level='full', verbose=False)
+        self.assertIn(CorticalTextProcessor.COMP_TFIDF, recomputed)
+        self.assertIn(CorticalTextProcessor.COMP_PAGERANK, recomputed)
+        self.assertFalse(self.processor.is_stale(CorticalTextProcessor.COMP_TFIDF))
+
+    def test_recompute_tfidf(self):
+        """Test recompute with level='tfidf'."""
+        self.processor.add_document_incremental("doc1", "Test content.", recompute='none')
+        recomputed = self.processor.recompute(level='tfidf', verbose=False)
+        self.assertEqual(recomputed, {CorticalTextProcessor.COMP_TFIDF: True})
+        self.assertFalse(self.processor.is_stale(CorticalTextProcessor.COMP_TFIDF))
+        # Others still stale
+        self.assertTrue(self.processor.is_stale(CorticalTextProcessor.COMP_PAGERANK))
+
+    def test_recompute_stale_only(self):
+        """Test recompute with level='stale' (only recomputes stale items)."""
+        self.processor.add_document_incremental("doc1", "Test content.", recompute='tfidf')
+        # Now only pagerank, activation, etc. are stale
+        recomputed = self.processor.recompute(level='stale', verbose=False)
+        # TF-IDF should NOT be in recomputed (it was already fresh)
+        self.assertNotIn(CorticalTextProcessor.COMP_TFIDF, recomputed)
+        # Others should be recomputed
+        self.assertIn(CorticalTextProcessor.COMP_PAGERANK, recomputed)
+
+    def test_get_stale_computations(self):
+        """Test get_stale_computations returns correct set."""
+        self.processor.add_document_incremental("doc1", "Test content.", recompute='tfidf')
+        stale = self.processor.get_stale_computations()
+        self.assertNotIn(CorticalTextProcessor.COMP_TFIDF, stale)
+        self.assertIn(CorticalTextProcessor.COMP_PAGERANK, stale)
+
+    def test_is_stale(self):
+        """Test is_stale returns correct boolean."""
+        self.processor.add_document_incremental("doc1", "Test content.", recompute='none')
+        self.assertTrue(self.processor.is_stale(CorticalTextProcessor.COMP_TFIDF))
+        self.processor.compute_tfidf(verbose=False)
+        self.processor._mark_fresh(CorticalTextProcessor.COMP_TFIDF)
+        self.assertFalse(self.processor.is_stale(CorticalTextProcessor.COMP_TFIDF))
+
+    def test_incremental_workflow(self):
+        """Test typical incremental indexing workflow."""
+        # Initial corpus
+        self.processor.process_document("doc1", "Neural networks process information.")
+        self.processor.compute_all(verbose=False)
+
+        # Add new documents incrementally
+        self.processor.add_document_incremental(
+            "doc2", "Machine learning algorithms.", recompute='tfidf'
+        )
+
+        # Search should work
+        results = self.processor.find_documents_for_query("neural", top_n=2)
+        self.assertIsInstance(results, list)
+
+        # Full recompute when needed
+        self.processor.recompute(level='full', verbose=False)
+        self.assertEqual(len(self.processor.get_stale_computations()), 0)
+
+    def test_batch_then_query(self):
+        """Test batch add followed by querying."""
+        docs = [
+            ("neural", "Neural networks deep learning AI.", None),
+            ("ml", "Machine learning algorithms models.", None),
+            ("data", "Data processing storage retrieval.", None),
+        ]
+        self.processor.add_documents_batch(docs, recompute='full', verbose=False)
+
+        results = self.processor.find_documents_for_query("neural networks", top_n=3)
+        self.assertGreater(len(results), 0)
+        # The neural doc should rank highest
+        self.assertEqual(results[0][0], "neural")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

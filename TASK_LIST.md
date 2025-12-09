@@ -402,19 +402,39 @@ neighbor = layer.get_by_id(neighbor_id)
 ### 15. Add Incremental Document Indexing
 
 **File:** `cortical/processor.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 
 **Problem:**
 Adding a document requires calling `compute_all()` which recomputes everything. For RAG systems with frequent updates, this is inefficient.
 
-**Implementation Steps:**
-1. Add `add_document_incremental()` method
-2. Support selective recomputation (TF-IDF only, or full)
-3. Track which computations are stale
-4. Allow batch updates with single recomputation
+**Solution Applied:**
+1. Added staleness tracking with `_stale_computations` set and computation type constants
+2. Added `add_document_incremental()` method with selectable recomputation levels:
+   - `'none'`: Just add document, mark computations stale (fastest)
+   - `'tfidf'`: Recompute TF-IDF only (good for search)
+   - `'full'`: Run full `compute_all()` (most accurate)
+3. Added `add_documents_batch()` for efficient batch additions with single recomputation
+4. Added `recompute()` method with levels: `'stale'`, `'tfidf'`, `'full'`
+5. Added helper methods: `is_stale()`, `get_stale_computations()`, `_mark_fresh()`, `_mark_all_stale()`
 
-**Files to Modify:**
-- `cortical/processor.py` - Add incremental method (~40 lines)
+**Files Modified:**
+- `cortical/processor.py` - Added incremental indexing methods (~200 lines)
+- `tests/test_processor.py` - Added 15 tests for incremental indexing
+
+**Usage Examples:**
+```python
+# Quick incremental update (TF-IDF only)
+processor.add_document_incremental("new_doc", "content", recompute='tfidf')
+
+# Batch add with deferred recomputation
+processor.add_document_incremental("doc1", "content1", recompute='none')
+processor.add_document_incremental("doc2", "content2", recompute='none')
+processor.recompute(level='full')  # Single recomputation for batch
+
+# Efficient batch API
+docs = [("doc1", "content1", {"source": "web"}), ("doc2", "content2", None)]
+processor.add_documents_batch(docs, recompute='full')
+```
 
 ---
 
@@ -486,20 +506,20 @@ def find_documents_batch(self, queries: List[str], top_n: int = 5):
 | **High** | **Persist full computed state** | ✅ Completed | **RAG** |
 | Medium | Fix type annotation (embeddings.py) | ✅ Completed | Bug Fix |
 | Medium | Optimize spectral embeddings | ✅ Completed | Performance |
-| Medium | Add incremental indexing | ⬜ Not Started | RAG |
+| Medium | Add incremental indexing | ✅ Completed | RAG |
 | Low | Document magic numbers | ⏳ Deferred | Documentation |
 | Low | Multi-stage ranking pipeline | ⬜ Future | RAG |
 | Low | Batch query API | ⬜ Future | RAG |
 
 **Bug Fix Completion:** 7/7 tasks (100%)
-**RAG Enhancement Completion:** 5/8 tasks (63%)
+**RAG Enhancement Completion:** 6/8 tasks (75%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 129 tests in 0.152s
+Ran 144 tests in 0.141s
 OK
 ```
 
