@@ -1,9 +1,10 @@
 """
-Cortical Text Processor Demo
-============================
+Cortical Text Processor Showcase
+================================
 
-This demo processes a corpus of documents, analyzing relationships
-between concepts, documents, and ideas across diverse topics.
+This showcase processes a corpus of documents, demonstrating the
+hierarchical analysis of relationships between concepts, documents,
+and ideas across diverse topics.
 """
 
 import os
@@ -35,8 +36,8 @@ def render_bar(value: float, max_value: float, width: int = 30) -> str:
     return "█" * filled + "░" * (width - filled)
 
 
-class CorticalDemo:
-    """Demonstrates the cortical text processor with interesting analysis."""
+class CorticalShowcase:
+    """Showcases the cortical text processor with interesting analysis."""
     
     def __init__(self, samples_dir: str = "samples"):
         self.samples_dir = samples_dir
@@ -46,17 +47,18 @@ class CorticalDemo:
     def run(self):
         """Run the complete demo."""
         self.print_intro()
-        
+
         if not self.ingest_corpus():
             print("No documents found!")
             return
-        
+
         self.analyze_hierarchy()
         self.discover_key_concepts()
         self.analyze_tfidf()
         self.find_concept_associations()
         self.analyze_document_relationships()
         self.demonstrate_queries()
+        self.demonstrate_polysemy()
         self.demonstrate_gap_analysis()
         self.demonstrate_embeddings()
         self.print_insights()
@@ -66,7 +68,7 @@ class CorticalDemo:
         print("""
     ╔══════════════════════════════════════════════════════════════════════╗
     ║                                                                      ║
-    ║              🧠  CORTICAL TEXT PROCESSOR DEMO  🧠                    ║
+    ║            🧠  CORTICAL TEXT PROCESSOR SHOWCASE  🧠                  ║
     ║                                                                      ║
     ║     Mimicking how the neocortex processes and understands text       ║
     ║                                                                      ║
@@ -265,6 +267,47 @@ class CorticalDemo:
                 print(f"      • {doc_id} (score: {score:.3f})")
             print()
     
+    def demonstrate_polysemy(self):
+        """Demonstrate polysemy - same word, different meanings."""
+        print_header("POLYSEMY DEMONSTRATION", "═")
+
+        print("Polysemy occurs when the same word has multiple meanings.")
+        print("This affects retrieval when query terms are ambiguous.\n")
+
+        # Query for "candle sticks"
+        query = "candle sticks"
+        print_subheader(f"🔍 Query: '{query}'")
+
+        results = self.processor.find_documents_for_query(query, top_n=6)
+        print("\n    Results:")
+        for doc_id, score in results:
+            print(f"      • {doc_id} (score: {score:.3f})")
+
+        # Explain the polysemy
+        print("\n    📝 Analysis:")
+        print("    The query tokenizes to: ['candle', 'sticks']")
+        print()
+        print("    'sticks' appears in multiple contexts:")
+        print("      • candlestick_patterns - trading chart patterns")
+        print("      • letterpress_printing - 'composing sticks' (typesetting tools)")
+        print()
+        print("    This is a classic word sense disambiguation challenge.")
+        print("    The system correctly finds both but cannot distinguish intent.")
+
+        # Show the actual text snippets
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        if 'sticks' in layer0.minicolumns:
+            col = layer0.minicolumns['sticks']
+            print(f"\n    'sticks' appears in {len(col.document_ids)} documents:")
+            for doc_id in col.document_ids:
+                print(f"      • {doc_id}")
+
+        print("\n    💡 Potential improvements:")
+        print("      • Weight adjacent term matches higher (bigram boost)")
+        print("      • Use document context for disambiguation")
+        print("      • Implement word sense disambiguation")
+        print()
+
     def demonstrate_gap_analysis(self):
         """Show knowledge gap detection."""
         print_header("KNOWLEDGE GAP ANALYSIS", "═")
@@ -351,5 +394,5 @@ class CorticalDemo:
 
 
 if __name__ == "__main__":
-    demo = CorticalDemo(samples_dir="samples")
-    demo.run()
+    showcase = CorticalShowcase(samples_dir="samples")
+    showcase.run()
