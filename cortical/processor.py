@@ -226,8 +226,34 @@ class CorticalTextProcessor:
     def expand_query_semantic(self, query_text: str, max_expansions: int = 10) -> Dict[str, float]:
         return query_module.expand_query_semantic(query_text, self.layers, self.tokenizer, self.semantic_relations, max_expansions)
     
-    def find_documents_for_query(self, query_text: str, top_n: int = 5, use_expansion: bool = True) -> List[Tuple[str, float]]:
-        return query_module.find_documents_for_query(query_text, self.layers, self.tokenizer, top_n, use_expansion)
+    def find_documents_for_query(
+        self,
+        query_text: str,
+        top_n: int = 5,
+        use_expansion: bool = True,
+        use_semantic: bool = True
+    ) -> List[Tuple[str, float]]:
+        """
+        Find documents most relevant to a query.
+
+        Args:
+            query_text: Search query
+            top_n: Number of documents to return
+            use_expansion: Whether to expand query terms using lateral connections
+            use_semantic: Whether to use semantic relations for expansion (if available)
+
+        Returns:
+            List of (doc_id, score) tuples ranked by relevance
+        """
+        return query_module.find_documents_for_query(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n,
+            use_expansion=use_expansion,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
+        )
 
     def find_passages_for_query(
         self,
@@ -236,7 +262,8 @@ class CorticalTextProcessor:
         chunk_size: int = 512,
         overlap: int = 128,
         use_expansion: bool = True,
-        doc_filter: Optional[List[str]] = None
+        doc_filter: Optional[List[str]] = None,
+        use_semantic: bool = True
     ) -> List[Tuple[str, str, int, int, float]]:
         """
         Find text passages most relevant to a query (for RAG systems).
@@ -251,6 +278,7 @@ class CorticalTextProcessor:
             overlap: Overlap between chunks in characters (default 128)
             use_expansion: Whether to expand query terms
             doc_filter: Optional list of doc_ids to restrict search to
+            use_semantic: Whether to use semantic relations for expansion (if available)
 
         Returns:
             List of (passage_text, doc_id, start_char, end_char, score) tuples
@@ -270,7 +298,9 @@ class CorticalTextProcessor:
             chunk_size=chunk_size,
             overlap=overlap,
             use_expansion=use_expansion,
-            doc_filter=doc_filter
+            doc_filter=doc_filter,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
         )
     
     def query_expanded(self, query_text: str, top_n: int = 10, max_expansions: int = 8) -> List[Tuple[str, float]]:

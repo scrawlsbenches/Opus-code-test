@@ -179,39 +179,57 @@ def find_documents_for_query(
     layers: Dict[CorticalLayer, HierarchicalLayer],
     tokenizer: Tokenizer,
     top_n: int = 5,
-    use_expansion: bool = True
+    use_expansion: bool = True,
+    semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
+    use_semantic: bool = True
 ) -> List[Tuple[str, float]]:
     """
     Find documents most relevant to a query using TF-IDF and optional expansion.
-    
+
     Args:
         query_text: Search query
         layers: Dictionary of layers
         tokenizer: Tokenizer instance
         top_n: Number of documents to return
-        use_expansion: Whether to expand query terms
-        
+        use_expansion: Whether to expand query terms using lateral connections
+        semantic_relations: Optional list of semantic relations for expansion
+        use_semantic: Whether to use semantic relations for expansion (if available)
+
     Returns:
         List of (doc_id, score) tuples ranked by relevance
     """
     layer0 = layers[CorticalLayer.TOKENS]
-    
+
     if use_expansion:
+        # Start with lateral connection expansion
         query_terms = expand_query(query_text, layers, tokenizer, max_expansions=5)
+
+        # Add semantic expansion if available
+        if use_semantic and semantic_relations:
+            semantic_terms = expand_query_semantic(
+                query_text, layers, tokenizer, semantic_relations, max_expansions=5
+            )
+            # Merge semantic expansions (don't override stronger weights)
+            for term, weight in semantic_terms.items():
+                if term not in query_terms:
+                    query_terms[term] = weight * 0.8  # Slightly discount semantic expansions
+                else:
+                    # Take the max weight
+                    query_terms[term] = max(query_terms[term], weight * 0.8)
     else:
         tokens = tokenizer.tokenize(query_text)
         query_terms = {t: 1.0 for t in tokens}
-    
+
     # Score each document
     doc_scores: Dict[str, float] = defaultdict(float)
-    
+
     for term, term_weight in query_terms.items():
         col = layer0.get_minicolumn(term)
         if col:
             for doc_id in col.document_ids:
                 tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
                 doc_scores[doc_id] += tfidf * term_weight
-    
+
     sorted_docs = sorted(doc_scores.items(), key=lambda x: -x[1])
     return sorted_docs[:top_n]
 
@@ -387,7 +405,9 @@ def find_passages_for_query(
     chunk_size: int = 512,
     overlap: int = 128,
     use_expansion: bool = True,
-    doc_filter: Optional[List[str]] = None
+    doc_filter: Optional[List[str]] = None,
+    semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
+    use_semantic: bool = True
 ) -> List[Tuple[str, str, int, int, float]]:
     """
     Find text passages most relevant to a query.
@@ -405,6 +425,8 @@ def find_passages_for_query(
         overlap: Overlap between chunks in characters (default 128)
         use_expansion: Whether to expand query terms
         doc_filter: Optional list of doc_ids to restrict search to
+        semantic_relations: Optional list of semantic relations for expansion
+        use_semantic: Whether to use semantic relations for expansion (if available)
 
     Returns:
         List of (passage_text, doc_id, start_char, end_char, score) tuples
@@ -415,6 +437,16 @@ def find_passages_for_query(
     # Get expanded query terms
     if use_expansion:
         query_terms = expand_query(query_text, layers, tokenizer, max_expansions=5)
+        # Add semantic expansion if available
+        if use_semantic and semantic_relations:
+            semantic_terms = expand_query_semantic(
+                query_text, layers, tokenizer, semantic_relations, max_expansions=5
+            )
+            for term, weight in semantic_terms.items():
+                if term not in query_terms:
+                    query_terms[term] = weight * 0.8
+                else:
+                    query_terms[term] = max(query_terms[term], weight * 0.8)
     else:
         tokens = tokenizer.tokenize(query_text)
         query_terms = {t: 1.0 for t in tokens}
@@ -426,7 +458,9 @@ def find_passages_for_query(
     doc_scores = find_documents_for_query(
         query_text, layers, tokenizer,
         top_n=min(len(documents), top_n * 3),
-        use_expansion=use_expansion
+        use_expansion=use_expansion,
+        semantic_relations=semantic_relations,
+        use_semantic=use_semantic
     )
 
     # Apply document filter if provided
