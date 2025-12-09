@@ -52,6 +52,8 @@ class CorticalTextProcessor:
             col.document_ids.add(doc_id)
             col.activation += 1.0
             doc_col.feedforward_sources.add(col.id)
+            # Track per-document occurrence count for accurate TF-IDF
+            col.doc_occurrence_counts[doc_id] = col.doc_occurrence_counts.get(doc_id, 0) + 1
         
         for i, token in enumerate(tokens):
             col = layer0.get_minicolumn(token)

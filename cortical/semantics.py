@@ -11,7 +11,7 @@ This is like building a "poor man's ConceptNet" from the corpus itself.
 
 import math
 import re
-from typing import Dict, List, Tuple, Set, Optional
+from typing import Any, Dict, List, Tuple, Set, Optional
 from collections import defaultdict
 
 from .layers import CorticalLayer, HierarchicalLayer
@@ -150,7 +150,7 @@ def retrofit_connections(
     semantic_relations: List[Tuple[str, str, str, float]],
     iterations: int = 10,
     alpha: float = 0.3
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Retrofit lateral connections using semantic relations.
     
@@ -245,7 +245,7 @@ def retrofit_embeddings(
     semantic_relations: List[Tuple[str, str, str, float]],
     iterations: int = 10,
     alpha: float = 0.4
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Retrofit embeddings using semantic relations.
     

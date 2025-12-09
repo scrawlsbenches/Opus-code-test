@@ -1,0 +1,11 @@
+Japanese Candlestick Pattern Analysis
+
+Candlestick charts originated in Japanese rice trading during the 18th century. Each candlestick displays four price points: open, high, low, and close. The body represents the range between open and close, while wicks or shadows extend to session extremes. Hollow or green bodies indicate closes above opens; filled or red bodies show closes below opens.
+
+Single candle patterns signal potential reversals. Doji candles with equal opens and closes indicate indecision. Hammer patterns at downtrend bottoms show rejection of lower prices with small bodies and long lower shadows. Shooting stars at uptrend tops mirror hammers inverted, signaling selling pressure. Marubozu candles with no shadows demonstrate strong conviction.
+
+Two-candle patterns provide stronger signals. Bullish engulfing occurs when a large green candle completely engulfs the prior red candle's body at support levels. Bearish engulfing reverses this at resistance. Piercing patterns show strong buying when a green candle opens below and closes above the prior red candle's midpoint. Dark cloud cover represents the bearish equivalent.
+
+Three-candle formations offer high-probability setups. Morning star bottoming patterns begin with a red candle, followed by a small-bodied star candle, then a strong green candle closing into the first candle's body. Evening stars invert this sequence at tops. Three white soldiers show consecutive green candles with higher closes signaling bullish momentum. Three black crows indicate the opposite bearish pressure.
+
+Context enhances pattern reliability. Volume confirmation validates breakouts and reversals. Support and resistance levels provide structural context for pattern interpretation. Trend direction determines whether patterns signal continuation or reversal. Multiple timeframe analysis confirms setups across different chart periods. Risk management through stop-loss placement beneath pattern lows protects against failed signals.

@@ -1,0 +1,13 @@
+Compiler Design and Implementation
+
+Compilers transform source code into executable machine instructions through multiple processing phases. Lexical analysis tokenizes input streams, recognizing keywords, identifiers, literals, and operators using finite automata derived from regular expressions. Scanner generators like lex automate lexer construction from token specifications.
+
+Parsing constructs abstract syntax trees from token sequences according to context-free grammars. Top-down recursive descent parsers implement grammar productions as mutually recursive procedures. Bottom-up parsers like LR and LALR use shift-reduce actions guided by parsing tables. Parser generators including yacc and ANTLR produce parsers from grammar specifications.
+
+Semantic analysis decorates syntax trees with type information and enforces language rules. Symbol tables track identifier declarations and scopes. Type checking verifies operator-operand compatibility and enforces type system constraints. Type inference algorithms deduce types without explicit annotations through unification and constraint solving.
+
+Intermediate representations decouple front-end language processing from back-end code generation. Three-address code linearizes expressions into simple operations. Static single assignment form simplifies dataflow analysis by ensuring each variable receives exactly one definition. Control flow graphs represent program structure for optimization.
+
+Optimization transforms improve code efficiency while preserving semantics. Local optimizations like constant folding and strength reduction operate within basic blocks. Global optimizations including common subexpression elimination and dead code elimination require dataflow analysis. Loop optimizations—invariant code motion, induction variable elimination, and unrolling—target performance-critical regions. Register allocation maps virtual registers to limited physical registers using graph coloring algorithms.
+
+Code generation translates intermediate representations to target architecture instructions. Instruction selection matches IR patterns to machine operations. Instruction scheduling reorders operations to exploit pipeline parallelism and avoid hazards.

@@ -1,0 +1,11 @@
+Financial Analysis Fundamentals
+
+Financial analysis evaluates business performance through examination of financial statements, ratios, and market data. Fundamental analysis assesses intrinsic value by analyzing revenue growth, profit margins, debt levels, and cash flow generation. Analysts construct discounted cash flow models projecting future earnings and discounting them to present value using weighted average cost of capital.
+
+Ratio analysis reveals operational efficiency and financial health. Liquidity ratios like current ratio and quick ratio measure short-term solvency. Profitability ratios including return on equity, return on assets, and net profit margin indicate management effectiveness. Leverage ratios such as debt-to-equity and interest coverage assess capital structure risk.
+
+Income statement analysis tracks revenue recognition, cost of goods sold, operating expenses, and earnings per share trends. Balance sheet examination evaluates asset quality, working capital management, and liability structure. Cash flow statement analysis distinguishes operating, investing, and financing activities, revealing actual cash generation versus accrual accounting earnings.
+
+Comparative analysis benchmarks performance against industry peers and historical trends. Common-size statements normalize figures as percentages for cross-company comparison. Trend analysis identifies growth patterns and cyclical behavior. DuPont analysis decomposes return on equity into profit margin, asset turnover, and financial leverage components.
+
+Valuation metrics guide investment decisions. Price-to-earnings ratios compare market price to profitability. Enterprise value to EBITDA accounts for capital structure differences. Price-to-book ratios assess market premium over accounting value. Dividend yield and payout ratios evaluate income characteristics. Terminal value calculations in DCF models significantly impact fair value estimates.

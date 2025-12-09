@@ -1,0 +1,11 @@
+The Neocortex: Architecture of Intelligence
+
+The neocortex comprises approximately 80% of human brain volume and underlies higher cognitive functions including perception, reasoning, language, and planning. This thin layered sheet, just 2-4 millimeters thick, folds extensively to maximize surface area within the skull. Humans possess roughly 16 billion neocortical neurons organized into stereotyped circuits repeated across the entire structure.
+
+Six distinct layers characterize neocortical organization. Layer 4 receives thalamic input carrying sensory information. Layers 2 and 3 process and integrate information through extensive lateral connections. Layer 5 pyramidal neurons project to subcortical structures and motor systems. Layer 6 provides feedback to the thalamus, modulating incoming signals. This layered architecture suggests a canonical microcircuit implementing universal cortical algorithms.
+
+Cortical columns span all layers vertically, functioning as fundamental processing units. Minicolumns containing roughly 100 neurons form the finest columnar structure. Macrocolumns aggregate hundreds of minicolumns sharing similar response properties. This columnar organization appears throughout sensory, motor, and association cortex, suggesting common computational principles across diverse functions.
+
+Hierarchical processing flows through cortical regions. Primary sensory areas extract basic features—edges in visual cortex, frequencies in auditory cortex. Successive regions construct increasingly abstract representations. Temporal cortex recognizes objects and faces. Prefrontal cortex maintains working memory and executes cognitive control. Feedforward connections carry information up the hierarchy while feedback connections provide contextual modulation.
+
+Synaptic plasticity enables learning through experience-dependent modification of connection strengths. Long-term potentiation strengthens frequently co-activated synapses. Spike-timing-dependent plasticity refines temporal relationships. Sleep consolidates memories by replaying neural patterns. Understanding neocortical computation could illuminate principles for artificial intelligence systems exhibiting human-level cognition.

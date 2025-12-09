@@ -87,22 +87,13 @@ def expand_query(
                 )[:5]
                 
                 for neighbor_id, weight in sorted_neighbors:
-                    if neighbor_id in layer0.minicolumns:
-                        neighbor = layer0.minicolumns[neighbor_id]
-                        if neighbor.content not in expanded:
-                            score = weight * neighbor.pagerank * 0.6
-                            candidate_expansions[neighbor.content] = max(
-                                candidate_expansions[neighbor.content], score
-                            )
-                    else:
-                        # Look up by ID
-                        for c in layer0.minicolumns.values():
-                            if c.id == neighbor_id and c.content not in expanded:
-                                score = weight * c.pagerank * 0.6
-                                candidate_expansions[c.content] = max(
-                                    candidate_expansions[c.content], score
-                                )
-                                break
+                    # Use O(1) ID lookup instead of linear search
+                    neighbor = layer0.get_by_id(neighbor_id)
+                    if neighbor and neighbor.content not in expanded:
+                        score = weight * neighbor.pagerank * 0.6
+                        candidate_expansions[neighbor.content] = max(
+                            candidate_expansions[neighbor.content], score
+                        )
     
     # Method 2: Concept cluster membership
     if use_concepts and layer2 and layer2.column_count() > 0:
@@ -112,13 +103,13 @@ def expand_query(
                 for concept in layer2.minicolumns.values():
                     if col.id in concept.feedforward_sources:
                         for member_id in concept.feedforward_sources:
-                            if member_id in layer0.minicolumns:
-                                member = layer0.minicolumns[member_id]
-                                if member.content not in expanded:
-                                    score = concept.pagerank * member.pagerank * 0.4
-                                    candidate_expansions[member.content] = max(
-                                        candidate_expansions[member.content], score
-                                    )
+                            # Use O(1) ID lookup instead of linear search
+                            member = layer0.get_by_id(member_id)
+                            if member and member.content not in expanded:
+                                score = concept.pagerank * member.pagerank * 0.4
+                                candidate_expansions[member.content] = max(
+                                    candidate_expansions[member.content], score
+                                )
     
     # Select top expansions
     sorted_candidates = sorted(
@@ -267,18 +258,12 @@ def query_with_spreading_activation(
             score = col.pagerank * col.activation * term_weight
             activated[col.content] = activated.get(col.content, 0) + score
             
-            # Spread to neighbors
+            # Spread to neighbors using O(1) ID lookup
             for neighbor_id, conn_weight in col.lateral_connections.items():
-                if neighbor_id in layer0.minicolumns:
-                    neighbor = layer0.minicolumns[neighbor_id]
+                neighbor = layer0.get_by_id(neighbor_id)
+                if neighbor:
                     spread_score = neighbor.pagerank * conn_weight * term_weight * 0.3
                     activated[neighbor.content] = activated.get(neighbor.content, 0) + spread_score
-                else:
-                    for c in layer0.minicolumns.values():
-                        if c.id == neighbor_id:
-                            spread_score = c.pagerank * conn_weight * term_weight * 0.3
-                            activated[c.content] = activated.get(c.content, 0) + spread_score
-                            break
     
     sorted_concepts = sorted(activated.items(), key=lambda x: -x[1])
     return sorted_concepts[:top_n]
@@ -308,13 +293,9 @@ def find_related_documents(
     
     related = []
     for neighbor_id, weight in col.lateral_connections.items():
-        if neighbor_id in layer3.minicolumns:
-            neighbor = layer3.minicolumns[neighbor_id]
+        # Use O(1) ID lookup instead of linear search
+        neighbor = layer3.get_by_id(neighbor_id)
+        if neighbor:
             related.append((neighbor.content, weight))
-        else:
-            for c in layer3.minicolumns.values():
-                if c.id == neighbor_id:
-                    related.append((c.content, weight))
-                    break
-    
+
     return sorted(related, key=lambda x: -x[1])

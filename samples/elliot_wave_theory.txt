@@ -1,0 +1,11 @@
+Elliott Wave Theory in Market Analysis
+
+Elliott Wave Theory posits that financial markets move in predictable wave patterns reflecting collective investor psychology. Ralph Nelson Elliott discovered that market prices unfold in specific structures—five waves in the direction of the main trend followed by three corrective waves. This 5-3 pattern repeats at multiple time scales creating fractal market structure.
+
+Impulse waves contain five sub-waves labeled 1-2-3-4-5. Wave 1 initiates the trend, wave 2 corrects but never retraces beyond wave 1's origin. Wave 3 typically extends furthest and cannot be the shortest impulse wave. Wave 4 corrects wave 3 without overlapping wave 1 territory. Wave 5 completes the impulse sequence with diminishing momentum.
+
+Corrective waves follow impulse completions in A-B-C patterns. Zigzags form sharp corrections with wave C exceeding wave A. Flats show sideways consolidation where waves A, B, and C terminate near similar price levels. Triangles contract through five waves before breakout continuation. Complex corrections combine multiple simple patterns through connecting X waves.
+
+Fibonacci relationships pervade Elliott patterns. Retracements commonly reach 38.2%, 50%, or 61.8% of prior waves. Extensions project wave lengths using 1.618 and 2.618 multipliers. Wave equality and alternation guidelines help forecast likely wave termination zones. Time relationships between waves also exhibit Fibonacci proportions.
+
+Wave counting requires identifying the current position within the fractal hierarchy. Higher degree waves contain lower degree sub-waves—supercycles decompose to cycles, cycles to primary waves, continuing through intermediate, minor, minute, and minuette degrees. Proper wave labeling enables forecasting subsequent movements and identifying high-probability trade setups.
