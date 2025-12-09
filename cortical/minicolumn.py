@@ -37,6 +37,7 @@ class Minicolumn:
         tfidf_per_doc: Document-specific TF-IDF scores
         pagerank: Importance score from PageRank algorithm
         cluster_id: Which cluster this belongs to (for Layer 0)
+        doc_occurrence_counts: Per-document occurrence counts for accurate TF-IDF
         
     Example:
         col = Minicolumn("L0_neural", "neural", 0)
@@ -47,7 +48,8 @@ class Minicolumn:
     __slots__ = [
         'id', 'content', 'layer', 'activation', 'occurrence_count',
         'document_ids', 'lateral_connections', 'feedforward_sources',
-        'tfidf', 'tfidf_per_doc', 'pagerank', 'cluster_id'
+        'tfidf', 'tfidf_per_doc', 'pagerank', 'cluster_id',
+        'doc_occurrence_counts'
     ]
     
     def __init__(self, id: str, content: str, layer: int):
@@ -71,6 +73,7 @@ class Minicolumn:
         self.tfidf_per_doc: Dict[str, float] = {}
         self.pagerank = 1.0
         self.cluster_id: Optional[int] = None
+        self.doc_occurrence_counts: Dict[str, int] = {}
     
     def add_lateral_connection(self, target_id: str, weight: float = 1.0) -> None:
         """
@@ -128,7 +131,8 @@ class Minicolumn:
             'tfidf': self.tfidf,
             'tfidf_per_doc': self.tfidf_per_doc,
             'pagerank': self.pagerank,
-            'cluster_id': self.cluster_id
+            'cluster_id': self.cluster_id,
+            'doc_occurrence_counts': self.doc_occurrence_counts
         }
     
     @classmethod
@@ -152,6 +156,7 @@ class Minicolumn:
         col.tfidf_per_doc = data.get('tfidf_per_doc', {})
         col.pagerank = data.get('pagerank', 1.0)
         col.cluster_id = data.get('cluster_id')
+        col.doc_occurrence_counts = data.get('doc_occurrence_counts', {})
         return col
     
     def __repr__(self) -> str:

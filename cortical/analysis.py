@@ -13,7 +13,7 @@ Contains implementations of:
 
 import math
 from typing import Dict, List, Tuple, Set, Optional
-from collections import defaultdict, Counter
+from collections import defaultdict
 
 from .layers import CorticalLayer, HierarchicalLayer
 from .minicolumn import Minicolumn
@@ -54,9 +54,8 @@ def compute_pagerank(
     
     for col in layer.minicolumns.values():
         for target_id, weight in col.lateral_connections.items():
-            if target_id in layer.minicolumns or any(
-                c.id == target_id for c in layer.minicolumns.values()
-            ):
+            # Use O(1) lookup via get_by_id instead of O(n) linear search
+            if layer.get_by_id(target_id) is not None:
                 incoming[target_id].append((col.id, weight))
                 outgoing_sum[col.id] += weight
     
@@ -125,10 +124,10 @@ def compute_tfidf(
             # TF-IDF
             col.tfidf = tf * idf
             
-            # Per-document TF-IDF
+            # Per-document TF-IDF using actual occurrence counts
             for doc_id in col.document_ids:
-                # Count occurrences in this document
-                doc_tf = sum(1 for d in [doc_id] if d in col.document_ids)
+                # Get actual term frequency in this document
+                doc_tf = col.doc_occurrence_counts.get(doc_id, 1)
                 col.tfidf_per_doc[doc_id] = math.log1p(doc_tf) * idf
 
 
@@ -166,19 +165,13 @@ def propagate_activation(
                 # Start with decayed current activation
                 new_act = col.activation * decay
                 
-                # Add lateral input
+                # Add lateral input using O(1) ID lookup
                 for neighbor_id, weight in col.lateral_connections.items():
-                    if neighbor_id in layer.minicolumns:
-                        neighbor = layer.minicolumns[neighbor_id]
+                    neighbor = layer.get_by_id(neighbor_id)
+                    if neighbor:
                         new_act += neighbor.activation * weight * lateral_weight
-                    else:
-                        # Look up by ID
-                        for c in layer.minicolumns.values():
-                            if c.id == neighbor_id:
-                                new_act += c.activation * weight * lateral_weight
-                                break
                 
-                # Add feedforward input
+                # Add feedforward input using O(1) ID lookup
                 for source_id in col.feedforward_sources:
                     # Find source in lower layers
                     for lower_enum in CorticalLayer:
@@ -187,10 +180,10 @@ def propagate_activation(
                         if lower_enum not in layers:
                             continue
                         lower_layer = layers[lower_enum]
-                        for source in lower_layer.minicolumns.values():
-                            if source.id == source_id:
-                                new_act += source.activation * 0.5
-                                break
+                        source = lower_layer.get_by_id(source_id)
+                        if source:
+                            new_act += source.activation * 0.5
+                            break
                 
                 new_activations[col.id] = new_act
         
@@ -242,15 +235,10 @@ def cluster_by_label_propagation(
             label_weights: Dict[int, float] = defaultdict(float)
             
             for neighbor_id, weight in col.lateral_connections.items():
-                # Find neighbor content
-                neighbor_content = None
-                for c in layer.minicolumns.values():
-                    if c.id == neighbor_id:
-                        neighbor_content = c.content
-                        break
-                
-                if neighbor_content and neighbor_content in labels:
-                    label_weights[labels[neighbor_content]] += weight
+                # Use O(1) ID lookup instead of linear search
+                neighbor = layer.get_by_id(neighbor_id)
+                if neighbor and neighbor.content in labels:
+                    label_weights[labels[neighbor.content]] += weight
             
             # Adopt most common label
             if label_weights:

@@ -67,8 +67,9 @@ class HierarchicalLayer:
     
     Attributes:
         level: The layer number (0-3)
-        minicolumns: Dictionary mapping IDs to Minicolumn objects
-        
+        minicolumns: Dictionary mapping content to Minicolumn objects
+        _id_index: Secondary index mapping minicolumn IDs to content for O(1) lookups
+
     Example:
         layer = HierarchicalLayer(CorticalLayer.TOKENS)
         col = layer.get_or_create_minicolumn("neural")
@@ -84,6 +85,7 @@ class HierarchicalLayer:
         """
         self.level = level
         self.minicolumns: Dict[str, Minicolumn] = {}
+        self._id_index: Dict[str, str] = {}  # Maps minicolumn ID to content for O(1) lookup
     
     def get_or_create_minicolumn(self, content: str) -> Minicolumn:
         """
@@ -102,20 +104,37 @@ class HierarchicalLayer:
         if content not in self.minicolumns:
             col_id = f"L{self.level}_{content}"
             self.minicolumns[content] = Minicolumn(col_id, content, self.level)
+            self._id_index[col_id] = content  # Maintain ID index for O(1) lookup
         return self.minicolumns[content]
     
     def get_minicolumn(self, content: str) -> Optional[Minicolumn]:
         """
         Get a minicolumn by content, or None if not found.
-        
+
         Args:
             content: The content to look up
-            
+
         Returns:
             The Minicolumn if found, None otherwise
         """
         return self.minicolumns.get(content)
-    
+
+    def get_by_id(self, col_id: str) -> Optional[Minicolumn]:
+        """
+        Get a minicolumn by its ID in O(1) time.
+
+        This method uses a secondary index to avoid O(n) linear searches
+        when looking up minicolumns by their ID rather than content.
+
+        Args:
+            col_id: The minicolumn ID (e.g., "L0_neural")
+
+        Returns:
+            The Minicolumn if found, None otherwise
+        """
+        content = self._id_index.get(col_id)
+        return self.minicolumns.get(content) if content else None
+
     def column_count(self) -> int:
         """Return the number of minicolumns in this layer."""
         return len(self.minicolumns)
@@ -245,7 +264,9 @@ class HierarchicalLayer:
         """
         layer = cls(CorticalLayer(data['level']))
         for content, col_data in data.get('minicolumns', {}).items():
-            layer.minicolumns[content] = Minicolumn.from_dict(col_data)
+            col = Minicolumn.from_dict(col_data)
+            layer.minicolumns[content] = col
+            layer._id_index[col.id] = content  # Rebuild ID index
         return layer
     
     def __repr__(self) -> str:

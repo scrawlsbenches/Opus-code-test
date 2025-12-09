@@ -101,20 +101,22 @@ def export_graph_json(
     layers: Dict[CorticalLayer, HierarchicalLayer],
     layer_filter: Optional[CorticalLayer] = None,
     min_weight: float = 0.0,
-    max_nodes: int = 500
+    max_nodes: int = 500,
+    verbose: bool = True
 ) -> Dict:
     """
     Export graph structure as JSON for visualization.
-    
+
     Creates a format compatible with D3.js, vis.js, etc.
-    
+
     Args:
         filepath: Output file path
         layers: Dictionary of layers
         layer_filter: Only export specific layer (None = all)
         min_weight: Minimum edge weight to include
         max_nodes: Maximum nodes to export
-        
+        verbose: Print progress messages
+
     Returns:
         The exported graph data
     """
@@ -171,10 +173,11 @@ def export_graph_json(
     
     with open(filepath, 'w') as f:
         json.dump(graph, f, indent=2)
-    
-    print(f"Graph exported to {filepath}")
-    print(f"  - {len(nodes)} nodes, {len(edges)} edges")
-    
+
+    if verbose:
+        print(f"Graph exported to {filepath}")
+        print(f"  - {len(nodes)} nodes, {len(edges)} edges")
+
     return graph
 
 
