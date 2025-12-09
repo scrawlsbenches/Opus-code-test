@@ -140,17 +140,33 @@ class CorticalTextProcessor:
         import copy
         return copy.deepcopy(self.document_metadata)
 
-    def compute_all(self, verbose: bool = True) -> None:
-        """Run all computation steps."""
-        if verbose: print("Computing activation propagation...")
+    def compute_all(self, verbose: bool = True, build_concepts: bool = True) -> None:
+        """
+        Run all computation steps.
+
+        Args:
+            verbose: Print progress messages
+            build_concepts: Build concept clusters in Layer 2 (default True)
+                           This enables topic-based filtering and hierarchical search.
+        """
+        if verbose:
+            print("Computing activation propagation...")
         self.propagate_activation(verbose=False)
-        if verbose: print("Computing importance (PageRank)...")
+        if verbose:
+            print("Computing importance (PageRank)...")
         self.compute_importance(verbose=False)
-        if verbose: print("Computing TF-IDF...")
+        if verbose:
+            print("Computing TF-IDF...")
         self.compute_tfidf(verbose=False)
-        if verbose: print("Computing document connections...")
+        if verbose:
+            print("Computing document connections...")
         self.compute_document_connections(verbose=False)
-        if verbose: print("Done.")
+        if build_concepts:
+            if verbose:
+                print("Building concept clusters...")
+            self.build_concept_clusters(verbose=False)
+        if verbose:
+            print("Done.")
     
     def propagate_activation(self, iterations: int = 3, decay: float = 0.8, verbose: bool = True) -> None:
         analysis.propagate_activation(self.layers, iterations, decay)
