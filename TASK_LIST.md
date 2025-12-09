@@ -1,9 +1,9 @@
-# Task List: Required Bug Fixes
+# Task List: Bug Fixes & RAG Enhancements
 
-This document tracks required bug fixes identified during the code review of the Cortical Text Processor.
+This document tracks bug fixes and feature enhancements for the Cortical Text Processor.
 
 **Last Updated:** 2025-12-09
-**Status:** All critical and high-priority tasks completed
+**Status:** Bug fixes complete | RAG enhancements planned
 
 ---
 
@@ -194,19 +194,305 @@ Removed `Counter` from the import statement.
 
 ---
 
+---
+
+# RAG System Enhancements
+
+The following tasks are required to transform the Cortical Text Processor into a production-ready RAG (Retrieval-Augmented Generation) system.
+
+---
+
+## RAG Critical Priority
+
+### 8. Implement Chunk-Level Retrieval
+
+**Files:** `cortical/processor.py`, `cortical/query.py`
+**Status:** [ ] Not Started
+
+**Problem:**
+Current retrieval returns only document IDs and scores. RAG systems need actual text passages with position information for context windows and citations.
+
+**Current Behavior:**
+```python
+results = processor.find_documents_for_query("neural networks")
+# Returns: [("doc1", 3.47), ("doc2", 2.15)]  # Just IDs!
+```
+
+**Required Behavior:**
+```python
+results = processor.find_passages_for_query("neural networks")
+# Returns: [
+#   ("Neural networks process information...", "doc1", 1500, 2000, 3.47),
+#   (text, doc_id, start_char, end_char, score)
+# ]
+```
+
+**Implementation Steps:**
+1. Add `find_passages_for_query()` method to `processor.py`
+2. Add `_create_chunks()` helper for splitting documents with overlap
+3. Add `_score_tokens()` helper for chunk-level scoring
+4. Add corresponding function to `query.py` for standalone use
+5. Support configurable `chunk_size` (default 512) and `overlap` (default 128)
+
+**Files to Modify:**
+- `cortical/processor.py` - Add new methods (~50 lines)
+- `cortical/query.py` - Add standalone function (~40 lines)
+- `tests/test_processor.py` - Add tests for chunk retrieval
+- `tests/test_query.py` - Add tests for passage finding
+
+---
+
+### 9. Add Document Metadata Support
+
+**Files:** `cortical/processor.py`, `cortical/persistence.py`
+**Status:** [ ] Not Started
+
+**Problem:**
+No way to store or retrieve document metadata (source URL, timestamp, author, etc.). RAG systems need this for proper citations and filtering.
+
+**Current Data Model:**
+```python
+self.documents: Dict[str, str] = {}  # Only doc_id → text
+```
+
+**Required Data Model:**
+```python
+self.documents: Dict[str, str] = {}
+self.document_metadata: Dict[str, Dict[str, Any]] = {}
+# Stores: source, timestamp, author, category, custom fields
+```
+
+**Implementation Steps:**
+1. Add `document_metadata` dict to `CorticalTextProcessor.__init__()`
+2. Modify `process_document()` to accept optional `metadata` parameter
+3. Add `set_document_metadata()` and `get_document_metadata()` methods
+4. Update `persistence.py` to save/load metadata
+5. Increment state version to `2.1`
+
+**Files to Modify:**
+- `cortical/processor.py` - Add metadata storage and methods
+- `cortical/persistence.py` - Update save/load functions
+- `tests/test_persistence.py` - Add metadata persistence tests
+
+---
+
+## RAG High Priority
+
+### 10. Activate Layer 2 (Concept Clustering) by Default
+
+**Files:** `cortical/processor.py`, `cortical/query.py`
+**Status:** [ ] Not Started
+
+**Problem:**
+Layer 2 (Concepts) has clustering code but is never populated automatically. This layer could enable topic-based filtering and hierarchical search.
+
+**Current Behavior:**
+- `compute_all()` does NOT call `build_concept_clusters()`
+- Layer 2 remains empty with 0 minicolumns
+- Query expansion code checks Layer 2 but finds nothing
+
+**Implementation Steps:**
+1. Add `build_concepts: bool = True` parameter to `compute_all()`
+2. Call `build_concept_clusters()` when enabled
+3. Update query expansion to use concepts when available
+4. Add concept-based document filtering option
+
+**Files to Modify:**
+- `cortical/processor.py` - Update `compute_all()` (~10 lines)
+- `cortical/query.py` - Enhance expansion logic (~20 lines)
+
+---
+
+### 11. Integrate Semantic Relations into Retrieval
+
+**Files:** `cortical/query.py`
+**Status:** [ ] Not Started
+
+**Problem:**
+`semantics.py` extracts relations (IsA, PartOf, RelatedTo, etc.) but they're only used for retrofitting embeddings, not for query expansion or retrieval.
+
+**Current State:**
+- `expand_query_semantic()` exists in `query.py` (lines 127-174)
+- This function is NEVER called by `find_documents_for_query()`
+- Semantic relations are computed but ignored during search
+
+**Implementation Steps:**
+1. Add `use_semantic: bool = True` parameter to `find_documents_for_query()`
+2. Call `expand_query_semantic()` when semantic relations exist
+3. Combine lateral connection expansion with semantic expansion
+4. Weight semantic expansions appropriately
+
+**Files to Modify:**
+- `cortical/query.py` - Integrate semantic expansion (~15 lines)
+
+---
+
+### 12. Persist Full Computed State
+
+**Files:** `cortical/persistence.py`, `cortical/processor.py`
+**Status:** [ ] Not Started
+
+**Problem:**
+Embeddings, semantic relations, and concept clusters are not saved. Loading a model requires expensive recomputation.
+
+**Currently Saved:**
+- Layers (tokens, bigrams, documents)
+- Document text
+- Generic metadata
+
+**NOT Saved (must recompute):**
+- `semantic_relations` - extracted IsA, PartOf, etc.
+- `embeddings` - graph embeddings for all terms
+- Concept clusters in Layer 2
+
+**Implementation Steps:**
+1. Add `semantic_relations` to save state
+2. Add `embeddings` to save state
+3. Update `load_processor()` to restore these fields
+4. Increment state version to `2.1`
+5. Handle backward compatibility with v2.0 files
+
+**Files to Modify:**
+- `cortical/persistence.py` - Update save/load (~30 lines)
+- `cortical/processor.py` - Update save/load methods
+
+---
+
+## RAG Medium Priority
+
+### 13. Fix Remaining Type Annotation
+
+**File:** `cortical/embeddings.py`
+**Line:** 26
+**Status:** [ ] Not Started
+
+**Problem:**
+```python
+# Current (incorrect):
+) -> Tuple[Dict[str, List[float]], Dict[str, any]]:
+
+# Should be:
+) -> Tuple[Dict[str, List[float]], Dict[str, Any]]:
+```
+
+**Implementation:** Single line fix, add `Any` to imports.
+
+---
+
+### 14. Optimize Spectral Embeddings Lookup
+
+**File:** `cortical/embeddings.py`
+**Lines:** 151-156
+**Status:** [ ] Not Started
+
+**Problem:**
+Spectral embeddings use O(n) linear search instead of O(1) `get_by_id()`:
+```python
+# Current (slow):
+for t, c in layer.minicolumns.items():
+    if c.id == neighbor_id:
+        ...
+
+# Should use:
+neighbor = layer.get_by_id(neighbor_id)
+```
+
+---
+
+### 15. Add Incremental Document Indexing
+
+**File:** `cortical/processor.py`
+**Status:** [ ] Not Started
+
+**Problem:**
+Adding a document requires calling `compute_all()` which recomputes everything. For RAG systems with frequent updates, this is inefficient.
+
+**Implementation Steps:**
+1. Add `add_document_incremental()` method
+2. Support selective recomputation (TF-IDF only, or full)
+3. Track which computations are stale
+4. Allow batch updates with single recomputation
+
+**Files to Modify:**
+- `cortical/processor.py` - Add incremental method (~40 lines)
+
+---
+
+## RAG Low Priority
+
+### 16. Document Magic Numbers in Gap Detection
+
+**File:** `cortical/gaps.py`
+**Lines:** 62, 76, 99
+**Status:** [ ] Deferred (carried over)
+
+**Magic Numbers:**
+- `avg_sim < 0.02` - isolation threshold
+- `tfidf > 0.005` - weak topic threshold
+- `0.005 < sim < 0.03` - bridge opportunity range
+
+**Implementation:** Add docstrings or make configurable parameters.
+
+---
+
+### 17. Add Multi-Stage Ranking Pipeline
+
+**Files:** `cortical/query.py`
+**Status:** [ ] Future Enhancement
+
+**Problem:**
+Current ranking is flat (Token TF-IDF → Document Score). Better RAG performance with staged ranking:
+
+1. **Stage 1 (Concepts):** Filter by topic relevance
+2. **Stage 2 (Documents):** Rank documents in topic
+3. **Stage 3 (Chunks):** Rank passages in documents
+4. **Stage 4 (Rerank):** Final relevance scoring
+
+---
+
+### 18. Add Batch Query API
+
+**Files:** `cortical/query.py`, `cortical/processor.py`
+**Status:** [ ] Future Enhancement
+
+**Problem:**
+No efficient way to run multiple queries. Each query repeats tokenization and expansion.
+
+**Implementation:**
+```python
+def find_documents_batch(self, queries: List[str], top_n: int = 5):
+    """Process multiple queries efficiently."""
+    # Batch tokenization
+    # Shared expansion cache
+    # Parallel scoring
+```
+
+---
+
 ## Summary
 
-| Priority | Task | Status |
-|----------|------|--------|
-| Critical | Fix TF-IDF per-doc calculation | ✅ Completed |
-| High | Add ID lookup optimization | ✅ Completed |
-| Medium | Fix type annotations | ✅ Completed |
-| Medium | Remove unused import | ✅ Completed |
-| Medium | Add verbose parameter | ✅ Completed |
-| Low | Add test coverage | ✅ Completed |
-| Low | Document magic numbers | ⏳ Deferred |
+| Priority | Task | Status | Category |
+|----------|------|--------|----------|
+| Critical | Fix TF-IDF per-doc calculation | ✅ Completed | Bug Fix |
+| High | Add ID lookup optimization | ✅ Completed | Bug Fix |
+| Medium | Fix type annotations (semantics.py) | ✅ Completed | Bug Fix |
+| Medium | Remove unused import | ✅ Completed | Bug Fix |
+| Medium | Add verbose parameter | ✅ Completed | Bug Fix |
+| Low | Add test coverage | ✅ Completed | Bug Fix |
+| **Critical** | **Implement chunk-level retrieval** | ⬜ Not Started | **RAG** |
+| **Critical** | **Add document metadata support** | ⬜ Not Started | **RAG** |
+| **High** | **Activate Layer 2 concepts** | ⬜ Not Started | **RAG** |
+| **High** | **Integrate semantic relations** | ⬜ Not Started | **RAG** |
+| **High** | **Persist full computed state** | ⬜ Not Started | **RAG** |
+| Medium | Fix type annotation (embeddings.py) | ⬜ Not Started | Bug Fix |
+| Medium | Optimize spectral embeddings | ⬜ Not Started | Performance |
+| Medium | Add incremental indexing | ⬜ Not Started | RAG |
+| Low | Document magic numbers | ⏳ Deferred | Documentation |
+| Low | Multi-stage ranking pipeline | ⬜ Future | RAG |
+| Low | Batch query API | ⬜ Future | RAG |
 
-**Completion Rate:** 6/7 tasks (86%)
+**Bug Fix Completion:** 6/7 tasks (86%)
+**RAG Enhancement Completion:** 0/8 tasks (0%)
 
 ---
 
