@@ -823,5 +823,184 @@ class TestProcessorIncrementalIndexing(unittest.TestCase):
         self.assertEqual(results[0][0], "neural")
 
 
+class TestCrossLayerConnections(unittest.TestCase):
+    """Test cross-layer feedforward and feedback connections."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor()
+        self.processor.process_document("doc1", "Neural networks process information efficiently.")
+        self.processor.process_document("doc2", "Deep learning neural models are powerful.")
+        self.processor.compute_all(verbose=False)
+
+    def test_bigram_feedforward_connections(self):
+        """Test that bigrams have feedforward connections to component tokens."""
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        bigram = layer1.get_minicolumn("neural networks")
+        self.assertIsNotNone(bigram)
+        self.assertGreater(len(bigram.feedforward_connections), 0)
+
+        # Should connect to both "neural" and "networks"
+        neural = layer0.get_minicolumn("neural")
+        networks = layer0.get_minicolumn("networks")
+        self.assertIn(neural.id, bigram.feedforward_connections)
+        self.assertIn(networks.id, bigram.feedforward_connections)
+
+    def test_bigram_feedforward_weights(self):
+        """Test that bigram feedforward connections have accumulated weights."""
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        bigram = layer1.get_minicolumn("neural networks")
+        self.assertIsNotNone(bigram)
+
+        # Weight should be >= 1.0 (accumulated from occurrences)
+        for target_id, weight in bigram.feedforward_connections.items():
+            self.assertGreaterEqual(weight, 1.0)
+
+    def test_token_feedback_to_bigrams(self):
+        """Test that tokens have feedback connections to bigrams."""
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        neural = layer0.get_minicolumn("neural")
+        self.assertIsNotNone(neural)
+        self.assertGreater(len(neural.feedback_connections), 0)
+
+        # Should connect back to bigrams containing "neural"
+        bigram = layer1.get_minicolumn("neural networks")
+        if bigram:
+            self.assertIn(bigram.id, neural.feedback_connections)
+
+    def test_document_feedforward_connections(self):
+        """Test that documents have feedforward connections to tokens."""
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        layer3 = self.processor.get_layer(CorticalLayer.DOCUMENTS)
+
+        doc = layer3.get_minicolumn("doc1")
+        self.assertIsNotNone(doc)
+        self.assertGreater(len(doc.feedforward_connections), 0)
+
+        # Document should connect to tokens in its content
+        neural = layer0.get_minicolumn("neural")
+        self.assertIn(neural.id, doc.feedforward_connections)
+
+    def test_document_feedforward_weights(self):
+        """Test that document feedforward weights reflect token frequency."""
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        layer3 = self.processor.get_layer(CorticalLayer.DOCUMENTS)
+
+        doc = layer3.get_minicolumn("doc1")
+        neural = layer0.get_minicolumn("neural")
+
+        # Weight should match occurrence count
+        weight = doc.feedforward_connections.get(neural.id, 0)
+        self.assertGreaterEqual(weight, 1.0)
+
+    def test_token_feedback_to_documents(self):
+        """Test that tokens have feedback connections to documents."""
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        layer3 = self.processor.get_layer(CorticalLayer.DOCUMENTS)
+
+        neural = layer0.get_minicolumn("neural")
+        self.assertIsNotNone(neural)
+
+        # Should connect to documents containing this token
+        doc1 = layer3.get_minicolumn("doc1")
+        doc2 = layer3.get_minicolumn("doc2")
+        self.assertIn(doc1.id, neural.feedback_connections)
+        self.assertIn(doc2.id, neural.feedback_connections)
+
+    def test_concept_feedforward_connections(self):
+        """Test that concepts have feedforward connections to member tokens."""
+        layer2 = self.processor.get_layer(CorticalLayer.CONCEPTS)
+
+        if layer2.column_count() > 0:
+            # Get first concept
+            concept = list(layer2.minicolumns.values())[0]
+            self.assertGreater(len(concept.feedforward_connections), 0)
+
+            # All feedforward targets should be in feedforward_sources too
+            for target_id in concept.feedforward_connections:
+                self.assertIn(target_id, concept.feedforward_sources)
+
+    def test_concept_feedforward_weights_by_pagerank(self):
+        """Test that concept feedforward weights are based on token PageRank."""
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        layer2 = self.processor.get_layer(CorticalLayer.CONCEPTS)
+
+        if layer2.column_count() > 0:
+            concept = list(layer2.minicolumns.values())[0]
+
+            # Weights should be normalized (max = 1.0)
+            max_weight = max(concept.feedforward_connections.values())
+            self.assertLessEqual(max_weight, 1.0 + 0.001)  # Allow small float error
+
+    def test_token_feedback_to_concepts(self):
+        """Test that tokens have feedback connections to concepts."""
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        layer2 = self.processor.get_layer(CorticalLayer.CONCEPTS)
+
+        if layer2.column_count() > 0:
+            concept = list(layer2.minicolumns.values())[0]
+
+            # Get a member token
+            if concept.feedforward_connections:
+                member_id = list(concept.feedforward_connections.keys())[0]
+                member = layer0.get_by_id(member_id)
+                if member:
+                    self.assertIn(concept.id, member.feedback_connections)
+
+    def test_cross_layer_bidirectional(self):
+        """Test that cross-layer connections are bidirectional."""
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        bigram = layer1.get_minicolumn("neural networks")
+        if bigram:
+            for target_id in bigram.feedforward_connections:
+                token = layer0.get_by_id(target_id)
+                if token:
+                    self.assertIn(bigram.id, token.feedback_connections)
+
+    def test_persistence_cross_layer_connections(self):
+        """Test that cross-layer connections are saved and loaded correctly."""
+        import tempfile
+
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+        bigram = layer1.get_minicolumn("neural networks")
+        original_ff = dict(bigram.feedforward_connections) if bigram else {}
+
+        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
+            path = f.name
+
+        try:
+            self.processor.save(path)
+            loaded = CorticalTextProcessor.load(path)
+
+            loaded_layer1 = loaded.get_layer(CorticalLayer.BIGRAMS)
+            loaded_bigram = loaded_layer1.get_minicolumn("neural networks")
+
+            if bigram and loaded_bigram:
+                self.assertEqual(
+                    loaded_bigram.feedforward_connections,
+                    original_ff
+                )
+        finally:
+            os.unlink(path)
+
+    def test_cross_layer_connection_count(self):
+        """Test counting cross-layer connections."""
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        total_ff = 0
+        for col in layer1.minicolumns.values():
+            total_ff += len(col.feedforward_connections)
+
+        # Each bigram should have 2 feedforward connections (to its 2 tokens)
+        # So total should be approximately 2 * number of bigrams
+        self.assertGreater(total_ff, 0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

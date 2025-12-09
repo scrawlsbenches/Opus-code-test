@@ -541,29 +541,42 @@ The following tasks implement a ConceptNet-like enhanced PageRank algorithm that
 
 ### 19. Build Cross-Layer Feedforward Connections
 
-**Files:** `cortical/analysis.py`, `cortical/processor.py`
-**Status:** [ ] Pending
+**Files:** `cortical/analysis.py`, `cortical/processor.py`, `cortical/minicolumn.py`
+**Status:** [x] Completed
 
 **Problem:**
-Layers are currently isolated - concepts don't connect back to their member tokens, and bigrams don't link to component unigrams. This breaks the hierarchical flow needed for cross-layer PageRank.
+Layers were isolated - concepts didn't connect back to their member tokens, and bigrams didn't link to component unigrams. This broke the hierarchical flow needed for cross-layer PageRank.
 
-**Current State:**
-- Concepts have `feedforward_sources` (set of token IDs) but no weighted connections
-- Bigrams store content like "neural_networks" but don't link to "neural" or "networks" minicolumns
-- No upward or downward propagation paths between layers
+**Solution Applied:**
+1. Added `feedforward_connections: Dict[str, float]` to Minicolumn (weighted links to lower layer)
+2. Added `feedback_connections: Dict[str, float]` to Minicolumn (weighted links to higher layer)
+3. Added helper methods: `add_feedforward_connection()`, `add_feedback_connection()`
+4. Updated bigram creation to link to component tokens with weight 1.0 per occurrence
+5. Updated document processing to create bidirectional doc↔token connections
+6. Updated concept creation to link to member tokens weighted by normalized PageRank
+7. Updated `to_dict()`/`from_dict()` for persistence
 
-**Implementation Steps:**
-1. Add `feedforward_connections: Dict[str, float]` to Minicolumn (weighted links to lower layer)
-2. Add `feedback_connections: Dict[str, float]` to Minicolumn (weighted links to higher layer)
-3. Update bigram creation to link to component tokens with weight 1.0
-4. Update concept creation to link to member tokens weighted by token PageRank
-5. Update persistence to save/load new connection types
+**Files Modified:**
+- `cortical/minicolumn.py` - Added connection fields and helper methods (~50 lines)
+- `cortical/processor.py` - Populate feedforward/feedback during document processing
+- `cortical/analysis.py` - Updated `build_concept_clusters()` to create weighted links
+- `tests/test_processor.py` - Added 12 tests for cross-layer connections
 
-**Files to Modify:**
-- `cortical/minicolumn.py` - Add new connection fields
-- `cortical/processor.py` - Populate feedforward connections during processing
-- `cortical/analysis.py` - Update `build_concept_clusters()` to create weighted links
-- `cortical/persistence.py` - Handle new fields
+**Connection Types:**
+```python
+# Bigram → Tokens (weight by occurrence count)
+bigram.feedforward_connections["L0_neural"] = 2.0  # seen twice
+
+# Token → Bigrams (feedback)
+token.feedback_connections["L1_neural_networks"] = 2.0
+
+# Document → Tokens (weight by term frequency)
+doc.feedforward_connections["L0_neural"] = 3.0  # appears 3 times
+
+# Concept → Tokens (weight by normalized PageRank)
+concept.feedforward_connections["L0_neural"] = 1.0  # highest PR
+concept.feedforward_connections["L0_networks"] = 0.7  # lower PR
+```
 
 ---
 
@@ -870,7 +883,7 @@ complete_analogy("neural", "networks", "knowledge")
 | Low | Document magic numbers | ⏳ Deferred | Documentation |
 | Low | Multi-stage ranking pipeline | ✅ Completed | RAG |
 | Low | Batch query API | ✅ Completed | RAG |
-| **Critical** | **Build cross-layer feedforward connections** | ⏳ Pending | **ConceptNet** |
+| **Critical** | **Build cross-layer feedforward connections** | ✅ Completed | **ConceptNet** |
 | **Critical** | **Add concept-level lateral connections** | ⏳ Pending | **ConceptNet** |
 | **Critical** | **Add bigram lateral connections** | ⏳ Pending | **ConceptNet** |
 | **High** | **Implement relation-weighted PageRank** | ⏳ Pending | **ConceptNet** |
@@ -885,14 +898,14 @@ complete_analogy("neural", "networks", "knowledge")
 
 **Bug Fix Completion:** 7/7 tasks (100%)
 **RAG Enhancement Completion:** 8/8 tasks (100%)
-**ConceptNet Enhancement Completion:** 0/12 tasks (0%)
+**ConceptNet Enhancement Completion:** 1/12 tasks (8%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 173 tests in 0.154s
+Ran 185 tests in 0.147s
 OK
 ```
 

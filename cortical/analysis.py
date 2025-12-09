@@ -312,13 +312,19 @@ def build_concept_clusters(
         concept = layer2.get_or_create_minicolumn(concept_name)
         concept.cluster_id = cluster_id
         
-        # Aggregate properties from members
+        # Aggregate properties from members with weighted connections
+        max_pagerank = max(c.pagerank for c in member_cols) if member_cols else 1.0
         for col in member_cols:
             concept.feedforward_sources.add(col.id)
             concept.document_ids.update(col.document_ids)
             concept.activation += col.activation * 0.5
             concept.occurrence_count += col.occurrence_count
-        
+            # Weighted feedforward: concept → token (weight by normalized PageRank)
+            weight = col.pagerank / max_pagerank if max_pagerank > 0 else 1.0
+            concept.add_feedforward_connection(col.id, weight)
+            # Weighted feedback: token → concept (weight by normalized PageRank)
+            col.add_feedback_connection(concept.id, weight)
+
         # Set PageRank as average of members
         concept.pagerank = sum(c.pagerank for c in member_cols) / len(member_cols)
 

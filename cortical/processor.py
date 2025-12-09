@@ -85,7 +85,10 @@ class CorticalTextProcessor:
             col.occurrence_count += 1
             col.document_ids.add(doc_id)
             col.activation += 1.0
-            doc_col.feedforward_sources.add(col.id)
+            # Weighted feedforward: document → token (weight by occurrence count)
+            doc_col.add_feedforward_connection(col.id, 1.0)
+            # Weighted feedback: token → document (weight by occurrence count)
+            col.add_feedback_connection(doc_col.id, 1.0)
             # Track per-document occurrence count for accurate TF-IDF
             col.doc_occurrence_counts[doc_id] = col.doc_occurrence_counts.get(doc_id, 0) + 1
         
@@ -106,7 +109,10 @@ class CorticalTextProcessor:
             for part in bigram.split():
                 token_col = layer0.get_minicolumn(part)
                 if token_col:
-                    col.feedforward_sources.add(token_col.id)
+                    # Weighted feedforward: bigram → tokens (weight 1.0 per occurrence)
+                    col.add_feedforward_connection(token_col.id, 1.0)
+                    # Weighted feedback: token → bigram (weight 1.0 per occurrence)
+                    token_col.add_feedback_connection(col.id, 1.0)
 
         # Mark all computations as stale since document corpus changed
         self._mark_all_stale()
