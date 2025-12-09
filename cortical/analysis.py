@@ -12,7 +12,7 @@ Contains implementations of:
 """
 
 import math
-from typing import Dict, List, Tuple, Set, Optional
+from typing import Dict, List, Tuple, Set, Optional, Any
 from collections import defaultdict
 
 from .layers import CorticalLayer, HierarchicalLayer
@@ -312,15 +312,134 @@ def build_concept_clusters(
         concept = layer2.get_or_create_minicolumn(concept_name)
         concept.cluster_id = cluster_id
         
-        # Aggregate properties from members
+        # Aggregate properties from members with weighted connections
+        max_pagerank = max(c.pagerank for c in member_cols) if member_cols else 1.0
         for col in member_cols:
             concept.feedforward_sources.add(col.id)
             concept.document_ids.update(col.document_ids)
             concept.activation += col.activation * 0.5
             concept.occurrence_count += col.occurrence_count
-        
+            # Weighted feedforward: concept → token (weight by normalized PageRank)
+            weight = col.pagerank / max_pagerank if max_pagerank > 0 else 1.0
+            concept.add_feedforward_connection(col.id, weight)
+            # Weighted feedback: token → concept (weight by normalized PageRank)
+            col.add_feedback_connection(concept.id, weight)
+
         # Set PageRank as average of members
         concept.pagerank = sum(c.pagerank for c in member_cols) / len(member_cols)
+
+
+def compute_concept_connections(
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    semantic_relations: List[Tuple[str, str, str, float]] = None,
+    min_shared_docs: int = 1,
+    min_jaccard: float = 0.1
+) -> Dict[str, Any]:
+    """
+    Build lateral connections between concepts in Layer 2.
+
+    Concepts are connected based on:
+    1. Shared documents (Jaccard similarity of document sets)
+    2. Semantic relations between member tokens (if provided)
+
+    Args:
+        layers: Dictionary of all layers
+        semantic_relations: Optional list of (term1, relation, term2, weight) tuples
+        min_shared_docs: Minimum shared documents for connection
+        min_jaccard: Minimum Jaccard similarity threshold
+
+    Returns:
+        Statistics about connections created
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+    layer2 = layers[CorticalLayer.CONCEPTS]
+
+    if layer2.column_count() == 0:
+        return {'connections_created': 0, 'concepts': 0}
+
+    concepts = list(layer2.minicolumns.values())
+    connections_created = 0
+
+    # Build semantic relation lookup for faster access
+    semantic_lookup: Dict[str, Dict[str, Tuple[str, float]]] = defaultdict(dict)
+    if semantic_relations:
+        for t1, relation, t2, weight in semantic_relations:
+            # Store relation in both directions
+            semantic_lookup[t1][t2] = (relation, weight)
+            semantic_lookup[t2][t1] = (relation, weight)
+
+    # Relation type weights for scoring
+    relation_weights = {
+        'IsA': 1.5,
+        'PartOf': 1.3,
+        'HasProperty': 1.2,
+        'RelatedTo': 1.0,
+        'Antonym': 0.3,
+    }
+
+    # Compare all concept pairs
+    for i, concept1 in enumerate(concepts):
+        docs1 = concept1.document_ids
+
+        for concept2 in concepts[i+1:]:
+            docs2 = concept2.document_ids
+
+            # Calculate Jaccard similarity of document sets
+            shared_docs = docs1 & docs2
+            union_docs = docs1 | docs2
+
+            if len(shared_docs) < min_shared_docs:
+                continue
+
+            jaccard = len(shared_docs) / len(union_docs) if union_docs else 0
+
+            if jaccard < min_jaccard:
+                continue
+
+            # Base weight from document overlap
+            weight = jaccard
+
+            # Add semantic relation bonus if available
+            if semantic_relations:
+                # Get member tokens for each concept
+                members1 = set()
+                for token_id in concept1.feedforward_connections:
+                    token = layer0.get_by_id(token_id)
+                    if token:
+                        members1.add(token.content)
+
+                members2 = set()
+                for token_id in concept2.feedforward_connections:
+                    token = layer0.get_by_id(token_id)
+                    if token:
+                        members2.add(token.content)
+
+                # Check for semantic relations between member tokens
+                semantic_bonus = 0.0
+                relation_count = 0
+                for m1 in members1:
+                    if m1 in semantic_lookup:
+                        for m2 in members2:
+                            if m2 in semantic_lookup[m1]:
+                                relation, rel_weight = semantic_lookup[m1][m2]
+                                rel_multiplier = relation_weights.get(relation, 1.0)
+                                semantic_bonus += rel_weight * rel_multiplier
+                                relation_count += 1
+
+                # Normalize and add semantic bonus (max 50% boost)
+                if relation_count > 0:
+                    avg_semantic = semantic_bonus / relation_count
+                    weight *= (1 + min(avg_semantic, 0.5))
+
+            # Create bidirectional connections
+            concept1.add_lateral_connection(concept2.id, weight)
+            concept2.add_lateral_connection(concept1.id, weight)
+            connections_created += 1
+
+    return {
+        'connections_created': connections_created,
+        'concepts': len(concepts)
+    }
 
 
 def compute_document_connections(

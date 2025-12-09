@@ -32,7 +32,9 @@ class Minicolumn:
         occurrence_count: How many times this has been observed
         document_ids: Which documents contain this content
         lateral_connections: Connections to other columns at same layer
-        feedforward_sources: IDs of columns that feed into this one
+        feedforward_sources: IDs of columns that feed into this one (deprecated, use feedforward_connections)
+        feedforward_connections: Weighted connections to lower layer columns
+        feedback_connections: Weighted connections to higher layer columns
         tfidf: TF-IDF weight for this term
         tfidf_per_doc: Document-specific TF-IDF scores
         pagerank: Importance score from PageRank algorithm
@@ -48,6 +50,7 @@ class Minicolumn:
     __slots__ = [
         'id', 'content', 'layer', 'activation', 'occurrence_count',
         'document_ids', 'lateral_connections', 'feedforward_sources',
+        'feedforward_connections', 'feedback_connections',
         'tfidf', 'tfidf_per_doc', 'pagerank', 'cluster_id',
         'doc_occurrence_counts'
     ]
@@ -68,7 +71,9 @@ class Minicolumn:
         self.occurrence_count = 0
         self.document_ids: Set[str] = set()
         self.lateral_connections: Dict[str, float] = {}
-        self.feedforward_sources: Set[str] = set()
+        self.feedforward_sources: Set[str] = set()  # Deprecated: use feedforward_connections
+        self.feedforward_connections: Dict[str, float] = {}  # Weighted links to lower layer
+        self.feedback_connections: Dict[str, float] = {}  # Weighted links to higher layer
         self.tfidf = 0.0
         self.tfidf_per_doc: Dict[str, float] = {}
         self.pagerank = 1.0
@@ -78,17 +83,49 @@ class Minicolumn:
     def add_lateral_connection(self, target_id: str, weight: float = 1.0) -> None:
         """
         Add or strengthen a lateral connection to another column.
-        
+
         Lateral connections represent associations learned through
         co-occurrence (like Hebbian learning: "neurons that fire together
         wire together").
-        
+
         Args:
             target_id: ID of the target minicolumn
             weight: Connection strength to add
         """
         self.lateral_connections[target_id] = (
             self.lateral_connections.get(target_id, 0) + weight
+        )
+
+    def add_feedforward_connection(self, target_id: str, weight: float = 1.0) -> None:
+        """
+        Add or strengthen a feedforward connection to a lower layer column.
+
+        Feedforward connections link higher-level representations to their
+        component parts (e.g., bigram → tokens, concept → tokens).
+
+        Args:
+            target_id: ID of the lower-layer minicolumn
+            weight: Connection strength to add
+        """
+        self.feedforward_connections[target_id] = (
+            self.feedforward_connections.get(target_id, 0) + weight
+        )
+        # Also maintain legacy feedforward_sources for backward compatibility
+        self.feedforward_sources.add(target_id)
+
+    def add_feedback_connection(self, target_id: str, weight: float = 1.0) -> None:
+        """
+        Add or strengthen a feedback connection to a higher layer column.
+
+        Feedback connections link lower-level representations to the
+        higher-level structures they participate in (e.g., token → bigrams).
+
+        Args:
+            target_id: ID of the higher-layer minicolumn
+            weight: Connection strength to add
+        """
+        self.feedback_connections[target_id] = (
+            self.feedback_connections.get(target_id, 0) + weight
         )
     
     def connection_count(self) -> int:
@@ -115,7 +152,7 @@ class Minicolumn:
     def to_dict(self) -> Dict:
         """
         Convert to dictionary for serialization.
-        
+
         Returns:
             Dictionary representation of this minicolumn
         """
@@ -128,6 +165,8 @@ class Minicolumn:
             'document_ids': list(self.document_ids),
             'lateral_connections': self.lateral_connections,
             'feedforward_sources': list(self.feedforward_sources),
+            'feedforward_connections': self.feedforward_connections,
+            'feedback_connections': self.feedback_connections,
             'tfidf': self.tfidf,
             'tfidf_per_doc': self.tfidf_per_doc,
             'pagerank': self.pagerank,
@@ -139,10 +178,10 @@ class Minicolumn:
     def from_dict(cls, data: Dict) -> 'Minicolumn':
         """
         Create a minicolumn from dictionary representation.
-        
+
         Args:
             data: Dictionary with minicolumn data
-            
+
         Returns:
             New Minicolumn instance
         """
@@ -152,6 +191,8 @@ class Minicolumn:
         col.document_ids = set(data.get('document_ids', []))
         col.lateral_connections = data.get('lateral_connections', {})
         col.feedforward_sources = set(data.get('feedforward_sources', []))
+        col.feedforward_connections = data.get('feedforward_connections', {})
+        col.feedback_connections = data.get('feedback_connections', {})
         col.tfidf = data.get('tfidf', 0.0)
         col.tfidf_per_doc = data.get('tfidf_per_doc', {})
         col.pagerank = data.get('pagerank', 1.0)

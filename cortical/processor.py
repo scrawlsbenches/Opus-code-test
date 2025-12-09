@@ -21,6 +21,15 @@ from . import persistence
 class CorticalTextProcessor:
     """Neocortex-inspired text processing system."""
 
+    # Computation types for tracking staleness
+    COMP_TFIDF = 'tfidf'
+    COMP_PAGERANK = 'pagerank'
+    COMP_ACTIVATION = 'activation'
+    COMP_DOC_CONNECTIONS = 'doc_connections'
+    COMP_CONCEPTS = 'concepts'
+    COMP_EMBEDDINGS = 'embeddings'
+    COMP_SEMANTICS = 'semantics'
+
     def __init__(self, tokenizer: Optional[Tokenizer] = None):
         self.tokenizer = tokenizer or Tokenizer()
         self.layers: Dict[CorticalLayer, HierarchicalLayer] = {
@@ -33,6 +42,8 @@ class CorticalTextProcessor:
         self.document_metadata: Dict[str, Dict[str, Any]] = {}
         self.embeddings: Dict[str, List[float]] = {}
         self.semantic_relations: List[Tuple[str, str, str, float]] = []
+        # Track which computations are stale and need recomputation
+        self._stale_computations: set = set()
 
     def process_document(
         self,
@@ -74,7 +85,10 @@ class CorticalTextProcessor:
             col.occurrence_count += 1
             col.document_ids.add(doc_id)
             col.activation += 1.0
-            doc_col.feedforward_sources.add(col.id)
+            # Weighted feedforward: document → token (weight by occurrence count)
+            doc_col.add_feedforward_connection(col.id, 1.0)
+            # Weighted feedback: token → document (weight by occurrence count)
+            col.add_feedback_connection(doc_col.id, 1.0)
             # Track per-document occurrence count for accurate TF-IDF
             col.doc_occurrence_counts[doc_id] = col.doc_occurrence_counts.get(doc_id, 0) + 1
         
@@ -95,8 +109,14 @@ class CorticalTextProcessor:
             for part in bigram.split():
                 token_col = layer0.get_minicolumn(part)
                 if token_col:
-                    col.feedforward_sources.add(token_col.id)
-        
+                    # Weighted feedforward: bigram → tokens (weight 1.0 per occurrence)
+                    col.add_feedforward_connection(token_col.id, 1.0)
+                    # Weighted feedback: token → bigram (weight 1.0 per occurrence)
+                    token_col.add_feedback_connection(col.id, 1.0)
+
+        # Mark all computations as stale since document corpus changed
+        self._mark_all_stale()
+
         return {'tokens': len(tokens), 'bigrams': len(bigrams), 'unique_tokens': len(set(tokens))}
 
     def set_document_metadata(self, doc_id: str, **kwargs) -> None:
@@ -140,6 +160,247 @@ class CorticalTextProcessor:
         import copy
         return copy.deepcopy(self.document_metadata)
 
+    def _mark_all_stale(self) -> None:
+        """Mark all computations as stale (needing recomputation)."""
+        self._stale_computations = {
+            self.COMP_TFIDF,
+            self.COMP_PAGERANK,
+            self.COMP_ACTIVATION,
+            self.COMP_DOC_CONNECTIONS,
+            self.COMP_CONCEPTS,
+            self.COMP_EMBEDDINGS,
+            self.COMP_SEMANTICS,
+        }
+
+    def _mark_fresh(self, *computation_types: str) -> None:
+        """Mark specified computations as fresh (up-to-date)."""
+        for comp in computation_types:
+            self._stale_computations.discard(comp)
+
+    def is_stale(self, computation_type: str) -> bool:
+        """
+        Check if a specific computation is stale.
+
+        Args:
+            computation_type: One of COMP_TFIDF, COMP_PAGERANK, etc.
+
+        Returns:
+            True if the computation needs to be run again
+        """
+        return computation_type in self._stale_computations
+
+    def get_stale_computations(self) -> set:
+        """
+        Get the set of computations that are currently stale.
+
+        Returns:
+            Set of computation type strings that need recomputation
+        """
+        return self._stale_computations.copy()
+
+    def add_document_incremental(
+        self,
+        doc_id: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        recompute: str = 'tfidf'
+    ) -> Dict[str, int]:
+        """
+        Add a document with selective recomputation for efficiency.
+
+        Unlike process_document() + compute_all(), this method only recomputes
+        what's necessary based on the recompute parameter. This is more efficient
+        for RAG systems with frequent document updates.
+
+        Args:
+            doc_id: Unique identifier for the document
+            content: Document text content
+            metadata: Optional metadata dict (source, timestamp, author, etc.)
+            recompute: Level of recomputation to perform:
+                - 'none': Just add document, mark all computations stale
+                - 'tfidf': Recompute TF-IDF only (fast, updates term weights)
+                - 'full': Run compute_all() (slowest, most accurate)
+
+        Returns:
+            Dict with processing statistics (tokens, bigrams, unique_tokens)
+
+        Example:
+            >>> # Quick update for search without full recomputation
+            >>> processor.add_document_incremental("new_doc", "content", recompute='tfidf')
+            >>>
+            >>> # Just queue document, recompute later in batch
+            >>> processor.add_document_incremental("doc1", "content1", recompute='none')
+            >>> processor.add_document_incremental("doc2", "content2", recompute='none')
+            >>> processor.recompute(level='full')  # Batch recomputation
+        """
+        stats = self.process_document(doc_id, content, metadata)
+
+        if recompute == 'tfidf':
+            self.compute_tfidf(verbose=False)
+            self._mark_fresh(self.COMP_TFIDF)
+        elif recompute == 'full':
+            self.compute_all(verbose=False)
+            self._stale_computations.clear()
+        # 'none' leaves all computations marked as stale
+
+        return stats
+
+    def add_documents_batch(
+        self,
+        documents: List[Tuple[str, str, Optional[Dict[str, Any]]]],
+        recompute: str = 'full',
+        verbose: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Add multiple documents with a single recomputation.
+
+        More efficient than calling add_document_incremental() multiple times
+        when adding many documents at once.
+
+        Args:
+            documents: List of (doc_id, content, metadata) tuples.
+                       metadata can be None for documents without metadata.
+            recompute: Level of recomputation after all documents are added:
+                - 'none': Just add documents, mark all computations stale
+                - 'tfidf': Recompute TF-IDF only
+                - 'full': Run compute_all()
+            verbose: Print progress messages
+
+        Returns:
+            Dict with batch statistics:
+                - documents_added: Number of documents added
+                - total_tokens: Total tokens across all documents
+                - recomputation: Type of recomputation performed
+
+        Example:
+            >>> docs = [
+            ...     ("doc1", "First document content", {"source": "web"}),
+            ...     ("doc2", "Second document content", None),
+            ...     ("doc3", "Third document content", {"author": "AI"}),
+            ... ]
+            >>> processor.add_documents_batch(docs, recompute='full')
+        """
+        total_tokens = 0
+        total_bigrams = 0
+
+        if verbose:
+            print(f"Adding {len(documents)} documents...")
+
+        for doc_id, content, metadata in documents:
+            # Use process_document directly (not add_document_incremental)
+            # to avoid per-document recomputation
+            stats = self.process_document(doc_id, content, metadata)
+            total_tokens += stats['tokens']
+            total_bigrams += stats['bigrams']
+
+        if verbose:
+            print(f"Processed {total_tokens} tokens, {total_bigrams} bigrams")
+
+        # Perform single recomputation for entire batch
+        if recompute == 'tfidf':
+            if verbose:
+                print("Recomputing TF-IDF...")
+            self.compute_tfidf(verbose=False)
+            self._mark_fresh(self.COMP_TFIDF)
+        elif recompute == 'full':
+            if verbose:
+                print("Running full recomputation...")
+            self.compute_all(verbose=False)
+            self._stale_computations.clear()
+
+        if verbose:
+            print("Done.")
+
+        return {
+            'documents_added': len(documents),
+            'total_tokens': total_tokens,
+            'total_bigrams': total_bigrams,
+            'recomputation': recompute
+        }
+
+    def recompute(
+        self,
+        level: str = 'stale',
+        verbose: bool = True
+    ) -> Dict[str, bool]:
+        """
+        Recompute specified analysis levels.
+
+        Use this after adding documents with recompute='none' to batch
+        the recomputation step.
+
+        Args:
+            level: What to recompute:
+                - 'stale': Only recompute what's marked as stale
+                - 'tfidf': Only TF-IDF (marks others stale)
+                - 'full': Run complete compute_all()
+            verbose: Print progress messages
+
+        Returns:
+            Dict indicating what was recomputed
+
+        Example:
+            >>> # Add documents without recomputation
+            >>> processor.add_document_incremental("doc1", "content", recompute='none')
+            >>> processor.add_document_incremental("doc2", "content", recompute='none')
+            >>> # Batch recompute
+            >>> processor.recompute(level='full')
+        """
+        recomputed = {}
+
+        if level == 'full':
+            self.compute_all(verbose=verbose)
+            self._stale_computations.clear()
+            recomputed = {
+                self.COMP_ACTIVATION: True,
+                self.COMP_PAGERANK: True,
+                self.COMP_TFIDF: True,
+                self.COMP_DOC_CONNECTIONS: True,
+                self.COMP_CONCEPTS: True,
+            }
+        elif level == 'tfidf':
+            self.compute_tfidf(verbose=verbose)
+            self._mark_fresh(self.COMP_TFIDF)
+            recomputed[self.COMP_TFIDF] = True
+        elif level == 'stale':
+            # Recompute only what's stale, in dependency order
+            if self.COMP_ACTIVATION in self._stale_computations:
+                self.propagate_activation(verbose=verbose)
+                self._mark_fresh(self.COMP_ACTIVATION)
+                recomputed[self.COMP_ACTIVATION] = True
+
+            if self.COMP_PAGERANK in self._stale_computations:
+                self.compute_importance(verbose=verbose)
+                self._mark_fresh(self.COMP_PAGERANK)
+                recomputed[self.COMP_PAGERANK] = True
+
+            if self.COMP_TFIDF in self._stale_computations:
+                self.compute_tfidf(verbose=verbose)
+                self._mark_fresh(self.COMP_TFIDF)
+                recomputed[self.COMP_TFIDF] = True
+
+            if self.COMP_DOC_CONNECTIONS in self._stale_computations:
+                self.compute_document_connections(verbose=verbose)
+                self._mark_fresh(self.COMP_DOC_CONNECTIONS)
+                recomputed[self.COMP_DOC_CONNECTIONS] = True
+
+            if self.COMP_CONCEPTS in self._stale_computations:
+                self.build_concept_clusters(verbose=verbose)
+                self._mark_fresh(self.COMP_CONCEPTS)
+                recomputed[self.COMP_CONCEPTS] = True
+
+            if self.COMP_EMBEDDINGS in self._stale_computations:
+                self.compute_graph_embeddings(verbose=verbose)
+                self._mark_fresh(self.COMP_EMBEDDINGS)
+                recomputed[self.COMP_EMBEDDINGS] = True
+
+            if self.COMP_SEMANTICS in self._stale_computations:
+                self.extract_corpus_semantics(verbose=verbose)
+                self._mark_fresh(self.COMP_SEMANTICS)
+                recomputed[self.COMP_SEMANTICS] = True
+
+        return recomputed
+
     def compute_all(self, verbose: bool = True, build_concepts: bool = True) -> None:
         """
         Run all computation steps.
@@ -165,6 +426,19 @@ class CorticalTextProcessor:
             if verbose:
                 print("Building concept clusters...")
             self.build_concept_clusters(verbose=False)
+            if verbose:
+                print("Computing concept connections...")
+            self.compute_concept_connections(verbose=False)
+        # Mark core computations as fresh
+        fresh_comps = [
+            self.COMP_ACTIVATION,
+            self.COMP_PAGERANK,
+            self.COMP_TFIDF,
+            self.COMP_DOC_CONNECTIONS,
+        ]
+        if build_concepts:
+            fresh_comps.append(self.COMP_CONCEPTS)
+        self._mark_fresh(*fresh_comps)
         if verbose:
             print("Done.")
     
@@ -190,7 +464,37 @@ class CorticalTextProcessor:
         analysis.build_concept_clusters(self.layers, clusters)
         if verbose: print(f"Built {len(clusters)} concept clusters")
         return clusters
-    
+
+    def compute_concept_connections(
+        self,
+        use_semantics: bool = True,
+        min_shared_docs: int = 1,
+        min_jaccard: float = 0.1,
+        verbose: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Build lateral connections between concepts based on document overlap and semantics.
+
+        Args:
+            use_semantics: Use semantic relations to boost connection weights
+            min_shared_docs: Minimum shared documents for connection
+            min_jaccard: Minimum Jaccard similarity threshold
+            verbose: Print progress messages
+
+        Returns:
+            Statistics about connections created
+        """
+        semantic_rels = self.semantic_relations if use_semantics else None
+        stats = analysis.compute_concept_connections(
+            self.layers,
+            semantic_relations=semantic_rels,
+            min_shared_docs=min_shared_docs,
+            min_jaccard=min_jaccard
+        )
+        if verbose:
+            print(f"Created {stats['connections_created']} concept connections")
+        return stats
+
     def extract_corpus_semantics(self, verbose: bool = True) -> int:
         self.semantic_relations = semantics.extract_corpus_semantics(self.layers, self.documents, self.tokenizer)
         if verbose: print(f"Extracted {len(self.semantic_relations)} semantic relations")
@@ -302,7 +606,187 @@ class CorticalTextProcessor:
             semantic_relations=self.semantic_relations if use_semantic else None,
             use_semantic=use_semantic
         )
-    
+
+    def find_documents_batch(
+        self,
+        queries: List[str],
+        top_n: int = 5,
+        use_expansion: bool = True,
+        use_semantic: bool = True
+    ) -> List[List[Tuple[str, float]]]:
+        """
+        Find documents for multiple queries efficiently.
+
+        More efficient than calling find_documents_for_query() multiple times
+        because it shares tokenization and expansion caching across queries.
+
+        Args:
+            queries: List of search query strings
+            top_n: Number of documents to return per query
+            use_expansion: Whether to expand query terms using lateral connections
+            use_semantic: Whether to use semantic relations for expansion
+
+        Returns:
+            List of results, one per query. Each result is a list of (doc_id, score) tuples.
+
+        Example:
+            >>> queries = ["neural networks", "machine learning", "data processing"]
+            >>> results = processor.find_documents_batch(queries, top_n=3)
+            >>> for query, docs in zip(queries, results):
+            ...     print(f"{query}: {[doc_id for doc_id, _ in docs]}")
+        """
+        return query_module.find_documents_batch(
+            queries,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n,
+            use_expansion=use_expansion,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
+        )
+
+    def find_passages_batch(
+        self,
+        queries: List[str],
+        top_n: int = 5,
+        chunk_size: int = 512,
+        overlap: int = 128,
+        use_expansion: bool = True,
+        doc_filter: Optional[List[str]] = None,
+        use_semantic: bool = True
+    ) -> List[List[Tuple[str, str, int, int, float]]]:
+        """
+        Find passages for multiple queries efficiently.
+
+        More efficient than calling find_passages_for_query() multiple times
+        because it shares chunk computation and expansion caching across queries.
+
+        Args:
+            queries: List of search query strings
+            top_n: Number of passages to return per query
+            chunk_size: Size of each chunk in characters (default 512)
+            overlap: Overlap between chunks in characters (default 128)
+            use_expansion: Whether to expand query terms
+            doc_filter: Optional list of doc_ids to restrict search to
+            use_semantic: Whether to use semantic relations for expansion
+
+        Returns:
+            List of results, one per query. Each result is a list of
+            (passage_text, doc_id, start_char, end_char, score) tuples.
+
+        Example:
+            >>> queries = ["neural networks", "deep learning"]
+            >>> results = processor.find_passages_batch(queries)
+            >>> for query, passages in zip(queries, results):
+            ...     print(f"{query}: {len(passages)} passages found")
+        """
+        return query_module.find_passages_batch(
+            queries,
+            self.layers,
+            self.tokenizer,
+            self.documents,
+            top_n=top_n,
+            chunk_size=chunk_size,
+            overlap=overlap,
+            use_expansion=use_expansion,
+            doc_filter=doc_filter,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
+        )
+
+    def multi_stage_rank(
+        self,
+        query_text: str,
+        top_n: int = 5,
+        chunk_size: int = 512,
+        overlap: int = 128,
+        concept_boost: float = 0.3,
+        use_expansion: bool = True,
+        use_semantic: bool = True
+    ) -> List[Tuple[str, str, int, int, float, Dict[str, float]]]:
+        """
+        Multi-stage ranking pipeline for improved RAG performance.
+
+        Uses a 4-stage pipeline combining concept, document, and chunk signals:
+        1. Concepts: Filter by topic relevance using Layer 2 clusters
+        2. Documents: Rank documents within relevant topics
+        3. Chunks: Rank passages within top documents
+        4. Rerank: Combine all signals for final scoring
+
+        Args:
+            query_text: Search query
+            top_n: Number of passages to return
+            chunk_size: Size of each chunk in characters (default 512)
+            overlap: Overlap between chunks in characters (default 128)
+            concept_boost: Weight for concept relevance (0.0-1.0, default 0.3)
+            use_expansion: Whether to expand query terms
+            use_semantic: Whether to use semantic relations for expansion
+
+        Returns:
+            List of (passage_text, doc_id, start_char, end_char, final_score, stage_scores)
+            tuples. stage_scores contains: concept_score, doc_score, chunk_score, final_score
+
+        Example:
+            >>> results = processor.multi_stage_rank("neural networks", top_n=5)
+            >>> for passage, doc_id, start, end, score, stages in results:
+            ...     print(f"[{doc_id}] Final: {score:.3f}, Concept: {stages['concept_score']:.3f}")
+        """
+        return query_module.multi_stage_rank(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            self.documents,
+            top_n=top_n,
+            chunk_size=chunk_size,
+            overlap=overlap,
+            concept_boost=concept_boost,
+            use_expansion=use_expansion,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
+        )
+
+    def multi_stage_rank_documents(
+        self,
+        query_text: str,
+        top_n: int = 5,
+        concept_boost: float = 0.3,
+        use_expansion: bool = True,
+        use_semantic: bool = True
+    ) -> List[Tuple[str, float, Dict[str, float]]]:
+        """
+        Multi-stage ranking for documents (without chunk scoring).
+
+        Uses stages 1-2 of the pipeline for document-level ranking:
+        1. Concepts: Filter by topic relevance
+        2. Documents: Rank by combined concept + TF-IDF scores
+
+        Args:
+            query_text: Search query
+            top_n: Number of documents to return
+            concept_boost: Weight for concept relevance (0.0-1.0, default 0.3)
+            use_expansion: Whether to expand query terms
+            use_semantic: Whether to use semantic relations
+
+        Returns:
+            List of (doc_id, final_score, stage_scores) tuples.
+            stage_scores contains: concept_score, tfidf_score, combined_score
+
+        Example:
+            >>> results = processor.multi_stage_rank_documents("neural networks")
+            >>> for doc_id, score, stages in results:
+            ...     print(f"{doc_id}: {score:.3f} (concept: {stages['concept_score']:.3f})")
+        """
+        return query_module.multi_stage_rank_documents(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n,
+            concept_boost=concept_boost,
+            use_expansion=use_expansion,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
+        )
+
     def query_expanded(self, query_text: str, top_n: int = 10, max_expansions: int = 8) -> List[Tuple[str, float]]:
         return query_module.query_with_spreading_activation(query_text, self.layers, self.tokenizer, top_n, max_expansions)
     
