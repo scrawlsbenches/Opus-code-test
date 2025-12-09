@@ -1,0 +1,21 @@
+REST API Design Principles and Best Practices
+
+Representational State Transfer defines architectural constraints for web service interfaces. REST APIs use HTTP methods and status codes to provide predictable interfaces. Well-designed APIs enable client applications to interact with services reliably and intuitively.
+
+Resource identification through URIs forms the foundation of REST design. Resources represent domain concepts like users, orders, and products. Collection resources use plural nouns at paths like /users and /orders. Individual resources append identifiers as /users/123 or /orders/456. Nested resources express relationships through path hierarchy.
+
+HTTP methods convey operation semantics. GET retrieves resources without side effects. POST creates new resources within collections. PUT replaces entire resources at specified locations. PATCH applies partial updates to existing resources. DELETE removes resources. Methods should match semantic intentions for predictable behavior.
+
+Status codes communicate operation results. Success codes include 200 OK for general success, 201 Created for resource creation, and 204 No Content for successful operations without response bodies. Client error codes include 400 Bad Request for malformed input, 401 Unauthorized for authentication failures, 403 Forbidden for authorization failures, and 404 Not Found for missing resources. Server error codes indicate service failures.
+
+Request and response payloads typically use JSON format. Consistent naming conventions improve usability, whether camelCase or snake_case. Envelope wrappers provide metadata alongside data. Pagination structures handle large collections through cursor or offset mechanisms.
+
+Query parameters filter and sort collection resources. Filter parameters narrow results by attribute values. Sort parameters order results by specified fields and directions. Sparse fieldsets allow clients to request only needed attributes, reducing payload sizes.
+
+API versioning manages interface evolution. URL path versioning includes version in the URI as /v1/users. Header versioning uses Accept headers specifying versions. Query parameter versioning adds version parameters. Each approach has tradeoffs for discoverability and cacheability.
+
+Authentication mechanisms secure API access. API keys provide simple identification but lack user context. OAuth 2.0 enables delegated authorization with scoped access tokens. JSON Web Tokens encode claims for stateless verification. Rate limiting protects services from abuse.
+
+Documentation enables effective API usage. OpenAPI specifications describe endpoints, parameters, and schemas. Interactive documentation allows testing from documentation pages. Code samples demonstrate common integration patterns. Changelog communication helps clients track breaking changes.
+
+Error responses should provide actionable information. Error codes enable programmatic handling. Human-readable messages explain what went wrong. Validation errors should identify specific invalid fields. Error structures should remain consistent across endpoints.

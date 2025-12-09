@@ -1,0 +1,9 @@
+Quicksort Algorithm
+
+Quicksort efficiently sorts arrays through divide and conquer strategy. Tony Hoare developed the algorithm in 1959. Average case performance achieves O(n log n) time complexity while worst case degrades to O(n squared) for already sorted inputs.
+
+The algorithm selects a pivot element and partitions the array into elements less than and greater than the pivot. Recursive calls sort the partitions independently. Base cases handle arrays of zero or one element.
+
+Pivot selection significantly affects performance. Choosing first or last elements causes worst case behavior on sorted inputs. Median-of-three selects the median of first, middle, and last elements. Random pivot selection provides probabilistic guarantees against adversarial inputs.
+
+In-place partitioning minimizes memory overhead compared to merge sort. The Lomuto partition scheme uses simpler logic while Hoare partitioning requires fewer swaps on average. Modern implementations switch to insertion sort for small subarrays where constant factors dominate.

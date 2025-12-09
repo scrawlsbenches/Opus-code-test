@@ -1,0 +1,17 @@
+Microservices Architecture Fundamentals
+
+Microservices architecture structures applications as collections of loosely coupled services. Each service implements specific business capability and communicates through well-defined interfaces. This approach contrasts with monolithic architectures where all functionality resides in single deployable units.
+
+Service boundaries align with business domains following domain-driven design principles. Bounded contexts define service scope, encapsulating domain models and business logic. The relationship between microservices and domain-driven design is explored in our companion document on domain driven design. Services own their data, avoiding shared databases that create tight coupling.
+
+Communication patterns include synchronous request-response and asynchronous messaging. REST APIs provide simple request-response interfaces. gRPC offers efficient binary protocols for internal service communication. Message queues enable event-driven architectures as detailed in the event sourcing patterns document.
+
+Service discovery enables dynamic routing as instances scale and move. Service registries track available instances. Load balancers distribute traffic across healthy instances. Container orchestration platforms like those described in our container orchestration document automate service deployment and scaling.
+
+Failure handling requires defensive design since distributed systems introduce partial failure modes. Circuit breakers prevent cascade failures when downstream services become unavailable. Bulkheads isolate failures to affected services. Retries with exponential backoff handle transient failures gracefully.
+
+Observability becomes essential for understanding distributed system behavior. Distributed tracing follows requests across service boundaries. Metrics aggregation provides system-wide visibility. Centralized logging correlates events across services. These practices enable debugging and performance optimization.
+
+API gateways provide unified entry points for external clients. Authentication and authorization consolidate at the gateway. Rate limiting protects backend services from overload. Request transformation adapts external interfaces to internal services. For database patterns underlying microservices, see the database design patterns document.
+
+Organizational implications accompany technical changes. Conway's Law suggests system structures mirror communication structures. Small teams owning services end-to-end increase autonomy and accountability. DevOps practices automate deployment pipelines, enabling continuous delivery that microservices require.

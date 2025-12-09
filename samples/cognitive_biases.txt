@@ -1,0 +1,23 @@
+Cognitive Biases and Decision Making
+
+Cognitive biases represent systematic deviations from rational judgment. These mental shortcuts evolved for efficient decision making but can lead to predictable errors. Understanding biases enables better decisions and helps anticipate others' reasoning patterns.
+
+Confirmation bias favors information supporting existing beliefs. People seek evidence confirming their views while discounting contradictory information. This tendency strengthens existing positions regardless of accuracy. Actively seeking disconfirming evidence counteracts confirmation bias.
+
+Anchoring bias overweights initial information when estimating. First numbers encountered influence subsequent judgments even when irrelevant. Negotiators exploit anchoring by making extreme initial offers. Awareness of anchors helps adjust estimates appropriately.
+
+Availability heuristic judges probability by ease of recall. Recent or vivid events seem more likely than statistics warrant. Media coverage distorts perceived risks, exaggerating covered dangers while ignoring common but unreported hazards. Base rate information provides necessary context.
+
+Hindsight bias makes past events seem predictable after outcomes are known. People overestimate how foreseeable results were, criticizing decisions reasonable given available information. This bias complicates learning from experience and evaluating past decisions fairly.
+
+Sunk cost fallacy continues investments based on past expenditures rather than future value. Resources already spent should not influence forward-looking decisions. Abandoning failing projects proves psychologically difficult despite rational analysis favoring exit.
+
+Overconfidence bias inflates estimated accuracy of judgments. People's confidence exceeds their actual correctness rates. Calibration training improves accuracy by highlighting past overconfidence. Seeking outside views provides reality checks on predictions.
+
+Framing effects alter choices based on option presentation. Gains and losses relative to reference points affect risk preferences. Loss aversion makes equivalent losses loom larger than gains. Positive and negative framing of identical options yields different choices.
+
+Attribution errors misassign causes for behavior. Fundamental attribution error overemphasizes personality while underweighting situational factors explaining others' actions. Actor-observer asymmetry applies different attribution patterns to self versus others.
+
+Group biases amplify individual errors. Groupthink suppresses dissent in cohesive groups. Bandwagon effects follow majority opinions. In-group favoritism advantages perceived group members. Structured decision processes reduce group bias effects.
+
+Debiasing strategies improve decision quality. Awareness of specific biases enables recognition and correction. Checklists prompt consideration of overlooked factors. Red team analysis deliberately argues against preferred conclusions. Decision journals track predictions enabling calibration feedback.

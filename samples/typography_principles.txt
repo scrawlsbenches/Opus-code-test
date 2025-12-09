@@ -1,0 +1,19 @@
+Typography Principles and Type Design
+
+Typography shapes how written language appears visually. Effective typography enhances readability, conveys meaning, and creates aesthetic appeal. Understanding typographic principles enables designers to communicate effectively through text presentation.
+
+Typeface anatomy describes letterform components. The baseline establishes the line on which letters rest. The x-height measures lowercase letter body height. Ascenders extend above x-height in letters like b and d. Descenders drop below baseline in letters like p and g. Cap height measures uppercase letter height.
+
+Stroke characteristics define typeface personality. Serif typefaces feature small projections completing main strokes. Sans serif typefaces lack these finishing strokes. Stroke weight varies from hairline through regular to bold and black weights. Stroke contrast compares thick and thin portions.
+
+Type classification organizes typefaces into categories. Old style serifs feature moderate contrast and angled stress. Transitional serifs show increased contrast and vertical stress. Modern serifs exhibit extreme contrast and unbracketed serifs. Slab serifs present heavy, block-like serifs. Geometric sans serifs derive from circular and linear forms.
+
+Type hierarchy establishes visual organization. Size differentiation distinguishes headings from body text. Weight variation emphasizes important elements. Style contrast separates categories of information. Spatial arrangement guides reading order through the page.
+
+Spacing affects legibility and texture. Tracking adjusts overall letter spacing. Kerning modifies spacing between specific letter pairs. Leading controls space between text lines. Proper spacing creates even typographic color without distracting gaps or collisions.
+
+Alignment options serve different purposes. Left alignment provides strong entry points for each line. Right alignment creates clean right edges but ragged reading starts. Center alignment suits formal or short text. Justified alignment fills column width by adjusting word spacing.
+
+Type selection matches typeface to context. Body text requires high legibility at small sizes. Display faces optimize for large sizes with distinctive personality. Type pairing combines complementary typefaces for variety within harmony. Historical appropriateness connects type style to content era.
+
+Digital typography introduces screen-specific considerations. Pixel rendering affects legibility at low resolutions. Responsive design scales typography across device sizes. Variable fonts enable continuous axis adjustment for weight, width, and optical size.

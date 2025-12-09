@@ -1,0 +1,55 @@
+Attention Mechanisms in Neural Networks: A Survey
+
+Abstract
+
+Attention mechanisms enable neural networks to focus selectively on relevant portions of input data. Originally developed for sequence-to-sequence models in machine translation, attention has become fundamental to modern deep learning architectures. This survey examines attention mechanism variants, their theoretical foundations, and applications across domains.
+
+Introduction
+
+Traditional neural networks process inputs uniformly without distinguishing important regions from peripheral information. Human cognition, by contrast, selectively attends to relevant stimuli while filtering distractions. Attention mechanisms introduce this selective focus capability into artificial neural networks.
+
+The attention mechanism computes weighted combinations of input representations. Weights reflect relevance to the current computational context. Higher weights amplify important inputs while lower weights suppress irrelevant ones. This dynamic weighting enables flexible information routing.
+
+Bahdanau Attention
+
+Bahdanau and colleagues introduced additive attention for neural machine translation in 2014. Encoder hidden states provide keys and values representing source sentence positions. Decoder hidden state serves as query determining which source positions to attend. Alignment scores compute through feed-forward network with encoder states and decoder state as inputs.
+
+The context vector aggregates encoder states weighted by alignment scores. Concatenating context with decoder state enables attending to relevant source positions while generating each target word. This mechanism resolved the information bottleneck in fixed-length encoding of variable-length sentences.
+
+Luong Attention
+
+Luong and colleagues proposed multiplicative attention variants. Dot product attention computes alignment through inner product between query and key vectors. General attention introduces learnable weight matrix between query and key. Concat attention concatenates query and key before transformation.
+
+Local attention restricts attention to windows around predicted alignment positions. This approach reduces computational cost compared to global attention over entire sequences. Window positions may be learned or computed from input positions.
+
+Self-Attention and Transformers
+
+Self-attention relates different positions within single sequences. Each position serves simultaneously as query, key, and value. Attention weights capture dependencies between all position pairs regardless of distance. This mechanism overcomes recurrent networks' sequential processing limitations.
+
+The Transformer architecture relies entirely on self-attention without recurrence. Multi-head attention applies parallel attention functions with different learned projections. Positional encodings inject sequence order information absent from attention computation. Layer normalization and residual connections stabilize deep network training.
+
+Scaled dot-product attention divides dot products by square root of key dimension. This scaling prevents dot products from growing large for high-dimensional keys. Large dot products push softmax into regions with small gradients, impeding learning.
+
+Attention Variants
+
+Sparse attention patterns reduce quadratic complexity of full attention. Local attention attends only to nearby positions. Strided attention attends to fixed-interval positions. Combining local and strided patterns captures both local and long-range dependencies efficiently.
+
+Linear attention approximates softmax attention with kernel feature maps. These approaches achieve linear complexity in sequence length. Approximation quality varies across tasks and configurations.
+
+Cross-attention connects different sequences, as in encoder-decoder attention. Image captioning attends to image regions while generating descriptions. Visual question answering attends to relevant image areas for each question.
+
+Applications
+
+Machine translation uses attention to align source and target languages. Attention visualizations reveal learned translation correspondences. Attention improves translation quality especially for long sentences where fixed-length encoding fails.
+
+Document summarization attends to important source passages. Extractive summarization weights sentences by importance. Abstractive summarization conditions generation on attended source content.
+
+Question answering attends to relevant document passages. Reading comprehension models match questions against passage representations. Multi-hop reasoning chains attention across multiple passages.
+
+Image recognition applies spatial attention to focus on discriminative regions. Channel attention weights feature map channels by importance. Self-attention in vision captures long-range spatial dependencies.
+
+Speech recognition attends to audio frames while transcribing. Acoustic attention aligns phonemes with audio segments. Hierarchical attention handles long utterances efficiently.
+
+Conclusion
+
+Attention mechanisms have transformed deep learning by enabling dynamic information routing. From initial applications in machine translation to universal adoption in Transformers, attention provides flexible and interpretable computation. Ongoing research addresses efficiency, inductive biases, and novel attention patterns for emerging applications.

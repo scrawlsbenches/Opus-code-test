@@ -1,0 +1,9 @@
+Morse Code Communication
+
+Morse code encodes text characters as sequences of dots and dashes representing short and long signals. Samuel Morse developed the system for telegraph transmission in the 1830s. International Morse Code standardized the encoding for worldwide communication.
+
+Each letter corresponds to a unique pattern. E uses a single dot, the shortest encoding for the most frequent English letter. T uses a single dash. Common letters receive shorter codes while rare letters use longer sequences. Numbers use five-element codes.
+
+Transmission speed is measured in words per minute using the standard word PARIS containing fifty dit-units. Skilled operators achieve thirty words per minute or higher. Prosigns provide procedural signals like end of message or request for repeat.
+
+Radio amateurs continue using Morse code for long-distance communication. Continuous wave transmission requires minimal bandwidth and penetrates noise effectively. Many countries no longer require Morse proficiency for amateur licensing.

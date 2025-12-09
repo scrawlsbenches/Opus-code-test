@@ -1,0 +1,21 @@
+Relational Database Modeling and Normalization
+
+Relational database design organizes data into tables with defined relationships. Proper modeling ensures data integrity, reduces redundancy, and enables efficient querying. Schema design requires understanding both business requirements and technical constraints.
+
+Tables represent entity types with rows as instances and columns as attributes. Primary keys uniquely identify rows within tables. Natural keys use meaningful business attributes while surrogate keys use system-generated identifiers. Key selection affects both uniqueness and performance.
+
+Foreign keys establish relationships between tables. One-to-one relationships link exactly one row to another. One-to-many relationships connect one parent row to multiple child rows. Many-to-many relationships require junction tables containing foreign keys to both related tables.
+
+Normalization eliminates redundancy through decomposition. First normal form requires atomic values and unique rows. Second normal form removes partial dependencies on composite keys. Third normal form eliminates transitive dependencies between non-key attributes. Higher normal forms address additional anomaly types.
+
+Denormalization intentionally reintroduces redundancy for query performance. Computed columns cache derived values. Redundant columns eliminate join requirements. Denormalization decisions balance read performance against write complexity and storage cost.
+
+Indexes accelerate query execution at the cost of write overhead. B-tree indexes support equality and range queries. Hash indexes optimize equality comparisons. Composite indexes cover multiple columns for complex predicates. Covering indexes include all queried columns, avoiding table lookups.
+
+Constraints enforce data integrity rules. Not null constraints require values in specified columns. Unique constraints prevent duplicate values. Check constraints validate values against conditions. Foreign key constraints ensure referential integrity between tables.
+
+Data types affect storage efficiency and query capabilities. Appropriate type selection prevents wasted space and invalid values. Numeric types vary in precision and range. String types differ in length handling. Temporal types support date and time operations.
+
+Transaction isolation levels balance consistency against concurrency. Read uncommitted allows dirty reads. Read committed prevents dirty reads but permits non-repeatable reads. Repeatable read prevents non-repeatable reads but allows phantom reads. Serializable provides full isolation at the cost of concurrency.
+
+Query optimization relies on statistics about data distribution. Optimizer selectivity estimates guide execution plan choices. Outdated statistics lead to suboptimal plans. Regular statistics updates maintain query performance.

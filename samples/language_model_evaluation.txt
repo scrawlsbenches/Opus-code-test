@@ -1,0 +1,61 @@
+Evaluation Metrics for Language Models
+
+Abstract
+
+Language model evaluation requires metrics capturing diverse linguistic capabilities. This paper surveys evaluation approaches spanning perplexity measures, downstream task performance, and human judgment protocols. Understanding metric properties informs model development and application selection.
+
+Introduction
+
+Language models estimate probability distributions over text sequences. Evaluating these models requires quantifying how well estimated distributions match human language use. Different applications prioritize different aspects of language understanding and generation.
+
+Perplexity Measures
+
+Perplexity measures how well models predict held-out text. Lower perplexity indicates better predictions. Perplexity equals exponentiated cross-entropy loss averaged across tokens. This metric directly evaluates language modeling objectives.
+
+Bits per character normalizes perplexity across different tokenization schemes. Character-level models and subword models become comparable. This metric facilitates fair comparison across architectural choices.
+
+Perplexity limitations include insensitivity to generation quality beyond next-token prediction. Low perplexity models may still generate incoherent or repetitive text. Downstream evaluation complements perplexity measurement.
+
+Benchmark Tasks
+
+GLUE benchmark aggregates natural language understanding tasks. Sentiment analysis classifies text emotional valence. Natural language inference determines entailment relationships. Semantic similarity rates sentence pair relatedness. Question answering evaluates reading comprehension.
+
+SuperGLUE provides more challenging understanding tasks. Word sense disambiguation identifies intended meanings. Coreference resolution links referring expressions. Reasoning tasks require inference beyond surface patterns.
+
+Question answering benchmarks vary in complexity and domain. Extractive answering locates answer spans within passages. Generative answering produces novel response text. Multi-hop reasoning requires synthesizing information across passages.
+
+Generation Quality Metrics
+
+BLEU score compares generated text to reference translations. N-gram precision measures overlap at various orders. Brevity penalty discourages short outputs. BLEU correlates with human quality judgments in machine translation.
+
+ROUGE metrics emphasize recall of reference content. ROUGE-N measures n-gram recall. ROUGE-L uses longest common subsequence. Summarization evaluation commonly uses ROUGE metrics.
+
+BERTScore computes semantic similarity using contextual embeddings. Token embeddings match between generated and reference text. Contextualized matching captures paraphrases missed by n-gram overlap. This metric better correlates with human judgments for generation tasks.
+
+Human Evaluation
+
+Human evaluation captures quality aspects that automated metrics miss. Fluency ratings assess grammatical naturalness. Coherence ratings evaluate logical consistency. Relevance ratings measure task completion. Comparative ranking orders system outputs.
+
+Evaluation protocols affect measurement reliability. Clear guidelines reduce annotator disagreement. Multiple annotators enable reliability estimation. Calibration examples establish rating standards.
+
+Crowdsourcing enables large-scale human evaluation. Quality control mechanisms filter unreliable annotations. Attention checks verify annotator engagement. Aggregation methods combine multiple judgments.
+
+Robustness and Fairness
+
+Adversarial evaluation probes model vulnerabilities. Input perturbations test prediction stability. Out-of-distribution examples test generalization. Adversarial attacks reveal failure modes requiring mitigation.
+
+Bias evaluation examines unfair treatment across groups. Stereotype measurement quantifies harmful associations. Performance disparities across demographic groups indicate bias. Debiasing techniques address identified issues.
+
+Factuality evaluation assesses knowledge accuracy. Fact verification compares claims against evidence. Hallucination detection identifies unsupported statements. Knowledge base alignment measures fact coverage.
+
+Efficiency Metrics
+
+Inference speed affects deployment viability. Tokens per second measures generation throughput. Latency measures response time for interactive applications. Hardware requirements constrain deployment options.
+
+Memory footprint determines hardware requirements. Parameter count indicates model size. Activation memory grows with sequence length. Efficient architectures reduce resource requirements.
+
+Energy consumption raises environmental concerns. Training carbon footprint depends on computation and energy sources. Efficient training and inference reduce environmental impact.
+
+Conclusion
+
+Comprehensive evaluation requires multiple metrics addressing different quality aspects. Automatic metrics provide scalable measurement while human evaluation captures nuanced quality. Benchmark suites standardize comparison across models. Evaluation methodology continues evolving alongside model capabilities.

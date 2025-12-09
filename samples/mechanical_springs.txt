@@ -1,0 +1,17 @@
+Mechanical Springs and Elastic Energy Storage
+
+Mechanical springs store elastic potential energy when deformed from equilibrium positions. Hooke's law governs spring behavior within elastic limits, stating force equals spring constant multiplied by displacement. Beyond yield points, plastic deformation permanently alters spring geometry.
+
+Compression springs resist axial compression, common in automotive suspensions and valve mechanisms. Helical coil geometry maximizes energy storage while minimizing space requirements. Active coils contribute to spring deflection while closed end coils provide flat seating surfaces. Wire diameter and coil diameter determine spring rate.
+
+Extension springs stretch under tensile loads, featuring hooks or loops at ends for attachment. Initial tension represents preload built into the spring during manufacturing. Constant force springs provide uniform resistance throughout extension range, useful in counterbalancing applications.
+
+Torsion springs store energy through twisting about their axis. Clock springs power mechanical timepieces through controlled energy release. Torsion bars in vehicle suspensions twist rather than compress. Spiral springs accumulate energy through multiple turns, common in retractable devices.
+
+Leaf springs use bending of flat strips for energy storage. Multiple leaves stacked together increase load capacity in vehicle suspensions. Composite leaf springs reduce weight compared to steel while maintaining performance. Progressive spring rates result from sequential leaf engagement under increasing loads.
+
+Belleville springs or disc springs provide high forces in compact spaces. Stacking configurations in parallel increase force capacity while series stacking increases deflection range. Wave springs fit in confined axial spaces, replacing conventional helical springs in compact assemblies.
+
+Spring materials must combine high yield strength with low hysteresis losses. Music wire provides excellent fatigue properties for precision springs. Stainless steels resist corrosion in harsh environments. Titanium alloys reduce weight for aerospace applications. Shape memory alloys enable springs that change characteristics with temperature.
+
+Spring failure occurs through fatigue cracking, hydrogen embrittlement, stress corrosion, and simple overload. Shot peening compresses surface layers, improving fatigue life. Proper heat treatment develops optimal microstructure. Design calculations must account for stress concentrations at hooks and bends.

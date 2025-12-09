@@ -1,0 +1,19 @@
+Cartography and Geographic Information
+
+Cartography encompasses the science and art of map making. Maps represent geographic reality through systematic abstraction and symbolization. Modern cartography integrates traditional design principles with digital technologies enabling interactive and dynamic representations.
+
+Map projections transform the spherical Earth onto flat surfaces. All projections introduce distortion in area, shape, distance, or direction. Conformal projections preserve local shapes suitable for navigation. Equal area projections maintain relative sizes for thematic mapping. Compromise projections balance multiple properties for general reference.
+
+Scale determines the relationship between map distance and ground distance. Large scale maps show small areas in detail. Small scale maps cover extensive regions with generalization. Scale selection depends on map purpose and available space. Variable scale enables focus areas with regional context.
+
+Generalization simplifies geographic features for legibility. Selection includes important features while omitting minor ones. Simplification reduces detail in retained features. Displacement separates crowded features. Aggregation combines multiple features into symbols. Effective generalization maintains essential spatial relationships.
+
+Symbolization encodes geographic information visually. Point symbols represent discrete locations through shape, size, and color. Line symbols depict linear features with varied weights and patterns. Area symbols fill regions with colors, patterns, or textures. Symbol design balances information density with visual clarity.
+
+Typography labels features and conveys hierarchical relationships. Font selection matches formality and character to map purpose. Size variation indicates feature importance. Placement follows conventions avoiding feature obscuration. Halos and masks improve legibility against complex backgrounds.
+
+Color serves multiple cartographic functions. Hue distinguishes feature categories. Value variations show quantitative differences. Saturation affects visual prominence. Color schemes must consider color vision deficiency accessibility. Sequential schemes suit ordered data while diverging schemes emphasize departures from central values.
+
+Geographic information systems digitize cartographic workflows. Spatial databases store coordinate geometries with attribute data. Overlay analysis combines multiple data layers. Geoprocessing automates complex spatial operations. Web mapping delivers interactive maps to global audiences.
+
+Remote sensing provides Earth observation data for mapping. Satellite imagery captures visible and invisible spectrum reflectance. Aerial photography offers high resolution coverage. LiDAR measures terrain elevation through laser pulse timing. These technologies continuously update geographic databases.

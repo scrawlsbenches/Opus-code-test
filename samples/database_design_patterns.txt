@@ -1,0 +1,21 @@
+Database Design Patterns for Distributed Systems
+
+Database design in distributed systems requires balancing consistency, availability, and partition tolerance. The CAP theorem establishes that distributed systems cannot guarantee all three simultaneously during network partitions. Design choices depend on application requirements and failure scenarios.
+
+Relational databases provide ACID transactions ensuring atomicity, consistency, isolation, and durability. These guarantees simplify application logic by preventing partial updates and inconsistent reads. However, distributed transactions across multiple databases introduce performance overhead and availability challenges. The microservices architecture document discusses how service boundaries affect database choices.
+
+NoSQL databases relax relational constraints for scalability and flexibility. Document stores like MongoDB nest related data reducing join requirements. Key-value stores provide simple fast access patterns. Wide-column stores handle sparse data efficiently. Graph databases optimize relationship traversal queries.
+
+Sharding partitions data across multiple database instances. Horizontal scaling adds capacity by adding shards. Shard keys determine data distribution. Hot spots occur when traffic concentrates on particular shards. Resharding redistributes data as access patterns change.
+
+Replication maintains copies of data across multiple nodes. Synchronous replication ensures consistency but adds latency. Asynchronous replication improves performance but risks data loss during failures. Leader-follower configurations direct writes to leaders while distributing reads across followers.
+
+Event sourcing stores state as event sequences rather than current snapshots. Event stores optimize for append operations. Projections build queryable views from events. This pattern enables temporal queries and complete audit trails. The event sourcing patterns document provides detailed implementation guidance.
+
+Polyglot persistence uses different databases for different data types and access patterns. Transactional data might use relational stores while session data uses key-value caches. Search functionality leverages dedicated search engines. This approach requires managing multiple database technologies and their interactions.
+
+Change data capture streams database modifications to downstream systems. Log-based capture reads database transaction logs. Trigger-based capture fires on data changes. CDC enables event-driven integrations without application changes. This technique supports the asynchronous patterns described in domain driven design contexts.
+
+Connection pooling manages database connections efficiently. Creating connections is expensive compared to reusing existing connections. Pools maintain connection inventories sized for workload. Connection lifecycle management handles failures and stale connections.
+
+Query optimization ensures efficient data access. Indexes accelerate lookups at the cost of write overhead. Query plans reveal how databases execute queries. Statistics help optimizers choose efficient plans. Monitoring identifies slow queries requiring optimization.

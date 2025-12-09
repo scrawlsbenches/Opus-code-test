@@ -1,0 +1,23 @@
+GraphQL Schema Design and Query Patterns
+
+GraphQL provides query language and runtime for APIs enabling clients to request exactly the data they need. Schema definitions describe available types and operations. This approach addresses over-fetching and under-fetching problems common with fixed endpoint designs.
+
+Schema definition language declares types and their relationships. Object types define domain entities with typed fields. Scalar types include String, Int, Float, Boolean, and ID for primitive values. Custom scalars handle specialized data like dates and URLs. Enum types constrain values to defined sets.
+
+Queries retrieve data from the schema. Query types define entry points for read operations. Field selection specifies exactly which data to return. Nested selections traverse relationships in single requests. Arguments filter and customize field resolution.
+
+Mutations modify server state. Mutation types define entry points for write operations. Input types structure complex mutation arguments. Return types provide updated data after mutations complete. Optimistic updates enable responsive interfaces before server confirmation.
+
+Subscriptions enable real-time data streaming. Subscription types define event sources. Clients maintain persistent connections receiving pushed updates. WebSocket implementations commonly support GraphQL subscriptions. Event filtering reduces unnecessary client notifications.
+
+Resolvers implement field value computation. Each field maps to a resolver function. Parent objects and arguments provide resolver context. Data loaders batch and cache database queries, preventing N+1 query problems. Resolver chains handle nested field resolution.
+
+Nullable types indicate whether fields may return null. Non-nullable types use exclamation marks as String! notation. List types use brackets as [String] notation. Combining nullability and lists distinguishes [String], [String!], [String]!, and [String!]! semantics.
+
+Interfaces define common field sets for multiple types. Implementing types must include interface fields. Union types represent multiple possible types without common fields. Abstract types enable polymorphic queries returning different concrete types.
+
+Schema organization affects maintainability and evolution. Namespacing through nested types or naming conventions prevents collisions. Schema stitching combines multiple schemas into unified interfaces. Federation distributes schemas across services while presenting unified graphs.
+
+Introspection queries expose schema structure at runtime. Clients discover available types and operations. Development tools leverage introspection for autocomplete and validation. Production deployments may disable introspection for security.
+
+Performance optimization prevents expensive query execution. Query complexity analysis limits resource consumption. Depth limiting prevents deeply nested queries. Caching at resolver and response levels reduces database load. Persisted queries precompute validated query structures.

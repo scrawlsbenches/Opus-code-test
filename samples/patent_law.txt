@@ -1,0 +1,15 @@
+Patent Law and Intellectual Property Protection
+
+Patent law provides inventors exclusive rights to their inventions for limited periods. The United States Patent and Trademark Office examines applications for utility patents, design patents, and plant patents. Utility patents protect functional inventions for twenty years from filing. Design patents cover ornamental designs for fifteen years. Plant patents protect asexually reproduced plant varieties.
+
+Patentability requires novelty, non-obviousness, utility, and adequate disclosure. Novel inventions must differ from prior art encompassing all publicly available knowledge before the filing date. Non-obviousness means the invention would not have been obvious to a person having ordinary skill in the art. Utility requires specific, substantial, and credible usefulness.
+
+Patent claims define the invention's legal boundaries. Independent claims stand alone while dependent claims incorporate and narrow independent claims. Claim construction interprets claim language to determine scope. Prosecution history estoppel prevents patentees from recapturing claim scope surrendered during prosecution.
+
+Infringement occurs when unauthorized parties make, use, sell, offer to sell, or import patented inventions. Literal infringement requires each claim element in the accused product. The doctrine of equivalents captures insubstantial variations performing substantially the same function in substantially the same way to achieve substantially the same result.
+
+Defenses to infringement include invalidity challenges arguing the patent should not have issued. Prior art invalidates claims anticipated or rendered obvious. Inequitable conduct during prosecution may render patents unenforceable. Experimental use provides limited defense for research purposes. Patent exhaustion terminates rights after authorized sale.
+
+Patent licensing transfers rights without transferring ownership. Exclusive licenses grant sole rights while non-exclusive licenses permit multiple licensees. Cross-licensing agreements allow mutual use of complementary patents. Patent pools aggregate patents for collective licensing, common in standards-essential patents.
+
+International patent protection requires separate filings in each jurisdiction. The Patent Cooperation Treaty streamlines international applications. Paris Convention priority rights preserve filing dates across member countries. Patent term adjustment compensates for examination delays while patent term extensions account for regulatory review periods.

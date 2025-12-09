@@ -1,0 +1,31 @@
+History of Computing: From Mechanical Calculators to Modern Systems
+
+The evolution of computing spans centuries from mechanical devices to electronic computers capable of billions of operations per second. Each era built upon previous innovations while introducing revolutionary concepts that transformed human capability.
+
+The seventeenth century saw development of mechanical calculators. Blaise Pascal invented the Pascaline in 1642, performing addition and subtraction through gear mechanisms. Gottfried Wilhelm Leibniz extended this work with the Stepped Reckoner in 1694, capable of multiplication and division. These machines established principles of mechanical computation.
+
+Charles Babbage conceived programmable computing in the nineteenth century. His Difference Engine designed in 1822 would automatically compute polynomial functions. The more ambitious Analytical Engine proposed in 1837 incorporated conditional branching and loops. Ada Lovelace wrote algorithms for the Analytical Engine, recognized as the first computer programs.
+
+Herman Hollerith developed punched card tabulating machines for the 1890 census. Cards encoded data through hole patterns read by electrical contacts. This technology founded the Tabulating Machine Company, later becoming IBM. Punched cards remained primary computer input until the 1970s.
+
+Electronic computing emerged during World War II. Colossus machines at Bletchley Park broke encrypted German communications beginning in 1943. ENIAC at the University of Pennsylvania, operational in 1945, performed general-purpose calculations. These vacuum tube computers filled rooms and consumed enormous power.
+
+The stored program concept revolutionized computing in the late 1940s. John von Neumann described architecture storing both programs and data in memory. EDVAC design incorporated this principle. Manchester Baby executed the first stored program in 1948. This architecture remains fundamental to modern computers.
+
+Transistors replaced vacuum tubes beginning in the late 1950s. Bell Labs invented transistors in 1947. Second generation computers using transistors proved smaller, faster, more reliable, and more efficient. The transistor revolution enabled miniaturization continuing to present day.
+
+Integrated circuits combined multiple transistors on single chips starting in 1958. Jack Kilby at Texas Instruments and Robert Noyce at Fairchild independently developed integrated circuits. This innovation enabled exponential growth in computing power. Moore's Law observed transistor counts doubling approximately every two years.
+
+Minicomputers democratized computing in the 1960s. Digital Equipment Corporation's PDP series brought interactive computing to laboratories and businesses. Time-sharing systems allowed multiple users to share single computers. These developments established computing as essential business and research infrastructure.
+
+Personal computers emerged in the 1970s. The Altair 8800 kit in 1975 sparked hobbyist interest. Apple II in 1977 and IBM PC in 1981 brought computing to homes and offices. Graphical user interfaces at Xerox PARC and later Apple Macintosh transformed human-computer interaction.
+
+The internet connected computers globally. ARPANET in 1969 established packet-switched networking. TCP/IP protocols standardized internetworking by 1983. Tim Berners-Lee created the World Wide Web in 1989. Email, web browsing, and electronic commerce transformed communication and business.
+
+Mobile computing and smartphones condensed computers into pocket-sized devices. Apple iPhone in 2007 established touchscreen smartphones as dominant computing platform. App ecosystems created new software distribution models. Mobile devices now exceed personal computers in global usage.
+
+Cloud computing shifted processing to remote data centers. Amazon Web Services launched in 2006, providing on-demand computing resources. This model enables scalable applications without infrastructure investment. Most internet services now rely on cloud infrastructure.
+
+Artificial intelligence has transformed computing capabilities. Deep learning breakthroughs beginning around 2012 enabled unprecedented image recognition and language processing. Large language models demonstrate emergent abilities at scale. AI applications increasingly augment human decision-making across domains.
+
+The future promises continued transformation through quantum computing, neuromorphic processors, and technologies yet to emerge. Each generation builds upon foundations laid by previous innovations, extending the remarkable trajectory from Pascal's gears to systems processing billions of operations per second.

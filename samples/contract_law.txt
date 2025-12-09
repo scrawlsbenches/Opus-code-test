@@ -1,0 +1,17 @@
+Contract Law Fundamentals
+
+Contract law governs legally binding agreements between parties. A valid contract requires offer, acceptance, consideration, capacity, and legality. The offeror proposes terms while the offeree decides whether to accept, reject, or counter-offer. Consideration represents the exchange of value, distinguishing contracts from gratuitous promises.
+
+The statute of frauds requires certain contracts to be in writing, including real estate transactions, agreements lasting more than one year, and contracts for goods exceeding five hundred dollars under the Uniform Commercial Code. Oral contracts remain enforceable for many transactions, though proving their terms presents evidentiary challenges.
+
+Breach of contract occurs when a party fails to perform contractual obligations. Material breach substantially defeats the contract's purpose, allowing the non-breaching party to terminate and seek damages. Minor breach permits damages but requires continued performance. Anticipatory repudiation occurs when a party indicates intent to breach before performance is due.
+
+Remedies for breach include compensatory damages restoring the injured party to the position they would have occupied had the contract been performed. Consequential damages cover foreseeable losses resulting from the breach. Specific performance compels actual performance when monetary damages prove inadequate, typically for unique goods or real property.
+
+Contract interpretation follows established rules. Plain meaning governs unambiguous terms. Ambiguous provisions are construed against the drafter under contra proferentem. Course of dealing, trade usage, and course of performance inform meaning. The parol evidence rule generally excludes prior negotiations contradicting integrated written agreements.
+
+Defenses to contract enforcement include unconscionability, where terms are so one-sided that enforcement would be unjust. Duress involves wrongful pressure overcoming free will. Undue influence exploits positions of trust. Misrepresentation and fraud involve false statements inducing agreement. Mistake may void contracts when both parties share fundamental misunderstanding.
+
+Third party beneficiaries acquire rights under contracts made for their benefit. Intended beneficiaries may enforce contracts while incidental beneficiaries cannot. Assignment transfers contractual rights to assignees. Delegation transfers duties to delegates. Some obligations remain non-delegable due to personal service requirements.
+
+The doctrine of impossibility excuses performance when unforeseen events make performance objectively impossible. Impracticability applies when performance remains possible but commercially unreasonable. Frustration of purpose excuses performance when the contract's essential purpose becomes impossible to achieve.
