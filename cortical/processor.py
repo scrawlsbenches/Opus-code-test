@@ -567,7 +567,94 @@ class CorticalTextProcessor:
             semantic_relations=self.semantic_relations if use_semantic else None,
             use_semantic=use_semantic
         )
-    
+
+    def find_documents_batch(
+        self,
+        queries: List[str],
+        top_n: int = 5,
+        use_expansion: bool = True,
+        use_semantic: bool = True
+    ) -> List[List[Tuple[str, float]]]:
+        """
+        Find documents for multiple queries efficiently.
+
+        More efficient than calling find_documents_for_query() multiple times
+        because it shares tokenization and expansion caching across queries.
+
+        Args:
+            queries: List of search query strings
+            top_n: Number of documents to return per query
+            use_expansion: Whether to expand query terms using lateral connections
+            use_semantic: Whether to use semantic relations for expansion
+
+        Returns:
+            List of results, one per query. Each result is a list of (doc_id, score) tuples.
+
+        Example:
+            >>> queries = ["neural networks", "machine learning", "data processing"]
+            >>> results = processor.find_documents_batch(queries, top_n=3)
+            >>> for query, docs in zip(queries, results):
+            ...     print(f"{query}: {[doc_id for doc_id, _ in docs]}")
+        """
+        return query_module.find_documents_batch(
+            queries,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n,
+            use_expansion=use_expansion,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
+        )
+
+    def find_passages_batch(
+        self,
+        queries: List[str],
+        top_n: int = 5,
+        chunk_size: int = 512,
+        overlap: int = 128,
+        use_expansion: bool = True,
+        doc_filter: Optional[List[str]] = None,
+        use_semantic: bool = True
+    ) -> List[List[Tuple[str, str, int, int, float]]]:
+        """
+        Find passages for multiple queries efficiently.
+
+        More efficient than calling find_passages_for_query() multiple times
+        because it shares chunk computation and expansion caching across queries.
+
+        Args:
+            queries: List of search query strings
+            top_n: Number of passages to return per query
+            chunk_size: Size of each chunk in characters (default 512)
+            overlap: Overlap between chunks in characters (default 128)
+            use_expansion: Whether to expand query terms
+            doc_filter: Optional list of doc_ids to restrict search to
+            use_semantic: Whether to use semantic relations for expansion
+
+        Returns:
+            List of results, one per query. Each result is a list of
+            (passage_text, doc_id, start_char, end_char, score) tuples.
+
+        Example:
+            >>> queries = ["neural networks", "deep learning"]
+            >>> results = processor.find_passages_batch(queries)
+            >>> for query, passages in zip(queries, results):
+            ...     print(f"{query}: {len(passages)} passages found")
+        """
+        return query_module.find_passages_batch(
+            queries,
+            self.layers,
+            self.tokenizer,
+            self.documents,
+            top_n=top_n,
+            chunk_size=chunk_size,
+            overlap=overlap,
+            use_expansion=use_expansion,
+            doc_filter=doc_filter,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
+        )
+
     def query_expanded(self, query_text: str, top_n: int = 10, max_expansions: int = 8) -> List[Tuple[str, float]]:
         return query_module.query_with_spreading_activation(query_text, self.layers, self.tokenizer, top_n, max_expansions)
     

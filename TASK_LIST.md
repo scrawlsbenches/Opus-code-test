@@ -473,18 +473,34 @@ Current ranking is flat (Token TF-IDF → Document Score). Better RAG performanc
 ### 18. Add Batch Query API
 
 **Files:** `cortical/query.py`, `cortical/processor.py`
-**Status:** [ ] Future Enhancement
+**Status:** [x] Completed
 
 **Problem:**
 No efficient way to run multiple queries. Each query repeats tokenization and expansion.
 
-**Implementation:**
+**Solution Applied:**
+1. Added `find_documents_batch()` function to `query.py` with expansion caching
+2. Added `find_passages_batch()` function to `query.py` with chunk pre-computation
+3. Added corresponding methods to `CorticalTextProcessor`
+4. Both functions share tokenization and expansion caches across queries
+
+**Files Modified:**
+- `cortical/query.py` - Added batch query functions (~180 lines)
+- `cortical/processor.py` - Added processor wrapper methods (~90 lines)
+- `tests/test_processor.py` - Added 14 tests for batch query functionality
+
+**Usage Examples:**
 ```python
-def find_documents_batch(self, queries: List[str], top_n: int = 5):
-    """Process multiple queries efficiently."""
-    # Batch tokenization
-    # Shared expansion cache
-    # Parallel scoring
+# Batch document search
+queries = ["neural networks", "machine learning", "data processing"]
+results = processor.find_documents_batch(queries, top_n=3)
+for query, docs in zip(queries, results):
+    print(f"{query}: {[doc_id for doc_id, _ in docs]}")
+
+# Batch passage search (for RAG)
+results = processor.find_passages_batch(queries, top_n=5, chunk_size=512)
+for query, passages in zip(queries, results):
+    print(f"{query}: {len(passages)} passages found")
 ```
 
 ---
@@ -509,17 +525,17 @@ def find_documents_batch(self, queries: List[str], top_n: int = 5):
 | Medium | Add incremental indexing | ✅ Completed | RAG |
 | Low | Document magic numbers | ⏳ Deferred | Documentation |
 | Low | Multi-stage ranking pipeline | ⬜ Future | RAG |
-| Low | Batch query API | ⬜ Future | RAG |
+| Low | Batch query API | ✅ Completed | RAG |
 
 **Bug Fix Completion:** 7/7 tasks (100%)
-**RAG Enhancement Completion:** 6/8 tasks (75%)
+**RAG Enhancement Completion:** 7/8 tasks (88%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 144 tests in 0.141s
+Ran 158 tests in 0.153s
 OK
 ```
 

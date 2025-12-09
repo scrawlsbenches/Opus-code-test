@@ -360,6 +360,149 @@ class TestProcessorGaps(unittest.TestCase):
         self.assertIsInstance(anomalies, list)
 
 
+class TestProcessorBatchQuery(unittest.TestCase):
+    """Test batch query functionality for efficient multi-query search."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document("neural_doc", """
+            Neural networks are computational models inspired by biological neurons.
+            Deep learning uses many layers to learn hierarchical representations.
+            Backpropagation is the key algorithm for training neural networks.
+        """)
+        cls.processor.process_document("ml_doc", """
+            Machine learning algorithms learn patterns from data automatically.
+            Supervised learning requires labeled training examples.
+            Model evaluation uses metrics like accuracy and precision.
+        """)
+        cls.processor.process_document("data_doc", """
+            Data preprocessing is essential for machine learning pipelines.
+            Feature engineering creates meaningful input representations.
+            Data normalization scales features to similar ranges.
+        """)
+        cls.processor.compute_all(verbose=False)
+
+    def test_find_documents_batch_returns_list(self):
+        """Test that find_documents_batch returns a list of results."""
+        queries = ["neural networks", "machine learning"]
+        results = self.processor.find_documents_batch(queries, top_n=2)
+        self.assertIsInstance(results, list)
+        self.assertEqual(len(results), 2)
+
+    def test_find_documents_batch_result_structure(self):
+        """Test that each result has correct structure."""
+        queries = ["neural", "data"]
+        results = self.processor.find_documents_batch(queries, top_n=3)
+        for result in results:
+            self.assertIsInstance(result, list)
+            for doc_id, score in result:
+                self.assertIsInstance(doc_id, str)
+                self.assertIsInstance(score, float)
+
+    def test_find_documents_batch_returns_relevant_docs(self):
+        """Test that batch queries return relevant documents."""
+        queries = ["neural networks", "data preprocessing"]
+        results = self.processor.find_documents_batch(queries, top_n=1)
+        # First query should find neural_doc
+        self.assertGreater(len(results[0]), 0)
+        self.assertEqual(results[0][0][0], "neural_doc")
+        # Second query should find data_doc
+        self.assertGreater(len(results[1]), 0)
+        self.assertEqual(results[1][0][0], "data_doc")
+
+    def test_find_documents_batch_top_n(self):
+        """Test that top_n limits results per query."""
+        queries = ["learning", "neural"]
+        results = self.processor.find_documents_batch(queries, top_n=2)
+        for result in results:
+            self.assertLessEqual(len(result), 2)
+
+    def test_find_documents_batch_empty_query_list(self):
+        """Test batch with empty query list."""
+        results = self.processor.find_documents_batch([], top_n=3)
+        self.assertEqual(results, [])
+
+    def test_find_documents_batch_no_expansion(self):
+        """Test batch query without expansion."""
+        queries = ["neural", "data"]
+        results = self.processor.find_documents_batch(
+            queries, top_n=2, use_expansion=False
+        )
+        self.assertEqual(len(results), 2)
+
+    def test_find_passages_batch_returns_list(self):
+        """Test that find_passages_batch returns a list of results."""
+        queries = ["neural networks", "machine learning"]
+        results = self.processor.find_passages_batch(queries, top_n=2)
+        self.assertIsInstance(results, list)
+        self.assertEqual(len(results), 2)
+
+    def test_find_passages_batch_result_structure(self):
+        """Test that each passage result has correct structure."""
+        queries = ["neural"]
+        results = self.processor.find_passages_batch(queries, top_n=3)
+        self.assertEqual(len(results), 1)
+        for passage, doc_id, start, end, score in results[0]:
+            self.assertIsInstance(passage, str)
+            self.assertIsInstance(doc_id, str)
+            self.assertIsInstance(start, int)
+            self.assertIsInstance(end, int)
+            self.assertIsInstance(score, float)
+
+    def test_find_passages_batch_top_n(self):
+        """Test that top_n limits passages per query."""
+        queries = ["learning", "neural"]
+        results = self.processor.find_passages_batch(queries, top_n=2)
+        for result in results:
+            self.assertLessEqual(len(result), 2)
+
+    def test_find_passages_batch_chunk_size(self):
+        """Test that chunk_size is respected."""
+        queries = ["neural"]
+        results = self.processor.find_passages_batch(
+            queries, top_n=5, chunk_size=100, overlap=20
+        )
+        for passage, _, _, _, _ in results[0]:
+            self.assertLessEqual(len(passage), 100)
+
+    def test_find_passages_batch_doc_filter(self):
+        """Test that doc_filter restricts results."""
+        queries = ["learning", "neural"]
+        results = self.processor.find_passages_batch(
+            queries, top_n=10, doc_filter=["neural_doc"]
+        )
+        for result in results:
+            for _, doc_id, _, _, _ in result:
+                self.assertEqual(doc_id, "neural_doc")
+
+    def test_find_passages_batch_empty_query_list(self):
+        """Test batch with empty query list."""
+        results = self.processor.find_passages_batch([], top_n=3)
+        self.assertEqual(results, [])
+
+    def test_batch_query_consistency(self):
+        """Test that batch results match individual queries."""
+        queries = ["neural networks", "data processing"]
+        batch_results = self.processor.find_documents_batch(queries, top_n=3)
+
+        # Compare with individual queries
+        for i, query in enumerate(queries):
+            individual_result = self.processor.find_documents_for_query(query, top_n=3)
+            # Results should be the same (or very close)
+            self.assertEqual(len(batch_results[i]), len(individual_result))
+            for j, (doc_id, score) in enumerate(batch_results[i]):
+                self.assertEqual(doc_id, individual_result[j][0])
+
+    def test_batch_handles_nonexistent_terms(self):
+        """Test that batch handles queries with no matches."""
+        queries = ["xyznonexistent123", "neural networks"]
+        results = self.processor.find_documents_batch(queries, top_n=3)
+        self.assertEqual(len(results), 2)
+        self.assertEqual(len(results[0]), 0)  # No matches for nonexistent
+        self.assertGreater(len(results[1]), 0)  # Matches for neural networks
+
+
 class TestProcessorIncrementalIndexing(unittest.TestCase):
     """Test incremental document indexing functionality."""
 
