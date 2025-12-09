@@ -207,7 +207,7 @@ The following tasks are required to transform the Cortical Text Processor into a
 ### 8. Implement Chunk-Level Retrieval
 
 **Files:** `cortical/processor.py`, `cortical/query.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 
 **Problem:**
 Current retrieval returns only document IDs and scores. RAG systems need actual text passages with position information for context windows and citations.
@@ -245,7 +245,7 @@ results = processor.find_passages_for_query("neural networks")
 ### 9. Add Document Metadata Support
 
 **Files:** `cortical/processor.py`, `cortical/persistence.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 
 **Problem:**
 No way to store or retrieve document metadata (source URL, timestamp, author, etc.). RAG systems need this for proper citations and filtering.
@@ -281,7 +281,7 @@ self.document_metadata: Dict[str, Dict[str, Any]] = {}
 ### 10. Activate Layer 2 (Concept Clustering) by Default
 
 **Files:** `cortical/processor.py`, `cortical/query.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 
 **Problem:**
 Layer 2 (Concepts) has clustering code but is never populated automatically. This layer could enable topic-based filtering and hierarchical search.
@@ -306,7 +306,7 @@ Layer 2 (Concepts) has clustering code but is never populated automatically. Thi
 ### 11. Integrate Semantic Relations into Retrieval
 
 **Files:** `cortical/query.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 
 **Problem:**
 `semantics.py` extracts relations (IsA, PartOf, RelatedTo, etc.) but they're only used for retrofitting embeddings, not for query expansion or retrieval.
@@ -330,7 +330,7 @@ Layer 2 (Concepts) has clustering code but is never populated automatically. Thi
 ### 12. Persist Full Computed State
 
 **Files:** `cortical/persistence.py`, `cortical/processor.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 
 **Problem:**
 Embeddings, semantic relations, and concept clusters are not saved. Loading a model requires expensive recomputation.
@@ -364,7 +364,7 @@ Embeddings, semantic relations, and concept clusters are not saved. Loading a mo
 
 **File:** `cortical/embeddings.py`
 **Line:** 26
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 
 **Problem:**
 ```python
@@ -383,7 +383,7 @@ Embeddings, semantic relations, and concept clusters are not saved. Loading a mo
 
 **File:** `cortical/embeddings.py`
 **Lines:** 151-156
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 
 **Problem:**
 Spectral embeddings use O(n) linear search instead of O(1) `get_by_id()`:
@@ -479,27 +479,27 @@ def find_documents_batch(self, queries: List[str], top_n: int = 5):
 | Medium | Remove unused import | ✅ Completed | Bug Fix |
 | Medium | Add verbose parameter | ✅ Completed | Bug Fix |
 | Low | Add test coverage | ✅ Completed | Bug Fix |
-| **Critical** | **Implement chunk-level retrieval** | ⬜ Not Started | **RAG** |
-| **Critical** | **Add document metadata support** | ⬜ Not Started | **RAG** |
-| **High** | **Activate Layer 2 concepts** | ⬜ Not Started | **RAG** |
-| **High** | **Integrate semantic relations** | ⬜ Not Started | **RAG** |
-| **High** | **Persist full computed state** | ⬜ Not Started | **RAG** |
-| Medium | Fix type annotation (embeddings.py) | ⬜ Not Started | Bug Fix |
-| Medium | Optimize spectral embeddings | ⬜ Not Started | Performance |
+| **Critical** | **Implement chunk-level retrieval** | ✅ Completed | **RAG** |
+| **Critical** | **Add document metadata support** | ✅ Completed | **RAG** |
+| **High** | **Activate Layer 2 concepts** | ✅ Completed | **RAG** |
+| **High** | **Integrate semantic relations** | ✅ Completed | **RAG** |
+| **High** | **Persist full computed state** | ✅ Completed | **RAG** |
+| Medium | Fix type annotation (embeddings.py) | ✅ Completed | Bug Fix |
+| Medium | Optimize spectral embeddings | ✅ Completed | Performance |
 | Medium | Add incremental indexing | ⬜ Not Started | RAG |
 | Low | Document magic numbers | ⏳ Deferred | Documentation |
 | Low | Multi-stage ranking pipeline | ⬜ Future | RAG |
 | Low | Batch query API | ⬜ Future | RAG |
 
-**Bug Fix Completion:** 6/7 tasks (86%)
-**RAG Enhancement Completion:** 0/8 tasks (0%)
+**Bug Fix Completion:** 7/7 tasks (100%)
+**RAG Enhancement Completion:** 5/8 tasks (63%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 109 tests in 0.131s
+Ran 129 tests in 0.152s
 OK
 ```
 
