@@ -328,7 +328,12 @@ class CorticalTextProcessor:
         return persistence.get_state_summary(self.layers, self.documents)
     
     def save(self, filepath: str, verbose: bool = True) -> None:
-        """Save processor state to a file."""
+        """
+        Save processor state to a file.
+
+        Saves all computed state including embeddings and semantic relations,
+        so they don't need to be recomputed when loading.
+        """
         metadata = {
             'has_embeddings': bool(self.embeddings),
             'has_relations': bool(self.semantic_relations)
@@ -338,18 +343,27 @@ class CorticalTextProcessor:
             self.layers,
             self.documents,
             self.document_metadata,
+            self.embeddings,
+            self.semantic_relations,
             metadata,
             verbose
         )
 
     @classmethod
     def load(cls, filepath: str, verbose: bool = True) -> 'CorticalTextProcessor':
-        """Load processor state from a file."""
-        layers, documents, document_metadata, metadata = persistence.load_processor(filepath, verbose)
+        """
+        Load processor state from a file.
+
+        Restores all computed state including embeddings and semantic relations.
+        """
+        result = persistence.load_processor(filepath, verbose)
+        layers, documents, document_metadata, embeddings, semantic_relations, metadata = result
         processor = cls()
         processor.layers = layers
         processor.documents = documents
         processor.document_metadata = document_metadata
+        processor.embeddings = embeddings
+        processor.semantic_relations = semantic_relations
         return processor
     
     def export_graph(self, filepath: str, layer: Optional[CorticalLayer] = None, max_nodes: int = 500) -> Dict:

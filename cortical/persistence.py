@@ -24,6 +24,8 @@ def save_processor(
     layers: Dict[CorticalLayer, HierarchicalLayer],
     documents: Dict[str, str],
     document_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
+    embeddings: Optional[Dict[str, list]] = None,
+    semantic_relations: Optional[list] = None,
     metadata: Optional[Dict] = None,
     verbose: bool = True
 ) -> None:
@@ -35,24 +37,28 @@ def save_processor(
         layers: Dictionary of all layers
         documents: Document collection
         document_metadata: Per-document metadata (source, timestamp, etc.)
+        embeddings: Graph embeddings for terms (optional)
+        semantic_relations: Extracted semantic relations (optional)
         metadata: Optional processor metadata (version, settings, etc.)
         verbose: Print progress
     """
     state = {
-        'version': '2.1',
+        'version': '2.2',
         'layers': {},
         'documents': documents,
         'document_metadata': document_metadata or {},
+        'embeddings': embeddings or {},
+        'semantic_relations': semantic_relations or [],
         'metadata': metadata or {}
     }
-    
+
     # Serialize layers
     for layer_enum, layer in layers.items():
         state['layers'][layer_enum.value] = layer.to_dict()
-    
+
     with open(filepath, 'wb') as f:
         pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
-    
+
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())
         total_conns = sum(layer.total_connections() for layer in layers.values())
@@ -60,6 +66,10 @@ def save_processor(
         print(f"  - {len(documents)} documents")
         print(f"  - {total_cols} minicolumns")
         print(f"  - {total_conns} connections")
+        if embeddings:
+            print(f"  - {len(embeddings)} embeddings")
+        if semantic_relations:
+            print(f"  - {len(semantic_relations)} semantic relations")
 
 
 def load_processor(
@@ -74,7 +84,7 @@ def load_processor(
         verbose: Print progress
 
     Returns:
-        Tuple of (layers, documents, document_metadata, metadata)
+        Tuple of (layers, documents, document_metadata, embeddings, semantic_relations, metadata)
     """
     with open(filepath, 'rb') as f:
         state = pickle.load(f)
@@ -87,6 +97,8 @@ def load_processor(
 
     documents = state.get('documents', {})
     document_metadata = state.get('document_metadata', {})
+    embeddings = state.get('embeddings', {})
+    semantic_relations = state.get('semantic_relations', [])
     metadata = state.get('metadata', {})
 
     if verbose:
@@ -96,8 +108,12 @@ def load_processor(
         print(f"  - {len(documents)} documents")
         print(f"  - {total_cols} minicolumns")
         print(f"  - {total_conns} connections")
+        if embeddings:
+            print(f"  - {len(embeddings)} embeddings")
+        if semantic_relations:
+            print(f"  - {len(semantic_relations)} semantic relations")
 
-    return layers, documents, document_metadata, metadata
+    return layers, documents, document_metadata, embeddings, semantic_relations, metadata
 
 
 def export_graph_json(
