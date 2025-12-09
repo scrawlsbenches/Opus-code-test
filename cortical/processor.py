@@ -426,6 +426,9 @@ class CorticalTextProcessor:
             if verbose:
                 print("Building concept clusters...")
             self.build_concept_clusters(verbose=False)
+            if verbose:
+                print("Computing concept connections...")
+            self.compute_concept_connections(verbose=False)
         # Mark core computations as fresh
         fresh_comps = [
             self.COMP_ACTIVATION,
@@ -461,7 +464,37 @@ class CorticalTextProcessor:
         analysis.build_concept_clusters(self.layers, clusters)
         if verbose: print(f"Built {len(clusters)} concept clusters")
         return clusters
-    
+
+    def compute_concept_connections(
+        self,
+        use_semantics: bool = True,
+        min_shared_docs: int = 1,
+        min_jaccard: float = 0.1,
+        verbose: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Build lateral connections between concepts based on document overlap and semantics.
+
+        Args:
+            use_semantics: Use semantic relations to boost connection weights
+            min_shared_docs: Minimum shared documents for connection
+            min_jaccard: Minimum Jaccard similarity threshold
+            verbose: Print progress messages
+
+        Returns:
+            Statistics about connections created
+        """
+        semantic_rels = self.semantic_relations if use_semantics else None
+        stats = analysis.compute_concept_connections(
+            self.layers,
+            semantic_relations=semantic_rels,
+            min_shared_docs=min_shared_docs,
+            min_jaccard=min_jaccard
+        )
+        if verbose:
+            print(f"Created {stats['connections_created']} concept connections")
+        return stats
+
     def extract_corpus_semantics(self, verbose: bool = True) -> int:
         self.semantic_relations = semantics.extract_corpus_semantics(self.layers, self.documents, self.tokenizer)
         if verbose: print(f"Extracted {len(self.semantic_relations)} semantic relations")

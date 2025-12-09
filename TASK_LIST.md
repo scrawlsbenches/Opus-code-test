@@ -582,27 +582,36 @@ concept.feedforward_connections["L0_networks"] = 0.7  # lower PR
 
 ### 20. Add Concept-Level Lateral Connections
 
-**Files:** `cortical/analysis.py`
-**Status:** [ ] Pending
+**Files:** `cortical/analysis.py`, `cortical/processor.py`
+**Status:** [x] Completed
 
 **Problem:**
-Layer 2 (Concepts) has 0 lateral connections. Concept clusters should connect to each other based on:
-- Shared documents (concepts appearing in same docs)
-- Semantic overlap (member tokens with semantic relations)
-- Co-activation patterns
+Layer 2 (Concepts) had 0 lateral connections. Concept clusters should connect to each other based on shared documents and semantic overlap.
 
-**Implementation Steps:**
-1. Add `compute_concept_connections()` function to `analysis.py`
-2. Connect concepts sharing documents (weighted by Jaccard similarity of doc sets)
-3. Connect concepts with semantically related member tokens
-4. Weight connections by relation type (IsA > PartOf > RelatedTo)
-5. Call from `compute_all()` after `build_concept_clusters()`
+**Solution Applied:**
+1. Added `compute_concept_connections()` function to `analysis.py`
+2. Connects concepts by Jaccard similarity of document sets
+3. Optionally boosts weights using semantic relations between member tokens
+4. Relation type weighting: IsA (1.5) > PartOf (1.3) > HasProperty (1.2) > RelatedTo (1.0)
+5. Called from `compute_all()` after `build_concept_clusters()`
+6. Added `compute_concept_connections()` method to processor with parameters
 
-**Example Output:**
+**Files Modified:**
+- `cortical/analysis.py` - Added `compute_concept_connections()` (~110 lines)
+- `cortical/processor.py` - Added processor wrapper method, integrated into `compute_all()`
+- `tests/test_processor.py` - Added 8 tests for concept connections
+
+**Usage:**
 ```python
-# Concept "neural/networks/learning" connects to:
-#   → "knowledge/graph/semantic" (weight: 0.73, reason: shared docs + RelatedTo)
-#   → "data/processing/systems" (weight: 0.45, reason: shared docs)
+# Automatic in compute_all()
+processor.compute_all()  # Calls compute_concept_connections() automatically
+
+# Manual with options
+stats = processor.compute_concept_connections(
+    use_semantics=True,    # Boost weights with semantic relations
+    min_shared_docs=1,     # Minimum shared documents
+    min_jaccard=0.1        # Minimum Jaccard similarity
+)
 ```
 
 ---
@@ -884,7 +893,7 @@ complete_analogy("neural", "networks", "knowledge")
 | Low | Multi-stage ranking pipeline | ✅ Completed | RAG |
 | Low | Batch query API | ✅ Completed | RAG |
 | **Critical** | **Build cross-layer feedforward connections** | ✅ Completed | **ConceptNet** |
-| **Critical** | **Add concept-level lateral connections** | ⏳ Pending | **ConceptNet** |
+| **Critical** | **Add concept-level lateral connections** | ✅ Completed | **ConceptNet** |
 | **Critical** | **Add bigram lateral connections** | ⏳ Pending | **ConceptNet** |
 | **High** | **Implement relation-weighted PageRank** | ⏳ Pending | **ConceptNet** |
 | **High** | **Implement cross-layer PageRank propagation** | ⏳ Pending | **ConceptNet** |
@@ -898,14 +907,14 @@ complete_analogy("neural", "networks", "knowledge")
 
 **Bug Fix Completion:** 7/7 tasks (100%)
 **RAG Enhancement Completion:** 8/8 tasks (100%)
-**ConceptNet Enhancement Completion:** 1/12 tasks (8%)
+**ConceptNet Enhancement Completion:** 2/12 tasks (17%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 185 tests in 0.147s
+Ran 193 tests in 0.162s
 OK
 ```
 
