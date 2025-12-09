@@ -1,0 +1,11 @@
+Sparse coding is a fundamental principle of neural information processing.
+At any moment, only a small percentage of neurons are active, yet this
+sparse pattern can represent vast amounts of information through combinatorics.
+The visual cortex uses sparse distributed representations where each neuron
+responds to specific features and each object activates a unique sparse
+pattern. This encoding scheme offers several advantages: energy efficiency,
+noise robustness, and the ability to store many overlapping memories without
+interference. Artificial neural networks are beginning to incorporate
+sparsity constraints, leading to more efficient and interpretable models.
+Sparse autoencoders, for instance, learn compressed representations by
+penalizing excessive activation.

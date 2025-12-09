@@ -1,0 +1,11 @@
+WordNet is a lexical database of English that groups words into sets of cognitive synonyms called synsets. Each synset represents a distinct concept and contains words that can substitute for each other in certain contexts. This organization mirrors how the mental lexicon might structure word knowledge in the human brain.
+
+Princeton University developed WordNet starting in 1985 under the direction of George Miller. The database has grown to include over 150,000 words organized into approximately 117,000 synsets. Nouns, verbs, adjectives, and adverbs each have separate hierarchies reflecting their different semantic properties.
+
+The primary relation in WordNet is hypernymy, the is-a relationship that creates taxonomic hierarchies. Dog is a hyponym of canine, which is a hyponym of carnivore, which is a hyponym of mammal. These chains extend up to highly abstract root concepts like entity and abstraction. This tree structure enables inheritance-based reasoning about word properties.
+
+Other relations capture different semantic connections. Meronymy relates parts to wholes, such as finger to hand. Antonymy links opposites like hot and cold. Entailment connects verbs where one implies another, as snoring entails sleeping. These relations create a rich web of linguistic knowledge.
+
+WordNet has profoundly influenced natural language processing research. Word sense disambiguation uses WordNet synsets as the inventory of possible meanings. Semantic similarity measures traverse WordNet paths to compare word meanings. Information extraction systems use the taxonomy to generalize patterns.
+
+Despite its influence, WordNet has limitations that motivated projects like ConceptNet. The hierarchical structure cannot represent associative knowledge like coffee being related to morning. The focus on definitional relationships excludes common sense facts about how concepts interact in the world. Modern systems often combine WordNet's lexical precision with broader commonsense knowledge bases.

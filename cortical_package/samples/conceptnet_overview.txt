@@ -1,0 +1,11 @@
+ConceptNet is a freely available semantic network designed to help computers understand the meanings of words that people use. Unlike traditional dictionaries that define words in terms of other words, ConceptNet represents knowledge as a graph of interconnected concepts and relations.
+
+The project originated from the Open Mind Common Sense project at MIT Media Lab, which crowdsourced common sense knowledge from volunteers on the internet. This knowledge was structured into assertions like "a dog is an animal" or "coffee is used for staying awake." Over time, ConceptNet incorporated data from other sources including WordNet, Wiktionary, and OpenCyc.
+
+ConceptNet uses a set of core relations to connect concepts. The IsA relation indicates category membership, such as "cat IsA mammal." The UsedFor relation describes purpose, like "hammer UsedFor driving nails." HasA indicates possession or parts, RelatedTo captures general associations, and AtLocation describes where things are typically found. Additional relations include Causes, CapableOf, PartOf, and Desires.
+
+Each edge in ConceptNet carries a weight representing confidence in that assertion. Higher weights indicate stronger evidence from multiple sources or higher agreement among contributors. This allows applications to prioritize more reliable knowledge when reasoning about concepts.
+
+The knowledge in ConceptNet spans multiple languages through a shared concept space. English concepts link to equivalent concepts in French, German, Chinese, and dozens of other languages. This multilingual structure enables cross-lingual reasoning and translation assistance.
+
+ConceptNet has found applications in natural language processing, sentiment analysis, question answering, and commonsense reasoning systems. Its structured knowledge helps fill gaps in machine learning models that struggle with implicit knowledge humans take for granted.

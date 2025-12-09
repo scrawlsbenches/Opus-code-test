@@ -1,0 +1,13 @@
+Semantic similarity measures how alike two concepts or texts are in meaning. Unlike lexical similarity that compares surface forms, semantic similarity captures deeper relationships. Car and automobile are lexically different but semantically identical. Dog and wolf are semantically similar despite distinct spellings.
+
+Path-based measures use knowledge graph structure to compute similarity. The shortest path between concepts in WordNet or ConceptNet indicates relatedness. The Wu-Palmer measure additionally considers the depth of the lowest common ancestor. Deeper shared ancestors suggest more specific shared properties.
+
+Information content methods measure similarity through probability distributions. Rare concepts convey more information than common ones. The Resnik measure uses the information content of the most specific common ancestor. Lin's measure normalizes this by the information content of the compared concepts. These approaches outperform pure path length on many benchmarks.
+
+Vector space models represent similarity as geometric proximity. Word embeddings place similar words close together in high-dimensional space. Cosine similarity between vectors provides a standard similarity measure. Sentence embeddings extend this to longer texts by pooling word vectors or using dedicated encoder models.
+
+Distributional hypothesis underlies many similarity measures. Words appearing in similar contexts tend to have similar meanings. Co-occurrence statistics from large corpora capture these contextual patterns. Both explicit count-based methods and neural embeddings exploit distributional signals.
+
+Evaluation of similarity measures uses human judgments as ground truth. Datasets like SimLex-999 and WordSim-353 contain word pairs rated by annotators. System predictions correlate with these ratings to measure quality. Different datasets emphasize different aspects of similarity versus relatedness.
+
+Applications of semantic similarity span many domains. Search engines expand queries with similar terms. Plagiarism detection finds semantically equivalent paraphrases. Question answering matches queries to relevant passages. Machine translation ensures meaning preservation across languages. Text classification groups documents by semantic content rather than surface keywords.

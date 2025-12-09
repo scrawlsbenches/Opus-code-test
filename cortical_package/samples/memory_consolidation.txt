@@ -1,0 +1,11 @@
+Memory consolidation transforms fragile short-term memories into stable
+long-term representations. The hippocampus initially encodes new experiences,
+then gradually transfers them to neocortex during sleep. Replay of neural
+activity patterns during slow-wave sleep strengthens synaptic connections
+that encode important memories. This two-stage process prevents catastrophic
+forgetting, where new learning destroys old knowledge. Artificial neural
+networks suffer from exactly this problem when trained sequentially on
+different tasks. Techniques like elastic weight consolidation and memory
+replay buffers attempt to mimic biological consolidation. Understanding
+how the brain protects memories while remaining plastic could revolutionize
+continual learning in machines.

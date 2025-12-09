@@ -1,0 +1,11 @@
+Graph neural networks extend deep learning to non-Euclidean data structures.
+While convolutional networks assume grid-like topology, graph networks
+operate on arbitrary connection patterns. Message passing allows nodes to
+aggregate information from neighbors, building representations that capture
+graph structure. This paradigm applies to social networks, molecular graphs,
+and knowledge bases. PageRank can be viewed as an early form of graph-based
+importance propagation, where node centrality emerges from network topology.
+Modern graph networks learn to propagate information adaptively, discovering
+which connections matter for each task. The brain itself is a graph of
+neurons, making these architectures particularly relevant for neuroscience
+applications.

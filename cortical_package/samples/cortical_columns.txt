@@ -1,0 +1,10 @@
+The neocortex is organized into cortical columns, vertical structures that
+span all six layers of cortical tissue. Each column contains approximately
+ten thousand neurons and functions as a basic computational unit. Within
+columns, minicolumns of about one hundred neurons fire together in response
+to specific features. This columnar organization appears throughout sensory
+and motor cortex, suggesting a universal algorithm for cortical computation.
+Lateral connections between columns enable contextual processing and pattern
+completion. When you see part of an object, these connections help activate
+the full representation based on learned associations. Understanding cortical
+columns could unlock principles for building more intelligent machines.

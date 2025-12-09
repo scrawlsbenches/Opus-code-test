@@ -1,0 +1,20 @@
+Speedcubing competitions measure puzzle-solving speed with Stackmat timers
+recording times to hundredths of seconds. World Cube Association sanctions
+events across seventeen puzzle categories including standard 3x3, blindfolded,
+one-handed, and feet solving. Competitors complete five timed solves, with
+fastest and slowest discarded and remaining three averaged.
+
+CFOP method dominates advanced speedcubing: Cross establishes foundation,
+F2L inserts first-two-layer pairs intuitively, OLL orients last-layer
+pieces, and PLL permutes them to completion. Algorithm memorization accelerates
+execution—full OLL requires fifty-seven algorithms, full PLL twenty-one.
+Lookahead skill maintains solving flow by planning subsequent moves during
+current execution.
+
+Cube hardware evolved dramatically with magnetic positioning, tensioning
+systems, and specialized lubricants. Corner-cutting tolerance permits
+misaligned moves without locking. Cubers develop personalized preferences
+through spring tensions and magnet strength adjustments. Color recognition
+and finger-tricking techniques optimize execution efficiency. Elite competitors
+average sub-seven seconds, with current world record at 3.13 seconds
+demonstrating remarkable algorithmic fluency and dexterity.

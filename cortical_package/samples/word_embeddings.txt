@@ -1,0 +1,11 @@
+Word embeddings transform words into dense numerical vectors that capture semantic meaning. Unlike sparse one-hot encodings where each word gets a unique dimension, embeddings compress meaning into typically 100 to 300 dimensions. Words with similar meanings cluster together in this vector space.
+
+Word2Vec pioneered modern embedding techniques using shallow neural networks. The skip-gram model predicts context words from a target word, while continuous bag of words predicts targets from context. Training on large text corpora produces vectors where semantic relationships emerge as geometric properties. The famous example shows king minus man plus woman approximately equals queen.
+
+GloVe embeddings take a different approach by factorizing word co-occurrence matrices. The algorithm optimizes vectors so their dot products match logarithmic co-occurrence probabilities. This combines the benefits of global statistical methods with local context learning. Stanford released pretrained GloVe vectors trained on Wikipedia and web crawl data.
+
+FastText extended Word2Vec by incorporating subword information. Instead of treating words as atomic units, FastText represents words as bags of character n-grams. This enables embeddings for out-of-vocabulary words and captures morphological patterns. Languages with rich morphology particularly benefit from this approach.
+
+ConceptNet Numberbatch combines multiple embedding sources with knowledge graph information. It retrofits distributional embeddings using ConceptNet relations, improving performance on semantic similarity benchmarks. The resulting vectors inherit both statistical patterns from text and structured knowledge from the graph.
+
+Contextualized embeddings from models like BERT and ELMo generate different vectors for the same word in different contexts. The word bank has different meanings in river bank versus savings bank. These models capture polysemy that static embeddings conflate into single vectors. However, they require more computation than simple lookup of pretrained vectors.

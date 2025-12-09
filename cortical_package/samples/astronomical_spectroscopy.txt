@@ -1,0 +1,19 @@
+Astronomical spectroscopy reveals stellar composition, temperature, and
+velocity by analyzing electromagnetic radiation absorption and emission patterns.
+Stellar atmospheres imprint characteristic absorption lines as photons
+traverse cooler outer layers. Fraunhofer lines in solar spectrum identify
+hydrogen, calcium, sodium, and iron among dozens of detectable elements.
+
+Spectral classification categorizes stars by surface temperature from hottest
+O-type blue giants through B, A, F, G, K to coolest M-type red dwarfs.
+Luminosity classes distinguish main sequence dwarfs, subgiants, giants, and
+supergiants sharing similar temperatures but vastly different radii. Hertzsprung-
+Russell diagrams plot these relationships, revealing stellar evolution pathways.
+
+Doppler shifts measure radial velocities: blueshifted lines indicate approach,
+redshifted lines recession. Exoplanet detection exploits stellar wobble
+inducing periodic velocity variations. Echelle spectrographs achieve
+resolutions exceeding R=100,000, resolving rotational broadening and
+distinguishing isotope ratios. Integral field units capture spatially resolved
+spectra across extended objects simultaneously, mapping galaxy kinematics
+and nebular ionization structures.

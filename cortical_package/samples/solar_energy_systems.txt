@@ -1,0 +1,15 @@
+Solar Energy Systems Design
+
+Photovoltaic systems convert sunlight directly into electricity through semiconductor junctions. Monocrystalline panels achieve highest efficiency; polycrystalline offers cost advantages. Bifacial modules capture reflected light from ground surfaces.
+
+System sizing balances energy production against consumption patterns. Insolation data from PVWatts or local measurements inform annual yield estimates. Roof orientation and shading analysis identify optimal panel placement. Tilt angles optimize for latitude and seasonal variation.
+
+String inverters centralize DC-to-AC conversion; microinverters optimize per-panel. Power optimizers provide panel-level MPPT while feeding string inverters. Hybrid inverters integrate battery charging and grid-tie functionality.
+
+Battery storage enables self-consumption beyond daylight hours. Lithium iron phosphate chemistry offers longevity and safety; lithium nickel manganese cobalt maximizes energy density. Battery management systems monitor cell voltages, temperatures, and state of charge.
+
+Grid-tie systems export excess generation; net metering credits offset consumption. Time-of-use arbitrage stores cheap energy for peak-rate discharge. Backup configurations island critical loads during outages.
+
+Monitoring platforms track production, consumption, and system health. Current transformers measure circuit loads; smart meters provide net flow data. Anomaly detection identifies underperforming panels, inverter faults, or shading changes.
+
+Permitting requirements vary by jurisdiction—structural engineering, electrical plans, interconnection agreements. Utility inspection verifies code compliance before permission to operate. Incentive programs—tax credits, SRECs, rebates—improve financial returns.

@@ -1,0 +1,13 @@
+Blockchain Consensus Mechanisms
+
+Blockchain networks achieve distributed consensus without central authority through cryptographic protocols. Proof-of-work requires miners to solve computational puzzles, expending energy to earn block rewards. Hash rate measures network security—higher difficulty prevents fifty-one percent attacks.
+
+Proof-of-stake validators lock collateral tokens, selected proportionally to stake for block proposal rights. Slashing penalties punish malicious behavior like double-signing or extended downtime. Delegated variants allow token holders to vote for validator nodes.
+
+Byzantine fault tolerance algorithms handle arbitrary node failures. PBFT requires two-thirds honest nodes for safety guarantees. Tendermint combines BFT consensus with proof-of-stake economics. Finality occurs within seconds rather than probabilistically over multiple confirmations.
+
+Merkle trees efficiently prove transaction inclusion without downloading entire blocks. Light clients verify headers and request specific proofs. State synchronization protocols bootstrap new nodes from trusted checkpoints.
+
+Smart contracts execute deterministically across all nodes. Gas metering prevents infinite loops and denial-of-service. Virtual machines isolate contract execution from underlying infrastructure. Ethereum's EVM established bytecode standards; newer chains explore WebAssembly alternatives.
+
+Layer-two scaling solutions process transactions off-chain. Payment channels batch multiple transfers into single settlement transactions. Rollups post compressed transaction data on-chain while executing off-chain, inheriting base layer security.
