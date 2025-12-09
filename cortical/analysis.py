@@ -442,6 +442,145 @@ def compute_concept_connections(
     }
 
 
+def compute_bigram_connections(
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    min_shared_docs: int = 1,
+    component_weight: float = 0.5,
+    chain_weight: float = 0.7,
+    cooccurrence_weight: float = 0.3
+) -> Dict[str, Any]:
+    """
+    Build lateral connections between bigrams in Layer 1.
+
+    Bigrams are connected based on:
+    1. Shared component terms ("neural_networks" ↔ "neural_processing")
+    2. Document co-occurrence (appear in same documents)
+    3. Chains ("machine_learning" ↔ "learning_algorithms" where right=left)
+
+    Args:
+        layers: Dictionary of all layers
+        min_shared_docs: Minimum shared documents for co-occurrence connection
+        component_weight: Weight for shared component connections (default 0.5)
+        chain_weight: Weight for chain connections (default 0.7)
+        cooccurrence_weight: Weight for document co-occurrence (default 0.3)
+
+    Returns:
+        Statistics about connections created:
+        - connections_created: Total bidirectional connections
+        - component_connections: Connections from shared components
+        - chain_connections: Connections from chains
+        - cooccurrence_connections: Connections from document co-occurrence
+    """
+    layer1 = layers[CorticalLayer.BIGRAMS]
+
+    if layer1.column_count() == 0:
+        return {
+            'connections_created': 0,
+            'bigrams': 0,
+            'component_connections': 0,
+            'chain_connections': 0,
+            'cooccurrence_connections': 0
+        }
+
+    bigrams = list(layer1.minicolumns.values())
+
+    # Build indexes for efficient lookup
+    # left_component_index: {"neural": [bigram1, bigram2, ...]}
+    # right_component_index: {"networks": [bigram1, bigram3, ...]}
+    left_index: Dict[str, List[Minicolumn]] = defaultdict(list)
+    right_index: Dict[str, List[Minicolumn]] = defaultdict(list)
+
+    for bigram in bigrams:
+        parts = bigram.content.split('_')
+        if len(parts) == 2:
+            left_index[parts[0]].append(bigram)
+            right_index[parts[1]].append(bigram)
+
+    # Track connection types for statistics
+    component_connections = 0
+    chain_connections = 0
+    cooccurrence_connections = 0
+
+    # Track which pairs we've already connected (avoid duplicates)
+    connected_pairs: Set[Tuple[str, str]] = set()
+
+    def add_connection(b1: Minicolumn, b2: Minicolumn, weight: float, conn_type: str) -> bool:
+        """Add bidirectional connection if not already connected."""
+        nonlocal component_connections, chain_connections, cooccurrence_connections
+
+        pair = tuple(sorted([b1.id, b2.id]))
+        if pair in connected_pairs:
+            # Already connected, just strengthen the connection
+            b1.add_lateral_connection(b2.id, weight)
+            b2.add_lateral_connection(b1.id, weight)
+            return False
+
+        connected_pairs.add(pair)
+        b1.add_lateral_connection(b2.id, weight)
+        b2.add_lateral_connection(b1.id, weight)
+
+        if conn_type == 'component':
+            component_connections += 1
+        elif conn_type == 'chain':
+            chain_connections += 1
+        elif conn_type == 'cooccurrence':
+            cooccurrence_connections += 1
+
+        return True
+
+    # 1. Connect bigrams sharing a component
+    # Left component matches: "neural_networks" ↔ "neural_processing"
+    for component, bigram_list in left_index.items():
+        for i, b1 in enumerate(bigram_list):
+            for b2 in bigram_list[i+1:]:
+                # Weight by component's PageRank importance (if available)
+                weight = component_weight
+                add_connection(b1, b2, weight, 'component')
+
+    # Right component matches: "deep_learning" ↔ "machine_learning"
+    for component, bigram_list in right_index.items():
+        for i, b1 in enumerate(bigram_list):
+            for b2 in bigram_list[i+1:]:
+                weight = component_weight
+                add_connection(b1, b2, weight, 'component')
+
+    # 2. Connect chain bigrams (right of one = left of other)
+    # "machine_learning" ↔ "learning_algorithms"
+    for term in left_index:
+        if term in right_index:
+            # term appears as right component in some bigrams and left in others
+            for b_left in right_index[term]:  # ends with term
+                for b_right in left_index[term]:  # starts with term
+                    if b_left.id != b_right.id:
+                        add_connection(b_left, b_right, chain_weight, 'chain')
+
+    # 3. Connect bigrams that co-occur in the same documents
+    for i, b1 in enumerate(bigrams):
+        docs1 = b1.document_ids
+        if not docs1:
+            continue
+
+        for b2 in bigrams[i+1:]:
+            docs2 = b2.document_ids
+            if not docs2:
+                continue
+
+            shared_docs = docs1 & docs2
+            if len(shared_docs) >= min_shared_docs:
+                # Weight by Jaccard similarity of document sets
+                jaccard = len(shared_docs) / len(docs1 | docs2)
+                weight = cooccurrence_weight * jaccard
+                add_connection(b1, b2, weight, 'cooccurrence')
+
+    return {
+        'connections_created': len(connected_pairs),
+        'bigrams': len(bigrams),
+        'component_connections': component_connections,
+        'chain_connections': chain_connections,
+        'cooccurrence_connections': cooccurrence_connections
+    }
+
+
 def compute_document_connections(
     layers: Dict[CorticalLayer, HierarchicalLayer],
     documents: Dict[str, str],

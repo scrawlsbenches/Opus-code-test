@@ -26,6 +26,7 @@ class CorticalTextProcessor:
     COMP_PAGERANK = 'pagerank'
     COMP_ACTIVATION = 'activation'
     COMP_DOC_CONNECTIONS = 'doc_connections'
+    COMP_BIGRAM_CONNECTIONS = 'bigram_connections'
     COMP_CONCEPTS = 'concepts'
     COMP_EMBEDDINGS = 'embeddings'
     COMP_SEMANTICS = 'semantics'
@@ -167,6 +168,7 @@ class CorticalTextProcessor:
             self.COMP_PAGERANK,
             self.COMP_ACTIVATION,
             self.COMP_DOC_CONNECTIONS,
+            self.COMP_BIGRAM_CONNECTIONS,
             self.COMP_CONCEPTS,
             self.COMP_EMBEDDINGS,
             self.COMP_SEMANTICS,
@@ -356,6 +358,7 @@ class CorticalTextProcessor:
                 self.COMP_PAGERANK: True,
                 self.COMP_TFIDF: True,
                 self.COMP_DOC_CONNECTIONS: True,
+                self.COMP_BIGRAM_CONNECTIONS: True,
                 self.COMP_CONCEPTS: True,
             }
         elif level == 'tfidf':
@@ -383,6 +386,11 @@ class CorticalTextProcessor:
                 self.compute_document_connections(verbose=verbose)
                 self._mark_fresh(self.COMP_DOC_CONNECTIONS)
                 recomputed[self.COMP_DOC_CONNECTIONS] = True
+
+            if self.COMP_BIGRAM_CONNECTIONS in self._stale_computations:
+                self.compute_bigram_connections(verbose=verbose)
+                self._mark_fresh(self.COMP_BIGRAM_CONNECTIONS)
+                recomputed[self.COMP_BIGRAM_CONNECTIONS] = True
 
             if self.COMP_CONCEPTS in self._stale_computations:
                 self.build_concept_clusters(verbose=verbose)
@@ -422,6 +430,9 @@ class CorticalTextProcessor:
         if verbose:
             print("Computing document connections...")
         self.compute_document_connections(verbose=False)
+        if verbose:
+            print("Computing bigram connections...")
+        self.compute_bigram_connections(verbose=False)
         if build_concepts:
             if verbose:
                 print("Building concept clusters...")
@@ -435,6 +446,7 @@ class CorticalTextProcessor:
             self.COMP_PAGERANK,
             self.COMP_TFIDF,
             self.COMP_DOC_CONNECTIONS,
+            self.COMP_BIGRAM_CONNECTIONS,
         ]
         if build_concepts:
             fresh_comps.append(self.COMP_CONCEPTS)
@@ -458,7 +470,58 @@ class CorticalTextProcessor:
     def compute_document_connections(self, min_shared_terms: int = 3, verbose: bool = True) -> None:
         analysis.compute_document_connections(self.layers, self.documents, min_shared_terms)
         if verbose: print("Computed document connections")
-    
+
+    def compute_bigram_connections(
+        self,
+        min_shared_docs: int = 1,
+        component_weight: float = 0.5,
+        chain_weight: float = 0.7,
+        cooccurrence_weight: float = 0.3,
+        verbose: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Build lateral connections between bigrams based on shared components and co-occurrence.
+
+        Bigrams are connected when they:
+        - Share a component term ("neural_networks" ↔ "neural_processing")
+        - Form chains ("machine_learning" ↔ "learning_algorithms")
+        - Co-occur in the same documents
+
+        Args:
+            min_shared_docs: Minimum shared documents for co-occurrence connection
+            component_weight: Weight for shared component connections (default 0.5)
+            chain_weight: Weight for chain connections (default 0.7)
+            cooccurrence_weight: Weight for document co-occurrence (default 0.3)
+            verbose: Print progress messages
+
+        Returns:
+            Statistics about connections created:
+            - connections_created: Total bidirectional connections
+            - component_connections: Connections from shared components
+            - chain_connections: Connections from chains
+            - cooccurrence_connections: Connections from document co-occurrence
+
+        Example:
+            >>> stats = processor.compute_bigram_connections()
+            >>> print(f"Created {stats['connections_created']} bigram connections")
+            >>> print(f"  Component: {stats['component_connections']}")
+            >>> print(f"  Chain: {stats['chain_connections']}")
+            >>> print(f"  Co-occurrence: {stats['cooccurrence_connections']}")
+        """
+        stats = analysis.compute_bigram_connections(
+            self.layers,
+            min_shared_docs=min_shared_docs,
+            component_weight=component_weight,
+            chain_weight=chain_weight,
+            cooccurrence_weight=cooccurrence_weight
+        )
+        if verbose:
+            print(f"Created {stats['connections_created']} bigram connections "
+                  f"(component: {stats['component_connections']}, "
+                  f"chain: {stats['chain_connections']}, "
+                  f"cooccur: {stats['cooccurrence_connections']})")
+        return stats
+
     def build_concept_clusters(self, verbose: bool = True) -> Dict[int, List[str]]:
         clusters = analysis.cluster_by_label_propagation(self.layers[CorticalLayer.TOKENS])
         analysis.build_concept_clusters(self.layers, clusters)

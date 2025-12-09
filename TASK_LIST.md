@@ -619,7 +619,7 @@ stats = processor.compute_concept_connections(
 ### 21. Add Bigram Lateral Connections
 
 **Files:** `cortical/analysis.py`, `cortical/processor.py`
-**Status:** [ ] Pending
+**Status:** [x] Completed
 
 **Problem:**
 Layer 1 (Bigrams) has 0 lateral connections. Bigrams should connect when they:
@@ -627,12 +627,40 @@ Layer 1 (Bigrams) has 0 lateral connections. Bigrams should connect when they:
 - Co-occur in the same documents
 - Form chains ("machine_learning" ↔ "learning_algorithms")
 
-**Implementation Steps:**
-1. Add `compute_bigram_connections()` function to `analysis.py`
-2. Connect bigrams sharing a term (left or right component)
-3. Weight by co-occurrence count and component position
-4. Add document co-occurrence bonus
-5. Call from `compute_all()` after bigram layer is populated
+**Solution Applied:**
+1. Added `compute_bigram_connections()` function to `analysis.py` (~140 lines)
+2. Connects bigrams sharing left component (e.g., "neural_networks" ↔ "neural_processing")
+3. Connects bigrams sharing right component (e.g., "deep_learning" ↔ "machine_learning")
+4. Connects chain bigrams where right of one = left of other ("machine_learning" ↔ "learning_algorithms")
+5. Adds document co-occurrence connections weighted by Jaccard similarity
+6. Added configurable weights: `component_weight=0.5`, `chain_weight=0.7`, `cooccurrence_weight=0.3`
+7. Added `compute_bigram_connections()` method to processor with full docstring
+8. Integrated into `compute_all()` pipeline
+9. Added `COMP_BIGRAM_CONNECTIONS` staleness tracking constant
+10. Updated `recompute()` method to handle bigram connections
+
+**Files Modified:**
+- `cortical/analysis.py` - Added `compute_bigram_connections()` (~140 lines)
+- `cortical/processor.py` - Added wrapper method and integrated into `compute_all()`
+- `tests/test_processor.py` - Added 11 tests for bigram connections
+
+**Usage:**
+```python
+# Automatic in compute_all()
+processor.compute_all()  # Calls compute_bigram_connections() automatically
+
+# Manual with options
+stats = processor.compute_bigram_connections(
+    component_weight=0.5,  # Weight for shared component connections
+    chain_weight=0.7,      # Weight for chain connections
+    cooccurrence_weight=0.3,  # Weight for document co-occurrence
+    verbose=True
+)
+print(f"Created {stats['connections_created']} bigram connections")
+print(f"  Component: {stats['component_connections']}")
+print(f"  Chain: {stats['chain_connections']}")
+print(f"  Co-occurrence: {stats['cooccurrence_connections']}")
+```
 
 ---
 
@@ -871,6 +899,54 @@ complete_analogy("neural", "networks", "knowledge")
 
 ---
 
+## Code Review Concerns
+
+The following concerns were identified during code review and should be addressed in future iterations:
+
+### 31. Consider Splitting processor.py
+
+**File:** `cortical/processor.py`
+**Status:** [ ] Future Enhancement
+**Priority:** Low
+
+**Concern:**
+The `processor.py` file has grown to 800+ lines with the addition of incremental indexing, batch APIs, and multi-stage ranking. Consider splitting into smaller modules:
+- `processor_core.py` - Core document processing
+- `processor_batch.py` - Batch operations (add_documents_batch, find_*_batch)
+- `processor_incremental.py` - Incremental indexing and staleness tracking
+
+---
+
+### 32. Semantic Lookup Memory Optimization
+
+**File:** `cortical/analysis.py`
+**Function:** `compute_concept_connections()`
+**Status:** [ ] Future Enhancement
+**Priority:** Medium
+
+**Concern:**
+The semantic lookup builds a double-nested dictionary (`Dict[str, Dict[str, Tuple[str, float]]]`) which stores relations in both directions. For large semantic relation sets (10K+ relations), this could consume significant memory.
+
+**Potential Solution:**
+- Use a single direction and check both orderings at lookup time
+- Or use a frozenset key: `{(t1, t2): (relation, weight)}`
+
+---
+
+### 33. Tune Semantic Bonus Cap
+
+**File:** `cortical/analysis.py`
+**Line:** ~408
+**Status:** [ ] Future Enhancement
+**Priority:** Low
+
+**Concern:**
+Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reasonable default but may benefit from:
+- Making it a configurable parameter
+- Empirical testing on different corpus types
+
+---
+
 ## Summary
 
 | Priority | Task | Status | Category |
@@ -894,7 +970,7 @@ complete_analogy("neural", "networks", "knowledge")
 | Low | Batch query API | ✅ Completed | RAG |
 | **Critical** | **Build cross-layer feedforward connections** | ✅ Completed | **ConceptNet** |
 | **Critical** | **Add concept-level lateral connections** | ✅ Completed | **ConceptNet** |
-| **Critical** | **Add bigram lateral connections** | ⏳ Pending | **ConceptNet** |
+| **Critical** | **Add bigram lateral connections** | ✅ Completed | **ConceptNet** |
 | **High** | **Implement relation-weighted PageRank** | ⏳ Pending | **ConceptNet** |
 | **High** | **Implement cross-layer PageRank propagation** | ⏳ Pending | **ConceptNet** |
 | **High** | **Add typed edge storage** | ⏳ Pending | **ConceptNet** |
@@ -907,14 +983,14 @@ complete_analogy("neural", "networks", "knowledge")
 
 **Bug Fix Completion:** 7/7 tasks (100%)
 **RAG Enhancement Completion:** 8/8 tasks (100%)
-**ConceptNet Enhancement Completion:** 2/12 tasks (17%)
+**ConceptNet Enhancement Completion:** 3/12 tasks (25%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 193 tests in 0.162s
+Ran 204 tests in 0.219s
 OK
 ```
 

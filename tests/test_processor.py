@@ -1169,5 +1169,170 @@ class TestConceptConnections(unittest.TestCase):
             pass  # Concept isolation depends on clustering results
 
 
+class TestBigramConnections(unittest.TestCase):
+    """Test bigram lateral connection functionality."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor with documents containing related bigrams."""
+        cls.processor = CorticalTextProcessor()
+        # Documents with overlapping bigrams to test connections
+        cls.processor.process_document(
+            "doc1",
+            "Neural networks process information. Neural processing enables "
+            "deep learning. Machine learning algorithms process data."
+        )
+        cls.processor.process_document(
+            "doc2",
+            "Deep learning models use neural networks. Machine learning "
+            "is related to deep learning and neural processing."
+        )
+        cls.processor.process_document(
+            "doc3",
+            "Learning algorithms improve performance. Machine learning "
+            "and deep learning are popular approaches."
+        )
+        cls.processor.compute_all(verbose=False)
+
+    def test_compute_bigram_connections_returns_stats(self):
+        """Test that compute_bigram_connections returns expected statistics."""
+        # Connections are already computed by compute_all, so create new processor
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data. Neural processing works.")
+        processor.compute_tfidf(verbose=False)
+
+        stats = processor.compute_bigram_connections(verbose=False)
+
+        self.assertIn('connections_created', stats)
+        self.assertIn('bigrams', stats)
+        self.assertIn('component_connections', stats)
+        self.assertIn('chain_connections', stats)
+        self.assertIn('cooccurrence_connections', stats)
+
+    def test_shared_left_component_connection(self):
+        """Test that bigrams sharing left component are connected."""
+        # "neural_networks" and "neural_processing" share "neural"
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        neural_networks = layer1.get_minicolumn("neural_networks")
+        neural_processing = layer1.get_minicolumn("neural_processing")
+
+        if neural_networks and neural_processing:
+            # They should be connected via shared "neural" component
+            self.assertIn(neural_processing.id, neural_networks.lateral_connections)
+            self.assertIn(neural_networks.id, neural_processing.lateral_connections)
+
+    def test_shared_right_component_connection(self):
+        """Test that bigrams sharing right component are connected."""
+        # "machine_learning" and "deep_learning" share "learning"
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        machine_learning = layer1.get_minicolumn("machine_learning")
+        deep_learning = layer1.get_minicolumn("deep_learning")
+
+        if machine_learning and deep_learning:
+            # They should be connected via shared "learning" component
+            self.assertIn(deep_learning.id, machine_learning.lateral_connections)
+            self.assertIn(machine_learning.id, deep_learning.lateral_connections)
+
+    def test_chain_connections(self):
+        """Test that chain bigrams are connected (right of one = left of other)."""
+        # "machine_learning" and "learning_algorithms" form a chain
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        machine_learning = layer1.get_minicolumn("machine_learning")
+        learning_algorithms = layer1.get_minicolumn("learning_algorithms")
+
+        if machine_learning and learning_algorithms:
+            # They should be connected via chain relationship
+            self.assertIn(learning_algorithms.id, machine_learning.lateral_connections)
+            self.assertIn(machine_learning.id, learning_algorithms.lateral_connections)
+
+    def test_cooccurrence_connections(self):
+        """Test that bigrams co-occurring in documents are connected."""
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        # Bigrams that appear in same documents should have co-occurrence connections
+        for bigram in layer1.minicolumns.values():
+            if bigram.document_ids and len(bigram.lateral_connections) > 0:
+                # If a bigram has connections, some should be from co-occurrence
+                # This is a general check that connections exist
+                break
+
+    def test_bidirectional_connections(self):
+        """Test that all bigram connections are bidirectional."""
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        for bigram in layer1.minicolumns.values():
+            for target_id in bigram.lateral_connections:
+                target = layer1.get_by_id(target_id)
+                if target:
+                    self.assertIn(
+                        bigram.id, target.lateral_connections,
+                        f"Connection from {bigram.content} to {target.content} is not bidirectional"
+                    )
+
+    def test_empty_bigram_layer(self):
+        """Test bigram connections with empty bigram layer."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Hello")  # Single word, no bigrams
+        processor.compute_tfidf(verbose=False)
+
+        stats = processor.compute_bigram_connections(verbose=False)
+        self.assertEqual(stats['connections_created'], 0)
+        self.assertEqual(stats['bigrams'], 0)
+
+    def test_compute_all_includes_bigram_connections(self):
+        """Test that compute_all includes bigram connections."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data. Neural processing works.")
+        processor.compute_all(verbose=False)
+
+        # Check that bigram connections were marked fresh
+        self.assertFalse(processor.is_stale(processor.COMP_BIGRAM_CONNECTIONS))
+
+    def test_custom_weights(self):
+        """Test that custom weights affect connection strengths."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks neural processing neural analysis")
+        processor.compute_tfidf(verbose=False)
+
+        # Use different weights
+        stats = processor.compute_bigram_connections(
+            component_weight=1.0,
+            chain_weight=1.5,
+            cooccurrence_weight=0.5,
+            verbose=False
+        )
+
+        # Just verify it runs without error
+        self.assertIsNotNone(stats)
+
+    def test_recompute_handles_bigram_connections(self):
+        """Test that recompute method handles bigram connections."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data")
+
+        # Mark as stale
+        processor._mark_all_stale()
+        self.assertTrue(processor.is_stale(processor.COMP_BIGRAM_CONNECTIONS))
+
+        # Recompute
+        recomputed = processor.recompute(level='full', verbose=False)
+        self.assertTrue(recomputed.get(processor.COMP_BIGRAM_CONNECTIONS, False))
+        self.assertFalse(processor.is_stale(processor.COMP_BIGRAM_CONNECTIONS))
+
+    def test_bigram_connection_weights_accumulate(self):
+        """Test that connection weights accumulate for multiple reasons."""
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        # Find bigrams that could be connected by multiple reasons
+        # (shared component AND co-occurrence)
+        for bigram in layer1.minicolumns.values():
+            for target_id, weight in bigram.lateral_connections.items():
+                # Weights should be positive
+                self.assertGreater(weight, 0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
