@@ -457,16 +457,40 @@ processor.add_documents_batch(docs, recompute='full')
 
 ### 17. Add Multi-Stage Ranking Pipeline
 
-**Files:** `cortical/query.py`
-**Status:** [ ] Future Enhancement
+**Files:** `cortical/query.py`, `cortical/processor.py`
+**Status:** [x] Completed
 
 **Problem:**
-Current ranking is flat (Token TF-IDF → Document Score). Better RAG performance with staged ranking:
+Current ranking is flat (Token TF-IDF → Document Score). Better RAG performance with staged ranking.
 
-1. **Stage 1 (Concepts):** Filter by topic relevance
-2. **Stage 2 (Documents):** Rank documents in topic
-3. **Stage 3 (Chunks):** Rank passages in documents
-4. **Stage 4 (Rerank):** Final relevance scoring
+**Solution Applied:**
+Implemented a 4-stage ranking pipeline:
+
+1. **Stage 1 (Concepts):** Find relevant concepts from Layer 2 clusters, score by query term overlap
+2. **Stage 2 (Documents):** Rank documents using combined concept + TF-IDF scores
+3. **Stage 3 (Chunks):** Score passages within top documents using chunk-level TF-IDF
+4. **Stage 4 (Rerank):** Combine all signals (chunk 50%, TF-IDF 30%, concept 20%) for final scoring
+
+**Files Modified:**
+- `cortical/query.py` - Added `find_relevant_concepts()`, `multi_stage_rank()`, `multi_stage_rank_documents()` (~300 lines)
+- `cortical/processor.py` - Added processor wrapper methods (~90 lines)
+- `tests/test_processor.py` - Added 15 tests for multi-stage ranking
+
+**Usage Examples:**
+```python
+# Full 4-stage ranking (passages with stage breakdown)
+results = processor.multi_stage_rank("neural networks", top_n=5, concept_boost=0.3)
+for passage, doc_id, start, end, score, stages in results:
+    print(f"[{doc_id}] Score: {score:.3f}")
+    print(f"  Concept: {stages['concept_score']:.3f}")
+    print(f"  Doc: {stages['doc_score']:.3f}")
+    print(f"  Chunk: {stages['chunk_score']:.3f}")
+
+# Document-level ranking (stages 1-2 only)
+results = processor.multi_stage_rank_documents("neural networks", top_n=3)
+for doc_id, score, stages in results:
+    print(f"{doc_id}: {score:.3f} (concept: {stages['concept_score']:.3f})")
+```
 
 ---
 
@@ -524,18 +548,18 @@ for query, passages in zip(queries, results):
 | Medium | Optimize spectral embeddings | ✅ Completed | Performance |
 | Medium | Add incremental indexing | ✅ Completed | RAG |
 | Low | Document magic numbers | ⏳ Deferred | Documentation |
-| Low | Multi-stage ranking pipeline | ⬜ Future | RAG |
+| Low | Multi-stage ranking pipeline | ✅ Completed | RAG |
 | Low | Batch query API | ✅ Completed | RAG |
 
 **Bug Fix Completion:** 7/7 tasks (100%)
-**RAG Enhancement Completion:** 7/8 tasks (88%)
+**RAG Enhancement Completion:** 8/8 tasks (100%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 158 tests in 0.153s
+Ran 173 tests in 0.154s
 OK
 ```
 

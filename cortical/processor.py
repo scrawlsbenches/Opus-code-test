@@ -655,6 +655,99 @@ class CorticalTextProcessor:
             use_semantic=use_semantic
         )
 
+    def multi_stage_rank(
+        self,
+        query_text: str,
+        top_n: int = 5,
+        chunk_size: int = 512,
+        overlap: int = 128,
+        concept_boost: float = 0.3,
+        use_expansion: bool = True,
+        use_semantic: bool = True
+    ) -> List[Tuple[str, str, int, int, float, Dict[str, float]]]:
+        """
+        Multi-stage ranking pipeline for improved RAG performance.
+
+        Uses a 4-stage pipeline combining concept, document, and chunk signals:
+        1. Concepts: Filter by topic relevance using Layer 2 clusters
+        2. Documents: Rank documents within relevant topics
+        3. Chunks: Rank passages within top documents
+        4. Rerank: Combine all signals for final scoring
+
+        Args:
+            query_text: Search query
+            top_n: Number of passages to return
+            chunk_size: Size of each chunk in characters (default 512)
+            overlap: Overlap between chunks in characters (default 128)
+            concept_boost: Weight for concept relevance (0.0-1.0, default 0.3)
+            use_expansion: Whether to expand query terms
+            use_semantic: Whether to use semantic relations for expansion
+
+        Returns:
+            List of (passage_text, doc_id, start_char, end_char, final_score, stage_scores)
+            tuples. stage_scores contains: concept_score, doc_score, chunk_score, final_score
+
+        Example:
+            >>> results = processor.multi_stage_rank("neural networks", top_n=5)
+            >>> for passage, doc_id, start, end, score, stages in results:
+            ...     print(f"[{doc_id}] Final: {score:.3f}, Concept: {stages['concept_score']:.3f}")
+        """
+        return query_module.multi_stage_rank(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            self.documents,
+            top_n=top_n,
+            chunk_size=chunk_size,
+            overlap=overlap,
+            concept_boost=concept_boost,
+            use_expansion=use_expansion,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
+        )
+
+    def multi_stage_rank_documents(
+        self,
+        query_text: str,
+        top_n: int = 5,
+        concept_boost: float = 0.3,
+        use_expansion: bool = True,
+        use_semantic: bool = True
+    ) -> List[Tuple[str, float, Dict[str, float]]]:
+        """
+        Multi-stage ranking for documents (without chunk scoring).
+
+        Uses stages 1-2 of the pipeline for document-level ranking:
+        1. Concepts: Filter by topic relevance
+        2. Documents: Rank by combined concept + TF-IDF scores
+
+        Args:
+            query_text: Search query
+            top_n: Number of documents to return
+            concept_boost: Weight for concept relevance (0.0-1.0, default 0.3)
+            use_expansion: Whether to expand query terms
+            use_semantic: Whether to use semantic relations
+
+        Returns:
+            List of (doc_id, final_score, stage_scores) tuples.
+            stage_scores contains: concept_score, tfidf_score, combined_score
+
+        Example:
+            >>> results = processor.multi_stage_rank_documents("neural networks")
+            >>> for doc_id, score, stages in results:
+            ...     print(f"{doc_id}: {score:.3f} (concept: {stages['concept_score']:.3f})")
+        """
+        return query_module.multi_stage_rank_documents(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n,
+            concept_boost=concept_boost,
+            use_expansion=use_expansion,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
+        )
+
     def query_expanded(self, query_text: str, top_n: int = 10, max_expansions: int = 8) -> List[Tuple[str, float]]:
         return query_module.query_with_spreading_activation(query_text, self.layers, self.tokenizer, top_n, max_expansions)
     

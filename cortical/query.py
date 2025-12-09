@@ -685,3 +685,311 @@ def find_passages_batch(
         all_results.append(passages[:top_n])
 
     return all_results
+
+
+def find_relevant_concepts(
+    query_terms: Dict[str, float],
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    top_n: int = 5
+) -> List[Tuple[str, float, set]]:
+    """
+    Stage 1: Find concepts relevant to query terms.
+
+    Args:
+        query_terms: Dict mapping query terms to weights
+        layers: Dictionary of layers
+        top_n: Maximum number of concepts to return
+
+    Returns:
+        List of (concept_name, relevance_score, document_ids) tuples
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+    layer2 = layers.get(CorticalLayer.CONCEPTS)
+
+    if not layer2 or layer2.column_count() == 0:
+        return []
+
+    concept_scores: Dict[str, float] = {}
+    concept_docs: Dict[str, set] = {}
+
+    for term, weight in query_terms.items():
+        col = layer0.get_minicolumn(term)
+        if not col:
+            continue
+
+        # Find concepts that contain this token
+        for concept in layer2.minicolumns.values():
+            if col.id in concept.feedforward_sources:
+                # Score based on term weight, concept PageRank, and concept size
+                score = weight * concept.pagerank * (1 + len(concept.feedforward_sources) * 0.01)
+                concept_scores[concept.content] = concept_scores.get(concept.content, 0) + score
+                if concept.content not in concept_docs:
+                    concept_docs[concept.content] = set()
+                concept_docs[concept.content].update(concept.document_ids)
+
+    # Sort by score and return top concepts
+    sorted_concepts = sorted(concept_scores.items(), key=lambda x: -x[1])[:top_n]
+    return [(name, score, concept_docs.get(name, set())) for name, score in sorted_concepts]
+
+
+def multi_stage_rank(
+    query_text: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    tokenizer: Tokenizer,
+    documents: Dict[str, str],
+    top_n: int = 5,
+    chunk_size: int = 512,
+    overlap: int = 128,
+    concept_boost: float = 0.3,
+    use_expansion: bool = True,
+    semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
+    use_semantic: bool = True
+) -> List[Tuple[str, str, int, int, float, Dict[str, float]]]:
+    """
+    Multi-stage ranking pipeline for improved RAG performance.
+
+    Unlike flat ranking (TF-IDF → score), this uses a 4-stage pipeline:
+    1. Concepts: Filter by topic relevance using Layer 2 clusters
+    2. Documents: Rank documents within relevant topics
+    3. Chunks: Rank passages within top documents
+    4. Rerank: Combine all signals for final scoring
+
+    Args:
+        query_text: Search query
+        layers: Dictionary of layers
+        tokenizer: Tokenizer instance
+        documents: Dict mapping doc_id to document text
+        top_n: Number of passages to return
+        chunk_size: Size of each chunk in characters
+        overlap: Overlap between chunks in characters
+        concept_boost: Weight for concept relevance in final score (0.0-1.0)
+        use_expansion: Whether to expand query terms
+        semantic_relations: Optional list of semantic relations for expansion
+        use_semantic: Whether to use semantic relations for expansion
+
+    Returns:
+        List of (passage_text, doc_id, start_char, end_char, final_score, stage_scores) tuples.
+        stage_scores dict contains: concept_score, doc_score, chunk_score, final_score
+
+    Example:
+        >>> results = multi_stage_rank(query, layers, tokenizer, documents)
+        >>> for passage, doc_id, start, end, score, stages in results:
+        ...     print(f"[{doc_id}] Score: {score:.3f}")
+        ...     print(f"  Concept: {stages['concept_score']:.3f}")
+        ...     print(f"  Doc: {stages['doc_score']:.3f}")
+        ...     print(f"  Chunk: {stages['chunk_score']:.3f}")
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+
+    # Get expanded query terms
+    if use_expansion:
+        query_terms = expand_query(query_text, layers, tokenizer, max_expansions=5)
+        if use_semantic and semantic_relations:
+            semantic_terms = expand_query_semantic(
+                query_text, layers, tokenizer, semantic_relations, max_expansions=5
+            )
+            for term, weight in semantic_terms.items():
+                if term not in query_terms:
+                    query_terms[term] = weight * 0.8
+                else:
+                    query_terms[term] = max(query_terms[term], weight * 0.8)
+    else:
+        tokens = tokenizer.tokenize(query_text)
+        query_terms = {t: 1.0 for t in tokens}
+
+    if not query_terms:
+        return []
+
+    # ========== STAGE 1: CONCEPTS ==========
+    # Find relevant concepts to identify topic areas
+    relevant_concepts = find_relevant_concepts(query_terms, layers, top_n=10)
+
+    # Build concept score per document
+    doc_concept_scores: Dict[str, float] = defaultdict(float)
+    if relevant_concepts:
+        max_concept_score = max(score for _, score, _ in relevant_concepts) if relevant_concepts else 1.0
+        for concept_name, concept_score, doc_ids in relevant_concepts:
+            normalized_score = concept_score / max_concept_score if max_concept_score > 0 else 0
+            for doc_id in doc_ids:
+                doc_concept_scores[doc_id] = max(doc_concept_scores[doc_id], normalized_score)
+
+    # ========== STAGE 2: DOCUMENTS ==========
+    # Score documents using TF-IDF (standard approach)
+    doc_tfidf_scores: Dict[str, float] = defaultdict(float)
+    for term, term_weight in query_terms.items():
+        col = layer0.get_minicolumn(term)
+        if col:
+            for doc_id in col.document_ids:
+                tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
+                doc_tfidf_scores[doc_id] += tfidf * term_weight
+
+    # Normalize TF-IDF scores
+    max_tfidf = max(doc_tfidf_scores.values()) if doc_tfidf_scores else 1.0
+    for doc_id in doc_tfidf_scores:
+        doc_tfidf_scores[doc_id] /= max_tfidf if max_tfidf > 0 else 1.0
+
+    # Combine concept and TF-IDF scores for document ranking
+    combined_doc_scores: Dict[str, float] = {}
+    all_docs = set(doc_concept_scores.keys()) | set(doc_tfidf_scores.keys())
+    for doc_id in all_docs:
+        concept_score = doc_concept_scores.get(doc_id, 0.0)
+        tfidf_score = doc_tfidf_scores.get(doc_id, 0.0)
+        # Weighted combination
+        combined_doc_scores[doc_id] = (
+            (1 - concept_boost) * tfidf_score +
+            concept_boost * concept_score
+        )
+
+    # Get top documents for chunk scoring
+    sorted_docs = sorted(combined_doc_scores.items(), key=lambda x: -x[1])
+    top_docs = sorted_docs[:min(len(sorted_docs), top_n * 3)]
+
+    # ========== STAGE 3: CHUNKS ==========
+    # Score passages within top documents
+    passages: List[Tuple[str, str, int, int, float, Dict[str, float]]] = []
+
+    for doc_id, doc_score in top_docs:
+        if doc_id not in documents:
+            continue
+
+        text = documents[doc_id]
+        chunks = create_chunks(text, chunk_size, overlap)
+
+        for chunk_text, start_char, end_char in chunks:
+            chunk_score = score_chunk(chunk_text, query_terms, layer0, tokenizer, doc_id)
+
+            # ========== STAGE 4: RERANK ==========
+            # Combine all signals for final score
+            concept_score = doc_concept_scores.get(doc_id, 0.0)
+            tfidf_score = doc_tfidf_scores.get(doc_id, 0.0)
+
+            # Normalize chunk score (avoid division by zero)
+            normalized_chunk = chunk_score
+
+            # Final score combines:
+            # - Chunk-level relevance (primary signal)
+            # - Document-level TF-IDF (context signal)
+            # - Concept relevance (topic signal)
+            final_score = (
+                0.5 * normalized_chunk +
+                0.3 * tfidf_score +
+                0.2 * concept_score
+            ) * (1 + doc_score * 0.1)  # Slight boost from combined doc score
+
+            stage_scores = {
+                'concept_score': concept_score,
+                'doc_score': tfidf_score,
+                'chunk_score': chunk_score,
+                'combined_doc_score': doc_score,
+                'final_score': final_score
+            }
+
+            passages.append((
+                chunk_text,
+                doc_id,
+                start_char,
+                end_char,
+                final_score,
+                stage_scores
+            ))
+
+    # Sort by final score and return top passages
+    passages.sort(key=lambda x: x[4], reverse=True)
+    return passages[:top_n]
+
+
+def multi_stage_rank_documents(
+    query_text: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    tokenizer: Tokenizer,
+    top_n: int = 5,
+    concept_boost: float = 0.3,
+    use_expansion: bool = True,
+    semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
+    use_semantic: bool = True
+) -> List[Tuple[str, float, Dict[str, float]]]:
+    """
+    Multi-stage ranking for documents (without chunk scoring).
+
+    Uses the first 2 stages of the pipeline:
+    1. Concepts: Filter by topic relevance
+    2. Documents: Rank by combined concept + TF-IDF scores
+
+    Args:
+        query_text: Search query
+        layers: Dictionary of layers
+        tokenizer: Tokenizer instance
+        top_n: Number of documents to return
+        concept_boost: Weight for concept relevance (0.0-1.0)
+        use_expansion: Whether to expand query terms
+        semantic_relations: Optional list of semantic relations
+        use_semantic: Whether to use semantic relations
+
+    Returns:
+        List of (doc_id, final_score, stage_scores) tuples.
+        stage_scores dict contains: concept_score, tfidf_score, combined_score
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+
+    # Get expanded query terms
+    if use_expansion:
+        query_terms = expand_query(query_text, layers, tokenizer, max_expansions=5)
+        if use_semantic and semantic_relations:
+            semantic_terms = expand_query_semantic(
+                query_text, layers, tokenizer, semantic_relations, max_expansions=5
+            )
+            for term, weight in semantic_terms.items():
+                if term not in query_terms:
+                    query_terms[term] = weight * 0.8
+                else:
+                    query_terms[term] = max(query_terms[term], weight * 0.8)
+    else:
+        tokens = tokenizer.tokenize(query_text)
+        query_terms = {t: 1.0 for t in tokens}
+
+    if not query_terms:
+        return []
+
+    # Stage 1: Concepts
+    relevant_concepts = find_relevant_concepts(query_terms, layers, top_n=10)
+
+    doc_concept_scores: Dict[str, float] = defaultdict(float)
+    if relevant_concepts:
+        max_concept_score = max(score for _, score, _ in relevant_concepts) if relevant_concepts else 1.0
+        for concept_name, concept_score, doc_ids in relevant_concepts:
+            normalized_score = concept_score / max_concept_score if max_concept_score > 0 else 0
+            for doc_id in doc_ids:
+                doc_concept_scores[doc_id] = max(doc_concept_scores[doc_id], normalized_score)
+
+    # Stage 2: Documents
+    doc_tfidf_scores: Dict[str, float] = defaultdict(float)
+    for term, term_weight in query_terms.items():
+        col = layer0.get_minicolumn(term)
+        if col:
+            for doc_id in col.document_ids:
+                tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
+                doc_tfidf_scores[doc_id] += tfidf * term_weight
+
+    # Normalize TF-IDF
+    max_tfidf = max(doc_tfidf_scores.values()) if doc_tfidf_scores else 1.0
+    for doc_id in doc_tfidf_scores:
+        doc_tfidf_scores[doc_id] /= max_tfidf if max_tfidf > 0 else 1.0
+
+    # Combine scores
+    results: List[Tuple[str, float, Dict[str, float]]] = []
+    all_docs = set(doc_concept_scores.keys()) | set(doc_tfidf_scores.keys())
+
+    for doc_id in all_docs:
+        concept_score = doc_concept_scores.get(doc_id, 0.0)
+        tfidf_score = doc_tfidf_scores.get(doc_id, 0.0)
+        combined = (1 - concept_boost) * tfidf_score + concept_boost * concept_score
+
+        stage_scores = {
+            'concept_score': concept_score,
+            'tfidf_score': tfidf_score,
+            'combined_score': combined
+        }
+        results.append((doc_id, combined, stage_scores))
+
+    results.sort(key=lambda x: x[1], reverse=True)
+    return results[:top_n]

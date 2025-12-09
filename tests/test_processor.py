@@ -503,6 +503,163 @@ class TestProcessorBatchQuery(unittest.TestCase):
         self.assertGreater(len(results[1]), 0)  # Matches for neural networks
 
 
+class TestProcessorMultiStageRanking(unittest.TestCase):
+    """Test multi-stage ranking pipeline for RAG systems."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.processor = CorticalTextProcessor()
+        # Create a diverse corpus for testing multi-stage ranking
+        cls.processor.process_document("neural_doc", """
+            Neural networks are computational models inspired by biological neurons.
+            Deep learning uses many layers to learn hierarchical representations.
+            Backpropagation is the key algorithm for training neural networks.
+            Convolutional neural networks excel at image recognition tasks.
+        """)
+        cls.processor.process_document("ml_doc", """
+            Machine learning algorithms learn patterns from data automatically.
+            Supervised learning requires labeled training examples.
+            Unsupervised learning discovers hidden structure in data.
+            Model evaluation uses metrics like accuracy precision and recall.
+        """)
+        cls.processor.process_document("data_doc", """
+            Data preprocessing is essential for machine learning pipelines.
+            Feature engineering creates meaningful input representations.
+            Data normalization scales features to similar ranges.
+            Cross-validation ensures robust model performance estimates.
+        """)
+        cls.processor.process_document("nlp_doc", """
+            Natural language processing enables computers to understand text.
+            Word embeddings capture semantic relationships between words.
+            Transformers use attention mechanisms for sequence modeling.
+            Language models can generate coherent text passages.
+        """)
+        cls.processor.compute_all(verbose=False)
+
+    def test_multi_stage_rank_returns_list(self):
+        """Test that multi_stage_rank returns a list."""
+        results = self.processor.multi_stage_rank("neural networks", top_n=3)
+        self.assertIsInstance(results, list)
+
+    def test_multi_stage_rank_result_structure(self):
+        """Test that results have correct 6-tuple structure."""
+        results = self.processor.multi_stage_rank("neural", top_n=3)
+        self.assertGreater(len(results), 0)
+        passage, doc_id, start, end, score, stage_scores = results[0]
+        self.assertIsInstance(passage, str)
+        self.assertIsInstance(doc_id, str)
+        self.assertIsInstance(start, int)
+        self.assertIsInstance(end, int)
+        self.assertIsInstance(score, float)
+        self.assertIsInstance(stage_scores, dict)
+
+    def test_multi_stage_rank_stage_scores(self):
+        """Test that stage_scores contains expected keys."""
+        results = self.processor.multi_stage_rank("neural networks", top_n=3)
+        self.assertGreater(len(results), 0)
+        _, _, _, _, _, stage_scores = results[0]
+        self.assertIn('concept_score', stage_scores)
+        self.assertIn('doc_score', stage_scores)
+        self.assertIn('chunk_score', stage_scores)
+        self.assertIn('final_score', stage_scores)
+
+    def test_multi_stage_rank_top_n(self):
+        """Test that top_n limits results."""
+        results = self.processor.multi_stage_rank("learning", top_n=2)
+        self.assertLessEqual(len(results), 2)
+
+    def test_multi_stage_rank_chunk_size(self):
+        """Test that chunk_size is respected."""
+        results = self.processor.multi_stage_rank(
+            "neural", top_n=5, chunk_size=100, overlap=20
+        )
+        for passage, _, _, _, _, _ in results:
+            self.assertLessEqual(len(passage), 100)
+
+    def test_multi_stage_rank_concept_boost(self):
+        """Test that concept_boost parameter is used."""
+        # Test with high concept boost vs low
+        results_high = self.processor.multi_stage_rank(
+            "neural", top_n=3, concept_boost=0.8
+        )
+        results_low = self.processor.multi_stage_rank(
+            "neural", top_n=3, concept_boost=0.1
+        )
+        # Both should return results (exact ordering may differ)
+        self.assertGreater(len(results_high), 0)
+        self.assertGreater(len(results_low), 0)
+
+    def test_multi_stage_rank_sorted_descending(self):
+        """Test that results are sorted by score descending."""
+        results = self.processor.multi_stage_rank("neural networks", top_n=5)
+        if len(results) > 1:
+            scores = [score for _, _, _, _, score, _ in results]
+            self.assertEqual(scores, sorted(scores, reverse=True))
+
+    def test_multi_stage_rank_documents_returns_list(self):
+        """Test that multi_stage_rank_documents returns a list."""
+        results = self.processor.multi_stage_rank_documents("neural networks", top_n=3)
+        self.assertIsInstance(results, list)
+
+    def test_multi_stage_rank_documents_structure(self):
+        """Test that document results have correct 3-tuple structure."""
+        results = self.processor.multi_stage_rank_documents("neural", top_n=3)
+        self.assertGreater(len(results), 0)
+        doc_id, score, stage_scores = results[0]
+        self.assertIsInstance(doc_id, str)
+        self.assertIsInstance(score, float)
+        self.assertIsInstance(stage_scores, dict)
+
+    def test_multi_stage_rank_documents_stage_scores(self):
+        """Test that document stage_scores contains expected keys."""
+        results = self.processor.multi_stage_rank_documents("neural networks", top_n=3)
+        self.assertGreater(len(results), 0)
+        _, _, stage_scores = results[0]
+        self.assertIn('concept_score', stage_scores)
+        self.assertIn('tfidf_score', stage_scores)
+        self.assertIn('combined_score', stage_scores)
+
+    def test_multi_stage_rank_documents_top_n(self):
+        """Test that top_n limits document results."""
+        results = self.processor.multi_stage_rank_documents("learning", top_n=2)
+        self.assertLessEqual(len(results), 2)
+
+    def test_multi_stage_rank_documents_sorted(self):
+        """Test that document results are sorted by score descending."""
+        results = self.processor.multi_stage_rank_documents("neural networks", top_n=5)
+        if len(results) > 1:
+            scores = [score for _, score, _ in results]
+            self.assertEqual(scores, sorted(scores, reverse=True))
+
+    def test_multi_stage_rank_empty_query(self):
+        """Test handling of query with no matches."""
+        results = self.processor.multi_stage_rank("xyznonexistent123", top_n=3)
+        self.assertEqual(len(results), 0)
+
+    def test_multi_stage_rank_without_expansion(self):
+        """Test multi-stage ranking without query expansion."""
+        results = self.processor.multi_stage_rank(
+            "neural", top_n=3, use_expansion=False
+        )
+        self.assertIsInstance(results, list)
+
+    def test_multi_stage_vs_flat_ranking(self):
+        """Test that multi-stage ranking produces results comparable to flat ranking."""
+        # Both should find relevant documents for the same query
+        multi_results = self.processor.multi_stage_rank("neural networks", top_n=3)
+        flat_results = self.processor.find_passages_for_query("neural networks", top_n=3)
+
+        # Both should return results
+        self.assertGreater(len(multi_results), 0)
+        self.assertGreater(len(flat_results), 0)
+
+        # Both should find the neural_doc
+        multi_docs = {doc_id for _, doc_id, _, _, _, _ in multi_results}
+        flat_docs = {doc_id for _, doc_id, _, _, _ in flat_results}
+        self.assertIn("neural_doc", multi_docs)
+        self.assertIn("neural_doc", flat_docs)
+
+
 class TestProcessorIncrementalIndexing(unittest.TestCase):
     """Test incremental document indexing functionality."""
 
