@@ -1,0 +1,11 @@
+Computational Theory and Complexity
+
+Computational theory establishes fundamental limits of computing through mathematical formalism. Turing machines provide the foundational model—an infinite tape, read-write head, and finite state control. Church-Turing thesis posits that any effectively calculable function is Turing computable. Universal Turing machines simulate arbitrary Turing machines, establishing programmable computation.
+
+Decidability classifies problems by algorithmic solvability. The halting problem proves undecidable—no algorithm determines whether arbitrary programs terminate. Rice's theorem extends undecidability to all non-trivial semantic properties of programs. Reductions demonstrate undecidability by transforming known undecidable problems into new ones.
+
+Complexity theory measures computational resource requirements. Time complexity counts primitive operations as functions of input size. Space complexity measures memory usage. Asymptotic analysis using big-O notation captures growth rates, abstracting constant factors and lower-order terms.
+
+Complexity classes categorize problems by resource bounds. P contains problems solvable in polynomial time. NP encompasses problems with polynomial-time verifiable solutions. The P versus NP question—whether these classes differ—remains open. NP-complete problems, including SAT, traveling salesman, and graph coloring, are hardest within NP; solving any in polynomial time would prove P equals NP.
+
+Beyond NP, PSPACE includes problems solvable with polynomial space. EXPTIME requires exponential time. The polynomial hierarchy stratifies problems between P and PSPACE. Randomized complexity classes like BPP capture probabilistic algorithms. Circuit complexity measures non-uniform computation. Quantum complexity explores computational power of quantum mechanical systems, with BQP capturing efficient quantum computation.

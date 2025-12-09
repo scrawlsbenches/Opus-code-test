@@ -1,0 +1,11 @@
+Fundamental Data Structures in Computer Science
+
+Data structures organize and store information for efficient access and modification. Arrays provide contiguous memory allocation enabling O(1) random access through index arithmetic. Dynamic arrays resize automatically, amortizing insertion costs across operations. Linked lists trade random access for O(1) insertions and deletions through pointer manipulation.
+
+Trees introduce hierarchical organization. Binary search trees maintain sorted order with O(log n) average operations. Self-balancing variants like AVL trees and red-black trees guarantee logarithmic worst-case complexity through rotation operations. B-trees optimize for disk access patterns, supporting databases with high branching factors minimizing tree height.
+
+Hash tables achieve O(1) average-case lookup, insertion, and deletion through hash functions mapping keys to array indices. Collision resolution strategies include chaining with linked lists and open addressing with linear or quadratic probing. Load factor monitoring triggers resizing to maintain performance guarantees.
+
+Heaps implement priority queues with O(log n) insertion and extraction. Binary heaps use array representation with parent-child relationships defined by index arithmetic. Fibonacci heaps achieve O(1) amortized insertion supporting efficient decrease-key operations for graph algorithms.
+
+Graphs represent relationships between entities through vertices and edges. Adjacency matrices enable O(1) edge queries at O(V^2) space cost. Adjacency lists reduce space complexity to O(V+E) for sparse graphs. Graph traversals include breadth-first search using queues and depth-first search using recursion or explicit stacks. Specialized structures like tries optimize string operations, while bloom filters provide probabilistic set membership testing with space efficiency.
