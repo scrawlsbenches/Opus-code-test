@@ -529,6 +529,326 @@ for query, passages in zip(queries, results):
 
 ---
 
+---
+
+# ConceptNet-Enhanced PageRank
+
+The following tasks implement a ConceptNet-like enhanced PageRank algorithm that leverages semantic relations, cross-layer connections, and typed edge weights for improved concept importance scoring.
+
+---
+
+## ConceptNet Critical Priority
+
+### 19. Build Cross-Layer Feedforward Connections
+
+**Files:** `cortical/analysis.py`, `cortical/processor.py`
+**Status:** [ ] Pending
+
+**Problem:**
+Layers are currently isolated - concepts don't connect back to their member tokens, and bigrams don't link to component unigrams. This breaks the hierarchical flow needed for cross-layer PageRank.
+
+**Current State:**
+- Concepts have `feedforward_sources` (set of token IDs) but no weighted connections
+- Bigrams store content like "neural_networks" but don't link to "neural" or "networks" minicolumns
+- No upward or downward propagation paths between layers
+
+**Implementation Steps:**
+1. Add `feedforward_connections: Dict[str, float]` to Minicolumn (weighted links to lower layer)
+2. Add `feedback_connections: Dict[str, float]` to Minicolumn (weighted links to higher layer)
+3. Update bigram creation to link to component tokens with weight 1.0
+4. Update concept creation to link to member tokens weighted by token PageRank
+5. Update persistence to save/load new connection types
+
+**Files to Modify:**
+- `cortical/minicolumn.py` - Add new connection fields
+- `cortical/processor.py` - Populate feedforward connections during processing
+- `cortical/analysis.py` - Update `build_concept_clusters()` to create weighted links
+- `cortical/persistence.py` - Handle new fields
+
+---
+
+### 20. Add Concept-Level Lateral Connections
+
+**Files:** `cortical/analysis.py`
+**Status:** [ ] Pending
+
+**Problem:**
+Layer 2 (Concepts) has 0 lateral connections. Concept clusters should connect to each other based on:
+- Shared documents (concepts appearing in same docs)
+- Semantic overlap (member tokens with semantic relations)
+- Co-activation patterns
+
+**Implementation Steps:**
+1. Add `compute_concept_connections()` function to `analysis.py`
+2. Connect concepts sharing documents (weighted by Jaccard similarity of doc sets)
+3. Connect concepts with semantically related member tokens
+4. Weight connections by relation type (IsA > PartOf > RelatedTo)
+5. Call from `compute_all()` after `build_concept_clusters()`
+
+**Example Output:**
+```python
+# Concept "neural/networks/learning" connects to:
+#   → "knowledge/graph/semantic" (weight: 0.73, reason: shared docs + RelatedTo)
+#   → "data/processing/systems" (weight: 0.45, reason: shared docs)
+```
+
+---
+
+### 21. Add Bigram Lateral Connections
+
+**Files:** `cortical/analysis.py`, `cortical/processor.py`
+**Status:** [ ] Pending
+
+**Problem:**
+Layer 1 (Bigrams) has 0 lateral connections. Bigrams should connect when they:
+- Share a component term ("neural_networks" ↔ "neural_processing")
+- Co-occur in the same documents
+- Form chains ("machine_learning" ↔ "learning_algorithms")
+
+**Implementation Steps:**
+1. Add `compute_bigram_connections()` function to `analysis.py`
+2. Connect bigrams sharing a term (left or right component)
+3. Weight by co-occurrence count and component position
+4. Add document co-occurrence bonus
+5. Call from `compute_all()` after bigram layer is populated
+
+---
+
+## ConceptNet High Priority
+
+### 22. Implement Relation-Weighted PageRank
+
+**Files:** `cortical/analysis.py`
+**Status:** [ ] Pending
+
+**Problem:**
+Current PageRank treats all `lateral_connections` equally. ConceptNet-style PageRank should weight edges by semantic relation type.
+
+**Current PageRank:**
+```python
+for target_id, weight in col.lateral_connections.items():
+    # All weights treated the same
+```
+
+**Enhanced PageRank:**
+```python
+RELATION_WEIGHTS = {
+    'IsA': 1.5,        # Hypernym relationships are strong
+    'PartOf': 1.3,     # Meronym relationships
+    'HasProperty': 1.2,
+    'RelatedTo': 1.0,  # Default co-occurrence
+    'Antonym': 0.5,    # Opposing concepts
+}
+```
+
+**Implementation Steps:**
+1. Add `relation_type: str` field to connection edges (or use separate dict)
+2. Create `compute_semantic_pagerank()` function
+3. Apply relation-type multipliers during propagation
+4. Use semantic relations from `extract_corpus_semantics()` to label edges
+5. Add `pagerank_method` parameter to `compute_all()`: 'standard' | 'semantic'
+
+---
+
+### 23. Implement Cross-Layer PageRank Propagation
+
+**Files:** `cortical/analysis.py`
+**Status:** [ ] Pending
+
+**Problem:**
+PageRank only flows within a single layer. Importance should propagate across layers:
+- Important tokens boost their bigrams
+- Important bigrams boost their concepts
+- Important concepts boost their documents (and vice versa)
+
+**Implementation Steps:**
+1. Add `compute_hierarchical_pagerank()` function
+2. Iterate: compute layer-local PageRank, then propagate to adjacent layers
+3. Use `feedforward_connections` and `feedback_connections` for cross-layer flow
+4. Apply damping factor at layer boundaries (e.g., 0.7)
+5. Converge when cross-layer changes are minimal
+
+**Algorithm:**
+```
+for iteration in range(max_iterations):
+    for layer in [TOKENS, BIGRAMS, CONCEPTS, DOCUMENTS]:
+        compute_local_pagerank(layer)
+    propagate_up(TOKENS → BIGRAMS → CONCEPTS → DOCUMENTS)
+    propagate_down(DOCUMENTS → CONCEPTS → BIGRAMS → TOKENS)
+    if converged: break
+```
+
+---
+
+### 24. Add Typed Edge Storage
+
+**Files:** `cortical/minicolumn.py`, `cortical/analysis.py`
+**Status:** [ ] Pending
+
+**Problem:**
+`lateral_connections` only stores `{target_id: weight}`. ConceptNet-style graphs need edge metadata: relation type, confidence, source.
+
+**Current:**
+```python
+lateral_connections: Dict[str, float] = {}  # {id: weight}
+```
+
+**Enhanced:**
+```python
+@dataclass
+class Edge:
+    target_id: str
+    weight: float
+    relation_type: str = 'co_occurrence'
+    confidence: float = 1.0
+    source: str = 'corpus'  # 'corpus', 'semantic', 'inferred'
+
+typed_connections: Dict[str, Edge] = {}
+```
+
+**Implementation Steps:**
+1. Create `Edge` dataclass in `minicolumn.py`
+2. Add `typed_connections` field alongside `lateral_connections` (backward compat)
+3. Update connection-building code to populate edge metadata
+4. Update persistence to save/load typed connections
+5. Migrate algorithms to use typed connections when available
+
+---
+
+## ConceptNet Medium Priority
+
+### 25. Implement Multi-Hop Semantic Inference
+
+**Files:** `cortical/query.py`, `cortical/semantics.py`
+**Status:** [ ] Pending
+
+**Problem:**
+Query expansion only follows single-hop connections. ConceptNet enables multi-hop inference:
+- "dog" → IsA → "animal" → HasProperty → "living"
+- "car" → PartOf → "engine" → UsedFor → "transportation"
+
+**Implementation Steps:**
+1. Add `expand_query_multihop()` function to `query.py`
+2. Follow relation chains up to `max_hops` (default: 2)
+3. Decay weight by hop distance: `weight *= 0.5 ** hop`
+4. Filter by relation path validity (IsA chains are good, random walks less so)
+5. Use for enhanced document retrieval
+
+**Example:**
+```python
+expand_query_multihop("neural", max_hops=2)
+# Hop 1: networks (co-occur), learning (co-occur), brain (RelatedTo)
+# Hop 2: deep (via learning), cortex (via brain), AI (via networks)
+```
+
+---
+
+### 26. Add Relation Path Scoring
+
+**Files:** `cortical/semantics.py`
+**Status:** [ ] Pending
+
+**Problem:**
+Not all relation paths are equally valid for inference. Need to score paths by semantic coherence.
+
+**Valid Paths:**
+- IsA → IsA (transitive hypernymy): "poodle" → "dog" → "animal" ✓
+- PartOf → HasA (part inheritance): "wheel" → "car" → "engine" ✓
+- RelatedTo → RelatedTo (association): loose but acceptable
+
+**Invalid Paths:**
+- Antonym → IsA: contradictory
+- Random oscillation: low confidence
+
+**Implementation Steps:**
+1. Create `VALID_RELATION_CHAINS` matrix defining allowed transitions
+2. Add `score_relation_path()` function
+3. Penalize invalid transitions, reward coherent chains
+4. Use in multi-hop expansion to filter low-quality paths
+
+---
+
+### 27. Implement Concept Inheritance
+
+**Files:** `cortical/analysis.py`, `cortical/semantics.py`
+**Status:** [ ] Pending
+
+**Problem:**
+IsA relations should enable property inheritance. If "dog IsA animal" and "animal HasProperty living", then "dog" should inherit "living".
+
+**Implementation Steps:**
+1. Build IsA hierarchy from semantic relations
+2. Add `inherit_properties()` function
+3. Propagate properties down IsA chains with decay
+4. Store inherited properties separately from direct properties
+5. Use inherited properties in similarity calculations
+
+---
+
+## ConceptNet Low Priority
+
+### 28. Add Commonsense Relation Extraction
+
+**Files:** `cortical/semantics.py`
+**Status:** [ ] Pending
+
+**Problem:**
+Current relation extraction is limited to co-occurrence patterns. Could extract richer relations:
+- "X is a type of Y" → IsA
+- "X contains Y" → HasA
+- "X is used for Y" → UsedFor
+- "X causes Y" → Causes
+
+**Implementation Steps:**
+1. Add pattern-based relation extraction
+2. Create regex/rule patterns for common relation expressions
+3. Extract during `extract_corpus_semantics()`
+4. Store relation type with confidence score
+5. Weight by pattern specificity
+
+---
+
+### 29. Visualize ConceptNet-Style Graph
+
+**Files:** `cortical/persistence.py`
+**Status:** [ ] Pending
+
+**Problem:**
+Current `export_graph_json()` doesn't distinguish edge types or layers. Need ConceptNet-style visualization export.
+
+**Implementation Steps:**
+1. Add `export_conceptnet_json()` function
+2. Include edge relation types and confidence
+3. Color-code by layer (tokens=blue, bigrams=green, concepts=orange, docs=red)
+4. Export in format compatible with graph visualization tools (D3.js, Cytoscape)
+5. Include cross-layer edges
+
+---
+
+### 30. Add Analogy Completion
+
+**Files:** `cortical/query.py`
+**Status:** [ ] Pending
+
+**Problem:**
+ConceptNet enables analogy completion: "king is to queen as man is to ?" → "woman"
+This requires relation-aware vector arithmetic.
+
+**Implementation Steps:**
+1. Add `complete_analogy(a, b, c)` function
+2. Find relation between a→b
+3. Apply same relation from c to find d
+4. Use graph embeddings + relation type matching
+5. Return top candidates with confidence
+
+**Example:**
+```python
+complete_analogy("neural", "networks", "knowledge")
+# → "graphs" (both form compound technical terms)
+```
+
+---
+
 ## Summary
 
 | Priority | Task | Status | Category |
@@ -550,9 +870,22 @@ for query, passages in zip(queries, results):
 | Low | Document magic numbers | ⏳ Deferred | Documentation |
 | Low | Multi-stage ranking pipeline | ✅ Completed | RAG |
 | Low | Batch query API | ✅ Completed | RAG |
+| **Critical** | **Build cross-layer feedforward connections** | ⏳ Pending | **ConceptNet** |
+| **Critical** | **Add concept-level lateral connections** | ⏳ Pending | **ConceptNet** |
+| **Critical** | **Add bigram lateral connections** | ⏳ Pending | **ConceptNet** |
+| **High** | **Implement relation-weighted PageRank** | ⏳ Pending | **ConceptNet** |
+| **High** | **Implement cross-layer PageRank propagation** | ⏳ Pending | **ConceptNet** |
+| **High** | **Add typed edge storage** | ⏳ Pending | **ConceptNet** |
+| Medium | Implement multi-hop semantic inference | ⏳ Pending | ConceptNet |
+| Medium | Add relation path scoring | ⏳ Pending | ConceptNet |
+| Medium | Implement concept inheritance | ⏳ Pending | ConceptNet |
+| Low | Add commonsense relation extraction | ⏳ Pending | ConceptNet |
+| Low | Visualize ConceptNet-style graph | ⏳ Pending | ConceptNet |
+| Low | Add analogy completion | ⏳ Pending | ConceptNet |
 
 **Bug Fix Completion:** 7/7 tasks (100%)
 **RAG Enhancement Completion:** 8/8 tasks (100%)
+**ConceptNet Enhancement Completion:** 0/12 tasks (0%)
 
 ---
 
