@@ -20,7 +20,7 @@ from . import persistence
 
 class CorticalTextProcessor:
     """Neocortex-inspired text processing system."""
-    
+
     def __init__(self, tokenizer: Optional[Tokenizer] = None):
         self.tokenizer = tokenizer or Tokenizer()
         self.layers: Dict[CorticalLayer, HierarchicalLayer] = {
@@ -30,12 +30,35 @@ class CorticalTextProcessor:
             CorticalLayer.DOCUMENTS: HierarchicalLayer(CorticalLayer.DOCUMENTS),
         }
         self.documents: Dict[str, str] = {}
+        self.document_metadata: Dict[str, Dict[str, Any]] = {}
         self.embeddings: Dict[str, List[float]] = {}
         self.semantic_relations: List[Tuple[str, str, str, float]] = []
-    
-    def process_document(self, doc_id: str, content: str) -> Dict[str, int]:
-        """Process a document and add it to the corpus."""
+
+    def process_document(
+        self,
+        doc_id: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, int]:
+        """
+        Process a document and add it to the corpus.
+
+        Args:
+            doc_id: Unique identifier for the document
+            content: Document text content
+            metadata: Optional metadata dict (source, timestamp, author, etc.)
+
+        Returns:
+            Dict with processing statistics (tokens, bigrams, unique_tokens)
+        """
         self.documents[doc_id] = content
+
+        # Store metadata if provided
+        if metadata:
+            self.document_metadata[doc_id] = metadata.copy()
+        elif doc_id not in self.document_metadata:
+            self.document_metadata[doc_id] = {}
+
         tokens = self.tokenizer.tokenize(content)
         bigrams = self.tokenizer.extract_ngrams(tokens, n=2)
         
@@ -75,7 +98,48 @@ class CorticalTextProcessor:
                     col.feedforward_sources.add(token_col.id)
         
         return {'tokens': len(tokens), 'bigrams': len(bigrams), 'unique_tokens': len(set(tokens))}
-    
+
+    def set_document_metadata(self, doc_id: str, **kwargs) -> None:
+        """
+        Set or update metadata for a document.
+
+        Args:
+            doc_id: Document identifier
+            **kwargs: Metadata key-value pairs to set
+
+        Example:
+            >>> processor.set_document_metadata("doc1",
+            ...     source="https://example.com",
+            ...     author="John Doe",
+            ...     timestamp="2025-12-09"
+            ... )
+        """
+        if doc_id not in self.document_metadata:
+            self.document_metadata[doc_id] = {}
+        self.document_metadata[doc_id].update(kwargs)
+
+    def get_document_metadata(self, doc_id: str) -> Dict[str, Any]:
+        """
+        Get metadata for a document.
+
+        Args:
+            doc_id: Document identifier
+
+        Returns:
+            Metadata dict (empty dict if no metadata set)
+        """
+        return self.document_metadata.get(doc_id, {})
+
+    def get_all_document_metadata(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get metadata for all documents.
+
+        Returns:
+            Dict mapping doc_id to metadata dict (deep copy)
+        """
+        import copy
+        return copy.deepcopy(self.document_metadata)
+
     def compute_all(self, verbose: bool = True) -> None:
         """Run all computation steps."""
         if verbose: print("Computing activation propagation...")
@@ -218,15 +282,28 @@ class CorticalTextProcessor:
         return persistence.get_state_summary(self.layers, self.documents)
     
     def save(self, filepath: str, verbose: bool = True) -> None:
-        metadata = {'has_embeddings': bool(self.embeddings), 'has_relations': bool(self.semantic_relations)}
-        persistence.save_processor(filepath, self.layers, self.documents, metadata, verbose)
-    
+        """Save processor state to a file."""
+        metadata = {
+            'has_embeddings': bool(self.embeddings),
+            'has_relations': bool(self.semantic_relations)
+        }
+        persistence.save_processor(
+            filepath,
+            self.layers,
+            self.documents,
+            self.document_metadata,
+            metadata,
+            verbose
+        )
+
     @classmethod
     def load(cls, filepath: str, verbose: bool = True) -> 'CorticalTextProcessor':
-        layers, documents, metadata = persistence.load_processor(filepath, verbose)
+        """Load processor state from a file."""
+        layers, documents, document_metadata, metadata = persistence.load_processor(filepath, verbose)
         processor = cls()
         processor.layers = layers
         processor.documents = documents
+        processor.document_metadata = document_metadata
         return processor
     
     def export_graph(self, filepath: str, layer: Optional[CorticalLayer] = None, max_nodes: int = 500) -> Dict:

@@ -30,9 +30,12 @@ class TestSaveLoad(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
-            save_processor(filepath, processor.layers, processor.documents, verbose=False)
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, verbose=False
+            )
 
-            layers, documents, metadata = load_processor(filepath, verbose=False)
+            layers, documents, document_metadata, metadata = load_processor(filepath, verbose=False)
 
             self.assertEqual(len(documents), 2)
             self.assertIn("doc1", documents)
@@ -50,9 +53,12 @@ class TestSaveLoad(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
-            save_processor(filepath, processor.layers, processor.documents, verbose=False)
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, verbose=False
+            )
 
-            layers, documents, _ = load_processor(filepath, verbose=False)
+            layers, documents, document_metadata, metadata = load_processor(filepath, verbose=False)
 
             layer0 = layers[CorticalLayer.TOKENS]
             neural = layer0.get_minicolumn("neural")
@@ -70,9 +76,12 @@ class TestSaveLoad(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
-            save_processor(filepath, processor.layers, processor.documents, verbose=False)
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, verbose=False
+            )
 
-            layers, documents, _ = load_processor(filepath, verbose=False)
+            layers, documents, document_metadata, metadata = load_processor(filepath, verbose=False)
 
             layer0 = layers[CorticalLayer.TOKENS]
             neural = layer0.get_minicolumn("neural")
@@ -86,11 +95,35 @@ class TestSaveLoad(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
-            save_processor(filepath, processor.layers, processor.documents, verbose=False)
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, verbose=False
+            )
 
-            layers, documents, metadata = load_processor(filepath, verbose=False)
+            layers, documents, document_metadata, metadata = load_processor(filepath, verbose=False)
 
             self.assertEqual(len(documents), 0)
+
+    def test_save_load_preserves_document_metadata(self):
+        """Test that save/load preserves document metadata."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks process information.",
+            metadata={"source": "https://example.com", "author": "Test"}
+        )
+        processor.compute_all(verbose=False)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, verbose=False
+            )
+
+            layers, documents, document_metadata, metadata = load_processor(filepath, verbose=False)
+
+            self.assertEqual(document_metadata["doc1"]["source"], "https://example.com")
+            self.assertEqual(document_metadata["doc1"]["author"], "Test")
 
 
 class TestExportGraphJSON(unittest.TestCase):

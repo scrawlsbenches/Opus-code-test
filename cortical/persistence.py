@@ -23,23 +23,26 @@ def save_processor(
     filepath: str,
     layers: Dict[CorticalLayer, HierarchicalLayer],
     documents: Dict[str, str],
+    document_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
     metadata: Optional[Dict] = None,
     verbose: bool = True
 ) -> None:
     """
     Save processor state to a file.
-    
+
     Args:
         filepath: Path to save file
         layers: Dictionary of all layers
         documents: Document collection
-        metadata: Optional metadata (version, settings, etc.)
+        document_metadata: Per-document metadata (source, timestamp, etc.)
+        metadata: Optional processor metadata (version, settings, etc.)
         verbose: Print progress
     """
     state = {
-        'version': '2.0',
+        'version': '2.1',
         'layers': {},
         'documents': documents,
+        'document_metadata': document_metadata or {},
         'metadata': metadata or {}
     }
     
@@ -65,26 +68,27 @@ def load_processor(
 ) -> tuple:
     """
     Load processor state from a file.
-    
+
     Args:
         filepath: Path to saved file
         verbose: Print progress
-        
+
     Returns:
-        Tuple of (layers, documents, metadata)
+        Tuple of (layers, documents, document_metadata, metadata)
     """
     with open(filepath, 'rb') as f:
         state = pickle.load(f)
-    
+
     # Reconstruct layers
     layers = {}
     for level_value, layer_data in state.get('layers', {}).items():
         layer = HierarchicalLayer.from_dict(layer_data)
         layers[CorticalLayer(int(level_value))] = layer
-    
+
     documents = state.get('documents', {})
+    document_metadata = state.get('document_metadata', {})
     metadata = state.get('metadata', {})
-    
+
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())
         total_conns = sum(layer.total_connections() for layer in layers.values())
@@ -92,8 +96,8 @@ def load_processor(
         print(f"  - {len(documents)} documents")
         print(f"  - {total_cols} minicolumns")
         print(f"  - {total_conns} connections")
-    
-    return layers, documents, metadata
+
+    return layers, documents, document_metadata, metadata
 
 
 def export_graph_json(

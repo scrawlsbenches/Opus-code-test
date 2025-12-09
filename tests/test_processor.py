@@ -135,22 +135,97 @@ class TestProcessorQuery(unittest.TestCase):
         self.assertIsInstance(results, list)
 
 
+class TestProcessorMetadata(unittest.TestCase):
+    """Test document metadata functionality."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor()
+
+    def test_process_document_with_metadata(self):
+        """Test processing document with metadata."""
+        metadata = {"source": "https://example.com", "author": "Test Author"}
+        self.processor.process_document("doc1", "Test content.", metadata=metadata)
+        retrieved = self.processor.get_document_metadata("doc1")
+        self.assertEqual(retrieved["source"], "https://example.com")
+        self.assertEqual(retrieved["author"], "Test Author")
+
+    def test_set_document_metadata(self):
+        """Test setting metadata after processing."""
+        self.processor.process_document("doc1", "Test content.")
+        self.processor.set_document_metadata("doc1", source="https://test.com", timestamp="2025-12-09")
+        metadata = self.processor.get_document_metadata("doc1")
+        self.assertEqual(metadata["source"], "https://test.com")
+        self.assertEqual(metadata["timestamp"], "2025-12-09")
+
+    def test_update_document_metadata(self):
+        """Test updating existing metadata."""
+        self.processor.process_document("doc1", "Test content.", metadata={"author": "Original"})
+        self.processor.set_document_metadata("doc1", author="Updated", category="AI")
+        metadata = self.processor.get_document_metadata("doc1")
+        self.assertEqual(metadata["author"], "Updated")
+        self.assertEqual(metadata["category"], "AI")
+
+    def test_get_document_metadata_missing(self):
+        """Test getting metadata for nonexistent document."""
+        metadata = self.processor.get_document_metadata("nonexistent")
+        self.assertEqual(metadata, {})
+
+    def test_get_all_document_metadata(self):
+        """Test getting all document metadata."""
+        self.processor.process_document("doc1", "Content 1", metadata={"type": "article"})
+        self.processor.process_document("doc2", "Content 2", metadata={"type": "paper"})
+        all_metadata = self.processor.get_all_document_metadata()
+        self.assertEqual(len(all_metadata), 2)
+        self.assertEqual(all_metadata["doc1"]["type"], "article")
+        self.assertEqual(all_metadata["doc2"]["type"], "paper")
+
+    def test_metadata_not_modified_externally(self):
+        """Test that get_all_document_metadata returns a copy."""
+        self.processor.process_document("doc1", "Content", metadata={"key": "value"})
+        all_metadata = self.processor.get_all_document_metadata()
+        all_metadata["doc1"]["key"] = "modified"
+        # Original should be unchanged
+        original = self.processor.get_document_metadata("doc1")
+        self.assertEqual(original["key"], "value")
+
+
 class TestProcessorPersistence(unittest.TestCase):
     """Test processor save/load functionality."""
-    
+
     def test_save_and_load(self):
         """Test saving and loading processor."""
         processor = CorticalTextProcessor()
         processor.process_document("doc1", "Test document content.")
         processor.compute_all(verbose=False)
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
             processor.save(filepath, verbose=False)
-            
+
             loaded = CorticalTextProcessor.load(filepath, verbose=False)
             self.assertEqual(len(loaded.documents), 1)
             self.assertIn("doc1", loaded.documents)
+
+    def test_save_and_load_with_metadata(self):
+        """Test that document metadata is preserved through save/load."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Test document content.",
+            metadata={"source": "https://example.com", "author": "Test Author"}
+        )
+        processor.set_document_metadata("doc1", category="test")
+        processor.compute_all(verbose=False)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            processor.save(filepath, verbose=False)
+
+            loaded = CorticalTextProcessor.load(filepath, verbose=False)
+            metadata = loaded.get_document_metadata("doc1")
+            self.assertEqual(metadata["source"], "https://example.com")
+            self.assertEqual(metadata["author"], "Test Author")
+            self.assertEqual(metadata["category"], "test")
 
 
 class TestProcessorPassageRetrieval(unittest.TestCase):
