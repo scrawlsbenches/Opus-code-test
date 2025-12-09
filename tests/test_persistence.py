@@ -30,9 +30,14 @@ class TestSaveLoad(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
-            save_processor(filepath, processor.layers, processor.documents, verbose=False)
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, processor.embeddings,
+                processor.semantic_relations, verbose=False
+            )
 
-            layers, documents, metadata = load_processor(filepath, verbose=False)
+            result = load_processor(filepath, verbose=False)
+            layers, documents, document_metadata, embeddings, semantic_relations, metadata = result
 
             self.assertEqual(len(documents), 2)
             self.assertIn("doc1", documents)
@@ -50,9 +55,14 @@ class TestSaveLoad(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
-            save_processor(filepath, processor.layers, processor.documents, verbose=False)
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, processor.embeddings,
+                processor.semantic_relations, verbose=False
+            )
 
-            layers, documents, _ = load_processor(filepath, verbose=False)
+            result = load_processor(filepath, verbose=False)
+            layers, documents, document_metadata, embeddings, semantic_relations, metadata = result
 
             layer0 = layers[CorticalLayer.TOKENS]
             neural = layer0.get_minicolumn("neural")
@@ -70,9 +80,14 @@ class TestSaveLoad(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
-            save_processor(filepath, processor.layers, processor.documents, verbose=False)
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, processor.embeddings,
+                processor.semantic_relations, verbose=False
+            )
 
-            layers, documents, _ = load_processor(filepath, verbose=False)
+            result = load_processor(filepath, verbose=False)
+            layers, documents, document_metadata, embeddings, semantic_relations, metadata = result
 
             layer0 = layers[CorticalLayer.TOKENS]
             neural = layer0.get_minicolumn("neural")
@@ -86,11 +101,74 @@ class TestSaveLoad(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
-            save_processor(filepath, processor.layers, processor.documents, verbose=False)
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, processor.embeddings,
+                processor.semantic_relations, verbose=False
+            )
 
-            layers, documents, metadata = load_processor(filepath, verbose=False)
+            result = load_processor(filepath, verbose=False)
+            layers, documents, document_metadata, embeddings, semantic_relations, metadata = result
 
             self.assertEqual(len(documents), 0)
+
+    def test_save_load_preserves_document_metadata(self):
+        """Test that save/load preserves document metadata."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks process information.",
+            metadata={"source": "https://example.com", "author": "Test"}
+        )
+        processor.compute_all(verbose=False)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, processor.embeddings,
+                processor.semantic_relations, verbose=False
+            )
+
+            result = load_processor(filepath, verbose=False)
+            layers, documents, document_metadata, embeddings, semantic_relations, metadata = result
+
+            self.assertEqual(document_metadata["doc1"]["source"], "https://example.com")
+            self.assertEqual(document_metadata["doc1"]["author"], "Test")
+
+    def test_save_load_preserves_embeddings(self):
+        """Test that save/load preserves graph embeddings."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process information.")
+        processor.compute_all(verbose=False)
+        processor.compute_graph_embeddings(dimensions=16, verbose=False)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            processor.save(filepath, verbose=False)
+
+            loaded = CorticalTextProcessor.load(filepath, verbose=False)
+
+            self.assertEqual(len(loaded.embeddings), len(processor.embeddings))
+            # Check a specific embedding is preserved
+            for term in processor.embeddings:
+                self.assertIn(term, loaded.embeddings)
+                self.assertEqual(processor.embeddings[term], loaded.embeddings[term])
+
+    def test_save_load_preserves_semantic_relations(self):
+        """Test that save/load preserves semantic relations."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks are computational models.")
+        processor.process_document("doc2", "Deep learning uses neural networks.")
+        processor.compute_all(verbose=False)
+        processor.extract_corpus_semantics(verbose=False)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            processor.save(filepath, verbose=False)
+
+            loaded = CorticalTextProcessor.load(filepath, verbose=False)
+
+            self.assertEqual(len(loaded.semantic_relations), len(processor.semantic_relations))
 
 
 class TestExportGraphJSON(unittest.TestCase):

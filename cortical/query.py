@@ -179,39 +179,57 @@ def find_documents_for_query(
     layers: Dict[CorticalLayer, HierarchicalLayer],
     tokenizer: Tokenizer,
     top_n: int = 5,
-    use_expansion: bool = True
+    use_expansion: bool = True,
+    semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
+    use_semantic: bool = True
 ) -> List[Tuple[str, float]]:
     """
     Find documents most relevant to a query using TF-IDF and optional expansion.
-    
+
     Args:
         query_text: Search query
         layers: Dictionary of layers
         tokenizer: Tokenizer instance
         top_n: Number of documents to return
-        use_expansion: Whether to expand query terms
-        
+        use_expansion: Whether to expand query terms using lateral connections
+        semantic_relations: Optional list of semantic relations for expansion
+        use_semantic: Whether to use semantic relations for expansion (if available)
+
     Returns:
         List of (doc_id, score) tuples ranked by relevance
     """
     layer0 = layers[CorticalLayer.TOKENS]
-    
+
     if use_expansion:
+        # Start with lateral connection expansion
         query_terms = expand_query(query_text, layers, tokenizer, max_expansions=5)
+
+        # Add semantic expansion if available
+        if use_semantic and semantic_relations:
+            semantic_terms = expand_query_semantic(
+                query_text, layers, tokenizer, semantic_relations, max_expansions=5
+            )
+            # Merge semantic expansions (don't override stronger weights)
+            for term, weight in semantic_terms.items():
+                if term not in query_terms:
+                    query_terms[term] = weight * 0.8  # Slightly discount semantic expansions
+                else:
+                    # Take the max weight
+                    query_terms[term] = max(query_terms[term], weight * 0.8)
     else:
         tokens = tokenizer.tokenize(query_text)
         query_terms = {t: 1.0 for t in tokens}
-    
+
     # Score each document
     doc_scores: Dict[str, float] = defaultdict(float)
-    
+
     for term, term_weight in query_terms.items():
         col = layer0.get_minicolumn(term)
         if col:
             for doc_id in col.document_ids:
                 tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
                 doc_scores[doc_id] += tfidf * term_weight
-    
+
     sorted_docs = sorted(doc_scores.items(), key=lambda x: -x[1])
     return sorted_docs[:top_n]
 
@@ -275,22 +293,22 @@ def find_related_documents(
 ) -> List[Tuple[str, float]]:
     """
     Find documents related to a given document via lateral connections.
-    
+
     Args:
         doc_id: Source document ID
         layers: Dictionary of layers
-        
+
     Returns:
         List of (doc_id, weight) tuples for related documents
     """
     layer3 = layers.get(CorticalLayer.DOCUMENTS)
     if not layer3:
         return []
-    
+
     col = layer3.get_minicolumn(doc_id)
     if not col:
         return []
-    
+
     related = []
     for neighbor_id, weight in col.lateral_connections.items():
         # Use O(1) ID lookup instead of linear search
@@ -299,3 +317,181 @@ def find_related_documents(
             related.append((neighbor.content, weight))
 
     return sorted(related, key=lambda x: -x[1])
+
+
+def create_chunks(
+    text: str,
+    chunk_size: int = 512,
+    overlap: int = 128
+) -> List[Tuple[str, int, int]]:
+    """
+    Split text into overlapping chunks.
+
+    Args:
+        text: Document text to chunk
+        chunk_size: Target size of each chunk in characters
+        overlap: Number of overlapping characters between chunks
+
+    Returns:
+        List of (chunk_text, start_char, end_char) tuples
+    """
+    if not text:
+        return []
+
+    chunks = []
+    stride = max(1, chunk_size - overlap)
+    text_len = len(text)
+
+    for start in range(0, text_len, stride):
+        end = min(start + chunk_size, text_len)
+        chunk = text[start:end]
+        chunks.append((chunk, start, end))
+
+        if end >= text_len:
+            break
+
+    return chunks
+
+
+def score_chunk(
+    chunk_text: str,
+    query_terms: Dict[str, float],
+    layer0: HierarchicalLayer,
+    tokenizer: Tokenizer,
+    doc_id: Optional[str] = None
+) -> float:
+    """
+    Score a chunk against query terms using TF-IDF.
+
+    Args:
+        chunk_text: Text of the chunk
+        query_terms: Dict mapping query terms to weights
+        layer0: Token layer for TF-IDF lookups
+        tokenizer: Tokenizer instance
+        doc_id: Optional document ID for per-document TF-IDF
+
+    Returns:
+        Relevance score for the chunk
+    """
+    chunk_tokens = tokenizer.tokenize(chunk_text)
+    if not chunk_tokens:
+        return 0.0
+
+    # Count token occurrences in chunk
+    token_counts: Dict[str, int] = {}
+    for token in chunk_tokens:
+        token_counts[token] = token_counts.get(token, 0) + 1
+
+    score = 0.0
+    for term, term_weight in query_terms.items():
+        if term in token_counts:
+            col = layer0.get_minicolumn(term)
+            if col:
+                # Use per-document TF-IDF if available, otherwise global
+                tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf) if doc_id else col.tfidf
+                # Weight by occurrence in chunk and query weight
+                score += tfidf * token_counts[term] * term_weight
+
+    # Normalize by chunk length to avoid bias toward longer chunks
+    return score / len(chunk_tokens) if chunk_tokens else 0.0
+
+
+def find_passages_for_query(
+    query_text: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    tokenizer: Tokenizer,
+    documents: Dict[str, str],
+    top_n: int = 5,
+    chunk_size: int = 512,
+    overlap: int = 128,
+    use_expansion: bool = True,
+    doc_filter: Optional[List[str]] = None,
+    semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
+    use_semantic: bool = True
+) -> List[Tuple[str, str, int, int, float]]:
+    """
+    Find text passages most relevant to a query.
+
+    This is the key function for RAG systems - instead of returning document IDs,
+    it returns actual text passages with position information for citations.
+
+    Args:
+        query_text: Search query
+        layers: Dictionary of layers
+        tokenizer: Tokenizer instance
+        documents: Dict mapping doc_id to document text
+        top_n: Number of passages to return
+        chunk_size: Size of each chunk in characters (default 512)
+        overlap: Overlap between chunks in characters (default 128)
+        use_expansion: Whether to expand query terms
+        doc_filter: Optional list of doc_ids to restrict search to
+        semantic_relations: Optional list of semantic relations for expansion
+        use_semantic: Whether to use semantic relations for expansion (if available)
+
+    Returns:
+        List of (passage_text, doc_id, start_char, end_char, score) tuples
+        ranked by relevance
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+
+    # Get expanded query terms
+    if use_expansion:
+        query_terms = expand_query(query_text, layers, tokenizer, max_expansions=5)
+        # Add semantic expansion if available
+        if use_semantic and semantic_relations:
+            semantic_terms = expand_query_semantic(
+                query_text, layers, tokenizer, semantic_relations, max_expansions=5
+            )
+            for term, weight in semantic_terms.items():
+                if term not in query_terms:
+                    query_terms[term] = weight * 0.8
+                else:
+                    query_terms[term] = max(query_terms[term], weight * 0.8)
+    else:
+        tokens = tokenizer.tokenize(query_text)
+        query_terms = {t: 1.0 for t in tokens}
+
+    if not query_terms:
+        return []
+
+    # First, get candidate documents (more than we need, since we'll rank passages)
+    doc_scores = find_documents_for_query(
+        query_text, layers, tokenizer,
+        top_n=min(len(documents), top_n * 3),
+        use_expansion=use_expansion,
+        semantic_relations=semantic_relations,
+        use_semantic=use_semantic
+    )
+
+    # Apply document filter if provided
+    if doc_filter:
+        doc_scores = [(doc_id, score) for doc_id, score in doc_scores if doc_id in doc_filter]
+
+    # Score passages within candidate documents
+    passages: List[Tuple[str, str, int, int, float]] = []
+
+    for doc_id, doc_score in doc_scores:
+        if doc_id not in documents:
+            continue
+
+        text = documents[doc_id]
+        chunks = create_chunks(text, chunk_size, overlap)
+
+        for chunk_text, start_char, end_char in chunks:
+            chunk_score = score_chunk(
+                chunk_text, query_terms, layer0, tokenizer, doc_id
+            )
+            # Combine chunk score with document score for final ranking
+            combined_score = chunk_score * (1 + doc_score * 0.1)
+
+            passages.append((
+                chunk_text,
+                doc_id,
+                start_char,
+                end_char,
+                combined_score
+            ))
+
+    # Sort by score and return top passages
+    passages.sort(key=lambda x: x[4], reverse=True)
+    return passages[:top_n]

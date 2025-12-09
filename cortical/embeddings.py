@@ -13,7 +13,7 @@ connection graph structure:
 
 import math
 import random
-from typing import Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Tuple, Optional
 from collections import defaultdict
 
 from .layers import CorticalLayer, HierarchicalLayer
@@ -23,7 +23,7 @@ def compute_graph_embeddings(
     layers: Dict[CorticalLayer, HierarchicalLayer],
     dimensions: int = 64,
     method: str = 'adjacency'
-) -> Tuple[Dict[str, List[float]], Dict[str, any]]:
+) -> Tuple[Dict[str, List[float]], Dict[str, Any]]:
     """
     Compute embeddings for tokens based on graph structure.
     
@@ -148,12 +148,11 @@ def _spectral_embeddings(layer: HierarchicalLayer, dimensions: int, iterations: 
     for term, col in layer.minicolumns.items():
         i = term_to_idx[term]
         for neighbor_id, weight in col.lateral_connections.items():
-            for t, c in layer.minicolumns.items():
-                if c.id == neighbor_id:
-                    j = term_to_idx[t]
-                    adjacency[i][j] = weight
-                    degrees[i] += weight
-                    break
+            neighbor = layer.get_by_id(neighbor_id)
+            if neighbor and neighbor.content in term_to_idx:
+                j = term_to_idx[neighbor.content]
+                adjacency[i][j] = weight
+                degrees[i] += weight
     
     degrees = [d if d > 0 else 1.0 for d in degrees]
     actual_dims = min(dimensions, n)

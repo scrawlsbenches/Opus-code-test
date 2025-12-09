@@ -50,12 +50,12 @@ tests/
 python -m unittest discover -s tests -v
 ```
 
-All 109 tests should pass.
+All 129 tests should pass.
 
-## Running the Demo
+## Running the Showcase
 
 ```bash
-python demo.py
+python showcase.py
 ```
 
 ## Key Classes

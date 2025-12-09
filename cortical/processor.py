@@ -20,7 +20,7 @@ from . import persistence
 
 class CorticalTextProcessor:
     """Neocortex-inspired text processing system."""
-    
+
     def __init__(self, tokenizer: Optional[Tokenizer] = None):
         self.tokenizer = tokenizer or Tokenizer()
         self.layers: Dict[CorticalLayer, HierarchicalLayer] = {
@@ -30,12 +30,35 @@ class CorticalTextProcessor:
             CorticalLayer.DOCUMENTS: HierarchicalLayer(CorticalLayer.DOCUMENTS),
         }
         self.documents: Dict[str, str] = {}
+        self.document_metadata: Dict[str, Dict[str, Any]] = {}
         self.embeddings: Dict[str, List[float]] = {}
         self.semantic_relations: List[Tuple[str, str, str, float]] = []
-    
-    def process_document(self, doc_id: str, content: str) -> Dict[str, int]:
-        """Process a document and add it to the corpus."""
+
+    def process_document(
+        self,
+        doc_id: str,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, int]:
+        """
+        Process a document and add it to the corpus.
+
+        Args:
+            doc_id: Unique identifier for the document
+            content: Document text content
+            metadata: Optional metadata dict (source, timestamp, author, etc.)
+
+        Returns:
+            Dict with processing statistics (tokens, bigrams, unique_tokens)
+        """
         self.documents[doc_id] = content
+
+        # Store metadata if provided
+        if metadata:
+            self.document_metadata[doc_id] = metadata.copy()
+        elif doc_id not in self.document_metadata:
+            self.document_metadata[doc_id] = {}
+
         tokens = self.tokenizer.tokenize(content)
         bigrams = self.tokenizer.extract_ngrams(tokens, n=2)
         
@@ -75,18 +98,75 @@ class CorticalTextProcessor:
                     col.feedforward_sources.add(token_col.id)
         
         return {'tokens': len(tokens), 'bigrams': len(bigrams), 'unique_tokens': len(set(tokens))}
-    
-    def compute_all(self, verbose: bool = True) -> None:
-        """Run all computation steps."""
-        if verbose: print("Computing activation propagation...")
+
+    def set_document_metadata(self, doc_id: str, **kwargs) -> None:
+        """
+        Set or update metadata for a document.
+
+        Args:
+            doc_id: Document identifier
+            **kwargs: Metadata key-value pairs to set
+
+        Example:
+            >>> processor.set_document_metadata("doc1",
+            ...     source="https://example.com",
+            ...     author="John Doe",
+            ...     timestamp="2025-12-09"
+            ... )
+        """
+        if doc_id not in self.document_metadata:
+            self.document_metadata[doc_id] = {}
+        self.document_metadata[doc_id].update(kwargs)
+
+    def get_document_metadata(self, doc_id: str) -> Dict[str, Any]:
+        """
+        Get metadata for a document.
+
+        Args:
+            doc_id: Document identifier
+
+        Returns:
+            Metadata dict (empty dict if no metadata set)
+        """
+        return self.document_metadata.get(doc_id, {})
+
+    def get_all_document_metadata(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get metadata for all documents.
+
+        Returns:
+            Dict mapping doc_id to metadata dict (deep copy)
+        """
+        import copy
+        return copy.deepcopy(self.document_metadata)
+
+    def compute_all(self, verbose: bool = True, build_concepts: bool = True) -> None:
+        """
+        Run all computation steps.
+
+        Args:
+            verbose: Print progress messages
+            build_concepts: Build concept clusters in Layer 2 (default True)
+                           This enables topic-based filtering and hierarchical search.
+        """
+        if verbose:
+            print("Computing activation propagation...")
         self.propagate_activation(verbose=False)
-        if verbose: print("Computing importance (PageRank)...")
+        if verbose:
+            print("Computing importance (PageRank)...")
         self.compute_importance(verbose=False)
-        if verbose: print("Computing TF-IDF...")
+        if verbose:
+            print("Computing TF-IDF...")
         self.compute_tfidf(verbose=False)
-        if verbose: print("Computing document connections...")
+        if verbose:
+            print("Computing document connections...")
         self.compute_document_connections(verbose=False)
-        if verbose: print("Done.")
+        if build_concepts:
+            if verbose:
+                print("Building concept clusters...")
+            self.build_concept_clusters(verbose=False)
+        if verbose:
+            print("Done.")
     
     def propagate_activation(self, iterations: int = 3, decay: float = 0.8, verbose: bool = True) -> None:
         analysis.propagate_activation(self.layers, iterations, decay)
@@ -146,8 +226,82 @@ class CorticalTextProcessor:
     def expand_query_semantic(self, query_text: str, max_expansions: int = 10) -> Dict[str, float]:
         return query_module.expand_query_semantic(query_text, self.layers, self.tokenizer, self.semantic_relations, max_expansions)
     
-    def find_documents_for_query(self, query_text: str, top_n: int = 5, use_expansion: bool = True) -> List[Tuple[str, float]]:
-        return query_module.find_documents_for_query(query_text, self.layers, self.tokenizer, top_n, use_expansion)
+    def find_documents_for_query(
+        self,
+        query_text: str,
+        top_n: int = 5,
+        use_expansion: bool = True,
+        use_semantic: bool = True
+    ) -> List[Tuple[str, float]]:
+        """
+        Find documents most relevant to a query.
+
+        Args:
+            query_text: Search query
+            top_n: Number of documents to return
+            use_expansion: Whether to expand query terms using lateral connections
+            use_semantic: Whether to use semantic relations for expansion (if available)
+
+        Returns:
+            List of (doc_id, score) tuples ranked by relevance
+        """
+        return query_module.find_documents_for_query(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n,
+            use_expansion=use_expansion,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
+        )
+
+    def find_passages_for_query(
+        self,
+        query_text: str,
+        top_n: int = 5,
+        chunk_size: int = 512,
+        overlap: int = 128,
+        use_expansion: bool = True,
+        doc_filter: Optional[List[str]] = None,
+        use_semantic: bool = True
+    ) -> List[Tuple[str, str, int, int, float]]:
+        """
+        Find text passages most relevant to a query (for RAG systems).
+
+        Instead of returning just document IDs, this returns actual text passages
+        with position information suitable for context windows and citations.
+
+        Args:
+            query_text: Search query
+            top_n: Number of passages to return
+            chunk_size: Size of each chunk in characters (default 512)
+            overlap: Overlap between chunks in characters (default 128)
+            use_expansion: Whether to expand query terms
+            doc_filter: Optional list of doc_ids to restrict search to
+            use_semantic: Whether to use semantic relations for expansion (if available)
+
+        Returns:
+            List of (passage_text, doc_id, start_char, end_char, score) tuples
+            ranked by relevance
+
+        Example:
+            >>> results = processor.find_passages_for_query("neural networks")
+            >>> for passage, doc_id, start, end, score in results:
+            ...     print(f"[{doc_id}:{start}-{end}] {passage[:50]}... (score: {score:.3f})")
+        """
+        return query_module.find_passages_for_query(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            self.documents,
+            top_n=top_n,
+            chunk_size=chunk_size,
+            overlap=overlap,
+            use_expansion=use_expansion,
+            doc_filter=doc_filter,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
+        )
     
     def query_expanded(self, query_text: str, top_n: int = 10, max_expansions: int = 8) -> List[Tuple[str, float]]:
         return query_module.query_with_spreading_activation(query_text, self.layers, self.tokenizer, top_n, max_expansions)
@@ -174,15 +328,42 @@ class CorticalTextProcessor:
         return persistence.get_state_summary(self.layers, self.documents)
     
     def save(self, filepath: str, verbose: bool = True) -> None:
-        metadata = {'has_embeddings': bool(self.embeddings), 'has_relations': bool(self.semantic_relations)}
-        persistence.save_processor(filepath, self.layers, self.documents, metadata, verbose)
-    
+        """
+        Save processor state to a file.
+
+        Saves all computed state including embeddings and semantic relations,
+        so they don't need to be recomputed when loading.
+        """
+        metadata = {
+            'has_embeddings': bool(self.embeddings),
+            'has_relations': bool(self.semantic_relations)
+        }
+        persistence.save_processor(
+            filepath,
+            self.layers,
+            self.documents,
+            self.document_metadata,
+            self.embeddings,
+            self.semantic_relations,
+            metadata,
+            verbose
+        )
+
     @classmethod
     def load(cls, filepath: str, verbose: bool = True) -> 'CorticalTextProcessor':
-        layers, documents, metadata = persistence.load_processor(filepath, verbose)
+        """
+        Load processor state from a file.
+
+        Restores all computed state including embeddings and semantic relations.
+        """
+        result = persistence.load_processor(filepath, verbose)
+        layers, documents, document_metadata, embeddings, semantic_relations, metadata = result
         processor = cls()
         processor.layers = layers
         processor.documents = documents
+        processor.document_metadata = document_metadata
+        processor.embeddings = embeddings
+        processor.semantic_relations = semantic_relations
         return processor
     
     def export_graph(self, filepath: str, layer: Optional[CorticalLayer] = None, max_nodes: int = 500) -> Dict:
