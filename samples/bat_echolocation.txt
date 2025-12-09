@@ -1,0 +1,17 @@
+Bat Echolocation and Acoustic Orientation
+
+Bats evolved sophisticated echolocation systems enabling navigation and prey capture in complete darkness. Laryngeal echolocation produces ultrasonic pulses from the larynx, emitted through the mouth or nose. These calls reflect from environmental surfaces, providing acoustic images of surroundings.
+
+Call structure varies among bat species according to ecological niche. Frequency-modulated sweeps spanning broad bandwidth provide detailed range information. Constant frequency calls enable precise velocity detection through Doppler shift analysis. Many bats combine both call types in complex sequences.
+
+The bat auditory system processes returning echoes with remarkable temporal precision. Cochlear specializations create expanded frequency representations in echolocation call ranges. Neural circuits extract target range from pulse-echo delays. Specialized neurons respond to specific delay values, creating maps of acoustic space.
+
+Beam forming concentrates emitted sound energy in preferred directions. Nose leaf structures in rhinolophid and phyllostomid bats shape emission patterns. Ear movements scan the environment, steering reception sensitivity. Some species coordinate call timing to avoid interference from neighboring individuals.
+
+Prey detection requires distinguishing targets from background clutter. Flutter detection identifies the wing beats of flying insects. Glints from insect wing surfaces create spectral notches in returning echoes. Aerial hawking bats intercept prey in open air while gleaning bats pluck stationary prey from surfaces.
+
+Bat calls serve dual functions beyond navigation. Social calls enable individual recognition and territorial advertisement. Mother-infant communication maintains contact during colony departure and return. Mating calls attract potential partners. Some species produce audible components humans can detect.
+
+Echolocation imposes energetic costs and detection risks. Call production requires respiratory coordination during flight. Some moth species evolved ultrasonic hearing to detect approaching bats and initiate evasive maneuvers. Tiger moths produce clicking sounds that may jam bat echolocation.
+
+Acoustic monitoring uses bat calls for biodiversity surveys and habitat assessment. Automated detectors record calls throughout the night. Classification algorithms identify species from call characteristics. These tools reveal bat activity patterns and community composition without physical capture.

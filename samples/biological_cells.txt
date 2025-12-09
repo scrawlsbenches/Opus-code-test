@@ -1,0 +1,17 @@
+Biological Cells and Cellular Organization
+
+Cells constitute the fundamental units of life, compartmentalizing biochemical processes within membrane-bound structures. Cell theory establishes that all living organisms consist of cells, cells arise from preexisting cells, and cells contain hereditary information governing their function and reproduction.
+
+Prokaryotic cells lack membrane-bound organelles and nuclear envelopes. Bacteria and archaea represent prokaryotic domains exhibiting remarkable metabolic diversity despite structural simplicity. Circular chromosomes occupy nucleoid regions. Ribosomes translate messenger RNA into proteins. Cell walls provide structural support and protection.
+
+Eukaryotic cells contain membrane-bound nuclei housing linear chromosomes. The nuclear envelope with nuclear pores regulates molecular traffic between nucleus and cytoplasm. Chromatin condenses into visible chromosomes during cell division. Nucleoli synthesize ribosomal RNA components.
+
+The endomembrane system comprises interconnected organelles processing proteins and lipids. Endoplasmic reticulum provides surfaces for protein synthesis and lipid metabolism. Golgi apparatus modifies and sorts proteins for secretion or intracellular delivery. Vesicles transport materials between compartments.
+
+Mitochondria generate cellular energy through oxidative phosphorylation. The electron transport chain creates proton gradients across inner membranes. ATP synthase couples proton flow to ATP production. Mitochondrial DNA encodes some respiratory chain components, reflecting endosymbiotic origins.
+
+Chloroplasts perform photosynthesis in plant cells and algae. Thylakoid membranes contain photosystems capturing light energy. The Calvin cycle in the stroma fixes carbon dioxide into sugars. Like mitochondria, chloroplasts retain independent genomes from endosymbiotic ancestors.
+
+The cytoskeleton provides structural support and enables cellular movement. Microfilaments of actin support cell shape and drive muscle contraction. Microtubules organize organelles and form spindle fibers during division. Intermediate filaments resist mechanical stress. Motor proteins transport cargo along cytoskeletal tracks.
+
+Cell division ensures growth, repair, and reproduction. Mitosis produces genetically identical daughter cells for tissue maintenance. Meiosis generates haploid gametes through two successive divisions with genetic recombination. Cell cycle checkpoints verify DNA integrity before replication and division proceed.

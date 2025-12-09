@@ -1,0 +1,17 @@
+Soil Science and Pedology
+
+Soil science studies the thin terrestrial layer supporting life through nutrient cycling, water filtration, and plant growth. Soils develop through weathering and biological activity over centuries to millennia. Understanding soil properties enables sustainable land management.
+
+Soil formation involves five factors identified by Hans Jenny. Parent material provides the mineral substrate. Climate drives weathering rates and biological activity. Organisms contribute organic matter and biological weathering. Topography affects water movement and erosion. Time allows profile development through accumulated processes.
+
+Soil horizons develop as materials translocate vertically. The O horizon contains fresh and decomposing organic matter. The A horizon mixes organic material with mineral soil. The E horizon loses materials through leaching. The B horizon accumulates clay, iron, and organic compounds from above. The C horizon consists of weathered parent material.
+
+Soil texture describes particle size distribution. Sand particles range from two to 0.05 millimeters. Silt particles span 0.05 to 0.002 millimeters. Clay particles measure below 0.002 millimeters. Texture classes combine these fractions in varying proportions affecting water retention and workability.
+
+Soil structure describes how particles aggregate. Granular structure features small rounded aggregates common in surface horizons. Blocky structure presents angular or rounded blocks in subsoil. Platy structure forms horizontal plates restricting water movement. Structure affects porosity, aeration, and root penetration.
+
+Soil chemistry governs nutrient availability. Cation exchange capacity measures ability to retain positively charged nutrients. Soil pH influences nutrient solubility and microbial activity. Organic matter improves structure, water retention, and nutrient cycling. Nutrient management maintains fertility while preventing environmental degradation.
+
+Soil biology encompasses organisms from bacteria to mammals. Microorganisms decompose organic matter and cycle nutrients. Fungi form symbiotic relationships with plant roots. Earthworms improve structure through burrowing and casting. Soil food webs regulate nutrient flows through trophic interactions.
+
+Soil classification systems organize soils hierarchically. Soil taxonomy uses diagnostic horizons and properties. World reference base provides international correlation. Classification enables predicting soil behavior and transferring management knowledge across locations with similar soils.

@@ -1,0 +1,19 @@
+Music Theory Fundamentals
+
+Music theory provides analytical frameworks for understanding musical structure. Systematic study reveals patterns underlying compositions across cultures and eras. This knowledge enhances both creation and appreciation of music.
+
+Pitch describes sound frequency perceived as highness or lowness. Western music divides the octave into twelve semitones. Note names cycle through seven letters with sharps and flats creating chromatic alterations. Enharmonic spellings represent identical pitches with different names.
+
+Intervals measure distance between pitches. Intervals describe by quality and number based on scale position. Perfect, major, minor, augmented, and diminished qualities specify exact semitone distances. Consonant intervals sound stable while dissonant intervals create tension seeking resolution.
+
+Scales organize pitches into ordered collections. Major scales follow whole and half step patterns creating bright character. Natural minor scales produce darker quality through lowered third, sixth, and seventh degrees. Modal scales derive from major scale rotations, each with distinctive color.
+
+Chords stack intervals to create simultaneous pitch combinations. Triads contain root, third, and fifth. Seventh chords add another third above the triad. Chord quality depends on interval structure. Roman numeral analysis indicates chord function within keys.
+
+Harmony governs chord progressions and voice leading. Functional harmony groups chords as tonic, dominant, or predominant. Cadences punctuate phrases through characteristic progressions. Voice leading connects chords through smooth melodic motion in each part.
+
+Rhythm organizes music in time. Beat provides the underlying pulse. Meter groups beats into recurring patterns of strong and weak emphasis. Tempo indicates beat speed. Syncopation emphasizes unexpected beats creating rhythmic interest.
+
+Form describes large-scale musical organization. Binary forms present two contrasting sections. Ternary forms add a return of opening material. Sonata form develops themes through exposition, development, and recapitulation. Theme and variations transform material through successive presentations.
+
+Texture describes how melodic lines interact. Monophonic texture presents single unaccompanied melody. Homophonic texture features melody with chordal accompaniment. Polyphonic texture weaves multiple independent melodic lines. Texture variety provides compositional contrast.

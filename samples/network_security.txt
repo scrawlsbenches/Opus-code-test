@@ -1,0 +1,19 @@
+Network Security Principles and Practices
+
+Network security protects data and systems from unauthorized access, misuse, and attack. Defense in depth layers multiple controls to address diverse threats. Effective security balances protection with usability and operational requirements.
+
+The CIA triad defines core security objectives. Confidentiality prevents unauthorized information disclosure. Integrity ensures data accuracy and completeness. Availability maintains system accessibility for authorized users. Security controls address one or more of these objectives.
+
+Network perimeter defense controls traffic at organizational boundaries. Firewalls filter packets based on addresses, ports, and protocols. Intrusion detection systems monitor for suspicious patterns. Demilitarized zones isolate public-facing services from internal networks. Border controls represent first defensive layer.
+
+Encryption protects data confidentiality. Symmetric encryption uses shared secrets for fast bulk encryption. Asymmetric encryption enables secure key exchange without prior secrets. Transport layer security encrypts network communications. Virtual private networks extend encrypted connectivity to remote users.
+
+Authentication verifies identity claims. Passwords remain common despite known weaknesses. Multi-factor authentication combines knowledge, possession, and biometric factors. Certificate-based authentication leverages public key infrastructure. Single sign-on consolidates authentication across applications.
+
+Authorization controls access after authentication. Role-based access control assigns permissions to roles rather than individuals. Attribute-based access control evaluates policies against user and resource attributes. Principle of least privilege grants minimum necessary access. Regular access reviews identify excessive permissions.
+
+Vulnerability management addresses system weaknesses. Scanning identifies known vulnerabilities in software and configurations. Patch management applies vendor fixes systematically. Penetration testing simulates attacks to find weaknesses. Risk prioritization focuses remediation on highest-impact vulnerabilities.
+
+Security monitoring detects incidents and anomalies. Log aggregation centralizes event data for analysis. Security information and event management correlates events across systems. Threat intelligence provides context about attack patterns. Alert triage prioritizes response to significant events.
+
+Incident response addresses security events systematically. Preparation establishes procedures and capabilities before incidents occur. Detection and analysis determine incident scope and impact. Containment limits damage while preserving evidence. Recovery restores normal operations. Post-incident review improves future response.

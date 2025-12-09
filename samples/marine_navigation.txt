@@ -1,0 +1,19 @@
+Marine Navigation and Celestial Wayfinding
+
+Marine navigation determines vessel position and guides courses across oceans. Traditional techniques using celestial observation and dead reckoning preceded modern electronic systems. Understanding navigation principles remains essential despite technological advances.
+
+Dead reckoning estimates position from known starting point, course, and speed. Compass headings provide direction while speed logs measure velocity. Accumulated errors require periodic position fixes. Current and leeway corrections improve accuracy over straight-line projections.
+
+Celestial navigation fixes position through astronomical observation. Sextants measure angles between celestial bodies and the horizon. Almanacs tabulate celestial body positions throughout the year. Sight reduction converts observations to lines of position. Multiple sights crossing at single points determine fixes.
+
+The nautical almanac provides essential astronomical data. Greenwich hour angle locates celestial bodies relative to the prime meridian. Declination measures angular distance from the celestial equator. Altitude corrections account for refraction, semidiameter, and instrument error.
+
+Piloting navigates near coastlines using visible landmarks. Chart features match observed landmarks to determine position. Bearings and ranges to identified objects establish position lines. Radar extends piloting capability in reduced visibility. Electronic chart displays integrate multiple information sources.
+
+Global positioning systems revolutionized marine navigation. Satellite signals enable continuous position determination worldwide. Differential corrections improve accuracy to meter level. Integration with electronic charts enables automated navigation planning.
+
+Chart reading interprets symbolic representations of marine environments. Depth soundings indicate water depth below chart datum. Aids to navigation mark channels and hazards. Caution areas warn of restricted zones or dangers. Understanding chart symbols prevents groundings and collisions.
+
+Tides and currents affect vessel movement and water depths. Tide tables predict water level variations. Current charts show flow patterns. Tidal stream atlases depict hourly current changes. Navigation planning accounts for these environmental factors.
+
+Weather routing optimizes passages considering meteorological conditions. Synoptic charts show pressure systems and fronts. Wind and wave forecasts inform departure timing. Route selection balances distance against conditions. Modern routing software integrates multiple data sources for optimal passage planning.

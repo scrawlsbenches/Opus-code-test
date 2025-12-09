@@ -1,0 +1,15 @@
+Quantum Computing Fundamentals
+
+Quantum computing harnesses quantum mechanical phenomena to perform computations impossible for classical computers. Superposition allows quantum bits to exist in multiple states simultaneously. Entanglement creates correlations between qubits enabling parallel information processing. Interference amplifies correct computational paths while canceling incorrect ones.
+
+Qubits represent quantum information as superpositions of zero and one states. Unlike classical bits restricted to definite values, qubits exist as probability amplitudes across computational basis states. Measurement collapses superposition to definite outcomes with probabilities determined by amplitude magnitudes.
+
+Quantum gates manipulate qubit states through unitary transformations. Single-qubit gates rotate states around the Bloch sphere. Two-qubit gates create entanglement between qubits. Gate sequences implement quantum algorithms transforming initial states into outputs encoding computational results.
+
+Quantum algorithms exploit superposition and interference for computational advantage. Shor's algorithm factors integers exponentially faster than known classical algorithms, threatening cryptographic security. Grover's algorithm provides quadratic speedup for unstructured search problems. Variational algorithms optimize parameterized circuits for machine learning and chemistry applications.
+
+Quantum error correction protects fragile quantum states from decoherence and gate errors. Logical qubits encode information redundantly across multiple physical qubits. Error syndromes detect and correct errors without destroying encoded information. Fault-tolerant computation enables arbitrary-length calculations despite imperfect components.
+
+Current quantum hardware includes superconducting circuits, trapped ions, and photonic systems. Superconducting qubits operate at millikelvin temperatures using microwave control. Trapped ions use laser pulses to manipulate atomic energy levels. Each platform presents different tradeoffs between gate fidelity, connectivity, and scalability.
+
+Near-term quantum computers operate in the noisy intermediate-scale quantum era. Limited qubit counts and gate fidelities constrain algorithm complexity. Hybrid classical-quantum algorithms leverage both computational paradigms. Quantum advantage demonstrations show problems quantum computers solve faster than classical supercomputers.

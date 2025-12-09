@@ -1,0 +1,19 @@
+Event Sourcing Patterns and CQRS
+
+Event sourcing persists application state as sequences of immutable events rather than current state snapshots. Each event records something that happened in the domain. Replaying events reconstructs current state. This pattern provides complete audit trails and enables temporal queries.
+
+Events capture intent and context beyond mere data changes. OrderPlaced differs meaningfully from directly setting order status. Rich events enable better debugging and analytics. Event schemas should remain stable as systems evolve. The relationship to domain-driven design shows how domain events form the foundation of event sourcing.
+
+Event stores append events to streams identified by aggregate identifiers. Streams provide natural partitioning for concurrent access. Optimistic concurrency uses stream version numbers. Projections transform event streams into read-optimized views.
+
+Command Query Responsibility Segregation separates read and write models. Commands modify state through event generation. Queries read from optimized projections. Different models serve different use cases optimally. This separation enables independent scaling and optimization.
+
+Projections build read models from event streams. Multiple projections serve different query needs. Rebuilding projections replays all events to incorporate schema changes. Projection positions track which events have been processed.
+
+Eventual consistency characterizes event-sourced systems. Write operations complete when events persist. Read models update asynchronously as projections process events. Applications design for eventual consistency rather than immediate reflection. This pattern integrates with the asynchronous communication patterns in the microservices architecture document.
+
+Snapshots optimize event replay for aggregates with long event histories. Periodic snapshots capture state at known positions. Replay loads snapshot then applies subsequent events. Snapshot strategies balance storage cost against replay performance.
+
+Event versioning handles schema evolution. Upcasters transform old event formats to current schemas. Weakly-typed events store data as maps rather than strongly-typed objects. Versioned event types enable gradual migration.
+
+Saga patterns coordinate transactions across multiple aggregates or services. Events trigger saga steps. Compensating actions undo previous steps if later steps fail. Choreographed sagas use events directly while orchestrated sagas centralize coordination logic. For database considerations underlying event stores, refer to the database design patterns document.

@@ -1,0 +1,19 @@
+Origami Mathematics and Geometric Folding
+
+Origami transcends artistic paper folding to embrace mathematical principles. Geometric constraints determine what shapes are achievable through folding. Mathematical analysis reveals deep connections between origami and computational geometry.
+
+Flat foldability determines whether crease patterns collapse to single planes. Maekawa's theorem requires that the difference between mountain and valley folds at any vertex equals two. Kawasaki's theorem demands alternating angles around vertices sum to 180 degrees. These conditions are necessary but not sufficient for flat foldability.
+
+The Huzita-Justin axioms define operations achievable through single folds. Seven axioms describe alignments between points and lines achievable by folding. These operations prove more powerful than compass and straightedge constructions. Angle trisection and cube doubling become possible through origami.
+
+Crease patterns encode three-dimensional forms in two dimensions. Universal molecules enable arbitrary polyhedral surfaces. Tree theory connects base shapes to desired appendage configurations. Computational design generates crease patterns for specified targets.
+
+Rigid origami constrains faces to remain flat during folding. This property enables engineering applications in deployable structures. Miura-ori patterns fold flat and expand to planar configurations. These patterns appear in solar panel arrays and map folding.
+
+Curved folding creates smooth surfaces impossible with straight creases. Developable surfaces curve in one direction while remaining flat in the perpendicular direction. Paper naturally forms these surfaces under appropriate crease constraints. Architectural applications leverage curved origami for shell structures.
+
+Tessellations tile planes with repeated folded patterns. Twist folds create rotational symmetry elements. Corrugation patterns build thick structures from single sheets. Tessellations demonstrate connections between origami and crystallography.
+
+Self-folding materials respond to stimuli by folding autonomously. Shape memory polymers change configuration with temperature. Hydrogels respond to moisture gradients. These technologies enable applications from medical devices to space structures where manual folding is impractical.
+
+Computational origami solves geometric optimization problems. Fold-and-cut theorem proves any straight-line graph achievable through single cut after appropriate folding. Origamizer algorithms compute crease patterns for arbitrary polyhedra. These computational advances extend origami possibilities beyond human intuition.

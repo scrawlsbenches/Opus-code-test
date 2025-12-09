@@ -1,0 +1,19 @@
+Materials Science and Engineering
+
+Materials science investigates relationships between structure, processing, properties, and performance. Understanding these connections enables designing materials for specific applications. The field spans metals, ceramics, polymers, and composites.
+
+Atomic structure determines material properties. Crystalline materials arrange atoms in periodic lattices. Amorphous materials lack long-range order. Crystal defects including vacancies, dislocations, and grain boundaries strongly influence mechanical behavior. Characterization techniques reveal atomic arrangements.
+
+Metals exhibit characteristic properties from metallic bonding. Delocalized electrons enable electrical and thermal conductivity. Ductility allows forming without fracture. Alloys combine elements for enhanced properties. Heat treatment modifies microstructure and performance.
+
+Ceramics consist of ionic or covalent compounds. High melting points suit high-temperature applications. Hardness provides wear resistance. Brittleness limits tensile applications. Processing routes include sintering, sol-gel, and chemical vapor deposition.
+
+Polymers comprise long-chain molecules from repeated units. Thermoplastics soften when heated enabling reshaping. Thermosets cross-link during curing becoming permanently rigid. Chain architecture affects mechanical and thermal properties. Additives modify polymer behavior for specific applications.
+
+Composites combine distinct materials for synergistic properties. Fiber reinforcement provides strength and stiffness. Matrix materials bind fibers and distribute loads. Laminate architectures tailor directional properties. Carbon fiber composites enable lightweight structural applications.
+
+Phase diagrams map equilibrium structures across composition and temperature. Single-phase regions indicate homogeneous materials. Two-phase regions contain mixtures of distinct structures. Phase transformations occur crossing phase boundaries. These diagrams guide alloy design and heat treatment.
+
+Mechanical testing quantifies material response to forces. Tensile tests measure strength, ductility, and stiffness. Hardness tests indicate wear resistance. Impact tests assess fracture toughness. Fatigue tests evaluate performance under cyclic loading.
+
+Failure analysis determines why components break. Fractography examines fracture surfaces for clues. Metallography reveals microstructural contributions. Chemical analysis detects composition anomalies. Understanding failures prevents recurrence and improves designs.

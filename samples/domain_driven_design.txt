@@ -1,0 +1,19 @@
+Domain-Driven Design Principles
+
+Domain-driven design provides strategic and tactical patterns for complex software development. Eric Evans introduced these concepts addressing challenges of modeling sophisticated business domains. The approach emphasizes collaboration between technical and domain experts to create shared understanding.
+
+The ubiquitous language ensures consistent terminology across code, documentation, and conversation. Domain experts and developers collaborate to refine language expressing business concepts precisely. This shared vocabulary reduces translation errors between business requirements and implementation. The connection to microservices architecture shows how bounded contexts map to service boundaries.
+
+Bounded contexts define explicit boundaries where particular domain models apply. Different contexts may use different models for overlapping concepts. Context maps document relationships between bounded contexts. Shared kernels, customer-supplier relationships, and anti-corruption layers manage context interactions.
+
+Entities possess identity persisting through state changes. An order remains the same order even as items change. Identity distinguishes entities from value objects. Repositories provide collection-like access to entity aggregates.
+
+Value objects lack identity, defined entirely by their attributes. Money amounts, addresses, and dates typically model as value objects. Immutability enables safe sharing and simplifies reasoning. Value objects compare by value rather than reference.
+
+Aggregates group entities and value objects into consistency boundaries. The aggregate root controls access to aggregate members. Transactions should modify single aggregates. References between aggregates use identities rather than direct object references. This pattern supports the data ownership principles described in the microservices architecture document.
+
+Domain events capture significant occurrences within the domain. Events represent facts that have happened. Publishing events enables loose coupling between components. Event sourcing, covered in our event sourcing patterns document, persists state as event sequences.
+
+Domain services implement operations not naturally belonging to entities or value objects. Services express domain concepts that span multiple objects. Stateless services focus purely on behavior. Infrastructure concerns remain separate from domain services.
+
+Anti-corruption layers translate between different bounded contexts. Adapters convert external models to internal representations. This isolation prevents foreign concepts from corrupting domain models. Legacy system integration commonly requires anti-corruption layers.
