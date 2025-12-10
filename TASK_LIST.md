@@ -715,8 +715,8 @@ processor.compute_semantic_importance(relation_weights=custom_weights)
 
 ### 23. Implement Cross-Layer PageRank Propagation
 
-**Files:** `cortical/analysis.py`
-**Status:** [ ] Pending
+**Files:** `cortical/analysis.py`, `cortical/processor.py`
+**Status:** [x] Completed
 
 **Problem:**
 PageRank only flows within a single layer. Importance should propagate across layers:
@@ -724,21 +724,36 @@ PageRank only flows within a single layer. Importance should propagate across la
 - Important bigrams boost their concepts
 - Important concepts boost their documents (and vice versa)
 
-**Implementation Steps:**
-1. Add `compute_hierarchical_pagerank()` function
-2. Iterate: compute layer-local PageRank, then propagate to adjacent layers
-3. Use `feedforward_connections` and `feedback_connections` for cross-layer flow
-4. Apply damping factor at layer boundaries (e.g., 0.7)
-5. Converge when cross-layer changes are minimal
+**Solution Applied:**
+1. Added `compute_hierarchical_pagerank()` function to `analysis.py` (~150 lines):
+   - Computes local PageRank within each layer
+   - Propagates scores up via feedback_connections (tokens → bigrams → concepts → documents)
+   - Propagates scores down via feedforward_connections (documents → concepts → bigrams → tokens)
+   - Normalizes PageRank within each layer after propagation
+   - Converges when cross-layer changes are minimal
+2. Added `compute_hierarchical_importance()` method to processor
+3. Updated `compute_all()` with `pagerank_method='hierarchical'` option
+4. Returns detailed statistics: iterations_run, converged, per-layer stats
 
-**Algorithm:**
-```
-for iteration in range(max_iterations):
-    for layer in [TOKENS, BIGRAMS, CONCEPTS, DOCUMENTS]:
-        compute_local_pagerank(layer)
-    propagate_up(TOKENS → BIGRAMS → CONCEPTS → DOCUMENTS)
-    propagate_down(DOCUMENTS → CONCEPTS → BIGRAMS → TOKENS)
-    if converged: break
+**Files Modified:**
+- `cortical/analysis.py` - Added `compute_hierarchical_pagerank()` (~150 lines)
+- `cortical/processor.py` - Added `compute_hierarchical_importance()`, updated `compute_all()`
+- `tests/test_processor.py` - Added 9 tests for hierarchical PageRank
+
+**Usage:**
+```python
+# Use hierarchical PageRank via compute_all
+processor.compute_all(pagerank_method='hierarchical')
+
+# Or call directly with custom parameters
+stats = processor.compute_hierarchical_importance(
+    layer_iterations=10,      # Iterations for intra-layer PageRank
+    global_iterations=5,      # Iterations for cross-layer propagation
+    cross_layer_damping=0.7   # Damping at layer boundaries
+)
+print(f"Converged: {stats['converged']} in {stats['iterations_run']} iterations")
+for layer, info in stats['layer_stats'].items():
+    print(f"  {layer}: {info['nodes']} nodes, max PR={info['max_pagerank']:.4f}")
 ```
 
 ---
@@ -985,7 +1000,7 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 | **Critical** | **Add concept-level lateral connections** | ✅ Completed | **ConceptNet** |
 | **Critical** | **Add bigram lateral connections** | ✅ Completed | **ConceptNet** |
 | **High** | **Implement relation-weighted PageRank** | ✅ Completed | **ConceptNet** |
-| **High** | **Implement cross-layer PageRank propagation** | ⏳ Pending | **ConceptNet** |
+| **High** | **Implement cross-layer PageRank propagation** | ✅ Completed | **ConceptNet** |
 | **High** | **Add typed edge storage** | ⏳ Pending | **ConceptNet** |
 | Medium | Implement multi-hop semantic inference | ⏳ Pending | ConceptNet |
 | Medium | Add relation path scoring | ⏳ Pending | ConceptNet |
@@ -996,14 +1011,14 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 
 **Bug Fix Completion:** 7/7 tasks (100%)
 **RAG Enhancement Completion:** 8/8 tasks (100%)
-**ConceptNet Enhancement Completion:** 4/12 tasks (33%)
+**ConceptNet Enhancement Completion:** 5/12 tasks (42%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 213 tests in 0.177s
+Ran 222 tests in 0.183s
 OK
 ```
 

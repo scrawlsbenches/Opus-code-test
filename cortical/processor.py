@@ -426,6 +426,8 @@ class CorticalTextProcessor:
                 - 'standard': Traditional PageRank using connection weights
                 - 'semantic': ConceptNet-style PageRank with relation type weighting.
                               Requires semantic relations (extracts automatically if needed).
+                - 'hierarchical': Cross-layer PageRank with importance propagation
+                                  between layers (tokens ↔ bigrams ↔ concepts ↔ documents).
         """
         if verbose:
             print("Computing activation propagation...")
@@ -440,6 +442,10 @@ class CorticalTextProcessor:
             if verbose:
                 print("Computing importance (Semantic PageRank)...")
             self.compute_semantic_importance(verbose=False)
+        elif pagerank_method == 'hierarchical':
+            if verbose:
+                print("Computing importance (Hierarchical PageRank)...")
+            self.compute_hierarchical_importance(verbose=False)
         else:
             if verbose:
                 print("Computing importance (PageRank)...")
@@ -547,6 +553,55 @@ class CorticalTextProcessor:
             'total_edges_with_relations': total_edges,
             **layer_stats
         }
+
+    def compute_hierarchical_importance(
+        self,
+        layer_iterations: int = 10,
+        global_iterations: int = 5,
+        cross_layer_damping: float = 0.7,
+        verbose: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Compute PageRank with cross-layer propagation.
+
+        This hierarchical PageRank allows importance to flow between layers:
+        - Upward: tokens → bigrams → concepts → documents
+        - Downward: documents → concepts → bigrams → tokens
+
+        Important tokens boost their containing bigrams and concepts.
+        Important documents boost their contained terms. This creates
+        a more holistic importance score that considers the full hierarchy.
+
+        Args:
+            layer_iterations: Max iterations for intra-layer PageRank (default 10)
+            global_iterations: Max iterations for cross-layer propagation (default 5)
+            cross_layer_damping: Damping factor at layer boundaries (default 0.7)
+            verbose: Print progress messages
+
+        Returns:
+            Dict with statistics:
+            - iterations_run: Number of global iterations
+            - converged: Whether the algorithm converged
+            - layer_stats: Per-layer statistics (nodes, max/min/avg PageRank)
+
+        Example:
+            >>> stats = processor.compute_hierarchical_importance()
+            >>> print(f"Converged: {stats['converged']}")
+            >>> for layer, info in stats['layer_stats'].items():
+            ...     print(f"{layer}: {info['nodes']} nodes, max PR={info['max_pagerank']:.4f}")
+        """
+        result = analysis.compute_hierarchical_pagerank(
+            self.layers,
+            layer_iterations=layer_iterations,
+            global_iterations=global_iterations,
+            cross_layer_damping=cross_layer_damping
+        )
+
+        if verbose:
+            status = "converged" if result['converged'] else "did not converge"
+            print(f"Computed hierarchical PageRank ({result['iterations_run']} iterations, {status})")
+
+        return result
 
     def compute_tfidf(self, verbose: bool = True) -> None:
         analysis.compute_tfidf(self.layers, self.documents)

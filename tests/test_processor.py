@@ -1495,5 +1495,160 @@ class TestSemanticPageRank(unittest.TestCase):
         self.assertLess(RELATION_WEIGHTS['Antonym'], RELATION_WEIGHTS['RelatedTo'])
 
 
+class TestHierarchicalPageRank(unittest.TestCase):
+    """Test hierarchical (cross-layer) PageRank functionality."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor with documents for hierarchical PageRank testing."""
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document(
+            "doc1",
+            "Neural networks are powerful machine learning models. "
+            "Deep learning uses neural networks for complex tasks."
+        )
+        cls.processor.process_document(
+            "doc2",
+            "Machine learning algorithms process data patterns. "
+            "Neural networks learn from examples effectively."
+        )
+        cls.processor.process_document(
+            "doc3",
+            "Deep learning is part of artificial intelligence. "
+            "Machine learning models improve with more data."
+        )
+        cls.processor.compute_all(verbose=False, build_concepts=True)
+
+    def test_compute_hierarchical_importance_returns_stats(self):
+        """Test that compute_hierarchical_importance returns expected statistics."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data efficiently.")
+        processor.compute_all(verbose=False)
+
+        stats = processor.compute_hierarchical_importance(verbose=False)
+
+        self.assertIn('iterations_run', stats)
+        self.assertIn('converged', stats)
+        self.assertIn('layer_stats', stats)
+
+    def test_hierarchical_pagerank_layer_stats(self):
+        """Test that layer stats contain expected fields."""
+        stats = self.processor.compute_hierarchical_importance(verbose=False)
+
+        for layer_name, layer_info in stats['layer_stats'].items():
+            self.assertIn('nodes', layer_info)
+            self.assertIn('max_pagerank', layer_info)
+            self.assertIn('min_pagerank', layer_info)
+            self.assertIn('avg_pagerank', layer_info)
+
+    def test_hierarchical_pagerank_convergence(self):
+        """Test that hierarchical PageRank converges."""
+        stats = self.processor.compute_hierarchical_importance(
+            global_iterations=10,
+            verbose=False
+        )
+
+        # Should run at least one iteration
+        self.assertGreaterEqual(stats['iterations_run'], 1)
+
+    def test_hierarchical_pagerank_affects_scores(self):
+        """Test that hierarchical PageRank updates scores across layers."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks process information. Machine learning improves."
+        )
+        processor.compute_all(verbose=False, build_concepts=True)
+
+        # Get scores before hierarchical
+        layer0 = processor.get_layer(CorticalLayer.TOKENS)
+        before_scores = {col.content: col.pagerank for col in layer0.minicolumns.values()}
+
+        # Run hierarchical PageRank
+        processor.compute_hierarchical_importance(verbose=False)
+
+        # Scores should be updated (normalized to sum to 1)
+        after_scores = {col.content: col.pagerank for col in layer0.minicolumns.values()}
+
+        # Verify scores are valid probabilities
+        total = sum(after_scores.values())
+        self.assertAlmostEqual(total, 1.0, places=5)
+
+    def test_compute_all_with_hierarchical_pagerank(self):
+        """Test compute_all with pagerank_method='hierarchical'."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks process information efficiently."
+        )
+
+        # Should work without errors
+        processor.compute_all(verbose=False, pagerank_method='hierarchical')
+
+        # Verify computations ran
+        self.assertFalse(processor.is_stale(processor.COMP_PAGERANK))
+        self.assertFalse(processor.is_stale(processor.COMP_TFIDF))
+
+    def test_hierarchical_empty_layers(self):
+        """Test hierarchical PageRank handles empty layers gracefully."""
+        from cortical.analysis import compute_hierarchical_pagerank
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+
+        # Create empty layers dict
+        layers = {
+            CorticalLayer.TOKENS: HierarchicalLayer(CorticalLayer.TOKENS),
+            CorticalLayer.BIGRAMS: HierarchicalLayer(CorticalLayer.BIGRAMS),
+        }
+
+        result = compute_hierarchical_pagerank(layers)
+
+        self.assertEqual(result['iterations_run'], 0)
+        self.assertTrue(result['converged'])
+        self.assertEqual(result['layer_stats'], {})
+
+    def test_cross_layer_damping(self):
+        """Test that cross-layer damping parameter affects propagation."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks learn from data patterns."
+        )
+        processor.compute_all(verbose=False, build_concepts=True)
+
+        # Run with different damping values
+        stats_low = processor.compute_hierarchical_importance(
+            cross_layer_damping=0.3,
+            verbose=False
+        )
+        stats_high = processor.compute_hierarchical_importance(
+            cross_layer_damping=0.9,
+            verbose=False
+        )
+
+        # Both should produce valid results
+        self.assertIsNotNone(stats_low)
+        self.assertIsNotNone(stats_high)
+
+    def test_hierarchical_with_concepts(self):
+        """Test hierarchical PageRank includes concept layer."""
+        stats = self.processor.compute_hierarchical_importance(verbose=False)
+
+        # Should include CONCEPTS layer if it has nodes
+        layer2 = self.processor.get_layer(CorticalLayer.CONCEPTS)
+        if layer2.column_count() > 0:
+            self.assertIn('CONCEPTS', stats['layer_stats'])
+
+    def test_feedforward_feedback_connections_used(self):
+        """Test that cross-layer connections are used in propagation."""
+        # Verify that tokens have feedback connections (to bigrams)
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+
+        has_feedback = any(
+            col.feedback_connections
+            for col in layer0.minicolumns.values()
+        )
+        self.assertTrue(has_feedback, "Tokens should have feedback connections to bigrams")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

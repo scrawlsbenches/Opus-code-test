@@ -223,6 +223,154 @@ def compute_semantic_pagerank(
     }
 
 
+def compute_hierarchical_pagerank(
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    layer_iterations: int = 10,
+    global_iterations: int = 5,
+    damping: float = 0.85,
+    cross_layer_damping: float = 0.7,
+    tolerance: float = 1e-4
+) -> Dict[str, Any]:
+    """
+    Compute PageRank with cross-layer propagation.
+
+    This hierarchical PageRank allows importance to flow between layers:
+    - Upward: tokens → bigrams → concepts → documents
+    - Downward: documents → concepts → bigrams → tokens
+
+    The algorithm alternates between:
+    1. Computing local PageRank within each layer
+    2. Propagating scores up the hierarchy (via feedback_connections)
+    3. Propagating scores down the hierarchy (via feedforward_connections)
+
+    Args:
+        layers: Dictionary of all layers
+        layer_iterations: Max iterations for intra-layer PageRank
+        global_iterations: Max iterations for cross-layer propagation
+        damping: Damping factor for intra-layer PageRank
+        cross_layer_damping: Damping factor for cross-layer propagation (default 0.7)
+        tolerance: Convergence threshold for global iterations
+
+    Returns:
+        Dict containing:
+        - iterations_run: Number of global iterations
+        - converged: Whether the algorithm converged
+        - layer_stats: Per-layer statistics
+
+    Example:
+        >>> result = compute_hierarchical_pagerank(layers)
+        >>> print(f"Converged in {result['iterations_run']} iterations")
+    """
+    # Define layer order for propagation
+    layer_order = [
+        CorticalLayer.TOKENS,
+        CorticalLayer.BIGRAMS,
+        CorticalLayer.CONCEPTS,
+        CorticalLayer.DOCUMENTS
+    ]
+
+    # Filter to only existing layers with minicolumns
+    active_layers = [l for l in layer_order if l in layers and layers[l].column_count() > 0]
+
+    if not active_layers:
+        return {'iterations_run': 0, 'converged': True, 'layer_stats': {}}
+
+    # Store previous PageRank values for convergence check
+    prev_pageranks: Dict[CorticalLayer, Dict[str, float]] = {}
+
+    iterations_run = 0
+    converged = False
+
+    for global_iter in range(global_iterations):
+        iterations_run = global_iter + 1
+        max_global_diff = 0.0
+
+        # Step 1: Compute local PageRank for each layer
+        for layer_enum in active_layers:
+            layer = layers[layer_enum]
+            compute_pagerank(layer, damping=damping, iterations=layer_iterations, tolerance=1e-6)
+
+        # Step 2: Propagate up (tokens → bigrams → concepts → documents)
+        for i in range(len(active_layers) - 1):
+            lower_layer_enum = active_layers[i]
+            upper_layer_enum = active_layers[i + 1]
+            lower_layer = layers[lower_layer_enum]
+            upper_layer = layers[upper_layer_enum]
+
+            # Propagate from lower to upper via feedback connections
+            for col in lower_layer.minicolumns.values():
+                if not col.feedback_connections:
+                    continue
+
+                for target_id, weight in col.feedback_connections.items():
+                    target = upper_layer.get_by_id(target_id)
+                    if target:
+                        # Boost upper layer node based on lower layer importance
+                        boost = col.pagerank * weight * cross_layer_damping
+                        target.pagerank += boost
+
+        # Step 3: Propagate down (documents → concepts → bigrams → tokens)
+        for i in range(len(active_layers) - 1, 0, -1):
+            upper_layer_enum = active_layers[i]
+            lower_layer_enum = active_layers[i - 1]
+            upper_layer = layers[upper_layer_enum]
+            lower_layer = layers[lower_layer_enum]
+
+            # Propagate from upper to lower via feedforward connections
+            for col in upper_layer.minicolumns.values():
+                if not col.feedforward_connections:
+                    continue
+
+                for target_id, weight in col.feedforward_connections.items():
+                    target = lower_layer.get_by_id(target_id)
+                    if target:
+                        # Boost lower layer node based on upper layer importance
+                        boost = col.pagerank * weight * cross_layer_damping
+                        target.pagerank += boost
+
+        # Normalize PageRank within each layer
+        for layer_enum in active_layers:
+            layer = layers[layer_enum]
+            total = sum(col.pagerank for col in layer.minicolumns.values())
+            if total > 0:
+                for col in layer.minicolumns.values():
+                    col.pagerank /= total
+
+        # Check convergence
+        for layer_enum in active_layers:
+            layer = layers[layer_enum]
+            current_pr = {col.id: col.pagerank for col in layer.minicolumns.values()}
+
+            if layer_enum in prev_pageranks:
+                for col_id, pr in current_pr.items():
+                    prev_pr = prev_pageranks[layer_enum].get(col_id, 0)
+                    max_global_diff = max(max_global_diff, abs(pr - prev_pr))
+
+            prev_pageranks[layer_enum] = current_pr
+
+        if max_global_diff < tolerance and global_iter > 0:
+            converged = True
+            break
+
+    # Collect layer statistics
+    layer_stats = {}
+    for layer_enum in active_layers:
+        layer = layers[layer_enum]
+        pageranks = [col.pagerank for col in layer.minicolumns.values()]
+        layer_stats[layer_enum.name] = {
+            'nodes': len(pageranks),
+            'max_pagerank': max(pageranks) if pageranks else 0,
+            'min_pagerank': min(pageranks) if pageranks else 0,
+            'avg_pagerank': sum(pageranks) / len(pageranks) if pageranks else 0
+        }
+
+    return {
+        'iterations_run': iterations_run,
+        'converged': converged,
+        'layer_stats': layer_stats
+    }
+
+
 def compute_tfidf(
     layers: Dict[CorticalLayer, HierarchicalLayer],
     documents: Dict[str, str]
