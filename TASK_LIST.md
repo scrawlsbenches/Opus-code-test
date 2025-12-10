@@ -1116,10 +1116,49 @@ The following tasks were identified during comprehensive code review and are pri
 
 ---
 
+### 47. Dog-Food the System During Development
+
+**Files:** New `scripts/index_codebase.py`, usage in development workflow
+**Status:** [ ] Not Started
+**Priority:** High
+
+**Goal:**
+Use the Cortical Text Processor to index and search its own codebase during development. This validates the system in a real-world scenario and identifies usability issues.
+
+**Implementation:**
+1. Create `scripts/index_codebase.py` that:
+   - Indexes all `.py` files in `cortical/` and `tests/`
+   - Indexes `CLAUDE.md`, `TASK_LIST.md`, and `README.md`
+   - Saves the indexed corpus to `corpus_dev.pkl`
+
+2. Create `scripts/search_codebase.py` for interactive search:
+   - Load the indexed corpus
+   - Accept query from command line
+   - Return relevant code passages with file:line references
+
+**Example Usage:**
+```bash
+# Index the codebase
+python scripts/index_codebase.py
+
+# Search for code patterns
+python scripts/search_codebase.py "how does PageRank work"
+python scripts/search_codebase.py "bigram separator"
+python scripts/search_codebase.py "find documents for query"
+```
+
+**Success Criteria:**
+- Can find relevant code when searching for concepts
+- Passages include accurate file:line references
+- System handles its own codebase without errors
+- Identifies any edge cases or usability issues
+
+---
+
 ### 37. Create Dedicated Query Module Tests
 
 **File:** `tests/test_query.py` (new file)
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2025-12-10)
 **Priority:** High
 
 **Problem:**
@@ -1134,6 +1173,26 @@ The following tasks were identified during comprehensive code review and are pri
 - Chunking and batch operations
 
 **Deliverable:** Create `tests/test_query.py` with 30+ unit tests.
+
+**Solution Applied:**
+Created `tests/test_query.py` with 48 comprehensive tests covering:
+- `TestScoreRelationPath` (4 tests) - Relation path validation
+- `TestCreateChunks` (4 tests) - Text chunking
+- `TestFindRelationBetween` (4 tests) - Relation discovery
+- `TestFindTermsWithRelation` (4 tests) - Term relation lookup
+- `TestExpandQuery` (4 tests) - Basic query expansion
+- `TestExpandQueryMultihop` (4 tests) - Multi-hop expansion
+- `TestGetExpandedQueryTerms` (3 tests) - Unified expansion helper
+- `TestFindDocumentsForQuery` (4 tests) - Document retrieval
+- `TestFindDocumentsBatch` (3 tests) - Batch document retrieval
+- `TestFindPassagesForQuery` (2 tests) - Passage retrieval
+- `TestFindRelevantConcepts` (2 tests) - Concept filtering
+- `TestCompleteAnalogy` (3 tests) - Analogy completion
+- `TestQueryWithSpreadingActivation` (2 tests) - Activation search
+- `TestScoreChunk` (3 tests) - Chunk scoring
+- `TestEdgeCases` (2 tests) - Edge case handling
+
+Test count increased from 340 to 388.
 
 ---
 
@@ -1368,7 +1427,7 @@ class PassageMatch:
 ## Test Results
 
 ```
-Ran 340 tests in 0.311s
+Ran 388 tests in 0.337s
 OK
 ```
 
@@ -1575,7 +1634,8 @@ Currently these are always 0 due to the bug.
 |---|----------|------|--------|----------|
 | 34 | **Critical** | Fix bigram separator in analogy completion | ✅ Completed | Bug Fix |
 | 35 | **Critical** | Fix bigram separator in bigram connections | ✅ Completed | Bug Fix |
-| 37 | **High** | Create dedicated query module tests | [ ] Not Started | Testing |
+| 47 | **High** | Dog-food the system during development | [ ] Not Started | Validation |
+| 37 | **High** | Create dedicated query module tests | ✅ Completed | Testing |
 | 38 | **High** | Add input validation to public API | [ ] Not Started | Code Quality |
 | 40 | Medium | Add parameter range validation | [ ] Not Started | Code Quality |
 | 41 | Medium | Create configuration dataclass | [ ] Not Started | Architecture |
@@ -1586,12 +1646,12 @@ Currently these are always 0 due to the bug.
 | 44 | Low | Remove deprecated feedforward_sources | [ ] Not Started | Cleanup |
 | 46 | Low | Standardize return types with dataclasses | [ ] Not Started | API |
 
-**Completed:** 2/12 tasks
+**Completed:** 3/13 tasks
 **High Priority Remaining:** 2 tasks
 **Medium Priority Remaining:** 4 tasks
 **Low Priority Remaining:** 4 tasks
 
-**Total Tests:** 340 (all passing)
+**Total Tests:** 388 (all passing)
 
 ---
 
