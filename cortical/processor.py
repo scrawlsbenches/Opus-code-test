@@ -16,6 +16,7 @@ from . import embeddings as emb_module
 from . import query as query_module
 from . import gaps as gaps_module
 from . import persistence
+from . import fingerprint as fp_module
 
 
 class CorticalTextProcessor:
@@ -1626,7 +1627,93 @@ class CorticalTextProcessor:
     
     def get_corpus_summary(self) -> Dict:
         return persistence.get_state_summary(self.layers, self.documents)
-    
+
+    # Fingerprint methods for semantic comparison
+    def get_fingerprint(self, text: str, top_n: int = 20) -> Dict:
+        """
+        Compute the semantic fingerprint of a text.
+
+        The fingerprint captures the semantic essence of the text including
+        term weights, concept memberships, and bigrams. Fingerprints can be
+        compared to find similar code blocks.
+
+        Args:
+            text: Input text to fingerprint
+            top_n: Number of top terms to include
+
+        Returns:
+            Dict with 'terms', 'concepts', 'bigrams', 'top_terms', 'term_count'
+        """
+        return fp_module.compute_fingerprint(text, self.tokenizer, self.layers, top_n)
+
+    def compare_fingerprints(self, fp1: Dict, fp2: Dict) -> Dict:
+        """
+        Compare two fingerprints and compute similarity metrics.
+
+        Args:
+            fp1: First fingerprint from get_fingerprint()
+            fp2: Second fingerprint from get_fingerprint()
+
+        Returns:
+            Dict with similarity scores and shared terms
+        """
+        return fp_module.compare_fingerprints(fp1, fp2)
+
+    def explain_fingerprint(self, fp: Dict, top_n: int = 10) -> Dict:
+        """
+        Generate a human-readable explanation of a fingerprint.
+
+        Args:
+            fp: Fingerprint from get_fingerprint()
+            top_n: Number of top items to include
+
+        Returns:
+            Dict with explanation components including summary
+        """
+        return fp_module.explain_fingerprint(fp, top_n)
+
+    def explain_similarity(self, fp1: Dict, fp2: Dict) -> str:
+        """
+        Generate a human-readable explanation of why two fingerprints are similar.
+
+        Args:
+            fp1: First fingerprint
+            fp2: Second fingerprint
+
+        Returns:
+            Human-readable explanation string
+        """
+        return fp_module.explain_similarity(fp1, fp2)
+
+    def find_similar_texts(
+        self,
+        text: str,
+        candidates: List[Tuple[str, str]],
+        top_n: int = 5
+    ) -> List[Tuple[str, float, Dict]]:
+        """
+        Find texts most similar to the given text.
+
+        Args:
+            text: Query text to compare
+            candidates: List of (id, text) tuples to search
+            top_n: Number of results to return
+
+        Returns:
+            List of (id, similarity_score, comparison) tuples sorted by similarity
+        """
+        query_fp = self.get_fingerprint(text)
+        results = []
+
+        for candidate_id, candidate_text in candidates:
+            candidate_fp = self.get_fingerprint(candidate_text)
+            comparison = self.compare_fingerprints(query_fp, candidate_fp)
+            results.append((candidate_id, comparison['overall_similarity'], comparison))
+
+        # Sort by similarity descending
+        results.sort(key=lambda x: x[1], reverse=True)
+        return results[:top_n]
+
     def save(self, filepath: str, verbose: bool = True) -> None:
         """
         Save processor state to a file.
