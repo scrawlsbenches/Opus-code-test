@@ -14,6 +14,7 @@ from collections import defaultdict
 
 from .layers import CorticalLayer, HierarchicalLayer
 from .tokenizer import Tokenizer
+from .code_concepts import expand_code_concepts
 
 
 def expand_query(
@@ -23,16 +24,18 @@ def expand_query(
     max_expansions: int = 10,
     use_lateral: bool = True,
     use_concepts: bool = True,
-    use_variants: bool = True
+    use_variants: bool = True,
+    use_code_concepts: bool = False
 ) -> Dict[str, float]:
     """
     Expand a query using lateral connections and concept clusters.
-    
+
     This mimics how the brain retrieves related memories when given a cue:
     - Lateral connections: direct word associations (like priming)
     - Concept clusters: semantic category membership
     - Word variants: stemming and synonym mapping
-    
+    - Code concepts: programming synonym groups (get/fetch/load)
+
     Args:
         query_text: Original query string
         layers: Dictionary of layers
@@ -41,7 +44,8 @@ def expand_query(
         use_lateral: Include terms from lateral connections
         use_concepts: Include terms from concept clusters
         use_variants: Try word variants when direct match fails
-        
+        use_code_concepts: Include programming synonym expansions
+
     Returns:
         Dict mapping terms to weights (original terms get weight 1.0)
     """
@@ -110,7 +114,20 @@ def expand_query(
                                 candidate_expansions[member.content] = max(
                                     candidate_expansions[member.content], score
                                 )
-    
+
+    # Method 3: Code concept groups (programming synonyms)
+    if use_code_concepts:
+        code_expansions = expand_code_concepts(
+            list(expanded.keys()),
+            max_expansions_per_term=3,
+            weight=0.6
+        )
+        for term, weight in code_expansions.items():
+            if term not in expanded:
+                candidate_expansions[term] = max(
+                    candidate_expansions[term], weight
+                )
+
     # Select top expansions
     sorted_candidates = sorted(
         candidate_expansions.items(),

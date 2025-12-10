@@ -1093,9 +1093,58 @@ class CorticalTextProcessor:
     def find_similar_by_embedding(self, term: str, top_n: int = 10) -> List[Tuple[str, float]]:
         return emb_module.find_similar_by_embedding(self.embeddings, term, top_n)
     
-    def expand_query(self, query_text: str, max_expansions: int = 10, use_variants: bool = True, verbose: bool = False) -> Dict[str, float]:
-        return query_module.expand_query(query_text, self.layers, self.tokenizer, max_expansions=max_expansions, use_variants=use_variants)
-    
+    def expand_query(
+        self,
+        query_text: str,
+        max_expansions: int = 10,
+        use_variants: bool = True,
+        use_code_concepts: bool = False,
+        verbose: bool = False
+    ) -> Dict[str, float]:
+        """
+        Expand a query using lateral connections and concept clusters.
+
+        Args:
+            query_text: Original query string
+            max_expansions: Maximum expansion terms to add
+            use_variants: Try word variants when direct match fails
+            use_code_concepts: Include programming synonym expansions
+
+        Returns:
+            Dict mapping terms to weights
+        """
+        return query_module.expand_query(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            max_expansions=max_expansions,
+            use_variants=use_variants,
+            use_code_concepts=use_code_concepts
+        )
+
+    def expand_query_for_code(self, query_text: str, max_expansions: int = 15) -> Dict[str, float]:
+        """
+        Expand a query optimized for code search.
+
+        Enables code concept expansion to find programming synonyms
+        (e.g., "fetch" also matches "get", "load", "retrieve").
+
+        Args:
+            query_text: Original query string
+            max_expansions: Maximum expansion terms to add
+
+        Returns:
+            Dict mapping terms to weights
+        """
+        return query_module.expand_query(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            max_expansions=max_expansions,
+            use_variants=True,
+            use_code_concepts=True
+        )
+
     def expand_query_semantic(self, query_text: str, max_expansions: int = 10) -> Dict[str, float]:
         return query_module.expand_query_semantic(query_text, self.layers, self.tokenizer, self.semantic_relations, max_expansions)
 

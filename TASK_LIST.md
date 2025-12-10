@@ -1701,28 +1701,24 @@ tokens = tokenizer.tokenize("getUserCredentials")
 
 ### 49. Add Synonym/Concept Mapping for Code Patterns
 
-**Files:** `cortical/semantics.py`, new `cortical/code_concepts.py`
-**Status:** [ ] Not Started
+**Files:** `cortical/code_concepts.py`, `cortical/query.py`, `cortical/processor.py`
+**Status:** [x] Completed
 **Priority:** High
 
 **Problem:**
 The system doesn't know that "fetch", "get", "retrieve", "load" are often interchangeable in code contexts, or that "auth", "authentication", "credentials", "login" form a concept cluster.
 
-**Solution:**
-1. Create `CODE_CONCEPT_GROUPS` mapping common programming synonyms
-2. Add `expand_code_concepts()` to query expansion
-3. Include domain patterns: auth/security, data/storage, network/api, error/exception
+**Solution Applied:**
+1. Created `cortical/code_concepts.py` with 16 programming concept groups
+2. Added `expand_code_concepts()` function for query expansion
+3. Integrated with `expand_query()` via `use_code_concepts` parameter
+4. Added `expand_query_for_code()` convenience method to processor
+5. Added 33 tests in `tests/test_code_concepts.py`
 
-**Concept Groups:**
-```python
-CODE_CONCEPT_GROUPS = {
-    'retrieval': ['get', 'fetch', 'load', 'retrieve', 'read', 'query'],
-    'storage': ['save', 'store', 'write', 'persist', 'cache'],
-    'auth': ['auth', 'authentication', 'login', 'credentials', 'token', 'session'],
-    'error': ['error', 'exception', 'fail', 'catch', 'handle', 'throw'],
-    ...
-}
-```
+**Concept Groups Implemented:**
+- retrieval, storage, deletion, auth, error, validation
+- transform, network, database, async, config, logging
+- testing, file, iteration, lifecycle, events
 
 ---
 
