@@ -237,6 +237,57 @@ def find_documents(
 3. **Use incremental updates** with `add_document_incremental()` for live systems
 4. **Cache query expansions** when processing multiple similar queries
 5. **Pre-compute chunks** in `find_passages_batch()` to avoid redundant work
+6. **Use `fast_find_documents()`** for ~2-3x faster search on large corpora
+7. **Pre-build index** with `build_search_index()` for fastest repeated queries
+
+---
+
+## Code Search Capabilities
+
+### Code-Aware Tokenization
+```python
+# Enable identifier splitting for code search
+tokenizer = Tokenizer(split_identifiers=True)
+tokens = tokenizer.tokenize("getUserCredentials")
+# ['getusercredentials', 'get', 'user', 'credentials']
+```
+
+### Programming Concept Expansion
+```python
+# Expand queries with programming synonyms (get/fetch/load)
+results = processor.expand_query("fetch data", use_code_concepts=True)
+# Or use the convenience method
+results = processor.expand_query_for_code("fetch data")
+```
+
+### Intent-Based Search
+```python
+# Parse natural language queries
+parsed = processor.parse_intent_query("where do we handle authentication?")
+# {'intent': 'location', 'action': 'handle', 'subject': 'authentication', ...}
+
+# Search with intent understanding
+results = processor.search_by_intent("how do we validate input?")
+```
+
+### Semantic Fingerprinting
+```python
+# Compare code similarity
+fp1 = processor.get_fingerprint(code_block_1)
+fp2 = processor.get_fingerprint(code_block_2)
+comparison = processor.compare_fingerprints(fp1, fp2)
+explanation = processor.explain_similarity(fp1, fp2)
+```
+
+### Fast Search
+```python
+# Fast document search (~2-3x faster)
+results = processor.fast_find_documents("authentication")
+
+# Pre-built index for fastest search
+index = processor.build_search_index()
+results = processor.search_with_index("query", index)
+```
 
 ---
 
@@ -283,7 +334,12 @@ for t1, rel, t2, weight in processor.semantic_relations[:10]:
 | Process document | `processor.process_document(id, text)` |
 | Build network | `processor.compute_all()` |
 | Search | `processor.find_documents_for_query(query)` |
+| Fast search | `processor.fast_find_documents(query)` |
+| Code search | `processor.expand_query_for_code(query)` |
+| Intent search | `processor.search_by_intent("where do we...")` |
 | RAG passages | `processor.find_passages_for_query(query)` |
+| Fingerprint | `processor.get_fingerprint(text)` |
+| Compare | `processor.compare_fingerprints(fp1, fp2)` |
 | Save state | `processor.save("corpus.pkl")` |
 | Load state | `processor = CorticalTextProcessor.load("corpus.pkl")` |
 | Run tests | `python -m unittest discover -s tests -v` |

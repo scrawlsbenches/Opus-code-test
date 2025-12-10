@@ -11,7 +11,10 @@ This skill enables **meaning-based search** over the Cortical Text Processor cod
 
 - **Meaning-based retrieval**: Finds related code even when exact words don't match
 - **Query expansion**: Automatically includes related terms via co-occurrence and semantic relations
-- **Context-aware**: Uses PageRank, TF-IDF, and concept clustering for relevance
+- **Code concept groups**: Knows "fetch", "get", "load" are synonyms in code context
+- **Intent understanding**: Parses "where do we handle X?" into location + action + subject
+- **Semantic fingerprinting**: Compare and explain code similarity
+- **Fast search mode**: ~2-3x faster for large codebases
 - **No ML required**: Works through graph algorithms on corpus statistics
 
 ## When to Use
@@ -46,6 +49,7 @@ python scripts/search_codebase.py "your query here"
 | `--top N` | Number of results (default: 5) |
 | `--verbose` | Show full passage text |
 | `--expand` | Show query expansion terms |
+| `--fast` | Fast search mode (~2-3x faster, document-level) |
 | `--interactive` | Interactive search mode |
 
 ### Example Queries
@@ -54,8 +58,14 @@ python scripts/search_codebase.py "your query here"
 # Find by concept (not exact words)
 python scripts/search_codebase.py "graph importance algorithm"
 
-# Natural language intent
-python scripts/search_codebase.py "how do we compute term relevance"
+# Natural language intent (parses action + subject)
+python scripts/search_codebase.py "where do we handle authentication"
+
+# Code concept synonyms (fetch finds get/load/retrieve too)
+python scripts/search_codebase.py "fetch user data"
+
+# Fast mode for quick lookups
+python scripts/search_codebase.py "PageRank" --fast
 
 # See what terms the system associates
 python scripts/search_codebase.py "lateral connections" --expand
