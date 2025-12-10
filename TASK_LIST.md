@@ -1666,7 +1666,58 @@ Currently these are always 0 due to the bug.
 **Medium Priority Remaining:** 1 task (#41)
 **Low Priority Remaining:** 3 tasks (#42, #44, #46)
 
-**Total Tests:** 546 (all passing)
+**Total Tests:** 593 (all passing)
+
+---
+
+### 57. Add Incremental Codebase Indexing
+
+**Files:** `scripts/index_codebase.py`, `cortical/processor.py`, `cortical/layers.py`, `tests/test_incremental_indexing.py`
+**Status:** [x] Completed (2025-12-10)
+**Priority:** High
+
+**Problem:**
+The codebase indexer had to rebuild the entire corpus on every run, even for small changes. This was slow and inefficient for iterative development.
+
+**Solution Applied:**
+1. Added manifest file (`corpus_dev.manifest.json`) to track file modification times
+2. Added `--incremental` flag to only re-index changed files
+3. Added `--status` flag to show what would change without indexing
+4. Added `--force` flag to force full rebuild
+5. Added `remove_document()` and `remove_documents_batch()` methods to processor
+6. Added `remove_minicolumn()` method to HierarchicalLayer
+7. Added robust progress tracking with `ProgressTracker` class
+8. Added phase timing and logging support (`--log FILE`)
+9. Added timeout support (`--timeout N`)
+10. Added fast mode (default) that skips slow bigram connections
+
+**Performance Fix:**
+Identified that `compute_bigram_connections()` has O(n²) complexity with large corpora (26,000+ bigrams), causing hangs. Fast mode skips this operation:
+- Before: >10 minutes (hung)
+- After: ~2.3 seconds
+
+**Files Modified:**
+- `scripts/index_codebase.py` - Complete rewrite with incremental support (~840 lines)
+- `cortical/processor.py` - Added `remove_document()`, `remove_documents_batch()` (~160 lines)
+- `cortical/layers.py` - Added `remove_minicolumn()` (~20 lines)
+- `tests/test_incremental_indexing.py` - 47 comprehensive tests
+- `.claude/skills/corpus-indexer/SKILL.md` - Updated documentation
+- `CLAUDE.md` - Updated Dog-Fooding section
+
+**Usage:**
+```bash
+# Fast incremental update (~1-2s)
+python scripts/index_codebase.py --incremental
+
+# Check what would change
+python scripts/index_codebase.py --status
+
+# Full rebuild with logging
+python scripts/index_codebase.py --force --log index.log
+
+# With timeout safeguard
+python scripts/index_codebase.py --timeout 60
+```
 
 ---
 
