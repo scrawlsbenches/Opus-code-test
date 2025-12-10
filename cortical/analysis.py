@@ -920,11 +920,12 @@ def compute_bigram_connections(
     # Build indexes for efficient lookup
     # left_component_index: {"neural": [bigram1, bigram2, ...]}
     # right_component_index: {"networks": [bigram1, bigram3, ...]}
+    # Note: Bigrams use space separators (e.g., "neural networks")
     left_index: Dict[str, List[Minicolumn]] = defaultdict(list)
     right_index: Dict[str, List[Minicolumn]] = defaultdict(list)
 
     for bigram in bigrams:
-        parts = bigram.content.split('_')
+        parts = bigram.content.split(' ')
         if len(parts) == 2:
             left_index[parts[0]].append(bigram)
             right_index[parts[1]].append(bigram)

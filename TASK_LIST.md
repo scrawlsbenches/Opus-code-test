@@ -1312,7 +1312,7 @@ The following critical bugs were identified during code review and must be fixed
 
 **File:** `cortical/query.py`
 **Lines:** 1442-1468
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2025-12-10)
 **Priority:** Critical
 
 **Problem:**
@@ -1356,7 +1356,7 @@ parts = bigram.split(' ')
 
 **File:** `cortical/analysis.py`
 **Line:** 927
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2025-12-10)
 **Priority:** Critical
 
 **Problem:**
@@ -1435,11 +1435,11 @@ parts = bigram.split(BIGRAM_SEPARATOR)
 
 | Priority | Task | Status | Category |
 |----------|------|--------|----------|
-| **Critical** | **Fix bigram separator in analogy completion** | [ ] Not Started | **Bug Fix** |
-| **Critical** | **Fix bigram separator in bigram connections** | [ ] Not Started | **Bug Fix** |
+| **Critical** | **Fix bigram separator in analogy completion** | [x] Completed | **Bug Fix** |
+| **Critical** | **Fix bigram separator in bigram connections** | [x] Completed | **Bug Fix** |
 | Low | Inconsistent bigram separator convention | [ ] Future Enhancement | Code Quality |
 
-**Total Tests:** 337 (all passing)
+**Total Tests:** 340 (all passing)
 
 ---
 

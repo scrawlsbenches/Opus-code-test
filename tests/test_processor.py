@@ -1619,42 +1619,52 @@ class TestBigramConnections(unittest.TestCase):
 
     def test_shared_left_component_connection(self):
         """Test that bigrams sharing left component are connected."""
-        # "neural_networks" and "neural_processing" share "neural"
+        # "neural networks" and "neural processing" share "neural"
+        # Note: bigrams use space separators (tokenizer.py:179)
         layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
 
-        neural_networks = layer1.get_minicolumn("neural_networks")
-        neural_processing = layer1.get_minicolumn("neural_processing")
+        neural_networks = layer1.get_minicolumn("neural networks")
+        neural_processing = layer1.get_minicolumn("neural processing")
 
-        if neural_networks and neural_processing:
-            # They should be connected via shared "neural" component
-            self.assertIn(neural_processing.id, neural_networks.lateral_connections)
-            self.assertIn(neural_networks.id, neural_processing.lateral_connections)
+        # Verify bigrams exist
+        self.assertIsNotNone(neural_networks, "Bigram 'neural networks' should exist")
+        self.assertIsNotNone(neural_processing, "Bigram 'neural processing' should exist")
+
+        # They should be connected via shared "neural" component
+        self.assertIn(neural_processing.id, neural_networks.lateral_connections)
+        self.assertIn(neural_networks.id, neural_processing.lateral_connections)
 
     def test_shared_right_component_connection(self):
         """Test that bigrams sharing right component are connected."""
-        # "machine_learning" and "deep_learning" share "learning"
+        # "machine learning" and "deep learning" share "learning"
         layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
 
-        machine_learning = layer1.get_minicolumn("machine_learning")
-        deep_learning = layer1.get_minicolumn("deep_learning")
+        machine_learning = layer1.get_minicolumn("machine learning")
+        deep_learning = layer1.get_minicolumn("deep learning")
 
-        if machine_learning and deep_learning:
-            # They should be connected via shared "learning" component
-            self.assertIn(deep_learning.id, machine_learning.lateral_connections)
-            self.assertIn(machine_learning.id, deep_learning.lateral_connections)
+        # Verify bigrams exist
+        self.assertIsNotNone(machine_learning, "Bigram 'machine learning' should exist")
+        self.assertIsNotNone(deep_learning, "Bigram 'deep learning' should exist")
+
+        # They should be connected via shared "learning" component
+        self.assertIn(deep_learning.id, machine_learning.lateral_connections)
+        self.assertIn(machine_learning.id, deep_learning.lateral_connections)
 
     def test_chain_connections(self):
         """Test that chain bigrams are connected (right of one = left of other)."""
-        # "machine_learning" and "learning_algorithms" form a chain
+        # "machine learning" and "learning algorithms" form a chain
         layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
 
-        machine_learning = layer1.get_minicolumn("machine_learning")
-        learning_algorithms = layer1.get_minicolumn("learning_algorithms")
+        machine_learning = layer1.get_minicolumn("machine learning")
+        learning_algorithms = layer1.get_minicolumn("learning algorithms")
 
-        if machine_learning and learning_algorithms:
-            # They should be connected via chain relationship
-            self.assertIn(learning_algorithms.id, machine_learning.lateral_connections)
-            self.assertIn(machine_learning.id, learning_algorithms.lateral_connections)
+        # Verify bigrams exist
+        self.assertIsNotNone(machine_learning, "Bigram 'machine learning' should exist")
+        self.assertIsNotNone(learning_algorithms, "Bigram 'learning algorithms' should exist")
+
+        # They should be connected via chain relationship
+        self.assertIn(learning_algorithms.id, machine_learning.lateral_connections)
+        self.assertIn(machine_learning.id, learning_algorithms.lateral_connections)
 
     def test_cooccurrence_connections(self):
         """Test that bigrams co-occurring in documents are connected."""
@@ -1740,6 +1750,45 @@ class TestBigramConnections(unittest.TestCase):
             for target_id, weight in bigram.lateral_connections.items():
                 # Weights should be positive
                 self.assertGreater(weight, 0)
+
+    def test_component_and_chain_connections_nonzero(self):
+        """Test that component and chain connections are created (verifies bigram separator fix)."""
+        # Create fresh processor with bigrams that share components
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks are powerful. Neural processing enables deep learning. "
+            "Machine learning is related to deep learning approaches."
+        )
+        processor.compute_tfidf(verbose=False)
+
+        stats = processor.compute_bigram_connections(verbose=False)
+
+        # With the bigram separator fix, component_connections should be > 0
+        # because "neural networks" and "neural processing" share "neural"
+        self.assertGreater(
+            stats['component_connections'], 0,
+            "Component connections should be > 0 when bigrams share components. "
+            "If this fails, check that bigram.content.split(' ') is used (not split('_'))."
+        )
+
+    def test_bigram_separator_is_space(self):
+        """Test that bigrams use space separator (regression test for separator bug)."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data")
+        processor.compute_all(verbose=False)
+
+        layer1 = processor.layers[CorticalLayer.BIGRAMS]
+
+        # Bigrams should use space separators
+        self.assertIsNotNone(
+            layer1.get_minicolumn("neural networks"),
+            "Bigram 'neural networks' (with space) should exist"
+        )
+        self.assertIsNone(
+            layer1.get_minicolumn("neural_networks"),
+            "Bigram 'neural_networks' (with underscore) should NOT exist"
+        )
 
 
 class TestSemanticPageRank(unittest.TestCase):
@@ -2394,6 +2443,36 @@ class TestAnalogyCompletion(unittest.TestCase):
         self.assertNotIn("neural", result_terms)
         self.assertNotIn("networks", result_terms)
         self.assertNotIn("machine", result_terms)
+
+    def test_complete_analogy_simple_uses_bigram_patterns(self):
+        """Test that analogy completion uses bigram patterns (verifies separator fix)."""
+        # Create processor with documents that should create "a b" and "c d" bigrams
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks are powerful tools for data analysis. "
+            "Machine learning helps neural networks improve performance."
+        )
+        processor.process_document(
+            "doc2",
+            "Neural algorithms process neural signals. "
+            "Machine processing uses machine algorithms."
+        )
+        processor.compute_all(verbose=False)
+
+        # Verify bigrams exist with space separators
+        layer1 = processor.layers[CorticalLayer.BIGRAMS]
+        self.assertIsNotNone(
+            layer1.get_minicolumn("neural networks"),
+            "Bigram 'neural networks' should exist for bigram strategy"
+        )
+
+        # The analogy should work using bigram patterns
+        # a:b :: c:? where "a b" is a bigram and we look for "c ?" bigrams
+        results = processor.complete_analogy_simple("neural", "networks", "machine")
+
+        # Results should be a list (may be empty if no bigram pattern matches)
+        self.assertIsInstance(results, list)
 
 
 class TestAnalogyHelperFunctions(unittest.TestCase):

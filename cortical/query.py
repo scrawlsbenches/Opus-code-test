@@ -1438,18 +1438,18 @@ def complete_analogy_simple(
 
     # Strategy 1: Bigram pattern matching
     if layer1:
-        # Find bigrams containing a_b pattern
-        ab_bigram = f"{term_a}_{term_b}"
-        ba_bigram = f"{term_b}_{term_a}"
+        # Find bigrams containing "a b" pattern (bigrams use space separators)
+        ab_bigram = f"{term_a} {term_b}"
+        ba_bigram = f"{term_b} {term_a}"
 
         ab_col = layer1.get_minicolumn(ab_bigram)
         ba_col = layer1.get_minicolumn(ba_bigram)
 
-        # If a_b is a bigram, look for c_? bigrams
+        # If "a b" is a bigram, look for "c ?" bigrams
         if ab_col or ba_col:
             for bigram_col in layer1.minicolumns.values():
                 bigram = bigram_col.content
-                parts = bigram.split('_')
+                parts = bigram.split(' ')
                 if len(parts) != 2:
                     continue
 
