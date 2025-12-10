@@ -905,6 +905,93 @@ class CorticalTextProcessor:
     def expand_query_semantic(self, query_text: str, max_expansions: int = 10) -> Dict[str, float]:
         return query_module.expand_query_semantic(query_text, self.layers, self.tokenizer, self.semantic_relations, max_expansions)
 
+    def complete_analogy(
+        self,
+        term_a: str,
+        term_b: str,
+        term_c: str,
+        top_n: int = 5,
+        use_embeddings: bool = True,
+        use_relations: bool = True
+    ) -> List[Tuple[str, float, str]]:
+        """
+        Complete an analogy: "a is to b as c is to ?"
+
+        Uses multiple strategies to find the best completion:
+        1. Relation matching: Find what relation connects a→b, then find terms
+           with the same relation from c
+        2. Vector arithmetic: Use embeddings to compute d = c + (b - a)
+        3. Pattern matching: Find terms that co-occur with c similarly to how
+           b co-occurs with a
+
+        Args:
+            term_a: First term of the known pair (e.g., "king")
+            term_b: Second term of the known pair (e.g., "queen")
+            term_c: First term of the query pair (e.g., "man")
+            top_n: Number of candidates to return
+            use_embeddings: Whether to use embedding-based completion
+            use_relations: Whether to use relation-based completion
+
+        Returns:
+            List of (candidate_term, confidence, method) tuples, where method
+            describes which approach found this candidate ('relation:IsA',
+            'embedding', 'pattern')
+
+        Example:
+            >>> processor.extract_corpus_semantics()
+            >>> processor.compute_graph_embeddings()
+            >>> results = processor.complete_analogy("neural", "networks", "knowledge")
+            >>> for term, score, method in results:
+            ...     print(f"{term}: {score:.3f} ({method})")
+        """
+        if not self.semantic_relations:
+            self.extract_corpus_semantics(verbose=False)
+
+        return query_module.complete_analogy(
+            term_a, term_b, term_c,
+            self.layers,
+            self.semantic_relations,
+            embeddings=self.embeddings,
+            top_n=top_n,
+            use_embeddings=use_embeddings,
+            use_relations=use_relations
+        )
+
+    def complete_analogy_simple(
+        self,
+        term_a: str,
+        term_b: str,
+        term_c: str,
+        top_n: int = 5
+    ) -> List[Tuple[str, float]]:
+        """
+        Simplified analogy completion using only term relationships.
+
+        A lighter version that doesn't require embeddings. Uses bigram patterns
+        and co-occurrence to find analogies.
+
+        Args:
+            term_a: First term of the known pair
+            term_b: Second term of the known pair
+            term_c: First term of the query pair
+            top_n: Number of candidates to return
+
+        Returns:
+            List of (candidate_term, confidence) tuples
+
+        Example:
+            >>> results = processor.complete_analogy_simple("neural", "networks", "knowledge")
+            >>> for term, score in results:
+            ...     print(f"{term}: {score:.3f}")
+        """
+        return query_module.complete_analogy_simple(
+            term_a, term_b, term_c,
+            self.layers,
+            self.tokenizer,
+            semantic_relations=self.semantic_relations,
+            top_n=top_n
+        )
+
     def expand_query_multihop(
         self,
         query_text: str,

@@ -1861,5 +1861,188 @@ class TestMultiHopPathScoring(unittest.TestCase):
         self.assertIn(('PartOf', 'PartOf'), VALID_RELATION_CHAINS)
 
 
+class TestAnalogyCompletion(unittest.TestCase):
+    """Test analogy completion functionality."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor with documents for analogy testing."""
+        cls.processor = CorticalTextProcessor()
+        # Create a corpus with semantic structure for analogies
+        cls.processor.process_document("doc1", """
+            Neural networks are powerful machine learning models.
+            Deep learning uses neural networks for complex tasks.
+            Knowledge graphs store semantic relationships.
+        """)
+        cls.processor.process_document("doc2", """
+            Machine learning algorithms process data efficiently.
+            Pattern recognition helps with image classification.
+            Data processing transforms raw information.
+        """)
+        cls.processor.process_document("doc3", """
+            Artificial intelligence enables intelligent systems.
+            Natural language processing understands text.
+            Computer vision analyzes images and video.
+        """)
+        cls.processor.compute_all(verbose=False)
+        cls.processor.extract_corpus_semantics(verbose=False)
+        cls.processor.compute_graph_embeddings(dimensions=16, verbose=False)
+
+    def test_complete_analogy_returns_list(self):
+        """Test that complete_analogy returns a list."""
+        results = self.processor.complete_analogy(
+            "neural", "networks", "machine"
+        )
+        self.assertIsInstance(results, list)
+
+    def test_complete_analogy_result_format(self):
+        """Test that results have correct format (term, score, method)."""
+        results = self.processor.complete_analogy(
+            "neural", "networks", "machine", top_n=3
+        )
+
+        for result in results:
+            self.assertEqual(len(result), 3)
+            term, score, method = result
+            self.assertIsInstance(term, str)
+            self.assertIsInstance(score, float)
+            self.assertIsInstance(method, str)
+            self.assertGreater(score, 0)
+
+    def test_complete_analogy_excludes_input_terms(self):
+        """Test that input terms are excluded from results."""
+        results = self.processor.complete_analogy(
+            "neural", "networks", "machine"
+        )
+
+        result_terms = [term for term, _, _ in results]
+        self.assertNotIn("neural", result_terms)
+        self.assertNotIn("networks", result_terms)
+        self.assertNotIn("machine", result_terms)
+
+    def test_complete_analogy_top_n_limit(self):
+        """Test that top_n limits the number of results."""
+        results_3 = self.processor.complete_analogy(
+            "neural", "networks", "machine", top_n=3
+        )
+        results_5 = self.processor.complete_analogy(
+            "neural", "networks", "machine", top_n=5
+        )
+
+        self.assertLessEqual(len(results_3), 3)
+        self.assertLessEqual(len(results_5), 5)
+
+    def test_complete_analogy_unknown_term(self):
+        """Test handling of unknown terms."""
+        results = self.processor.complete_analogy(
+            "xyznonexistent", "abcnonexistent", "machine"
+        )
+        self.assertEqual(results, [])
+
+    def test_complete_analogy_with_embeddings_only(self):
+        """Test analogy completion using only embeddings."""
+        results = self.processor.complete_analogy(
+            "neural", "networks", "machine",
+            use_embeddings=True,
+            use_relations=False
+        )
+        self.assertIsInstance(results, list)
+
+    def test_complete_analogy_with_relations_only(self):
+        """Test analogy completion using only relations."""
+        results = self.processor.complete_analogy(
+            "neural", "networks", "machine",
+            use_embeddings=False,
+            use_relations=True
+        )
+        self.assertIsInstance(results, list)
+
+    def test_complete_analogy_simple_returns_list(self):
+        """Test that complete_analogy_simple returns a list."""
+        results = self.processor.complete_analogy_simple(
+            "neural", "networks", "machine"
+        )
+        self.assertIsInstance(results, list)
+
+    def test_complete_analogy_simple_format(self):
+        """Test that simple results have correct format (term, score)."""
+        results = self.processor.complete_analogy_simple(
+            "neural", "networks", "machine", top_n=3
+        )
+
+        for result in results:
+            self.assertEqual(len(result), 2)
+            term, score = result
+            self.assertIsInstance(term, str)
+            self.assertIsInstance(score, float)
+
+    def test_complete_analogy_simple_excludes_input(self):
+        """Test that input terms are excluded from simple results."""
+        results = self.processor.complete_analogy_simple(
+            "neural", "networks", "machine"
+        )
+
+        result_terms = [term for term, _ in results]
+        self.assertNotIn("neural", result_terms)
+        self.assertNotIn("networks", result_terms)
+        self.assertNotIn("machine", result_terms)
+
+
+class TestAnalogyHelperFunctions(unittest.TestCase):
+    """Test analogy helper functions."""
+
+    def test_find_relation_between(self):
+        """Test finding relations between terms."""
+        from cortical.query import find_relation_between
+
+        relations = [
+            ("dog", "IsA", "animal", 1.0),
+            ("cat", "IsA", "animal", 1.0),
+            ("dog", "HasProperty", "loyal", 0.8),
+        ]
+
+        result = find_relation_between("dog", "animal", relations)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0][0], "IsA")
+
+    def test_find_relation_between_no_match(self):
+        """Test finding relations with no match."""
+        from cortical.query import find_relation_between
+
+        relations = [
+            ("dog", "IsA", "animal", 1.0),
+        ]
+
+        result = find_relation_between("cat", "animal", relations)
+        self.assertEqual(len(result), 0)
+
+    def test_find_terms_with_relation(self):
+        """Test finding terms with specific relation."""
+        from cortical.query import find_terms_with_relation
+
+        relations = [
+            ("dog", "IsA", "animal", 1.0),
+            ("cat", "IsA", "animal", 0.9),
+            ("bird", "IsA", "animal", 0.8),
+        ]
+
+        result = find_terms_with_relation("animal", "IsA", relations, direction='backward')
+        self.assertEqual(len(result), 3)
+        # Should be sorted by weight
+        self.assertEqual(result[0][0], "dog")
+
+    def test_find_terms_with_relation_forward(self):
+        """Test finding terms with forward relation."""
+        from cortical.query import find_terms_with_relation
+
+        relations = [
+            ("dog", "HasProperty", "loyal", 1.0),
+            ("dog", "HasProperty", "friendly", 0.8),
+        ]
+
+        result = find_terms_with_relation("dog", "HasProperty", relations, direction='forward')
+        self.assertEqual(len(result), 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
