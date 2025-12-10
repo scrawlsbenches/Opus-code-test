@@ -47,6 +47,9 @@ class CorticalTextProcessor:
         self.semantic_relations: List[Tuple[str, str, str, float]] = []
         # Track which computations are stale and need recomputation
         self._stale_computations: set = set()
+        # LRU cache for query expansion results
+        self._query_expansion_cache: Dict[str, Dict[str, float]] = {}
+        self._query_cache_max_size: int = 100
 
     def process_document(
         self,
@@ -583,6 +586,10 @@ class CorticalTextProcessor:
         if build_concepts:
             fresh_comps.append(self.COMP_CONCEPTS)
         self._mark_fresh(*fresh_comps)
+
+        # Invalidate query cache since corpus state changed
+        self._query_expansion_cache.clear()
+
         if verbose:
             print("Done.")
 
@@ -1145,6 +1152,88 @@ class CorticalTextProcessor:
             use_variants=True,
             use_code_concepts=True
         )
+
+    def expand_query_cached(
+        self,
+        query_text: str,
+        max_expansions: int = 10,
+        use_variants: bool = True,
+        use_code_concepts: bool = False
+    ) -> Dict[str, float]:
+        """
+        Expand a query with caching for faster repeated lookups.
+
+        Uses an LRU-style cache to avoid recomputing expansion for
+        frequently repeated queries. Useful in RAG loops where the
+        same queries may be issued multiple times.
+
+        Args:
+            query_text: Original query string
+            max_expansions: Maximum expansion terms to add
+            use_variants: Try word variants when direct match fails
+            use_code_concepts: Include programming synonym expansions
+
+        Returns:
+            Dict mapping terms to weights
+        """
+        # Create cache key from parameters
+        cache_key = f"{query_text}|{max_expansions}|{use_variants}|{use_code_concepts}"
+
+        # Check cache
+        if cache_key in self._query_expansion_cache:
+            return self._query_expansion_cache[cache_key].copy()
+
+        # Compute expansion
+        result = query_module.expand_query(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            max_expansions=max_expansions,
+            use_variants=use_variants,
+            use_code_concepts=use_code_concepts
+        )
+
+        # Add to cache (with LRU eviction if at max size)
+        if len(self._query_expansion_cache) >= self._query_cache_max_size:
+            # Remove oldest entry (first key in dict - approximates LRU)
+            oldest_key = next(iter(self._query_expansion_cache))
+            del self._query_expansion_cache[oldest_key]
+
+        self._query_expansion_cache[cache_key] = result.copy()
+        return result
+
+    def clear_query_cache(self) -> int:
+        """
+        Clear the query expansion cache.
+
+        Should be called after modifying the corpus (adding documents,
+        recomputing connections) to ensure fresh expansions.
+
+        Returns:
+            Number of cache entries cleared
+        """
+        count = len(self._query_expansion_cache)
+        self._query_expansion_cache.clear()
+        return count
+
+    def set_query_cache_size(self, max_size: int) -> None:
+        """
+        Set the maximum size of the query expansion cache.
+
+        Args:
+            max_size: Maximum number of queries to cache (must be > 0)
+
+        Raises:
+            ValueError: If max_size <= 0
+        """
+        if max_size <= 0:
+            raise ValueError(f"max_size must be positive, got {max_size}")
+        self._query_cache_max_size = max_size
+
+        # Trim cache if it exceeds new size
+        while len(self._query_expansion_cache) > max_size:
+            oldest_key = next(iter(self._query_expansion_cache))
+            del self._query_expansion_cache[oldest_key]
 
     def parse_intent_query(self, query_text: str) -> Dict:
         """

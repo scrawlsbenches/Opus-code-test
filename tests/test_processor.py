@@ -2698,5 +2698,97 @@ class TestInputValidation(unittest.TestCase):
         self.assertEqual(stats['documents_added'], 2)
 
 
+class TestQueryCache(unittest.TestCase):
+    """Test query expansion caching functionality."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up test processor."""
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document("doc1", "Neural networks process data.")
+        cls.processor.process_document("doc2", "Machine learning algorithms.")
+        cls.processor.compute_all(verbose=False)
+
+    def test_expand_query_cached_returns_dict(self):
+        """expand_query_cached should return a dict."""
+        result = self.processor.expand_query_cached("neural")
+        self.assertIsInstance(result, dict)
+
+    def test_expand_query_cached_same_result(self):
+        """expand_query_cached should return same result for same query."""
+        result1 = self.processor.expand_query_cached("neural networks")
+        result2 = self.processor.expand_query_cached("neural networks")
+        self.assertEqual(result1, result2)
+
+    def test_expand_query_cached_different_params(self):
+        """Different parameters should use different cache entries."""
+        result1 = self.processor.expand_query_cached("neural", use_code_concepts=False)
+        result2 = self.processor.expand_query_cached("neural", use_code_concepts=True)
+        # Results may differ (code concepts add synonyms)
+        self.assertIsInstance(result1, dict)
+        self.assertIsInstance(result2, dict)
+
+    def test_clear_query_cache(self):
+        """clear_query_cache should return count and clear cache."""
+        # Populate cache
+        self.processor.expand_query_cached("test1")
+        self.processor.expand_query_cached("test2")
+
+        # Clear and verify
+        count = self.processor.clear_query_cache()
+        self.assertGreaterEqual(count, 2)
+
+        # Verify cache is empty
+        count2 = self.processor.clear_query_cache()
+        self.assertEqual(count2, 0)
+
+    def test_set_query_cache_size(self):
+        """set_query_cache_size should update max size."""
+        self.processor.set_query_cache_size(50)
+        self.assertEqual(self.processor._query_cache_max_size, 50)
+
+        # Reset to default
+        self.processor.set_query_cache_size(100)
+
+    def test_set_query_cache_size_invalid(self):
+        """set_query_cache_size should reject invalid sizes."""
+        with self.assertRaises(ValueError):
+            self.processor.set_query_cache_size(0)
+        with self.assertRaises(ValueError):
+            self.processor.set_query_cache_size(-10)
+
+    def test_cache_lru_eviction(self):
+        """Cache should evict oldest entries when full."""
+        self.processor.clear_query_cache()
+        self.processor.set_query_cache_size(3)
+
+        # Fill cache
+        self.processor.expand_query_cached("query1")
+        self.processor.expand_query_cached("query2")
+        self.processor.expand_query_cached("query3")
+
+        # Add another - should evict oldest
+        self.processor.expand_query_cached("query4")
+
+        # Cache should still be at max size
+        self.assertLessEqual(len(self.processor._query_expansion_cache), 3)
+
+        # Reset
+        self.processor.set_query_cache_size(100)
+        self.processor.clear_query_cache()
+
+    def test_compute_all_invalidates_cache(self):
+        """compute_all should clear the query cache."""
+        # Populate cache
+        self.processor.expand_query_cached("cached_query")
+        self.assertGreater(len(self.processor._query_expansion_cache), 0)
+
+        # Recompute
+        self.processor.compute_all(verbose=False)
+
+        # Cache should be cleared
+        self.assertEqual(len(self.processor._query_expansion_cache), 0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
