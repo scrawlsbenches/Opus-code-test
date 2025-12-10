@@ -482,74 +482,137 @@ def propagate_activation(
 def cluster_by_label_propagation(
     layer: HierarchicalLayer,
     min_cluster_size: int = 3,
-    max_iterations: int = 20
+    max_iterations: int = 20,
+    cluster_strictness: float = 1.0,
+    bridge_weight: float = 0.0
 ) -> Dict[int, List[str]]:
     """
     Cluster minicolumns using label propagation.
-    
+
     Label propagation is a semi-supervised community detection
     algorithm. Each node adopts the most common label among its
     neighbors, causing labels to propagate through densely
     connected regions.
-    
+
     Args:
         layer: Layer to cluster
         min_cluster_size: Minimum nodes per cluster
         max_iterations: Maximum iterations
-        
+        cluster_strictness: Controls clustering aggressiveness (0.0-1.0).
+            - 1.0 (default): Strict clustering, topics stay separate
+            - 0.5: Moderate mixing, allows some cross-topic clustering
+            - 0.0: Minimal clustering, most tokens group together
+            Lower values create fewer, larger clusters.
+        bridge_weight: Weight for synthetic inter-document connections (0.0-1.0).
+            When > 0, adds weak connections between tokens that appear in
+            different documents, helping bridge topic-isolated clusters.
+            - 0.0 (default): No bridging
+            - 0.3: Light bridging
+            - 0.7: Strong bridging
+
     Returns:
         Dictionary mapping cluster_id to list of column contents
     """
+    # Clamp parameters to valid range
+    cluster_strictness = max(0.0, min(1.0, cluster_strictness))
+    bridge_weight = max(0.0, min(1.0, bridge_weight))
+
     # Initialize each node with unique label
     labels = {col.content: i for i, col in enumerate(layer.minicolumns.values())}
-    
+
     # Get column list for shuffling
     columns = list(layer.minicolumns.keys())
-    
-    for iteration in range(max_iterations):
-        changed = False
-        
-        # Process in order (could shuffle for better results)
+
+    # Build augmented connection weights (includes optional bridging)
+    augmented_connections: Dict[str, Dict[str, float]] = defaultdict(dict)
+
+    for content in columns:
+        col = layer.minicolumns[content]
+        for neighbor_id, weight in col.lateral_connections.items():
+            neighbor = layer.get_by_id(neighbor_id)
+            if neighbor:
+                augmented_connections[content][neighbor.content] = weight
+
+    # Add synthetic bridge connections between documents if requested
+    if bridge_weight > 0:
+        # Group tokens by document
+        doc_tokens: Dict[str, List[str]] = defaultdict(list)
         for content in columns:
             col = layer.minicolumns[content]
-            
+            for doc_id in col.document_ids:
+                doc_tokens[doc_id].append(content)
+
+        # Create weak connections between tokens from different documents
+        doc_ids = list(doc_tokens.keys())
+        for i, doc1 in enumerate(doc_ids):
+            for doc2 in doc_ids[i+1:]:
+                tokens1 = doc_tokens[doc1]
+                tokens2 = doc_tokens[doc2]
+                # Connect a sample of tokens to avoid O(n²) explosion
+                sample_size = min(5, len(tokens1), len(tokens2))
+                for t1 in tokens1[:sample_size]:
+                    for t2 in tokens2[:sample_size]:
+                        if t1 != t2:
+                            # Add weak bidirectional bridge
+                            current = augmented_connections[t1].get(t2, 0)
+                            augmented_connections[t1][t2] = current + bridge_weight * 0.5
+                            current = augmented_connections[t2].get(t1, 0)
+                            augmented_connections[t2][t1] = current + bridge_weight * 0.5
+
+    # Calculate label change threshold based on strictness
+    # Higher strictness = requires stronger evidence to change label
+    change_threshold = (1.0 - cluster_strictness) * 0.3
+
+    for iteration in range(max_iterations):
+        changed = False
+
+        # Process in order (could shuffle for better results)
+        for content in columns:
             # Count neighbor labels weighted by connection strength
             label_weights: Dict[int, float] = defaultdict(float)
-            
-            for neighbor_id, weight in col.lateral_connections.items():
-                # Use O(1) ID lookup instead of linear search
-                neighbor = layer.get_by_id(neighbor_id)
-                if neighbor and neighbor.content in labels:
-                    label_weights[labels[neighbor.content]] += weight
-            
+
+            for neighbor_content, weight in augmented_connections[content].items():
+                if neighbor_content in labels:
+                    label_weights[labels[neighbor_content]] += weight
+
+            # Apply strictness: current label gets a bonus based on strictness
+            current_label = labels[content]
+            if current_label in label_weights and cluster_strictness < 1.0:
+                # Lower strictness = stronger bias toward current label
+                label_weights[current_label] *= (1 + (1 - cluster_strictness) * 2)
+
             # Adopt most common label
             if label_weights:
-                best_label = max(label_weights.items(), key=lambda x: x[1])[0]
-                if labels[content] != best_label:
-                    labels[content] = best_label
-                    changed = True
-        
+                best_label, best_weight = max(label_weights.items(), key=lambda x: x[1])
+                current_weight = label_weights.get(current_label, 0)
+
+                # Only change if the improvement exceeds threshold
+                if best_label != current_label:
+                    if current_weight == 0 or (best_weight / max(current_weight, 0.001) - 1) > change_threshold:
+                        labels[content] = best_label
+                        changed = True
+
         if not changed:
             break
-    
+
     # Build clusters
     clusters: Dict[int, List[str]] = defaultdict(list)
     for content, label in labels.items():
         clusters[label].append(content)
-    
+
     # Filter by minimum size
     filtered = {
-        label: members 
-        for label, members in clusters.items() 
+        label: members
+        for label, members in clusters.items()
         if len(members) >= min_cluster_size
     }
-    
+
     # Update cluster_id on minicolumns
     for label, members in filtered.items():
         for content in members:
             if content in layer.minicolumns:
                 layer.minicolumns[content].cluster_id = label
-    
+
     return filtered
 
 
@@ -615,7 +678,11 @@ def compute_concept_connections(
     layers: Dict[CorticalLayer, HierarchicalLayer],
     semantic_relations: List[Tuple[str, str, str, float]] = None,
     min_shared_docs: int = 1,
-    min_jaccard: float = 0.1
+    min_jaccard: float = 0.1,
+    use_member_semantics: bool = False,
+    use_embedding_similarity: bool = False,
+    embedding_threshold: float = 0.3,
+    embeddings: Dict[str, List[float]] = None
 ) -> Dict[str, Any]:
     """
     Build lateral connections between concepts in Layer 2.
@@ -623,12 +690,19 @@ def compute_concept_connections(
     Concepts are connected based on:
     1. Shared documents (Jaccard similarity of document sets)
     2. Semantic relations between member tokens (if provided)
+    3. Semantic relations between members independent of docs (use_member_semantics)
+    4. Embedding similarity of concept centroids (use_embedding_similarity)
 
     Args:
         layers: Dictionary of all layers
         semantic_relations: Optional list of (term1, relation, term2, weight) tuples
-        min_shared_docs: Minimum shared documents for connection
-        min_jaccard: Minimum Jaccard similarity threshold
+        min_shared_docs: Minimum shared documents for connection (0 to disable filter)
+        min_jaccard: Minimum Jaccard similarity threshold (0.0 to disable filter)
+        use_member_semantics: Connect concepts via semantic relations between members,
+                              even without document overlap
+        use_embedding_similarity: Connect concepts via embedding similarity of centroids
+        embedding_threshold: Minimum cosine similarity for embedding-based connections
+        embeddings: Term embeddings dict (required if use_embedding_similarity=True)
 
     Returns:
         Statistics about connections created
@@ -637,10 +711,19 @@ def compute_concept_connections(
     layer2 = layers[CorticalLayer.CONCEPTS]
 
     if layer2.column_count() == 0:
-        return {'connections_created': 0, 'concepts': 0}
+        return {
+            'connections_created': 0,
+            'concepts': 0,
+            'doc_overlap_connections': 0,
+            'semantic_connections': 0,
+            'embedding_connections': 0
+        }
 
     concepts = list(layer2.minicolumns.values())
     connections_created = 0
+    doc_overlap_connections = 0
+    semantic_connections = 0
+    embedding_connections = 0
 
     # Build semantic relation lookup for faster access
     semantic_lookup: Dict[str, Dict[str, Tuple[str, float]]] = defaultdict(dict)
@@ -659,45 +742,95 @@ def compute_concept_connections(
         'Antonym': 0.3,
     }
 
+    # Pre-compute member tokens for each concept (used by multiple strategies)
+    concept_members: Dict[str, Set[str]] = {}
+    for concept in concepts:
+        members = set()
+        for token_id in concept.feedforward_connections:
+            token = layer0.get_by_id(token_id)
+            if token:
+                members.add(token.content)
+        concept_members[concept.id] = members
+
+    # Pre-compute concept centroids if using embedding similarity
+    concept_centroids: Dict[str, List[float]] = {}
+    if use_embedding_similarity and embeddings:
+        for concept in concepts:
+            members = concept_members[concept.id]
+            member_embeddings = [embeddings[m] for m in members if m in embeddings]
+            if member_embeddings:
+                dim = len(member_embeddings[0])
+                centroid = [0.0] * dim
+                for emb in member_embeddings:
+                    for j, v in enumerate(emb):
+                        centroid[j] += v
+                for j in range(dim):
+                    centroid[j] /= len(member_embeddings)
+                concept_centroids[concept.id] = centroid
+
+    # Track which pairs have been connected to avoid duplicates
+    connected_pairs: Set[Tuple[str, str]] = set()
+
+    def add_connection(c1: Minicolumn, c2: Minicolumn, weight: float) -> bool:
+        """Add bidirectional connection if not already connected."""
+        pair = tuple(sorted([c1.id, c2.id]))
+        if pair in connected_pairs:
+            # Already connected, strengthen existing connection
+            c1.add_lateral_connection(c2.id, weight)
+            c2.add_lateral_connection(c1.id, weight)
+            return False
+        connected_pairs.add(pair)
+        c1.add_lateral_connection(c2.id, weight)
+        c2.add_lateral_connection(c1.id, weight)
+        return True
+
     # Compare all concept pairs
     for i, concept1 in enumerate(concepts):
         docs1 = concept1.document_ids
+        members1 = concept_members[concept1.id]
 
         for concept2 in concepts[i+1:]:
             docs2 = concept2.document_ids
+            members2 = concept_members[concept2.id]
 
-            # Calculate Jaccard similarity of document sets
+            # Strategy 1: Document overlap (traditional method)
             shared_docs = docs1 & docs2
             union_docs = docs1 | docs2
-
-            if len(shared_docs) < min_shared_docs:
-                continue
-
             jaccard = len(shared_docs) / len(union_docs) if union_docs else 0
 
-            if jaccard < min_jaccard:
-                continue
+            passes_doc_filter = (
+                len(shared_docs) >= min_shared_docs and jaccard >= min_jaccard
+            )
 
-            # Base weight from document overlap
-            weight = jaccard
+            if passes_doc_filter:
+                # Base weight from document overlap
+                weight = jaccard
 
-            # Add semantic relation bonus if available
-            if semantic_relations:
-                # Get member tokens for each concept
-                members1 = set()
-                for token_id in concept1.feedforward_connections:
-                    token = layer0.get_by_id(token_id)
-                    if token:
-                        members1.add(token.content)
+                # Add semantic relation bonus if available
+                if semantic_relations:
+                    semantic_bonus = 0.0
+                    relation_count = 0
+                    for m1 in members1:
+                        if m1 in semantic_lookup:
+                            for m2 in members2:
+                                if m2 in semantic_lookup[m1]:
+                                    relation, rel_weight = semantic_lookup[m1][m2]
+                                    rel_multiplier = relation_weights.get(relation, 1.0)
+                                    semantic_bonus += rel_weight * rel_multiplier
+                                    relation_count += 1
 
-                members2 = set()
-                for token_id in concept2.feedforward_connections:
-                    token = layer0.get_by_id(token_id)
-                    if token:
-                        members2.add(token.content)
+                    # Normalize and add semantic bonus (max 50% boost)
+                    if relation_count > 0:
+                        avg_semantic = semantic_bonus / relation_count
+                        weight *= (1 + min(avg_semantic, 0.5))
 
-                # Check for semantic relations between member tokens
-                semantic_bonus = 0.0
+                if add_connection(concept1, concept2, weight):
+                    connections_created += 1
+                    doc_overlap_connections += 1
+
+            # Strategy 2: Member semantic relations (independent of document overlap)
+            if use_member_semantics and semantic_relations and not passes_doc_filter:
+                semantic_score = 0.0
                 relation_count = 0
                 for m1 in members1:
                     if m1 in semantic_lookup:
@@ -705,22 +838,40 @@ def compute_concept_connections(
                             if m2 in semantic_lookup[m1]:
                                 relation, rel_weight = semantic_lookup[m1][m2]
                                 rel_multiplier = relation_weights.get(relation, 1.0)
-                                semantic_bonus += rel_weight * rel_multiplier
+                                semantic_score += rel_weight * rel_multiplier
                                 relation_count += 1
 
-                # Normalize and add semantic bonus (max 50% boost)
                 if relation_count > 0:
-                    avg_semantic = semantic_bonus / relation_count
-                    weight *= (1 + min(avg_semantic, 0.5))
+                    # Normalize by number of relations found
+                    avg_score = semantic_score / relation_count
+                    # Scale to reasonable weight range (0.1 - 0.8)
+                    weight = min(0.1 + avg_score * 0.3, 0.8)
+                    if add_connection(concept1, concept2, weight):
+                        connections_created += 1
+                        semantic_connections += 1
 
-            # Create bidirectional connections
-            concept1.add_lateral_connection(concept2.id, weight)
-            concept2.add_lateral_connection(concept1.id, weight)
-            connections_created += 1
+            # Strategy 3: Embedding similarity (independent of document overlap)
+            if use_embedding_similarity and embeddings and not passes_doc_filter:
+                if concept1.id in concept_centroids and concept2.id in concept_centroids:
+                    centroid1 = concept_centroids[concept1.id]
+                    centroid2 = concept_centroids[concept2.id]
+                    sim = cosine_similarity(
+                        {str(i): v for i, v in enumerate(centroid1)},
+                        {str(i): v for i, v in enumerate(centroid2)}
+                    )
+                    if sim >= embedding_threshold:
+                        # Scale similarity to connection weight
+                        weight = sim * 0.7  # Scale down slightly
+                        if add_connection(concept1, concept2, weight):
+                            connections_created += 1
+                            embedding_connections += 1
 
     return {
         'connections_created': connections_created,
-        'concepts': len(concepts)
+        'concepts': len(concepts),
+        'doc_overlap_connections': doc_overlap_connections,
+        'semantic_connections': semantic_connections,
+        'embedding_connections': embedding_connections
     }
 
 

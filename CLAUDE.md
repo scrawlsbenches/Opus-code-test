@@ -50,7 +50,7 @@ tests/
 python -m unittest discover -s tests -v
 ```
 
-All 129 tests should pass.
+All 331+ tests should pass.
 
 ## Running the Showcase
 
@@ -72,9 +72,28 @@ Represents a concept/feature. Tracks:
 - `lateral_connections`: Associations with other terms
 - `pagerank`, `tfidf`: Importance scores
 
-## Recent Changes (2025-12-09)
+## Recent Changes (2025-12-10)
 
-### Bug Fixes Applied
+### Layer 2 Connection Improvements
+Multiple strategies for connecting concepts in Layer 2:
+
+1. **Connection Strategies** - `compute_all(connection_strategy='...')`:
+   - `'document_overlap'`: Traditional Jaccard similarity (default)
+   - `'semantic'`: Connect via semantic relations between members
+   - `'embedding'`: Connect via embedding centroid similarity
+   - `'hybrid'`: Combine all three for maximum connectivity
+
+2. **Clustering Parameters** - `compute_all(cluster_strictness=0.5, bridge_weight=0.3)`:
+   - `cluster_strictness` (0.0-1.0): Lower = fewer, larger clusters
+   - `bridge_weight` (0.0-1.0): Adds cross-document token bridging
+
+3. **Configurable Thresholds** - `compute_concept_connections(...)`:
+   - `min_shared_docs=0`: Disable document overlap requirement
+   - `min_jaccard=0.0`: Disable Jaccard similarity threshold
+   - `use_member_semantics=True`: Connect via member token relations
+   - `use_embedding_similarity=True`: Connect via embedding similarity
+
+### Bug Fixes Applied (2025-12-09)
 1. **TF-IDF calculation** - Now uses actual per-document occurrence counts
 2. **O(1) ID lookups** - Added `_id_index` and `get_by_id()` method
 3. **Type annotations** - Fixed `any` → `Any` in semantics.py
@@ -97,6 +116,16 @@ Represents a concept/feature. Tracks:
 ```python
 processor.process_document("doc_id", "document content")
 processor.compute_all(verbose=False)
+```
+
+### Use hybrid connectivity for diverse documents
+```python
+# When documents cover different topics with no overlap
+processor.compute_all(
+    connection_strategy='hybrid',  # Use all connection methods
+    cluster_strictness=0.5,        # Allow more cross-topic clustering
+    bridge_weight=0.3              # Add inter-document bridges
+)
 ```
 
 ### Query the corpus

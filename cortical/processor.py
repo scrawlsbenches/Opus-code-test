@@ -413,8 +413,11 @@ class CorticalTextProcessor:
         self,
         verbose: bool = True,
         build_concepts: bool = True,
-        pagerank_method: str = 'standard'
-    ) -> None:
+        pagerank_method: str = 'standard',
+        connection_strategy: str = 'document_overlap',
+        cluster_strictness: float = 1.0,
+        bridge_weight: float = 0.0
+    ) -> Dict[str, Any]:
         """
         Run all computation steps.
 
@@ -428,7 +431,32 @@ class CorticalTextProcessor:
                               Requires semantic relations (extracts automatically if needed).
                 - 'hierarchical': Cross-layer PageRank with importance propagation
                                   between layers (tokens ↔ bigrams ↔ concepts ↔ documents).
+            connection_strategy: Strategy for connecting Layer 2 concepts:
+                - 'document_overlap': Traditional Jaccard similarity (default)
+                - 'semantic': Connect via semantic relations between members
+                - 'embedding': Connect via embedding centroid similarity
+                - 'hybrid': Combine all three strategies for maximum connectivity
+            cluster_strictness: Controls clustering aggressiveness (0.0-1.0).
+                Lower values create fewer, larger clusters with more connections.
+            bridge_weight: Weight for inter-document token bridging (0.0-1.0).
+                Higher values help bridge topic-isolated clusters.
+
+        Returns:
+            Dict with computation statistics (concept_stats, etc.)
+
+        Example:
+            >>> # Default behavior
+            >>> processor.compute_all()
+            >>>
+            >>> # Maximum connectivity for diverse documents
+            >>> processor.compute_all(
+            ...     connection_strategy='hybrid',
+            ...     cluster_strictness=0.5,
+            ...     bridge_weight=0.3
+            ... )
         """
+        stats: Dict[str, Any] = {}
+
         if verbose:
             print("Computing activation propagation...")
         self.propagate_activation(verbose=False)
@@ -459,13 +487,54 @@ class CorticalTextProcessor:
         if verbose:
             print("Computing bigram connections...")
         self.compute_bigram_connections(verbose=False)
+
         if build_concepts:
             if verbose:
                 print("Building concept clusters...")
-            self.build_concept_clusters(verbose=False)
+            clusters = self.build_concept_clusters(
+                cluster_strictness=cluster_strictness,
+                bridge_weight=bridge_weight,
+                verbose=False
+            )
+            stats['clusters_created'] = len(clusters)
+
+            # Determine connection parameters based on strategy
+            use_member_semantics = connection_strategy in ('semantic', 'hybrid')
+            use_embedding_similarity = connection_strategy in ('embedding', 'hybrid')
+
+            # For semantic/embedding strategies, extract/compute prerequisites
+            if use_member_semantics and not self.semantic_relations:
+                if verbose:
+                    print("Extracting semantic relations...")
+                self.extract_corpus_semantics(verbose=False)
+
+            if use_embedding_similarity and not self.embeddings:
+                if verbose:
+                    print("Computing graph embeddings...")
+                self.compute_graph_embeddings(verbose=False)
+
+            # Set thresholds based on strategy
+            if connection_strategy == 'hybrid':
+                min_shared_docs = 0
+                min_jaccard = 0.0
+            elif connection_strategy in ('semantic', 'embedding'):
+                min_shared_docs = 0
+                min_jaccard = 0.0
+            else:  # document_overlap
+                min_shared_docs = 1
+                min_jaccard = 0.1
+
             if verbose:
-                print("Computing concept connections...")
-            self.compute_concept_connections(verbose=False)
+                print(f"Computing concept connections ({connection_strategy})...")
+            concept_stats = self.compute_concept_connections(
+                use_member_semantics=use_member_semantics,
+                use_embedding_similarity=use_embedding_similarity,
+                min_shared_docs=min_shared_docs,
+                min_jaccard=min_jaccard,
+                verbose=False
+            )
+            stats['concept_connections'] = concept_stats
+
         # Mark core computations as fresh
         fresh_comps = [
             self.COMP_ACTIVATION,
@@ -479,6 +548,8 @@ class CorticalTextProcessor:
         self._mark_fresh(*fresh_comps)
         if verbose:
             print("Done.")
+
+        return stats
     
     def propagate_activation(self, iterations: int = 3, decay: float = 0.8, verbose: bool = True) -> None:
         analysis.propagate_activation(self.layers, iterations, decay)
@@ -662,10 +733,53 @@ class CorticalTextProcessor:
                   f"cooccur: {stats['cooccurrence_connections']})")
         return stats
 
-    def build_concept_clusters(self, verbose: bool = True) -> Dict[int, List[str]]:
-        clusters = analysis.cluster_by_label_propagation(self.layers[CorticalLayer.TOKENS])
+    def build_concept_clusters(
+        self,
+        min_cluster_size: int = 3,
+        cluster_strictness: float = 1.0,
+        bridge_weight: float = 0.0,
+        verbose: bool = True
+    ) -> Dict[int, List[str]]:
+        """
+        Build concept clusters from token layer using label propagation.
+
+        Args:
+            min_cluster_size: Minimum tokens per cluster (default 3)
+            cluster_strictness: Controls clustering aggressiveness (0.0-1.0).
+                - 1.0 (default): Strict clustering, topics stay separate
+                - 0.5: Moderate mixing, allows some cross-topic clustering
+                - 0.0: Minimal clustering, most tokens group together
+                Lower values create fewer, larger clusters with more connections.
+            bridge_weight: Weight for synthetic inter-document connections (0.0-1.0).
+                When > 0, adds weak connections between tokens from different
+                documents, helping bridge topic-isolated clusters.
+                - 0.0 (default): No bridging
+                - 0.3: Light bridging
+                - 0.7: Strong bridging
+            verbose: Print progress messages
+
+        Returns:
+            Dictionary mapping cluster_id to list of token contents
+
+        Example:
+            >>> # Default strict clustering
+            >>> clusters = processor.build_concept_clusters()
+            >>>
+            >>> # Looser clustering for more cross-topic connections
+            >>> clusters = processor.build_concept_clusters(
+            ...     cluster_strictness=0.5,
+            ...     bridge_weight=0.3
+            ... )
+        """
+        clusters = analysis.cluster_by_label_propagation(
+            self.layers[CorticalLayer.TOKENS],
+            min_cluster_size=min_cluster_size,
+            cluster_strictness=cluster_strictness,
+            bridge_weight=bridge_weight
+        )
         analysis.build_concept_clusters(self.layers, clusters)
-        if verbose: print(f"Built {len(clusters)} concept clusters")
+        if verbose:
+            print(f"Built {len(clusters)} concept clusters")
         return clusters
 
     def compute_concept_connections(
@@ -673,29 +787,73 @@ class CorticalTextProcessor:
         use_semantics: bool = True,
         min_shared_docs: int = 1,
         min_jaccard: float = 0.1,
+        use_member_semantics: bool = False,
+        use_embedding_similarity: bool = False,
+        embedding_threshold: float = 0.3,
         verbose: bool = True
     ) -> Dict[str, Any]:
         """
         Build lateral connections between concepts based on document overlap and semantics.
 
+        Multiple connection strategies can be combined:
+        1. Document overlap (default): Jaccard similarity of document sets
+        2. Semantic boost: Boost overlapping connections with semantic relations
+        3. Member semantics: Connect via semantic relations even without doc overlap
+        4. Embedding similarity: Connect via concept centroid similarity
+
         Args:
             use_semantics: Use semantic relations to boost connection weights
-            min_shared_docs: Minimum shared documents for connection
-            min_jaccard: Minimum Jaccard similarity threshold
+            min_shared_docs: Minimum shared documents for connection (0 to disable)
+            min_jaccard: Minimum Jaccard similarity threshold (0.0 to disable)
+            use_member_semantics: Connect concepts via member token semantic relations,
+                                  independent of document overlap
+            use_embedding_similarity: Connect concepts via embedding centroid similarity
+            embedding_threshold: Minimum cosine similarity for embedding connections
             verbose: Print progress messages
 
         Returns:
-            Statistics about connections created
+            Statistics about connections created:
+            - connections_created: Total connections
+            - concepts: Number of concepts
+            - doc_overlap_connections: Connections from document overlap
+            - semantic_connections: Connections from member semantics
+            - embedding_connections: Connections from embedding similarity
+
+        Example:
+            >>> # Traditional document overlap only
+            >>> stats = processor.compute_concept_connections()
+            >>>
+            >>> # Enable all connection strategies
+            >>> processor.compute_graph_embeddings()
+            >>> processor.extract_corpus_semantics()
+            >>> stats = processor.compute_concept_connections(
+            ...     use_member_semantics=True,
+            ...     use_embedding_similarity=True,
+            ...     min_shared_docs=0,
+            ...     min_jaccard=0.0
+            ... )
         """
         semantic_rels = self.semantic_relations if use_semantics else None
+        emb = self.embeddings if use_embedding_similarity else None
         stats = analysis.compute_concept_connections(
             self.layers,
             semantic_relations=semantic_rels,
             min_shared_docs=min_shared_docs,
-            min_jaccard=min_jaccard
+            min_jaccard=min_jaccard,
+            use_member_semantics=use_member_semantics,
+            use_embedding_similarity=use_embedding_similarity,
+            embedding_threshold=embedding_threshold,
+            embeddings=emb
         )
         if verbose:
-            print(f"Created {stats['connections_created']} concept connections")
+            parts = [f"Created {stats['connections_created']} concept connections"]
+            if stats.get('doc_overlap_connections', 0) > 0:
+                parts.append(f"doc_overlap: {stats['doc_overlap_connections']}")
+            if stats.get('semantic_connections', 0) > 0:
+                parts.append(f"semantic: {stats['semantic_connections']}")
+            if stats.get('embedding_connections', 0) > 0:
+                parts.append(f"embedding: {stats['embedding_connections']}")
+            print(", ".join(parts) if len(parts) > 1 else parts[0])
         return stats
 
     def extract_corpus_semantics(

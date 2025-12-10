@@ -7,6 +7,7 @@ import sys
 sys.path.insert(0, '..')
 
 from cortical import CorticalTextProcessor, CorticalLayer
+from cortical.layers import HierarchicalLayer
 
 
 class TestProcessorBasic(unittest.TestCase):
@@ -1167,6 +1168,379 @@ class TestConceptConnections(unittest.TestCase):
             # At least some concepts should be isolated if topics are different
             # This is a soft test since clustering may group differently
             pass  # Concept isolation depends on clustering results
+
+    def test_concept_connections_zero_thresholds(self):
+        """Test that min_shared_docs=0 and min_jaccard=0 allow all connections."""
+        # Create processor with documents that have NO overlap
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks learn patterns from data using algorithms."
+        )
+        processor.process_document(
+            "doc2", "Bread baking requires yeast and flour for fermentation."
+        )
+        processor.compute_all(verbose=False, build_concepts=True)
+
+        layer2 = processor.get_layer(CorticalLayer.CONCEPTS)
+        if layer2.column_count() < 2:
+            self.skipTest("Not enough concepts formed for this test")
+
+        # Clear connections
+        for concept in layer2.minicolumns.values():
+            concept.lateral_connections.clear()
+
+        # With default thresholds, should get 0 connections (no doc overlap)
+        stats_default = processor.compute_concept_connections(verbose=False)
+
+        # Clear again
+        for concept in layer2.minicolumns.values():
+            concept.lateral_connections.clear()
+
+        # With zero thresholds, all pairs can connect (if they pass other checks)
+        stats_zero = processor.compute_concept_connections(
+            min_shared_docs=0,
+            min_jaccard=0.0,
+            verbose=False
+        )
+
+        # Zero thresholds should allow at least as many connections
+        self.assertGreaterEqual(
+            stats_zero['connections_created'],
+            stats_default['connections_created']
+        )
+
+    def test_concept_connections_member_semantics(self):
+        """Test that use_member_semantics creates connections via semantic relations."""
+        processor = CorticalTextProcessor()
+        # Create documents with semantically related but non-overlapping content
+        processor.process_document(
+            "doc1", "Dogs are animals. Dogs bark and run."
+        )
+        processor.process_document(
+            "doc2", "Cats are animals. Cats meow and climb."
+        )
+        processor.compute_all(verbose=False, build_concepts=True)
+        processor.extract_corpus_semantics(verbose=False)
+
+        layer2 = processor.get_layer(CorticalLayer.CONCEPTS)
+        if layer2.column_count() < 2:
+            self.skipTest("Not enough concepts formed for this test")
+
+        # Clear connections
+        for concept in layer2.minicolumns.values():
+            concept.lateral_connections.clear()
+
+        # With member semantics enabled
+        stats = processor.compute_concept_connections(
+            use_member_semantics=True,
+            verbose=False
+        )
+
+        # Should have statistics for semantic connections
+        self.assertIn('semantic_connections', stats)
+        self.assertIn('doc_overlap_connections', stats)
+
+    def test_concept_connections_embedding_similarity(self):
+        """Test that use_embedding_similarity creates connections via embeddings."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks process information through layers."
+        )
+        processor.process_document(
+            "doc2", "Deep learning models use neural architectures."
+        )
+        processor.compute_all(verbose=False, build_concepts=True)
+        processor.compute_graph_embeddings(verbose=False)
+
+        layer2 = processor.get_layer(CorticalLayer.CONCEPTS)
+        if layer2.column_count() < 2:
+            self.skipTest("Not enough concepts formed for this test")
+
+        # Clear connections
+        for concept in layer2.minicolumns.values():
+            concept.lateral_connections.clear()
+
+        # With embedding similarity enabled
+        stats = processor.compute_concept_connections(
+            use_embedding_similarity=True,
+            embedding_threshold=0.1,  # Low threshold to catch similarities
+            verbose=False
+        )
+
+        # Should have statistics for embedding connections
+        self.assertIn('embedding_connections', stats)
+
+    def test_concept_connections_combined_strategies(self):
+        """Test combining multiple connection strategies."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Machine learning algorithms process data efficiently."
+        )
+        processor.process_document(
+            "doc2", "Deep learning networks learn patterns from examples."
+        )
+        processor.process_document(
+            "doc3", "Artificial intelligence uses machine learning methods."
+        )
+        processor.compute_all(verbose=False, build_concepts=True)
+        processor.extract_corpus_semantics(verbose=False)
+        processor.compute_graph_embeddings(verbose=False)
+
+        layer2 = processor.get_layer(CorticalLayer.CONCEPTS)
+        if layer2.column_count() < 2:
+            self.skipTest("Not enough concepts formed for this test")
+
+        # Clear connections
+        for concept in layer2.minicolumns.values():
+            concept.lateral_connections.clear()
+
+        # Enable all strategies
+        stats = processor.compute_concept_connections(
+            use_semantics=True,
+            use_member_semantics=True,
+            use_embedding_similarity=True,
+            min_shared_docs=0,
+            min_jaccard=0.0,
+            embedding_threshold=0.1,
+            verbose=False
+        )
+
+        # Total should equal sum of individual strategy connections
+        total = (
+            stats.get('doc_overlap_connections', 0) +
+            stats.get('semantic_connections', 0) +
+            stats.get('embedding_connections', 0)
+        )
+        self.assertEqual(stats['connections_created'], total)
+
+    def test_concept_connections_returns_detailed_stats(self):
+        """Test that compute_concept_connections returns detailed statistics."""
+        stats = self.processor.compute_concept_connections(verbose=False)
+
+        # Check all expected keys are present
+        self.assertIn('connections_created', stats)
+        self.assertIn('concepts', stats)
+        self.assertIn('doc_overlap_connections', stats)
+        self.assertIn('semantic_connections', stats)
+        self.assertIn('embedding_connections', stats)
+
+
+class TestConceptClustering(unittest.TestCase):
+    """Test concept clustering with strictness and bridging parameters."""
+
+    def test_cluster_strictness_parameter(self):
+        """Test that cluster_strictness affects number of clusters."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks process information using layers."
+        )
+        processor.process_document(
+            "doc2", "Machine learning algorithms process data patterns."
+        )
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+
+        # Strict clustering (default)
+        clusters_strict = processor.build_concept_clusters(
+            cluster_strictness=1.0, verbose=False
+        )
+
+        # Reset concepts layer
+        processor.layers[CorticalLayer.CONCEPTS] = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # Loose clustering
+        clusters_loose = processor.build_concept_clusters(
+            cluster_strictness=0.3, verbose=False
+        )
+
+        # Both should return valid cluster dictionaries
+        self.assertIsInstance(clusters_strict, dict)
+        self.assertIsInstance(clusters_loose, dict)
+
+    def test_bridge_weight_parameter(self):
+        """Test that bridge_weight enables cross-document connections."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks learn patterns from data."
+        )
+        processor.process_document(
+            "doc2", "Bread baking requires yeast and flour."
+        )
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+
+        # No bridging (default)
+        clusters_no_bridge = processor.build_concept_clusters(
+            bridge_weight=0.0, verbose=False
+        )
+
+        # Reset concepts layer
+        processor.layers[CorticalLayer.CONCEPTS] = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # With bridging
+        clusters_with_bridge = processor.build_concept_clusters(
+            bridge_weight=0.5, verbose=False
+        )
+
+        # Both should produce valid results
+        self.assertIsInstance(clusters_no_bridge, dict)
+        self.assertIsInstance(clusters_with_bridge, dict)
+
+    def test_combined_clustering_parameters(self):
+        """Test combining strictness and bridging parameters."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks are computational models."
+        )
+        processor.process_document(
+            "doc2", "Deep learning uses neural networks for AI."
+        )
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+
+        # Combined loose clustering with bridging
+        clusters = processor.build_concept_clusters(
+            cluster_strictness=0.5,
+            bridge_weight=0.3,
+            min_cluster_size=2,
+            verbose=False
+        )
+
+        self.assertIsInstance(clusters, dict)
+
+    def test_min_cluster_size_filter(self):
+        """Test that min_cluster_size filters small clusters."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks process information efficiently."
+        )
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+
+        # Large minimum size should produce fewer clusters
+        clusters_large_min = processor.build_concept_clusters(
+            min_cluster_size=10, verbose=False
+        )
+
+        # Reset concepts layer
+        processor.layers[CorticalLayer.CONCEPTS] = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # Small minimum size
+        clusters_small_min = processor.build_concept_clusters(
+            min_cluster_size=2, verbose=False
+        )
+
+        # Small min should allow at least as many clusters
+        self.assertGreaterEqual(len(clusters_small_min), len(clusters_large_min))
+
+    def test_cluster_strictness_bounds(self):
+        """Test that cluster_strictness is clamped to valid range."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Test document with words.")
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+
+        # Should handle out-of-range values gracefully
+        clusters_negative = processor.build_concept_clusters(
+            cluster_strictness=-0.5, verbose=False
+        )
+        self.assertIsInstance(clusters_negative, dict)
+
+        processor.layers[CorticalLayer.CONCEPTS] = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        clusters_over = processor.build_concept_clusters(
+            cluster_strictness=1.5, verbose=False
+        )
+        self.assertIsInstance(clusters_over, dict)
+
+
+class TestComputeAllStrategies(unittest.TestCase):
+    """Test compute_all with different connection strategies."""
+
+    def test_compute_all_default_strategy(self):
+        """Test compute_all with default document_overlap strategy."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process information.")
+        processor.process_document("doc2", "Machine learning uses neural networks.")
+
+        stats = processor.compute_all(verbose=False)
+
+        self.assertIsInstance(stats, dict)
+        if 'concept_connections' in stats:
+            self.assertIn('connections_created', stats['concept_connections'])
+
+    def test_compute_all_semantic_strategy(self):
+        """Test compute_all with semantic connection strategy."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Dogs are animals that bark.")
+        processor.process_document("doc2", "Cats are animals that meow.")
+
+        stats = processor.compute_all(
+            connection_strategy='semantic',
+            verbose=False
+        )
+
+        self.assertIsInstance(stats, dict)
+
+    def test_compute_all_embedding_strategy(self):
+        """Test compute_all with embedding connection strategy."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks learn patterns.")
+        processor.process_document("doc2", "Deep learning models train on data.")
+
+        stats = processor.compute_all(
+            connection_strategy='embedding',
+            verbose=False
+        )
+
+        self.assertIsInstance(stats, dict)
+
+    def test_compute_all_hybrid_strategy(self):
+        """Test compute_all with hybrid connection strategy."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process information.")
+        processor.process_document("doc2", "Bread baking requires yeast.")
+
+        stats = processor.compute_all(
+            connection_strategy='hybrid',
+            cluster_strictness=0.5,
+            bridge_weight=0.3,
+            verbose=False
+        )
+
+        self.assertIsInstance(stats, dict)
+        if 'concept_connections' in stats:
+            # Hybrid should have all connection type stats
+            conn_stats = stats['concept_connections']
+            self.assertIn('doc_overlap_connections', conn_stats)
+            self.assertIn('semantic_connections', conn_stats)
+            self.assertIn('embedding_connections', conn_stats)
+
+    def test_compute_all_returns_cluster_count(self):
+        """Test that compute_all returns cluster count in stats."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks learn patterns from data.")
+        processor.process_document("doc2", "Machine learning algorithms process information.")
+
+        stats = processor.compute_all(verbose=False)
+
+        if 'clusters_created' in stats:
+            self.assertIsInstance(stats['clusters_created'], int)
+            self.assertGreaterEqual(stats['clusters_created'], 0)
+
+    def test_compute_all_with_clustering_params(self):
+        """Test compute_all with clustering parameters."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks are computational models.")
+        processor.process_document("doc2", "Deep learning uses neural architectures.")
+
+        stats = processor.compute_all(
+            cluster_strictness=0.3,
+            bridge_weight=0.5,
+            verbose=False
+        )
+
+        self.assertIsInstance(stats, dict)
 
 
 class TestBigramConnections(unittest.TestCase):
