@@ -433,10 +433,156 @@ python scripts/index_codebase.py --force --log pre-refactor.log
 |------|---------|
 | `scripts/index_codebase.py` | Codebase indexer with incremental support |
 | `scripts/search_codebase.py` | Semantic search CLI |
-| `corpus_dev.pkl` | Serialized index (generated) |
-| `corpus_dev.manifest.json` | File modification times (generated) |
+| `cortical/chunk_index.py` | Chunk-based indexing module |
+| `corpus_dev.pkl` | Serialized index (generated, gitignored) |
+| `corpus_dev.manifest.json` | File modification times (generated, gitignored) |
+| `corpus_chunks/` | Chunk files directory (git trackable) |
 | `.claude/skills/codebase-search/` | Claude search skill |
 | `.claude/skills/corpus-indexer/` | Claude indexer skill |
+
+---
+
+## Chunk-Based Indexing (Git-Compatible)
+
+The chunk-based indexing system stores index changes as append-only JSON chunks. This enables git tracking of index state without merge conflicts.
+
+### Why Chunks?
+
+| Traditional (PKL) | Chunk-Based |
+|-------------------|-------------|
+| Binary format | JSON text |
+| Merge conflicts | Append-only (no conflicts) |
+| Must rebuild to restore | Combine chunks on load |
+| Local-only | Git trackable |
+
+### Quick Start
+
+```bash
+# Index with chunk output
+python scripts/index_codebase.py --use-chunks
+
+# Check chunk status
+python scripts/index_codebase.py --use-chunks --status
+
+# Compact old chunks
+python scripts/index_codebase.py --compact --compact-keep 5
+```
+
+### How It Works
+
+```
+Session 1: Edit file A
+  → Creates: corpus_chunks/2025-12-10_09-00-00_abc123.json
+     {"operations": [{"op": "modify", "doc_id": "A", "content": "..."}]}
+
+Session 2: Edit file B
+  → Creates: corpus_chunks/2025-12-10_10-30-00_def456.json
+     {"operations": [{"op": "modify", "doc_id": "B", "content": "..."}]}
+
+Session 3: Load
+  → Combines all chunks chronologically
+  → Validates against PKL cache
+  → Rebuilds if needed
+```
+
+### Chunk Files
+
+Each chunk contains:
+
+```json
+{
+  "version": 1,
+  "timestamp": "2025-12-10T09:00:00.123456",
+  "session_id": "abc123de",
+  "branch": "feature/my-branch",
+  "operations": [
+    {"op": "add", "doc_id": "file.py", "content": "...", "mtime": 1702234567.89},
+    {"op": "modify", "doc_id": "other.py", "content": "...", "mtime": 1702234590.12},
+    {"op": "delete", "doc_id": "removed.py"}
+  ]
+}
+```
+
+### Cache Validation
+
+The system maintains a content hash to validate PKL cache against chunks:
+
+```bash
+# Show cache validation status
+python scripts/index_codebase.py --use-chunks --status
+
+# Output:
+# Chunk Statistics:
+#   Total chunks: 5
+#   Total operations: 47
+#   Content hash: a1b2c3d4e5f67890
+#   Cache valid: True
+```
+
+If the hash doesn't match, the PKL is rebuilt from chunks automatically.
+
+### Compaction
+
+Over time, chunks accumulate. Compaction merges them:
+
+```bash
+# Compact all chunks into one
+python scripts/index_codebase.py --compact
+
+# Keep last 5 chunks, compact the rest
+python scripts/index_codebase.py --compact --compact-keep 5
+
+# Compact only chunks before a date
+python scripts/index_codebase.py --compact --compact-before 2025-12-01
+
+# Dry run (show what would happen)
+python scripts/index_codebase.py --compact --dry-run
+```
+
+Compaction:
+1. Combines operations chronologically
+2. Removes redundant operations (e.g., add then delete)
+3. Creates single `compacted_<timestamp>.json`
+4. Deletes original chunk files
+
+### Git Workflow
+
+```bash
+# 1. Make code changes
+vim cortical/processor.py
+
+# 2. Index with chunks
+python scripts/index_codebase.py --use-chunks
+
+# 3. Commit both code and chunk
+git add cortical/processor.py corpus_chunks/
+git commit -m "Add feature X"
+
+# 4. Push - teammates get the chunk
+git push
+
+# 5. Teammate pulls and loads
+git pull
+python scripts/index_codebase.py --use-chunks  # Combines all chunks
+```
+
+### Chunk Options
+
+| Option | Description |
+|--------|-------------|
+| `--use-chunks` | Enable chunk-based indexing |
+| `--chunks-dir DIR` | Chunk directory (default: `corpus_chunks`) |
+| `--compact` | Run compaction |
+| `--compact-before DATE` | Only compact chunks before DATE (YYYY-MM-DD) |
+| `--compact-keep N` | Keep N most recent chunks |
+| `--dry-run` | Show what would happen without making changes |
+
+### Best Practices
+
+1. **Commit chunks with code changes** - Keep index in sync with code
+2. **Compact periodically** - Run `--compact --compact-keep 10` weekly
+3. **Use for team projects** - Git-tracked chunks enable shared index state
+4. **Keep PKL local** - The PKL cache should stay in `.gitignore`
 
 ---
 

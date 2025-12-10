@@ -32,6 +32,10 @@ from typing import Dict, List, Optional, Tuple, Any
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from cortical.processor import CorticalTextProcessor
+from cortical.chunk_index import (
+    ChunkWriter, ChunkLoader, ChunkCompactor,
+    get_changes_from_manifest as get_chunk_changes
+)
 
 
 # Manifest file version for compatibility checking
@@ -688,6 +692,248 @@ def compute_analysis(
 
 
 # =============================================================================
+# Chunk-Based Indexing
+# =============================================================================
+
+def run_compaction(args, base_path: Path, tracker: ProgressTracker) -> None:
+    """Run chunk compaction."""
+    chunks_dir = base_path / args.chunks_dir
+
+    tracker.log(f"\nCompacting chunks in {chunks_dir}")
+
+    compactor = ChunkCompactor(str(chunks_dir))
+
+    # First do a dry run to show what would happen
+    dry_result = compactor.compact(
+        before=args.compact_before,
+        keep_recent=args.compact_keep,
+        dry_run=True
+    )
+
+    if dry_result['status'] == 'no_chunks':
+        tracker.log("No chunks found to compact.")
+        return
+
+    if dry_result['status'] == 'nothing_to_compact':
+        tracker.log("No chunks match compaction criteria.")
+        return
+
+    tracker.log(f"  Would compact {dry_result['would_compact']} chunks")
+    tracker.log(f"  Would keep {dry_result['would_keep']} chunks")
+
+    # Actually compact
+    tracker.start_phase("Compacting chunks")
+    result = compactor.compact(
+        before=args.compact_before,
+        keep_recent=args.compact_keep,
+        dry_run=False
+    )
+    tracker.end_phase("Compacting chunks")
+
+    tracker.log(f"\nCompaction complete:")
+    tracker.log(f"  Chunks compacted: {result['compacted']}")
+    tracker.log(f"  Chunks kept: {result['kept']}")
+    tracker.log(f"  Documents in compacted chunk: {result['documents']}")
+    if result.get('compacted_file'):
+        tracker.log(f"  Output file: {result['compacted_file']}")
+
+    tracker.print_summary()
+
+
+def index_with_chunks(
+    args,
+    base_path: Path,
+    output_path: Path,
+    tracker: ProgressTracker
+) -> None:
+    """
+    Index using chunk-based storage.
+
+    This creates timestamped JSON chunks that can be committed to git.
+    """
+    chunks_dir = base_path / args.chunks_dir
+
+    # Initialize chunk loader to get current state from existing chunks
+    loader = ChunkLoader(str(chunks_dir))
+    existing_docs = loader.get_documents()
+    existing_mtimes = loader.get_mtimes()
+
+    tracker.log(f"\nChunk-based indexing mode")
+    tracker.log(f"  Chunks directory: {chunks_dir}")
+    tracker.log(f"  Existing documents from chunks: {len(existing_docs)}")
+
+    # Get files to index
+    tracker.start_phase("Discovering files")
+    python_files = get_python_files(base_path)
+    doc_files = get_doc_files(base_path)
+    all_files = python_files + doc_files
+    tracker.end_phase("Discovering files")
+
+    tracker.log(f"\nFound {len(python_files)} Python files and {len(doc_files)} documentation files")
+
+    # Build current file state
+    current_files = {}
+    for file_path in all_files:
+        doc_id = create_doc_id(file_path, base_path)
+        current_files[doc_id] = get_file_mtime(file_path)
+
+    # Detect changes against chunk state
+    added, modified, deleted = get_chunk_changes(current_files, existing_mtimes)
+
+    tracker.log(f"\nChanges detected:")
+    tracker.log(f"  Added: {len(added)}, Modified: {len(modified)}, Deleted: {len(deleted)}")
+
+    # Status mode
+    if args.status:
+        show_chunk_status(added, modified, deleted, loader, tracker)
+        return
+
+    # No changes
+    if not (added or modified or deleted):
+        tracker.log("\nNo changes detected. Corpus is up to date.")
+        return
+
+    # Create chunk writer for this session
+    writer = ChunkWriter(str(chunks_dir))
+
+    # Record operations
+    total_ops = len(added) + len(modified) + len(deleted)
+    tracker.start_phase("Recording chunk operations", total_items=total_ops)
+    processed = 0
+
+    # Process added files
+    for doc_id in added:
+        file_path = base_path / doc_id
+        try:
+            content = file_path.read_text(encoding='utf-8')
+            mtime = get_file_mtime(file_path)
+            writer.add_document(doc_id, content, mtime)
+            processed += 1
+            tracker.update_progress(processed, f"Added: {doc_id}" if args.verbose else None)
+        except Exception as e:
+            tracker.warn(f"Error reading {doc_id}: {e}")
+
+    # Process modified files
+    for doc_id in modified:
+        file_path = base_path / doc_id
+        try:
+            content = file_path.read_text(encoding='utf-8')
+            mtime = get_file_mtime(file_path)
+            writer.modify_document(doc_id, content, mtime)
+            processed += 1
+            tracker.update_progress(processed, f"Modified: {doc_id}" if args.verbose else None)
+        except Exception as e:
+            tracker.warn(f"Error reading {doc_id}: {e}")
+
+    # Record deletions
+    for doc_id in deleted:
+        writer.delete_document(doc_id)
+        processed += 1
+        tracker.update_progress(processed, f"Deleted: {doc_id}" if args.verbose else None)
+
+    tracker.end_phase("Recording chunk operations")
+
+    # Save chunk
+    tracker.start_phase("Saving chunk")
+    chunk_path = writer.save()
+    if chunk_path:
+        tracker.log(f"  Saved chunk: {chunk_path.name}")
+    tracker.end_phase("Saving chunk")
+
+    # Now rebuild processor from all chunks
+    tracker.start_phase("Loading documents from chunks")
+    loader = ChunkLoader(str(chunks_dir))  # Reload to include new chunk
+    all_docs = loader.get_documents()
+    tracker.log(f"  Total documents: {len(all_docs)}")
+    tracker.end_phase("Loading documents from chunks")
+
+    # Check if we can use cached pkl
+    cache_valid = loader.is_cache_valid(str(output_path))
+    if cache_valid and not (added or modified or deleted):
+        tracker.log("\nCache is valid, loading from pkl...")
+        processor = CorticalTextProcessor.load(str(output_path))
+    else:
+        # Build processor from documents
+        tracker.start_phase("Building processor from chunks")
+        processor = CorticalTextProcessor()
+        documents = [(doc_id, content, None) for doc_id, content in all_docs.items()]
+        processor.add_documents_batch(documents, recompute='none', verbose=False)
+        tracker.log(f"  Added {len(documents)} documents")
+        tracker.end_phase("Building processor from chunks")
+
+        # Compute analysis
+        fast_mode = not args.full_analysis
+        compute_analysis(processor, tracker, fast_mode=fast_mode)
+
+    # Print corpus statistics
+    tracker.log("\nCorpus Statistics:")
+    tracker.log(f"  Documents: {len(processor.documents)}")
+    tracker.log(f"  Tokens (Layer 0): {processor.layers[0].column_count()}")
+    tracker.log(f"  Bigrams (Layer 1): {processor.layers[1].column_count()}")
+
+    # Save processor
+    tracker.start_phase("Saving corpus")
+    processor.save(str(output_path))
+    file_size = output_path.stat().st_size / 1024
+    tracker.log(f"  Saved to {output_path.name} ({file_size:.1f} KB)")
+    tracker.end_phase("Saving corpus")
+
+    # Save cache hash
+    loader.save_cache_hash(str(output_path))
+    tracker.log(f"  Cache hash saved")
+
+    # Print chunk stats
+    stats = loader.get_stats()
+    tracker.log(f"\nChunk Statistics:")
+    tracker.log(f"  Total chunks: {stats['chunk_count']}")
+    tracker.log(f"  Total operations: {stats['total_operations']}")
+    tracker.log(f"  Content hash: {stats['hash']}")
+
+    tracker.print_summary()
+    tracker.log("\nDone! Use search_codebase.py to query the indexed corpus.")
+
+
+def show_chunk_status(
+    added: List[str],
+    modified: List[str],
+    deleted: List[str],
+    loader: ChunkLoader,
+    tracker: ProgressTracker
+) -> None:
+    """Show chunk status without indexing."""
+    stats = loader.get_stats()
+
+    tracker.log(f"\n=== Chunk Status ===")
+    tracker.log(f"Chunks: {stats['chunk_count']}")
+    tracker.log(f"Documents: {stats['document_count']}")
+    tracker.log(f"Content hash: {stats['hash']}")
+
+    if added:
+        tracker.log(f"\nFiles to add ({len(added)}):")
+        for f in added[:10]:
+            tracker.log(f"  + {f}")
+        if len(added) > 10:
+            tracker.log(f"  ... and {len(added) - 10} more")
+
+    if modified:
+        tracker.log(f"\nFiles to modify ({len(modified)}):")
+        for f in modified[:10]:
+            tracker.log(f"  ~ {f}")
+        if len(modified) > 10:
+            tracker.log(f"  ... and {len(modified) - 10} more")
+
+    if deleted:
+        tracker.log(f"\nFiles to delete ({len(deleted)}):")
+        for f in deleted[:10]:
+            tracker.log(f"  - {f}")
+        if len(deleted) > 10:
+            tracker.log(f"  ... and {len(deleted) - 10} more")
+
+    if not (added or modified or deleted):
+        tracker.log("\nNo changes detected.")
+
+
+# =============================================================================
 # Main Entry Point
 # =============================================================================
 
@@ -723,6 +969,19 @@ Examples:
                         help=f'Timeout in seconds (0=none, default={DEFAULT_TIMEOUT})')
     parser.add_argument('--full-analysis', action='store_true',
                         help='Use full semantic analysis (slower but more accurate)')
+
+    # Chunk-based indexing options
+    parser.add_argument('--use-chunks', action='store_true',
+                        help='Use git-compatible chunk-based indexing')
+    parser.add_argument('--chunks-dir', default='corpus_chunks',
+                        help='Directory for chunk files (default: corpus_chunks)')
+    parser.add_argument('--compact', action='store_true',
+                        help='Compact old chunks into a single file')
+    parser.add_argument('--compact-before', type=str, default=None,
+                        help='Only compact chunks before this date (YYYY-MM-DD)')
+    parser.add_argument('--compact-keep', type=int, default=0,
+                        help='Keep this many recent chunks when compacting')
+
     args = parser.parse_args()
 
     base_path = Path(__file__).parent.parent
@@ -747,9 +1006,17 @@ Examples:
     if args.timeout > 0:
         tracker.log(f"Timeout: {args.timeout}s")
 
+    # Handle compaction mode
+    if args.compact:
+        run_compaction(args, base_path, tracker)
+        return
+
     try:
         with timeout_handler(args.timeout, tracker):
-            run_indexer(args, base_path, output_path, manifest_path, tracker)
+            if args.use_chunks:
+                index_with_chunks(args, base_path, output_path, tracker)
+            else:
+                run_indexer(args, base_path, output_path, manifest_path, tracker)
     except TimeoutError:
         tracker.log("\nIndexing was terminated due to timeout.", "error")
         sys.exit(1)
