@@ -92,6 +92,10 @@ Computing concept connections (document_overlap)...
 Done.
 [('doc1', 0.8774208144843981), ('doc2', 0.8317923190728529)]
 Documents: 3, Connections: 66
+✓ Saved processor to my_corpus.pkl
+  - 3 documents
+  - 29 minicolumns
+  - 66 connections
 ```
 
 ## Core API
