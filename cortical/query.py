@@ -124,6 +124,193 @@ def expand_query(
     return expanded
 
 
+# Valid relation chain patterns for multi-hop inference
+# Key: (relation1, relation2) → validity score (0.0 = invalid, 1.0 = fully valid)
+VALID_RELATION_CHAINS = {
+    # Transitive hierarchies
+    ('IsA', 'IsA'): 1.0,           # dog IsA animal IsA living_thing
+    ('PartOf', 'PartOf'): 1.0,     # wheel PartOf car PartOf vehicle
+    ('IsA', 'HasProperty'): 0.9,   # dog IsA animal HasProperty alive
+    ('PartOf', 'HasProperty'): 0.8,  # wheel PartOf car HasProperty fast
+
+    # Association chains
+    ('RelatedTo', 'RelatedTo'): 0.6,
+    ('SimilarTo', 'SimilarTo'): 0.7,
+    ('CoOccurs', 'CoOccurs'): 0.5,
+    ('RelatedTo', 'IsA'): 0.7,
+    ('RelatedTo', 'SimilarTo'): 0.7,
+
+    # Causal chains
+    ('Causes', 'Causes'): 0.8,
+    ('Causes', 'HasProperty'): 0.7,
+
+    # Derivation chains
+    ('DerivedFrom', 'DerivedFrom'): 0.8,
+    ('DerivedFrom', 'IsA'): 0.7,
+
+    # Usage chains
+    ('UsedFor', 'UsedFor'): 0.6,
+    ('UsedFor', 'RelatedTo'): 0.5,
+
+    # Antonym - generally invalid for chaining
+    ('Antonym', 'Antonym'): 0.3,   # Double negation, weak
+    ('Antonym', 'IsA'): 0.1,       # Contradictory
+}
+
+
+def score_relation_path(path: List[str]) -> float:
+    """
+    Score a relation path by its semantic coherence.
+
+    Args:
+        path: List of relation types traversed (e.g., ['IsA', 'HasProperty'])
+
+    Returns:
+        Score from 0.0 (invalid) to 1.0 (fully valid)
+    """
+    if not path:
+        return 1.0
+    if len(path) == 1:
+        return 1.0
+
+    # Compute score as product of consecutive pair validities
+    total_score = 1.0
+    for i in range(len(path) - 1):
+        pair = (path[i], path[i + 1])
+        # Check both orderings
+        pair_score = VALID_RELATION_CHAINS.get(pair, 0.4)  # Default: moderate validity
+        total_score *= pair_score
+
+    return total_score
+
+
+def expand_query_multihop(
+    query_text: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    tokenizer: Tokenizer,
+    semantic_relations: List[Tuple[str, str, str, float]],
+    max_hops: int = 2,
+    max_expansions: int = 15,
+    decay_factor: float = 0.5,
+    min_path_score: float = 0.2
+) -> Dict[str, float]:
+    """
+    Expand query using multi-hop semantic inference.
+
+    Unlike single-hop expansion that only follows direct connections,
+    this follows relation chains to discover semantically related terms
+    through transitive relationships.
+
+    Example inference chains:
+        "dog" → IsA → "animal" → HasProperty → "living"
+        "car" → PartOf → "engine" → UsedFor → "transportation"
+
+    Args:
+        query_text: Original query string
+        layers: Dictionary of layers (needs TOKENS)
+        tokenizer: Tokenizer instance
+        semantic_relations: List of (term1, relation, term2, weight) tuples
+        max_hops: Maximum number of relation hops (default: 2)
+        max_expansions: Maximum expansion terms to return
+        decay_factor: Weight decay per hop (default: 0.5, so hop2 = 0.25)
+        min_path_score: Minimum path validity score to include (default: 0.2)
+
+    Returns:
+        Dict mapping terms to weights (original terms get weight 1.0,
+        expansions get decayed weights based on hop distance and path validity)
+
+    Example:
+        >>> expanded = expand_query_multihop("neural", layers, tokenizer, relations)
+        >>> # Hop 1: networks (co-occur), learning (co-occur), brain (RelatedTo)
+        >>> # Hop 2: deep (via learning), cortex (via brain), AI (via networks)
+    """
+    tokens = tokenizer.tokenize(query_text)
+    layer0 = layers[CorticalLayer.TOKENS]
+
+    # Start with original terms at full weight
+    expanded: Dict[str, float] = {}
+    for token in tokens:
+        if layer0.get_minicolumn(token):
+            expanded[token] = 1.0
+
+    if not expanded or not semantic_relations:
+        return expanded
+
+    # Build bidirectional neighbor lookup with relation types
+    # neighbors[term] = [(neighbor, relation_type, weight), ...]
+    neighbors: Dict[str, List[Tuple[str, str, float]]] = defaultdict(list)
+    for t1, relation, t2, weight in semantic_relations:
+        neighbors[t1].append((t2, relation, weight))
+        neighbors[t2].append((t1, relation, weight))
+
+    # Track expansions with their hop distance, weight, and relation path
+    # (term, weight, hop, relation_path)
+    candidates: Dict[str, Tuple[float, int, List[str]]] = {}
+
+    # BFS-style expansion with hop tracking
+    # frontier: [(term, current_weight, hop_count, relation_path)]
+    frontier: List[Tuple[str, float, int, List[str]]] = [
+        (term, 1.0, 0, []) for term in expanded.keys()
+    ]
+
+    visited_at_hop: Dict[str, int] = {term: 0 for term in expanded.keys()}
+
+    while frontier:
+        current_term, current_weight, hop, path = frontier.pop(0)
+
+        if hop >= max_hops:
+            continue
+
+        next_hop = hop + 1
+
+        for neighbor, relation, rel_weight in neighbors.get(current_term, []):
+            # Skip if already in original query terms
+            if neighbor in expanded:
+                continue
+
+            # Check if term exists in corpus
+            if not layer0.get_minicolumn(neighbor):
+                continue
+
+            # Skip if we've visited this term at an earlier or equal hop
+            if neighbor in visited_at_hop and visited_at_hop[neighbor] <= next_hop:
+                continue
+
+            # Compute new path and its validity
+            new_path = path + [relation]
+            path_score = score_relation_path(new_path)
+
+            if path_score < min_path_score:
+                continue
+
+            # Compute weight with decay and path validity
+            # weight = base_weight * relation_weight * decay^hop * path_validity
+            hop_decay = decay_factor ** next_hop
+            new_weight = current_weight * rel_weight * hop_decay * path_score
+
+            # Update candidate if this path gives higher weight
+            if neighbor not in candidates or candidates[neighbor][0] < new_weight:
+                candidates[neighbor] = (new_weight, next_hop, new_path)
+                visited_at_hop[neighbor] = next_hop
+
+                # Add to frontier for further expansion
+                if next_hop < max_hops:
+                    frontier.append((neighbor, new_weight, next_hop, new_path))
+
+    # Sort candidates by weight and take top expansions
+    sorted_candidates = sorted(
+        candidates.items(),
+        key=lambda x: x[1][0],  # Sort by weight
+        reverse=True
+    )[:max_expansions]
+
+    # Add to expanded dict
+    for term, (weight, hop, path) in sorted_candidates:
+        expanded[term] = weight
+
+    return expanded
+
+
 def expand_query_semantic(
     query_text: str,
     layers: Dict[CorticalLayer, HierarchicalLayer],

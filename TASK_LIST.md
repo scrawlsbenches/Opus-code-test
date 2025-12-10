@@ -816,34 +816,59 @@ print(f"{edge.relation_type}: {edge.weight} ({edge.confidence})")
 
 ### 25. Implement Multi-Hop Semantic Inference
 
-**Files:** `cortical/query.py`, `cortical/semantics.py`
-**Status:** [ ] Pending
+**Files:** `cortical/query.py`, `cortical/processor.py`
+**Status:** [x] Completed
 
 **Problem:**
 Query expansion only follows single-hop connections. ConceptNet enables multi-hop inference:
 - "dog" → IsA → "animal" → HasProperty → "living"
 - "car" → PartOf → "engine" → UsedFor → "transportation"
 
-**Implementation Steps:**
-1. Add `expand_query_multihop()` function to `query.py`
-2. Follow relation chains up to `max_hops` (default: 2)
-3. Decay weight by hop distance: `weight *= 0.5 ** hop`
-4. Filter by relation path validity (IsA chains are good, random walks less so)
-5. Use for enhanced document retrieval
+**Solution Applied:**
+1. Added `VALID_RELATION_CHAINS` constant to `query.py` defining valid relation chain patterns with validity scores:
+   - Transitive hierarchies: IsA→IsA (1.0), PartOf→PartOf (1.0), IsA→HasProperty (0.9)
+   - Association chains: RelatedTo→RelatedTo (0.6), SimilarTo→SimilarTo (0.7)
+   - Causal chains: Causes→Causes (0.8), Causes→HasProperty (0.7)
+   - Invalid chains: Antonym→IsA (0.1) - contradictory
+2. Added `score_relation_path()` function to compute path validity scores
+3. Added `expand_query_multihop()` function (~90 lines) implementing:
+   - BFS-style expansion with hop tracking
+   - Weight decay by hop distance: `weight *= decay_factor ** hop`
+   - Path validity filtering with `min_path_score` threshold
+   - Configurable parameters: `max_hops`, `max_expansions`, `decay_factor`, `min_path_score`
+4. Added `expand_query_multihop()` method to processor with fallback to regular expansion
 
-**Example:**
+**Files Modified:**
+- `cortical/query.py` - Added `VALID_RELATION_CHAINS`, `score_relation_path()`, `expand_query_multihop()` (~150 lines)
+- `cortical/processor.py` - Added processor wrapper method (~45 lines)
+- `tests/test_processor.py` - Added 18 tests for multi-hop inference and path scoring
+
+**Usage:**
 ```python
-expand_query_multihop("neural", max_hops=2)
+# Extract semantic relations first
+processor.extract_corpus_semantics()
+
+# Multi-hop expansion (finds 2-hop away terms)
+expanded = processor.expand_query_multihop("neural", max_hops=2)
 # Hop 1: networks (co-occur), learning (co-occur), brain (RelatedTo)
 # Hop 2: deep (via learning), cortex (via brain), AI (via networks)
+
+# Custom parameters
+expanded = processor.expand_query_multihop(
+    "neural",
+    max_hops=3,           # Follow up to 3 hops
+    decay_factor=0.6,     # Slower weight decay
+    min_path_score=0.3,   # Filter low-validity paths
+    max_expansions=20     # More expansion terms
+)
 ```
 
 ---
 
 ### 26. Add Relation Path Scoring
 
-**Files:** `cortical/semantics.py`
-**Status:** [ ] Pending
+**Files:** `cortical/query.py`
+**Status:** [x] Completed (implemented with Task 25)
 
 **Problem:**
 Not all relation paths are equally valid for inference. Need to score paths by semantic coherence.
@@ -857,11 +882,32 @@ Not all relation paths are equally valid for inference. Need to score paths by s
 - Antonym → IsA: contradictory
 - Random oscillation: low confidence
 
-**Implementation Steps:**
-1. Create `VALID_RELATION_CHAINS` matrix defining allowed transitions
-2. Add `score_relation_path()` function
-3. Penalize invalid transitions, reward coherent chains
-4. Use in multi-hop expansion to filter low-quality paths
+**Solution Applied (with Task 25):**
+1. Added `VALID_RELATION_CHAINS` dict defining allowed transitions with validity scores:
+   - Transitive: (IsA, IsA)=1.0, (PartOf, PartOf)=1.0
+   - Property inheritance: (IsA, HasProperty)=0.9, (PartOf, HasProperty)=0.8
+   - Association: (RelatedTo, RelatedTo)=0.6, (SimilarTo, SimilarTo)=0.7
+   - Invalid: (Antonym, IsA)=0.1
+2. Added `score_relation_path()` function that multiplies consecutive pair validities
+3. Default validity score of 0.4 for unknown relation pairs
+4. Integrated into `expand_query_multihop()` with `min_path_score` parameter
+
+**Files Modified:**
+- `cortical/query.py` - Added constants and scoring function (~50 lines)
+- `tests/test_processor.py` - Added 7 tests in `TestMultiHopPathScoring` class
+
+**Usage:**
+```python
+from cortical.query import score_relation_path, VALID_RELATION_CHAINS
+
+# Score a relation path
+score = score_relation_path(['IsA', 'IsA'])  # 1.0 (transitive)
+score = score_relation_path(['IsA', 'HasProperty'])  # 0.9 (property inheritance)
+score = score_relation_path(['Antonym', 'IsA'])  # 0.1 (contradictory)
+
+# Check valid chain patterns
+print(VALID_RELATION_CHAINS[('IsA', 'IsA')])  # 1.0
+```
 
 ---
 
@@ -1021,8 +1067,8 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 | **High** | **Implement relation-weighted PageRank** | ✅ Completed | **ConceptNet** |
 | **High** | **Implement cross-layer PageRank propagation** | ✅ Completed | **ConceptNet** |
 | **High** | **Add typed edge storage** | ✅ Completed | **ConceptNet** |
-| Medium | Implement multi-hop semantic inference | ⏳ Pending | ConceptNet |
-| Medium | Add relation path scoring | ⏳ Pending | ConceptNet |
+| Medium | Implement multi-hop semantic inference | ✅ Completed | ConceptNet |
+| Medium | Add relation path scoring | ✅ Completed | ConceptNet |
 | Medium | Implement concept inheritance | ⏳ Pending | ConceptNet |
 | Low | Add commonsense relation extraction | ⏳ Pending | ConceptNet |
 | Low | Visualize ConceptNet-style graph | ⏳ Pending | ConceptNet |
@@ -1030,19 +1076,19 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 
 **Bug Fix Completion:** 7/7 tasks (100%)
 **RAG Enhancement Completion:** 8/8 tasks (100%)
-**ConceptNet Enhancement Completion:** 6/12 tasks (50%)
+**ConceptNet Enhancement Completion:** 8/12 tasks (67%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 237 tests in 0.205s
+Ran 255 tests in 0.196s
 OK
 ```
 
-All tests passing as of 2025-12-09.
+All tests passing as of 2025-12-10.
 
 ---
 
-*Updated from code review on 2025-12-09*
+*Updated from code review on 2025-12-10*

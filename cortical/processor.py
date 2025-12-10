@@ -732,6 +732,60 @@ class CorticalTextProcessor:
     
     def expand_query_semantic(self, query_text: str, max_expansions: int = 10) -> Dict[str, float]:
         return query_module.expand_query_semantic(query_text, self.layers, self.tokenizer, self.semantic_relations, max_expansions)
+
+    def expand_query_multihop(
+        self,
+        query_text: str,
+        max_hops: int = 2,
+        max_expansions: int = 15,
+        decay_factor: float = 0.5,
+        min_path_score: float = 0.2
+    ) -> Dict[str, float]:
+        """
+        Expand query using multi-hop semantic inference.
+
+        Unlike single-hop expansion that only follows direct connections,
+        this follows relation chains to discover semantically related terms
+        through transitive relationships.
+
+        Example inference chains:
+            "dog" → IsA → "animal" → HasProperty → "living"
+            "neural" → RelatedTo → "network" → RelatedTo → "deep"
+
+        Args:
+            query_text: Original query string
+            max_hops: Maximum number of relation hops (default: 2)
+            max_expansions: Maximum expansion terms to return
+            decay_factor: Weight decay per hop (default: 0.5, so hop2 = 0.25)
+            min_path_score: Minimum path validity score to include (default: 0.2)
+
+        Returns:
+            Dict mapping terms to weights (original terms get weight 1.0,
+            expansions get decayed weights based on hop distance and path validity)
+
+        Example:
+            >>> # Extract semantic relations first
+            >>> processor.extract_corpus_semantics()
+            >>>
+            >>> # Multi-hop expansion
+            >>> expanded = processor.expand_query_multihop("neural", max_hops=2)
+            >>> for term, weight in sorted(expanded.items(), key=lambda x: -x[1]):
+            ...     print(f"{term}: {weight:.3f}")
+        """
+        if not self.semantic_relations:
+            # Fall back to regular expansion if no semantic relations
+            return self.expand_query(query_text, max_expansions=max_expansions)
+
+        return query_module.expand_query_multihop(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            self.semantic_relations,
+            max_hops=max_hops,
+            max_expansions=max_expansions,
+            decay_factor=decay_factor,
+            min_path_score=min_path_score
+        )
     
     def find_documents_for_query(
         self,

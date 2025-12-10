@@ -1650,5 +1650,216 @@ class TestHierarchicalPageRank(unittest.TestCase):
         self.assertTrue(has_feedback, "Tokens should have feedback connections to bigrams")
 
 
+class TestMultiHopSemanticInference(unittest.TestCase):
+    """Test multi-hop semantic inference query expansion."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor with documents for multi-hop testing."""
+        cls.processor = CorticalTextProcessor()
+        # Create a corpus with semantic chain potential
+        cls.processor.process_document(
+            "doc1",
+            "Neural networks are a type of machine learning model. "
+            "Deep learning uses neural networks for complex pattern recognition."
+        )
+        cls.processor.process_document(
+            "doc2",
+            "Machine learning algorithms process data efficiently. "
+            "Pattern recognition is important for image classification."
+        )
+        cls.processor.process_document(
+            "doc3",
+            "Deep learning is part of artificial intelligence research. "
+            "Image classification improves with more training data."
+        )
+        cls.processor.process_document(
+            "doc4",
+            "Artificial intelligence systems can learn from examples. "
+            "Training data is essential for model accuracy."
+        )
+        cls.processor.compute_all(verbose=False)
+        cls.processor.extract_corpus_semantics(verbose=False)
+
+    def test_expand_query_multihop_returns_dict(self):
+        """Test that expand_query_multihop returns a dictionary."""
+        expanded = self.processor.expand_query_multihop("neural", max_hops=2)
+        self.assertIsInstance(expanded, dict)
+
+    def test_original_terms_weight_one(self):
+        """Test that original query terms have weight 1.0."""
+        expanded = self.processor.expand_query_multihop("neural networks", max_hops=2)
+        self.assertEqual(expanded.get("neural"), 1.0)
+        self.assertEqual(expanded.get("networks"), 1.0)
+
+    def test_hop_1_expansions(self):
+        """Test that single-hop expansions are included."""
+        expanded = self.processor.expand_query_multihop("neural", max_hops=1)
+
+        # Should have original term
+        self.assertIn("neural", expanded)
+
+        # Should have some expansions (semantically related terms)
+        expansion_count = len([k for k in expanded if k != "neural"])
+        self.assertGreater(expansion_count, 0, "Should have at least one expansion")
+
+    def test_hop_2_expansions(self):
+        """Test that two-hop expansions discover more terms."""
+        expanded_1hop = self.processor.expand_query_multihop("neural", max_hops=1)
+        expanded_2hop = self.processor.expand_query_multihop("neural", max_hops=2)
+
+        # 2-hop should have >= terms than 1-hop
+        self.assertGreaterEqual(len(expanded_2hop), len(expanded_1hop))
+
+    def test_weight_decay_with_hops(self):
+        """Test that expansion weights decay with hop distance."""
+        expanded = self.processor.expand_query_multihop(
+            "neural", max_hops=2, decay_factor=0.5
+        )
+
+        # Original term should have weight 1.0
+        self.assertEqual(expanded.get("neural"), 1.0)
+
+        # All expansions should have weight < 1.0
+        for term, weight in expanded.items():
+            if term != "neural":
+                self.assertLess(
+                    weight, 1.0,
+                    f"Expansion '{term}' should have weight < 1.0, got {weight}"
+                )
+
+    def test_custom_decay_factor(self):
+        """Test that custom decay factor affects weights."""
+        expanded_slow = self.processor.expand_query_multihop(
+            "neural", max_hops=2, decay_factor=0.8  # Slower decay
+        )
+        expanded_fast = self.processor.expand_query_multihop(
+            "neural", max_hops=2, decay_factor=0.3  # Faster decay
+        )
+
+        # Slower decay should give higher average weights to expansions
+        slow_avg = sum(w for t, w in expanded_slow.items() if t != "neural")
+        fast_avg = sum(w for t, w in expanded_fast.items() if t != "neural")
+
+        # If both have expansions, slow decay should have higher total
+        if slow_avg > 0 and fast_avg > 0:
+            self.assertGreater(slow_avg, fast_avg)
+
+    def test_max_expansions_limit(self):
+        """Test that max_expansions limits the number of expansion terms."""
+        expanded_3 = self.processor.expand_query_multihop(
+            "neural", max_hops=2, max_expansions=3
+        )
+        expanded_10 = self.processor.expand_query_multihop(
+            "neural", max_hops=2, max_expansions=10
+        )
+
+        # Count expansions (non-original terms)
+        expansions_3 = len([k for k in expanded_3 if k != "neural"])
+        expansions_10 = len([k for k in expanded_10 if k != "neural"])
+
+        self.assertLessEqual(expansions_3, 3)
+        self.assertLessEqual(expansions_10, 10)
+
+    def test_no_semantic_relations_fallback(self):
+        """Test fallback to regular expansion when no semantic relations."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data.")
+        processor.compute_all(verbose=False)
+        # Don't extract semantic relations
+
+        expanded = processor.expand_query_multihop("neural", max_hops=2)
+
+        # Should fall back to regular expansion
+        self.assertIn("neural", expanded)
+
+    def test_unknown_query_term(self):
+        """Test handling of query terms not in corpus."""
+        expanded = self.processor.expand_query_multihop("xyznonexistent", max_hops=2)
+
+        # Should return empty dict for unknown terms
+        self.assertEqual(len(expanded), 0)
+
+    def test_min_path_score_filtering(self):
+        """Test that min_path_score filters low-validity paths."""
+        expanded_low = self.processor.expand_query_multihop(
+            "neural", max_hops=2, min_path_score=0.1  # Low threshold
+        )
+        expanded_high = self.processor.expand_query_multihop(
+            "neural", max_hops=2, min_path_score=0.8  # High threshold
+        )
+
+        # Low threshold should allow more expansions
+        self.assertGreaterEqual(len(expanded_low), len(expanded_high))
+
+    def test_multihop_integration_with_documents(self):
+        """Test that multi-hop expansion finds relevant documents."""
+        # Use multi-hop expansion to find documents
+        expanded = self.processor.expand_query_multihop("neural", max_hops=2)
+
+        # Use expanded terms to score documents
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        doc_scores = {}
+
+        for term, weight in expanded.items():
+            col = layer0.get_minicolumn(term)
+            if col:
+                for doc_id in col.document_ids:
+                    doc_scores[doc_id] = doc_scores.get(doc_id, 0) + weight * col.tfidf
+
+        # Should find at least doc1 which contains "neural"
+        self.assertIn("doc1", doc_scores)
+
+
+class TestMultiHopPathScoring(unittest.TestCase):
+    """Test relation path scoring for multi-hop inference."""
+
+    def test_score_relation_path_empty(self):
+        """Test scoring empty path."""
+        from cortical.query import score_relation_path
+        self.assertEqual(score_relation_path([]), 1.0)
+
+    def test_score_relation_path_single(self):
+        """Test scoring single-hop path."""
+        from cortical.query import score_relation_path
+        self.assertEqual(score_relation_path(['IsA']), 1.0)
+        self.assertEqual(score_relation_path(['RelatedTo']), 1.0)
+
+    def test_score_isa_chain(self):
+        """Test that IsA chains get high scores."""
+        from cortical.query import score_relation_path
+        # IsA → IsA is a valid transitive chain
+        score = score_relation_path(['IsA', 'IsA'])
+        self.assertEqual(score, 1.0)
+
+    def test_score_mixed_chain(self):
+        """Test scoring mixed relation chains."""
+        from cortical.query import score_relation_path
+        # IsA → HasProperty is a valid inference
+        score = score_relation_path(['IsA', 'HasProperty'])
+        self.assertGreater(score, 0.8)
+
+    def test_score_weak_chain(self):
+        """Test that weak chains get low scores."""
+        from cortical.query import score_relation_path
+        # Antonym → IsA is contradictory
+        score = score_relation_path(['Antonym', 'IsA'])
+        self.assertLess(score, 0.3)
+
+    def test_score_default_relation(self):
+        """Test scoring unknown relation pairs."""
+        from cortical.query import score_relation_path
+        # Unknown pair should get moderate default score
+        score = score_relation_path(['UnknownRel', 'AnotherUnknown'])
+        self.assertEqual(score, 0.4)  # Default moderate validity
+
+    def test_valid_relation_chains_constant(self):
+        """Test that VALID_RELATION_CHAINS is defined."""
+        from cortical.query import VALID_RELATION_CHAINS
+        self.assertIsInstance(VALID_RELATION_CHAINS, dict)
+        self.assertIn(('IsA', 'IsA'), VALID_RELATION_CHAINS)
+        self.assertIn(('PartOf', 'PartOf'), VALID_RELATION_CHAINS)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
