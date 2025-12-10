@@ -40,7 +40,13 @@ def compute_pagerank(
 
     Returns:
         Dictionary mapping column IDs to PageRank scores
+
+    Raises:
+        ValueError: If damping is not in range (0, 1)
     """
+    if not (0 < damping < 1):
+        raise ValueError(f"damping must be between 0 and 1, got {damping}")
+
     n = len(layer.minicolumns)
     if n == 0:
         return {}
@@ -137,7 +143,13 @@ def compute_semantic_pagerank(
         >>> relations = [("neural", "RelatedTo", "networks", 0.8)]
         >>> result = compute_semantic_pagerank(layer, relations)
         >>> print(f"PageRank converged in {result['iterations_run']} iterations")
+
+    Raises:
+        ValueError: If damping is not in range (0, 1)
     """
+    if not (0 < damping < 1):
+        raise ValueError(f"damping must be between 0 and 1, got {damping}")
+
     n = len(layer.minicolumns)
     if n == 0:
         return {'pagerank': {}, 'iterations_run': 0, 'edges_with_relations': 0}
@@ -260,7 +272,15 @@ def compute_hierarchical_pagerank(
     Example:
         >>> result = compute_hierarchical_pagerank(layers)
         >>> print(f"Converged in {result['iterations_run']} iterations")
+
+    Raises:
+        ValueError: If damping or cross_layer_damping is not in range (0, 1)
     """
+    if not (0 < damping < 1):
+        raise ValueError(f"damping must be between 0 and 1, got {damping}")
+    if not (0 < cross_layer_damping < 1):
+        raise ValueError(f"cross_layer_damping must be between 0 and 1, got {cross_layer_damping}")
+
     # Define layer order for propagation
     layer_order = [
         CorticalLayer.TOKENS,

@@ -949,7 +949,17 @@ def create_chunks(
 
     Returns:
         List of (chunk_text, start_char, end_char) tuples
+
+    Raises:
+        ValueError: If chunk_size <= 0 or overlap < 0 or overlap >= chunk_size
     """
+    if chunk_size <= 0:
+        raise ValueError(f"chunk_size must be positive, got {chunk_size}")
+    if overlap < 0:
+        raise ValueError(f"overlap must be non-negative, got {overlap}")
+    if overlap >= chunk_size:
+        raise ValueError(f"overlap must be less than chunk_size, got overlap={overlap}, chunk_size={chunk_size}")
+
     if not text:
         return []
 

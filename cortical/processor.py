@@ -5,6 +5,7 @@ Cortical Text Processor - Main processor class that orchestrates all components.
 import os
 import re
 from typing import Dict, List, Tuple, Optional, Any
+import copy
 from collections import defaultdict
 
 from .tokenizer import Tokenizer
@@ -170,7 +171,6 @@ class CorticalTextProcessor:
         Returns:
             Dict mapping doc_id to metadata dict (deep copy)
         """
-        import copy
         return copy.deepcopy(self.document_metadata)
 
     def _mark_all_stale(self) -> None:

@@ -81,7 +81,7 @@ class TestCreateChunks(unittest.TestCase):
     def test_short_text(self):
         """Text shorter than chunk_size should return single chunk."""
         text = "Short text."
-        chunks = create_chunks(text, chunk_size=100)
+        chunks = create_chunks(text, chunk_size=100, overlap=20)
         self.assertEqual(len(chunks), 1)
         self.assertEqual(chunks[0][0], text)
         self.assertEqual(chunks[0][1], 0)  # start
@@ -118,6 +118,33 @@ class TestCreateChunks(unittest.TestCase):
         # Check no overlap
         for i in range(len(chunks) - 1):
             self.assertEqual(chunks[i][2], chunks[i + 1][1])
+
+    def test_invalid_chunk_size_zero(self):
+        """Chunk size of zero should raise ValueError."""
+        with self.assertRaises(ValueError) as ctx:
+            create_chunks("test", chunk_size=0)
+        self.assertIn("chunk_size", str(ctx.exception))
+
+    def test_invalid_chunk_size_negative(self):
+        """Negative chunk size should raise ValueError."""
+        with self.assertRaises(ValueError) as ctx:
+            create_chunks("test", chunk_size=-10)
+        self.assertIn("chunk_size", str(ctx.exception))
+
+    def test_invalid_overlap_negative(self):
+        """Negative overlap should raise ValueError."""
+        with self.assertRaises(ValueError) as ctx:
+            create_chunks("test", chunk_size=50, overlap=-5)
+        self.assertIn("overlap", str(ctx.exception))
+
+    def test_invalid_overlap_greater_than_chunk_size(self):
+        """Overlap >= chunk_size should raise ValueError."""
+        with self.assertRaises(ValueError) as ctx:
+            create_chunks("test", chunk_size=50, overlap=50)
+        self.assertIn("overlap", str(ctx.exception))
+
+        with self.assertRaises(ValueError):
+            create_chunks("test", chunk_size=50, overlap=100)
 
 
 class TestFindRelationBetween(unittest.TestCase):
