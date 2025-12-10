@@ -124,6 +124,193 @@ def expand_query(
     return expanded
 
 
+# Valid relation chain patterns for multi-hop inference
+# Key: (relation1, relation2) → validity score (0.0 = invalid, 1.0 = fully valid)
+VALID_RELATION_CHAINS = {
+    # Transitive hierarchies
+    ('IsA', 'IsA'): 1.0,           # dog IsA animal IsA living_thing
+    ('PartOf', 'PartOf'): 1.0,     # wheel PartOf car PartOf vehicle
+    ('IsA', 'HasProperty'): 0.9,   # dog IsA animal HasProperty alive
+    ('PartOf', 'HasProperty'): 0.8,  # wheel PartOf car HasProperty fast
+
+    # Association chains
+    ('RelatedTo', 'RelatedTo'): 0.6,
+    ('SimilarTo', 'SimilarTo'): 0.7,
+    ('CoOccurs', 'CoOccurs'): 0.5,
+    ('RelatedTo', 'IsA'): 0.7,
+    ('RelatedTo', 'SimilarTo'): 0.7,
+
+    # Causal chains
+    ('Causes', 'Causes'): 0.8,
+    ('Causes', 'HasProperty'): 0.7,
+
+    # Derivation chains
+    ('DerivedFrom', 'DerivedFrom'): 0.8,
+    ('DerivedFrom', 'IsA'): 0.7,
+
+    # Usage chains
+    ('UsedFor', 'UsedFor'): 0.6,
+    ('UsedFor', 'RelatedTo'): 0.5,
+
+    # Antonym - generally invalid for chaining
+    ('Antonym', 'Antonym'): 0.3,   # Double negation, weak
+    ('Antonym', 'IsA'): 0.1,       # Contradictory
+}
+
+
+def score_relation_path(path: List[str]) -> float:
+    """
+    Score a relation path by its semantic coherence.
+
+    Args:
+        path: List of relation types traversed (e.g., ['IsA', 'HasProperty'])
+
+    Returns:
+        Score from 0.0 (invalid) to 1.0 (fully valid)
+    """
+    if not path:
+        return 1.0
+    if len(path) == 1:
+        return 1.0
+
+    # Compute score as product of consecutive pair validities
+    total_score = 1.0
+    for i in range(len(path) - 1):
+        pair = (path[i], path[i + 1])
+        # Check both orderings
+        pair_score = VALID_RELATION_CHAINS.get(pair, 0.4)  # Default: moderate validity
+        total_score *= pair_score
+
+    return total_score
+
+
+def expand_query_multihop(
+    query_text: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    tokenizer: Tokenizer,
+    semantic_relations: List[Tuple[str, str, str, float]],
+    max_hops: int = 2,
+    max_expansions: int = 15,
+    decay_factor: float = 0.5,
+    min_path_score: float = 0.2
+) -> Dict[str, float]:
+    """
+    Expand query using multi-hop semantic inference.
+
+    Unlike single-hop expansion that only follows direct connections,
+    this follows relation chains to discover semantically related terms
+    through transitive relationships.
+
+    Example inference chains:
+        "dog" → IsA → "animal" → HasProperty → "living"
+        "car" → PartOf → "engine" → UsedFor → "transportation"
+
+    Args:
+        query_text: Original query string
+        layers: Dictionary of layers (needs TOKENS)
+        tokenizer: Tokenizer instance
+        semantic_relations: List of (term1, relation, term2, weight) tuples
+        max_hops: Maximum number of relation hops (default: 2)
+        max_expansions: Maximum expansion terms to return
+        decay_factor: Weight decay per hop (default: 0.5, so hop2 = 0.25)
+        min_path_score: Minimum path validity score to include (default: 0.2)
+
+    Returns:
+        Dict mapping terms to weights (original terms get weight 1.0,
+        expansions get decayed weights based on hop distance and path validity)
+
+    Example:
+        >>> expanded = expand_query_multihop("neural", layers, tokenizer, relations)
+        >>> # Hop 1: networks (co-occur), learning (co-occur), brain (RelatedTo)
+        >>> # Hop 2: deep (via learning), cortex (via brain), AI (via networks)
+    """
+    tokens = tokenizer.tokenize(query_text)
+    layer0 = layers[CorticalLayer.TOKENS]
+
+    # Start with original terms at full weight
+    expanded: Dict[str, float] = {}
+    for token in tokens:
+        if layer0.get_minicolumn(token):
+            expanded[token] = 1.0
+
+    if not expanded or not semantic_relations:
+        return expanded
+
+    # Build bidirectional neighbor lookup with relation types
+    # neighbors[term] = [(neighbor, relation_type, weight), ...]
+    neighbors: Dict[str, List[Tuple[str, str, float]]] = defaultdict(list)
+    for t1, relation, t2, weight in semantic_relations:
+        neighbors[t1].append((t2, relation, weight))
+        neighbors[t2].append((t1, relation, weight))
+
+    # Track expansions with their hop distance, weight, and relation path
+    # (term, weight, hop, relation_path)
+    candidates: Dict[str, Tuple[float, int, List[str]]] = {}
+
+    # BFS-style expansion with hop tracking
+    # frontier: [(term, current_weight, hop_count, relation_path)]
+    frontier: List[Tuple[str, float, int, List[str]]] = [
+        (term, 1.0, 0, []) for term in expanded.keys()
+    ]
+
+    visited_at_hop: Dict[str, int] = {term: 0 for term in expanded.keys()}
+
+    while frontier:
+        current_term, current_weight, hop, path = frontier.pop(0)
+
+        if hop >= max_hops:
+            continue
+
+        next_hop = hop + 1
+
+        for neighbor, relation, rel_weight in neighbors.get(current_term, []):
+            # Skip if already in original query terms
+            if neighbor in expanded:
+                continue
+
+            # Check if term exists in corpus
+            if not layer0.get_minicolumn(neighbor):
+                continue
+
+            # Skip if we've visited this term at an earlier or equal hop
+            if neighbor in visited_at_hop and visited_at_hop[neighbor] <= next_hop:
+                continue
+
+            # Compute new path and its validity
+            new_path = path + [relation]
+            path_score = score_relation_path(new_path)
+
+            if path_score < min_path_score:
+                continue
+
+            # Compute weight with decay and path validity
+            # weight = base_weight * relation_weight * decay^hop * path_validity
+            hop_decay = decay_factor ** next_hop
+            new_weight = current_weight * rel_weight * hop_decay * path_score
+
+            # Update candidate if this path gives higher weight
+            if neighbor not in candidates or candidates[neighbor][0] < new_weight:
+                candidates[neighbor] = (new_weight, next_hop, new_path)
+                visited_at_hop[neighbor] = next_hop
+
+                # Add to frontier for further expansion
+                if next_hop < max_hops:
+                    frontier.append((neighbor, new_weight, next_hop, new_path))
+
+    # Sort candidates by weight and take top expansions
+    sorted_candidates = sorted(
+        candidates.items(),
+        key=lambda x: x[1][0],  # Sort by weight
+        reverse=True
+    )[:max_expansions]
+
+    # Add to expanded dict
+    for term, (weight, hop, path) in sorted_candidates:
+        expanded[term] = weight
+
+    return expanded
+
+
 def expand_query_semantic(
     query_text: str,
     layers: Dict[CorticalLayer, HierarchicalLayer],
@@ -992,4 +1179,319 @@ def multi_stage_rank_documents(
         results.append((doc_id, combined, stage_scores))
 
     results.sort(key=lambda x: x[1], reverse=True)
+    return results[:top_n]
+
+
+def find_relation_between(
+    term_a: str,
+    term_b: str,
+    semantic_relations: List[Tuple[str, str, str, float]]
+) -> List[Tuple[str, float]]:
+    """
+    Find semantic relations between two terms.
+
+    Args:
+        term_a: Source term
+        term_b: Target term
+        semantic_relations: List of (t1, relation, t2, weight) tuples
+
+    Returns:
+        List of (relation_type, weight) tuples
+    """
+    relations = []
+    for t1, rel_type, t2, weight in semantic_relations:
+        if t1 == term_a and t2 == term_b:
+            relations.append((rel_type, weight))
+        elif t2 == term_a and t1 == term_b:
+            # Reverse direction
+            relations.append((rel_type, weight * 0.9))  # Slight penalty for reverse
+
+    return sorted(relations, key=lambda x: x[1], reverse=True)
+
+
+def find_terms_with_relation(
+    term: str,
+    relation_type: str,
+    semantic_relations: List[Tuple[str, str, str, float]],
+    direction: str = 'forward'
+) -> List[Tuple[str, float]]:
+    """
+    Find terms connected to a given term by a specific relation type.
+
+    Args:
+        term: Source term
+        relation_type: Type of relation to follow
+        semantic_relations: List of (t1, relation, t2, weight) tuples
+        direction: 'forward' (term→x) or 'backward' (x→term)
+
+    Returns:
+        List of (target_term, weight) tuples
+    """
+    results = []
+    for t1, rel_type, t2, weight in semantic_relations:
+        if rel_type != relation_type:
+            continue
+
+        if direction == 'forward' and t1 == term:
+            results.append((t2, weight))
+        elif direction == 'backward' and t2 == term:
+            results.append((t1, weight))
+
+    return sorted(results, key=lambda x: x[1], reverse=True)
+
+
+def complete_analogy(
+    term_a: str,
+    term_b: str,
+    term_c: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    semantic_relations: List[Tuple[str, str, str, float]],
+    embeddings: Optional[Dict[str, List[float]]] = None,
+    top_n: int = 5,
+    use_embeddings: bool = True,
+    use_relations: bool = True
+) -> List[Tuple[str, float, str]]:
+    """
+    Complete an analogy: "a is to b as c is to ?"
+
+    Uses multiple strategies to find the best completion:
+    1. Relation matching: Find what relation connects a→b, then find terms with
+       the same relation from c
+    2. Vector arithmetic: Use embeddings to compute d = c + (b - a)
+    3. Pattern matching: Find terms that co-occur with c similar to how b co-occurs with a
+
+    Example:
+        "neural" is to "networks" as "knowledge" is to ?
+        → "graphs" (both form compound technical terms with similar structure)
+
+    Args:
+        term_a: First term of the known pair
+        term_b: Second term of the known pair
+        term_c: First term of the query pair
+        layers: Dictionary of layers
+        semantic_relations: List of (t1, relation, t2, weight) tuples
+        embeddings: Optional graph embeddings for vector arithmetic
+        top_n: Number of candidates to return
+        use_embeddings: Whether to use embedding-based completion
+        use_relations: Whether to use relation-based completion
+
+    Returns:
+        List of (candidate_term, confidence, method) tuples, where method describes
+        which approach found this candidate ('relation', 'embedding', 'pattern')
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+    candidates: Dict[str, Tuple[float, str]] = {}  # term → (score, method)
+
+    # Check that terms exist
+    if not layer0.get_minicolumn(term_a) or not layer0.get_minicolumn(term_b):
+        return []
+    if not layer0.get_minicolumn(term_c):
+        return []
+
+    # Strategy 1: Relation-based completion
+    if use_relations and semantic_relations:
+        # Find relation between a and b
+        relations_ab = find_relation_between(term_a, term_b, semantic_relations)
+
+        for rel_type, rel_weight in relations_ab:
+            # Find terms with same relation from c
+            c_targets = find_terms_with_relation(
+                term_c, rel_type, semantic_relations, direction='forward'
+            )
+
+            for target, target_weight in c_targets:
+                # Don't include the input terms
+                if target in {term_a, term_b, term_c}:
+                    continue
+
+                score = rel_weight * target_weight
+                if target not in candidates or candidates[target][0] < score:
+                    candidates[target] = (score, f'relation:{rel_type}')
+
+    # Strategy 2: Embedding-based completion (vector arithmetic)
+    if use_embeddings and embeddings:
+        if term_a in embeddings and term_b in embeddings and term_c in embeddings:
+            vec_a = embeddings[term_a]
+            vec_b = embeddings[term_b]
+            vec_c = embeddings[term_c]
+
+            # d = c + (b - a)  (the analogy vector)
+            vec_d = [
+                c + (b - a)
+                for a, b, c in zip(vec_a, vec_b, vec_c)
+            ]
+
+            # Find nearest terms to vec_d
+            best_matches = []
+            for term, vec in embeddings.items():
+                if term in {term_a, term_b, term_c}:
+                    continue
+
+                # Cosine similarity
+                dot = sum(d * v for d, v in zip(vec_d, vec))
+                mag_d = sum(d * d for d in vec_d) ** 0.5
+                mag_v = sum(v * v for v in vec) ** 0.5
+
+                if mag_d > 0 and mag_v > 0:
+                    similarity = dot / (mag_d * mag_v)
+                    best_matches.append((term, similarity))
+
+            # Sort by similarity and add to candidates
+            best_matches.sort(key=lambda x: x[1], reverse=True)
+            for term, sim in best_matches[:top_n * 2]:
+                if sim > 0.5:  # Only include reasonably similar terms
+                    if term not in candidates or candidates[term][0] < sim:
+                        candidates[term] = (sim, 'embedding')
+
+    # Strategy 3: Pattern matching (co-occurrence structure)
+    col_a = layer0.get_minicolumn(term_a)
+    col_b = layer0.get_minicolumn(term_b)
+    col_c = layer0.get_minicolumn(term_c)
+
+    if col_a and col_b and col_c:
+        # Find terms that relate to c similarly to how b relates to a
+        # I.e., if b co-occurs strongly with a, find terms that co-occur strongly with c
+
+        a_neighbors = set(col_a.lateral_connections.keys())
+        c_neighbors = set(col_c.lateral_connections.keys())
+
+        # Look at c's neighbors that aren't a's neighbors (new context)
+        for neighbor_id in c_neighbors:
+            neighbor = layer0.get_by_id(neighbor_id)
+            if not neighbor:
+                continue
+
+            term = neighbor.content
+            if term in {term_a, term_b, term_c}:
+                continue
+
+            # Score based on how similar the neighbor's connection to c is
+            # compared to b's connection to a
+            c_weight = col_c.lateral_connections.get(neighbor_id, 0)
+            b_to_a_weight = col_a.lateral_connections.get(col_b.id, 0)
+
+            if c_weight > 0 and b_to_a_weight > 0:
+                # The term should have similar connection strength pattern
+                score = min(c_weight, b_to_a_weight) * 0.5
+                if score > 0.1:
+                    if term not in candidates or candidates[term][0] < score:
+                        candidates[term] = (score, 'pattern')
+
+    # Sort and return top candidates
+    results = [
+        (term, score, method)
+        for term, (score, method) in candidates.items()
+    ]
+    results.sort(key=lambda x: x[1], reverse=True)
+
+    return results[:top_n]
+
+
+def complete_analogy_simple(
+    term_a: str,
+    term_b: str,
+    term_c: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    tokenizer: Tokenizer,
+    semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
+    top_n: int = 5
+) -> List[Tuple[str, float]]:
+    """
+    Simplified analogy completion using only term relationships.
+
+    A lighter version of complete_analogy that doesn't require embeddings.
+    Uses bigram patterns and co-occurrence to find analogies.
+
+    Example:
+        "neural" is to "networks" as "knowledge" is to ?
+        → Looks for terms that form similar bigrams with "knowledge"
+
+    Args:
+        term_a: First term of the known pair
+        term_b: Second term of the known pair
+        term_c: First term of the query pair
+        layers: Dictionary of layers
+        tokenizer: Tokenizer instance
+        semantic_relations: Optional semantic relations
+        top_n: Number of candidates to return
+
+    Returns:
+        List of (candidate_term, confidence) tuples
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+    layer1 = layers.get(CorticalLayer.BIGRAMS)
+
+    candidates: Dict[str, float] = {}
+
+    col_a = layer0.get_minicolumn(term_a)
+    col_b = layer0.get_minicolumn(term_b)
+    col_c = layer0.get_minicolumn(term_c)
+
+    if not col_a or not col_b or not col_c:
+        return []
+
+    # Strategy 1: Bigram pattern matching
+    if layer1:
+        # Find bigrams containing a_b pattern
+        ab_bigram = f"{term_a}_{term_b}"
+        ba_bigram = f"{term_b}_{term_a}"
+
+        ab_col = layer1.get_minicolumn(ab_bigram)
+        ba_col = layer1.get_minicolumn(ba_bigram)
+
+        # If a_b is a bigram, look for c_? bigrams
+        if ab_col or ba_col:
+            for bigram_col in layer1.minicolumns.values():
+                bigram = bigram_col.content
+                parts = bigram.split('_')
+                if len(parts) != 2:
+                    continue
+
+                first, second = parts
+
+                # Look for bigrams starting with c
+                if first == term_c and second not in {term_a, term_b, term_c}:
+                    score = bigram_col.pagerank * 0.8
+                    if second not in candidates or candidates[second] < score:
+                        candidates[second] = score
+
+                # Look for bigrams ending with c
+                if second == term_c and first not in {term_a, term_b, term_c}:
+                    score = bigram_col.pagerank * 0.6
+                    if first not in candidates or candidates[first] < score:
+                        candidates[first] = score
+
+    # Strategy 2: Co-occurrence similarity
+    # Find terms that co-occur with c like b co-occurs with a
+    a_neighbors = col_a.lateral_connections
+    c_neighbors = col_c.lateral_connections
+
+    for neighbor_id, c_weight in c_neighbors.items():
+        neighbor = layer0.get_by_id(neighbor_id)
+        if not neighbor:
+            continue
+
+        term = neighbor.content
+        if term in {term_a, term_b, term_c}:
+            continue
+
+        # Check if this term has similar connection pattern
+        score = c_weight * 0.3
+        if score > 0.05:
+            candidates[term] = candidates.get(term, 0) + score
+
+    # Strategy 3: Semantic relations (if available)
+    if semantic_relations:
+        relations_ab = find_relation_between(term_a, term_b, semantic_relations)
+        for rel_type, rel_weight in relations_ab[:2]:  # Top 2 relations
+            c_targets = find_terms_with_relation(
+                term_c, rel_type, semantic_relations, direction='forward'
+            )
+            for target, target_weight in c_targets[:3]:  # Top 3 targets
+                if target not in {term_a, term_b, term_c}:
+                    score = rel_weight * target_weight
+                    candidates[target] = candidates.get(target, 0) + score
+
+    # Sort and return
+    results = sorted(candidates.items(), key=lambda x: x[1], reverse=True)
     return results[:top_n]

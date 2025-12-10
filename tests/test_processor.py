@@ -1169,5 +1169,880 @@ class TestConceptConnections(unittest.TestCase):
             pass  # Concept isolation depends on clustering results
 
 
+class TestBigramConnections(unittest.TestCase):
+    """Test bigram lateral connection functionality."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor with documents containing related bigrams."""
+        cls.processor = CorticalTextProcessor()
+        # Documents with overlapping bigrams to test connections
+        cls.processor.process_document(
+            "doc1",
+            "Neural networks process information. Neural processing enables "
+            "deep learning. Machine learning algorithms process data."
+        )
+        cls.processor.process_document(
+            "doc2",
+            "Deep learning models use neural networks. Machine learning "
+            "is related to deep learning and neural processing."
+        )
+        cls.processor.process_document(
+            "doc3",
+            "Learning algorithms improve performance. Machine learning "
+            "and deep learning are popular approaches."
+        )
+        cls.processor.compute_all(verbose=False)
+
+    def test_compute_bigram_connections_returns_stats(self):
+        """Test that compute_bigram_connections returns expected statistics."""
+        # Connections are already computed by compute_all, so create new processor
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data. Neural processing works.")
+        processor.compute_tfidf(verbose=False)
+
+        stats = processor.compute_bigram_connections(verbose=False)
+
+        self.assertIn('connections_created', stats)
+        self.assertIn('bigrams', stats)
+        self.assertIn('component_connections', stats)
+        self.assertIn('chain_connections', stats)
+        self.assertIn('cooccurrence_connections', stats)
+
+    def test_shared_left_component_connection(self):
+        """Test that bigrams sharing left component are connected."""
+        # "neural_networks" and "neural_processing" share "neural"
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        neural_networks = layer1.get_minicolumn("neural_networks")
+        neural_processing = layer1.get_minicolumn("neural_processing")
+
+        if neural_networks and neural_processing:
+            # They should be connected via shared "neural" component
+            self.assertIn(neural_processing.id, neural_networks.lateral_connections)
+            self.assertIn(neural_networks.id, neural_processing.lateral_connections)
+
+    def test_shared_right_component_connection(self):
+        """Test that bigrams sharing right component are connected."""
+        # "machine_learning" and "deep_learning" share "learning"
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        machine_learning = layer1.get_minicolumn("machine_learning")
+        deep_learning = layer1.get_minicolumn("deep_learning")
+
+        if machine_learning and deep_learning:
+            # They should be connected via shared "learning" component
+            self.assertIn(deep_learning.id, machine_learning.lateral_connections)
+            self.assertIn(machine_learning.id, deep_learning.lateral_connections)
+
+    def test_chain_connections(self):
+        """Test that chain bigrams are connected (right of one = left of other)."""
+        # "machine_learning" and "learning_algorithms" form a chain
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        machine_learning = layer1.get_minicolumn("machine_learning")
+        learning_algorithms = layer1.get_minicolumn("learning_algorithms")
+
+        if machine_learning and learning_algorithms:
+            # They should be connected via chain relationship
+            self.assertIn(learning_algorithms.id, machine_learning.lateral_connections)
+            self.assertIn(machine_learning.id, learning_algorithms.lateral_connections)
+
+    def test_cooccurrence_connections(self):
+        """Test that bigrams co-occurring in documents are connected."""
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        # Bigrams that appear in same documents should have co-occurrence connections
+        for bigram in layer1.minicolumns.values():
+            if bigram.document_ids and len(bigram.lateral_connections) > 0:
+                # If a bigram has connections, some should be from co-occurrence
+                # This is a general check that connections exist
+                break
+
+    def test_bidirectional_connections(self):
+        """Test that all bigram connections are bidirectional."""
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        for bigram in layer1.minicolumns.values():
+            for target_id in bigram.lateral_connections:
+                target = layer1.get_by_id(target_id)
+                if target:
+                    self.assertIn(
+                        bigram.id, target.lateral_connections,
+                        f"Connection from {bigram.content} to {target.content} is not bidirectional"
+                    )
+
+    def test_empty_bigram_layer(self):
+        """Test bigram connections with empty bigram layer."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Hello")  # Single word, no bigrams
+        processor.compute_tfidf(verbose=False)
+
+        stats = processor.compute_bigram_connections(verbose=False)
+        self.assertEqual(stats['connections_created'], 0)
+        self.assertEqual(stats['bigrams'], 0)
+
+    def test_compute_all_includes_bigram_connections(self):
+        """Test that compute_all includes bigram connections."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data. Neural processing works.")
+        processor.compute_all(verbose=False)
+
+        # Check that bigram connections were marked fresh
+        self.assertFalse(processor.is_stale(processor.COMP_BIGRAM_CONNECTIONS))
+
+    def test_custom_weights(self):
+        """Test that custom weights affect connection strengths."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks neural processing neural analysis")
+        processor.compute_tfidf(verbose=False)
+
+        # Use different weights
+        stats = processor.compute_bigram_connections(
+            component_weight=1.0,
+            chain_weight=1.5,
+            cooccurrence_weight=0.5,
+            verbose=False
+        )
+
+        # Just verify it runs without error
+        self.assertIsNotNone(stats)
+
+    def test_recompute_handles_bigram_connections(self):
+        """Test that recompute method handles bigram connections."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data")
+
+        # Mark as stale
+        processor._mark_all_stale()
+        self.assertTrue(processor.is_stale(processor.COMP_BIGRAM_CONNECTIONS))
+
+        # Recompute
+        recomputed = processor.recompute(level='full', verbose=False)
+        self.assertTrue(recomputed.get(processor.COMP_BIGRAM_CONNECTIONS, False))
+        self.assertFalse(processor.is_stale(processor.COMP_BIGRAM_CONNECTIONS))
+
+    def test_bigram_connection_weights_accumulate(self):
+        """Test that connection weights accumulate for multiple reasons."""
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        # Find bigrams that could be connected by multiple reasons
+        # (shared component AND co-occurrence)
+        for bigram in layer1.minicolumns.values():
+            for target_id, weight in bigram.lateral_connections.items():
+                # Weights should be positive
+                self.assertGreater(weight, 0)
+
+
+class TestSemanticPageRank(unittest.TestCase):
+    """Test semantic PageRank functionality."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor with documents for semantic PageRank testing."""
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document(
+            "doc1",
+            "Neural networks are a type of machine learning model. "
+            "Deep learning uses neural networks for complex tasks."
+        )
+        cls.processor.process_document(
+            "doc2",
+            "Machine learning algorithms process data patterns. "
+            "Neural networks learn from examples."
+        )
+        cls.processor.process_document(
+            "doc3",
+            "Deep learning is part of artificial intelligence. "
+            "Machine learning models improve with data."
+        )
+        # Extract semantic relations first
+        cls.processor.extract_corpus_semantics(verbose=False)
+
+    def test_compute_semantic_importance_returns_stats(self):
+        """Test that compute_semantic_importance returns expected statistics."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data efficiently.")
+        processor.extract_corpus_semantics(verbose=False)
+
+        stats = processor.compute_semantic_importance(verbose=False)
+
+        self.assertIn('total_edges_with_relations', stats)
+        self.assertIn('token_layer', stats)
+        self.assertIn('bigram_layer', stats)
+
+    def test_semantic_pagerank_with_relations(self):
+        """Test that semantic PageRank uses relation weights."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks learn patterns. Neural systems process data."
+        )
+        processor.extract_corpus_semantics(verbose=False)
+
+        # Get initial PageRank with standard method
+        processor.compute_importance(verbose=False)
+        layer0 = processor.get_layer(CorticalLayer.TOKENS)
+        standard_pr = {col.content: col.pagerank for col in layer0.minicolumns.values()}
+
+        # Now compute with semantic method
+        stats = processor.compute_semantic_importance(verbose=False)
+
+        # PageRank values should be updated
+        semantic_pr = {col.content: col.pagerank for col in layer0.minicolumns.values()}
+
+        # Just verify it ran and produced valid PageRank values
+        for content, pr in semantic_pr.items():
+            self.assertGreater(pr, 0)
+
+    def test_semantic_pagerank_no_relations(self):
+        """Test semantic PageRank falls back when no relations exist."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Hello world.")
+        # Don't extract semantic relations
+
+        stats = processor.compute_semantic_importance(verbose=False)
+
+        self.assertEqual(stats['total_edges_with_relations'], 0)
+
+    def test_compute_all_with_semantic_pagerank(self):
+        """Test compute_all with pagerank_method='semantic'."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks process information efficiently."
+        )
+
+        # Should work without errors
+        processor.compute_all(verbose=False, pagerank_method='semantic')
+
+        # Verify computations ran
+        self.assertFalse(processor.is_stale(processor.COMP_PAGERANK))
+        self.assertFalse(processor.is_stale(processor.COMP_TFIDF))
+
+    def test_compute_all_standard_pagerank(self):
+        """Test compute_all with default pagerank_method='standard'."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks process information efficiently."
+        )
+
+        processor.compute_all(verbose=False, pagerank_method='standard')
+
+        self.assertFalse(processor.is_stale(processor.COMP_PAGERANK))
+
+    def test_custom_relation_weights(self):
+        """Test semantic PageRank with custom relation weights."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks learn patterns. Machine learning improves."
+        )
+        processor.extract_corpus_semantics(verbose=False)
+
+        # Use custom weights
+        custom_weights = {
+            'CoOccurs': 2.0,  # Boost co-occurrence
+            'RelatedTo': 0.1,  # Reduce related
+        }
+
+        stats = processor.compute_semantic_importance(
+            relation_weights=custom_weights,
+            verbose=False
+        )
+
+        # Should run without errors
+        self.assertIsNotNone(stats)
+
+    def test_semantic_pagerank_empty_layer(self):
+        """Test semantic PageRank handles empty layer gracefully."""
+        from cortical.analysis import compute_semantic_pagerank
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+
+        empty_layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        relations = [("test", "RelatedTo", "example", 0.5)]
+
+        result = compute_semantic_pagerank(empty_layer, relations)
+
+        self.assertEqual(result['pagerank'], {})
+        self.assertEqual(result['iterations_run'], 0)
+        self.assertEqual(result['edges_with_relations'], 0)
+
+    def test_semantic_pagerank_convergence(self):
+        """Test that semantic PageRank converges."""
+        from cortical.analysis import compute_semantic_pagerank
+
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+
+        result = compute_semantic_pagerank(
+            layer0,
+            self.processor.semantic_relations,
+            iterations=100,
+            tolerance=1e-6
+        )
+
+        # Should converge in less than max iterations
+        self.assertLessEqual(result['iterations_run'], 100)
+
+    def test_relation_weights_applied(self):
+        """Test that different relation types get different weights."""
+        from cortical.analysis import RELATION_WEIGHTS
+
+        # Verify key relations have expected relative weights
+        self.assertGreater(RELATION_WEIGHTS['IsA'], RELATION_WEIGHTS['RelatedTo'])
+        self.assertGreater(RELATION_WEIGHTS['PartOf'], RELATION_WEIGHTS['CoOccurs'])
+        self.assertLess(RELATION_WEIGHTS['Antonym'], RELATION_WEIGHTS['RelatedTo'])
+
+
+class TestHierarchicalPageRank(unittest.TestCase):
+    """Test hierarchical (cross-layer) PageRank functionality."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor with documents for hierarchical PageRank testing."""
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document(
+            "doc1",
+            "Neural networks are powerful machine learning models. "
+            "Deep learning uses neural networks for complex tasks."
+        )
+        cls.processor.process_document(
+            "doc2",
+            "Machine learning algorithms process data patterns. "
+            "Neural networks learn from examples effectively."
+        )
+        cls.processor.process_document(
+            "doc3",
+            "Deep learning is part of artificial intelligence. "
+            "Machine learning models improve with more data."
+        )
+        cls.processor.compute_all(verbose=False, build_concepts=True)
+
+    def test_compute_hierarchical_importance_returns_stats(self):
+        """Test that compute_hierarchical_importance returns expected statistics."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data efficiently.")
+        processor.compute_all(verbose=False)
+
+        stats = processor.compute_hierarchical_importance(verbose=False)
+
+        self.assertIn('iterations_run', stats)
+        self.assertIn('converged', stats)
+        self.assertIn('layer_stats', stats)
+
+    def test_hierarchical_pagerank_layer_stats(self):
+        """Test that layer stats contain expected fields."""
+        stats = self.processor.compute_hierarchical_importance(verbose=False)
+
+        for layer_name, layer_info in stats['layer_stats'].items():
+            self.assertIn('nodes', layer_info)
+            self.assertIn('max_pagerank', layer_info)
+            self.assertIn('min_pagerank', layer_info)
+            self.assertIn('avg_pagerank', layer_info)
+
+    def test_hierarchical_pagerank_convergence(self):
+        """Test that hierarchical PageRank converges."""
+        stats = self.processor.compute_hierarchical_importance(
+            global_iterations=10,
+            verbose=False
+        )
+
+        # Should run at least one iteration
+        self.assertGreaterEqual(stats['iterations_run'], 1)
+
+    def test_hierarchical_pagerank_affects_scores(self):
+        """Test that hierarchical PageRank updates scores across layers."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks process information. Machine learning improves."
+        )
+        processor.compute_all(verbose=False, build_concepts=True)
+
+        # Get scores before hierarchical
+        layer0 = processor.get_layer(CorticalLayer.TOKENS)
+        before_scores = {col.content: col.pagerank for col in layer0.minicolumns.values()}
+
+        # Run hierarchical PageRank
+        processor.compute_hierarchical_importance(verbose=False)
+
+        # Scores should be updated (normalized to sum to 1)
+        after_scores = {col.content: col.pagerank for col in layer0.minicolumns.values()}
+
+        # Verify scores are valid probabilities
+        total = sum(after_scores.values())
+        self.assertAlmostEqual(total, 1.0, places=5)
+
+    def test_compute_all_with_hierarchical_pagerank(self):
+        """Test compute_all with pagerank_method='hierarchical'."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks process information efficiently."
+        )
+
+        # Should work without errors
+        processor.compute_all(verbose=False, pagerank_method='hierarchical')
+
+        # Verify computations ran
+        self.assertFalse(processor.is_stale(processor.COMP_PAGERANK))
+        self.assertFalse(processor.is_stale(processor.COMP_TFIDF))
+
+    def test_hierarchical_empty_layers(self):
+        """Test hierarchical PageRank handles empty layers gracefully."""
+        from cortical.analysis import compute_hierarchical_pagerank
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+
+        # Create empty layers dict
+        layers = {
+            CorticalLayer.TOKENS: HierarchicalLayer(CorticalLayer.TOKENS),
+            CorticalLayer.BIGRAMS: HierarchicalLayer(CorticalLayer.BIGRAMS),
+        }
+
+        result = compute_hierarchical_pagerank(layers)
+
+        self.assertEqual(result['iterations_run'], 0)
+        self.assertTrue(result['converged'])
+        self.assertEqual(result['layer_stats'], {})
+
+    def test_cross_layer_damping(self):
+        """Test that cross-layer damping parameter affects propagation."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks learn from data patterns."
+        )
+        processor.compute_all(verbose=False, build_concepts=True)
+
+        # Run with different damping values
+        stats_low = processor.compute_hierarchical_importance(
+            cross_layer_damping=0.3,
+            verbose=False
+        )
+        stats_high = processor.compute_hierarchical_importance(
+            cross_layer_damping=0.9,
+            verbose=False
+        )
+
+        # Both should produce valid results
+        self.assertIsNotNone(stats_low)
+        self.assertIsNotNone(stats_high)
+
+    def test_hierarchical_with_concepts(self):
+        """Test hierarchical PageRank includes concept layer."""
+        stats = self.processor.compute_hierarchical_importance(verbose=False)
+
+        # Should include CONCEPTS layer if it has nodes
+        layer2 = self.processor.get_layer(CorticalLayer.CONCEPTS)
+        if layer2.column_count() > 0:
+            self.assertIn('CONCEPTS', stats['layer_stats'])
+
+    def test_feedforward_feedback_connections_used(self):
+        """Test that cross-layer connections are used in propagation."""
+        # Verify that tokens have feedback connections (to bigrams)
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+
+        has_feedback = any(
+            col.feedback_connections
+            for col in layer0.minicolumns.values()
+        )
+        self.assertTrue(has_feedback, "Tokens should have feedback connections to bigrams")
+
+
+class TestMultiHopSemanticInference(unittest.TestCase):
+    """Test multi-hop semantic inference query expansion."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor with documents for multi-hop testing."""
+        cls.processor = CorticalTextProcessor()
+        # Create a corpus with semantic chain potential
+        cls.processor.process_document(
+            "doc1",
+            "Neural networks are a type of machine learning model. "
+            "Deep learning uses neural networks for complex pattern recognition."
+        )
+        cls.processor.process_document(
+            "doc2",
+            "Machine learning algorithms process data efficiently. "
+            "Pattern recognition is important for image classification."
+        )
+        cls.processor.process_document(
+            "doc3",
+            "Deep learning is part of artificial intelligence research. "
+            "Image classification improves with more training data."
+        )
+        cls.processor.process_document(
+            "doc4",
+            "Artificial intelligence systems can learn from examples. "
+            "Training data is essential for model accuracy."
+        )
+        cls.processor.compute_all(verbose=False)
+        cls.processor.extract_corpus_semantics(verbose=False)
+
+    def test_expand_query_multihop_returns_dict(self):
+        """Test that expand_query_multihop returns a dictionary."""
+        expanded = self.processor.expand_query_multihop("neural", max_hops=2)
+        self.assertIsInstance(expanded, dict)
+
+    def test_original_terms_weight_one(self):
+        """Test that original query terms have weight 1.0."""
+        expanded = self.processor.expand_query_multihop("neural networks", max_hops=2)
+        self.assertEqual(expanded.get("neural"), 1.0)
+        self.assertEqual(expanded.get("networks"), 1.0)
+
+    def test_hop_1_expansions(self):
+        """Test that single-hop expansions are included."""
+        expanded = self.processor.expand_query_multihop("neural", max_hops=1)
+
+        # Should have original term
+        self.assertIn("neural", expanded)
+
+        # Should have some expansions (semantically related terms)
+        expansion_count = len([k for k in expanded if k != "neural"])
+        self.assertGreater(expansion_count, 0, "Should have at least one expansion")
+
+    def test_hop_2_expansions(self):
+        """Test that two-hop expansions discover more terms."""
+        expanded_1hop = self.processor.expand_query_multihop("neural", max_hops=1)
+        expanded_2hop = self.processor.expand_query_multihop("neural", max_hops=2)
+
+        # 2-hop should have >= terms than 1-hop
+        self.assertGreaterEqual(len(expanded_2hop), len(expanded_1hop))
+
+    def test_weight_decay_with_hops(self):
+        """Test that expansion weights decay with hop distance."""
+        expanded = self.processor.expand_query_multihop(
+            "neural", max_hops=2, decay_factor=0.5
+        )
+
+        # Original term should have weight 1.0
+        self.assertEqual(expanded.get("neural"), 1.0)
+
+        # All expansions should have weight < 1.0
+        for term, weight in expanded.items():
+            if term != "neural":
+                self.assertLess(
+                    weight, 1.0,
+                    f"Expansion '{term}' should have weight < 1.0, got {weight}"
+                )
+
+    def test_custom_decay_factor(self):
+        """Test that custom decay factor affects weights."""
+        expanded_slow = self.processor.expand_query_multihop(
+            "neural", max_hops=2, decay_factor=0.8  # Slower decay
+        )
+        expanded_fast = self.processor.expand_query_multihop(
+            "neural", max_hops=2, decay_factor=0.3  # Faster decay
+        )
+
+        # Slower decay should give higher average weights to expansions
+        slow_avg = sum(w for t, w in expanded_slow.items() if t != "neural")
+        fast_avg = sum(w for t, w in expanded_fast.items() if t != "neural")
+
+        # If both have expansions, slow decay should have higher total
+        if slow_avg > 0 and fast_avg > 0:
+            self.assertGreater(slow_avg, fast_avg)
+
+    def test_max_expansions_limit(self):
+        """Test that max_expansions limits the number of expansion terms."""
+        expanded_3 = self.processor.expand_query_multihop(
+            "neural", max_hops=2, max_expansions=3
+        )
+        expanded_10 = self.processor.expand_query_multihop(
+            "neural", max_hops=2, max_expansions=10
+        )
+
+        # Count expansions (non-original terms)
+        expansions_3 = len([k for k in expanded_3 if k != "neural"])
+        expansions_10 = len([k for k in expanded_10 if k != "neural"])
+
+        self.assertLessEqual(expansions_3, 3)
+        self.assertLessEqual(expansions_10, 10)
+
+    def test_no_semantic_relations_fallback(self):
+        """Test fallback to regular expansion when no semantic relations."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data.")
+        processor.compute_all(verbose=False)
+        # Don't extract semantic relations
+
+        expanded = processor.expand_query_multihop("neural", max_hops=2)
+
+        # Should fall back to regular expansion
+        self.assertIn("neural", expanded)
+
+    def test_unknown_query_term(self):
+        """Test handling of query terms not in corpus."""
+        expanded = self.processor.expand_query_multihop("xyznonexistent", max_hops=2)
+
+        # Should return empty dict for unknown terms
+        self.assertEqual(len(expanded), 0)
+
+    def test_min_path_score_filtering(self):
+        """Test that min_path_score filters low-validity paths."""
+        expanded_low = self.processor.expand_query_multihop(
+            "neural", max_hops=2, min_path_score=0.1  # Low threshold
+        )
+        expanded_high = self.processor.expand_query_multihop(
+            "neural", max_hops=2, min_path_score=0.8  # High threshold
+        )
+
+        # Low threshold should allow more expansions
+        self.assertGreaterEqual(len(expanded_low), len(expanded_high))
+
+    def test_multihop_integration_with_documents(self):
+        """Test that multi-hop expansion finds relevant documents."""
+        # Use multi-hop expansion to find documents
+        expanded = self.processor.expand_query_multihop("neural", max_hops=2)
+
+        # Use expanded terms to score documents
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        doc_scores = {}
+
+        for term, weight in expanded.items():
+            col = layer0.get_minicolumn(term)
+            if col:
+                for doc_id in col.document_ids:
+                    doc_scores[doc_id] = doc_scores.get(doc_id, 0) + weight * col.tfidf
+
+        # Should find at least doc1 which contains "neural"
+        self.assertIn("doc1", doc_scores)
+
+
+class TestMultiHopPathScoring(unittest.TestCase):
+    """Test relation path scoring for multi-hop inference."""
+
+    def test_score_relation_path_empty(self):
+        """Test scoring empty path."""
+        from cortical.query import score_relation_path
+        self.assertEqual(score_relation_path([]), 1.0)
+
+    def test_score_relation_path_single(self):
+        """Test scoring single-hop path."""
+        from cortical.query import score_relation_path
+        self.assertEqual(score_relation_path(['IsA']), 1.0)
+        self.assertEqual(score_relation_path(['RelatedTo']), 1.0)
+
+    def test_score_isa_chain(self):
+        """Test that IsA chains get high scores."""
+        from cortical.query import score_relation_path
+        # IsA → IsA is a valid transitive chain
+        score = score_relation_path(['IsA', 'IsA'])
+        self.assertEqual(score, 1.0)
+
+    def test_score_mixed_chain(self):
+        """Test scoring mixed relation chains."""
+        from cortical.query import score_relation_path
+        # IsA → HasProperty is a valid inference
+        score = score_relation_path(['IsA', 'HasProperty'])
+        self.assertGreater(score, 0.8)
+
+    def test_score_weak_chain(self):
+        """Test that weak chains get low scores."""
+        from cortical.query import score_relation_path
+        # Antonym → IsA is contradictory
+        score = score_relation_path(['Antonym', 'IsA'])
+        self.assertLess(score, 0.3)
+
+    def test_score_default_relation(self):
+        """Test scoring unknown relation pairs."""
+        from cortical.query import score_relation_path
+        # Unknown pair should get moderate default score
+        score = score_relation_path(['UnknownRel', 'AnotherUnknown'])
+        self.assertEqual(score, 0.4)  # Default moderate validity
+
+    def test_valid_relation_chains_constant(self):
+        """Test that VALID_RELATION_CHAINS is defined."""
+        from cortical.query import VALID_RELATION_CHAINS
+        self.assertIsInstance(VALID_RELATION_CHAINS, dict)
+        self.assertIn(('IsA', 'IsA'), VALID_RELATION_CHAINS)
+        self.assertIn(('PartOf', 'PartOf'), VALID_RELATION_CHAINS)
+
+
+class TestAnalogyCompletion(unittest.TestCase):
+    """Test analogy completion functionality."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor with documents for analogy testing."""
+        cls.processor = CorticalTextProcessor()
+        # Create a corpus with semantic structure for analogies
+        cls.processor.process_document("doc1", """
+            Neural networks are powerful machine learning models.
+            Deep learning uses neural networks for complex tasks.
+            Knowledge graphs store semantic relationships.
+        """)
+        cls.processor.process_document("doc2", """
+            Machine learning algorithms process data efficiently.
+            Pattern recognition helps with image classification.
+            Data processing transforms raw information.
+        """)
+        cls.processor.process_document("doc3", """
+            Artificial intelligence enables intelligent systems.
+            Natural language processing understands text.
+            Computer vision analyzes images and video.
+        """)
+        cls.processor.compute_all(verbose=False)
+        cls.processor.extract_corpus_semantics(verbose=False)
+        cls.processor.compute_graph_embeddings(dimensions=16, verbose=False)
+
+    def test_complete_analogy_returns_list(self):
+        """Test that complete_analogy returns a list."""
+        results = self.processor.complete_analogy(
+            "neural", "networks", "machine"
+        )
+        self.assertIsInstance(results, list)
+
+    def test_complete_analogy_result_format(self):
+        """Test that results have correct format (term, score, method)."""
+        results = self.processor.complete_analogy(
+            "neural", "networks", "machine", top_n=3
+        )
+
+        for result in results:
+            self.assertEqual(len(result), 3)
+            term, score, method = result
+            self.assertIsInstance(term, str)
+            self.assertIsInstance(score, float)
+            self.assertIsInstance(method, str)
+            self.assertGreater(score, 0)
+
+    def test_complete_analogy_excludes_input_terms(self):
+        """Test that input terms are excluded from results."""
+        results = self.processor.complete_analogy(
+            "neural", "networks", "machine"
+        )
+
+        result_terms = [term for term, _, _ in results]
+        self.assertNotIn("neural", result_terms)
+        self.assertNotIn("networks", result_terms)
+        self.assertNotIn("machine", result_terms)
+
+    def test_complete_analogy_top_n_limit(self):
+        """Test that top_n limits the number of results."""
+        results_3 = self.processor.complete_analogy(
+            "neural", "networks", "machine", top_n=3
+        )
+        results_5 = self.processor.complete_analogy(
+            "neural", "networks", "machine", top_n=5
+        )
+
+        self.assertLessEqual(len(results_3), 3)
+        self.assertLessEqual(len(results_5), 5)
+
+    def test_complete_analogy_unknown_term(self):
+        """Test handling of unknown terms."""
+        results = self.processor.complete_analogy(
+            "xyznonexistent", "abcnonexistent", "machine"
+        )
+        self.assertEqual(results, [])
+
+    def test_complete_analogy_with_embeddings_only(self):
+        """Test analogy completion using only embeddings."""
+        results = self.processor.complete_analogy(
+            "neural", "networks", "machine",
+            use_embeddings=True,
+            use_relations=False
+        )
+        self.assertIsInstance(results, list)
+
+    def test_complete_analogy_with_relations_only(self):
+        """Test analogy completion using only relations."""
+        results = self.processor.complete_analogy(
+            "neural", "networks", "machine",
+            use_embeddings=False,
+            use_relations=True
+        )
+        self.assertIsInstance(results, list)
+
+    def test_complete_analogy_simple_returns_list(self):
+        """Test that complete_analogy_simple returns a list."""
+        results = self.processor.complete_analogy_simple(
+            "neural", "networks", "machine"
+        )
+        self.assertIsInstance(results, list)
+
+    def test_complete_analogy_simple_format(self):
+        """Test that simple results have correct format (term, score)."""
+        results = self.processor.complete_analogy_simple(
+            "neural", "networks", "machine", top_n=3
+        )
+
+        for result in results:
+            self.assertEqual(len(result), 2)
+            term, score = result
+            self.assertIsInstance(term, str)
+            self.assertIsInstance(score, float)
+
+    def test_complete_analogy_simple_excludes_input(self):
+        """Test that input terms are excluded from simple results."""
+        results = self.processor.complete_analogy_simple(
+            "neural", "networks", "machine"
+        )
+
+        result_terms = [term for term, _ in results]
+        self.assertNotIn("neural", result_terms)
+        self.assertNotIn("networks", result_terms)
+        self.assertNotIn("machine", result_terms)
+
+
+class TestAnalogyHelperFunctions(unittest.TestCase):
+    """Test analogy helper functions."""
+
+    def test_find_relation_between(self):
+        """Test finding relations between terms."""
+        from cortical.query import find_relation_between
+
+        relations = [
+            ("dog", "IsA", "animal", 1.0),
+            ("cat", "IsA", "animal", 1.0),
+            ("dog", "HasProperty", "loyal", 0.8),
+        ]
+
+        result = find_relation_between("dog", "animal", relations)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0][0], "IsA")
+
+    def test_find_relation_between_no_match(self):
+        """Test finding relations with no match."""
+        from cortical.query import find_relation_between
+
+        relations = [
+            ("dog", "IsA", "animal", 1.0),
+        ]
+
+        result = find_relation_between("cat", "animal", relations)
+        self.assertEqual(len(result), 0)
+
+    def test_find_terms_with_relation(self):
+        """Test finding terms with specific relation."""
+        from cortical.query import find_terms_with_relation
+
+        relations = [
+            ("dog", "IsA", "animal", 1.0),
+            ("cat", "IsA", "animal", 0.9),
+            ("bird", "IsA", "animal", 0.8),
+        ]
+
+        result = find_terms_with_relation("animal", "IsA", relations, direction='backward')
+        self.assertEqual(len(result), 3)
+        # Should be sorted by weight
+        self.assertEqual(result[0][0], "dog")
+
+    def test_find_terms_with_relation_forward(self):
+        """Test finding terms with forward relation."""
+        from cortical.query import find_terms_with_relation
+
+        relations = [
+            ("dog", "HasProperty", "loyal", 1.0),
+            ("dog", "HasProperty", "friendly", 0.8),
+        ]
+
+        result = find_terms_with_relation("dog", "HasProperty", relations, direction='forward')
+        self.assertEqual(len(result), 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

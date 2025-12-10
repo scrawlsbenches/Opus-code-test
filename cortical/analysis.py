@@ -27,66 +27,348 @@ def compute_pagerank(
 ) -> Dict[str, float]:
     """
     Compute PageRank scores for minicolumns in a layer.
-    
+
     PageRank measures importance based on connection structure.
     Highly connected columns that are connected to other important
     columns receive higher scores.
-    
+
     Args:
         layer: The layer to compute PageRank for
         damping: Damping factor (probability of following links)
         iterations: Maximum number of iterations
         tolerance: Convergence threshold
-        
+
     Returns:
         Dictionary mapping column IDs to PageRank scores
     """
     n = len(layer.minicolumns)
     if n == 0:
         return {}
-    
+
     # Initialize PageRank uniformly
     pagerank = {col.id: 1.0 / n for col in layer.minicolumns.values()}
-    
+
     # Build incoming links map
     incoming: Dict[str, List[Tuple[str, float]]] = defaultdict(list)
     outgoing_sum: Dict[str, float] = defaultdict(float)
-    
+
     for col in layer.minicolumns.values():
         for target_id, weight in col.lateral_connections.items():
             # Use O(1) lookup via get_by_id instead of O(n) linear search
             if layer.get_by_id(target_id) is not None:
                 incoming[target_id].append((col.id, weight))
                 outgoing_sum[col.id] += weight
-    
+
     # Iterate until convergence
     for iteration in range(iterations):
         new_pagerank = {}
         max_diff = 0.0
-        
+
         for col in layer.minicolumns.values():
             # Sum of weighted incoming PageRank
             incoming_sum = 0.0
             for source_id, weight in incoming[col.id]:
                 if source_id in pagerank and outgoing_sum[source_id] > 0:
                     incoming_sum += pagerank[source_id] * weight / outgoing_sum[source_id]
-            
+
             # Apply damping
             new_rank = (1 - damping) / n + damping * incoming_sum
             new_pagerank[col.id] = new_rank
-            
+
             max_diff = max(max_diff, abs(new_rank - pagerank.get(col.id, 0)))
-        
+
         pagerank = new_pagerank
-        
+
         if max_diff < tolerance:
             break
-    
+
     # Update minicolumn pagerank values
     for col in layer.minicolumns.values():
         col.pagerank = pagerank.get(col.id, 1.0 / n)
-    
+
     return pagerank
+
+
+# Default relation weights for semantic PageRank
+RELATION_WEIGHTS = {
+    'IsA': 1.5,           # Hypernym relationships are strong
+    'PartOf': 1.3,        # Meronym relationships
+    'HasProperty': 1.2,   # Property associations
+    'RelatedTo': 1.0,     # Default co-occurrence
+    'SimilarTo': 1.4,     # Similarity relationships
+    'Causes': 1.1,        # Causal relationships
+    'UsedFor': 1.0,       # Functional relationships
+    'CoOccurs': 0.8,      # Basic co-occurrence
+    'Antonym': 0.3,       # Opposing concepts (lower weight)
+    'DerivedFrom': 1.2,   # Morphological derivation
+}
+
+
+def compute_semantic_pagerank(
+    layer: HierarchicalLayer,
+    semantic_relations: List[Tuple[str, str, str, float]],
+    relation_weights: Optional[Dict[str, float]] = None,
+    damping: float = 0.85,
+    iterations: int = 20,
+    tolerance: float = 1e-6
+) -> Dict[str, Any]:
+    """
+    Compute PageRank with semantic relation type weighting.
+
+    This ConceptNet-style PageRank applies different multipliers based on
+    the semantic relation type between nodes. For example, IsA relationships
+    are weighted more heavily than simple co-occurrence.
+
+    Args:
+        layer: The layer to compute PageRank for
+        semantic_relations: List of (term1, relation, term2, weight) tuples
+        relation_weights: Optional custom relation weights dict. If None, uses defaults.
+        damping: Damping factor (probability of following links)
+        iterations: Maximum number of iterations
+        tolerance: Convergence threshold
+
+    Returns:
+        Dict containing:
+        - pagerank: Dict mapping column IDs to PageRank scores
+        - iterations_run: Number of iterations until convergence
+        - edges_with_relations: Number of edges that had semantic relation info
+
+    Example:
+        >>> relations = [("neural", "RelatedTo", "networks", 0.8)]
+        >>> result = compute_semantic_pagerank(layer, relations)
+        >>> print(f"PageRank converged in {result['iterations_run']} iterations")
+    """
+    n = len(layer.minicolumns)
+    if n == 0:
+        return {'pagerank': {}, 'iterations_run': 0, 'edges_with_relations': 0}
+
+    # Use default weights if not provided
+    weights = relation_weights or RELATION_WEIGHTS
+
+    # Build semantic relation lookup: (term1, term2) -> (relation_type, weight)
+    semantic_lookup: Dict[Tuple[str, str], Tuple[str, float]] = {}
+    for t1, relation, t2, rel_weight in semantic_relations:
+        # Store in both directions for undirected lookup
+        semantic_lookup[(t1, t2)] = (relation, rel_weight)
+        semantic_lookup[(t2, t1)] = (relation, rel_weight)
+
+    # Initialize PageRank uniformly
+    pagerank = {col.id: 1.0 / n for col in layer.minicolumns.values()}
+
+    # Build incoming links map with relation-weighted edges
+    incoming: Dict[str, List[Tuple[str, float]]] = defaultdict(list)
+    outgoing_sum: Dict[str, float] = defaultdict(float)
+    edges_with_relations = 0
+
+    # Build content -> id mapping for semantic lookup
+    content_to_id: Dict[str, str] = {}
+    for col in layer.minicolumns.values():
+        content_to_id[col.content] = col.id
+
+    for col in layer.minicolumns.values():
+        for target_id, base_weight in col.lateral_connections.items():
+            target = layer.get_by_id(target_id)
+            if target is None:
+                continue
+
+            # Check if there's a semantic relation between these terms
+            lookup_key = (col.content, target.content)
+            if lookup_key in semantic_lookup:
+                relation_type, rel_weight = semantic_lookup[lookup_key]
+                # Apply relation type multiplier
+                type_multiplier = weights.get(relation_type, 1.0)
+                # Combined weight: base_weight * relation_weight * type_multiplier
+                adjusted_weight = base_weight * rel_weight * type_multiplier
+                edges_with_relations += 1
+            else:
+                # No semantic relation, use base weight
+                adjusted_weight = base_weight
+
+            incoming[target_id].append((col.id, adjusted_weight))
+            outgoing_sum[col.id] += adjusted_weight
+
+    # Iterate until convergence
+    iterations_run = 0
+    for iteration in range(iterations):
+        iterations_run = iteration + 1
+        new_pagerank = {}
+        max_diff = 0.0
+
+        for col in layer.minicolumns.values():
+            # Sum of weighted incoming PageRank
+            incoming_sum = 0.0
+            for source_id, weight in incoming[col.id]:
+                if source_id in pagerank and outgoing_sum[source_id] > 0:
+                    incoming_sum += pagerank[source_id] * weight / outgoing_sum[source_id]
+
+            # Apply damping
+            new_rank = (1 - damping) / n + damping * incoming_sum
+            new_pagerank[col.id] = new_rank
+
+            max_diff = max(max_diff, abs(new_rank - pagerank.get(col.id, 0)))
+
+        pagerank = new_pagerank
+
+        if max_diff < tolerance:
+            break
+
+    # Update minicolumn pagerank values
+    for col in layer.minicolumns.values():
+        col.pagerank = pagerank.get(col.id, 1.0 / n)
+
+    return {
+        'pagerank': pagerank,
+        'iterations_run': iterations_run,
+        'edges_with_relations': edges_with_relations
+    }
+
+
+def compute_hierarchical_pagerank(
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    layer_iterations: int = 10,
+    global_iterations: int = 5,
+    damping: float = 0.85,
+    cross_layer_damping: float = 0.7,
+    tolerance: float = 1e-4
+) -> Dict[str, Any]:
+    """
+    Compute PageRank with cross-layer propagation.
+
+    This hierarchical PageRank allows importance to flow between layers:
+    - Upward: tokens → bigrams → concepts → documents
+    - Downward: documents → concepts → bigrams → tokens
+
+    The algorithm alternates between:
+    1. Computing local PageRank within each layer
+    2. Propagating scores up the hierarchy (via feedback_connections)
+    3. Propagating scores down the hierarchy (via feedforward_connections)
+
+    Args:
+        layers: Dictionary of all layers
+        layer_iterations: Max iterations for intra-layer PageRank
+        global_iterations: Max iterations for cross-layer propagation
+        damping: Damping factor for intra-layer PageRank
+        cross_layer_damping: Damping factor for cross-layer propagation (default 0.7)
+        tolerance: Convergence threshold for global iterations
+
+    Returns:
+        Dict containing:
+        - iterations_run: Number of global iterations
+        - converged: Whether the algorithm converged
+        - layer_stats: Per-layer statistics
+
+    Example:
+        >>> result = compute_hierarchical_pagerank(layers)
+        >>> print(f"Converged in {result['iterations_run']} iterations")
+    """
+    # Define layer order for propagation
+    layer_order = [
+        CorticalLayer.TOKENS,
+        CorticalLayer.BIGRAMS,
+        CorticalLayer.CONCEPTS,
+        CorticalLayer.DOCUMENTS
+    ]
+
+    # Filter to only existing layers with minicolumns
+    active_layers = [l for l in layer_order if l in layers and layers[l].column_count() > 0]
+
+    if not active_layers:
+        return {'iterations_run': 0, 'converged': True, 'layer_stats': {}}
+
+    # Store previous PageRank values for convergence check
+    prev_pageranks: Dict[CorticalLayer, Dict[str, float]] = {}
+
+    iterations_run = 0
+    converged = False
+
+    for global_iter in range(global_iterations):
+        iterations_run = global_iter + 1
+        max_global_diff = 0.0
+
+        # Step 1: Compute local PageRank for each layer
+        for layer_enum in active_layers:
+            layer = layers[layer_enum]
+            compute_pagerank(layer, damping=damping, iterations=layer_iterations, tolerance=1e-6)
+
+        # Step 2: Propagate up (tokens → bigrams → concepts → documents)
+        for i in range(len(active_layers) - 1):
+            lower_layer_enum = active_layers[i]
+            upper_layer_enum = active_layers[i + 1]
+            lower_layer = layers[lower_layer_enum]
+            upper_layer = layers[upper_layer_enum]
+
+            # Propagate from lower to upper via feedback connections
+            for col in lower_layer.minicolumns.values():
+                if not col.feedback_connections:
+                    continue
+
+                for target_id, weight in col.feedback_connections.items():
+                    target = upper_layer.get_by_id(target_id)
+                    if target:
+                        # Boost upper layer node based on lower layer importance
+                        boost = col.pagerank * weight * cross_layer_damping
+                        target.pagerank += boost
+
+        # Step 3: Propagate down (documents → concepts → bigrams → tokens)
+        for i in range(len(active_layers) - 1, 0, -1):
+            upper_layer_enum = active_layers[i]
+            lower_layer_enum = active_layers[i - 1]
+            upper_layer = layers[upper_layer_enum]
+            lower_layer = layers[lower_layer_enum]
+
+            # Propagate from upper to lower via feedforward connections
+            for col in upper_layer.minicolumns.values():
+                if not col.feedforward_connections:
+                    continue
+
+                for target_id, weight in col.feedforward_connections.items():
+                    target = lower_layer.get_by_id(target_id)
+                    if target:
+                        # Boost lower layer node based on upper layer importance
+                        boost = col.pagerank * weight * cross_layer_damping
+                        target.pagerank += boost
+
+        # Normalize PageRank within each layer
+        for layer_enum in active_layers:
+            layer = layers[layer_enum]
+            total = sum(col.pagerank for col in layer.minicolumns.values())
+            if total > 0:
+                for col in layer.minicolumns.values():
+                    col.pagerank /= total
+
+        # Check convergence
+        for layer_enum in active_layers:
+            layer = layers[layer_enum]
+            current_pr = {col.id: col.pagerank for col in layer.minicolumns.values()}
+
+            if layer_enum in prev_pageranks:
+                for col_id, pr in current_pr.items():
+                    prev_pr = prev_pageranks[layer_enum].get(col_id, 0)
+                    max_global_diff = max(max_global_diff, abs(pr - prev_pr))
+
+            prev_pageranks[layer_enum] = current_pr
+
+        if max_global_diff < tolerance and global_iter > 0:
+            converged = True
+            break
+
+    # Collect layer statistics
+    layer_stats = {}
+    for layer_enum in active_layers:
+        layer = layers[layer_enum]
+        pageranks = [col.pagerank for col in layer.minicolumns.values()]
+        layer_stats[layer_enum.name] = {
+            'nodes': len(pageranks),
+            'max_pagerank': max(pageranks) if pageranks else 0,
+            'min_pagerank': min(pageranks) if pageranks else 0,
+            'avg_pagerank': sum(pageranks) / len(pageranks) if pageranks else 0
+        }
+
+    return {
+        'iterations_run': iterations_run,
+        'converged': converged,
+        'layer_stats': layer_stats
+    }
 
 
 def compute_tfidf(
@@ -439,6 +721,145 @@ def compute_concept_connections(
     return {
         'connections_created': connections_created,
         'concepts': len(concepts)
+    }
+
+
+def compute_bigram_connections(
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    min_shared_docs: int = 1,
+    component_weight: float = 0.5,
+    chain_weight: float = 0.7,
+    cooccurrence_weight: float = 0.3
+) -> Dict[str, Any]:
+    """
+    Build lateral connections between bigrams in Layer 1.
+
+    Bigrams are connected based on:
+    1. Shared component terms ("neural_networks" ↔ "neural_processing")
+    2. Document co-occurrence (appear in same documents)
+    3. Chains ("machine_learning" ↔ "learning_algorithms" where right=left)
+
+    Args:
+        layers: Dictionary of all layers
+        min_shared_docs: Minimum shared documents for co-occurrence connection
+        component_weight: Weight for shared component connections (default 0.5)
+        chain_weight: Weight for chain connections (default 0.7)
+        cooccurrence_weight: Weight for document co-occurrence (default 0.3)
+
+    Returns:
+        Statistics about connections created:
+        - connections_created: Total bidirectional connections
+        - component_connections: Connections from shared components
+        - chain_connections: Connections from chains
+        - cooccurrence_connections: Connections from document co-occurrence
+    """
+    layer1 = layers[CorticalLayer.BIGRAMS]
+
+    if layer1.column_count() == 0:
+        return {
+            'connections_created': 0,
+            'bigrams': 0,
+            'component_connections': 0,
+            'chain_connections': 0,
+            'cooccurrence_connections': 0
+        }
+
+    bigrams = list(layer1.minicolumns.values())
+
+    # Build indexes for efficient lookup
+    # left_component_index: {"neural": [bigram1, bigram2, ...]}
+    # right_component_index: {"networks": [bigram1, bigram3, ...]}
+    left_index: Dict[str, List[Minicolumn]] = defaultdict(list)
+    right_index: Dict[str, List[Minicolumn]] = defaultdict(list)
+
+    for bigram in bigrams:
+        parts = bigram.content.split('_')
+        if len(parts) == 2:
+            left_index[parts[0]].append(bigram)
+            right_index[parts[1]].append(bigram)
+
+    # Track connection types for statistics
+    component_connections = 0
+    chain_connections = 0
+    cooccurrence_connections = 0
+
+    # Track which pairs we've already connected (avoid duplicates)
+    connected_pairs: Set[Tuple[str, str]] = set()
+
+    def add_connection(b1: Minicolumn, b2: Minicolumn, weight: float, conn_type: str) -> bool:
+        """Add bidirectional connection if not already connected."""
+        nonlocal component_connections, chain_connections, cooccurrence_connections
+
+        pair = tuple(sorted([b1.id, b2.id]))
+        if pair in connected_pairs:
+            # Already connected, just strengthen the connection
+            b1.add_lateral_connection(b2.id, weight)
+            b2.add_lateral_connection(b1.id, weight)
+            return False
+
+        connected_pairs.add(pair)
+        b1.add_lateral_connection(b2.id, weight)
+        b2.add_lateral_connection(b1.id, weight)
+
+        if conn_type == 'component':
+            component_connections += 1
+        elif conn_type == 'chain':
+            chain_connections += 1
+        elif conn_type == 'cooccurrence':
+            cooccurrence_connections += 1
+
+        return True
+
+    # 1. Connect bigrams sharing a component
+    # Left component matches: "neural_networks" ↔ "neural_processing"
+    for component, bigram_list in left_index.items():
+        for i, b1 in enumerate(bigram_list):
+            for b2 in bigram_list[i+1:]:
+                # Weight by component's PageRank importance (if available)
+                weight = component_weight
+                add_connection(b1, b2, weight, 'component')
+
+    # Right component matches: "deep_learning" ↔ "machine_learning"
+    for component, bigram_list in right_index.items():
+        for i, b1 in enumerate(bigram_list):
+            for b2 in bigram_list[i+1:]:
+                weight = component_weight
+                add_connection(b1, b2, weight, 'component')
+
+    # 2. Connect chain bigrams (right of one = left of other)
+    # "machine_learning" ↔ "learning_algorithms"
+    for term in left_index:
+        if term in right_index:
+            # term appears as right component in some bigrams and left in others
+            for b_left in right_index[term]:  # ends with term
+                for b_right in left_index[term]:  # starts with term
+                    if b_left.id != b_right.id:
+                        add_connection(b_left, b_right, chain_weight, 'chain')
+
+    # 3. Connect bigrams that co-occur in the same documents
+    for i, b1 in enumerate(bigrams):
+        docs1 = b1.document_ids
+        if not docs1:
+            continue
+
+        for b2 in bigrams[i+1:]:
+            docs2 = b2.document_ids
+            if not docs2:
+                continue
+
+            shared_docs = docs1 & docs2
+            if len(shared_docs) >= min_shared_docs:
+                # Weight by Jaccard similarity of document sets
+                jaccard = len(shared_docs) / len(docs1 | docs2)
+                weight = cooccurrence_weight * jaccard
+                add_connection(b1, b2, weight, 'cooccurrence')
+
+    return {
+        'connections_created': len(connected_pairs),
+        'bigrams': len(bigrams),
+        'component_connections': component_connections,
+        'chain_connections': chain_connections,
+        'cooccurrence_connections': cooccurrence_connections
     }
 
 
