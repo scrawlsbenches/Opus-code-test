@@ -284,23 +284,37 @@ def extract_corpus_semantics(
     
     # Extract SimilarTo from context similarity
     terms = list(context_vectors.keys())
+
+    # Pre-compute magnitudes once per vector (O(n) instead of O(n²))
+    magnitudes: Dict[str, float] = {}
+    for term in terms:
+        vec = context_vectors[term]
+        mag = math.sqrt(sum(v * v for v in vec.values()))
+        magnitudes[term] = mag
+
+    # Pre-compute key sets for faster intersection
+    key_sets: Dict[str, set] = {term: set(context_vectors[term].keys()) for term in terms}
+
     for i, t1 in enumerate(terms):
         vec1 = context_vectors[t1]
+        mag1 = magnitudes[t1]
+        if mag1 == 0:
+            continue
+        keys1 = key_sets[t1]
 
         for t2 in terms[i+1:]:
-            vec2 = context_vectors[t2]
+            mag2 = magnitudes[t2]
+            if mag2 == 0:
+                continue
 
-            # Cosine similarity of context vectors
-            common = set(vec1.keys()) & set(vec2.keys())
+            # Fast intersection using pre-computed sets
+            common = keys1 & key_sets[t2]
             if len(common) >= 3:
+                vec2 = context_vectors[t2]
                 dot = sum(vec1[k] * vec2[k] for k in common)
-                mag1 = math.sqrt(sum(v*v for v in vec1.values()))
-                mag2 = math.sqrt(sum(v*v for v in vec2.values()))
-
-                if mag1 > 0 and mag2 > 0:
-                    sim = dot / (mag1 * mag2)
-                    if sim > 0.3:
-                        relations.append((t1, 'SimilarTo', t2, sim))
+                sim = dot / (mag1 * mag2)
+                if sim > 0.3:
+                    relations.append((t1, 'SimilarTo', t2, sim))
 
     # Extract commonsense relations from text patterns
     if use_pattern_extraction:
