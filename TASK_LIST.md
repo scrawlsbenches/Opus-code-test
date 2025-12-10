@@ -1301,3 +1301,146 @@ All 6 functions now use this helper, reducing code duplication by ~100 lines.
 ---
 
 *Updated from code review on 2025-12-10*
+
+---
+
+## Critical Bug Fixes (2025-12-10)
+
+The following critical bugs were identified during code review and must be fixed:
+
+### 34. Fix Bigram Separator Mismatch in Analogy Completion
+
+**File:** `cortical/query.py`
+**Lines:** 1442-1468
+**Status:** [ ] Not Started
+**Priority:** Critical
+
+**Problem:**
+The `complete_analogy_simple()` function uses underscore separators for bigram lookup and parsing, but bigrams are stored with **space** separators (defined in `tokenizer.py:179`).
+
+**Affected Code:**
+```python
+# Line 1442-1443: WRONG - uses underscore
+ab_bigram = f"{term_a}_{term_b}"  # Creates "neural_networks"
+ba_bigram = f"{term_b}_{term_a}"
+
+# Line 1452: WRONG - splits by underscore
+parts = bigram.split('_')
+
+# But bigrams are stored with spaces (tokenizer.py:179):
+# ' '.join(tokens[i:i+n])  # Creates "neural networks"
+```
+
+**Impact:**
+- The bigram pattern matching strategy in `complete_analogy_simple()` is completely non-functional
+- `ab_col` and `ba_col` will always be `None` because "neural_networks" doesn't exist in the corpus
+- The `parts` split will never produce valid component extraction
+
+**Solution:**
+```python
+# Line 1442-1443: Should use space
+ab_bigram = f"{term_a} {term_b}"  # Correct: "neural networks"
+ba_bigram = f"{term_b} {term_a}"
+
+# Line 1452: Should split by space
+parts = bigram.split(' ')
+```
+
+**Files to Modify:**
+- `cortical/query.py` - Fix separator in lines 1442, 1443, 1452
+- `tests/test_processor.py` - Add tests for bigram-based analogy completion
+
+---
+
+### 35. Fix Bigram Separator Mismatch in Bigram Connections
+
+**File:** `cortical/analysis.py`
+**Line:** 927
+**Status:** [ ] Not Started
+**Priority:** Critical
+
+**Problem:**
+The `compute_bigram_connections()` function splits bigram content by underscore, but bigrams are stored with **space** separators.
+
+**Affected Code:**
+```python
+# Line 927: WRONG - splits by underscore
+for bigram in bigrams:
+    parts = bigram.content.split('_')
+    if len(parts) == 2:
+        left_index[parts[0]].append(bigram)
+        right_index[parts[1]].append(bigram)
+
+# But bigrams are stored with spaces:
+# "neural networks" not "neural_networks"
+```
+
+**Impact:**
+- `left_index` and `right_index` dictionaries are never populated
+- Component-sharing connections (e.g., "neural networks" ↔ "neural processing") are never created
+- Chain connections (e.g., "machine learning" ↔ "learning algorithms") are never created
+- Only document co-occurrence connections work correctly
+
+**Solution:**
+```python
+# Line 927: Should split by space
+parts = bigram.content.split(' ')
+```
+
+**Verification:**
+After fixing, the `compute_bigram_connections()` stats should show non-zero values for:
+- `component_connections`
+- `chain_connections`
+
+Currently these are always 0 due to the bug.
+
+**Files to Modify:**
+- `cortical/analysis.py` - Fix separator in line 927
+- `tests/test_analysis.py` - Add tests verifying component/chain connections work
+
+---
+
+## Code Quality Issues (2025-12-10)
+
+### 36. Inconsistent Bigram Separator Convention
+
+**Files:** Multiple
+**Status:** [ ] Future Enhancement
+**Priority:** Low
+
+**Observation:**
+The codebase has an inconsistent convention for bigram separators:
+- **Canonical format (tokenizer.py):** Space separator (`' '.join()`)
+- **Bug in query.py:** Underscore separator (`f"{term_a}_{term_b}"`)
+- **Bug in analysis.py:** Underscore separator (`split('_')`)
+
+**Recommendation:**
+1. Add a constant to define the canonical bigram separator
+2. Use the constant throughout the codebase
+3. Add documentation about the convention in CLAUDE.md
+
+**Example:**
+```python
+# In tokenizer.py or a constants module:
+BIGRAM_SEPARATOR = ' '
+
+# Usage:
+bigram = BIGRAM_SEPARATOR.join([term_a, term_b])
+parts = bigram.split(BIGRAM_SEPARATOR)
+```
+
+---
+
+## Updated Summary
+
+| Priority | Task | Status | Category |
+|----------|------|--------|----------|
+| **Critical** | **Fix bigram separator in analogy completion** | [ ] Not Started | **Bug Fix** |
+| **Critical** | **Fix bigram separator in bigram connections** | [ ] Not Started | **Bug Fix** |
+| Low | Inconsistent bigram separator convention | [ ] Future Enhancement | Code Quality |
+
+**Total Tests:** 337 (all passing)
+
+---
+
+*Updated from code review on 2025-12-10*
