@@ -962,8 +962,8 @@ sim = processor.compute_property_similarity("dog", "cat")
 
 ### 28. Add Commonsense Relation Extraction
 
-**Files:** `cortical/semantics.py`
-**Status:** [ ] Pending
+**Files:** `cortical/semantics.py`, `cortical/processor.py`
+**Status:** [x] Completed
 
 **Problem:**
 Current relation extraction is limited to co-occurrence patterns. Could extract richer relations:
@@ -972,12 +972,46 @@ Current relation extraction is limited to co-occurrence patterns. Could extract 
 - "X is used for Y" → UsedFor
 - "X causes Y" → Causes
 
-**Implementation Steps:**
-1. Add pattern-based relation extraction
-2. Create regex/rule patterns for common relation expressions
-3. Extract during `extract_corpus_semantics()`
-4. Store relation type with confidence score
-5. Weight by pattern specificity
+**Solution Applied:**
+1. Added `RELATION_PATTERNS` constant with 30+ regex patterns covering:
+   - IsA patterns: "X is a type of Y", "X is a kind of Y", "X belongs to Y"
+   - HasA patterns: "X has Y", "X contains Y", "X consists of Y"
+   - PartOf patterns: "X is part of Y", "X is a component of Y"
+   - UsedFor patterns: "X is used for Y", "X helps Y", "X enables Y"
+   - Causes patterns: "X causes Y", "X leads to Y", "X produces Y"
+   - CapableOf patterns: "X can Y", "X is able to Y"
+   - AtLocation patterns: "X is found in Y", "X lives in Y"
+   - HasProperty patterns: "X is Y" (with context)
+   - Antonym patterns: "X is opposite of Y"
+   - DerivedFrom patterns: "X comes from Y"
+   - DefinedBy patterns: "X means Y"
+2. Added `extract_pattern_relations()` function with filtering for:
+   - Invalid terms (not in corpus)
+   - Stopwords
+   - Self-relations
+   - Duplicate relations
+3. Added `get_pattern_statistics()` for relation type analysis
+4. Updated `extract_corpus_semantics()` with `use_pattern_extraction` parameter
+5. Added processor method `extract_pattern_relations()` for direct access
+
+**Files Modified:**
+- `cortical/semantics.py` - Added `RELATION_PATTERNS`, `extract_pattern_relations()`, `get_pattern_statistics()` (~180 lines)
+- `cortical/processor.py` - Updated `extract_corpus_semantics()`, added `extract_pattern_relations()` (~70 lines)
+- `tests/test_semantics.py` - Added 16 tests for pattern extraction
+
+**Usage:**
+```python
+# Automatic pattern extraction during semantic extraction
+processor.extract_corpus_semantics(
+    use_pattern_extraction=True,    # Enabled by default
+    min_pattern_confidence=0.6      # Minimum confidence threshold
+)
+
+# Direct pattern extraction
+relations = processor.extract_pattern_relations(min_confidence=0.5)
+for t1, rel_type, t2, confidence in relations:
+    print(f"{t1} --{rel_type}--> {t2} ({confidence:.2f})")
+```
 
 ---
 
@@ -1100,20 +1134,20 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 | Medium | Implement multi-hop semantic inference | ✅ Completed | ConceptNet |
 | Medium | Add relation path scoring | ✅ Completed | ConceptNet |
 | Medium | Implement concept inheritance | ✅ Completed | ConceptNet |
-| Low | Add commonsense relation extraction | ⏳ Pending | ConceptNet |
+| Low | Add commonsense relation extraction | ✅ Completed | ConceptNet |
 | Low | Visualize ConceptNet-style graph | ⏳ Pending | ConceptNet |
 | Low | Add analogy completion | ⏳ Pending | ConceptNet |
 
 **Bug Fix Completion:** 7/7 tasks (100%)
 **RAG Enhancement Completion:** 8/8 tasks (100%)
-**ConceptNet Enhancement Completion:** 9/12 tasks (75%)
+**ConceptNet Enhancement Completion:** 10/12 tasks (83%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 278 tests in 0.263s
+Ran 294 tests in 0.265s
 OK
 ```
 

@@ -38,28 +38,203 @@ RELATION_WEIGHTS = {
 }
 
 
+# Commonsense relation patterns with confidence scores
+# Format: (pattern_regex, relation_type, confidence, swap_order)
+# swap_order: if True, the captured groups are in reverse order (t2, t1)
+RELATION_PATTERNS = [
+    # IsA patterns (hypernym/type relations)
+    (r'(\w+)\s+(?:is|are)\s+(?:a|an)\s+(?:type\s+of\s+)?(\w+)', 'IsA', 0.9, False),
+    (r'(\w+),?\s+(?:a|an)\s+(?:kind|type|form)\s+of\s+(\w+)', 'IsA', 0.95, False),
+    (r'(\w+)\s+(?:is|are)\s+considered\s+(?:a|an)?\s*(\w+)', 'IsA', 0.8, False),
+    (r'(?:a|an)\s+(\w+)\s+is\s+(?:a|an)\s+(\w+)', 'IsA', 0.85, False),
+    (r'(\w+)\s+(?:belongs?\s+to|falls?\s+under)\s+(?:the\s+)?(\w+)', 'IsA', 0.8, False),
+
+    # HasA/Contains patterns (meronym relations)
+    (r'(\w+)\s+(?:has|have|contains?|includes?)\s+(?:a|an|the)?\s*(\w+)', 'HasA', 0.85, False),
+    (r'(\w+)\s+(?:consists?\s+of|comprises?|is\s+made\s+of)\s+(\w+)', 'HasA', 0.9, False),
+    (r'(?:a|an|the)\s+(\w+)\s+(?:with|having)\s+(?:a|an|the)?\s*(\w+)', 'HasA', 0.75, False),
+
+    # PartOf patterns (part-whole relations)
+    (r'(\w+)\s+(?:is|are)\s+(?:a\s+)?part\s+of\s+(?:a|an|the)?\s*(\w+)', 'PartOf', 0.95, False),
+    (r'(\w+)\s+(?:is|are)\s+(?:a\s+)?component\s+of\s+(\w+)', 'PartOf', 0.9, False),
+    (r'(\w+)\s+(?:is|are)\s+(?:in|within|inside)\s+(?:a|an|the)?\s*(\w+)', 'PartOf', 0.7, False),
+
+    # UsedFor patterns (functional relations)
+    (r'(\w+)\s+(?:is|are)\s+used\s+(?:for|to|in)\s+(\w+)', 'UsedFor', 0.9, False),
+    (r'(\w+)\s+(?:helps?|enables?|allows?)\s+(\w+)', 'UsedFor', 0.75, False),
+    (r'(?:use|using)\s+(\w+)\s+(?:for|to)\s+(\w+)', 'UsedFor', 0.85, False),
+    (r'(\w+)\s+(?:is|are)\s+(?:useful|helpful)\s+for\s+(\w+)', 'UsedFor', 0.8, False),
+
+    # Causes patterns (causal relations)
+    (r'(\w+)\s+(?:causes?|leads?\s+to|results?\s+in)\s+(\w+)', 'Causes', 0.9, False),
+    (r'(\w+)\s+(?:produces?|generates?|creates?)\s+(\w+)', 'Causes', 0.8, False),
+    (r'(\w+)\s+(?:can\s+)?(?:cause|lead\s+to|result\s+in)\s+(\w+)', 'Causes', 0.85, False),
+    (r'(?:because\s+of|due\s+to)\s+(\w+),?\s+(\w+)', 'Causes', 0.7, True),  # Reversed order
+
+    # CapableOf patterns (ability relations)
+    (r'(\w+)\s+(?:can|could|is\s+able\s+to)\s+(\w+)', 'CapableOf', 0.85, False),
+    (r'(\w+)\s+(?:has\s+the\s+ability\s+to|is\s+capable\s+of)\s+(\w+)', 'CapableOf', 0.9, False),
+
+    # AtLocation patterns (spatial relations)
+    (r'(\w+)\s+(?:is|are)\s+(?:found|located|situated)\s+(?:in|at|on)\s+(\w+)', 'AtLocation', 0.9, False),
+    (r'(\w+)\s+(?:lives?|exists?|occurs?)\s+(?:in|at|on)\s+(\w+)', 'AtLocation', 0.85, False),
+
+    # HasProperty patterns (attribute relations)
+    (r'(\w+)\s+(?:is|are)\s+(\w+)', 'HasProperty', 0.5, False),  # Very general, low confidence
+    (r'(\w+)\s+(?:is|are)\s+(?:typically|usually|often|generally)\s+(\w+)', 'HasProperty', 0.7, False),
+    (r'(?:a|an)\s+(\w+)\s+(\w+)\s+(?:is|are)', 'HasProperty', 0.6, True),  # "a big dog" → dog HasProperty big
+
+    # Antonym patterns (opposite relations)
+    (r'(\w+)\s+(?:is|are)\s+(?:the\s+)?opposite\s+of\s+(\w+)', 'Antonym', 0.95, False),
+    (r'(\w+)\s+(?:vs\.?|versus|or)\s+(\w+)', 'Antonym', 0.5, False),  # Lower confidence
+    (r'(\w+)\s+(?:not|isn\'t|aren\'t)\s+(\w+)', 'Antonym', 0.6, False),
+
+    # DerivedFrom patterns (morphological/etymological relations)
+    (r'(\w+)\s+(?:comes?\s+from|is\s+derived\s+from|originates?\s+from)\s+(\w+)', 'DerivedFrom', 0.9, False),
+    (r'(\w+)\s+(?:is\s+based\s+on|stems?\s+from)\s+(\w+)', 'DerivedFrom', 0.85, False),
+
+    # DefinedBy patterns (definitional relations)
+    (r'(\w+)\s+(?:means?|refers?\s+to|denotes?)\s+(\w+)', 'DefinedBy', 0.85, False),
+    (r'(\w+)\s+(?:is\s+defined\s+as|is\s+known\s+as)\s+(?:a|an|the)?\s*(\w+)', 'DefinedBy', 0.9, False),
+]
+
+
+def extract_pattern_relations(
+    documents: Dict[str, str],
+    valid_terms: Set[str],
+    min_confidence: float = 0.5
+) -> List[Tuple[str, str, str, float]]:
+    """
+    Extract semantic relations using pattern matching on document text.
+
+    Uses regex patterns to identify commonsense relations like IsA, HasA,
+    UsedFor, Causes, etc. from natural language expressions.
+
+    Args:
+        documents: Dictionary mapping doc_id to document content
+        valid_terms: Set of terms that exist in the corpus (from layer0)
+        min_confidence: Minimum confidence threshold for extracted relations
+
+    Returns:
+        List of (term1, relation_type, term2, confidence) tuples
+
+    Example:
+        >>> relations = extract_pattern_relations(docs, {"dog", "animal", "pet"})
+        >>> # Finds relations like ("dog", "IsA", "animal", 0.9)
+    """
+    relations: List[Tuple[str, str, str, float]] = []
+    seen_relations: Set[Tuple[str, str, str]] = set()
+
+    for doc_id, content in documents.items():
+        content_lower = content.lower()
+
+        for pattern, relation_type, confidence, swap_order in RELATION_PATTERNS:
+            if confidence < min_confidence:
+                continue
+
+            for match in re.finditer(pattern, content_lower):
+                groups = match.groups()
+                if len(groups) >= 2:
+                    t1, t2 = groups[0], groups[1]
+
+                    if swap_order:
+                        t1, t2 = t2, t1
+
+                    # Clean terms (remove leading/trailing non-alphanumeric)
+                    t1 = t1.strip().lower()
+                    t2 = t2.strip().lower()
+
+                    # Skip if terms are the same
+                    if t1 == t2:
+                        continue
+
+                    # Skip if terms don't exist in corpus
+                    if t1 not in valid_terms or t2 not in valid_terms:
+                        continue
+
+                    # Skip common stopwords that might slip through patterns
+                    stopwords = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be',
+                                 'been', 'being', 'have', 'has', 'had', 'do', 'does',
+                                 'did', 'will', 'would', 'could', 'should', 'may',
+                                 'might', 'must', 'shall', 'can', 'this', 'that',
+                                 'these', 'those', 'it', 'its', 'they', 'them',
+                                 'their', 'we', 'us', 'our', 'you', 'your', 'i', 'me', 'my'}
+                    if t1 in stopwords or t2 in stopwords:
+                        continue
+
+                    # Create relation key to avoid duplicates
+                    rel_key = (t1, relation_type, t2)
+
+                    # For symmetric relations, also check reverse
+                    if relation_type in {'SimilarTo', 'Antonym', 'RelatedTo'}:
+                        rev_key = (t2, relation_type, t1)
+                        if rev_key in seen_relations:
+                            continue
+
+                    if rel_key not in seen_relations:
+                        seen_relations.add(rel_key)
+                        relations.append((t1, relation_type, t2, confidence))
+
+    return relations
+
+
+def get_pattern_statistics(relations: List[Tuple[str, str, str, float]]) -> Dict[str, Any]:
+    """
+    Get statistics about extracted pattern-based relations.
+
+    Args:
+        relations: List of (term1, relation_type, term2, confidence) tuples
+
+    Returns:
+        Dictionary with statistics about relation types and counts
+    """
+    type_counts: Dict[str, int] = defaultdict(int)
+    type_confidences: Dict[str, List[float]] = defaultdict(list)
+
+    for t1, rel_type, t2, conf in relations:
+        type_counts[rel_type] += 1
+        type_confidences[rel_type].append(conf)
+
+    # Compute average confidence per type
+    avg_confidences = {
+        rel_type: sum(confs) / len(confs)
+        for rel_type, confs in type_confidences.items()
+    }
+
+    return {
+        'total_relations': len(relations),
+        'relation_type_counts': dict(type_counts),
+        'average_confidence_by_type': avg_confidences,
+        'unique_types': len(type_counts)
+    }
+
+
 def extract_corpus_semantics(
     layers: Dict[CorticalLayer, HierarchicalLayer],
     documents: Dict[str, str],
     tokenizer,
     window_size: int = 5,
-    min_cooccurrence: int = 2
+    min_cooccurrence: int = 2,
+    use_pattern_extraction: bool = True,
+    min_pattern_confidence: float = 0.6
 ) -> List[Tuple[str, str, str, float]]:
     """
     Extract semantic relations from corpus co-occurrence patterns.
-    
+
     Analyzes word co-occurrences to infer semantic relationships:
-    - Words appearing together frequently → RelatedTo
+    - Words appearing together frequently → CoOccurs
     - Words appearing in similar contexts → SimilarTo
-    - Words in definitional patterns → IsA, DefinedBy
-    
+    - Pattern-based extraction → IsA, HasA, UsedFor, Causes, etc.
+
     Args:
         layers: Dictionary of layers (needs TOKENS)
         documents: Dictionary of documents
         tokenizer: Tokenizer instance for processing text
         window_size: Co-occurrence window size
         min_cooccurrence: Minimum co-occurrences to form relation
-        
+        use_pattern_extraction: Whether to extract relations from text patterns
+        min_pattern_confidence: Minimum confidence for pattern-based extraction
+
     Returns:
         List of (term1, relation, term2, weight) tuples
     """
@@ -111,37 +286,32 @@ def extract_corpus_semantics(
     terms = list(context_vectors.keys())
     for i, t1 in enumerate(terms):
         vec1 = context_vectors[t1]
-        
+
         for t2 in terms[i+1:]:
             vec2 = context_vectors[t2]
-            
+
             # Cosine similarity of context vectors
             common = set(vec1.keys()) & set(vec2.keys())
             if len(common) >= 3:
                 dot = sum(vec1[k] * vec2[k] for k in common)
                 mag1 = math.sqrt(sum(v*v for v in vec1.values()))
                 mag2 = math.sqrt(sum(v*v for v in vec2.values()))
-                
+
                 if mag1 > 0 and mag2 > 0:
                     sim = dot / (mag1 * mag2)
                     if sim > 0.3:
                         relations.append((t1, 'SimilarTo', t2, sim))
-    
-    # Extract IsA from definitional patterns
-    isa_patterns = [
-        r'(\w+)\s+(?:is|are)\s+(?:a|an)\s+(?:type\s+of\s+)?(\w+)',
-        r'(\w+),?\s+(?:a|an)\s+(?:kind|type)\s+of\s+(\w+)',
-        r'(\w+)\s+(?:such\s+as|like)\s+(\w+)',
-    ]
-    
-    for doc_id, content in documents.items():
-        content_lower = content.lower()
-        for pattern in isa_patterns:
-            for match in re.finditer(pattern, content_lower):
-                t1, t2 = match.groups()
-                if t1 in layer0.minicolumns and t2 in layer0.minicolumns:
-                    relations.append((t1, 'IsA', t2, 1.0))
-    
+
+    # Extract commonsense relations from text patterns
+    if use_pattern_extraction:
+        valid_terms = set(layer0.minicolumns.keys())
+        pattern_relations = extract_pattern_relations(
+            documents,
+            valid_terms,
+            min_confidence=min_pattern_confidence
+        )
+        relations.extend(pattern_relations)
+
     return relations
 
 

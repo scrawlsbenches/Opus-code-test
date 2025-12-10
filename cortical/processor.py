@@ -698,10 +698,79 @@ class CorticalTextProcessor:
             print(f"Created {stats['connections_created']} concept connections")
         return stats
 
-    def extract_corpus_semantics(self, verbose: bool = True) -> int:
-        self.semantic_relations = semantics.extract_corpus_semantics(self.layers, self.documents, self.tokenizer)
-        if verbose: print(f"Extracted {len(self.semantic_relations)} semantic relations")
+    def extract_corpus_semantics(
+        self,
+        use_pattern_extraction: bool = True,
+        min_pattern_confidence: float = 0.6,
+        verbose: bool = True
+    ) -> int:
+        """
+        Extract semantic relations from the corpus.
+
+        Combines co-occurrence analysis with pattern-based extraction to discover
+        semantic relationships like IsA, HasA, UsedFor, Causes, etc.
+
+        Args:
+            use_pattern_extraction: Extract relations from text patterns (e.g., "X is a Y")
+            min_pattern_confidence: Minimum confidence for pattern-based relations
+            verbose: Print progress messages
+
+        Returns:
+            Number of relations extracted
+
+        Example:
+            >>> count = processor.extract_corpus_semantics(verbose=False)
+            >>> print(f"Found {count} semantic relations")
+        """
+        self.semantic_relations = semantics.extract_corpus_semantics(
+            self.layers,
+            self.documents,
+            self.tokenizer,
+            use_pattern_extraction=use_pattern_extraction,
+            min_pattern_confidence=min_pattern_confidence
+        )
+        if verbose:
+            print(f"Extracted {len(self.semantic_relations)} semantic relations")
         return len(self.semantic_relations)
+
+    def extract_pattern_relations(
+        self,
+        min_confidence: float = 0.6,
+        verbose: bool = True
+    ) -> List[Tuple[str, str, str, float]]:
+        """
+        Extract semantic relations using pattern matching only.
+
+        Uses regex patterns to identify commonsense relations from text patterns
+        like "X is a type of Y" → IsA, "X is used for Y" → UsedFor, etc.
+
+        Args:
+            min_confidence: Minimum confidence for extracted relations
+            verbose: Print progress messages
+
+        Returns:
+            List of (term1, relation_type, term2, confidence) tuples
+
+        Example:
+            >>> relations = processor.extract_pattern_relations(verbose=False)
+            >>> for t1, rel, t2, conf in relations[:5]:
+            ...     print(f"{t1} --{rel}--> {t2} ({conf:.2f})")
+        """
+        layer0 = self.get_layer(CorticalLayer.TOKENS)
+        valid_terms = set(layer0.minicolumns.keys())
+
+        relations = semantics.extract_pattern_relations(
+            self.documents,
+            valid_terms,
+            min_confidence=min_confidence
+        )
+
+        if verbose:
+            stats = semantics.get_pattern_statistics(relations)
+            print(f"Extracted {stats['total_relations']} pattern-based relations")
+            print(f"  Types: {stats['relation_type_counts']}")
+
+        return relations
     
     def retrofit_connections(self, iterations: int = 10, alpha: float = 0.3, verbose: bool = True) -> Dict:
         if not self.semantic_relations: self.extract_corpus_semantics(verbose=False)
