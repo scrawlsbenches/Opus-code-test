@@ -14,6 +14,12 @@ import re
 from typing import Any, Dict, List, Tuple, Set, Optional
 from collections import defaultdict
 
+try:
+    import numpy as np
+    HAS_NUMPY = True
+except ImportError:
+    HAS_NUMPY = False
+
 from .layers import CorticalLayer, HierarchicalLayer
 from .minicolumn import Minicolumn
 
@@ -267,54 +273,93 @@ def extract_corpus_semantics(
                     context_vectors[token][other] += 1
     
     # Extract RelatedTo from co-occurrence
+    # Compute total once outside the loop (was being computed per iteration!)
+    total = sum(cooccurrence.values())
+
     for (t1, t2), count in cooccurrence.items():
         if count >= min_cooccurrence:
             # Normalize by frequency
             col1 = layer0.get_minicolumn(t1)
             col2 = layer0.get_minicolumn(t2)
-            
+
             if col1 and col2:
                 # PMI-like score
-                total = sum(cooccurrence.values())
                 expected = (col1.occurrence_count * col2.occurrence_count) / (total + 1)
                 pmi = math.log((count + 1) / (expected + 1))
-                
+
                 if pmi > 0:
                     relations.append((t1, 'CoOccurs', t2, min(pmi, 3.0)))
     
     # Extract SimilarTo from context similarity
     terms = list(context_vectors.keys())
+    n_terms = len(terms)
 
-    # Pre-compute magnitudes once per vector (O(n) instead of O(n²))
-    magnitudes: Dict[str, float] = {}
-    for term in terms:
-        vec = context_vectors[term]
-        mag = math.sqrt(sum(v * v for v in vec.values()))
-        magnitudes[term] = mag
+    if n_terms > 1 and HAS_NUMPY:
+        # Fast path: use numpy vectorization
+        # Build vocabulary of all context keys
+        all_keys: Set[str] = set()
+        for vec in context_vectors.values():
+            all_keys.update(vec.keys())
+        vocab = sorted(all_keys)
+        key_to_idx = {k: i for i, k in enumerate(vocab)}
+        n_vocab = len(vocab)
 
-    # Pre-compute key sets for faster intersection
-    key_sets: Dict[str, set] = {term: set(context_vectors[term].keys()) for term in terms}
+        # Convert sparse vectors to dense numpy matrix
+        matrix = np.zeros((n_terms, n_vocab), dtype=np.float32)
+        for i, term in enumerate(terms):
+            vec = context_vectors[term]
+            for k, v in vec.items():
+                matrix[i, key_to_idx[k]] = v
 
-    for i, t1 in enumerate(terms):
-        vec1 = context_vectors[t1]
-        mag1 = magnitudes[t1]
-        if mag1 == 0:
-            continue
-        keys1 = key_sets[t1]
+        # Normalize rows for cosine similarity (dot product of normalized = cosine)
+        norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+        norms[norms == 0] = 1  # Avoid division by zero
+        matrix_norm = matrix / norms
 
-        for t2 in terms[i+1:]:
-            mag2 = magnitudes[t2]
-            if mag2 == 0:
+        # Compute all pairwise cosine similarities via matrix multiplication
+        similarities = matrix_norm @ matrix_norm.T
+
+        # Count non-zero elements per row (for min common keys filter)
+        nonzero_counts = (matrix > 0).astype(np.int32)
+
+        # Extract pairs with similarity > 0.3 and at least 3 common keys
+        for i in range(n_terms):
+            row_i = nonzero_counts[i]
+            for j in range(i + 1, n_terms):
+                if similarities[i, j] > 0.3:
+                    common_count = np.sum(row_i & nonzero_counts[j])
+                    if common_count >= 3:
+                        relations.append((terms[i], 'SimilarTo', terms[j], float(similarities[i, j])))
+
+    elif n_terms > 1:
+        # Fallback: pure Python implementation
+        magnitudes: Dict[str, float] = {}
+        for term in terms:
+            vec = context_vectors[term]
+            mag = math.sqrt(sum(v * v for v in vec.values()))
+            magnitudes[term] = mag
+
+        key_sets: Dict[str, set] = {term: set(context_vectors[term].keys()) for term in terms}
+
+        for i, t1 in enumerate(terms):
+            vec1 = context_vectors[t1]
+            mag1 = magnitudes[t1]
+            if mag1 == 0:
                 continue
+            keys1 = key_sets[t1]
 
-            # Fast intersection using pre-computed sets
-            common = keys1 & key_sets[t2]
-            if len(common) >= 3:
-                vec2 = context_vectors[t2]
-                dot = sum(vec1[k] * vec2[k] for k in common)
-                sim = dot / (mag1 * mag2)
-                if sim > 0.3:
-                    relations.append((t1, 'SimilarTo', t2, sim))
+            for t2 in terms[i+1:]:
+                mag2 = magnitudes[t2]
+                if mag2 == 0:
+                    continue
+
+                common = keys1 & key_sets[t2]
+                if len(common) >= 3:
+                    vec2 = context_vectors[t2]
+                    dot = sum(vec1[k] * vec2[k] for k in common)
+                    sim = dot / (mag1 * mag2)
+                    if sim > 0.3:
+                        relations.append((t1, 'SimilarTo', t2, sim))
 
     # Extract commonsense relations from text patterns
     if use_pattern_extraction:
