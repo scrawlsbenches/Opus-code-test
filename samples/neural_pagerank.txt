@@ -1,0 +1,21 @@
+Neural PageRank: When Graph Algorithms Meet Brain Computation
+
+The neocortex and PageRank share a profound computational principle: both systems determine importance through iterative propagation across network connections. In the brain, neural activation spreads through synaptic connections, with highly connected neurons accumulating greater influence. PageRank similarly propagates importance scores through link structure, identifying central nodes in directed graphs.
+
+Cortical columns function as interconnected processing units, exchanging signals through lateral connections within layers and vertical connections across the cortical hierarchy. This network topology mirrors the web graph structure that PageRank was designed to analyze. Both systems rely on connection patterns to compute emergent properties that individual nodes cannot determine alone.
+
+The mathematical framework of PageRank finds biological analogs in neural network dynamics. The damping factor that ensures algorithmic convergence parallels synaptic decay that prevents runaway excitation in neural circuits. Both mechanisms balance local activation with global distribution, maintaining stable computation while preserving sensitivity to input patterns.
+
+Researchers have applied PageRank-inspired algorithms to analyze brain connectivity networks derived from neuroimaging data. Functional MRI reveals correlated activity between brain regions, defining edges in connectivity graphs. PageRank scores identify hub regions with disproportionate influence on information flow, matching known centers of cognitive integration like prefrontal cortex.
+
+The sparse, hierarchical structure of neocortical networks enables efficient computation despite massive scale. The brain contains roughly 86 billion neurons with trillions of synaptic connections, yet achieves remarkable energy efficiency. PageRank computations on sparse web graphs similarly exploit structure to scale beyond naive matrix operations, suggesting convergent solutions to distributed importance computation.
+
+Hebbian learning, summarized as "neurons that fire together wire together," shapes connectivity based on correlated activity. This local learning rule produces global network structure that encodes statistical patterns in experience. PageRank similarly derives global importance from local link decisions made by individual page authors, demonstrating how distributed processes generate coherent rankings.
+
+Attentional mechanisms in the cortex selectively amplify neural responses to relevant stimuli. This biological attention parallels personalized PageRank that biases importance computation toward user-specific preferences. Both systems modulate global computation with local context, adapting general algorithms to particular situations.
+
+The random walk interpretation of PageRank corresponds to spreading activation in semantic memory. When we hear a word, related concepts receive partial activation that spreads through associative connections. This spreading activation retrieves contextually relevant knowledge, just as random walks explore neighborhoods of starting nodes in graphs.
+
+Recurrent neural networks in machine learning implement iterative computation reminiscent of PageRank power iteration. Information cycles through network layers until representations stabilize, computing fixed points of learned transformations. This architectural parallel between biological, algorithmic, and artificial neural systems suggests fundamental constraints on distributed computation.
+
+Understanding the convergence between graph algorithms and neural computation illuminates principles that transcend specific implementations. Whether in silicon chips computing PageRank, biological neurons processing sensory input, or artificial neural networks learning representations, network structure fundamentally shapes what computations are possible and efficient.
