@@ -10,7 +10,7 @@ Your visual cortex doesn't grep through pixels looking for cats. It builds hiera
 
 Feed it documents. It tokenizes them into "minicolumns" (Layer 0), connects co-occurring words through Hebbian learning ("neurons that fire together, wire together"), clusters them into concepts (Layer 2), and links documents by shared meaning (Layer 3). The result: a graph that understands your corpus well enough to expand queries, complete analogies, and tell you where your knowledge has gaps.
 
-No PyTorch. No transformers. No API keys. Just 337 tests, ~3000 lines of pure Python, and a data structure that would make a neuroscientist squint approvingly.
+No PyTorch. No transformers. No API keys. Just 337 tests, 7000 lines of pure Python, and a data structure that would make a neuroscientist squint approvingly.
 
 ---
 
