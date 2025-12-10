@@ -1941,4 +1941,82 @@ Document common usage patterns and code examples that help answer "how do I..." 
 
 ---
 
+### 58. Git-Compatible Chunk-Based Indexing
+
+**Files:** `scripts/index_codebase.py`, `cortical/chunk_index.py` (new), `tests/test_chunk_indexing.py` (new)
+**Status:** [ ] In Progress
+**Priority:** High
+
+**Problem:**
+The current pkl-based index cannot be tracked in git (binary, merge conflicts). This prevents sharing indexed state across branches and team members, requiring full rebuilds.
+
+**Solution:**
+Implement append-only, time-stamped JSON chunks that can be safely committed to git and merged without conflicts.
+
+**Architecture:**
+```
+corpus_chunks/                        # Tracked in git
+├── 2025-12-10_21-53-45_a1b2.json    # Session 1 changes
+├── 2025-12-10_22-15-30_c3d4.json    # Session 2 changes
+└── 2025-12-10_23-00-00_e5f6.json    # Session 3 changes
+
+corpus_dev.pkl                        # NOT tracked (local cache)
+```
+
+**Chunk Format:**
+```json
+{
+  "timestamp": "2025-12-10T21:53:45",
+  "session_id": "a1b2c3d4",
+  "branch": "feature-x",
+  "operations": [
+    {"op": "add", "doc_id": "docs/new.md", "content": "...", "mtime": 1234567890},
+    {"op": "modify", "doc_id": "query.py", "content": "...", "mtime": 1234567891},
+    {"op": "delete", "doc_id": "old.md"}
+  ]
+}
+```
+
+**Implementation Tasks:**
+1. [ ] Create `ChunkWriter` class - save session changes as timestamped JSON
+2. [ ] Create `ChunkLoader` class - combine chunks on startup (later timestamps win)
+3. [ ] Add cache validator - check if pkl matches combined chunk hash
+4. [ ] Add `--compact` command - merge old chunks into single file
+5. [ ] Update CLI with `--use-chunks` flag
+6. [ ] Handle deletions with tombstones
+7. [ ] Add `.gitignore` entry for `corpus_dev.pkl` (keep chunks tracked)
+8. [ ] Add comprehensive tests
+
+**Startup Flow:**
+```
+1. Load all chunk files (sorted by timestamp)
+2. Replay operations → build document set
+   - Later timestamps win for conflicts
+   - Deletes remove documents
+3. Check if pkl cache is valid (hash of combined docs)
+   - Valid: load pkl (fast)
+   - Invalid: recompute analysis (~2s)
+```
+
+**Benefits:**
+- No merge conflicts (unique timestamp+session names)
+- Shared indexed state across team/branches
+- Fast startup when cache valid
+- Git-friendly (small JSON, append-only)
+- Periodic compaction like `git gc`
+
+**Usage (planned):**
+```bash
+# Index with chunks (creates timestamped JSON)
+python scripts/index_codebase.py --incremental --use-chunks
+
+# Compact old chunks
+python scripts/index_codebase.py --compact --before 2025-12-01
+
+# Status including chunk info
+python scripts/index_codebase.py --status --use-chunks
+```
+
+---
+
 *Updated 2025-12-10*
