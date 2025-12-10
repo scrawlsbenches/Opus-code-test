@@ -80,6 +80,24 @@ print(f"Documents: {summary['documents']}, Connections: {summary['total_connecti
 processor.save("my_corpus.pkl")
 ```
 
+**Output:**
+```
+Computing activation propagation...
+Computing importance (PageRank)...
+Computing TF-IDF...
+Computing document connections...
+Computing bigram connections...
+Building concept clusters...
+Computing concept connections (document_overlap)...
+Done.
+[('doc1', 0.8774208144843981), ('doc2', 0.8317923190728529)]
+Documents: 3, Connections: 66
+✓ Saved processor to my_corpus.pkl
+  - 3 documents
+  - 29 minicolumns
+  - 66 connections
+```
+
 ## Core API
 
 ### Document Processing
