@@ -1110,51 +1110,218 @@ results = processor.complete_analogy(
 
 ---
 
-## Code Review Concerns
+## Actionable Tasks (2025-12-10)
 
-The following concerns were identified during code review and should be addressed in future iterations:
-
-### 31. Consider Splitting processor.py
-
-**File:** `cortical/processor.py`
-**Status:** [ ] Future Enhancement
-**Priority:** Low
-
-**Concern:**
-The `processor.py` file has grown to 800+ lines with the addition of incremental indexing, batch APIs, and multi-stage ranking. Consider splitting into smaller modules:
-- `processor_core.py` - Core document processing
-- `processor_batch.py` - Batch operations (add_documents_batch, find_*_batch)
-- `processor_incremental.py` - Incremental indexing and staleness tracking
+The following tasks were identified during comprehensive code review and are prioritized for implementation:
 
 ---
 
-### 32. Semantic Lookup Memory Optimization
+### 37. Create Dedicated Query Module Tests
 
-**File:** `cortical/analysis.py`
-**Function:** `compute_concept_connections()`
-**Status:** [ ] Future Enhancement
+**File:** `tests/test_query.py` (new file)
+**Status:** [ ] Not Started
+**Priority:** High
+
+**Problem:**
+`cortical/query.py` (1,503 lines, 20+ functions) has NO dedicated test file. Functions are tested only indirectly through `test_processor.py`.
+
+**Functions Needing Coverage:**
+- `expand_query_multihop()` - Multi-hop inference with relation chains
+- `score_relation_path()` - Relation path validation
+- `get_expanded_query_terms()` - Helper for all expansion methods
+- `find_relevant_concepts()` - Concept filtering for RAG
+- `find_relation_between()` and `find_terms_with_relation()` - Relation discovery
+- Chunking and batch operations
+
+**Deliverable:** Create `tests/test_query.py` with 30+ unit tests.
+
+---
+
+### 38. Add Input Validation to Public API
+
+**Files:** `cortical/processor.py`, `cortical/query.py`
+**Status:** [ ] Not Started
+**Priority:** High
+
+**Problem:**
+Public API methods silently accept invalid inputs, leading to confusing behavior:
+
+| Method | Issue | Line |
+|--------|-------|------|
+| `process_document()` | No check for empty strings/None | processor.py:49 |
+| `find_documents_for_query()` | Accepts empty queries | processor.py:1207 |
+| `complete_analogy()` | No validation that terms exist | processor.py:1066 |
+| `add_documents_batch()` | No validation of document format | processor.py:250 |
+
+**Solution:**
+```python
+def process_document(self, doc_id: str, content: str) -> None:
+    if not doc_id or not isinstance(doc_id, str):
+        raise ValueError("doc_id must be a non-empty string")
+    if not content or not isinstance(content, str):
+        raise ValueError("content must be a non-empty string")
+```
+
+---
+
+### 39. Move Inline Imports to Module Top
+
+**Files:** `cortical/processor.py:161`, `cortical/semantics.py:493`
+**Status:** [ ] Not Started
+**Priority:** Low
+
+**Problem:**
+`import copy` statements inside methods pollute namespaces and impact readability.
+
+**Fix:** Move `import copy` to top-level imports in both files.
+
+---
+
+### 40. Add Parameter Range Validation
+
+**Files:** Multiple
+**Status:** [ ] Not Started
 **Priority:** Medium
 
-**Concern:**
-The semantic lookup builds a double-nested dictionary (`Dict[str, Dict[str, Tuple[str, float]]]`) which stores relations in both directions. For large semantic relation sets (10K+ relations), this could consume significant memory.
+**Problem:**
+No validation for invalid parameter ranges:
 
-**Potential Solution:**
-- Use a single direction and check both orderings at lookup time
-- Or use a frozenset key: `{(t1, t2): (relation, weight)}`
+| Parameter | Valid Range | Location |
+|-----------|-------------|----------|
+| `top_n` | > 0 | All retrieval functions |
+| `chunk_size` | > 0 | query.py chunking |
+| `overlap` | < chunk_size | query.py chunking |
+| `damping` | 0 < d < 1 | analysis.py PageRank |
+| `alpha` | 0 < a < 1 | semantics.py retrofitting |
+
+**Solution:** Add guard clauses at function entry points.
 
 ---
 
-### 33. Tune Semantic Bonus Cap
+### 41. Create Configuration Dataclass
 
-**File:** `cortical/analysis.py`
-**Line:** ~408
-**Status:** [ ] Future Enhancement
+**Files:** New `cortical/config.py`
+**Status:** [ ] Not Started
+**Priority:** Medium
+
+**Problem:**
+Magic numbers scattered across modules with no central configuration:
+- `gaps.py`: ISOLATION_THRESHOLD=0.02, WELL_CONNECTED_THRESHOLD=0.03
+- `query.py`: VALID_RELATION_CHAINS (15 entries)
+- `analysis.py`: damping=0.85, iterations=20, tolerance=1e-6
+
+**Solution:**
+```python
+@dataclass
+class CorticalConfig:
+    # PageRank
+    pagerank_damping: float = 0.85
+    pagerank_iterations: int = 20
+    pagerank_tolerance: float = 1e-6
+
+    # Clustering
+    min_cluster_size: int = 3
+    cluster_strictness: float = 1.0
+
+    # Gap detection
+    isolation_threshold: float = 0.02
+    well_connected_threshold: float = 0.03
+```
+
+---
+
+### 42. Add Simple Query Language Support
+
+**File:** `cortical/query.py`
+**Status:** [ ] Not Started
 **Priority:** Low
 
-**Concern:**
-Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reasonable default but may benefit from:
-- Making it a configurable parameter
-- Empirical testing on different corpus types
+**Problem:**
+Only natural language queries supported. No structured filtering.
+
+**Solution:** Add minimal syntax:
+- `"term1 AND term2"` - require both terms
+- `"term1 OR term2"` - either term
+- `"-term1"` - exclude term
+- `"term1"` (quoted) - exact match
+
+---
+
+### 43. Optimize Chunk Scoring Performance
+
+**File:** `cortical/query.py:590-630`
+**Status:** [ ] Not Started
+**Priority:** Medium
+
+**Problem:**
+`score_chunk()` tokenizes chunk text every call with no caching.
+
+**Impact:** ~N tokenizations for N chunks from same document.
+
+**Solution:** Pre-compute token→minicolumn lookups once per document, reuse across chunks.
+
+---
+
+### 44. Remove Deprecated feedforward_sources
+
+**Files:** `cortical/minicolumn.py:117`, `analysis.py:457`, `query.py:105`
+**Status:** [ ] Not Started
+**Priority:** Low
+
+**Problem:**
+`feedforward_sources` is marked deprecated but still used in 4+ locations.
+
+**Solution:** Migrate all usages to `feedforward_connections` and remove deprecated attribute.
+
+---
+
+### 45. Add LRU Cache for Query Results
+
+**File:** `cortical/processor.py`
+**Status:** [ ] Not Started
+**Priority:** Medium
+
+**Problem:**
+Every query re-expands terms and rescores documents. Repeated queries (common in RAG loops) are slow.
+
+**Solution:**
+```python
+from functools import lru_cache
+
+@lru_cache(maxsize=100)
+def _cached_query_expansion(self, query_text: str) -> Dict[str, float]:
+    return self.expand_query(query_text)
+```
+
+---
+
+### 46. Standardize Return Types with Dataclasses
+
+**File:** `cortical/query.py`
+**Status:** [ ] Not Started
+**Priority:** Low
+
+**Problem:**
+Inconsistent return types across query functions:
+- `find_documents_for_query()` → `List[Tuple[str, float]]`
+- `find_passages_for_query()` → `List[Tuple[str, str, int, int, float]]`
+- `complete_analogy()` → `List[Tuple[str, float, str]]`
+
+**Solution:**
+```python
+@dataclass
+class DocumentMatch:
+    doc_id: str
+    score: float
+
+@dataclass
+class PassageMatch:
+    doc_id: str
+    text: str
+    start: int
+    end: int
+    score: float
+```
 
 ---
 
@@ -1201,7 +1368,7 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 ## Test Results
 
 ```
-Ran 321 tests in 0.280s
+Ran 340 tests in 0.311s
 OK
 ```
 
@@ -1400,47 +1567,32 @@ Currently these are always 0 due to the bug.
 
 ---
 
-## Code Quality Issues (2025-12-10)
-
-### 36. Inconsistent Bigram Separator Convention
-
-**Files:** Multiple
-**Status:** [ ] Future Enhancement
-**Priority:** Low
-
-**Observation:**
-The codebase has an inconsistent convention for bigram separators:
-- **Canonical format (tokenizer.py):** Space separator (`' '.join()`)
-- **Bug in query.py:** Underscore separator (`f"{term_a}_{term_b}"`)
-- **Bug in analysis.py:** Underscore separator (`split('_')`)
-
-**Recommendation:**
-1. Add a constant to define the canonical bigram separator
-2. Use the constant throughout the codebase
-3. Add documentation about the convention in CLAUDE.md
-
-**Example:**
-```python
-# In tokenizer.py or a constants module:
-BIGRAM_SEPARATOR = ' '
-
-# Usage:
-bigram = BIGRAM_SEPARATOR.join([term_a, term_b])
-parts = bigram.split(BIGRAM_SEPARATOR)
-```
-
 ---
 
-## Updated Summary
+## New Task Summary (2025-12-10)
 
-| Priority | Task | Status | Category |
-|----------|------|--------|----------|
-| **Critical** | **Fix bigram separator in analogy completion** | [x] Completed | **Bug Fix** |
-| **Critical** | **Fix bigram separator in bigram connections** | [x] Completed | **Bug Fix** |
-| Low | Inconsistent bigram separator convention | [ ] Future Enhancement | Code Quality |
+| # | Priority | Task | Status | Category |
+|---|----------|------|--------|----------|
+| 34 | **Critical** | Fix bigram separator in analogy completion | ✅ Completed | Bug Fix |
+| 35 | **Critical** | Fix bigram separator in bigram connections | ✅ Completed | Bug Fix |
+| 37 | **High** | Create dedicated query module tests | [ ] Not Started | Testing |
+| 38 | **High** | Add input validation to public API | [ ] Not Started | Code Quality |
+| 40 | Medium | Add parameter range validation | [ ] Not Started | Code Quality |
+| 41 | Medium | Create configuration dataclass | [ ] Not Started | Architecture |
+| 43 | Medium | Optimize chunk scoring performance | [ ] Not Started | Performance |
+| 45 | Medium | Add LRU cache for query results | [ ] Not Started | Performance |
+| 39 | Low | Move inline imports to module top | [ ] Not Started | Code Quality |
+| 42 | Low | Add simple query language support | [ ] Not Started | Feature |
+| 44 | Low | Remove deprecated feedforward_sources | [ ] Not Started | Cleanup |
+| 46 | Low | Standardize return types with dataclasses | [ ] Not Started | API |
+
+**Completed:** 2/12 tasks
+**High Priority Remaining:** 2 tasks
+**Medium Priority Remaining:** 4 tasks
+**Low Priority Remaining:** 4 tasks
 
 **Total Tests:** 340 (all passing)
 
 ---
 
-*Updated from code review on 2025-12-10*
+*Updated from comprehensive code review on 2025-12-10*
