@@ -360,6 +360,167 @@ class CorticalTextProcessor:
             'recomputation': recompute
         }
 
+    def remove_document(self, doc_id: str, verbose: bool = False) -> Dict[str, Any]:
+        """
+        Remove a document from the corpus.
+
+        Removes the document and cleans up all references to it in the layers:
+        - Removes from documents dict and metadata
+        - Removes document minicolumn from Layer 3
+        - Removes doc_id from token and bigram document_ids sets
+        - Decrements occurrence counts appropriately
+        - Cleans up feedforward/feedback connections
+
+        Args:
+            doc_id: Document identifier to remove
+            verbose: Print progress messages
+
+        Returns:
+            Dict with removal statistics:
+                - found: Whether the document existed
+                - tokens_affected: Number of tokens that referenced this document
+                - bigrams_affected: Number of bigrams that referenced this document
+
+        Example:
+            >>> processor.remove_document("old_doc")
+            {'found': True, 'tokens_affected': 42, 'bigrams_affected': 35}
+        """
+        from .layers import CorticalLayer
+
+        if doc_id not in self.documents:
+            return {'found': False, 'tokens_affected': 0, 'bigrams_affected': 0}
+
+        if verbose:
+            print(f"Removing document: {doc_id}")
+
+        # Remove from documents and metadata
+        del self.documents[doc_id]
+        if doc_id in self.document_metadata:
+            del self.document_metadata[doc_id]
+
+        # Remove document minicolumn from Layer 3
+        layer3 = self.layers[CorticalLayer.DOCUMENTS]
+        doc_col = layer3.get_minicolumn(doc_id)
+        if doc_col:
+            # Get tokens/bigrams that were connected to this document
+            connected_ids = set(doc_col.feedforward_connections.keys())
+            layer3.remove_minicolumn(doc_id)
+
+        # Clean up token references in Layer 0
+        layer0 = self.layers[CorticalLayer.TOKENS]
+        tokens_affected = 0
+        for content, col in list(layer0.minicolumns.items()):
+            if doc_id in col.document_ids:
+                col.document_ids.discard(doc_id)
+                tokens_affected += 1
+
+                # Decrement occurrence count by per-doc count
+                if doc_id in col.doc_occurrence_counts:
+                    col.occurrence_count -= col.doc_occurrence_counts[doc_id]
+                    del col.doc_occurrence_counts[doc_id]
+
+                # Clean up feedback connections to document
+                doc_col_id = f"L3_{doc_id}"
+                if doc_col_id in col.feedback_connections:
+                    del col.feedback_connections[doc_col_id]
+
+        # Clean up bigram references in Layer 1
+        layer1 = self.layers[CorticalLayer.BIGRAMS]
+        bigrams_affected = 0
+        for content, col in list(layer1.minicolumns.items()):
+            if doc_id in col.document_ids:
+                col.document_ids.discard(doc_id)
+                bigrams_affected += 1
+
+                # Decrement occurrence count (approximate since we don't track per-doc for bigrams)
+                if doc_id in col.doc_occurrence_counts:
+                    col.occurrence_count -= col.doc_occurrence_counts[doc_id]
+                    del col.doc_occurrence_counts[doc_id]
+
+        # Mark all computations as stale
+        self._mark_all_stale()
+
+        # Invalidate query cache since corpus changed
+        if hasattr(self, '_query_expansion_cache'):
+            self._query_expansion_cache.clear()
+
+        if verbose:
+            print(f"  Affected: {tokens_affected} tokens, {bigrams_affected} bigrams")
+
+        return {
+            'found': True,
+            'tokens_affected': tokens_affected,
+            'bigrams_affected': bigrams_affected
+        }
+
+    def remove_documents_batch(
+        self,
+        doc_ids: List[str],
+        recompute: str = 'none',
+        verbose: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Remove multiple documents efficiently with single recomputation.
+
+        Args:
+            doc_ids: List of document identifiers to remove
+            recompute: Level of recomputation after removal:
+                - 'none': Just remove documents, mark computations stale
+                - 'tfidf': Recompute TF-IDF only
+                - 'full': Run full compute_all()
+            verbose: Print progress messages
+
+        Returns:
+            Dict with removal statistics:
+                - documents_removed: Number of documents actually removed
+                - documents_not_found: Number of doc_ids that didn't exist
+                - total_tokens_affected: Total tokens affected
+                - total_bigrams_affected: Total bigrams affected
+
+        Example:
+            >>> processor.remove_documents_batch(["old1", "old2", "old3"])
+        """
+        removed = 0
+        not_found = 0
+        total_tokens = 0
+        total_bigrams = 0
+
+        if verbose:
+            print(f"Removing {len(doc_ids)} documents...")
+
+        for doc_id in doc_ids:
+            result = self.remove_document(doc_id, verbose=False)
+            if result['found']:
+                removed += 1
+                total_tokens += result['tokens_affected']
+                total_bigrams += result['bigrams_affected']
+            else:
+                not_found += 1
+
+        if verbose:
+            print(f"  Removed: {removed}, Not found: {not_found}")
+            print(f"  Affected: {total_tokens} tokens, {total_bigrams} bigrams")
+
+        # Perform recomputation
+        if recompute == 'tfidf':
+            if verbose:
+                print("Recomputing TF-IDF...")
+            self.compute_tfidf(verbose=False)
+            self._mark_fresh(self.COMP_TFIDF)
+        elif recompute == 'full':
+            if verbose:
+                print("Running full recomputation...")
+            self.compute_all(verbose=False)
+            self._stale_computations.clear()
+
+        return {
+            'documents_removed': removed,
+            'documents_not_found': not_found,
+            'total_tokens_affected': total_tokens,
+            'total_bigrams_affected': total_bigrams,
+            'recomputation': recompute
+        }
+
     def recompute(
         self,
         level: str = 'stale',

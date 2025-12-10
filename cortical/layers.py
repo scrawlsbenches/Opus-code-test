@@ -135,6 +135,27 @@ class HierarchicalLayer:
         content = self._id_index.get(col_id)
         return self.minicolumns.get(content) if content else None
 
+    def remove_minicolumn(self, content: str) -> bool:
+        """
+        Remove a minicolumn from this layer.
+
+        Args:
+            content: The content key of the minicolumn to remove
+
+        Returns:
+            True if the minicolumn was found and removed, False otherwise
+        """
+        if content not in self.minicolumns:
+            return False
+
+        col = self.minicolumns[content]
+        # Remove from ID index
+        if col.id in self._id_index:
+            del self._id_index[col.id]
+        # Remove from minicolumns dict
+        del self.minicolumns[content]
+        return True
+
     def column_count(self) -> int:
         """Return the number of minicolumns in this layer."""
         return len(self.minicolumns)
