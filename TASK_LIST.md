@@ -1203,28 +1203,32 @@ Test count increased from 340 to 388.
 
 ### 38. Add Input Validation to Public API
 
-**Files:** `cortical/processor.py`, `cortical/query.py`
-**Status:** [ ] Not Started
+**Files:** `cortical/processor.py`
+**Status:** [x] Completed (2025-12-10)
 **Priority:** High
 
 **Problem:**
-Public API methods silently accept invalid inputs, leading to confusing behavior:
+Public API methods silently accept invalid inputs, leading to confusing behavior.
 
-| Method | Issue | Line |
-|--------|-------|------|
-| `process_document()` | No check for empty strings/None | processor.py:49 |
-| `find_documents_for_query()` | Accepts empty queries | processor.py:1207 |
-| `complete_analogy()` | No validation that terms exist | processor.py:1066 |
-| `add_documents_batch()` | No validation of document format | processor.py:250 |
+**Solution Applied:**
+Added input validation to 4 key public API methods:
 
-**Solution:**
-```python
-def process_document(self, doc_id: str, content: str) -> None:
-    if not doc_id or not isinstance(doc_id, str):
-        raise ValueError("doc_id must be a non-empty string")
-    if not content or not isinstance(content, str):
-        raise ValueError("content must be a non-empty string")
-```
+1. **`process_document()`** - Validates doc_id (non-empty string) and content (non-empty string)
+2. **`find_documents_for_query()`** - Validates query_text (non-empty string) and top_n (positive int)
+3. **`complete_analogy()`** - Validates all 3 terms (non-empty strings) and top_n (positive int)
+4. **`add_documents_batch()`** - Validates documents list format, doc_id/content types, and recompute level
+
+All methods now raise `ValueError` with descriptive messages for invalid input.
+
+**Tests Added:** 20 new tests in `TestInputValidation` class covering:
+- Empty/None/non-string doc_id
+- Empty/whitespace-only/non-string content
+- Empty/whitespace-only query_text
+- Invalid top_n values (0, negative)
+- Invalid document batch formats
+- Valid input acceptance
+
+Test count increased from 388 to 408.
 
 ---
 
@@ -1432,7 +1436,7 @@ class PassageMatch:
 ## Test Results
 
 ```
-Ran 388 tests in 0.337s
+Ran 408 tests in 0.336s
 OK
 ```
 
@@ -1641,7 +1645,7 @@ Currently these are always 0 due to the bug.
 | 35 | **Critical** | Fix bigram separator in bigram connections | ✅ Completed | Bug Fix |
 | 47 | **High** | Dog-food the system during development | ✅ Completed | Validation |
 | 37 | **High** | Create dedicated query module tests | ✅ Completed | Testing |
-| 38 | **High** | Add input validation to public API | [ ] Not Started | Code Quality |
+| 38 | **High** | Add input validation to public API | ✅ Completed | Code Quality |
 | 40 | Medium | Add parameter range validation | [ ] Not Started | Code Quality |
 | 41 | Medium | Create configuration dataclass | [ ] Not Started | Architecture |
 | 43 | Medium | Optimize chunk scoring performance | [ ] Not Started | Performance |
@@ -1651,12 +1655,12 @@ Currently these are always 0 due to the bug.
 | 44 | Low | Remove deprecated feedforward_sources | [ ] Not Started | Cleanup |
 | 46 | Low | Standardize return types with dataclasses | [ ] Not Started | API |
 
-**Completed:** 4/13 tasks
-**High Priority Remaining:** 1 task
+**Completed:** 5/13 tasks
+**High Priority Remaining:** 0 tasks
 **Medium Priority Remaining:** 4 tasks
 **Low Priority Remaining:** 4 tasks
 
-**Total Tests:** 388 (all passing)
+**Total Tests:** 408 (all passing)
 
 ---
 

@@ -62,7 +62,18 @@ class CorticalTextProcessor:
 
         Returns:
             Dict with processing statistics (tokens, bigrams, unique_tokens)
+
+        Raises:
+            ValueError: If doc_id or content is empty or not a string
         """
+        # Input validation
+        if not isinstance(doc_id, str) or not doc_id:
+            raise ValueError("doc_id must be a non-empty string")
+        if not isinstance(content, str):
+            raise ValueError("content must be a string")
+        if not content.strip():
+            raise ValueError("content must not be empty or whitespace-only")
+
         self.documents[doc_id] = content
 
         # Store metadata if provided
@@ -281,7 +292,32 @@ class CorticalTextProcessor:
             ...     ("doc3", "Third document content", {"author": "AI"}),
             ... ]
             >>> processor.add_documents_batch(docs, recompute='full')
+
+        Raises:
+            ValueError: If documents list is invalid or recompute level is unknown
         """
+        # Input validation
+        if not isinstance(documents, list):
+            raise ValueError("documents must be a list")
+        if not documents:
+            raise ValueError("documents list must not be empty")
+
+        valid_recompute = {'none', 'tfidf', 'full'}
+        if recompute not in valid_recompute:
+            raise ValueError(f"recompute must be one of {valid_recompute}")
+
+        for i, doc in enumerate(documents):
+            if not isinstance(doc, (tuple, list)) or len(doc) < 2:
+                raise ValueError(
+                    f"documents[{i}] must be a tuple of (doc_id, content) or "
+                    f"(doc_id, content, metadata)"
+                )
+            doc_id, content = doc[0], doc[1]
+            if not isinstance(doc_id, str) or not doc_id:
+                raise ValueError(f"documents[{i}][0] (doc_id) must be a non-empty string")
+            if not isinstance(content, str):
+                raise ValueError(f"documents[{i}][1] (content) must be a string")
+
         total_tokens = 0
         total_bigrams = 0
 
@@ -1101,7 +1137,17 @@ class CorticalTextProcessor:
             >>> results = processor.complete_analogy("neural", "networks", "knowledge")
             >>> for term, score, method in results:
             ...     print(f"{term}: {score:.3f} ({method})")
+
+        Raises:
+            ValueError: If any term is empty or top_n is not positive
         """
+        # Input validation
+        for name, term in [('term_a', term_a), ('term_b', term_b), ('term_c', term_c)]:
+            if not isinstance(term, str) or not term.strip():
+                raise ValueError(f"{name} must be a non-empty string")
+        if not isinstance(top_n, int) or top_n < 1:
+            raise ValueError("top_n must be a positive integer")
+
         if not self.semantic_relations:
             self.extract_corpus_semantics(verbose=False)
 
@@ -1222,7 +1268,16 @@ class CorticalTextProcessor:
 
         Returns:
             List of (doc_id, score) tuples ranked by relevance
+
+        Raises:
+            ValueError: If query_text is empty or top_n is not positive
         """
+        # Input validation
+        if not isinstance(query_text, str) or not query_text.strip():
+            raise ValueError("query_text must be a non-empty string")
+        if not isinstance(top_n, int) or top_n < 1:
+            raise ValueError("top_n must be a positive integer")
+
         return query_module.find_documents_for_query(
             query_text,
             self.layers,

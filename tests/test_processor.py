@@ -2531,5 +2531,172 @@ class TestAnalogyHelperFunctions(unittest.TestCase):
         self.assertEqual(len(result), 2)
 
 
+class TestInputValidation(unittest.TestCase):
+    """Test input validation for public API methods."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor()
+
+    # Tests for process_document validation
+    def test_process_document_empty_doc_id(self):
+        """process_document should reject empty doc_id."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.process_document("", "Some content")
+        self.assertIn("doc_id", str(ctx.exception))
+
+    def test_process_document_none_doc_id(self):
+        """process_document should reject None doc_id."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.process_document(None, "Some content")
+        self.assertIn("doc_id", str(ctx.exception))
+
+    def test_process_document_non_string_doc_id(self):
+        """process_document should reject non-string doc_id."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.process_document(123, "Some content")
+        self.assertIn("doc_id", str(ctx.exception))
+
+    def test_process_document_empty_content(self):
+        """process_document should reject empty content."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.process_document("doc1", "")
+        self.assertIn("content", str(ctx.exception))
+
+    def test_process_document_whitespace_content(self):
+        """process_document should reject whitespace-only content."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.process_document("doc1", "   \n\t  ")
+        self.assertIn("content", str(ctx.exception))
+
+    def test_process_document_non_string_content(self):
+        """process_document should reject non-string content."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.process_document("doc1", 123)
+        self.assertIn("content", str(ctx.exception))
+
+    def test_process_document_valid_input(self):
+        """process_document should accept valid input."""
+        stats = self.processor.process_document("doc1", "Valid content here.")
+        self.assertIn("doc1", self.processor.documents)
+
+    # Tests for find_documents_for_query validation
+    def test_find_documents_empty_query(self):
+        """find_documents_for_query should reject empty query."""
+        self.processor.process_document("doc1", "Some content here.")
+        self.processor.compute_all()
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.find_documents_for_query("")
+        self.assertIn("query_text", str(ctx.exception))
+
+    def test_find_documents_whitespace_query(self):
+        """find_documents_for_query should reject whitespace-only query."""
+        self.processor.process_document("doc1", "Some content here.")
+        self.processor.compute_all()
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.find_documents_for_query("   ")
+        self.assertIn("query_text", str(ctx.exception))
+
+    def test_find_documents_invalid_top_n(self):
+        """find_documents_for_query should reject invalid top_n."""
+        self.processor.process_document("doc1", "Some content here.")
+        self.processor.compute_all()
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.find_documents_for_query("content", top_n=0)
+        self.assertIn("top_n", str(ctx.exception))
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.find_documents_for_query("content", top_n=-1)
+        self.assertIn("top_n", str(ctx.exception))
+
+    def test_find_documents_valid_input(self):
+        """find_documents_for_query should accept valid input."""
+        self.processor.process_document("doc1", "Neural networks process data.")
+        self.processor.compute_all()
+
+        results = self.processor.find_documents_for_query("neural", top_n=5)
+        self.assertIsInstance(results, list)
+
+    # Tests for complete_analogy validation
+    def test_complete_analogy_empty_term(self):
+        """complete_analogy should reject empty terms."""
+        self.processor.process_document("doc1", "Neural networks and data.")
+        self.processor.compute_all()
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.complete_analogy("", "b", "c")
+        self.assertIn("term_a", str(ctx.exception))
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.complete_analogy("a", "", "c")
+        self.assertIn("term_b", str(ctx.exception))
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.complete_analogy("a", "b", "")
+        self.assertIn("term_c", str(ctx.exception))
+
+    def test_complete_analogy_invalid_top_n(self):
+        """complete_analogy should reject invalid top_n."""
+        self.processor.process_document("doc1", "Neural networks and data.")
+        self.processor.compute_all()
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.complete_analogy("a", "b", "c", top_n=0)
+        self.assertIn("top_n", str(ctx.exception))
+
+    def test_complete_analogy_valid_input(self):
+        """complete_analogy should accept valid input."""
+        self.processor.process_document("doc1", "Neural networks process data.")
+        self.processor.compute_all()
+
+        results = self.processor.complete_analogy("neural", "networks", "data", top_n=3)
+        self.assertIsInstance(results, list)
+
+    # Tests for add_documents_batch validation
+    def test_add_documents_batch_not_list(self):
+        """add_documents_batch should reject non-list input."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.add_documents_batch("not a list")
+        self.assertIn("must be a list", str(ctx.exception))
+
+    def test_add_documents_batch_empty_list(self):
+        """add_documents_batch should reject empty list."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.add_documents_batch([])
+        self.assertIn("must not be empty", str(ctx.exception))
+
+    def test_add_documents_batch_invalid_recompute(self):
+        """add_documents_batch should reject invalid recompute level."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.add_documents_batch(
+                [("doc1", "content")],
+                recompute='invalid'
+            )
+        self.assertIn("recompute", str(ctx.exception))
+
+    def test_add_documents_batch_invalid_tuple(self):
+        """add_documents_batch should reject invalid tuple format."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.add_documents_batch([("only_one_element",)])
+        self.assertIn("documents[0]", str(ctx.exception))
+
+    def test_add_documents_batch_invalid_doc_id(self):
+        """add_documents_batch should reject invalid doc_id in tuple."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.add_documents_batch([(123, "content")])
+        self.assertIn("doc_id", str(ctx.exception))
+
+    def test_add_documents_batch_valid_input(self):
+        """add_documents_batch should accept valid input."""
+        docs = [
+            ("doc1", "First document.", None),
+            ("doc2", "Second document.", {"source": "test"}),
+        ]
+        stats = self.processor.add_documents_batch(docs, recompute='none', verbose=False)
+        self.assertEqual(stats['documents_added'], 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
