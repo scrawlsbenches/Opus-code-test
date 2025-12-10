@@ -482,74 +482,137 @@ def propagate_activation(
 def cluster_by_label_propagation(
     layer: HierarchicalLayer,
     min_cluster_size: int = 3,
-    max_iterations: int = 20
+    max_iterations: int = 20,
+    cluster_strictness: float = 1.0,
+    bridge_weight: float = 0.0
 ) -> Dict[int, List[str]]:
     """
     Cluster minicolumns using label propagation.
-    
+
     Label propagation is a semi-supervised community detection
     algorithm. Each node adopts the most common label among its
     neighbors, causing labels to propagate through densely
     connected regions.
-    
+
     Args:
         layer: Layer to cluster
         min_cluster_size: Minimum nodes per cluster
         max_iterations: Maximum iterations
-        
+        cluster_strictness: Controls clustering aggressiveness (0.0-1.0).
+            - 1.0 (default): Strict clustering, topics stay separate
+            - 0.5: Moderate mixing, allows some cross-topic clustering
+            - 0.0: Minimal clustering, most tokens group together
+            Lower values create fewer, larger clusters.
+        bridge_weight: Weight for synthetic inter-document connections (0.0-1.0).
+            When > 0, adds weak connections between tokens that appear in
+            different documents, helping bridge topic-isolated clusters.
+            - 0.0 (default): No bridging
+            - 0.3: Light bridging
+            - 0.7: Strong bridging
+
     Returns:
         Dictionary mapping cluster_id to list of column contents
     """
+    # Clamp parameters to valid range
+    cluster_strictness = max(0.0, min(1.0, cluster_strictness))
+    bridge_weight = max(0.0, min(1.0, bridge_weight))
+
     # Initialize each node with unique label
     labels = {col.content: i for i, col in enumerate(layer.minicolumns.values())}
-    
+
     # Get column list for shuffling
     columns = list(layer.minicolumns.keys())
-    
-    for iteration in range(max_iterations):
-        changed = False
-        
-        # Process in order (could shuffle for better results)
+
+    # Build augmented connection weights (includes optional bridging)
+    augmented_connections: Dict[str, Dict[str, float]] = defaultdict(dict)
+
+    for content in columns:
+        col = layer.minicolumns[content]
+        for neighbor_id, weight in col.lateral_connections.items():
+            neighbor = layer.get_by_id(neighbor_id)
+            if neighbor:
+                augmented_connections[content][neighbor.content] = weight
+
+    # Add synthetic bridge connections between documents if requested
+    if bridge_weight > 0:
+        # Group tokens by document
+        doc_tokens: Dict[str, List[str]] = defaultdict(list)
         for content in columns:
             col = layer.minicolumns[content]
-            
+            for doc_id in col.document_ids:
+                doc_tokens[doc_id].append(content)
+
+        # Create weak connections between tokens from different documents
+        doc_ids = list(doc_tokens.keys())
+        for i, doc1 in enumerate(doc_ids):
+            for doc2 in doc_ids[i+1:]:
+                tokens1 = doc_tokens[doc1]
+                tokens2 = doc_tokens[doc2]
+                # Connect a sample of tokens to avoid O(n²) explosion
+                sample_size = min(5, len(tokens1), len(tokens2))
+                for t1 in tokens1[:sample_size]:
+                    for t2 in tokens2[:sample_size]:
+                        if t1 != t2:
+                            # Add weak bidirectional bridge
+                            current = augmented_connections[t1].get(t2, 0)
+                            augmented_connections[t1][t2] = current + bridge_weight * 0.5
+                            current = augmented_connections[t2].get(t1, 0)
+                            augmented_connections[t2][t1] = current + bridge_weight * 0.5
+
+    # Calculate label change threshold based on strictness
+    # Higher strictness = requires stronger evidence to change label
+    change_threshold = (1.0 - cluster_strictness) * 0.3
+
+    for iteration in range(max_iterations):
+        changed = False
+
+        # Process in order (could shuffle for better results)
+        for content in columns:
             # Count neighbor labels weighted by connection strength
             label_weights: Dict[int, float] = defaultdict(float)
-            
-            for neighbor_id, weight in col.lateral_connections.items():
-                # Use O(1) ID lookup instead of linear search
-                neighbor = layer.get_by_id(neighbor_id)
-                if neighbor and neighbor.content in labels:
-                    label_weights[labels[neighbor.content]] += weight
-            
+
+            for neighbor_content, weight in augmented_connections[content].items():
+                if neighbor_content in labels:
+                    label_weights[labels[neighbor_content]] += weight
+
+            # Apply strictness: current label gets a bonus based on strictness
+            current_label = labels[content]
+            if current_label in label_weights and cluster_strictness < 1.0:
+                # Lower strictness = stronger bias toward current label
+                label_weights[current_label] *= (1 + (1 - cluster_strictness) * 2)
+
             # Adopt most common label
             if label_weights:
-                best_label = max(label_weights.items(), key=lambda x: x[1])[0]
-                if labels[content] != best_label:
-                    labels[content] = best_label
-                    changed = True
-        
+                best_label, best_weight = max(label_weights.items(), key=lambda x: x[1])
+                current_weight = label_weights.get(current_label, 0)
+
+                # Only change if the improvement exceeds threshold
+                if best_label != current_label:
+                    if current_weight == 0 or (best_weight / max(current_weight, 0.001) - 1) > change_threshold:
+                        labels[content] = best_label
+                        changed = True
+
         if not changed:
             break
-    
+
     # Build clusters
     clusters: Dict[int, List[str]] = defaultdict(list)
     for content, label in labels.items():
         clusters[label].append(content)
-    
+
     # Filter by minimum size
     filtered = {
-        label: members 
-        for label, members in clusters.items() 
+        label: members
+        for label, members in clusters.items()
         if len(members) >= min_cluster_size
     }
-    
+
     # Update cluster_id on minicolumns
     for label, members in filtered.items():
         for content in members:
             if content in layer.minicolumns:
                 layer.minicolumns[content].cluster_id = label
-    
+
     return filtered
 
 

@@ -662,10 +662,53 @@ class CorticalTextProcessor:
                   f"cooccur: {stats['cooccurrence_connections']})")
         return stats
 
-    def build_concept_clusters(self, verbose: bool = True) -> Dict[int, List[str]]:
-        clusters = analysis.cluster_by_label_propagation(self.layers[CorticalLayer.TOKENS])
+    def build_concept_clusters(
+        self,
+        min_cluster_size: int = 3,
+        cluster_strictness: float = 1.0,
+        bridge_weight: float = 0.0,
+        verbose: bool = True
+    ) -> Dict[int, List[str]]:
+        """
+        Build concept clusters from token layer using label propagation.
+
+        Args:
+            min_cluster_size: Minimum tokens per cluster (default 3)
+            cluster_strictness: Controls clustering aggressiveness (0.0-1.0).
+                - 1.0 (default): Strict clustering, topics stay separate
+                - 0.5: Moderate mixing, allows some cross-topic clustering
+                - 0.0: Minimal clustering, most tokens group together
+                Lower values create fewer, larger clusters with more connections.
+            bridge_weight: Weight for synthetic inter-document connections (0.0-1.0).
+                When > 0, adds weak connections between tokens from different
+                documents, helping bridge topic-isolated clusters.
+                - 0.0 (default): No bridging
+                - 0.3: Light bridging
+                - 0.7: Strong bridging
+            verbose: Print progress messages
+
+        Returns:
+            Dictionary mapping cluster_id to list of token contents
+
+        Example:
+            >>> # Default strict clustering
+            >>> clusters = processor.build_concept_clusters()
+            >>>
+            >>> # Looser clustering for more cross-topic connections
+            >>> clusters = processor.build_concept_clusters(
+            ...     cluster_strictness=0.5,
+            ...     bridge_weight=0.3
+            ... )
+        """
+        clusters = analysis.cluster_by_label_propagation(
+            self.layers[CorticalLayer.TOKENS],
+            min_cluster_size=min_cluster_size,
+            cluster_strictness=cluster_strictness,
+            bridge_weight=bridge_weight
+        )
         analysis.build_concept_clusters(self.layers, clusters)
-        if verbose: print(f"Built {len(clusters)} concept clusters")
+        if verbose:
+            print(f"Built {len(clusters)} concept clusters")
         return clusters
 
     def compute_concept_connections(

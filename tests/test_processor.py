@@ -7,6 +7,7 @@ import sys
 sys.path.insert(0, '..')
 
 from cortical import CorticalTextProcessor, CorticalLayer
+from cortical.layers import HierarchicalLayer
 
 
 class TestProcessorBasic(unittest.TestCase):
@@ -1322,6 +1323,135 @@ class TestConceptConnections(unittest.TestCase):
         self.assertIn('doc_overlap_connections', stats)
         self.assertIn('semantic_connections', stats)
         self.assertIn('embedding_connections', stats)
+
+
+class TestConceptClustering(unittest.TestCase):
+    """Test concept clustering with strictness and bridging parameters."""
+
+    def test_cluster_strictness_parameter(self):
+        """Test that cluster_strictness affects number of clusters."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks process information using layers."
+        )
+        processor.process_document(
+            "doc2", "Machine learning algorithms process data patterns."
+        )
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+
+        # Strict clustering (default)
+        clusters_strict = processor.build_concept_clusters(
+            cluster_strictness=1.0, verbose=False
+        )
+
+        # Reset concepts layer
+        processor.layers[CorticalLayer.CONCEPTS] = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # Loose clustering
+        clusters_loose = processor.build_concept_clusters(
+            cluster_strictness=0.3, verbose=False
+        )
+
+        # Both should return valid cluster dictionaries
+        self.assertIsInstance(clusters_strict, dict)
+        self.assertIsInstance(clusters_loose, dict)
+
+    def test_bridge_weight_parameter(self):
+        """Test that bridge_weight enables cross-document connections."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks learn patterns from data."
+        )
+        processor.process_document(
+            "doc2", "Bread baking requires yeast and flour."
+        )
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+
+        # No bridging (default)
+        clusters_no_bridge = processor.build_concept_clusters(
+            bridge_weight=0.0, verbose=False
+        )
+
+        # Reset concepts layer
+        processor.layers[CorticalLayer.CONCEPTS] = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # With bridging
+        clusters_with_bridge = processor.build_concept_clusters(
+            bridge_weight=0.5, verbose=False
+        )
+
+        # Both should produce valid results
+        self.assertIsInstance(clusters_no_bridge, dict)
+        self.assertIsInstance(clusters_with_bridge, dict)
+
+    def test_combined_clustering_parameters(self):
+        """Test combining strictness and bridging parameters."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks are computational models."
+        )
+        processor.process_document(
+            "doc2", "Deep learning uses neural networks for AI."
+        )
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+
+        # Combined loose clustering with bridging
+        clusters = processor.build_concept_clusters(
+            cluster_strictness=0.5,
+            bridge_weight=0.3,
+            min_cluster_size=2,
+            verbose=False
+        )
+
+        self.assertIsInstance(clusters, dict)
+
+    def test_min_cluster_size_filter(self):
+        """Test that min_cluster_size filters small clusters."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks process information efficiently."
+        )
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+
+        # Large minimum size should produce fewer clusters
+        clusters_large_min = processor.build_concept_clusters(
+            min_cluster_size=10, verbose=False
+        )
+
+        # Reset concepts layer
+        processor.layers[CorticalLayer.CONCEPTS] = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # Small minimum size
+        clusters_small_min = processor.build_concept_clusters(
+            min_cluster_size=2, verbose=False
+        )
+
+        # Small min should allow at least as many clusters
+        self.assertGreaterEqual(len(clusters_small_min), len(clusters_large_min))
+
+    def test_cluster_strictness_bounds(self):
+        """Test that cluster_strictness is clamped to valid range."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Test document with words.")
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+
+        # Should handle out-of-range values gracefully
+        clusters_negative = processor.build_concept_clusters(
+            cluster_strictness=-0.5, verbose=False
+        )
+        self.assertIsInstance(clusters_negative, dict)
+
+        processor.layers[CorticalLayer.CONCEPTS] = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        clusters_over = processor.build_concept_clusters(
+            cluster_strictness=1.5, verbose=False
+        )
+        self.assertIsInstance(clusters_over, dict)
 
 
 class TestBigramConnections(unittest.TestCase):

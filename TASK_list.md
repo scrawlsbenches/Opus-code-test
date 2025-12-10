@@ -39,13 +39,13 @@ Layer 2 (Concept Layer/V4) shows 0 connections when documents cover diverse topi
 - [x] Falls back gracefully if embeddings not computed
 - [x] Add tests for embedding-based connections
 
-### Task 4: Improve Clustering to Reduce Topic Isolation
-**File:** `cortical/analysis.py` (lines 482-553)
+### Task 4: Improve Clustering to Reduce Topic Isolation ✅ COMPLETED
+**File:** `cortical/analysis.py` (lines 482-616)
 
-- [ ] Add `cluster_strictness` parameter to label propagation (0.0-1.0)
-- [ ] Lower strictness = more cross-topic token mixing in clusters
-- [ ] Consider adding inter-document token bridging before clustering
-- [ ] Add tests for different strictness levels
+- [x] Add `cluster_strictness` parameter to label propagation (0.0-1.0)
+- [x] Lower strictness = more cross-topic token mixing in clusters
+- [x] Add `bridge_weight` parameter for inter-document token bridging
+- [x] Add tests for different strictness levels and bridging
 
 ### Task 5: Integration and API Updates
 **File:** `cortical/processor.py`
