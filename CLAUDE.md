@@ -354,8 +354,11 @@ The Cortical Text Processor can index and search its own codebase, providing sem
 ### Quick Start
 
 ```bash
-# Index the codebase (creates corpus_dev.pkl)
+# Index the codebase (creates corpus_dev.pkl, ~2s)
 python scripts/index_codebase.py
+
+# Incremental update (only changed files)
+python scripts/index_codebase.py --incremental
 
 # Search for code
 python scripts/search_codebase.py "PageRank algorithm"
@@ -369,6 +372,16 @@ Two skills are available in `.claude/skills/`:
 
 1. **codebase-search**: Search the indexed codebase for code patterns and implementations
 2. **corpus-indexer**: Re-index the codebase after making changes
+
+### Indexer Options
+
+| Option | Description |
+|--------|-------------|
+| `--incremental`, `-i` | Only re-index changed files (fastest) |
+| `--status`, `-s` | Show what would change without indexing |
+| `--force`, `-f` | Force full rebuild |
+| `--log FILE` | Write detailed log to file |
+| `--verbose`, `-v` | Show per-file progress |
 
 ### Search Options
 

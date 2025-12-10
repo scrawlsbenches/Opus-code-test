@@ -1666,7 +1666,58 @@ Currently these are always 0 due to the bug.
 **Medium Priority Remaining:** 1 task (#41)
 **Low Priority Remaining:** 3 tasks (#42, #44, #46)
 
-**Total Tests:** 546 (all passing)
+**Total Tests:** 593 (all passing)
+
+---
+
+### 57. Add Incremental Codebase Indexing
+
+**Files:** `scripts/index_codebase.py`, `cortical/processor.py`, `cortical/layers.py`, `tests/test_incremental_indexing.py`
+**Status:** [x] Completed (2025-12-10)
+**Priority:** High
+
+**Problem:**
+The codebase indexer had to rebuild the entire corpus on every run, even for small changes. This was slow and inefficient for iterative development.
+
+**Solution Applied:**
+1. Added manifest file (`corpus_dev.manifest.json`) to track file modification times
+2. Added `--incremental` flag to only re-index changed files
+3. Added `--status` flag to show what would change without indexing
+4. Added `--force` flag to force full rebuild
+5. Added `remove_document()` and `remove_documents_batch()` methods to processor
+6. Added `remove_minicolumn()` method to HierarchicalLayer
+7. Added robust progress tracking with `ProgressTracker` class
+8. Added phase timing and logging support (`--log FILE`)
+9. Added timeout support (`--timeout N`)
+10. Added fast mode (default) that skips slow bigram connections
+
+**Performance Fix:**
+Identified that `compute_bigram_connections()` has O(n²) complexity with large corpora (26,000+ bigrams), causing hangs. Fast mode skips this operation:
+- Before: >10 minutes (hung)
+- After: ~2.3 seconds
+
+**Files Modified:**
+- `scripts/index_codebase.py` - Complete rewrite with incremental support (~840 lines)
+- `cortical/processor.py` - Added `remove_document()`, `remove_documents_batch()` (~160 lines)
+- `cortical/layers.py` - Added `remove_minicolumn()` (~20 lines)
+- `tests/test_incremental_indexing.py` - 47 comprehensive tests
+- `.claude/skills/corpus-indexer/SKILL.md` - Updated documentation
+- `CLAUDE.md` - Updated Dog-Fooding section
+
+**Usage:**
+```bash
+# Fast incremental update (~1-2s)
+python scripts/index_codebase.py --incremental
+
+# Check what would change
+python scripts/index_codebase.py --status
+
+# Full rebuild with logging
+python scripts/index_codebase.py --force --log index.log
+
+# With timeout safeguard
+python scripts/index_codebase.py --timeout 60
+```
 
 ---
 
@@ -1887,6 +1938,84 @@ Document common usage patterns and code examples that help answer "how do I..." 
 - Fingerprint comparison for similarity
 - Batch operations for performance
 - Incremental updates
+
+---
+
+### 58. Git-Compatible Chunk-Based Indexing
+
+**Files:** `scripts/index_codebase.py`, `cortical/chunk_index.py` (new), `tests/test_chunk_indexing.py` (new)
+**Status:** [ ] In Progress
+**Priority:** High
+
+**Problem:**
+The current pkl-based index cannot be tracked in git (binary, merge conflicts). This prevents sharing indexed state across branches and team members, requiring full rebuilds.
+
+**Solution:**
+Implement append-only, time-stamped JSON chunks that can be safely committed to git and merged without conflicts.
+
+**Architecture:**
+```
+corpus_chunks/                        # Tracked in git
+├── 2025-12-10_21-53-45_a1b2.json    # Session 1 changes
+├── 2025-12-10_22-15-30_c3d4.json    # Session 2 changes
+└── 2025-12-10_23-00-00_e5f6.json    # Session 3 changes
+
+corpus_dev.pkl                        # NOT tracked (local cache)
+```
+
+**Chunk Format:**
+```json
+{
+  "timestamp": "2025-12-10T21:53:45",
+  "session_id": "a1b2c3d4",
+  "branch": "feature-x",
+  "operations": [
+    {"op": "add", "doc_id": "docs/new.md", "content": "...", "mtime": 1234567890},
+    {"op": "modify", "doc_id": "query.py", "content": "...", "mtime": 1234567891},
+    {"op": "delete", "doc_id": "old.md"}
+  ]
+}
+```
+
+**Implementation Tasks:**
+1. [ ] Create `ChunkWriter` class - save session changes as timestamped JSON
+2. [ ] Create `ChunkLoader` class - combine chunks on startup (later timestamps win)
+3. [ ] Add cache validator - check if pkl matches combined chunk hash
+4. [ ] Add `--compact` command - merge old chunks into single file
+5. [ ] Update CLI with `--use-chunks` flag
+6. [ ] Handle deletions with tombstones
+7. [ ] Add `.gitignore` entry for `corpus_dev.pkl` (keep chunks tracked)
+8. [ ] Add comprehensive tests
+
+**Startup Flow:**
+```
+1. Load all chunk files (sorted by timestamp)
+2. Replay operations → build document set
+   - Later timestamps win for conflicts
+   - Deletes remove documents
+3. Check if pkl cache is valid (hash of combined docs)
+   - Valid: load pkl (fast)
+   - Invalid: recompute analysis (~2s)
+```
+
+**Benefits:**
+- No merge conflicts (unique timestamp+session names)
+- Shared indexed state across team/branches
+- Fast startup when cache valid
+- Git-friendly (small JSON, append-only)
+- Periodic compaction like `git gc`
+
+**Usage (planned):**
+```bash
+# Index with chunks (creates timestamped JSON)
+python scripts/index_codebase.py --incremental --use-chunks
+
+# Compact old chunks
+python scripts/index_codebase.py --compact --before 2025-12-01
+
+# Status including chunk info
+python scripts/index_codebase.py --status --use-chunks
+```
 
 ---
 
