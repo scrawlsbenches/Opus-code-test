@@ -42,6 +42,9 @@ python scripts/index_codebase.py --force
 | `--timeout N`, `-t N` | Timeout in seconds (default: 300) |
 | `--full-analysis` | Use complete semantic analysis (slower) |
 | `--output FILE`, `-o FILE` | Custom output path (default: corpus_dev.pkl) |
+| `--use-chunks` | Use git-compatible chunk-based storage |
+| `--compact` | Compact old chunk files (use with `--use-chunks`) |
+| `--before DATE` | Compact only chunks before this date (YYYY-MM-DD) | |
 
 ## Examples
 
@@ -96,3 +99,25 @@ This enables fast incremental updates by detecting only changed files.
 - Use `--status` to check if re-indexing is needed
 - Use `--force` after major refactoring
 - Use `--full-analysis` before deep exploration sessions
+
+## Git-Compatible Chunk Storage
+
+For team collaboration, use `--use-chunks` to store changes as git-friendly JSON:
+
+```bash
+# Index with chunk storage
+python scripts/index_codebase.py --incremental --use-chunks
+
+# Compact old chunks (reduces history size)
+python scripts/index_codebase.py --compact --before 2025-12-01
+```
+
+**Benefits:**
+- No merge conflicts (unique timestamp filenames)
+- Shared indexed state across branches
+- Fast startup when cache is valid
+
+**Files Created:**
+- `corpus_chunks/*.json` - Tracked in git (append-only changes)
+- `corpus_dev.pkl` - NOT tracked (local cache)
+- `corpus_dev.pkl.hash` - NOT tracked (cache validation)

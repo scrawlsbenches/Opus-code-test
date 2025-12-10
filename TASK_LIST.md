@@ -1944,7 +1944,7 @@ Document common usage patterns and code examples that help answer "how do I..." 
 ### 58. Git-Compatible Chunk-Based Indexing
 
 **Files:** `scripts/index_codebase.py`, `cortical/chunk_index.py` (new), `tests/test_chunk_indexing.py` (new)
-**Status:** [ ] In Progress
+**Status:** [x] Completed (2025-12-10)
 **Priority:** High
 
 **Problem:**
@@ -1978,14 +1978,14 @@ corpus_dev.pkl                        # NOT tracked (local cache)
 ```
 
 **Implementation Tasks:**
-1. [ ] Create `ChunkWriter` class - save session changes as timestamped JSON
-2. [ ] Create `ChunkLoader` class - combine chunks on startup (later timestamps win)
-3. [ ] Add cache validator - check if pkl matches combined chunk hash
-4. [ ] Add `--compact` command - merge old chunks into single file
-5. [ ] Update CLI with `--use-chunks` flag
-6. [ ] Handle deletions with tombstones
-7. [ ] Add `.gitignore` entry for `corpus_dev.pkl` (keep chunks tracked)
-8. [ ] Add comprehensive tests
+1. [x] Create `ChunkWriter` class - save session changes as timestamped JSON
+2. [x] Create `ChunkLoader` class - combine chunks on startup (later timestamps win)
+3. [x] Add cache validator - check if pkl matches combined chunk hash
+4. [x] Add `ChunkCompactor` class - merge old chunks into single file
+5. [x] Update CLI with `--use-chunks` flag
+6. [x] Handle deletions with tombstones
+7. [x] Add `.gitignore` entry for `corpus_dev.pkl` (keep chunks tracked)
+8. [x] Add comprehensive tests (84 new tests)
 
 **Startup Flow:**
 ```
@@ -2016,6 +2016,118 @@ python scripts/index_codebase.py --compact --before 2025-12-01
 # Status including chunk info
 python scripts/index_codebase.py --status --use-chunks
 ```
+
+---
+
+## Code Review Findings (2025-12-10)
+
+The following tasks were identified during code review of PR #23 (Git-Compatible Chunk-Based Indexing):
+
+---
+
+### 59. Rename TimeoutError to Avoid Built-in Shadowing
+
+**Files:** `cortical/chunk_index.py:248`, `scripts/index_codebase.py:248-249`
+**Status:** [ ] Not Started
+**Priority:** Low
+
+**Problem:**
+The `TimeoutError` class shadows Python's built-in `TimeoutError` (introduced in Python 3.3). This could cause confusion and unexpected behavior when catching timeout exceptions.
+
+**Solution:**
+Rename the custom exception to `IndexingTimeoutError`:
+```python
+# chunk_index.py:248
+class IndexingTimeoutError(Exception):
+    """Raised when indexing operation times out."""
+    pass
+```
+
+---
+
+### 60. Add Windows Compatibility for Timeout Handler
+
+**Files:** `scripts/index_codebase.py:274-282`
+**Status:** [ ] Not Started
+**Priority:** Medium
+
+**Problem:**
+The timeout handler uses `signal.SIGALRM` which is Unix-only. This will raise an `AttributeError` on Windows systems.
+
+**Affected Code:**
+```python
+# Line 274-282 - Unix-only code
+signal.signal(signal.SIGALRM, handler)
+signal.alarm(seconds)
+```
+
+**Solution:**
+Add a Windows-compatible fallback using threading:
+```python
+import platform
+
+if platform.system() == 'Windows':
+    # Use threading.Timer fallback
+    timer = threading.Timer(seconds, timeout_callback)
+    timer.start()
+else:
+    # Use signal.SIGALRM (Unix)
+    signal.signal(signal.SIGALRM, handler)
+    signal.alarm(seconds)
+```
+
+Or document the limitation clearly for Windows users.
+
+---
+
+### 61. Add Chunk Size Warning for Large Chunks
+
+**Files:** `cortical/chunk_index.py`
+**Status:** [ ] Not Started
+**Priority:** Low
+
+**Problem:**
+Large chunk files in git can bloat repository history. There's no warning when chunks exceed a reasonable size threshold.
+
+**Solution:**
+Add a warning when saving chunks that exceed a configurable threshold (e.g., 1MB):
+```python
+def save(self, warn_size_kb: int = 1024) -> Optional[Path]:
+    # ... save logic ...
+    if file_path.stat().st_size > warn_size_kb * 1024:
+        warnings.warn(f"Chunk file exceeds {warn_size_kb}KB. Consider running --compact.")
+```
+
+---
+
+### 62. Add Chunk Compaction Documentation
+
+**Files:** `CLAUDE.md`, `.claude/skills/corpus-indexer/SKILL.md`
+**Status:** [ ] Not Started
+**Priority:** Low
+
+**Problem:**
+The `--compact` feature is implemented but not documented in CLAUDE.md or the corpus-indexer skill.
+
+**Solution:**
+Add documentation explaining:
+- When to use `--compact`
+- How compaction works (merges chunks, preserves latest state)
+- Recommended compaction frequency
+- Example commands
+
+---
+
+## Code Review Summary (PR #23)
+
+| # | Priority | Task | Status | Category |
+|---|----------|------|--------|----------|
+| 59 | Low | Rename TimeoutError to avoid shadowing | [ ] Not Started | Code Quality |
+| 60 | Medium | Add Windows compatibility for timeout | [ ] Not Started | Compatibility |
+| 61 | Low | Add chunk size warning | [ ] Not Started | UX |
+| 62 | Low | Add chunk compaction documentation | [ ] Not Started | Documentation |
+
+**Test Results:** 84 new tests, all passing
 
 ---
 
