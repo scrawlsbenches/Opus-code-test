@@ -409,7 +409,12 @@ class CorticalTextProcessor:
 
         return recomputed
 
-    def compute_all(self, verbose: bool = True, build_concepts: bool = True) -> None:
+    def compute_all(
+        self,
+        verbose: bool = True,
+        build_concepts: bool = True,
+        pagerank_method: str = 'standard'
+    ) -> None:
         """
         Run all computation steps.
 
@@ -417,13 +422,28 @@ class CorticalTextProcessor:
             verbose: Print progress messages
             build_concepts: Build concept clusters in Layer 2 (default True)
                            This enables topic-based filtering and hierarchical search.
+            pagerank_method: PageRank algorithm to use:
+                - 'standard': Traditional PageRank using connection weights
+                - 'semantic': ConceptNet-style PageRank with relation type weighting.
+                              Requires semantic relations (extracts automatically if needed).
         """
         if verbose:
             print("Computing activation propagation...")
         self.propagate_activation(verbose=False)
-        if verbose:
-            print("Computing importance (PageRank)...")
-        self.compute_importance(verbose=False)
+
+        if pagerank_method == 'semantic':
+            # Extract semantic relations if not already done
+            if not self.semantic_relations:
+                if verbose:
+                    print("Extracting semantic relations...")
+                self.extract_corpus_semantics(verbose=False)
+            if verbose:
+                print("Computing importance (Semantic PageRank)...")
+            self.compute_semantic_importance(verbose=False)
+        else:
+            if verbose:
+                print("Computing importance (PageRank)...")
+            self.compute_importance(verbose=False)
         if verbose:
             print("Computing TF-IDF...")
         self.compute_tfidf(verbose=False)
@@ -462,7 +482,72 @@ class CorticalTextProcessor:
         for layer_enum in [CorticalLayer.TOKENS, CorticalLayer.BIGRAMS]:
             analysis.compute_pagerank(self.layers[layer_enum])
         if verbose: print("Computed PageRank importance")
-    
+
+    def compute_semantic_importance(
+        self,
+        relation_weights: Optional[Dict[str, float]] = None,
+        verbose: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Compute PageRank with semantic relation weighting.
+
+        Uses semantic relations to weight edges in the PageRank graph.
+        Edges with stronger semantic relationships (e.g., IsA, PartOf) receive
+        higher weights, affecting importance propagation.
+
+        Args:
+            relation_weights: Optional custom relation type weights dict.
+                Defaults to built-in weights (IsA: 1.5, PartOf: 1.3, etc.)
+            verbose: Print progress messages
+
+        Returns:
+            Dict with statistics:
+            - total_edges_with_relations: Sum across layers
+            - token_layer: Stats for token layer
+            - bigram_layer: Stats for bigram layer
+
+        Example:
+            >>> # Use default relation weights
+            >>> stats = processor.compute_semantic_importance()
+            >>> print(f"Found {stats['total_edges_with_relations']} semantic edges")
+            >>>
+            >>> # Custom weights
+            >>> weights = {'IsA': 2.0, 'RelatedTo': 0.5}
+            >>> processor.compute_semantic_importance(relation_weights=weights)
+        """
+        if not self.semantic_relations:
+            # Fall back to standard PageRank if no semantic relations
+            self.compute_importance(verbose=verbose)
+            return {
+                'total_edges_with_relations': 0,
+                'token_layer': {'edges_with_relations': 0},
+                'bigram_layer': {'edges_with_relations': 0}
+            }
+
+        total_edges = 0
+        layer_stats = {}
+
+        for layer_enum in [CorticalLayer.TOKENS, CorticalLayer.BIGRAMS]:
+            result = analysis.compute_semantic_pagerank(
+                self.layers[layer_enum],
+                self.semantic_relations,
+                relation_weights=relation_weights
+            )
+            layer_name = 'token_layer' if layer_enum == CorticalLayer.TOKENS else 'bigram_layer'
+            layer_stats[layer_name] = {
+                'iterations_run': result['iterations_run'],
+                'edges_with_relations': result['edges_with_relations']
+            }
+            total_edges += result['edges_with_relations']
+
+        if verbose:
+            print(f"Computed semantic PageRank ({total_edges} relation-weighted edges)")
+
+        return {
+            'total_edges_with_relations': total_edges,
+            **layer_stats
+        }
+
     def compute_tfidf(self, verbose: bool = True) -> None:
         analysis.compute_tfidf(self.layers, self.documents)
         if verbose: print("Computed TF-IDF scores")

@@ -668,35 +668,48 @@ print(f"  Co-occurrence: {stats['cooccurrence_connections']}")
 
 ### 22. Implement Relation-Weighted PageRank
 
-**Files:** `cortical/analysis.py`
-**Status:** [ ] Pending
+**Files:** `cortical/analysis.py`, `cortical/processor.py`
+**Status:** [x] Completed
 
 **Problem:**
 Current PageRank treats all `lateral_connections` equally. ConceptNet-style PageRank should weight edges by semantic relation type.
 
-**Current PageRank:**
-```python
-for target_id, weight in col.lateral_connections.items():
-    # All weights treated the same
-```
+**Solution Applied:**
+1. Added `RELATION_WEIGHTS` constant to `analysis.py` with default weights:
+   - IsA: 1.5, PartOf: 1.3, HasProperty: 1.2, SimilarTo: 1.4, RelatedTo: 1.0
+   - Causes: 1.1, UsedFor: 1.0, CoOccurs: 0.8, Antonym: 0.3, DerivedFrom: 1.2
+2. Created `compute_semantic_pagerank()` function (~120 lines):
+   - Builds semantic relation lookup from (term1, term2) pairs
+   - Applies relation-type multipliers to edge weights
+   - Returns stats: pagerank scores, iterations_run, edges_with_relations
+3. Added `compute_semantic_importance()` method to processor:
+   - Falls back to standard PageRank if no semantic relations
+   - Applies semantic PageRank to both token and bigram layers
+   - Returns comprehensive statistics
+4. Updated `compute_all()` with `pagerank_method` parameter:
+   - 'standard': Traditional PageRank (default)
+   - 'semantic': ConceptNet-style with relation weighting
+   - Automatically extracts semantic relations if needed
 
-**Enhanced PageRank:**
-```python
-RELATION_WEIGHTS = {
-    'IsA': 1.5,        # Hypernym relationships are strong
-    'PartOf': 1.3,     # Meronym relationships
-    'HasProperty': 1.2,
-    'RelatedTo': 1.0,  # Default co-occurrence
-    'Antonym': 0.5,    # Opposing concepts
-}
-```
+**Files Modified:**
+- `cortical/analysis.py` - Added `RELATION_WEIGHTS` and `compute_semantic_pagerank()` (~130 lines)
+- `cortical/processor.py` - Added `compute_semantic_importance()`, updated `compute_all()`
+- `tests/test_processor.py` - Added 9 tests for semantic PageRank
 
-**Implementation Steps:**
-1. Add `relation_type: str` field to connection edges (or use separate dict)
-2. Create `compute_semantic_pagerank()` function
-3. Apply relation-type multipliers during propagation
-4. Use semantic relations from `extract_corpus_semantics()` to label edges
-5. Add `pagerank_method` parameter to `compute_all()`: 'standard' | 'semantic'
+**Usage:**
+```python
+# Use semantic PageRank via compute_all
+processor.compute_all(pagerank_method='semantic')
+
+# Or call directly
+processor.extract_corpus_semantics()
+stats = processor.compute_semantic_importance()
+print(f"Found {stats['total_edges_with_relations']} semantic edges")
+
+# Custom relation weights
+custom_weights = {'IsA': 2.0, 'CoOccurs': 0.5}
+processor.compute_semantic_importance(relation_weights=custom_weights)
+```
 
 ---
 
@@ -971,7 +984,7 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 | **Critical** | **Build cross-layer feedforward connections** | ✅ Completed | **ConceptNet** |
 | **Critical** | **Add concept-level lateral connections** | ✅ Completed | **ConceptNet** |
 | **Critical** | **Add bigram lateral connections** | ✅ Completed | **ConceptNet** |
-| **High** | **Implement relation-weighted PageRank** | ⏳ Pending | **ConceptNet** |
+| **High** | **Implement relation-weighted PageRank** | ✅ Completed | **ConceptNet** |
 | **High** | **Implement cross-layer PageRank propagation** | ⏳ Pending | **ConceptNet** |
 | **High** | **Add typed edge storage** | ⏳ Pending | **ConceptNet** |
 | Medium | Implement multi-hop semantic inference | ⏳ Pending | ConceptNet |
@@ -983,14 +996,14 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 
 **Bug Fix Completion:** 7/7 tasks (100%)
 **RAG Enhancement Completion:** 8/8 tasks (100%)
-**ConceptNet Enhancement Completion:** 3/12 tasks (25%)
+**ConceptNet Enhancement Completion:** 4/12 tasks (33%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 204 tests in 0.219s
+Ran 213 tests in 0.177s
 OK
 ```
 

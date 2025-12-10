@@ -27,66 +27,200 @@ def compute_pagerank(
 ) -> Dict[str, float]:
     """
     Compute PageRank scores for minicolumns in a layer.
-    
+
     PageRank measures importance based on connection structure.
     Highly connected columns that are connected to other important
     columns receive higher scores.
-    
+
     Args:
         layer: The layer to compute PageRank for
         damping: Damping factor (probability of following links)
         iterations: Maximum number of iterations
         tolerance: Convergence threshold
-        
+
     Returns:
         Dictionary mapping column IDs to PageRank scores
     """
     n = len(layer.minicolumns)
     if n == 0:
         return {}
-    
+
     # Initialize PageRank uniformly
     pagerank = {col.id: 1.0 / n for col in layer.minicolumns.values()}
-    
+
     # Build incoming links map
     incoming: Dict[str, List[Tuple[str, float]]] = defaultdict(list)
     outgoing_sum: Dict[str, float] = defaultdict(float)
-    
+
     for col in layer.minicolumns.values():
         for target_id, weight in col.lateral_connections.items():
             # Use O(1) lookup via get_by_id instead of O(n) linear search
             if layer.get_by_id(target_id) is not None:
                 incoming[target_id].append((col.id, weight))
                 outgoing_sum[col.id] += weight
-    
+
     # Iterate until convergence
     for iteration in range(iterations):
         new_pagerank = {}
         max_diff = 0.0
-        
+
         for col in layer.minicolumns.values():
             # Sum of weighted incoming PageRank
             incoming_sum = 0.0
             for source_id, weight in incoming[col.id]:
                 if source_id in pagerank and outgoing_sum[source_id] > 0:
                     incoming_sum += pagerank[source_id] * weight / outgoing_sum[source_id]
-            
+
             # Apply damping
             new_rank = (1 - damping) / n + damping * incoming_sum
             new_pagerank[col.id] = new_rank
-            
+
             max_diff = max(max_diff, abs(new_rank - pagerank.get(col.id, 0)))
-        
+
         pagerank = new_pagerank
-        
+
         if max_diff < tolerance:
             break
-    
+
     # Update minicolumn pagerank values
     for col in layer.minicolumns.values():
         col.pagerank = pagerank.get(col.id, 1.0 / n)
-    
+
     return pagerank
+
+
+# Default relation weights for semantic PageRank
+RELATION_WEIGHTS = {
+    'IsA': 1.5,           # Hypernym relationships are strong
+    'PartOf': 1.3,        # Meronym relationships
+    'HasProperty': 1.2,   # Property associations
+    'RelatedTo': 1.0,     # Default co-occurrence
+    'SimilarTo': 1.4,     # Similarity relationships
+    'Causes': 1.1,        # Causal relationships
+    'UsedFor': 1.0,       # Functional relationships
+    'CoOccurs': 0.8,      # Basic co-occurrence
+    'Antonym': 0.3,       # Opposing concepts (lower weight)
+    'DerivedFrom': 1.2,   # Morphological derivation
+}
+
+
+def compute_semantic_pagerank(
+    layer: HierarchicalLayer,
+    semantic_relations: List[Tuple[str, str, str, float]],
+    relation_weights: Optional[Dict[str, float]] = None,
+    damping: float = 0.85,
+    iterations: int = 20,
+    tolerance: float = 1e-6
+) -> Dict[str, Any]:
+    """
+    Compute PageRank with semantic relation type weighting.
+
+    This ConceptNet-style PageRank applies different multipliers based on
+    the semantic relation type between nodes. For example, IsA relationships
+    are weighted more heavily than simple co-occurrence.
+
+    Args:
+        layer: The layer to compute PageRank for
+        semantic_relations: List of (term1, relation, term2, weight) tuples
+        relation_weights: Optional custom relation weights dict. If None, uses defaults.
+        damping: Damping factor (probability of following links)
+        iterations: Maximum number of iterations
+        tolerance: Convergence threshold
+
+    Returns:
+        Dict containing:
+        - pagerank: Dict mapping column IDs to PageRank scores
+        - iterations_run: Number of iterations until convergence
+        - edges_with_relations: Number of edges that had semantic relation info
+
+    Example:
+        >>> relations = [("neural", "RelatedTo", "networks", 0.8)]
+        >>> result = compute_semantic_pagerank(layer, relations)
+        >>> print(f"PageRank converged in {result['iterations_run']} iterations")
+    """
+    n = len(layer.minicolumns)
+    if n == 0:
+        return {'pagerank': {}, 'iterations_run': 0, 'edges_with_relations': 0}
+
+    # Use default weights if not provided
+    weights = relation_weights or RELATION_WEIGHTS
+
+    # Build semantic relation lookup: (term1, term2) -> (relation_type, weight)
+    semantic_lookup: Dict[Tuple[str, str], Tuple[str, float]] = {}
+    for t1, relation, t2, rel_weight in semantic_relations:
+        # Store in both directions for undirected lookup
+        semantic_lookup[(t1, t2)] = (relation, rel_weight)
+        semantic_lookup[(t2, t1)] = (relation, rel_weight)
+
+    # Initialize PageRank uniformly
+    pagerank = {col.id: 1.0 / n for col in layer.minicolumns.values()}
+
+    # Build incoming links map with relation-weighted edges
+    incoming: Dict[str, List[Tuple[str, float]]] = defaultdict(list)
+    outgoing_sum: Dict[str, float] = defaultdict(float)
+    edges_with_relations = 0
+
+    # Build content -> id mapping for semantic lookup
+    content_to_id: Dict[str, str] = {}
+    for col in layer.minicolumns.values():
+        content_to_id[col.content] = col.id
+
+    for col in layer.minicolumns.values():
+        for target_id, base_weight in col.lateral_connections.items():
+            target = layer.get_by_id(target_id)
+            if target is None:
+                continue
+
+            # Check if there's a semantic relation between these terms
+            lookup_key = (col.content, target.content)
+            if lookup_key in semantic_lookup:
+                relation_type, rel_weight = semantic_lookup[lookup_key]
+                # Apply relation type multiplier
+                type_multiplier = weights.get(relation_type, 1.0)
+                # Combined weight: base_weight * relation_weight * type_multiplier
+                adjusted_weight = base_weight * rel_weight * type_multiplier
+                edges_with_relations += 1
+            else:
+                # No semantic relation, use base weight
+                adjusted_weight = base_weight
+
+            incoming[target_id].append((col.id, adjusted_weight))
+            outgoing_sum[col.id] += adjusted_weight
+
+    # Iterate until convergence
+    iterations_run = 0
+    for iteration in range(iterations):
+        iterations_run = iteration + 1
+        new_pagerank = {}
+        max_diff = 0.0
+
+        for col in layer.minicolumns.values():
+            # Sum of weighted incoming PageRank
+            incoming_sum = 0.0
+            for source_id, weight in incoming[col.id]:
+                if source_id in pagerank and outgoing_sum[source_id] > 0:
+                    incoming_sum += pagerank[source_id] * weight / outgoing_sum[source_id]
+
+            # Apply damping
+            new_rank = (1 - damping) / n + damping * incoming_sum
+            new_pagerank[col.id] = new_rank
+
+            max_diff = max(max_diff, abs(new_rank - pagerank.get(col.id, 0)))
+
+        pagerank = new_pagerank
+
+        if max_diff < tolerance:
+            break
+
+    # Update minicolumn pagerank values
+    for col in layer.minicolumns.values():
+        col.pagerank = pagerank.get(col.id, 1.0 / n)
+
+    return {
+        'pagerank': pagerank,
+        'iterations_run': iterations_run,
+        'edges_with_relations': edges_with_relations
+    }
 
 
 def compute_tfidf(

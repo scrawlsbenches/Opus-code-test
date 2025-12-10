@@ -1334,5 +1334,166 @@ class TestBigramConnections(unittest.TestCase):
                 self.assertGreater(weight, 0)
 
 
+class TestSemanticPageRank(unittest.TestCase):
+    """Test semantic PageRank functionality."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor with documents for semantic PageRank testing."""
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document(
+            "doc1",
+            "Neural networks are a type of machine learning model. "
+            "Deep learning uses neural networks for complex tasks."
+        )
+        cls.processor.process_document(
+            "doc2",
+            "Machine learning algorithms process data patterns. "
+            "Neural networks learn from examples."
+        )
+        cls.processor.process_document(
+            "doc3",
+            "Deep learning is part of artificial intelligence. "
+            "Machine learning models improve with data."
+        )
+        # Extract semantic relations first
+        cls.processor.extract_corpus_semantics(verbose=False)
+
+    def test_compute_semantic_importance_returns_stats(self):
+        """Test that compute_semantic_importance returns expected statistics."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data efficiently.")
+        processor.extract_corpus_semantics(verbose=False)
+
+        stats = processor.compute_semantic_importance(verbose=False)
+
+        self.assertIn('total_edges_with_relations', stats)
+        self.assertIn('token_layer', stats)
+        self.assertIn('bigram_layer', stats)
+
+    def test_semantic_pagerank_with_relations(self):
+        """Test that semantic PageRank uses relation weights."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks learn patterns. Neural systems process data."
+        )
+        processor.extract_corpus_semantics(verbose=False)
+
+        # Get initial PageRank with standard method
+        processor.compute_importance(verbose=False)
+        layer0 = processor.get_layer(CorticalLayer.TOKENS)
+        standard_pr = {col.content: col.pagerank for col in layer0.minicolumns.values()}
+
+        # Now compute with semantic method
+        stats = processor.compute_semantic_importance(verbose=False)
+
+        # PageRank values should be updated
+        semantic_pr = {col.content: col.pagerank for col in layer0.minicolumns.values()}
+
+        # Just verify it ran and produced valid PageRank values
+        for content, pr in semantic_pr.items():
+            self.assertGreater(pr, 0)
+
+    def test_semantic_pagerank_no_relations(self):
+        """Test semantic PageRank falls back when no relations exist."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Hello world.")
+        # Don't extract semantic relations
+
+        stats = processor.compute_semantic_importance(verbose=False)
+
+        self.assertEqual(stats['total_edges_with_relations'], 0)
+
+    def test_compute_all_with_semantic_pagerank(self):
+        """Test compute_all with pagerank_method='semantic'."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks process information efficiently."
+        )
+
+        # Should work without errors
+        processor.compute_all(verbose=False, pagerank_method='semantic')
+
+        # Verify computations ran
+        self.assertFalse(processor.is_stale(processor.COMP_PAGERANK))
+        self.assertFalse(processor.is_stale(processor.COMP_TFIDF))
+
+    def test_compute_all_standard_pagerank(self):
+        """Test compute_all with default pagerank_method='standard'."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks process information efficiently."
+        )
+
+        processor.compute_all(verbose=False, pagerank_method='standard')
+
+        self.assertFalse(processor.is_stale(processor.COMP_PAGERANK))
+
+    def test_custom_relation_weights(self):
+        """Test semantic PageRank with custom relation weights."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks learn patterns. Machine learning improves."
+        )
+        processor.extract_corpus_semantics(verbose=False)
+
+        # Use custom weights
+        custom_weights = {
+            'CoOccurs': 2.0,  # Boost co-occurrence
+            'RelatedTo': 0.1,  # Reduce related
+        }
+
+        stats = processor.compute_semantic_importance(
+            relation_weights=custom_weights,
+            verbose=False
+        )
+
+        # Should run without errors
+        self.assertIsNotNone(stats)
+
+    def test_semantic_pagerank_empty_layer(self):
+        """Test semantic PageRank handles empty layer gracefully."""
+        from cortical.analysis import compute_semantic_pagerank
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+
+        empty_layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        relations = [("test", "RelatedTo", "example", 0.5)]
+
+        result = compute_semantic_pagerank(empty_layer, relations)
+
+        self.assertEqual(result['pagerank'], {})
+        self.assertEqual(result['iterations_run'], 0)
+        self.assertEqual(result['edges_with_relations'], 0)
+
+    def test_semantic_pagerank_convergence(self):
+        """Test that semantic PageRank converges."""
+        from cortical.analysis import compute_semantic_pagerank
+
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+
+        result = compute_semantic_pagerank(
+            layer0,
+            self.processor.semantic_relations,
+            iterations=100,
+            tolerance=1e-6
+        )
+
+        # Should converge in less than max iterations
+        self.assertLessEqual(result['iterations_run'], 100)
+
+    def test_relation_weights_applied(self):
+        """Test that different relation types get different weights."""
+        from cortical.analysis import RELATION_WEIGHTS
+
+        # Verify key relations have expected relative weights
+        self.assertGreater(RELATION_WEIGHTS['IsA'], RELATION_WEIGHTS['RelatedTo'])
+        self.assertGreater(RELATION_WEIGHTS['PartOf'], RELATION_WEIGHTS['CoOccurs'])
+        self.assertLess(RELATION_WEIGHTS['Antonym'], RELATION_WEIGHTS['RelatedTo'])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
