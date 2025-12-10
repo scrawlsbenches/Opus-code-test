@@ -42,17 +42,15 @@ This library provides a biologically-inspired approach to text processing, organ
 
 ## Installation
 
-```bash
-pip install cortical-text-processor
-```
-
-Or install from source:
+Install from source:
 
 ```bash
-git clone https://github.com/example/cortical-text-processor.git
+git clone <repository-url>
 cd cortical-text-processor
 pip install -e .
 ```
+
+Or simply copy the `cortical/` directory into your project—zero dependencies means no pip required.
 
 ## Quick Start
 
@@ -164,14 +162,22 @@ processor.compute_all(
 
 ## Performance
 
-Tested with 92 sample documents covering diverse topics from neural networks to wine tasting.
+Tested with 92 sample documents covering topics from neural networks to medieval falconry to sourdough breadmaking.
 
 | Metric | Value |
 |--------|-------|
-| Test Coverage | 337 tests passing |
-| Semantic Extraction | 2x speedup (optimized) |
-| Graph Algorithms | O(1) ID lookups |
-| Overall Processing | 2.5x speedup with numpy |
+| Documents processed | 92 |
+| Token minicolumns | 6,506 |
+| Bigram minicolumns | 20,114 |
+| Lateral connections | 116,332 |
+| Test coverage | 337 tests passing |
+| Graph algorithms | O(1) ID lookups |
+
+**What the processor discovers:**
+- Most central concept: `data` (PageRank: 0.0046)
+- Most distinctive terms: `gradient`, `pagerank`, `patent` (high TF-IDF, rare but meaningful)
+- Most connected document: `comprehensive_machine_learning` (91 connections to other docs)
+- Isolated outliers detected: `sumo_wrestling`, `medieval_falconry` (low similarity to corpus)
 
 ## Package Structure
 
@@ -193,8 +199,8 @@ evaluation/
 └── evaluator.py     # Evaluation framework
 
 tests/               # 337 comprehensive tests
-showcase.py          # Interactive demonstration
-samples/             # 92 diverse sample documents
+showcase.py          # Interactive demonstration (run it!)
+samples/             # 92 documents: from quantum computing to cheese affinage
 ```
 
 ## Development History
@@ -206,7 +212,7 @@ This project evolved through systematic improvements:
 3. **RAG Enhancements**: Chunk-level retrieval, metadata support, concept clustering
 4. **ConceptNet Integration**: Typed edges, relation-weighted PageRank, multi-hop inference
 5. **Connection Strategies**: Multiple strategies for Layer 2 concept connections
-6. **Performance Optimization**: 2x-2.5x speedups via numpy and algorithm improvements
+6. **Showcase & Polish**: Interactive demo with real corpus analysis
 
 ## Running the Showcase
 
@@ -214,7 +220,31 @@ This project evolved through systematic improvements:
 python showcase.py
 ```
 
-Demonstrates hierarchical analysis, PageRank, TF-IDF, concept associations, document relationships, query expansion, polysemy handling, gap analysis, and graph embeddings.
+The showcase processes 92 diverse sample documents and demonstrates every major feature. Here's what you'll see:
+
+### Concept Associations (Hebbian Learning)
+
+The processor discovers that `neural` connects to `networks` (weight: 23), `artificial` (7), `knowledge` (7)—while `bread` meekly connects to `beer`, `wine`, and `pyruvate` (weight: 1 each). Neurons that fire together really do wire together.
+
+### Query Expansion in Action
+
+```
+🔍 Query: 'neural networks'
+   Expanded with: knowledge, data, graph, network, deep, artificial
+
+   Top documents:
+     • comprehensive_machine_learning (score: 26.384)
+     • attention_mechanism_research (score: 19.178)
+     • cortical_semantic_networks (score: 18.470)
+```
+
+### The Polysemy Problem
+
+Search for "candle sticks" and you'll find `candlestick_patterns` (trading charts) at the top—but also `letterpress_printing` (composing sticks) and `wine_tasting_vocabulary`. The query tokenizes to `['candle', 'sticks']`: "candle" matches the trading document (which discusses "single candle patterns"), while "sticks" matches the printing document. Classic information retrieval challenge: compound words fragment, partial matches surface, and the system can't read your mind about intent.
+
+### Knowledge Gap Detection
+
+The analyzer flags `sumo_wrestling` and `medieval_falconry` as isolated documents—they don't fit well with the rest of the corpus. It also identifies weak topics: terms like `patent` appear in only 1 document. This is how you find holes in your knowledge base.
 
 ## Running Tests
 
