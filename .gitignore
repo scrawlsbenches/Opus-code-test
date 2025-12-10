@@ -13,6 +13,11 @@ build/
 # Generated corpus files
 corpus_dev.pkl
 *.pkl
+*.manifest.json
+
+# Indexer logs
+index.log
+*.log
 
 # Coverage
 .coverage
