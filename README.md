@@ -2,6 +2,18 @@
 
 A neocortex-inspired text processing library with **zero external dependencies** for semantic analysis, document retrieval, and knowledge gap detection.
 
+---
+
+> *"What if we built a text search engine the way evolution built a brain?"*
+
+Your visual cortex doesn't grep through pixels looking for cats. It builds hierarchies—edges become patterns, patterns become shapes, shapes become objects. This library applies the same principle to text.
+
+Feed it documents. It tokenizes them into "minicolumns" (Layer 0), connects co-occurring words through Hebbian learning ("neurons that fire together, wire together"), clusters them into concepts (Layer 2), and links documents by shared meaning (Layer 3). The result: a graph that understands your corpus well enough to expand queries, complete analogies, and tell you where your knowledge has gaps.
+
+No PyTorch. No transformers. No API keys. Just 337 tests, 7000 lines of pure Python, and a data structure that would make a neuroscientist squint approvingly.
+
+---
+
 ## Overview
 
 This library provides a biologically-inspired approach to text processing, organizing information through a hierarchical structure similar to the visual cortex:
