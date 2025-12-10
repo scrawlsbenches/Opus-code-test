@@ -15,7 +15,7 @@ Example:
 """
 
 from .tokenizer import Tokenizer
-from .minicolumn import Minicolumn
+from .minicolumn import Minicolumn, Edge
 from .layers import CorticalLayer, HierarchicalLayer
 from .processor import CorticalTextProcessor
 
@@ -25,5 +25,6 @@ __all__ = [
     "CorticalLayer",
     "HierarchicalLayer",
     "Minicolumn",
+    "Edge",
     "Tokenizer",
 ]
