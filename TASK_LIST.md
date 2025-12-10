@@ -1235,34 +1235,36 @@ Test count increased from 388 to 408.
 ### 39. Move Inline Imports to Module Top
 
 **Files:** `cortical/processor.py:161`, `cortical/semantics.py:493`
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2025-12-10)
 **Priority:** Low
 
 **Problem:**
 `import copy` statements inside methods pollute namespaces and impact readability.
 
-**Fix:** Move `import copy` to top-level imports in both files.
+**Solution Applied:**
+Moved `import copy` to module-level imports in both files.
 
 ---
 
 ### 40. Add Parameter Range Validation
 
 **Files:** Multiple
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2025-12-10)
 **Priority:** Medium
 
 **Problem:**
-No validation for invalid parameter ranges:
+No validation for invalid parameter ranges.
 
-| Parameter | Valid Range | Location |
-|-----------|-------------|----------|
-| `top_n` | > 0 | All retrieval functions |
-| `chunk_size` | > 0 | query.py chunking |
-| `overlap` | < chunk_size | query.py chunking |
-| `damping` | 0 < d < 1 | analysis.py PageRank |
-| `alpha` | 0 < a < 1 | semantics.py retrofitting |
+**Solution Applied:**
+Added validation to key functions:
+- `compute_pagerank()`: damping must be in range (0, 1)
+- `compute_semantic_pagerank()`: damping must be in range (0, 1)
+- `compute_hierarchical_pagerank()`: damping and cross_layer_damping must be in range (0, 1)
+- `retrofit_connections()`: alpha must be in range [0, 1]
+- `retrofit_embeddings()`: alpha must be in range (0, 1]
+- `create_chunks()`: chunk_size > 0, overlap >= 0, overlap < chunk_size
 
-**Solution:** Add guard clauses at function entry points.
+Added 9 new tests for parameter validation.
 
 ---
 
@@ -1318,15 +1320,19 @@ Only natural language queries supported. No structured filtering.
 ### 43. Optimize Chunk Scoring Performance
 
 **File:** `cortical/query.py:590-630`
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2025-12-10)
 **Priority:** Medium
 
 **Problem:**
 `score_chunk()` tokenizes chunk text every call with no caching.
 
-**Impact:** ~N tokenizations for N chunks from same document.
+**Solution Applied:**
+1. Added `precompute_term_cols()` to cache minicolumn lookups for query terms
+2. Added `score_chunk_fast()` for optimized scoring with pre-computed lookups
+3. Updated `find_passages_for_query()` to use fast scoring
+4. Updated `find_passages_batch()` to use fast scoring
 
-**Solution:** Pre-compute token→minicolumn lookups once per document, reuse across chunks.
+Added 4 new tests for optimization functions.
 
 ---
 
@@ -1346,20 +1352,20 @@ Only natural language queries supported. No structured filtering.
 ### 45. Add LRU Cache for Query Results
 
 **File:** `cortical/processor.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2025-12-10)
 **Priority:** Medium
 
 **Problem:**
 Every query re-expands terms and rescores documents. Repeated queries (common in RAG loops) are slow.
 
-**Solution:**
-```python
-from functools import lru_cache
+**Solution Applied:**
+1. Added `_query_expansion_cache` dict and `_query_cache_max_size` to processor
+2. Added `expand_query_cached()` method with cache lookup and LRU-style eviction
+3. Added `clear_query_cache()` to manually invalidate cache
+4. Added `set_query_cache_size()` to configure cache size
+5. Auto-invalidate cache on `compute_all()` since corpus state changes
 
-@lru_cache(maxsize=100)
-def _cached_query_expansion(self, query_text: str) -> Dict[str, float]:
-    return self.expand_query(query_text)
-```
+Added 8 new tests for cache functionality.
 
 ---
 
@@ -1646,21 +1652,21 @@ Currently these are always 0 due to the bug.
 | 47 | **High** | Dog-food the system during development | ✅ Completed | Validation |
 | 37 | **High** | Create dedicated query module tests | ✅ Completed | Testing |
 | 38 | **High** | Add input validation to public API | ✅ Completed | Code Quality |
-| 40 | Medium | Add parameter range validation | [ ] Not Started | Code Quality |
+| 39 | Low | Move inline imports to module top | ✅ Completed | Code Quality |
+| 40 | Medium | Add parameter range validation | ✅ Completed | Code Quality |
 | 41 | Medium | Create configuration dataclass | [ ] Not Started | Architecture |
-| 43 | Medium | Optimize chunk scoring performance | [ ] Not Started | Performance |
-| 45 | Medium | Add LRU cache for query results | [ ] Not Started | Performance |
-| 39 | Low | Move inline imports to module top | [ ] Not Started | Code Quality |
 | 42 | Low | Add simple query language support | [ ] Not Started | Feature |
+| 43 | Medium | Optimize chunk scoring performance | ✅ Completed | Performance |
 | 44 | Low | Remove deprecated feedforward_sources | [ ] Not Started | Cleanup |
+| 45 | Medium | Add LRU cache for query results | ✅ Completed | Performance |
 | 46 | Low | Standardize return types with dataclasses | [ ] Not Started | API |
 
-**Completed:** 5/13 tasks
+**Completed:** 9/13 tasks
 **High Priority Remaining:** 0 tasks
-**Medium Priority Remaining:** 4 tasks
-**Low Priority Remaining:** 4 tasks
+**Medium Priority Remaining:** 1 task (#41)
+**Low Priority Remaining:** 3 tasks (#42, #44, #46)
 
-**Total Tests:** 408 (all passing)
+**Total Tests:** 546 (all passing)
 
 ---
 
