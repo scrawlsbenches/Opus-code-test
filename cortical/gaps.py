@@ -19,6 +19,36 @@ from .layers import CorticalLayer, HierarchicalLayer
 from .analysis import cosine_similarity
 
 
+# =============================================================================
+# Gap Detection Thresholds
+# =============================================================================
+# These thresholds were empirically determined for typical text corpora.
+# They may need adjustment for specialized domains or very small/large corpora.
+
+# Isolation threshold: Documents with average cosine similarity below this value
+# are considered "isolated" from the rest of the corpus. Value of 0.02 means
+# the document shares very little vocabulary overlap with other documents.
+# Typical range: 0.01 (very strict) to 0.05 (more lenient)
+ISOLATION_THRESHOLD = 0.02
+
+# Well-connected threshold: Documents with average similarity above this value
+# are considered well-integrated into the corpus.
+# Typical range: 0.02 to 0.05
+WELL_CONNECTED_THRESHOLD = 0.03
+
+# Weak topic TF-IDF threshold: Terms with TF-IDF above this value are considered
+# significant enough to represent a "topic". Lower values include more common terms.
+# Typical range: 0.001 (include more terms) to 0.01 (only distinctive terms)
+WEAK_TOPIC_TFIDF_THRESHOLD = 0.005
+
+# Bridge opportunity range: Document pairs with similarity in this range are
+# candidates for "bridging" - they share some vocabulary but aren't closely related.
+# Too similar (>0.03) means they're already well-connected; too dissimilar (<0.005)
+# means there's no common ground to bridge.
+BRIDGE_SIMILARITY_MIN = 0.005
+BRIDGE_SIMILARITY_MAX = 0.03
+
+
 def analyze_knowledge_gaps(
     layers: Dict[CorticalLayer, HierarchicalLayer],
     documents: Dict[str, str]
@@ -59,7 +89,7 @@ def analyze_knowledge_gaps(
         max_sim = max((s for _, s in similarities), default=0)
         doc_similarities[doc_id] = {'avg': avg_sim, 'max': max_sim}
         
-        if avg_sim < 0.02:
+        if avg_sim < ISOLATION_THRESHOLD:
             isolated_docs.append({
                 'doc_id': doc_id,
                 'avg_similarity': avg_sim,
@@ -73,7 +103,7 @@ def analyze_knowledge_gaps(
     weak_topics = []
     for col in layer0.minicolumns.values():
         doc_count = len(col.document_ids)
-        if col.tfidf > 0.005 and 1 <= doc_count <= 2:
+        if col.tfidf > WEAK_TOPIC_TFIDF_THRESHOLD and 1 <= doc_count <= 2:
             weak_topics.append({
                 'term': col.content,
                 'tfidf': col.tfidf,
@@ -96,7 +126,7 @@ def analyze_knowledge_gaps(
                    if doc2 in col.tfidf_per_doc}
             
             sim = cosine_similarity(vec1, vec2)
-            if 0.005 < sim < 0.03:
+            if BRIDGE_SIMILARITY_MIN < sim < BRIDGE_SIMILARITY_MAX:
                 shared = set(vec1.keys()) & set(vec2.keys())
                 bridge_opportunities.append({
                     'doc1': doc1,
@@ -125,8 +155,8 @@ def analyze_knowledge_gaps(
     
     # 5. Coverage metrics
     total_docs = len(doc_ids)
-    isolated_count = len([d for d in doc_similarities.values() if d['avg'] < 0.02])
-    well_connected = len([d for d in doc_similarities.values() if d['avg'] >= 0.03])
+    isolated_count = len([d for d in doc_similarities.values() if d['avg'] < ISOLATION_THRESHOLD])
+    well_connected = len([d for d in doc_similarities.values() if d['avg'] >= WELL_CONNECTED_THRESHOLD])
     coverage_score = well_connected / total_docs if total_docs > 0 else 0
     
     all_avg_sims = [d['avg'] for d in doc_similarities.values()]
