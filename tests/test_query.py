@@ -736,6 +736,71 @@ class TestScoreChunk(unittest.TestCase):
         self.assertEqual(score, 0.0)
 
 
+class TestChunkScoringOptimization(unittest.TestCase):
+    """Test optimized chunk scoring functions."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor."""
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document(
+            "doc1",
+            "Neural networks are powerful tools for data analysis."
+        )
+        cls.processor.compute_all(verbose=False)
+
+    def test_precompute_term_cols_returns_dict(self):
+        """precompute_term_cols should return dict of Minicolumns."""
+        from cortical.query import precompute_term_cols
+        query_terms = {"neural": 1.0, "networks": 0.8}
+        layer0 = self.processor.layers[CorticalLayer.TOKENS]
+
+        term_cols = precompute_term_cols(query_terms, layer0)
+
+        self.assertIsInstance(term_cols, dict)
+        self.assertIn("neural", term_cols)
+        self.assertIn("networks", term_cols)
+
+    def test_precompute_term_cols_excludes_unknown(self):
+        """precompute_term_cols should exclude terms not in corpus."""
+        from cortical.query import precompute_term_cols
+        query_terms = {"neural": 1.0, "xyz_unknown": 0.5}
+        layer0 = self.processor.layers[CorticalLayer.TOKENS]
+
+        term_cols = precompute_term_cols(query_terms, layer0)
+
+        self.assertIn("neural", term_cols)
+        self.assertNotIn("xyz_unknown", term_cols)
+
+    def test_score_chunk_fast_matches_regular(self):
+        """score_chunk_fast should produce same results as score_chunk."""
+        from cortical.query import precompute_term_cols, score_chunk_fast
+        query_terms = {"neural": 1.0, "networks": 0.8}
+        layer0 = self.processor.layers[CorticalLayer.TOKENS]
+        chunk_text = "Neural networks process data"
+
+        # Regular score
+        regular_score = score_chunk(
+            chunk_text, query_terms, layer0, self.processor.tokenizer
+        )
+
+        # Fast score
+        term_cols = precompute_term_cols(query_terms, layer0)
+        chunk_tokens = self.processor.tokenizer.tokenize(chunk_text)
+        fast_score = score_chunk_fast(chunk_tokens, query_terms, term_cols)
+
+        self.assertAlmostEqual(regular_score, fast_score, places=6)
+
+    def test_score_chunk_fast_empty_tokens(self):
+        """score_chunk_fast should handle empty tokens list."""
+        from cortical.query import score_chunk_fast
+        query_terms = {"neural": 1.0}
+        term_cols = {}
+
+        score = score_chunk_fast([], query_terms, term_cols)
+        self.assertEqual(score, 0.0)
+
+
 class TestEdgeCases(unittest.TestCase):
     """Test edge cases and error handling."""
 

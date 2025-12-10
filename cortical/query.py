@@ -978,6 +978,74 @@ def create_chunks(
     return chunks
 
 
+def precompute_term_cols(
+    query_terms: Dict[str, float],
+    layer0: HierarchicalLayer
+) -> Dict[str, 'Minicolumn']:
+    """
+    Pre-compute minicolumn lookups for query terms.
+
+    This avoids repeated O(1) dictionary lookups for each chunk,
+    enabling faster scoring when processing many chunks.
+
+    Args:
+        query_terms: Dict mapping query terms to weights
+        layer0: Token layer for lookups
+
+    Returns:
+        Dict mapping term to Minicolumn (only for terms that exist in corpus)
+    """
+    term_cols = {}
+    for term in query_terms:
+        col = layer0.get_minicolumn(term)
+        if col:
+            term_cols[term] = col
+    return term_cols
+
+
+def score_chunk_fast(
+    chunk_tokens: List[str],
+    query_terms: Dict[str, float],
+    term_cols: Dict[str, 'Minicolumn'],
+    doc_id: Optional[str] = None
+) -> float:
+    """
+    Fast chunk scoring using pre-computed minicolumn lookups.
+
+    This is an optimized version of score_chunk that accepts pre-tokenized
+    text and pre-computed minicolumn lookups. Use when scoring many chunks
+    from the same document.
+
+    Args:
+        chunk_tokens: Pre-tokenized chunk tokens
+        query_terms: Dict mapping query terms to weights
+        term_cols: Pre-computed term->Minicolumn mapping from precompute_term_cols()
+        doc_id: Optional document ID for per-document TF-IDF
+
+    Returns:
+        Relevance score for the chunk
+    """
+    if not chunk_tokens:
+        return 0.0
+
+    # Count token occurrences in chunk
+    token_counts: Dict[str, int] = {}
+    for token in chunk_tokens:
+        token_counts[token] = token_counts.get(token, 0) + 1
+
+    score = 0.0
+    for term, term_weight in query_terms.items():
+        if term in token_counts and term in term_cols:
+            col = term_cols[term]
+            # Use per-document TF-IDF if available, otherwise global
+            tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf) if doc_id else col.tfidf
+            # Weight by occurrence in chunk and query weight
+            score += tfidf * token_counts[term] * term_weight
+
+    # Normalize by chunk length to avoid bias toward longer chunks
+    return score / len(chunk_tokens)
+
+
 def score_chunk(
     chunk_text: str,
     query_terms: Dict[str, float],
@@ -1070,6 +1138,9 @@ def find_passages_for_query(
     if not query_terms:
         return []
 
+    # Pre-compute minicolumn lookups for query terms (optimization)
+    term_cols = precompute_term_cols(query_terms, layer0)
+
     # First, get candidate documents (more than we need, since we'll rank passages)
     doc_scores = find_documents_for_query(
         query_text, layers, tokenizer,
@@ -1094,8 +1165,10 @@ def find_passages_for_query(
         chunks = create_chunks(text, chunk_size, overlap)
 
         for chunk_text, start_char, end_char in chunks:
-            chunk_score = score_chunk(
-                chunk_text, query_terms, layer0, tokenizer, doc_id
+            # Use fast scoring with pre-computed lookups
+            chunk_tokens = tokenizer.tokenize(chunk_text)
+            chunk_score = score_chunk_fast(
+                chunk_tokens, query_terms, term_cols, doc_id
             )
             # Combine chunk score with document score for final ranking
             combined_score = chunk_score * (1 + doc_score * 0.1)
@@ -1254,6 +1327,9 @@ def find_passages_batch(
             all_results.append([])
             continue
 
+        # Pre-compute minicolumn lookups for query terms (optimization)
+        term_cols = precompute_term_cols(query_terms, layer0)
+
         # Get candidate documents
         doc_scores = find_documents_for_query(
             query_text, layers, tokenizer,
@@ -1267,7 +1343,7 @@ def find_passages_batch(
         if doc_filter:
             doc_scores = [(doc_id, score) for doc_id, score in doc_scores if doc_id in doc_filter]
 
-        # Score passages using cached chunks
+        # Score passages using cached chunks and fast scoring
         passages: List[Tuple[str, str, int, int, float]] = []
 
         for doc_id, doc_score in doc_scores:
@@ -1275,8 +1351,10 @@ def find_passages_batch(
                 continue
 
             for chunk_text, start_char, end_char in doc_chunks_cache[doc_id]:
-                chunk_score = score_chunk(
-                    chunk_text, query_terms, layer0, tokenizer, doc_id
+                # Use fast scoring with pre-computed lookups
+                chunk_tokens = tokenizer.tokenize(chunk_text)
+                chunk_score = score_chunk_fast(
+                    chunk_tokens, query_terms, term_cols, doc_id
                 )
                 combined_score = chunk_score * (1 + doc_score * 0.1)
                 passages.append((chunk_text, doc_id, start_char, end_char, combined_score))
