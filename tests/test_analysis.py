@@ -281,5 +281,49 @@ class TestGetByIdOptimization(unittest.TestCase):
         self.assertIsNone(result)
 
 
+class TestParameterValidation(unittest.TestCase):
+    """Test parameter validation in analysis functions."""
+
+    def test_pagerank_invalid_damping_zero(self):
+        """Test PageRank rejects damping=0."""
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer.get_or_create_minicolumn("test")
+        with self.assertRaises(ValueError) as ctx:
+            compute_pagerank(layer, damping=0)
+        self.assertIn("damping", str(ctx.exception))
+
+    def test_pagerank_invalid_damping_one(self):
+        """Test PageRank rejects damping=1."""
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer.get_or_create_minicolumn("test")
+        with self.assertRaises(ValueError) as ctx:
+            compute_pagerank(layer, damping=1.0)
+        self.assertIn("damping", str(ctx.exception))
+
+    def test_pagerank_invalid_damping_negative(self):
+        """Test PageRank rejects negative damping."""
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer.get_or_create_minicolumn("test")
+        with self.assertRaises(ValueError) as ctx:
+            compute_pagerank(layer, damping=-0.5)
+        self.assertIn("damping", str(ctx.exception))
+
+    def test_pagerank_invalid_damping_greater_than_one(self):
+        """Test PageRank rejects damping > 1."""
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer.get_or_create_minicolumn("test")
+        with self.assertRaises(ValueError) as ctx:
+            compute_pagerank(layer, damping=1.5)
+        self.assertIn("damping", str(ctx.exception))
+
+    def test_pagerank_valid_damping(self):
+        """Test PageRank accepts valid damping values."""
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer.get_or_create_minicolumn("test")
+        # Should not raise
+        result = compute_pagerank(layer, damping=0.85)
+        self.assertIsInstance(result, dict)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

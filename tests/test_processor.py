@@ -1619,42 +1619,52 @@ class TestBigramConnections(unittest.TestCase):
 
     def test_shared_left_component_connection(self):
         """Test that bigrams sharing left component are connected."""
-        # "neural_networks" and "neural_processing" share "neural"
+        # "neural networks" and "neural processing" share "neural"
+        # Note: bigrams use space separators (tokenizer.py:179)
         layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
 
-        neural_networks = layer1.get_minicolumn("neural_networks")
-        neural_processing = layer1.get_minicolumn("neural_processing")
+        neural_networks = layer1.get_minicolumn("neural networks")
+        neural_processing = layer1.get_minicolumn("neural processing")
 
-        if neural_networks and neural_processing:
-            # They should be connected via shared "neural" component
-            self.assertIn(neural_processing.id, neural_networks.lateral_connections)
-            self.assertIn(neural_networks.id, neural_processing.lateral_connections)
+        # Verify bigrams exist
+        self.assertIsNotNone(neural_networks, "Bigram 'neural networks' should exist")
+        self.assertIsNotNone(neural_processing, "Bigram 'neural processing' should exist")
+
+        # They should be connected via shared "neural" component
+        self.assertIn(neural_processing.id, neural_networks.lateral_connections)
+        self.assertIn(neural_networks.id, neural_processing.lateral_connections)
 
     def test_shared_right_component_connection(self):
         """Test that bigrams sharing right component are connected."""
-        # "machine_learning" and "deep_learning" share "learning"
+        # "machine learning" and "deep learning" share "learning"
         layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
 
-        machine_learning = layer1.get_minicolumn("machine_learning")
-        deep_learning = layer1.get_minicolumn("deep_learning")
+        machine_learning = layer1.get_minicolumn("machine learning")
+        deep_learning = layer1.get_minicolumn("deep learning")
 
-        if machine_learning and deep_learning:
-            # They should be connected via shared "learning" component
-            self.assertIn(deep_learning.id, machine_learning.lateral_connections)
-            self.assertIn(machine_learning.id, deep_learning.lateral_connections)
+        # Verify bigrams exist
+        self.assertIsNotNone(machine_learning, "Bigram 'machine learning' should exist")
+        self.assertIsNotNone(deep_learning, "Bigram 'deep learning' should exist")
+
+        # They should be connected via shared "learning" component
+        self.assertIn(deep_learning.id, machine_learning.lateral_connections)
+        self.assertIn(machine_learning.id, deep_learning.lateral_connections)
 
     def test_chain_connections(self):
         """Test that chain bigrams are connected (right of one = left of other)."""
-        # "machine_learning" and "learning_algorithms" form a chain
+        # "machine learning" and "learning algorithms" form a chain
         layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
 
-        machine_learning = layer1.get_minicolumn("machine_learning")
-        learning_algorithms = layer1.get_minicolumn("learning_algorithms")
+        machine_learning = layer1.get_minicolumn("machine learning")
+        learning_algorithms = layer1.get_minicolumn("learning algorithms")
 
-        if machine_learning and learning_algorithms:
-            # They should be connected via chain relationship
-            self.assertIn(learning_algorithms.id, machine_learning.lateral_connections)
-            self.assertIn(machine_learning.id, learning_algorithms.lateral_connections)
+        # Verify bigrams exist
+        self.assertIsNotNone(machine_learning, "Bigram 'machine learning' should exist")
+        self.assertIsNotNone(learning_algorithms, "Bigram 'learning algorithms' should exist")
+
+        # They should be connected via chain relationship
+        self.assertIn(learning_algorithms.id, machine_learning.lateral_connections)
+        self.assertIn(machine_learning.id, learning_algorithms.lateral_connections)
 
     def test_cooccurrence_connections(self):
         """Test that bigrams co-occurring in documents are connected."""
@@ -1740,6 +1750,45 @@ class TestBigramConnections(unittest.TestCase):
             for target_id, weight in bigram.lateral_connections.items():
                 # Weights should be positive
                 self.assertGreater(weight, 0)
+
+    def test_component_and_chain_connections_nonzero(self):
+        """Test that component and chain connections are created (verifies bigram separator fix)."""
+        # Create fresh processor with bigrams that share components
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks are powerful. Neural processing enables deep learning. "
+            "Machine learning is related to deep learning approaches."
+        )
+        processor.compute_tfidf(verbose=False)
+
+        stats = processor.compute_bigram_connections(verbose=False)
+
+        # With the bigram separator fix, component_connections should be > 0
+        # because "neural networks" and "neural processing" share "neural"
+        self.assertGreater(
+            stats['component_connections'], 0,
+            "Component connections should be > 0 when bigrams share components. "
+            "If this fails, check that bigram.content.split(' ') is used (not split('_'))."
+        )
+
+    def test_bigram_separator_is_space(self):
+        """Test that bigrams use space separator (regression test for separator bug)."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data")
+        processor.compute_all(verbose=False)
+
+        layer1 = processor.layers[CorticalLayer.BIGRAMS]
+
+        # Bigrams should use space separators
+        self.assertIsNotNone(
+            layer1.get_minicolumn("neural networks"),
+            "Bigram 'neural networks' (with space) should exist"
+        )
+        self.assertIsNone(
+            layer1.get_minicolumn("neural_networks"),
+            "Bigram 'neural_networks' (with underscore) should NOT exist"
+        )
 
 
 class TestSemanticPageRank(unittest.TestCase):
@@ -2395,6 +2444,36 @@ class TestAnalogyCompletion(unittest.TestCase):
         self.assertNotIn("networks", result_terms)
         self.assertNotIn("machine", result_terms)
 
+    def test_complete_analogy_simple_uses_bigram_patterns(self):
+        """Test that analogy completion uses bigram patterns (verifies separator fix)."""
+        # Create processor with documents that should create "a b" and "c d" bigrams
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1",
+            "Neural networks are powerful tools for data analysis. "
+            "Machine learning helps neural networks improve performance."
+        )
+        processor.process_document(
+            "doc2",
+            "Neural algorithms process neural signals. "
+            "Machine processing uses machine algorithms."
+        )
+        processor.compute_all(verbose=False)
+
+        # Verify bigrams exist with space separators
+        layer1 = processor.layers[CorticalLayer.BIGRAMS]
+        self.assertIsNotNone(
+            layer1.get_minicolumn("neural networks"),
+            "Bigram 'neural networks' should exist for bigram strategy"
+        )
+
+        # The analogy should work using bigram patterns
+        # a:b :: c:? where "a b" is a bigram and we look for "c ?" bigrams
+        results = processor.complete_analogy_simple("neural", "networks", "machine")
+
+        # Results should be a list (may be empty if no bigram pattern matches)
+        self.assertIsInstance(results, list)
+
 
 class TestAnalogyHelperFunctions(unittest.TestCase):
     """Test analogy helper functions."""
@@ -2450,6 +2529,265 @@ class TestAnalogyHelperFunctions(unittest.TestCase):
 
         result = find_terms_with_relation("dog", "HasProperty", relations, direction='forward')
         self.assertEqual(len(result), 2)
+
+
+class TestInputValidation(unittest.TestCase):
+    """Test input validation for public API methods."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor()
+
+    # Tests for process_document validation
+    def test_process_document_empty_doc_id(self):
+        """process_document should reject empty doc_id."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.process_document("", "Some content")
+        self.assertIn("doc_id", str(ctx.exception))
+
+    def test_process_document_none_doc_id(self):
+        """process_document should reject None doc_id."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.process_document(None, "Some content")
+        self.assertIn("doc_id", str(ctx.exception))
+
+    def test_process_document_non_string_doc_id(self):
+        """process_document should reject non-string doc_id."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.process_document(123, "Some content")
+        self.assertIn("doc_id", str(ctx.exception))
+
+    def test_process_document_empty_content(self):
+        """process_document should reject empty content."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.process_document("doc1", "")
+        self.assertIn("content", str(ctx.exception))
+
+    def test_process_document_whitespace_content(self):
+        """process_document should reject whitespace-only content."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.process_document("doc1", "   \n\t  ")
+        self.assertIn("content", str(ctx.exception))
+
+    def test_process_document_non_string_content(self):
+        """process_document should reject non-string content."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.process_document("doc1", 123)
+        self.assertIn("content", str(ctx.exception))
+
+    def test_process_document_valid_input(self):
+        """process_document should accept valid input."""
+        stats = self.processor.process_document("doc1", "Valid content here.")
+        self.assertIn("doc1", self.processor.documents)
+
+    # Tests for find_documents_for_query validation
+    def test_find_documents_empty_query(self):
+        """find_documents_for_query should reject empty query."""
+        self.processor.process_document("doc1", "Some content here.")
+        self.processor.compute_all()
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.find_documents_for_query("")
+        self.assertIn("query_text", str(ctx.exception))
+
+    def test_find_documents_whitespace_query(self):
+        """find_documents_for_query should reject whitespace-only query."""
+        self.processor.process_document("doc1", "Some content here.")
+        self.processor.compute_all()
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.find_documents_for_query("   ")
+        self.assertIn("query_text", str(ctx.exception))
+
+    def test_find_documents_invalid_top_n(self):
+        """find_documents_for_query should reject invalid top_n."""
+        self.processor.process_document("doc1", "Some content here.")
+        self.processor.compute_all()
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.find_documents_for_query("content", top_n=0)
+        self.assertIn("top_n", str(ctx.exception))
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.find_documents_for_query("content", top_n=-1)
+        self.assertIn("top_n", str(ctx.exception))
+
+    def test_find_documents_valid_input(self):
+        """find_documents_for_query should accept valid input."""
+        self.processor.process_document("doc1", "Neural networks process data.")
+        self.processor.compute_all()
+
+        results = self.processor.find_documents_for_query("neural", top_n=5)
+        self.assertIsInstance(results, list)
+
+    # Tests for complete_analogy validation
+    def test_complete_analogy_empty_term(self):
+        """complete_analogy should reject empty terms."""
+        self.processor.process_document("doc1", "Neural networks and data.")
+        self.processor.compute_all()
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.complete_analogy("", "b", "c")
+        self.assertIn("term_a", str(ctx.exception))
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.complete_analogy("a", "", "c")
+        self.assertIn("term_b", str(ctx.exception))
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.complete_analogy("a", "b", "")
+        self.assertIn("term_c", str(ctx.exception))
+
+    def test_complete_analogy_invalid_top_n(self):
+        """complete_analogy should reject invalid top_n."""
+        self.processor.process_document("doc1", "Neural networks and data.")
+        self.processor.compute_all()
+
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.complete_analogy("a", "b", "c", top_n=0)
+        self.assertIn("top_n", str(ctx.exception))
+
+    def test_complete_analogy_valid_input(self):
+        """complete_analogy should accept valid input."""
+        self.processor.process_document("doc1", "Neural networks process data.")
+        self.processor.compute_all()
+
+        results = self.processor.complete_analogy("neural", "networks", "data", top_n=3)
+        self.assertIsInstance(results, list)
+
+    # Tests for add_documents_batch validation
+    def test_add_documents_batch_not_list(self):
+        """add_documents_batch should reject non-list input."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.add_documents_batch("not a list")
+        self.assertIn("must be a list", str(ctx.exception))
+
+    def test_add_documents_batch_empty_list(self):
+        """add_documents_batch should reject empty list."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.add_documents_batch([])
+        self.assertIn("must not be empty", str(ctx.exception))
+
+    def test_add_documents_batch_invalid_recompute(self):
+        """add_documents_batch should reject invalid recompute level."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.add_documents_batch(
+                [("doc1", "content")],
+                recompute='invalid'
+            )
+        self.assertIn("recompute", str(ctx.exception))
+
+    def test_add_documents_batch_invalid_tuple(self):
+        """add_documents_batch should reject invalid tuple format."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.add_documents_batch([("only_one_element",)])
+        self.assertIn("documents[0]", str(ctx.exception))
+
+    def test_add_documents_batch_invalid_doc_id(self):
+        """add_documents_batch should reject invalid doc_id in tuple."""
+        with self.assertRaises(ValueError) as ctx:
+            self.processor.add_documents_batch([(123, "content")])
+        self.assertIn("doc_id", str(ctx.exception))
+
+    def test_add_documents_batch_valid_input(self):
+        """add_documents_batch should accept valid input."""
+        docs = [
+            ("doc1", "First document.", None),
+            ("doc2", "Second document.", {"source": "test"}),
+        ]
+        stats = self.processor.add_documents_batch(docs, recompute='none', verbose=False)
+        self.assertEqual(stats['documents_added'], 2)
+
+
+class TestQueryCache(unittest.TestCase):
+    """Test query expansion caching functionality."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up test processor."""
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document("doc1", "Neural networks process data.")
+        cls.processor.process_document("doc2", "Machine learning algorithms.")
+        cls.processor.compute_all(verbose=False)
+
+    def test_expand_query_cached_returns_dict(self):
+        """expand_query_cached should return a dict."""
+        result = self.processor.expand_query_cached("neural")
+        self.assertIsInstance(result, dict)
+
+    def test_expand_query_cached_same_result(self):
+        """expand_query_cached should return same result for same query."""
+        result1 = self.processor.expand_query_cached("neural networks")
+        result2 = self.processor.expand_query_cached("neural networks")
+        self.assertEqual(result1, result2)
+
+    def test_expand_query_cached_different_params(self):
+        """Different parameters should use different cache entries."""
+        result1 = self.processor.expand_query_cached("neural", use_code_concepts=False)
+        result2 = self.processor.expand_query_cached("neural", use_code_concepts=True)
+        # Results may differ (code concepts add synonyms)
+        self.assertIsInstance(result1, dict)
+        self.assertIsInstance(result2, dict)
+
+    def test_clear_query_cache(self):
+        """clear_query_cache should return count and clear cache."""
+        # Populate cache
+        self.processor.expand_query_cached("test1")
+        self.processor.expand_query_cached("test2")
+
+        # Clear and verify
+        count = self.processor.clear_query_cache()
+        self.assertGreaterEqual(count, 2)
+
+        # Verify cache is empty
+        count2 = self.processor.clear_query_cache()
+        self.assertEqual(count2, 0)
+
+    def test_set_query_cache_size(self):
+        """set_query_cache_size should update max size."""
+        self.processor.set_query_cache_size(50)
+        self.assertEqual(self.processor._query_cache_max_size, 50)
+
+        # Reset to default
+        self.processor.set_query_cache_size(100)
+
+    def test_set_query_cache_size_invalid(self):
+        """set_query_cache_size should reject invalid sizes."""
+        with self.assertRaises(ValueError):
+            self.processor.set_query_cache_size(0)
+        with self.assertRaises(ValueError):
+            self.processor.set_query_cache_size(-10)
+
+    def test_cache_lru_eviction(self):
+        """Cache should evict oldest entries when full."""
+        self.processor.clear_query_cache()
+        self.processor.set_query_cache_size(3)
+
+        # Fill cache
+        self.processor.expand_query_cached("query1")
+        self.processor.expand_query_cached("query2")
+        self.processor.expand_query_cached("query3")
+
+        # Add another - should evict oldest
+        self.processor.expand_query_cached("query4")
+
+        # Cache should still be at max size
+        self.assertLessEqual(len(self.processor._query_expansion_cache), 3)
+
+        # Reset
+        self.processor.set_query_cache_size(100)
+        self.processor.clear_query_cache()
+
+    def test_compute_all_invalidates_cache(self):
+        """compute_all should clear the query cache."""
+        # Populate cache
+        self.processor.expand_query_cached("cached_query")
+        self.assertGreater(len(self.processor._query_expansion_cache), 0)
+
+        # Recompute
+        self.processor.compute_all(verbose=False)
+
+        # Cache should be cleared
+        self.assertEqual(len(self.processor._query_expansion_cache), 0)
 
 
 if __name__ == "__main__":

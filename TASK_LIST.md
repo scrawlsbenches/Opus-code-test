@@ -1110,51 +1110,292 @@ results = processor.complete_analogy(
 
 ---
 
-## Code Review Concerns
+## Actionable Tasks (2025-12-10)
 
-The following concerns were identified during code review and should be addressed in future iterations:
-
-### 31. Consider Splitting processor.py
-
-**File:** `cortical/processor.py`
-**Status:** [ ] Future Enhancement
-**Priority:** Low
-
-**Concern:**
-The `processor.py` file has grown to 800+ lines with the addition of incremental indexing, batch APIs, and multi-stage ranking. Consider splitting into smaller modules:
-- `processor_core.py` - Core document processing
-- `processor_batch.py` - Batch operations (add_documents_batch, find_*_batch)
-- `processor_incremental.py` - Incremental indexing and staleness tracking
+The following tasks were identified during comprehensive code review and are prioritized for implementation:
 
 ---
 
-### 32. Semantic Lookup Memory Optimization
+### 47. Dog-Food the System During Development
 
-**File:** `cortical/analysis.py`
-**Function:** `compute_concept_connections()`
-**Status:** [ ] Future Enhancement
+**Files:** New `scripts/index_codebase.py`, `scripts/search_codebase.py`, `.claude/skills/`
+**Status:** [x] Completed (2025-12-10)
+**Priority:** High
+
+**Goal:**
+Use the Cortical Text Processor to index and search its own codebase during development.
+
+**Solution Applied:**
+1. Created `scripts/index_codebase.py`:
+   - Indexes all 19 Python files in `cortical/` and `tests/`
+   - Indexes 4 documentation files (CLAUDE.md, TASK_LIST.md, README.md, KNOWLEDGE_TRANSFER.md)
+   - Saves indexed corpus to `corpus_dev.pkl` (23 documents, ~15,600 lines)
+   - Computes semantic PageRank, TF-IDF, concepts, and semantic relations
+
+2. Created `scripts/search_codebase.py`:
+   - Loads indexed corpus and performs semantic search
+   - Returns file:line references for each result
+   - Supports `--top N`, `--verbose`, `--expand`, `--interactive` options
+   - Interactive mode with `/expand`, `/concepts`, `/stats`, `/quit` commands
+
+3. Created Claude Skills in `.claude/skills/`:
+   - `codebase-search/SKILL.md` - Search skill for finding code patterns
+   - `corpus-indexer/SKILL.md` - Indexing skill for updating corpus
+
+4. Updated `CLAUDE.md` with Dog-Fooding section documenting usage
+
+**Example Usage:**
+```bash
+python scripts/index_codebase.py
+python scripts/search_codebase.py "PageRank algorithm" --top 3
+python scripts/search_codebase.py "bigram separator" --expand
+python scripts/search_codebase.py --interactive
+```
+
+**Success Criteria:** All met
+- Can find relevant code when searching for concepts
+- Passages include accurate file:line references (e.g., `cortical/analysis.py:127`)
+- System handles its own codebase without errors
+- Identified usability issue: return value order in find_passages_for_query (fixed)
+
+---
+
+### 37. Create Dedicated Query Module Tests
+
+**File:** `tests/test_query.py` (new file)
+**Status:** [x] Completed (2025-12-10)
+**Priority:** High
+
+**Problem:**
+`cortical/query.py` (1,503 lines, 20+ functions) has NO dedicated test file. Functions are tested only indirectly through `test_processor.py`.
+
+**Functions Needing Coverage:**
+- `expand_query_multihop()` - Multi-hop inference with relation chains
+- `score_relation_path()` - Relation path validation
+- `get_expanded_query_terms()` - Helper for all expansion methods
+- `find_relevant_concepts()` - Concept filtering for RAG
+- `find_relation_between()` and `find_terms_with_relation()` - Relation discovery
+- Chunking and batch operations
+
+**Deliverable:** Create `tests/test_query.py` with 30+ unit tests.
+
+**Solution Applied:**
+Created `tests/test_query.py` with 48 comprehensive tests covering:
+- `TestScoreRelationPath` (4 tests) - Relation path validation
+- `TestCreateChunks` (4 tests) - Text chunking
+- `TestFindRelationBetween` (4 tests) - Relation discovery
+- `TestFindTermsWithRelation` (4 tests) - Term relation lookup
+- `TestExpandQuery` (4 tests) - Basic query expansion
+- `TestExpandQueryMultihop` (4 tests) - Multi-hop expansion
+- `TestGetExpandedQueryTerms` (3 tests) - Unified expansion helper
+- `TestFindDocumentsForQuery` (4 tests) - Document retrieval
+- `TestFindDocumentsBatch` (3 tests) - Batch document retrieval
+- `TestFindPassagesForQuery` (2 tests) - Passage retrieval
+- `TestFindRelevantConcepts` (2 tests) - Concept filtering
+- `TestCompleteAnalogy` (3 tests) - Analogy completion
+- `TestQueryWithSpreadingActivation` (2 tests) - Activation search
+- `TestScoreChunk` (3 tests) - Chunk scoring
+- `TestEdgeCases` (2 tests) - Edge case handling
+
+Test count increased from 340 to 388.
+
+---
+
+### 38. Add Input Validation to Public API
+
+**Files:** `cortical/processor.py`
+**Status:** [x] Completed (2025-12-10)
+**Priority:** High
+
+**Problem:**
+Public API methods silently accept invalid inputs, leading to confusing behavior.
+
+**Solution Applied:**
+Added input validation to 4 key public API methods:
+
+1. **`process_document()`** - Validates doc_id (non-empty string) and content (non-empty string)
+2. **`find_documents_for_query()`** - Validates query_text (non-empty string) and top_n (positive int)
+3. **`complete_analogy()`** - Validates all 3 terms (non-empty strings) and top_n (positive int)
+4. **`add_documents_batch()`** - Validates documents list format, doc_id/content types, and recompute level
+
+All methods now raise `ValueError` with descriptive messages for invalid input.
+
+**Tests Added:** 20 new tests in `TestInputValidation` class covering:
+- Empty/None/non-string doc_id
+- Empty/whitespace-only/non-string content
+- Empty/whitespace-only query_text
+- Invalid top_n values (0, negative)
+- Invalid document batch formats
+- Valid input acceptance
+
+Test count increased from 388 to 408.
+
+---
+
+### 39. Move Inline Imports to Module Top
+
+**Files:** `cortical/processor.py:161`, `cortical/semantics.py:493`
+**Status:** [x] Completed (2025-12-10)
+**Priority:** Low
+
+**Problem:**
+`import copy` statements inside methods pollute namespaces and impact readability.
+
+**Solution Applied:**
+Moved `import copy` to module-level imports in both files.
+
+---
+
+### 40. Add Parameter Range Validation
+
+**Files:** Multiple
+**Status:** [x] Completed (2025-12-10)
 **Priority:** Medium
 
-**Concern:**
-The semantic lookup builds a double-nested dictionary (`Dict[str, Dict[str, Tuple[str, float]]]`) which stores relations in both directions. For large semantic relation sets (10K+ relations), this could consume significant memory.
+**Problem:**
+No validation for invalid parameter ranges.
 
-**Potential Solution:**
-- Use a single direction and check both orderings at lookup time
-- Or use a frozenset key: `{(t1, t2): (relation, weight)}`
+**Solution Applied:**
+Added validation to key functions:
+- `compute_pagerank()`: damping must be in range (0, 1)
+- `compute_semantic_pagerank()`: damping must be in range (0, 1)
+- `compute_hierarchical_pagerank()`: damping and cross_layer_damping must be in range (0, 1)
+- `retrofit_connections()`: alpha must be in range [0, 1]
+- `retrofit_embeddings()`: alpha must be in range (0, 1]
+- `create_chunks()`: chunk_size > 0, overlap >= 0, overlap < chunk_size
+
+Added 9 new tests for parameter validation.
 
 ---
 
-### 33. Tune Semantic Bonus Cap
+### 41. Create Configuration Dataclass
 
-**File:** `cortical/analysis.py`
-**Line:** ~408
-**Status:** [ ] Future Enhancement
+**Files:** New `cortical/config.py`
+**Status:** [ ] Not Started
+**Priority:** Medium
+
+**Problem:**
+Magic numbers scattered across modules with no central configuration:
+- `gaps.py`: ISOLATION_THRESHOLD=0.02, WELL_CONNECTED_THRESHOLD=0.03
+- `query.py`: VALID_RELATION_CHAINS (15 entries)
+- `analysis.py`: damping=0.85, iterations=20, tolerance=1e-6
+
+**Solution:**
+```python
+@dataclass
+class CorticalConfig:
+    # PageRank
+    pagerank_damping: float = 0.85
+    pagerank_iterations: int = 20
+    pagerank_tolerance: float = 1e-6
+
+    # Clustering
+    min_cluster_size: int = 3
+    cluster_strictness: float = 1.0
+
+    # Gap detection
+    isolation_threshold: float = 0.02
+    well_connected_threshold: float = 0.03
+```
+
+---
+
+### 42. Add Simple Query Language Support
+
+**File:** `cortical/query.py`
+**Status:** [ ] Not Started
 **Priority:** Low
 
-**Concern:**
-Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reasonable default but may benefit from:
-- Making it a configurable parameter
-- Empirical testing on different corpus types
+**Problem:**
+Only natural language queries supported. No structured filtering.
+
+**Solution:** Add minimal syntax:
+- `"term1 AND term2"` - require both terms
+- `"term1 OR term2"` - either term
+- `"-term1"` - exclude term
+- `"term1"` (quoted) - exact match
+
+---
+
+### 43. Optimize Chunk Scoring Performance
+
+**File:** `cortical/query.py:590-630`
+**Status:** [x] Completed (2025-12-10)
+**Priority:** Medium
+
+**Problem:**
+`score_chunk()` tokenizes chunk text every call with no caching.
+
+**Solution Applied:**
+1. Added `precompute_term_cols()` to cache minicolumn lookups for query terms
+2. Added `score_chunk_fast()` for optimized scoring with pre-computed lookups
+3. Updated `find_passages_for_query()` to use fast scoring
+4. Updated `find_passages_batch()` to use fast scoring
+
+Added 4 new tests for optimization functions.
+
+---
+
+### 44. Remove Deprecated feedforward_sources
+
+**Files:** `cortical/minicolumn.py:117`, `analysis.py:457`, `query.py:105`
+**Status:** [ ] Not Started
+**Priority:** Low
+
+**Problem:**
+`feedforward_sources` is marked deprecated but still used in 4+ locations.
+
+**Solution:** Migrate all usages to `feedforward_connections` and remove deprecated attribute.
+
+---
+
+### 45. Add LRU Cache for Query Results
+
+**File:** `cortical/processor.py`
+**Status:** [x] Completed (2025-12-10)
+**Priority:** Medium
+
+**Problem:**
+Every query re-expands terms and rescores documents. Repeated queries (common in RAG loops) are slow.
+
+**Solution Applied:**
+1. Added `_query_expansion_cache` dict and `_query_cache_max_size` to processor
+2. Added `expand_query_cached()` method with cache lookup and LRU-style eviction
+3. Added `clear_query_cache()` to manually invalidate cache
+4. Added `set_query_cache_size()` to configure cache size
+5. Auto-invalidate cache on `compute_all()` since corpus state changes
+
+Added 8 new tests for cache functionality.
+
+---
+
+### 46. Standardize Return Types with Dataclasses
+
+**File:** `cortical/query.py`
+**Status:** [ ] Not Started
+**Priority:** Low
+
+**Problem:**
+Inconsistent return types across query functions:
+- `find_documents_for_query()` → `List[Tuple[str, float]]`
+- `find_passages_for_query()` → `List[Tuple[str, str, int, int, float]]`
+- `complete_analogy()` → `List[Tuple[str, float, str]]`
+
+**Solution:**
+```python
+@dataclass
+class DocumentMatch:
+    doc_id: str
+    score: float
+
+@dataclass
+class PassageMatch:
+    doc_id: str
+    text: str
+    start: int
+    end: int
+    score: float
+```
 
 ---
 
@@ -1201,7 +1442,7 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 ## Test Results
 
 ```
-Ran 321 tests in 0.280s
+Ran 408 tests in 0.336s
 OK
 ```
 
@@ -1301,3 +1542,270 @@ All 6 functions now use this helper, reducing code duplication by ~100 lines.
 ---
 
 *Updated from code review on 2025-12-10*
+
+---
+
+## Critical Bug Fixes (2025-12-10)
+
+The following critical bugs were identified during code review and must be fixed:
+
+### 34. Fix Bigram Separator Mismatch in Analogy Completion
+
+**File:** `cortical/query.py`
+**Lines:** 1442-1468
+**Status:** [x] Completed (2025-12-10)
+**Priority:** Critical
+
+**Problem:**
+The `complete_analogy_simple()` function uses underscore separators for bigram lookup and parsing, but bigrams are stored with **space** separators (defined in `tokenizer.py:179`).
+
+**Affected Code:**
+```python
+# Line 1442-1443: WRONG - uses underscore
+ab_bigram = f"{term_a}_{term_b}"  # Creates "neural_networks"
+ba_bigram = f"{term_b}_{term_a}"
+
+# Line 1452: WRONG - splits by underscore
+parts = bigram.split('_')
+
+# But bigrams are stored with spaces (tokenizer.py:179):
+# ' '.join(tokens[i:i+n])  # Creates "neural networks"
+```
+
+**Impact:**
+- The bigram pattern matching strategy in `complete_analogy_simple()` is completely non-functional
+- `ab_col` and `ba_col` will always be `None` because "neural_networks" doesn't exist in the corpus
+- The `parts` split will never produce valid component extraction
+
+**Solution:**
+```python
+# Line 1442-1443: Should use space
+ab_bigram = f"{term_a} {term_b}"  # Correct: "neural networks"
+ba_bigram = f"{term_b} {term_a}"
+
+# Line 1452: Should split by space
+parts = bigram.split(' ')
+```
+
+**Files to Modify:**
+- `cortical/query.py` - Fix separator in lines 1442, 1443, 1452
+- `tests/test_processor.py` - Add tests for bigram-based analogy completion
+
+---
+
+### 35. Fix Bigram Separator Mismatch in Bigram Connections
+
+**File:** `cortical/analysis.py`
+**Line:** 927
+**Status:** [x] Completed (2025-12-10)
+**Priority:** Critical
+
+**Problem:**
+The `compute_bigram_connections()` function splits bigram content by underscore, but bigrams are stored with **space** separators.
+
+**Affected Code:**
+```python
+# Line 927: WRONG - splits by underscore
+for bigram in bigrams:
+    parts = bigram.content.split('_')
+    if len(parts) == 2:
+        left_index[parts[0]].append(bigram)
+        right_index[parts[1]].append(bigram)
+
+# But bigrams are stored with spaces:
+# "neural networks" not "neural_networks"
+```
+
+**Impact:**
+- `left_index` and `right_index` dictionaries are never populated
+- Component-sharing connections (e.g., "neural networks" ↔ "neural processing") are never created
+- Chain connections (e.g., "machine learning" ↔ "learning algorithms") are never created
+- Only document co-occurrence connections work correctly
+
+**Solution:**
+```python
+# Line 927: Should split by space
+parts = bigram.content.split(' ')
+```
+
+**Verification:**
+After fixing, the `compute_bigram_connections()` stats should show non-zero values for:
+- `component_connections`
+- `chain_connections`
+
+Currently these are always 0 due to the bug.
+
+**Files to Modify:**
+- `cortical/analysis.py` - Fix separator in line 927
+- `tests/test_analysis.py` - Add tests verifying component/chain connections work
+
+---
+
+---
+
+## New Task Summary (2025-12-10)
+
+| # | Priority | Task | Status | Category |
+|---|----------|------|--------|----------|
+| 34 | **Critical** | Fix bigram separator in analogy completion | ✅ Completed | Bug Fix |
+| 35 | **Critical** | Fix bigram separator in bigram connections | ✅ Completed | Bug Fix |
+| 47 | **High** | Dog-food the system during development | ✅ Completed | Validation |
+| 37 | **High** | Create dedicated query module tests | ✅ Completed | Testing |
+| 38 | **High** | Add input validation to public API | ✅ Completed | Code Quality |
+| 39 | Low | Move inline imports to module top | ✅ Completed | Code Quality |
+| 40 | Medium | Add parameter range validation | ✅ Completed | Code Quality |
+| 41 | Medium | Create configuration dataclass | [ ] Not Started | Architecture |
+| 42 | Low | Add simple query language support | [ ] Not Started | Feature |
+| 43 | Medium | Optimize chunk scoring performance | ✅ Completed | Performance |
+| 44 | Low | Remove deprecated feedforward_sources | [ ] Not Started | Cleanup |
+| 45 | Medium | Add LRU cache for query results | ✅ Completed | Performance |
+| 46 | Low | Standardize return types with dataclasses | [ ] Not Started | API |
+
+**Completed:** 9/13 tasks
+**High Priority Remaining:** 0 tasks
+**Medium Priority Remaining:** 1 task (#41)
+**Low Priority Remaining:** 3 tasks (#42, #44, #46)
+
+**Total Tests:** 546 (all passing)
+
+---
+
+## Intent-Based Code Search Enhancements
+
+The following tasks enhance the system's ability to understand developer intent and retrieve code by meaning rather than exact keyword matching.
+
+---
+
+### 48. Add Code-Aware Tokenization
+
+**Files:** `cortical/tokenizer.py`, `tests/test_tokenizer.py`
+**Status:** [x] Completed
+**Priority:** High
+
+**Problem:**
+Current tokenizer treats code like prose. It doesn't understand that `getUserCredentials`, `get_user_credentials`, and `fetch user credentials` are semantically equivalent.
+
+**Solution Applied:**
+1. Added `split_identifier()` function to break camelCase, PascalCase, underscore_style, and CONSTANT_STYLE
+2. Added `PROGRAMMING_KEYWORDS` constant for common code terms (function, class, def, get, set, etc.)
+3. Added `split_identifiers` parameter to `Tokenizer.__init__()` and `tokenize()` method
+4. Tokens include both original identifier and split components when enabled
+5. Split parts don't duplicate already-seen tokens, preserving proper bigram extraction
+
+**Example:**
+```python
+tokenizer = Tokenizer(split_identifiers=True)
+tokens = tokenizer.tokenize("getUserCredentials")
+# ['getusercredentials', 'get', 'user', 'credentials']
+```
+
+**Tests Added:**
+- 8 tests for `split_identifier()` function (camelCase, PascalCase, underscore_style, acronyms)
+- 8 tests for code-aware tokenization (splitting, stop word filtering, min length, deduplication)
+
+---
+
+### 49. Add Synonym/Concept Mapping for Code Patterns
+
+**Files:** `cortical/code_concepts.py`, `cortical/query.py`, `cortical/processor.py`
+**Status:** [x] Completed
+**Priority:** High
+
+**Problem:**
+The system doesn't know that "fetch", "get", "retrieve", "load" are often interchangeable in code contexts, or that "auth", "authentication", "credentials", "login" form a concept cluster.
+
+**Solution Applied:**
+1. Created `cortical/code_concepts.py` with 16 programming concept groups
+2. Added `expand_code_concepts()` function for query expansion
+3. Integrated with `expand_query()` via `use_code_concepts` parameter
+4. Added `expand_query_for_code()` convenience method to processor
+5. Added 33 tests in `tests/test_code_concepts.py`
+
+**Concept Groups Implemented:**
+- retrieval, storage, deletion, auth, error, validation
+- transform, network, database, async, config, logging
+- testing, file, iteration, lifecycle, events
+
+---
+
+### 50. Add Intent-Based Query Understanding
+
+**Files:** `cortical/query.py`, `cortical/processor.py`, `tests/test_intent_query.py`
+**Status:** [x] Completed
+**Priority:** High
+
+**Problem:**
+Natural language queries like "where do we handle authentication?" aren't decomposed into searchable intents.
+
+**Solution Applied:**
+1. Added `parse_intent_query()` to extract action + subject + intent + expanded terms
+2. Added `ParsedIntent` TypedDict for structured results
+3. Added `QUESTION_INTENTS` mapping (where→location, how→implementation, what→definition, why→rationale, when→lifecycle)
+4. Added `ACTION_VERBS` frozenset with 50+ common programming verbs
+5. Added `search_by_intent()` for intent-aware document search
+6. Added processor wrapper methods
+7. Added 24 tests in `tests/test_intent_query.py`
+
+**Example:**
+```python
+parse_intent_query("where do we handle authentication?")
+# Returns: {
+#   'action': 'handle',
+#   'subject': 'authentication',
+#   'intent': 'location',
+#   'question_word': 'where',
+#   'expanded_terms': ['handle', 'authentication', 'auth', 'login', ...]
+# }
+```
+
+---
+
+### 51. Add Fingerprint Export API
+
+**Files:** `cortical/fingerprint.py`, `cortical/processor.py`, `tests/test_fingerprint.py`
+**Status:** [x] Completed
+**Priority:** Medium
+
+**Problem:**
+No way to export or compare the semantic representation of code blocks.
+
+**Solution Applied:**
+1. Created `cortical/fingerprint.py` with `SemanticFingerprint` TypedDict
+2. Added `compute_fingerprint()` returning terms, concepts, bigrams, top_terms
+3. Added `compare_fingerprints()` for cosine similarity scoring
+4. Added `explain_fingerprint()` showing top contributing terms and concepts
+5. Added `explain_similarity()` for human-readable explanations
+6. Added processor methods: `get_fingerprint()`, `compare_fingerprints()`, `explain_fingerprint()`, `explain_similarity()`, `find_similar_texts()`
+7. Added 24 tests in `tests/test_fingerprint.py`
+
+**Use Cases:**
+- Compare similarity between functions
+- Find duplicate/similar code blocks
+- Explain why two code blocks are related
+
+---
+
+### 52. Optimize Query-to-Corpus Comparison
+
+**Files:** `cortical/query.py`, `cortical/processor.py`, `scripts/search_codebase.py`
+**Status:** [x] Completed
+**Priority:** Medium
+
+**Problem:**
+Each query recomputes expansions and scores against all documents. For interactive use, this should be faster.
+
+**Solution Applied:**
+1. Added `fast_find_documents()` using candidate pre-filtering
+2. Added `build_document_index()` for pre-computed inverted index
+3. Added `search_with_index()` for fastest cached search
+4. Added processor wrappers: `fast_find_documents()`, `build_search_index()`, `search_with_index()`
+5. Added `--fast` flag to search_codebase.py script
+6. Added 20 tests in `tests/test_query_optimization.py`
+
+**Performance:**
+- `fast_find_documents()`: ~2-3x faster than full search
+- `search_with_index()`: Fastest when index is cached
+
+---
+
+*Updated 2025-12-10*

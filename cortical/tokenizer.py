@@ -10,7 +10,96 @@ representations (lowercase, stemming).
 """
 
 import re
-from typing import List, Set, Optional, Dict
+from typing import List, Set, Optional, Dict, Tuple
+
+
+# Programming keywords that should be preserved even if in stop words
+PROGRAMMING_KEYWORDS = frozenset({
+    'def', 'class', 'function', 'return', 'import', 'from', 'if', 'else',
+    'elif', 'for', 'while', 'try', 'except', 'finally', 'with', 'as',
+    'yield', 'async', 'await', 'lambda', 'pass', 'break', 'continue',
+    'raise', 'assert', 'global', 'nonlocal', 'del', 'true', 'false',
+    'none', 'null', 'void', 'int', 'str', 'float', 'bool', 'list',
+    'dict', 'set', 'tuple', 'self', 'cls', 'init', 'main', 'args',
+    'kwargs', 'super', 'property', 'staticmethod', 'classmethod',
+    'isinstance', 'hasattr', 'getattr', 'setattr', 'len', 'range',
+    'enumerate', 'zip', 'map', 'filter', 'print', 'open', 'read',
+    'write', 'close', 'append', 'extend', 'insert', 'remove', 'pop',
+    'const', 'let', 'var', 'public', 'private', 'protected', 'static',
+    'final', 'abstract', 'interface', 'implements', 'extends', 'new',
+    'this', 'constructor', 'module', 'export', 'require', 'package',
+    # Common identifier components that shouldn't be filtered
+    'get', 'set', 'add', 'put', 'has', 'can', 'run', 'max', 'min',
+})
+
+
+def split_identifier(identifier: str) -> List[str]:
+    """
+    Split a code identifier into component words.
+
+    Handles camelCase, PascalCase, underscore_style, and CONSTANT_STYLE.
+
+    Args:
+        identifier: A code identifier like "getUserCredentials" or "get_user_data"
+
+    Returns:
+        List of component words in lowercase
+
+    Examples:
+        >>> split_identifier("getUserCredentials")
+        ['get', 'user', 'credentials']
+        >>> split_identifier("get_user_data")
+        ['get', 'user', 'data']
+        >>> split_identifier("XMLParser")
+        ['xml', 'parser']
+        >>> split_identifier("parseHTTPResponse")
+        ['parse', 'http', 'response']
+    """
+    if not identifier:
+        return []
+
+    # Handle underscore_style and CONSTANT_STYLE
+    if '_' in identifier:
+        parts = [p for p in identifier.split('_') if p]
+        # Recursively split any camelCase parts
+        result = []
+        for part in parts:
+            if any(c.isupper() for c in part):  # Has any capitals - could be camelCase
+                result.extend(split_identifier(part))
+            else:
+                result.append(part.lower())
+        return [p for p in result if p]
+
+    # Handle camelCase and PascalCase
+    # Insert space before uppercase letters, handling acronyms
+    # "parseHTTPResponse" -> "parse HTTP Response" -> ["parse", "http", "response"]
+    result = []
+    current = []
+
+    for i, char in enumerate(identifier):
+        if char.isupper():
+            # Check if this starts a new word
+            if current:
+                # If previous was lowercase, this starts a new word
+                if current[-1].islower():
+                    result.append(''.join(current).lower())
+                    current = [char]
+                # If next char is lowercase, this uppercase starts a new word (end of acronym)
+                elif i + 1 < len(identifier) and identifier[i + 1].islower():
+                    result.append(''.join(current).lower())
+                    current = [char]
+                else:
+                    # Continue building acronym
+                    current.append(char)
+            else:
+                current.append(char)
+        else:
+            current.append(char)
+
+    if current:
+        result.append(''.join(current).lower())
+
+    return [p for p in result if p]
 
 
 class Tokenizer:
@@ -97,16 +186,24 @@ class Tokenizer:
         'available', 'able', 'like', 'different', 'similar'
     })
     
-    def __init__(self, stop_words: Optional[Set[str]] = None, min_word_length: int = 3):
+    def __init__(
+        self,
+        stop_words: Optional[Set[str]] = None,
+        min_word_length: int = 3,
+        split_identifiers: bool = False
+    ):
         """
         Initialize tokenizer.
-        
+
         Args:
             stop_words: Set of words to filter out. Uses defaults if None.
             min_word_length: Minimum word length to keep.
+            split_identifiers: If True, split camelCase/underscore_style and include
+                               both original and component tokens.
         """
         self.stop_words = stop_words if stop_words is not None else self.DEFAULT_STOP_WORDS
         self.min_word_length = min_word_length
+        self.split_identifiers = split_identifiers
         
         # Simple suffix rules for stemming (Porter-lite)
         self._suffix_rules = [
@@ -144,24 +241,64 @@ class Tokenizer:
             'small': ['tiny', 'minimal', 'compact'],
         }
     
-    def tokenize(self, text: str) -> List[str]:
+    def tokenize(self, text: str, split_identifiers: Optional[bool] = None) -> List[str]:
         """
         Extract tokens from text.
-        
+
         Args:
             text: Input text to tokenize.
-            
+            split_identifiers: Override instance setting. If True, split
+                              camelCase/underscore_style identifiers into components.
+
         Returns:
             List of filtered, lowercase tokens.
+
+        Examples:
+            >>> t = Tokenizer(split_identifiers=True)
+            >>> t.tokenize("getUserCredentials fetches data")
+            ['getusercredentials', 'get', 'user', 'credentials', 'fetches', 'data']
         """
-        # Convert to lowercase and extract words (including alphanumeric like word2vec)
-        words = re.findall(r'\b[a-z][a-z0-9]*\b', text.lower())
-        
-        # Filter stop words and short words
-        return [
-            w for w in words 
-            if w not in self.stop_words and len(w) >= self.min_word_length
-        ]
+        should_split = split_identifiers if split_identifiers is not None else self.split_identifiers
+
+        # Extract potential identifiers (including camelCase with internal caps)
+        # Pattern matches: word2vec, getUserData, get_user_data, XMLParser
+        raw_tokens = re.findall(r'\b[a-zA-Z][a-zA-Z0-9_]*\b', text)
+
+        result = []
+        seen_splits = set()  # Only track splits to avoid duplicates from them
+
+        for token in raw_tokens:
+            token_lower = token.lower()
+
+            # Skip stop words and short words
+            if token_lower in self.stop_words or len(token_lower) < self.min_word_length:
+                continue
+
+            # Add the original token (allow duplicates for proper bigram extraction)
+            result.append(token_lower)
+            # Track this token to prevent splits from duplicating it
+            seen_splits.add(token_lower)
+
+            # Split identifier if enabled and token looks like an identifier
+            if should_split and (
+                '_' in token or
+                any(c.isupper() for c in token[1:])  # Has internal capitals
+            ):
+                parts = split_identifier(token)
+                for part in parts:
+                    # Allow programming keywords even if in stop words
+                    is_programming_keyword = part in PROGRAMMING_KEYWORDS
+                    # Only add split parts once per token to avoid bloating
+                    if (
+                        part not in seen_splits and
+                        part != token_lower and  # Don't duplicate the original
+                        (is_programming_keyword or part not in self.stop_words) and
+                        len(part) >= self.min_word_length
+                    ):
+                        result.append(part)
+                        seen_splits.add(part)
+
+        return result
     
     def extract_ngrams(self, tokens: List[str], n: int = 2) -> List[str]:
         """

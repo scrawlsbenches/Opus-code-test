@@ -5,6 +5,7 @@ Cortical Text Processor - Main processor class that orchestrates all components.
 import os
 import re
 from typing import Dict, List, Tuple, Optional, Any
+import copy
 from collections import defaultdict
 
 from .tokenizer import Tokenizer
@@ -16,6 +17,7 @@ from . import embeddings as emb_module
 from . import query as query_module
 from . import gaps as gaps_module
 from . import persistence
+from . import fingerprint as fp_module
 
 
 class CorticalTextProcessor:
@@ -45,6 +47,9 @@ class CorticalTextProcessor:
         self.semantic_relations: List[Tuple[str, str, str, float]] = []
         # Track which computations are stale and need recomputation
         self._stale_computations: set = set()
+        # LRU cache for query expansion results
+        self._query_expansion_cache: Dict[str, Dict[str, float]] = {}
+        self._query_cache_max_size: int = 100
 
     def process_document(
         self,
@@ -62,7 +67,18 @@ class CorticalTextProcessor:
 
         Returns:
             Dict with processing statistics (tokens, bigrams, unique_tokens)
+
+        Raises:
+            ValueError: If doc_id or content is empty or not a string
         """
+        # Input validation
+        if not isinstance(doc_id, str) or not doc_id:
+            raise ValueError("doc_id must be a non-empty string")
+        if not isinstance(content, str):
+            raise ValueError("content must be a string")
+        if not content.strip():
+            raise ValueError("content must not be empty or whitespace-only")
+
         self.documents[doc_id] = content
 
         # Store metadata if provided
@@ -158,7 +174,6 @@ class CorticalTextProcessor:
         Returns:
             Dict mapping doc_id to metadata dict (deep copy)
         """
-        import copy
         return copy.deepcopy(self.document_metadata)
 
     def _mark_all_stale(self) -> None:
@@ -281,7 +296,32 @@ class CorticalTextProcessor:
             ...     ("doc3", "Third document content", {"author": "AI"}),
             ... ]
             >>> processor.add_documents_batch(docs, recompute='full')
+
+        Raises:
+            ValueError: If documents list is invalid or recompute level is unknown
         """
+        # Input validation
+        if not isinstance(documents, list):
+            raise ValueError("documents must be a list")
+        if not documents:
+            raise ValueError("documents list must not be empty")
+
+        valid_recompute = {'none', 'tfidf', 'full'}
+        if recompute not in valid_recompute:
+            raise ValueError(f"recompute must be one of {valid_recompute}")
+
+        for i, doc in enumerate(documents):
+            if not isinstance(doc, (tuple, list)) or len(doc) < 2:
+                raise ValueError(
+                    f"documents[{i}] must be a tuple of (doc_id, content) or "
+                    f"(doc_id, content, metadata)"
+                )
+            doc_id, content = doc[0], doc[1]
+            if not isinstance(doc_id, str) or not doc_id:
+                raise ValueError(f"documents[{i}][0] (doc_id) must be a non-empty string")
+            if not isinstance(content, str):
+                raise ValueError(f"documents[{i}][1] (content) must be a string")
+
         total_tokens = 0
         total_bigrams = 0
 
@@ -546,6 +586,10 @@ class CorticalTextProcessor:
         if build_concepts:
             fresh_comps.append(self.COMP_CONCEPTS)
         self._mark_fresh(*fresh_comps)
+
+        # Invalidate query cache since corpus state changed
+        self._query_expansion_cache.clear()
+
         if verbose:
             print("Done.")
 
@@ -1057,9 +1101,178 @@ class CorticalTextProcessor:
     def find_similar_by_embedding(self, term: str, top_n: int = 10) -> List[Tuple[str, float]]:
         return emb_module.find_similar_by_embedding(self.embeddings, term, top_n)
     
-    def expand_query(self, query_text: str, max_expansions: int = 10, use_variants: bool = True, verbose: bool = False) -> Dict[str, float]:
-        return query_module.expand_query(query_text, self.layers, self.tokenizer, max_expansions=max_expansions, use_variants=use_variants)
-    
+    def expand_query(
+        self,
+        query_text: str,
+        max_expansions: int = 10,
+        use_variants: bool = True,
+        use_code_concepts: bool = False,
+        verbose: bool = False
+    ) -> Dict[str, float]:
+        """
+        Expand a query using lateral connections and concept clusters.
+
+        Args:
+            query_text: Original query string
+            max_expansions: Maximum expansion terms to add
+            use_variants: Try word variants when direct match fails
+            use_code_concepts: Include programming synonym expansions
+
+        Returns:
+            Dict mapping terms to weights
+        """
+        return query_module.expand_query(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            max_expansions=max_expansions,
+            use_variants=use_variants,
+            use_code_concepts=use_code_concepts
+        )
+
+    def expand_query_for_code(self, query_text: str, max_expansions: int = 15) -> Dict[str, float]:
+        """
+        Expand a query optimized for code search.
+
+        Enables code concept expansion to find programming synonyms
+        (e.g., "fetch" also matches "get", "load", "retrieve").
+
+        Args:
+            query_text: Original query string
+            max_expansions: Maximum expansion terms to add
+
+        Returns:
+            Dict mapping terms to weights
+        """
+        return query_module.expand_query(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            max_expansions=max_expansions,
+            use_variants=True,
+            use_code_concepts=True
+        )
+
+    def expand_query_cached(
+        self,
+        query_text: str,
+        max_expansions: int = 10,
+        use_variants: bool = True,
+        use_code_concepts: bool = False
+    ) -> Dict[str, float]:
+        """
+        Expand a query with caching for faster repeated lookups.
+
+        Uses an LRU-style cache to avoid recomputing expansion for
+        frequently repeated queries. Useful in RAG loops where the
+        same queries may be issued multiple times.
+
+        Args:
+            query_text: Original query string
+            max_expansions: Maximum expansion terms to add
+            use_variants: Try word variants when direct match fails
+            use_code_concepts: Include programming synonym expansions
+
+        Returns:
+            Dict mapping terms to weights
+        """
+        # Create cache key from parameters
+        cache_key = f"{query_text}|{max_expansions}|{use_variants}|{use_code_concepts}"
+
+        # Check cache
+        if cache_key in self._query_expansion_cache:
+            return self._query_expansion_cache[cache_key].copy()
+
+        # Compute expansion
+        result = query_module.expand_query(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            max_expansions=max_expansions,
+            use_variants=use_variants,
+            use_code_concepts=use_code_concepts
+        )
+
+        # Add to cache (with LRU eviction if at max size)
+        if len(self._query_expansion_cache) >= self._query_cache_max_size:
+            # Remove oldest entry (first key in dict - approximates LRU)
+            oldest_key = next(iter(self._query_expansion_cache))
+            del self._query_expansion_cache[oldest_key]
+
+        self._query_expansion_cache[cache_key] = result.copy()
+        return result
+
+    def clear_query_cache(self) -> int:
+        """
+        Clear the query expansion cache.
+
+        Should be called after modifying the corpus (adding documents,
+        recomputing connections) to ensure fresh expansions.
+
+        Returns:
+            Number of cache entries cleared
+        """
+        count = len(self._query_expansion_cache)
+        self._query_expansion_cache.clear()
+        return count
+
+    def set_query_cache_size(self, max_size: int) -> None:
+        """
+        Set the maximum size of the query expansion cache.
+
+        Args:
+            max_size: Maximum number of queries to cache (must be > 0)
+
+        Raises:
+            ValueError: If max_size <= 0
+        """
+        if max_size <= 0:
+            raise ValueError(f"max_size must be positive, got {max_size}")
+        self._query_cache_max_size = max_size
+
+        # Trim cache if it exceeds new size
+        while len(self._query_expansion_cache) > max_size:
+            oldest_key = next(iter(self._query_expansion_cache))
+            del self._query_expansion_cache[oldest_key]
+
+    def parse_intent_query(self, query_text: str) -> Dict:
+        """
+        Parse a natural language query to extract intent and searchable terms.
+
+        Analyzes queries like "where do we handle authentication?" to identify:
+        - Question word (where) -> intent type (location)
+        - Action verb (handle) -> search for handling code
+        - Subject (authentication) -> main topic with synonyms
+
+        Args:
+            query_text: Natural language query string
+
+        Returns:
+            Dict with 'action', 'subject', 'intent', 'question_word', 'expanded_terms'
+        """
+        return query_module.parse_intent_query(query_text)
+
+    def search_by_intent(self, query_text: str, top_n: int = 5) -> List[Tuple[str, float, Dict]]:
+        """
+        Search the corpus using intent-based query understanding.
+
+        Parses the query to understand intent, expands terms using code concepts,
+        then searches with appropriate weighting based on intent type.
+
+        Args:
+            query_text: Natural language query string
+            top_n: Number of results to return
+
+        Returns:
+            List of (doc_id, score, parsed_intent) tuples
+        """
+        return query_module.search_by_intent(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n
+        )
+
     def expand_query_semantic(self, query_text: str, max_expansions: int = 10) -> Dict[str, float]:
         return query_module.expand_query_semantic(query_text, self.layers, self.tokenizer, self.semantic_relations, max_expansions)
 
@@ -1101,7 +1314,17 @@ class CorticalTextProcessor:
             >>> results = processor.complete_analogy("neural", "networks", "knowledge")
             >>> for term, score, method in results:
             ...     print(f"{term}: {score:.3f} ({method})")
+
+        Raises:
+            ValueError: If any term is empty or top_n is not positive
         """
+        # Input validation
+        for name, term in [('term_a', term_a), ('term_b', term_b), ('term_c', term_c)]:
+            if not isinstance(term, str) or not term.strip():
+                raise ValueError(f"{name} must be a non-empty string")
+        if not isinstance(top_n, int) or top_n < 1:
+            raise ValueError("top_n must be a positive integer")
+
         if not self.semantic_relations:
             self.extract_corpus_semantics(verbose=False)
 
@@ -1222,7 +1445,16 @@ class CorticalTextProcessor:
 
         Returns:
             List of (doc_id, score) tuples ranked by relevance
+
+        Raises:
+            ValueError: If query_text is empty or top_n is not positive
         """
+        # Input validation
+        if not isinstance(query_text, str) or not query_text.strip():
+            raise ValueError("query_text must be a non-empty string")
+        if not isinstance(top_n, int) or top_n < 1:
+            raise ValueError("top_n must be a positive integer")
+
         return query_module.find_documents_for_query(
             query_text,
             self.layers,
@@ -1231,6 +1463,80 @@ class CorticalTextProcessor:
             use_expansion=use_expansion,
             semantic_relations=self.semantic_relations if use_semantic else None,
             use_semantic=use_semantic
+        )
+
+    def fast_find_documents(
+        self,
+        query_text: str,
+        top_n: int = 5,
+        candidate_multiplier: int = 3,
+        use_code_concepts: bool = True
+    ) -> List[Tuple[str, float]]:
+        """
+        Fast document search using candidate filtering.
+
+        Optimizes search by:
+        1. Using set intersection to find candidate documents
+        2. Only scoring top candidates fully
+        3. Using code concept expansion for better recall
+
+        ~2-3x faster than find_documents_for_query on large corpora.
+
+        Args:
+            query_text: Search query
+            top_n: Number of results to return
+            candidate_multiplier: Multiplier for candidate set size
+            use_code_concepts: Whether to use code concept expansion
+
+        Returns:
+            List of (doc_id, score) tuples ranked by relevance
+        """
+        return query_module.fast_find_documents(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n,
+            candidate_multiplier=candidate_multiplier,
+            use_code_concepts=use_code_concepts
+        )
+
+    def build_search_index(self) -> Dict[str, Dict[str, float]]:
+        """
+        Build an optimized inverted index for fast querying.
+
+        Pre-compute this once, then use search_with_index() for
+        fastest possible search.
+
+        Returns:
+            Dict mapping terms to {doc_id: tfidf_score} dicts
+        """
+        return query_module.build_document_index(self.layers)
+
+    def search_with_index(
+        self,
+        query_text: str,
+        index: Dict[str, Dict[str, float]],
+        top_n: int = 5
+    ) -> List[Tuple[str, float]]:
+        """
+        Search using a pre-built inverted index.
+
+        This is the fastest search method. Build the index once with
+        build_search_index(), then reuse for multiple queries.
+
+        Args:
+            query_text: Search query
+            index: Pre-built index from build_search_index()
+            top_n: Number of results to return
+
+        Returns:
+            List of (doc_id, score) tuples ranked by relevance
+        """
+        return query_module.search_with_index(
+            query_text,
+            index,
+            self.tokenizer,
+            top_n=top_n
         )
 
     def find_passages_for_query(
@@ -1484,7 +1790,93 @@ class CorticalTextProcessor:
     
     def get_corpus_summary(self) -> Dict:
         return persistence.get_state_summary(self.layers, self.documents)
-    
+
+    # Fingerprint methods for semantic comparison
+    def get_fingerprint(self, text: str, top_n: int = 20) -> Dict:
+        """
+        Compute the semantic fingerprint of a text.
+
+        The fingerprint captures the semantic essence of the text including
+        term weights, concept memberships, and bigrams. Fingerprints can be
+        compared to find similar code blocks.
+
+        Args:
+            text: Input text to fingerprint
+            top_n: Number of top terms to include
+
+        Returns:
+            Dict with 'terms', 'concepts', 'bigrams', 'top_terms', 'term_count'
+        """
+        return fp_module.compute_fingerprint(text, self.tokenizer, self.layers, top_n)
+
+    def compare_fingerprints(self, fp1: Dict, fp2: Dict) -> Dict:
+        """
+        Compare two fingerprints and compute similarity metrics.
+
+        Args:
+            fp1: First fingerprint from get_fingerprint()
+            fp2: Second fingerprint from get_fingerprint()
+
+        Returns:
+            Dict with similarity scores and shared terms
+        """
+        return fp_module.compare_fingerprints(fp1, fp2)
+
+    def explain_fingerprint(self, fp: Dict, top_n: int = 10) -> Dict:
+        """
+        Generate a human-readable explanation of a fingerprint.
+
+        Args:
+            fp: Fingerprint from get_fingerprint()
+            top_n: Number of top items to include
+
+        Returns:
+            Dict with explanation components including summary
+        """
+        return fp_module.explain_fingerprint(fp, top_n)
+
+    def explain_similarity(self, fp1: Dict, fp2: Dict) -> str:
+        """
+        Generate a human-readable explanation of why two fingerprints are similar.
+
+        Args:
+            fp1: First fingerprint
+            fp2: Second fingerprint
+
+        Returns:
+            Human-readable explanation string
+        """
+        return fp_module.explain_similarity(fp1, fp2)
+
+    def find_similar_texts(
+        self,
+        text: str,
+        candidates: List[Tuple[str, str]],
+        top_n: int = 5
+    ) -> List[Tuple[str, float, Dict]]:
+        """
+        Find texts most similar to the given text.
+
+        Args:
+            text: Query text to compare
+            candidates: List of (id, text) tuples to search
+            top_n: Number of results to return
+
+        Returns:
+            List of (id, similarity_score, comparison) tuples sorted by similarity
+        """
+        query_fp = self.get_fingerprint(text)
+        results = []
+
+        for candidate_id, candidate_text in candidates:
+            candidate_fp = self.get_fingerprint(candidate_text)
+            comparison = self.compare_fingerprints(query_fp, candidate_fp)
+            results.append((candidate_id, comparison['overall_similarity'], comparison))
+
+        # Sort by similarity descending
+        results.sort(key=lambda x: x[1], reverse=True)
+        return results[:top_n]
+
     def save(self, filepath: str, verbose: bool = True) -> None:
         """
         Save processor state to a file.

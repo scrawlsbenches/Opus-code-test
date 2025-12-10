@@ -10,6 +10,10 @@ dist/
 build/
 .pytest_cache/
 
+# Generated corpus files
+corpus_dev.pkl
+*.pkl
+
 # Coverage
 .coverage
 .coverage.*

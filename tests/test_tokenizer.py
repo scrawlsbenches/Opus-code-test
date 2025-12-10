@@ -91,5 +91,127 @@ class TestTokenizerStemming(unittest.TestCase):
         self.assertIn("cortical", variants)
 
 
+class TestSplitIdentifier(unittest.TestCase):
+    """Test the split_identifier function."""
+
+    def test_camel_case(self):
+        """Test splitting camelCase identifiers."""
+        from cortical.tokenizer import split_identifier
+        self.assertEqual(split_identifier("getUserCredentials"), ["get", "user", "credentials"])
+        self.assertEqual(split_identifier("processData"), ["process", "data"])
+
+    def test_pascal_case(self):
+        """Test splitting PascalCase identifiers."""
+        from cortical.tokenizer import split_identifier
+        self.assertEqual(split_identifier("UserCredentials"), ["user", "credentials"])
+        self.assertEqual(split_identifier("DataProcessor"), ["data", "processor"])
+
+    def test_underscore_style(self):
+        """Test splitting underscore_style identifiers."""
+        from cortical.tokenizer import split_identifier
+        self.assertEqual(split_identifier("get_user_data"), ["get", "user", "data"])
+        self.assertEqual(split_identifier("process_http_request"), ["process", "http", "request"])
+
+    def test_constant_style(self):
+        """Test splitting CONSTANT_STYLE identifiers."""
+        from cortical.tokenizer import split_identifier
+        self.assertEqual(split_identifier("MAX_RETRY_COUNT"), ["max", "retry", "count"])
+
+    def test_acronyms(self):
+        """Test handling of acronyms in identifiers."""
+        from cortical.tokenizer import split_identifier
+        self.assertEqual(split_identifier("XMLParser"), ["xml", "parser"])
+        self.assertEqual(split_identifier("parseHTTPResponse"), ["parse", "http", "response"])
+        self.assertEqual(split_identifier("getURLString"), ["get", "url", "string"])
+
+    def test_mixed_case_with_underscore(self):
+        """Test mixed camelCase and underscore_style."""
+        from cortical.tokenizer import split_identifier
+        result = split_identifier("get_UserData")
+        self.assertIn("get", result)
+        self.assertIn("user", result)
+        self.assertIn("data", result)
+
+    def test_single_word(self):
+        """Test single word identifiers."""
+        from cortical.tokenizer import split_identifier
+        self.assertEqual(split_identifier("process"), ["process"])
+        self.assertEqual(split_identifier("data"), ["data"])
+
+    def test_empty_string(self):
+        """Test empty string input."""
+        from cortical.tokenizer import split_identifier
+        self.assertEqual(split_identifier(""), [])
+
+
+class TestCodeAwareTokenization(unittest.TestCase):
+    """Test code-aware tokenization with identifier splitting."""
+
+    def test_split_identifiers_disabled_by_default(self):
+        """Test that identifier splitting is disabled by default."""
+        tokenizer = Tokenizer()
+        tokens = tokenizer.tokenize("getUserCredentials")
+        self.assertEqual(tokens, ["getusercredentials"])
+
+    def test_split_identifiers_enabled(self):
+        """Test tokenization with identifier splitting enabled."""
+        tokenizer = Tokenizer(split_identifiers=True)
+        tokens = tokenizer.tokenize("getUserCredentials")
+        self.assertIn("getusercredentials", tokens)
+        self.assertIn("get", tokens)
+        self.assertIn("user", tokens)
+        self.assertIn("credentials", tokens)
+
+    def test_split_identifiers_underscore_style(self):
+        """Test splitting underscore_style in tokenization."""
+        tokenizer = Tokenizer(split_identifiers=True)
+        tokens = tokenizer.tokenize("process_user_data")
+        self.assertIn("process_user_data", tokens)
+        self.assertIn("process", tokens)
+        self.assertIn("user", tokens)
+        self.assertIn("data", tokens)
+
+    def test_split_identifiers_preserves_context(self):
+        """Test that split tokens appear alongside regular tokens."""
+        tokenizer = Tokenizer(split_identifiers=True)
+        tokens = tokenizer.tokenize("The getUserCredentials function returns data")
+        self.assertIn("getusercredentials", tokens)
+        self.assertIn("credentials", tokens)
+        self.assertIn("function", tokens)
+        self.assertIn("returns", tokens)
+        self.assertIn("data", tokens)
+
+    def test_split_identifiers_override(self):
+        """Test overriding split_identifiers at call time."""
+        tokenizer = Tokenizer(split_identifiers=False)
+        # Override to True
+        tokens = tokenizer.tokenize("getUserData", split_identifiers=True)
+        self.assertIn("get", tokens)
+        self.assertIn("user", tokens)
+
+    def test_no_duplicate_tokens(self):
+        """Test that split tokens don't create duplicates."""
+        tokenizer = Tokenizer(split_identifiers=True)
+        tokens = tokenizer.tokenize("data process_data getData")
+        # 'data' should appear only once
+        self.assertEqual(tokens.count("data"), 1)
+
+    def test_stop_words_filtered_from_splits(self):
+        """Test that stop words in split parts are filtered."""
+        tokenizer = Tokenizer(split_identifiers=True)
+        # 'the' is a stop word
+        tokens = tokenizer.tokenize("getTheData")
+        self.assertNotIn("the", tokens)
+        self.assertIn("data", tokens)
+
+    def test_min_length_applied_to_splits(self):
+        """Test that min_word_length applies to split parts."""
+        tokenizer = Tokenizer(split_identifiers=True, min_word_length=4)
+        tokens = tokenizer.tokenize("getUserID")
+        # 'id' is too short (length 2)
+        self.assertNotIn("id", tokens)
+        self.assertIn("user", tokens)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -12,6 +12,7 @@ This is like building a "poor man's ConceptNet" from the corpus itself.
 import math
 import re
 from typing import Any, Dict, List, Tuple, Set, Optional
+import copy
 from collections import defaultdict
 
 try:
@@ -392,12 +393,18 @@ def retrofit_connections(
         semantic_relations: List of (term1, relation, term2, weight) tuples
         iterations: Number of retrofitting iterations
         alpha: Blend factor (0=all semantic, 1=all original)
-        
+
     Returns:
         Dictionary with retrofitting statistics
+
+    Raises:
+        ValueError: If alpha is not in range [0, 1]
     """
+    if not (0 <= alpha <= 1):
+        raise ValueError(f"alpha must be between 0 and 1, got {alpha}")
+
     layer0 = layers[CorticalLayer.TOKENS]
-    
+
     # Store original weights
     original_weights: Dict[str, Dict[str, float]] = {}
     for col in layer0.minicolumns.values():
@@ -486,12 +493,16 @@ def retrofit_embeddings(
         semantic_relations: List of (term1, relation, term2, weight) tuples
         iterations: Number of iterations
         alpha: Blend factor (higher = more original embedding)
-        
+
     Returns:
         Dictionary with retrofitting statistics
+
+    Raises:
+        ValueError: If alpha is not in range (0, 1]
     """
-    import copy
-    
+    if not (0 < alpha <= 1):
+        raise ValueError(f"alpha must be between 0 and 1 (exclusive of 0), got {alpha}")
+
     # Store original embeddings
     original = copy.deepcopy(embeddings)
     

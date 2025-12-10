@@ -59,14 +59,8 @@ cortical/
 
 ## Critical Knowledge
 
-### Known Bug (Unfixed)
-**Bigram separator mismatch in analogy completion** (`query.py:1442-1468`):
-```python
-# BUG: Uses underscore, but bigrams are stored with spaces
-ab_bigram = f"{term_a}_{term_b}"  # Wrong: "neural_networks"
-# Should be:
-ab_bigram = f"{term_a} {term_b}"  # Correct: "neural networks"
-```
+### Fixed Bugs (2025-12-10)
+The bigram separator mismatch bugs in `query.py:1442-1468` and `analysis.py:927` have been **fixed**. Bigrams now correctly use space separators throughout the codebase.
 
 ### Important Implementation Details
 
@@ -243,6 +237,57 @@ def find_documents(
 3. **Use incremental updates** with `add_document_incremental()` for live systems
 4. **Cache query expansions** when processing multiple similar queries
 5. **Pre-compute chunks** in `find_passages_batch()` to avoid redundant work
+6. **Use `fast_find_documents()`** for ~2-3x faster search on large corpora
+7. **Pre-build index** with `build_search_index()` for fastest repeated queries
+
+---
+
+## Code Search Capabilities
+
+### Code-Aware Tokenization
+```python
+# Enable identifier splitting for code search
+tokenizer = Tokenizer(split_identifiers=True)
+tokens = tokenizer.tokenize("getUserCredentials")
+# ['getusercredentials', 'get', 'user', 'credentials']
+```
+
+### Programming Concept Expansion
+```python
+# Expand queries with programming synonyms (get/fetch/load)
+results = processor.expand_query("fetch data", use_code_concepts=True)
+# Or use the convenience method
+results = processor.expand_query_for_code("fetch data")
+```
+
+### Intent-Based Search
+```python
+# Parse natural language queries
+parsed = processor.parse_intent_query("where do we handle authentication?")
+# {'intent': 'location', 'action': 'handle', 'subject': 'authentication', ...}
+
+# Search with intent understanding
+results = processor.search_by_intent("how do we validate input?")
+```
+
+### Semantic Fingerprinting
+```python
+# Compare code similarity
+fp1 = processor.get_fingerprint(code_block_1)
+fp2 = processor.get_fingerprint(code_block_2)
+comparison = processor.compare_fingerprints(fp1, fp2)
+explanation = processor.explain_similarity(fp1, fp2)
+```
+
+### Fast Search
+```python
+# Fast document search (~2-3x faster)
+results = processor.fast_find_documents("authentication")
+
+# Pre-built index for fastest search
+index = processor.build_search_index()
+results = processor.search_with_index("query", index)
+```
 
 ---
 
@@ -289,11 +334,72 @@ for t1, rel, t2, weight in processor.semantic_relations[:10]:
 | Process document | `processor.process_document(id, text)` |
 | Build network | `processor.compute_all()` |
 | Search | `processor.find_documents_for_query(query)` |
+| Fast search | `processor.fast_find_documents(query)` |
+| Code search | `processor.expand_query_for_code(query)` |
+| Intent search | `processor.search_by_intent("where do we...")` |
 | RAG passages | `processor.find_passages_for_query(query)` |
+| Fingerprint | `processor.get_fingerprint(text)` |
+| Compare | `processor.compare_fingerprints(fp1, fp2)` |
 | Save state | `processor.save("corpus.pkl")` |
 | Load state | `processor = CorticalTextProcessor.load("corpus.pkl")` |
 | Run tests | `python -m unittest discover -s tests -v` |
 | Run showcase | `python showcase.py` |
+
+---
+
+## Dog-Fooding: Search the Codebase
+
+The Cortical Text Processor can index and search its own codebase, providing semantic search capabilities during development.
+
+### Quick Start
+
+```bash
+# Index the codebase (creates corpus_dev.pkl)
+python scripts/index_codebase.py
+
+# Search for code
+python scripts/search_codebase.py "PageRank algorithm"
+python scripts/search_codebase.py "bigram separator" --verbose
+python scripts/search_codebase.py --interactive
+```
+
+### Claude Skills
+
+Two skills are available in `.claude/skills/`:
+
+1. **codebase-search**: Search the indexed codebase for code patterns and implementations
+2. **corpus-indexer**: Re-index the codebase after making changes
+
+### Search Options
+
+| Option | Description |
+|--------|-------------|
+| `--top N` | Number of results (default: 5) |
+| `--verbose` | Show full passage text |
+| `--expand` | Show query expansion terms |
+| `--interactive` | Interactive search mode |
+
+### Interactive Mode Commands
+
+| Command | Description |
+|---------|-------------|
+| `/expand <query>` | Show query expansion |
+| `/concepts` | List concept clusters |
+| `/stats` | Show corpus statistics |
+| `/quit` | Exit interactive mode |
+
+### Example Queries
+
+```bash
+# Find how PageRank is implemented
+python scripts/search_codebase.py "compute pagerank damping factor"
+
+# Find test patterns
+python scripts/search_codebase.py "unittest setUp processor"
+
+# Explore query expansion code
+python scripts/search_codebase.py "expand query semantic lateral"
+```
 
 ---
 
