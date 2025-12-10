@@ -1672,24 +1672,30 @@ The following tasks enhance the system's ability to understand developer intent 
 
 ### 48. Add Code-Aware Tokenization
 
-**Files:** `cortical/tokenizer.py`
-**Status:** [ ] Not Started
+**Files:** `cortical/tokenizer.py`, `tests/test_tokenizer.py`
+**Status:** [x] Completed
 **Priority:** High
 
 **Problem:**
 Current tokenizer treats code like prose. It doesn't understand that `getUserCredentials`, `get_user_credentials`, and `fetch user credentials` are semantically equivalent.
 
-**Solution:**
-1. Add `split_identifier()` function to break camelCase and snake_case
-2. Expand tokens to include both original and split forms
-3. Add programming keyword recognition (function, class, def, return, etc.)
-4. Preserve meaningful punctuation context (parentheses for calls, brackets for indexing)
+**Solution Applied:**
+1. Added `split_identifier()` function to break camelCase, PascalCase, snake_case, and SCREAMING_SNAKE_CASE
+2. Added `PROGRAMMING_KEYWORDS` constant for common code terms (function, class, def, get, set, etc.)
+3. Added `split_identifiers` parameter to `Tokenizer.__init__()` and `tokenize()` method
+4. Tokens include both original identifier and split components when enabled
+5. Split parts don't duplicate already-seen tokens, preserving proper bigram extraction
 
 **Example:**
 ```python
-# Input: "getUserCredentials"
-# Output tokens: ["getUserCredentials", "get", "user", "credentials"]
+tokenizer = Tokenizer(split_identifiers=True)
+tokens = tokenizer.tokenize("getUserCredentials")
+# ['getusercredentials', 'get', 'user', 'credentials']
 ```
+
+**Tests Added:**
+- 8 tests for `split_identifier()` function (camelCase, PascalCase, snake_case, acronyms)
+- 8 tests for code-aware tokenization (splitting, stop word filtering, min length, deduplication)
 
 ---
 
