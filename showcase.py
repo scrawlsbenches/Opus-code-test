@@ -103,9 +103,14 @@ class CorticalShowcase:
             self.loaded_files.append((doc_id, word_count))
             print(f"  📄 {doc_id:30} ({word_count:3} words)")
         
-        # Run all computations
+        # Run all computations with hybrid strategy for better Layer 2 connectivity
         print("\nComputing cortical representations...")
-        self.processor.compute_all(verbose=False)
+        self.processor.compute_all(
+            verbose=False,
+            connection_strategy='hybrid',
+            cluster_strictness=0.5,
+            bridge_weight=0.3
+        )
         
         layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
         layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)

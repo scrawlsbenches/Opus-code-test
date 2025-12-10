@@ -1171,19 +1171,26 @@ class TestConceptConnections(unittest.TestCase):
 
     def test_concept_connections_zero_thresholds(self):
         """Test that min_shared_docs=0 and min_jaccard=0 allow all connections."""
-        # Create processor with documents that have NO overlap
+        # Create processor with documents that have NO overlap but enough content
+        # to form distinct concept clusters
         processor = CorticalTextProcessor()
         processor.process_document(
-            "doc1", "Neural networks learn patterns from data using algorithms."
+            "doc1",
+            "Neural networks learn patterns from data using algorithms. "
+            "Deep learning models process information through layers. "
+            "Machine learning systems train on examples to improve accuracy."
         )
         processor.process_document(
-            "doc2", "Bread baking requires yeast and flour for fermentation."
+            "doc2",
+            "Bread baking requires yeast and flour for fermentation. "
+            "Sourdough starters contain wild yeast and bacteria cultures. "
+            "Kneading dough develops gluten structure for texture."
         )
-        processor.compute_all(verbose=False, build_concepts=True)
+        processor.compute_all(verbose=False, build_concepts=False)
+        processor.build_concept_clusters(min_cluster_size=2, verbose=False)
 
         layer2 = processor.get_layer(CorticalLayer.CONCEPTS)
-        if layer2.column_count() < 2:
-            self.skipTest("Not enough concepts formed for this test")
+        self.assertGreaterEqual(layer2.column_count(), 2, "Need at least 2 concepts")
 
         # Clear connections
         for concept in layer2.minicolumns.values():
@@ -1214,17 +1221,29 @@ class TestConceptConnections(unittest.TestCase):
         processor = CorticalTextProcessor()
         # Create documents with semantically related but non-overlapping content
         processor.process_document(
-            "doc1", "Dogs are animals. Dogs bark and run."
+            "doc1",
+            "Dogs are animals that bark and run in parks. "
+            "Canines make loyal pets and companions for families. "
+            "Puppies require training and socialization early."
         )
         processor.process_document(
-            "doc2", "Cats are animals. Cats meow and climb."
+            "doc2",
+            "Cats are animals that meow and climb on furniture. "
+            "Felines are independent pets that groom themselves. "
+            "Kittens play with toys and explore their surroundings."
         )
-        processor.compute_all(verbose=False, build_concepts=True)
+        processor.process_document(
+            "doc3",
+            "Quantum physics studies subatomic particle behavior. "
+            "Electrons orbit atomic nuclei in probability clouds. "
+            "Wave functions describe quantum mechanical states."
+        )
+        processor.compute_all(verbose=False, build_concepts=False)
+        processor.build_concept_clusters(min_cluster_size=2, verbose=False)
         processor.extract_corpus_semantics(verbose=False)
 
         layer2 = processor.get_layer(CorticalLayer.CONCEPTS)
-        if layer2.column_count() < 2:
-            self.skipTest("Not enough concepts formed for this test")
+        self.assertGreaterEqual(layer2.column_count(), 2, "Need at least 2 concepts")
 
         # Clear connections
         for concept in layer2.minicolumns.values():
@@ -1244,17 +1263,23 @@ class TestConceptConnections(unittest.TestCase):
         """Test that use_embedding_similarity creates connections via embeddings."""
         processor = CorticalTextProcessor()
         processor.process_document(
-            "doc1", "Neural networks process information through layers."
+            "doc1",
+            "Neural networks process information through layers. "
+            "Artificial intelligence learns patterns from training data. "
+            "Machine learning algorithms optimize model parameters."
         )
         processor.process_document(
-            "doc2", "Deep learning models use neural architectures."
+            "doc2",
+            "Cooking recipes require specific ingredients and techniques. "
+            "Chefs prepare dishes using various culinary methods. "
+            "Kitchen equipment helps with food preparation tasks."
         )
-        processor.compute_all(verbose=False, build_concepts=True)
+        processor.compute_all(verbose=False, build_concepts=False)
+        processor.build_concept_clusters(min_cluster_size=2, verbose=False)
         processor.compute_graph_embeddings(verbose=False)
 
         layer2 = processor.get_layer(CorticalLayer.CONCEPTS)
-        if layer2.column_count() < 2:
-            self.skipTest("Not enough concepts formed for this test")
+        self.assertGreaterEqual(layer2.column_count(), 2, "Need at least 2 concepts")
 
         # Clear connections
         for concept in layer2.minicolumns.values():
@@ -1274,21 +1299,30 @@ class TestConceptConnections(unittest.TestCase):
         """Test combining multiple connection strategies."""
         processor = CorticalTextProcessor()
         processor.process_document(
-            "doc1", "Machine learning algorithms process data efficiently."
+            "doc1",
+            "Machine learning algorithms process data efficiently. "
+            "Neural networks train on large datasets to find patterns. "
+            "Supervised learning requires labeled training examples."
         )
         processor.process_document(
-            "doc2", "Deep learning networks learn patterns from examples."
+            "doc2",
+            "Ocean waves crash against rocky coastal shores. "
+            "Marine biology studies creatures living underwater. "
+            "Coral reefs provide habitat for diverse fish species."
         )
         processor.process_document(
-            "doc3", "Artificial intelligence uses machine learning methods."
+            "doc3",
+            "Ancient history explores civilizations from the past. "
+            "Archaeological excavations uncover buried artifacts. "
+            "Museums preserve historical objects for education."
         )
-        processor.compute_all(verbose=False, build_concepts=True)
+        processor.compute_all(verbose=False, build_concepts=False)
+        processor.build_concept_clusters(min_cluster_size=2, verbose=False)
         processor.extract_corpus_semantics(verbose=False)
         processor.compute_graph_embeddings(verbose=False)
 
         layer2 = processor.get_layer(CorticalLayer.CONCEPTS)
-        if layer2.column_count() < 2:
-            self.skipTest("Not enough concepts formed for this test")
+        self.assertGreaterEqual(layer2.column_count(), 2, "Need at least 2 concepts")
 
         # Clear connections
         for concept in layer2.minicolumns.values():

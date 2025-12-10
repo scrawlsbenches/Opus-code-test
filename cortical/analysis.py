@@ -988,22 +988,33 @@ def compute_bigram_connections(
                         add_connection(b_left, b_right, chain_weight, 'chain')
 
     # 3. Connect bigrams that co-occur in the same documents
-    for i, b1 in enumerate(bigrams):
-        docs1 = b1.document_ids
-        if not docs1:
-            continue
+    # Use inverted index for O(d * b²) instead of O(n²) where d=docs, b=bigrams per doc
+    doc_to_bigrams: Dict[str, List[Minicolumn]] = defaultdict(list)
+    for bigram in bigrams:
+        for doc_id in bigram.document_ids:
+            doc_to_bigrams[doc_id].append(bigram)
 
-        for b2 in bigrams[i+1:]:
-            docs2 = b2.document_ids
-            if not docs2:
-                continue
+    # Track pairs we've already processed to avoid duplicate work
+    cooccur_processed: Set[Tuple[str, str]] = set()
 
-            shared_docs = docs1 & docs2
-            if len(shared_docs) >= min_shared_docs:
-                # Weight by Jaccard similarity of document sets
-                jaccard = len(shared_docs) / len(docs1 | docs2)
-                weight = cooccurrence_weight * jaccard
-                add_connection(b1, b2, weight, 'cooccurrence')
+    for doc_id, doc_bigrams in doc_to_bigrams.items():
+        # Only compare bigrams within the same document
+        for i, b1 in enumerate(doc_bigrams):
+            docs1 = b1.document_ids
+            for b2 in doc_bigrams[i+1:]:
+                # Skip if already processed this pair
+                pair_key = tuple(sorted([b1.id, b2.id]))
+                if pair_key in cooccur_processed:
+                    continue
+                cooccur_processed.add(pair_key)
+
+                docs2 = b2.document_ids
+                shared_docs = docs1 & docs2
+                if len(shared_docs) >= min_shared_docs:
+                    # Weight by Jaccard similarity of document sets
+                    jaccard = len(shared_docs) / len(docs1 | docs2)
+                    weight = cooccurrence_weight * jaccard
+                    add_connection(b1, b2, weight, 'cooccurrence')
 
     return {
         'connections_created': len(connected_pairs),
