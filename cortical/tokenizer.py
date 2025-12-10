@@ -37,7 +37,7 @@ def split_identifier(identifier: str) -> List[str]:
     """
     Split a code identifier into component words.
 
-    Handles camelCase, PascalCase, snake_case, and SCREAMING_SNAKE_CASE.
+    Handles camelCase, PascalCase, underscore_style, and CONSTANT_STYLE.
 
     Args:
         identifier: A code identifier like "getUserCredentials" or "get_user_data"
@@ -58,7 +58,7 @@ def split_identifier(identifier: str) -> List[str]:
     if not identifier:
         return []
 
-    # Handle snake_case and SCREAMING_SNAKE_CASE
+    # Handle underscore_style and CONSTANT_STYLE
     if '_' in identifier:
         parts = [p for p in identifier.split('_') if p]
         # Recursively split any camelCase parts
@@ -198,7 +198,7 @@ class Tokenizer:
         Args:
             stop_words: Set of words to filter out. Uses defaults if None.
             min_word_length: Minimum word length to keep.
-            split_identifiers: If True, split camelCase/snake_case and include
+            split_identifiers: If True, split camelCase/underscore_style and include
                                both original and component tokens.
         """
         self.stop_words = stop_words if stop_words is not None else self.DEFAULT_STOP_WORDS
@@ -248,7 +248,7 @@ class Tokenizer:
         Args:
             text: Input text to tokenize.
             split_identifiers: Override instance setting. If True, split
-                              camelCase/snake_case identifiers into components.
+                              camelCase/underscore_style identifiers into components.
 
         Returns:
             List of filtered, lowercase tokens.

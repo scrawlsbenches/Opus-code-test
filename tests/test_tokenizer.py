@@ -106,14 +106,14 @@ class TestSplitIdentifier(unittest.TestCase):
         self.assertEqual(split_identifier("UserCredentials"), ["user", "credentials"])
         self.assertEqual(split_identifier("DataProcessor"), ["data", "processor"])
 
-    def test_snake_case(self):
-        """Test splitting snake_case identifiers."""
+    def test_underscore_style(self):
+        """Test splitting underscore_style identifiers."""
         from cortical.tokenizer import split_identifier
         self.assertEqual(split_identifier("get_user_data"), ["get", "user", "data"])
         self.assertEqual(split_identifier("process_http_request"), ["process", "http", "request"])
 
-    def test_screaming_snake_case(self):
-        """Test splitting SCREAMING_SNAKE_CASE identifiers."""
+    def test_constant_style(self):
+        """Test splitting CONSTANT_STYLE identifiers."""
         from cortical.tokenizer import split_identifier
         self.assertEqual(split_identifier("MAX_RETRY_COUNT"), ["max", "retry", "count"])
 
@@ -125,7 +125,7 @@ class TestSplitIdentifier(unittest.TestCase):
         self.assertEqual(split_identifier("getURLString"), ["get", "url", "string"])
 
     def test_mixed_case_with_underscore(self):
-        """Test mixed camelCase and snake_case."""
+        """Test mixed camelCase and underscore_style."""
         from cortical.tokenizer import split_identifier
         result = split_identifier("get_UserData")
         self.assertIn("get", result)
@@ -162,8 +162,8 @@ class TestCodeAwareTokenization(unittest.TestCase):
         self.assertIn("user", tokens)
         self.assertIn("credentials", tokens)
 
-    def test_split_identifiers_snake_case(self):
-        """Test splitting snake_case in tokenization."""
+    def test_split_identifiers_underscore_style(self):
+        """Test splitting underscore_style in tokenization."""
         tokenizer = Tokenizer(split_identifiers=True)
         tokens = tokenizer.tokenize("process_user_data")
         self.assertIn("process_user_data", tokens)
