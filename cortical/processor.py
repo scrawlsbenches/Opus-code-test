@@ -673,29 +673,73 @@ class CorticalTextProcessor:
         use_semantics: bool = True,
         min_shared_docs: int = 1,
         min_jaccard: float = 0.1,
+        use_member_semantics: bool = False,
+        use_embedding_similarity: bool = False,
+        embedding_threshold: float = 0.3,
         verbose: bool = True
     ) -> Dict[str, Any]:
         """
         Build lateral connections between concepts based on document overlap and semantics.
 
+        Multiple connection strategies can be combined:
+        1. Document overlap (default): Jaccard similarity of document sets
+        2. Semantic boost: Boost overlapping connections with semantic relations
+        3. Member semantics: Connect via semantic relations even without doc overlap
+        4. Embedding similarity: Connect via concept centroid similarity
+
         Args:
             use_semantics: Use semantic relations to boost connection weights
-            min_shared_docs: Minimum shared documents for connection
-            min_jaccard: Minimum Jaccard similarity threshold
+            min_shared_docs: Minimum shared documents for connection (0 to disable)
+            min_jaccard: Minimum Jaccard similarity threshold (0.0 to disable)
+            use_member_semantics: Connect concepts via member token semantic relations,
+                                  independent of document overlap
+            use_embedding_similarity: Connect concepts via embedding centroid similarity
+            embedding_threshold: Minimum cosine similarity for embedding connections
             verbose: Print progress messages
 
         Returns:
-            Statistics about connections created
+            Statistics about connections created:
+            - connections_created: Total connections
+            - concepts: Number of concepts
+            - doc_overlap_connections: Connections from document overlap
+            - semantic_connections: Connections from member semantics
+            - embedding_connections: Connections from embedding similarity
+
+        Example:
+            >>> # Traditional document overlap only
+            >>> stats = processor.compute_concept_connections()
+            >>>
+            >>> # Enable all connection strategies
+            >>> processor.compute_graph_embeddings()
+            >>> processor.extract_corpus_semantics()
+            >>> stats = processor.compute_concept_connections(
+            ...     use_member_semantics=True,
+            ...     use_embedding_similarity=True,
+            ...     min_shared_docs=0,
+            ...     min_jaccard=0.0
+            ... )
         """
         semantic_rels = self.semantic_relations if use_semantics else None
+        emb = self.embeddings if use_embedding_similarity else None
         stats = analysis.compute_concept_connections(
             self.layers,
             semantic_relations=semantic_rels,
             min_shared_docs=min_shared_docs,
-            min_jaccard=min_jaccard
+            min_jaccard=min_jaccard,
+            use_member_semantics=use_member_semantics,
+            use_embedding_similarity=use_embedding_similarity,
+            embedding_threshold=embedding_threshold,
+            embeddings=emb
         )
         if verbose:
-            print(f"Created {stats['connections_created']} concept connections")
+            parts = [f"Created {stats['connections_created']} concept connections"]
+            if stats.get('doc_overlap_connections', 0) > 0:
+                parts.append(f"doc_overlap: {stats['doc_overlap_connections']}")
+            if stats.get('semantic_connections', 0) > 0:
+                parts.append(f"semantic: {stats['semantic_connections']}")
+            if stats.get('embedding_connections', 0) > 0:
+                parts.append(f"embedding: {stats['embedding_connections']}")
+            print(", ".join(parts) if len(parts) > 1 else parts[0])
         return stats
 
     def extract_corpus_semantics(

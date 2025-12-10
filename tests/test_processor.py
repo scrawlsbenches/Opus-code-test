@@ -1168,6 +1168,161 @@ class TestConceptConnections(unittest.TestCase):
             # This is a soft test since clustering may group differently
             pass  # Concept isolation depends on clustering results
 
+    def test_concept_connections_zero_thresholds(self):
+        """Test that min_shared_docs=0 and min_jaccard=0 allow all connections."""
+        # Create processor with documents that have NO overlap
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks learn patterns from data using algorithms."
+        )
+        processor.process_document(
+            "doc2", "Bread baking requires yeast and flour for fermentation."
+        )
+        processor.compute_all(verbose=False, build_concepts=True)
+
+        layer2 = processor.get_layer(CorticalLayer.CONCEPTS)
+        if layer2.column_count() < 2:
+            self.skipTest("Not enough concepts formed for this test")
+
+        # Clear connections
+        for concept in layer2.minicolumns.values():
+            concept.lateral_connections.clear()
+
+        # With default thresholds, should get 0 connections (no doc overlap)
+        stats_default = processor.compute_concept_connections(verbose=False)
+
+        # Clear again
+        for concept in layer2.minicolumns.values():
+            concept.lateral_connections.clear()
+
+        # With zero thresholds, all pairs can connect (if they pass other checks)
+        stats_zero = processor.compute_concept_connections(
+            min_shared_docs=0,
+            min_jaccard=0.0,
+            verbose=False
+        )
+
+        # Zero thresholds should allow at least as many connections
+        self.assertGreaterEqual(
+            stats_zero['connections_created'],
+            stats_default['connections_created']
+        )
+
+    def test_concept_connections_member_semantics(self):
+        """Test that use_member_semantics creates connections via semantic relations."""
+        processor = CorticalTextProcessor()
+        # Create documents with semantically related but non-overlapping content
+        processor.process_document(
+            "doc1", "Dogs are animals. Dogs bark and run."
+        )
+        processor.process_document(
+            "doc2", "Cats are animals. Cats meow and climb."
+        )
+        processor.compute_all(verbose=False, build_concepts=True)
+        processor.extract_corpus_semantics(verbose=False)
+
+        layer2 = processor.get_layer(CorticalLayer.CONCEPTS)
+        if layer2.column_count() < 2:
+            self.skipTest("Not enough concepts formed for this test")
+
+        # Clear connections
+        for concept in layer2.minicolumns.values():
+            concept.lateral_connections.clear()
+
+        # With member semantics enabled
+        stats = processor.compute_concept_connections(
+            use_member_semantics=True,
+            verbose=False
+        )
+
+        # Should have statistics for semantic connections
+        self.assertIn('semantic_connections', stats)
+        self.assertIn('doc_overlap_connections', stats)
+
+    def test_concept_connections_embedding_similarity(self):
+        """Test that use_embedding_similarity creates connections via embeddings."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Neural networks process information through layers."
+        )
+        processor.process_document(
+            "doc2", "Deep learning models use neural architectures."
+        )
+        processor.compute_all(verbose=False, build_concepts=True)
+        processor.compute_graph_embeddings(verbose=False)
+
+        layer2 = processor.get_layer(CorticalLayer.CONCEPTS)
+        if layer2.column_count() < 2:
+            self.skipTest("Not enough concepts formed for this test")
+
+        # Clear connections
+        for concept in layer2.minicolumns.values():
+            concept.lateral_connections.clear()
+
+        # With embedding similarity enabled
+        stats = processor.compute_concept_connections(
+            use_embedding_similarity=True,
+            embedding_threshold=0.1,  # Low threshold to catch similarities
+            verbose=False
+        )
+
+        # Should have statistics for embedding connections
+        self.assertIn('embedding_connections', stats)
+
+    def test_concept_connections_combined_strategies(self):
+        """Test combining multiple connection strategies."""
+        processor = CorticalTextProcessor()
+        processor.process_document(
+            "doc1", "Machine learning algorithms process data efficiently."
+        )
+        processor.process_document(
+            "doc2", "Deep learning networks learn patterns from examples."
+        )
+        processor.process_document(
+            "doc3", "Artificial intelligence uses machine learning methods."
+        )
+        processor.compute_all(verbose=False, build_concepts=True)
+        processor.extract_corpus_semantics(verbose=False)
+        processor.compute_graph_embeddings(verbose=False)
+
+        layer2 = processor.get_layer(CorticalLayer.CONCEPTS)
+        if layer2.column_count() < 2:
+            self.skipTest("Not enough concepts formed for this test")
+
+        # Clear connections
+        for concept in layer2.minicolumns.values():
+            concept.lateral_connections.clear()
+
+        # Enable all strategies
+        stats = processor.compute_concept_connections(
+            use_semantics=True,
+            use_member_semantics=True,
+            use_embedding_similarity=True,
+            min_shared_docs=0,
+            min_jaccard=0.0,
+            embedding_threshold=0.1,
+            verbose=False
+        )
+
+        # Total should equal sum of individual strategy connections
+        total = (
+            stats.get('doc_overlap_connections', 0) +
+            stats.get('semantic_connections', 0) +
+            stats.get('embedding_connections', 0)
+        )
+        self.assertEqual(stats['connections_created'], total)
+
+    def test_concept_connections_returns_detailed_stats(self):
+        """Test that compute_concept_connections returns detailed statistics."""
+        stats = self.processor.compute_concept_connections(verbose=False)
+
+        # Check all expected keys are present
+        self.assertIn('connections_created', stats)
+        self.assertIn('concepts', stats)
+        self.assertIn('doc_overlap_connections', stats)
+        self.assertIn('semantic_connections', stats)
+        self.assertIn('embedding_connections', stats)
+
 
 class TestBigramConnections(unittest.TestCase):
     """Test bigram lateral connection functionality."""

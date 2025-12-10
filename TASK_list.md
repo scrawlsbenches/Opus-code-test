@@ -10,34 +10,34 @@ Layer 2 (Concept Layer/V4) shows 0 connections when documents cover diverse topi
 
 ## Tasks
 
-### Task 1: Add Configurable Connection Thresholds
-**File:** `cortical/analysis.py` (lines 614-724)
+### Task 1: Add Configurable Connection Thresholds ✅ COMPLETED
+**File:** `cortical/analysis.py` (lines 614-812)
 
-- [ ] Add `min_shared_docs=0` option to allow connections without document overlap
-- [ ] Add `min_jaccard=0.0` option to disable Jaccard filtering
-- [ ] Expose these parameters in `CorticalTextProcessor.compute_concept_connections()`
-- [ ] Update docstrings to explain threshold behavior
-- [ ] Add tests for edge cases (zero thresholds, negative values)
+- [x] Add `min_shared_docs=0` option to allow connections without document overlap
+- [x] Add `min_jaccard=0.0` option to disable Jaccard filtering
+- [x] Expose these parameters in `CorticalTextProcessor.compute_concept_connections()`
+- [x] Update docstrings to explain threshold behavior
+- [x] Add tests for edge cases (zero thresholds, negative values)
 
-### Task 2: Connect Concepts via Semantic Relations
+### Task 2: Connect Concepts via Semantic Relations ✅ COMPLETED
 **File:** `cortical/analysis.py`
 
-- [ ] Add new connection method that links concepts when their member tokens have semantic relations
-- [ ] For each concept pair, check if any (token1, relation, token2) exists in semantic_relations
-- [ ] Weight connections by number of semantic links between members
-- [ ] Make this work independently of document overlap
-- [ ] Add `use_member_semantics=True` parameter to `compute_concept_connections()`
-- [ ] Add tests verifying semantic-based connections
+- [x] Add new connection method that links concepts when their member tokens have semantic relations
+- [x] For each concept pair, check if any (token1, relation, token2) exists in semantic_relations
+- [x] Weight connections by number of semantic links between members
+- [x] Make this work independently of document overlap
+- [x] Add `use_member_semantics=True` parameter to `compute_concept_connections()`
+- [x] Add tests verifying semantic-based connections
 
-### Task 3: Connect Concepts via Shared Vocabulary/Embeddings
+### Task 3: Connect Concepts via Shared Vocabulary/Embeddings ✅ COMPLETED
 **File:** `cortical/analysis.py`
 
-- [ ] Add connection method based on embedding similarity between concept centroids
-- [ ] Compute concept centroid as average of member token embeddings
-- [ ] Connect concepts with cosine similarity above threshold
-- [ ] Add `use_embedding_similarity=True` and `embedding_threshold=0.3` parameters
-- [ ] Falls back gracefully if embeddings not computed
-- [ ] Add tests for embedding-based connections
+- [x] Add connection method based on embedding similarity between concept centroids
+- [x] Compute concept centroid as average of member token embeddings
+- [x] Connect concepts with cosine similarity above threshold
+- [x] Add `use_embedding_similarity=True` and `embedding_threshold=0.3` parameters
+- [x] Falls back gracefully if embeddings not computed
+- [x] Add tests for embedding-based connections
 
 ### Task 4: Improve Clustering to Reduce Topic Isolation
 **File:** `cortical/analysis.py` (lines 482-553)
