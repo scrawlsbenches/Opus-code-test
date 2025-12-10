@@ -1281,7 +1281,55 @@ class CorticalTextProcessor:
     
     def export_graph(self, filepath: str, layer: Optional[CorticalLayer] = None, max_nodes: int = 500) -> Dict:
         return persistence.export_graph_json(filepath, self.layers, layer, max_nodes=max_nodes)
-    
+
+    def export_conceptnet_json(
+        self,
+        filepath: str,
+        include_cross_layer: bool = True,
+        include_typed_edges: bool = True,
+        min_weight: float = 0.0,
+        min_confidence: float = 0.0,
+        max_nodes_per_layer: int = 100,
+        verbose: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Export ConceptNet-style graph for visualization.
+
+        Creates a rich graph format with:
+        - Color-coded nodes by layer (tokens=blue, bigrams=green, concepts=orange, docs=red)
+        - Typed edges with relation types and confidence scores
+        - Cross-layer connections (feedforward/feedback)
+        - D3.js/Cytoscape-compatible output
+
+        Args:
+            filepath: Output file path (JSON)
+            include_cross_layer: Include feedforward/feedback edges
+            include_typed_edges: Include typed_connections with relation types
+            min_weight: Minimum edge weight to include
+            min_confidence: Minimum confidence for typed edges
+            max_nodes_per_layer: Maximum nodes per layer (by PageRank)
+            verbose: Print progress messages
+
+        Returns:
+            The exported graph data
+
+        Example:
+            >>> processor.extract_corpus_semantics(verbose=False)
+            >>> graph = processor.export_conceptnet_json("graph.json")
+            >>> # Open graph.json in D3.js or Cytoscape for visualization
+        """
+        return persistence.export_conceptnet_json(
+            filepath,
+            self.layers,
+            semantic_relations=self.semantic_relations,
+            include_cross_layer=include_cross_layer,
+            include_typed_edges=include_typed_edges,
+            min_weight=min_weight,
+            min_confidence=min_confidence,
+            max_nodes_per_layer=max_nodes_per_layer,
+            verbose=verbose
+        )
+
     def summarize_document(self, doc_id: str, num_sentences: int = 3) -> str:
         if doc_id not in self.documents: return ""
         content = self.documents[doc_id]

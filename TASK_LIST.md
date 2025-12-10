@@ -1017,18 +1017,48 @@ for t1, rel_type, t2, confidence in relations:
 
 ### 29. Visualize ConceptNet-Style Graph
 
-**Files:** `cortical/persistence.py`
-**Status:** [ ] Pending
+**Files:** `cortical/persistence.py`, `cortical/processor.py`
+**Status:** [x] Completed
 
 **Problem:**
 Current `export_graph_json()` doesn't distinguish edge types or layers. Need ConceptNet-style visualization export.
 
-**Implementation Steps:**
-1. Add `export_conceptnet_json()` function
-2. Include edge relation types and confidence
-3. Color-code by layer (tokens=blue, bigrams=green, concepts=orange, docs=red)
-4. Export in format compatible with graph visualization tools (D3.js, Cytoscape)
-5. Include cross-layer edges
+**Solution Applied:**
+1. Added `LAYER_COLORS` constant with color codes for each layer:
+   - Tokens: Royal Blue (#4169E1)
+   - Bigrams: Forest Green (#228B22)
+   - Concepts: Dark Orange (#FF8C00)
+   - Documents: Crimson (#DC143C)
+2. Added `LAYER_NAMES` constant for display names
+3. Added `export_conceptnet_json()` function (~200 lines) with:
+   - Color-coded nodes by layer with layer_name
+   - Typed edges with relation_type, confidence, and source_type
+   - Cross-layer edges (feedforward/feedback)
+   - Relation-based edge colors
+   - D3.js/Cytoscape/Gephi-compatible format
+4. Added `_get_relation_color()` helper with 16 relation type colors
+5. Added `_count_edge_types()` and `_count_relation_types()` helpers
+6. Added processor wrapper method `export_conceptnet_json()`
+
+**Files Modified:**
+- `cortical/persistence.py` - Added constants and export function (~270 lines)
+- `cortical/processor.py` - Added processor wrapper method (~50 lines)
+- `tests/test_persistence.py` - Added 13 tests for ConceptNet export
+
+**Usage:**
+```python
+# Export ConceptNet-style graph
+processor.extract_corpus_semantics(verbose=False)
+graph = processor.export_conceptnet_json(
+    "graph.json",
+    include_cross_layer=True,     # Include feedforward/feedback edges
+    include_typed_edges=True,     # Include typed_connections
+    min_weight=0.0,               # Minimum edge weight
+    max_nodes_per_layer=100       # Limit nodes per layer
+)
+
+# Open graph.json in D3.js, Cytoscape.js, or Gephi for visualization
+```
 
 ---
 
@@ -1135,19 +1165,19 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 | Medium | Add relation path scoring | ✅ Completed | ConceptNet |
 | Medium | Implement concept inheritance | ✅ Completed | ConceptNet |
 | Low | Add commonsense relation extraction | ✅ Completed | ConceptNet |
-| Low | Visualize ConceptNet-style graph | ⏳ Pending | ConceptNet |
+| Low | Visualize ConceptNet-style graph | ✅ Completed | ConceptNet |
 | Low | Add analogy completion | ⏳ Pending | ConceptNet |
 
 **Bug Fix Completion:** 7/7 tasks (100%)
 **RAG Enhancement Completion:** 8/8 tasks (100%)
-**ConceptNet Enhancement Completion:** 10/12 tasks (83%)
+**ConceptNet Enhancement Completion:** 11/12 tasks (92%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 294 tests in 0.265s
+Ran 307 tests in 0.275s
 OK
 ```
 

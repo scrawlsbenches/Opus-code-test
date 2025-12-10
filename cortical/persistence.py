@@ -287,11 +287,11 @@ def get_state_summary(
 ) -> Dict:
     """
     Get a summary of the current processor state.
-    
+
     Args:
         layers: Dictionary of layers
         documents: Document collection
-        
+
     Returns:
         Summary statistics
     """
@@ -299,7 +299,7 @@ def get_state_summary(
         'documents': len(documents),
         'layers': {}
     }
-    
+
     for layer_enum, layer in layers.items():
         summary['layers'][layer_enum.name] = {
             'columns': len(layer.minicolumns),
@@ -307,12 +307,300 @@ def get_state_summary(
             'avg_activation': layer.average_activation(),
             'sparsity': layer.sparsity()
         }
-    
+
     summary['total_columns'] = sum(
         len(layer.minicolumns) for layer in layers.values()
     )
     summary['total_connections'] = sum(
         layer.total_connections() for layer in layers.values()
     )
-    
+
     return summary
+
+
+# Layer colors for visualization
+LAYER_COLORS = {
+    CorticalLayer.TOKENS: '#4169E1',     # Royal Blue
+    CorticalLayer.BIGRAMS: '#228B22',    # Forest Green
+    CorticalLayer.CONCEPTS: '#FF8C00',   # Dark Orange
+    CorticalLayer.DOCUMENTS: '#DC143C',  # Crimson
+}
+
+# Layer display names
+LAYER_NAMES = {
+    CorticalLayer.TOKENS: 'Tokens',
+    CorticalLayer.BIGRAMS: 'Bigrams',
+    CorticalLayer.CONCEPTS: 'Concepts',
+    CorticalLayer.DOCUMENTS: 'Documents',
+}
+
+
+def export_conceptnet_json(
+    filepath: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    semantic_relations: Optional[list] = None,
+    include_cross_layer: bool = True,
+    include_typed_edges: bool = True,
+    min_weight: float = 0.0,
+    min_confidence: float = 0.0,
+    max_nodes_per_layer: int = 100,
+    verbose: bool = True
+) -> Dict[str, Any]:
+    """
+    Export ConceptNet-style graph for visualization.
+
+    Creates a rich graph format with:
+    - Color-coded nodes by layer
+    - Typed edges with relation types and confidence
+    - Cross-layer connections (feedforward/feedback)
+    - D3.js/Cytoscape-compatible output
+
+    Args:
+        filepath: Output file path (JSON)
+        layers: Dictionary of layers
+        semantic_relations: Optional list of (t1, rel, t2, weight) tuples
+        include_cross_layer: Include feedforward/feedback edges
+        include_typed_edges: Include typed_connections with relation types
+        min_weight: Minimum edge weight to include
+        min_confidence: Minimum confidence for typed edges
+        max_nodes_per_layer: Maximum nodes per layer (by PageRank)
+        verbose: Print progress messages
+
+    Returns:
+        The exported graph data
+
+    Example:
+        >>> export_conceptnet_json(
+        ...     "graph.json", processor.layers,
+        ...     semantic_relations=processor.semantic_relations
+        ... )
+    """
+    nodes = []
+    edges = []
+    node_ids = set()
+    edge_set = set()  # Track unique edges
+
+    # Collect nodes from each layer
+    for layer_enum, layer in layers.items():
+        if layer is None or layer.column_count() == 0:
+            continue
+
+        color = LAYER_COLORS.get(layer_enum, '#808080')
+        layer_name = LAYER_NAMES.get(layer_enum, f'Layer {layer_enum.value}')
+
+        # Sort by PageRank and take top nodes
+        sorted_cols = sorted(
+            layer.minicolumns.values(),
+            key=lambda c: c.pagerank,
+            reverse=True
+        )[:max_nodes_per_layer]
+
+        for col in sorted_cols:
+            node = {
+                'id': col.id,
+                'label': col.content,
+                'layer': layer_enum.value,
+                'layer_name': layer_name,
+                'color': color,
+                'pagerank': round(col.pagerank, 6),
+                'tfidf': round(col.tfidf, 6),
+                'activation': round(col.activation, 6),
+                'occurrence_count': col.occurrence_count,
+                'document_count': len(col.document_ids),
+                'cluster_id': col.cluster_id
+            }
+            nodes.append(node)
+            node_ids.add(col.id)
+
+    # Collect lateral edges (same-layer connections)
+    for layer_enum, layer in layers.items():
+        if layer is None:
+            continue
+
+        for col in layer.minicolumns.values():
+            if col.id not in node_ids:
+                continue
+
+            # Add typed edges with relation information
+            if include_typed_edges:
+                for target_id, edge_obj in col.typed_connections.items():
+                    if target_id in node_ids and edge_obj.weight >= min_weight:
+                        if edge_obj.confidence >= min_confidence:
+                            edge_key = (col.id, target_id, edge_obj.relation_type)
+                            if edge_key not in edge_set:
+                                edge_set.add(edge_key)
+                                edges.append({
+                                    'source': col.id,
+                                    'target': target_id,
+                                    'weight': round(edge_obj.weight, 4),
+                                    'relation_type': edge_obj.relation_type,
+                                    'confidence': round(edge_obj.confidence, 4),
+                                    'source_type': edge_obj.source,
+                                    'edge_type': 'lateral',
+                                    'color': _get_relation_color(edge_obj.relation_type)
+                                })
+
+            # Add regular lateral connections (without typed info)
+            for target_id, weight in col.lateral_connections.items():
+                if target_id in node_ids and weight >= min_weight:
+                    # Skip if already added as typed edge
+                    if include_typed_edges and target_id in col.typed_connections:
+                        continue
+                    edge_key = (col.id, target_id, 'co_occurrence')
+                    if edge_key not in edge_set:
+                        edge_set.add(edge_key)
+                        edges.append({
+                            'source': col.id,
+                            'target': target_id,
+                            'weight': round(weight, 4),
+                            'relation_type': 'co_occurrence',
+                            'confidence': 1.0,
+                            'source_type': 'corpus',
+                            'edge_type': 'lateral',
+                            'color': '#999999'
+                        })
+
+    # Add cross-layer edges (feedforward/feedback)
+    if include_cross_layer:
+        for layer_enum, layer in layers.items():
+            if layer is None:
+                continue
+
+            for col in layer.minicolumns.values():
+                if col.id not in node_ids:
+                    continue
+
+                # Feedforward connections (to lower layers)
+                for target_id, weight in col.feedforward_connections.items():
+                    if target_id in node_ids and weight >= min_weight:
+                        edge_key = (col.id, target_id, 'feedforward')
+                        if edge_key not in edge_set:
+                            edge_set.add(edge_key)
+                            edges.append({
+                                'source': col.id,
+                                'target': target_id,
+                                'weight': round(weight, 4),
+                                'relation_type': 'feedforward',
+                                'confidence': 1.0,
+                                'source_type': 'structure',
+                                'edge_type': 'cross_layer',
+                                'color': '#4CAF50'  # Green
+                            })
+
+                # Feedback connections (to higher layers)
+                for target_id, weight in col.feedback_connections.items():
+                    if target_id in node_ids and weight >= min_weight:
+                        edge_key = (col.id, target_id, 'feedback')
+                        if edge_key not in edge_set:
+                            edge_set.add(edge_key)
+                            edges.append({
+                                'source': col.id,
+                                'target': target_id,
+                                'weight': round(weight, 4),
+                                'relation_type': 'feedback',
+                                'confidence': 1.0,
+                                'source_type': 'structure',
+                                'edge_type': 'cross_layer',
+                                'color': '#9C27B0'  # Purple
+                            })
+
+    # Add edges from semantic relations if provided
+    if semantic_relations:
+        for rel in semantic_relations:
+            if len(rel) >= 4:
+                t1, rel_type, t2, weight = rel[:4]
+                # Find node IDs
+                source_id = f"L0_{t1}"
+                target_id = f"L0_{t2}"
+                if source_id in node_ids and target_id in node_ids:
+                    if weight >= min_weight:
+                        edge_key = (source_id, target_id, rel_type)
+                        if edge_key not in edge_set:
+                            edge_set.add(edge_key)
+                            edges.append({
+                                'source': source_id,
+                                'target': target_id,
+                                'weight': round(weight, 4),
+                                'relation_type': rel_type,
+                                'confidence': 1.0,
+                                'source_type': 'semantic',
+                                'edge_type': 'semantic',
+                                'color': _get_relation_color(rel_type)
+                            })
+
+    # Build graph structure
+    graph = {
+        'nodes': nodes,
+        'edges': edges,
+        'metadata': {
+            'node_count': len(nodes),
+            'edge_count': len(edges),
+            'layers': {
+                layer_enum.value: {
+                    'name': LAYER_NAMES.get(layer_enum, f'Layer {layer_enum.value}'),
+                    'color': LAYER_COLORS.get(layer_enum, '#808080'),
+                    'node_count': sum(1 for n in nodes if n['layer'] == layer_enum.value)
+                }
+                for layer_enum in layers.keys()
+            },
+            'edge_types': _count_edge_types(edges),
+            'relation_types': _count_relation_types(edges),
+            'format_version': '1.0',
+            'compatible_with': ['D3.js', 'Cytoscape.js', 'vis.js', 'Gephi']
+        }
+    }
+
+    # Write to file
+    with open(filepath, 'w') as f:
+        json.dump(graph, f, indent=2)
+
+    if verbose:
+        print(f"ConceptNet-style graph exported to {filepath}")
+        print(f"  Nodes: {len(nodes)}")
+        print(f"  Edges: {len(edges)}")
+        print(f"  Layers: {list(graph['metadata']['layers'].keys())}")
+        print(f"  Edge types: {graph['metadata']['edge_types']}")
+
+    return graph
+
+
+def _get_relation_color(relation_type: str) -> str:
+    """Get color for a relation type."""
+    relation_colors = {
+        'IsA': '#E91E63',         # Pink
+        'PartOf': '#9C27B0',      # Purple
+        'HasA': '#673AB7',        # Deep Purple
+        'UsedFor': '#3F51B5',     # Indigo
+        'Causes': '#F44336',      # Red
+        'HasProperty': '#FF9800', # Orange
+        'AtLocation': '#4CAF50',  # Green
+        'CapableOf': '#00BCD4',   # Cyan
+        'SimilarTo': '#2196F3',   # Blue
+        'Antonym': '#795548',     # Brown
+        'RelatedTo': '#607D8B',   # Blue Grey
+        'CoOccurs': '#9E9E9E',    # Grey
+        'DerivedFrom': '#8BC34A', # Light Green
+        'DefinedBy': '#FFEB3B',   # Yellow
+        'feedforward': '#4CAF50', # Green
+        'feedback': '#9C27B0',    # Purple
+        'co_occurrence': '#999999',  # Grey
+    }
+    return relation_colors.get(relation_type, '#808080')
+
+
+def _count_edge_types(edges: list) -> Dict[str, int]:
+    """Count edges by edge_type."""
+    counts: Dict[str, int] = {}
+    for edge in edges:
+        edge_type = edge.get('edge_type', 'unknown')
+        counts[edge_type] = counts.get(edge_type, 0) + 1
+    return counts
+
+
+def _count_relation_types(edges: list) -> Dict[str, int]:
+    """Count edges by relation_type."""
+    counts: Dict[str, int] = {}
+    for edge in edges:
+        rel_type = edge.get('relation_type', 'unknown')
+        counts[rel_type] = counts.get(rel_type, 0) + 1
+    return counts

@@ -13,7 +13,10 @@ from cortical.persistence import (
     load_processor,
     export_graph_json,
     export_embeddings_json,
-    get_state_summary
+    get_state_summary,
+    export_conceptnet_json,
+    LAYER_COLORS,
+    LAYER_NAMES
 )
 from cortical.embeddings import compute_graph_embeddings
 
@@ -334,6 +337,192 @@ class TestGetStateSummary(unittest.TestCase):
         summary = get_state_summary(processor.layers, processor.documents)
 
         self.assertEqual(summary['documents'], 0)
+
+
+class TestExportConceptNetJSON(unittest.TestCase):
+    """Test ConceptNet-style graph export."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor with sample data."""
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document("doc1", """
+            Neural networks are a type of machine learning model.
+            Deep learning uses neural networks for pattern recognition.
+        """)
+        cls.processor.process_document("doc2", """
+            Machine learning algorithms process data efficiently.
+            Pattern recognition is used for image classification.
+        """)
+        cls.processor.compute_all(verbose=False)
+        cls.processor.extract_corpus_semantics(verbose=False)
+
+    def test_export_conceptnet_json_creates_file(self):
+        """Test that export creates a JSON file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "conceptnet.json")
+            export_conceptnet_json(filepath, self.processor.layers, verbose=False)
+            self.assertTrue(os.path.exists(filepath))
+
+    def test_export_conceptnet_json_structure(self):
+        """Test exported JSON structure."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "conceptnet.json")
+            result = export_conceptnet_json(filepath, self.processor.layers, verbose=False)
+
+            self.assertIn('nodes', result)
+            self.assertIn('edges', result)
+            self.assertIn('metadata', result)
+
+            # Check metadata
+            self.assertIn('node_count', result['metadata'])
+            self.assertIn('edge_count', result['metadata'])
+            self.assertIn('layers', result['metadata'])
+            self.assertIn('edge_types', result['metadata'])
+            self.assertIn('relation_types', result['metadata'])
+
+    def test_export_conceptnet_json_node_structure(self):
+        """Test node structure in exported JSON."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "conceptnet.json")
+            result = export_conceptnet_json(filepath, self.processor.layers, verbose=False)
+
+            for node in result['nodes']:
+                self.assertIn('id', node)
+                self.assertIn('label', node)
+                self.assertIn('layer', node)
+                self.assertIn('layer_name', node)
+                self.assertIn('color', node)
+                self.assertIn('pagerank', node)
+                # Color should be valid hex
+                self.assertTrue(node['color'].startswith('#'))
+
+    def test_export_conceptnet_json_edge_structure(self):
+        """Test edge structure in exported JSON."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "conceptnet.json")
+            result = export_conceptnet_json(filepath, self.processor.layers, verbose=False)
+
+            for edge in result['edges']:
+                self.assertIn('source', edge)
+                self.assertIn('target', edge)
+                self.assertIn('weight', edge)
+                self.assertIn('relation_type', edge)
+                self.assertIn('edge_type', edge)
+                self.assertIn('color', edge)
+
+    def test_export_conceptnet_json_layer_colors(self):
+        """Test that nodes have correct layer colors."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "conceptnet.json")
+            result = export_conceptnet_json(filepath, self.processor.layers, verbose=False)
+
+            for node in result['nodes']:
+                layer = CorticalLayer(node['layer'])
+                expected_color = LAYER_COLORS.get(layer, '#808080')
+                self.assertEqual(node['color'], expected_color)
+
+    def test_export_conceptnet_json_with_semantic_relations(self):
+        """Test export with semantic relations included."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "conceptnet.json")
+            result = export_conceptnet_json(
+                filepath,
+                self.processor.layers,
+                semantic_relations=self.processor.semantic_relations,
+                verbose=False
+            )
+
+            # Should have edges
+            self.assertGreater(len(result['edges']), 0)
+
+    def test_export_conceptnet_json_cross_layer_edges(self):
+        """Test that cross-layer edges are included when requested."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "conceptnet.json")
+            result = export_conceptnet_json(
+                filepath,
+                self.processor.layers,
+                include_cross_layer=True,
+                verbose=False
+            )
+
+            edge_types = result['metadata'].get('edge_types', {})
+            # May have cross_layer edges if there are feedforward/feedback connections
+            self.assertIsInstance(edge_types, dict)
+
+    def test_export_conceptnet_json_no_cross_layer(self):
+        """Test export without cross-layer edges."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "conceptnet.json")
+            result = export_conceptnet_json(
+                filepath,
+                self.processor.layers,
+                include_cross_layer=False,
+                verbose=False
+            )
+
+            # No cross_layer edges should be present
+            cross_layer_count = result['metadata'].get('edge_types', {}).get('cross_layer', 0)
+            self.assertEqual(cross_layer_count, 0)
+
+    def test_export_conceptnet_json_max_nodes(self):
+        """Test limiting nodes per layer."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "conceptnet.json")
+            result = export_conceptnet_json(
+                filepath,
+                self.processor.layers,
+                max_nodes_per_layer=5,
+                verbose=False
+            )
+
+            # Count nodes per layer
+            layer_counts = {}
+            for node in result['nodes']:
+                layer = node['layer']
+                layer_counts[layer] = layer_counts.get(layer, 0) + 1
+
+            # Each layer should have at most 5 nodes
+            for layer, count in layer_counts.items():
+                self.assertLessEqual(count, 5)
+
+    def test_export_conceptnet_json_min_weight(self):
+        """Test filtering edges by minimum weight."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "conceptnet.json")
+            result = export_conceptnet_json(
+                filepath,
+                self.processor.layers,
+                min_weight=0.5,
+                verbose=False
+            )
+
+            for edge in result['edges']:
+                self.assertGreaterEqual(edge['weight'], 0.5)
+
+    def test_layer_colors_constant(self):
+        """Test that LAYER_COLORS constant is defined."""
+        self.assertIn(CorticalLayer.TOKENS, LAYER_COLORS)
+        self.assertIn(CorticalLayer.BIGRAMS, LAYER_COLORS)
+        self.assertIn(CorticalLayer.CONCEPTS, LAYER_COLORS)
+        self.assertIn(CorticalLayer.DOCUMENTS, LAYER_COLORS)
+
+    def test_layer_names_constant(self):
+        """Test that LAYER_NAMES constant is defined."""
+        self.assertIn(CorticalLayer.TOKENS, LAYER_NAMES)
+        self.assertEqual(LAYER_NAMES[CorticalLayer.TOKENS], 'Tokens')
+        self.assertEqual(LAYER_NAMES[CorticalLayer.BIGRAMS], 'Bigrams')
+
+    def test_processor_export_conceptnet_json(self):
+        """Test processor-level export method."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "conceptnet.json")
+            result = self.processor.export_conceptnet_json(filepath, verbose=False)
+
+            self.assertIn('nodes', result)
+            self.assertIn('edges', result)
+            self.assertTrue(os.path.exists(filepath))
 
 
 if __name__ == "__main__":
