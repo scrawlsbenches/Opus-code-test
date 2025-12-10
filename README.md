@@ -42,17 +42,15 @@ This library provides a biologically-inspired approach to text processing, organ
 
 ## Installation
 
-```bash
-pip install cortical-text-processor
-```
-
-Or install from source:
+Install from source:
 
 ```bash
-git clone https://github.com/example/cortical-text-processor.git
+git clone <repository-url>
 cd cortical-text-processor
 pip install -e .
 ```
+
+Or simply copy the `cortical/` directory into your project—zero dependencies means no pip required.
 
 ## Quick Start
 
