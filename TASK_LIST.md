@@ -1724,21 +1724,21 @@ The system doesn't know that "fetch", "get", "retrieve", "load" are often interc
 
 ### 50. Add Intent-Based Query Understanding
 
-**Files:** `cortical/query.py`
-**Status:** [ ] Not Started
+**Files:** `cortical/query.py`, `cortical/processor.py`, `tests/test_intent_query.py`
+**Status:** [x] Completed
 **Priority:** High
 
 **Problem:**
 Natural language queries like "where do we handle authentication?" aren't decomposed into searchable intents.
 
-**Solution:**
-1. Add `parse_intent_query()` to extract action + subject + context
-2. Map question words to search strategies:
-   - "where" → location/file search
-   - "how" → implementation search
-   - "what" → definition search
-   - "why" → comment/documentation search
-3. Weight results by intent match
+**Solution Applied:**
+1. Added `parse_intent_query()` to extract action + subject + intent + expanded terms
+2. Added `ParsedIntent` TypedDict for structured results
+3. Added `QUESTION_INTENTS` mapping (where→location, how→implementation, what→definition, why→rationale, when→lifecycle)
+4. Added `ACTION_VERBS` frozenset with 50+ common programming verbs
+5. Added `search_by_intent()` for intent-aware document search
+6. Added processor wrapper methods
+7. Added 24 tests in `tests/test_intent_query.py`
 
 **Example:**
 ```python
@@ -1747,7 +1747,8 @@ parse_intent_query("where do we handle authentication?")
 #   'action': 'handle',
 #   'subject': 'authentication',
 #   'intent': 'location',
-#   'expanded_terms': ['handle', 'auth', 'authentication', 'login', ...]
+#   'question_word': 'where',
+#   'expanded_terms': ['handle', 'authentication', 'auth', 'login', ...]
 # }
 ```
 

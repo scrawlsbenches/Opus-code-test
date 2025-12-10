@@ -1145,6 +1145,44 @@ class CorticalTextProcessor:
             use_code_concepts=True
         )
 
+    def parse_intent_query(self, query_text: str) -> Dict:
+        """
+        Parse a natural language query to extract intent and searchable terms.
+
+        Analyzes queries like "where do we handle authentication?" to identify:
+        - Question word (where) -> intent type (location)
+        - Action verb (handle) -> search for handling code
+        - Subject (authentication) -> main topic with synonyms
+
+        Args:
+            query_text: Natural language query string
+
+        Returns:
+            Dict with 'action', 'subject', 'intent', 'question_word', 'expanded_terms'
+        """
+        return query_module.parse_intent_query(query_text)
+
+    def search_by_intent(self, query_text: str, top_n: int = 5) -> List[Tuple[str, float, Dict]]:
+        """
+        Search the corpus using intent-based query understanding.
+
+        Parses the query to understand intent, expands terms using code concepts,
+        then searches with appropriate weighting based on intent type.
+
+        Args:
+            query_text: Natural language query string
+            top_n: Number of results to return
+
+        Returns:
+            List of (doc_id, score, parsed_intent) tuples
+        """
+        return query_module.search_by_intent(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n
+        )
+
     def expand_query_semantic(self, query_text: str, max_expansions: int = 10) -> Dict[str, float]:
         return query_module.expand_query_semantic(query_text, self.layers, self.tokenizer, self.semantic_relations, max_expansions)
 
