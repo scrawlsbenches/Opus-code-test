@@ -382,6 +382,8 @@ Two skills are available in `.claude/skills/`:
 | `--force`, `-f` | Force full rebuild |
 | `--log FILE` | Write detailed log to file |
 | `--verbose`, `-v` | Show per-file progress |
+| `--use-chunks` | Use git-compatible chunk-based storage |
+| `--compact` | Compact old chunk files (with `--use-chunks`) |
 
 ### Search Options
 
@@ -413,6 +415,39 @@ python scripts/search_codebase.py "unittest setUp processor"
 # Explore query expansion code
 python scripts/search_codebase.py "expand query semantic lateral"
 ```
+
+### Git-Compatible Chunk-Based Indexing
+
+For team collaboration, use chunk-based indexing which stores document changes as git-friendly JSON files:
+
+```bash
+# Index with chunk storage (creates corpus_chunks/*.json)
+python scripts/index_codebase.py --incremental --use-chunks
+
+# Check chunk status
+python scripts/index_codebase.py --status --use-chunks
+
+# Compact old chunks (reduces git history size)
+python scripts/index_codebase.py --compact --before 2025-12-01
+```
+
+**Architecture:**
+```
+corpus_chunks/                        # Tracked in git (append-only)
+├── 2025-12-10_21-53-45_a1b2.json    # Session 1 changes
+├── 2025-12-10_22-15-30_c3d4.json    # Session 2 changes
+└── 2025-12-10_23-00-00_e5f6.json    # Session 3 changes
+
+corpus_dev.pkl                        # NOT tracked (local cache)
+corpus_dev.pkl.hash                   # NOT tracked (cache validation)
+```
+
+**Benefits:**
+- No merge conflicts (unique timestamp+session filenames)
+- Shared indexed state across team/branches
+- Fast startup when cache is valid
+- Git-friendly (small JSON, append-only)
+- Periodic compaction like `git gc`
 
 ---
 
