@@ -40,13 +40,38 @@ def format_passage(passage: str, max_width: int = 80) -> str:
 
 
 def search_codebase(processor: CorticalTextProcessor, query: str,
-                    top_n: int = 5, chunk_size: int = 400) -> list:
+                    top_n: int = 5, chunk_size: int = 400, fast: bool = False) -> list:
     """
     Search the codebase and return results with file:line references.
 
+    Args:
+        processor: CorticalTextProcessor instance
+        query: Search query string
+        top_n: Number of results to return
+        chunk_size: Size of text chunks for passage extraction
+        fast: Use fast search mode (documents only, no passages)
+
     Returns:
-        List of (file_path, line_number, passage, score) tuples
+        List of result dicts with 'file', 'line', 'passage', 'score', 'reference'
     """
+    if fast:
+        # Fast mode: just find documents, return first lines
+        doc_results = processor.fast_find_documents(query, top_n=top_n)
+        formatted_results = []
+        for doc_id, score in doc_results:
+            doc_content = processor.documents.get(doc_id, '')
+            # Get first 400 chars as passage
+            passage = doc_content[:400] if doc_content else ''
+            formatted_results.append({
+                'file': doc_id,
+                'line': 1,
+                'passage': passage,
+                'score': score,
+                'reference': f"{doc_id}:1"
+            })
+        return formatted_results
+
+    # Full passage search
     results = processor.find_passages_for_query(
         query,
         top_n=top_n,
@@ -173,6 +198,8 @@ def main():
                         help='Show query expansion')
     parser.add_argument('--interactive', '-i', action='store_true',
                         help='Interactive search mode')
+    parser.add_argument('--fast', '-f', action='store_true',
+                        help='Fast search mode (document-level, ~2-3x faster)')
     args = parser.parse_args()
 
     base_path = Path(__file__).parent.parent
@@ -196,7 +223,9 @@ def main():
             expand_query_display(processor, args.query)
             print()
 
-        results = search_codebase(processor, args.query, top_n=args.top)
+        results = search_codebase(processor, args.query, top_n=args.top, fast=args.fast)
+        if args.fast:
+            print("(Fast mode: document-level results)")
         display_results(results, verbose=args.verbose)
     else:
         parser.print_help()

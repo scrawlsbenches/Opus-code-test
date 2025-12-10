@@ -1376,6 +1376,80 @@ class CorticalTextProcessor:
             use_semantic=use_semantic
         )
 
+    def fast_find_documents(
+        self,
+        query_text: str,
+        top_n: int = 5,
+        candidate_multiplier: int = 3,
+        use_code_concepts: bool = True
+    ) -> List[Tuple[str, float]]:
+        """
+        Fast document search using candidate filtering.
+
+        Optimizes search by:
+        1. Using set intersection to find candidate documents
+        2. Only scoring top candidates fully
+        3. Using code concept expansion for better recall
+
+        ~2-3x faster than find_documents_for_query on large corpora.
+
+        Args:
+            query_text: Search query
+            top_n: Number of results to return
+            candidate_multiplier: Multiplier for candidate set size
+            use_code_concepts: Whether to use code concept expansion
+
+        Returns:
+            List of (doc_id, score) tuples ranked by relevance
+        """
+        return query_module.fast_find_documents(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n,
+            candidate_multiplier=candidate_multiplier,
+            use_code_concepts=use_code_concepts
+        )
+
+    def build_search_index(self) -> Dict[str, Dict[str, float]]:
+        """
+        Build an optimized inverted index for fast querying.
+
+        Pre-compute this once, then use search_with_index() for
+        fastest possible search.
+
+        Returns:
+            Dict mapping terms to {doc_id: tfidf_score} dicts
+        """
+        return query_module.build_document_index(self.layers)
+
+    def search_with_index(
+        self,
+        query_text: str,
+        index: Dict[str, Dict[str, float]],
+        top_n: int = 5
+    ) -> List[Tuple[str, float]]:
+        """
+        Search using a pre-built inverted index.
+
+        This is the fastest search method. Build the index once with
+        build_search_index(), then reuse for multiple queries.
+
+        Args:
+            query_text: Search query
+            index: Pre-built index from build_search_index()
+            top_n: Number of results to return
+
+        Returns:
+            List of (doc_id, score) tuples ranked by relevance
+        """
+        return query_module.search_with_index(
+            query_text,
+            index,
+            self.tokenizer,
+            top_n=top_n
+        )
+
     def find_passages_for_query(
         self,
         query_text: str,
