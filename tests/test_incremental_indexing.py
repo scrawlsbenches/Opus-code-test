@@ -431,5 +431,402 @@ class TestIncrementalIndexingIntegration(unittest.TestCase):
         self.assertIn("doc2", lazy_col.document_ids)
 
 
+class TestProgressTracker(unittest.TestCase):
+    """Tests for ProgressTracker class."""
+
+    def setUp(self):
+        """Set up temporary directory for log files."""
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up temporary files."""
+        import shutil
+        shutil.rmtree(self.temp_dir)
+
+    def test_progress_tracker_init(self):
+        """Test ProgressTracker initialization."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import ProgressTracker
+
+        tracker = ProgressTracker(quiet=True)
+        self.assertIsNotNone(tracker.start_time)
+        self.assertEqual(tracker.phases, {})
+        self.assertIsNone(tracker.current_phase)
+
+    def test_progress_tracker_with_log_file(self):
+        """Test ProgressTracker with log file output."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import ProgressTracker
+
+        log_path = os.path.join(self.temp_dir, "test.log")
+        tracker = ProgressTracker(log_file=log_path, quiet=True)
+        tracker.log("Test message")
+
+        # Flush handlers
+        for handler in tracker.logger.handlers:
+            handler.flush()
+
+        self.assertTrue(os.path.exists(log_path))
+        with open(log_path) as f:
+            content = f.read()
+        self.assertIn("Test message", content)
+
+    def test_start_and_end_phase(self):
+        """Test phase tracking."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import ProgressTracker
+
+        tracker = ProgressTracker(quiet=True)
+
+        tracker.start_phase("Test Phase", total_items=10)
+        self.assertEqual(tracker.current_phase, "Test Phase")
+        self.assertIn("Test Phase", tracker.phases)
+        self.assertEqual(tracker.phases["Test Phase"].status, "running")
+
+        tracker.end_phase("Test Phase")
+        self.assertEqual(tracker.phases["Test Phase"].status, "completed")
+        self.assertGreater(tracker.phases["Test Phase"].duration, 0)
+
+    def test_update_progress(self):
+        """Test progress updates within a phase."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import ProgressTracker
+
+        tracker = ProgressTracker(quiet=True)
+        tracker.start_phase("Processing", total_items=100)
+
+        tracker.update_progress(25, "item_25")
+        self.assertEqual(tracker.phases["Processing"].items_processed, 25)
+        self.assertEqual(tracker.phases["Processing"].progress_pct, 25.0)
+
+        tracker.update_progress(50, "item_50")
+        self.assertEqual(tracker.phases["Processing"].items_processed, 50)
+        self.assertEqual(tracker.phases["Processing"].progress_pct, 50.0)
+
+    def test_warn_and_error(self):
+        """Test warning and error tracking."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import ProgressTracker
+
+        tracker = ProgressTracker(quiet=True)
+
+        tracker.warn("Test warning")
+        tracker.error("Test error")
+
+        self.assertEqual(len(tracker.warnings), 1)
+        self.assertEqual(len(tracker.errors), 1)
+        self.assertIn("Test warning", tracker.warnings)
+        self.assertIn("Test error", tracker.errors)
+
+    def test_get_summary(self):
+        """Test summary generation."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import ProgressTracker
+
+        tracker = ProgressTracker(quiet=True)
+        tracker.start_phase("Phase 1", total_items=5)
+        tracker.update_progress(5)
+        tracker.end_phase("Phase 1")
+        tracker.warn("A warning")
+
+        summary = tracker.get_summary()
+
+        self.assertIn("total_duration", summary)
+        self.assertIn("phases", summary)
+        self.assertIn("Phase 1", summary["phases"])
+        self.assertEqual(summary["warnings"], 1)
+        self.assertEqual(summary["errors"], 0)
+
+
+class TestPhaseStats(unittest.TestCase):
+    """Tests for PhaseStats dataclass."""
+
+    def test_phase_stats_duration(self):
+        """Test duration calculation."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import PhaseStats
+        import time
+
+        phase = PhaseStats(name="test", start_time=time.time())
+        time.sleep(0.01)
+        phase.end_time = time.time()
+
+        self.assertGreater(phase.duration, 0)
+        self.assertLess(phase.duration, 1)
+
+    def test_phase_stats_progress_pct(self):
+        """Test progress percentage calculation."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import PhaseStats
+
+        phase = PhaseStats(name="test", items_total=100, items_processed=25)
+        self.assertEqual(phase.progress_pct, 25.0)
+
+        phase.items_processed = 50
+        self.assertEqual(phase.progress_pct, 50.0)
+
+        # Edge case: zero total
+        phase.items_total = 0
+        self.assertEqual(phase.progress_pct, 0.0)
+
+
+class TestTimeoutHandler(unittest.TestCase):
+    """Tests for timeout handling."""
+
+    def test_timeout_handler_no_timeout(self):
+        """Test that timeout=0 means no timeout."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import timeout_handler
+
+        # Should complete without issue
+        with timeout_handler(0):
+            result = 1 + 1
+        self.assertEqual(result, 2)
+
+    def test_timeout_handler_completes_in_time(self):
+        """Test that operations completing in time succeed."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import timeout_handler
+
+        with timeout_handler(5):
+            result = sum(range(100))
+        self.assertEqual(result, 4950)
+
+
+class TestIndexingFunctions(unittest.TestCase):
+    """Tests for indexing helper functions."""
+
+    def setUp(self):
+        """Set up temporary directory with test files."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.base_path = Path(self.temp_dir)
+
+        # Create test file structure
+        (self.base_path / "cortical").mkdir()
+        (self.base_path / "tests").mkdir()
+        (self.base_path / "cortical" / "test.py").write_text("# Test file\nprint('hello')")
+        (self.base_path / "tests" / "test_test.py").write_text("# Test\nimport unittest")
+        (self.base_path / "CLAUDE.md").write_text("# Documentation")
+
+    def tearDown(self):
+        """Clean up temporary files."""
+        import shutil
+        shutil.rmtree(self.temp_dir)
+
+    def test_get_python_files(self):
+        """Test Python file discovery."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import get_python_files
+
+        files = get_python_files(self.base_path)
+        file_names = [f.name for f in files]
+
+        self.assertIn("test.py", file_names)
+        self.assertIn("test_test.py", file_names)
+
+    def test_get_doc_files(self):
+        """Test documentation file discovery."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import get_doc_files
+
+        files = get_doc_files(self.base_path)
+        file_names = [f.name for f in files]
+
+        self.assertIn("CLAUDE.md", file_names)
+
+    def test_create_doc_id(self):
+        """Test document ID creation."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import create_doc_id
+
+        file_path = self.base_path / "cortical" / "test.py"
+        doc_id = create_doc_id(file_path, self.base_path)
+
+        self.assertEqual(doc_id, "cortical/test.py")
+
+    def test_get_file_mtime(self):
+        """Test file modification time retrieval."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import get_file_mtime
+
+        file_path = self.base_path / "CLAUDE.md"
+        mtime = get_file_mtime(file_path)
+
+        self.assertIsInstance(mtime, float)
+        self.assertGreater(mtime, 0)
+
+    def test_index_file(self):
+        """Test single file indexing."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import index_file
+
+        processor = CorticalTextProcessor()
+        file_path = self.base_path / "cortical" / "test.py"
+
+        metadata = index_file(processor, file_path, self.base_path)
+
+        self.assertIsNotNone(metadata)
+        self.assertEqual(metadata['relative_path'], "cortical/test.py")
+        self.assertEqual(metadata['file_type'], ".py")
+        self.assertEqual(metadata['language'], "python")
+        self.assertIn("cortical/test.py", processor.documents)
+
+    def test_index_file_with_read_error(self):
+        """Test handling of unreadable files."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import index_file, ProgressTracker
+
+        processor = CorticalTextProcessor()
+        tracker = ProgressTracker(quiet=True)
+        nonexistent = self.base_path / "nonexistent.py"
+
+        metadata = index_file(processor, nonexistent, self.base_path, tracker)
+
+        self.assertIsNone(metadata)
+        self.assertEqual(len(tracker.warnings), 1)
+
+
+class TestFullIndexFunction(unittest.TestCase):
+    """Tests for full_index function."""
+
+    def setUp(self):
+        """Set up temporary directory with test files."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.base_path = Path(self.temp_dir)
+
+        (self.base_path / "file1.py").write_text("# File 1\nprint('a')")
+        (self.base_path / "file2.py").write_text("# File 2\nprint('b')")
+
+    def tearDown(self):
+        """Clean up temporary files."""
+        import shutil
+        shutil.rmtree(self.temp_dir)
+
+    def test_full_index(self):
+        """Test full indexing of files."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import full_index, ProgressTracker
+
+        processor = CorticalTextProcessor()
+        tracker = ProgressTracker(quiet=True)
+        all_files = list(self.base_path.glob("*.py"))
+
+        indexed, total_lines, file_mtimes = full_index(
+            processor, all_files, self.base_path, tracker
+        )
+
+        self.assertEqual(indexed, 2)
+        self.assertGreater(total_lines, 0)
+        self.assertEqual(len(file_mtimes), 2)
+        self.assertIn("Indexing files", tracker.phases)
+
+
+class TestIncrementalIndexFunction(unittest.TestCase):
+    """Tests for incremental_index function."""
+
+    def setUp(self):
+        """Set up temporary directory with test files."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.base_path = Path(self.temp_dir)
+
+        (self.base_path / "existing.py").write_text("# Existing\nprint('x')")
+        (self.base_path / "new.py").write_text("# New\nprint('y')")
+
+    def tearDown(self):
+        """Clean up temporary files."""
+        import shutil
+        shutil.rmtree(self.temp_dir)
+
+    def test_incremental_index_added_files(self):
+        """Test incremental indexing of added files."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import incremental_index, ProgressTracker
+
+        processor = CorticalTextProcessor()
+        tracker = ProgressTracker(quiet=True)
+
+        added = [self.base_path / "new.py"]
+        modified = []
+        deleted = []
+
+        added_count, modified_count, deleted_count, total_lines = incremental_index(
+            processor, added, modified, deleted, self.base_path, tracker
+        )
+
+        self.assertEqual(added_count, 1)
+        self.assertEqual(modified_count, 0)
+        self.assertEqual(deleted_count, 0)
+        self.assertIn("new.py", processor.documents)
+
+    def test_incremental_index_modified_files(self):
+        """Test incremental indexing of modified files."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import incremental_index, index_file, ProgressTracker
+
+        processor = CorticalTextProcessor()
+        tracker = ProgressTracker(quiet=True)
+
+        # First, index the existing file
+        index_file(processor, self.base_path / "existing.py", self.base_path)
+
+        # Now modify it (in our test, just re-index as modified)
+        added = []
+        modified = [self.base_path / "existing.py"]
+        deleted = []
+
+        added_count, modified_count, deleted_count, total_lines = incremental_index(
+            processor, added, modified, deleted, self.base_path, tracker
+        )
+
+        self.assertEqual(modified_count, 1)
+
+    def test_incremental_index_deleted_files(self):
+        """Test incremental indexing handles deleted files."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import incremental_index, index_file, ProgressTracker
+
+        processor = CorticalTextProcessor()
+        tracker = ProgressTracker(quiet=True)
+
+        # First, index a file
+        index_file(processor, self.base_path / "existing.py", self.base_path)
+        self.assertIn("existing.py", processor.documents)
+
+        # Now mark it as deleted
+        added = []
+        modified = []
+        deleted = ["existing.py"]
+
+        added_count, modified_count, deleted_count, total_lines = incremental_index(
+            processor, added, modified, deleted, self.base_path, tracker
+        )
+
+        self.assertEqual(deleted_count, 1)
+        self.assertNotIn("existing.py", processor.documents)
+
+
+class TestComputeAnalysis(unittest.TestCase):
+    """Tests for compute_analysis function."""
+
+    def test_compute_analysis_fast_mode(self):
+        """Test fast mode analysis."""
+        sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+        from index_codebase import compute_analysis, ProgressTracker
+
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks are powerful.")
+        processor.process_document("doc2", "Machine learning algorithms.")
+
+        tracker = ProgressTracker(quiet=True)
+        compute_analysis(processor, tracker, fast_mode=True)
+
+        self.assertIn("Computing analysis (fast mode)", tracker.phases)
+        # TF-IDF should be computed
+        layer0 = processor.layers[CorticalLayer.TOKENS]
+        neural_col = layer0.get_minicolumn("neural")
+        self.assertIsNotNone(neural_col)
+        self.assertGreater(neural_col.tfidf, 0)
+
+
 if __name__ == '__main__':
     unittest.main()
