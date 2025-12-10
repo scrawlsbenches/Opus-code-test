@@ -54,10 +54,64 @@ Or simply copy the `cortical/` directory into your project—zero dependencies m
 
 ## Quick Start
 
+Run the showcase to see the processor analyze 92 documents covering everything from neural networks to medieval falconry:
+
+```bash
+python showcase.py
+```
+
+**Output:**
+```
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║            🧠  CORTICAL TEXT PROCESSOR SHOWCASE  🧠                  ║
+    ║     Mimicking how the neocortex processes and understands text       ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+
+Loading documents from: samples
+Processing through cortical hierarchy...
+(Like visual information flowing V1 → V2 → V4 → IT)
+
+  📄 comprehensive_machine_learning (2445 words)
+  📄 attention_mechanism_research   (644 words)
+  📄 neural_network_optimization    (648 words)
+  ... 89 more documents ...
+
+✓ Processed 92 documents
+✓ Created 6,506 token minicolumns
+✓ Created 20,114 bigram minicolumns
+✓ Formed 116,332 lateral connections
+
+══════════════════════════════════════════════════════════════════════
+                       KEY CONCEPTS (PageRank)
+══════════════════════════════════════════════════════════════════════
+
+PageRank identifies central concepts - highly connected 'hub' words:
+
+  Rank  Concept            PageRank
+  ─────────────────────────────────────────────
+    1.  data               ████████████████████ 0.0046
+    2.  model              ███████████████████░ 0.0044
+    3.  learning           ██████████████████░░ 0.0041
+    ...
+
+══════════════════════════════════════════════════════════════════════
+                        QUERY DEMONSTRATION
+══════════════════════════════════════════════════════════════════════
+
+🔍 Query: 'neural networks'
+   Expanded with: knowledge, data, graph, network, deep, artificial
+
+   Top documents:
+     • comprehensive_machine_learning (score: 26.384)
+     • attention_mechanism_research (score: 19.178)
+     • cortical_semantic_networks (score: 18.470)
+```
+
+### Programmatic Usage
+
 ```python
 from cortical import CorticalTextProcessor
 
-# Create processor
 processor = CorticalTextProcessor()
 
 # Add documents
@@ -65,37 +119,15 @@ processor.process_document("doc1", "Neural networks process information hierarch
 processor.process_document("doc2", "The brain uses layers of neurons for processing.")
 processor.process_document("doc3", "Machine learning enables pattern recognition.")
 
-# Build the network (runs all computations)
+# Build the network
 processor.compute_all()
 
 # Query
 results = processor.find_documents_for_query("neural processing")
-print(results)  # [('doc1', 0.85), ('doc2', 0.72), ...]
-
-# Get corpus summary
-summary = processor.get_corpus_summary()
-print(f"Documents: {summary['documents']}, Connections: {summary['total_connections']}")
+print(results)  # [('doc1', 0.877), ('doc2', 0.832)]
 
 # Save for later
 processor.save("my_corpus.pkl")
-```
-
-**Output:**
-```
-Computing activation propagation...
-Computing importance (PageRank)...
-Computing TF-IDF...
-Computing document connections...
-Computing bigram connections...
-Building concept clusters...
-Computing concept connections (document_overlap)...
-Done.
-[('doc1', 0.8774208144843981), ('doc2', 0.8317923190728529)]
-Documents: 3, Connections: 66
-✓ Saved processor to my_corpus.pkl
-  - 3 documents
-  - 29 minicolumns
-  - 66 connections
 ```
 
 ## Core API
