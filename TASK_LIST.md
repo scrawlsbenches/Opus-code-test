@@ -1808,4 +1808,86 @@ Each query recomputes expansions and scores against all documents. For interacti
 
 ---
 
+## Intelligence Documentation
+
+The following tasks create self-describing documentation that improves the system's ability to understand itself when indexed. This creates a feedback loop: better documentation → better semantic search → better AI understanding of the codebase.
+
+---
+
+### 53. Create Algorithm Intelligence Documentation
+
+**File:** New `docs/algorithms.md`
+**Status:** [ ] In Progress
+**Priority:** High
+
+**Goal:**
+Document the core IR algorithms in a way that helps semantic search understand what each algorithm does, when to use it, and how components relate.
+
+**Content:**
+- PageRank explanation with use cases
+- TF-IDF calculation and per-document vs global variants
+- Label propagation for concept clustering
+- Co-occurrence counting ("Hebbian learning" metaphor)
+- Relation extraction patterns
+- Query expansion strategies
+
+---
+
+### 54. Create Architecture Intelligence Documentation
+
+**File:** New `docs/architecture.md`
+**Status:** [ ] Not Started
+**Priority:** High
+
+**Goal:**
+Document the 4-layer architecture and data flow in searchable prose that helps answer "where is X handled?" and "how does X work?" queries.
+
+**Content:**
+- Layer 0 (Tokens): Word-level processing
+- Layer 1 (Bigrams): Phrase patterns
+- Layer 2 (Concepts): Topic clusters
+- Layer 3 (Documents): Full document representations
+- Cross-layer connections (feedforward/feedback)
+- Minicolumn data structure
+
+---
+
+### 55. Create Pattern Glossary
+
+**File:** New `docs/glossary.md`
+**Status:** [ ] Not Started
+**Priority:** Medium
+
+**Goal:**
+Define terminology used throughout the codebase so searches for concepts find relevant definitions.
+
+**Terms:**
+- Minicolumn, Edge, HierarchicalLayer
+- Lateral connections, typed connections
+- Feedforward/feedback connections
+- PageRank, TF-IDF, damping factor
+- Semantic relations (IsA, PartOf, etc.)
+- Query expansion, spreading activation
+
+---
+
+### 56. Create Usage Patterns Documentation
+
+**File:** New `docs/patterns.md`
+**Status:** [ ] Not Started
+**Priority:** Medium
+
+**Goal:**
+Document common usage patterns and code examples that help answer "how do I..." queries.
+
+**Patterns:**
+- Basic document processing workflow
+- RAG retrieval with passages
+- Code search with intent parsing
+- Fingerprint comparison for similarity
+- Batch operations for performance
+- Incremental updates
+
+---
+
 *Updated 2025-12-10*
