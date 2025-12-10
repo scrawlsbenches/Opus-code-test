@@ -62,9 +62,9 @@ processor.compute_all()
 results = processor.find_documents_for_query("neural processing")
 print(results)  # [('doc1', 0.85), ('doc2', 0.72), ...]
 
-# Analyze corpus health
-health = processor.compute_corpus_health()
-print(f"Corpus health: {health['overall_score']:.0%}")
+# Get corpus summary
+summary = processor.get_corpus_summary()
+print(f"Documents: {summary['documents']}, Connections: {summary['total_connections']}")
 
 # Save for later
 processor.save("my_corpus.pkl")
@@ -76,8 +76,8 @@ processor.save("my_corpus.pkl")
 
 ```python
 processor.process_document(doc_id, content, metadata=None)
-processor.process_documents_from_directory(path)
 processor.add_document_incremental(doc_id, content)  # Incremental indexing
+processor.add_documents_batch([(doc_id, content, metadata), ...])  # Batch processing
 ```
 
 ### Network Building
@@ -107,7 +107,7 @@ processor.extract_corpus_semantics()  # Extract relations
 processor.retrofit_connections()      # Blend with semantics
 processor.compute_graph_embeddings(dimensions=32, method='adjacency')
 processor.retrofit_embeddings()       # Improve embeddings
-processor.infer_relations(term, max_hops=2)  # Multi-hop inference
+processor.expand_query_multihop(query, max_hops=2)  # Multi-hop query expansion
 processor.complete_analogy(a, b, c)   # Analogy completion (a:b :: c:?)
 ```
 
@@ -117,8 +117,8 @@ processor.complete_analogy(a, b, c)   # Analogy completion (a:b :: c:?)
 processor.expand_query(text, max_expansions=10)  # Expand query
 processor.find_documents_for_query(text, top_n=5)  # Search
 processor.find_related_documents(doc_id)  # Related docs
-processor.batch_query(queries)  # Process multiple queries
-processor.retrieve_passages(query, max_passages=5)  # Chunk-level RAG retrieval
+processor.find_documents_batch(queries)  # Process multiple queries
+processor.find_passages_for_query(query, top_n=5)  # Chunk-level RAG retrieval
 ```
 
 ### Analysis
@@ -126,8 +126,8 @@ processor.retrieve_passages(query, max_passages=5)  # Chunk-level RAG retrieval
 ```python
 processor.analyze_knowledge_gaps()  # Find gaps
 processor.detect_anomalies(threshold=0.1)  # Find outliers
-processor.compute_corpus_health()   # Health score
-processor.export_graph_json()       # ConceptNet-style visualization export
+processor.get_corpus_summary()      # Corpus statistics
+processor.export_conceptnet_json(filepath)  # ConceptNet-style visualization export
 ```
 
 ## Connection Strategies
