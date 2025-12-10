@@ -5,19 +5,25 @@ allowed-tools: Read, Bash, Glob
 ---
 # Codebase Search Skill
 
-This skill enables semantic search over the Cortical Text Processor codebase using the system's own IR algorithms.
+This skill enables **meaning-based search** over the Cortical Text Processor codebase. It finds relevant code by understanding intent and concepts, not just exact keyword matching.
+
+## Key Capabilities
+
+- **Meaning-based retrieval**: Finds related code even when exact words don't match
+- **Query expansion**: Automatically includes related terms via co-occurrence and semantic relations
+- **Context-aware**: Uses PageRank, TF-IDF, and concept clustering for relevance
+- **No ML required**: Works through graph algorithms on corpus statistics
 
 ## When to Use
 
-- Finding implementations of specific features
-- Understanding how algorithms work
-- Locating relevant code for modifications
-- Discovering related functions and classes
-- Exploring the codebase structure
+- Finding implementations: "how does PageRank work"
+- Locating code by intent: "where do we handle errors"
+- Understanding relationships: "what connects to the tokenizer"
+- Exploring concepts: "authentication and validation"
 
 ## Prerequisites
 
-Before using search, ensure the corpus is indexed:
+Ensure the corpus is indexed:
 
 ```bash
 python scripts/index_codebase.py
@@ -35,22 +41,24 @@ python scripts/search_codebase.py "your query here"
 
 ### Options
 
-- `--top N` or `-n N`: Number of results (default: 5)
-- `--verbose` or `-v`: Show full passage text
-- `--expand` or `-e`: Show query expansion terms
-- `--interactive` or `-i`: Interactive search mode
+| Option | Description |
+|--------|-------------|
+| `--top N` | Number of results (default: 5) |
+| `--verbose` | Show full passage text |
+| `--expand` | Show query expansion terms |
+| `--interactive` | Interactive search mode |
 
 ### Example Queries
 
 ```bash
-# Find PageRank implementation
-python scripts/search_codebase.py "PageRank algorithm implementation"
+# Find by concept (not exact words)
+python scripts/search_codebase.py "graph importance algorithm"
 
-# Find bigram handling code
-python scripts/search_codebase.py "bigram separator" --verbose
+# Natural language intent
+python scripts/search_codebase.py "how do we compute term relevance"
 
-# Explore query expansion
-python scripts/search_codebase.py "query expansion semantic" --expand
+# See what terms the system associates
+python scripts/search_codebase.py "lateral connections" --expand
 
 # Interactive exploration
 python scripts/search_codebase.py --interactive
@@ -65,7 +73,7 @@ Results include:
 
 ## Tips
 
-1. Use natural language queries - the system understands concepts
-2. Check query expansion (`--expand`) to see related terms
-3. Start with broad queries, then refine
-4. Use interactive mode for exploration sessions
+1. **Use natural language** - ask questions as you would to a colleague
+2. **Check expansion** (`--expand`) - see what related terms are being searched
+3. **Broad then narrow** - start general, refine based on results
+4. **Interactive mode** - use `/expand`, `/concepts`, `/stats` for exploration

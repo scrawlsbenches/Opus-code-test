@@ -1664,4 +1664,132 @@ Currently these are always 0 due to the bug.
 
 ---
 
-*Updated from comprehensive code review on 2025-12-10*
+## Intent-Based Code Search Enhancements
+
+The following tasks enhance the system's ability to understand developer intent and retrieve code by meaning rather than exact keyword matching.
+
+---
+
+### 48. Add Code-Aware Tokenization
+
+**Files:** `cortical/tokenizer.py`
+**Status:** [ ] Not Started
+**Priority:** High
+
+**Problem:**
+Current tokenizer treats code like prose. It doesn't understand that `getUserCredentials`, `get_user_credentials`, and `fetch user credentials` are semantically equivalent.
+
+**Solution:**
+1. Add `split_identifier()` function to break camelCase and snake_case
+2. Expand tokens to include both original and split forms
+3. Add programming keyword recognition (function, class, def, return, etc.)
+4. Preserve meaningful punctuation context (parentheses for calls, brackets for indexing)
+
+**Example:**
+```python
+# Input: "getUserCredentials"
+# Output tokens: ["getUserCredentials", "get", "user", "credentials"]
+```
+
+---
+
+### 49. Add Synonym/Concept Mapping for Code Patterns
+
+**Files:** `cortical/semantics.py`, new `cortical/code_concepts.py`
+**Status:** [ ] Not Started
+**Priority:** High
+
+**Problem:**
+The system doesn't know that "fetch", "get", "retrieve", "load" are often interchangeable in code contexts, or that "auth", "authentication", "credentials", "login" form a concept cluster.
+
+**Solution:**
+1. Create `CODE_CONCEPT_GROUPS` mapping common programming synonyms
+2. Add `expand_code_concepts()` to query expansion
+3. Include domain patterns: auth/security, data/storage, network/api, error/exception
+
+**Concept Groups:**
+```python
+CODE_CONCEPT_GROUPS = {
+    'retrieval': ['get', 'fetch', 'load', 'retrieve', 'read', 'query'],
+    'storage': ['save', 'store', 'write', 'persist', 'cache'],
+    'auth': ['auth', 'authentication', 'login', 'credentials', 'token', 'session'],
+    'error': ['error', 'exception', 'fail', 'catch', 'handle', 'throw'],
+    ...
+}
+```
+
+---
+
+### 50. Add Intent-Based Query Understanding
+
+**Files:** `cortical/query.py`
+**Status:** [ ] Not Started
+**Priority:** High
+
+**Problem:**
+Natural language queries like "where do we handle authentication?" aren't decomposed into searchable intents.
+
+**Solution:**
+1. Add `parse_intent_query()` to extract action + subject + context
+2. Map question words to search strategies:
+   - "where" → location/file search
+   - "how" → implementation search
+   - "what" → definition search
+   - "why" → comment/documentation search
+3. Weight results by intent match
+
+**Example:**
+```python
+parse_intent_query("where do we handle authentication?")
+# Returns: {
+#   'action': 'handle',
+#   'subject': 'authentication',
+#   'intent': 'location',
+#   'expanded_terms': ['handle', 'auth', 'authentication', 'login', ...]
+# }
+```
+
+---
+
+### 51. Add Fingerprint Export API
+
+**Files:** `cortical/processor.py`, `cortical/embeddings.py`
+**Status:** [ ] Not Started
+**Priority:** Medium
+
+**Problem:**
+No way to export or compare the semantic representation of code blocks.
+
+**Solution:**
+1. Add `get_fingerprint(text)` method returning interpretable vector
+2. Add `compare_fingerprints(fp1, fp2)` for similarity scoring
+3. Add `explain_fingerprint(fp)` showing top contributing terms
+4. Export format includes: term weights, relation types, concept memberships
+
+**Use Cases:**
+- Compare similarity between functions
+- Find duplicate/similar code blocks
+- Explain why two code blocks are related
+
+---
+
+### 52. Optimize Query-to-Corpus Comparison
+
+**Files:** `cortical/query.py`
+**Status:** [ ] Not Started
+**Priority:** Medium
+
+**Problem:**
+Each query recomputes expansions and scores against all documents. For interactive use, this should be faster.
+
+**Solution:**
+1. Pre-compute inverted index: term → [(doc_id, position, score)]
+2. Use set intersection for initial candidate filtering
+3. Only score top candidate documents fully
+4. Add `--fast` mode to search script using approximate matching
+
+**Target:** <100ms query latency for 10K document corpus
+
+---
+
+*Updated 2025-12-10*
