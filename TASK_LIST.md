@@ -444,14 +444,16 @@ processor.add_documents_batch(docs, recompute='full')
 
 **File:** `cortical/gaps.py`
 **Lines:** 62, 76, 99
-**Status:** [ ] Deferred (carried over)
+**Status:** [x] Completed
 
-**Magic Numbers:**
-- `avg_sim < 0.02` - isolation threshold
-- `tfidf > 0.005` - weak topic threshold
-- `0.005 < sim < 0.03` - bridge opportunity range
+**Solution Applied:**
+Added documented constants at module level with detailed explanations:
+- `ISOLATION_THRESHOLD = 0.02` - Documents below this avg cosine similarity are isolated
+- `WELL_CONNECTED_THRESHOLD = 0.03` - Documents above this are well-integrated
+- `WEAK_TOPIC_TFIDF_THRESHOLD = 0.005` - Terms above this TF-IDF are significant topics
+- `BRIDGE_SIMILARITY_MIN = 0.005` and `BRIDGE_SIMILARITY_MAX = 0.03` - Range for bridging candidates
 
-**Implementation:** Add docstrings or make configurable parameters.
+Each constant includes documentation of typical ranges and usage guidance.
 
 ---
 
@@ -1174,7 +1176,7 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 | Medium | Fix type annotation (embeddings.py) | ✅ Completed | Bug Fix |
 | Medium | Optimize spectral embeddings | ✅ Completed | Performance |
 | Medium | Add incremental indexing | ✅ Completed | RAG |
-| Low | Document magic numbers | ⏳ Deferred | Documentation |
+| Low | Document magic numbers | ✅ Completed | Documentation |
 | Low | Multi-stage ranking pipeline | ✅ Completed | RAG |
 | Low | Batch query API | ✅ Completed | RAG |
 | **Critical** | **Build cross-layer feedforward connections** | ✅ Completed | **ConceptNet** |
@@ -1190,7 +1192,7 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 | Low | Visualize ConceptNet-style graph | ✅ Completed | ConceptNet |
 | Low | Add analogy completion | ✅ Completed | ConceptNet |
 
-**Bug Fix Completion:** 7/7 tasks (100%)
+**Bug Fix Completion:** 8/8 tasks (100%)
 **RAG Enhancement Completion:** 8/8 tasks (100%)
 **ConceptNet Enhancement Completion:** 12/12 tasks (100%)
 
@@ -1204,6 +1206,33 @@ OK
 ```
 
 All tests passing as of 2025-12-10.
+
+---
+
+## Code Quality Improvements (2025-12-10)
+
+### Query Expansion Helper Refactoring
+
+**File:** `cortical/query.py`
+**Status:** [x] Completed
+
+**Problem:**
+Query expansion logic (expand + semantic merge) was duplicated in 6 functions:
+- `find_documents_for_query()`
+- `find_passages_for_query()`
+- `find_documents_batch()`
+- `find_passages_batch()`
+- `multi_stage_rank()`
+- `multi_stage_rank_documents()`
+
+**Solution Applied:**
+Added `get_expanded_query_terms()` helper function (~60 lines) that consolidates:
+- Lateral connection expansion via `expand_query()`
+- Semantic relation expansion via `expand_query_semantic()`
+- Merging of expansion results with appropriate weighting
+- Configurable parameters: `max_expansions`, `semantic_discount`
+
+All 6 functions now use this helper, reducing code duplication by ~100 lines.
 
 ---
 

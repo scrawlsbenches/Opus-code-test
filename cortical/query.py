@@ -361,6 +361,66 @@ def expand_query_semantic(
     return expanded
 
 
+def get_expanded_query_terms(
+    query_text: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    tokenizer: Tokenizer,
+    use_expansion: bool = True,
+    semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
+    use_semantic: bool = True,
+    max_expansions: int = 5,
+    semantic_discount: float = 0.8
+) -> Dict[str, float]:
+    """
+    Get expanded query terms with optional semantic expansion.
+
+    This is a helper function that consolidates query expansion logic used
+    by multiple search functions. It handles:
+    - Lateral connection expansion via expand_query()
+    - Semantic relation expansion via expand_query_semantic()
+    - Merging of expansion results with appropriate weighting
+
+    Args:
+        query_text: Original query string
+        layers: Dictionary of layers
+        tokenizer: Tokenizer instance
+        use_expansion: Whether to expand query terms using lateral connections
+        semantic_relations: Optional list of semantic relations for expansion
+        use_semantic: Whether to use semantic relations for expansion
+        max_expansions: Maximum expansion terms per method (default 5)
+        semantic_discount: Weight multiplier for semantic expansions (default 0.8)
+
+    Returns:
+        Dict mapping terms to weights (original terms get weight 1.0,
+        expansions get lower weights based on connection strength)
+
+    Example:
+        >>> terms = get_expanded_query_terms("neural networks", layers, tokenizer)
+        >>> # Returns: {'neural': 1.0, 'networks': 1.0, 'deep': 0.3, 'learning': 0.25, ...}
+    """
+    if use_expansion:
+        # Start with lateral connection expansion
+        query_terms = expand_query(query_text, layers, tokenizer, max_expansions=max_expansions)
+
+        # Add semantic expansion if available
+        if use_semantic and semantic_relations:
+            semantic_terms = expand_query_semantic(
+                query_text, layers, tokenizer, semantic_relations, max_expansions=max_expansions
+            )
+            # Merge semantic expansions (don't override stronger weights)
+            for term, weight in semantic_terms.items():
+                if term not in query_terms:
+                    query_terms[term] = weight * semantic_discount
+                else:
+                    # Take the max weight
+                    query_terms[term] = max(query_terms[term], weight * semantic_discount)
+    else:
+        tokens = tokenizer.tokenize(query_text)
+        query_terms = {t: 1.0 for t in tokens}
+
+    return query_terms
+
+
 def find_documents_for_query(
     query_text: str,
     layers: Dict[CorticalLayer, HierarchicalLayer],
@@ -387,25 +447,12 @@ def find_documents_for_query(
     """
     layer0 = layers[CorticalLayer.TOKENS]
 
-    if use_expansion:
-        # Start with lateral connection expansion
-        query_terms = expand_query(query_text, layers, tokenizer, max_expansions=5)
-
-        # Add semantic expansion if available
-        if use_semantic and semantic_relations:
-            semantic_terms = expand_query_semantic(
-                query_text, layers, tokenizer, semantic_relations, max_expansions=5
-            )
-            # Merge semantic expansions (don't override stronger weights)
-            for term, weight in semantic_terms.items():
-                if term not in query_terms:
-                    query_terms[term] = weight * 0.8  # Slightly discount semantic expansions
-                else:
-                    # Take the max weight
-                    query_terms[term] = max(query_terms[term], weight * 0.8)
-    else:
-        tokens = tokenizer.tokenize(query_text)
-        query_terms = {t: 1.0 for t in tokens}
+    query_terms = get_expanded_query_terms(
+        query_text, layers, tokenizer,
+        use_expansion=use_expansion,
+        semantic_relations=semantic_relations,
+        use_semantic=use_semantic
+    )
 
     # Score each document
     doc_scores: Dict[str, float] = defaultdict(float)
@@ -622,21 +669,12 @@ def find_passages_for_query(
     layer0 = layers[CorticalLayer.TOKENS]
 
     # Get expanded query terms
-    if use_expansion:
-        query_terms = expand_query(query_text, layers, tokenizer, max_expansions=5)
-        # Add semantic expansion if available
-        if use_semantic and semantic_relations:
-            semantic_terms = expand_query_semantic(
-                query_text, layers, tokenizer, semantic_relations, max_expansions=5
-            )
-            for term, weight in semantic_terms.items():
-                if term not in query_terms:
-                    query_terms[term] = weight * 0.8
-                else:
-                    query_terms[term] = max(query_terms[term], weight * 0.8)
-    else:
-        tokens = tokenizer.tokenize(query_text)
-        query_terms = {t: 1.0 for t in tokens}
+    query_terms = get_expanded_query_terms(
+        query_text, layers, tokenizer,
+        use_expansion=use_expansion,
+        semantic_relations=semantic_relations,
+        use_semantic=use_semantic
+    )
 
     if not query_terms:
         return []
@@ -726,24 +764,16 @@ def find_documents_batch(
 
     for query_text in queries:
         # Check cache first for expansion
-        if use_expansion:
-            if query_text in expansion_cache:
-                query_terms = expansion_cache[query_text]
-            else:
-                query_terms = expand_query(query_text, layers, tokenizer, max_expansions=5)
-                if use_semantic and semantic_relations:
-                    semantic_terms = expand_query_semantic(
-                        query_text, layers, tokenizer, semantic_relations, max_expansions=5
-                    )
-                    for term, weight in semantic_terms.items():
-                        if term not in query_terms:
-                            query_terms[term] = weight * 0.8
-                        else:
-                            query_terms[term] = max(query_terms[term], weight * 0.8)
-                expansion_cache[query_text] = query_terms
+        if query_text in expansion_cache:
+            query_terms = expansion_cache[query_text]
         else:
-            tokens = tokenizer.tokenize(query_text)
-            query_terms = {t: 1.0 for t in tokens}
+            query_terms = get_expanded_query_terms(
+                query_text, layers, tokenizer,
+                use_expansion=use_expansion,
+                semantic_relations=semantic_relations,
+                use_semantic=use_semantic
+            )
+            expansion_cache[query_text] = query_terms
 
         # Score documents
         doc_scores: Dict[str, float] = defaultdict(float)
@@ -818,24 +848,16 @@ def find_passages_batch(
 
     for query_text in queries:
         # Get expanded query terms (with caching)
-        if use_expansion:
-            if query_text in expansion_cache:
-                query_terms = expansion_cache[query_text]
-            else:
-                query_terms = expand_query(query_text, layers, tokenizer, max_expansions=5)
-                if use_semantic and semantic_relations:
-                    semantic_terms = expand_query_semantic(
-                        query_text, layers, tokenizer, semantic_relations, max_expansions=5
-                    )
-                    for term, weight in semantic_terms.items():
-                        if term not in query_terms:
-                            query_terms[term] = weight * 0.8
-                        else:
-                            query_terms[term] = max(query_terms[term], weight * 0.8)
-                expansion_cache[query_text] = query_terms
+        if query_text in expansion_cache:
+            query_terms = expansion_cache[query_text]
         else:
-            tokens = tokenizer.tokenize(query_text)
-            query_terms = {t: 1.0 for t in tokens}
+            query_terms = get_expanded_query_terms(
+                query_text, layers, tokenizer,
+                use_expansion=use_expansion,
+                semantic_relations=semantic_relations,
+                use_semantic=use_semantic
+            )
+            expansion_cache[query_text] = query_terms
 
         if not query_terms:
             all_results.append([])
@@ -969,20 +991,12 @@ def multi_stage_rank(
     layer0 = layers[CorticalLayer.TOKENS]
 
     # Get expanded query terms
-    if use_expansion:
-        query_terms = expand_query(query_text, layers, tokenizer, max_expansions=5)
-        if use_semantic and semantic_relations:
-            semantic_terms = expand_query_semantic(
-                query_text, layers, tokenizer, semantic_relations, max_expansions=5
-            )
-            for term, weight in semantic_terms.items():
-                if term not in query_terms:
-                    query_terms[term] = weight * 0.8
-                else:
-                    query_terms[term] = max(query_terms[term], weight * 0.8)
-    else:
-        tokens = tokenizer.tokenize(query_text)
-        query_terms = {t: 1.0 for t in tokens}
+    query_terms = get_expanded_query_terms(
+        query_text, layers, tokenizer,
+        use_expansion=use_expansion,
+        semantic_relations=semantic_relations,
+        use_semantic=use_semantic
+    )
 
     if not query_terms:
         return []
@@ -1119,20 +1133,12 @@ def multi_stage_rank_documents(
     layer0 = layers[CorticalLayer.TOKENS]
 
     # Get expanded query terms
-    if use_expansion:
-        query_terms = expand_query(query_text, layers, tokenizer, max_expansions=5)
-        if use_semantic and semantic_relations:
-            semantic_terms = expand_query_semantic(
-                query_text, layers, tokenizer, semantic_relations, max_expansions=5
-            )
-            for term, weight in semantic_terms.items():
-                if term not in query_terms:
-                    query_terms[term] = weight * 0.8
-                else:
-                    query_terms[term] = max(query_terms[term], weight * 0.8)
-    else:
-        tokens = tokenizer.tokenize(query_text)
-        query_terms = {t: 1.0 for t in tokens}
+    query_terms = get_expanded_query_terms(
+        query_text, layers, tokenizer,
+        use_expansion=use_expansion,
+        semantic_relations=semantic_relations,
+        use_semantic=use_semantic
+    )
 
     if not query_terms:
         return []
