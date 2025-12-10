@@ -242,7 +242,7 @@ The processor discovers that `neural` connects to `networks` (weight: 23), `arti
 
 ### The Polysemy Problem
 
-Search for "candle sticks" and you'll find both `candlestick_patterns` (trading charts) and `letterpress_printing` (composing sticks). The system correctly retrieves both meanings but can't read your mind about which one you wanted. Word sense disambiguation remains an open challenge.
+Search for "candle sticks" and you'll find `candlestick_patterns` (trading charts) at the top—but also `letterpress_printing` (composing sticks) and `wine_tasting_vocabulary`. The query tokenizes to `['candle', 'sticks']`: "candle" matches the trading document (which discusses "single candle patterns"), while "sticks" matches the printing document. Classic information retrieval challenge: compound words fragment, partial matches surface, and the system can't read your mind about intent.
 
 ### Knowledge Gap Detection
 
