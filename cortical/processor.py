@@ -708,6 +708,109 @@ class CorticalTextProcessor:
         stats = semantics.retrofit_connections(self.layers, self.semantic_relations, iterations, alpha)
         if verbose: print(f"Retrofitted {stats['tokens_affected']} tokens")
         return stats
+
+    def compute_property_inheritance(
+        self,
+        decay_factor: float = 0.7,
+        max_depth: int = 5,
+        apply_to_connections: bool = True,
+        boost_factor: float = 0.3,
+        verbose: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Compute property inheritance based on IsA hierarchy.
+
+        If "dog IsA animal" and "animal HasProperty living", then "dog" inherits
+        "living" with a decayed weight. This enables similarity computation between
+        terms that share inherited properties.
+
+        Args:
+            decay_factor: Weight multiplier per inheritance level (default 0.7)
+            max_depth: Maximum inheritance depth (default 5)
+            apply_to_connections: Boost lateral connections for shared properties
+            boost_factor: Weight boost for shared inherited properties
+            verbose: Print progress messages
+
+        Returns:
+            Dict with statistics:
+            - terms_with_inheritance: Number of terms that inherited properties
+            - total_properties_inherited: Total property inheritance relationships
+            - connections_boosted: Connections boosted (if apply_to_connections=True)
+            - inherited: The full inheritance mapping (for advanced use)
+
+        Example:
+            >>> processor.extract_corpus_semantics()
+            >>> stats = processor.compute_property_inheritance()
+            >>> print(f"{stats['terms_with_inheritance']} terms inherited properties")
+            >>>
+            >>> # Check inherited properties for a term
+            >>> inherited = stats['inherited']
+            >>> if 'dog' in inherited:
+            ...     for prop, (weight, source, depth) in inherited['dog'].items():
+            ...         print(f"  {prop}: {weight:.2f} (from {source}, depth {depth})")
+        """
+        if not self.semantic_relations:
+            self.extract_corpus_semantics(verbose=False)
+
+        inherited = semantics.inherit_properties(
+            self.semantic_relations,
+            decay_factor=decay_factor,
+            max_depth=max_depth
+        )
+
+        total_props = sum(len(props) for props in inherited.values())
+
+        result = {
+            'terms_with_inheritance': len(inherited),
+            'total_properties_inherited': total_props,
+            'inherited': inherited
+        }
+
+        if apply_to_connections and inherited:
+            conn_stats = semantics.apply_inheritance_to_connections(
+                self.layers,
+                inherited,
+                boost_factor=boost_factor
+            )
+            result['connections_boosted'] = conn_stats['connections_boosted']
+            result['total_boost'] = conn_stats['total_boost']
+        else:
+            result['connections_boosted'] = 0
+            result['total_boost'] = 0.0
+
+        if verbose:
+            print(f"Computed property inheritance: {result['terms_with_inheritance']} terms, "
+                  f"{total_props} properties, {result['connections_boosted']} connections boosted")
+
+        return result
+
+    def compute_property_similarity(self, term1: str, term2: str) -> float:
+        """
+        Compute similarity between terms based on shared properties (direct + inherited).
+
+        Requires that compute_property_inheritance() or extract_corpus_semantics()
+        has been called first.
+
+        Args:
+            term1: First term
+            term2: Second term
+
+        Returns:
+            Similarity score (0.0-1.0) based on Jaccard-like overlap of properties
+
+        Example:
+            >>> processor.extract_corpus_semantics()
+            >>> stats = processor.compute_property_inheritance()
+            >>> sim = processor.compute_property_similarity("dog", "cat")
+            >>> # Both inherit "living" from "animal", so similarity > 0
+        """
+        if not self.semantic_relations:
+            return 0.0
+
+        # Compute inherited properties on the fly if needed
+        inherited = semantics.inherit_properties(self.semantic_relations)
+
+        return semantics.compute_property_similarity(term1, term2, inherited)
     
     def compute_graph_embeddings(self, dimensions: int = 64, method: str = 'adjacency', verbose: bool = True) -> Dict:
         self.embeddings, stats = emb_module.compute_graph_embeddings(self.layers, dimensions, method)

@@ -913,18 +913,48 @@ print(VALID_RELATION_CHAINS[('IsA', 'IsA')])  # 1.0
 
 ### 27. Implement Concept Inheritance
 
-**Files:** `cortical/analysis.py`, `cortical/semantics.py`
-**Status:** [ ] Pending
+**Files:** `cortical/semantics.py`, `cortical/processor.py`
+**Status:** [x] Completed
 
 **Problem:**
 IsA relations should enable property inheritance. If "dog IsA animal" and "animal HasProperty living", then "dog" should inherit "living".
 
-**Implementation Steps:**
-1. Build IsA hierarchy from semantic relations
-2. Add `inherit_properties()` function
-3. Propagate properties down IsA chains with decay
-4. Store inherited properties separately from direct properties
-5. Use inherited properties in similarity calculations
+**Solution Applied:**
+1. Added `build_isa_hierarchy()` function to extract parent-child relationships from IsA relations
+2. Added `get_ancestors()` and `get_descendants()` functions for hierarchy traversal with depth tracking
+3. Added `inherit_properties()` function that:
+   - Extracts direct properties from HasProperty, HasA, CapableOf, AtLocation, UsedFor relations
+   - Propagates properties down IsA chains with configurable decay factor
+   - Returns mapping of term → {property: (weight, source_ancestor, depth)}
+4. Added `compute_property_similarity()` for weighted Jaccard similarity based on shared properties
+5. Added `apply_inheritance_to_connections()` to boost lateral connections for shared inherited properties
+6. Added processor wrapper methods: `compute_property_inheritance()` and `compute_property_similarity()`
+
+**Files Modified:**
+- `cortical/semantics.py` - Added 6 new functions (~280 lines)
+- `cortical/processor.py` - Added 2 processor wrapper methods (~80 lines)
+- `tests/test_semantics.py` - Added 23 tests across 7 new test classes
+
+**Usage:**
+```python
+# Compute property inheritance
+processor.extract_corpus_semantics()
+stats = processor.compute_property_inheritance(
+    decay_factor=0.7,      # Weight decay per level
+    max_depth=5,           # Maximum inheritance depth
+    apply_to_connections=True,  # Boost lateral connections
+    boost_factor=0.3       # Boost weight for shared properties
+)
+
+# Check inherited properties for a term
+inherited = stats['inherited']
+if 'dog' in inherited:
+    for prop, (weight, source, depth) in inherited['dog'].items():
+        print(f"  {prop}: {weight:.2f} (from {source}, depth {depth})")
+
+# Compute similarity based on shared properties
+sim = processor.compute_property_similarity("dog", "cat")
+```
 
 ---
 
@@ -1069,21 +1099,21 @@ Semantic bonus is capped at 50% boost (`min(avg_semantic, 0.5)`). This is a reas
 | **High** | **Add typed edge storage** | ✅ Completed | **ConceptNet** |
 | Medium | Implement multi-hop semantic inference | ✅ Completed | ConceptNet |
 | Medium | Add relation path scoring | ✅ Completed | ConceptNet |
-| Medium | Implement concept inheritance | ⏳ Pending | ConceptNet |
+| Medium | Implement concept inheritance | ✅ Completed | ConceptNet |
 | Low | Add commonsense relation extraction | ⏳ Pending | ConceptNet |
 | Low | Visualize ConceptNet-style graph | ⏳ Pending | ConceptNet |
 | Low | Add analogy completion | ⏳ Pending | ConceptNet |
 
 **Bug Fix Completion:** 7/7 tasks (100%)
 **RAG Enhancement Completion:** 8/8 tasks (100%)
-**ConceptNet Enhancement Completion:** 8/12 tasks (67%)
+**ConceptNet Enhancement Completion:** 9/12 tasks (75%)
 
 ---
 
 ## Test Results
 
 ```
-Ran 255 tests in 0.196s
+Ran 278 tests in 0.263s
 OK
 ```
 

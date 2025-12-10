@@ -327,11 +327,349 @@ def retrofit_embeddings(
 def get_relation_type_weight(relation_type: str) -> float:
     """
     Get the weight for a relation type.
-    
+
     Args:
         relation_type: Type of semantic relation
-        
+
     Returns:
         Weight multiplier for this relation type
     """
     return RELATION_WEIGHTS.get(relation_type, 0.5)
+
+
+def build_isa_hierarchy(
+    semantic_relations: List[Tuple[str, str, str, float]]
+) -> Tuple[Dict[str, Set[str]], Dict[str, Set[str]]]:
+    """
+    Build IsA parent-child hierarchy from semantic relations.
+
+    Extracts all IsA relations and builds bidirectional parent-child mappings.
+    For example, if "dog IsA animal", then:
+    - parents["dog"] = {"animal"}
+    - children["animal"] = {"dog"}
+
+    Args:
+        semantic_relations: List of (term1, relation, term2, weight) tuples
+
+    Returns:
+        Tuple of (parents, children) dicts:
+        - parents: Maps term to set of parent terms (hypernyms)
+        - children: Maps term to set of child terms (hyponyms)
+
+    Example:
+        >>> relations = [("dog", "IsA", "animal", 1.0), ("cat", "IsA", "animal", 1.0)]
+        >>> parents, children = build_isa_hierarchy(relations)
+        >>> print(parents["dog"])  # {"animal"}
+        >>> print(children["animal"])  # {"dog", "cat"}
+    """
+    parents: Dict[str, Set[str]] = defaultdict(set)
+    children: Dict[str, Set[str]] = defaultdict(set)
+
+    for t1, relation, t2, weight in semantic_relations:
+        if relation == 'IsA':
+            # t1 IsA t2 means t2 is a parent (hypernym) of t1
+            parents[t1].add(t2)
+            children[t2].add(t1)
+
+    return dict(parents), dict(children)
+
+
+def get_ancestors(
+    term: str,
+    parents: Dict[str, Set[str]],
+    max_depth: int = 10
+) -> Dict[str, int]:
+    """
+    Get all ancestors of a term with their depth in the hierarchy.
+
+    Performs BFS traversal up the IsA hierarchy to find all ancestors.
+
+    Args:
+        term: Starting term
+        parents: Parent mapping from build_isa_hierarchy()
+        max_depth: Maximum depth to traverse (prevents infinite loops)
+
+    Returns:
+        Dict mapping ancestor terms to their depth (1 = direct parent, 2 = grandparent, etc.)
+
+    Example:
+        >>> # If dog IsA canine IsA animal
+        >>> ancestors = get_ancestors("dog", parents)
+        >>> # ancestors = {"canine": 1, "animal": 2}
+    """
+    ancestors: Dict[str, int] = {}
+    frontier = [(p, 1) for p in parents.get(term, set())]
+    visited = {term}
+
+    while frontier:
+        current, depth = frontier.pop(0)
+        if current in visited or depth > max_depth:
+            continue
+        visited.add(current)
+        ancestors[current] = depth
+
+        # Add parents of current term
+        for parent in parents.get(current, set()):
+            if parent not in visited:
+                frontier.append((parent, depth + 1))
+
+    return ancestors
+
+
+def get_descendants(
+    term: str,
+    children: Dict[str, Set[str]],
+    max_depth: int = 10
+) -> Dict[str, int]:
+    """
+    Get all descendants of a term with their depth in the hierarchy.
+
+    Performs BFS traversal down the IsA hierarchy to find all descendants.
+
+    Args:
+        term: Starting term
+        children: Children mapping from build_isa_hierarchy()
+        max_depth: Maximum depth to traverse (prevents infinite loops)
+
+    Returns:
+        Dict mapping descendant terms to their depth (1 = direct child, 2 = grandchild, etc.)
+    """
+    descendants: Dict[str, int] = {}
+    frontier = [(c, 1) for c in children.get(term, set())]
+    visited = {term}
+
+    while frontier:
+        current, depth = frontier.pop(0)
+        if current in visited or depth > max_depth:
+            continue
+        visited.add(current)
+        descendants[current] = depth
+
+        # Add children of current term
+        for child in children.get(current, set()):
+            if child not in visited:
+                frontier.append((child, depth + 1))
+
+    return descendants
+
+
+def inherit_properties(
+    semantic_relations: List[Tuple[str, str, str, float]],
+    decay_factor: float = 0.7,
+    max_depth: int = 5
+) -> Dict[str, Dict[str, Tuple[float, str, int]]]:
+    """
+    Compute inherited properties for all terms based on IsA hierarchy.
+
+    If "dog IsA animal" and "animal HasProperty living", then "dog" inherits
+    "living" with a decayed weight. Properties propagate down the IsA hierarchy
+    with weight decaying at each level.
+
+    Args:
+        semantic_relations: List of (term1, relation, term2, weight) tuples
+        decay_factor: Weight multiplier per inheritance level (default 0.7)
+        max_depth: Maximum inheritance depth (default 5)
+
+    Returns:
+        Dict mapping terms to their inherited properties:
+        {
+            term: {
+                property: (weight, source_ancestor, depth)
+            }
+        }
+
+    Example:
+        >>> relations = [
+        ...     ("dog", "IsA", "animal", 1.0),
+        ...     ("animal", "HasProperty", "living", 0.9),
+        ...     ("animal", "HasProperty", "mortal", 0.8),
+        ... ]
+        >>> inherited = inherit_properties(relations)
+        >>> print(inherited["dog"])
+        >>> # {"living": (0.63, "animal", 1), "mortal": (0.56, "animal", 1)}
+    """
+    # Build hierarchy
+    parents, children = build_isa_hierarchy(semantic_relations)
+
+    # Extract direct properties for each term
+    # Properties come from HasProperty, HasA, CapableOf, etc.
+    property_relations = {'HasProperty', 'HasA', 'CapableOf', 'AtLocation', 'UsedFor'}
+    direct_properties: Dict[str, Dict[str, float]] = defaultdict(dict)
+
+    for t1, relation, t2, weight in semantic_relations:
+        if relation in property_relations:
+            # t1 HasProperty t2 means t2 is a property of t1
+            direct_properties[t1][t2] = max(direct_properties[t1].get(t2, 0), weight)
+
+    # Compute inherited properties for each term
+    inherited: Dict[str, Dict[str, Tuple[float, str, int]]] = {}
+
+    # Get all terms that have parents (i.e., can inherit)
+    all_terms = set(parents.keys())
+    # Also include terms with direct properties (they might be ancestors)
+    all_terms.update(direct_properties.keys())
+
+    for term in all_terms:
+        term_inherited: Dict[str, Tuple[float, str, int]] = {}
+
+        # Get all ancestors and their depths
+        ancestors = get_ancestors(term, parents, max_depth=max_depth)
+
+        # For each ancestor, inherit their properties
+        for ancestor, depth in ancestors.items():
+            if ancestor in direct_properties:
+                # Compute decayed weight
+                decay = decay_factor ** depth
+                for prop, prop_weight in direct_properties[ancestor].items():
+                    inherited_weight = prop_weight * decay
+
+                    # Keep the strongest inheritance path
+                    if prop not in term_inherited or term_inherited[prop][0] < inherited_weight:
+                        term_inherited[prop] = (inherited_weight, ancestor, depth)
+
+        if term_inherited:
+            inherited[term] = term_inherited
+
+    return inherited
+
+
+def compute_property_similarity(
+    term1: str,
+    term2: str,
+    inherited_properties: Dict[str, Dict[str, Tuple[float, str, int]]],
+    direct_properties: Optional[Dict[str, Dict[str, float]]] = None
+) -> float:
+    """
+    Compute similarity between terms based on shared properties (direct + inherited).
+
+    Args:
+        term1: First term
+        term2: Second term
+        inherited_properties: Output from inherit_properties()
+        direct_properties: Optional dict of direct properties {term: {prop: weight}}
+
+    Returns:
+        Similarity score based on Jaccard-like overlap of properties
+
+    Example:
+        >>> sim = compute_property_similarity("dog", "cat", inherited, direct)
+        >>> # Both inherit "living" from "animal", so similarity > 0
+    """
+    # Get all properties for each term
+    props1: Dict[str, float] = {}
+    props2: Dict[str, float] = {}
+
+    # Add inherited properties
+    if term1 in inherited_properties:
+        for prop, (weight, _, _) in inherited_properties[term1].items():
+            props1[prop] = max(props1.get(prop, 0), weight)
+
+    if term2 in inherited_properties:
+        for prop, (weight, _, _) in inherited_properties[term2].items():
+            props2[prop] = max(props2.get(prop, 0), weight)
+
+    # Add direct properties if provided
+    if direct_properties:
+        if term1 in direct_properties:
+            for prop, weight in direct_properties[term1].items():
+                props1[prop] = max(props1.get(prop, 0), weight)
+        if term2 in direct_properties:
+            for prop, weight in direct_properties[term2].items():
+                props2[prop] = max(props2.get(prop, 0), weight)
+
+    if not props1 or not props2:
+        return 0.0
+
+    # Compute weighted Jaccard similarity
+    common_props = set(props1.keys()) & set(props2.keys())
+    all_props = set(props1.keys()) | set(props2.keys())
+
+    if not all_props:
+        return 0.0
+
+    # Sum of minimum weights for common properties
+    intersection_weight = sum(
+        min(props1[p], props2[p]) for p in common_props
+    )
+
+    # Sum of maximum weights for all properties
+    union_weight = sum(
+        max(props1.get(p, 0), props2.get(p, 0)) for p in all_props
+    )
+
+    return intersection_weight / union_weight if union_weight > 0 else 0.0
+
+
+def apply_inheritance_to_connections(
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    inherited_properties: Dict[str, Dict[str, Tuple[float, str, int]]],
+    boost_factor: float = 0.3
+) -> Dict[str, Any]:
+    """
+    Boost lateral connections between terms that share inherited properties.
+
+    Terms that share properties through inheritance should have stronger
+    connections, even if they don't directly co-occur.
+
+    Args:
+        layers: Dictionary of layers
+        inherited_properties: Output from inherit_properties()
+        boost_factor: Weight boost for shared properties (default 0.3)
+
+    Returns:
+        Statistics about connections boosted
+
+    Example:
+        >>> # "dog" and "cat" both inherit "living" from "animal"
+        >>> # Their lateral connection gets boosted
+        >>> stats = apply_inheritance_to_connections(layers, inherited)
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+    connections_boosted = 0
+    total_boost = 0.0
+
+    # Get terms that have inherited properties
+    terms_with_inheritance = set(inherited_properties.keys())
+
+    # For each pair of terms with inherited properties
+    terms_list = list(terms_with_inheritance)
+
+    for i, term1 in enumerate(terms_list):
+        col1 = layer0.get_minicolumn(term1)
+        if not col1:
+            continue
+
+        props1 = inherited_properties[term1]
+
+        for term2 in terms_list[i + 1:]:
+            col2 = layer0.get_minicolumn(term2)
+            if not col2:
+                continue
+
+            props2 = inherited_properties[term2]
+
+            # Find shared inherited properties
+            shared_props = set(props1.keys()) & set(props2.keys())
+            if not shared_props:
+                continue
+
+            # Compute boost based on shared properties
+            boost = 0.0
+            for prop in shared_props:
+                w1, _, _ = props1[prop]
+                w2, _, _ = props2[prop]
+                # Average of the two inheritance weights
+                boost += (w1 + w2) / 2 * boost_factor
+
+            if boost > 0:
+                # Add boost to lateral connections
+                col1.add_lateral_connection(col2.id, boost)
+                col2.add_lateral_connection(col1.id, boost)
+                connections_boosted += 1
+                total_boost += boost
+
+    return {
+        'connections_boosted': connections_boosted,
+        'total_boost': total_boost,
+        'terms_with_inheritance': len(terms_with_inheritance)
+    }
