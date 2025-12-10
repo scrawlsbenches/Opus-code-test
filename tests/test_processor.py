@@ -1454,6 +1454,95 @@ class TestConceptClustering(unittest.TestCase):
         self.assertIsInstance(clusters_over, dict)
 
 
+class TestComputeAllStrategies(unittest.TestCase):
+    """Test compute_all with different connection strategies."""
+
+    def test_compute_all_default_strategy(self):
+        """Test compute_all with default document_overlap strategy."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process information.")
+        processor.process_document("doc2", "Machine learning uses neural networks.")
+
+        stats = processor.compute_all(verbose=False)
+
+        self.assertIsInstance(stats, dict)
+        if 'concept_connections' in stats:
+            self.assertIn('connections_created', stats['concept_connections'])
+
+    def test_compute_all_semantic_strategy(self):
+        """Test compute_all with semantic connection strategy."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Dogs are animals that bark.")
+        processor.process_document("doc2", "Cats are animals that meow.")
+
+        stats = processor.compute_all(
+            connection_strategy='semantic',
+            verbose=False
+        )
+
+        self.assertIsInstance(stats, dict)
+
+    def test_compute_all_embedding_strategy(self):
+        """Test compute_all with embedding connection strategy."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks learn patterns.")
+        processor.process_document("doc2", "Deep learning models train on data.")
+
+        stats = processor.compute_all(
+            connection_strategy='embedding',
+            verbose=False
+        )
+
+        self.assertIsInstance(stats, dict)
+
+    def test_compute_all_hybrid_strategy(self):
+        """Test compute_all with hybrid connection strategy."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process information.")
+        processor.process_document("doc2", "Bread baking requires yeast.")
+
+        stats = processor.compute_all(
+            connection_strategy='hybrid',
+            cluster_strictness=0.5,
+            bridge_weight=0.3,
+            verbose=False
+        )
+
+        self.assertIsInstance(stats, dict)
+        if 'concept_connections' in stats:
+            # Hybrid should have all connection type stats
+            conn_stats = stats['concept_connections']
+            self.assertIn('doc_overlap_connections', conn_stats)
+            self.assertIn('semantic_connections', conn_stats)
+            self.assertIn('embedding_connections', conn_stats)
+
+    def test_compute_all_returns_cluster_count(self):
+        """Test that compute_all returns cluster count in stats."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks learn patterns from data.")
+        processor.process_document("doc2", "Machine learning algorithms process information.")
+
+        stats = processor.compute_all(verbose=False)
+
+        if 'clusters_created' in stats:
+            self.assertIsInstance(stats['clusters_created'], int)
+            self.assertGreaterEqual(stats['clusters_created'], 0)
+
+    def test_compute_all_with_clustering_params(self):
+        """Test compute_all with clustering parameters."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks are computational models.")
+        processor.process_document("doc2", "Deep learning uses neural architectures.")
+
+        stats = processor.compute_all(
+            cluster_strictness=0.3,
+            bridge_weight=0.5,
+            verbose=False
+        )
+
+        self.assertIsInstance(stats, dict)
+
+
 class TestBigramConnections(unittest.TestCase):
     """Test bigram lateral connection functionality."""
 

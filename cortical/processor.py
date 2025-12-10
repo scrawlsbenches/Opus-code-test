@@ -413,8 +413,11 @@ class CorticalTextProcessor:
         self,
         verbose: bool = True,
         build_concepts: bool = True,
-        pagerank_method: str = 'standard'
-    ) -> None:
+        pagerank_method: str = 'standard',
+        connection_strategy: str = 'document_overlap',
+        cluster_strictness: float = 1.0,
+        bridge_weight: float = 0.0
+    ) -> Dict[str, Any]:
         """
         Run all computation steps.
 
@@ -428,7 +431,32 @@ class CorticalTextProcessor:
                               Requires semantic relations (extracts automatically if needed).
                 - 'hierarchical': Cross-layer PageRank with importance propagation
                                   between layers (tokens ↔ bigrams ↔ concepts ↔ documents).
+            connection_strategy: Strategy for connecting Layer 2 concepts:
+                - 'document_overlap': Traditional Jaccard similarity (default)
+                - 'semantic': Connect via semantic relations between members
+                - 'embedding': Connect via embedding centroid similarity
+                - 'hybrid': Combine all three strategies for maximum connectivity
+            cluster_strictness: Controls clustering aggressiveness (0.0-1.0).
+                Lower values create fewer, larger clusters with more connections.
+            bridge_weight: Weight for inter-document token bridging (0.0-1.0).
+                Higher values help bridge topic-isolated clusters.
+
+        Returns:
+            Dict with computation statistics (concept_stats, etc.)
+
+        Example:
+            >>> # Default behavior
+            >>> processor.compute_all()
+            >>>
+            >>> # Maximum connectivity for diverse documents
+            >>> processor.compute_all(
+            ...     connection_strategy='hybrid',
+            ...     cluster_strictness=0.5,
+            ...     bridge_weight=0.3
+            ... )
         """
+        stats: Dict[str, Any] = {}
+
         if verbose:
             print("Computing activation propagation...")
         self.propagate_activation(verbose=False)
@@ -459,13 +487,54 @@ class CorticalTextProcessor:
         if verbose:
             print("Computing bigram connections...")
         self.compute_bigram_connections(verbose=False)
+
         if build_concepts:
             if verbose:
                 print("Building concept clusters...")
-            self.build_concept_clusters(verbose=False)
+            clusters = self.build_concept_clusters(
+                cluster_strictness=cluster_strictness,
+                bridge_weight=bridge_weight,
+                verbose=False
+            )
+            stats['clusters_created'] = len(clusters)
+
+            # Determine connection parameters based on strategy
+            use_member_semantics = connection_strategy in ('semantic', 'hybrid')
+            use_embedding_similarity = connection_strategy in ('embedding', 'hybrid')
+
+            # For semantic/embedding strategies, extract/compute prerequisites
+            if use_member_semantics and not self.semantic_relations:
+                if verbose:
+                    print("Extracting semantic relations...")
+                self.extract_corpus_semantics(verbose=False)
+
+            if use_embedding_similarity and not self.embeddings:
+                if verbose:
+                    print("Computing graph embeddings...")
+                self.compute_graph_embeddings(verbose=False)
+
+            # Set thresholds based on strategy
+            if connection_strategy == 'hybrid':
+                min_shared_docs = 0
+                min_jaccard = 0.0
+            elif connection_strategy in ('semantic', 'embedding'):
+                min_shared_docs = 0
+                min_jaccard = 0.0
+            else:  # document_overlap
+                min_shared_docs = 1
+                min_jaccard = 0.1
+
             if verbose:
-                print("Computing concept connections...")
-            self.compute_concept_connections(verbose=False)
+                print(f"Computing concept connections ({connection_strategy})...")
+            concept_stats = self.compute_concept_connections(
+                use_member_semantics=use_member_semantics,
+                use_embedding_similarity=use_embedding_similarity,
+                min_shared_docs=min_shared_docs,
+                min_jaccard=min_jaccard,
+                verbose=False
+            )
+            stats['concept_connections'] = concept_stats
+
         # Mark core computations as fresh
         fresh_comps = [
             self.COMP_ACTIVATION,
@@ -479,6 +548,8 @@ class CorticalTextProcessor:
         self._mark_fresh(*fresh_comps)
         if verbose:
             print("Done.")
+
+        return stats
     
     def propagate_activation(self, iterations: int = 3, decay: float = 0.8, verbose: bool = True) -> None:
         analysis.propagate_activation(self.layers, iterations, decay)
