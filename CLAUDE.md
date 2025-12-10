@@ -59,14 +59,8 @@ cortical/
 
 ## Critical Knowledge
 
-### Known Bug (Unfixed)
-**Bigram separator mismatch in analogy completion** (`query.py:1442-1468`):
-```python
-# BUG: Uses underscore, but bigrams are stored with spaces
-ab_bigram = f"{term_a}_{term_b}"  # Wrong: "neural_networks"
-# Should be:
-ab_bigram = f"{term_a} {term_b}"  # Correct: "neural networks"
-```
+### Fixed Bugs (2025-12-10)
+The bigram separator mismatch bugs in `query.py:1442-1468` and `analysis.py:927` have been **fixed**. Bigrams now correctly use space separators throughout the codebase.
 
 ### Important Implementation Details
 
@@ -294,6 +288,62 @@ for t1, rel, t2, weight in processor.semantic_relations[:10]:
 | Load state | `processor = CorticalTextProcessor.load("corpus.pkl")` |
 | Run tests | `python -m unittest discover -s tests -v` |
 | Run showcase | `python showcase.py` |
+
+---
+
+## Dog-Fooding: Search the Codebase
+
+The Cortical Text Processor can index and search its own codebase, providing semantic search capabilities during development.
+
+### Quick Start
+
+```bash
+# Index the codebase (creates corpus_dev.pkl)
+python scripts/index_codebase.py
+
+# Search for code
+python scripts/search_codebase.py "PageRank algorithm"
+python scripts/search_codebase.py "bigram separator" --verbose
+python scripts/search_codebase.py --interactive
+```
+
+### Claude Skills
+
+Two skills are available in `.claude/skills/`:
+
+1. **codebase-search**: Search the indexed codebase for code patterns and implementations
+2. **corpus-indexer**: Re-index the codebase after making changes
+
+### Search Options
+
+| Option | Description |
+|--------|-------------|
+| `--top N` | Number of results (default: 5) |
+| `--verbose` | Show full passage text |
+| `--expand` | Show query expansion terms |
+| `--interactive` | Interactive search mode |
+
+### Interactive Mode Commands
+
+| Command | Description |
+|---------|-------------|
+| `/expand <query>` | Show query expansion |
+| `/concepts` | List concept clusters |
+| `/stats` | Show corpus statistics |
+| `/quit` | Exit interactive mode |
+
+### Example Queries
+
+```bash
+# Find how PageRank is implemented
+python scripts/search_codebase.py "compute pagerank damping factor"
+
+# Find test patterns
+python scripts/search_codebase.py "unittest setUp processor"
+
+# Explore query expansion code
+python scripts/search_codebase.py "expand query semantic lateral"
+```
 
 ---
 

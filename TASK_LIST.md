@@ -1118,40 +1118,45 @@ The following tasks were identified during comprehensive code review and are pri
 
 ### 47. Dog-Food the System During Development
 
-**Files:** New `scripts/index_codebase.py`, usage in development workflow
-**Status:** [ ] Not Started
+**Files:** New `scripts/index_codebase.py`, `scripts/search_codebase.py`, `.claude/skills/`
+**Status:** [x] Completed (2025-12-10)
 **Priority:** High
 
 **Goal:**
-Use the Cortical Text Processor to index and search its own codebase during development. This validates the system in a real-world scenario and identifies usability issues.
+Use the Cortical Text Processor to index and search its own codebase during development.
 
-**Implementation:**
-1. Create `scripts/index_codebase.py` that:
-   - Indexes all `.py` files in `cortical/` and `tests/`
-   - Indexes `CLAUDE.md`, `TASK_LIST.md`, and `README.md`
-   - Saves the indexed corpus to `corpus_dev.pkl`
+**Solution Applied:**
+1. Created `scripts/index_codebase.py`:
+   - Indexes all 19 Python files in `cortical/` and `tests/`
+   - Indexes 4 documentation files (CLAUDE.md, TASK_LIST.md, README.md, KNOWLEDGE_TRANSFER.md)
+   - Saves indexed corpus to `corpus_dev.pkl` (23 documents, ~15,600 lines)
+   - Computes semantic PageRank, TF-IDF, concepts, and semantic relations
 
-2. Create `scripts/search_codebase.py` for interactive search:
-   - Load the indexed corpus
-   - Accept query from command line
-   - Return relevant code passages with file:line references
+2. Created `scripts/search_codebase.py`:
+   - Loads indexed corpus and performs semantic search
+   - Returns file:line references for each result
+   - Supports `--top N`, `--verbose`, `--expand`, `--interactive` options
+   - Interactive mode with `/expand`, `/concepts`, `/stats`, `/quit` commands
+
+3. Created Claude Skills in `.claude/skills/`:
+   - `codebase-search/SKILL.md` - Search skill for finding code patterns
+   - `corpus-indexer/SKILL.md` - Indexing skill for updating corpus
+
+4. Updated `CLAUDE.md` with Dog-Fooding section documenting usage
 
 **Example Usage:**
 ```bash
-# Index the codebase
 python scripts/index_codebase.py
-
-# Search for code patterns
-python scripts/search_codebase.py "how does PageRank work"
-python scripts/search_codebase.py "bigram separator"
-python scripts/search_codebase.py "find documents for query"
+python scripts/search_codebase.py "PageRank algorithm" --top 3
+python scripts/search_codebase.py "bigram separator" --expand
+python scripts/search_codebase.py --interactive
 ```
 
-**Success Criteria:**
+**Success Criteria:** All met
 - Can find relevant code when searching for concepts
-- Passages include accurate file:line references
+- Passages include accurate file:line references (e.g., `cortical/analysis.py:127`)
 - System handles its own codebase without errors
-- Identifies any edge cases or usability issues
+- Identified usability issue: return value order in find_passages_for_query (fixed)
 
 ---
 
@@ -1634,7 +1639,7 @@ Currently these are always 0 due to the bug.
 |---|----------|------|--------|----------|
 | 34 | **Critical** | Fix bigram separator in analogy completion | ✅ Completed | Bug Fix |
 | 35 | **Critical** | Fix bigram separator in bigram connections | ✅ Completed | Bug Fix |
-| 47 | **High** | Dog-food the system during development | [ ] Not Started | Validation |
+| 47 | **High** | Dog-food the system during development | ✅ Completed | Validation |
 | 37 | **High** | Create dedicated query module tests | ✅ Completed | Testing |
 | 38 | **High** | Add input validation to public API | [ ] Not Started | Code Quality |
 | 40 | Medium | Add parameter range validation | [ ] Not Started | Code Quality |
@@ -1646,8 +1651,8 @@ Currently these are always 0 due to the bug.
 | 44 | Low | Remove deprecated feedforward_sources | [ ] Not Started | Cleanup |
 | 46 | Low | Standardize return types with dataclasses | [ ] Not Started | API |
 
-**Completed:** 3/13 tasks
-**High Priority Remaining:** 2 tasks
+**Completed:** 4/13 tasks
+**High Priority Remaining:** 1 task
 **Medium Priority Remaining:** 4 tasks
 **Low Priority Remaining:** 4 tasks
 
