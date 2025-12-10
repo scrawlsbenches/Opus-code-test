@@ -33,13 +33,21 @@ def get_python_files(base_path: Path) -> list:
 
 
 def get_doc_files(base_path: Path) -> list:
-    """Get documentation files."""
-    doc_files = ['CLAUDE.md', 'TASK_LIST.md', 'README.md', 'KNOWLEDGE_TRANSFER.md']
+    """Get documentation files from root and docs/ directory."""
+    # Root documentation files
+    root_docs = ['CLAUDE.md', 'TASK_LIST.md', 'README.md', 'KNOWLEDGE_TRANSFER.md']
     files = []
-    for doc in doc_files:
+    for doc in root_docs:
         doc_path = base_path / doc
         if doc_path.exists():
             files.append(doc_path)
+
+    # Intelligence documentation in docs/
+    docs_dir = base_path / 'docs'
+    if docs_dir.exists():
+        for md_file in docs_dir.glob('*.md'):
+            files.append(md_file)
+
     return files
 
 
