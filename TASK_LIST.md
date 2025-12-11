@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 27
+**Pending Tasks:** 32
 **Completed Tasks:** 88+ (see archive)
 
 ---
@@ -25,6 +25,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 |---|------|----------|---------|--------|
 | 94 | Split query.py into focused modules | Arch | - | Large |
 | 97 | Integrate CorticalConfig into processor | Arch | - | Medium |
+| 127 | Create cluster coverage evaluation script | DevEx | 125 | Medium |
 
 ### 🟡 Medium (Do This Month)
 
@@ -61,6 +62,10 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 108 | Create task selection script | TaskMgmt | - | Medium |
 | 117 | Create debugging cookbook | AINav | - | Medium |
 | 118 | Add function complexity annotations | AINav | - | Small |
+| 128 | Analyze customer service cluster quality | Research | 127 | Small |
+| 129 | Test customer service retrieval quality | Testing | - | Small |
+| 130 | Expand customer service sample cluster | Samples | - | Medium |
+| 131 | Investigate cross-domain semantic bridges | Research | - | Medium |
 
 ### ⏸️ Deferred
 
@@ -1143,18 +1148,187 @@ ls cortical/*.ai_meta || python scripts/generate_ai_metadata.py
 
 ---
 
+### 127. Create Cluster Coverage Evaluation Script
+
+**Meta:** `status:pending` `priority:high` `category:devex`
+**Files:** `scripts/evaluate_cluster.py` (new)
+**Effort:** Medium
+**Depends:** 125
+
+**Problem:** When adding sample documents to create topic clusters (e.g., customer service), there's no automated way to determine if the cluster has sufficient coverage or needs more documents.
+
+**Solution:** Create a script that evaluates cluster quality and coverage:
+
+```python
+# Usage examples:
+python scripts/evaluate_cluster.py --topic "customer service"
+python scripts/evaluate_cluster.py --documents customer_support_fundamentals,complaint_resolution
+python scripts/evaluate_cluster.py --keywords customer,ticket,escalation
+```
+
+**Features:**
+1. **Cluster Detection** - Identify documents that cluster together based on similarity
+2. **Coverage Metrics:**
+   - Internal cohesion (avg similarity within cluster)
+   - External separation (avg similarity to non-cluster docs)
+   - Concept coverage (unique concepts captured)
+   - Term diversity (vocabulary richness)
+3. **Gap Analysis:**
+   - Missing subtopics (based on concept graph)
+   - Weak connections (low-weight edges)
+   - Suggested expansion topics
+4. **Recommendations:**
+   - "Cluster is well-formed" vs "Needs more coverage"
+   - Specific suggestions: "Add documents about X, Y, Z"
+
+**Output Example:**
+```
+Cluster Analysis: Customer Service (6 documents)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Documents:
+  • customer_support_fundamentals (hub)
+  • ticket_escalation_procedures
+  • customer_satisfaction_metrics
+  • complaint_resolution
+  • call_center_operations
+  • customer_retention_strategies
+
+Metrics:
+  Internal Cohesion:    0.72 (good)
+  External Separation:  0.45 (moderate)
+  Concept Coverage:     23 concepts
+  Term Diversity:       0.68
+
+Coverage Assessment: ADEQUATE ✓
+  The cluster forms a coherent topic group with good internal
+  connectivity. Documents share key concepts (customer, ticket,
+  escalation, resolution) while maintaining distinct subtopics.
+
+Potential Expansions (optional):
+  • CRM integration / helpdesk software
+  • Chat support / live chat best practices
+  • SLA management / service level agreements
+  • Customer journey mapping
+```
+
+**Acceptance Criteria:**
+- [ ] Script identifies document clusters by topic/keywords
+- [ ] Computes cohesion and separation metrics
+- [ ] Provides clear coverage assessment (adequate/needs expansion)
+- [ ] Suggests specific expansion topics when coverage is low
+- [ ] Works with existing corpus or standalone document set
+
+---
+
+### 128. Analyze Customer Service Cluster Quality
+
+**Meta:** `status:pending` `priority:low` `category:research`
+**Files:** Analysis output
+**Effort:** Small
+**Depends:** 127
+
+**Problem:** The customer service cluster was added but not deeply analyzed.
+
+**Tasks:**
+1. Run cluster evaluation script on customer service documents
+2. Check if cluster forms a distinct concept group in Layer 2
+3. Verify semantic coherence of the cluster
+4. Document findings
+
+**Expected Insights:**
+- Whether 6 documents is sufficient for a coherent cluster
+- How customer service concepts connect to other domains
+- Quality of the "ticket → learning" semantic bridge observed in embeddings
+
+---
+
+### 129. Test Customer Service Retrieval Quality
+
+**Meta:** `status:pending` `priority:low` `category:testing`
+**Files:** `tests/test_customer_service_retrieval.py` (new, optional)
+**Effort:** Small
+
+**Problem:** No systematic testing of retrieval quality for customer service queries.
+
+**Test Queries:**
+```python
+queries = [
+    ("how to handle angry customer", ["complaint_resolution", "customer_support_fundamentals"]),
+    ("ticket escalation process", ["ticket_escalation_procedures"]),
+    ("measure customer satisfaction", ["customer_satisfaction_metrics"]),
+    ("reduce customer churn", ["customer_retention_strategies"]),
+    ("call center workforce management", ["call_center_operations"]),
+]
+```
+
+**Evaluation:**
+- Precision@1: Does the top result match expected?
+- Precision@3: Are expected docs in top 3?
+- Compare with/without customer service docs in corpus
+
+---
+
+### 130. Expand Customer Service Sample Cluster
+
+**Meta:** `status:pending` `priority:low` `category:samples`
+**Files:** `samples/*.txt` (new documents)
+**Effort:** Medium
+
+**Problem:** The current 6 customer service documents may benefit from expansion.
+
+**Potential New Documents:**
+1. `live_chat_support.txt` - Chat-specific support strategies
+2. `sla_management.txt` - Service level agreements and monitoring
+3. `crm_integration.txt` - CRM systems and helpdesk software
+4. `customer_journey_mapping.txt` - Journey analysis and touchpoints
+5. `support_automation.txt` - Chatbots, auto-responses, AI in support
+6. `multilingual_support.txt` - International customer service
+
+**Depends On:** Results from Task #128 (cluster quality analysis)
+
+---
+
+### 131. Investigate Cross-Domain Semantic Bridges
+
+**Meta:** `status:pending` `priority:low` `category:research`
+**Files:** Analysis output, potentially `docs/semantic_bridges.md`
+**Effort:** Medium
+
+**Problem:** Interesting semantic connections exist between seemingly unrelated domains. The graph embeddings showed "ticket" similar to "learning" (0.937) - understanding these bridges could reveal insights about the corpus structure.
+
+**Research Questions:**
+1. What concepts bridge customer service to other domains?
+2. Why does "ticket" connect to "learning"? (ticket systems in education? ticketing in other contexts?)
+3. Are there other unexpected cross-domain connections?
+4. Can these bridges improve cross-domain search?
+
+**Approach:**
+1. Extract embedding neighbors for customer service terms
+2. Identify terms that appear in multiple domain clusters
+3. Trace connection paths in the concept graph
+4. Document interesting findings
+
+**Potential Applications:**
+- Improve query expansion with cross-domain terms
+- Suggest related documents from different domains
+- Identify knowledge gaps at domain boundaries
+
+---
+
 ## Category Index
 
 | Category | Pending | Description |
 |----------|---------|-------------|
 | BugFix | 1 | Bug fixes and regressions |
 | AINav | 6 | AI assistant navigation & usability |
-| DevEx | 7 | Developer experience (scripts, tools) |
+| DevEx | 8 | Developer experience (scripts, tools) |
 | Docs | 2 | Documentation improvements |
 | Arch | 4 | Architecture refactoring |
 | CodeQual | 3 | Code quality improvements |
-| Testing | 2 | Test coverage |
+| Testing | 3 | Test coverage |
 | TaskMgmt | 2 | Task management system |
+| Research | 2 | Research and analysis tasks |
+| Samples | 1 | Sample document improvements |
 | Deferred | 7 | Low priority or superseded |
 
 ---

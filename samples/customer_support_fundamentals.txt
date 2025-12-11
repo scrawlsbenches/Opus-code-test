@@ -1,0 +1,13 @@
+Customer Support Fundamentals
+
+Customer support provides assistance to users experiencing problems with products or services. First contact resolution measures the percentage of issues solved without escalation or follow-up. Support teams balance response time against resolution quality, recognizing that rushing creates repeat contacts.
+
+Ticket triage categorizes incoming requests by urgency and complexity. Priority levels range from critical production outages requiring immediate response to low-priority feature requests. Automated routing assigns tickets to agents based on skill tags, workload, and availability.
+
+Active listening techniques help agents understand customer frustrations beyond surface complaints. Paraphrasing confirms understanding before proposing solutions. Empathy statements acknowledge feelings without admitting fault or making promises.
+
+Knowledge base articles provide self-service options reducing ticket volume. FAQ sections address common questions. Searchable documentation empowers customers to solve simple issues independently. Well-written articles reduce support costs while improving customer satisfaction.
+
+Multi-channel support spans email, chat, phone, social media, and in-app messaging. Channel preferences vary by customer demographics and issue complexity. Omnichannel platforms unify conversations across touchpoints preserving context when customers switch channels.
+
+Agent training covers product knowledge, communication skills, and tool proficiency. Shadowing experienced agents accelerates onboarding. Quality assurance reviews sample interactions for coaching opportunities. Continuous learning programs update skills as products evolve.
