@@ -81,6 +81,168 @@ IMPLEMENTATION_KEYWORDS = frozenset([
 ])
 
 
+# =============================================================================
+# Definition Pattern Search
+# =============================================================================
+
+# Patterns for detecting definition queries
+DEFINITION_QUERY_PATTERNS = [
+    # "class Foo" or "class foo"
+    (r'\bclass\s+(\w+)', 'class'),
+    # "def bar" or "function bar"
+    (r'\bdef\s+(\w+)', 'function'),
+    (r'\bfunction\s+(\w+)', 'function'),
+    # "method baz"
+    (r'\bmethod\s+(\w+)', 'method'),
+]
+
+# Regex patterns for finding definitions in source code
+# Format: (pattern_template, definition_type)
+# pattern_template uses {name} placeholder for the identifier
+DEFINITION_SOURCE_PATTERNS = {
+    'python_class': r'^class\s+{name}\b[^:]*:',
+    'python_function': r'^def\s+{name}\s*\(',
+    'python_method': r'^\s+def\s+{name}\s*\(',
+    'javascript_function': r'^function\s+{name}\s*\(',
+    'javascript_class': r'^class\s+{name}\b',
+    'javascript_const_fn': r'^const\s+{name}\s*=\s*(?:async\s*)?\(',
+}
+
+# Default boost for definition matches
+DEFINITION_BOOST = 5.0
+
+
+def is_definition_query(query_text: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    """
+    Detect if a query is looking for a code definition.
+
+    Recognizes patterns like:
+    - "class Minicolumn"
+    - "def compute_pagerank"
+    - "function tokenize"
+    - "method process_document"
+
+    Args:
+        query_text: The search query
+
+    Returns:
+        Tuple of (is_definition, definition_type, identifier_name)
+        If not a definition query, returns (False, None, None)
+    """
+    query_lower = query_text.strip()
+
+    for pattern, def_type in DEFINITION_QUERY_PATTERNS:
+        match = re.search(pattern, query_lower, re.IGNORECASE)
+        if match:
+            identifier = match.group(1)
+            return (True, def_type, identifier)
+
+    return (False, None, None)
+
+
+def find_definition_in_text(
+    text: str,
+    identifier: str,
+    def_type: str,
+    context_chars: int = 500
+) -> Optional[Tuple[str, int, int]]:
+    """
+    Find a definition in source text and extract surrounding context.
+
+    Args:
+        text: Source code text to search
+        identifier: Name of the class/function/method to find
+        def_type: Type of definition ('class', 'function', 'method')
+        context_chars: Number of characters of context to include after the definition
+
+    Returns:
+        Tuple of (passage_text, start_char, end_char) or None if not found
+    """
+    # Build patterns to try based on definition type
+    patterns_to_try = []
+
+    if def_type == 'class':
+        patterns_to_try = [
+            DEFINITION_SOURCE_PATTERNS['python_class'],
+            DEFINITION_SOURCE_PATTERNS['javascript_class'],
+        ]
+    elif def_type in ('function', 'method'):
+        patterns_to_try = [
+            DEFINITION_SOURCE_PATTERNS['python_function'],
+            DEFINITION_SOURCE_PATTERNS['python_method'],
+            DEFINITION_SOURCE_PATTERNS['javascript_function'],
+            DEFINITION_SOURCE_PATTERNS['javascript_const_fn'],
+        ]
+
+    # Try each pattern
+    for pattern_template in patterns_to_try:
+        pattern = pattern_template.format(name=re.escape(identifier))
+        match = re.search(pattern, text, re.MULTILINE | re.IGNORECASE)
+        if match:
+            # Extract context around the definition
+            start = max(0, match.start() - 50)  # Small lead-in for context
+            end = min(len(text), match.end() + context_chars)
+
+            # Try to extend to next blank line or class/function boundary
+            remaining = text[match.end():end]
+            # Look for a good boundary (blank line followed by non-indented text)
+            boundary_match = re.search(r'\n\n(?=[^\s])', remaining)
+            if boundary_match:
+                end = match.end() + boundary_match.end()
+
+            passage = text[start:end]
+            return (passage, start, end)
+
+    return None
+
+
+def find_definition_passages(
+    query_text: str,
+    documents: Dict[str, str],
+    context_chars: int = 500,
+    boost: float = DEFINITION_BOOST
+) -> List[Tuple[str, str, int, int, float]]:
+    """
+    Find definition passages for a definition query.
+
+    If the query is looking for a class/function/method definition,
+    directly search source files for the definition and return
+    high-scoring passages.
+
+    Args:
+        query_text: Search query (e.g., "class Minicolumn", "def compute_pagerank")
+        documents: Dict mapping doc_id to document text
+        context_chars: Characters of context to include after definition
+        boost: Score boost for definition matches
+
+    Returns:
+        List of (passage_text, doc_id, start_char, end_char, score) tuples.
+        Returns empty list if query is not a definition query.
+    """
+    is_def, def_type, identifier = is_definition_query(query_text)
+
+    if not is_def or not identifier:
+        return []
+
+    results = []
+
+    # Search all documents for the definition
+    for doc_id, text in documents.items():
+        # Prefer source files over test files for definitions
+        is_test = doc_id.startswith('tests/') or '_test' in doc_id or 'test_' in doc_id
+
+        result = find_definition_in_text(text, identifier, def_type, context_chars)
+        if result:
+            passage, start, end = result
+            # Apply boost, with penalty for test files
+            score = boost * (0.6 if is_test else 1.0)
+            results.append((passage, doc_id, start, end, score))
+
+    # Sort by score (highest first)
+    results.sort(key=lambda x: -x[4])
+    return results
+
+
 def is_conceptual_query(query_text: str) -> bool:
     """
     Determine if a query is conceptual (should boost documentation).
@@ -1438,13 +1600,19 @@ def find_passages_for_query(
     use_expansion: bool = True,
     doc_filter: Optional[List[str]] = None,
     semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
-    use_semantic: bool = True
+    use_semantic: bool = True,
+    use_definition_search: bool = True,
+    definition_boost: float = DEFINITION_BOOST
 ) -> List[Tuple[str, str, int, int, float]]:
     """
     Find text passages most relevant to a query.
 
     This is the key function for RAG systems - instead of returning document IDs,
     it returns actual text passages with position information for citations.
+
+    For definition queries (e.g., "class Minicolumn", "def compute_pagerank"),
+    this function will directly search for the definition pattern and inject
+    those results with a high score, ensuring definitions appear in top results.
 
     Args:
         query_text: Search query
@@ -1458,12 +1626,24 @@ def find_passages_for_query(
         doc_filter: Optional list of doc_ids to restrict search to
         semantic_relations: Optional list of semantic relations for expansion
         use_semantic: Whether to use semantic relations for expansion (if available)
+        use_definition_search: Whether to search for definition patterns (default True)
+        definition_boost: Score boost for definition matches (default 5.0)
 
     Returns:
         List of (passage_text, doc_id, start_char, end_char, score) tuples
         ranked by relevance
     """
     layer0 = layers[CorticalLayer.TOKENS]
+
+    # Check for definition query and find definition passages
+    definition_passages: List[Tuple[str, str, int, int, float]] = []
+    if use_definition_search:
+        docs_to_search = documents
+        if doc_filter:
+            docs_to_search = {k: v for k, v in documents.items() if k in doc_filter}
+        definition_passages = find_definition_passages(
+            query_text, docs_to_search, chunk_size, definition_boost
+        )
 
     # Get expanded query terms
     query_terms = get_expanded_query_terms(
@@ -1473,8 +1653,12 @@ def find_passages_for_query(
         use_semantic=use_semantic
     )
 
-    if not query_terms:
+    if not query_terms and not definition_passages:
         return []
+
+    # If we only have definition results, return those
+    if not query_terms:
+        return definition_passages[:top_n]
 
     # Pre-compute minicolumn lookups for query terms (optimization)
     term_cols = precompute_term_cols(query_terms, layer0)
@@ -1497,6 +1681,9 @@ def find_passages_for_query(
     # Score passages within candidate documents
     passages: List[Tuple[str, str, int, int, float]] = []
 
+    # Track definition passage locations to avoid duplicates
+    def_locations = {(p[1], p[2], p[3]) for p in definition_passages}
+
     for doc_id, doc_score in doc_scores:
         if doc_id not in documents:
             continue
@@ -1505,6 +1692,10 @@ def find_passages_for_query(
         chunks = create_chunks(text, chunk_size, overlap)
 
         for chunk_text, start_char, end_char in chunks:
+            # Skip if this overlaps with a definition passage
+            if (doc_id, start_char, end_char) in def_locations:
+                continue
+
             # Use fast scoring with pre-computed lookups
             chunk_tokens = tokenizer.tokenize(chunk_text)
             chunk_score = score_chunk_fast(
@@ -1521,9 +1712,12 @@ def find_passages_for_query(
                 combined_score
             ))
 
+    # Combine definition passages with regular passages
+    all_passages = definition_passages + passages
+
     # Sort by score and return top passages
-    passages.sort(key=lambda x: x[4], reverse=True)
-    return passages[:top_n]
+    all_passages.sort(key=lambda x: x[4], reverse=True)
+    return all_passages[:top_n]
 
 
 def find_documents_batch(

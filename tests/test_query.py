@@ -38,6 +38,12 @@ from cortical.query import (
     complete_analogy_simple,
     query_with_spreading_activation,
     VALID_RELATION_CHAINS,
+    is_definition_query,
+    find_definition_in_text,
+    find_definition_passages,
+    DEFINITION_QUERY_PATTERNS,
+    DEFINITION_SOURCE_PATTERNS,
+    DEFINITION_BOOST,
 )
 
 
@@ -1031,6 +1037,273 @@ class TestDocTypeBoostIntegration(unittest.TestCase):
         """Processor should have find_documents_with_boost method."""
         self.assertTrue(hasattr(self.processor, 'find_documents_with_boost'))
         self.assertTrue(hasattr(self.processor, 'is_conceptual_query'))
+
+
+class TestDefinitionPatternSearch(unittest.TestCase):
+    """Test definition pattern search functionality."""
+
+    def test_is_definition_query_class(self):
+        """Detect class definition queries."""
+        is_def, def_type, name = is_definition_query("class Minicolumn")
+        self.assertTrue(is_def)
+        self.assertEqual(def_type, 'class')
+        self.assertEqual(name, 'Minicolumn')
+
+    def test_is_definition_query_def(self):
+        """Detect function definition queries."""
+        is_def, def_type, name = is_definition_query("def compute_pagerank")
+        self.assertTrue(is_def)
+        self.assertEqual(def_type, 'function')
+        self.assertEqual(name, 'compute_pagerank')
+
+    def test_is_definition_query_function(self):
+        """Detect function keyword queries."""
+        is_def, def_type, name = is_definition_query("function tokenize")
+        self.assertTrue(is_def)
+        self.assertEqual(def_type, 'function')
+        self.assertEqual(name, 'tokenize')
+
+    def test_is_definition_query_method(self):
+        """Detect method definition queries."""
+        is_def, def_type, name = is_definition_query("method process_document")
+        self.assertTrue(is_def)
+        self.assertEqual(def_type, 'method')
+        self.assertEqual(name, 'process_document')
+
+    def test_is_definition_query_not_definition(self):
+        """Non-definition queries should return False."""
+        is_def, def_type, name = is_definition_query("neural networks")
+        self.assertFalse(is_def)
+        self.assertIsNone(def_type)
+        self.assertIsNone(name)
+
+    def test_is_definition_query_case_insensitive(self):
+        """Definition detection should be case insensitive."""
+        is_def, def_type, name = is_definition_query("CLASS MyClass")
+        self.assertTrue(is_def)
+        self.assertEqual(def_type, 'class')
+        self.assertEqual(name, 'MyClass')
+
+    def test_find_definition_in_text_python_class(self):
+        """Find Python class definitions."""
+        text = '''
+import os
+
+class MyProcessor:
+    """A processor class."""
+
+    def __init__(self):
+        pass
+'''
+        result = find_definition_in_text(text, 'MyProcessor', 'class')
+        self.assertIsNotNone(result)
+        passage, start, end = result
+        self.assertIn('class MyProcessor:', passage)
+
+    def test_find_definition_in_text_python_function(self):
+        """Find Python function definitions."""
+        text = '''
+def compute_score(items, weights):
+    """Compute weighted score."""
+    total = sum(i * w for i, w in zip(items, weights))
+    return total / len(items)
+'''
+        result = find_definition_in_text(text, 'compute_score', 'function')
+        self.assertIsNotNone(result)
+        passage, start, end = result
+        self.assertIn('def compute_score(', passage)
+
+    def test_find_definition_in_text_not_found(self):
+        """Return None when definition not found."""
+        text = 'def other_function(): pass'
+        result = find_definition_in_text(text, 'nonexistent', 'function')
+        self.assertIsNone(result)
+
+    def test_find_definition_in_text_method(self):
+        """Find method definitions (indented def)."""
+        text = '''
+class MyClass:
+    def my_method(self, arg):
+        return arg * 2
+'''
+        result = find_definition_in_text(text, 'my_method', 'method')
+        self.assertIsNotNone(result)
+        passage, start, end = result
+        self.assertIn('def my_method(', passage)
+
+    def test_find_definition_passages_basic(self):
+        """Find definition passages from documents."""
+        documents = {
+            'module.py': '''
+class TestClass:
+    """A test class for demonstration."""
+
+    def process(self):
+        pass
+''',
+            'other.py': 'def helper(): pass',
+        }
+        results = find_definition_passages("class TestClass", documents)
+        self.assertTrue(len(results) > 0)
+        passage, doc_id, start, end, score = results[0]
+        self.assertEqual(doc_id, 'module.py')
+        self.assertIn('class TestClass:', passage)
+        self.assertEqual(score, DEFINITION_BOOST)  # No test file penalty
+
+    def test_find_definition_passages_test_file_penalty(self):
+        """Test files should have lower score."""
+        documents = {
+            'src/module.py': 'class MyClass: pass',
+            'tests/test_module.py': 'class MyClass: pass',
+        }
+        results = find_definition_passages("class MyClass", documents)
+        self.assertEqual(len(results), 2)
+
+        # Sort by score descending
+        results.sort(key=lambda x: -x[4])
+
+        # Source file should rank higher
+        self.assertEqual(results[0][1], 'src/module.py')
+        self.assertEqual(results[1][1], 'tests/test_module.py')
+        self.assertGreater(results[0][4], results[1][4])
+
+    def test_find_definition_passages_not_definition_query(self):
+        """Non-definition queries return empty list."""
+        documents = {'test.py': 'class Foo: pass'}
+        results = find_definition_passages("neural networks", documents)
+        self.assertEqual(results, [])
+
+
+class TestDefinitionSearchIntegration(unittest.TestCase):
+    """Integration tests for definition search in passage retrieval."""
+
+    def setUp(self):
+        """Set up processor with code documents."""
+        self.processor = CorticalTextProcessor()
+
+        # Add a code document with class and function definitions
+        self.processor.process_document('cortical/minicolumn.py', '''
+"""Minicolumn module for cortical processing."""
+
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+
+class Minicolumn:
+    """
+    Core data structure representing a minicolumn in the cortical model.
+
+    A minicolumn stores information about a single concept at a specific
+    layer in the hierarchy.
+
+    Attributes:
+        id: Unique identifier
+        content: The text content (word, bigram, etc.)
+        layer: Which layer this belongs to (0-3)
+    """
+
+    def __init__(self, id: str, content: str, layer: int):
+        self.id = id
+        self.content = content
+        self.layer = layer
+        self.lateral_connections: Dict[str, float] = {}
+        self.pagerank: float = 0.0
+        self.tfidf: float = 0.0
+
+    def add_connection(self, target_id: str, weight: float = 1.0):
+        """Add a lateral connection to another minicolumn."""
+        if target_id in self.lateral_connections:
+            self.lateral_connections[target_id] += weight
+        else:
+            self.lateral_connections[target_id] = weight
+''')
+
+        self.processor.process_document('tests/test_minicolumn.py', '''
+"""Tests for minicolumn module."""
+
+import unittest
+from cortical.minicolumn import Minicolumn
+
+class TestMinicolumn(unittest.TestCase):
+    """Test Minicolumn class."""
+
+    def test_init(self):
+        col = Minicolumn("L0_test", "test", 0)
+        self.assertEqual(col.id, "L0_test")
+        self.assertEqual(col.content, "test")
+
+    def test_add_connection(self):
+        col = Minicolumn("L0_a", "a", 0)
+        col.add_connection("L0_b", 0.5)
+        self.assertIn("L0_b", col.lateral_connections)
+''')
+
+        self.processor.compute_all()
+
+    def test_definition_search_finds_class(self):
+        """Definition search should find actual class definition."""
+        results = self.processor.find_passages_for_query(
+            "class Minicolumn",
+            top_n=5,
+            use_definition_search=True
+        )
+
+        self.assertTrue(len(results) > 0)
+
+        # First result should be from the source file, not the test
+        passage, doc_id, start, end, score = results[0]
+        self.assertEqual(doc_id, 'cortical/minicolumn.py')
+        self.assertIn('class Minicolumn', passage)
+
+    def test_definition_search_finds_method(self):
+        """Definition search should find method definitions."""
+        results = self.processor.find_passages_for_query(
+            "def add_connection",
+            top_n=5,
+            use_definition_search=True
+        )
+
+        self.assertTrue(len(results) > 0)
+        passage, doc_id, start, end, score = results[0]
+        self.assertIn('def add_connection', passage)
+
+    def test_definition_search_disabled(self):
+        """When disabled, definition search should not run."""
+        # With a definition query but definition search disabled
+        results_disabled = self.processor.find_passages_for_query(
+            "class Minicolumn",
+            top_n=5,
+            use_definition_search=False
+        )
+
+        results_enabled = self.processor.find_passages_for_query(
+            "class Minicolumn",
+            top_n=5,
+            use_definition_search=True
+        )
+
+        # Enabled should have higher score for definition
+        if results_disabled and results_enabled:
+            # Definition search should boost the actual definition
+            self.assertGreaterEqual(results_enabled[0][4], results_disabled[0][4])
+
+    def test_processor_has_definition_methods(self):
+        """Processor should have definition search methods."""
+        self.assertTrue(hasattr(self.processor, 'is_definition_query'))
+        self.assertTrue(hasattr(self.processor, 'find_definition_passages'))
+
+    def test_is_definition_query_via_processor(self):
+        """Test is_definition_query via processor wrapper."""
+        is_def, def_type, name = self.processor.is_definition_query("class Minicolumn")
+        self.assertTrue(is_def)
+        self.assertEqual(def_type, 'class')
+        self.assertEqual(name, 'Minicolumn')
+
+    def test_find_definition_passages_via_processor(self):
+        """Test find_definition_passages via processor wrapper."""
+        results = self.processor.find_definition_passages("class Minicolumn")
+        self.assertTrue(len(results) > 0)
+        passage, doc_id, start, end, score = results[0]
+        self.assertIn('class Minicolumn', passage)
 
 
 if __name__ == '__main__':

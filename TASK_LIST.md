@@ -2925,8 +2925,8 @@ raw_tokens = re.findall(r'\b[a-zA-Z][a-zA-Z0-9_]*\b', text)
 
 ### 84. Add Direct Definition Pattern Search for Code Search
 
-**Files:** `cortical/query.py`, `scripts/search_codebase.py`
-**Status:** [ ] Not Started
+**Files:** `cortical/query.py`, `cortical/processor.py`, `tests/test_query.py`
+**Status:** [x] Completed (2025-12-11)
 **Priority:** High
 **Category:** Code Search
 
@@ -2935,22 +2935,32 @@ When searching for "class Minicolumn", the passage containing the actual class d
 
 **Found via dog-fooding:** Even with document-level boosting, the actual class definition often doesn't appear in top results.
 
-**Solution:**
-1. For definition queries, directly search source files for the definition pattern
-2. Create a synthetic high-scoring passage from the definition location
-3. Inject this passage into results before final ranking
-4. Consider using regex-based chunk extraction around definition sites
+**Solution Applied:**
+1. Added `is_definition_query()` function to detect definition queries (class/def/function/method patterns)
+2. Added `find_definition_in_text()` to search for definition patterns in source code
+3. Added `find_definition_passages()` to extract high-scoring passages from definitions
+4. Updated `find_passages_for_query()` with `use_definition_search` parameter (default True)
+5. Definition passages are injected with high boost score (5.0) before regular passages
+6. Test files receive a penalty (0.6x) so source files rank higher
+7. Added processor wrapper methods: `is_definition_query()`, `find_definition_passages()`
 
-**Example:**
+**Files Modified:**
+- `cortical/query.py` - Added definition search functions (~160 lines)
+- `cortical/processor.py` - Added processor wrappers (~65 lines)
+- `tests/test_query.py` - Added 19 new tests
+
+**Usage:**
 ```python
-def find_definition_passage(doc_text: str, pattern: str, context_chars: int = 500):
-    """Extract passage around a definition pattern match."""
-    match = re.search(pattern, doc_text)
-    if match:
-        start = max(0, match.start() - 50)
-        end = min(len(doc_text), match.end() + context_chars)
-        return doc_text[start:end], start, end
-    return None
+# Definition search is enabled by default
+results = processor.find_passages_for_query("class Minicolumn")
+# Returns passage containing actual class definition first
+
+# Disable if needed
+results = processor.find_passages_for_query("class Minicolumn", use_definition_search=False)
+
+# Check if query is a definition query
+is_def, def_type, name = processor.is_definition_query("def compute_pagerank")
+# (True, 'function', 'compute_pagerank')
 ```
 
 ---
@@ -3031,7 +3041,7 @@ def create_code_aware_chunks(text: str, target_size: int = 500):
 | 81 | High | Fix tokenizer underscore-prefixed identifiers | ✓ Done | Code Search |
 | 82 | High | Add code stop words filter for query expansion | ✓ Done | Code Search |
 | 83 | Medium | Add definition-aware boosting for class/def queries | ✓ Done | Code Search |
-| 84 | High | Add direct definition pattern search | | Code Search |
+| 84 | High | Add direct definition pattern search | ✓ Done | Code Search |
 | 85 | Medium | Improve test file vs source file ranking | | Code Search |
 | 86 | Medium | Add semantic chunk boundaries for code | | Code Search |
 
