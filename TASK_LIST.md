@@ -3099,4 +3099,466 @@ The showcase.py demonstrates code search features but the `samples/` directory o
 
 ---
 
-*Added 2025-12-11, completions updated 2025-12-11*
+## Agent Orchestrator Project Review (2025-12-11)
+
+Three specialized review agents analyzed the codebase for adoption readiness, code quality, and architecture design. This section consolidates actionable findings.
+
+**Review Scores:**
+- Project Adoption: 6.5/10 (excellent depth, poor accessibility)
+- Code Quality: B+ (strong fundamentals, improvement opportunities)
+- Architecture: B+ (solid foundations, extensibility gaps)
+
+---
+
+### 88. Create Package Installation Files
+
+**Files:** `setup.py` or `pyproject.toml` (new), `requirements.txt` (new)
+**Status:** [ ] Not Started
+**Priority:** HIGH (Critical for adoption)
+**Category:** Developer Experience
+
+**Problem:**
+README installation instructions reference `pip install -e .` but no setup.py exists. This is the **single biggest barrier** for new developers.
+
+**Solution:**
+Create `pyproject.toml` (modern) or `setup.py`:
+```toml
+[project]
+name = "cortical-text-processor"
+version = "2.0.0"
+requires-python = ">=3.9"
+dependencies = []  # Zero dependencies!
+
+[project.optional-dependencies]
+dev = ["coverage>=7.0"]
+```
+
+Also create `requirements.txt` (even if empty) with dev dependencies:
+```
+# Production: No dependencies (zero-dependency library)
+# Development:
+coverage>=7.0
+```
+
+**Impact:** Reduces "time to first success" from 30-60 minutes to 5-10 minutes.
+
+---
+
+### 89. Create CONTRIBUTING.md
+
+**Files:** `CONTRIBUTING.md` (new)
+**Status:** [ ] Not Started
+**Priority:** HIGH (Blocks contributions)
+**Category:** Developer Experience
+
+**Problem:**
+No formal contribution guide exists. New contributors don't know:
+- Fork/branch/PR workflow
+- Code style requirements
+- How to run tests
+- Development setup
+
+**Solution:**
+Create CONTRIBUTING.md covering:
+1. Fork and clone instructions
+2. Development setup (`pip install -e ".[dev]"`)
+3. Running tests (`python -m unittest discover -s tests -v`)
+4. Code style (PEP 8, type hints, Google-style docstrings)
+5. PR checklist and review process
+6. Link to docs/code-of-ethics.md and docs/definition-of-done.md
+
+---
+
+### 90. Create docs/quickstart.md Tutorial
+
+**Files:** `docs/quickstart.md` (new)
+**Status:** [ ] Not Started
+**Priority:** HIGH (Learning path)
+**Category:** Documentation
+
+**Problem:**
+No "Hello World" minimal example. showcase.py is 700+ lines - too intimidating for first contact.
+
+**Solution:**
+Create 10-minute quickstart with:
+1. Installation (1 minute)
+2. First document processing (2 minutes)
+3. First search query (2 minutes)
+4. Understanding results (3 minutes)
+5. Next steps links
+
+```python
+# Example minimal snippet
+from cortical import CorticalTextProcessor
+
+processor = CorticalTextProcessor()
+processor.process_document("doc1", "Neural networks learn patterns.")
+processor.compute_all()
+results = processor.find_documents_for_query("neural learning")
+```
+
+---
+
+### 91. Create docs/README.md Index
+
+**Files:** `docs/README.md` (new)
+**Status:** [ ] Not Started
+**Priority:** MEDIUM
+**Category:** Documentation
+
+**Problem:**
+11 markdown files in docs/ with no navigation guide. New developers don't know which docs to read first.
+
+**Solution:**
+Create docs/README.md with:
+1. Recommended reading path for newcomers
+2. Links to all documentation files with descriptions
+3. Distinction between user docs vs developer docs
+
+---
+
+### 92. Add Badges to README.md
+
+**Files:** `README.md`
+**Status:** [ ] Not Started
+**Priority:** MEDIUM
+**Category:** Developer Experience
+
+**Problem:**
+No visual indicators of project health, Python version support, or license.
+
+**Solution:**
+Add badges for:
+- CI status (GitHub Actions)
+- Test coverage (95%+)
+- Python version (3.9+)
+- License (MIT)
+- Zero dependencies
+
+---
+
+### 93. Update README with Documentation References
+
+**Files:** `README.md`
+**Status:** [ ] Not Started
+**Priority:** MEDIUM
+**Category:** Documentation
+
+**Problem:**
+README doesn't mention the docs/ folder at all. New developers miss extensive documentation.
+
+**Solution:**
+Add "Documentation" section after "Package Structure" referencing:
+- docs/quickstart.md for getting started
+- docs/README.md for full documentation index
+- CLAUDE.md for contributors
+
+---
+
+### 94. Split query.py into Focused Modules
+
+**Files:** `cortical/query.py` (2,719 lines) → `cortical/query/` package
+**Status:** [ ] Not Started
+**Priority:** HIGH (Maintainability)
+**Category:** Architecture
+
+**Problem:**
+query.py handles 7+ distinct responsibilities: expansion, search, passages, intent, definitions, ranking, indexing. Violates Single Responsibility Principle.
+
+**Solution:**
+Refactor into `cortical/query/` package:
+```
+cortical/query/
+├── __init__.py       # Re-export public API
+├── expansion.py      # expand_query, expand_query_semantic
+├── search.py         # find_documents_for_query, fast_find_documents
+├── passages.py       # find_passages_for_query, chunking
+├── intent.py         # parse_intent_query, search_by_intent
+├── definitions.py    # is_definition_query, find_definition_passages
+└── ranking.py        # multi_stage_rank
+```
+
+**Backward Compatibility:** Re-export all functions from `__init__.py`.
+
+---
+
+### 95. Split processor.py into Focused Modules
+
+**Files:** `cortical/processor.py` (2,301 lines) → smaller modules
+**Status:** [ ] Not Started
+**Priority:** MEDIUM (Maintainability)
+**Category:** Architecture
+
+**Problem:**
+CorticalTextProcessor has 100+ public methods mixing document operations, computation, queries, analysis, semantics, and embeddings.
+
+**Solution:**
+Keep processor.py as the main orchestrator but extract:
+- `cortical/documents.py` - Document add/remove/batch operations
+- `cortical/computation.py` - compute_all, staleness tracking
+- Keep query operations via existing query.py
+
+Or implement internal manager classes:
+```python
+class CorticalTextProcessor:
+    def __init__(self):
+        self._documents = DocumentManager(self.layers)
+        self._computation = ComputationManager(self.layers)
+```
+
+---
+
+### 96. Centralize Duplicate Constants
+
+**Files:** `cortical/constants.py` (new), `cortical/semantics.py`, `cortical/query.py`
+**Status:** [ ] Not Started
+**Priority:** MEDIUM (Code quality)
+**Category:** Code Quality
+
+**Problem:**
+`RELATION_WEIGHTS` and `DOC_TYPE_BOOSTS` defined in multiple places, creating maintenance burden.
+
+**Solution:**
+Create `cortical/constants.py`:
+```python
+RELATION_WEIGHTS = {
+    'IsA': 0.9,
+    'PartOf': 0.8,
+    # ...
+}
+
+DOC_TYPE_BOOSTS = {
+    'code': 1.0,
+    'test': 0.5,
+    'doc': 1.2,
+}
+```
+
+Update imports in semantics.py and query.py.
+
+---
+
+### 97. Integrate CorticalConfig into CorticalTextProcessor
+
+**Files:** `cortical/processor.py`, `cortical/config.py`
+**Status:** [ ] Not Started
+**Priority:** HIGH (Design debt)
+**Category:** Architecture
+
+**Problem:**
+`CorticalConfig` exists with 20+ parameters but `CorticalTextProcessor.__init__()` doesn't accept it. All configuration is passed via method arguments, scattered across calls.
+
+**Current:**
+```python
+def __init__(self, tokenizer: Optional[Tokenizer] = None):
+    # No config parameter!
+```
+
+**Solution:**
+```python
+def __init__(
+    self,
+    config: Optional[CorticalConfig] = None,
+    tokenizer: Optional[Tokenizer] = None
+):
+    self.config = config or CorticalConfig()
+
+def compute_all(self, **overrides):
+    damping = overrides.get('pagerank_damping', self.config.pagerank_damping)
+```
+
+**Impact:** Single source of truth, easier serialization, consistent behavior.
+
+---
+
+### 98. Replace print() with Logging Module
+
+**Files:** `cortical/processor.py`, other modules
+**Status:** [ ] Not Started
+**Priority:** MEDIUM (Best practice)
+**Category:** Code Quality
+
+**Problem:**
+Uses `print()` for progress output. Can't configure logging level, format, or destination.
+
+**Solution:**
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+def add_documents_batch(..., verbose: bool = True):
+    if verbose:
+        logger.info(f"Adding {len(documents)} documents...")
+```
+
+Users can then configure logging as needed.
+
+---
+
+### 99. Add Input Validation to Public Methods
+
+**Files:** `cortical/processor.py`, `cortical/query.py`
+**Status:** [ ] Not Started
+**Priority:** MEDIUM (Robustness)
+**Category:** Code Quality
+
+**Problem:**
+Some wrapper methods pass parameters directly without validation:
+```python
+def compute_graph_embeddings(self, dimensions: int = 64, method: str = 'adjacency', ...):
+    # No validation of dimensions > 0, method in valid set
+```
+
+**Solution:**
+Add validation at API boundary:
+```python
+def compute_graph_embeddings(self, dimensions: int = 64, method: str = 'adjacency', ...):
+    if dimensions < 1:
+        raise ValueError(f"dimensions must be positive, got {dimensions}")
+    valid_methods = {'adjacency', 'spectral', 'random_walk'}
+    if method not in valid_methods:
+        raise ValueError(f"method must be one of {valid_methods}")
+```
+
+---
+
+### 100. Implement Plugin/Extension Registry
+
+**Files:** `cortical/registry.py` (new), `cortical/processor.py`
+**Status:** [ ] Not Started
+**Priority:** LOW (Extensibility)
+**Category:** Architecture
+
+**Problem:**
+Adding new algorithms requires modifying core files. No interface for custom PageRank, clustering, or expansion strategies.
+
+**Solution:**
+Implement registry pattern:
+```python
+class PageRankRegistry:
+    _algorithms: Dict[str, Type[PageRankAlgorithm]] = {}
+
+    @classmethod
+    def register(cls, name: str):
+        def decorator(algo_class):
+            cls._algorithms[name] = algo_class
+            return algo_class
+        return decorator
+
+@PageRankRegistry.register('custom')
+class CustomPageRank(PageRankAlgorithm):
+    def compute(self, layer, **kwargs):
+        # Custom implementation
+```
+
+**Impact:** Third-party extensions without forking. Experimentation-friendly.
+
+---
+
+### 101. Automate Staleness Tracking with Decorators
+
+**Files:** `cortical/processor.py`
+**Status:** [ ] Not Started
+**Priority:** LOW (Robustness)
+**Category:** Architecture
+
+**Problem:**
+Developers must manually call `_mark_stale()` and `_mark_fresh()`. Easy to forget, causing stale data or unnecessary recomputation.
+
+**Solution:**
+Use decorators:
+```python
+def invalidates(*computation_types):
+    def decorator(func):
+        def wrapper(self, *args, **kwargs):
+            result = func(self, *args, **kwargs)
+            for comp in computation_types:
+                self._stale_computations.add(comp)
+            return result
+        return wrapper
+    return decorator
+
+@invalidates('tfidf', 'pagerank', 'activation')
+def process_document(self, doc_id: str, content: str):
+    # Staleness marked automatically
+```
+
+---
+
+### 102. Add Tests for Edge Cases
+
+**Files:** `tests/test_edge_cases.py` (new)
+**Status:** [ ] Not Started
+**Priority:** MEDIUM (Quality)
+**Category:** Testing
+
+**Problem:**
+Missing tests for:
+- Empty/whitespace-only documents
+- Unicode in various languages
+- Very large documents (stress testing)
+- Malformed inputs
+
+**Solution:**
+Create dedicated edge case test file:
+```python
+def test_process_document_unicode(self):
+    """Test processing documents with various Unicode characters."""
+    processor = CorticalTextProcessor()
+    processor.process_document("unicode", "你好世界 こんにちは مرحبا")
+    self.assertEqual(len(processor.documents), 1)
+
+def test_process_document_very_large(self):
+    """Test processing very large documents."""
+    processor = CorticalTextProcessor()
+    large_text = "word " * 100000  # 100k words
+    stats = processor.process_document("large", large_text)
+    self.assertGreater(stats['tokens'], 99000)
+```
+
+---
+
+## Summary Table (Agent Review Tasks)
+
+| # | Priority | Task | Status | Category |
+|---|----------|------|--------|----------|
+| 88 | HIGH | Create package installation files | | Developer Experience |
+| 89 | HIGH | Create CONTRIBUTING.md | | Developer Experience |
+| 90 | HIGH | Create docs/quickstart.md tutorial | | Documentation |
+| 91 | MEDIUM | Create docs/README.md index | | Documentation |
+| 92 | MEDIUM | Add badges to README.md | | Developer Experience |
+| 93 | MEDIUM | Update README with docs references | | Documentation |
+| 94 | HIGH | Split query.py into focused modules | | Architecture |
+| 95 | MEDIUM | Split processor.py into focused modules | | Architecture |
+| 96 | MEDIUM | Centralize duplicate constants | | Code Quality |
+| 97 | HIGH | Integrate CorticalConfig into processor | | Architecture |
+| 98 | MEDIUM | Replace print() with logging | | Code Quality |
+| 99 | MEDIUM | Add input validation to public methods | | Code Quality |
+| 100 | LOW | Implement plugin/extension registry | | Architecture |
+| 101 | LOW | Automate staleness tracking | | Architecture |
+| 102 | MEDIUM | Add tests for edge cases | | Testing |
+
+---
+
+## Review Analysis Summary
+
+**Critical Barriers to Adoption (Fix First):**
+1. Missing setup.py/pyproject.toml - Can't install via pip
+2. Missing CONTRIBUTING.md - Contributors don't know how to help
+3. Missing quickstart tutorial - High learning curve
+
+**Architecture Technical Debt:**
+1. God Object pattern in CorticalTextProcessor (100+ methods)
+2. CorticalConfig exists but isn't used
+3. query.py is 2,719 lines (should be ~300 per file)
+
+**Code Quality Quick Wins:**
+1. Centralize duplicate constants
+2. Replace print() with logging
+3. Add input validation to public methods
+
+**Recommendation:** Prioritize Tasks 88-90 (adoption barriers) first, then Task 97 (config integration), then Task 94 (split query.py).
+
+---
+
+*Added 2025-12-11, Agent Orchestrator Review*
