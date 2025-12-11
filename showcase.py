@@ -59,6 +59,7 @@ class CorticalShowcase:
         self.analyze_document_relationships()
         self.demonstrate_queries()
         self.demonstrate_polysemy()
+        self.demonstrate_code_features()
         self.demonstrate_gap_analysis()
         self.demonstrate_embeddings()
         self.print_insights()
@@ -209,13 +210,12 @@ class CorticalShowcase:
                                      key=lambda x: x[1], reverse=True)[:6]
                 
                 for neighbor_id, weight in sorted_conns:
-                    # Find neighbor content
-                    for c in layer0.minicolumns.values():
-                        if c.id == neighbor_id:
-                            bar_len = int(min(weight, 10) * 3)
-                            bar = "─" * bar_len + ">"
-                            print(f"    {bar} {c.content} (weight: {weight:.2f})")
-                            break
+                    # O(1) lookup using _id_index
+                    neighbor = layer0.get_by_id(neighbor_id)
+                    if neighbor:
+                        bar_len = int(min(weight, 10) * 3)
+                        bar = "─" * bar_len + ">"
+                        print(f"    {bar} {neighbor.content} (weight: {weight:.2f})")
                 print()
     
     def analyze_document_relationships(self):
@@ -313,6 +313,87 @@ class CorticalShowcase:
         print("      • Implement word sense disambiguation")
         print()
 
+    def demonstrate_code_features(self):
+        """Demonstrate code-specific search capabilities."""
+        print_header("CODE SEARCH FEATURES", "═")
+
+        print("Features optimized for searching code and technical content:\n")
+
+        # 1. Query intent detection
+        print_subheader("🎯 Query Intent Detection")
+        print("    The system detects whether queries are conceptual or implementation-focused:\n")
+
+        test_queries = [
+            ("what is PageRank", True),
+            ("compute pagerank damping", False),
+            ("how does TF-IDF work", True),
+            ("find documents tfidf", False),
+        ]
+
+        for query, expected_conceptual in test_queries:
+            is_conceptual = self.processor.is_conceptual_query(query)
+            intent = "conceptual" if is_conceptual else "implementation"
+            marker = "📖" if is_conceptual else "💻"
+            print(f"    {marker} \"{query}\" → {intent}")
+
+        print("\n    💡 Use case: Boost documentation for conceptual queries,")
+        print("                 boost code files for implementation queries.")
+
+        # 2. Code-aware query expansion
+        print_subheader("\n🔧 Code-Aware Query Expansion")
+        print("    Programming synonyms expand queries for better code search:\n")
+
+        code_queries = ["fetch data", "get results", "process input"]
+
+        for query in code_queries:
+            # Regular expansion
+            regular = self.processor.expand_query(query, max_expansions=5)
+            # Code-aware expansion
+            code_exp = self.processor.expand_query_for_code(query, max_expansions=8)
+
+            # Find terms only in code expansion
+            regular_terms = set(regular.keys())
+            code_terms = set(code_exp.keys())
+            new_terms = code_terms - regular_terms
+
+            print(f"    Query: \"{query}\"")
+            if new_terms:
+                new_list = sorted(new_terms, key=lambda t: -code_exp.get(t, 0))[:4]
+                print(f"      + Code terms: {', '.join(new_list)}")
+            else:
+                print(f"      (corpus lacks programming synonyms for this query)")
+            print()
+
+        # 3. Semantic fingerprinting
+        print_subheader("🔍 Semantic Fingerprinting")
+        print("    Compare text similarity using semantic fingerprints:\n")
+
+        # Get two related documents
+        if len(self.loaded_files) >= 2:
+            doc1_id = "neural_pagerank" if "neural_pagerank" in self.processor.documents else self.loaded_files[0][0]
+            doc2_id = "pagerank_fundamentals" if "pagerank_fundamentals" in self.processor.documents else self.loaded_files[1][0]
+
+            doc1_content = self.processor.documents.get(doc1_id, "")[:500]
+            doc2_content = self.processor.documents.get(doc2_id, "")[:500]
+
+            if doc1_content and doc2_content:
+                fp1 = self.processor.get_fingerprint(doc1_content, top_n=10)
+                fp2 = self.processor.get_fingerprint(doc2_content, top_n=10)
+
+                comparison = self.processor.compare_fingerprints(fp1, fp2)
+
+                print(f"    Comparing: '{doc1_id}' vs '{doc2_id}'")
+                print(f"      Similarity: {comparison['overall_similarity']:.1%}")
+                print(f"      Shared concepts: {len(comparison.get('shared_concepts', []))}")
+
+                if comparison['shared_terms']:
+                    shared = list(comparison['shared_terms'])[:5]
+                    print(f"      Common terms: {', '.join(shared)}")
+
+        print("\n    💡 Use case: Find similar code, detect duplicates,")
+        print("                 suggest related files when editing.")
+        print()
+
     def demonstrate_gap_analysis(self):
         """Show knowledge gap detection."""
         print_header("KNOWLEDGE GAP ANALYSIS", "═")
@@ -392,6 +473,7 @@ class CorticalShowcase:
         print("  ✓ Computed TF-IDF for discriminative analysis")
         print("  ✓ Found associations through lateral connections")
         print("  ✓ Identified document relationships")
+        print("  ✓ Demonstrated code search features")
         print("  ✓ Detected knowledge gaps and anomalies")
         print("  ✓ Computed graph embeddings")
         print("  ✓ Enabled semantic queries with expansion")

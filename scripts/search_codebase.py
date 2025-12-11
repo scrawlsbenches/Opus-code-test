@@ -169,10 +169,15 @@ def display_results(results: list, verbose: bool = False, show_doc_type: bool = 
         print()
 
 
-def expand_query_display(processor: CorticalTextProcessor, query: str):
+def expand_query_display(processor: CorticalTextProcessor, query: str, use_code: bool = False):
     """Show expanded query terms."""
-    expanded = processor.expand_query(query, max_expansions=10)
-    print("\nQuery expansion:")
+    if use_code:
+        expanded = processor.expand_query_for_code(query, max_expansions=15)
+        print("\nQuery expansion (code-aware):")
+        print("  (includes programming synonyms: get/fetch/load, etc.)")
+    else:
+        expanded = processor.expand_query(query, max_expansions=10)
+        print("\nQuery expansion:")
     for term, weight in sorted(expanded.items(), key=lambda x: -x[1])[:10]:
         print(f"  {term}: {weight:.3f}")
 
@@ -183,6 +188,7 @@ def interactive_mode(processor: CorticalTextProcessor):
     print("=" * 40)
     print("Commands:")
     print("  /expand <query>  - Show query expansion")
+    print("  /code <query>    - Show code-aware expansion (programming synonyms)")
     print("  /concepts        - List concept clusters")
     print("  /stats           - Show corpus statistics")
     print("  /help            - Show this help")
@@ -207,7 +213,7 @@ def interactive_mode(processor: CorticalTextProcessor):
                 print("Goodbye!")
                 break
             elif cmd == '/help':
-                print("Commands: /expand, /concepts, /stats, /quit")
+                print("Commands: /expand, /code, /concepts, /stats, /quit")
             elif cmd == '/stats':
                 print(f"\nCorpus Statistics:")
                 print(f"  Documents: {len(processor.documents)}")
@@ -217,6 +223,8 @@ def interactive_mode(processor: CorticalTextProcessor):
                 print(f"  Relations: {len(processor.semantic_relations)}")
             elif cmd == '/expand' and len(cmd_parts) > 1:
                 expand_query_display(processor, cmd_parts[1])
+            elif cmd == '/code' and len(cmd_parts) > 1:
+                expand_query_display(processor, cmd_parts[1], use_code=True)
             elif cmd == '/concepts':
                 layer2 = processor.layers[2]
                 concepts = list(layer2.minicolumns.values())[:10]
@@ -239,6 +247,8 @@ Examples:
   %(prog)s "what is PageRank" --prefer-docs  # Always boost docs
   %(prog)s "compute pagerank" --no-boost  # Disable boosting
   %(prog)s "architecture" --fast          # Fast document-level search
+  %(prog)s "fetch data" --code            # Code-aware (also finds get/load/retrieve)
+  %(prog)s "auth" --code --expand         # Show programming synonyms
         """
     )
     parser.add_argument('query', nargs='?', help='Search query')
@@ -258,6 +268,8 @@ Examples:
                         help='Always boost documentation files in results')
     parser.add_argument('--no-boost', action='store_true',
                         help='Disable document type boosting (raw TF-IDF)')
+    parser.add_argument('--code', action='store_true',
+                        help='Use code-aware query expansion (get→fetch/load/retrieve)')
     args = parser.parse_args()
 
     base_path = Path(__file__).parent.parent
@@ -278,7 +290,7 @@ Examples:
         interactive_mode(processor)
     elif args.query:
         if args.expand:
-            expand_query_display(processor, args.query)
+            expand_query_display(processor, args.query, use_code=args.code)
             print()
 
         # Show query intent detection

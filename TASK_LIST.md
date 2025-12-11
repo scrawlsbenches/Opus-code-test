@@ -2423,7 +2423,7 @@ These tasks focus on making the Cortical Text Processor genuinely enjoyable to u
 
 **File:** `showcase.py`
 **Lines:** 213-218
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 **Priority:** Low
 
 **Problem:**
@@ -2448,7 +2448,7 @@ if neighbor:
 ### 68. Add Code-Specific Features to Showcase
 
 **File:** `showcase.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 **Priority:** Medium
 
 **Problem:**
@@ -2509,7 +2509,7 @@ Add timing for key operations:
 ### 71. Enable Code-Aware Tokenization in Index
 
 **File:** `scripts/index_codebase.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 **Priority:** High
 
 **Problem:**
@@ -2532,7 +2532,7 @@ Or configure per-document based on file type (.py files get identifier splitting
 ### 72. Use Programming Query Expansion in Search
 
 **File:** `scripts/search_codebase.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 **Priority:** High
 
 **Problem:**
@@ -2874,23 +2874,23 @@ Key files to understand:
 
 ## Summary Table
 
-| # | Priority | Task | Category |
-|---|----------|------|----------|
-| 67 | Low | Fix O(n) lookup in showcase | Showcase |
-| 68 | Medium | Add code-specific features to showcase | Showcase |
-| 69 | Medium | Add passage-level search demo | Showcase |
-| 70 | Low | Add performance timing to showcase | Showcase |
-| 71 | High | Enable code-aware tokenization in index | Code Index |
-| 72 | High | Use programming query expansion in search | Code Index |
-| 73 | Medium | Add "Find Similar Code" command | Code Index |
-| 74 | Medium | Add "Explain This Code" command | Developer Experience |
-| 75 | Medium | Add "What Changed?" semantic diff | Developer Experience |
-| 76 | Medium | Add "Suggest Related Files" feature | Developer Experience |
-| 77 | High | Add interactive "Ask the Codebase" mode | Developer Experience |
-| 78 | Low | Add code pattern detection | Developer Experience |
-| 79 | Low | Add corpus health dashboard | Developer Experience |
-| 80 | Low | Add "Learning Mode" for new contributors | Developer Experience |
+| # | Priority | Task | Status | Category |
+|---|----------|------|--------|----------|
+| 67 | Low | Fix O(n) lookup in showcase | ✓ Done | Showcase |
+| 68 | Medium | Add code-specific features to showcase | ✓ Done | Showcase |
+| 69 | Medium | Add passage-level search demo | | Showcase |
+| 70 | Low | Add performance timing to showcase | | Showcase |
+| 71 | High | Enable code-aware tokenization in index | ✓ Done | Code Index |
+| 72 | High | Use programming query expansion in search | ✓ Done | Code Index |
+| 73 | Medium | Add "Find Similar Code" command | | Code Index |
+| 74 | Medium | Add "Explain This Code" command | | Developer Experience |
+| 75 | Medium | Add "What Changed?" semantic diff | | Developer Experience |
+| 76 | Medium | Add "Suggest Related Files" feature | | Developer Experience |
+| 77 | High | Add interactive "Ask the Codebase" mode | | Developer Experience |
+| 78 | Low | Add code pattern detection | | Developer Experience |
+| 79 | Low | Add corpus health dashboard | | Developer Experience |
+| 80 | Low | Add "Learning Mode" for new contributors | | Developer Experience |
 
 ---
 
-*Added 2025-12-11*
+*Added 2025-12-11, completions updated 2025-12-11*
