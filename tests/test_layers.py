@@ -103,9 +103,105 @@ class TestHierarchicalLayer(unittest.TestCase):
         layer = HierarchicalLayer(CorticalLayer.TOKENS)
         layer.get_or_create_minicolumn("a")
         layer.get_or_create_minicolumn("b")
-        
+
         contents = [col.content for col in layer]
         self.assertEqual(set(contents), {"a", "b"})
+
+    def test_contains(self):
+        """Test __contains__ method."""
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer.get_or_create_minicolumn("exists")
+
+        self.assertTrue("exists" in layer)
+        self.assertFalse("missing" in layer)
+
+    def test_remove_minicolumn(self):
+        """Test removing a minicolumn."""
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer.get_or_create_minicolumn("test")
+
+        # Verify it exists
+        self.assertIn("test", layer)
+        self.assertEqual(layer.column_count(), 1)
+
+        # Remove it
+        result = layer.remove_minicolumn("test")
+        self.assertTrue(result)
+        self.assertNotIn("test", layer)
+        self.assertEqual(layer.column_count(), 0)
+
+        # Try removing non-existent
+        result = layer.remove_minicolumn("missing")
+        self.assertFalse(result)
+
+    def test_activation_range_non_empty(self):
+        """Test activation_range with non-empty layer."""
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        col1 = layer.get_or_create_minicolumn("a")
+        col2 = layer.get_or_create_minicolumn("b")
+        col3 = layer.get_or_create_minicolumn("c")
+
+        col1.activation = 1.0
+        col2.activation = 5.0
+        col3.activation = 3.0
+
+        min_act, max_act = layer.activation_range()
+        self.assertEqual(min_act, 1.0)
+        self.assertEqual(max_act, 5.0)
+
+    def test_top_by_pagerank(self):
+        """Test top_by_pagerank method."""
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        col1 = layer.get_or_create_minicolumn("a")
+        col2 = layer.get_or_create_minicolumn("b")
+        col3 = layer.get_or_create_minicolumn("c")
+
+        col1.pagerank = 0.1
+        col2.pagerank = 0.5
+        col3.pagerank = 0.3
+
+        top = layer.top_by_pagerank(n=2)
+        self.assertEqual(len(top), 2)
+        self.assertEqual(top[0][0], "b")  # Highest pagerank
+        self.assertEqual(top[0][1], 0.5)
+        self.assertEqual(top[1][0], "c")  # Second highest
+        self.assertEqual(top[1][1], 0.3)
+
+    def test_top_by_tfidf(self):
+        """Test top_by_tfidf method."""
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        col1 = layer.get_or_create_minicolumn("a")
+        col2 = layer.get_or_create_minicolumn("b")
+        col3 = layer.get_or_create_minicolumn("c")
+
+        col1.tfidf = 0.2
+        col2.tfidf = 0.8
+        col3.tfidf = 0.5
+
+        top = layer.top_by_tfidf(n=2)
+        self.assertEqual(len(top), 2)
+        self.assertEqual(top[0][0], "b")  # Highest tfidf
+        self.assertEqual(top[0][1], 0.8)
+        self.assertEqual(top[1][0], "c")  # Second highest
+        self.assertEqual(top[1][1], 0.5)
+
+    def test_top_by_activation(self):
+        """Test top_by_activation method."""
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        col1 = layer.get_or_create_minicolumn("a")
+        col2 = layer.get_or_create_minicolumn("b")
+        col3 = layer.get_or_create_minicolumn("c")
+
+        col1.activation = 1.0
+        col2.activation = 10.0
+        col3.activation = 5.0
+
+        top = layer.top_by_activation(n=2)
+        self.assertEqual(len(top), 2)
+        self.assertEqual(top[0][0], "b")  # Highest activation
+        self.assertEqual(top[0][1], 10.0)
+        self.assertEqual(top[1][0], "c")  # Second highest
+        self.assertEqual(top[1][1], 5.0)
 
 
 class TestCorticalLayerEnum(unittest.TestCase):
@@ -122,6 +218,24 @@ class TestCorticalLayerEnum(unittest.TestCase):
         """Test layer descriptions."""
         self.assertIn("Token", CorticalLayer.TOKENS.description)
         self.assertIn("Document", CorticalLayer.DOCUMENTS.description)
+
+    def test_analogy_property(self):
+        """Test layer analogy property for all layers."""
+        # Test TOKENS
+        self.assertIn("V1", CorticalLayer.TOKENS.analogy)
+        self.assertIn("token", CorticalLayer.TOKENS.analogy.lower())
+
+        # Test BIGRAMS
+        self.assertIn("V2", CorticalLayer.BIGRAMS.analogy)
+        self.assertIn("pattern", CorticalLayer.BIGRAMS.analogy.lower())
+
+        # Test CONCEPTS
+        self.assertIn("V4", CorticalLayer.CONCEPTS.analogy)
+        self.assertIn("concept", CorticalLayer.CONCEPTS.analogy.lower())
+
+        # Test DOCUMENTS
+        self.assertIn("IT", CorticalLayer.DOCUMENTS.analogy)
+        self.assertIn("document", CorticalLayer.DOCUMENTS.analogy.lower())
 
 
 class TestEdge(unittest.TestCase):

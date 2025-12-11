@@ -13,6 +13,9 @@ from cortical.persistence import (
     load_processor,
     export_graph_json,
     export_embeddings_json,
+    load_embeddings_json,
+    export_semantic_relations_json,
+    load_semantic_relations_json,
     get_state_summary,
     export_conceptnet_json,
     LAYER_COLORS,
@@ -173,6 +176,73 @@ class TestSaveLoad(unittest.TestCase):
 
             self.assertEqual(len(loaded.semantic_relations), len(processor.semantic_relations))
 
+    def test_save_verbose_with_embeddings_and_relations(self):
+        """Test save with verbose=True when embeddings and relations exist."""
+        import io
+        import sys
+
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks are computational models.")
+        processor.process_document("doc2", "Deep learning uses neural networks for analysis.")
+        processor.compute_all(verbose=False)
+        processor.compute_graph_embeddings(dimensions=8, verbose=False)
+        processor.extract_corpus_semantics(verbose=False)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+
+            # Capture stdout
+            captured = io.StringIO()
+            sys.stdout = captured
+            try:
+                save_processor(
+                    filepath, processor.layers, processor.documents,
+                    processor.document_metadata, processor.embeddings,
+                    processor.semantic_relations, verbose=True
+                )
+            finally:
+                sys.stdout = sys.__stdout__
+
+            output = captured.getvalue()
+            # Check verbose output mentions embeddings and relations
+            self.assertIn("Saved processor", output)
+            self.assertIn("embeddings", output)
+            self.assertIn("semantic relations", output)
+
+    def test_load_verbose_with_embeddings_and_relations(self):
+        """Test load with verbose=True when embeddings and relations exist."""
+        import io
+        import sys
+
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks are computational models.")
+        processor.process_document("doc2", "Deep learning uses neural networks for analysis.")
+        processor.compute_all(verbose=False)
+        processor.compute_graph_embeddings(dimensions=8, verbose=False)
+        processor.extract_corpus_semantics(verbose=False)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, processor.embeddings,
+                processor.semantic_relations, verbose=False
+            )
+
+            # Capture stdout
+            captured = io.StringIO()
+            sys.stdout = captured
+            try:
+                load_processor(filepath, verbose=True)
+            finally:
+                sys.stdout = sys.__stdout__
+
+            output = captured.getvalue()
+            # Check verbose output mentions embeddings and relations
+            self.assertIn("Loaded processor", output)
+            self.assertIn("embeddings", output)
+            self.assertIn("semantic relations", output)
+
 
 class TestExportGraphJSON(unittest.TestCase):
     """Test graph JSON export."""
@@ -308,6 +378,55 @@ class TestExportEmbeddingsJSON(unittest.TestCase):
             with open(filepath) as f:
                 data = json.load(f)
             self.assertIn('custom_key', data['metadata'])
+
+    def test_load_embeddings_json(self):
+        """Test loading embeddings from JSON."""
+        embeddings = {'term1': [1.0, 2.0, 3.0], 'term2': [4.0, 5.0, 6.0]}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "embeddings.json")
+            export_embeddings_json(filepath, embeddings)
+
+            loaded = load_embeddings_json(filepath)
+            self.assertEqual(len(loaded), 2)
+            self.assertEqual(loaded['term1'], [1.0, 2.0, 3.0])
+            self.assertEqual(loaded['term2'], [4.0, 5.0, 6.0])
+
+
+class TestSemanticRelationsJSON(unittest.TestCase):
+    """Test semantic relations JSON export/import."""
+
+    def test_export_semantic_relations_json(self):
+        """Test exporting semantic relations to JSON."""
+        relations = [
+            ('neural', 'RelatedTo', 'network', 0.8),
+            ('machine', 'IsA', 'learning', 0.9),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "relations.json")
+            export_semantic_relations_json(filepath, relations)
+
+            self.assertTrue(os.path.exists(filepath))
+
+            with open(filepath) as f:
+                data = json.load(f)
+            self.assertIn('relations', data)
+            self.assertEqual(data['count'], 2)
+
+    def test_load_semantic_relations_json(self):
+        """Test loading semantic relations from JSON."""
+        relations = [
+            ('neural', 'RelatedTo', 'network', 0.8),
+            ('deep', 'RelatedTo', 'learning', 0.7),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "relations.json")
+            export_semantic_relations_json(filepath, relations)
+
+            loaded = load_semantic_relations_json(filepath)
+            self.assertEqual(len(loaded), 2)
 
 
 class TestGetStateSummary(unittest.TestCase):

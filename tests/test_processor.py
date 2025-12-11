@@ -2841,5 +2841,169 @@ class TestQueryCache(unittest.TestCase):
         self.assertEqual(len(self.processor._query_expansion_cache), 0)
 
 
+class TestRecomputeStaleItems(unittest.TestCase):
+    """Test recompute method with stale item tracking."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor()
+        self.processor.process_document("doc1", "Neural networks process information.")
+        self.processor.process_document("doc2", "Machine learning algorithms.")
+        self.processor.compute_all(verbose=False)
+
+    def test_recompute_stale_with_embeddings(self):
+        """Test recomputing when embeddings are stale."""
+        self.processor._stale_computations.add(CorticalTextProcessor.COMP_EMBEDDINGS)
+        recomputed = self.processor.recompute(level='stale', verbose=False)
+        self.assertIn(CorticalTextProcessor.COMP_EMBEDDINGS, recomputed)
+
+    def test_recompute_stale_with_semantics(self):
+        """Test recomputing when semantics are stale."""
+        self.processor._stale_computations.add(CorticalTextProcessor.COMP_SEMANTICS)
+        recomputed = self.processor.recompute(level='stale', verbose=False)
+        self.assertIn(CorticalTextProcessor.COMP_SEMANTICS, recomputed)
+
+    def test_recompute_stale_with_concepts(self):
+        """Test recomputing when concepts are stale."""
+        self.processor._stale_computations.add(CorticalTextProcessor.COMP_CONCEPTS)
+        recomputed = self.processor.recompute(level='stale', verbose=False)
+        self.assertIn(CorticalTextProcessor.COMP_CONCEPTS, recomputed)
+
+    def test_recompute_stale_with_doc_connections(self):
+        """Test recomputing when document connections are stale."""
+        self.processor._stale_computations.add(CorticalTextProcessor.COMP_DOC_CONNECTIONS)
+        recomputed = self.processor.recompute(level='stale', verbose=False)
+        self.assertIn(CorticalTextProcessor.COMP_DOC_CONNECTIONS, recomputed)
+
+    def test_recompute_stale_with_bigram_connections(self):
+        """Test recomputing when bigram connections are stale."""
+        self.processor._stale_computations.add(CorticalTextProcessor.COMP_BIGRAM_CONNECTIONS)
+        recomputed = self.processor.recompute(level='stale', verbose=False)
+        self.assertIn(CorticalTextProcessor.COMP_BIGRAM_CONNECTIONS, recomputed)
+
+
+class TestVerboseOutputBranches(unittest.TestCase):
+    """Test verbose output branches for coverage."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document("doc1", "Neural networks are machine learning models.")
+        cls.processor.process_document("doc2", "Deep learning is a type of neural network.")
+        cls.processor.compute_all(verbose=False)
+
+    def test_compute_concept_connections_verbose(self):
+        """Test compute_concept_connections with verbose output."""
+        import io
+        import sys
+
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            self.processor.compute_concept_connections(
+                use_semantics=True,
+                verbose=True
+            )
+        finally:
+            sys.stdout = sys.__stdout__
+
+        output = captured.getvalue()
+        self.assertIn("concept connections", output.lower())
+
+    def test_extract_pattern_relations_verbose(self):
+        """Test extract_pattern_relations with verbose output."""
+        import io
+        import sys
+
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "A neural network is a type of model.")
+        processor.compute_all(verbose=False)
+
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            processor.extract_pattern_relations(verbose=True)
+        finally:
+            sys.stdout = sys.__stdout__
+
+        output = captured.getvalue()
+        self.assertGreater(len(output), 0)
+
+    def test_retrofit_connections_verbose(self):
+        """Test retrofit_connections with verbose output."""
+        import io
+        import sys
+
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            self.processor.retrofit_connections(iterations=5, alpha=0.3, verbose=True)
+        finally:
+            sys.stdout = sys.__stdout__
+
+        output = captured.getvalue()
+        self.assertIn("Retrofitted", output)
+
+    def test_hierarchical_importance_verbose(self):
+        """Test compute_hierarchical_importance with verbose output."""
+        import io
+        import sys
+
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            self.processor.compute_hierarchical_importance(verbose=True)
+        finally:
+            sys.stdout = sys.__stdout__
+
+        output = captured.getvalue()
+        self.assertIn("PageRank", output)
+
+    def test_invalid_clustering_method(self):
+        """Test build_concept_clusters with invalid method raises error."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Test content here.")
+        processor.propagate_activation(iterations=1, verbose=False)
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+        processor.compute_document_connections(verbose=False)
+        processor.compute_bigram_connections(verbose=False)
+
+        with self.assertRaises(ValueError) as ctx:
+            processor.build_concept_clusters(clustering_method='invalid_method', verbose=False)
+        self.assertIn("invalid_method", str(ctx.exception))
+
+
+class TestConceptConnectionVerboseBranches(unittest.TestCase):
+    """Test verbose branches in compute_concept_connections."""
+
+    def test_verbose_with_semantic_and_embedding_connections(self):
+        """Test verbose output when both semantic and embedding connections are created."""
+        import io
+        import sys
+
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks are computational models.")
+        processor.process_document("doc2", "Deep learning uses neural networks.")
+        processor.process_document("doc3", "Machine learning algorithms learn patterns.")
+        processor.compute_all(verbose=False)
+        processor.compute_graph_embeddings(dimensions=8, verbose=False)
+        processor.extract_corpus_semantics(verbose=False)
+
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            processor.compute_concept_connections(
+                use_semantics=True,
+                use_embedding_similarity=True,
+                embedding_threshold=0.1,
+                verbose=True
+            )
+        finally:
+            sys.stdout = sys.__stdout__
+
+        output = captured.getvalue()
+        self.assertIn("connections", output.lower())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
