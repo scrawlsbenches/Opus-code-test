@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 28
-**Completed Tasks:** 87+ (see archive)
+**Pending Tasks:** 27
+**Completed Tasks:** 88+ (see archive)
 
 ---
 
@@ -23,7 +23,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 126 | Investigate optimal Louvain resolution for sample corpus | Research | 123 | Medium |
 | 94 | Split query.py into focused modules | Arch | - | Large |
 | 97 | Integrate CorticalConfig into processor | Arch | - | Medium |
 
@@ -87,6 +86,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 126 | Investigate optimal Louvain resolution for sample corpus | 2025-12-11 | Research confirms default 1.0 is optimal |
 | 123 | Replace label propagation with Louvain community detection | 2025-12-11 | Implemented Louvain algorithm, 34 clusters for 92 docs |
 | 122 | Investigate Concept Layer & Embeddings regressions | 2025-12-11 | Fixed inverted strictness, improved embeddings |
 | 119 | Create AI metadata generator script | 2025-12-11 | scripts/generate_ai_metadata.py with tests |
@@ -268,49 +268,46 @@ Layer 2: Concept Layer (V4)
 
 ---
 
-### 126. Investigate Optimal Louvain Resolution for Sample Corpus
+### 126. Investigate Optimal Louvain Resolution for Sample Corpus ✅
 
-**Meta:** `status:pending` `priority:high` `category:research`
-**Files:** `cortical/analysis.py`, `cortical/processor.py`, `showcase.py`
+**Meta:** `status:completed` `priority:high` `category:research`
+**Files:** `scripts/analyze_louvain_resolution.py`, `docs/louvain_resolution_analysis.md`
 **Effort:** Medium
 **Depends:** 123
+**Completed:** 2025-12-11
 
 **Problem:** The Louvain algorithm's `resolution` parameter significantly affects cluster count:
-- Resolution 0.5 → ~19 clusters (coarse)
-- Resolution 1.0 → ~32 clusters (default)
-- Resolution 2.0 → ~66 clusters (fine)
-- Resolution 3.0 → ~93 clusters (very fine)
+- Resolution 0.5 → 38 clusters (coarse, 64% mega-cluster)
+- Resolution 1.0 → 32 clusters (default, good balance)
+- Resolution 2.0 → 79 clusters (fine)
+- Resolution 3.0 → 125 clusters (very fine)
 
-The default value of 1.0 produces 34 clusters for our 103-document corpus, but we haven't determined if this is optimal for the semantic structure of our sample documents.
+**Research Findings:**
 
-**Investigation Goals:**
-1. Analyze cluster quality at different resolution values using modularity score
-2. Evaluate semantic coherence within clusters (do related terms cluster together?)
-3. Assess cluster utility for downstream tasks (query expansion, concept retrieval)
-4. Consider whether different document types benefit from different resolutions
-5. Determine if auto-tuning resolution based on corpus characteristics is feasible
+1. **Tested 11 resolution values** (0.5 to 3.0) on 103-document corpus (7,102 tokens)
 
-**Proposed Approach:**
-```python
-# Test different resolutions and evaluate cluster quality
-for resolution in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0]:
-    clusters = processor.build_concept_clusters(resolution=resolution)
-    modularity = compute_modularity(processor.layers)
-    coherence = evaluate_semantic_coherence(clusters)
-    print(f"Resolution {resolution}: {len(clusters)} clusters, Q={modularity:.3f}")
-```
+2. **Key metric results at resolution 1.0 (default):**
+   - Modularity: 0.4036 (good, exceeds 0.3 threshold)
+   - Max cluster: 9.5% of tokens (no mega-clusters)
+   - Balance (Gini): 0.386 (reasonable distribution)
 
-**Questions to Answer:**
-- What resolution maximizes modularity for our corpus?
-- Do development-focused documents cluster better at certain resolutions?
-- Should we expose resolution as a user-configurable parameter in CorticalConfig?
-- Is there a heuristic for auto-selecting resolution based on corpus size/density?
+3. **All resolutions maintain modularity > 0.3** (good community structure)
+
+4. **Low resolution (0.5) creates mega-clusters** (64% in one cluster) despite highest modularity (0.78)
+
+5. **Default 1.0 is the inflection point** where max cluster drops below 10%
+
+**Recommendation:** Keep default at 1.0, which provides:
+- Good modularity (0.40)
+- No mega-clusters (<10%)
+- Semantically coherent groupings
+- Standard Louvain interpretation
 
 **Deliverables:**
-- [ ] Analysis script comparing resolution values
-- [ ] Recommended default resolution (with justification)
-- [ ] Documentation of resolution parameter effects
-- [ ] Optional: Auto-tuning heuristic if feasible
+- [x] Analysis script: `scripts/analyze_louvain_resolution.py`
+- [x] Research report: `docs/louvain_resolution_analysis.md`
+- [x] Recommendation: Keep default at 1.0 (already well-chosen)
+- [x] Use case guidelines documented for resolution tuning
 
 ---
 
