@@ -1145,7 +1145,7 @@ class TaskCheckpoint:
     def summarize(self, task_name: str) -> Optional[str]:
         """Get a one-line summary of a task checkpoint."""
         ctx = self.load(task_name)
-        if not ctx:
+        if ctx is None:
             return None
 
         parts = [task_name]

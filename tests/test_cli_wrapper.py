@@ -74,6 +74,17 @@ class TestGitContext(unittest.TestCase):
         self.assertTrue(d['is_dirty'])
         self.assertEqual(len(d['staged_files']), 1)
 
+    def test_default_values(self):
+        """Test default GitContext values."""
+        ctx = GitContext()
+        self.assertFalse(ctx.is_repo)
+        self.assertEqual(ctx.branch, "")
+        self.assertEqual(ctx.commit_hash, "")
+        self.assertFalse(ctx.is_dirty)
+        self.assertEqual(ctx.staged_files, [])
+        self.assertEqual(ctx.modified_files, [])
+        self.assertEqual(ctx.untracked_files, [])
+
 
 class TestExecutionContext(unittest.TestCase):
     """Tests for ExecutionContext."""
@@ -346,6 +357,55 @@ class TestCLIWrapper(unittest.TestCase):
         self.assertIn('error', result.stderr)
         self.assertEqual(result.error_lines, 1)
 
+    def test_run_with_env(self):
+        """Test running command with custom environment."""
+        wrapper = CLIWrapper(collect_git_context=False)
+        result = wrapper.run(
+            ['python', '-c', 'import os; print(os.environ.get("TEST_VAR", ""))'],
+            env={'TEST_VAR': 'hello_test'}
+        )
+
+        self.assertTrue(result.success)
+        self.assertIn('hello_test', result.stdout)
+
+    def test_default_timeout(self):
+        """Test wrapper with default timeout."""
+        wrapper = CLIWrapper(
+            collect_git_context=False,
+            default_timeout=0.1
+        )
+        result = wrapper.run(['python', '-c', 'import time; time.sleep(10)'])
+
+        self.assertFalse(result.success)
+        self.assertIn('timeout', result.metadata)
+
+    def test_timeout_hook_triggered(self):
+        """Test ON_TIMEOUT hook is triggered."""
+        wrapper = CLIWrapper(collect_git_context=False)
+        timeout_calls = []
+
+        wrapper.hooks.register(
+            HookType.ON_TIMEOUT,
+            lambda ctx: timeout_calls.append(ctx.command_str)
+        )
+
+        wrapper.run(['python', '-c', 'import time; time.sleep(10)'], timeout=0.1)
+
+        self.assertEqual(len(timeout_calls), 1)
+
+    def test_capture_output_disabled(self):
+        """Test wrapper with capture_output disabled."""
+        wrapper = CLIWrapper(
+            collect_git_context=False,
+            capture_output=False
+        )
+        result = wrapper.run(['echo', 'test'])
+
+        self.assertTrue(result.success)
+        # stdout/stderr not captured
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(result.stderr, "")
+
 
 class TestTaskCompletionManager(unittest.TestCase):
     """Tests for TaskCompletionManager."""
@@ -525,6 +585,20 @@ class TestConvenienceFunctions(unittest.TestCase):
         self.assertTrue(result.success)
         self.assertIn('hello', result.stdout)
 
+    def test_run_with_context_string_command(self):
+        """Test run_with_context with string command."""
+        result = run_with_context("echo test")
+
+        self.assertTrue(result.success)
+        self.assertIn("test", result.stdout)
+
+    def test_run_with_cwd(self):
+        """Test run() with custom working directory."""
+        result = run("pwd", cwd="/tmp")
+
+        self.assertTrue(result.success)
+        self.assertIn("/tmp", result.stdout)
+
 
 class TestIntegration(unittest.TestCase):
     """Integration tests for the wrapper system."""
@@ -655,6 +729,29 @@ class TestSession(unittest.TestCase):
         self.assertEqual(len(s.results), 1)
         self.assertTrue(s.results[0].success)
 
+    def test_session_success_rate_empty(self):
+        """Test success_rate with no commands."""
+        with Session(git=False) as s:
+            pass  # No commands run
+
+        self.assertEqual(s.success_rate, 1.0)  # Default to 1.0
+
+    def test_session_modified_files(self):
+        """Test modified_files property."""
+        with Session(git=True) as s:
+            s.run("echo test")
+
+        # Should return a list (possibly empty)
+        self.assertIsInstance(s.modified_files, list)
+
+    def test_session_with_git_context(self):
+        """Test session collects git context when enabled."""
+        with Session(git=True) as s:
+            result = s.run("echo test")
+
+        # Git context should be collected
+        self.assertTrue(result.git.is_repo)
+
 
 class TestDecoratorHooks(unittest.TestCase):
     """Tests for decorator-style hook registration."""
@@ -758,6 +855,48 @@ class TestCompoundCommands(unittest.TestCase):
         self.assertIsInstance(results, list)
         self.assertGreater(len(results), 0)
 
+    def test_commit_and_push_returns_tuple(self):
+        """Test commit_and_push returns proper structure."""
+        # Will fail (nothing to commit) but should return proper tuple
+        ok, results = commit_and_push(
+            message="Test message",
+            add_all=False  # Don't add files
+        )
+
+        self.assertIsInstance(ok, bool)
+        self.assertIsInstance(results, list)
+
+    def test_commit_and_push_with_add_all_false(self):
+        """Test commit_and_push without adding files."""
+        ok, results = commit_and_push(
+            message="No add",
+            add_all=False
+        )
+
+        # Should have at least the commit attempt
+        self.assertGreaterEqual(len(results), 1)
+
+    def test_commit_and_push_explicit_branch(self):
+        """Test commit_and_push with explicit branch name."""
+        ok, results = commit_and_push(
+            message="Test",
+            add_all=False,
+            branch="test-branch-xyz"
+        )
+
+        # Should return results regardless of success
+        self.assertIsInstance(results, list)
+
+    def test_test_then_commit_with_string_command(self):
+        """Test test_then_commit with string test command."""
+        ok, results = test_then_commit(
+            test_cmd="echo passing",
+            message="String cmd test",
+            add_all=False
+        )
+
+        self.assertTrue(results[0].success)
+
 
 class TestTaskCheckpoint(unittest.TestCase):
     """Tests for TaskCheckpoint context saving."""
@@ -847,6 +986,104 @@ class TestTaskCheckpoint(unittest.TestCase):
         # Should be truncated
         self.assertLess(len(summary), 100)
         self.assertIn("...", summary)
+
+    def test_summarize_without_notes(self):
+        """Test summarize with no notes field."""
+        self.checkpoint.save("no-notes", {
+            'branch': 'feature/x',
+        })
+
+        summary = self.checkpoint.summarize("no-notes")
+
+        self.assertIn("no-notes", summary)
+        self.assertIn("[feature/x]", summary)
+
+    def test_summarize_nonexistent(self):
+        """Test summarize for nonexistent task."""
+        result = self.checkpoint.summarize("does-not-exist")
+        self.assertIsNone(result)
+
+    def test_summarize_minimal(self):
+        """Test summarize with minimal context."""
+        self.checkpoint.save("minimal", {})
+
+        summary = self.checkpoint.summarize("minimal")
+
+        self.assertEqual(summary, "minimal")
+
+
+class TestContextWindowManagerEdgeCases(unittest.TestCase):
+    """Additional tests for ContextWindowManager edge cases."""
+
+    def test_get_recent_files_empty(self):
+        """Test get_recent_files with no files."""
+        manager = ContextWindowManager()
+        recent = manager.get_recent_files()
+        self.assertEqual(recent, [])
+
+    def test_suggest_pruning_below_threshold(self):
+        """Test suggest_pruning when below threshold."""
+        manager = ContextWindowManager(max_context_items=100)
+
+        # Add a few files (well below threshold)
+        manager.add_file_read("file1.py")
+        manager.add_file_read("file2.py")
+
+        # Should return empty - not enough items to suggest pruning
+        suggestions = manager.suggest_pruning()
+        self.assertEqual(suggestions, [])
+
+    def test_context_summary_empty(self):
+        """Test context summary with no items."""
+        manager = ContextWindowManager()
+        summary = manager.get_context_summary()
+
+        self.assertEqual(summary['total_items'], 0)
+        self.assertEqual(summary['executions'], 0)
+        self.assertEqual(summary['file_reads'], 0)
+        self.assertEqual(summary['task_types'], {})
+        self.assertEqual(summary['recent_files'], [])
+        self.assertEqual(summary['unique_files_accessed'], 0)
+
+
+class TestHookRegistryEdgeCases(unittest.TestCase):
+    """Additional tests for HookRegistry edge cases."""
+
+    def test_get_hooks_empty_command(self):
+        """Test get_hooks with empty command list."""
+        registry = HookRegistry()
+        callback = Mock()
+        registry.register(HookType.POST_EXEC, callback)
+
+        hooks = registry.get_hooks(HookType.POST_EXEC, [])
+        self.assertEqual(len(hooks), 1)  # Global hook still returned
+
+    def test_multiple_patterns_same_hook_type(self):
+        """Test multiple pattern hooks for same type."""
+        registry = HookRegistry()
+        git_cb = Mock()
+        pytest_cb = Mock()
+
+        registry.register(HookType.POST_EXEC, git_cb, pattern='git')
+        registry.register(HookType.POST_EXEC, pytest_cb, pattern='pytest')
+
+        # Neither should match 'echo'
+        hooks = registry.get_hooks(HookType.POST_EXEC, ['echo', 'hello'])
+        self.assertEqual(len(hooks), 0)
+
+
+class TestExecutionContextEdgeCases(unittest.TestCase):
+    """Additional tests for ExecutionContext edge cases."""
+
+    def test_metadata_field(self):
+        """Test that metadata field works correctly."""
+        ctx = ExecutionContext()
+        ctx.metadata['custom_key'] = 'custom_value'
+
+        self.assertEqual(ctx.metadata['custom_key'], 'custom_value')
+
+        d = ctx.to_dict()
+        self.assertEqual(d['metadata']['custom_key'], 'custom_value')
 
 
 if __name__ == '__main__':
