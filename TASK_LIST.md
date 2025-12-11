@@ -2884,6 +2884,132 @@ Key files to understand:
 
 ---
 
+### 81. Fix Tokenizer Underscore-Prefixed Identifier Bug
+
+**File:** `cortical/tokenizer.py`
+**Line:** 265
+**Status:** [x] Completed
+**Priority:** High
+**Category:** Code Search
+
+**Problem:**
+The tokenizer regex `r'\b[a-zA-Z][a-zA-Z0-9_]*\b'` requires tokens to start with a letter, which causes Python dunder methods (`__init__`, `__slots__`, `__str__`) and private variables (`_id_index`, `_cache`) to be completely unsearchable in code search.
+
+**Found via dog-fooding:** Searching for `__slots__` returns zero results even though it exists in the codebase.
+
+**Root Cause:**
+```python
+# Line 265 - requires first char to be a letter
+raw_tokens = re.findall(r'\b[a-zA-Z][a-zA-Z0-9_]*\b', text)
+```
+
+**Solution:**
+1. Modify regex to capture underscore-prefixed identifiers:
+   ```python
+   raw_tokens = re.findall(r'\b_*[a-zA-Z][a-zA-Z0-9_]*\b', text)
+   ```
+2. Ensure dunder methods are preserved (not filtered as stop words)
+3. Add `'init'`, `'str'`, `'repr'` etc. to `PROGRAMMING_KEYWORDS` if not present
+4. Add tests for underscore-prefixed identifier tokenization
+
+**Impact:**
+- High for code search use case
+- Python-specific identifiers currently invisible to search
+- Affects private methods, dunder methods, internal variables
+
+**Files to Modify:**
+- `cortical/tokenizer.py` - Fix regex pattern
+- `tests/test_tokenizer.py` - Add tests for underscore identifiers
+
+---
+
+### 84. Add Direct Definition Pattern Search for Code Search
+
+**Files:** `cortical/query.py`, `scripts/search_codebase.py`
+**Status:** [ ] Not Started
+**Priority:** High
+**Category:** Code Search
+
+**Problem:**
+When searching for "class Minicolumn", the passage containing the actual class definition (`class Minicolumn:`) scores low because TF-IDF favors chunks with more query term matches. The definition chunk is mostly docstring text with few matching terms.
+
+**Found via dog-fooding:** Even with document-level boosting, the actual class definition often doesn't appear in top results.
+
+**Solution:**
+1. For definition queries, directly search source files for the definition pattern
+2. Create a synthetic high-scoring passage from the definition location
+3. Inject this passage into results before final ranking
+4. Consider using regex-based chunk extraction around definition sites
+
+**Example:**
+```python
+def find_definition_passage(doc_text: str, pattern: str, context_chars: int = 500):
+    """Extract passage around a definition pattern match."""
+    match = re.search(pattern, doc_text)
+    if match:
+        start = max(0, match.start() - 50)
+        end = min(len(doc_text), match.end() + context_chars)
+        return doc_text[start:end], start, end
+    return None
+```
+
+---
+
+### 85. Improve Test File vs Source File Ranking
+
+**Files:** `cortical/query.py`, `scripts/search_codebase.py`
+**Status:** [ ] Not Started
+**Priority:** Medium
+**Category:** Code Search
+
+**Problem:**
+Test files often rank higher than source files because they mention class/function names more frequently (in test method names, assertions, etc.). This is counterintuitive for users looking for implementations.
+
+**Found via dog-fooding:** Searching "class Minicolumn" returns test_layers.py results before minicolumn.py results.
+
+**Solution Options:**
+1. Add file path-based scoring penalty for test files when query intent is "implementation"
+2. Detect test files (tests/, *_test.py, test_*.py) and apply negative boost
+3. Add user preference for "prefer source over tests" in search
+4. Use query intent detection to auto-adjust (implementation queries → penalize tests)
+
+**Considerations:**
+- Should be configurable (sometimes users want to find tests)
+- Could integrate with existing `get_doc_type_boost()` function
+- Balance: tests are valuable for understanding usage patterns
+
+---
+
+### 86. Add Semantic Chunk Boundaries for Code
+
+**Files:** `cortical/query.py`
+**Status:** [ ] Not Started
+**Priority:** Medium
+**Category:** Code Search
+
+**Problem:**
+Current chunking uses fixed character boundaries which can split code mid-function or mid-class. This creates passages that lack context and score poorly.
+
+**Found via dog-fooding:** The chunk containing `class Minicolumn:` starts mid-way through the previous function's code.
+
+**Solution:**
+1. Detect code structure boundaries (class, def, blank lines)
+2. Adjust chunk boundaries to align with semantic units
+3. For Python: use indentation changes as boundary hints
+4. Consider AST-based chunking for supported languages
+
+**Example improvement:**
+```python
+def create_code_aware_chunks(text: str, target_size: int = 500):
+    """Create chunks aligned to code structure boundaries."""
+    # Find all class/def boundaries
+    boundaries = [m.start() for m in re.finditer(r'^(?:class |def )', text, re.M)]
+    # Create chunks that start at boundaries
+    ...
+```
+
+---
+
 ## Summary Table
 
 | # | Priority | Task | Status | Category |
@@ -2902,6 +3028,12 @@ Key files to understand:
 | 78 | Low | Add code pattern detection | | Developer Experience |
 | 79 | Low | Add corpus health dashboard | | Developer Experience |
 | 80 | Low | Add "Learning Mode" for new contributors | | Developer Experience |
+| 81 | High | Fix tokenizer underscore-prefixed identifiers | ✓ Done | Code Search |
+| 82 | High | Add code stop words filter for query expansion | ✓ Done | Code Search |
+| 83 | Medium | Add definition-aware boosting for class/def queries | ✓ Done | Code Search |
+| 84 | High | Add direct definition pattern search | | Code Search |
+| 85 | Medium | Improve test file vs source file ranking | | Code Search |
+| 86 | Medium | Add semantic chunk boundaries for code | | Code Search |
 
 ---
 

@@ -13,6 +13,18 @@ import re
 from typing import List, Set, Optional, Dict, Tuple
 
 
+# Ubiquitous code tokens that pollute query expansion
+# These appear in almost every Python method/function, so they add noise
+# rather than signal when expanding queries for code search
+CODE_EXPANSION_STOP_WORDS = frozenset({
+    'self', 'cls',              # Class method parameters
+    'args', 'kwargs',           # Variadic parameters
+    'none', 'true', 'false',    # Literals (too common)
+    'return', 'pass',           # Control flow (too common)
+    'def', 'class',             # Definitions (search for these explicitly)
+})
+
+
 # Programming keywords that should be preserved even if in stop words
 PROGRAMMING_KEYWORDS = frozenset({
     'def', 'class', 'function', 'return', 'import', 'from', 'if', 'else',
@@ -25,6 +37,9 @@ PROGRAMMING_KEYWORDS = frozenset({
     'isinstance', 'hasattr', 'getattr', 'setattr', 'len', 'range',
     'enumerate', 'zip', 'map', 'filter', 'print', 'open', 'read',
     'write', 'close', 'append', 'extend', 'insert', 'remove', 'pop',
+    # Dunder method components (for __init__, __slots__, etc.)
+    'repr', 'slots', 'name', 'doc', 'call', 'iter', 'next', 'enter',
+    'exit', 'getitem', 'setitem', 'delitem', 'contains', 'hash', 'eq',
     'const', 'let', 'var', 'public', 'private', 'protected', 'static',
     'final', 'abstract', 'interface', 'implements', 'extends', 'new',
     'this', 'constructor', 'module', 'export', 'require', 'package',
@@ -262,7 +277,8 @@ class Tokenizer:
 
         # Extract potential identifiers (including camelCase with internal caps)
         # Pattern matches: word2vec, getUserData, get_user_data, XMLParser
-        raw_tokens = re.findall(r'\b[a-zA-Z][a-zA-Z0-9_]*\b', text)
+        # Also matches underscore-prefixed: __init__, _private, __slots__
+        raw_tokens = re.findall(r'\b_*[a-zA-Z][a-zA-Z0-9_]*\b', text)
 
         result = []
         seen_splits = set()  # Only track splits to avoid duplicates from them
