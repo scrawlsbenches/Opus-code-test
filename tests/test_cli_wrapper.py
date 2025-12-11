@@ -1085,6 +1085,157 @@ class TestExecutionContextEdgeCases(unittest.TestCase):
         d = ctx.to_dict()
         self.assertEqual(d['metadata']['custom_key'], 'custom_value')
 
+    def test_to_dict_complete(self):
+        """Test to_dict includes all fields."""
+        ctx = ExecutionContext(
+            command=['test', 'cmd'],
+            command_str='test cmd',
+            exit_code=0,
+            success=True,
+            stdout='output',
+            stderr='error',
+            duration=1.5,
+            task_type='test',
+        )
+        d = ctx.to_dict()
+
+        self.assertEqual(d['command'], ['test', 'cmd'])
+        self.assertEqual(d['command_str'], 'test cmd')
+        self.assertEqual(d['exit_code'], 0)
+        self.assertTrue(d['success'])
+        self.assertEqual(d['stdout'], 'output')
+        self.assertEqual(d['stderr'], 'error')
+        self.assertEqual(d['duration'], 1.5)
+        self.assertEqual(d['task_type'], 'test')
+
+
+class TestCLIWrapperTaskClassification(unittest.TestCase):
+    """Tests for task type classification."""
+
+    def test_classify_test_commands(self):
+        """Test classification of test commands."""
+        wrapper = CLIWrapper(collect_git_context=False)
+
+        ctx = wrapper._build_context(['pytest', 'tests/'])
+        self.assertEqual(ctx.task_type, 'test')
+
+        ctx = wrapper._build_context(['python', '-m', 'unittest'])
+        self.assertEqual(ctx.task_type, 'test')
+
+    def test_classify_git_commands(self):
+        """Test classification of git commands."""
+        wrapper = CLIWrapper(collect_git_context=False)
+
+        ctx = wrapper._build_context(['git', 'commit', '-m', 'msg'])
+        self.assertEqual(ctx.task_type, 'commit')
+
+        ctx = wrapper._build_context(['git', 'add', '.'])
+        self.assertEqual(ctx.task_type, 'commit')
+
+    def test_classify_build_commands(self):
+        """Test classification of build commands."""
+        wrapper = CLIWrapper(collect_git_context=False)
+
+        ctx = wrapper._build_context(['make'])
+        self.assertEqual(ctx.task_type, 'build')
+
+    def test_classify_lint_commands(self):
+        """Test classification of lint commands."""
+        wrapper = CLIWrapper(collect_git_context=False)
+
+        ctx = wrapper._build_context(['flake8', 'src/'])
+        self.assertEqual(ctx.task_type, 'lint')
+
+        ctx = wrapper._build_context(['mypy', 'src/'])
+        self.assertEqual(ctx.task_type, 'lint')
+
+    def test_classify_unknown_commands(self):
+        """Test classification of unknown commands."""
+        wrapper = CLIWrapper(collect_git_context=False)
+
+        ctx = wrapper._build_context(['echo', 'hello'])
+        self.assertEqual(ctx.task_type, 'other')
+
+    def test_classify_empty_command(self):
+        """Test classification of empty command."""
+        wrapper = CLIWrapper(collect_git_context=False)
+
+        ctx = wrapper._build_context([])
+        self.assertEqual(ctx.task_type, 'unknown')
+
+
+class TestSessionAllPassed(unittest.TestCase):
+    """Tests for Session.all_passed edge cases."""
+
+    def test_all_passed_empty_results(self):
+        """Test all_passed with no results returns True."""
+        with Session(git=False) as s:
+            # Don't run anything
+            pass
+
+        # Empty results should return True (vacuous truth)
+        self.assertTrue(s.all_passed)
+
+    def test_all_passed_single_success(self):
+        """Test all_passed with single success."""
+        with Session(git=False) as s:
+            s.run("echo ok")
+
+        self.assertTrue(s.all_passed)
+
+    def test_all_passed_single_failure(self):
+        """Test all_passed with single failure."""
+        with Session(git=False) as s:
+            s.run(["python", "-c", "import sys; sys.exit(1)"])
+
+        self.assertFalse(s.all_passed)
+
+
+class TestTaskCompletionManagerEdgeCases(unittest.TestCase):
+    """Additional tests for TaskCompletionManager."""
+
+    def test_handler_exception_caught(self):
+        """Test that handler exceptions don't crash completion."""
+        manager = TaskCompletionManager()
+
+        def bad_handler(ctx):
+            raise ValueError("Handler error!")
+
+        manager.on_task_complete('test', bad_handler)
+
+        ctx = ExecutionContext(task_type='test', success=True)
+        # Should not raise
+        manager.handle_completion(ctx)
+
+        # Error should be logged
+        self.assertIn('completion_errors', ctx.metadata)
+
+    def test_global_handler_exception_caught(self):
+        """Test that global handler exceptions don't crash completion."""
+        manager = TaskCompletionManager()
+
+        def bad_handler(ctx):
+            raise RuntimeError("Global handler error!")
+
+        manager.on_any_complete(bad_handler)
+
+        ctx = ExecutionContext(task_type='test', success=True)
+        # Should not raise
+        manager.handle_completion(ctx)
+
+        self.assertIn('completion_errors', ctx.metadata)
+
+    def test_should_reindex_non_code_files(self):
+        """Test that non-code files don't trigger reindex."""
+        manager = TaskCompletionManager()
+
+        ctx = ExecutionContext(task_type='other')
+        ctx.git.modified_files = ['image.png', 'data.csv']
+        manager.handle_completion(ctx)
+
+        # Non-code files shouldn't trigger reindex
+        self.assertFalse(manager.should_trigger_reindex())
+
 
 if __name__ == '__main__':
     unittest.main()
