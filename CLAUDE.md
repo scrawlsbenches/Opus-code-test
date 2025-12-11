@@ -121,6 +121,9 @@ The bigram separator mismatch bugs in `query.py:1442-1468` and `analysis.py:927`
    python showcase.py
    ```
 3. **Check for regressions** in related functionality
+4. **Dog-food the feature** - test with real usage (see [dogfooding-checklist.md](docs/dogfooding-checklist.md))
+5. **Document all findings** - add issues to TASK_LIST.md (see [code-of-ethics.md](docs/code-of-ethics.md))
+6. **Verify completion** - use [definition-of-done.md](docs/definition-of-done.md) checklist
 
 ---
 
@@ -491,8 +494,14 @@ python scripts/index_codebase.py --status --use-chunks
 - **Graph algorithms**: `cortical/analysis.py` - PageRank, TF-IDF, clustering
 - **Search**: `cortical/query.py` - query expansion, document retrieval
 - **Data structures**: `cortical/minicolumn.py` - `Minicolumn`, `Edge`
+- **Configuration**: `cortical/config.py` - `CorticalConfig` dataclass
 - **Tests**: `tests/test_processor.py` - most comprehensive test file
 - **Demo**: `showcase.py` - interactive demonstration
+
+**Process Documentation:**
+- **Ethics**: `docs/code-of-ethics.md` - documentation, testing, and completion standards
+- **Dog-fooding**: `docs/dogfooding-checklist.md` - checklist for testing with real usage
+- **Definition of Done**: `docs/definition-of-done.md` - when is a task truly complete?
 
 ---
 

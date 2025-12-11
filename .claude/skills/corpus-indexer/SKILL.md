@@ -99,6 +99,7 @@ This enables fast incremental updates by detecting only changed files.
 - Use `--status` to check if re-indexing is needed
 - Use `--force` after major refactoring
 - Use `--full-analysis` before deep exploration sessions
+- After indexing, **test search quality** - see `docs/dogfooding-checklist.md`
 
 ## Git-Compatible Chunk Storage
 
