@@ -1,0 +1,17 @@
+Customer Satisfaction Metrics
+
+Customer satisfaction metrics quantify service quality and identify improvement opportunities. CSAT scores measure satisfaction with specific interactions through post-contact surveys. Five-point scales simplify response collection while providing actionable feedback.
+
+Net Promoter Score segments customers into promoters, passives, and detractors based on recommendation likelihood. NPS correlates with retention rates and revenue growth. Tracking NPS trends reveals impact of service changes and product updates.
+
+Customer Effort Score assesses ease of problem resolution. Low-effort experiences build loyalty; high-effort interactions drive churn. CES surveys ask customers to rate resolution difficulty on agreement scales.
+
+First response time measures delay between ticket submission and initial agent reply. Customer expectations vary by channel: chat demands minutes, email accepts hours. Response time SLAs set targets balancing cost and customer experience.
+
+Average handle time tracks interaction duration from start to resolution. Shorter handling times increase capacity but may sacrifice quality. Optimal AHT balances efficiency with thorough problem solving.
+
+Ticket backlog monitors queue depth and aging. Growing backlogs signal staffing shortfalls or process inefficiencies. Aging reports highlight stale tickets requiring attention or escalation.
+
+Resolution rate calculates percentage of tickets closed as solved versus unresolved. Low rates indicate knowledge gaps or product issues beyond support scope. Tracking resolution by category reveals training opportunities.
+
+Customer churn analysis correlates support experiences with account cancellations. Poor support interactions increase churn probability. Identifying at-risk customers enables proactive intervention and retention efforts.
