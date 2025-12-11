@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 32
+**Pending Tasks:** 33
 **Completed Tasks:** 88+ (see archive)
 
 ---
@@ -16,6 +16,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
+| 128 | Definition boost favors test mocks over real implementations | Search | - | Medium |
 | 124 | Add minimum cluster count regression tests | Testing | - | Medium |
 | 125 | Add clustering quality metrics (modularity, silhouette) | DevEx | - | Medium |
 
