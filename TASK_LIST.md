@@ -2927,7 +2927,7 @@ raw_tokens = re.findall(r'\b[a-zA-Z][a-zA-Z0-9_]*\b', text)
 
 **Files:** `cortical/query.py`, `scripts/search_codebase.py`
 **Status:** [ ] Not Started
-**Priority:** Medium
+**Priority:** High
 **Category:** Code Search
 
 **Problem:**
@@ -2959,7 +2959,7 @@ def find_definition_passage(doc_text: str, pattern: str, context_chars: int = 50
 
 **Files:** `cortical/query.py`, `scripts/search_codebase.py`
 **Status:** [ ] Not Started
-**Priority:** Low
+**Priority:** Medium
 **Category:** Code Search
 
 **Problem:**
@@ -2984,7 +2984,7 @@ Test files often rank higher than source files because they mention class/functi
 
 **Files:** `cortical/query.py`
 **Status:** [ ] Not Started
-**Priority:** Low
+**Priority:** Medium
 **Category:** Code Search
 
 **Problem:**
@@ -3031,9 +3031,9 @@ def create_code_aware_chunks(text: str, target_size: int = 500):
 | 81 | High | Fix tokenizer underscore-prefixed identifiers | ✓ Done | Code Search |
 | 82 | High | Add code stop words filter for query expansion | ✓ Done | Code Search |
 | 83 | Medium | Add definition-aware boosting for class/def queries | ✓ Done | Code Search |
-| 84 | Medium | Add direct definition pattern search | | Code Search |
-| 85 | Low | Improve test file vs source file ranking | | Code Search |
-| 86 | Low | Add semantic chunk boundaries for code | | Code Search |
+| 84 | High | Add direct definition pattern search | | Code Search |
+| 85 | Medium | Improve test file vs source file ranking | | Code Search |
+| 86 | Medium | Add semantic chunk boundaries for code | | Code Search |
 
 ---
 
