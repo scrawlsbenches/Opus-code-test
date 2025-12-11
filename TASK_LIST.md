@@ -2322,44 +2322,43 @@ def get_doc_type(doc_id: str) -> str:
 
 ### 66. Add Doc-Type Boosting to Passage-Level Search
 
-**Files:** `cortical/query.py`, `scripts/search_codebase.py`
-**Status:** [ ] Not Started
+**Files:** `cortical/query.py`, `cortical/processor.py`, `tests/test_query.py`
+**Status:** [x] Completed (2025-12-11)
 **Priority:** Medium
 
 **Problem:**
 Document-level search correctly applies doc-type boosting (CLAUDE.md ranks #3 for "chunk compaction"), but passage-level search (`find_passages_for_query`) returns raw TF-IDF scores without boosting. This causes code snippets with keyword matches to rank higher than documentation passages for conceptual queries.
 
-**Evidence (2025-12-11 dog-fooding):**
-```
-# Document-level search correctly ranks docs:
-TASK_LIST.md: 9.837 (root_docs)
-CLAUDE.md: 8.146 (root_docs)  ← Documentation found
+**Solution Applied:**
+1. Added `apply_doc_boost` parameter to `find_passages_for_query()` (default True)
+2. Added `auto_detect_intent` parameter to auto-boost docs for conceptual queries (default True)
+3. Added `prefer_docs` parameter to always boost documentation (default False)
+4. Added `custom_boosts` parameter for custom boost factors
+5. Passage scores are multiplied by doc-type boost factor when appropriate
+6. Definition passages also receive doc-type boost
+7. Added processor wrappers with same parameters
 
-# But passage search returns code first:
-[1] [CODE] cortical/chunk_index.py:291 Score: 2.549
-[2] [TEST] tests/test_chunk_indexing.py:77 Score: 2.157
-# CLAUDE.md "Chunk Compaction" section not in top 5
-```
+**Files Modified:**
+- `cortical/query.py` - Extended find_passages_for_query with boost parameters
+- `cortical/processor.py` - Updated processor wrapper
+- `tests/test_query.py` - Added 6 new tests
 
-**Solution:**
-Propagate doc-type boost to passage scoring:
-1. After chunking documents, apply `get_doc_type_boost()` to passage scores
-2. For conceptual queries (`is_conceptual_query()`), multiply passage score by doc-type boost
-3. Re-rank passages after boosting
-
-**Implementation Sketch:**
+**Usage:**
 ```python
-def find_passages_for_query(..., apply_doc_boost: bool = True):
-    # ... existing passage retrieval ...
+# Auto-detect conceptual queries and boost docs (default)
+results = processor.find_passages_for_query("what is PageRank algorithm")
 
-    if apply_doc_boost and is_conceptual_query(query_text):
-        boosted_passages = []
-        for passage, doc_id, start, end, score in passages:
-            boost = get_doc_type_boost(doc_id, doc_metadata)
-            boosted_passages.append((passage, doc_id, start, end, score * boost))
-        passages = sorted(boosted_passages, key=lambda x: -x[4])
+# Force docs preference
+results = processor.find_passages_for_query("PageRank", prefer_docs=True)
 
-    return passages[:top_n]
+# Disable boosting (raw TF-IDF)
+results = processor.find_passages_for_query("PageRank", apply_doc_boost=False)
+
+# Custom boost factors
+results = processor.find_passages_for_query(
+    "query",
+    custom_boosts={'docs': 2.0, 'code': 0.8, 'test': 0.5}
+)
 ```
 
 ---
@@ -2371,7 +2370,7 @@ def find_passages_for_query(..., apply_doc_boost: bool = True):
 | 65 | High | Add document metadata to chunk indexing | [x] Completed | Infrastructure |
 | 63 | High | Improve search ranking for docs | [x] Completed | Search Quality |
 | 64 | Low | Add document type indicator | [x] Completed | UX |
-| 66 | Medium | Add doc-type boost to passage search | [ ] Not Started | Search Quality |
+| 66 | Medium | Add doc-type boost to passage search | [x] Completed | Search Quality |
 
 **Dependency Chain:** #65 → #63 → #64 (all complete), #66 extends this work
 
@@ -2400,7 +2399,7 @@ def find_passages_for_query(..., apply_doc_boost: bool = True):
 |---|----------|------|--------|----------|
 | 41 | Medium | Create Configuration Dataclass | [x] Completed | Code Quality |
 | 56 | Medium | Create Usage Patterns Documentation | [x] Completed | Documentation |
-| 66 | Medium | Add doc-type boost to passage search | [ ] Not Started | Search Quality |
+| 66 | Medium | Add doc-type boost to passage search | [x] Completed | Search Quality |
 | 42 | Low | Add Simple Query Language Support | [ ] Not Started | Feature |
 | 44 | Low | Remove Deprecated feedforward_sources | [ ] Not Started | Code Quality |
 | 46 | Low | Standardize Return Types with Dataclasses | [ ] Not Started | Code Quality |
@@ -2925,8 +2924,8 @@ raw_tokens = re.findall(r'\b[a-zA-Z][a-zA-Z0-9_]*\b', text)
 
 ### 84. Add Direct Definition Pattern Search for Code Search
 
-**Files:** `cortical/query.py`, `scripts/search_codebase.py`
-**Status:** [ ] Not Started
+**Files:** `cortical/query.py`, `cortical/processor.py`, `tests/test_query.py`
+**Status:** [x] Completed (2025-12-11)
 **Priority:** High
 **Category:** Code Search
 
@@ -2935,30 +2934,40 @@ When searching for "class Minicolumn", the passage containing the actual class d
 
 **Found via dog-fooding:** Even with document-level boosting, the actual class definition often doesn't appear in top results.
 
-**Solution:**
-1. For definition queries, directly search source files for the definition pattern
-2. Create a synthetic high-scoring passage from the definition location
-3. Inject this passage into results before final ranking
-4. Consider using regex-based chunk extraction around definition sites
+**Solution Applied:**
+1. Added `is_definition_query()` function to detect definition queries (class/def/function/method patterns)
+2. Added `find_definition_in_text()` to search for definition patterns in source code
+3. Added `find_definition_passages()` to extract high-scoring passages from definitions
+4. Updated `find_passages_for_query()` with `use_definition_search` parameter (default True)
+5. Definition passages are injected with high boost score (5.0) before regular passages
+6. Test files receive a penalty (0.6x) so source files rank higher
+7. Added processor wrapper methods: `is_definition_query()`, `find_definition_passages()`
 
-**Example:**
+**Files Modified:**
+- `cortical/query.py` - Added definition search functions (~160 lines)
+- `cortical/processor.py` - Added processor wrappers (~65 lines)
+- `tests/test_query.py` - Added 19 new tests
+
+**Usage:**
 ```python
-def find_definition_passage(doc_text: str, pattern: str, context_chars: int = 500):
-    """Extract passage around a definition pattern match."""
-    match = re.search(pattern, doc_text)
-    if match:
-        start = max(0, match.start() - 50)
-        end = min(len(doc_text), match.end() + context_chars)
-        return doc_text[start:end], start, end
-    return None
+# Definition search is enabled by default
+results = processor.find_passages_for_query("class Minicolumn")
+# Returns passage containing actual class definition first
+
+# Disable if needed
+results = processor.find_passages_for_query("class Minicolumn", use_definition_search=False)
+
+# Check if query is a definition query
+is_def, def_type, name = processor.is_definition_query("def compute_pagerank")
+# (True, 'function', 'compute_pagerank')
 ```
 
 ---
 
 ### 85. Improve Test File vs Source File Ranking
 
-**Files:** `cortical/query.py`, `scripts/search_codebase.py`
-**Status:** [ ] Not Started
+**Files:** `cortical/query.py`
+**Status:** [x] Completed (2025-12-11) - Addressed by Tasks #84 and #66
 **Priority:** Medium
 **Category:** Code Search
 
@@ -2967,23 +2976,30 @@ Test files often rank higher than source files because they mention class/functi
 
 **Found via dog-fooding:** Searching "class Minicolumn" returns test_layers.py results before minicolumn.py results.
 
-**Solution Options:**
-1. Add file path-based scoring penalty for test files when query intent is "implementation"
-2. Detect test files (tests/, *_test.py, test_*.py) and apply negative boost
-3. Add user preference for "prefer source over tests" in search
-4. Use query intent detection to auto-adjust (implementation queries → penalize tests)
+**Solution Applied:**
+This is now addressed by two mechanisms:
 
-**Considerations:**
-- Should be configurable (sometimes users want to find tests)
-- Could integrate with existing `get_doc_type_boost()` function
-- Balance: tests are valuable for understanding usage patterns
+1. **Definition search (Task #84)** applies 0.6x penalty to test files for definition queries like "class Minicolumn" and "def compute_pagerank"
+
+2. **Doc-type boost (Task #66)** applies 0.8x boost to test files via `DOC_TYPE_BOOSTS`. This is applied for:
+   - Conceptual queries (auto-detected when `auto_detect_intent=True`)
+   - When `prefer_docs=True` is set
+   - Custom boosts via `custom_boosts` parameter
+
+**Test file detection:**
+```python
+is_test = (doc_id.startswith('tests/') or '_test' in doc_id or 'test_' in doc_id)
+```
+
+**Result:**
+For "class Minicolumn" queries, the actual class definition in `minicolumn.py` now ranks higher than test mentions in `test_layers.py`
 
 ---
 
 ### 86. Add Semantic Chunk Boundaries for Code
 
-**Files:** `cortical/query.py`
-**Status:** [ ] Not Started
+**Files:** `cortical/query.py`, `cortical/processor.py`, `tests/test_query.py`
+**Status:** [x] Completed (2025-12-11)
 **Priority:** Medium
 **Category:** Code Search
 
@@ -2992,21 +3008,66 @@ Current chunking uses fixed character boundaries which can split code mid-functi
 
 **Found via dog-fooding:** The chunk containing `class Minicolumn:` starts mid-way through the previous function's code.
 
-**Solution:**
-1. Detect code structure boundaries (class, def, blank lines)
-2. Adjust chunk boundaries to align with semantic units
-3. For Python: use indentation changes as boundary hints
-4. Consider AST-based chunking for supported languages
+**Solution Applied:**
+1. Added `find_code_boundaries()` to detect class/function/decorator boundaries
+2. Added `create_code_aware_chunks()` to split at semantic boundaries
+3. Added `is_code_file()` to detect code files by extension
+4. Added `use_code_aware_chunks` parameter to `find_passages_for_query()` (default True)
+5. Code files automatically use semantic chunking, other files use fixed chunking
 
-**Example improvement:**
+**Files Modified:**
+- `cortical/query.py` - Added code-aware chunking functions (~150 lines)
+- `cortical/processor.py` - Updated processor wrapper
+- `tests/test_query.py` - Added 15 new tests
+
+**Supported boundaries:**
+- Class definitions (`class Foo:`)
+- Function/method definitions (`def bar():`, `async def baz():`)
+- Decorators (`@decorator`)
+- Comment separators (`# ---` or `# ===`)
+- Blank line sequences
+
+**Usage:**
 ```python
-def create_code_aware_chunks(text: str, target_size: int = 500):
-    """Create chunks aligned to code structure boundaries."""
-    # Find all class/def boundaries
-    boundaries = [m.start() for m in re.finditer(r'^(?:class |def )', text, re.M)]
-    # Create chunks that start at boundaries
-    ...
+# Enabled by default for code files
+results = processor.find_passages_for_query("class Minicolumn")
+
+# Disable if needed
+results = processor.find_passages_for_query("class Minicolumn", use_code_aware_chunks=False)
 ```
+
+---
+
+### 87. Add Python Code Samples and Update Showcase for Code Search
+
+**Files:** `showcase.py`, `samples/data_processor.py`, `samples/search_engine.py`, `samples/test_data_processor.py`
+**Status:** [ ] In Progress (2025-12-11)
+**Priority:** Medium
+**Category:** Showcase
+
+**Problem:**
+The showcase.py demonstrates code search features but the `samples/` directory only contains prose text files (`.txt`). The new code search features from Tasks #84, #66, and #86 need actual Python code to demonstrate properly:
+- Definition search needs actual `class` and `def` statements to find
+- Doc-type boosting needs test files vs source files to show scoring differences
+- Code-aware chunking needs code files to show semantic boundary detection
+
+**Solution Applied:**
+1. Added Python code samples to `samples/`:
+   - `data_processor.py` - DataRecord class, DataProcessor class, utility functions
+   - `search_engine.py` - SearchIndex class, QueryParser class, BM25 scoring
+   - `test_data_processor.py` - Unit tests (for test file penalty demonstration)
+
+2. Updated `showcase.py`:
+   - Load `.py` files alongside `.txt` files
+   - Add definition search demo (find "class DataProcessor", "def calculate_statistics")
+   - Add doc-type boosting demo (compare scores with/without boost)
+   - Add code-aware chunking demo (compare regular vs semantic chunks)
+
+**Files Modified:**
+- `showcase.py` - Load .py files, add new feature demos
+- `samples/data_processor.py` - New sample (570 words)
+- `samples/search_engine.py` - New sample (819 words)
+- `samples/test_data_processor.py` - New sample (611 words)
 
 ---
 
@@ -3031,9 +3092,10 @@ def create_code_aware_chunks(text: str, target_size: int = 500):
 | 81 | High | Fix tokenizer underscore-prefixed identifiers | ✓ Done | Code Search |
 | 82 | High | Add code stop words filter for query expansion | ✓ Done | Code Search |
 | 83 | Medium | Add definition-aware boosting for class/def queries | ✓ Done | Code Search |
-| 84 | High | Add direct definition pattern search | | Code Search |
-| 85 | Medium | Improve test file vs source file ranking | | Code Search |
-| 86 | Medium | Add semantic chunk boundaries for code | | Code Search |
+| 84 | High | Add direct definition pattern search | ✓ Done | Code Search |
+| 85 | Medium | Improve test file vs source file ranking | ✓ Done | Code Search |
+| 86 | Medium | Add semantic chunk boundaries for code | ✓ Done | Code Search |
+| 87 | Medium | Add Python code samples and update showcase | In Progress | Showcase |
 
 ---
 

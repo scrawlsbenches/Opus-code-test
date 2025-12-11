@@ -81,6 +81,168 @@ IMPLEMENTATION_KEYWORDS = frozenset([
 ])
 
 
+# =============================================================================
+# Definition Pattern Search
+# =============================================================================
+
+# Patterns for detecting definition queries
+DEFINITION_QUERY_PATTERNS = [
+    # "class Foo" or "class foo"
+    (r'\bclass\s+(\w+)', 'class'),
+    # "def bar" or "function bar"
+    (r'\bdef\s+(\w+)', 'function'),
+    (r'\bfunction\s+(\w+)', 'function'),
+    # "method baz"
+    (r'\bmethod\s+(\w+)', 'method'),
+]
+
+# Regex patterns for finding definitions in source code
+# Format: (pattern_template, definition_type)
+# pattern_template uses {name} placeholder for the identifier
+DEFINITION_SOURCE_PATTERNS = {
+    'python_class': r'^class\s+{name}\b[^:]*:',
+    'python_function': r'^def\s+{name}\s*\(',
+    'python_method': r'^\s+def\s+{name}\s*\(',
+    'javascript_function': r'^function\s+{name}\s*\(',
+    'javascript_class': r'^class\s+{name}\b',
+    'javascript_const_fn': r'^const\s+{name}\s*=\s*(?:async\s*)?\(',
+}
+
+# Default boost for definition matches
+DEFINITION_BOOST = 5.0
+
+
+def is_definition_query(query_text: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    """
+    Detect if a query is looking for a code definition.
+
+    Recognizes patterns like:
+    - "class Minicolumn"
+    - "def compute_pagerank"
+    - "function tokenize"
+    - "method process_document"
+
+    Args:
+        query_text: The search query
+
+    Returns:
+        Tuple of (is_definition, definition_type, identifier_name)
+        If not a definition query, returns (False, None, None)
+    """
+    query_lower = query_text.strip()
+
+    for pattern, def_type in DEFINITION_QUERY_PATTERNS:
+        match = re.search(pattern, query_lower, re.IGNORECASE)
+        if match:
+            identifier = match.group(1)
+            return (True, def_type, identifier)
+
+    return (False, None, None)
+
+
+def find_definition_in_text(
+    text: str,
+    identifier: str,
+    def_type: str,
+    context_chars: int = 500
+) -> Optional[Tuple[str, int, int]]:
+    """
+    Find a definition in source text and extract surrounding context.
+
+    Args:
+        text: Source code text to search
+        identifier: Name of the class/function/method to find
+        def_type: Type of definition ('class', 'function', 'method')
+        context_chars: Number of characters of context to include after the definition
+
+    Returns:
+        Tuple of (passage_text, start_char, end_char) or None if not found
+    """
+    # Build patterns to try based on definition type
+    patterns_to_try = []
+
+    if def_type == 'class':
+        patterns_to_try = [
+            DEFINITION_SOURCE_PATTERNS['python_class'],
+            DEFINITION_SOURCE_PATTERNS['javascript_class'],
+        ]
+    elif def_type in ('function', 'method'):
+        patterns_to_try = [
+            DEFINITION_SOURCE_PATTERNS['python_function'],
+            DEFINITION_SOURCE_PATTERNS['python_method'],
+            DEFINITION_SOURCE_PATTERNS['javascript_function'],
+            DEFINITION_SOURCE_PATTERNS['javascript_const_fn'],
+        ]
+
+    # Try each pattern
+    for pattern_template in patterns_to_try:
+        pattern = pattern_template.format(name=re.escape(identifier))
+        match = re.search(pattern, text, re.MULTILINE | re.IGNORECASE)
+        if match:
+            # Extract context around the definition
+            start = max(0, match.start() - 50)  # Small lead-in for context
+            end = min(len(text), match.end() + context_chars)
+
+            # Try to extend to next blank line or class/function boundary
+            remaining = text[match.end():end]
+            # Look for a good boundary (blank line followed by non-indented text)
+            boundary_match = re.search(r'\n\n(?=[^\s])', remaining)
+            if boundary_match:
+                end = match.end() + boundary_match.end()
+
+            passage = text[start:end]
+            return (passage, start, end)
+
+    return None
+
+
+def find_definition_passages(
+    query_text: str,
+    documents: Dict[str, str],
+    context_chars: int = 500,
+    boost: float = DEFINITION_BOOST
+) -> List[Tuple[str, str, int, int, float]]:
+    """
+    Find definition passages for a definition query.
+
+    If the query is looking for a class/function/method definition,
+    directly search source files for the definition and return
+    high-scoring passages.
+
+    Args:
+        query_text: Search query (e.g., "class Minicolumn", "def compute_pagerank")
+        documents: Dict mapping doc_id to document text
+        context_chars: Characters of context to include after definition
+        boost: Score boost for definition matches
+
+    Returns:
+        List of (passage_text, doc_id, start_char, end_char, score) tuples.
+        Returns empty list if query is not a definition query.
+    """
+    is_def, def_type, identifier = is_definition_query(query_text)
+
+    if not is_def or not identifier:
+        return []
+
+    results = []
+
+    # Search all documents for the definition
+    for doc_id, text in documents.items():
+        # Prefer source files over test files for definitions
+        is_test = doc_id.startswith('tests/') or '_test' in doc_id or 'test_' in doc_id
+
+        result = find_definition_in_text(text, identifier, def_type, context_chars)
+        if result:
+            passage, start, end = result
+            # Apply boost, with penalty for test files
+            score = boost * (0.6 if is_test else 1.0)
+            results.append((passage, doc_id, start, end, score))
+
+    # Sort by score (highest first)
+    results.sort(key=lambda x: -x[4])
+    return results
+
+
 def is_conceptual_query(query_text: str) -> bool:
     """
     Determine if a query is conceptual (should boost documentation).
@@ -1316,6 +1478,166 @@ def create_chunks(
     return chunks
 
 
+# Pattern to detect code structure boundaries
+CODE_BOUNDARY_PATTERN = re.compile(
+    r'^(?:'
+    r'class\s+\w+|'          # Class definitions
+    r'def\s+\w+|'            # Function definitions
+    r'async\s+def\s+\w+|'    # Async function definitions
+    r'@\w+|'                 # Decorators
+    r'#\s*[-=]{3,}|'         # Comment separators (# --- or # ===)
+    r'"""[^"]*"""|'          # Module/class docstrings (simple)
+    r"'''[^']*'''"           # Module/class docstrings (simple, single quotes)
+    r')',
+    re.MULTILINE
+)
+
+
+def find_code_boundaries(text: str) -> List[int]:
+    """
+    Find semantic boundaries in code (class/function definitions, decorators).
+
+    Args:
+        text: Source code text
+
+    Returns:
+        Sorted list of character positions where semantic units begin
+    """
+    boundaries = set([0])  # Always include start
+
+    # Find class/def boundaries
+    for match in CODE_BOUNDARY_PATTERN.finditer(text):
+        # Find the start of the line containing this match
+        line_start = text.rfind('\n', 0, match.start()) + 1
+        boundaries.add(line_start)
+
+    # Also add positions after blank line sequences (natural section breaks)
+    blank_line_pattern = re.compile(r'\n\n+')
+    for match in blank_line_pattern.finditer(text):
+        boundaries.add(match.end())
+
+    return sorted(boundaries)
+
+
+def create_code_aware_chunks(
+    text: str,
+    target_size: int = 512,
+    min_size: int = 100,
+    max_size: int = 1024
+) -> List[Tuple[str, int, int]]:
+    """
+    Create chunks aligned to code structure boundaries.
+
+    Unlike fixed-size chunking, this function tries to split code at
+    natural boundaries (class definitions, function definitions, blank lines)
+    to preserve semantic context within each chunk.
+
+    Args:
+        text: Source code text to chunk
+        target_size: Target chunk size in characters (default 512)
+        min_size: Minimum chunk size - won't create chunks smaller than this (default 100)
+        max_size: Maximum chunk size - will split even mid-code if exceeded (default 1024)
+
+    Returns:
+        List of (chunk_text, start_char, end_char) tuples
+
+    Example:
+        >>> text = '''
+        ... class Foo:
+        ...     def bar(self):
+        ...         pass
+        ...
+        ... class Baz:
+        ...     def qux(self):
+        ...         pass
+        ... '''
+        >>> chunks = create_code_aware_chunks(text, target_size=100)
+        >>> # Chunks will be aligned to class/function boundaries
+    """
+    if not text:
+        return []
+
+    if len(text) <= target_size:
+        return [(text, 0, len(text))]
+
+    boundaries = find_code_boundaries(text)
+    boundaries.append(len(text))  # Add end of text
+
+    chunks = []
+    chunk_start = 0
+    i = 1
+
+    while chunk_start < len(text):
+        # Find the next boundary that would exceed target_size
+        best_end = chunk_start + max_size  # Default to max_size if no boundary found
+
+        # Look for a boundary between target_size and max_size
+        for j in range(i, len(boundaries)):
+            boundary = boundaries[j]
+            chunk_len = boundary - chunk_start
+
+            if chunk_len >= target_size:
+                if chunk_len <= max_size:
+                    # Good boundary within range
+                    best_end = boundary
+                    i = j + 1
+                    break
+                else:
+                    # Boundary too far, use previous one or force split
+                    if j > i:
+                        prev_boundary = boundaries[j - 1]
+                        prev_len = prev_boundary - chunk_start
+                        if prev_len >= min_size:
+                            best_end = prev_boundary
+                            i = j
+                            break
+                    # Force split at max_size
+                    best_end = chunk_start + max_size
+                    # Find the next boundary after our split point
+                    for k in range(i, len(boundaries)):
+                        if boundaries[k] > best_end:
+                            i = k
+                            break
+                    break
+        else:
+            # Reached end of boundaries, use text end
+            best_end = len(text)
+            i = len(boundaries)
+
+        # Ensure we don't exceed max_size
+        if best_end - chunk_start > max_size:
+            best_end = chunk_start + max_size
+
+        # Create chunk if non-empty
+        chunk_text = text[chunk_start:best_end]
+        if chunk_text.strip():
+            chunks.append((chunk_text, chunk_start, best_end))
+
+        chunk_start = best_end
+
+    return chunks
+
+
+def is_code_file(doc_id: str) -> bool:
+    """
+    Determine if a document is a code file based on its path/extension.
+
+    Args:
+        doc_id: Document identifier (typically a file path)
+
+    Returns:
+        True if the document appears to be a code file
+    """
+    code_extensions = {
+        '.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.c', '.cpp', '.h',
+        '.go', '.rs', '.rb', '.php', '.swift', '.kt', '.scala', '.cs'
+    }
+    for ext in code_extensions:
+        if doc_id.endswith(ext):
+            return True
+    return False
+
+
 def precompute_term_cols(
     query_terms: Dict[str, float],
     layer0: HierarchicalLayer
@@ -1438,13 +1760,32 @@ def find_passages_for_query(
     use_expansion: bool = True,
     doc_filter: Optional[List[str]] = None,
     semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
-    use_semantic: bool = True
+    use_semantic: bool = True,
+    use_definition_search: bool = True,
+    definition_boost: float = DEFINITION_BOOST,
+    apply_doc_boost: bool = True,
+    doc_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
+    auto_detect_intent: bool = True,
+    prefer_docs: bool = False,
+    custom_boosts: Optional[Dict[str, float]] = None,
+    use_code_aware_chunks: bool = True
 ) -> List[Tuple[str, str, int, int, float]]:
     """
     Find text passages most relevant to a query.
 
     This is the key function for RAG systems - instead of returning document IDs,
     it returns actual text passages with position information for citations.
+
+    For definition queries (e.g., "class Minicolumn", "def compute_pagerank"),
+    this function will directly search for the definition pattern and inject
+    those results with a high score, ensuring definitions appear in top results.
+
+    For conceptual queries (e.g., "what is PageRank", "explain architecture"),
+    documentation passages are boosted to appear higher in results when
+    auto_detect_intent=True.
+
+    For code files, semantic chunk boundaries can be used to align chunks
+    with class/function definitions rather than fixed character positions.
 
     Args:
         query_text: Search query
@@ -1458,12 +1799,35 @@ def find_passages_for_query(
         doc_filter: Optional list of doc_ids to restrict search to
         semantic_relations: Optional list of semantic relations for expansion
         use_semantic: Whether to use semantic relations for expansion (if available)
+        use_definition_search: Whether to search for definition patterns (default True)
+        definition_boost: Score boost for definition matches (default 5.0)
+        apply_doc_boost: Whether to apply document-type boosting (default True)
+        doc_metadata: Optional metadata dict {doc_id: {doc_type: ..., ...}}
+        auto_detect_intent: Auto-detect conceptual queries and boost docs (default True)
+        prefer_docs: Always boost documentation regardless of query type (default False)
+        custom_boosts: Optional custom boost factors for doc types
+        use_code_aware_chunks: Use semantic boundaries for code files (default True)
 
     Returns:
         List of (passage_text, doc_id, start_char, end_char, score) tuples
         ranked by relevance
     """
     layer0 = layers[CorticalLayer.TOKENS]
+
+    # Determine if we should apply doc-type boosting
+    should_boost = apply_doc_boost and (
+        prefer_docs or (auto_detect_intent and is_conceptual_query(query_text))
+    )
+
+    # Check for definition query and find definition passages
+    definition_passages: List[Tuple[str, str, int, int, float]] = []
+    if use_definition_search:
+        docs_to_search = documents
+        if doc_filter:
+            docs_to_search = {k: v for k, v in documents.items() if k in doc_filter}
+        definition_passages = find_definition_passages(
+            query_text, docs_to_search, chunk_size, definition_boost
+        )
 
     # Get expanded query terms
     query_terms = get_expanded_query_terms(
@@ -1473,8 +1837,18 @@ def find_passages_for_query(
         use_semantic=use_semantic
     )
 
-    if not query_terms:
+    if not query_terms and not definition_passages:
         return []
+
+    # If we only have definition results, apply boosting and return
+    if not query_terms:
+        if should_boost:
+            definition_passages = [
+                (p[0], p[1], p[2], p[3], p[4] * get_doc_type_boost(p[1], doc_metadata, custom_boosts))
+                for p in definition_passages
+            ]
+            definition_passages.sort(key=lambda x: -x[4])
+        return definition_passages[:top_n]
 
     # Pre-compute minicolumn lookups for query terms (optimization)
     term_cols = precompute_term_cols(query_terms, layer0)
@@ -1497,14 +1871,34 @@ def find_passages_for_query(
     # Score passages within candidate documents
     passages: List[Tuple[str, str, int, int, float]] = []
 
+    # Track definition passage locations to avoid duplicates
+    def_locations = {(p[1], p[2], p[3]) for p in definition_passages}
+
     for doc_id, doc_score in doc_scores:
         if doc_id not in documents:
             continue
 
         text = documents[doc_id]
-        chunks = create_chunks(text, chunk_size, overlap)
+
+        # Use code-aware chunking for code files if enabled
+        if use_code_aware_chunks and is_code_file(doc_id):
+            chunks = create_code_aware_chunks(
+                text,
+                target_size=chunk_size,
+                min_size=max(50, chunk_size // 4),
+                max_size=chunk_size * 2
+            )
+        else:
+            chunks = create_chunks(text, chunk_size, overlap)
+
+        # Pre-compute doc-type boost for this document
+        doc_type_boost = get_doc_type_boost(doc_id, doc_metadata, custom_boosts) if should_boost else 1.0
 
         for chunk_text, start_char, end_char in chunks:
+            # Skip if this overlaps with a definition passage
+            if (doc_id, start_char, end_char) in def_locations:
+                continue
+
             # Use fast scoring with pre-computed lookups
             chunk_tokens = tokenizer.tokenize(chunk_text)
             chunk_score = score_chunk_fast(
@@ -1512,6 +1906,9 @@ def find_passages_for_query(
             )
             # Combine chunk score with document score for final ranking
             combined_score = chunk_score * (1 + doc_score * 0.1)
+
+            # Apply document-type boost
+            combined_score *= doc_type_boost
 
             passages.append((
                 chunk_text,
@@ -1521,9 +1918,19 @@ def find_passages_for_query(
                 combined_score
             ))
 
+    # Apply doc-type boost to definition passages too
+    if should_boost:
+        definition_passages = [
+            (p[0], p[1], p[2], p[3], p[4] * get_doc_type_boost(p[1], doc_metadata, custom_boosts))
+            for p in definition_passages
+        ]
+
+    # Combine definition passages with regular passages
+    all_passages = definition_passages + passages
+
     # Sort by score and return top passages
-    passages.sort(key=lambda x: x[4], reverse=True)
-    return passages[:top_n]
+    all_passages.sort(key=lambda x: x[4], reverse=True)
+    return all_passages[:top_n]
 
 
 def find_documents_batch(

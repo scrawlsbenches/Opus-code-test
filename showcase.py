@@ -114,19 +114,23 @@ class CorticalShowcase:
             print(f"  ❌ Directory not found: {self.samples_dir}")
             return False
 
+        # Load both .txt and .py files
         txt_files = sorted([f for f in os.listdir(self.samples_dir) if f.endswith('.txt')])
+        py_files = sorted([f for f in os.listdir(self.samples_dir) if f.endswith('.py')])
+        all_files = txt_files + py_files
 
-        if not txt_files:
+        if not all_files:
             return False
 
         # Time document loading
         self.timer.start('document_loading')
-        for filename in txt_files:
+        for filename in all_files:
             filepath = os.path.join(self.samples_dir, filename)
             with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
 
-            doc_id = filename.replace('.txt', '')
+            # Handle both .txt and .py extensions
+            doc_id = filename.replace('.txt', '').replace('.py', '')
             self.processor.process_document(doc_id, content)
             word_count = len(content.split())
             self.loaded_files.append((doc_id, word_count))
@@ -432,7 +436,93 @@ class CorticalShowcase:
         print("\n    💡 Use case: Boost documentation for conceptual queries,")
         print("                 boost code files for implementation queries.")
 
-        # 2. Code-aware query expansion
+        # 2. Definition search (NEW - Task #84)
+        print_subheader("\n🔎 Definition Search")
+        print("    Find class/function definitions directly in code:\n")
+
+        definition_queries = ["class DataProcessor", "def calculate_statistics", "class SearchIndex"]
+
+        for query in definition_queries:
+            is_def, def_type, identifier = self.processor.is_definition_query(query)
+            print(f"    Query: \"{query}\"")
+            print(f"      Is definition query: {is_def} ({def_type} '{identifier}')" if is_def else f"      Is definition query: {is_def}")
+
+            if is_def:
+                passages = self.processor.find_definition_passages(query)
+                if passages:
+                    text, doc_id, start, end, score = passages[0]
+                    # Show first line of the definition
+                    first_line = text.strip().split('\n')[0][:60]
+                    print(f"      Found in: {doc_id}")
+                    print(f"      Match: {first_line}...")
+                else:
+                    print(f"      (No definition found in corpus)")
+            print()
+
+        # 3. Doc-type boosting (NEW - Task #66)
+        print_subheader("📊 Doc-Type Boosting")
+        print("    Apply different weights to docs, code, and test files:\n")
+
+        query = "filter data records"
+        print(f"    Query: \"{query}\"\n")
+
+        # Without boosting
+        results_normal = self.processor.find_passages_for_query(
+            query, top_n=3, apply_doc_boost=False
+        )
+
+        # With boosting (prefer docs over tests)
+        results_boosted = self.processor.find_passages_for_query(
+            query, top_n=3, apply_doc_boost=True, prefer_docs=True
+        )
+
+        print("    Without doc-type boost:")
+        for text, doc_id, start, end, score in results_normal[:3]:
+            is_test = 'test' in doc_id.lower()
+            marker = "🧪" if is_test else "📄"
+            print(f"      {marker} {doc_id}: {score:.3f}")
+
+        print("\n    With doc-type boost (prefer docs, penalize tests):")
+        for text, doc_id, start, end, score in results_boosted[:3]:
+            is_test = 'test' in doc_id.lower()
+            marker = "🧪" if is_test else "📄"
+            print(f"      {marker} {doc_id}: {score:.3f}")
+
+        print("\n    💡 Test files receive a 0.5x penalty to surface source files first.")
+
+        # 4. Code-aware chunking (NEW - Task #86)
+        print_subheader("\n✂️  Code-Aware Chunking")
+        print("    Split code at semantic boundaries (class/function defs):\n")
+
+        # Find a Python file
+        code_doc_id = None
+        for doc_id, _ in self.loaded_files:
+            if doc_id in ['data_processor', 'search_engine']:
+                code_doc_id = doc_id
+                break
+
+        if code_doc_id:
+            content = self.processor.documents.get(code_doc_id, "")
+
+            # Regular chunking
+            from cortical.query import create_chunks, create_code_aware_chunks
+            regular_chunks = create_chunks(content, chunk_size=300, overlap=50)
+
+            # Code-aware chunking
+            code_chunks = create_code_aware_chunks(content, max_size=300)
+
+            print(f"    File: {code_doc_id}")
+            print(f"    Regular chunks: {len(regular_chunks)} (fixed 300-char boundaries)")
+            print(f"    Code-aware chunks: {len(code_chunks)} (semantic boundaries)\n")
+
+            print("    Code-aware chunk boundaries:")
+            for i, (chunk_text, start, end) in enumerate(code_chunks[:4]):
+                first_line = chunk_text.strip().split('\n')[0][:50]
+                print(f"      [{i+1}] {first_line}...")
+        else:
+            print("    (No Python files in corpus)")
+
+        # 5. Code-aware query expansion
         print_subheader("\n🔧 Code-Aware Query Expansion")
         print("    Programming synonyms expand queries for better code search:\n")
 
@@ -457,7 +547,7 @@ class CorticalShowcase:
                 print(f"      (corpus lacks programming synonyms for this query)")
             print()
 
-        # 3. Semantic fingerprinting
+        # 6. Semantic fingerprinting
         print_subheader("🔍 Semantic Fingerprinting")
         print("    Compare text similarity using semantic fingerprints:\n")
 

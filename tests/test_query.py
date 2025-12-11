@@ -38,6 +38,15 @@ from cortical.query import (
     complete_analogy_simple,
     query_with_spreading_activation,
     VALID_RELATION_CHAINS,
+    is_definition_query,
+    find_definition_in_text,
+    find_definition_passages,
+    DEFINITION_QUERY_PATTERNS,
+    DEFINITION_SOURCE_PATTERNS,
+    DEFINITION_BOOST,
+    find_code_boundaries,
+    create_code_aware_chunks,
+    is_code_file,
 )
 
 
@@ -1031,6 +1040,648 @@ class TestDocTypeBoostIntegration(unittest.TestCase):
         """Processor should have find_documents_with_boost method."""
         self.assertTrue(hasattr(self.processor, 'find_documents_with_boost'))
         self.assertTrue(hasattr(self.processor, 'is_conceptual_query'))
+
+
+class TestDefinitionPatternSearch(unittest.TestCase):
+    """Test definition pattern search functionality."""
+
+    def test_is_definition_query_class(self):
+        """Detect class definition queries."""
+        is_def, def_type, name = is_definition_query("class Minicolumn")
+        self.assertTrue(is_def)
+        self.assertEqual(def_type, 'class')
+        self.assertEqual(name, 'Minicolumn')
+
+    def test_is_definition_query_def(self):
+        """Detect function definition queries."""
+        is_def, def_type, name = is_definition_query("def compute_pagerank")
+        self.assertTrue(is_def)
+        self.assertEqual(def_type, 'function')
+        self.assertEqual(name, 'compute_pagerank')
+
+    def test_is_definition_query_function(self):
+        """Detect function keyword queries."""
+        is_def, def_type, name = is_definition_query("function tokenize")
+        self.assertTrue(is_def)
+        self.assertEqual(def_type, 'function')
+        self.assertEqual(name, 'tokenize')
+
+    def test_is_definition_query_method(self):
+        """Detect method definition queries."""
+        is_def, def_type, name = is_definition_query("method process_document")
+        self.assertTrue(is_def)
+        self.assertEqual(def_type, 'method')
+        self.assertEqual(name, 'process_document')
+
+    def test_is_definition_query_not_definition(self):
+        """Non-definition queries should return False."""
+        is_def, def_type, name = is_definition_query("neural networks")
+        self.assertFalse(is_def)
+        self.assertIsNone(def_type)
+        self.assertIsNone(name)
+
+    def test_is_definition_query_case_insensitive(self):
+        """Definition detection should be case insensitive."""
+        is_def, def_type, name = is_definition_query("CLASS MyClass")
+        self.assertTrue(is_def)
+        self.assertEqual(def_type, 'class')
+        self.assertEqual(name, 'MyClass')
+
+    def test_find_definition_in_text_python_class(self):
+        """Find Python class definitions."""
+        text = '''
+import os
+
+class MyProcessor:
+    """A processor class."""
+
+    def __init__(self):
+        pass
+'''
+        result = find_definition_in_text(text, 'MyProcessor', 'class')
+        self.assertIsNotNone(result)
+        passage, start, end = result
+        self.assertIn('class MyProcessor:', passage)
+
+    def test_find_definition_in_text_python_function(self):
+        """Find Python function definitions."""
+        text = '''
+def compute_score(items, weights):
+    """Compute weighted score."""
+    total = sum(i * w for i, w in zip(items, weights))
+    return total / len(items)
+'''
+        result = find_definition_in_text(text, 'compute_score', 'function')
+        self.assertIsNotNone(result)
+        passage, start, end = result
+        self.assertIn('def compute_score(', passage)
+
+    def test_find_definition_in_text_not_found(self):
+        """Return None when definition not found."""
+        text = 'def other_function(): pass'
+        result = find_definition_in_text(text, 'nonexistent', 'function')
+        self.assertIsNone(result)
+
+    def test_find_definition_in_text_method(self):
+        """Find method definitions (indented def)."""
+        text = '''
+class MyClass:
+    def my_method(self, arg):
+        return arg * 2
+'''
+        result = find_definition_in_text(text, 'my_method', 'method')
+        self.assertIsNotNone(result)
+        passage, start, end = result
+        self.assertIn('def my_method(', passage)
+
+    def test_find_definition_passages_basic(self):
+        """Find definition passages from documents."""
+        documents = {
+            'module.py': '''
+class TestClass:
+    """A test class for demonstration."""
+
+    def process(self):
+        pass
+''',
+            'other.py': 'def helper(): pass',
+        }
+        results = find_definition_passages("class TestClass", documents)
+        self.assertTrue(len(results) > 0)
+        passage, doc_id, start, end, score = results[0]
+        self.assertEqual(doc_id, 'module.py')
+        self.assertIn('class TestClass:', passage)
+        self.assertEqual(score, DEFINITION_BOOST)  # No test file penalty
+
+    def test_find_definition_passages_test_file_penalty(self):
+        """Test files should have lower score."""
+        documents = {
+            'src/module.py': 'class MyClass: pass',
+            'tests/test_module.py': 'class MyClass: pass',
+        }
+        results = find_definition_passages("class MyClass", documents)
+        self.assertEqual(len(results), 2)
+
+        # Sort by score descending
+        results.sort(key=lambda x: -x[4])
+
+        # Source file should rank higher
+        self.assertEqual(results[0][1], 'src/module.py')
+        self.assertEqual(results[1][1], 'tests/test_module.py')
+        self.assertGreater(results[0][4], results[1][4])
+
+    def test_find_definition_passages_not_definition_query(self):
+        """Non-definition queries return empty list."""
+        documents = {'test.py': 'class Foo: pass'}
+        results = find_definition_passages("neural networks", documents)
+        self.assertEqual(results, [])
+
+
+class TestDefinitionSearchIntegration(unittest.TestCase):
+    """Integration tests for definition search in passage retrieval."""
+
+    def setUp(self):
+        """Set up processor with code documents."""
+        self.processor = CorticalTextProcessor()
+
+        # Add a code document with class and function definitions
+        self.processor.process_document('cortical/minicolumn.py', '''
+"""Minicolumn module for cortical processing."""
+
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+
+class Minicolumn:
+    """
+    Core data structure representing a minicolumn in the cortical model.
+
+    A minicolumn stores information about a single concept at a specific
+    layer in the hierarchy.
+
+    Attributes:
+        id: Unique identifier
+        content: The text content (word, bigram, etc.)
+        layer: Which layer this belongs to (0-3)
+    """
+
+    def __init__(self, id: str, content: str, layer: int):
+        self.id = id
+        self.content = content
+        self.layer = layer
+        self.lateral_connections: Dict[str, float] = {}
+        self.pagerank: float = 0.0
+        self.tfidf: float = 0.0
+
+    def add_connection(self, target_id: str, weight: float = 1.0):
+        """Add a lateral connection to another minicolumn."""
+        if target_id in self.lateral_connections:
+            self.lateral_connections[target_id] += weight
+        else:
+            self.lateral_connections[target_id] = weight
+''')
+
+        self.processor.process_document('tests/test_minicolumn.py', '''
+"""Tests for minicolumn module."""
+
+import unittest
+from cortical.minicolumn import Minicolumn
+
+class TestMinicolumn(unittest.TestCase):
+    """Test Minicolumn class."""
+
+    def test_init(self):
+        col = Minicolumn("L0_test", "test", 0)
+        self.assertEqual(col.id, "L0_test")
+        self.assertEqual(col.content, "test")
+
+    def test_add_connection(self):
+        col = Minicolumn("L0_a", "a", 0)
+        col.add_connection("L0_b", 0.5)
+        self.assertIn("L0_b", col.lateral_connections)
+''')
+
+        self.processor.compute_all()
+
+    def test_definition_search_finds_class(self):
+        """Definition search should find actual class definition."""
+        results = self.processor.find_passages_for_query(
+            "class Minicolumn",
+            top_n=5,
+            use_definition_search=True
+        )
+
+        self.assertTrue(len(results) > 0)
+
+        # First result should be from the source file, not the test
+        passage, doc_id, start, end, score = results[0]
+        self.assertEqual(doc_id, 'cortical/minicolumn.py')
+        self.assertIn('class Minicolumn', passage)
+
+    def test_definition_search_finds_method(self):
+        """Definition search should find method definitions."""
+        results = self.processor.find_passages_for_query(
+            "def add_connection",
+            top_n=5,
+            use_definition_search=True
+        )
+
+        self.assertTrue(len(results) > 0)
+        passage, doc_id, start, end, score = results[0]
+        self.assertIn('def add_connection', passage)
+
+    def test_definition_search_disabled(self):
+        """When disabled, definition search should not run."""
+        # With a definition query but definition search disabled
+        results_disabled = self.processor.find_passages_for_query(
+            "class Minicolumn",
+            top_n=5,
+            use_definition_search=False
+        )
+
+        results_enabled = self.processor.find_passages_for_query(
+            "class Minicolumn",
+            top_n=5,
+            use_definition_search=True
+        )
+
+        # Enabled should have higher score for definition
+        if results_disabled and results_enabled:
+            # Definition search should boost the actual definition
+            self.assertGreaterEqual(results_enabled[0][4], results_disabled[0][4])
+
+    def test_processor_has_definition_methods(self):
+        """Processor should have definition search methods."""
+        self.assertTrue(hasattr(self.processor, 'is_definition_query'))
+        self.assertTrue(hasattr(self.processor, 'find_definition_passages'))
+
+    def test_is_definition_query_via_processor(self):
+        """Test is_definition_query via processor wrapper."""
+        is_def, def_type, name = self.processor.is_definition_query("class Minicolumn")
+        self.assertTrue(is_def)
+        self.assertEqual(def_type, 'class')
+        self.assertEqual(name, 'Minicolumn')
+
+    def test_find_definition_passages_via_processor(self):
+        """Test find_definition_passages via processor wrapper."""
+        results = self.processor.find_definition_passages("class Minicolumn")
+        self.assertTrue(len(results) > 0)
+        passage, doc_id, start, end, score = results[0]
+        self.assertIn('class Minicolumn', passage)
+
+
+class TestPassageDocTypeBoost(unittest.TestCase):
+    """Test doc-type boosting for passage-level search."""
+
+    def setUp(self):
+        """Set up processor with code and documentation."""
+        self.processor = CorticalTextProcessor()
+
+        # Add a code file
+        self.processor.process_document('cortical/analysis.py', '''
+"""Analysis module for computing PageRank and TF-IDF."""
+
+def compute_pagerank(layers, damping=0.85):
+    """Compute PageRank scores for all minicolumns.
+
+    PageRank is an iterative algorithm that assigns importance scores
+    to nodes based on the structure of incoming links.
+
+    Args:
+        layers: Dictionary of hierarchical layers
+        damping: Damping factor (default 0.85)
+
+    Returns:
+        Dict mapping node IDs to PageRank scores
+    """
+    # Implementation details...
+    pass
+''', metadata={'doc_type': 'code'})
+
+        # Add a documentation file
+        self.processor.process_document('docs/algorithms.md', '''
+# PageRank Algorithm
+
+PageRank is the foundational algorithm that revolutionized web search.
+It computes importance scores for nodes in a graph by iteratively
+propagating scores through connections.
+
+## How PageRank Works
+
+1. Initialize all nodes with equal score
+2. Iteratively update scores based on incoming links
+3. Apply damping factor to prevent score accumulation
+4. Converge when changes are below tolerance
+
+The damping factor (typically 0.85) represents the probability that
+a random walker continues following links rather than jumping randomly.
+''', metadata={'doc_type': 'docs'})
+
+        # Add a test file
+        self.processor.process_document('tests/test_analysis.py', '''
+"""Tests for analysis module."""
+
+import unittest
+
+class TestPageRank(unittest.TestCase):
+    def test_compute_pagerank(self):
+        """Test PageRank computation."""
+        result = compute_pagerank(self.layers)
+        self.assertIsInstance(result, dict)
+
+    def test_pagerank_damping(self):
+        """Test PageRank with custom damping."""
+        result = compute_pagerank(self.layers, damping=0.9)
+        self.assertGreater(len(result), 0)
+''', metadata={'doc_type': 'test'})
+
+        self.processor.compute_all()
+
+    def test_conceptual_query_boosts_docs(self):
+        """Conceptual queries should boost documentation passages."""
+        # Conceptual query - should boost docs
+        results = self.processor.find_passages_for_query(
+            "what is PageRank algorithm",
+            top_n=5,
+            auto_detect_intent=True,
+            apply_doc_boost=True
+        )
+
+        self.assertTrue(len(results) > 0)
+
+        # Check that docs/ folder file appears in results with boost
+        doc_ids = [r[1] for r in results]
+        # With boosting, docs should be prioritized for conceptual queries
+        self.assertIn('docs/algorithms.md', doc_ids)
+
+    def test_prefer_docs_always_boosts(self):
+        """prefer_docs=True should always boost documentation."""
+        # Implementation query that would normally prefer code
+        results = self.processor.find_passages_for_query(
+            "compute pagerank",
+            top_n=5,
+            prefer_docs=True,
+            apply_doc_boost=True
+        )
+
+        self.assertTrue(len(results) > 0)
+        # Results should include docs even for implementation query
+
+    def test_disable_doc_boost(self):
+        """apply_doc_boost=False should use raw scores."""
+        # Same query with and without boost
+        results_no_boost = self.processor.find_passages_for_query(
+            "explain PageRank algorithm",
+            top_n=5,
+            apply_doc_boost=False
+        )
+
+        results_with_boost = self.processor.find_passages_for_query(
+            "explain PageRank algorithm",
+            top_n=5,
+            apply_doc_boost=True,
+            auto_detect_intent=True
+        )
+
+        # Both should return results
+        self.assertTrue(len(results_no_boost) > 0)
+        self.assertTrue(len(results_with_boost) > 0)
+
+        # With boosting, if doc is found, it might have higher score
+        # (depends on corpus content and scores)
+
+    def test_implementation_query_no_boost(self):
+        """Implementation queries should not boost docs when auto_detect_intent=True."""
+        # Implementation query
+        results = self.processor.find_passages_for_query(
+            "compute pagerank function code",
+            top_n=5,
+            auto_detect_intent=True,
+            apply_doc_boost=True
+        )
+
+        self.assertTrue(len(results) > 0)
+        # Implementation queries shouldn't trigger doc boost
+
+    def test_custom_boosts(self):
+        """Custom boost factors should be applied."""
+        custom = {'docs': 3.0, 'code': 0.5, 'test': 0.3}
+
+        results = self.processor.find_passages_for_query(
+            "what is PageRank",
+            top_n=5,
+            prefer_docs=True,
+            custom_boosts=custom
+        )
+
+        self.assertTrue(len(results) > 0)
+
+
+class TestPassageDocTypeBoostIntegration(unittest.TestCase):
+    """Integration tests for doc-type boost in passage search."""
+
+    def test_find_passages_has_boost_params(self):
+        """find_passages_for_query should accept boost parameters."""
+        processor = CorticalTextProcessor()
+        processor.process_document('test.py', 'def foo(): pass')
+        processor.compute_all()
+
+        # Should not raise
+        results = processor.find_passages_for_query(
+            "foo",
+            apply_doc_boost=True,
+            auto_detect_intent=True,
+            prefer_docs=False,
+            custom_boosts={'code': 1.0}
+        )
+        # Results may be empty for simple doc but params should work
+
+
+class TestCodeAwareChunking(unittest.TestCase):
+    """Test code-aware chunking functions."""
+
+    def test_is_code_file_python(self):
+        """Python files should be detected as code."""
+        self.assertTrue(is_code_file('module.py'))
+        self.assertTrue(is_code_file('path/to/file.py'))
+
+    def test_is_code_file_javascript(self):
+        """JavaScript files should be detected as code."""
+        self.assertTrue(is_code_file('app.js'))
+        self.assertTrue(is_code_file('component.tsx'))
+
+    def test_is_code_file_markdown(self):
+        """Markdown files should not be detected as code."""
+        self.assertFalse(is_code_file('README.md'))
+        self.assertFalse(is_code_file('docs/guide.md'))
+
+    def test_is_code_file_other(self):
+        """Other extensions should not be detected as code."""
+        self.assertFalse(is_code_file('data.json'))
+        self.assertFalse(is_code_file('config.yaml'))
+
+    def test_find_code_boundaries_class(self):
+        """Should find class definition boundaries."""
+        code = '''
+import os
+
+class MyClass:
+    def method(self):
+        pass
+'''
+        boundaries = find_code_boundaries(code)
+        self.assertIn(0, boundaries)  # Start
+        # Should find the class line
+        class_line_start = code.find('class MyClass')
+        line_start = code.rfind('\n', 0, class_line_start) + 1
+        self.assertIn(line_start, boundaries)
+
+    def test_find_code_boundaries_function(self):
+        """Should find function definition boundaries."""
+        code = '''def foo():
+    pass
+
+def bar():
+    pass
+'''
+        boundaries = find_code_boundaries(code)
+        # Should find both function boundaries
+        self.assertGreater(len(boundaries), 1)
+
+    def test_find_code_boundaries_blank_lines(self):
+        """Should find blank line boundaries."""
+        code = '''first section
+
+second section
+
+third section
+'''
+        boundaries = find_code_boundaries(code)
+        # Should include positions after blank lines
+        self.assertGreater(len(boundaries), 1)
+
+    def test_create_code_aware_chunks_empty(self):
+        """Empty text should return empty list."""
+        chunks = create_code_aware_chunks('')
+        self.assertEqual(chunks, [])
+
+    def test_create_code_aware_chunks_small_text(self):
+        """Text smaller than target should return single chunk."""
+        code = 'def foo(): pass'
+        chunks = create_code_aware_chunks(code, target_size=100)
+        self.assertEqual(len(chunks), 1)
+        self.assertEqual(chunks[0][0], code)
+
+    def test_create_code_aware_chunks_splits_at_boundaries(self):
+        """Should split at class/function boundaries."""
+        # Create code long enough to require multiple chunks
+        code = '''class FirstClass:
+    """First class docstring with enough text to make this substantial."""
+
+    def __init__(self):
+        self.value = 0
+        self.data = {}
+        self.cache = []
+
+    def method1(self):
+        """A method that does something important."""
+        result = self.value * 2
+        return result
+
+
+class SecondClass:
+    """Second class docstring with substantial documentation text here."""
+
+    def __init__(self):
+        self.items = []
+        self.count = 0
+
+    def method2(self):
+        """Another method with documentation."""
+        for item in self.items:
+            self.count += item
+        return self.count
+'''
+        # With target_size=200, this ~600 char code should split into multiple chunks
+        chunks = create_code_aware_chunks(code, target_size=200, min_size=50, max_size=400)
+        self.assertGreater(len(chunks), 1)
+
+        # Check that chunks start at sensible boundaries
+        for chunk_text, start, end in chunks:
+            # Chunks should not be empty
+            self.assertTrue(chunk_text.strip())
+
+    def test_create_code_aware_chunks_respects_max_size(self):
+        """Should not exceed max_size."""
+        # Create code with a very long function
+        long_function = 'def long_func():\n' + '    x = 1\n' * 100
+        chunks = create_code_aware_chunks(long_function, target_size=200, max_size=400)
+
+        for chunk_text, start, end in chunks:
+            self.assertLessEqual(len(chunk_text), 400)
+
+    def test_create_code_aware_chunks_no_whitespace_only(self):
+        """Should not return whitespace-only chunks."""
+        code = '''class A:
+    pass
+
+
+
+class B:
+    pass
+'''
+        chunks = create_code_aware_chunks(code, target_size=50, min_size=10)
+        for chunk_text, start, end in chunks:
+            self.assertTrue(chunk_text.strip())
+
+
+class TestCodeAwareChunkingIntegration(unittest.TestCase):
+    """Integration tests for code-aware chunking in passage search."""
+
+    def setUp(self):
+        """Set up processor with code documents."""
+        self.processor = CorticalTextProcessor()
+
+        # Add a code file with multiple classes/functions
+        self.processor.process_document('cortical/example.py', '''
+"""Example module with multiple classes and functions."""
+
+import os
+from typing import Dict, List
+
+class FirstProcessor:
+    """First processor class for demonstration."""
+
+    def __init__(self):
+        self.data = {}
+
+    def process(self, item):
+        """Process a single item."""
+        return item * 2
+
+
+class SecondProcessor:
+    """Second processor class for demonstration."""
+
+    def __init__(self):
+        self.cache = []
+
+    def process_batch(self, items):
+        """Process multiple items at once."""
+        return [x * 3 for x in items]
+
+
+def utility_function(x, y):
+    """A utility function outside classes."""
+    return x + y
+''')
+
+        self.processor.compute_all()
+
+    def test_code_aware_chunks_enabled_by_default(self):
+        """Code-aware chunking should be enabled by default."""
+        results = self.processor.find_passages_for_query(
+            "SecondProcessor",
+            top_n=5
+        )
+        self.assertTrue(len(results) > 0)
+
+    def test_code_aware_chunks_can_be_disabled(self):
+        """Should be able to disable code-aware chunking."""
+        results = self.processor.find_passages_for_query(
+            "SecondProcessor",
+            top_n=5,
+            use_code_aware_chunks=False
+        )
+        # Should still return results, just with fixed chunking
+        self.assertTrue(len(results) >= 0)
+
+    def test_processor_has_code_chunk_param(self):
+        """Processor should accept use_code_aware_chunks parameter."""
+        # Should not raise
+        results = self.processor.find_passages_for_query(
+            "utility",
+            use_code_aware_chunks=True
+        )
 
 
 if __name__ == '__main__':

@@ -1772,13 +1772,30 @@ class CorticalTextProcessor:
         overlap: int = 128,
         use_expansion: bool = True,
         doc_filter: Optional[List[str]] = None,
-        use_semantic: bool = True
+        use_semantic: bool = True,
+        use_definition_search: bool = True,
+        definition_boost: float = 5.0,
+        apply_doc_boost: bool = True,
+        auto_detect_intent: bool = True,
+        prefer_docs: bool = False,
+        custom_boosts: Optional[Dict[str, float]] = None,
+        use_code_aware_chunks: bool = True
     ) -> List[Tuple[str, str, int, int, float]]:
         """
         Find text passages most relevant to a query (for RAG systems).
 
         Instead of returning just document IDs, this returns actual text passages
         with position information suitable for context windows and citations.
+
+        For definition queries (e.g., "class Minicolumn", "def compute_pagerank"),
+        the function will directly search for definition patterns and inject those
+        results with a high score, ensuring actual definitions appear in top results.
+
+        For conceptual queries (e.g., "what is PageRank", "explain architecture"),
+        documentation passages are boosted when auto_detect_intent=True.
+
+        For code files (.py, .js, etc.), semantic chunk boundaries are used to
+        align chunks with class/function definitions rather than fixed positions.
 
         Args:
             query_text: Search query
@@ -1788,13 +1805,21 @@ class CorticalTextProcessor:
             use_expansion: Whether to expand query terms
             doc_filter: Optional list of doc_ids to restrict search to
             use_semantic: Whether to use semantic relations for expansion (if available)
+            use_definition_search: Whether to search for definition patterns (default True)
+            definition_boost: Score boost for definition matches (default 5.0)
+            apply_doc_boost: Whether to apply document-type boosting (default True)
+            auto_detect_intent: Auto-detect conceptual queries and boost docs (default True)
+            prefer_docs: Always boost documentation regardless of query type (default False)
+            custom_boosts: Optional custom boost factors for doc types
+            use_code_aware_chunks: Use semantic boundaries for code files (default True)
 
         Returns:
             List of (passage_text, doc_id, start_char, end_char, score) tuples
             ranked by relevance
 
         Example:
-            >>> results = processor.find_passages_for_query("neural networks")
+            >>> # For conceptual queries, docs are auto-boosted
+            >>> results = processor.find_passages_for_query("what is PageRank")
             >>> for passage, doc_id, start, end, score in results:
             ...     print(f"[{doc_id}:{start}-{end}] {passage[:50]}... (score: {score:.3f})")
         """
@@ -1809,7 +1834,70 @@ class CorticalTextProcessor:
             use_expansion=use_expansion,
             doc_filter=doc_filter,
             semantic_relations=self.semantic_relations if use_semantic else None,
-            use_semantic=use_semantic
+            use_semantic=use_semantic,
+            use_definition_search=use_definition_search,
+            definition_boost=definition_boost,
+            apply_doc_boost=apply_doc_boost,
+            doc_metadata=self.document_metadata,
+            auto_detect_intent=auto_detect_intent,
+            prefer_docs=prefer_docs,
+            custom_boosts=custom_boosts,
+            use_code_aware_chunks=use_code_aware_chunks
+        )
+
+    def is_definition_query(self, query_text: str) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        Detect if a query is looking for a code definition.
+
+        Recognizes patterns like:
+        - "class Minicolumn"
+        - "def compute_pagerank"
+        - "function tokenize"
+        - "method process_document"
+
+        Args:
+            query_text: The search query
+
+        Returns:
+            Tuple of (is_definition, definition_type, identifier_name)
+            If not a definition query, returns (False, None, None)
+
+        Example:
+            >>> is_def, def_type, name = processor.is_definition_query("class Minicolumn")
+            >>> print(f"Definition query: {is_def}, type: {def_type}, name: {name}")
+            Definition query: True, type: class, name: Minicolumn
+        """
+        return query_module.is_definition_query(query_text)
+
+    def find_definition_passages(
+        self,
+        query_text: str,
+        context_chars: int = 500,
+        boost: float = 5.0
+    ) -> List[Tuple[str, str, int, int, float]]:
+        """
+        Find definition passages for a definition query.
+
+        If the query is looking for a class/function/method definition,
+        directly search source files for the definition and return
+        high-scoring passages.
+
+        Args:
+            query_text: Search query (e.g., "class Minicolumn", "def compute_pagerank")
+            context_chars: Characters of context to include after definition
+            boost: Score boost for definition matches
+
+        Returns:
+            List of (passage_text, doc_id, start_char, end_char, score) tuples.
+            Returns empty list if query is not a definition query.
+
+        Example:
+            >>> results = processor.find_definition_passages("class Minicolumn")
+            >>> for passage, doc_id, start, end, score in results:
+            ...     print(f"[{doc_id}] Score: {score:.2f}")
+        """
+        return query_module.find_definition_passages(
+            query_text, self.documents, context_chars, boost
         )
 
     def find_documents_batch(
