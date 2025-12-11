@@ -9,9 +9,33 @@ and ideas across diverse topics.
 
 import os
 import sys
+import time
 from typing import Dict, List, Tuple
 
 from cortical import CorticalTextProcessor, CorticalLayer
+
+
+class Timer:
+    """Simple timer for measuring operation durations."""
+
+    def __init__(self):
+        self.times: Dict[str, float] = {}
+        self._start: float = 0
+
+    def start(self, name: str):
+        """Start timing an operation."""
+        self._start = time.perf_counter()
+        self._current = name
+
+    def stop(self) -> float:
+        """Stop timing and record the duration."""
+        elapsed = time.perf_counter() - self._start
+        self.times[self._current] = elapsed
+        return elapsed
+
+    def get(self, name: str) -> float:
+        """Get recorded time for an operation."""
+        return self.times.get(name, 0)
 
 
 def print_header(title: str, char: str = "="):
@@ -38,12 +62,13 @@ def render_bar(value: float, max_value: float, width: int = 30) -> str:
 
 class CorticalShowcase:
     """Showcases the cortical text processor with interesting analysis."""
-    
+
     def __init__(self, samples_dir: str = "samples"):
         self.samples_dir = samples_dir
         self.processor = CorticalTextProcessor()
         self.loaded_files = []
-    
+        self.timer = Timer()
+
     def run(self):
         """Run the complete demo."""
         self.print_intro()
@@ -58,6 +83,7 @@ class CorticalShowcase:
         self.find_concept_associations()
         self.analyze_document_relationships()
         self.demonstrate_queries()
+        self.demonstrate_passage_search()
         self.demonstrate_polysemy()
         self.demonstrate_code_features()
         self.demonstrate_gap_analysis()
@@ -79,48 +105,55 @@ class CorticalShowcase:
     def ingest_corpus(self) -> bool:
         """Ingest the document corpus from disk."""
         print_header("DOCUMENT INGESTION", "═")
-        
+
         print(f"Loading documents from: {self.samples_dir}")
         print("Processing through cortical hierarchy...")
         print("(Like visual information flowing V1 → V2 → V4 → IT)\n")
-        
+
         if not os.path.exists(self.samples_dir):
             print(f"  ❌ Directory not found: {self.samples_dir}")
             return False
-        
+
         txt_files = sorted([f for f in os.listdir(self.samples_dir) if f.endswith('.txt')])
-        
+
         if not txt_files:
             return False
-        
+
+        # Time document loading
+        self.timer.start('document_loading')
         for filename in txt_files:
             filepath = os.path.join(self.samples_dir, filename)
             with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
-            
+
             doc_id = filename.replace('.txt', '')
             self.processor.process_document(doc_id, content)
             word_count = len(content.split())
             self.loaded_files.append((doc_id, word_count))
             print(f"  📄 {doc_id:30} ({word_count:3} words)")
-        
+        load_time = self.timer.stop()
+
         # Run all computations with hybrid strategy for better Layer 2 connectivity
         print("\nComputing cortical representations...")
+        self.timer.start('compute_all')
         self.processor.compute_all(
             verbose=False,
             connection_strategy='hybrid',
             cluster_strictness=0.5,
             bridge_weight=0.3
         )
-        
+        compute_time = self.timer.stop()
+
         layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
         layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
-        
+
         print(f"\n✓ Processed {len(self.loaded_files)} documents")
         print(f"✓ Created {layer0.column_count()} token minicolumns")
         print(f"✓ Created {layer1.column_count()} bigram minicolumns")
         print(f"✓ Formed {layer0.total_connections()} lateral connections")
-        
+        print(f"\n⏱  Document loading: {load_time:.2f}s")
+        print(f"⏱  Compute all:      {compute_time:.2f}s")
+
         return True
     
     def analyze_hierarchy(self):
@@ -249,29 +282,89 @@ class CorticalShowcase:
     def demonstrate_queries(self):
         """Demonstrate query capability with expansion."""
         print_header("QUERY DEMONSTRATION", "═")
-        
+
         print("Query expansion adds semantically related terms for better recall:\n")
-        
+
         test_queries = ["neural networks", "fermentation", "distributed systems"]
-        
+        total_query_time = 0
+
         for query in test_queries:
             print_subheader(f"🔍 Query: '{query}'")
-            
+
+            # Time expansion + search
+            start = time.perf_counter()
+
             # Show expansion
             expanded = self.processor.expand_query(query, max_expansions=6)
             original = set(self.processor.tokenizer.tokenize(query))
             new_terms = [t for t in expanded.keys() if t not in original]
-            
+
             if new_terms:
                 print(f"    Expanded with: {', '.join(new_terms[:6])}")
-            
+
             # Find documents
             results = self.processor.find_documents_for_query(query, top_n=3)
+            elapsed = time.perf_counter() - start
+            total_query_time += elapsed
+
             print(f"\n    Top documents:")
             for doc_id, score in results:
                 print(f"      • {doc_id} (score: {score:.3f})")
+            print(f"    ⏱  {elapsed*1000:.1f}ms")
             print()
-    
+
+        self.timer.times['queries'] = total_query_time
+        print(f"Average query time: {total_query_time/len(test_queries)*1000:.1f}ms")
+
+    def demonstrate_passage_search(self):
+        """Demonstrate passage-level retrieval for RAG applications."""
+        print_header("PASSAGE RETRIEVAL (RAG)", "═")
+
+        print("Passage search retrieves specific text chunks, ideal for RAG:")
+        print("(Retrieval-Augmented Generation - feeding context to LLMs)\n")
+
+        # Demonstrate with a specific query
+        query = "PageRank algorithm convergence"
+        print_subheader(f"🔍 Query: '{query}'")
+
+        # Time passage retrieval
+        self.timer.start('passage_search')
+
+        # Get passages
+        passages = self.processor.find_passages_for_query(
+            query,
+            top_n=3,
+            chunk_size=300,
+            overlap=50
+        )
+        passage_time = self.timer.stop()
+
+        if passages:
+            print(f"\n    Found {len(passages)} relevant passages:\n")
+
+            for i, (passage_text, doc_id, start, end, score) in enumerate(passages, 1):
+                # Calculate line number from character position
+                doc_content = self.processor.documents.get(doc_id, "")
+                line_num = doc_content[:start].count('\n') + 1
+
+                print(f"    [{i}] {doc_id}:{line_num} (score: {score:.3f})")
+                print("    " + "─" * 50)
+
+                # Show truncated passage
+                lines = passage_text.strip().split('\n')[:4]
+                for line in lines:
+                    if len(line) > 60:
+                        line = line[:57] + "..."
+                    print(f"      {line}")
+                if len(passage_text.strip().split('\n')) > 4:
+                    print(f"      ...")
+                print()
+
+        print(f"    ⏱  Passage retrieval: {passage_time*1000:.1f}ms")
+        print("\n    💡 Use case: Feed these passages to an LLM as context")
+        print("                 for answering questions about your corpus.")
+        print()
+
     def demonstrate_polysemy(self):
         """Demonstrate polysemy - same word, different meanings."""
         print_header("POLYSEMY DEMONSTRATION", "═")
@@ -465,7 +558,19 @@ class CorticalShowcase:
         if layer3.column_count() > 0:
             top_doc = max(layer3.minicolumns.values(), key=lambda c: c.connection_count())
             print(f"  Most connected document: '{top_doc.content}'")
-        
+
+        # Performance summary
+        print("\n⏱  PERFORMANCE SUMMARY\n")
+        if 'document_loading' in self.timer.times:
+            print(f"  Document loading:    {self.timer.get('document_loading'):.2f}s")
+        if 'compute_all' in self.timer.times:
+            print(f"  Compute all:         {self.timer.get('compute_all'):.2f}s")
+        if 'queries' in self.timer.times:
+            avg_query = self.timer.get('queries') / 3 * 1000  # 3 queries
+            print(f"  Avg query time:      {avg_query:.1f}ms")
+        if 'passage_search' in self.timer.times:
+            print(f"  Passage retrieval:   {self.timer.get('passage_search')*1000:.1f}ms")
+
         print("\n" + "═" * 70)
         print("Demo complete! The cortical text processor successfully:")
         print("  ✓ Built hierarchical representations (Layers 0-3)")
@@ -473,6 +578,7 @@ class CorticalShowcase:
         print("  ✓ Computed TF-IDF for discriminative analysis")
         print("  ✓ Found associations through lateral connections")
         print("  ✓ Identified document relationships")
+        print("  ✓ Retrieved passages for RAG applications")
         print("  ✓ Demonstrated code search features")
         print("  ✓ Detected knowledge gaps and anomalies")
         print("  ✓ Computed graph embeddings")

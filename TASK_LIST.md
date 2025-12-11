@@ -2470,7 +2470,7 @@ Add new demonstration sections:
 ### 69. Add Passage-Level Search Demo to Showcase
 
 **File:** `showcase.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 **Priority:** Medium
 
 **Problem:**
@@ -2488,7 +2488,7 @@ Add "RAG DEMONSTRATION" section showing:
 ### 70. Add Performance Timing to Showcase
 
 **File:** `showcase.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 **Priority:** Low
 
 **Problem:**
@@ -2702,7 +2702,7 @@ python scripts/related_files.py cortical/query.py
 ### 77. Add Interactive "Ask the Codebase" Mode
 
 **Files:** `scripts/ask_codebase.py` (new)
-**Status:** [ ] Not Started
+**Status:** [x] Completed
 **Priority:** High
 
 **Problem:**
@@ -2878,15 +2878,15 @@ Key files to understand:
 |---|----------|------|--------|----------|
 | 67 | Low | Fix O(n) lookup in showcase | ✓ Done | Showcase |
 | 68 | Medium | Add code-specific features to showcase | ✓ Done | Showcase |
-| 69 | Medium | Add passage-level search demo | | Showcase |
-| 70 | Low | Add performance timing to showcase | | Showcase |
+| 69 | Medium | Add passage-level search demo | ✓ Done | Showcase |
+| 70 | Low | Add performance timing to showcase | ✓ Done | Showcase |
 | 71 | High | Enable code-aware tokenization in index | ✓ Done | Code Index |
 | 72 | High | Use programming query expansion in search | ✓ Done | Code Index |
 | 73 | Medium | Add "Find Similar Code" command | | Code Index |
 | 74 | Medium | Add "Explain This Code" command | | Developer Experience |
 | 75 | Medium | Add "What Changed?" semantic diff | | Developer Experience |
 | 76 | Medium | Add "Suggest Related Files" feature | | Developer Experience |
-| 77 | High | Add interactive "Ask the Codebase" mode | | Developer Experience |
+| 77 | High | Add interactive "Ask the Codebase" mode | ✓ Done | Developer Experience |
 | 78 | Low | Add code pattern detection | | Developer Experience |
 | 79 | Low | Add corpus health dashboard | | Developer Experience |
 | 80 | Low | Add "Learning Mode" for new contributors | | Developer Experience |
