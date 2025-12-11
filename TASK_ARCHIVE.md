@@ -11,6 +11,7 @@ Completed tasks moved from TASK_LIST.md. Search here for historical context and 
 
 | # | Task | Category | Completed |
 |---|------|----------|-----------|
+| 136 | Optimize semantics O(n²) similarity - add sampling/early-exit | Perf | 2025-12-11 |
 | 1 | Fix Per-Document TF-IDF Calculation Bug | Bug Fix | 2025-12-10 |
 | 2 | Add ID-to-Minicolumn Lookup Optimization | Performance | 2025-12-10 |
 | 3 | Fix Type Annotation Errors | Bug Fix | 2025-12-10 |

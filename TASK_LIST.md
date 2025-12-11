@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 32
-**Completed Tasks:** 88+ (see archive)
+**Pending Tasks:** 38
+**Completed Tasks:** 90+ (see archive)
 
 ---
 
@@ -31,6 +31,12 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
+| 137 | Cap bigram connections to top-K per bigram | Perf | - | Small |
+| 138 | Use sparse matrix multiplication for bigram connections | Perf | - | Medium |
+| 139 | Batch bigram connection updates to reduce dict overhead | Perf | - | Small |
+| 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
+| 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
+| 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
 | 91 | Create docs/README.md index | Docs | - | Small |
 | 92 | Add badges to README.md | DevEx | - | Small |
 | 93 | Update README with docs references | Docs | 91 | Small |
@@ -62,7 +68,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 108 | Create task selection script | TaskMgmt | - | Medium |
 | 117 | Create debugging cookbook | AINav | - | Medium |
 | 118 | Add function complexity annotations | AINav | - | Small |
-| 128 | Analyze customer service cluster quality | Research | 127 | Small |
+| 140 | Analyze customer service cluster quality | Research | 127 | Small |
 | 129 | Test customer service retrieval quality | Testing | - | Small |
 | 130 | Expand customer service sample cluster | Samples | - | Medium |
 | 131 | Investigate cross-domain semantic bridges | Research | - | Medium |
@@ -91,6 +97,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 128 | Fix definition boost that favors test mocks over real implementations | 2025-12-11 | Added is_test_file() and test file penalty |
+| 132 | Profile full-analysis bottleneck (bigram, semantics O(n²)) | 2025-12-11 | Created profile_full_analysis.py, fixed bottlenecks |
+| 136 | Optimize semantics O(n²) similarity with early termination | 2025-12-11 | Added max_similarity_pairs, min_context_keys |
 | 126 | Investigate optimal Louvain resolution for sample corpus | 2025-12-11 | Research confirms default 1.0 is optimal |
 | 123 | Replace label propagation with Louvain community detection | 2025-12-11 | Implemented Louvain algorithm, 34 clusters for 92 docs |
 | 122 | Investigate Concept Layer & Embeddings regressions | 2025-12-11 | Fixed inverted strictness, improved embeddings |

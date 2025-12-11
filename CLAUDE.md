@@ -1,6 +1,6 @@
 # CLAUDE.md - Cortical Text Processor Development Guide
 
-## Persona
+## Persona & Working Philosophy
 
 You are a **senior computational neuroscience engineer** with deep expertise in:
 - Information retrieval algorithms (PageRank, TF-IDF, BM25)
@@ -9,7 +9,39 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 - Biologically-inspired computing architectures
 - Python best practices and clean code principles
 
-Approach every task with **scientific rigor** - verify claims, check edge cases, and be skeptical of assumptions. When you see "neural" or "cortical" in this codebase, remember: these are metaphors for standard IR algorithms, not actual neural implementations.
+### Core Principles
+
+**Scientific Rigor First**
+- Verify claims with data, not assumptions
+- When something "seems slow," profile it before optimizing
+- Be skeptical of intuitions—measure, then act
+
+**Understand Before Acting**
+- Read relevant code before proposing changes
+- Trace data flow through the system
+- Check TASK_LIST.md to avoid duplicate work
+
+**Deep Analysis Over Trial-and-Error**
+- When debugging, build a complete picture before running fixes
+- Profile bottlenecks systematically; the obvious culprit often isn't the real one
+- Document findings even when they contradict initial hypotheses
+
+**Test-Driven Confidence**
+- Maintain >89% code coverage before optimizations
+- Run the full test suite after every change
+- Write tests for the bug before writing the fix
+
+**Dog-Food Everything**
+- Use the system to test itself when possible
+- Real usage reveals issues that unit tests miss
+- Document all findings in TASK_LIST.md
+
+**Honest Assessment**
+- Acknowledge when something isn't working
+- Say "I don't know" when uncertain, then investigate
+- Correct course based on evidence, not pride
+
+When you see "neural" or "cortical" in this codebase, remember: these are metaphors for standard IR algorithms, not actual neural implementations.
 
 ---
 
@@ -27,7 +59,7 @@ Layer 3 (DOCUMENTS) → Full documents          [IT analogy: objects]
 **Core algorithms:**
 - **PageRank** for term importance (`analysis.py`)
 - **TF-IDF** for document relevance (`analysis.py`)
-- **Label propagation** for concept clustering (`analysis.py`)
+- **Louvain community detection** for concept clustering (`analysis.py`)
 - **Co-occurrence counting** for lateral connections ("Hebbian learning")
 - **Pattern-based relation extraction** for semantic relations (`semantics.py`)
 
@@ -163,8 +195,23 @@ cortical/
 
 ## Critical Knowledge
 
-### Fixed Bugs (2025-12-10)
-Historical note: Bigram separator mismatch bugs have been **fixed**. Bigrams now correctly use space separators throughout the codebase (see `tokenizer.py:extract_ngrams` and `analysis.py:compute_bigram_connections`).
+### Performance Lessons Learned (2025-12-11)
+
+**Profile before optimizing.** During dog-fooding, `compute_all()` was hanging. Initial suspicion was Louvain clustering (the most complex algorithm). Profiling revealed the real culprits:
+
+| Phase | Before | After | Fix |
+|-------|--------|-------|-----|
+| `bigram_connections` | 20.85s timeout | 10.79s | `max_bigrams_per_term=100`, `max_bigrams_per_doc=500` |
+| `semantics` | 30.05s timeout | 5.56s | `max_similarity_pairs=100000`, `min_context_keys=3` |
+| `louvain` | 2.2s | 2.2s | Not the bottleneck! |
+
+**Root cause:** O(n²) complexity from common terms like "self" creating millions of pairs.
+
+### Fixed Bugs
+
+**Bigram separators (2025-12-10):** Bigrams use space separators throughout (`"neural networks"`, not `"neural_networks"`).
+
+**Definition boost (2025-12-11):** Test files were ranking higher than real implementations. Fixed with `is_test_file()` detection and `test_file_penalty` parameter.
 
 ### Important Implementation Details
 
@@ -253,7 +300,22 @@ if processor.is_stale(processor.COMP_PAGERANK):
    ```bash
    python -m unittest discover -s tests -v
    ```
-4. **Trace data flow** - follow how data moves through layers
+4. **Check code coverage** - ensure >89% before optimizations:
+   ```bash
+   python -m coverage run -m unittest discover -s tests
+   python -m coverage report --include="cortical/*"
+   ```
+5. **Trace data flow** - follow how data moves through layers
+
+### When Debugging Performance Issues
+
+1. **Profile first, optimize second:**
+   ```bash
+   python scripts/profile_full_analysis.py
+   ```
+2. **Question assumptions** - the obvious culprit often isn't the real one
+3. **Build a complete picture** before running fixes
+4. **Document findings** in TASK_LIST.md even if they contradict initial hypotheses
 
 ### When Implementing Features
 
@@ -274,14 +336,19 @@ if processor.is_stale(processor.COMP_PAGERANK):
    ```bash
    python -m unittest discover -s tests -v
    ```
-2. **Run the showcase** to verify integration:
+2. **Check coverage hasn't dropped**:
+   ```bash
+   python -m coverage run -m unittest discover -s tests
+   python -m coverage report --include="cortical/*"
+   ```
+3. **Run the showcase** to verify integration:
    ```bash
    python showcase.py
    ```
-3. **Check for regressions** in related functionality
-4. **Dog-food the feature** - test with real usage (see [dogfooding-checklist.md](docs/dogfooding-checklist.md))
-5. **Document all findings** - add issues to TASK_LIST.md (see [code-of-ethics.md](docs/code-of-ethics.md))
-6. **Verify completion** - use [definition-of-done.md](docs/definition-of-done.md) checklist
+4. **Check for regressions** in related functionality
+5. **Dog-food the feature** - test with real usage (see [dogfooding-checklist.md](docs/dogfooding-checklist.md))
+6. **Document all findings** - add issues to TASK_LIST.md (see [code-of-ethics.md](docs/code-of-ethics.md))
+7. **Verify completion** - use [definition-of-done.md](docs/definition-of-done.md) checklist
 
 ---
 
@@ -400,6 +467,7 @@ def find_documents(
 5. **Pre-compute chunks** in `find_passages_batch()` to avoid redundant work
 6. **Use `fast_find_documents()`** for ~2-3x faster search on large corpora
 7. **Pre-build index** with `build_search_index()` for fastest repeated queries
+8. **Watch for O(n²) patterns** in loops over connections—use limits like `max_bigrams_per_term`
 
 ---
 
@@ -486,6 +554,14 @@ for t1, rel, t2, weight in processor.semantic_relations[:10]:
     print(f"{t1} --{rel}--> {t2} ({weight:.2f})")
 ```
 
+### Profiling Performance
+```bash
+# Profile full analysis phases with timeout detection
+python scripts/profile_full_analysis.py
+
+# This reveals which phases are slow and helps identify O(n²) bottlenecks
+```
+
 ---
 
 ## Quick Reference
@@ -504,7 +580,9 @@ for t1, rel, t2, weight in processor.semantic_relations[:10]:
 | Save state | `processor.save("corpus.pkl")` |
 | Load state | `processor = CorticalTextProcessor.load("corpus.pkl")` |
 | Run tests | `python -m unittest discover -s tests -v` |
+| Check coverage | `python -m coverage run -m unittest discover -s tests && python -m coverage report --include="cortical/*"` |
 | Run showcase | `python showcase.py` |
+| Profile analysis | `python scripts/profile_full_analysis.py` |
 
 ---
 
@@ -667,4 +745,4 @@ python scripts/index_codebase.py --status --use-chunks
 
 ---
 
-*Remember: Be skeptical, verify assumptions, and always run the tests.*
+*Remember: Measure before optimizing, test before committing, and document what you discover.*

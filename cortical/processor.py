@@ -893,6 +893,8 @@ class CorticalTextProcessor:
         component_weight: float = 0.5,
         chain_weight: float = 0.7,
         cooccurrence_weight: float = 0.3,
+        max_bigrams_per_term: int = 100,
+        max_bigrams_per_doc: int = 500,
         verbose: bool = True
     ) -> Dict[str, Any]:
         """
@@ -908,6 +910,10 @@ class CorticalTextProcessor:
             component_weight: Weight for shared component connections (default 0.5)
             chain_weight: Weight for chain connections (default 0.7)
             cooccurrence_weight: Weight for document co-occurrence (default 0.3)
+            max_bigrams_per_term: Skip terms appearing in more than this many bigrams
+                to avoid O(n²) explosion from common terms like "self", "return" (default 100)
+            max_bigrams_per_doc: Skip documents with more than this many bigrams for
+                co-occurrence connections to avoid O(n²) explosion (default 500)
             verbose: Print progress messages
 
         Returns:
@@ -916,6 +922,8 @@ class CorticalTextProcessor:
             - component_connections: Connections from shared components
             - chain_connections: Connections from chains
             - cooccurrence_connections: Connections from document co-occurrence
+            - skipped_common_terms: Number of terms skipped due to max_bigrams_per_term
+            - skipped_large_docs: Number of docs skipped due to max_bigrams_per_doc
 
         Example:
             >>> stats = processor.compute_bigram_connections()
@@ -929,13 +937,23 @@ class CorticalTextProcessor:
             min_shared_docs=min_shared_docs,
             component_weight=component_weight,
             chain_weight=chain_weight,
-            cooccurrence_weight=cooccurrence_weight
+            cooccurrence_weight=cooccurrence_weight,
+            max_bigrams_per_term=max_bigrams_per_term,
+            max_bigrams_per_doc=max_bigrams_per_doc
         )
         if verbose:
+            skipped_terms = stats.get('skipped_common_terms', 0)
+            skipped_docs = stats.get('skipped_large_docs', 0)
+            skip_parts = []
+            if skipped_terms:
+                skip_parts.append(f"{skipped_terms} common terms")
+            if skipped_docs:
+                skip_parts.append(f"{skipped_docs} large docs")
+            skip_msg = f", skipped {', '.join(skip_parts)}" if skip_parts else ""
             print(f"Created {stats['connections_created']} bigram connections "
                   f"(component: {stats['component_connections']}, "
                   f"chain: {stats['chain_connections']}, "
-                  f"cooccur: {stats['cooccurrence_connections']})")
+                  f"cooccur: {stats['cooccurrence_connections']}{skip_msg})")
         return stats
 
     def build_concept_clusters(
@@ -1092,6 +1110,8 @@ class CorticalTextProcessor:
         self,
         use_pattern_extraction: bool = True,
         min_pattern_confidence: float = 0.6,
+        max_similarity_pairs: int = 100000,
+        min_context_keys: int = 3,
         verbose: bool = True
     ) -> int:
         """
@@ -1103,6 +1123,10 @@ class CorticalTextProcessor:
         Args:
             use_pattern_extraction: Extract relations from text patterns (e.g., "X is a Y")
             min_pattern_confidence: Minimum confidence for pattern-based relations
+            max_similarity_pairs: Maximum pairs to check for SimilarTo relations.
+                Set to 0 for unlimited (may be slow for large corpora). Default 100000.
+            min_context_keys: Minimum context keys for a term to be considered for
+                SimilarTo relations. Terms with fewer keys are skipped. Default 3.
             verbose: Print progress messages
 
         Returns:
@@ -1117,7 +1141,9 @@ class CorticalTextProcessor:
             self.documents,
             self.tokenizer,
             use_pattern_extraction=use_pattern_extraction,
-            min_pattern_confidence=min_pattern_confidence
+            min_pattern_confidence=min_pattern_confidence,
+            max_similarity_pairs=max_similarity_pairs,
+            min_context_keys=min_context_keys
         )
         if verbose:
             print(f"Extracted {len(self.semantic_relations)} semantic relations")

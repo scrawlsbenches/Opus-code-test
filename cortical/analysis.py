@@ -1218,7 +1218,9 @@ def compute_bigram_connections(
     min_shared_docs: int = 1,
     component_weight: float = 0.5,
     chain_weight: float = 0.7,
-    cooccurrence_weight: float = 0.3
+    cooccurrence_weight: float = 0.3,
+    max_bigrams_per_term: int = 100,
+    max_bigrams_per_doc: int = 500
 ) -> Dict[str, Any]:
     """
     Build lateral connections between bigrams in Layer 1.
@@ -1234,6 +1236,10 @@ def compute_bigram_connections(
         component_weight: Weight for shared component connections (default 0.5)
         chain_weight: Weight for chain connections (default 0.7)
         cooccurrence_weight: Weight for document co-occurrence (default 0.3)
+        max_bigrams_per_term: Skip terms appearing in more than this many bigrams
+            to avoid O(n²) explosion from common terms like "self", "return" (default 100)
+        max_bigrams_per_doc: Skip documents with more than this many bigrams for
+            co-occurrence connections to avoid O(n²) explosion (default 500)
 
     Returns:
         Statistics about connections created:
@@ -1241,6 +1247,8 @@ def compute_bigram_connections(
         - component_connections: Connections from shared components
         - chain_connections: Connections from chains
         - cooccurrence_connections: Connections from document co-occurrence
+        - skipped_common_terms: Number of terms skipped due to max_bigrams_per_term
+        - skipped_large_docs: Number of docs skipped due to max_bigrams_per_doc
     """
     layer1 = layers[CorticalLayer.BIGRAMS]
 
@@ -1250,7 +1258,9 @@ def compute_bigram_connections(
             'bigrams': 0,
             'component_connections': 0,
             'chain_connections': 0,
-            'cooccurrence_connections': 0
+            'cooccurrence_connections': 0,
+            'skipped_common_terms': 0,
+            'skipped_large_docs': 0
         }
 
     bigrams = list(layer1.minicolumns.values())
@@ -1300,9 +1310,16 @@ def compute_bigram_connections(
 
         return True
 
+    # Track skipped common terms for statistics
+    skipped_common_terms = 0
+
     # 1. Connect bigrams sharing a component
     # Left component matches: "neural_networks" ↔ "neural_processing"
     for component, bigram_list in left_index.items():
+        # Skip overly common terms to avoid O(n²) explosion
+        if len(bigram_list) > max_bigrams_per_term:
+            skipped_common_terms += 1
+            continue
         for i, b1 in enumerate(bigram_list):
             for b2 in bigram_list[i+1:]:
                 # Weight by component's PageRank importance (if available)
@@ -1311,6 +1328,10 @@ def compute_bigram_connections(
 
     # Right component matches: "deep_learning" ↔ "machine_learning"
     for component, bigram_list in right_index.items():
+        # Skip overly common terms to avoid O(n²) explosion
+        if len(bigram_list) > max_bigrams_per_term:
+            skipped_common_terms += 1
+            continue
         for i, b1 in enumerate(bigram_list):
             for b2 in bigram_list[i+1:]:
                 weight = component_weight
@@ -1320,6 +1341,9 @@ def compute_bigram_connections(
     # "machine_learning" ↔ "learning_algorithms"
     for term in left_index:
         if term in right_index:
+            # Skip overly common terms
+            if len(left_index[term]) > max_bigrams_per_term or len(right_index[term]) > max_bigrams_per_term:
+                continue
             # term appears as right component in some bigrams and left in others
             for b_left in right_index[term]:  # ends with term
                 for b_right in left_index[term]:  # starts with term
@@ -1335,8 +1359,14 @@ def compute_bigram_connections(
 
     # Track pairs we've already processed to avoid duplicate work
     cooccur_processed: Set[Tuple[str, str]] = set()
+    skipped_large_docs = 0
 
     for doc_id, doc_bigrams in doc_to_bigrams.items():
+        # Skip documents with too many bigrams to avoid O(n²) explosion
+        if len(doc_bigrams) > max_bigrams_per_doc:
+            skipped_large_docs += 1
+            continue
+
         # Only compare bigrams within the same document
         for i, b1 in enumerate(doc_bigrams):
             docs1 = b1.document_ids
@@ -1360,7 +1390,9 @@ def compute_bigram_connections(
         'bigrams': len(bigrams),
         'component_connections': component_connections,
         'chain_connections': chain_connections,
-        'cooccurrence_connections': cooccurrence_connections
+        'cooccurrence_connections': cooccurrence_connections,
+        'skipped_common_terms': skipped_common_terms,
+        'skipped_large_docs': skipped_large_docs
     }
 
 

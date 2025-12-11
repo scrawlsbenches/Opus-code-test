@@ -223,7 +223,9 @@ def extract_corpus_semantics(
     window_size: int = 5,
     min_cooccurrence: int = 2,
     use_pattern_extraction: bool = True,
-    min_pattern_confidence: float = 0.6
+    min_pattern_confidence: float = 0.6,
+    max_similarity_pairs: int = 100000,
+    min_context_keys: int = 3
 ) -> List[Tuple[str, str, str, float]]:
     """
     Extract semantic relations from corpus co-occurrence patterns.
@@ -241,6 +243,10 @@ def extract_corpus_semantics(
         min_cooccurrence: Minimum co-occurrences to form relation
         use_pattern_extraction: Whether to extract relations from text patterns
         min_pattern_confidence: Minimum confidence for pattern-based extraction
+        max_similarity_pairs: Maximum pairs to check for SimilarTo relations.
+            Set to 0 for unlimited (may be slow for large corpora). Default 100000.
+        min_context_keys: Minimum context keys for a term to be considered for
+            SimilarTo relations. Terms with fewer keys are skipped. Default 3.
 
     Returns:
         List of (term1, relation, term2, weight) tuples
@@ -333,34 +339,51 @@ def extract_corpus_semantics(
                         relations.append((terms[i], 'SimilarTo', terms[j], float(similarities[i, j])))
 
     elif n_terms > 1:
-        # Fallback: pure Python implementation
+        # Fallback: pure Python implementation with optimizations
+        # Pre-filter terms by minimum context keys
+        key_sets: Dict[str, set] = {}
         magnitudes: Dict[str, float] = {}
+
         for term in terms:
             vec = context_vectors[term]
+            keys = set(vec.keys())
+            # Skip terms with too few context keys (can't meet min_context_keys threshold)
+            if len(keys) < min_context_keys:
+                continue
+            key_sets[term] = keys
             mag = math.sqrt(sum(v * v for v in vec.values()))
             magnitudes[term] = mag
 
-        key_sets: Dict[str, set] = {term: set(context_vectors[term].keys()) for term in terms}
+        # Get filtered terms with enough context
+        filtered_terms = [t for t in terms if t in key_sets and magnitudes.get(t, 0) > 0]
 
-        for i, t1 in enumerate(terms):
+        # Track pairs checked for early termination
+        pairs_checked = 0
+
+        for i, t1 in enumerate(filtered_terms):
             vec1 = context_vectors[t1]
             mag1 = magnitudes[t1]
-            if mag1 == 0:
-                continue
             keys1 = key_sets[t1]
 
-            for t2 in terms[i+1:]:
+            for t2 in filtered_terms[i+1:]:
+                # Check pair limit
+                if max_similarity_pairs > 0 and pairs_checked >= max_similarity_pairs:
+                    break
+
+                pairs_checked += 1
                 mag2 = magnitudes[t2]
-                if mag2 == 0:
-                    continue
 
                 common = keys1 & key_sets[t2]
-                if len(common) >= 3:
+                if len(common) >= min_context_keys:
                     vec2 = context_vectors[t2]
                     dot = sum(vec1[k] * vec2[k] for k in common)
                     sim = dot / (mag1 * mag2)
                     if sim > 0.3:
                         relations.append((t1, 'SimilarTo', t2, sim))
+
+            # Also check outer loop for pair limit
+            if max_similarity_pairs > 0 and pairs_checked >= max_similarity_pairs:
+                break
 
     # Extract commonsense relations from text patterns
     if use_pattern_extraction:
