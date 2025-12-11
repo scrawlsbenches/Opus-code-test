@@ -560,5 +560,202 @@ class TestGetChangesFromManifest(unittest.TestCase):
         self.assertEqual(deleted, ['doc2'])
 
 
+class TestChunkMetadata(unittest.TestCase):
+    """Test metadata support in chunk indexing."""
+
+    def test_operation_with_metadata(self):
+        """Test creating an operation with metadata."""
+        metadata = {'doc_type': 'code', 'language': 'python'}
+        op = ChunkOperation(
+            op='add',
+            doc_id='doc1',
+            content='hello',
+            mtime=123.0,
+            metadata=metadata
+        )
+        self.assertEqual(op.metadata, metadata)
+
+    def test_operation_to_dict_with_metadata(self):
+        """Test converting operation with metadata to dict."""
+        metadata = {'doc_type': 'docs', 'headings': ['Section 1', 'Section 2']}
+        op = ChunkOperation(
+            op='add',
+            doc_id='doc1',
+            content='# Doc\n\n## Section 1\n\n## Section 2',
+            mtime=123.0,
+            metadata=metadata
+        )
+        d = op.to_dict()
+        self.assertIn('metadata', d)
+        self.assertEqual(d['metadata']['doc_type'], 'docs')
+        self.assertEqual(d['metadata']['headings'], ['Section 1', 'Section 2'])
+
+    def test_operation_to_dict_without_metadata(self):
+        """Test that metadata is omitted from dict when None."""
+        op = ChunkOperation(op='add', doc_id='doc1', content='hello')
+        d = op.to_dict()
+        self.assertNotIn('metadata', d)
+
+    def test_operation_from_dict_with_metadata(self):
+        """Test creating operation from dict with metadata."""
+        d = {
+            'op': 'add',
+            'doc_id': 'doc1',
+            'content': 'hello',
+            'mtime': 123.0,
+            'metadata': {'doc_type': 'test', 'function_count': 5}
+        }
+        op = ChunkOperation.from_dict(d)
+        self.assertIsNotNone(op.metadata)
+        self.assertEqual(op.metadata['doc_type'], 'test')
+        self.assertEqual(op.metadata['function_count'], 5)
+
+    def test_operation_from_dict_without_metadata(self):
+        """Test creating operation from dict without metadata (backward compat)."""
+        d = {'op': 'add', 'doc_id': 'doc1', 'content': 'hello'}
+        op = ChunkOperation.from_dict(d)
+        self.assertIsNone(op.metadata)
+
+    def test_writer_add_with_metadata(self):
+        """Test writer add_document with metadata."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            writer = ChunkWriter(tmpdir)
+            metadata = {'doc_type': 'code', 'language': 'python'}
+            writer.add_document('doc1', 'content', mtime=123.0, metadata=metadata)
+
+            self.assertEqual(len(writer.operations), 1)
+            self.assertEqual(writer.operations[0].metadata, metadata)
+
+    def test_writer_modify_with_metadata(self):
+        """Test writer modify_document with metadata."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            writer = ChunkWriter(tmpdir)
+            metadata = {'doc_type': 'docs', 'headings': ['Intro']}
+            writer.modify_document('doc1', 'new content', mtime=456.0, metadata=metadata)
+
+            self.assertEqual(len(writer.operations), 1)
+            self.assertEqual(writer.operations[0].metadata, metadata)
+
+    def test_loader_get_metadata(self):
+        """Test loader returns metadata for documents."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            writer = ChunkWriter(tmpdir)
+            writer.add_document('doc1', 'content1', metadata={'doc_type': 'code'})
+            writer.add_document('doc2', 'content2', metadata={'doc_type': 'docs'})
+            writer.save()
+
+            loader = ChunkLoader(tmpdir)
+            loader.load_all()
+            metadata = loader.get_metadata()
+
+            self.assertEqual(len(metadata), 2)
+            self.assertEqual(metadata['doc1']['doc_type'], 'code')
+            self.assertEqual(metadata['doc2']['doc_type'], 'docs')
+
+    def test_loader_metadata_updated_on_modify(self):
+        """Test metadata is updated when document is modified."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # First chunk: add with initial metadata
+            writer1 = ChunkWriter(tmpdir)
+            writer1.timestamp = '2025-12-10T10:00:00'
+            writer1.session_id = 'aaaa0000'
+            writer1.add_document('doc1', 'old', metadata={'version': 1})
+            writer1.save()
+
+            # Second chunk: modify with new metadata
+            writer2 = ChunkWriter(tmpdir)
+            writer2.timestamp = '2025-12-10T11:00:00'
+            writer2.session_id = 'bbbb1111'
+            writer2.modify_document('doc1', 'new', metadata={'version': 2})
+            writer2.save()
+
+            loader = ChunkLoader(tmpdir)
+            loader.load_all()
+            metadata = loader.get_metadata()
+
+            self.assertEqual(metadata['doc1']['version'], 2)
+
+    def test_loader_metadata_removed_on_delete(self):
+        """Test metadata is removed when document is deleted."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # First chunk: add document
+            writer1 = ChunkWriter(tmpdir)
+            writer1.timestamp = '2025-12-10T10:00:00'
+            writer1.session_id = 'aaaa0000'
+            writer1.add_document('doc1', 'content', metadata={'doc_type': 'code'})
+            writer1.save()
+
+            # Second chunk: delete document
+            writer2 = ChunkWriter(tmpdir)
+            writer2.timestamp = '2025-12-10T11:00:00'
+            writer2.session_id = 'bbbb1111'
+            writer2.delete_document('doc1')
+            writer2.save()
+
+            loader = ChunkLoader(tmpdir)
+            loader.load_all()
+            metadata = loader.get_metadata()
+
+            self.assertNotIn('doc1', metadata)
+
+    def test_compactor_preserves_metadata(self):
+        """Test compactor preserves metadata during compaction."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create chunk with metadata
+            writer = ChunkWriter(tmpdir)
+            writer.timestamp = '2025-01-01T10:00:00'
+            writer.session_id = 'aaaa0000'
+            writer.add_document(
+                'doc1',
+                'content1',
+                mtime=100.0,
+                metadata={'doc_type': 'code', 'language': 'python'}
+            )
+            writer.add_document(
+                'doc2',
+                'content2',
+                mtime=200.0,
+                metadata={'doc_type': 'docs', 'headings': ['H1', 'H2']}
+            )
+            writer.save()
+
+            # Compact
+            compactor = ChunkCompactor(tmpdir)
+            result = compactor.compact()
+
+            self.assertEqual(result['status'], 'compacted')
+
+            # Load compacted chunk and check metadata
+            loader = ChunkLoader(tmpdir)
+            loader.load_all()
+            metadata = loader.get_metadata()
+
+            self.assertEqual(len(metadata), 2)
+            self.assertEqual(metadata['doc1']['doc_type'], 'code')
+            self.assertEqual(metadata['doc1']['language'], 'python')
+            self.assertEqual(metadata['doc2']['doc_type'], 'docs')
+            self.assertEqual(metadata['doc2']['headings'], ['H1', 'H2'])
+
+    def test_chunk_serialization_roundtrip(self):
+        """Test metadata survives JSON serialization roundtrip."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            metadata = {
+                'doc_type': 'docs',
+                'headings': ['Introduction', 'Methods', 'Results'],
+                'line_count': 150,
+                'mtime': 1234567890.5
+            }
+            writer = ChunkWriter(tmpdir)
+            writer.add_document('doc1', 'content', metadata=metadata)
+            filepath = writer.save()
+
+            # Load from file and verify
+            with open(filepath) as f:
+                data = json.load(f)
+
+            op_data = data['operations'][0]
+            self.assertEqual(op_data['metadata'], metadata)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

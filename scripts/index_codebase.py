@@ -19,8 +19,10 @@ import argparse
 import json
 import logging
 import os
+import platform
 import signal
 import sys
+import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -245,15 +247,22 @@ class ProgressTracker:
 # Timeout Handler
 # =============================================================================
 
-class TimeoutError(Exception):
+class IndexingTimeoutError(Exception):
     """Raised when indexing exceeds the timeout."""
     pass
+
+
+# Check platform for timeout implementation
+_IS_WINDOWS = platform.system() == 'Windows'
 
 
 @contextmanager
 def timeout_handler(seconds: int, tracker: Optional[ProgressTracker] = None):
     """
     Context manager for timeout handling.
+
+    Uses signal.SIGALRM on Unix systems and threading.Timer on Windows.
+    Note: Windows implementation cannot interrupt blocking I/O operations.
 
     Args:
         seconds: Timeout in seconds (0 = no timeout)
@@ -263,23 +272,50 @@ def timeout_handler(seconds: int, tracker: Optional[ProgressTracker] = None):
         yield
         return
 
-    def handler(signum, frame):
-        msg = f"Indexing timed out after {seconds} seconds"
-        if tracker:
-            tracker.error(msg)
-            tracker.print_summary()
-        raise TimeoutError(msg)
+    if _IS_WINDOWS:
+        # Windows implementation using threading.Timer
+        # Note: This cannot interrupt blocking operations like file I/O
+        timed_out = threading.Event()
 
-    # Set the signal handler
-    old_handler = signal.signal(signal.SIGALRM, handler)
-    signal.alarm(seconds)
+        def timeout_callback():
+            timed_out.set()
+            msg = f"Indexing timed out after {seconds} seconds"
+            if tracker:
+                tracker.error(msg)
+                tracker.error("Note: Windows timeout cannot interrupt blocking I/O")
 
-    try:
-        yield
-    finally:
-        # Restore the old handler and cancel the alarm
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old_handler)
+        timer = threading.Timer(seconds, timeout_callback)
+        timer.daemon = True  # Don't prevent program exit
+        timer.start()
+
+        try:
+            yield
+            # Check if timeout occurred (for non-blocking operations)
+            if timed_out.is_set():
+                if tracker:
+                    tracker.print_summary()
+                raise IndexingTimeoutError(f"Indexing timed out after {seconds} seconds")
+        finally:
+            timer.cancel()
+    else:
+        # Unix implementation using signal.SIGALRM
+        def handler(signum, frame):
+            msg = f"Indexing timed out after {seconds} seconds"
+            if tracker:
+                tracker.error(msg)
+                tracker.print_summary()
+            raise IndexingTimeoutError(msg)
+
+        # Set the signal handler
+        old_handler = signal.signal(signal.SIGALRM, handler)
+        signal.alarm(seconds)
+
+        try:
+            yield
+        finally:
+            # Restore the old handler and cancel the alarm
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
 
 
 # =============================================================================
@@ -449,6 +485,71 @@ def create_doc_id(file_path: Path, base_path: Path) -> str:
     return str(rel_path)
 
 
+def extract_markdown_headings(content: str) -> List[str]:
+    """Extract section headings from markdown content."""
+    import re
+    # Match ## and ### headings (skip # as it's usually the title)
+    headings = re.findall(r'^##+ (.+)$', content, re.MULTILINE)
+    return headings
+
+
+def get_doc_type(doc_id: str) -> str:
+    """
+    Determine document type from document ID.
+
+    Returns:
+        One of: 'code', 'test', 'docs', 'root_docs'
+    """
+    if doc_id.startswith('tests/'):
+        return 'test'
+    elif doc_id.startswith('docs/'):
+        return 'docs'
+    elif doc_id.endswith('.md'):
+        return 'root_docs'
+    else:
+        return 'code'
+
+
+def _extract_file_metadata(
+    doc_id: str,
+    file_path: Path,
+    content: str,
+    mtime: float
+) -> Dict[str, Any]:
+    """
+    Extract metadata from a file for chunk storage.
+
+    Args:
+        doc_id: Document ID (relative path)
+        file_path: Full file path
+        content: File content
+        mtime: File modification time
+
+    Returns:
+        Metadata dictionary with doc_type, headings (for md), etc.
+    """
+    metadata = {
+        'relative_path': doc_id,
+        'file_type': file_path.suffix,
+        'line_count': content.count('\n') + 1,
+        'mtime': mtime,
+        'doc_type': get_doc_type(doc_id),
+    }
+
+    # For Python files, extract additional metadata
+    if file_path.suffix == '.py':
+        metadata['language'] = 'python'
+        metadata['function_count'] = content.count('\ndef ')
+        metadata['class_count'] = content.count('\nclass ')
+
+    # For Markdown files, extract headings
+    if file_path.suffix == '.md':
+        metadata['language'] = 'markdown'
+        metadata['headings'] = extract_markdown_headings(content)
+
+    return metadata
+
+
 # =============================================================================
 # Indexing Operations
 # =============================================================================
@@ -476,6 +577,7 @@ def index_file(
         'file_type': file_path.suffix,
         'line_count': content.count('\n') + 1,
         'mtime': get_file_mtime(file_path),
+        'doc_type': get_doc_type(doc_id),
     }
 
     # For Python files, extract additional metadata
@@ -484,6 +586,11 @@ def index_file(
         # Count functions and classes
         metadata['function_count'] = content.count('\ndef ')
         metadata['class_count'] = content.count('\nclass ')
+
+    # For Markdown files, extract headings
+    if file_path.suffix == '.md':
+        metadata['language'] = 'markdown'
+        metadata['headings'] = extract_markdown_headings(content)
 
     processor.process_document(doc_id, content, metadata=metadata)
     return metadata
@@ -807,7 +914,8 @@ def index_with_chunks(
         try:
             content = file_path.read_text(encoding='utf-8')
             mtime = get_file_mtime(file_path)
-            writer.add_document(doc_id, content, mtime)
+            metadata = _extract_file_metadata(doc_id, file_path, content, mtime)
+            writer.add_document(doc_id, content, mtime, metadata)
             processed += 1
             tracker.update_progress(processed, f"Added: {doc_id}" if args.verbose else None)
         except Exception as e:
@@ -819,7 +927,8 @@ def index_with_chunks(
         try:
             content = file_path.read_text(encoding='utf-8')
             mtime = get_file_mtime(file_path)
-            writer.modify_document(doc_id, content, mtime)
+            metadata = _extract_file_metadata(doc_id, file_path, content, mtime)
+            writer.modify_document(doc_id, content, mtime, metadata)
             processed += 1
             tracker.update_progress(processed, f"Modified: {doc_id}" if args.verbose else None)
         except Exception as e:
@@ -844,7 +953,9 @@ def index_with_chunks(
     tracker.start_phase("Loading documents from chunks")
     loader = ChunkLoader(str(chunks_dir))  # Reload to include new chunk
     all_docs = loader.get_documents()
+    all_metadata = loader.get_metadata()
     tracker.log(f"  Total documents: {len(all_docs)}")
+    tracker.log(f"  Documents with metadata: {len(all_metadata)}")
     tracker.end_phase("Loading documents from chunks")
 
     # Check if we can use cached pkl
@@ -853,10 +964,13 @@ def index_with_chunks(
         tracker.log("\nCache is valid, loading from pkl...")
         processor = CorticalTextProcessor.load(str(output_path))
     else:
-        # Build processor from documents
+        # Build processor from documents (with metadata)
         tracker.start_phase("Building processor from chunks")
         processor = CorticalTextProcessor()
-        documents = [(doc_id, content, None) for doc_id, content in all_docs.items()]
+        documents = [
+            (doc_id, content, all_metadata.get(doc_id))
+            for doc_id, content in all_docs.items()
+        ]
         processor.add_documents_batch(documents, recompute='none', verbose=False)
         tracker.log(f"  Added {len(documents)} documents")
         tracker.end_phase("Building processor from chunks")
@@ -1017,7 +1131,7 @@ Examples:
                 index_with_chunks(args, base_path, output_path, tracker)
             else:
                 run_indexer(args, base_path, output_path, manifest_path, tracker)
-    except TimeoutError:
+    except IndexingTimeoutError:
         tracker.log("\nIndexing was terminated due to timeout.", "error")
         sys.exit(1)
     except KeyboardInterrupt:

@@ -39,8 +39,26 @@ def format_passage(passage: str, max_width: int = 80) -> str:
     return '\n'.join(formatted)
 
 
-def search_codebase(processor: CorticalTextProcessor, query: str,
-                    top_n: int = 5, chunk_size: int = 400, fast: bool = False) -> list:
+def get_doc_type_label(doc_id: str) -> str:
+    """Get a display label for document type."""
+    if doc_id.endswith('.md'):
+        if doc_id.startswith('docs/'):
+            return 'DOCS'
+        return 'DOC'
+    elif doc_id.startswith('tests/'):
+        return 'TEST'
+    return 'CODE'
+
+
+def search_codebase(
+    processor: CorticalTextProcessor,
+    query: str,
+    top_n: int = 5,
+    chunk_size: int = 400,
+    fast: bool = False,
+    prefer_docs: bool = False,
+    no_boost: bool = False
+) -> list:
     """
     Search the codebase and return results with file:line references.
 
@@ -50,13 +68,23 @@ def search_codebase(processor: CorticalTextProcessor, query: str,
         top_n: Number of results to return
         chunk_size: Size of text chunks for passage extraction
         fast: Use fast search mode (documents only, no passages)
+        prefer_docs: Always boost documentation files
+        no_boost: Disable all document type boosting
 
     Returns:
-        List of result dicts with 'file', 'line', 'passage', 'score', 'reference'
+        List of result dicts with 'file', 'line', 'passage', 'score', 'reference', 'doc_type'
     """
     if fast:
-        # Fast mode: just find documents, return first lines
-        doc_results = processor.fast_find_documents(query, top_n=top_n)
+        # Fast mode with optional boosting
+        if no_boost:
+            doc_results = processor.fast_find_documents(query, top_n=top_n)
+        else:
+            doc_results = processor.find_documents_with_boost(
+                query,
+                top_n=top_n,
+                auto_detect_intent=not prefer_docs,
+                prefer_docs=prefer_docs
+            )
         formatted_results = []
         for doc_id, score in doc_results:
             doc_content = processor.documents.get(doc_id, '')
@@ -67,16 +95,30 @@ def search_codebase(processor: CorticalTextProcessor, query: str,
                 'line': 1,
                 'passage': passage,
                 'score': score,
-                'reference': f"{doc_id}:1"
+                'reference': f"{doc_id}:1",
+                'doc_type': get_doc_type_label(doc_id)
             })
         return formatted_results
 
-    # Full passage search
+    # Full passage search - first get top documents with boosting
+    if no_boost:
+        doc_results = processor.find_documents_for_query(query, top_n=top_n * 2)
+    else:
+        doc_results = processor.find_documents_with_boost(
+            query,
+            top_n=top_n * 2,  # Get more candidates
+            auto_detect_intent=not prefer_docs,
+            prefer_docs=prefer_docs
+        )
+
+    # Then get passages from those documents
+    doc_ids = [doc_id for doc_id, _ in doc_results]
     results = processor.find_passages_for_query(
         query,
         top_n=top_n,
         chunk_size=chunk_size,
-        overlap=100
+        overlap=100,
+        doc_filter=doc_ids[:top_n * 2] if doc_ids else None
     )
 
     formatted_results = []
@@ -90,13 +132,14 @@ def search_codebase(processor: CorticalTextProcessor, query: str,
             'line': line_num,
             'passage': passage,
             'score': score,
-            'reference': f"{doc_id}:{line_num}"
+            'reference': f"{doc_id}:{line_num}",
+            'doc_type': get_doc_type_label(doc_id)
         })
 
     return formatted_results
 
 
-def display_results(results: list, verbose: bool = False):
+def display_results(results: list, verbose: bool = False, show_doc_type: bool = True):
     """Display search results."""
     if not results:
         print("No results found.")
@@ -106,7 +149,9 @@ def display_results(results: list, verbose: bool = False):
 
     for i, result in enumerate(results, 1):
         print("=" * 60)
-        print(f"[{i}] {result['reference']}")
+        doc_type = result.get('doc_type', '')
+        type_indicator = f"[{doc_type}] " if show_doc_type and doc_type else ""
+        print(f"[{i}] {type_indicator}{result['reference']}")
         print(f"    Score: {result['score']:.3f}")
         print("-" * 60)
 
@@ -186,7 +231,16 @@ def interactive_mode(processor: CorticalTextProcessor):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Search the indexed codebase')
+    parser = argparse.ArgumentParser(
+        description='Search the indexed codebase',
+        epilog="""
+Examples:
+  %(prog)s "PageRank algorithm"           # Search with auto-boost
+  %(prog)s "what is PageRank" --prefer-docs  # Always boost docs
+  %(prog)s "compute pagerank" --no-boost  # Disable boosting
+  %(prog)s "architecture" --fast          # Fast document-level search
+        """
+    )
     parser.add_argument('query', nargs='?', help='Search query')
     parser.add_argument('--corpus', '-c', default='corpus_dev.pkl',
                         help='Corpus file path (default: corpus_dev.pkl)')
@@ -200,6 +254,10 @@ def main():
                         help='Interactive search mode')
     parser.add_argument('--fast', '-f', action='store_true',
                         help='Fast search mode (document-level, ~2-3x faster)')
+    parser.add_argument('--prefer-docs', '-d', action='store_true',
+                        help='Always boost documentation files in results')
+    parser.add_argument('--no-boost', action='store_true',
+                        help='Disable document type boosting (raw TF-IDF)')
     args = parser.parse_args()
 
     base_path = Path(__file__).parent.parent
@@ -223,7 +281,20 @@ def main():
             expand_query_display(processor, args.query)
             print()
 
-        results = search_codebase(processor, args.query, top_n=args.top, fast=args.fast)
+        # Show query intent detection
+        is_conceptual = processor.is_conceptual_query(args.query)
+        if not args.no_boost:
+            intent_str = "conceptual" if is_conceptual else "implementation"
+            print(f"(Query type: {intent_str})")
+
+        results = search_codebase(
+            processor,
+            args.query,
+            top_n=args.top,
+            fast=args.fast,
+            prefer_docs=args.prefer_docs,
+            no_boost=args.no_boost
+        )
         if args.fast:
             print("(Fast mode: document-level results)")
         display_results(results, verbose=args.verbose)

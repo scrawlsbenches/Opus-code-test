@@ -2027,19 +2027,18 @@ The following tasks were identified during code review of PR #23 (Git-Compatible
 
 ### 59. Rename TimeoutError to Avoid Built-in Shadowing
 
-**Files:** `cortical/chunk_index.py:248`, `scripts/index_codebase.py:248-249`
-**Status:** [ ] Not Started
+**Files:** `scripts/index_codebase.py`
+**Status:** [x] Completed (2025-12-11) - Implemented as part of Task #60
 **Priority:** Low
 
 **Problem:**
 The `TimeoutError` class shadows Python's built-in `TimeoutError` (introduced in Python 3.3). This could cause confusion and unexpected behavior when catching timeout exceptions.
 
-**Solution:**
-Rename the custom exception to `IndexingTimeoutError`:
+**Solution Applied:**
+Renamed the custom exception to `IndexingTimeoutError`:
 ```python
-# chunk_index.py:248
 class IndexingTimeoutError(Exception):
-    """Raised when indexing operation times out."""
+    """Raised when indexing exceeds the timeout."""
     pass
 ```
 
@@ -2047,36 +2046,31 @@ class IndexingTimeoutError(Exception):
 
 ### 60. Add Windows Compatibility for Timeout Handler
 
-**Files:** `scripts/index_codebase.py:274-282`
-**Status:** [ ] Not Started
+**Files:** `scripts/index_codebase.py`
+**Status:** [x] Completed (2025-12-11)
 **Priority:** Medium
 
 **Problem:**
 The timeout handler uses `signal.SIGALRM` which is Unix-only. This will raise an `AttributeError` on Windows systems.
 
-**Affected Code:**
-```python
-# Line 274-282 - Unix-only code
-signal.signal(signal.SIGALRM, handler)
-signal.alarm(seconds)
-```
+**Solution Applied:**
+Added cross-platform timeout implementation:
 
-**Solution:**
-Add a Windows-compatible fallback using threading:
-```python
-import platform
+1. **Platform detection**: Added `_IS_WINDOWS = platform.system() == 'Windows'`
 
-if platform.system() == 'Windows':
-    # Use threading.Timer fallback
-    timer = threading.Timer(seconds, timeout_callback)
-    timer.start()
-else:
-    # Use signal.SIGALRM (Unix)
-    signal.signal(signal.SIGALRM, handler)
-    signal.alarm(seconds)
-```
+2. **Windows implementation**: Uses `threading.Timer` with `threading.Event`:
+   ```python
+   timer = threading.Timer(seconds, timeout_callback)
+   timer.daemon = True
+   timer.start()
+   # Check timed_out.is_set() after operations
+   ```
 
-Or document the limitation clearly for Windows users.
+3. **Unix implementation**: Continues using `signal.SIGALRM` (unchanged behavior)
+
+4. **Limitation documented**: Windows implementation cannot interrupt blocking I/O operations
+
+5. **Also addressed Task #59**: Renamed `TimeoutError` to `IndexingTimeoutError` to avoid shadowing the built-in
 
 ---
 
@@ -2126,120 +2120,108 @@ The following issues were identified during a dog-fooding session reviewing the 
 
 ### 65. Add Document Metadata to Chunk-Based Indexing (Prerequisite)
 
-**Files:** `scripts/index_codebase.py`
-**Status:** [ ] Not Started
+**Files:** `cortical/chunk_index.py`, `scripts/index_codebase.py`, `tests/test_chunk_indexing.py`
+**Status:** [x] Completed (2025-12-11)
 **Priority:** High
 **Blocks:** #63
 
 **Problem:**
 Chunk-based indexing loses all document metadata, making it impossible to implement document-type boosting for search.
 
-**Current Code (line 859):**
-```python
-# Metadata is None - no file_type, no headings, nothing!
-documents = [(doc_id, content, None) for doc_id, content in all_docs.items()]
-```
+**Solution Applied:**
+1. Added `metadata` field to `ChunkOperation` dataclass
+2. Updated `ChunkWriter.add_document()` and `modify_document()` to accept metadata
+3. Updated `ChunkLoader` to track `_metadata` dict with `get_metadata()` method
+4. Updated `ChunkCompactor.compact()` to preserve metadata during compaction
+5. Added `_extract_file_metadata()` helper to extract:
+   - `doc_type`: 'code', 'test', 'docs', or 'root_docs'
+   - `headings`: List of markdown section headings (## and ###)
+   - `language`: 'python' or 'markdown'
+   - `function_count`, `class_count` for Python files
+6. Updated `index_with_chunks()` to extract and use metadata
+7. Added 12 new tests in `TestChunkMetadata` class
 
-**Additional Gaps:**
-1. `index_file()` only extracts metadata for Python files (lines 481-486)
-2. Markdown files get no special treatment (no heading extraction)
-3. Chunk format doesn't store metadata at all
+**Files Modified:**
+- `cortical/chunk_index.py` - Added metadata support to ChunkOperation, ChunkWriter, ChunkLoader, ChunkCompactor
+- `scripts/index_codebase.py` - Added `extract_markdown_headings()`, `get_doc_type()`, `_extract_file_metadata()`
+- `tests/test_chunk_indexing.py` - Added 12 tests for metadata functionality
 
-**Solution:**
-1. Add `doc_type` field to chunk operations:
-   ```json
-   {"op": "add", "doc_id": "docs/algorithms.md", "doc_type": "docs", "headings": ["PageRank", "TF-IDF"]}
-   ```
-
-2. Extract markdown headings during indexing:
-   ```python
-   if file_path.suffix == '.md':
-       headings = re.findall(r'^##+ (.+)$', content, re.MULTILINE)
-       metadata['headings'] = headings
-       metadata['doc_type'] = 'docs' if doc_id.startswith('docs/') else 'root_docs'
-   ```
-
-3. Update `ChunkWriter` and `ChunkLoader` to preserve metadata
-
-4. Pass metadata when building processor from chunks:
-   ```python
-   documents = [(doc_id, content, metadata) for doc_id, content, metadata in all_docs]
-   ```
-
-**This is a prerequisite for Task #63** - without metadata, we can't boost docs in search.
+**This enables Task #63** - with metadata, we can now boost docs in search.
 
 ---
 
 ### 63. Improve Search Ranking for Documentation Files
 
-**Files:** `cortical/query.py`, `scripts/search_codebase.py`
-**Status:** [ ] Not Started
+**Files:** `cortical/query.py`, `scripts/search_codebase.py`, `tests/test_query.py`
+**Status:** [x] Completed (2025-12-11)
 **Priority:** High
 **Depends on:** #65
 
 **Problem:**
 When searching for conceptual terms like "PageRank algorithm" or "4-layer architecture", the search returns code implementations (processor.py) instead of documentation files (docs/algorithms.md, docs/architecture.md) that explicitly explain these concepts.
 
-**Observed Behavior:**
+**Solution Applied:**
+
+1. **Document-type boosting** - Added `DOC_TYPE_BOOSTS` dict with boost factors:
+   - `docs/` folder: 1.5x
+   - Root-level .md: 1.3x
+   - Code files: 1.0x
+   - Test files: 0.8x
+
+2. **Query intent detection** - Added `is_conceptual_query()` function:
+   - Detects conceptual keywords: "what", "explain", "describe", "architecture", etc.
+   - Detects implementation keywords: "where", "implement", "function", etc.
+   - Auto-boosts docs for conceptual queries
+
+3. **New search function** - `find_documents_with_boost()`:
+   - `auto_detect_intent=True` - Automatically boost docs for conceptual queries
+   - `prefer_docs=True` - Always boost documentation
+   - `custom_boosts` - Override boost factors
+
+4. **Search script updates**:
+   - Added `--prefer-docs` flag to always boost documentation
+   - Added `--no-boost` flag to disable boosting (raw TF-IDF)
+   - Shows document type indicator in results: `[DOCS]`, `[CODE]`, `[TEST]`
+   - Shows query intent detection: "(Query type: conceptual/implementation)"
+
+5. **Processor methods added**:
+   - `processor.find_documents_with_boost()` - Search with doc-type boosting
+   - `processor.is_conceptual_query()` - Check if query is conceptual
+
+6. **Tests added** - 17 new tests in `TestDocTypeBoost` and `TestDocTypeBoostIntegration`
+
+**Usage:**
 ```bash
-$ python scripts/search_codebase.py "PageRank algorithm"
-# Returns: cortical/processor.py:578 (score: 1.904)
-# Expected: docs/algorithms.md (has "PageRank - Importance Scoring" section)
+# Auto-detect intent (default)
+python scripts/search_codebase.py "what is PageRank"
+# (Query type: conceptual) → docs boosted
 
-$ python scripts/search_codebase.py "4-layer architecture"
-# Returns: cortical/processor.py:578 (score: 6.973)
-# Expected: docs/architecture.md (entire file about this topic)
+# Force docs preference
+python scripts/search_codebase.py "PageRank" --prefer-docs
+
+# Disable boosting (raw TF-IDF)
+python scripts/search_codebase.py "PageRank" --no-boost
 ```
-
-**Root Causes:**
-1. Code files have higher token density → higher TF-IDF scores
-2. No document-type awareness in ranking
-3. Natural language in docs may not match stemmed query terms
-4. Section headings in markdown aren't weighted higher
-
-**Proposed Solutions:**
-
-1. **Document-type boosting** - Boost .md files for conceptual queries:
-   ```python
-   if doc_id.endswith('.md'):
-       score *= 1.5  # Boost documentation
-   ```
-
-2. **Heading extraction** - Index markdown headings as high-weight terms:
-   ```python
-   # Extract ## headings and boost their terms
-   headings = re.findall(r'^##+ (.+)$', content, re.MULTILINE)
-   ```
-
-3. **Query intent detection** - Use existing `parse_intent_query()` to detect conceptual vs implementation queries:
-   - "what is PageRank" → boost docs
-   - "where is PageRank computed" → boost code
-
-4. **Add `--prefer-docs` flag** to search_codebase.py for documentation-first search
-
-**Success Criteria:**
-- `"PageRank algorithm"` returns docs/algorithms.md as top result
-- `"4-layer architecture"` returns docs/architecture.md as top result
-- `"compute pagerank"` still returns code (implementation query)
 
 ---
 
 ### 64. Add Document Type Indicator to Search Results
 
 **Files:** `scripts/search_codebase.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2025-12-11) - Implemented as part of Task #63
 **Priority:** Low
 
 **Problem:**
 Search results show file paths but don't indicate document type at a glance. Users can't quickly distinguish documentation from code without reading the path.
 
-**Current Output:**
-```
-[1] cortical/processor.py:578
-    Score: 1.904
-```
+**Solution Applied:**
+Added document type labels to search results output:
+- `[CODE]` - Code files (.py)
+- `[DOCS]` - Documentation in docs/ folder
+- `[DOC]` - Root-level markdown files
+- `[TEST]` - Test files in tests/
 
-**Proposed Output:**
+**New Output:**
 ```
 [1] [CODE] cortical/processor.py:578
     Score: 1.904

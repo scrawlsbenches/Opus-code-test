@@ -1661,6 +1661,65 @@ class CorticalTextProcessor:
             use_code_concepts=use_code_concepts
         )
 
+    def find_documents_with_boost(
+        self,
+        query_text: str,
+        top_n: int = 5,
+        auto_detect_intent: bool = True,
+        prefer_docs: bool = False,
+        custom_boosts: Optional[Dict[str, float]] = None,
+        use_expansion: bool = True,
+        use_semantic: bool = True
+    ) -> List[Tuple[str, float]]:
+        """
+        Find documents with optional document-type boosting.
+
+        This extends find_documents_for_query with doc_type boosting
+        for improved ranking of documentation vs code.
+
+        For conceptual queries ("what is PageRank", "explain architecture"),
+        documentation files are boosted. For implementation queries
+        ("where is PageRank computed"), code files rank higher.
+
+        Args:
+            query_text: Search query
+            top_n: Number of results to return
+            auto_detect_intent: If True, auto-boost docs for conceptual queries
+            prefer_docs: If True, always boost documentation
+            custom_boosts: Optional custom boost factors per doc_type:
+                {'docs': 1.5, 'root_docs': 1.3, 'code': 1.0, 'test': 0.8}
+            use_expansion: Whether to expand query terms
+            use_semantic: Whether to use semantic relations
+
+        Returns:
+            List of (doc_id, score) tuples ranked by relevance
+        """
+        return query_module.find_documents_with_boost(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n,
+            doc_metadata=self.document_metadata,
+            auto_detect_intent=auto_detect_intent,
+            prefer_docs=prefer_docs,
+            custom_boosts=custom_boosts,
+            use_expansion=use_expansion,
+            semantic_relations=self.semantic_relations if use_semantic else None,
+            use_semantic=use_semantic
+        )
+
+    def is_conceptual_query(self, query_text: str) -> bool:
+        """
+        Check if a query appears to be conceptual (should prefer docs).
+
+        Args:
+            query_text: Query to analyze
+
+        Returns:
+            True if query is conceptual, False if implementation-focused
+        """
+        return query_module.is_conceptual_query(query_text)
+
     def build_search_index(self) -> Dict[str, Dict[str, float]]:
         """
         Build an optimized inverted index for fast querying.

@@ -9,7 +9,7 @@ concept clusters, and word variants, then searching the corpus
 using TF-IDF and graph-based scoring.
 """
 
-from typing import Dict, List, Tuple, Optional, TypedDict
+from typing import Dict, List, Tuple, Optional, TypedDict, Any
 from collections import defaultdict
 import re
 
@@ -50,6 +50,187 @@ ACTION_VERBS = frozenset([
     'publish', 'emit', 'listen', 'dispatch', 'trigger', 'call', 'invoke',
     'execute', 'run', 'build', 'compile', 'test', 'deploy', 'implement',
 ])
+
+
+# =============================================================================
+# Document Type Boosting for Search
+# =============================================================================
+
+# Default boost factors for each document type
+# Higher values make documents of that type rank higher
+DOC_TYPE_BOOSTS = {
+    'docs': 1.5,       # docs/ folder documentation
+    'root_docs': 1.3,  # Root-level markdown (CLAUDE.md, README.md)
+    'code': 1.0,       # Regular code files
+    'test': 0.8,       # Test files (often less relevant for conceptual queries)
+}
+
+# Keywords that suggest a conceptual query (should boost documentation)
+CONCEPTUAL_KEYWORDS = frozenset([
+    'what', 'explain', 'describe', 'overview', 'introduction', 'concept',
+    'architecture', 'design', 'pattern', 'algorithm', 'approach', 'method',
+    'how does', 'why does', 'purpose', 'goal', 'rationale', 'theory',
+    'understand', 'learn', 'documentation', 'guide', 'tutorial', 'example',
+])
+
+# Keywords that suggest an implementation query (should prefer code)
+IMPLEMENTATION_KEYWORDS = frozenset([
+    'where', 'implement', 'code', 'function', 'class', 'method', 'variable',
+    'line', 'file', 'bug', 'fix', 'error', 'exception', 'call', 'invoke',
+    'compute', 'calculate', 'return', 'parameter', 'argument',
+])
+
+
+def is_conceptual_query(query_text: str) -> bool:
+    """
+    Determine if a query is conceptual (should boost documentation).
+
+    Conceptual queries ask about concepts, architecture, design, or
+    explanations rather than specific code locations.
+
+    Args:
+        query_text: The search query
+
+    Returns:
+        True if the query appears to be conceptual
+    """
+    query_lower = query_text.lower()
+
+    # Check for conceptual keywords
+    conceptual_score = sum(
+        1 for kw in CONCEPTUAL_KEYWORDS if kw in query_lower
+    )
+
+    # Check for implementation keywords
+    implementation_score = sum(
+        1 for kw in IMPLEMENTATION_KEYWORDS if kw in query_lower
+    )
+
+    # Boost if query starts with "what is" or "how does"
+    if query_lower.startswith(('what is', 'what are', 'how does', 'explain')):
+        conceptual_score += 2
+
+    return conceptual_score > implementation_score
+
+
+def get_doc_type_boost(
+    doc_id: str,
+    doc_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
+    custom_boosts: Optional[Dict[str, float]] = None
+) -> float:
+    """
+    Get the boost factor for a document based on its type.
+
+    Args:
+        doc_id: Document ID
+        doc_metadata: Optional metadata dict {doc_id: {doc_type: ..., ...}}
+        custom_boosts: Optional custom boost factors
+
+    Returns:
+        Boost factor (1.0 = no boost)
+    """
+    boosts = custom_boosts or DOC_TYPE_BOOSTS
+
+    # If we have metadata, use doc_type
+    if doc_metadata and doc_id in doc_metadata:
+        doc_type = doc_metadata[doc_id].get('doc_type', 'code')
+        return boosts.get(doc_type, 1.0)
+
+    # Fallback: infer from doc_id path
+    if doc_id.endswith('.md'):
+        if doc_id.startswith('docs/'):
+            return boosts.get('docs', 1.5)
+        return boosts.get('root_docs', 1.3)
+    elif doc_id.startswith('tests/'):
+        return boosts.get('test', 0.8)
+    return boosts.get('code', 1.0)
+
+
+def apply_doc_type_boost(
+    results: List[Tuple[str, float]],
+    doc_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
+    boost_docs: bool = True,
+    custom_boosts: Optional[Dict[str, float]] = None
+) -> List[Tuple[str, float]]:
+    """
+    Apply document type boosting to search results.
+
+    Args:
+        results: List of (doc_id, score) tuples
+        doc_metadata: Optional metadata dict {doc_id: {doc_type: ..., ...}}
+        boost_docs: Whether to apply boosting
+        custom_boosts: Optional custom boost factors
+
+    Returns:
+        Re-ranked list of (doc_id, score) tuples
+    """
+    if not boost_docs:
+        return results
+
+    boosted = []
+    for doc_id, score in results:
+        boost = get_doc_type_boost(doc_id, doc_metadata, custom_boosts)
+        boosted.append((doc_id, score * boost))
+
+    # Re-sort by boosted scores
+    boosted.sort(key=lambda x: -x[1])
+    return boosted
+
+
+def find_documents_with_boost(
+    query_text: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    tokenizer: Tokenizer,
+    top_n: int = 5,
+    doc_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
+    auto_detect_intent: bool = True,
+    prefer_docs: bool = False,
+    custom_boosts: Optional[Dict[str, float]] = None,
+    use_expansion: bool = True,
+    semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
+    use_semantic: bool = True
+) -> List[Tuple[str, float]]:
+    """
+    Find documents with optional document-type boosting.
+
+    This extends find_documents_for_query with doc_type boosting
+    for improved ranking of documentation vs code.
+
+    Args:
+        query_text: Search query
+        layers: Dictionary of layers
+        tokenizer: Tokenizer instance
+        top_n: Number of results to return
+        doc_metadata: Optional document metadata for boosting
+        auto_detect_intent: If True, automatically boost docs for conceptual queries
+        prefer_docs: If True, always boost documentation (overrides auto_detect)
+        custom_boosts: Optional custom boost factors per doc_type
+        use_expansion: Whether to expand query terms
+        semantic_relations: Optional semantic relations for expansion
+        use_semantic: Whether to use semantic relations
+
+    Returns:
+        List of (doc_id, score) tuples ranked by relevance
+    """
+    # Get base results (fetching more to allow re-ranking)
+    base_results = find_documents_for_query(
+        query_text, layers, tokenizer,
+        top_n=top_n * 2,  # Get more candidates for re-ranking
+        use_expansion=use_expansion,
+        semantic_relations=semantic_relations,
+        use_semantic=use_semantic
+    )
+
+    # Determine if we should boost docs
+    should_boost = prefer_docs or (auto_detect_intent and is_conceptual_query(query_text))
+
+    if should_boost:
+        boosted = apply_doc_type_boost(
+            base_results, doc_metadata, True, custom_boosts
+        )
+        return boosted[:top_n]
+
+    return base_results[:top_n]
 
 
 def expand_query(
