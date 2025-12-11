@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 25
+**Pending Tasks:** 28
 **Completed Tasks:** 86+ (see archive)
 
 ---
@@ -14,7 +14,11 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 ### 🔴 Critical (Do Now)
 
-*No critical tasks at this time.*
+| # | Task | Category | Depends | Effort |
+|---|------|----------|---------|--------|
+| 123 | Replace label propagation with Louvain community detection | BugFix | - | Large |
+| 124 | Add minimum cluster count regression tests | Testing | - | Medium |
+| 125 | Add clustering quality metrics (modularity, silhouette) | DevEx | 123 | Medium |
 
 ### 🟠 High (Do This Week)
 
@@ -102,6 +106,170 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 ---
 
 ## Pending Task Details
+
+### 123. Replace Label Propagation with Louvain Community Detection 🔴
+
+**Meta:** `status:pending` `priority:critical` `category:bugfix`
+**Files:** `cortical/analysis.py`
+**Effort:** Large
+
+**Problem:** Label propagation clustering fails catastrophically on densely connected graphs:
+- 95 documents produce only 3 concept clusters
+- One mega-cluster contains 99.8% of tokens (6,667 of 6,679)
+- The algorithm converges to minimal clusters regardless of strictness parameters
+- This renders the concept layer (Layer 2) essentially useless
+
+**Root Cause Analysis:**
+Label propagation works by having each node adopt the most common label among neighbors. On a densely connected graph (avg 18.2 connections per token), information propagates everywhere, causing nearly all nodes to converge to a single label.
+
+This is NOT a parameter tuning problem - it's a fundamental algorithmic limitation. The `cluster_strictness` parameter only delays convergence, it cannot prevent it.
+
+**Solution:** Replace with Louvain community detection algorithm:
+- Louvain optimizes modularity (internal density vs external sparsity)
+- Naturally handles dense graphs by finding natural community boundaries
+- Widely used in graph analysis (NetworkX, igraph, etc.)
+- Zero external dependencies (we can implement the algorithm ourselves)
+
+**Implementation Steps:**
+1. Implement Louvain algorithm in `analysis.py`
+   - Phase 1: Local modularity optimization
+   - Phase 2: Network aggregation
+   - Repeat until no improvement
+2. Add `clustering_method` parameter ('louvain', 'label_propagation')
+3. Default to 'louvain' for better results
+4. Keep label propagation for backward compatibility
+5. Update showcase.py to use new method
+
+**Expected Results:**
+- 10-20+ meaningful concept clusters for 95-doc corpus
+- Clusters that represent actual topic boundaries
+- Semantic coherence within clusters
+
+**Acceptance Criteria:**
+- [ ] Louvain algorithm implemented without external dependencies
+- [ ] 10+ clusters for 95-document showcase corpus
+- [ ] Existing tests pass
+- [ ] New tests verify cluster quality
+- [ ] showcase.py demonstrates improved clustering
+
+---
+
+### 124. Add Minimum Cluster Count Regression Tests 🔴
+
+**Meta:** `status:pending` `priority:critical` `category:testing`
+**Files:** `tests/test_analysis.py`, `tests/test_processor.py`
+**Effort:** Medium
+
+**Problem:** We had NO tests that would catch clustering failures:
+- Tests only checked that clustering returns valid dictionaries
+- No baseline for expected cluster counts
+- No quality thresholds for diverse corpora
+- The regression went undetected until manual inspection
+
+**Solution:** Add comprehensive regression tests:
+
+```python
+def test_concept_clustering_produces_meaningful_clusters(self):
+    """Regression test: Diverse corpus should produce multiple clusters."""
+    processor = CorticalTextProcessor()
+    # Add 10+ documents on different topics
+    processor.process_document("ml", "Neural networks deep learning...")
+    processor.process_document("cooking", "Bread baking yeast flour...")
+    processor.process_document("law", "Contract legal obligations...")
+    # ... more diverse docs
+
+    processor.compute_all()
+    layer2 = processor.layers[CorticalLayer.CONCEPTS]
+
+    # CRITICAL: Must produce at least 5 clusters for 10 diverse docs
+    self.assertGreaterEqual(
+        layer2.column_count(), 5,
+        f"Diverse corpus should produce 5+ clusters, got {layer2.column_count()}"
+    )
+
+    # No single cluster should contain > 50% of tokens
+    max_cluster_size = max(len(c.feedforward_connections) for c in layer2.minicolumns.values())
+    total_tokens = processor.layers[CorticalLayer.TOKENS].column_count()
+    self.assertLess(
+        max_cluster_size / total_tokens, 0.5,
+        "No cluster should contain more than 50% of tokens"
+    )
+```
+
+**Tests to Add:**
+1. `test_minimum_cluster_count_for_diverse_corpus`
+2. `test_no_single_cluster_dominates`
+3. `test_cluster_semantic_coherence`
+4. `test_showcase_produces_expected_clusters`
+
+**Acceptance Criteria:**
+- [ ] 4+ new regression tests for clustering quality
+- [ ] Tests fail on current label propagation (proving they catch the bug)
+- [ ] Tests pass after Louvain implementation (Task #123)
+
+---
+
+### 125. Add Clustering Quality Metrics (Modularity, Silhouette)
+
+**Meta:** `status:pending` `priority:critical` `category:devex` `depends:123`
+**Files:** `cortical/analysis.py`, `showcase.py`
+**Effort:** Medium
+
+**Problem:** We have no way to measure if clustering is good or bad:
+- No modularity score to measure community quality
+- No silhouette score to measure cluster separation
+- No metrics in showcase output
+- No way to compare algorithm performance
+
+**Solution:** Add quality metrics:
+
+1. **Modularity Score** (0 to 1):
+   - Measures density of connections within clusters vs between clusters
+   - Q = 0: No better than random
+   - Q > 0.3: Good community structure
+   - Q > 0.5: Strong community structure
+
+2. **Silhouette Score** (-1 to 1):
+   - Measures how similar nodes are to their own cluster vs others
+   - s > 0.5: Strong structure
+   - s > 0.25: Reasonable structure
+   - s < 0: Poor clustering
+
+3. **Cluster Balance Metric**:
+   - Gini coefficient of cluster sizes
+   - 0 = perfectly balanced
+   - 1 = all in one cluster
+
+**Implementation:**
+```python
+def compute_clustering_quality(
+    layers: Dict[CorticalLayer, HierarchicalLayer]
+) -> Dict[str, float]:
+    """Compute clustering quality metrics."""
+    return {
+        'modularity': _compute_modularity(layers),
+        'silhouette': _compute_silhouette(layers),
+        'balance': _compute_cluster_balance(layers),
+        'num_clusters': layers[CorticalLayer.CONCEPTS].column_count()
+    }
+```
+
+**Showcase Output:**
+```
+Layer 2: Concept Layer (V4)
+       15 minicolumns, 42 connections
+       Modularity: 0.47 (good structure)
+       Balance: 0.23 (well distributed)
+```
+
+**Acceptance Criteria:**
+- [ ] Modularity score implemented
+- [ ] Silhouette score implemented
+- [ ] Balance metric implemented
+- [ ] Metrics displayed in showcase.py
+- [ ] Quality thresholds documented
+
+---
 
 ### 7. Document Magic Numbers
 
@@ -939,13 +1107,13 @@ ls cortical/*.ai_meta || python scripts/generate_ai_metadata.py
 
 | Category | Pending | Description |
 |----------|---------|-------------|
-| BugFix | 0 | Bug fixes and regressions |
+| BugFix | 1 | Bug fixes and regressions |
 | AINav | 6 | AI assistant navigation & usability |
-| DevEx | 6 | Developer experience (scripts, tools) |
+| DevEx | 7 | Developer experience (scripts, tools) |
 | Docs | 2 | Documentation improvements |
 | Arch | 4 | Architecture refactoring |
 | CodeQual | 3 | Code quality improvements |
-| Testing | 1 | Test coverage |
+| Testing | 2 | Test coverage |
 | TaskMgmt | 2 | Task management system |
 | Deferred | 7 | Low priority or superseded |
 
