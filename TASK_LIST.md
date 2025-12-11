@@ -2553,27 +2553,39 @@ else:
 
 ### 73. Add "Find Similar Code" Command
 
-**Files:** `scripts/search_codebase.py`, `cortical/processor.py`
-**Status:** [ ] Not Started
+**Files:** `scripts/search_codebase.py`
+**Status:** [x] Completed
 **Priority:** Medium
 
 **Problem:**
 No way to find code similar to a given snippet or function. Fingerprinting exists but isn't exposed.
 
-**Solution:**
-Add `--similar-to` flag:
-```bash
-# Find code similar to a specific function
-python scripts/search_codebase.py --similar-to "cortical/processor.py:expand_query"
+**Solution Applied:**
+1. Added `find_similar_code()` function (~60 lines) implementing:
+   - Parses file:line references to extract target text from indexed documents
+   - Falls back to raw text comparison for direct code input
+   - Uses `get_fingerprint()` and `compare_fingerprints()` for similarity scoring
+   - Chunks documents and compares fingerprints against target
+   - Returns top-N similar passages with scores and shared terms
+2. Added `display_similar_results()` function for formatted output
+3. Added `--similar-to` / `-s` argument to CLI
+4. Added tests in `tests/test_search_codebase.py` (5 tests)
 
-# Find code similar to clipboard/stdin
-echo "def process(data): return data.strip()" | python scripts/search_codebase.py --similar-to -
+**Usage:**
+```bash
+# Find code similar to a file:line reference
+python scripts/search_codebase.py --similar-to cortical/processor.py:100
+
+# Find code similar to raw text
+python scripts/search_codebase.py -s "def compute_score(items, weights)"
+
+# With more results
+python scripts/search_codebase.py --similar-to processor.py:50 --top 10
 ```
 
-**Implementation:**
-1. Extract fingerprint of target code
-2. Compare against all indexed passages
-3. Return passages with highest similarity scores
+**Files Modified:**
+- `scripts/search_codebase.py` - Added `find_similar_code()`, `display_similar_results()`, CLI argument (~120 lines)
+- `tests/test_search_codebase.py` - New file with 23 tests for search functions
 
 ---
 
