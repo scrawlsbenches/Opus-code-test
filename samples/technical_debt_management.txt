@@ -1,0 +1,72 @@
+Technical Debt: Recognition, Measurement, and Strategic Management
+
+Technical debt represents the implied cost of future rework caused by choosing
+expedient solutions over better approaches that would take longer. Like financial
+debt, technical debt accumulates interest: the longer it remains, the more expensive
+remediation becomes as the codebase grows around the suboptimal implementation.
+
+Recognizing technical debt requires distinguishing between intentional and
+unintentional debt. Intentional debt results from conscious decisions to ship
+faster, accepting known limitations. Unintentional debt emerges from inexperience,
+changing requirements, or evolving understanding of the problem domain.
+
+Common manifestations of technical debt include duplicated code that should be
+abstracted, tightly coupled components that resist modification, missing tests
+that make changes risky, outdated dependencies with security vulnerabilities,
+and documentation that no longer reflects system behavior.
+
+The debt metaphor extends to interest payments. Code with high technical debt
+requires more time for each change: developers must work around limitations,
+debug obscure interactions, and manually verify behavior that tests should catch.
+This compound interest effect means early debt proves most expensive over time.
+
+Measuring technical debt combines quantitative and qualitative assessment.
+Static analysis tools measure code complexity, duplication, and dependency
+health. Developer surveys capture perceived friction and maintenance burden.
+Time tracking reveals which components consume disproportionate effort.
+
+Not all technical debt requires immediate payment. Strategic debt management
+prioritizes remediation based on business impact, change frequency, and risk.
+Debt in rarely-modified code costs little interest. Debt in core functionality
+touched by every feature deserves urgent attention.
+
+The debt quadrant model categorizes debt by recklessness and deliberateness.
+Deliberate, prudent debt accepts known shortcuts to meet deadlines. Inadvertent,
+prudent debt emerges as understanding deepens: "now we know how we should have
+built it." Reckless debt, whether deliberate or inadvertent, reflects poor
+engineering practices that should be addressed through education and process.
+
+Paying down technical debt requires dedicated allocation. The boy scout rule
+suggests leaving code better than you found it, making incremental improvements
+alongside feature work. Dedicated refactoring sprints address larger structural
+issues that incremental improvement cannot fix.
+
+Documentation of technical debt ensures organizational memory. Track known
+limitations, their business impact, estimated remediation cost, and proposed
+solutions in a task management system. This visibility enables informed
+prioritization and prevents rediscovery of known issues.
+
+Prevention proves more cost-effective than remediation. Code review catches
+debt before it merges. Architecture review prevents systemic debt. Automated
+quality gates enforce minimum standards. Investment in developer education
+reduces inadvertent debt from inexperience.
+
+Refactoring represents the primary mechanism for debt payment. Safe refactoring
+requires comprehensive tests that verify behavior preservation. Without tests,
+refactoring becomes modification: changes that might alter behavior rather than
+merely restructuring code. Building test coverage often precedes refactoring.
+
+The strangler pattern enables gradual system replacement. Rather than big-bang
+rewrites that often fail, new functionality routes through improved implementations
+while legacy code continues serving existing paths. Over time, the legacy system
+withers as traffic migrates to the replacement.
+
+Communicating technical debt to stakeholders requires translation to business
+terms. Explain how debt slows feature delivery, increases defect rates, and
+raises operational risk. Quantify where possible: "this refactoring would reduce
+our bug fix time from days to hours."
+
+Accepting debt strategically enables business agility. Sometimes shipping
+imperfect code that captures market opportunity justifies the future cost.
+The key is conscious decision-making with clear plans for eventual remediation,
+not accidental accumulation through negligence or ignorance.

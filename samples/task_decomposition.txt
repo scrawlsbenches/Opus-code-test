@@ -1,0 +1,86 @@
+Task Decomposition: Breaking Complex Work into Manageable Steps
+
+Task decomposition transforms overwhelming challenges into achievable increments.
+Large, ambiguous tasks paralyze progress; small, concrete tasks enable momentum.
+Effective decomposition reveals hidden complexity, exposes dependencies, and
+provides clear milestones that demonstrate progress toward larger goals.
+
+The first decomposition step clarifies the end state. What specific, observable
+outcome indicates completion? Vague goals like "improve performance" resist
+decomposition. Concrete goals like "reduce API latency to under 200ms for the
+95th percentile" enable identification of specific steps toward that outcome.
+
+Vertical slicing divides features into thin, end-to-end implementations rather
+than horizontal layers. Instead of building all backend, then all frontend,
+implement one complete user flow at a time. Each slice delivers value and
+provides feedback before investing in the next slice.
+
+Dependency mapping identifies which tasks block others. Tasks without dependencies
+can proceed in parallel. Tasks with many dependents deserve priority; their
+completion unblocks substantial downstream work. Visualizing dependencies reveals
+the critical path through a project.
+
+Size estimation improves decomposition quality. Tasks estimated at more than
+a few hours likely hide unrecognized complexity. Large estimates signal the
+need for further breakdown. Small, consistently-sized tasks enable predictable
+progress and accurate project forecasting.
+
+The spike pattern handles uncertainty. When a task's scope depends on unknown
+factors, time-box an investigation spike. The spike's goal is answering questions
+that enable decomposition, not delivering functionality. Spikes trade short-term
+efficiency for reduced long-term risk.
+
+Acceptance criteria define done for each task. What must be true when this task
+completes? Criteria might include tests passing, documentation updated, code
+reviewed, and functionality deployed. Clear criteria prevent scope creep and
+enable objective completion assessment.
+
+Progressive refinement recognizes that early decomposition relies on incomplete
+information. Initial task breakdowns reflect current understanding. As work
+progresses and understanding deepens, refine remaining tasks based on new
+knowledge. Premature detailed planning wastes effort on invalidated assumptions.
+
+The minimum viable approach identifies the simplest version that provides value.
+What is the smallest implementation worth deploying? Starting minimal enables
+faster feedback, earlier value delivery, and more informed decisions about
+subsequent elaboration. Complexity should grow only as needed.
+
+Risk-first ordering addresses uncertainties early. Tasks with unknown outcomes,
+unfamiliar technologies, or external dependencies should be tackled first.
+Early discovery of blockers preserves time for adaptation. Deferring risks
+compresses response time when problems inevitably emerge.
+
+Interface-first design enables parallel work. Define contracts between components
+before implementing either side. With stable interfaces, teams can work
+independently, integrating later. Interface stability matters more than initial
+perfection; iterate interfaces before committing to implementations.
+
+Test tasks explicitly in the decomposition. "Write tests for user authentication"
+should appear as distinct tasks, not assumed parts of implementation. Explicit
+test tasks ensure coverage, enable progress visibility, and prevent testing
+from being squeezed when schedules tighten.
+
+Documentation tasks similarly deserve explicit inclusion. API documentation,
+architecture decision records, runbooks, and user guides all require dedicated
+time. Making documentation visible prevents it from becoming an afterthought
+that never happens.
+
+Review checkpoints provide natural decomposition boundaries. Tasks should be
+scoped to enable meaningful code review. Massive changes overwhelm reviewers;
+small, focused changes receive better feedback. Structure tasks around reviewable
+units of work.
+
+Rollback planning accompanies deployment tasks. For each deployment, identify
+what could go wrong and how to recover. Decompose rollback procedures into
+their own verified steps. Practiced rollback enables confident deployment and
+rapid recovery from production issues.
+
+Communication tasks recognize that engineering includes more than code. Stakeholder
+updates, team synchronization, and cross-team coordination all require time and
+attention. Including communication explicitly prevents it from becoming invisible
+work that delays other tasks.
+
+The decomposition process itself benefits from iteration. Initial breakdowns
+often miss tasks discovered during implementation. Retrospectives identifying
+overlooked work improve future decomposition. Treat decomposition as a skill
+that improves with deliberate practice and reflection.

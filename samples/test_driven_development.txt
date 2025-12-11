@@ -1,0 +1,83 @@
+Test-Driven Development: Principles, Practice, and Patterns
+
+Test-driven development inverts the traditional coding sequence: write a failing
+test first, then implement code to make it pass, finally refactor while keeping
+tests green. This red-green-refactor cycle produces code that is testable by
+design and documented by executable specifications.
+
+The first step writes a test for functionality that does not yet exist. This
+test must fail, confirming it actually tests something meaningful. A test that
+passes immediately either tests existing behavior or tests nothing at all.
+The failing test defines the goal: make this assertion true.
+
+Writing the test first forces clarity about requirements. What exactly should
+this function return? What inputs does it accept? How should it handle errors?
+These questions, often deferred until implementation reveals ambiguity, must be
+answered before any production code exists.
+
+The second step implements the minimum code necessary to pass the test. Resist
+the temptation to implement more than the test requires. This discipline reveals
+missing tests: if a case matters, it deserves a test. Code without corresponding
+tests represents untested, potentially incorrect behavior.
+
+The third step refactors both test and implementation. With a passing test as
+a safety net, restructure code for clarity, eliminate duplication, and improve
+naming. The test suite verifies that refactoring preserves behavior. Refactor
+ruthlessly; the tests protect you.
+
+Test isolation ensures each test verifies one specific behavior. Isolated tests
+fail for one reason only, making failures easy to diagnose. Tests that verify
+multiple behaviors conflate distinct responsibilities and obscure the source of
+failures when multiple assertions fail together.
+
+Mock objects enable testing components in isolation. When testing a function that
+calls a database, mock the database to control its responses. This isolation
+speeds tests, eliminates environmental dependencies, and enables testing error
+handling by simulating failures.
+
+The testing pyramid suggests balance between test types. Unit tests form the
+base: fast, numerous, and isolated. Integration tests verify component interaction.
+End-to-end tests validate complete workflows. More tests at the base means faster
+feedback and easier debugging when tests fail.
+
+Arrange-Act-Assert structures tests clearly. Arrange sets up preconditions: create
+objects, configure mocks, establish state. Act invokes the behavior under test.
+Assert verifies the result. This structure makes tests readable and consistent.
+
+Descriptive test names document behavior. Rather than "test_calculate", write
+"test_calculate_returns_zero_for_empty_input". The name explains what the test
+verifies without reading the implementation. Test names serve as living
+documentation of system behavior.
+
+Edge cases deserve dedicated tests. Empty inputs, boundary values, null references,
+maximum sizes, and error conditions reveal implementation assumptions. A robust
+test suite exercises the boundaries where bugs commonly lurk.
+
+Test coverage measures which code paths tests execute. While 100% coverage does
+not guarantee correctness, low coverage indicates untested code that might contain
+bugs. Coverage reports guide test writing toward overlooked areas.
+
+Regression tests prevent bug recurrence. When fixing a bug, first write a test
+that reproduces it. The failing test proves the bug exists. After fixing, the
+passing test prevents the bug from returning. Bug fixes without tests risk
+regression.
+
+Property-based testing complements example-based tests. Rather than testing
+specific inputs, property-based tests generate random inputs and verify invariants
+hold. This approach discovers edge cases humans overlook while providing stronger
+guarantees about behavior.
+
+Test maintenance matters as much as test creation. Brittle tests that break with
+irrelevant changes waste time. Tests coupled to implementation details rather
+than behavior require constant updating. Invest in test quality to maintain
+velocity over time.
+
+The transformation priority premise guides implementation. Start with the simplest
+transformation: return a constant. Progress through increasingly powerful
+transformations: return input, add conditional, iterate, recurse. This discipline
+prevents over-engineering and ensures tests drive design.
+
+Behavior-driven development extends TDD with natural language specifications.
+Given-When-Then format structures tests as scenarios stakeholders understand.
+This shared language bridges communication between developers and domain experts
+while maintaining executable documentation.

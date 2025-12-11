@@ -1,0 +1,90 @@
+Debugging Strategies: Systematic Approaches to Finding and Fixing Defects
+
+Debugging transforms mysterious misbehavior into understood and corrected code.
+Effective debugging combines systematic investigation with creative hypothesis
+generation. The goal extends beyond fixing the immediate symptom to understanding
+root causes and preventing similar issues.
+
+Reproduction provides the foundation for all debugging. Until you can reliably
+trigger the bug, you cannot verify fixes. Document the exact steps, inputs,
+environment, and timing that produce the failure. Intermittent bugs require
+identifying the conditions that make them reproducible.
+
+Minimization isolates the essential trigger. Remove everything unnecessary from
+the reproduction case. Simpler reproduction speeds investigation, eliminates
+confounding factors, and often reveals the bug's nature through what remains
+essential. A minimal test case may already suggest the solution.
+
+Binary search locates problems efficiently. When a large change introduces a bug,
+test the midpoint. If the bug exists, it was introduced in the first half;
+otherwise, the second half. Each test halves the search space, finding the
+culprit in logarithmic time. Git bisect automates this for commit histories.
+
+The scientific method structures investigation. Form a hypothesis about the
+cause. Design an experiment to test it. Execute the experiment and observe
+results. If the hypothesis is wrong, what did you learn? Each experiment should
+distinguish between possible causes, narrowing the search.
+
+Print debugging, despite its simplicity, remains effective. Strategic output
+statements reveal program state at key points. Compare actual values to expected
+values. The divergence point indicates where reasoning about the code differs
+from its actual behavior. Remove debugging output after resolving the issue.
+
+Debuggers provide interactive investigation. Breakpoints pause execution at
+specific locations. Step commands advance through code line by line. Variable
+inspection reveals current state. Conditional breakpoints trigger only when
+specific conditions hold, catching rare circumstances.
+
+Rubber duck debugging externalizes reasoning. Explaining the problem aloud,
+even to an inanimate object, forces articulation of assumptions and logic.
+The act of explanation often reveals gaps in understanding where bugs hide.
+Many bugs become obvious when you try to describe expected versus actual behavior.
+
+Log analysis traces execution history. Production logs capture events leading
+to failures. Structured logging with consistent formatting enables automated
+analysis. Correlation IDs track requests across distributed systems. Effective
+logging anticipates debugging needs before problems occur.
+
+Stack traces identify execution paths. When exceptions occur, the stack trace
+shows the call chain leading to failure. Read traces bottom-up: the immediate
+cause appears at the top, but root causes often lurk in earlier frames where
+incorrect state originated.
+
+State inspection examines data at rest. Database queries reveal stored values.
+API responses show what services return. Configuration files define runtime
+behavior. Discrepancies between expected and actual state explain unexpected
+behavior.
+
+Diff analysis compares working and broken states. What changed between the
+last working version and the current broken version? Code diffs, configuration
+changes, dependency updates, and infrastructure modifications all potentially
+introduce bugs. Reverting changes confirms or eliminates suspects.
+
+Memory analysis debugs resource issues. Memory profilers identify leaks and
+excessive allocation. Heap dumps capture memory state for offline analysis.
+Reference tracking reveals which objects retain memory that should be freed.
+
+Concurrency bugs require specialized techniques. Race conditions depend on timing,
+making reproduction difficult. Thread dumps capture execution state across all
+threads. Lock analysis identifies deadlocks and contention. Stress testing with
+randomized timing increases the probability of triggering races.
+
+Input validation catches data-related bugs. What happens with empty input? Null
+values? Extremely large values? Malformed formats? Unicode edge cases? Special
+characters? Boundary conditions? Systematic exploration of input space reveals
+assumptions violated by unexpected data.
+
+Error message analysis extracts maximum information. Exact error text enables
+searching documentation, issue trackers, and community forums. Error codes
+identify specific failure modes. Timestamps correlate events across system
+components.
+
+Root cause analysis prevents recurrence. After fixing the immediate bug, ask
+why it occurred. Was it a misunderstanding of requirements? A gap in testing?
+A communication failure? An unclear API? Addressing root causes prevents similar
+bugs rather than just fixing symptoms.
+
+Documentation captures debugging knowledge. Record what you tried, what you
+learned, and how you fixed the issue. Future debuggers, including your future
+self, benefit from this institutional memory. Good bug reports become valuable
+references for similar problems.
