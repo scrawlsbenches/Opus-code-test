@@ -50,6 +50,128 @@ def get_doc_type_label(doc_id: str) -> str:
     return 'CODE'
 
 
+def find_similar_code(
+    processor: CorticalTextProcessor,
+    target: str,
+    top_n: int = 5,
+    chunk_size: int = 400
+) -> list:
+    """
+    Find code similar to a target reference or text.
+
+    Args:
+        processor: CorticalTextProcessor instance
+        target: Either a file:line reference (e.g., "cortical/processor.py:100")
+                or raw text to compare against
+        top_n: Number of similar results to return
+        chunk_size: Size of text chunks to compare
+
+    Returns:
+        List of result dicts with similarity scores
+    """
+    # Determine if target is a file reference or raw text
+    if ':' in target and not target.startswith('http'):
+        # Parse file:line reference
+        parts = target.split(':')
+        file_path = parts[0]
+        try:
+            line_num = int(parts[1]) if len(parts) > 1 else 1
+        except ValueError:
+            line_num = 1
+
+        # Get content from indexed document
+        doc_content = processor.documents.get(file_path, '')
+        if not doc_content:
+            # Try without extension
+            for doc_id in processor.documents:
+                if doc_id.endswith(file_path) or file_path.endswith(doc_id):
+                    doc_content = processor.documents[doc_id]
+                    file_path = doc_id
+                    break
+
+        if not doc_content:
+            return []
+
+        # Extract passage around the line
+        lines = doc_content.split('\n')
+        start_line = max(0, line_num - 1)
+        end_line = min(len(lines), start_line + 20)  # ~20 lines of context
+        target_text = '\n'.join(lines[start_line:end_line])
+    else:
+        target_text = target
+
+    if not target_text.strip():
+        return []
+
+    # Get fingerprint of target
+    target_fp = processor.get_fingerprint(target_text, top_n=20)
+
+    # Compare against all documents
+    results = []
+    for doc_id, doc_content in processor.documents.items():
+        # Skip the source document if we're searching from a file reference
+        if ':' in target and doc_id in target:
+            continue
+
+        # Chunk the document and compare each chunk
+        for start in range(0, len(doc_content), chunk_size // 2):
+            end = min(start + chunk_size, len(doc_content))
+            chunk = doc_content[start:end]
+
+            if len(chunk.strip()) < 50:  # Skip very short chunks
+                continue
+
+            chunk_fp = processor.get_fingerprint(chunk, top_n=20)
+            comparison = processor.compare_fingerprints(target_fp, chunk_fp)
+
+            similarity = comparison.get('overall_similarity', 0)
+            if similarity > 0.1:  # Only include somewhat similar results
+                line_num = find_line_number(doc_content, start)
+                results.append({
+                    'file': doc_id,
+                    'line': line_num,
+                    'passage': chunk,
+                    'score': similarity,
+                    'reference': f"{doc_id}:{line_num}",
+                    'doc_type': get_doc_type_label(doc_id),
+                    'shared_terms': list(comparison.get('shared_terms', []))[:5]
+                })
+
+    # Sort by similarity and return top results
+    results.sort(key=lambda x: x['score'], reverse=True)
+    return results[:top_n]
+
+
+def display_similar_results(results: list, target: str, verbose: bool = False):
+    """Display similar code results."""
+    if not results:
+        print(f"\nNo similar code found for: {target}")
+        return
+
+    print(f"\n{'─' * 60}")
+    print(f"Code similar to: {target}")
+    print(f"{'─' * 60}\n")
+
+    for i, result in enumerate(results, 1):
+        print(f"[{i}] [{result['doc_type']}] {result['reference']}")
+        print(f"    Similarity: {result['score']:.1%}")
+        if result.get('shared_terms'):
+            print(f"    Shared: {', '.join(result['shared_terms'])}")
+        print("─" * 50)
+
+        if verbose:
+            print(format_passage(result['passage']))
+        else:
+            lines = result['passage'].split('\n')[:5]
+            for line in lines:
+                if len(line) > 70:
+                    line = line[:67] + '...'
+                print(f"  {line}")
+            if len(result['passage'].split('\n')) > 5:
+                print(f"  ...")
+        print()
+
+
 def search_codebase(
     processor: CorticalTextProcessor,
     query: str,
@@ -169,10 +291,15 @@ def display_results(results: list, verbose: bool = False, show_doc_type: bool = 
         print()
 
 
-def expand_query_display(processor: CorticalTextProcessor, query: str):
+def expand_query_display(processor: CorticalTextProcessor, query: str, use_code: bool = False):
     """Show expanded query terms."""
-    expanded = processor.expand_query(query, max_expansions=10)
-    print("\nQuery expansion:")
+    if use_code:
+        expanded = processor.expand_query_for_code(query, max_expansions=15)
+        print("\nQuery expansion (code-aware):")
+        print("  (includes programming synonyms: get/fetch/load, etc.)")
+    else:
+        expanded = processor.expand_query(query, max_expansions=10)
+        print("\nQuery expansion:")
     for term, weight in sorted(expanded.items(), key=lambda x: -x[1])[:10]:
         print(f"  {term}: {weight:.3f}")
 
@@ -183,6 +310,7 @@ def interactive_mode(processor: CorticalTextProcessor):
     print("=" * 40)
     print("Commands:")
     print("  /expand <query>  - Show query expansion")
+    print("  /code <query>    - Show code-aware expansion (programming synonyms)")
     print("  /concepts        - List concept clusters")
     print("  /stats           - Show corpus statistics")
     print("  /help            - Show this help")
@@ -207,7 +335,7 @@ def interactive_mode(processor: CorticalTextProcessor):
                 print("Goodbye!")
                 break
             elif cmd == '/help':
-                print("Commands: /expand, /concepts, /stats, /quit")
+                print("Commands: /expand, /code, /concepts, /stats, /quit")
             elif cmd == '/stats':
                 print(f"\nCorpus Statistics:")
                 print(f"  Documents: {len(processor.documents)}")
@@ -217,6 +345,8 @@ def interactive_mode(processor: CorticalTextProcessor):
                 print(f"  Relations: {len(processor.semantic_relations)}")
             elif cmd == '/expand' and len(cmd_parts) > 1:
                 expand_query_display(processor, cmd_parts[1])
+            elif cmd == '/code' and len(cmd_parts) > 1:
+                expand_query_display(processor, cmd_parts[1], use_code=True)
             elif cmd == '/concepts':
                 layer2 = processor.layers[2]
                 concepts = list(layer2.minicolumns.values())[:10]
@@ -239,6 +369,10 @@ Examples:
   %(prog)s "what is PageRank" --prefer-docs  # Always boost docs
   %(prog)s "compute pagerank" --no-boost  # Disable boosting
   %(prog)s "architecture" --fast          # Fast document-level search
+  %(prog)s "fetch data" --code            # Code-aware (also finds get/load/retrieve)
+  %(prog)s "auth" --code --expand         # Show programming synonyms
+  %(prog)s --similar-to cortical/processor.py:100  # Find similar code
+  %(prog)s -s "def compute_pagerank"      # Find code similar to text
         """
     )
     parser.add_argument('query', nargs='?', help='Search query')
@@ -258,6 +392,10 @@ Examples:
                         help='Always boost documentation files in results')
     parser.add_argument('--no-boost', action='store_true',
                         help='Disable document type boosting (raw TF-IDF)')
+    parser.add_argument('--code', action='store_true',
+                        help='Use code-aware query expansion (get→fetch/load/retrieve)')
+    parser.add_argument('--similar-to', '-s', metavar='TARGET',
+                        help='Find code similar to file:line reference or text')
     args = parser.parse_args()
 
     base_path = Path(__file__).parent.parent
@@ -276,9 +414,17 @@ Examples:
 
     if args.interactive:
         interactive_mode(processor)
+    elif args.similar_to:
+        # Find similar code mode
+        results = find_similar_code(
+            processor,
+            args.similar_to,
+            top_n=args.top
+        )
+        display_similar_results(results, args.similar_to, verbose=args.verbose)
     elif args.query:
         if args.expand:
-            expand_query_display(processor, args.query)
+            expand_query_display(processor, args.query, use_code=args.code)
             print()
 
         # Show query intent detection

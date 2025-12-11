@@ -34,10 +34,26 @@ from typing import Dict, List, Optional, Tuple, Any
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from cortical.processor import CorticalTextProcessor
+from cortical.tokenizer import Tokenizer
 from cortical.chunk_index import (
     ChunkWriter, ChunkLoader, ChunkCompactor,
     get_changes_from_manifest as get_chunk_changes
 )
+
+
+def create_code_processor() -> CorticalTextProcessor:
+    """
+    Create a CorticalTextProcessor configured for code indexing.
+
+    Enables split_identifiers so that:
+    - getUserCredentials → ['getusercredentials', 'get', 'user', 'credentials']
+    - auth_service → ['auth_service', 'auth', 'service']
+
+    This dramatically improves code search - "auth" will find AuthService,
+    authenticate, user_auth, etc.
+    """
+    tokenizer = Tokenizer(split_identifiers=True)
+    return CorticalTextProcessor(tokenizer=tokenizer)
 
 
 # Manifest file version for compatibility checking
@@ -966,7 +982,7 @@ def index_with_chunks(
     else:
         # Build processor from documents (with metadata)
         tracker.start_phase("Building processor from chunks")
-        processor = CorticalTextProcessor()
+        processor = create_code_processor()
         documents = [
             (doc_id, content, all_metadata.get(doc_id))
             for doc_id, content in all_docs.items()
@@ -1200,10 +1216,10 @@ def run_indexer(
             tracker.warn(f"Error loading corpus: {e}")
             tracker.log("  Falling back to full rebuild...")
             tracker.end_phase("Loading existing corpus", status="failed")
-            processor = CorticalTextProcessor()
+            processor = create_code_processor()
             added, modified, deleted = all_files, [], []
     else:
-        processor = CorticalTextProcessor()
+        processor = create_code_processor()
         # Full index - treat all files as "added"
         added = all_files
         modified = []
