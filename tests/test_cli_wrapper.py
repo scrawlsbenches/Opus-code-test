@@ -31,6 +31,8 @@ from cortical.cli_wrapper import (
     ContextWindowManager,
     create_wrapper_with_completion_manager,
     run_with_context,
+    run,
+    Session,
 )
 
 
@@ -558,6 +560,161 @@ class TestIntegration(unittest.TestCase):
         summary = manager.get_session_summary()
         self.assertEqual(summary['task_count'], 3)
         self.assertAlmostEqual(summary['success_rate'], 2/3, places=2)
+
+
+class TestSimpleRunAPI(unittest.TestCase):
+    """Tests for the simple run() API."""
+
+    def test_run_basic(self):
+        """Test basic run() usage."""
+        result = run("echo hello")
+        self.assertTrue(result.success)
+        self.assertIn("hello", result.stdout)
+
+    def test_run_no_git_by_default(self):
+        """Test that git context is not collected by default."""
+        result = run("echo test")
+        # Git context should be empty/default when git=False
+        self.assertFalse(result.git.is_repo)
+
+    def test_run_with_git(self):
+        """Test run with git context."""
+        result = run("echo test", git=True)
+        # We're in a git repo, so this should be True
+        self.assertTrue(result.git.is_repo)
+        self.assertTrue(len(result.git.branch) > 0)
+
+    def test_run_with_timeout(self):
+        """Test run with timeout."""
+        result = run("python -c 'import time; time.sleep(10)'", timeout=0.1)
+        self.assertFalse(result.success)
+
+    def test_run_failure(self):
+        """Test run with failing command."""
+        result = run(["python", "-c", "import sys; sys.exit(42)"])
+        self.assertFalse(result.success)
+        self.assertEqual(result.exit_code, 42)
+
+
+class TestSession(unittest.TestCase):
+    """Tests for Session context manager."""
+
+    def test_session_basic(self):
+        """Test basic session usage."""
+        with Session(git=False) as s:
+            s.run("echo first")
+            s.run("echo second")
+
+        self.assertEqual(len(s.results), 2)
+        self.assertTrue(s.all_passed)
+
+    def test_session_tracks_failures(self):
+        """Test session tracks failures correctly."""
+        with Session(git=False) as s:
+            s.run("echo ok")
+            s.run("python -c 'import sys; sys.exit(1)'")
+            s.run("echo also ok")
+
+        self.assertEqual(len(s.results), 3)
+        self.assertFalse(s.all_passed)
+        self.assertAlmostEqual(s.success_rate, 2/3, places=2)
+
+    def test_session_summary(self):
+        """Test session summary."""
+        with Session(git=False) as s:
+            s.run("echo test")
+            summary = s.summary()
+
+        self.assertEqual(summary['task_count'], 1)
+        self.assertEqual(summary['success_rate'], 1.0)
+
+    def test_session_should_reindex(self):
+        """Test should_reindex detection."""
+        with Session(git=True) as s:
+            # Just an echo - no code changes
+            s.run("echo test")
+
+        # No commits or file changes, shouldn't need reindex
+        # (Unless the test repo is dirty)
+        # Just verify it returns a boolean
+        self.assertIsInstance(s.should_reindex(), bool)
+
+    def test_session_context_manager(self):
+        """Test session works as context manager."""
+        results_outside = []
+
+        with Session(git=False) as s:
+            result = s.run("echo inside")
+            results_outside.append(result)
+
+        # Can still access results after exiting
+        self.assertEqual(len(s.results), 1)
+        self.assertTrue(s.results[0].success)
+
+
+class TestDecoratorHooks(unittest.TestCase):
+    """Tests for decorator-style hook registration."""
+
+    def test_on_success_decorator(self):
+        """Test @wrapper.on_success decorator."""
+        wrapper = CLIWrapper(collect_git_context=False)
+        calls = []
+
+        @wrapper.on_success()
+        def track_success(ctx):
+            calls.append(('success', ctx.command_str))
+
+        wrapper.run("echo hello")
+        wrapper.run("python -c 'import sys; sys.exit(1)'")
+
+        # Only the successful command should trigger
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], 'success')
+
+    def test_on_error_decorator(self):
+        """Test @wrapper.on_error decorator."""
+        wrapper = CLIWrapper(collect_git_context=False)
+        errors = []
+
+        @wrapper.on_error()
+        def track_error(ctx):
+            errors.append(ctx.exit_code)
+
+        wrapper.run(["echo", "hello"])  # success
+        wrapper.run(["python", "-c", "import sys; sys.exit(1)"])  # fail
+        wrapper.run(["python", "-c", "import sys; sys.exit(2)"])  # fail
+
+        self.assertEqual(len(errors), 2)
+        self.assertEqual(errors, [1, 2])
+
+    def test_on_complete_decorator(self):
+        """Test @wrapper.on_complete decorator."""
+        wrapper = CLIWrapper(collect_git_context=False)
+        completions = []
+
+        @wrapper.on_complete()
+        def track_all(ctx):
+            completions.append(ctx.success)
+
+        wrapper.run("echo hello")
+        wrapper.run("python -c 'import sys; sys.exit(1)'")
+
+        self.assertEqual(completions, [True, False])
+
+    def test_pattern_decorator(self):
+        """Test decorator with pattern matching."""
+        wrapper = CLIWrapper(collect_git_context=False)
+        echo_count = [0]
+
+        @wrapper.on_success("echo")
+        def on_echo_success(ctx):
+            echo_count[0] += 1
+
+        wrapper.run("echo one")
+        wrapper.run("echo two")
+        wrapper.run("python -c 'print(1)'")  # Not echo
+
+        self.assertEqual(echo_count[0], 2)
 
 
 if __name__ == '__main__':

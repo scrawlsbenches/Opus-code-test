@@ -1,38 +1,43 @@
 """
 CLI wrapper framework for collecting context and triggering actions.
 
-This module provides infrastructure for wrapping CLI tools to:
-- Collect execution metadata (timing, exit codes, output)
-- Gather context (git status, working directory, environment)
-- Trigger callbacks on task completion
-- Support context window management integration
+Design philosophy: QUIET BY DEFAULT, POWERFUL WHEN NEEDED.
 
-Architecture:
-    1. CLIWrapper - Base class for wrapping shell commands
-    2. ExecutionContext - Dataclass holding all execution metadata
-    3. HookRegistry - Register pre/post execution hooks
-    4. ContextCollector - Gather environment and git context
+Most of the time you just want to run a command and check if it worked.
+The fancy stuff (hooks, tracking, context management) is there when you
+need it, invisible when you don't.
 
-Example usage:
-    # Basic wrapper with context collection
+Simple usage (90% of cases):
+    from cortical.cli_wrapper import run
+
+    result = run("pytest tests/")
+    if result.success:
+        print("Tests passed")
+    else:
+        print(result.stderr)
+
+With git context (when you need it):
+    result = run("git status", git=True)
+    print(result.git.modified_files)
+
+With session tracking (for complex workflows):
+    with Session() as s:
+        s.run("pytest tests/")
+        s.run("git add -A")
+        s.run("git commit -m 'fix tests'")
+
+        if s.should_reindex():
+            s.run("python scripts/index_codebase.py --incremental")
+
+        print(s.summary())
+
+Advanced (hooks for automation):
     wrapper = CLIWrapper()
-    result = wrapper.run(['git', 'status'])
-    print(result.context.duration)
-    print(result.context.git_branch)
 
-    # With hooks for task completion
-    def on_test_complete(ctx: ExecutionContext):
-        if ctx.exit_code == 0:
-            print("Tests passed! Triggering re-index...")
-
-    wrapper = CLIWrapper()
-    wrapper.hooks.register_post('pytest', on_test_complete)
-    wrapper.run(['pytest', 'tests/'])
-
-    # Task completion triggers
-    manager = TaskCompletionManager()
-    manager.on_task_complete('test', lambda ctx: reindex_if_needed(ctx))
-    manager.on_task_complete('commit', lambda ctx: update_context_window(ctx))
+    @wrapper.on_success("pytest")
+    def after_tests(result):
+        # Auto-update coverage badge, etc.
+        pass
 """
 
 import json
@@ -508,6 +513,40 @@ class CLIWrapper:
 
         return ctx
 
+    # -------------------------------------------------------------------------
+    # Decorator-style hook registration (cleaner API)
+    # -------------------------------------------------------------------------
+
+    def on_success(self, pattern: Optional[str] = None):
+        """
+        Decorator to register a success hook.
+
+        Example:
+            wrapper = CLIWrapper()
+
+            @wrapper.on_success("pytest")
+            def after_tests(result):
+                print(f"Tests passed in {result.duration:.1f}s")
+        """
+        def decorator(func: HookCallback) -> HookCallback:
+            self.hooks.register_success(pattern, func)
+            return func
+        return decorator
+
+    def on_error(self, pattern: Optional[str] = None):
+        """Decorator to register an error hook."""
+        def decorator(func: HookCallback) -> HookCallback:
+            self.hooks.register_error(pattern, func)
+            return func
+        return decorator
+
+    def on_complete(self, pattern: Optional[str] = None):
+        """Decorator to register a completion hook (success or failure)."""
+        def decorator(func: HookCallback) -> HookCallback:
+            self.hooks.register_post(pattern, func)
+            return func
+        return decorator
+
 
 # =============================================================================
 # Task Completion Manager
@@ -789,3 +828,144 @@ def run_with_context(
     """
     wrapper = CLIWrapper()
     return wrapper.run(command, **kwargs)
+
+
+# =============================================================================
+# Simple API (the 90% use case)
+# =============================================================================
+
+def run(
+    command: Union[str, List[str]],
+    git: bool = False,
+    timeout: Optional[float] = None,
+    cwd: Optional[str] = None,
+) -> ExecutionContext:
+    """
+    Run a command. That's it.
+
+    This is the simple API for the 90% use case. No hooks, no tracking,
+    no noise. Just run and get results.
+
+    Args:
+        command: Command to run (string or list)
+        git: If True, collect git context (branch, modified files, etc.)
+        timeout: Timeout in seconds (None = no timeout)
+        cwd: Working directory
+
+    Returns:
+        ExecutionContext with:
+        - .success: bool - did it work?
+        - .stdout: str - standard output
+        - .stderr: str - standard error
+        - .exit_code: int - exit code
+        - .duration: float - how long it took
+        - .git: GitContext - if git=True
+
+    Example:
+        result = run("pytest tests/")
+        if result.success:
+            print("All tests passed")
+        else:
+            print(f"Failed: {result.stderr}")
+    """
+    wrapper = CLIWrapper(
+        collect_git_context=git,
+        capture_output=True,
+        default_timeout=timeout,
+    )
+    return wrapper.run(command, cwd=cwd)
+
+
+# =============================================================================
+# Session Context Manager
+# =============================================================================
+
+class Session:
+    """
+    Track a sequence of commands as a session.
+
+    Use this when you want to:
+    - Track multiple related commands together
+    - Know if you should re-index after changes
+    - Get a summary of what happened
+
+    Example:
+        with Session() as s:
+            s.run("pytest tests/")
+            s.run("git add -A")
+            s.run("git commit -m 'fix'")
+
+            if s.should_reindex():
+                s.run("python scripts/index_codebase.py -i")
+
+            print(s.summary())
+    """
+
+    def __init__(self, git: bool = True):
+        """
+        Start a session.
+
+        Args:
+            git: Whether to collect git context for commands (default True)
+        """
+        self._wrapper = CLIWrapper(collect_git_context=git)
+        self._manager = TaskCompletionManager()
+        self._context_manager = ContextWindowManager()
+        self._results: List[ExecutionContext] = []
+
+        # Wire up tracking (silent - no hooks that print anything)
+        self._wrapper.hooks.register_post(None, self._track)
+
+    def _track(self, ctx: ExecutionContext) -> None:
+        """Internal: track command completion."""
+        self._results.append(ctx)
+        self._manager.handle_completion(ctx)
+        self._context_manager.add_execution(ctx)
+
+    def __enter__(self) -> 'Session':
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        pass  # Nothing to clean up
+
+    def run(
+        self,
+        command: Union[str, List[str]],
+        **kwargs
+    ) -> ExecutionContext:
+        """Run a command within this session."""
+        return self._wrapper.run(command, **kwargs)
+
+    def should_reindex(self) -> bool:
+        """Check if corpus re-indexing is recommended based on session activity."""
+        return self._manager.should_trigger_reindex()
+
+    def summary(self) -> Dict[str, Any]:
+        """Get a summary of this session's activity."""
+        return self._manager.get_session_summary()
+
+    @property
+    def results(self) -> List[ExecutionContext]:
+        """All command results from this session."""
+        return self._results.copy()
+
+    @property
+    def success_rate(self) -> float:
+        """Fraction of commands that succeeded (0.0 to 1.0)."""
+        if not self._results:
+            return 1.0
+        return sum(1 for r in self._results if r.success) / len(self._results)
+
+    @property
+    def all_passed(self) -> bool:
+        """True if all commands in this session succeeded."""
+        return all(r.success for r in self._results)
+
+    @property
+    def modified_files(self) -> List[str]:
+        """List of files modified during this session (from git context)."""
+        files = set()
+        for r in self._results:
+            files.update(r.git.modified_files)
+            files.update(r.git.staged_files)
+        return list(files)
