@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 17
+**Pending Tasks:** 25
 **Completed Tasks:** 82+ (see archive)
 
 ---
@@ -22,6 +22,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 |---|------|----------|---------|--------|
 | 94 | Split query.py into focused modules | Arch | - | Large |
 | 97 | Integrate CorticalConfig into processor | Arch | - | Medium |
+| 110 | Add section markers to large files | AINav | - | Small |
+| 111 | Add "See Also" cross-references to docstrings | AINav | - | Medium |
+| 112 | Add docstring examples for complex functions | AINav | - | Medium |
 
 ### 🟡 Medium (Do This Month)
 
@@ -36,6 +39,10 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 99 | Add input validation to public methods | CodeQual | - | Medium |
 | 102 | Add tests for edge cases | Testing | - | Medium |
 | 107 | Add Quick Context to tasks | TaskMgmt | - | Medium |
+| 113 | Document staleness tracking system | AINav | - | Small |
+| 114 | Add type aliases for complex types | AINav | - | Small |
+| 115 | Create component interaction diagram | AINav | - | Medium |
+| 116 | Document return value semantics | AINav | - | Medium |
 
 ### 🟢 Low (Backlog)
 
@@ -52,6 +59,8 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 101 | Automate staleness tracking | Arch | - | Medium |
 | 106 | Add task dependency graph | TaskMgmt | - | Small |
 | 108 | Create task selection script | TaskMgmt | - | Medium |
+| 117 | Create debugging cookbook | AINav | - | Medium |
+| 118 | Add function complexity annotations | AINav | - | Small |
 
 ### ⏸️ Deferred
 
@@ -528,10 +537,251 @@ def __init__(
 
 ---
 
+### 110. Add Section Markers to Large Files
+
+**Meta:** `status:pending` `priority:high` `category:ai-nav`
+**Files:** `cortical/processor.py`, `cortical/query.py`
+**Effort:** Small
+
+**Problem:** Large files (processor.py: 2,301 lines, query.py: 2,719 lines) are hard to navigate. AI assistants must scan large portions to find relevant sections.
+
+**Solution:** Add clear section markers like:
+```python
+# =============================================================================
+# DOCUMENT MANAGEMENT
+# =============================================================================
+
+# =============================================================================
+# COMPUTATION METHODS
+# =============================================================================
+```
+
+**Acceptance Criteria:**
+- [ ] processor.py has 5-7 logical sections marked
+- [ ] query.py has 5-7 logical sections marked
+- [ ] Section names match CLAUDE.md terminology
+
+---
+
+### 111. Add "See Also" Cross-References to Docstrings
+
+**Meta:** `status:pending` `priority:high` `category:ai-nav`
+**Files:** `cortical/processor.py`, `cortical/query.py`, `cortical/analysis.py`
+**Effort:** Medium
+
+**Problem:** When reading a function, AI assistants don't know about related functions without searching.
+
+**Solution:** Add "See Also" sections to docstrings:
+```python
+def find_documents_for_query(self, query: str, top_n: int = 5):
+    """
+    Find documents matching query.
+
+    See Also:
+        fast_find_documents: Faster search, document-level only
+        find_passages_for_query: Chunk-level retrieval for RAG
+        expand_query: Get expanded terms before searching
+    """
+```
+
+**Target Functions:** Top 20 most-used public methods.
+
+---
+
+### 112. Add Docstring Examples for Complex Functions
+
+**Meta:** `status:pending` `priority:high` `category:ai-nav`
+**Files:** `cortical/query.py`, `cortical/analysis.py`, `cortical/processor.py`
+**Effort:** Medium
+
+**Problem:** Complex functions lack examples showing expected input/output.
+
+**Solution:** Add Examples section to docstrings:
+```python
+def expand_query(self, query: str, max_expansions: int = 10):
+    """
+    Expand query with related terms.
+
+    Example:
+        >>> processor.expand_query("neural networks")
+        {'neural': 1.0, 'networks': 1.0, 'network': 0.85,
+         'learning': 0.72, 'deep': 0.68}
+    """
+```
+
+**Target Functions:**
+- `expand_query()`, `expand_query_semantic()`, `expand_query_multihop()`
+- `find_documents_for_query()`, `find_passages_for_query()`
+- `parse_intent_query()`, `search_by_intent()`
+- `complete_analogy()`
+- `compute_pagerank()`, `compute_tfidf()`
+
+---
+
+### 113. Document Staleness Tracking System
+
+**Meta:** `status:pending` `priority:medium` `category:ai-nav`
+**Files:** `CLAUDE.md` or `docs/staleness.md` (new)
+**Effort:** Small
+
+**Problem:** The staleness tracking system (`COMP_TFIDF`, `COMP_PAGERANK`, `is_stale()`, `_mark_all_stale()`) is powerful but not documented. AI assistants discover it through exploration.
+
+**Solution:** Add documentation explaining:
+- What staleness means and why it matters
+- List of all `COMP_*` constants and what they track
+- When staleness is automatically set (which methods call `_mark_all_stale()`)
+- How to check and resolve staleness
+- Example workflow showing stale → recompute → fresh
+
+---
+
+### 114. Add Type Aliases for Complex Types
+
+**Meta:** `status:pending` `priority:medium` `category:ai-nav`
+**Files:** `cortical/types.py` (new), update imports in other modules
+**Effort:** Small
+
+**Problem:** Complex return types like `List[Tuple[str, float, Dict[str, Any]]]` are hard to understand at a glance.
+
+**Solution:** Create type aliases:
+```python
+# cortical/types.py
+from typing import List, Tuple, Dict, Any
+
+# Query results
+DocumentScore = Tuple[str, float]  # (doc_id, score)
+DocumentResults = List[DocumentScore]
+
+PassageResult = Tuple[str, float, str]  # (doc_id, score, passage_text)
+PassageResults = List[PassageResult]
+
+IntentResult = Tuple[str, float, Dict[str, Any]]  # (doc_id, score, intent_info)
+IntentResults = List[IntentResult]
+
+# Graph types
+ConnectionMap = Dict[str, float]  # {target_id: weight}
+LayerDict = Dict[CorticalLayer, HierarchicalLayer]
+```
+
+---
+
+### 115. Create Component Interaction Diagram
+
+**Meta:** `status:pending` `priority:medium` `category:ai-nav`
+**Files:** `docs/architecture.md` or `CLAUDE.md`
+**Effort:** Medium
+
+**Problem:** Understanding how modules call each other requires tracing imports and function calls.
+
+**Solution:** Add ASCII or Mermaid diagram showing:
+```
+┌─────────────┐
+│ processor.py│ ← Public API entry point
+└──────┬──────┘
+       │ calls
+       ▼
+┌──────────────────────────────────────────────┐
+│ analysis.py │ query.py │ semantics.py │ ...  │
+└──────────────────────────────────────────────┘
+       │ operates on
+       ▼
+┌──────────────────────────────────────────────┐
+│      layers.py  →  minicolumn.py             │
+└──────────────────────────────────────────────┘
+```
+
+Include which module calls which, and data flow direction.
+
+---
+
+### 116. Document Return Value Semantics
+
+**Meta:** `status:pending` `priority:medium` `category:ai-nav`
+**Files:** `CLAUDE.md`
+**Effort:** Medium
+
+**Problem:** Inconsistent understanding of what functions return in edge cases (empty corpus, no matches, invalid input).
+
+**Solution:** Add section to CLAUDE.md documenting:
+
+| Scenario | Return | Example Functions |
+|----------|--------|-------------------|
+| Empty corpus | Empty list `[]` | `find_documents_for_query()` |
+| No matches | Empty list `[]` | `find_passages_for_query()` |
+| Invalid doc_id | `None` | `get_document_metadata()` |
+| Invalid layer | Raises `KeyError` | `get_layer()` |
+
+Also document:
+- When functions return `None` vs raise exceptions
+- Default values for optional parameters
+- Score ranges (0.0-1.0 vs unbounded)
+
+---
+
+### 117. Create Debugging Cookbook
+
+**Meta:** `status:pending` `priority:low` `category:ai-nav`
+**Files:** `docs/debugging.md` (new)
+**Effort:** Medium
+
+**Problem:** Common debugging scenarios require discovering patterns through trial and error.
+
+**Solution:** Create cookbook with scenarios:
+
+1. **"Why is my query returning no results?"**
+   - Check if corpus has documents
+   - Check if terms exist in corpus
+   - Use `--expand` to see what's being searched
+
+2. **"Why are PageRank values all zero?"**
+   - Check if `compute_all()` was called
+   - Check staleness with `is_stale()`
+
+3. **"Why is search slow?"**
+   - Use `fast_find_documents()` for document-level
+   - Pre-build index with `build_search_index()`
+
+4. **"Why are bigrams not connecting?"**
+   - Verify space separator (not underscore)
+   - Check `compute_bigram_connections()` was called
+
+---
+
+### 118. Add Function Complexity Annotations
+
+**Meta:** `status:pending` `priority:low` `category:ai-nav`
+**Files:** `cortical/processor.py`, `cortical/analysis.py`
+**Effort:** Small
+
+**Problem:** AI assistants don't know which functions are expensive to call.
+
+**Solution:** Add complexity notes to expensive functions:
+```python
+def compute_all(self, verbose: bool = True):
+    """
+    Compute all network properties.
+
+    Complexity: O(n²) where n = total minicolumns across all layers.
+    Typical time: 2-5 seconds for 10K documents.
+
+    Note: For incremental updates, prefer add_document_incremental()
+    which is O(m) where m = tokens in new document.
+    """
+```
+
+**Target Functions:**
+- `compute_all()` - O(n²)
+- `compute_pagerank()` - O(iterations × edges)
+- `build_concept_clusters()` - O(n × iterations)
+- `find_passages_for_query()` - O(docs × chunks)
+
+---
+
 ## Category Index
 
 | Category | Pending | Description |
 |----------|---------|-------------|
+| AINav | 9 | AI assistant navigation & usability |
 | DevEx | 6 | Developer experience (scripts, tools) |
 | Docs | 2 | Documentation improvements |
 | Arch | 4 | Architecture refactoring |
