@@ -413,19 +413,19 @@ class TestClusteringQualityRegression(unittest.TestCase):
             f"got {layer2.column_count()}"
         )
 
-    @unittest.skip("KNOWN FAILURE: Label propagation creates mega-clusters on dense graphs. Enable after Task #123 (Louvain).")
     def test_no_single_cluster_dominates(self):
         """Regression test: No single cluster should contain >50% of tokens.
 
-        This test FAILS with current label propagation which puts 99%+ of
-        tokens into a single mega-cluster on larger corpora.
+        With Louvain community detection (Task #123), this test should pass.
+        The Louvain algorithm optimizes modularity and produces well-balanced
+        clusters even on dense graphs.
 
-        The issue:
+        Previously with label propagation:
         - With 8 small docs (43 tokens): Largest cluster = 25% (OK)
         - With 95 docs (6679 tokens): Largest cluster = 99.3% (BROKEN)
 
         Label propagation converges to fewer clusters as graph density increases.
-        This is a fundamental algorithmic limitation requiring Louvain (Task #123).
+        Louvain avoids this by optimizing for modularity instead of propagating labels.
         """
         layer0 = self.processor.layers[CorticalLayer.TOKENS]
         layer2 = self.processor.layers[CorticalLayer.CONCEPTS]

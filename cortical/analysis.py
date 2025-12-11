@@ -7,7 +7,8 @@ Graph analysis algorithms for the cortical network.
 Contains implementations of:
 - PageRank for importance scoring
 - TF-IDF for term weighting
-- Label propagation for clustering
+- Louvain community detection for clustering (recommended)
+- Label propagation for clustering (legacy, for backward compatibility)
 - Activation propagation for information flow
 """
 
@@ -635,6 +636,322 @@ def cluster_by_label_propagation(
                 layer.minicolumns[content].cluster_id = label
 
     return filtered
+
+
+def cluster_by_louvain(
+    layer: HierarchicalLayer,
+    min_cluster_size: int = 3,
+    resolution: float = 1.0,
+    max_iterations: int = 10
+) -> Dict[int, List[str]]:
+    """
+    Cluster minicolumns using Louvain community detection.
+
+    Louvain is a modularity optimization algorithm that finds communities
+    by iteratively improving modularity. Unlike label propagation, it
+    handles dense graphs well and produces meaningful clusters.
+
+    The algorithm works in two phases:
+    1. Local optimization: Move nodes to communities that maximize modularity
+    2. Network aggregation: Merge communities into super-nodes and repeat
+
+    Args:
+        layer: Layer to cluster
+        min_cluster_size: Minimum nodes per cluster (clusters below this
+            size are filtered from the result)
+        resolution: Resolution parameter for modularity (default 1.0).
+            - Higher values (>1.0): More, smaller clusters
+            - Lower values (<1.0): Fewer, larger clusters
+        max_iterations: Maximum number of optimization passes (default 10)
+
+    Returns:
+        Dictionary mapping cluster_id to list of column contents
+
+    Example:
+        >>> clusters = cluster_by_louvain(layer0, min_cluster_size=3)
+        >>> print(f"Found {len(clusters)} clusters")
+
+    Note:
+        This is a zero-dependency implementation of the Louvain algorithm.
+        For very large graphs (>100k nodes), consider using optimized
+        implementations from networkx or igraph.
+    """
+    columns = list(layer.minicolumns.keys())
+    n = len(columns)
+
+    if n == 0:
+        return {}
+
+    # Build adjacency structure from layer connections
+    # content -> {neighbor_content: weight}
+    adjacency: Dict[str, Dict[str, float]] = {c: {} for c in columns}
+    total_weight = 0.0
+
+    for content in columns:
+        col = layer.minicolumns[content]
+        for neighbor_id, weight in col.lateral_connections.items():
+            neighbor = layer.get_by_id(neighbor_id)
+            if neighbor and neighbor.content in adjacency:
+                adjacency[content][neighbor.content] = weight
+                total_weight += weight
+
+    # m = total edge weight (each edge counted once)
+    # Since adjacency is bidirectional, total_weight counts each edge twice
+    m = total_weight / 2.0
+
+    if m == 0:
+        # No connections - each node is its own cluster
+        clusters = {i: [content] for i, content in enumerate(columns)}
+        return {k: v for k, v in clusters.items() if len(v) >= min_cluster_size}
+
+    # Initialize: each node in its own community
+    # community[content] = community_id
+    community: Dict[str, int] = {content: i for i, content in enumerate(columns)}
+
+    # Precompute node degrees (sum of edge weights)
+    # k[content] = sum of weights attached to content
+    k: Dict[str, float] = {}
+    for content in columns:
+        k[content] = sum(adjacency[content].values())
+
+    # Cache community degree sums for O(1) lookup instead of O(n) per node
+    # sigma_tot[community_id] = sum of degrees of nodes in that community
+    sigma_tot: Dict[int, float] = {i: k[content] for i, content in enumerate(columns)}
+
+    def compute_modularity_gain(
+        node: str,
+        target_community: int,
+        node_community_weights: Dict[int, float]
+    ) -> float:
+        """
+        Compute modularity gain from moving node to target_community.
+
+        Uses the formula:
+        ΔQ = [k_i,in / m - resolution * k_i * Σ_tot / (2m²)]
+
+        where:
+        - k_i = degree of node i
+        - k_i,in = sum of edge weights from node i to nodes in target community
+        - Σ_tot = sum of degrees of all nodes in target community
+        """
+        k_i = k[node]
+        k_i_in = node_community_weights.get(target_community, 0.0)
+
+        # Use cached sigma_tot value (O(1) instead of O(n))
+        target_sigma_tot = sigma_tot.get(target_community, 0.0)
+
+        # If node is already in target_community, exclude its contribution
+        if community[node] == target_community:
+            target_sigma_tot -= k_i
+
+        if m == 0:
+            return 0.0
+
+        # Modularity gain with resolution parameter
+        gain = k_i_in / m - resolution * k_i * target_sigma_tot / (2 * m * m)
+        return gain
+
+    def phase1() -> bool:
+        """
+        Local optimization phase.
+
+        For each node, try moving it to each neighbor's community.
+        Move to the community that gives maximum modularity gain.
+
+        Returns:
+            True if any node was moved, False if converged
+        """
+        nonlocal sigma_tot  # Allow updating the cached sigma_tot
+
+        improved = True
+        any_moved = False
+
+        while improved:
+            improved = False
+
+            for node in columns:
+                current_comm = community[node]
+
+                # Compute weights to each neighboring community
+                # comm_weights[community_id] = sum of edge weights to that community
+                comm_weights: Dict[int, float] = {}
+                for neighbor, weight in adjacency[node].items():
+                    neighbor_comm = community[neighbor]
+                    comm_weights[neighbor_comm] = comm_weights.get(neighbor_comm, 0.0) + weight
+
+                # Find best community to move to
+                best_comm = current_comm
+                best_gain = 0.0
+
+                # Check current community first (to stay if no improvement)
+                for target_comm in comm_weights:
+                    if target_comm == current_comm:
+                        continue
+
+                    gain = compute_modularity_gain(node, target_comm, comm_weights)
+                    # Also compute "loss" from leaving current community
+                    loss = compute_modularity_gain(node, current_comm, comm_weights)
+                    net_gain = gain - loss
+
+                    if net_gain > best_gain:
+                        best_gain = net_gain
+                        best_comm = target_comm
+
+                # Move node if there's improvement
+                if best_comm != current_comm:
+                    # Update sigma_tot cache: remove from old, add to new
+                    k_node = k[node]
+                    sigma_tot[current_comm] = sigma_tot.get(current_comm, 0.0) - k_node
+                    sigma_tot[best_comm] = sigma_tot.get(best_comm, 0.0) + k_node
+
+                    community[node] = best_comm
+                    improved = True
+                    any_moved = True
+
+        return any_moved
+
+    def phase2() -> Tuple[
+        Dict[str, Dict[str, float]],  # new adjacency
+        Dict[str, int],  # new community mapping
+        Dict[str, float],  # new k values
+        Dict[int, float],  # new sigma_tot
+        float,  # new m value
+        Dict[int, List[str]]  # community -> original nodes
+    ]:
+        """
+        Network aggregation phase.
+
+        Merge nodes in the same community into super-nodes.
+        Create new graph where edge weight between super-nodes is
+        sum of edges between their constituent nodes.
+
+        Returns:
+            New adjacency, community mapping, k values, sigma_tot, m, and community members
+        """
+        # Get unique communities
+        unique_comms = set(community.values())
+
+        # Map old community IDs to new sequential IDs
+        comm_map = {old_id: new_id for new_id, old_id in enumerate(sorted(unique_comms))}
+
+        # Track which original nodes belong to each super-node
+        comm_members: Dict[int, List[str]] = {i: [] for i in range(len(unique_comms))}
+        for node, comm in community.items():
+            new_comm = comm_map[comm]
+            comm_members[new_comm].append(node)
+
+        # Build new adjacency between super-nodes
+        new_adj: Dict[str, Dict[str, float]] = {}
+        new_m = 0.0
+
+        for new_comm in range(len(unique_comms)):
+            new_adj[str(new_comm)] = {}
+
+        for node, neighbors in adjacency.items():
+            node_new_comm = comm_map[community[node]]
+            for neighbor, weight in neighbors.items():
+                neighbor_new_comm = comm_map[community[neighbor]]
+                if node_new_comm != neighbor_new_comm:
+                    # Edge between different communities
+                    key = str(neighbor_new_comm)
+                    node_key = str(node_new_comm)
+                    new_adj[node_key][key] = new_adj[node_key].get(key, 0.0) + weight
+                    new_m += weight
+
+        new_m /= 2.0  # Each edge counted twice
+
+        # New community mapping (each super-node starts in its own community)
+        new_community = {str(i): i for i in range(len(unique_comms))}
+
+        # New k values (degree of each super-node)
+        new_k: Dict[str, float] = {}
+        for new_comm in range(len(unique_comms)):
+            # Sum of all degrees of constituent nodes
+            new_k[str(new_comm)] = sum(k[node] for node in comm_members[new_comm])
+
+        # New sigma_tot (each super-node starts in its own community, so sigma_tot = k)
+        new_sigma_tot: Dict[int, float] = {i: new_k[str(i)] for i in range(len(unique_comms))}
+
+        return new_adj, new_community, new_k, new_sigma_tot, new_m, comm_members
+
+    # Main Louvain loop
+    # Track the hierarchy of community memberships
+    community_hierarchy: List[Dict[int, List[str]]] = []
+
+    for iteration in range(max_iterations):
+        # Phase 1: Local optimization
+        moved = phase1()
+
+        if not moved and iteration > 0:
+            # Converged
+            break
+
+        # Check if we've reduced to a single community
+        unique_comms = set(community.values())
+        if len(unique_comms) <= 1:
+            break
+
+        # Phase 2: Network aggregation
+        adjacency, new_community, k, sigma_tot, m, members = phase2()
+        community_hierarchy.append(members)
+
+        # Update columns list for new super-nodes
+        columns = list(adjacency.keys())
+        community = new_community
+
+        if m == 0:
+            break
+
+    # Reconstruct final communities by unwinding the hierarchy
+    # Start with the final community assignment
+    final_communities: Dict[int, Set[str]] = {}
+
+    if community_hierarchy:
+        # We have hierarchy - unwind it
+        # Start with last level
+        for super_node, comm in community.items():
+            if comm not in final_communities:
+                final_communities[comm] = set()
+
+            # Trace back through hierarchy to get original nodes
+            current_members = {super_node}
+
+            for level_members in reversed(community_hierarchy):
+                new_members: Set[str] = set()
+                for member in current_members:
+                    member_int = int(member)
+                    if member_int in level_members:
+                        new_members.update(level_members[member_int])
+                    else:
+                        # Member is an original node
+                        new_members.add(member)
+                current_members = new_members
+
+            final_communities[comm].update(current_members)
+    else:
+        # No hierarchy - use direct community assignment
+        for node, comm in community.items():
+            if comm not in final_communities:
+                final_communities[comm] = set()
+            final_communities[comm].add(node)
+
+    # Convert to expected format and filter by size
+    result: Dict[int, List[str]] = {}
+    cluster_id = 0
+    for comm, members in final_communities.items():
+        # Filter out numeric super-node IDs, keep only original content strings
+        original_members = [m for m in members if m in layer.minicolumns]
+        if len(original_members) >= min_cluster_size:
+            result[cluster_id] = original_members
+            cluster_id += 1
+
+    # Update cluster_id on minicolumns
+    for label, members in result.items():
+        for content in members:
+            if content in layer.minicolumns:
+                layer.minicolumns[content].cluster_id = label
+
+    return result
 
 
 def build_concept_clusters(
