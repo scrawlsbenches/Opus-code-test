@@ -2118,6 +2118,166 @@ Add documentation explaining:
 
 ---
 
+## Dog-Fooding Findings (2025-12-10)
+
+The following issues were identified during a dog-fooding session reviewing the docs folder and testing search quality.
+
+---
+
+### 65. Add Document Metadata to Chunk-Based Indexing (Prerequisite)
+
+**Files:** `scripts/index_codebase.py`
+**Status:** [ ] Not Started
+**Priority:** High
+**Blocks:** #63
+
+**Problem:**
+Chunk-based indexing loses all document metadata, making it impossible to implement document-type boosting for search.
+
+**Current Code (line 859):**
+```python
+# Metadata is None - no file_type, no headings, nothing!
+documents = [(doc_id, content, None) for doc_id, content in all_docs.items()]
+```
+
+**Additional Gaps:**
+1. `index_file()` only extracts metadata for Python files (lines 481-486)
+2. Markdown files get no special treatment (no heading extraction)
+3. Chunk format doesn't store metadata at all
+
+**Solution:**
+1. Add `doc_type` field to chunk operations:
+   ```json
+   {"op": "add", "doc_id": "docs/algorithms.md", "doc_type": "docs", "headings": ["PageRank", "TF-IDF"]}
+   ```
+
+2. Extract markdown headings during indexing:
+   ```python
+   if file_path.suffix == '.md':
+       headings = re.findall(r'^##+ (.+)$', content, re.MULTILINE)
+       metadata['headings'] = headings
+       metadata['doc_type'] = 'docs' if doc_id.startswith('docs/') else 'root_docs'
+   ```
+
+3. Update `ChunkWriter` and `ChunkLoader` to preserve metadata
+
+4. Pass metadata when building processor from chunks:
+   ```python
+   documents = [(doc_id, content, metadata) for doc_id, content, metadata in all_docs]
+   ```
+
+**This is a prerequisite for Task #63** - without metadata, we can't boost docs in search.
+
+---
+
+### 63. Improve Search Ranking for Documentation Files
+
+**Files:** `cortical/query.py`, `scripts/search_codebase.py`
+**Status:** [ ] Not Started
+**Priority:** High
+**Depends on:** #65
+
+**Problem:**
+When searching for conceptual terms like "PageRank algorithm" or "4-layer architecture", the search returns code implementations (processor.py) instead of documentation files (docs/algorithms.md, docs/architecture.md) that explicitly explain these concepts.
+
+**Observed Behavior:**
+```bash
+$ python scripts/search_codebase.py "PageRank algorithm"
+# Returns: cortical/processor.py:578 (score: 1.904)
+# Expected: docs/algorithms.md (has "PageRank - Importance Scoring" section)
+
+$ python scripts/search_codebase.py "4-layer architecture"
+# Returns: cortical/processor.py:578 (score: 6.973)
+# Expected: docs/architecture.md (entire file about this topic)
+```
+
+**Root Causes:**
+1. Code files have higher token density → higher TF-IDF scores
+2. No document-type awareness in ranking
+3. Natural language in docs may not match stemmed query terms
+4. Section headings in markdown aren't weighted higher
+
+**Proposed Solutions:**
+
+1. **Document-type boosting** - Boost .md files for conceptual queries:
+   ```python
+   if doc_id.endswith('.md'):
+       score *= 1.5  # Boost documentation
+   ```
+
+2. **Heading extraction** - Index markdown headings as high-weight terms:
+   ```python
+   # Extract ## headings and boost their terms
+   headings = re.findall(r'^##+ (.+)$', content, re.MULTILINE)
+   ```
+
+3. **Query intent detection** - Use existing `parse_intent_query()` to detect conceptual vs implementation queries:
+   - "what is PageRank" → boost docs
+   - "where is PageRank computed" → boost code
+
+4. **Add `--prefer-docs` flag** to search_codebase.py for documentation-first search
+
+**Success Criteria:**
+- `"PageRank algorithm"` returns docs/algorithms.md as top result
+- `"4-layer architecture"` returns docs/architecture.md as top result
+- `"compute pagerank"` still returns code (implementation query)
+
+---
+
+### 64. Add Document Type Indicator to Search Results
+
+**Files:** `scripts/search_codebase.py`
+**Status:** [ ] Not Started
+**Priority:** Low
+
+**Problem:**
+Search results show file paths but don't indicate document type at a glance. Users can't quickly distinguish documentation from code without reading the path.
+
+**Current Output:**
+```
+[1] cortical/processor.py:578
+    Score: 1.904
+```
+
+**Proposed Output:**
+```
+[1] [CODE] cortical/processor.py:578
+    Score: 1.904
+
+[2] [DOCS] docs/algorithms.md:19
+    Score: 1.856
+```
+
+**Implementation:**
+```python
+def get_doc_type(doc_id: str) -> str:
+    if doc_id.endswith('.md'):
+        return 'DOCS'
+    elif doc_id.startswith('tests/'):
+        return 'TEST'
+    else:
+        return 'CODE'
+```
+
+---
+
+## Dog-Fooding Summary
+
+| # | Priority | Task | Status | Category |
+|---|----------|------|--------|----------|
+| 65 | High | Add document metadata to chunk indexing | [ ] Not Started | Infrastructure |
+| 63 | High | Improve search ranking for docs | [ ] Not Started | Search Quality |
+| 64 | Low | Add document type indicator | [ ] Not Started | UX |
+
+**Dependency Chain:** #65 → #63 → #64
+
+**Key Insight:** The dog-fooding loop isn't complete - documentation was indexed but doesn't surface well in search results. The "better docs → better search" feedback loop requires:
+1. **Infrastructure** (#65): Store document metadata (file type, headings) in chunks
+2. **Ranking** (#63): Use metadata to boost docs for conceptual queries
+3. **UX** (#64): Show document types in search results
+
+---
+
 ## Code Review Summary (PR #23)
 
 | # | Priority | Task | Status | Category |
