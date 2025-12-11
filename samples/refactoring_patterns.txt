@@ -1,0 +1,86 @@
+Refactoring Patterns: Systematic Code Improvement
+
+Refactoring restructures existing code without changing its external behavior.
+The goal is improved code quality: better readability, reduced complexity,
+enhanced maintainability, and clearer expression of intent. Safe refactoring
+requires tests that verify behavior preservation throughout the transformation.
+
+Extract Method addresses long functions by isolating cohesive code blocks into
+named functions. The new function name documents the purpose of that code segment.
+Extraction reveals implicit parameters and return values, clarifying data flow
+and reducing cognitive load when reading the original function.
+
+Rename Variable replaces unclear names with intention-revealing alternatives.
+Names like data, temp, or result convey nothing about purpose. Names like
+user_preferences, cached_calculation, or validation_result explain what values
+represent. Good names eliminate the need for explanatory comments.
+
+Extract Class separates distinct responsibilities into dedicated classes.
+A class handling both database access and business logic violates single
+responsibility. Extracting the database logic into a repository class improves
+cohesion and enables independent testing of each responsibility.
+
+Inline Method reverses extraction when a function's body is as clear as its name.
+Small indirection layers that add no abstraction benefit should be collapsed.
+However, preserve methods that serve as extension points or represent meaningful
+domain concepts even when currently simple.
+
+Replace Conditional with Polymorphism eliminates type-checking conditionals.
+Instead of switching on type to determine behavior, define a method on each type
+that implements its specific behavior. The conditional disappears, and adding
+new types requires no modification of existing code.
+
+Introduce Parameter Object groups related parameters into a cohesive structure.
+Functions taking many parameters become hard to call correctly. A parameter
+object makes relationships explicit, enables meaningful naming, and provides
+a home for behavior that operates on those related values.
+
+Replace Magic Number with Named Constant improves readability and maintainability.
+The number 86400 means nothing; SECONDS_PER_DAY documents intent and centralizes
+the value for consistent use. Constants also enable IDE support for finding
+all usages when values need to change.
+
+Decompose Conditional separates condition logic from branch bodies. Extract
+the condition into a well-named predicate function. Extract each branch into
+a function explaining what happens in that case. The restructured code reads
+like prose: if user_is_premium() then apply_discount() else charge_full_price().
+
+Replace Nested Conditionals with Guard Clauses flattens deeply nested code.
+Handle exceptional cases early with immediate returns, leaving the main logic
+path at the top level. Guard clauses eliminate arrow-shaped code that requires
+tracking multiple conditions simultaneously.
+
+Move Method relocates behavior to the class that owns the data it uses.
+Feature envy, where a method accesses another class's data extensively, signals
+misplaced responsibility. Moving the method near its data improves cohesion
+and reduces coupling between classes.
+
+Extract Interface defines abstraction boundaries for concrete implementations.
+When multiple classes share similar behavior, extract an interface they all
+implement. Code depending on the interface rather than concrete classes gains
+flexibility to substitute implementations.
+
+Replace Temp with Query converts temporary variables into method calls.
+Long methods often accumulate temporary variables that obscure data flow.
+Extracting calculations into methods reveals their purpose and enables reuse.
+The performance cost rarely matters; clarity usually trumps micro-optimization.
+
+Introduce Null Object eliminates null checks by providing a do-nothing implementation.
+Rather than checking if logger is null before logging, use a NullLogger that
+silently accepts and ignores log calls. Code becomes simpler when null is never
+a valid value to handle.
+
+Split Loop separates loops that do multiple things into focused iterations.
+A loop calculating both sum and maximum should become two loops, each doing one
+thing. The performance cost is negligible, but the clarity gain is substantial.
+Each loop can then be extracted into its own named method.
+
+Consolidate Duplicate Conditional Fragments moves common code outside conditionals.
+If both branches of a conditional end with the same statement, move that statement
+after the conditional. This reveals the essential difference between branches
+and eliminates subtle maintenance errors when common code drifts.
+
+The refactoring mindset prioritizes small, safe steps. Large refactorings emerge
+from sequences of small transformations, each keeping tests green. This discipline
+catches errors immediately while they are easy to diagnose and revert, rather
+than discovering problems after extensive changes obscure their source.

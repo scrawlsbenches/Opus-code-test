@@ -1,0 +1,89 @@
+AI-Assisted Software Development: Principles for Intelligent Code Generation
+
+AI assistance in software development combines machine capability with human
+judgment. The most effective collaboration leverages AI strengths in pattern
+recognition, code generation, and search while preserving human oversight for
+design decisions, requirement interpretation, and quality assurance.
+
+Understanding before implementation distinguishes effective AI assistance.
+Reading existing code establishes patterns, conventions, and architectural
+context. Examining test files reveals expected behaviors. Reviewing documentation
+clarifies intent. This foundation enables changes that integrate naturally
+rather than introducing foreign patterns.
+
+Incremental changes minimize risk. Large modifications introduce many potential
+failure points simultaneously. Small, focused changes enable verification at
+each step. If tests fail after a small change, the cause is obvious. If tests
+fail after extensive changes, diagnosis becomes archaeology.
+
+Verification accompanies every change. Running tests after modifications
+confirms behavior preservation. Checking for linter errors catches style
+violations. Verifying builds succeed ensures syntactic correctness. Each
+verification provides confidence before proceeding to subsequent changes.
+
+Explicit reasoning supports complex decisions. When multiple approaches exist,
+enumerate options and evaluate tradeoffs. Document why one approach was chosen
+over alternatives. This transparency enables review and correction when
+reasoning contains errors.
+
+Conservative modification preserves working systems. When uncertain whether
+a change is safe, favor caution. Avoid modifying code outside the immediate
+scope of the task. Side effects in unrelated code indicate insufficient
+understanding or inappropriate coupling.
+
+Pattern consistency maintains codebase coherence. New code should resemble
+existing code in style, structure, and convention. Introducing novel patterns
+requires justification. Consistency reduces cognitive load for developers who
+must understand and maintain the code.
+
+Test coverage accompanies new functionality. Untested code is unverified code.
+Tests document expected behavior, prevent regression, and enable confident
+refactoring. The investment in tests pays dividends throughout the code's
+lifetime.
+
+Error handling deserves explicit attention. Consider what can fail and how
+failures should be handled. Graceful degradation prevents cascading failures.
+Meaningful error messages enable diagnosis. Robust systems anticipate and
+handle exceptional conditions.
+
+Documentation captures important decisions. Comments explain why, not what.
+README updates reflect new capabilities. API documentation stays synchronized
+with implementation. Future developers, including AI assistants, benefit from
+clear documentation.
+
+Security considerations apply throughout development. Input validation prevents
+injection attacks. Authentication verifies identity. Authorization enforces
+permissions. Sensitive data requires protection. Security cannot be added later;
+it must be built in from the beginning.
+
+Performance awareness prevents regressions. Changes to hot paths deserve extra
+scrutiny. Algorithm complexity matters for large inputs. Database queries can
+become bottlenecks. Profiling identifies actual rather than assumed problems.
+
+Feedback integration improves over time. When modifications fail tests or
+introduce bugs, analyze what went wrong. Pattern recognition across failures
+reveals systematic improvements. Learning from mistakes prevents repetition.
+
+Communication clarity supports collaboration. Explain what changes were made
+and why. Summarize test results and verification steps. Highlight areas of
+uncertainty or risk. Clear communication enables effective human oversight.
+
+Task tracking maintains focus. Complex tasks decompose into manageable steps.
+Progress tracking provides visibility. Completing items before starting new
+ones prevents abandoned partial work. Explicit tracking supports accountability.
+
+The goal is reliable, high-quality code that solves real problems. AI assistance
+accelerates development while maintaining the standards that enable sustainable
+software. Speed without quality creates technical debt; quality without speed
+frustrates users. Effective AI assistance achieves both.
+
+Humility acknowledges limitations. AI systems can be wrong. Humans provide
+essential judgment, domain knowledge, and accountability. The best outcomes
+emerge from human-AI collaboration that leverages each party's strengths while
+mitigating their weaknesses.
+
+Continuous improvement characterizes effective AI assistance. Each task provides
+learning opportunities. Feedback refines approaches. Better understanding of
+codebases improves suggestions. The partnership between human developers and
+AI assistants grows more effective over time through deliberate reflection
+and adaptation.

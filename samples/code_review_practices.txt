@@ -1,0 +1,68 @@
+Code Review Practices and Principles
+
+Code review is a systematic examination of source code by peers to identify defects,
+improve code quality, and share knowledge across the development team. Effective
+code review balances thoroughness with efficiency, focusing on meaningful feedback
+rather than stylistic nitpicks.
+
+The primary goals of code review include detecting bugs before they reach production,
+ensuring code follows established patterns and conventions, verifying that changes
+align with architectural decisions, and facilitating knowledge transfer between
+team members. Reviews also serve as documentation of design decisions and rationale.
+
+When reviewing code, prioritize correctness over style. Ask whether the code does
+what it claims to do, handles edge cases appropriately, and fails gracefully when
+given unexpected input. Security considerations deserve special attention: check
+for input validation, proper authentication, authorization boundaries, and potential
+injection vulnerabilities.
+
+Effective reviewers focus on the "why" rather than just the "what". Understanding
+the intent behind changes helps identify logical errors and suggests better approaches.
+Questions like "what happens if this fails?" or "how does this interact with existing
+functionality?" reveal implicit assumptions that may not hold.
+
+The size of changes matters significantly. Small, focused pull requests receive
+better reviews than large, sprawling changes. Aim for changes under 400 lines when
+possible. Large changes should be split into logical commits that can be reviewed
+independently while still maintaining a coherent narrative.
+
+Constructive feedback distinguishes excellent reviewers. Frame suggestions as
+questions or observations rather than commands. "Have you considered..." invites
+discussion while "You should..." creates defensiveness. Acknowledge good decisions
+and clever solutions alongside pointing out problems.
+
+Automation complements human review. Linters catch style issues, type checkers
+find type errors, and test suites verify behavior. These automated checks free
+reviewers to focus on design, logic, and maintainability concerns that require
+human judgment.
+
+Review comments should be actionable. Vague feedback like "this is confusing"
+provides less value than specific observations: "the variable name 'data' doesn't
+convey what this contains; consider 'user_preferences' instead." Include examples
+or links to documentation when suggesting alternatives.
+
+The reviewer-author relationship should be collaborative, not adversarial. Both
+parties share the goal of shipping quality code. Disagreements should focus on
+technical merit, not personal preferences. When consensus proves elusive, escalate
+to team leads or defer to established conventions.
+
+Timeliness affects code review effectiveness. Stale reviews lose context as the
+codebase evolves. Aim to review changes within one business day. If a thorough
+review requires more time, leave initial comments and communicate the timeline.
+
+Self-review before requesting peer review catches obvious issues. Reading your
+own diff with fresh eyes reveals overlooked problems: missing error handling,
+inadequate tests, unclear naming, or unnecessary complexity.
+
+Documentation deserves the same scrutiny as code. Verify that comments explain
+why, not what. Check that README updates reflect new functionality. Ensure API
+documentation stays synchronized with implementation.
+
+Testing coverage should accompany code changes. New functionality needs tests
+demonstrating correct behavior. Bug fixes require tests that would have caught
+the bug. Refactoring should preserve existing test coverage while potentially
+adding tests for previously untested paths.
+
+Performance implications warrant consideration during review. Changes to hot paths,
+database queries, or algorithm complexity can impact system behavior significantly.
+Ask about benchmarks or profiling results for performance-sensitive changes.

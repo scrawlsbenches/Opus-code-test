@@ -1,0 +1,92 @@
+Incremental Development: Building Software Through Progressive Enhancement
+
+Incremental development constructs systems through successive additions of
+working functionality. Each increment extends the system while maintaining
+stability. This approach provides early feedback, reduces risk, and enables
+continuous adaptation to evolving requirements.
+
+The working system serves as the foundation. At every point, the software should
+be deployable and functional, even if feature-incomplete. Partially implemented
+features remain disabled until ready. The ability to ship at any time provides
+flexibility and reduces pressure from arbitrary deadlines.
+
+Feature flags enable incremental deployment. New functionality hides behind
+toggles that control visibility. Developers work on features in production
+without exposing them to users. Gradual rollout reveals problems to small
+audiences before full release. Flags also enable instant rollback if issues
+emerge.
+
+Vertical slices deliver end-to-end value. Rather than building complete layers
+sequentially, implement thin slices through all layers. A minimal but complete
+feature provides user value and validates architectural decisions. Subsequent
+iterations enhance and expand the initial slice.
+
+The walking skeleton establishes architecture early. Implement the minimum system
+that exercises all major components and their connections. This skeleton proves
+the architecture works before investing in detailed functionality. Flesh grows
+on proven bones rather than discovering structural problems late.
+
+Continuous integration validates each increment. Every change merges to the main
+branch frequently, triggering automated builds and tests. Integration problems
+surface immediately while changes remain small and fresh. Large batches of
+changes create large integration efforts; small changes integrate smoothly.
+
+Continuous deployment extends integration to production. Automated pipelines
+promote validated changes through environments to production. Manual deployment
+gates introduce delays and batch changes, sacrificing incremental benefits.
+Trusted automation enables rapid, safe delivery.
+
+Backward compatibility protects existing users during transitions. New versions
+accept old formats. APIs evolve additively without breaking existing clients.
+Database migrations transform data gradually. Careful compatibility enables
+incremental change without flag days that risk everything at once.
+
+The strangler fig pattern replaces legacy systems incrementally. New functionality
+routes through improved implementations while legacy code continues serving
+existing paths. Gradually, traffic migrates to the replacement. The legacy system
+withers as the new system grows, eventually becoming completely obsolete.
+
+Branch by abstraction refactors incrementally. Introduce an abstraction layer
+over the code requiring change. Migrate callers to use the abstraction. Implement
+the new version behind the same abstraction. Switch the abstraction to use the
+new implementation. Remove the old implementation. Each step is small and safe.
+
+Expand and contract manages API evolution. First expand: add new capability while
+preserving old interfaces. Allow clients to migrate at their pace. Then contract:
+remove deprecated interfaces after clients complete migration. This phased
+approach prevents breaking changes while enabling evolution.
+
+Monitoring validates incremental changes. Observability reveals whether new code
+behaves correctly in production. Key metrics, error rates, and user behavior
+confirm successful changes or signal problems requiring rollback. Without
+monitoring, incremental deployment operates blind.
+
+Small batches reduce risk and accelerate feedback. Large changes aggregate risk:
+more can go wrong, and problems are harder to diagnose. Small changes limit
+blast radius when issues occur and simplify root cause identification. The
+discipline of small changes prevents accumulation of unvalidated work.
+
+Definition of done ensures increments are truly complete. Code written but not
+tested, tested but not documented, or documented but not deployed does not
+constitute a complete increment. Done means releasable, including all necessary
+supporting work.
+
+Technical debt awareness accompanies incremental development. Fast increments
+may accumulate shortcuts that slow future work. Allocate time to address debt
+alongside feature development. Sustainable pace requires balancing delivery
+speed with code health.
+
+User feedback guides subsequent increments. Real usage reveals which features
+matter and how they should evolve. Early delivery enables early learning.
+Building incrementally with feedback loops creates software that serves actual
+rather than imagined needs.
+
+Iteration planning sequences increments strategically. High-value, low-risk
+increments build momentum and validate approaches. Risky increments surface
+early to preserve time for adaptation. Dependencies determine order when
+increments build on previous work.
+
+The goal is not incremental development for its own sake but the benefits it
+enables: reduced risk through early validation, faster feedback through early
+delivery, sustained flexibility through maintained deployability, and continuous
+improvement through learning from production experience.

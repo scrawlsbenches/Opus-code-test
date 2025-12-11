@@ -941,50 +941,77 @@ class CorticalTextProcessor:
     def build_concept_clusters(
         self,
         min_cluster_size: int = 3,
+        clustering_method: str = 'louvain',
         cluster_strictness: float = 1.0,
         bridge_weight: float = 0.0,
+        resolution: float = 1.0,
         verbose: bool = True
     ) -> Dict[int, List[str]]:
         """
-        Build concept clusters from token layer using label propagation.
+        Build concept clusters from token layer.
 
         Args:
             min_cluster_size: Minimum tokens per cluster (default 3)
-            cluster_strictness: Controls clustering aggressiveness (0.0-1.0).
+            clustering_method: Algorithm to use for clustering.
+                - 'louvain' (default): Louvain community detection.
+                  Recommended for dense graphs. Produces meaningful clusters
+                  by optimizing modularity.
+                - 'label_propagation': Legacy label propagation algorithm.
+                  May produce mega-clusters on dense graphs (not recommended).
+            cluster_strictness: For label_propagation only. Controls clustering
+                aggressiveness (0.0-1.0).
                 - 1.0 (default): Strict clustering, topics stay separate
                 - 0.5: Moderate mixing, allows some cross-topic clustering
                 - 0.0: Minimal clustering, most tokens group together
-                Lower values create fewer, larger clusters with more connections.
-            bridge_weight: Weight for synthetic inter-document connections (0.0-1.0).
-                When > 0, adds weak connections between tokens from different
-                documents, helping bridge topic-isolated clusters.
-                - 0.0 (default): No bridging
-                - 0.3: Light bridging
-                - 0.7: Strong bridging
+            bridge_weight: For label_propagation only. Weight for synthetic
+                inter-document connections (0.0-1.0).
+            resolution: For louvain only. Resolution parameter for modularity.
+                - Higher values (>1.0): More, smaller clusters
+                - Lower values (<1.0): Fewer, larger clusters
+                - 1.0 (default): Standard modularity
             verbose: Print progress messages
 
         Returns:
             Dictionary mapping cluster_id to list of token contents
 
         Example:
-            >>> # Default strict clustering
+            >>> # Default Louvain clustering (recommended)
             >>> clusters = processor.build_concept_clusters()
             >>>
-            >>> # Looser clustering for more cross-topic connections
+            >>> # Louvain with higher resolution for more clusters
             >>> clusters = processor.build_concept_clusters(
-            ...     cluster_strictness=0.5,
-            ...     bridge_weight=0.3
+            ...     clustering_method='louvain',
+            ...     resolution=1.5
+            ... )
+            >>>
+            >>> # Legacy label propagation (backward compatibility)
+            >>> clusters = processor.build_concept_clusters(
+            ...     clustering_method='label_propagation',
+            ...     cluster_strictness=0.5
             ... )
         """
-        clusters = analysis.cluster_by_label_propagation(
-            self.layers[CorticalLayer.TOKENS],
-            min_cluster_size=min_cluster_size,
-            cluster_strictness=cluster_strictness,
-            bridge_weight=bridge_weight
-        )
+        if clustering_method == 'louvain':
+            clusters = analysis.cluster_by_louvain(
+                self.layers[CorticalLayer.TOKENS],
+                min_cluster_size=min_cluster_size,
+                resolution=resolution
+            )
+        elif clustering_method == 'label_propagation':
+            clusters = analysis.cluster_by_label_propagation(
+                self.layers[CorticalLayer.TOKENS],
+                min_cluster_size=min_cluster_size,
+                cluster_strictness=cluster_strictness,
+                bridge_weight=bridge_weight
+            )
+        else:
+            raise ValueError(
+                f"Unknown clustering_method: {clustering_method}. "
+                f"Use 'louvain' or 'label_propagation'."
+            )
+
         analysis.build_concept_clusters(self.layers, clusters)
         if verbose:
-            print(f"Built {len(clusters)} concept clusters")
+            print(f"Built {len(clusters)} concept clusters using {clustering_method}")
         return clusters
 
     def compute_concept_connections(
