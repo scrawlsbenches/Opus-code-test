@@ -2118,6 +2118,113 @@ Add documentation explaining:
 
 ---
 
+## Dog-Fooding Findings (2025-12-10)
+
+The following issues were identified during a dog-fooding session reviewing the docs folder and testing search quality.
+
+---
+
+### 63. Improve Search Ranking for Documentation Files
+
+**Files:** `cortical/query.py`, `scripts/search_codebase.py`
+**Status:** [ ] Not Started
+**Priority:** High
+
+**Problem:**
+When searching for conceptual terms like "PageRank algorithm" or "4-layer architecture", the search returns code implementations (processor.py) instead of documentation files (docs/algorithms.md, docs/architecture.md) that explicitly explain these concepts.
+
+**Observed Behavior:**
+```bash
+$ python scripts/search_codebase.py "PageRank algorithm"
+# Returns: cortical/processor.py:578 (score: 1.904)
+# Expected: docs/algorithms.md (has "PageRank - Importance Scoring" section)
+
+$ python scripts/search_codebase.py "4-layer architecture"
+# Returns: cortical/processor.py:578 (score: 6.973)
+# Expected: docs/architecture.md (entire file about this topic)
+```
+
+**Root Causes:**
+1. Code files have higher token density → higher TF-IDF scores
+2. No document-type awareness in ranking
+3. Natural language in docs may not match stemmed query terms
+4. Section headings in markdown aren't weighted higher
+
+**Proposed Solutions:**
+
+1. **Document-type boosting** - Boost .md files for conceptual queries:
+   ```python
+   if doc_id.endswith('.md'):
+       score *= 1.5  # Boost documentation
+   ```
+
+2. **Heading extraction** - Index markdown headings as high-weight terms:
+   ```python
+   # Extract ## headings and boost their terms
+   headings = re.findall(r'^##+ (.+)$', content, re.MULTILINE)
+   ```
+
+3. **Query intent detection** - Use existing `parse_intent_query()` to detect conceptual vs implementation queries:
+   - "what is PageRank" → boost docs
+   - "where is PageRank computed" → boost code
+
+4. **Add `--prefer-docs` flag** to search_codebase.py for documentation-first search
+
+**Success Criteria:**
+- `"PageRank algorithm"` returns docs/algorithms.md as top result
+- `"4-layer architecture"` returns docs/architecture.md as top result
+- `"compute pagerank"` still returns code (implementation query)
+
+---
+
+### 64. Add Document Type Indicator to Search Results
+
+**Files:** `scripts/search_codebase.py`
+**Status:** [ ] Not Started
+**Priority:** Low
+
+**Problem:**
+Search results show file paths but don't indicate document type at a glance. Users can't quickly distinguish documentation from code without reading the path.
+
+**Current Output:**
+```
+[1] cortical/processor.py:578
+    Score: 1.904
+```
+
+**Proposed Output:**
+```
+[1] [CODE] cortical/processor.py:578
+    Score: 1.904
+
+[2] [DOCS] docs/algorithms.md:19
+    Score: 1.856
+```
+
+**Implementation:**
+```python
+def get_doc_type(doc_id: str) -> str:
+    if doc_id.endswith('.md'):
+        return 'DOCS'
+    elif doc_id.startswith('tests/'):
+        return 'TEST'
+    else:
+        return 'CODE'
+```
+
+---
+
+## Dog-Fooding Summary
+
+| # | Priority | Task | Status | Category |
+|---|----------|------|--------|----------|
+| 63 | High | Improve search ranking for docs | [ ] Not Started | Search Quality |
+| 64 | Low | Add document type indicator | [ ] Not Started | UX |
+
+**Key Insight:** The dog-fooding loop isn't complete - documentation was indexed but doesn't surface well in search results. The "better docs → better search" feedback loop requires search improvements to actually prefer documentation for conceptual queries.
+
+---
+
 ## Code Review Summary (PR #23)
 
 | # | Priority | Task | Status | Category |
