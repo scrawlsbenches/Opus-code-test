@@ -581,7 +581,8 @@ def cluster_by_label_propagation(
 
     # Calculate label change threshold based on strictness
     # Higher strictness = requires stronger evidence to change label
-    change_threshold = (1.0 - cluster_strictness) * 0.3
+    # This means higher strictness → higher threshold → more clusters (topics stay separate)
+    change_threshold = cluster_strictness * 0.3
 
     for iteration in range(max_iterations):
         changed = False
@@ -597,9 +598,9 @@ def cluster_by_label_propagation(
 
             # Apply strictness: current label gets a bonus based on strictness
             current_label = labels[content]
-            if current_label in label_weights and cluster_strictness < 1.0:
-                # Lower strictness = stronger bias toward current label
-                label_weights[current_label] *= (1 + (1 - cluster_strictness) * 2)
+            if current_label in label_weights and cluster_strictness > 0.0:
+                # Higher strictness = stronger bias toward current label (resist change)
+                label_weights[current_label] *= (1 + cluster_strictness * 2)
 
             # Adopt most common label
             if label_weights:

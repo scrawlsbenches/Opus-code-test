@@ -1391,6 +1391,57 @@ class TestConceptClustering(unittest.TestCase):
         self.assertIsInstance(clusters_strict, dict)
         self.assertIsInstance(clusters_loose, dict)
 
+    def test_cluster_strictness_direction(self):
+        """Regression test: Higher strictness should create MORE clusters.
+
+        Task #122 fix: The cluster_strictness logic was inverted.
+        This test ensures the correct behavior:
+        - strictness=1.0 (strict) → MORE clusters (topics stay separate)
+        - strictness=0.0 (loose) → FEWER clusters (topics merge)
+        """
+        processor = CorticalTextProcessor()
+        # Create multiple distinct topics
+        processor.process_document("ml1", """
+            Neural networks process information through layers.
+            Deep learning enables pattern recognition in data.
+            Training neural networks requires gradient descent.
+        """)
+        processor.process_document("ml2", """
+            Machine learning algorithms learn from training data.
+            Neural networks are inspired by biological neurons.
+        """)
+        processor.process_document("cook1", """
+            Bread baking requires yeast and flour for fermentation.
+            Sourdough bread develops complex flavors over time.
+        """)
+        processor.process_document("cook2", """
+            Pasta is made from durum wheat semolina and water.
+            Italian cuisine features many regional pasta dishes.
+        """)
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+
+        # Strict clustering should create more clusters
+        clusters_strict = processor.build_concept_clusters(
+            cluster_strictness=1.0, verbose=False
+        )
+        count_strict = len(clusters_strict)
+
+        # Reset concepts layer
+        processor.layers[CorticalLayer.CONCEPTS] = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # Loose clustering should create fewer clusters
+        clusters_loose = processor.build_concept_clusters(
+            cluster_strictness=0.0, verbose=False
+        )
+        count_loose = len(clusters_loose)
+
+        # Strict should have >= loose clusters (topics stay separate vs merge)
+        self.assertGreaterEqual(
+            count_strict, count_loose,
+            f"Strict clustering ({count_strict}) should create >= clusters than loose ({count_loose})"
+        )
+
     def test_bridge_weight_parameter(self):
         """Test that bridge_weight enables cross-document connections."""
         processor = CorticalTextProcessor()

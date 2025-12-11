@@ -151,10 +151,16 @@ class CorticalShowcase:
         layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
         layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
 
+        # Calculate total connections across all layers
+        total_conns = sum(
+            layer.total_connections()
+            for layer in self.processor.layers.values()
+        )
+
         print(f"\n✓ Processed {len(self.loaded_files)} documents")
         print(f"✓ Created {layer0.column_count()} token minicolumns")
         print(f"✓ Created {layer1.column_count()} bigram minicolumns")
-        print(f"✓ Formed {layer0.total_connections()} lateral connections")
+        print(f"✓ Formed {total_conns:,} total connections")
         print(f"\n⏱  Document loading: {load_time:.2f}s")
         print(f"⏱  Compute all:      {compute_time:.2f}s")
 
@@ -611,7 +617,7 @@ class CorticalShowcase:
         print("Computing embeddings from graph structure...\n")
         
         stats = self.processor.compute_graph_embeddings(
-            dimensions=32, method='adjacency', verbose=False
+            dimensions=32, method='random_walk', verbose=False
         )
         print(f"  Created {stats['terms_embedded']} term embeddings")
         
@@ -632,13 +638,19 @@ class CorticalShowcase:
         layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
         layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
         layer3 = self.processor.get_layer(CorticalLayer.DOCUMENTS)
-        
+
+        # Calculate total connections across all layers
+        total_conns = sum(
+            layer.total_connections()
+            for layer in self.processor.layers.values()
+        )
+
         print("📊 CORPUS ANALYSIS SUMMARY\n")
-        
+
         print(f"  Documents processed:     {len(self.loaded_files)}")
         print(f"  Unique tokens:           {layer0.column_count()}")
         print(f"  Unique bigrams:          {layer1.column_count()}")
-        print(f"  Total connections:       {layer0.total_connections():,}")
+        print(f"  Total connections:       {total_conns:,}")
         
         # Find most central token
         top_token = max(layer0.minicolumns.values(), key=lambda c: c.pagerank)
