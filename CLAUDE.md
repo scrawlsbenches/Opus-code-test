@@ -499,9 +499,12 @@ python scripts/index_codebase.py --status --use-chunks
 - **Demo**: `showcase.py` - interactive demonstration
 
 **Process Documentation:**
+- **Getting Started**: `docs/quickstart.md` - 5-minute tutorial for newcomers
+- **Contributing**: `CONTRIBUTING.md` - how to contribute (fork, test, PR workflow)
 - **Ethics**: `docs/code-of-ethics.md` - documentation, testing, and completion standards
 - **Dog-fooding**: `docs/dogfooding-checklist.md` - checklist for testing with real usage
 - **Definition of Done**: `docs/definition-of-done.md` - when is a task truly complete?
+- **Task Archive**: `TASK_ARCHIVE.md` - completed tasks history
 
 ---
 
