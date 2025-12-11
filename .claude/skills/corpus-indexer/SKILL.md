@@ -108,8 +108,8 @@ For team collaboration, use `--use-chunks` to store changes as git-friendly JSON
 # Index with chunk storage
 python scripts/index_codebase.py --incremental --use-chunks
 
-# Compact old chunks (reduces history size)
-python scripts/index_codebase.py --compact --before 2025-12-01
+# Check chunk status
+python scripts/index_codebase.py --status --use-chunks
 ```
 
 **Benefits:**
@@ -121,3 +121,34 @@ python scripts/index_codebase.py --compact --before 2025-12-01
 - `corpus_chunks/*.json` - Tracked in git (append-only changes)
 - `corpus_dev.pkl` - NOT tracked (local cache)
 - `corpus_dev.pkl.hash` - NOT tracked (cache validation)
+
+## Chunk Compaction
+
+Over time, chunk files accumulate. Use compaction to consolidate them (like `git gc`):
+
+**When to compact:**
+- After 10+ chunk files accumulate
+- When you see size warnings during save
+- Before merging branches with chunk histories
+- To clean up old deleted entries
+
+**Commands:**
+```bash
+# Compact all chunks into one
+python scripts/index_codebase.py --compact --use-chunks
+
+# Compact chunks before a date
+python scripts/index_codebase.py --compact --before 2025-12-01 --use-chunks
+```
+
+**What happens:**
+1. All chunks are read in timestamp order
+2. Operations are replayed (later timestamps win)
+3. A single compacted chunk is created
+4. Old chunk files are removed
+5. Cache is preserved if valid
+
+**Recommended frequency:**
+- Weekly for active development
+- Monthly for maintenance mode
+- Before major releases

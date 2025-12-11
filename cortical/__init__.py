@@ -18,13 +18,17 @@ from .tokenizer import Tokenizer
 from .minicolumn import Minicolumn, Edge
 from .layers import CorticalLayer, HierarchicalLayer
 from .processor import CorticalTextProcessor
+from .config import CorticalConfig, get_default_config, VALID_RELATION_CHAINS
 
 __version__ = "2.0.0"
 __all__ = [
     "CorticalTextProcessor",
+    "CorticalConfig",
     "CorticalLayer",
     "HierarchicalLayer",
     "Minicolumn",
     "Edge",
     "Tokenizer",
+    "get_default_config",
+    "VALID_RELATION_CHAINS",
 ]

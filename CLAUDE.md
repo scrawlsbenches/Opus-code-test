@@ -449,6 +449,40 @@ corpus_dev.pkl.hash                   # NOT tracked (cache validation)
 - Git-friendly (small JSON, append-only)
 - Periodic compaction like `git gc`
 
+### Chunk Compaction
+
+Over time, chunk files accumulate. Use compaction to consolidate them, similar to `git gc`:
+
+**When to compact:**
+- After many indexing sessions (10+ chunk files)
+- When you see size warnings during indexing
+- Before merging branches with different chunk histories
+- To clean up deleted/modified document history
+
+**Compaction commands:**
+```bash
+# Compact all chunks into a single consolidated file
+python scripts/index_codebase.py --compact --use-chunks
+
+# Compact only chunks created before a specific date
+python scripts/index_codebase.py --compact --before 2025-12-01 --use-chunks
+
+# Check chunk status before compacting
+python scripts/index_codebase.py --status --use-chunks
+```
+
+**How compaction works:**
+1. Reads all chunk files (sorted by timestamp)
+2. Replays operations in order (later timestamps override)
+3. Creates a single compacted chunk with final state
+4. Removes old chunk files
+5. Preserves cache if still valid
+
+**Recommended frequency:**
+- Weekly for active development
+- Monthly for maintenance repositories
+- Before major releases
+
 ---
 
 ## File Quick Links

@@ -32,6 +32,7 @@ import json
 import os
 import subprocess
 import uuid
+import warnings
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
@@ -40,6 +41,10 @@ from typing import Dict, List, Optional, Tuple, Any
 
 # Chunk format version
 CHUNK_VERSION = 1
+
+# Default size threshold for chunk size warnings (in KB)
+# Chunks larger than this may bloat git history
+DEFAULT_WARN_SIZE_KB = 1024  # 1MB
 
 
 @dataclass
@@ -189,9 +194,13 @@ class ChunkWriter:
         """Check if any operations were recorded."""
         return len(self.operations) > 0
 
-    def save(self) -> Optional[Path]:
+    def save(self, warn_size_kb: int = DEFAULT_WARN_SIZE_KB) -> Optional[Path]:
         """
         Save chunk to file.
+
+        Args:
+            warn_size_kb: Emit a warning if the saved chunk exceeds this size
+                in kilobytes. Set to 0 to disable warning. Default is 1024 KB (1MB).
 
         Returns:
             Path to saved chunk file, or None if no operations.
@@ -215,6 +224,19 @@ class ChunkWriter:
         filepath = self.chunks_dir / chunk.get_filename()
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(chunk.to_dict(), f, indent=2, ensure_ascii=False)
+
+        # Check file size and warn if too large
+        if warn_size_kb > 0:
+            file_size_bytes = filepath.stat().st_size
+            file_size_kb = file_size_bytes / 1024
+            if file_size_kb > warn_size_kb:
+                warnings.warn(
+                    f"Chunk file '{filepath.name}' is {file_size_kb:.1f}KB "
+                    f"(exceeds {warn_size_kb}KB threshold). "
+                    f"Large chunks may bloat git history. "
+                    f"Consider running --compact to consolidate old chunks.",
+                    UserWarning
+                )
 
         return filepath
 
