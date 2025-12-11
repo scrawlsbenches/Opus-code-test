@@ -25,6 +25,9 @@ PROGRAMMING_KEYWORDS = frozenset({
     'isinstance', 'hasattr', 'getattr', 'setattr', 'len', 'range',
     'enumerate', 'zip', 'map', 'filter', 'print', 'open', 'read',
     'write', 'close', 'append', 'extend', 'insert', 'remove', 'pop',
+    # Dunder method components (for __init__, __slots__, etc.)
+    'repr', 'slots', 'name', 'doc', 'call', 'iter', 'next', 'enter',
+    'exit', 'getitem', 'setitem', 'delitem', 'contains', 'hash', 'eq',
     'const', 'let', 'var', 'public', 'private', 'protected', 'static',
     'final', 'abstract', 'interface', 'implements', 'extends', 'new',
     'this', 'constructor', 'module', 'export', 'require', 'package',
@@ -262,7 +265,8 @@ class Tokenizer:
 
         # Extract potential identifiers (including camelCase with internal caps)
         # Pattern matches: word2vec, getUserData, get_user_data, XMLParser
-        raw_tokens = re.findall(r'\b[a-zA-Z][a-zA-Z0-9_]*\b', text)
+        # Also matches underscore-prefixed: __init__, _private, __slots__
+        raw_tokens = re.findall(r'\b_*[a-zA-Z][a-zA-Z0-9_]*\b', text)
 
         result = []
         seen_splits = set()  # Only track splits to avoid duplicates from them

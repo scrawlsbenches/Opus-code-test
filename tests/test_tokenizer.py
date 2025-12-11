@@ -212,6 +212,48 @@ class TestCodeAwareTokenization(unittest.TestCase):
         self.assertNotIn("id", tokens)
         self.assertIn("user", tokens)
 
+    def test_dunder_methods_tokenized(self):
+        """Test that Python dunder methods are tokenized correctly."""
+        tokenizer = Tokenizer()
+        # Dunder methods should be captured
+        tokens = tokenizer.tokenize("def __init__(self): pass")
+        self.assertIn("__init__", tokens)
+        self.assertIn("self", tokens)
+
+        tokens = tokenizer.tokenize("__slots__ = ['x', 'y']")
+        self.assertIn("__slots__", tokens)
+
+        tokens = tokenizer.tokenize("def __str__(self): return ''")
+        self.assertIn("__str__", tokens)
+
+    def test_private_variables_tokenized(self):
+        """Test that private variables (underscore-prefixed) are tokenized."""
+        tokenizer = Tokenizer()
+        tokens = tokenizer.tokenize("self._id_index = {}")
+        self.assertIn("self", tokens)
+        self.assertIn("_id_index", tokens)
+
+        tokens = tokenizer.tokenize("_private_cache = []")
+        self.assertIn("_private_cache", tokens)
+
+    def test_dunder_methods_with_split(self):
+        """Test dunder methods with identifier splitting."""
+        tokenizer = Tokenizer(split_identifiers=True)
+        tokens = tokenizer.tokenize("__init__")
+        self.assertIn("__init__", tokens)
+        self.assertIn("init", tokens)
+
+        tokens = tokenizer.tokenize("__slots__")
+        self.assertIn("__slots__", tokens)
+        self.assertIn("slots", tokens)
+
+    def test_private_vars_with_split(self):
+        """Test private variables with identifier splitting."""
+        tokenizer = Tokenizer(split_identifiers=True)
+        tokens = tokenizer.tokenize("_id_index")
+        self.assertIn("_id_index", tokens)
+        self.assertIn("index", tokens)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

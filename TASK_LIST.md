@@ -2884,6 +2884,45 @@ Key files to understand:
 
 ---
 
+### 81. Fix Tokenizer Underscore-Prefixed Identifier Bug
+
+**File:** `cortical/tokenizer.py`
+**Line:** 265
+**Status:** [x] Completed
+**Priority:** High
+**Category:** Code Search
+
+**Problem:**
+The tokenizer regex `r'\b[a-zA-Z][a-zA-Z0-9_]*\b'` requires tokens to start with a letter, which causes Python dunder methods (`__init__`, `__slots__`, `__str__`) and private variables (`_id_index`, `_cache`) to be completely unsearchable in code search.
+
+**Found via dog-fooding:** Searching for `__slots__` returns zero results even though it exists in the codebase.
+
+**Root Cause:**
+```python
+# Line 265 - requires first char to be a letter
+raw_tokens = re.findall(r'\b[a-zA-Z][a-zA-Z0-9_]*\b', text)
+```
+
+**Solution:**
+1. Modify regex to capture underscore-prefixed identifiers:
+   ```python
+   raw_tokens = re.findall(r'\b_*[a-zA-Z][a-zA-Z0-9_]*\b', text)
+   ```
+2. Ensure dunder methods are preserved (not filtered as stop words)
+3. Add `'init'`, `'str'`, `'repr'` etc. to `PROGRAMMING_KEYWORDS` if not present
+4. Add tests for underscore-prefixed identifier tokenization
+
+**Impact:**
+- High for code search use case
+- Python-specific identifiers currently invisible to search
+- Affects private methods, dunder methods, internal variables
+
+**Files to Modify:**
+- `cortical/tokenizer.py` - Fix regex pattern
+- `tests/test_tokenizer.py` - Add tests for underscore identifiers
+
+---
+
 ## Summary Table
 
 | # | Priority | Task | Status | Category |
@@ -2902,6 +2941,7 @@ Key files to understand:
 | 78 | Low | Add code pattern detection | | Developer Experience |
 | 79 | Low | Add corpus health dashboard | | Developer Experience |
 | 80 | Low | Add "Learning Mode" for new contributors | | Developer Experience |
+| 81 | High | Fix tokenizer underscore-prefixed identifiers | ✓ Done | Code Search |
 
 ---
 
