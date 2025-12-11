@@ -120,6 +120,22 @@ processor = CorticalTextProcessor.load("my_corpus.pkl")
 - See [CLAUDE.md](../CLAUDE.md) for the full developer guide
 - Check [architecture.md](architecture.md) for how it works
 
+### For AI Agents
+
+If you're an AI coding assistant exploring this codebase:
+
+1. **Use `.ai_meta` files** for rapid module understanding:
+   ```bash
+   cat cortical/processor.py.ai_meta  # Structured overview
+   ```
+
+2. **Check Claude skills** in `.claude/skills/` for:
+   - `codebase-search` - Semantic search
+   - `corpus-indexer` - Index management
+   - `ai-metadata` - Metadata viewer
+
+3. **See AI Agent Onboarding** in [CLAUDE.md](../CLAUDE.md#ai-agent-onboarding) for detailed guidance
+
 ## Common Patterns
 
 ### Batch Processing

@@ -253,6 +253,45 @@ showcase.py          # Interactive demonstration (run it!)
 samples/             # 92 documents: from quantum computing to cheese affinage
 ```
 
+## AI Agent Support
+
+This project includes tools designed specifically for AI coding assistants:
+
+### AI Metadata Files (`.ai_meta`)
+
+Pre-generated metadata files provide structured navigation for AI agents:
+
+```bash
+# Generate metadata for rapid module understanding
+python scripts/generate_ai_metadata.py
+
+# View a module's structure without reading source
+cat cortical/processor.py.ai_meta
+```
+
+**What metadata provides:**
+- Function signatures with `see_also` cross-references
+- Class structures with inheritance
+- Complexity hints for expensive operations
+- Logical section groupings
+
+### Claude Skills
+
+Three Claude Code skills are available in `.claude/skills/`:
+
+| Skill | Purpose |
+|-------|---------|
+| `codebase-search` | Semantic search over the codebase |
+| `corpus-indexer` | Index/re-index after code changes |
+| `ai-metadata` | View and use module metadata |
+
+### For AI Agents
+
+See the **AI Agent Onboarding** section in [CLAUDE.md](CLAUDE.md) for:
+- Step-by-step setup guide
+- Navigation tips for efficient exploration
+- Example workflow using metadata
+
 ## Development History
 
 This project evolved through systematic improvements:
