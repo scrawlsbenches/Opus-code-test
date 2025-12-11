@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 33
+**Pending Tasks:** 37
 **Completed Tasks:** 88+ (see archive)
 
 ---
@@ -16,6 +16,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
+| 132 | Profile full-analysis bottleneck (Louvain, semantics extraction) | Perf | - | Medium |
 | 128 | Definition boost favors test mocks over real implementations | Search | - | Medium |
 | 124 | Add minimum cluster count regression tests | Testing | - | Medium |
 | 125 | Add clustering quality metrics (modularity, silhouette) | DevEx | - | Medium |
@@ -32,6 +33,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
+| 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
+| 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
+| 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
 | 91 | Create docs/README.md index | Docs | - | Small |
 | 92 | Add badges to README.md | DevEx | - | Small |
 | 93 | Update README with docs references | Docs | 91 | Small |
