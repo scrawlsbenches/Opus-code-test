@@ -33,38 +33,142 @@ Layer 3 (DOCUMENTS) → Full documents          [IT analogy: objects]
 
 ---
 
+## AI Agent Onboarding
+
+**New to this codebase?** Follow these steps to get oriented quickly:
+
+### Step 1: Generate AI Metadata (if missing)
+
+```bash
+# Check if metadata exists
+ls cortical/*.ai_meta
+
+# If not present, generate it (~1s)
+python scripts/generate_ai_metadata.py
+```
+
+### Step 2: Read Module Metadata First
+
+Instead of reading entire source files, start with `.ai_meta` files:
+
+```bash
+# Get structured overview of any module
+cat cortical/processor.py.ai_meta
+```
+
+**What metadata provides:**
+- Module docstring and purpose
+- Function signatures with `see_also` cross-references
+- Class structures with inheritance
+- Logical section groupings (Persistence, Query, Analysis, etc.)
+- Complexity hints for expensive operations
+
+### Step 3: Use the Full Toolchain
+
+```bash
+# Index codebase + generate metadata (recommended startup command)
+python scripts/index_codebase.py --incremental && python scripts/generate_ai_metadata.py --incremental
+
+# Then search semantically
+python scripts/search_codebase.py "your query here"
+```
+
+### AI Navigation Tips
+
+1. **Read `.ai_meta` before source code** - Get the map before exploring the territory
+2. **Follow `see_also` references** - Functions are cross-linked to related functions
+3. **Check `complexity_hints`** - Know which operations are expensive before calling them
+4. **Use semantic search** - The codebase is indexed for meaning-based retrieval
+5. **Trust the sections** - Functions are grouped by purpose in the metadata
+
+### Example Workflow
+
+```bash
+# I need to understand how search works
+cat cortical/query.py.ai_meta | head -100    # Get overview
+python scripts/search_codebase.py "expand query"  # Find specific code
+# Then read specific line ranges as needed
+```
+
+---
+
 ## Architecture Map
 
 ```
 cortical/
-├── processor.py      # Main orchestrator (1,596 lines) - START HERE
+├── processor.py      # Main orchestrator (2,301 lines) - START HERE
 │                     # CorticalTextProcessor is the public API
-├── analysis.py       # Graph algorithms: PageRank, TF-IDF, clustering
-├── query.py          # Search, retrieval, query expansion, analogies
-├── semantics.py      # Relation extraction, inheritance, retrofitting
-├── minicolumn.py     # Core data structure with typed Edge connections
-├── layers.py         # HierarchicalLayer with O(1) ID lookups via _id_index
-├── embeddings.py     # Graph embeddings (adjacency, spectral, random walk)
-├── gaps.py           # Knowledge gap detection and anomaly analysis
-├── persistence.py    # Save/load with full state preservation
-└── tokenizer.py      # Tokenization, stemming, stop word removal
+├── query.py          # Search, retrieval, query expansion (2,719 lines)
+├── analysis.py       # Graph algorithms: PageRank, TF-IDF, clustering (1,123 lines)
+├── semantics.py      # Relation extraction, inheritance, retrofitting (915 lines)
+├── persistence.py    # Save/load with full state preservation (606 lines)
+├── chunk_index.py    # Git-friendly chunk-based storage (574 lines)
+├── tokenizer.py      # Tokenization, stemming, stop word removal (398 lines)
+├── minicolumn.py     # Core data structure with typed Edge connections (357 lines)
+├── config.py         # CorticalConfig dataclass with validation (352 lines)
+├── fingerprint.py    # Semantic fingerprinting and similarity (315 lines)
+├── layers.py         # HierarchicalLayer with O(1) ID lookups via _id_index (294 lines)
+├── code_concepts.py  # Programming concept synonyms for code search (249 lines)
+├── gaps.py           # Knowledge gap detection and anomaly analysis (245 lines)
+└── embeddings.py     # Graph embeddings (adjacency, spectral, random walk) (209 lines)
 ```
+
+**Total:** ~10,700 lines of core library code
+
+### Module Purpose Quick Reference
+
+| If you need to... | Look in... |
+|-------------------|------------|
+| Add/modify public API | `processor.py` - wrapper methods call other modules |
+| Implement search/retrieval | `query.py` - all search functions |
+| Add graph algorithms | `analysis.py` - PageRank, TF-IDF, clustering |
+| Add semantic relations | `semantics.py` - pattern extraction, retrofitting |
+| Modify data structures | `minicolumn.py` - Minicolumn, Edge classes |
+| Change layer behavior | `layers.py` - HierarchicalLayer class |
+| Adjust tokenization | `tokenizer.py` - stemming, stop words, ngrams |
+| Change configuration | `config.py` - CorticalConfig dataclass |
+| Modify persistence | `persistence.py` - save/load, export formats |
+| Add code search features | `code_concepts.py` - programming synonyms |
+| Modify embeddings | `embeddings.py` - graph embedding methods |
+| Change gap detection | `gaps.py` - knowledge gap analysis |
+| Add fingerprinting | `fingerprint.py` - semantic fingerprints |
+| Modify chunk storage | `chunk_index.py` - git-friendly indexing |
 
 **Key data structures:**
 - `Minicolumn`: Core unit with `lateral_connections`, `typed_connections`, `feedforward_connections`, `feedback_connections`
 - `Edge`: Typed connection with `relation_type`, `weight`, `confidence`, `source`
 - `HierarchicalLayer`: Container with `minicolumns` dict and `_id_index` for O(1) lookups
 
+### Test File Locations
+
+| When testing... | Add tests to... |
+|-----------------|-----------------|
+| Processor methods | `tests/test_processor.py` (most comprehensive) |
+| Query functions | `tests/test_query.py` |
+| Analysis algorithms | `tests/test_analysis.py` |
+| Semantic extraction | `tests/test_semantics.py` |
+| Persistence/save/load | `tests/test_persistence.py` |
+| Tokenization | `tests/test_tokenizer.py` |
+| Configuration | `tests/test_config.py` |
+| Layers | `tests/test_layers.py` |
+| Embeddings | `tests/test_embeddings.py` |
+| Gap detection | `tests/test_gaps.py` |
+| Fingerprinting | `tests/test_fingerprint.py` |
+| Code concepts | `tests/test_code_concepts.py` |
+| Chunk indexing | `tests/test_chunk_indexing.py` |
+| Incremental updates | `tests/test_incremental_indexing.py` |
+| Intent queries | `tests/test_intent_query.py` |
+
 ---
 
 ## Critical Knowledge
 
 ### Fixed Bugs (2025-12-10)
-The bigram separator mismatch bugs in `query.py:1442-1468` and `analysis.py:927` have been **fixed**. Bigrams now correctly use space separators throughout the codebase.
+Historical note: Bigram separator mismatch bugs have been **fixed**. Bigrams now correctly use space separators throughout the codebase (see `tokenizer.py:extract_ngrams` and `analysis.py:compute_bigram_connections`).
 
 ### Important Implementation Details
 
-1. **Bigrams use SPACE separators** (from `tokenizer.py:179`):
+1. **Bigrams use SPACE separators** (from `tokenizer.py:319-332`):
    ```python
    ' '.join(tokens[i:i+n])  # "neural networks", not "neural_networks"
    ```
@@ -82,6 +186,60 @@ The bigram separator mismatch bugs in `query.py:1442-1468` and `analysis.py:927`
    ```
 
 5. **Minicolumn IDs follow pattern**: `L{layer}_{content}` (e.g., `L0_neural`, `L1_neural networks`)
+
+### Common Mistakes to Avoid
+
+**❌ DON'T iterate to find by ID:**
+```python
+# WRONG - O(n) linear scan
+for col in layer.minicolumns.values():
+    if col.id == target_id:
+        return col
+
+# CORRECT - O(1) lookup
+col = layer.get_by_id(target_id)
+```
+
+**❌ DON'T use underscores in bigrams:**
+```python
+# WRONG - bigrams use spaces
+bigram = f"{term1}_{term2}"
+
+# CORRECT
+bigram = f"{term1} {term2}"
+```
+
+**❌ DON'T confuse global TF-IDF with per-document TF-IDF:**
+```python
+# WRONG - global TF-IDF (uses total corpus occurrence)
+score = col.tfidf
+
+# CORRECT - per-document TF-IDF
+score = col.tfidf_per_doc.get(doc_id, 0.0)
+```
+
+**❌ DON'T assume compute_all() is always needed:**
+```python
+# WRONG - overkill for incremental updates
+processor.add_document_incremental(doc_id, text)
+processor.compute_all()  # Recomputes EVERYTHING
+
+# CORRECT - let incremental handle it
+processor.add_document_incremental(doc_id, text)
+# TF-IDF and connections updated automatically
+```
+
+**❌ DON'T forget to check staleness before relying on computed values:**
+```python
+# WRONG - may be using stale data
+if processor.is_stale(processor.COMP_PAGERANK):
+    # PageRank values may be outdated!
+    pass
+
+# CORRECT - ensure freshness
+if processor.is_stale(processor.COMP_PAGERANK):
+    processor.compute_importance()
+```
 
 ---
 
@@ -371,10 +529,11 @@ python scripts/search_codebase.py --interactive
 
 ### Claude Skills
 
-Two skills are available in `.claude/skills/`:
+Three skills are available in `.claude/skills/`:
 
 1. **codebase-search**: Search the indexed codebase for code patterns and implementations
 2. **corpus-indexer**: Re-index the codebase after making changes
+3. **ai-metadata**: View pre-generated module metadata for rapid understanding
 
 ### Indexer Options
 

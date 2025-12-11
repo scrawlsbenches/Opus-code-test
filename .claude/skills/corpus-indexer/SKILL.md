@@ -5,7 +5,7 @@ allowed-tools: Bash
 ---
 # Corpus Indexer Skill
 
-This skill manages the codebase index used by the semantic search system.
+This skill manages the codebase index used by the semantic search system and generates AI navigation metadata.
 
 ## When to Use
 
@@ -13,6 +13,7 @@ This skill manages the codebase index used by the semantic search system.
 - After significant code changes
 - When search results seem outdated
 - To verify indexing statistics
+- When AI metadata files (`.ai_meta`) are missing or stale
 
 ## Quick Commands
 
@@ -28,7 +29,37 @@ python scripts/index_codebase.py
 
 # Force full rebuild even if no changes detected
 python scripts/index_codebase.py --force
+
+# RECOMMENDED: Index + generate AI metadata in one command
+python scripts/index_codebase.py --incremental && python scripts/generate_ai_metadata.py --incremental
 ```
+
+## AI Metadata Generation
+
+Generate `.ai_meta` files that provide structured navigation for AI agents:
+
+```bash
+# Generate metadata for all modules
+python scripts/generate_ai_metadata.py
+
+# Incremental update (only changed files)
+python scripts/generate_ai_metadata.py --incremental
+
+# Generate for a single file
+python scripts/generate_ai_metadata.py cortical/processor.py
+
+# Clean and regenerate all
+python scripts/generate_ai_metadata.py --clean && python scripts/generate_ai_metadata.py
+```
+
+**What metadata provides:**
+- Module overview and docstring
+- Function signatures with `see_also` cross-references
+- Class structures with inheritance
+- Logical section groupings
+- Complexity hints for expensive operations
+
+**For detailed usage, see the `ai-metadata` skill.**
 
 ## Options
 
