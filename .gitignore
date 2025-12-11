@@ -16,6 +16,9 @@ corpus_dev.pkl
 *.manifest.json
 *.pkl.hash
 
+# AI metadata files (generated, not tracked)
+*.ai_meta
+
 # Indexer logs
 index.log
 *.log
