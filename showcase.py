@@ -516,8 +516,8 @@ class CorticalShowcase:
             print(f"    Code-aware chunks: {len(code_chunks)} (semantic boundaries)\n")
 
             print("    Code-aware chunk boundaries:")
-            for i, chunk in enumerate(code_chunks[:4]):
-                first_line = chunk.strip().split('\n')[0][:50]
+            for i, (chunk_text, start, end) in enumerate(code_chunks[:4]):
+                first_line = chunk_text.strip().split('\n')[0][:50]
                 print(f"      [{i+1}] {first_line}...")
         else:
             print("    (No Python files in corpus)")
