@@ -19,6 +19,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from cortical.processor import CorticalTextProcessor
+from cortical.query import (
+    apply_definition_boost,
+    boost_definition_documents,
+    detect_definition_query
+)
 
 
 def find_line_number(doc_content: str, passage_start: int) -> int:
@@ -224,24 +229,43 @@ def search_codebase(
 
     # Full passage search - first get top documents with boosting
     if no_boost:
-        doc_results = processor.find_documents_for_query(query, top_n=top_n * 2)
+        doc_results = processor.find_documents_for_query(query, top_n=top_n * 3)
     else:
         doc_results = processor.find_documents_with_boost(
             query,
-            top_n=top_n * 2,  # Get more candidates
+            top_n=top_n * 3,  # Get more candidates for re-ranking
             auto_detect_intent=not prefer_docs,
             prefer_docs=prefer_docs
         )
 
+    # Apply definition boost to documents (helps find class/def definitions)
+    doc_results = boost_definition_documents(
+        doc_results, query, processor.documents, boost_factor=2.0
+    )
+
     # Then get passages from those documents
     doc_ids = [doc_id for doc_id, _ in doc_results]
+
+    # Check if this is a definition query - if so, fetch more candidates
+    definition_info = detect_definition_query(query)
+    candidate_multiplier = 5 if definition_info['is_definition_query'] else 2
+
+    # For definition queries, search fewer docs (boosted ones at top)
+    # For regular queries, search more broadly
+    doc_limit = top_n if definition_info['is_definition_query'] else top_n * 3
+
     results = processor.find_passages_for_query(
         query,
-        top_n=top_n,
+        top_n=top_n * candidate_multiplier,  # More candidates for definition queries
         chunk_size=chunk_size,
         overlap=100,
-        doc_filter=doc_ids[:top_n * 2] if doc_ids else None
+        doc_filter=doc_ids[:doc_limit] if doc_ids else None
     )
+
+    # Apply definition boost for "class X" or "def X" queries
+    # This helps find actual definitions instead of just usages
+    results = apply_definition_boost(results, query, boost_factor=5.0)
+    results = results[:top_n]  # Trim after boosting
 
     formatted_results = []
     for passage, doc_id, start, end, score in results:

@@ -14,7 +14,7 @@ from collections import defaultdict
 import re
 
 from .layers import CorticalLayer, HierarchicalLayer
-from .tokenizer import Tokenizer
+from .tokenizer import Tokenizer, CODE_EXPANSION_STOP_WORDS
 from .code_concepts import expand_code_concepts, get_related_terms
 
 
@@ -241,7 +241,8 @@ def expand_query(
     use_lateral: bool = True,
     use_concepts: bool = True,
     use_variants: bool = True,
-    use_code_concepts: bool = False
+    use_code_concepts: bool = False,
+    filter_code_stop_words: bool = False
 ) -> Dict[str, float]:
     """
     Expand a query using lateral connections and concept clusters.
@@ -261,6 +262,8 @@ def expand_query(
         use_concepts: Include terms from concept clusters
         use_variants: Try word variants when direct match fails
         use_code_concepts: Include programming synonym expansions
+        filter_code_stop_words: Filter ubiquitous code tokens (self, cls, etc.)
+                                from expansion candidates. Useful for code search.
 
     Returns:
         Dict mapping terms to weights (original terms get weight 1.0)
@@ -344,17 +347,164 @@ def expand_query(
                     candidate_expansions[term], weight
                 )
 
+    # Filter out ubiquitous code tokens if requested
+    if filter_code_stop_words:
+        candidate_expansions = {
+            term: score for term, score in candidate_expansions.items()
+            if term not in CODE_EXPANSION_STOP_WORDS
+        }
+
     # Select top expansions
     sorted_candidates = sorted(
         candidate_expansions.items(),
         key=lambda x: x[1],
         reverse=True
     )[:max_expansions]
-    
+
     for term, score in sorted_candidates:
         expanded[term] = score
-    
+
     return expanded
+
+
+class DefinitionQuery(TypedDict):
+    """Info about a definition-seeking query."""
+    is_definition_query: bool
+    definition_type: Optional[str]  # 'class', 'function', 'method', 'variable'
+    identifier: Optional[str]       # The identifier being searched for
+    pattern: Optional[str]          # Regex pattern to find the definition
+
+
+def detect_definition_query(query_text: str) -> DefinitionQuery:
+    """
+    Detect if a query is searching for a code definition.
+
+    Recognizes patterns like:
+    - "class Minicolumn" -> looking for class definition
+    - "def compute_tfidf" -> looking for function definition
+    - "function handleClick" -> looking for function definition
+
+    Args:
+        query_text: The search query
+
+    Returns:
+        DefinitionQuery with detection results and pattern to search for
+    """
+    query_lower = query_text.lower().strip()
+
+    # Patterns for definition searches
+    patterns = [
+        # "class ClassName" or "class ClassName definition"
+        (r'\bclass\s+([A-Za-z_][A-Za-z0-9_]*)', 'class',
+         lambda name: rf'\bclass\s+{re.escape(name)}\s*[:\(]'),
+        # "def function_name" or "function function_name"
+        (r'\b(?:def|function)\s+([A-Za-z_][A-Za-z0-9_]*)', 'function',
+         lambda name: rf'\bdef\s+{re.escape(name)}\s*\('),
+        # "method methodName"
+        (r'\bmethod\s+([A-Za-z_][A-Za-z0-9_]*)', 'method',
+         lambda name: rf'\bdef\s+{re.escape(name)}\s*\('),
+    ]
+
+    for regex, def_type, pattern_fn in patterns:
+        match = re.search(regex, query_text, re.IGNORECASE)
+        if match:
+            identifier = match.group(1)
+            return DefinitionQuery(
+                is_definition_query=True,
+                definition_type=def_type,
+                identifier=identifier,
+                pattern=pattern_fn(identifier)
+            )
+
+    return DefinitionQuery(
+        is_definition_query=False,
+        definition_type=None,
+        identifier=None,
+        pattern=None
+    )
+
+
+def apply_definition_boost(
+    passages: List[Tuple[str, str, int, int, float]],
+    query_text: str,
+    boost_factor: float = 3.0
+) -> List[Tuple[str, str, int, int, float]]:
+    """
+    Boost passages that contain actual code definitions matching the query.
+
+    When searching for "class Minicolumn", passages containing the actual
+    class definition (`class Minicolumn:`) get boosted over passages that
+    merely reference or use the class.
+
+    Args:
+        passages: List of (text, doc_id, start, end, score) tuples
+        query_text: The original search query
+        boost_factor: Multiplier for definition-containing passages (default 3.0)
+
+    Returns:
+        Re-scored passages with definition boost applied, sorted by new score
+    """
+    definition_info = detect_definition_query(query_text)
+
+    if not definition_info['is_definition_query'] or not definition_info['pattern']:
+        return passages
+
+    pattern = re.compile(definition_info['pattern'], re.IGNORECASE)
+    boosted_passages = []
+
+    for text, doc_id, start, end, score in passages:
+        if pattern.search(text):
+            # This passage contains the actual definition
+            boosted_passages.append((text, doc_id, start, end, score * boost_factor))
+        else:
+            boosted_passages.append((text, doc_id, start, end, score))
+
+    # Re-sort by boosted scores
+    boosted_passages.sort(key=lambda x: x[4], reverse=True)
+    return boosted_passages
+
+
+def boost_definition_documents(
+    doc_results: List[Tuple[str, float]],
+    query_text: str,
+    documents: Dict[str, str],
+    boost_factor: float = 2.0
+) -> List[Tuple[str, float]]:
+    """
+    Boost documents that contain the actual definition being searched for.
+
+    This helps ensure the source file containing a class/function definition
+    is included in the document candidates, even if test files mention the
+    identifier more frequently.
+
+    Args:
+        doc_results: List of (doc_id, score) tuples
+        query_text: The original search query
+        documents: Dict mapping doc_id to document text
+        boost_factor: Multiplier for definition-containing docs (default 2.0)
+
+    Returns:
+        Re-scored document results with definition boost applied
+    """
+    definition_info = detect_definition_query(query_text)
+
+    if not definition_info['is_definition_query'] or not definition_info['pattern']:
+        return doc_results
+
+    pattern = re.compile(definition_info['pattern'], re.IGNORECASE)
+    boosted_docs = []
+
+    for doc_id, score in doc_results:
+        doc_text = documents.get(doc_id, '')
+        if pattern.search(doc_text):
+            # This document contains the actual definition
+            boosted_docs.append((doc_id, score * boost_factor))
+        else:
+            boosted_docs.append((doc_id, score))
+
+    # Re-sort by boosted scores
+    boosted_docs.sort(key=lambda x: x[1], reverse=True)
+    return boosted_docs
 
 
 def parse_intent_query(query_text: str) -> ParsedIntent:
@@ -770,7 +920,8 @@ def get_expanded_query_terms(
     semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
     use_semantic: bool = True,
     max_expansions: int = 5,
-    semantic_discount: float = 0.8
+    semantic_discount: float = 0.8,
+    filter_code_stop_words: bool = False
 ) -> Dict[str, float]:
     """
     Get expanded query terms with optional semantic expansion.
@@ -790,6 +941,8 @@ def get_expanded_query_terms(
         use_semantic: Whether to use semantic relations for expansion
         max_expansions: Maximum expansion terms per method (default 5)
         semantic_discount: Weight multiplier for semantic expansions (default 0.8)
+        filter_code_stop_words: Filter ubiquitous code tokens (self, cls, etc.)
+                                from expansion candidates. Useful for code search.
 
     Returns:
         Dict mapping terms to weights (original terms get weight 1.0,
@@ -801,7 +954,11 @@ def get_expanded_query_terms(
     """
     if use_expansion:
         # Start with lateral connection expansion
-        query_terms = expand_query(query_text, layers, tokenizer, max_expansions=max_expansions)
+        query_terms = expand_query(
+            query_text, layers, tokenizer,
+            max_expansions=max_expansions,
+            filter_code_stop_words=filter_code_stop_words
+        )
 
         # Add semantic expansion if available
         if use_semantic and semantic_relations:
@@ -1322,18 +1479,20 @@ def find_passages_for_query(
     # Pre-compute minicolumn lookups for query terms (optimization)
     term_cols = precompute_term_cols(query_terms, layer0)
 
-    # First, get candidate documents (more than we need, since we'll rank passages)
-    doc_scores = find_documents_for_query(
-        query_text, layers, tokenizer,
-        top_n=min(len(documents), top_n * 3),
-        use_expansion=use_expansion,
-        semantic_relations=semantic_relations,
-        use_semantic=use_semantic
-    )
-
-    # Apply document filter if provided
+    # Get candidate documents
     if doc_filter:
-        doc_scores = [(doc_id, score) for doc_id, score in doc_scores if doc_id in doc_filter]
+        # Use provided filter directly as candidates (caller may have pre-boosted)
+        # Assign dummy scores since we'll re-score passages anyway
+        doc_scores = [(doc_id, 1.0) for doc_id in doc_filter if doc_id in documents]
+    else:
+        # No filter - get candidates via document search
+        doc_scores = find_documents_for_query(
+            query_text, layers, tokenizer,
+            top_n=min(len(documents), top_n * 3),
+            use_expansion=use_expansion,
+            semantic_relations=semantic_relations,
+            use_semantic=use_semantic
+        )
 
     # Score passages within candidate documents
     passages: List[Tuple[str, str, int, int, float]] = []

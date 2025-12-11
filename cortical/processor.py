@@ -1268,6 +1268,7 @@ class CorticalTextProcessor:
         max_expansions: int = 10,
         use_variants: bool = True,
         use_code_concepts: bool = False,
+        filter_code_stop_words: bool = False,
         verbose: bool = False
     ) -> Dict[str, float]:
         """
@@ -1278,6 +1279,7 @@ class CorticalTextProcessor:
             max_expansions: Maximum expansion terms to add
             use_variants: Try word variants when direct match fails
             use_code_concepts: Include programming synonym expansions
+            filter_code_stop_words: Filter ubiquitous code tokens (self, cls, etc.)
 
         Returns:
             Dict mapping terms to weights
@@ -1288,7 +1290,8 @@ class CorticalTextProcessor:
             self.tokenizer,
             max_expansions=max_expansions,
             use_variants=use_variants,
-            use_code_concepts=use_code_concepts
+            use_code_concepts=use_code_concepts,
+            filter_code_stop_words=filter_code_stop_words
         )
 
     def expand_query_for_code(self, query_text: str, max_expansions: int = 15) -> Dict[str, float]:
@@ -1297,6 +1300,7 @@ class CorticalTextProcessor:
 
         Enables code concept expansion to find programming synonyms
         (e.g., "fetch" also matches "get", "load", "retrieve").
+        Also filters ubiquitous code tokens (self, cls, etc.) from expansion.
 
         Args:
             query_text: Original query string
@@ -1311,7 +1315,8 @@ class CorticalTextProcessor:
             self.tokenizer,
             max_expansions=max_expansions,
             use_variants=True,
-            use_code_concepts=True
+            use_code_concepts=True,
+            filter_code_stop_words=True  # Filter self, cls, etc.
         )
 
     def expand_query_cached(

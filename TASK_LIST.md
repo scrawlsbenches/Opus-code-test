@@ -2942,6 +2942,8 @@ raw_tokens = re.findall(r'\b[a-zA-Z][a-zA-Z0-9_]*\b', text)
 | 79 | Low | Add corpus health dashboard | | Developer Experience |
 | 80 | Low | Add "Learning Mode" for new contributors | | Developer Experience |
 | 81 | High | Fix tokenizer underscore-prefixed identifiers | ✓ Done | Code Search |
+| 82 | High | Add code stop words filter for query expansion | ✓ Done | Code Search |
+| 83 | Medium | Add definition-aware boosting for class/def queries | ✓ Done | Code Search |
 
 ---
 

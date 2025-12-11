@@ -13,6 +13,18 @@ import re
 from typing import List, Set, Optional, Dict, Tuple
 
 
+# Ubiquitous code tokens that pollute query expansion
+# These appear in almost every Python method/function, so they add noise
+# rather than signal when expanding queries for code search
+CODE_EXPANSION_STOP_WORDS = frozenset({
+    'self', 'cls',              # Class method parameters
+    'args', 'kwargs',           # Variadic parameters
+    'none', 'true', 'false',    # Literals (too common)
+    'return', 'pass',           # Control flow (too common)
+    'def', 'class',             # Definitions (search for these explicitly)
+})
+
+
 # Programming keywords that should be preserved even if in stop words
 PROGRAMMING_KEYWORDS = frozenset({
     'def', 'class', 'function', 'return', 'import', 'from', 'if', 'else',
