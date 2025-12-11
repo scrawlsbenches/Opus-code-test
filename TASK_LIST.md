@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 24
-**Completed Tasks:** 75+ (see archive)
+**Pending Tasks:** 17
+**Completed Tasks:** 82+ (see archive)
 
 ---
 
@@ -14,20 +14,14 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 ### 🔴 Critical (Do Now)
 
-| # | Task | Category | Depends | Effort |
-|---|------|----------|---------|--------|
-| 88 | Create package installation files | DevEx | - | Small |
+*No critical tasks - all blockers resolved!*
 
 ### 🟠 High (Do This Week)
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 89 | Create CONTRIBUTING.md | DevEx | - | Small |
-| 90 | Create docs/quickstart.md tutorial | Docs | 88 | Medium |
 | 94 | Split query.py into focused modules | Arch | - | Large |
 | 97 | Integrate CorticalConfig into processor | Arch | - | Medium |
-| 103 | Add Priority Backlog Summary (this!) | TaskMgmt | - | Small |
-| 104 | Create TASK_ARCHIVE.md | TaskMgmt | - | Medium |
 
 ### 🟡 Medium (Do This Month)
 
@@ -41,8 +35,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 98 | Replace print() with logging | CodeQual | - | Medium |
 | 99 | Add input validation to public methods | CodeQual | - | Medium |
 | 102 | Add tests for edge cases | Testing | - | Medium |
-| 105 | Standardize task format | TaskMgmt | 103 | Medium |
-| 107 | Add Quick Context to tasks | TaskMgmt | 105 | Medium |
+| 107 | Add Quick Context to tasks | TaskMgmt | - | Medium |
 
 ### 🟢 Low (Backlog)
 
@@ -57,9 +50,8 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 80 | Add "Learning Mode" for contributors | DevEx | - | Large |
 | 100 | Implement plugin/extension registry | Arch | - | Large |
 | 101 | Automate staleness tracking | Arch | - | Medium |
-| 106 | Add task dependency graph | TaskMgmt | 105 | Small |
-| 108 | Create task selection script | TaskMgmt | 103,105 | Medium |
-| 109 | Add Recently Completed section | TaskMgmt | 104 | Small |
+| 106 | Add task dependency graph | TaskMgmt | - | Small |
+| 108 | Create task selection script | TaskMgmt | - | Medium |
 
 ### ⏸️ Deferred
 
@@ -82,13 +74,15 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 88 | Create package installation files | 2025-12-11 | pyproject.toml, requirements.txt |
+| 89 | Create CONTRIBUTING.md | 2025-12-11 | Contribution guide |
+| 90 | Create docs/quickstart.md | 2025-12-11 | 5-minute tutorial |
+| 103 | Add Priority Backlog Summary | 2025-12-11 | TASK_LIST.md restructure |
+| 104 | Create TASK_ARCHIVE.md | 2025-12-11 | 75+ tasks archived |
+| 105 | Standardize task format | 2025-12-11 | Meta tags, effort estimates |
+| 109 | Add Recently Completed section | 2025-12-11 | Session context |
 | 86 | Add semantic chunk boundaries for code | 2025-12-11 | In query.py |
 | 85 | Improve test vs source ranking | 2025-12-11 | DOC_TYPE_BOOSTS |
-| 84 | Add direct definition pattern search | 2025-12-11 | query.py |
-| 83 | Add definition-aware boosting | 2025-12-11 | query.py |
-| 82 | Add code stop words filter | 2025-12-11 | query.py |
-| 81 | Fix tokenizer underscore identifiers | 2025-12-11 | tokenizer.py |
-| 77 | Add interactive "Ask the Codebase" mode | 2025-12-11 | scripts/ |
 
 *Full details in [TASK_ARCHIVE.md](TASK_ARCHIVE.md)*
 
@@ -230,87 +224,54 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 ---
 
-### 88. Create Package Installation Files
+### 88. Create Package Installation Files ✓
 
-**Meta:** `status:pending` `priority:critical` `category:devex`
-**Files:** `pyproject.toml` (new), `requirements.txt` (new)
-**Effort:** Small
+**Meta:** `status:completed` `priority:critical` `category:devex`
+**Files:** `pyproject.toml`, `requirements.txt`, `cortical/py.typed`
+**Completed:** 2025-12-11
 
-**Quick Context:**
-- README references `pip install -e .` but no setup.py exists
-- Zero runtime dependencies (stdlib only)
-- Dev dependency: coverage>=7.0
-
-**Problem:** Can't install via pip - biggest adoption blocker.
-
-**Solution:**
-```toml
-[project]
-name = "cortical-text-processor"
-version = "2.0.0"
-requires-python = ">=3.9"
-dependencies = []
-
-[project.optional-dependencies]
-dev = ["coverage>=7.0"]
-```
-
-**Acceptance Criteria:**
-- [ ] `pip install -e .` works
-- [ ] `pip install -e ".[dev]"` installs coverage
-- [ ] README installation instructions work
+**Solution Applied:**
+- Created `pyproject.toml` with modern Python packaging
+- Created `requirements.txt` documenting dev dependencies
+- Added `py.typed` marker for PEP 561 compliance
+- Tested: `pip install -e .` and `pip install -e ".[dev]"` both work
 
 ---
 
-### 89. Create CONTRIBUTING.md
+### 89. Create CONTRIBUTING.md ✓
 
-**Meta:** `status:pending` `priority:high` `category:devex`
-**Files:** `CONTRIBUTING.md` (new)
-**Effort:** Small
-**Depends:** 88
+**Meta:** `status:completed` `priority:high` `category:devex`
+**Files:** `CONTRIBUTING.md`
+**Completed:** 2025-12-11
 
-**Quick Context:**
-- No contribution guide exists
-- Testing: `python -m unittest discover -s tests -v`
-- Code style: PEP 8, type hints, Google docstrings
-- Reference: `docs/code-of-ethics.md`, `docs/definition-of-done.md`
-
-**Problem:** Contributors don't know how to help.
-
-**Solution:** Create CONTRIBUTING.md with fork/PR workflow, test instructions, style guide.
-
-**Acceptance Criteria:**
-- [ ] Fork/clone/PR workflow documented
-- [ ] Test running instructions clear
-- [ ] Links to ethics and definition-of-done docs
+**Solution Applied:**
+- Created comprehensive CONTRIBUTING.md with:
+  - Quick start (8 steps from fork to PR)
+  - Development setup instructions
+  - Test running commands
+  - Code style guidelines with examples
+  - Project structure overview
+  - Links to code-of-ethics.md and definition-of-done.md
 
 ---
 
-### 90. Create docs/quickstart.md Tutorial
+### 90. Create docs/quickstart.md Tutorial ✓
 
-**Meta:** `status:pending` `priority:high` `category:docs`
-**Files:** `docs/quickstart.md` (new)
-**Effort:** Medium
-**Depends:** 88
+**Meta:** `status:completed` `priority:high` `category:docs`
+**Files:** `docs/quickstart.md`
+**Completed:** 2025-12-11
 
-**Quick Context:**
-- showcase.py is 700+ lines - too intimidating
-- Need 10-minute "Hello World" path
-- Core API: `CorticalTextProcessor`, `process_document()`, `compute_all()`, `find_documents_for_query()`
-
-**Problem:** No minimal example for newcomers.
-
-**Solution:**
-1. Installation (1 min)
-2. First document (2 min)
-3. First search (2 min)
-4. Understanding results (3 min)
-5. Next steps
-
-**Acceptance Criteria:**
-- [ ] Complete example in <50 lines
-- [ ] Copy-paste runnable
-- [ ] Links to advanced docs
+**Solution Applied:**
+- Created 5-minute quickstart tutorial with:
+  - Installation instructions
+  - "Your First 10 Lines" minimal example
+  - Understanding results section
+  - Query expansion demo
+  - Passage retrieval for RAG
+  - Key concepts table
+  - Save/load instructions
+  - Common patterns (batch, incremental, metadata)
+  - Troubleshooting section
 
 ---
 
@@ -494,40 +455,33 @@ def __init__(
 
 ---
 
-### 103. Add Priority Backlog Summary to Top of TASK_LIST.md
-
-**Meta:** `status:in-progress` `priority:high` `category:task-mgmt`
-**Files:** `TASK_LIST.md`
-**Effort:** Small
-
-**Problem:** Must read 3500+ lines to find pending tasks.
-
-**Solution:** Machine-parseable backlog tables at top.
-
-**Status:** This restructure implements Task 103.
-
----
-
-### 104. Create TASK_ARCHIVE.md for Completed Tasks
+### 103. Add Priority Backlog Summary to Top of TASK_LIST.md ✓
 
 **Meta:** `status:completed` `priority:high` `category:task-mgmt`
-**Files:** `TASK_ARCHIVE.md` (new), `TASK_LIST.md`
-**Effort:** Medium
+**Files:** `TASK_LIST.md`
+**Completed:** 2025-12-11
 
-**Solution:** Archive created, TASK_LIST.md restructured.
+**Solution Applied:** Added machine-parseable backlog with priority tiers (Critical/High/Medium/Low/Deferred) at top of file.
 
 ---
 
-### 105. Standardize Task Format with Machine-Parseable Metadata
+### 104. Create TASK_ARCHIVE.md for Completed Tasks ✓
 
-**Meta:** `status:pending` `priority:medium` `category:task-mgmt`
+**Meta:** `status:completed` `priority:high` `category:task-mgmt`
+**Files:** `TASK_ARCHIVE.md`, `TASK_LIST.md`
+**Completed:** 2025-12-11
+
+**Solution Applied:** Created archive with 75+ completed tasks, reduced TASK_LIST.md from 3,565 to 604 lines (83% reduction).
+
+---
+
+### 105. Standardize Task Format with Machine-Parseable Metadata ✓
+
+**Meta:** `status:completed` `priority:medium` `category:task-mgmt`
 **Files:** `TASK_LIST.md`
-**Effort:** Medium
-**Depends:** 103
+**Completed:** 2025-12-11
 
-**Problem:** Inconsistent task formats.
-
-**Solution:** `**Meta:** \`status:pending\` \`priority:high\`...` format.
+**Solution Applied:** All tasks now use `**Meta:** \`status:...\` \`priority:...\`` format with effort estimates.
 
 ---
 
@@ -564,16 +518,13 @@ def __init__(
 
 ---
 
-### 109. Add "Recently Completed" Section for Context
+### 109. Add "Recently Completed" Section for Context ✓
 
-**Meta:** `status:pending` `priority:low` `category:task-mgmt`
+**Meta:** `status:completed` `priority:low` `category:task-mgmt`
 **Files:** `TASK_LIST.md`
-**Effort:** Small
-**Depends:** 104
+**Completed:** 2025-12-11
 
-**Problem:** No session context on recent work.
-
-**Status:** Implemented as part of this restructure.
+**Solution Applied:** Added "Recently Completed (Last 7 Days)" section with table format showing task, date, and notes.
 
 ---
 
@@ -581,12 +532,12 @@ def __init__(
 
 | Category | Pending | Description |
 |----------|---------|-------------|
-| DevEx | 8 | Developer experience (installation, contribution) |
-| Docs | 3 | Documentation improvements |
+| DevEx | 6 | Developer experience (scripts, tools) |
+| Docs | 2 | Documentation improvements |
 | Arch | 4 | Architecture refactoring |
 | CodeQual | 3 | Code quality improvements |
 | Testing | 1 | Test coverage |
-| TaskMgmt | 5 | Task management system |
+| TaskMgmt | 2 | Task management system |
 | Deferred | 4 | Low priority, not blocking |
 
 ---
@@ -600,4 +551,4 @@ def __init__(
 
 ---
 
-*Last restructured: 2025-12-11 (Tasks 103, 104, 109 implemented)*
+*Last restructured: 2025-12-11 (Tasks 88, 89, 90, 103, 104, 105, 109 implemented)*
