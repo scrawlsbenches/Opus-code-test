@@ -185,7 +185,16 @@ class CorticalShowcase:
             conns = layer.total_connections()
             print(f"  Layer {layer_enum.value}: {name}")
             print(f"         {count:,} minicolumns, {conns:,} connections")
-            print(f"         Purpose: {desc}\n")
+            print(f"         Purpose: {desc}")
+
+            # Show clustering quality metrics for concept layer
+            if layer_enum == CorticalLayer.CONCEPTS and count > 0:
+                quality = self.processor.compute_clustering_quality()
+                print(f"         Quality: modularity={quality['modularity']:.2f}, "
+                      f"silhouette={quality['silhouette']:.2f}, "
+                      f"balance={quality['balance']:.2f}")
+
+            print()
     
     def discover_key_concepts(self):
         """Show most important concepts via PageRank."""

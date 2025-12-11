@@ -1032,6 +1032,44 @@ class CorticalTextProcessor:
             print(f"Built {len(clusters)} concept clusters using {clustering_method}")
         return clusters
 
+    def compute_clustering_quality(
+        self,
+        sample_size: int = 500
+    ) -> Dict[str, Any]:
+        """
+        Compute clustering quality metrics for the concept layer.
+
+        Evaluates how well the clustering algorithm has performed by computing:
+        - Modularity: Density of within-cluster connections vs between-cluster
+        - Silhouette: How similar tokens are to their cluster vs other clusters
+        - Balance (Gini): Distribution of cluster sizes
+
+        Args:
+            sample_size: Max tokens to sample for silhouette calculation
+                        (full calculation is O(n²), sampling keeps it tractable)
+
+        Returns:
+            Dictionary with:
+            - modularity: float (-1 to 1, higher is better, >0.3 is good)
+            - silhouette: float (-1 to 1, higher is better, >0.25 is reasonable)
+            - balance: float (0 to 1, 0 = perfectly balanced, 1 = all in one)
+            - num_clusters: int
+            - quality_assessment: str (human-readable interpretation)
+
+        Example:
+            >>> processor.compute_all()
+            >>> quality = processor.compute_clustering_quality()
+            >>> print(f"Modularity: {quality['modularity']:.3f}")
+            >>> print(quality['quality_assessment'])
+            37 clusters with Good community structure (modularity 0.40),
+            overlapping clusters (silhouette 0.15), moderately balanced sizes
+
+        See Also:
+            build_concept_clusters: Creates the clusters being evaluated
+            compute_all: Runs full pipeline including clustering
+        """
+        return analysis.compute_clustering_quality(self.layers, sample_size)
+
     def compute_concept_connections(
         self,
         use_semantics: bool = True,
