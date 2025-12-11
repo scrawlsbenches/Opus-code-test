@@ -2124,11 +2124,58 @@ The following issues were identified during a dog-fooding session reviewing the 
 
 ---
 
+### 65. Add Document Metadata to Chunk-Based Indexing (Prerequisite)
+
+**Files:** `scripts/index_codebase.py`
+**Status:** [ ] Not Started
+**Priority:** High
+**Blocks:** #63
+
+**Problem:**
+Chunk-based indexing loses all document metadata, making it impossible to implement document-type boosting for search.
+
+**Current Code (line 859):**
+```python
+# Metadata is None - no file_type, no headings, nothing!
+documents = [(doc_id, content, None) for doc_id, content in all_docs.items()]
+```
+
+**Additional Gaps:**
+1. `index_file()` only extracts metadata for Python files (lines 481-486)
+2. Markdown files get no special treatment (no heading extraction)
+3. Chunk format doesn't store metadata at all
+
+**Solution:**
+1. Add `doc_type` field to chunk operations:
+   ```json
+   {"op": "add", "doc_id": "docs/algorithms.md", "doc_type": "docs", "headings": ["PageRank", "TF-IDF"]}
+   ```
+
+2. Extract markdown headings during indexing:
+   ```python
+   if file_path.suffix == '.md':
+       headings = re.findall(r'^##+ (.+)$', content, re.MULTILINE)
+       metadata['headings'] = headings
+       metadata['doc_type'] = 'docs' if doc_id.startswith('docs/') else 'root_docs'
+   ```
+
+3. Update `ChunkWriter` and `ChunkLoader` to preserve metadata
+
+4. Pass metadata when building processor from chunks:
+   ```python
+   documents = [(doc_id, content, metadata) for doc_id, content, metadata in all_docs]
+   ```
+
+**This is a prerequisite for Task #63** - without metadata, we can't boost docs in search.
+
+---
+
 ### 63. Improve Search Ranking for Documentation Files
 
 **Files:** `cortical/query.py`, `scripts/search_codebase.py`
 **Status:** [ ] Not Started
 **Priority:** High
+**Depends on:** #65
 
 **Problem:**
 When searching for conceptual terms like "PageRank algorithm" or "4-layer architecture", the search returns code implementations (processor.py) instead of documentation files (docs/algorithms.md, docs/architecture.md) that explicitly explain these concepts.
@@ -2218,10 +2265,16 @@ def get_doc_type(doc_id: str) -> str:
 
 | # | Priority | Task | Status | Category |
 |---|----------|------|--------|----------|
+| 65 | High | Add document metadata to chunk indexing | [ ] Not Started | Infrastructure |
 | 63 | High | Improve search ranking for docs | [ ] Not Started | Search Quality |
 | 64 | Low | Add document type indicator | [ ] Not Started | UX |
 
-**Key Insight:** The dog-fooding loop isn't complete - documentation was indexed but doesn't surface well in search results. The "better docs → better search" feedback loop requires search improvements to actually prefer documentation for conceptual queries.
+**Dependency Chain:** #65 → #63 → #64
+
+**Key Insight:** The dog-fooding loop isn't complete - documentation was indexed but doesn't surface well in search results. The "better docs → better search" feedback loop requires:
+1. **Infrastructure** (#65): Store document metadata (file type, headings) in chunks
+2. **Ranking** (#63): Use metadata to boost docs for conceptual queries
+3. **UX** (#64): Show document types in search results
 
 ---
 
