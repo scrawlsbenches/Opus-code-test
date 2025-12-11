@@ -2320,20 +2320,64 @@ def get_doc_type(doc_id: str) -> str:
 
 ---
 
+### 66. Add Doc-Type Boosting to Passage-Level Search
+
+**Files:** `cortical/query.py`, `scripts/search_codebase.py`
+**Status:** [ ] Not Started
+**Priority:** Medium
+
+**Problem:**
+Document-level search correctly applies doc-type boosting (CLAUDE.md ranks #3 for "chunk compaction"), but passage-level search (`find_passages_for_query`) returns raw TF-IDF scores without boosting. This causes code snippets with keyword matches to rank higher than documentation passages for conceptual queries.
+
+**Evidence (2025-12-11 dog-fooding):**
+```
+# Document-level search correctly ranks docs:
+TASK_LIST.md: 9.837 (root_docs)
+CLAUDE.md: 8.146 (root_docs)  ← Documentation found
+
+# But passage search returns code first:
+[1] [CODE] cortical/chunk_index.py:291 Score: 2.549
+[2] [TEST] tests/test_chunk_indexing.py:77 Score: 2.157
+# CLAUDE.md "Chunk Compaction" section not in top 5
+```
+
+**Solution:**
+Propagate doc-type boost to passage scoring:
+1. After chunking documents, apply `get_doc_type_boost()` to passage scores
+2. For conceptual queries (`is_conceptual_query()`), multiply passage score by doc-type boost
+3. Re-rank passages after boosting
+
+**Implementation Sketch:**
+```python
+def find_passages_for_query(..., apply_doc_boost: bool = True):
+    # ... existing passage retrieval ...
+
+    if apply_doc_boost and is_conceptual_query(query_text):
+        boosted_passages = []
+        for passage, doc_id, start, end, score in passages:
+            boost = get_doc_type_boost(doc_id, doc_metadata)
+            boosted_passages.append((passage, doc_id, start, end, score * boost))
+        passages = sorted(boosted_passages, key=lambda x: -x[4])
+
+    return passages[:top_n]
+```
+
+---
+
 ## Dog-Fooding Summary
 
 | # | Priority | Task | Status | Category |
 |---|----------|------|--------|----------|
-| 65 | High | Add document metadata to chunk indexing | [ ] Not Started | Infrastructure |
-| 63 | High | Improve search ranking for docs | [ ] Not Started | Search Quality |
-| 64 | Low | Add document type indicator | [ ] Not Started | UX |
+| 65 | High | Add document metadata to chunk indexing | [x] Completed | Infrastructure |
+| 63 | High | Improve search ranking for docs | [x] Completed | Search Quality |
+| 64 | Low | Add document type indicator | [x] Completed | UX |
+| 66 | Medium | Add doc-type boost to passage search | [ ] Not Started | Search Quality |
 
-**Dependency Chain:** #65 → #63 → #64
+**Dependency Chain:** #65 → #63 → #64 (all complete), #66 extends this work
 
-**Key Insight:** The dog-fooding loop isn't complete - documentation was indexed but doesn't surface well in search results. The "better docs → better search" feedback loop requires:
-1. **Infrastructure** (#65): Store document metadata (file type, headings) in chunks
-2. **Ranking** (#63): Use metadata to boost docs for conceptual queries
-3. **UX** (#64): Show document types in search results
+**Status Update (2025-12-11):**
+- Document-level search now correctly boosts documentation for conceptual queries
+- Passage-level search still needs boosting (#66) - docs found but code ranks higher
 
 ---
 
@@ -2341,13 +2385,26 @@ def get_doc_type(doc_id: str) -> str:
 
 | # | Priority | Task | Status | Category |
 |---|----------|------|--------|----------|
-| 59 | Low | Rename TimeoutError to avoid shadowing | [ ] Not Started | Code Quality |
-| 60 | Medium | Add Windows compatibility for timeout | [ ] Not Started | Compatibility |
-| 61 | Low | Add chunk size warning | [ ] Not Started | UX |
-| 62 | Low | Add chunk compaction documentation | [ ] Not Started | Documentation |
+| 59 | Low | Rename TimeoutError to avoid shadowing | [x] Completed | Code Quality |
+| 60 | Medium | Add Windows compatibility for timeout | [x] Completed | Compatibility |
+| 61 | Low | Add chunk size warning | [x] Completed | UX |
+| 62 | Low | Add chunk compaction documentation | [x] Completed | Documentation |
 
-**Test Results:** 84 new tests, all passing
+**Test Results:** 691 tests passing (including 32 new tests)
 
 ---
 
-*Updated 2025-12-10*
+## Actionable Tasks Summary (Updated 2025-12-11)
+
+| # | Priority | Task | Status | Category |
+|---|----------|------|--------|----------|
+| 41 | Medium | Create Configuration Dataclass | [x] Completed | Code Quality |
+| 56 | Medium | Create Usage Patterns Documentation | [x] Completed | Documentation |
+| 66 | Medium | Add doc-type boost to passage search | [ ] Not Started | Search Quality |
+| 42 | Low | Add Simple Query Language Support | [ ] Not Started | Feature |
+| 44 | Low | Remove Deprecated feedforward_sources | [ ] Not Started | Code Quality |
+| 46 | Low | Standardize Return Types with Dataclasses | [ ] Not Started | Code Quality |
+
+---
+
+*Updated 2025-12-11*
