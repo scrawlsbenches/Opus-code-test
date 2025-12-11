@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 41
+**Pending Tasks:** 40
 **Completed Tasks:** 88+ (see archive)
 
 ---
@@ -33,7 +33,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 136 | Optimize semantics O(n²) similarity - add sampling/early-exit | Perf | - | Medium |
 | 137 | Cap bigram connections to top-K per bigram | Perf | - | Small |
 | 138 | Use sparse matrix multiplication for bigram connections | Perf | - | Medium |
 | 139 | Batch bigram connection updates to reduce dict overhead | Perf | - | Small |
