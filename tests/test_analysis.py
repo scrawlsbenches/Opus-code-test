@@ -461,5 +461,91 @@ class TestClusteringQualityRegression(unittest.TestCase):
             self.assertIsInstance(concept.feedforward_connections, dict)
 
 
+class TestLabelPropagationBridgeWeight(unittest.TestCase):
+    """Test label propagation with bridge_weight parameter."""
+
+    def test_label_propagation_with_bridge_weight(self):
+        """Test that bridge_weight creates connections between documents."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "neural networks learning models")
+        processor.process_document("doc2", "machine learning algorithms data")
+        processor.process_document("doc3", "deep neural architecture design")
+        processor.propagate_activation(iterations=3, verbose=False)
+        processor.compute_importance(verbose=False)
+
+        layer0 = processor.layers[CorticalLayer.TOKENS]
+        clusters = cluster_by_label_propagation(
+            layer0,
+            min_cluster_size=2,
+            cluster_strictness=0.5,
+            bridge_weight=0.3  # Enable bridge connections
+        )
+
+        # Should create some clusters
+        self.assertIsInstance(clusters, dict)
+
+    def test_label_propagation_bridge_weight_zero(self):
+        """Test label propagation without bridge weight (default)."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "neural networks models")
+        processor.process_document("doc2", "learning algorithms data")
+        processor.propagate_activation(iterations=3, verbose=False)
+        processor.compute_importance(verbose=False)
+
+        layer0 = processor.layers[CorticalLayer.TOKENS]
+        clusters = cluster_by_label_propagation(
+            layer0,
+            min_cluster_size=2,
+            bridge_weight=0.0  # No bridge connections
+        )
+
+        self.assertIsInstance(clusters, dict)
+
+
+class TestAdditionalAnalysisEdgeCases(unittest.TestCase):
+    """Test additional edge cases in analysis module."""
+
+    def test_document_connections_single_doc(self):
+        """Test document connections with single document."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "neural networks learning")
+        processor.propagate_activation(iterations=3, verbose=False)
+        processor.compute_importance(verbose=False)
+        processor.compute_tfidf(verbose=False)
+
+        compute_document_connections(
+            processor.layers,
+            processor.documents,
+            min_shared_terms=1
+        )
+
+        # Single doc should have no connections
+        layer3 = processor.layers[CorticalLayer.DOCUMENTS]
+        doc = layer3.get_minicolumn("doc1")
+        self.assertEqual(len(doc.lateral_connections), 0)
+
+    def test_pagerank_damping_factor(self):
+        """Test PageRank with different damping factors."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "neural networks learning deep models")
+        processor.process_document("doc2", "neural learning patterns data")
+
+        layer0 = processor.layers[CorticalLayer.TOKENS]
+
+        # Default damping (0.85)
+        result1 = compute_pagerank(layer0, damping=0.85, iterations=50)
+
+        # Lower damping (more uniform)
+        result2 = compute_pagerank(layer0, damping=0.5, iterations=50)
+
+        # Both should return valid results
+        self.assertGreater(len(result1), 0)
+        self.assertGreater(len(result2), 0)
+
+        # All values should be positive
+        self.assertTrue(all(v > 0 for v in result1.values()))
+        self.assertTrue(all(v > 0 for v in result2.values()))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

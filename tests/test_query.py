@@ -1684,5 +1684,117 @@ def utility_function(x, y):
         )
 
 
+class TestExpandQueryWithSemantics(unittest.TestCase):
+    """Test semantic query expansion."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document("doc1", "Neural networks are learning models.")
+        cls.processor.process_document("doc2", "Deep learning uses neural networks.")
+        cls.processor.compute_all(verbose=False)
+        cls.processor.extract_corpus_semantics(verbose=False)
+
+    def test_expand_query_semantic_with_relations(self):
+        """Test semantic expansion with relations."""
+        from cortical.query import expand_query_semantic
+
+        relations = [
+            ('neural', 'RelatedTo', 'network', 0.8),
+            ('neural', 'RelatedTo', 'learning', 0.7),
+        ]
+
+        expanded = expand_query_semantic(
+            "neural",
+            self.processor.layers,
+            self.processor.tokenizer,
+            relations,
+            max_expansions=5
+        )
+
+        self.assertIn('neural', expanded)
+        # Should have added some related terms
+        self.assertGreaterEqual(len(expanded), 1)
+
+    def test_expand_query_semantic_empty_relations(self):
+        """Test semantic expansion with no relations."""
+        from cortical.query import expand_query_semantic
+
+        expanded = expand_query_semantic(
+            "neural",
+            self.processor.layers,
+            self.processor.tokenizer,
+            [],  # Empty relations
+            max_expansions=5
+        )
+
+        # Should still have original term
+        self.assertIn('neural', expanded)
+
+
+class TestBoostDefinitionDocuments(unittest.TestCase):
+    """Test definition document boosting."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document("def_doc", """
+            class MyClass:
+                def __init__(self):
+                    pass
+
+            def process_data(self):
+                return self.data
+        """)
+        cls.processor.process_document("usage_doc", """
+            We use MyClass to process data.
+            The results are stored in files.
+        """)
+        cls.processor.compute_all(verbose=False)
+
+    def test_boost_definition_documents_with_definition(self):
+        """Test boosting documents that contain definitions."""
+        from cortical.query import boost_definition_documents
+
+        doc_results = [
+            ("def_doc", 1.0),
+            ("usage_doc", 1.0),
+        ]
+
+        boosted = boost_definition_documents(
+            doc_results,
+            "where is class MyClass defined?",
+            self.processor.documents,
+            2.0
+        )
+
+        # Should still have documents
+        self.assertEqual(len(boosted), 2)
+
+
+class TestQueryRelatedDocuments(unittest.TestCase):
+    """Test related document lookup."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.processor = CorticalTextProcessor()
+        cls.processor.process_document("doc1", "Neural networks are models.")
+        cls.processor.process_document("doc2", "Machine learning uses algorithms.")
+        cls.processor.process_document("doc3", "Neural learning processes data.")
+        cls.processor.compute_all(verbose=False)
+
+    def test_find_related_documents(self):
+        """Test finding related documents."""
+        from cortical.query import find_related_documents
+
+        related = find_related_documents(
+            "doc1",
+            self.processor.layers
+        )
+
+        # Should return a list
+        self.assertIsInstance(related, list)
+
+
 if __name__ == '__main__':
     unittest.main()
