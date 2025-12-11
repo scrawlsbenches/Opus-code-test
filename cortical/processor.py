@@ -1110,6 +1110,8 @@ class CorticalTextProcessor:
         self,
         use_pattern_extraction: bool = True,
         min_pattern_confidence: float = 0.6,
+        max_similarity_pairs: int = 100000,
+        min_context_keys: int = 3,
         verbose: bool = True
     ) -> int:
         """
@@ -1121,6 +1123,10 @@ class CorticalTextProcessor:
         Args:
             use_pattern_extraction: Extract relations from text patterns (e.g., "X is a Y")
             min_pattern_confidence: Minimum confidence for pattern-based relations
+            max_similarity_pairs: Maximum pairs to check for SimilarTo relations.
+                Set to 0 for unlimited (may be slow for large corpora). Default 100000.
+            min_context_keys: Minimum context keys for a term to be considered for
+                SimilarTo relations. Terms with fewer keys are skipped. Default 3.
             verbose: Print progress messages
 
         Returns:
@@ -1135,7 +1141,9 @@ class CorticalTextProcessor:
             self.documents,
             self.tokenizer,
             use_pattern_extraction=use_pattern_extraction,
-            min_pattern_confidence=min_pattern_confidence
+            min_pattern_confidence=min_pattern_confidence,
+            max_similarity_pairs=max_similarity_pairs,
+            min_context_keys=min_context_keys
         )
         if verbose:
             print(f"Extracted {len(self.semantic_relations)} semantic relations")
