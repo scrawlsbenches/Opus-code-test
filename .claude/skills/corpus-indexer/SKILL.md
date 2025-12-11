@@ -67,8 +67,9 @@ python scripts/index_codebase.py --full-analysis
 The indexer processes:
 - All Python files in `cortical/` (source code)
 - All Python files in `tests/` (test code)
-- Documentation: `CLAUDE.md`, `TASK_LIST.md`, `README.md`, `KNOWLEDGE_TRANSFER.md`
-- Intelligence docs in `docs/` directory
+- Documentation: `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`, `KNOWLEDGE_TRANSFER.md`
+- Task management: `TASK_LIST.md`, `TASK_ARCHIVE.md`
+- All docs in `docs/` directory (including `quickstart.md`)
 
 ## Output Statistics
 
