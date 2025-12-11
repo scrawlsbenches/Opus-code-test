@@ -626,11 +626,44 @@ def apply_definition_boost(
     return boosted_passages
 
 
+def is_test_file(doc_id: str) -> bool:
+    """
+    Detect if a document ID represents a test file.
+
+    Checks for common test file patterns:
+    - Path contains 'tests/' or 'test/'
+    - Filename starts with 'test_' or ends with '_test.py'
+    - Path contains 'mock' or 'fixture'
+
+    Args:
+        doc_id: Document identifier (typically a file path)
+
+    Returns:
+        True if the document appears to be a test file
+    """
+    doc_lower = doc_id.lower()
+
+    # Check path components
+    if '/tests/' in doc_lower or '/test/' in doc_lower:
+        return True
+
+    # Check filename patterns
+    filename = doc_lower.split('/')[-1] if '/' in doc_lower else doc_lower
+    if filename.startswith('test_') or filename.endswith('_test.py'):
+        return True
+    if 'mock' in filename or 'fixture' in filename:
+        return True
+
+    return False
+
+
 def boost_definition_documents(
     doc_results: List[Tuple[str, float]],
     query_text: str,
     documents: Dict[str, str],
-    boost_factor: float = 2.0
+    boost_factor: float = 2.0,
+    test_file_boost_factor: float = 0.5,
+    test_file_penalty: float = 0.7
 ) -> List[Tuple[str, float]]:
     """
     Boost documents that contain the actual definition being searched for.
@@ -639,11 +672,19 @@ def boost_definition_documents(
     is included in the document candidates, even if test files mention the
     identifier more frequently.
 
+    For definition queries:
+    - Source files with the definition pattern get boost_factor (default 2.0x)
+    - Test files with the definition pattern get test_file_boost_factor (default 0.5x)
+    - All other test files get test_file_penalty (default 0.7x) to deprioritize them
+
     Args:
         doc_results: List of (doc_id, score) tuples
         query_text: The original search query
         documents: Dict mapping doc_id to document text
-        boost_factor: Multiplier for definition-containing docs (default 2.0)
+        boost_factor: Multiplier for definition-containing source docs (default 2.0)
+        test_file_boost_factor: Multiplier for test files with definition (default 0.5)
+        test_file_penalty: Multiplier for test files without definition (default 0.7)
+            Set to 1.0 to disable test file penalty.
 
     Returns:
         Re-scored document results with definition boost applied
@@ -658,10 +699,21 @@ def boost_definition_documents(
 
     for doc_id, score in doc_results:
         doc_text = documents.get(doc_id, '')
-        if pattern.search(doc_text):
-            # This document contains the actual definition
-            boosted_docs.append((doc_id, score * boost_factor))
+        has_definition = pattern.search(doc_text)
+        is_test = is_test_file(doc_id)
+
+        if has_definition:
+            if is_test:
+                # Test file with definition: apply reduced boost
+                boosted_docs.append((doc_id, score * test_file_boost_factor))
+            else:
+                # Source file with definition: apply full boost
+                boosted_docs.append((doc_id, score * boost_factor))
+        elif is_test:
+            # Test file without definition: apply penalty to deprioritize
+            boosted_docs.append((doc_id, score * test_file_penalty))
         else:
+            # Source file without definition: keep original score
             boosted_docs.append((doc_id, score))
 
     # Re-sort by boosted scores
