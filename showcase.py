@@ -611,7 +611,7 @@ class CorticalShowcase:
         print("Computing embeddings from graph structure...\n")
         
         stats = self.processor.compute_graph_embeddings(
-            dimensions=32, method='adjacency', verbose=False
+            dimensions=32, method='random_walk', verbose=False
         )
         print(f"  Created {stats['terms_embedded']} term embeddings")
         

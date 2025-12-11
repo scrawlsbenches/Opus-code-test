@@ -55,18 +55,75 @@ def compute_graph_embeddings(
     return embeddings, stats
 
 
-def _adjacency_embeddings(layer: HierarchicalLayer, dimensions: int) -> Dict[str, List[float]]:
-    """Compute embeddings using adjacency to landmark nodes."""
+def _adjacency_embeddings(
+    layer: HierarchicalLayer,
+    dimensions: int,
+    propagation_steps: int = 2,
+    damping: float = 0.5
+) -> Dict[str, List[float]]:
+    """
+    Compute embeddings using multi-hop adjacency to landmark nodes.
+
+    Improves over simple direct adjacency by propagating through the graph,
+    which handles sparse graphs better and produces more meaningful embeddings.
+
+    Args:
+        layer: Layer to compute embeddings for
+        dimensions: Number of embedding dimensions (= number of landmarks)
+        propagation_steps: Number of propagation steps (default 2)
+        damping: Weight decay per step (default 0.5)
+    """
     embeddings: Dict[str, List[float]] = {}
-    
+
     sorted_cols = sorted(layer.minicolumns.values(), key=lambda c: c.pagerank, reverse=True)
     landmarks = sorted_cols[:dimensions]
-    
+    landmark_ids = {lm.id: i for i, lm in enumerate(landmarks)}
+
+    # Build adjacency lookup for efficient propagation
+    id_to_col = {col.id: col for col in layer.minicolumns.values()}
+
     for col in layer.minicolumns.values():
-        vec = [col.lateral_connections.get(lm.id, 0) for lm in landmarks]
+        vec = [0.0] * dimensions
+
+        # Direct connections (weight = 1.0)
+        for lm_id, lm_idx in landmark_ids.items():
+            if lm_id in col.lateral_connections:
+                vec[lm_idx] += col.lateral_connections[lm_id]
+
+        # Multi-hop propagation: reach landmarks through neighbors
+        current_weight = damping
+        frontier = list(col.lateral_connections.items())
+        visited = {col.id}
+
+        for step in range(propagation_steps):
+            next_frontier = []
+            for neighbor_id, edge_weight in frontier:
+                if neighbor_id in visited:
+                    continue
+                visited.add(neighbor_id)
+
+                neighbor = id_to_col.get(neighbor_id)
+                if not neighbor:
+                    continue
+
+                # Check if this neighbor connects to any landmark
+                for lm_id, lm_idx in landmark_ids.items():
+                    if lm_id in neighbor.lateral_connections:
+                        # Add propagated weight (damped by distance)
+                        vec[lm_idx] += edge_weight * neighbor.lateral_connections[lm_id] * current_weight
+
+                # Add neighbor's neighbors to next frontier
+                for next_id, next_weight in neighbor.lateral_connections.items():
+                    if next_id not in visited:
+                        next_frontier.append((next_id, edge_weight * next_weight * current_weight))
+
+            frontier = next_frontier
+            current_weight *= damping
+
+        # Normalize
         mag = math.sqrt(sum(v*v for v in vec)) + 1e-10
         embeddings[col.content] = [v / mag for v in vec]
-    
+
     return embeddings
 
 
