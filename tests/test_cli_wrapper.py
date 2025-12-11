@@ -33,6 +33,10 @@ from cortical.cli_wrapper import (
     run_with_context,
     run,
     Session,
+    test_then_commit,
+    commit_and_push,
+    sync_with_main,
+    TaskCheckpoint,
 )
 
 
@@ -715,6 +719,134 @@ class TestDecoratorHooks(unittest.TestCase):
         wrapper.run("python -c 'print(1)'")  # Not echo
 
         self.assertEqual(echo_count[0], 2)
+
+
+class TestCompoundCommands(unittest.TestCase):
+    """Tests for compound command functions."""
+
+    def test_test_then_commit_fails_on_test_failure(self):
+        """Test that test_then_commit stops if tests fail."""
+        # Use a test command that fails
+        ok, results = test_then_commit(
+            test_cmd=["python", "-c", "import sys; sys.exit(1)"],
+            message="Should not commit"
+        )
+
+        self.assertFalse(ok)
+        self.assertEqual(len(results), 1)  # Only test ran
+        self.assertFalse(results[0].success)
+
+    def test_test_then_commit_returns_results(self):
+        """Test that results are returned correctly."""
+        # Use a test that passes
+        ok, results = test_then_commit(
+            test_cmd=["echo", "tests pass"],
+            message="Test commit",
+            add_all=False  # Don't actually add files
+        )
+
+        # Test passed, so we get test result + commit attempt
+        self.assertGreaterEqual(len(results), 1)
+        self.assertTrue(results[0].success)  # echo succeeded
+
+    def test_sync_with_main_returns_tuple(self):
+        """Test sync_with_main returns proper structure."""
+        # This will likely fail (no remote) but should return proper tuple
+        ok, results = sync_with_main(main_branch="nonexistent-branch-xyz")
+
+        self.assertIsInstance(ok, bool)
+        self.assertIsInstance(results, list)
+        self.assertGreater(len(results), 0)
+
+
+class TestTaskCheckpoint(unittest.TestCase):
+    """Tests for TaskCheckpoint context saving."""
+
+    def setUp(self):
+        """Create a temporary checkpoint directory."""
+        self.tmpdir = tempfile.mkdtemp()
+        self.checkpoint = TaskCheckpoint(checkpoint_dir=self.tmpdir)
+
+    def tearDown(self):
+        """Clean up temporary directory."""
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def test_save_and_load(self):
+        """Test saving and loading a checkpoint."""
+        context = {
+            'branch': 'feature/test',
+            'notes': 'Working on tests',
+            'files': ['test.py'],
+        }
+
+        self.checkpoint.save("my-task", context)
+        loaded = self.checkpoint.load("my-task")
+
+        self.assertEqual(loaded['branch'], 'feature/test')
+        self.assertEqual(loaded['notes'], 'Working on tests')
+        self.assertEqual(loaded['files'], ['test.py'])
+
+    def test_load_nonexistent(self):
+        """Test loading a nonexistent checkpoint returns None."""
+        result = self.checkpoint.load("does-not-exist")
+        self.assertIsNone(result)
+
+    def test_list_tasks(self):
+        """Test listing saved tasks."""
+        self.checkpoint.save("task-a", {'note': 'a'})
+        self.checkpoint.save("task-b", {'note': 'b'})
+
+        tasks = self.checkpoint.list_tasks()
+
+        self.assertIn("task-a", tasks)
+        self.assertIn("task-b", tasks)
+
+    def test_delete(self):
+        """Test deleting a checkpoint."""
+        self.checkpoint.save("to-delete", {'temp': True})
+
+        # Should exist
+        self.assertIsNotNone(self.checkpoint.load("to-delete"))
+
+        # Delete it
+        deleted = self.checkpoint.delete("to-delete")
+        self.assertTrue(deleted)
+
+        # Should be gone
+        self.assertIsNone(self.checkpoint.load("to-delete"))
+
+    def test_delete_nonexistent(self):
+        """Test deleting nonexistent checkpoint returns False."""
+        deleted = self.checkpoint.delete("never-existed")
+        self.assertFalse(deleted)
+
+    def test_summarize(self):
+        """Test one-line summary generation."""
+        self.checkpoint.save("feature-x", {
+            'branch': 'feature/x',
+            'notes': 'Need to add validation',
+        })
+
+        summary = self.checkpoint.summarize("feature-x")
+
+        self.assertIn("feature-x", summary)
+        self.assertIn("[feature/x]", summary)
+        self.assertIn("validation", summary)
+
+    def test_summarize_truncates_long_notes(self):
+        """Test that long notes are truncated."""
+        long_notes = "A" * 100  # 100 chars
+
+        self.checkpoint.save("verbose-task", {
+            'notes': long_notes,
+        })
+
+        summary = self.checkpoint.summarize("verbose-task")
+
+        # Should be truncated
+        self.assertLess(len(summary), 100)
+        self.assertIn("...", summary)
 
 
 if __name__ == '__main__':

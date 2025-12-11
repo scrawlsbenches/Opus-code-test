@@ -969,3 +969,192 @@ class Session:
             files.update(r.git.modified_files)
             files.update(r.git.staged_files)
         return list(files)
+
+
+# =============================================================================
+# Compound Commands (things I actually use)
+# =============================================================================
+
+def test_then_commit(
+    test_cmd: Union[str, List[str]] = "python -m unittest discover -s tests",
+    message: str = "Update",
+    add_all: bool = True,
+) -> Tuple[bool, List[ExecutionContext]]:
+    """
+    Run tests, commit only if they pass.
+
+    Returns (success, [test_result, add_result?, commit_result?])
+
+    Example:
+        ok, results = test_then_commit(message="Fix auth bug")
+        if ok:
+            print("Committed!")
+        else:
+            print(f"Tests failed: {results[0].stderr}")
+    """
+    results = []
+
+    # Run tests
+    test_result = run(test_cmd)
+    results.append(test_result)
+
+    if not test_result.success:
+        return False, results
+
+    # Add files
+    if add_all:
+        add_result = run(["git", "add", "-A"], git=True)
+        results.append(add_result)
+        if not add_result.success:
+            return False, results
+
+    # Commit
+    commit_result = run(["git", "commit", "-m", message], git=True)
+    results.append(commit_result)
+
+    return commit_result.success, results
+
+
+def commit_and_push(
+    message: str,
+    add_all: bool = True,
+    branch: Optional[str] = None,
+) -> Tuple[bool, List[ExecutionContext]]:
+    """
+    Add, commit, and push in one go.
+
+    Example:
+        ok, _ = commit_and_push("Fix typo")
+    """
+    results = []
+
+    if add_all:
+        add_result = run(["git", "add", "-A"], git=True)
+        results.append(add_result)
+        if not add_result.success:
+            return False, results
+
+    commit_result = run(["git", "commit", "-m", message], git=True)
+    results.append(commit_result)
+    if not commit_result.success:
+        return False, results
+
+    # Determine branch
+    if branch is None:
+        branch_result = run(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+        if branch_result.success:
+            branch = branch_result.stdout.strip()
+        else:
+            branch = "HEAD"
+
+    push_result = run(["git", "push", "-u", "origin", branch], git=True)
+    results.append(push_result)
+
+    return push_result.success, results
+
+
+def sync_with_main(main_branch: str = "main") -> Tuple[bool, List[ExecutionContext]]:
+    """
+    Fetch and rebase current branch on main.
+
+    Example:
+        ok, results = sync_with_main()
+        if not ok:
+            print("Rebase conflicts - resolve manually")
+    """
+    results = []
+
+    fetch_result = run(["git", "fetch", "origin", main_branch])
+    results.append(fetch_result)
+    if not fetch_result.success:
+        return False, results
+
+    rebase_result = run(["git", "rebase", f"origin/{main_branch}"])
+    results.append(rebase_result)
+
+    return rebase_result.success, results
+
+
+# =============================================================================
+# Context Checkpointing (for task switching)
+# =============================================================================
+
+class TaskCheckpoint:
+    """
+    Save/restore context state when switching between tasks.
+
+    When you're working on Task A and need to switch to Task B,
+    checkpoint Task A so you can resume later with context intact.
+
+    Example:
+        checkpoint = TaskCheckpoint()
+
+        # Working on feature A
+        checkpoint.save("feature-a", {
+            'branch': 'feature/auth',
+            'files_touched': ['auth.py', 'test_auth.py'],
+            'notes': 'Need to add token refresh logic',
+            'last_test_passed': True,
+        })
+
+        # Switch to urgent bugfix...
+        # ...later, resume feature A
+        ctx = checkpoint.load("feature-a")
+        print(ctx['notes'])  # "Need to add token refresh logic"
+    """
+
+    def __init__(self, checkpoint_dir: Optional[str] = None):
+        if checkpoint_dir:
+            self._dir = Path(checkpoint_dir)
+        else:
+            self._dir = Path('.task_checkpoints')
+        self._dir.mkdir(exist_ok=True)
+
+    def save(self, task_name: str, context: Dict[str, Any]) -> None:
+        """Save context for a task."""
+        checkpoint = {
+            'task_name': task_name,
+            'saved_at': datetime.now().isoformat(),
+            'context': context,
+        }
+        filepath = self._dir / f"{task_name}.json"
+        with open(filepath, 'w') as f:
+            json.dump(checkpoint, f, indent=2)
+
+    def load(self, task_name: str) -> Optional[Dict[str, Any]]:
+        """Load context for a task. Returns None if not found."""
+        filepath = self._dir / f"{task_name}.json"
+        if not filepath.exists():
+            return None
+        with open(filepath, 'r') as f:
+            checkpoint = json.load(f)
+        return checkpoint.get('context')
+
+    def list_tasks(self) -> List[str]:
+        """List all saved task checkpoints."""
+        return [f.stem for f in self._dir.glob('*.json')]
+
+    def delete(self, task_name: str) -> bool:
+        """Delete a checkpoint. Returns True if deleted."""
+        filepath = self._dir / f"{task_name}.json"
+        if filepath.exists():
+            filepath.unlink()
+            return True
+        return False
+
+    def summarize(self, task_name: str) -> Optional[str]:
+        """Get a one-line summary of a task checkpoint."""
+        ctx = self.load(task_name)
+        if not ctx:
+            return None
+
+        parts = [task_name]
+        if 'branch' in ctx:
+            parts.append(f"[{ctx['branch']}]")
+        if 'notes' in ctx:
+            notes = ctx['notes']
+            if len(notes) > 50:
+                notes = notes[:47] + "..."
+            parts.append(f"- {notes}")
+
+        return ' '.join(parts)
