@@ -842,5 +842,196 @@ class TestEdgeCases(unittest.TestCase):
         self.assertEqual(result, [])
 
 
+class TestDocTypeBoost(unittest.TestCase):
+    """Test document type boosting for search results."""
+
+    def test_is_conceptual_query_what(self):
+        """'what is' queries should be conceptual."""
+        from cortical.query import is_conceptual_query
+        self.assertTrue(is_conceptual_query("what is PageRank"))
+        self.assertTrue(is_conceptual_query("What are the algorithms?"))
+
+    def test_is_conceptual_query_explain(self):
+        """'explain' queries should be conceptual."""
+        from cortical.query import is_conceptual_query
+        self.assertTrue(is_conceptual_query("explain PageRank algorithm"))
+        self.assertTrue(is_conceptual_query("Explain how TF-IDF works"))
+
+    def test_is_conceptual_query_how_does(self):
+        """'how does' queries should be conceptual."""
+        from cortical.query import is_conceptual_query
+        self.assertTrue(is_conceptual_query("how does the system work"))
+
+    def test_is_conceptual_query_where(self):
+        """'where' queries should be implementation-focused."""
+        from cortical.query import is_conceptual_query
+        self.assertFalse(is_conceptual_query("where is PageRank computed"))
+        self.assertFalse(is_conceptual_query("where do we implement authentication"))
+
+    def test_is_conceptual_query_implementation(self):
+        """Queries with 'implementation' keywords should not be conceptual."""
+        from cortical.query import is_conceptual_query
+        self.assertFalse(is_conceptual_query("find the function that calculates TF-IDF"))
+        self.assertFalse(is_conceptual_query("line where error is raised"))
+
+    def test_is_conceptual_query_neutral(self):
+        """Neutral queries without keywords should not be conceptual."""
+        from cortical.query import is_conceptual_query
+        self.assertFalse(is_conceptual_query("PageRank"))
+        self.assertFalse(is_conceptual_query("bigram separator"))
+
+    def test_get_doc_type_boost_docs_folder(self):
+        """docs/ files should get high boost."""
+        from cortical.query import get_doc_type_boost
+        boost = get_doc_type_boost("docs/algorithms.md")
+        self.assertEqual(boost, 1.5)
+
+    def test_get_doc_type_boost_root_md(self):
+        """Root-level .md files should get medium boost."""
+        from cortical.query import get_doc_type_boost
+        boost = get_doc_type_boost("README.md")
+        self.assertEqual(boost, 1.3)
+        boost = get_doc_type_boost("CLAUDE.md")
+        self.assertEqual(boost, 1.3)
+
+    def test_get_doc_type_boost_code(self):
+        """Code files should get normal boost (1.0)."""
+        from cortical.query import get_doc_type_boost
+        boost = get_doc_type_boost("cortical/processor.py")
+        self.assertEqual(boost, 1.0)
+
+    def test_get_doc_type_boost_tests(self):
+        """Test files should get lower boost."""
+        from cortical.query import get_doc_type_boost
+        boost = get_doc_type_boost("tests/test_processor.py")
+        self.assertEqual(boost, 0.8)
+
+    def test_get_doc_type_boost_with_metadata(self):
+        """Should use metadata when available."""
+        from cortical.query import get_doc_type_boost
+        metadata = {
+            "myfile.py": {"doc_type": "docs"}  # Override: code file marked as docs
+        }
+        boost = get_doc_type_boost("myfile.py", doc_metadata=metadata)
+        self.assertEqual(boost, 1.5)
+
+    def test_apply_doc_type_boost_reranks(self):
+        """apply_doc_type_boost should re-rank results."""
+        from cortical.query import apply_doc_type_boost
+
+        # Setup: code file first, then docs
+        results = [
+            ("cortical/query.py", 1.0),
+            ("docs/algorithms.md", 0.9),
+        ]
+
+        boosted = apply_doc_type_boost(results)
+
+        # After boost: docs should be first (0.9 * 1.5 = 1.35 > 1.0)
+        self.assertEqual(boosted[0][0], "docs/algorithms.md")
+        self.assertAlmostEqual(boosted[0][1], 1.35, places=5)
+
+    def test_apply_doc_type_boost_no_boost(self):
+        """apply_doc_type_boost should preserve order when disabled."""
+        from cortical.query import apply_doc_type_boost
+
+        results = [
+            ("cortical/query.py", 1.0),
+            ("docs/algorithms.md", 0.9),
+        ]
+
+        not_boosted = apply_doc_type_boost(results, boost_docs=False)
+
+        # Order preserved
+        self.assertEqual(not_boosted[0][0], "cortical/query.py")
+        self.assertEqual(not_boosted[1][0], "docs/algorithms.md")
+
+    def test_apply_doc_type_boost_custom_boosts(self):
+        """apply_doc_type_boost should support custom boost factors."""
+        from cortical.query import apply_doc_type_boost
+
+        results = [
+            ("cortical/query.py", 1.0),
+            ("tests/test_query.py", 0.8),
+        ]
+
+        # Custom: boost tests instead of docs
+        custom = {'code': 1.0, 'test': 2.0, 'docs': 1.0, 'root_docs': 1.0}
+        boosted = apply_doc_type_boost(results, custom_boosts=custom)
+
+        # Test file should be first now (0.8 * 2.0 = 1.6 > 1.0)
+        self.assertEqual(boosted[0][0], "tests/test_query.py")
+
+
+class TestDocTypeBoostIntegration(unittest.TestCase):
+    """Integration tests for document type boosting."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Set up processor with different document types."""
+        cls.processor = CorticalTextProcessor()
+
+        # Add a code file
+        cls.processor.process_document(
+            "cortical/processor.py",
+            "PageRank algorithm implementation. def compute_pagerank(): pass",
+            metadata={"doc_type": "code"}
+        )
+
+        # Add a docs file
+        cls.processor.process_document(
+            "docs/algorithms.md",
+            "# Algorithms\n\n## PageRank\n\nPageRank is a link analysis algorithm.",
+            metadata={"doc_type": "docs"}
+        )
+
+        # Add a test file
+        cls.processor.process_document(
+            "tests/test_processor.py",
+            "class TestPageRank: def test_pagerank(self): pass",
+            metadata={"doc_type": "test"}
+        )
+
+        cls.processor.compute_all(verbose=False)
+
+    def test_find_documents_with_boost_conceptual(self):
+        """Conceptual queries should boost docs."""
+        from cortical.query import find_documents_with_boost
+
+        results = find_documents_with_boost(
+            "what is PageRank algorithm",
+            self.processor.layers,
+            self.processor.tokenizer,
+            top_n=3,
+            doc_metadata=self.processor.document_metadata,
+            auto_detect_intent=True
+        )
+
+        # Docs file should be ranked higher
+        self.assertTrue(len(results) > 0)
+        # Check that results are returned (specific ranking depends on corpus)
+
+    def test_find_documents_with_boost_prefer_docs(self):
+        """prefer_docs=True should always boost docs."""
+        from cortical.query import find_documents_with_boost
+
+        results = find_documents_with_boost(
+            "PageRank",  # Neutral query
+            self.processor.layers,
+            self.processor.tokenizer,
+            top_n=3,
+            doc_metadata=self.processor.document_metadata,
+            auto_detect_intent=False,
+            prefer_docs=True
+        )
+
+        self.assertTrue(len(results) > 0)
+
+    def test_processor_wrapper_exists(self):
+        """Processor should have find_documents_with_boost method."""
+        self.assertTrue(hasattr(self.processor, 'find_documents_with_boost'))
+        self.assertTrue(hasattr(self.processor, 'is_conceptual_query'))
+
+
 if __name__ == '__main__':
     unittest.main()

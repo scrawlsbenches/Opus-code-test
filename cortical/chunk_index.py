@@ -49,6 +49,7 @@ class ChunkOperation:
     doc_id: str
     content: Optional[str] = None  # None for delete operations
     mtime: Optional[float] = None  # Modification time
+    metadata: Optional[Dict[str, Any]] = None  # Document metadata (doc_type, headings, etc.)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -57,6 +58,8 @@ class ChunkOperation:
             d['content'] = self.content
         if self.mtime is not None:
             d['mtime'] = self.mtime
+        if self.metadata is not None:
+            d['metadata'] = self.metadata
         return d
 
     @classmethod
@@ -66,7 +69,8 @@ class ChunkOperation:
             op=d['op'],
             doc_id=d['doc_id'],
             content=d.get('content'),
-            mtime=d.get('mtime')
+            mtime=d.get('mtime'),
+            metadata=d.get('metadata')
         )
 
 
@@ -142,22 +146,36 @@ class ChunkWriter:
             pass
         return 'unknown'
 
-    def add_document(self, doc_id: str, content: str, mtime: Optional[float] = None):
+    def add_document(
+        self,
+        doc_id: str,
+        content: str,
+        mtime: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ):
         """Record an add operation."""
         self.operations.append(ChunkOperation(
             op='add',
             doc_id=doc_id,
             content=content,
-            mtime=mtime
+            mtime=mtime,
+            metadata=metadata
         ))
 
-    def modify_document(self, doc_id: str, content: str, mtime: Optional[float] = None):
+    def modify_document(
+        self,
+        doc_id: str,
+        content: str,
+        mtime: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None
+    ):
         """Record a modify operation."""
         self.operations.append(ChunkOperation(
             op='modify',
             doc_id=doc_id,
             content=content,
-            mtime=mtime
+            mtime=mtime,
+            metadata=metadata
         ))
 
     def delete_document(self, doc_id: str):
@@ -208,6 +226,7 @@ class ChunkLoader:
     Usage:
         loader = ChunkLoader(chunks_dir='corpus_chunks')
         documents = loader.load_all()  # Returns {doc_id: content}
+        metadata = loader.get_metadata()  # Returns {doc_id: metadata_dict}
 
         # Check if cache is valid
         if loader.is_cache_valid('corpus_dev.pkl'):
@@ -221,6 +240,7 @@ class ChunkLoader:
         self._chunks: List[Chunk] = []
         self._documents: Dict[str, str] = {}
         self._mtimes: Dict[str, float] = {}
+        self._metadata: Dict[str, Dict[str, Any]] = {}
         self._loaded = False
 
     def get_chunk_files(self) -> List[Path]:
@@ -251,6 +271,7 @@ class ChunkLoader:
         self._chunks = []
         self._documents = {}
         self._mtimes = {}
+        self._metadata = {}
 
         for filepath in self.get_chunk_files():
             chunk = self.load_chunk(filepath)
@@ -262,13 +283,18 @@ class ChunkLoader:
                     self._documents[op.doc_id] = op.content
                     if op.mtime:
                         self._mtimes[op.doc_id] = op.mtime
+                    if op.metadata:
+                        self._metadata[op.doc_id] = op.metadata
                 elif op.op == 'modify':
                     self._documents[op.doc_id] = op.content
                     if op.mtime:
                         self._mtimes[op.doc_id] = op.mtime
+                    if op.metadata:
+                        self._metadata[op.doc_id] = op.metadata
                 elif op.op == 'delete':
                     self._documents.pop(op.doc_id, None)
                     self._mtimes.pop(op.doc_id, None)
+                    self._metadata.pop(op.doc_id, None)
 
         self._loaded = True
         return self._documents
@@ -284,6 +310,12 @@ class ChunkLoader:
         if not self._loaded:
             self.load_all()
         return self._mtimes
+
+    def get_metadata(self) -> Dict[str, Dict[str, Any]]:
+        """Get document metadata (doc_type, headings, etc.)."""
+        if not self._loaded:
+            self.load_all()
+        return self._metadata
 
     def get_chunks(self) -> List[Chunk]:
         """Get loaded chunks."""
@@ -449,6 +481,7 @@ class ChunkCompactor:
         # Load and merge chunks to compact
         documents = {}
         mtimes = {}
+        metadata = {}
 
         for filepath in to_compact:
             chunk = loader.load_chunk(filepath)
@@ -457,9 +490,12 @@ class ChunkCompactor:
                     documents[op.doc_id] = op.content
                     if op.mtime:
                         mtimes[op.doc_id] = op.mtime
+                    if op.metadata:
+                        metadata[op.doc_id] = op.metadata
                 elif op.op == 'delete':
                     documents.pop(op.doc_id, None)
                     mtimes.pop(op.doc_id, None)
+                    metadata.pop(op.doc_id, None)
 
         # Create compacted chunk with all remaining documents as 'add' operations
         writer = ChunkWriter(str(self.chunks_dir))
@@ -467,7 +503,7 @@ class ChunkCompactor:
         writer.session_id = 'compacted_' + uuid.uuid4().hex[:8]
 
         for doc_id, content in sorted(documents.items()):
-            writer.add_document(doc_id, content, mtimes.get(doc_id))
+            writer.add_document(doc_id, content, mtimes.get(doc_id), metadata.get(doc_id))
 
         # Save compacted chunk
         compacted_path = None
