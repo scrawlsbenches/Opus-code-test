@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 25
+**Pending Tasks:** 26
 **Completed Tasks:** 85+ (see archive)
 
 ---
@@ -14,7 +14,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 ### 🔴 Critical (Do Now)
 
-*No critical tasks - all blockers resolved!*
+| # | Task | Category | Depends | Effort |
+|---|------|----------|---------|--------|
+| 122 | Investigate Concept Layer & Embeddings regressions | BugFix | - | Medium |
 
 ### 🟠 High (Do This Week)
 
@@ -882,10 +884,79 @@ ls cortical/*.ai_meta || python scripts/generate_ai_metadata.py
 
 ---
 
+### 122. Investigate Concept Layer & Embeddings Regressions
+
+**Meta:** `status:pending` `priority:critical` `category:bugfix`
+**Files:** `cortical/analysis.py`, `cortical/embeddings.py`, `showcase.py`
+**Effort:** Medium
+
+**Problem:** Showcase output reveals potential regressions or bugs:
+
+1. **Concept Layer has only 3 clusters** for 95 documents
+   - Expected: 10-20+ concept clusters for diverse corpus
+   - Current: Only 3 minicolumns in Layer 2
+   - This severely limits semantic grouping capability
+
+2. **Graph embeddings show nonsensical similarities**
+   - "neural" shows 0.868 similarity to "blockchain", "consensus", "uniformly"
+   - Expected: "neural" should be most similar to "networks", "learning", "artificial"
+   - Suggests embedding algorithm may be broken or misconfigured
+
+**Investigation Steps:**
+
+1. **Git history analysis:**
+   ```bash
+   # Find when concept clustering changed
+   git log --oneline -p -- cortical/analysis.py | grep -A5 -B5 "build_concept_clusters\|label_propagation"
+
+   # Find when embeddings changed
+   git log --oneline -p -- cortical/embeddings.py | grep -A5 -B5 "compute_graph_embeddings"
+
+   # Check for recent changes to showcase
+   git log --oneline -20 -- showcase.py
+   ```
+
+2. **Verify expected behavior:**
+   - Check if `cluster_strictness` parameter is being applied correctly
+   - Verify embedding method (adjacency vs spectral vs random_walk)
+   - Compare current output with any baseline metrics
+
+3. **Reproduce issue:**
+   ```python
+   processor.compute_all(verbose=True)
+   print(f"Concept clusters: {processor.layers[CorticalLayer.CONCEPTS].column_count()}")
+   ```
+
+4. **Check parameters:**
+   - Default `cluster_strictness` in showcase.py
+   - Default embedding `method` and `dimensions`
+   - Any recent parameter changes
+
+**Evidence from showcase.py output:**
+```
+Layer 2: Concept Layer (V4)
+       3 minicolumns, 6 connections
+       Purpose: Semantic clusters
+
+Terms similar to 'neural':
+  • uniformly (similarity: 0.868)
+  • overcomes (similarity: 0.868)
+  • blockchain (similarity: 0.868)
+```
+
+**Acceptance Criteria:**
+- [ ] Root cause identified via git history
+- [ ] Concept clusters > 10 for 95-doc corpus
+- [ ] Embedding similarities semantically meaningful
+- [ ] Regression test added to prevent recurrence
+
+---
+
 ## Category Index
 
 | Category | Pending | Description |
 |----------|---------|-------------|
+| BugFix | 1 | Bug fixes and regressions |
 | AINav | 6 | AI assistant navigation & usability |
 | DevEx | 6 | Developer experience (scripts, tools) |
 | Docs | 2 | Documentation improvements |
