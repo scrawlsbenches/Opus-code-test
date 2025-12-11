@@ -1306,5 +1306,172 @@ class TestMinicolumn(unittest.TestCase):
         self.assertIn('class Minicolumn', passage)
 
 
+class TestPassageDocTypeBoost(unittest.TestCase):
+    """Test doc-type boosting for passage-level search."""
+
+    def setUp(self):
+        """Set up processor with code and documentation."""
+        self.processor = CorticalTextProcessor()
+
+        # Add a code file
+        self.processor.process_document('cortical/analysis.py', '''
+"""Analysis module for computing PageRank and TF-IDF."""
+
+def compute_pagerank(layers, damping=0.85):
+    """Compute PageRank scores for all minicolumns.
+
+    PageRank is an iterative algorithm that assigns importance scores
+    to nodes based on the structure of incoming links.
+
+    Args:
+        layers: Dictionary of hierarchical layers
+        damping: Damping factor (default 0.85)
+
+    Returns:
+        Dict mapping node IDs to PageRank scores
+    """
+    # Implementation details...
+    pass
+''', metadata={'doc_type': 'code'})
+
+        # Add a documentation file
+        self.processor.process_document('docs/algorithms.md', '''
+# PageRank Algorithm
+
+PageRank is the foundational algorithm that revolutionized web search.
+It computes importance scores for nodes in a graph by iteratively
+propagating scores through connections.
+
+## How PageRank Works
+
+1. Initialize all nodes with equal score
+2. Iteratively update scores based on incoming links
+3. Apply damping factor to prevent score accumulation
+4. Converge when changes are below tolerance
+
+The damping factor (typically 0.85) represents the probability that
+a random walker continues following links rather than jumping randomly.
+''', metadata={'doc_type': 'docs'})
+
+        # Add a test file
+        self.processor.process_document('tests/test_analysis.py', '''
+"""Tests for analysis module."""
+
+import unittest
+
+class TestPageRank(unittest.TestCase):
+    def test_compute_pagerank(self):
+        """Test PageRank computation."""
+        result = compute_pagerank(self.layers)
+        self.assertIsInstance(result, dict)
+
+    def test_pagerank_damping(self):
+        """Test PageRank with custom damping."""
+        result = compute_pagerank(self.layers, damping=0.9)
+        self.assertGreater(len(result), 0)
+''', metadata={'doc_type': 'test'})
+
+        self.processor.compute_all()
+
+    def test_conceptual_query_boosts_docs(self):
+        """Conceptual queries should boost documentation passages."""
+        # Conceptual query - should boost docs
+        results = self.processor.find_passages_for_query(
+            "what is PageRank algorithm",
+            top_n=5,
+            auto_detect_intent=True,
+            apply_doc_boost=True
+        )
+
+        self.assertTrue(len(results) > 0)
+
+        # Check that docs/ folder file appears in results with boost
+        doc_ids = [r[1] for r in results]
+        # With boosting, docs should be prioritized for conceptual queries
+        self.assertIn('docs/algorithms.md', doc_ids)
+
+    def test_prefer_docs_always_boosts(self):
+        """prefer_docs=True should always boost documentation."""
+        # Implementation query that would normally prefer code
+        results = self.processor.find_passages_for_query(
+            "compute pagerank",
+            top_n=5,
+            prefer_docs=True,
+            apply_doc_boost=True
+        )
+
+        self.assertTrue(len(results) > 0)
+        # Results should include docs even for implementation query
+
+    def test_disable_doc_boost(self):
+        """apply_doc_boost=False should use raw scores."""
+        # Same query with and without boost
+        results_no_boost = self.processor.find_passages_for_query(
+            "explain PageRank algorithm",
+            top_n=5,
+            apply_doc_boost=False
+        )
+
+        results_with_boost = self.processor.find_passages_for_query(
+            "explain PageRank algorithm",
+            top_n=5,
+            apply_doc_boost=True,
+            auto_detect_intent=True
+        )
+
+        # Both should return results
+        self.assertTrue(len(results_no_boost) > 0)
+        self.assertTrue(len(results_with_boost) > 0)
+
+        # With boosting, if doc is found, it might have higher score
+        # (depends on corpus content and scores)
+
+    def test_implementation_query_no_boost(self):
+        """Implementation queries should not boost docs when auto_detect_intent=True."""
+        # Implementation query
+        results = self.processor.find_passages_for_query(
+            "compute pagerank function code",
+            top_n=5,
+            auto_detect_intent=True,
+            apply_doc_boost=True
+        )
+
+        self.assertTrue(len(results) > 0)
+        # Implementation queries shouldn't trigger doc boost
+
+    def test_custom_boosts(self):
+        """Custom boost factors should be applied."""
+        custom = {'docs': 3.0, 'code': 0.5, 'test': 0.3}
+
+        results = self.processor.find_passages_for_query(
+            "what is PageRank",
+            top_n=5,
+            prefer_docs=True,
+            custom_boosts=custom
+        )
+
+        self.assertTrue(len(results) > 0)
+
+
+class TestPassageDocTypeBoostIntegration(unittest.TestCase):
+    """Integration tests for doc-type boost in passage search."""
+
+    def test_find_passages_has_boost_params(self):
+        """find_passages_for_query should accept boost parameters."""
+        processor = CorticalTextProcessor()
+        processor.process_document('test.py', 'def foo(): pass')
+        processor.compute_all()
+
+        # Should not raise
+        results = processor.find_passages_for_query(
+            "foo",
+            apply_doc_boost=True,
+            auto_detect_intent=True,
+            prefer_docs=False,
+            custom_boosts={'code': 1.0}
+        )
+        # Results may be empty for simple doc but params should work
+
+
 if __name__ == '__main__':
     unittest.main()

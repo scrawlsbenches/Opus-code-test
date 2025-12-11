@@ -1602,7 +1602,12 @@ def find_passages_for_query(
     semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
     use_semantic: bool = True,
     use_definition_search: bool = True,
-    definition_boost: float = DEFINITION_BOOST
+    definition_boost: float = DEFINITION_BOOST,
+    apply_doc_boost: bool = True,
+    doc_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
+    auto_detect_intent: bool = True,
+    prefer_docs: bool = False,
+    custom_boosts: Optional[Dict[str, float]] = None
 ) -> List[Tuple[str, str, int, int, float]]:
     """
     Find text passages most relevant to a query.
@@ -1613,6 +1618,10 @@ def find_passages_for_query(
     For definition queries (e.g., "class Minicolumn", "def compute_pagerank"),
     this function will directly search for the definition pattern and inject
     those results with a high score, ensuring definitions appear in top results.
+
+    For conceptual queries (e.g., "what is PageRank", "explain architecture"),
+    documentation passages are boosted to appear higher in results when
+    auto_detect_intent=True.
 
     Args:
         query_text: Search query
@@ -1628,12 +1637,22 @@ def find_passages_for_query(
         use_semantic: Whether to use semantic relations for expansion (if available)
         use_definition_search: Whether to search for definition patterns (default True)
         definition_boost: Score boost for definition matches (default 5.0)
+        apply_doc_boost: Whether to apply document-type boosting (default True)
+        doc_metadata: Optional metadata dict {doc_id: {doc_type: ..., ...}}
+        auto_detect_intent: Auto-detect conceptual queries and boost docs (default True)
+        prefer_docs: Always boost documentation regardless of query type (default False)
+        custom_boosts: Optional custom boost factors for doc types
 
     Returns:
         List of (passage_text, doc_id, start_char, end_char, score) tuples
         ranked by relevance
     """
     layer0 = layers[CorticalLayer.TOKENS]
+
+    # Determine if we should apply doc-type boosting
+    should_boost = apply_doc_boost and (
+        prefer_docs or (auto_detect_intent and is_conceptual_query(query_text))
+    )
 
     # Check for definition query and find definition passages
     definition_passages: List[Tuple[str, str, int, int, float]] = []
@@ -1656,8 +1675,14 @@ def find_passages_for_query(
     if not query_terms and not definition_passages:
         return []
 
-    # If we only have definition results, return those
+    # If we only have definition results, apply boosting and return
     if not query_terms:
+        if should_boost:
+            definition_passages = [
+                (p[0], p[1], p[2], p[3], p[4] * get_doc_type_boost(p[1], doc_metadata, custom_boosts))
+                for p in definition_passages
+            ]
+            definition_passages.sort(key=lambda x: -x[4])
         return definition_passages[:top_n]
 
     # Pre-compute minicolumn lookups for query terms (optimization)
@@ -1691,6 +1716,9 @@ def find_passages_for_query(
         text = documents[doc_id]
         chunks = create_chunks(text, chunk_size, overlap)
 
+        # Pre-compute doc-type boost for this document
+        doc_type_boost = get_doc_type_boost(doc_id, doc_metadata, custom_boosts) if should_boost else 1.0
+
         for chunk_text, start_char, end_char in chunks:
             # Skip if this overlaps with a definition passage
             if (doc_id, start_char, end_char) in def_locations:
@@ -1704,6 +1732,9 @@ def find_passages_for_query(
             # Combine chunk score with document score for final ranking
             combined_score = chunk_score * (1 + doc_score * 0.1)
 
+            # Apply document-type boost
+            combined_score *= doc_type_boost
+
             passages.append((
                 chunk_text,
                 doc_id,
@@ -1711,6 +1742,13 @@ def find_passages_for_query(
                 end_char,
                 combined_score
             ))
+
+    # Apply doc-type boost to definition passages too
+    if should_boost:
+        definition_passages = [
+            (p[0], p[1], p[2], p[3], p[4] * get_doc_type_boost(p[1], doc_metadata, custom_boosts))
+            for p in definition_passages
+        ]
 
     # Combine definition passages with regular passages
     all_passages = definition_passages + passages

@@ -2322,44 +2322,43 @@ def get_doc_type(doc_id: str) -> str:
 
 ### 66. Add Doc-Type Boosting to Passage-Level Search
 
-**Files:** `cortical/query.py`, `scripts/search_codebase.py`
-**Status:** [ ] Not Started
+**Files:** `cortical/query.py`, `cortical/processor.py`, `tests/test_query.py`
+**Status:** [x] Completed (2025-12-11)
 **Priority:** Medium
 
 **Problem:**
 Document-level search correctly applies doc-type boosting (CLAUDE.md ranks #3 for "chunk compaction"), but passage-level search (`find_passages_for_query`) returns raw TF-IDF scores without boosting. This causes code snippets with keyword matches to rank higher than documentation passages for conceptual queries.
 
-**Evidence (2025-12-11 dog-fooding):**
-```
-# Document-level search correctly ranks docs:
-TASK_LIST.md: 9.837 (root_docs)
-CLAUDE.md: 8.146 (root_docs)  ← Documentation found
+**Solution Applied:**
+1. Added `apply_doc_boost` parameter to `find_passages_for_query()` (default True)
+2. Added `auto_detect_intent` parameter to auto-boost docs for conceptual queries (default True)
+3. Added `prefer_docs` parameter to always boost documentation (default False)
+4. Added `custom_boosts` parameter for custom boost factors
+5. Passage scores are multiplied by doc-type boost factor when appropriate
+6. Definition passages also receive doc-type boost
+7. Added processor wrappers with same parameters
 
-# But passage search returns code first:
-[1] [CODE] cortical/chunk_index.py:291 Score: 2.549
-[2] [TEST] tests/test_chunk_indexing.py:77 Score: 2.157
-# CLAUDE.md "Chunk Compaction" section not in top 5
-```
+**Files Modified:**
+- `cortical/query.py` - Extended find_passages_for_query with boost parameters
+- `cortical/processor.py` - Updated processor wrapper
+- `tests/test_query.py` - Added 6 new tests
 
-**Solution:**
-Propagate doc-type boost to passage scoring:
-1. After chunking documents, apply `get_doc_type_boost()` to passage scores
-2. For conceptual queries (`is_conceptual_query()`), multiply passage score by doc-type boost
-3. Re-rank passages after boosting
-
-**Implementation Sketch:**
+**Usage:**
 ```python
-def find_passages_for_query(..., apply_doc_boost: bool = True):
-    # ... existing passage retrieval ...
+# Auto-detect conceptual queries and boost docs (default)
+results = processor.find_passages_for_query("what is PageRank algorithm")
 
-    if apply_doc_boost and is_conceptual_query(query_text):
-        boosted_passages = []
-        for passage, doc_id, start, end, score in passages:
-            boost = get_doc_type_boost(doc_id, doc_metadata)
-            boosted_passages.append((passage, doc_id, start, end, score * boost))
-        passages = sorted(boosted_passages, key=lambda x: -x[4])
+# Force docs preference
+results = processor.find_passages_for_query("PageRank", prefer_docs=True)
 
-    return passages[:top_n]
+# Disable boosting (raw TF-IDF)
+results = processor.find_passages_for_query("PageRank", apply_doc_boost=False)
+
+# Custom boost factors
+results = processor.find_passages_for_query(
+    "query",
+    custom_boosts={'docs': 2.0, 'code': 0.8, 'test': 0.5}
+)
 ```
 
 ---
@@ -2371,7 +2370,7 @@ def find_passages_for_query(..., apply_doc_boost: bool = True):
 | 65 | High | Add document metadata to chunk indexing | [x] Completed | Infrastructure |
 | 63 | High | Improve search ranking for docs | [x] Completed | Search Quality |
 | 64 | Low | Add document type indicator | [x] Completed | UX |
-| 66 | Medium | Add doc-type boost to passage search | [ ] Not Started | Search Quality |
+| 66 | Medium | Add doc-type boost to passage search | [x] Completed | Search Quality |
 
 **Dependency Chain:** #65 → #63 → #64 (all complete), #66 extends this work
 
@@ -2400,7 +2399,7 @@ def find_passages_for_query(..., apply_doc_boost: bool = True):
 |---|----------|------|--------|----------|
 | 41 | Medium | Create Configuration Dataclass | [x] Completed | Code Quality |
 | 56 | Medium | Create Usage Patterns Documentation | [x] Completed | Documentation |
-| 66 | Medium | Add doc-type boost to passage search | [ ] Not Started | Search Quality |
+| 66 | Medium | Add doc-type boost to passage search | [x] Completed | Search Quality |
 | 42 | Low | Add Simple Query Language Support | [ ] Not Started | Feature |
 | 44 | Low | Remove Deprecated feedforward_sources | [ ] Not Started | Code Quality |
 | 46 | Low | Standardize Return Types with Dataclasses | [ ] Not Started | Code Quality |

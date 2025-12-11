@@ -1774,7 +1774,11 @@ class CorticalTextProcessor:
         doc_filter: Optional[List[str]] = None,
         use_semantic: bool = True,
         use_definition_search: bool = True,
-        definition_boost: float = 5.0
+        definition_boost: float = 5.0,
+        apply_doc_boost: bool = True,
+        auto_detect_intent: bool = True,
+        prefer_docs: bool = False,
+        custom_boosts: Optional[Dict[str, float]] = None
     ) -> List[Tuple[str, str, int, int, float]]:
         """
         Find text passages most relevant to a query (for RAG systems).
@@ -1786,6 +1790,9 @@ class CorticalTextProcessor:
         the function will directly search for definition patterns and inject those
         results with a high score, ensuring actual definitions appear in top results.
 
+        For conceptual queries (e.g., "what is PageRank", "explain architecture"),
+        documentation passages are boosted when auto_detect_intent=True.
+
         Args:
             query_text: Search query
             top_n: Number of passages to return
@@ -1796,13 +1803,18 @@ class CorticalTextProcessor:
             use_semantic: Whether to use semantic relations for expansion (if available)
             use_definition_search: Whether to search for definition patterns (default True)
             definition_boost: Score boost for definition matches (default 5.0)
+            apply_doc_boost: Whether to apply document-type boosting (default True)
+            auto_detect_intent: Auto-detect conceptual queries and boost docs (default True)
+            prefer_docs: Always boost documentation regardless of query type (default False)
+            custom_boosts: Optional custom boost factors for doc types
 
         Returns:
             List of (passage_text, doc_id, start_char, end_char, score) tuples
             ranked by relevance
 
         Example:
-            >>> results = processor.find_passages_for_query("class Minicolumn")
+            >>> # For conceptual queries, docs are auto-boosted
+            >>> results = processor.find_passages_for_query("what is PageRank")
             >>> for passage, doc_id, start, end, score in results:
             ...     print(f"[{doc_id}:{start}-{end}] {passage[:50]}... (score: {score:.3f})")
         """
@@ -1819,7 +1831,12 @@ class CorticalTextProcessor:
             semantic_relations=self.semantic_relations if use_semantic else None,
             use_semantic=use_semantic,
             use_definition_search=use_definition_search,
-            definition_boost=definition_boost
+            definition_boost=definition_boost,
+            apply_doc_boost=apply_doc_boost,
+            doc_metadata=self.document_metadata,
+            auto_detect_intent=auto_detect_intent,
+            prefer_docs=prefer_docs,
+            custom_boosts=custom_boosts
         )
 
     def is_definition_query(self, query_text: str) -> Tuple[bool, Optional[str], Optional[str]]:
