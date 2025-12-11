@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 27
+**Pending Tasks:** 28
 **Completed Tasks:** 87+ (see archive)
 
 ---
@@ -23,6 +23,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
+| 126 | Investigate optimal Louvain resolution for sample corpus | Research | 123 | Medium |
 | 94 | Split query.py into focused modules | Arch | - | Large |
 | 97 | Integrate CorticalConfig into processor | Arch | - | Medium |
 
@@ -264,6 +265,52 @@ Layer 2: Concept Layer (V4)
 - [ ] Balance metric implemented
 - [ ] Metrics displayed in showcase.py
 - [ ] Quality thresholds documented
+
+---
+
+### 126. Investigate Optimal Louvain Resolution for Sample Corpus
+
+**Meta:** `status:pending` `priority:high` `category:research`
+**Files:** `cortical/analysis.py`, `cortical/processor.py`, `showcase.py`
+**Effort:** Medium
+**Depends:** 123
+
+**Problem:** The Louvain algorithm's `resolution` parameter significantly affects cluster count:
+- Resolution 0.5 → ~19 clusters (coarse)
+- Resolution 1.0 → ~32 clusters (default)
+- Resolution 2.0 → ~66 clusters (fine)
+- Resolution 3.0 → ~93 clusters (very fine)
+
+The default value of 1.0 produces 34 clusters for our 103-document corpus, but we haven't determined if this is optimal for the semantic structure of our sample documents.
+
+**Investigation Goals:**
+1. Analyze cluster quality at different resolution values using modularity score
+2. Evaluate semantic coherence within clusters (do related terms cluster together?)
+3. Assess cluster utility for downstream tasks (query expansion, concept retrieval)
+4. Consider whether different document types benefit from different resolutions
+5. Determine if auto-tuning resolution based on corpus characteristics is feasible
+
+**Proposed Approach:**
+```python
+# Test different resolutions and evaluate cluster quality
+for resolution in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0]:
+    clusters = processor.build_concept_clusters(resolution=resolution)
+    modularity = compute_modularity(processor.layers)
+    coherence = evaluate_semantic_coherence(clusters)
+    print(f"Resolution {resolution}: {len(clusters)} clusters, Q={modularity:.3f}")
+```
+
+**Questions to Answer:**
+- What resolution maximizes modularity for our corpus?
+- Do development-focused documents cluster better at certain resolutions?
+- Should we expose resolution as a user-configurable parameter in CorticalConfig?
+- Is there a heuristic for auto-selecting resolution based on corpus size/density?
+
+**Deliverables:**
+- [ ] Analysis script comparing resolution values
+- [ ] Recommended default resolution (with justification)
+- [ ] Documentation of resolution parameter effects
+- [ ] Optional: Auto-tuning heuristic if feasible
 
 ---
 
