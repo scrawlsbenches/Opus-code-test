@@ -3038,6 +3038,39 @@ results = processor.find_passages_for_query("class Minicolumn", use_code_aware_c
 
 ---
 
+### 87. Add Python Code Samples and Update Showcase for Code Search
+
+**Files:** `showcase.py`, `samples/data_processor.py`, `samples/search_engine.py`, `samples/test_data_processor.py`
+**Status:** [ ] In Progress (2025-12-11)
+**Priority:** Medium
+**Category:** Showcase
+
+**Problem:**
+The showcase.py demonstrates code search features but the `samples/` directory only contains prose text files (`.txt`). The new code search features from Tasks #84, #66, and #86 need actual Python code to demonstrate properly:
+- Definition search needs actual `class` and `def` statements to find
+- Doc-type boosting needs test files vs source files to show scoring differences
+- Code-aware chunking needs code files to show semantic boundary detection
+
+**Solution Applied:**
+1. Added Python code samples to `samples/`:
+   - `data_processor.py` - DataRecord class, DataProcessor class, utility functions
+   - `search_engine.py` - SearchIndex class, QueryParser class, BM25 scoring
+   - `test_data_processor.py` - Unit tests (for test file penalty demonstration)
+
+2. Updated `showcase.py`:
+   - Load `.py` files alongside `.txt` files
+   - Add definition search demo (find "class DataProcessor", "def calculate_statistics")
+   - Add doc-type boosting demo (compare scores with/without boost)
+   - Add code-aware chunking demo (compare regular vs semantic chunks)
+
+**Files Modified:**
+- `showcase.py` - Load .py files, add new feature demos
+- `samples/data_processor.py` - New sample (570 words)
+- `samples/search_engine.py` - New sample (819 words)
+- `samples/test_data_processor.py` - New sample (611 words)
+
+---
+
 ## Summary Table
 
 | # | Priority | Task | Status | Category |
@@ -3062,6 +3095,7 @@ results = processor.find_passages_for_query("class Minicolumn", use_code_aware_c
 | 84 | High | Add direct definition pattern search | ✓ Done | Code Search |
 | 85 | Medium | Improve test file vs source file ranking | ✓ Done | Code Search |
 | 86 | Medium | Add semantic chunk boundaries for code | ✓ Done | Code Search |
+| 87 | Medium | Add Python code samples and update showcase | In Progress | Showcase |
 
 ---
 
