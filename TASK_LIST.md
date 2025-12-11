@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 36
+**Pending Tasks:** 35
 **Completed Tasks:** 90+ (see archive)
 
 ---
@@ -22,7 +22,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 |---|------|----------|---------|--------|
 | 94 | Split query.py into focused modules | Arch | - | Large |
 | 97 | Integrate CorticalConfig into processor | Arch | - | Medium |
-| 127 | Create cluster coverage evaluation script | DevEx | 125 | Medium |
 
 ### 🟡 Medium (Do This Month)
 
@@ -94,6 +93,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 127 | Create cluster coverage evaluation script | 2025-12-11 | scripts/evaluate_cluster.py with 24 tests |
 | 125 | Add clustering quality metrics (modularity, silhouette) | 2025-12-11 | compute_clustering_quality() in analysis.py, showcase display |
 | 124 | Add minimum cluster count regression tests | 2025-12-11 | 4 new tests: coherence, showcase count, mega-cluster, distribution |
 | 128 | Fix definition boost that favors test mocks over real implementations | 2025-12-11 | Added is_test_file() and test file penalty |
@@ -1127,75 +1127,83 @@ ls cortical/*.ai_meta || python scripts/generate_ai_metadata.py
 
 ---
 
-### 127. Create Cluster Coverage Evaluation Script
+### 127. Create Cluster Coverage Evaluation Script ✅
 
-**Meta:** `status:pending` `priority:high` `category:devex`
-**Files:** `scripts/evaluate_cluster.py` (new)
+**Meta:** `status:completed` `priority:high` `category:devex`
+**Files:** `scripts/evaluate_cluster.py`, `tests/test_evaluate_cluster.py`
 **Effort:** Medium
 **Depends:** 125
+**Completed:** 2025-12-11
 
 **Problem:** When adding sample documents to create topic clusters (e.g., customer service), there's no automated way to determine if the cluster has sufficient coverage or needs more documents.
 
-**Solution:** Create a script that evaluates cluster quality and coverage:
+**Solution Applied:** Created `scripts/evaluate_cluster.py` with:
 
-```python
-# Usage examples:
+**Usage:**
+```bash
+# Find and evaluate documents by topic search
 python scripts/evaluate_cluster.py --topic "customer service"
-python scripts/evaluate_cluster.py --documents customer_support_fundamentals,complaint_resolution
-python scripts/evaluate_cluster.py --keywords customer,ticket,escalation
+
+# Evaluate specific documents
+python scripts/evaluate_cluster.py --documents doc1,doc2,doc3
+
+# Find documents by keywords
+python scripts/evaluate_cluster.py --keywords customer,ticket,escalation --min-keywords 2
+
+# Show expansion suggestions
+python scripts/evaluate_cluster.py --topic "machine learning" --suggest --verbose
 ```
 
-**Features:**
-1. **Cluster Detection** - Identify documents that cluster together based on similarity
+**Features Implemented:**
+1. **Three cluster detection modes:**
+   - `--topic`: Semantic search for related documents
+   - `--documents`: Explicit document list
+   - `--keywords`: Documents containing specified terms
+
 2. **Coverage Metrics:**
-   - Internal cohesion (avg similarity within cluster)
-   - External separation (avg similarity to non-cluster docs)
-   - Concept coverage (unique concepts captured)
-   - Term diversity (vocabulary richness)
-3. **Gap Analysis:**
-   - Missing subtopics (based on concept graph)
-   - Weak connections (low-weight edges)
-   - Suggested expansion topics
-4. **Recommendations:**
-   - "Cluster is well-formed" vs "Needs more coverage"
-   - Specific suggestions: "Add documents about X, Y, Z"
+   - Internal Cohesion: Weighted Jaccard similarity within cluster
+   - External Separation: 1 - similarity to outside documents
+   - Concept Coverage: Number of concepts covered
+   - Term Diversity: Unique terms / total occurrences
+   - Hub Document: Most centrally connected document
 
-**Output Example:**
+3. **Coverage Assessment:**
+   - STRONG: High cohesion + separation + coverage
+   - ADEQUATE: Usable but could improve
+   - NEEDS EXPANSION: Low metrics
+
+4. **Expansion Suggestions:** Related terms not well-covered by cluster
+
+**Example Output:**
 ```
-Cluster Analysis: Customer Service (6 documents)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Cluster Analysis: Keywords: customer, ticket, support (4 documents)
+===================================================================
 Documents:
-  • customer_support_fundamentals (hub)
-  • ticket_escalation_procedures
-  • customer_satisfaction_metrics
-  • complaint_resolution
-  • call_center_operations
-  • customer_retention_strategies
+  * complaint_resolution
+  * customer_satisfaction_metrics
+  * customer_support_fundamentals (hub)
+  * ticket_escalation_procedures
 
 Metrics:
-  Internal Cohesion:    0.72 (good)
-  External Separation:  0.45 (moderate)
-  Concept Coverage:     23 concepts
-  Term Diversity:       0.68
+  Internal Cohesion:    0.08 (weak)
+  External Separation:  0.98 (good)
+  Concept Coverage:     35 concepts
+  Term Diversity:       0.80
 
-Coverage Assessment: ADEQUATE ✓
-  The cluster forms a coherent topic group with good internal
-  connectivity. Documents share key concepts (customer, ticket,
-  escalation, resolution) while maintaining distinct subtopics.
-
-Potential Expansions (optional):
-  • CRM integration / helpdesk software
-  • Chat support / live chat best practices
-  • SLA management / service level agreements
-  • Customer journey mapping
+Coverage Assessment: ADEQUATE [~]
+  Cluster is usable but could improve: weak internal connectivity.
 ```
 
+**Test Results:**
+- 24 new tests in tests/test_evaluate_cluster.py
+- 1025 total tests pass
+
 **Acceptance Criteria:**
-- [ ] Script identifies document clusters by topic/keywords
-- [ ] Computes cohesion and separation metrics
-- [ ] Provides clear coverage assessment (adequate/needs expansion)
-- [ ] Suggests specific expansion topics when coverage is low
-- [ ] Works with existing corpus or standalone document set
+- [x] Script identifies document clusters by topic/keywords
+- [x] Computes cohesion and separation metrics
+- [x] Provides clear coverage assessment (adequate/needs expansion)
+- [x] Suggests specific expansion topics when coverage is low
+- [x] Works with existing corpus or standalone document set
 
 ---
 
