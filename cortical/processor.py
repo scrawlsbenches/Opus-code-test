@@ -1778,7 +1778,8 @@ class CorticalTextProcessor:
         apply_doc_boost: bool = True,
         auto_detect_intent: bool = True,
         prefer_docs: bool = False,
-        custom_boosts: Optional[Dict[str, float]] = None
+        custom_boosts: Optional[Dict[str, float]] = None,
+        use_code_aware_chunks: bool = True
     ) -> List[Tuple[str, str, int, int, float]]:
         """
         Find text passages most relevant to a query (for RAG systems).
@@ -1792,6 +1793,9 @@ class CorticalTextProcessor:
 
         For conceptual queries (e.g., "what is PageRank", "explain architecture"),
         documentation passages are boosted when auto_detect_intent=True.
+
+        For code files (.py, .js, etc.), semantic chunk boundaries are used to
+        align chunks with class/function definitions rather than fixed positions.
 
         Args:
             query_text: Search query
@@ -1807,6 +1811,7 @@ class CorticalTextProcessor:
             auto_detect_intent: Auto-detect conceptual queries and boost docs (default True)
             prefer_docs: Always boost documentation regardless of query type (default False)
             custom_boosts: Optional custom boost factors for doc types
+            use_code_aware_chunks: Use semantic boundaries for code files (default True)
 
         Returns:
             List of (passage_text, doc_id, start_char, end_char, score) tuples
@@ -1836,7 +1841,8 @@ class CorticalTextProcessor:
             doc_metadata=self.document_metadata,
             auto_detect_intent=auto_detect_intent,
             prefer_docs=prefer_docs,
-            custom_boosts=custom_boosts
+            custom_boosts=custom_boosts,
+            use_code_aware_chunks=use_code_aware_chunks
         )
 
     def is_definition_query(self, query_text: str) -> Tuple[bool, Optional[str], Optional[str]]:

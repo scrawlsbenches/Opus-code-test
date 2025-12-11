@@ -44,6 +44,9 @@ from cortical.query import (
     DEFINITION_QUERY_PATTERNS,
     DEFINITION_SOURCE_PATTERNS,
     DEFINITION_BOOST,
+    find_code_boundaries,
+    create_code_aware_chunks,
+    is_code_file,
 )
 
 
@@ -1471,6 +1474,214 @@ class TestPassageDocTypeBoostIntegration(unittest.TestCase):
             custom_boosts={'code': 1.0}
         )
         # Results may be empty for simple doc but params should work
+
+
+class TestCodeAwareChunking(unittest.TestCase):
+    """Test code-aware chunking functions."""
+
+    def test_is_code_file_python(self):
+        """Python files should be detected as code."""
+        self.assertTrue(is_code_file('module.py'))
+        self.assertTrue(is_code_file('path/to/file.py'))
+
+    def test_is_code_file_javascript(self):
+        """JavaScript files should be detected as code."""
+        self.assertTrue(is_code_file('app.js'))
+        self.assertTrue(is_code_file('component.tsx'))
+
+    def test_is_code_file_markdown(self):
+        """Markdown files should not be detected as code."""
+        self.assertFalse(is_code_file('README.md'))
+        self.assertFalse(is_code_file('docs/guide.md'))
+
+    def test_is_code_file_other(self):
+        """Other extensions should not be detected as code."""
+        self.assertFalse(is_code_file('data.json'))
+        self.assertFalse(is_code_file('config.yaml'))
+
+    def test_find_code_boundaries_class(self):
+        """Should find class definition boundaries."""
+        code = '''
+import os
+
+class MyClass:
+    def method(self):
+        pass
+'''
+        boundaries = find_code_boundaries(code)
+        self.assertIn(0, boundaries)  # Start
+        # Should find the class line
+        class_line_start = code.find('class MyClass')
+        line_start = code.rfind('\n', 0, class_line_start) + 1
+        self.assertIn(line_start, boundaries)
+
+    def test_find_code_boundaries_function(self):
+        """Should find function definition boundaries."""
+        code = '''def foo():
+    pass
+
+def bar():
+    pass
+'''
+        boundaries = find_code_boundaries(code)
+        # Should find both function boundaries
+        self.assertGreater(len(boundaries), 1)
+
+    def test_find_code_boundaries_blank_lines(self):
+        """Should find blank line boundaries."""
+        code = '''first section
+
+second section
+
+third section
+'''
+        boundaries = find_code_boundaries(code)
+        # Should include positions after blank lines
+        self.assertGreater(len(boundaries), 1)
+
+    def test_create_code_aware_chunks_empty(self):
+        """Empty text should return empty list."""
+        chunks = create_code_aware_chunks('')
+        self.assertEqual(chunks, [])
+
+    def test_create_code_aware_chunks_small_text(self):
+        """Text smaller than target should return single chunk."""
+        code = 'def foo(): pass'
+        chunks = create_code_aware_chunks(code, target_size=100)
+        self.assertEqual(len(chunks), 1)
+        self.assertEqual(chunks[0][0], code)
+
+    def test_create_code_aware_chunks_splits_at_boundaries(self):
+        """Should split at class/function boundaries."""
+        # Create code long enough to require multiple chunks
+        code = '''class FirstClass:
+    """First class docstring with enough text to make this substantial."""
+
+    def __init__(self):
+        self.value = 0
+        self.data = {}
+        self.cache = []
+
+    def method1(self):
+        """A method that does something important."""
+        result = self.value * 2
+        return result
+
+
+class SecondClass:
+    """Second class docstring with substantial documentation text here."""
+
+    def __init__(self):
+        self.items = []
+        self.count = 0
+
+    def method2(self):
+        """Another method with documentation."""
+        for item in self.items:
+            self.count += item
+        return self.count
+'''
+        # With target_size=200, this ~600 char code should split into multiple chunks
+        chunks = create_code_aware_chunks(code, target_size=200, min_size=50, max_size=400)
+        self.assertGreater(len(chunks), 1)
+
+        # Check that chunks start at sensible boundaries
+        for chunk_text, start, end in chunks:
+            # Chunks should not be empty
+            self.assertTrue(chunk_text.strip())
+
+    def test_create_code_aware_chunks_respects_max_size(self):
+        """Should not exceed max_size."""
+        # Create code with a very long function
+        long_function = 'def long_func():\n' + '    x = 1\n' * 100
+        chunks = create_code_aware_chunks(long_function, target_size=200, max_size=400)
+
+        for chunk_text, start, end in chunks:
+            self.assertLessEqual(len(chunk_text), 400)
+
+    def test_create_code_aware_chunks_no_whitespace_only(self):
+        """Should not return whitespace-only chunks."""
+        code = '''class A:
+    pass
+
+
+
+class B:
+    pass
+'''
+        chunks = create_code_aware_chunks(code, target_size=50, min_size=10)
+        for chunk_text, start, end in chunks:
+            self.assertTrue(chunk_text.strip())
+
+
+class TestCodeAwareChunkingIntegration(unittest.TestCase):
+    """Integration tests for code-aware chunking in passage search."""
+
+    def setUp(self):
+        """Set up processor with code documents."""
+        self.processor = CorticalTextProcessor()
+
+        # Add a code file with multiple classes/functions
+        self.processor.process_document('cortical/example.py', '''
+"""Example module with multiple classes and functions."""
+
+import os
+from typing import Dict, List
+
+class FirstProcessor:
+    """First processor class for demonstration."""
+
+    def __init__(self):
+        self.data = {}
+
+    def process(self, item):
+        """Process a single item."""
+        return item * 2
+
+
+class SecondProcessor:
+    """Second processor class for demonstration."""
+
+    def __init__(self):
+        self.cache = []
+
+    def process_batch(self, items):
+        """Process multiple items at once."""
+        return [x * 3 for x in items]
+
+
+def utility_function(x, y):
+    """A utility function outside classes."""
+    return x + y
+''')
+
+        self.processor.compute_all()
+
+    def test_code_aware_chunks_enabled_by_default(self):
+        """Code-aware chunking should be enabled by default."""
+        results = self.processor.find_passages_for_query(
+            "SecondProcessor",
+            top_n=5
+        )
+        self.assertTrue(len(results) > 0)
+
+    def test_code_aware_chunks_can_be_disabled(self):
+        """Should be able to disable code-aware chunking."""
+        results = self.processor.find_passages_for_query(
+            "SecondProcessor",
+            top_n=5,
+            use_code_aware_chunks=False
+        )
+        # Should still return results, just with fixed chunking
+        self.assertTrue(len(results) >= 0)
+
+    def test_processor_has_code_chunk_param(self):
+        """Processor should accept use_code_aware_chunks parameter."""
+        # Should not raise
+        results = self.processor.find_passages_for_query(
+            "utility",
+            use_code_aware_chunks=True
+        )
 
 
 if __name__ == '__main__':

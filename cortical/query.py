@@ -1478,6 +1478,166 @@ def create_chunks(
     return chunks
 
 
+# Pattern to detect code structure boundaries
+CODE_BOUNDARY_PATTERN = re.compile(
+    r'^(?:'
+    r'class\s+\w+|'          # Class definitions
+    r'def\s+\w+|'            # Function definitions
+    r'async\s+def\s+\w+|'    # Async function definitions
+    r'@\w+|'                 # Decorators
+    r'#\s*[-=]{3,}|'         # Comment separators (# --- or # ===)
+    r'"""[^"]*"""|'          # Module/class docstrings (simple)
+    r"'''[^']*'''"           # Module/class docstrings (simple, single quotes)
+    r')',
+    re.MULTILINE
+)
+
+
+def find_code_boundaries(text: str) -> List[int]:
+    """
+    Find semantic boundaries in code (class/function definitions, decorators).
+
+    Args:
+        text: Source code text
+
+    Returns:
+        Sorted list of character positions where semantic units begin
+    """
+    boundaries = set([0])  # Always include start
+
+    # Find class/def boundaries
+    for match in CODE_BOUNDARY_PATTERN.finditer(text):
+        # Find the start of the line containing this match
+        line_start = text.rfind('\n', 0, match.start()) + 1
+        boundaries.add(line_start)
+
+    # Also add positions after blank line sequences (natural section breaks)
+    blank_line_pattern = re.compile(r'\n\n+')
+    for match in blank_line_pattern.finditer(text):
+        boundaries.add(match.end())
+
+    return sorted(boundaries)
+
+
+def create_code_aware_chunks(
+    text: str,
+    target_size: int = 512,
+    min_size: int = 100,
+    max_size: int = 1024
+) -> List[Tuple[str, int, int]]:
+    """
+    Create chunks aligned to code structure boundaries.
+
+    Unlike fixed-size chunking, this function tries to split code at
+    natural boundaries (class definitions, function definitions, blank lines)
+    to preserve semantic context within each chunk.
+
+    Args:
+        text: Source code text to chunk
+        target_size: Target chunk size in characters (default 512)
+        min_size: Minimum chunk size - won't create chunks smaller than this (default 100)
+        max_size: Maximum chunk size - will split even mid-code if exceeded (default 1024)
+
+    Returns:
+        List of (chunk_text, start_char, end_char) tuples
+
+    Example:
+        >>> text = '''
+        ... class Foo:
+        ...     def bar(self):
+        ...         pass
+        ...
+        ... class Baz:
+        ...     def qux(self):
+        ...         pass
+        ... '''
+        >>> chunks = create_code_aware_chunks(text, target_size=100)
+        >>> # Chunks will be aligned to class/function boundaries
+    """
+    if not text:
+        return []
+
+    if len(text) <= target_size:
+        return [(text, 0, len(text))]
+
+    boundaries = find_code_boundaries(text)
+    boundaries.append(len(text))  # Add end of text
+
+    chunks = []
+    chunk_start = 0
+    i = 1
+
+    while chunk_start < len(text):
+        # Find the next boundary that would exceed target_size
+        best_end = chunk_start + max_size  # Default to max_size if no boundary found
+
+        # Look for a boundary between target_size and max_size
+        for j in range(i, len(boundaries)):
+            boundary = boundaries[j]
+            chunk_len = boundary - chunk_start
+
+            if chunk_len >= target_size:
+                if chunk_len <= max_size:
+                    # Good boundary within range
+                    best_end = boundary
+                    i = j + 1
+                    break
+                else:
+                    # Boundary too far, use previous one or force split
+                    if j > i:
+                        prev_boundary = boundaries[j - 1]
+                        prev_len = prev_boundary - chunk_start
+                        if prev_len >= min_size:
+                            best_end = prev_boundary
+                            i = j
+                            break
+                    # Force split at max_size
+                    best_end = chunk_start + max_size
+                    # Find the next boundary after our split point
+                    for k in range(i, len(boundaries)):
+                        if boundaries[k] > best_end:
+                            i = k
+                            break
+                    break
+        else:
+            # Reached end of boundaries, use text end
+            best_end = len(text)
+            i = len(boundaries)
+
+        # Ensure we don't exceed max_size
+        if best_end - chunk_start > max_size:
+            best_end = chunk_start + max_size
+
+        # Create chunk if non-empty
+        chunk_text = text[chunk_start:best_end]
+        if chunk_text.strip():
+            chunks.append((chunk_text, chunk_start, best_end))
+
+        chunk_start = best_end
+
+    return chunks
+
+
+def is_code_file(doc_id: str) -> bool:
+    """
+    Determine if a document is a code file based on its path/extension.
+
+    Args:
+        doc_id: Document identifier (typically a file path)
+
+    Returns:
+        True if the document appears to be a code file
+    """
+    code_extensions = {
+        '.py', '.js', '.ts', '.jsx', '.tsx', '.java', '.c', '.cpp', '.h',
+        '.go', '.rs', '.rb', '.php', '.swift', '.kt', '.scala', '.cs'
+    }
+    for ext in code_extensions:
+        if doc_id.endswith(ext):
+            return True
+    return False
+
+
 def precompute_term_cols(
     query_terms: Dict[str, float],
     layer0: HierarchicalLayer
@@ -1607,7 +1767,8 @@ def find_passages_for_query(
     doc_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
     auto_detect_intent: bool = True,
     prefer_docs: bool = False,
-    custom_boosts: Optional[Dict[str, float]] = None
+    custom_boosts: Optional[Dict[str, float]] = None,
+    use_code_aware_chunks: bool = True
 ) -> List[Tuple[str, str, int, int, float]]:
     """
     Find text passages most relevant to a query.
@@ -1622,6 +1783,9 @@ def find_passages_for_query(
     For conceptual queries (e.g., "what is PageRank", "explain architecture"),
     documentation passages are boosted to appear higher in results when
     auto_detect_intent=True.
+
+    For code files, semantic chunk boundaries can be used to align chunks
+    with class/function definitions rather than fixed character positions.
 
     Args:
         query_text: Search query
@@ -1642,6 +1806,7 @@ def find_passages_for_query(
         auto_detect_intent: Auto-detect conceptual queries and boost docs (default True)
         prefer_docs: Always boost documentation regardless of query type (default False)
         custom_boosts: Optional custom boost factors for doc types
+        use_code_aware_chunks: Use semantic boundaries for code files (default True)
 
     Returns:
         List of (passage_text, doc_id, start_char, end_char, score) tuples
@@ -1714,7 +1879,17 @@ def find_passages_for_query(
             continue
 
         text = documents[doc_id]
-        chunks = create_chunks(text, chunk_size, overlap)
+
+        # Use code-aware chunking for code files if enabled
+        if use_code_aware_chunks and is_code_file(doc_id):
+            chunks = create_code_aware_chunks(
+                text,
+                target_size=chunk_size,
+                min_size=max(50, chunk_size // 4),
+                max_size=chunk_size * 2
+            )
+        else:
+            chunks = create_chunks(text, chunk_size, overlap)
 
         # Pre-compute doc-type boost for this document
         doc_type_boost = get_doc_type_boost(doc_id, doc_metadata, custom_boosts) if should_boost else 1.0
