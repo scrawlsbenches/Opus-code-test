@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 25
+**Pending Tasks:** 28
 **Completed Tasks:** 82+ (see archive)
 
 ---
@@ -20,11 +20,11 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
+| 119 | Create AI metadata generator script | AINav | - | Medium |
 | 94 | Split query.py into focused modules | Arch | - | Large |
 | 97 | Integrate CorticalConfig into processor | Arch | - | Medium |
-| 110 | Add section markers to large files | AINav | - | Small |
-| 111 | Add "See Also" cross-references to docstrings | AINav | - | Medium |
-| 112 | Add docstring examples for complex functions | AINav | - | Medium |
+| 120 | Add AI metadata loader to Claude skills | AINav | 119 | Small |
+| 121 | Auto-regenerate AI metadata on changes | AINav | 119 | Medium |
 
 ### 🟡 Medium (Do This Month)
 
@@ -66,6 +66,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Reason |
 |---|------|--------|
+| 110 | Add section markers to large files | Superseded by #119 (AI metadata generator) |
+| 111 | Add "See Also" cross-references | Superseded by #119 (AI metadata generator) |
+| 112 | Add docstring examples | Superseded by #119 (AI metadata generator) |
 | 7 | Document magic numbers in gaps.py | Low priority, functional as-is |
 | 42 | Add simple query language | Nice-to-have, not blocking |
 | 44 | Remove deprecated feedforward_sources | Cleanup, low impact |
@@ -777,6 +780,103 @@ def compute_all(self, verbose: bool = True):
 
 ---
 
+### 119. Create AI Metadata Generator Script
+
+**Meta:** `status:pending` `priority:high` `category:ai-nav`
+**Files:** `scripts/generate_ai_metadata.py` (new)
+**Effort:** Medium
+
+**Problem:** AI navigation tasks (110-118) require modifying code files directly, cluttering them for human readers. We need a way to provide rich AI navigation aids without polluting the source code.
+
+**Solution:** Generate companion `.ai_meta` files (YAML) that provide:
+- Section markers with line ranges
+- Function cross-references ("See Also")
+- Complexity annotations
+- Return value semantics
+- Docstring examples (extracted or generated)
+- Import/dependency information
+
+**Output format:**
+```yaml
+# processor.py.ai_meta - Auto-generated
+file: cortical/processor.py
+lines: 2301
+generated: 2025-12-11T14:30:00
+
+sections:
+  - name: "Document Management"
+    lines: [54, 520]
+    functions: [process_document, add_document_incremental, remove_document]
+  - name: "Computation Methods"
+    lines: [613, 1140]
+    functions: [compute_all, compute_importance, compute_tfidf]
+
+functions:
+  find_documents_for_query:
+    line: 1596
+    signature: "(query: str, top_n: int = 5) -> List[Tuple[str, float]]"
+    see_also:
+      fast_find_documents: "~2-3x faster, document-level only"
+      find_passages_for_query: "Chunk-level retrieval for RAG"
+    complexity: "O(terms × documents)"
+    returns:
+      on_empty_corpus: "[]"
+      on_no_matches: "[]"
+
+dependencies:
+  imports: [analysis, query, semantics]
+  imported_by: [__init__]
+```
+
+**Acceptance Criteria:**
+- [ ] Script generates .ai_meta for all cortical/*.py files
+- [ ] *.ai_meta added to .gitignore
+- [ ] Output is valid YAML (AI-parseable)
+- [ ] Extracts sections by analyzing class/function groupings
+- [ ] Extracts function signatures and line numbers
+- [ ] Identifies related functions by naming patterns
+- [ ] Can be run incrementally (only changed files)
+
+---
+
+### 120. Add AI Metadata Loader to Claude Skills
+
+**Meta:** `status:pending` `priority:high` `category:ai-nav`
+**Files:** `.claude/skills/codebase-search/`
+**Effort:** Small
+**Depends:** 119
+
+**Problem:** Generated .ai_meta files need to be used by AI assistants during code navigation.
+
+**Solution:** Update codebase-search skill to:
+1. Check for .ai_meta files when reading code
+2. Load metadata to provide richer context
+3. Use section info for targeted searches
+4. Show "See Also" suggestions in results
+
+---
+
+### 121. Auto-regenerate AI Metadata on File Changes
+
+**Meta:** `status:pending` `priority:high` `category:ai-nav`
+**Files:** `scripts/generate_ai_metadata.py`, hook configuration
+**Effort:** Medium
+**Depends:** 119
+
+**Problem:** .ai_meta files become stale when source files change.
+
+**Solution:** Options for automatic regeneration:
+1. **Git pre-commit hook** - Regenerate before commits
+2. **File watcher** - Regenerate on save (for development)
+3. **Onboarding script** - Regenerate during setup
+4. **CI integration** - Validate metadata is current
+
+**Recommended approach:**
+- Add to onboarding: `python scripts/generate_ai_metadata.py`
+- Optional pre-commit hook for contributors
+
+---
+
 ## Category Index
 
 | Category | Pending | Description |
@@ -788,7 +888,7 @@ def compute_all(self, verbose: bool = True):
 | CodeQual | 3 | Code quality improvements |
 | Testing | 1 | Test coverage |
 | TaskMgmt | 2 | Task management system |
-| Deferred | 4 | Low priority, not blocking |
+| Deferred | 7 | Low priority or superseded |
 
 ---
 
