@@ -222,6 +222,54 @@ class TestChunkWriter(unittest.TestCase):
             self.assertTrue(os.path.exists(chunks_dir))
             self.assertTrue(filepath.exists())
 
+    def test_save_no_warning_small_chunk(self):
+        """Test that small chunks don't trigger a warning."""
+        import warnings
+        with tempfile.TemporaryDirectory() as tmpdir:
+            writer = ChunkWriter(tmpdir)
+            writer.add_document('doc1', 'small content')
+
+            # Should not warn
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                filepath = writer.save(warn_size_kb=100)  # 100KB threshold
+                # Small chunk should not trigger warning
+                self.assertEqual(len(w), 0)
+                self.assertIsNotNone(filepath)
+
+    def test_save_warning_large_chunk(self):
+        """Test that large chunks trigger a warning."""
+        import warnings
+        with tempfile.TemporaryDirectory() as tmpdir:
+            writer = ChunkWriter(tmpdir)
+            # Add large content (>1KB)
+            large_content = 'x' * 2000  # 2KB+ of content
+            writer.add_document('doc1', large_content)
+
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                filepath = writer.save(warn_size_kb=1)  # 1KB threshold
+                # Should trigger warning
+                self.assertEqual(len(w), 1)
+                self.assertIn('exceeds', str(w[0].message))
+                self.assertIn('compact', str(w[0].message).lower())
+                self.assertIsNotNone(filepath)
+
+    def test_save_warning_disabled(self):
+        """Test that warning can be disabled with warn_size_kb=0."""
+        import warnings
+        with tempfile.TemporaryDirectory() as tmpdir:
+            writer = ChunkWriter(tmpdir)
+            large_content = 'x' * 2000
+            writer.add_document('doc1', large_content)
+
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                filepath = writer.save(warn_size_kb=0)  # Disabled
+                # Should not warn even for large chunk
+                self.assertEqual(len(w), 0)
+                self.assertIsNotNone(filepath)
+
 
 class TestChunkLoader(unittest.TestCase):
     """Test ChunkLoader class."""

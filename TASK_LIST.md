@@ -1271,7 +1271,7 @@ Added 9 new tests for parameter validation.
 ### 41. Create Configuration Dataclass
 
 **Files:** New `cortical/config.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2025-12-11)
 **Priority:** Medium
 
 **Problem:**
@@ -1280,22 +1280,36 @@ Magic numbers scattered across modules with no central configuration:
 - `query.py`: VALID_RELATION_CHAINS (15 entries)
 - `analysis.py`: damping=0.85, iterations=20, tolerance=1e-6
 
-**Solution:**
+**Solution Applied:**
+1. Created `cortical/config.py` with `CorticalConfig` dataclass
+2. Centralized all magic numbers and defaults:
+   - PageRank: damping, iterations, tolerance
+   - Clustering: min_cluster_size, cluster_strictness
+   - Gap detection: isolation_threshold, well_connected_threshold, etc.
+   - Chunking: chunk_size, chunk_overlap
+   - Query expansion: max_query_expansions, semantic_expansion_discount
+   - Bigram connections: component_weight, chain_weight, cooccurrence_weight
+   - Concept connections: min_shared_docs, min_jaccard, embedding_threshold
+   - Multi-hop: max_hops, decay_factor, min_path_score
+   - Property inheritance: decay_factor, max_depth, boost_factor
+   - Relation weights dictionary
+3. Added validation in `__post_init__()` for all parameters
+4. Added `copy()`, `to_dict()`, and `from_dict()` methods
+5. Moved `VALID_RELATION_CHAINS` to config module
+6. Updated `__init__.py` to export new classes
+7. Created 29 tests in `tests/test_config.py`
+
+**Usage:**
 ```python
-@dataclass
-class CorticalConfig:
-    # PageRank
-    pagerank_damping: float = 0.85
-    pagerank_iterations: int = 20
-    pagerank_tolerance: float = 1e-6
+from cortical import CorticalTextProcessor, CorticalConfig
 
-    # Clustering
-    min_cluster_size: int = 3
-    cluster_strictness: float = 1.0
-
-    # Gap detection
-    isolation_threshold: float = 0.02
-    well_connected_threshold: float = 0.03
+# Custom configuration
+config = CorticalConfig(
+    pagerank_damping=0.9,
+    min_cluster_size=5,
+    isolation_threshold=0.03
+)
+processor = CorticalTextProcessor(config=config)
 ```
 
 ---
@@ -1925,19 +1939,42 @@ Define terminology used throughout the codebase so searches for concepts find re
 ### 56. Create Usage Patterns Documentation
 
 **File:** New `docs/patterns.md`
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2025-12-11)
 **Priority:** Medium
 
 **Goal:**
 Document common usage patterns and code examples that help answer "how do I..." queries.
 
-**Patterns:**
-- Basic document processing workflow
-- RAG retrieval with passages
-- Code search with intent parsing
-- Fingerprint comparison for similarity
-- Batch operations for performance
-- Incremental updates
+**Solution Applied:**
+Created `docs/patterns.md` with 15 usage patterns covering:
+
+1. **Code Search Patterns** (Patterns 1-4):
+   - Code-aware tokenization with identifier splitting
+   - Programming concept expansion
+   - Intent-based code search
+   - Combined code search
+
+2. **Fingerprint Comparison** (Patterns 5-8):
+   - Basic fingerprinting
+   - Explain similarity
+   - Find similar code blocks
+   - Code deduplication
+
+3. **Intent-Based Querying** (Patterns 9-10):
+   - Query intent detection
+   - Intent-aware search
+
+4. **Document Type Boosting** (Patterns 11-12):
+   - Boost documentation
+   - Search with type filtering
+
+5. **Configuration Patterns** (Patterns 13-15):
+   - Custom configuration
+   - Save and restore configuration
+   - Domain-specific configurations
+
+Note: Basic document processing, RAG retrieval, batch operations, and incremental
+updates are already covered in `docs/cookbook.md`.
 
 ---
 
@@ -2077,19 +2114,37 @@ Added cross-platform timeout implementation:
 ### 61. Add Chunk Size Warning for Large Chunks
 
 **Files:** `cortical/chunk_index.py`
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2025-12-11)
 **Priority:** Low
 
 **Problem:**
 Large chunk files in git can bloat repository history. There's no warning when chunks exceed a reasonable size threshold.
 
-**Solution:**
-Add a warning when saving chunks that exceed a configurable threshold (e.g., 1MB):
+**Solution Applied:**
+1. Added `DEFAULT_WARN_SIZE_KB = 1024` constant (1MB default threshold)
+2. Added `warn_size_kb` parameter to `ChunkWriter.save()` method
+3. Added warning emission when chunk file exceeds threshold
+4. Warning includes helpful message suggesting `--compact`
+5. Warning can be disabled by passing `warn_size_kb=0`
+6. Added 3 tests for warning functionality
+
+**Files Modified:**
+- `cortical/chunk_index.py` - Added warning logic
+- `tests/test_chunk_indexing.py` - Added 3 tests
+
+**Usage:**
 ```python
-def save(self, warn_size_kb: int = 1024) -> Optional[Path]:
-    # ... save logic ...
-    if file_path.stat().st_size > warn_size_kb * 1024:
-        warnings.warn(f"Chunk file exceeds {warn_size_kb}KB. Consider running --compact.")
+writer = ChunkWriter('corpus_chunks')
+writer.add_document('large_doc', 'x' * 2_000_000)
+
+# Default: warn if > 1MB
+writer.save()  # May emit warning
+
+# Custom threshold
+writer.save(warn_size_kb=500)  # Warn if > 500KB
+
+# Disable warning
+writer.save(warn_size_kb=0)  # Never warn
 ```
 
 ---
@@ -2097,18 +2152,40 @@ def save(self, warn_size_kb: int = 1024) -> Optional[Path]:
 ### 62. Add Chunk Compaction Documentation
 
 **Files:** `CLAUDE.md`, `.claude/skills/corpus-indexer/SKILL.md`
-**Status:** [ ] Not Started
+**Status:** [x] Completed (2025-12-11)
 **Priority:** Low
 
 **Problem:**
 The `--compact` feature is implemented but not documented in CLAUDE.md or the corpus-indexer skill.
 
-**Solution:**
-Add documentation explaining:
-- When to use `--compact`
-- How compaction works (merges chunks, preserves latest state)
-- Recommended compaction frequency
-- Example commands
+**Solution Applied:**
+Added comprehensive compaction documentation to both files covering:
+
+1. **When to compact:**
+   - After 10+ chunk files accumulate
+   - When size warnings appear
+   - Before merging branches
+   - To clean up deleted entries
+
+2. **How compaction works:**
+   - Reads chunks in timestamp order
+   - Replays operations (later timestamps win)
+   - Creates single compacted chunk
+   - Removes old chunk files
+   - Preserves valid cache
+
+3. **Example commands:**
+   - `--compact --use-chunks` for full compaction
+   - `--compact --before DATE --use-chunks` for date-based
+
+4. **Recommended frequency:**
+   - Weekly for active development
+   - Monthly for maintenance
+   - Before major releases
+
+**Files Modified:**
+- `CLAUDE.md` - Added "Chunk Compaction" section
+- `.claude/skills/corpus-indexer/SKILL.md` - Added compaction section
 
 ---
 
@@ -2243,20 +2320,64 @@ def get_doc_type(doc_id: str) -> str:
 
 ---
 
+### 66. Add Doc-Type Boosting to Passage-Level Search
+
+**Files:** `cortical/query.py`, `scripts/search_codebase.py`
+**Status:** [ ] Not Started
+**Priority:** Medium
+
+**Problem:**
+Document-level search correctly applies doc-type boosting (CLAUDE.md ranks #3 for "chunk compaction"), but passage-level search (`find_passages_for_query`) returns raw TF-IDF scores without boosting. This causes code snippets with keyword matches to rank higher than documentation passages for conceptual queries.
+
+**Evidence (2025-12-11 dog-fooding):**
+```
+# Document-level search correctly ranks docs:
+TASK_LIST.md: 9.837 (root_docs)
+CLAUDE.md: 8.146 (root_docs)  ← Documentation found
+
+# But passage search returns code first:
+[1] [CODE] cortical/chunk_index.py:291 Score: 2.549
+[2] [TEST] tests/test_chunk_indexing.py:77 Score: 2.157
+# CLAUDE.md "Chunk Compaction" section not in top 5
+```
+
+**Solution:**
+Propagate doc-type boost to passage scoring:
+1. After chunking documents, apply `get_doc_type_boost()` to passage scores
+2. For conceptual queries (`is_conceptual_query()`), multiply passage score by doc-type boost
+3. Re-rank passages after boosting
+
+**Implementation Sketch:**
+```python
+def find_passages_for_query(..., apply_doc_boost: bool = True):
+    # ... existing passage retrieval ...
+
+    if apply_doc_boost and is_conceptual_query(query_text):
+        boosted_passages = []
+        for passage, doc_id, start, end, score in passages:
+            boost = get_doc_type_boost(doc_id, doc_metadata)
+            boosted_passages.append((passage, doc_id, start, end, score * boost))
+        passages = sorted(boosted_passages, key=lambda x: -x[4])
+
+    return passages[:top_n]
+```
+
+---
+
 ## Dog-Fooding Summary
 
 | # | Priority | Task | Status | Category |
 |---|----------|------|--------|----------|
-| 65 | High | Add document metadata to chunk indexing | [ ] Not Started | Infrastructure |
-| 63 | High | Improve search ranking for docs | [ ] Not Started | Search Quality |
-| 64 | Low | Add document type indicator | [ ] Not Started | UX |
+| 65 | High | Add document metadata to chunk indexing | [x] Completed | Infrastructure |
+| 63 | High | Improve search ranking for docs | [x] Completed | Search Quality |
+| 64 | Low | Add document type indicator | [x] Completed | UX |
+| 66 | Medium | Add doc-type boost to passage search | [ ] Not Started | Search Quality |
 
-**Dependency Chain:** #65 → #63 → #64
+**Dependency Chain:** #65 → #63 → #64 (all complete), #66 extends this work
 
-**Key Insight:** The dog-fooding loop isn't complete - documentation was indexed but doesn't surface well in search results. The "better docs → better search" feedback loop requires:
-1. **Infrastructure** (#65): Store document metadata (file type, headings) in chunks
-2. **Ranking** (#63): Use metadata to boost docs for conceptual queries
-3. **UX** (#64): Show document types in search results
+**Status Update (2025-12-11):**
+- Document-level search now correctly boosts documentation for conceptual queries
+- Passage-level search still needs boosting (#66) - docs found but code ranks higher
 
 ---
 
@@ -2264,13 +2385,26 @@ def get_doc_type(doc_id: str) -> str:
 
 | # | Priority | Task | Status | Category |
 |---|----------|------|--------|----------|
-| 59 | Low | Rename TimeoutError to avoid shadowing | [ ] Not Started | Code Quality |
-| 60 | Medium | Add Windows compatibility for timeout | [ ] Not Started | Compatibility |
-| 61 | Low | Add chunk size warning | [ ] Not Started | UX |
-| 62 | Low | Add chunk compaction documentation | [ ] Not Started | Documentation |
+| 59 | Low | Rename TimeoutError to avoid shadowing | [x] Completed | Code Quality |
+| 60 | Medium | Add Windows compatibility for timeout | [x] Completed | Compatibility |
+| 61 | Low | Add chunk size warning | [x] Completed | UX |
+| 62 | Low | Add chunk compaction documentation | [x] Completed | Documentation |
 
-**Test Results:** 84 new tests, all passing
+**Test Results:** 691 tests passing (including 32 new tests)
 
 ---
 
-*Updated 2025-12-10*
+## Actionable Tasks Summary (Updated 2025-12-11)
+
+| # | Priority | Task | Status | Category |
+|---|----------|------|--------|----------|
+| 41 | Medium | Create Configuration Dataclass | [x] Completed | Code Quality |
+| 56 | Medium | Create Usage Patterns Documentation | [x] Completed | Documentation |
+| 66 | Medium | Add doc-type boost to passage search | [ ] Not Started | Search Quality |
+| 42 | Low | Add Simple Query Language Support | [ ] Not Started | Feature |
+| 44 | Low | Remove Deprecated feedforward_sources | [ ] Not Started | Code Quality |
+| 46 | Low | Standardize Return Types with Dataclasses | [ ] Not Started | Code Quality |
+
+---
+
+*Updated 2025-12-11*

@@ -121,6 +121,9 @@ The bigram separator mismatch bugs in `query.py:1442-1468` and `analysis.py:927`
    python showcase.py
    ```
 3. **Check for regressions** in related functionality
+4. **Dog-food the feature** - test with real usage (see [dogfooding-checklist.md](docs/dogfooding-checklist.md))
+5. **Document all findings** - add issues to TASK_LIST.md (see [code-of-ethics.md](docs/code-of-ethics.md))
+6. **Verify completion** - use [definition-of-done.md](docs/definition-of-done.md) checklist
 
 ---
 
@@ -449,6 +452,40 @@ corpus_dev.pkl.hash                   # NOT tracked (cache validation)
 - Git-friendly (small JSON, append-only)
 - Periodic compaction like `git gc`
 
+### Chunk Compaction
+
+Over time, chunk files accumulate. Use compaction to consolidate them, similar to `git gc`:
+
+**When to compact:**
+- After many indexing sessions (10+ chunk files)
+- When you see size warnings during indexing
+- Before merging branches with different chunk histories
+- To clean up deleted/modified document history
+
+**Compaction commands:**
+```bash
+# Compact all chunks into a single consolidated file
+python scripts/index_codebase.py --compact --use-chunks
+
+# Compact only chunks created before a specific date
+python scripts/index_codebase.py --compact --before 2025-12-01 --use-chunks
+
+# Check chunk status before compacting
+python scripts/index_codebase.py --status --use-chunks
+```
+
+**How compaction works:**
+1. Reads all chunk files (sorted by timestamp)
+2. Replays operations in order (later timestamps override)
+3. Creates a single compacted chunk with final state
+4. Removes old chunk files
+5. Preserves cache if still valid
+
+**Recommended frequency:**
+- Weekly for active development
+- Monthly for maintenance repositories
+- Before major releases
+
 ---
 
 ## File Quick Links
@@ -457,8 +494,14 @@ corpus_dev.pkl.hash                   # NOT tracked (cache validation)
 - **Graph algorithms**: `cortical/analysis.py` - PageRank, TF-IDF, clustering
 - **Search**: `cortical/query.py` - query expansion, document retrieval
 - **Data structures**: `cortical/minicolumn.py` - `Minicolumn`, `Edge`
+- **Configuration**: `cortical/config.py` - `CorticalConfig` dataclass
 - **Tests**: `tests/test_processor.py` - most comprehensive test file
 - **Demo**: `showcase.py` - interactive demonstration
+
+**Process Documentation:**
+- **Ethics**: `docs/code-of-ethics.md` - documentation, testing, and completion standards
+- **Dog-fooding**: `docs/dogfooding-checklist.md` - checklist for testing with real usage
+- **Definition of Done**: `docs/definition-of-done.md` - when is a task truly complete?
 
 ---
 
