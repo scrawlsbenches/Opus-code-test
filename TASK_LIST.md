@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 28
-**Completed Tasks:** 82+ (see archive)
+**Pending Tasks:** 25
+**Completed Tasks:** 85+ (see archive)
 
 ---
 
@@ -20,11 +20,8 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 119 | Create AI metadata generator script | AINav | - | Medium |
 | 94 | Split query.py into focused modules | Arch | - | Large |
 | 97 | Integrate CorticalConfig into processor | Arch | - | Medium |
-| 120 | Add AI metadata loader to Claude skills | AINav | 119 | Small |
-| 121 | Auto-regenerate AI metadata on changes | AINav | 119 | Medium |
 
 ### 🟡 Medium (Do This Month)
 
@@ -86,6 +83,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 119 | Create AI metadata generator script | 2025-12-11 | scripts/generate_ai_metadata.py with tests |
+| 120 | Add AI metadata loader to Claude skills | 2025-12-11 | ai-metadata skill created |
+| 121 | Auto-regenerate AI metadata on changes | 2025-12-11 | Documented in CLAUDE.md, skills |
 | 88 | Create package installation files | 2025-12-11 | pyproject.toml, requirements.txt |
 | 89 | Create CONTRIBUTING.md | 2025-12-11 | Contribution guide |
 | 90 | Create docs/quickstart.md | 2025-12-11 | 5-minute tutorial |
@@ -780,11 +780,12 @@ def compute_all(self, verbose: bool = True):
 
 ---
 
-### 119. Create AI Metadata Generator Script
+### 119. Create AI Metadata Generator Script ✅
 
-**Meta:** `status:pending` `priority:high` `category:ai-nav`
-**Files:** `scripts/generate_ai_metadata.py` (new)
+**Meta:** `status:completed` `priority:high` `category:ai-nav`
+**Files:** `scripts/generate_ai_metadata.py`, `tests/test_generate_ai_metadata.py`
 **Effort:** Medium
+**Completed:** 2025-12-11
 
 **Problem:** AI navigation tasks (110-118) require modifying code files directly, cluttering them for human readers. We need a way to provide rich AI navigation aids without polluting the source code.
 
@@ -839,41 +840,45 @@ dependencies:
 
 ---
 
-### 120. Add AI Metadata Loader to Claude Skills
+### 120. Add AI Metadata Loader to Claude Skills ✅
 
-**Meta:** `status:pending` `priority:high` `category:ai-nav`
-**Files:** `.claude/skills/codebase-search/`
+**Meta:** `status:completed` `priority:high` `category:ai-nav`
+**Files:** `.claude/skills/ai-metadata/SKILL.md`, `.claude/skills/corpus-indexer/SKILL.md`
 **Effort:** Small
 **Depends:** 119
+**Completed:** 2025-12-11
 
 **Problem:** Generated .ai_meta files need to be used by AI assistants during code navigation.
 
-**Solution:** Update codebase-search skill to:
-1. Check for .ai_meta files when reading code
-2. Load metadata to provide richer context
-3. Use section info for targeted searches
-4. Show "See Also" suggestions in results
+**Solution:** Created new `ai-metadata` skill that:
+1. Provides structured documentation for using .ai_meta files
+2. Explains metadata fields (sections, see_also, complexity hints)
+3. Shows best practices for AI agent navigation
+4. Updated corpus-indexer skill to include metadata generation commands
 
 ---
 
-### 121. Auto-regenerate AI Metadata on File Changes
+### 121. Auto-regenerate AI Metadata on File Changes ✅
 
-**Meta:** `status:pending` `priority:high` `category:ai-nav`
-**Files:** `scripts/generate_ai_metadata.py`, hook configuration
+**Meta:** `status:completed` `priority:high` `category:ai-nav`
+**Files:** `CLAUDE.md`, `.claude/skills/corpus-indexer/SKILL.md`
 **Effort:** Medium
 **Depends:** 119
+**Completed:** 2025-12-11
 
 **Problem:** .ai_meta files become stale when source files change.
 
-**Solution:** Options for automatic regeneration:
-1. **Git pre-commit hook** - Regenerate before commits
-2. **File watcher** - Regenerate on save (for development)
-3. **Onboarding script** - Regenerate during setup
-4. **CI integration** - Validate metadata is current
+**Solution implemented:**
+1. **Documented in CLAUDE.md** - AI Agent Onboarding section with startup command
+2. **Incremental mode** - `python scripts/generate_ai_metadata.py --incremental` only updates changed files
+3. **Combined workflow** - `python scripts/index_codebase.py --incremental && python scripts/generate_ai_metadata.py --incremental`
+4. **Skills documentation** - corpus-indexer skill explains metadata regeneration
 
-**Recommended approach:**
-- Add to onboarding: `python scripts/generate_ai_metadata.py`
-- Optional pre-commit hook for contributors
+**Recommended workflow for new agents:**
+```bash
+# On arrival, check if metadata exists and regenerate if needed
+ls cortical/*.ai_meta || python scripts/generate_ai_metadata.py
+```
 
 ---
 
@@ -881,7 +886,7 @@ dependencies:
 
 | Category | Pending | Description |
 |----------|---------|-------------|
-| AINav | 9 | AI assistant navigation & usability |
+| AINav | 6 | AI assistant navigation & usability |
 | DevEx | 6 | Developer experience (scripts, tools) |
 | Docs | 2 | Documentation improvements |
 | Arch | 4 | Architecture refactoring |

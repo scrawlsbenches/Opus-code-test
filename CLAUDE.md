@@ -33,6 +33,65 @@ Layer 3 (DOCUMENTS) → Full documents          [IT analogy: objects]
 
 ---
 
+## AI Agent Onboarding
+
+**New to this codebase?** Follow these steps to get oriented quickly:
+
+### Step 1: Generate AI Metadata (if missing)
+
+```bash
+# Check if metadata exists
+ls cortical/*.ai_meta
+
+# If not present, generate it (~1s)
+python scripts/generate_ai_metadata.py
+```
+
+### Step 2: Read Module Metadata First
+
+Instead of reading entire source files, start with `.ai_meta` files:
+
+```bash
+# Get structured overview of any module
+cat cortical/processor.py.ai_meta
+```
+
+**What metadata provides:**
+- Module docstring and purpose
+- Function signatures with `see_also` cross-references
+- Class structures with inheritance
+- Logical section groupings (Persistence, Query, Analysis, etc.)
+- Complexity hints for expensive operations
+
+### Step 3: Use the Full Toolchain
+
+```bash
+# Index codebase + generate metadata (recommended startup command)
+python scripts/index_codebase.py --incremental && python scripts/generate_ai_metadata.py --incremental
+
+# Then search semantically
+python scripts/search_codebase.py "your query here"
+```
+
+### AI Navigation Tips
+
+1. **Read `.ai_meta` before source code** - Get the map before exploring the territory
+2. **Follow `see_also` references** - Functions are cross-linked to related functions
+3. **Check `complexity_hints`** - Know which operations are expensive before calling them
+4. **Use semantic search** - The codebase is indexed for meaning-based retrieval
+5. **Trust the sections** - Functions are grouped by purpose in the metadata
+
+### Example Workflow
+
+```bash
+# I need to understand how search works
+cat cortical/query.py.ai_meta | head -100    # Get overview
+python scripts/search_codebase.py "expand query"  # Find specific code
+# Then read specific line ranges as needed
+```
+
+---
+
 ## Architecture Map
 
 ```
@@ -470,10 +529,11 @@ python scripts/search_codebase.py --interactive
 
 ### Claude Skills
 
-Two skills are available in `.claude/skills/`:
+Three skills are available in `.claude/skills/`:
 
 1. **codebase-search**: Search the indexed codebase for code patterns and implementations
 2. **corpus-indexer**: Re-index the codebase after making changes
+3. **ai-metadata**: View pre-generated module metadata for rapid understanding
 
 ### Indexer Options
 
