@@ -73,12 +73,14 @@ SECTION_KEYWORDS = {
 class FunctionInfo:
     """Holds extracted information about a function/method."""
 
-    def __init__(self, node: ast.FunctionDef, source_lines: List[str]):
+    def __init__(self, node, source_lines: List[str]):
+        # node can be ast.FunctionDef or ast.AsyncFunctionDef
         self.name = node.name
         self.line_start = node.lineno
         self.line_end = node.end_lineno or node.lineno
         self.is_private = node.name.startswith('_')
         self.is_dunder = node.name.startswith('__') and node.name.endswith('__')
+        self.is_async = isinstance(node, ast.AsyncFunctionDef)
 
         # Extract signature
         self.signature = self._extract_signature(node)
@@ -168,10 +170,10 @@ class ClassInfo:
         # Extract base classes
         self.bases = [ast.unparse(base) for base in node.bases]
 
-        # Extract methods
+        # Extract methods (both sync and async)
         self.methods: List[FunctionInfo] = []
         for item in node.body:
-            if isinstance(item, ast.FunctionDef):
+            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 self.methods.append(FunctionInfo(item, source_lines))
 
     def _get_docstring_summary(self) -> str:
@@ -218,7 +220,7 @@ class ModuleAnalyzer:
                     self.imports.append(f"{module}.{alias.name}")
             elif isinstance(node, ast.ClassDef):
                 self.classes.append(ClassInfo(node, self.source_lines))
-            elif isinstance(node, ast.FunctionDef):
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 self.functions.append(FunctionInfo(node, self.source_lines))
 
     def get_all_functions(self) -> List[Tuple[str, FunctionInfo]]:
@@ -357,6 +359,10 @@ class ModuleAnalyzer:
                 'doc': func.docstring_summary,
                 'private': func.is_private,
             }
+
+            # Add async flag if async
+            if func.is_async:
+                func_meta['async'] = True
 
             # Add related functions
             related = self.find_related_functions(func.name)
