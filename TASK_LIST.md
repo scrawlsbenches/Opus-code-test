@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-11
-**Pending Tasks:** 40
-**Completed Tasks:** 88+ (see archive)
+**Pending Tasks:** 38
+**Completed Tasks:** 90+ (see archive)
 
 ---
 
@@ -16,8 +16,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 132 | Profile full-analysis bottleneck (Louvain, semantics extraction) | Perf | - | Medium |
-| 128 | Definition boost favors test mocks over real implementations | Search | - | Medium |
 | 124 | Add minimum cluster count regression tests | Testing | - | Medium |
 | 125 | Add clustering quality metrics (modularity, silhouette) | DevEx | - | Medium |
 
@@ -70,7 +68,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 108 | Create task selection script | TaskMgmt | - | Medium |
 | 117 | Create debugging cookbook | AINav | - | Medium |
 | 118 | Add function complexity annotations | AINav | - | Small |
-| 128 | Analyze customer service cluster quality | Research | 127 | Small |
+| 140 | Analyze customer service cluster quality | Research | 127 | Small |
 | 129 | Test customer service retrieval quality | Testing | - | Small |
 | 130 | Expand customer service sample cluster | Samples | - | Medium |
 | 131 | Investigate cross-domain semantic bridges | Research | - | Medium |
@@ -99,6 +97,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 128 | Fix definition boost that favors test mocks over real implementations | 2025-12-11 | Added is_test_file() and test file penalty |
+| 132 | Profile full-analysis bottleneck (bigram, semantics O(n²)) | 2025-12-11 | Created profile_full_analysis.py, fixed bottlenecks |
+| 136 | Optimize semantics O(n²) similarity with early termination | 2025-12-11 | Added max_similarity_pairs, min_context_keys |
 | 126 | Investigate optimal Louvain resolution for sample corpus | 2025-12-11 | Research confirms default 1.0 is optimal |
 | 123 | Replace label propagation with Louvain community detection | 2025-12-11 | Implemented Louvain algorithm, 34 clusters for 92 docs |
 | 122 | Investigate Concept Layer & Embeddings regressions | 2025-12-11 | Fixed inverted strictness, improved embeddings |
