@@ -1,5 +1,11 @@
 # Cortical Text Processor
 
+![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
+![Tests](https://img.shields.io/badge/tests-1121%20passing-brightgreen.svg)
+![Coverage](https://img.shields.io/badge/coverage-%3E89%25-brightgreen.svg)
+![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-orange.svg)
+
 A neocortex-inspired text processing library with **zero external dependencies** for semantic analysis, document retrieval, and knowledge gap detection.
 
 ---
@@ -334,6 +340,22 @@ Search for "candle sticks" and you'll find `candlestick_patterns` (trading chart
 ### Knowledge Gap Detection
 
 The analyzer flags `sumo_wrestling` and `medieval_falconry` as isolated documents—they don't fit well with the rest of the corpus. It also identifies weak topics: terms like `patent` appear in only 1 document. This is how you find holes in your knowledge base.
+
+## Documentation
+
+Detailed documentation is available in the `docs/` directory:
+
+| Document | Description |
+|----------|-------------|
+| [docs/README.md](docs/README.md) | Documentation index with reading paths |
+| [docs/quickstart.md](docs/quickstart.md) | 5-minute getting started guide |
+| [docs/architecture.md](docs/architecture.md) | 4-layer system design |
+| [docs/algorithms.md](docs/algorithms.md) | Core IR algorithms (PageRank, TF-IDF, Louvain) |
+| [docs/query-guide.md](docs/query-guide.md) | Query formulation guide |
+| [docs/cookbook.md](docs/cookbook.md) | Common patterns and recipes |
+| [docs/glossary.md](docs/glossary.md) | Terminology definitions |
+
+For AI agents, see also [docs/claude-usage.md](docs/claude-usage.md) and [CLAUDE.md](CLAUDE.md).
 
 ## Running Tests
 

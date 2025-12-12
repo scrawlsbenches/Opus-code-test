@@ -23,26 +23,7 @@ except ImportError:
 
 from .layers import CorticalLayer, HierarchicalLayer
 from .minicolumn import Minicolumn
-
-
-# Relation type weights for retrofitting
-RELATION_WEIGHTS = {
-    'IsA': 1.5,
-    'PartOf': 1.2,
-    'HasA': 1.0,
-    'UsedFor': 0.8,
-    'CapableOf': 0.7,
-    'AtLocation': 0.6,
-    'Causes': 0.9,
-    'HasProperty': 0.8,
-    'SameAs': 2.0,
-    'RelatedTo': 0.5,
-    'Antonym': -0.5,
-    'DerivedFrom': 1.0,
-    'SimilarTo': 1.5,
-    'CoOccurs': 0.6,
-    'DefinedBy': 1.0,
-}
+from .constants import RELATION_WEIGHTS
 
 
 # Commonsense relation patterns with confidence scores

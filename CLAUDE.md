@@ -289,6 +289,72 @@ if processor.is_stale(processor.COMP_PAGERANK):
     processor.compute_importance()
 ```
 
+### Staleness Tracking System
+
+The processor tracks which computations are up-to-date vs needing recalculation. This prevents unnecessary recomputation while ensuring data consistency.
+
+#### Computation Types
+
+| Constant | What it tracks | Computed by |
+|----------|---------------|-------------|
+| `COMP_TFIDF` | TF-IDF scores per term | `compute_tfidf()` |
+| `COMP_PAGERANK` | PageRank importance | `compute_importance()` |
+| `COMP_ACTIVATION` | Activation propagation | `propagate_activation()` |
+| `COMP_DOC_CONNECTIONS` | Document-to-document links | `compute_document_connections()` |
+| `COMP_BIGRAM_CONNECTIONS` | Bigram lateral connections | `compute_bigram_connections()` |
+| `COMP_CONCEPTS` | Concept clusters (Layer 2) | `build_concept_clusters()` |
+| `COMP_EMBEDDINGS` | Graph embeddings | `compute_graph_embeddings()` |
+| `COMP_SEMANTICS` | Semantic relations | `extract_corpus_semantics()` |
+
+#### How Staleness Works
+
+1. **All computations start stale** - `_mark_all_stale()` is called in `__init__`
+2. **Adding documents marks all stale** - `process_document()` calls `_mark_all_stale()`
+3. **Computing marks fresh** - Each `compute_*()` method calls `_mark_fresh()`
+4. **`compute_all()` recomputes only stale** - Checks each computation before running
+
+#### API Methods
+
+```python
+# Check if a computation is stale
+if processor.is_stale(processor.COMP_PAGERANK):
+    processor.compute_importance()
+
+# Get all stale computations
+stale = processor.get_stale_computations()
+# Returns: {'pagerank', 'tfidf', ...}
+```
+
+#### Incremental Updates
+
+`add_document_incremental()` is smarter - it can update TF-IDF without invalidating everything:
+
+```python
+# Only recomputes TF-IDF by default
+processor.add_document_incremental(doc_id, text, recompute='tfidf')
+
+# Recompute more
+processor.add_document_incremental(doc_id, text, recompute='all')
+
+# Don't recompute anything (fastest, but leaves data stale)
+processor.add_document_incremental(doc_id, text, recompute='none')
+```
+
+#### When to Check Staleness
+
+- **Before reading `col.pagerank`** - check `COMP_PAGERANK`
+- **Before reading `col.tfidf`** - check `COMP_TFIDF`
+- **Before using embeddings** - check `COMP_EMBEDDINGS`
+- **Before querying concepts** - check `COMP_CONCEPTS`
+
+#### Staleness After `load()`
+
+Loading a saved processor restores computation freshness state:
+```python
+processor = CorticalTextProcessor.load("corpus.pkl")
+# Staleness state is preserved from when it was saved
+```
+
 ---
 
 ## Development Workflow

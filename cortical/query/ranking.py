@@ -15,34 +15,13 @@ from collections import defaultdict
 
 from ..layers import CorticalLayer, HierarchicalLayer
 from ..tokenizer import Tokenizer
+from ..constants import DOC_TYPE_BOOSTS, CONCEPTUAL_KEYWORDS, IMPLEMENTATION_KEYWORDS
 
 from .expansion import get_expanded_query_terms
 from .search import find_documents_for_query
 
 
-# Default boost factors for each document type
-# Higher values make documents of that type rank higher
-DOC_TYPE_BOOSTS = {
-    'docs': 1.5,       # docs/ folder documentation
-    'root_docs': 1.3,  # Root-level markdown (CLAUDE.md, README.md)
-    'code': 1.0,       # Regular code files
-    'test': 0.8,       # Test files (often less relevant for conceptual queries)
-}
-
-# Keywords that suggest a conceptual query (should boost documentation)
-CONCEPTUAL_KEYWORDS = frozenset([
-    'what', 'explain', 'describe', 'overview', 'introduction', 'concept',
-    'architecture', 'design', 'pattern', 'algorithm', 'approach', 'method',
-    'how does', 'why does', 'purpose', 'goal', 'rationale', 'theory',
-    'understand', 'learn', 'documentation', 'guide', 'tutorial', 'example',
-])
-
-# Keywords that suggest an implementation query (should prefer code)
-IMPLEMENTATION_KEYWORDS = frozenset([
-    'where', 'implement', 'code', 'function', 'class', 'method', 'variable',
-    'line', 'file', 'bug', 'fix', 'error', 'exception', 'call', 'invoke',
-    'compute', 'calculate', 'return', 'parameter', 'argument',
-])
+# Constants imported from cortical/constants.py
 
 
 def is_conceptual_query(query_text: str) -> bool:

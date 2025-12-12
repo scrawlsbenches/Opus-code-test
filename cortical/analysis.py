@@ -18,6 +18,7 @@ from collections import defaultdict
 
 from .layers import CorticalLayer, HierarchicalLayer
 from .minicolumn import Minicolumn
+from .constants import RELATION_WEIGHTS
 
 
 def compute_pagerank(
@@ -96,19 +97,7 @@ def compute_pagerank(
     return pagerank
 
 
-# Default relation weights for semantic PageRank
-RELATION_WEIGHTS = {
-    'IsA': 1.5,           # Hypernym relationships are strong
-    'PartOf': 1.3,        # Meronym relationships
-    'HasProperty': 1.2,   # Property associations
-    'RelatedTo': 1.0,     # Default co-occurrence
-    'SimilarTo': 1.4,     # Similarity relationships
-    'Causes': 1.1,        # Causal relationships
-    'UsedFor': 1.0,       # Functional relationships
-    'CoOccurs': 0.8,      # Basic co-occurrence
-    'Antonym': 0.3,       # Opposing concepts (lower weight)
-    'DerivedFrom': 1.2,   # Morphological derivation
-}
+# RELATION_WEIGHTS imported from constants.py
 
 
 def compute_semantic_pagerank(
