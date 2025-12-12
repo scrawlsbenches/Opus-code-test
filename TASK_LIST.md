@@ -3,8 +3,13 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-12
-**Pending Tasks:** 41
-**Completed Tasks:** 138+ (see archive and Recently Completed)
+**Pending Tasks:** 62 (20 unit test coverage tasks)
+**Completed Tasks:** 150+ (see archive and Recently Completed)
+
+**Unit Test Initiative:** Target 90% coverage from unit tests alone (see Tasks #159-178)
+
+**Current Unit Test Coverage:** 16% overall (234 tests)
+- See [Coverage Baseline](#unit-test-coverage-baseline) for per-module status
 
 ---
 
@@ -27,14 +32,26 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 151 | Refactor analysis.py algorithms for unit testability | UnitTest | ~~150~~ | Medium |
-| 152 | Add unit tests for analysis.py (target: 80% coverage) | UnitTest | 151 | Medium |
-| 153 | Refactor query/* modules for unit testability | UnitTest | ~~150~~ | Medium |
-| 154 | Add unit tests for query/* modules (target: 70% coverage) | UnitTest | 153 | Large |
-| 155 | Refactor processor.py computation methods for unit testability | UnitTest | ~~150~~ | Large |
-| 156 | Add unit tests for processor.py (target: 60% coverage) | UnitTest | 155 | Large |
-| 157 | Add unit tests for semantics.py (target: 60% coverage) | UnitTest | ~~150~~ | Medium |
-| 158 | Add unit tests for persistence.py (target: 50% coverage) | UnitTest | ~~150~~ | Medium |
+| 159 | Unit tests for tokenizer.py (9% → 90%) | UnitTest | ~~150~~ | Medium |
+| 160 | Unit tests for embeddings.py (4% → 90%) | UnitTest | ~~150~~ | Medium |
+| 161 | Unit tests for layers.py (31% → 90%) | UnitTest | ~~150~~ | Medium |
+| 162 | Unit tests for minicolumn.py (31% → 90%) | UnitTest | ~~150~~ | Medium |
+| 163 | Unit tests for fingerprint.py (11% → 90%) | UnitTest | ~~150~~ | Medium |
+| 164 | Unit tests for gaps.py (9% → 90%) | UnitTest | ~~150~~ | Medium |
+| 165 | Unit tests for processor.py Phase 1 (11% → 50%) | UnitTest | ~~150~~ | Large |
+| 166 | Unit tests for processor.py Phase 2 (50% → 90%) | UnitTest | 165 | Large |
+| 167 | Unit tests for chunk_index.py (0% → 90%) | UnitTest | ~~150~~ | Large |
+| 168 | Unit tests for config.py (40% → 90%) | UnitTest | ~~150~~ | Small |
+| 169 | Unit tests for code_concepts.py (58% → 90%) | UnitTest | ~~150~~ | Small |
+| 170 | Unit tests for query/expansion.py (11% → 90%) | UnitTest | ~~150~~ | Medium |
+| 171 | Unit tests for query/search.py (6% → 90%) | UnitTest | ~~150~~ | Medium |
+| 172 | Unit tests for query/passages.py (8% → 90%) | UnitTest | ~~150~~ | Medium |
+| 173 | Unit tests for query/definitions.py (12% → 90%) | UnitTest | ~~150~~ | Medium |
+| 174 | Unit tests for query/analogy.py (3% → 90%) | UnitTest | ~~150~~ | Medium |
+| 175 | Unit tests for query/ranking.py (25% → 90%) | UnitTest | ~~150~~ | Medium |
+| 176 | Unit tests for analysis.py (16% → 90%) | UnitTest | ~~150~~ | Large |
+| 177 | Unit tests for semantics.py (24% → 90%) | UnitTest | ~~150~~ | Medium |
+| 178 | Unit tests for persistence.py (18% → 90%) | UnitTest | ~~150~~ | Medium |
 | 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
 | 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
@@ -88,6 +105,10 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 157 | Add unit tests for semantics.py | 2025-12-12 | 48 tests, 24% coverage - superseded by #177 for 90% target |
+| 158 | Add unit tests for persistence.py | 2025-12-12 | 36 tests, 18% coverage - superseded by #178 for 90% target |
+| 153 | Refactor query/* for unit testability (partial) | 2025-12-12 | intent.py 72%, chunking.py 60% - remaining modules in #170-175 |
+| 154 | Add unit tests for query/* (partial) | 2025-12-12 | 67 tests for intent/chunking - remaining modules in #170-175 |
 | 150 | Create unit test fixtures and mocks for core data structures | 2025-12-12 | MockMinicolumn, MockHierarchicalLayer, MockLayers factory, LayerBuilder fluent API |
 | 138 | Use sparse matrix multiplication for bigram connections | 2025-12-12 | Zero-dep SparseMatrix class in analysis.py for O(n²) → O(n*k) improvement |
 | 98 | Replace print() with logging | 2025-12-12 | 52+ print statements → logging.info(), all modules use getLogger(__name__) |
@@ -162,397 +183,592 @@ Created comprehensive test doubles (600+ lines) enabling isolated unit testing:
 
 ---
 
-### 151. Refactor analysis.py Algorithms for Unit Testability
+## Unit Test Coverage Baseline
 
-**Meta:** `status:pending` `priority:medium` `category:unit-test`
-**Files:** `cortical/analysis.py`
-**Effort:** Medium
-**Depends:** 150
+Current unit test coverage as of 2025-12-12 (234 tests, 16% overall):
 
-**Problem:** Analysis functions mix algorithm logic with layer data access, making unit testing difficult.
+| Module | Current | Target | Gap | Task |
+|--------|---------|--------|-----|------|
+| tokenizer.py | 9% | 90% | 81% | #159 |
+| embeddings.py | 4% | 90% | 86% | #160 |
+| layers.py | 31% | 90% | 59% | #161 |
+| minicolumn.py | 31% | 90% | 59% | #162 |
+| fingerprint.py | 11% | 90% | 79% | #163 |
+| gaps.py | 9% | 90% | 81% | #164 |
+| processor.py | 11% | 90% | 79% | #165-166 |
+| chunk_index.py | 0% | 90% | 90% | #167 |
+| config.py | 40% | 90% | 50% | #168 |
+| code_concepts.py | 58% | 90% | 32% | #169 |
+| query/expansion.py | 11% | 90% | 79% | #170 |
+| query/search.py | 6% | 90% | 84% | #171 |
+| query/passages.py | 8% | 90% | 82% | #172 |
+| query/definitions.py | 12% | 90% | 78% | #173 |
+| query/analogy.py | 3% | 90% | 87% | #174 |
+| query/ranking.py | 25% | 90% | 65% | #175 |
+| analysis.py | 16% | 90% | 74% | #176 |
+| semantics.py | 24% | 90% | 66% | #177 |
+| persistence.py | 18% | 90% | 72% | #178 |
+| **query/intent.py** | **72%** | 90% | 18% | #170 |
+| **query/chunking.py** | **60%** | 90% | 30% | #172 |
 
-**Current Pattern (hard to test):**
-```python
-def compute_pagerank(layers, damping=0.85):
-    layer0 = layers[CorticalLayer.TOKENS]
-    for col in layer0.minicolumns.values():  # Data access
-        # Algorithm logic mixed in
-```
-
-**Target Pattern (unit testable):**
-```python
-def compute_pagerank_core(graph: Dict[str, List[Tuple[str, float]]], damping=0.85):
-    """Pure algorithm - takes graph, returns ranks."""
-    # Algorithm logic only, no layer access
-
-def compute_pagerank(layers, damping=0.85):
-    """Wrapper - extracts graph from layers, calls core."""
-    graph = _extract_graph(layers[CorticalLayer.TOKENS])
-    return compute_pagerank_core(graph, damping)
-```
-
-**Functions to Refactor:**
-1. `compute_pagerank()` → extract `_pagerank_core(graph, damping)`
-2. `compute_tfidf()` → extract `_tfidf_core(term_counts, doc_counts)`
-3. `cluster_by_louvain()` → extract `_louvain_core(edges, resolution)`
-4. `compute_hierarchical_pagerank()` → extract core iteration logic
-5. `compute_clustering_quality()` → extract `_modularity_core()`, `_silhouette_core()`
-
-**Acceptance Criteria:**
-- [ ] 5+ `_core()` functions extracted as pure algorithms
-- [ ] Core functions take primitive data types (dicts, lists), not layer objects
-- [ ] Wrapper functions unchanged in signature (backward compatible)
-- [ ] All 1194 existing tests still pass
-- [ ] Core functions documented with input/output examples
+*Bold = partial coverage already achieved*
 
 ---
 
-### 152. Add Unit Tests for analysis.py (Target: 80% Coverage)
+## Pending Task Details
+
+### 159. Unit Tests for tokenizer.py (9% → 90%)
 
 **Meta:** `status:pending` `priority:medium` `category:unit-test`
-**Files:** `tests/unit/test_analysis.py` (new)
+**Files:** `tests/unit/test_tokenizer.py` (new), `cortical/tokenizer.py`
 **Effort:** Medium
-**Depends:** 151
+**Depends:** ~~150~~
 
-**Problem:** analysis.py has 48% unit coverage. After refactoring (Task #151), we can unit test the core algorithms.
+**Problem:** tokenizer.py has only 9% unit test coverage. Core text processing logic is untested.
+
+**Testable Pure Functions:**
+- `tokenize()` - main tokenization entry point
+- `_normalize_text()` - text normalization
+- `_split_identifiers()` - camelCase/snake_case splitting
+- `stem_word()` - Porter stemming implementation
+- `is_stop_word()` - stop word detection
+- `extract_ngrams()` - n-gram extraction
 
 **Test Categories:**
-
-1. **PageRank Tests:**
-   - Single node graph → rank = 1.0
-   - Two nodes, one edge → expected distribution
-   - Cycle detection and handling
-   - Damping factor edge cases (0, 1)
-   - Convergence tolerance verification
-
-2. **TF-IDF Tests:**
-   - Single term, single doc → expected score
-   - Common term across all docs → low IDF
-   - Rare term in one doc → high TF-IDF
-   - Empty document handling
-
-3. **Louvain Clustering Tests:**
-   - Two disconnected components → two clusters
-   - Complete graph → one cluster (at low resolution)
-   - Resolution parameter effects
-   - Empty graph handling
-   - Single node graph
-
-4. **Modularity Tests:**
-   - Perfect clustering → modularity = 1.0
-   - Random assignment → modularity ≈ 0
-   - Known graph with known optimal clustering
-
-**Target Coverage:** 80% of analysis.py (up from 48%)
+1. **Basic Tokenization** (10+ tests): words, punctuation, whitespace
+2. **Code Tokenization** (10+ tests): identifiers, operators, split_identifiers mode
+3. **Stop Words** (5+ tests): filtering, custom stop words
+4. **Stemming** (5+ tests): regular words, edge cases
+5. **N-grams** (5+ tests): bigrams, trigrams, boundary handling
 
 **Acceptance Criteria:**
-- [ ] 30+ unit tests for core algorithms
-- [ ] Edge cases: empty input, single element, large input
-- [ ] Deterministic tests (no random failures)
-- [ ] Tests run in <5 seconds total
-- [ ] Coverage of analysis.py ≥ 80%
+- [ ] 35+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <2 seconds
 
 ---
 
-### 153. Refactor query/* Modules for Unit Testability
+### 160. Unit Tests for embeddings.py (4% → 90%)
 
 **Meta:** `status:pending` `priority:medium` `category:unit-test`
-**Files:** `cortical/query/*.py`
+**Files:** `tests/unit/test_embeddings.py` (new), `cortical/embeddings.py`
 **Effort:** Medium
-**Depends:** 150
+**Depends:** ~~150~~
 
-**Problem:** Query modules have 3-36% unit coverage because functions require populated layers.
+**Problem:** embeddings.py has only 4% coverage. Graph embedding algorithms untested.
 
-**Current Coverage:**
-| Module | Coverage | Issue |
-|--------|----------|-------|
-| expansion.py | 36% | Needs lateral_connections data |
-| search.py | 6% | Needs full layer traversal |
-| passages.py | 8% | Needs document content |
-| ranking.py | 7% | Needs TF-IDF scores |
-| intent.py | 12% | Parsing is testable, search isn't |
-| definitions.py | 12% | Pattern matching mixed with search |
-
-**Refactoring Strategy:**
-
-1. **expansion.py** - Extract `_expand_from_connections()`:
-   ```python
-   def _expand_from_connections(
-       term: str,
-       connections: Dict[str, float],
-       max_expansions: int
-   ) -> Dict[str, float]:
-       """Pure expansion logic."""
-   ```
-
-2. **search.py** - Extract `_score_documents()`:
-   ```python
-   def _score_documents(
-       query_terms: List[str],
-       term_docs: Dict[str, Set[str]],
-       term_tfidf: Dict[str, Dict[str, float]]
-   ) -> Dict[str, float]:
-       """Pure scoring logic."""
-   ```
-
-3. **passages.py** - Extract `_chunk_text()` and `_score_chunks()`:
-   ```python
-   def _chunk_text(text: str, size: int, overlap: int) -> List[str]:
-       """Pure text chunking."""
-
-   def _score_chunks(chunks: List[str], query_terms: Set[str]) -> List[float]:
-       """Pure chunk scoring."""
-   ```
-
-4. **intent.py** - Already mostly testable (regex parsing)
-
-5. **ranking.py** - Extract `_compute_rank_score()`:
-   ```python
-   def _compute_rank_score(
-       term_weights: Dict[str, float],
-       doc_term_counts: Dict[str, int]
-   ) -> float:
-       """Pure ranking calculation."""
-   ```
-
-**Acceptance Criteria:**
-- [ ] Each query module has at least one `_core()` or pure function extracted
-- [ ] Pure functions take primitive types, not layer objects
-- [ ] Backward compatibility maintained
-- [ ] All existing tests pass
-
----
-
-### 154. Add Unit Tests for query/* Modules (Target: 70% Coverage)
-
-**Meta:** `status:pending` `priority:medium` `category:unit-test`
-**Files:** `tests/unit/test_query_*.py` (new files)
-**Effort:** Large
-**Depends:** 153
-
-**Problem:** Query modules have 3-36% coverage. After refactoring, we can unit test the core logic.
-
-**Test Files to Create:**
-
-1. **test_query_expansion.py** (15+ tests):
-   - Expansion with no connections → original term only
-   - Expansion with one connection → includes connected term
-   - Max expansions limit respected
-   - Weight decay applied correctly
-   - Semantic vs lateral expansion paths
-
-2. **test_query_search.py** (15+ tests):
-   - Empty query handling
-   - Single term scoring
-   - Multi-term scoring (AND semantics)
-   - Document name boost calculation
-   - TF-IDF weighting verification
-
-3. **test_query_passages.py** (10+ tests):
-   - Text chunking with overlap
-   - Chunk boundary handling
-   - Passage scoring algorithm
-   - Empty text handling
-   - Very long text handling
-
-4. **test_query_intent.py** (10+ tests):
-   - Intent parsing for different patterns
-   - "where", "how", "what" intents
-   - Action/subject extraction
-   - Malformed query handling
-
-5. **test_query_ranking.py** (10+ tests):
-   - Multi-stage ranking logic
-   - Score normalization
-   - Tie-breaking behavior
-
-**Target Coverage:** 70% average across query/* modules
-
-**Acceptance Criteria:**
-- [ ] 60+ unit tests across query modules
-- [ ] Each module has dedicated test file
-- [ ] Tests run in <10 seconds total
-- [ ] Coverage of query/* ≥ 70% average
-
----
-
-### 155. Refactor processor.py Computation Methods for Unit Testability
-
-**Meta:** `status:pending` `priority:medium` `category:unit-test`
-**Files:** `cortical/processor.py`
-**Effort:** Large
-**Depends:** 150
-
-**Problem:** processor.py has 35% unit coverage. Methods mix orchestration with computation logic.
-
-**Methods to Refactor:**
-
-1. **process_document()** - Extract `_tokenize_and_count()`:
-   ```python
-   def _tokenize_and_count(text: str, config: CorticalConfig) -> Tuple[List[str], Dict[str, int]]:
-       """Pure tokenization and counting."""
-   ```
-
-2. **compute_all()** - Already delegates to other modules, but could extract:
-   ```python
-   def _determine_computation_order(stale: Set[str]) -> List[str]:
-       """Determine which computations to run and in what order."""
-   ```
-
-3. **add_document_incremental()** - Extract `_update_term_statistics()`:
-   ```python
-   def _update_term_statistics(
-       existing_stats: Dict[str, int],
-       new_counts: Dict[str, int]
-   ) -> Dict[str, int]:
-       """Pure statistics update."""
-   ```
-
-4. **Staleness tracking** - Extract `_resolve_dependencies()`:
-   ```python
-   def _resolve_dependencies(requested: str) -> List[str]:
-       """Return ordered list of computations needed."""
-   ```
-
-**Acceptance Criteria:**
-- [ ] 4+ pure helper functions extracted
-- [ ] Orchestration methods remain as wrappers
-- [ ] All existing tests pass
-- [ ] No change to public API
-
----
-
-### 156. Add Unit Tests for processor.py (Target: 60% Coverage)
-
-**Meta:** `status:pending` `priority:medium` `category:unit-test`
-**Files:** `tests/unit/test_processor.py` (new)
-**Effort:** Large
-**Depends:** 155
-
-**Problem:** processor.py has 35% unit coverage. After refactoring, we can test more logic in isolation.
+**Testable Pure Functions:**
+- `_adjacency_embeddings()` - adjacency-based embeddings
+- `_random_walk_embeddings()` - random walk embeddings
+- `_tfidf_embeddings()` - TF-IDF based embeddings
+- `_spectral_embeddings()` - spectral graph embeddings
+- `_cosine_similarity()` - similarity calculation
+- `_select_landmarks()` - landmark node selection
 
 **Test Categories:**
-
-1. **Tokenization Tests** (10+ tests):
-   - Basic tokenization
-   - Stop word removal
-   - Code token handling
-   - Unicode text
-   - Empty/whitespace text
-
-2. **Staleness Tracking Tests** (10+ tests):
-   - Initial state (all stale)
-   - Mark fresh after computation
-   - Dependencies trigger re-computation
-   - Incremental update staleness
-
-3. **Document Management Tests** (10+ tests):
-   - Add document updates counts
-   - Remove document cleanup
-   - Document metadata storage
-   - Duplicate document handling
-
-4. **Statistics Tests** (10+ tests):
-   - Term frequency calculation
-   - Document frequency updates
-   - Incremental statistics update
-
-**Target Coverage:** 60% of processor.py (up from 35%)
+1. **Embedding Generation** (15+ tests): each method, dimensions, normalization
+2. **Similarity Calculation** (10+ tests): cosine sim, edge cases
+3. **Landmark Selection** (5+ tests): PageRank-based, random
+4. **Edge Cases** (5+ tests): empty graph, single node, disconnected
 
 **Acceptance Criteria:**
-- [ ] 40+ unit tests for processor logic
-- [ ] Tests use mocks from Task #150
+- [ ] 35+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <3 seconds
+
+---
+
+### 161. Unit Tests for layers.py (31% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_layers.py` (new), `cortical/layers.py`
+**Effort:** Medium
+**Depends:** ~~150~~
+
+**Problem:** layers.py has 31% coverage. HierarchicalLayer container logic partially tested.
+
+**Testable Methods:**
+- `add_minicolumn()` - add to layer
+- `get_minicolumn()` - lookup by content
+- `get_by_id()` - O(1) ID lookup via _id_index
+- `remove_minicolumn()` - removal and cleanup
+- `column_count()` - count accessor
+- `get_activation_sparsity()` - sparsity calculation
+- `__iter__` - iteration support
+
+**Test Categories:**
+1. **CRUD Operations** (15+ tests): add, get, remove, update
+2. **ID Index** (10+ tests): O(1) lookup, consistency after mutations
+3. **Sparsity/Stats** (5+ tests): activation sparsity, counts
+4. **Iteration** (5+ tests): iter, values, items
+
+**Acceptance Criteria:**
+- [ ] 35+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <2 seconds
+
+---
+
+### 162. Unit Tests for minicolumn.py (31% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_minicolumn.py` (new), `cortical/minicolumn.py`
+**Effort:** Medium
+**Depends:** ~~150~~
+
+**Problem:** minicolumn.py has 31% coverage. Core data structure methods untested.
+
+**Testable Methods:**
+- `add_lateral_connection()` - lateral connections
+- `add_lateral_connections_batch()` - batch add
+- `add_typed_connection()` - typed Edge connections
+- `update_typed_connection()` - confidence update logic
+- `to_dict()` / `from_dict()` - serialization
+- Edge class: `__init__`, `__eq__`, `__hash__`
+
+**Test Categories:**
+1. **Connection Management** (15+ tests): add, update, weights
+2. **Batch Operations** (5+ tests): batch add performance, correctness
+3. **Edge Class** (10+ tests): creation, equality, hashing
+4. **Serialization** (5+ tests): round-trip, backward compat
+
+**Acceptance Criteria:**
+- [ ] 35+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <2 seconds
+
+---
+
+### 163. Unit Tests for fingerprint.py (11% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_fingerprint.py` (new), `cortical/fingerprint.py`
+**Effort:** Medium
+**Depends:** ~~150~~
+
+**Problem:** fingerprint.py has 11% coverage. Semantic fingerprinting untested.
+
+**Testable Pure Functions:**
+- `create_fingerprint()` - fingerprint generation
+- `compare_fingerprints()` - similarity comparison
+- `_jaccard_similarity()` - Jaccard calculation
+- `_weighted_overlap()` - weighted overlap
+- `explain_similarity()` - similarity explanation
+
+**Test Categories:**
+1. **Fingerprint Creation** (10+ tests): text variations, empty text
+2. **Comparison** (15+ tests): identical, similar, different texts
+3. **Similarity Metrics** (5+ tests): Jaccard, weighted
+4. **Explanation** (5+ tests): human-readable output
+
+**Acceptance Criteria:**
+- [ ] 35+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <2 seconds
+
+---
+
+### 164. Unit Tests for gaps.py (9% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_gaps.py` (new), `cortical/gaps.py`
+**Effort:** Medium
+**Depends:** ~~150~~
+
+**Problem:** gaps.py has 9% coverage. Knowledge gap detection untested.
+
+**Testable Pure Functions:**
+- `detect_knowledge_gaps()` - main gap detection
+- `_find_isolated_nodes()` - disconnected term detection
+- `_find_weak_connections()` - low-weight edges
+- `_calculate_gap_score()` - gap severity scoring
+- `suggest_remediation()` - suggestions for filling gaps
+
+**Test Categories:**
+1. **Gap Detection** (15+ tests): various graph topologies
+2. **Isolated Nodes** (5+ tests): fully isolated, weakly connected
+3. **Weak Connections** (5+ tests): threshold behavior
+4. **Scoring** (5+ tests): score calculation, edge cases
+5. **Remediation** (5+ tests): suggestion generation
+
+**Acceptance Criteria:**
+- [ ] 35+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <2 seconds
+
+---
+
+### 165. Unit Tests for processor.py Phase 1 (11% → 50%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_processor_core.py` (new), `cortical/processor.py`
+**Effort:** Large
+**Depends:** ~~150~~
+
+**Problem:** processor.py has 11% coverage. First phase targets core methods.
+
+**Phase 1 Focus:**
+1. **Document Management** (15+ tests): add, remove, metadata
+2. **Staleness Tracking** (15+ tests): is_stale, mark_fresh, dependencies
+3. **Configuration** (10+ tests): config application, overrides
+4. **Layer Access** (10+ tests): get_layer, layer initialization
+
+**Acceptance Criteria:**
+- [ ] 50+ unit tests
+- [ ] Coverage ≥ 50%
+- [ ] Tests run in <5 seconds
+
+---
+
+### 166. Unit Tests for processor.py Phase 2 (50% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_processor_advanced.py` (new), `cortical/processor.py`
+**Effort:** Large
+**Depends:** 165
+
+**Problem:** Complete coverage requires testing computation orchestration.
+
+**Phase 2 Focus:**
+1. **Computation Methods** (20+ tests): compute_*, incremental updates
+2. **Query Delegation** (15+ tests): search, passages, expansion
+3. **State Management** (10+ tests): save/load round-trip
+4. **Edge Cases** (10+ tests): empty corpus, Unicode, large docs
+
+**Acceptance Criteria:**
+- [ ] 55+ additional unit tests
+- [ ] Coverage ≥ 90%
 - [ ] Tests run in <10 seconds
-- [ ] Coverage ≥ 60%
 
 ---
 
-### 157. Add Unit Tests for semantics.py (Target: 60% Coverage)
+### 167. Unit Tests for chunk_index.py (0% → 90%)
 
 **Meta:** `status:pending` `priority:medium` `category:unit-test`
-**Files:** `tests/unit/test_semantics.py` (new)
-**Effort:** Medium
-**Depends:** 150
+**Files:** `tests/unit/test_chunk_index.py` (new), `cortical/chunk_index.py`
+**Effort:** Large
+**Depends:** ~~150~~
 
-**Problem:** semantics.py has only 5% unit coverage. Pattern extraction and relation detection are largely untested at unit level.
+**Problem:** chunk_index.py has 0% unit coverage. Git-friendly storage untested.
+
+**Testable Pure Functions:**
+- `_generate_chunk_filename()` - timestamp-based naming
+- `_parse_chunk_filename()` - filename parsing
+- `_serialize_document()` - document serialization
+- `_deserialize_document()` - document deserialization
+- `_compact_chunks()` - compaction logic
+- `_merge_operations()` - operation merging
+
+**Test Categories:**
+1. **Filename Generation** (10+ tests): uniqueness, parsing
+2. **Serialization** (15+ tests): documents, metadata, edge cases
+3. **Compaction** (10+ tests): merge logic, conflict resolution
+4. **Operation Replay** (10+ tests): add, remove, update sequences
+
+**Acceptance Criteria:**
+- [ ] 45+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <3 seconds
+
+---
+
+### 168. Unit Tests for config.py (40% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_config.py` (new), `cortical/config.py`
+**Effort:** Small
+**Depends:** ~~150~~
+
+**Problem:** config.py has 40% coverage. Validation and defaults partially tested.
 
 **Testable Components:**
+- `CorticalConfig` dataclass creation
+- Parameter validation (ranges, types)
+- Default value application
+- `to_dict()` / `from_dict()` serialization
+- Config merging/override logic
 
-1. **Pattern Matching** (15+ tests):
-   - Hypernym patterns ("X is a type of Y")
-   - Meronym patterns ("X is part of Y")
-   - Synonym detection
-   - Definition patterns
-   - Edge cases (empty text, no matches)
-
-2. **Relation Extraction** (10+ tests):
-   - Extract relations from known patterns
-   - Confidence scoring
-   - Duplicate relation handling
-   - Weight assignment
-
-3. **Semantic Similarity** (10+ tests):
-   - Context overlap calculation
-   - Similarity threshold behavior
-   - Empty context handling
-
-**Target Coverage:** 60% of semantics.py (up from 5%)
+**Test Categories:**
+1. **Defaults** (10+ tests): all default values correct
+2. **Validation** (10+ tests): invalid values rejected
+3. **Serialization** (5+ tests): round-trip, missing keys
+4. **Override** (5+ tests): per-call parameter override
 
 **Acceptance Criteria:**
-- [ ] 35+ unit tests for semantics module
-- [ ] Pattern matching tested with fixtures
-- [ ] Relation extraction tested with mock data
-- [ ] Coverage ≥ 60%
+- [ ] 30+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <1 second
 
 ---
 
-### 158. Add Unit Tests for persistence.py (Target: 50% Coverage)
+### 169. Unit Tests for code_concepts.py (58% → 90%)
 
 **Meta:** `status:pending` `priority:medium` `category:unit-test`
-**Files:** `tests/unit/test_persistence.py` (new)
-**Effort:** Medium
-**Depends:** 150
+**Files:** `tests/unit/test_code_concepts.py` (new), `cortical/code_concepts.py`
+**Effort:** Small
+**Depends:** ~~150~~
 
-**Problem:** persistence.py has only 16% unit coverage. Serialization logic is mixed with file I/O.
+**Problem:** code_concepts.py has 58% coverage. Programming synonyms partially tested.
 
-**Refactoring Needed:**
-```python
-# Extract serialization from file I/O
-def _serialize_processor(processor) -> bytes:
-    """Pure serialization."""
-
-def _deserialize_processor(data: bytes) -> CorticalTextProcessor:
-    """Pure deserialization."""
-
-def save(processor, path):
-    data = _serialize_processor(processor)
-    with open(path, 'wb') as f:
-        f.write(data)
-```
+**Testable Components:**
+- `CODE_CONCEPTS` dictionary completeness
+- `get_code_synonyms()` - synonym lookup
+- `expand_code_query()` - query expansion with code concepts
+- Coverage of all concept categories
 
 **Test Categories:**
-
-1. **Serialization Tests** (15+ tests):
-   - Round-trip: serialize → deserialize → equal
-   - Version compatibility
-   - Minicolumn serialization
-   - Layer serialization
-   - Config serialization
-   - Large data handling
-
-2. **Edge Cases** (10+ tests):
-   - Empty processor
-   - Processor with no documents
-   - Unicode content
-   - Special float values (inf, nan)
-
-**Target Coverage:** 50% of persistence.py (up from 16%)
+1. **Concept Lookup** (10+ tests): each major category
+2. **Synonym Expansion** (10+ tests): single term, multi-term
+3. **Edge Cases** (5+ tests): unknown terms, empty input
 
 **Acceptance Criteria:**
-- [ ] 25+ unit tests for persistence
-- [ ] Serialization tested without file I/O
-- [ ] Round-trip tests for all data types
-- [ ] Coverage ≥ 50%
+- [ ] 25+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <1 second
+
+---
+
+### 170. Unit Tests for query/expansion.py (11% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_query_expansion.py` (new), `cortical/query/expansion.py`
+**Effort:** Medium
+**Depends:** ~~150~~
+
+**Problem:** expansion.py has 11% coverage. Query expansion logic requires refactoring.
+
+**Strategy:** Extract pure functions for:
+- `_expand_from_lateral()` - lateral connection expansion
+- `_expand_from_semantic()` - semantic relation expansion
+- `_merge_expansions()` - combining multiple expansion sources
+- `_apply_decay()` - weight decay for multi-hop
+
+**Test Categories:**
+1. **Lateral Expansion** (15+ tests): weights, limits, decay
+2. **Semantic Expansion** (10+ tests): relation types, confidence
+3. **Merging** (5+ tests): conflict resolution, max terms
+4. **Multi-hop** (5+ tests): 2-hop, 3-hop, decay
+
+**Acceptance Criteria:**
+- [ ] 35+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <2 seconds
+
+---
+
+### 171. Unit Tests for query/search.py (6% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_query_search.py` (new), `cortical/query/search.py`
+**Effort:** Medium
+**Depends:** ~~150~~
+
+**Problem:** search.py has 6% coverage. Document scoring requires refactoring.
+
+**Strategy:** Extract pure functions for:
+- `_score_document()` - per-document scoring
+- `_apply_boosts()` - doc name boost, type boost
+- `_rank_results()` - sorting and limiting
+- `_filter_results()` - threshold filtering
+
+**Test Categories:**
+1. **Scoring** (15+ tests): TF-IDF aggregation, normalization
+2. **Boosts** (10+ tests): name match, doc type, test penalty
+3. **Ranking** (5+ tests): sorting, ties, limits
+4. **Filtering** (5+ tests): thresholds, empty results
+
+**Acceptance Criteria:**
+- [ ] 35+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <2 seconds
+
+---
+
+### 172. Unit Tests for query/passages.py (8% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_query_passages.py` (new), `cortical/query/passages.py`
+**Effort:** Medium
+**Depends:** ~~150~~
+
+**Problem:** passages.py has 8% coverage (chunking.py at 60%). Complete coverage needed.
+
+**Testable Pure Functions:**
+- `_create_chunks()` - text chunking (some coverage)
+- `_score_chunk()` - chunk relevance scoring
+- `_rank_passages()` - passage ranking
+- `_format_passage()` - output formatting
+
+**Test Categories:**
+1. **Chunking** (10+ tests): overlap, boundaries, edge cases
+2. **Scoring** (15+ tests): term density, position, exact match
+3. **Ranking** (5+ tests): sorting, diversity
+4. **Formatting** (5+ tests): context, highlighting
+
+**Acceptance Criteria:**
+- [ ] 35+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <2 seconds
+
+---
+
+### 173. Unit Tests for query/definitions.py (12% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_query_definitions.py` (new), `cortical/query/definitions.py`
+**Effort:** Medium
+**Depends:** ~~150~~
+
+**Problem:** definitions.py has 12% coverage. Definition detection logic untested.
+
+**Testable Pure Functions:**
+- `is_definition_query()` - query classification
+- `_extract_definition_target()` - target term extraction
+- `_score_definition_passage()` - definition scoring
+- `_detect_definition_patterns()` - pattern matching
+
+**Test Categories:**
+1. **Query Classification** (10+ tests): "what is X", "define X", variations
+2. **Pattern Matching** (15+ tests): "X is a", "X refers to", etc.
+3. **Scoring** (5+ tests): definition quality ranking
+4. **Edge Cases** (5+ tests): ambiguous queries, no definitions
+
+**Acceptance Criteria:**
+- [ ] 35+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <2 seconds
+
+---
+
+### 174. Unit Tests for query/analogy.py (3% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_query_analogy.py` (new), `cortical/query/analogy.py`
+**Effort:** Medium
+**Depends:** ~~150~~
+
+**Problem:** analogy.py has 3% coverage. Analogy completion entirely untested.
+
+**Testable Pure Functions:**
+- `complete_analogy()` - main entry point
+- `_find_relation()` - relation type detection
+- `_apply_relation()` - relation application
+- `_score_candidates()` - candidate ranking
+- `_validate_analogy()` - analogy validation
+
+**Test Categories:**
+1. **Relation Detection** (10+ tests): IsA, PartOf, SimilarTo, etc.
+2. **Completion** (15+ tests): A:B::C:?, various relation types
+3. **Scoring** (5+ tests): candidate ranking, confidence
+4. **Validation** (5+ tests): invalid input, no solution
+
+**Acceptance Criteria:**
+- [ ] 35+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <2 seconds
+
+---
+
+### 175. Unit Tests for query/ranking.py (25% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_query_ranking.py` (new), `cortical/query/ranking.py`
+**Effort:** Medium
+**Depends:** ~~150~~
+
+**Problem:** ranking.py has 25% coverage. Multi-stage ranking partially tested.
+
+**Testable Pure Functions:**
+- `multi_stage_rank()` - main ranking entry
+- `_initial_rank()` - first-pass ranking
+- `_rerank_with_context()` - context-aware reranking
+- `_apply_diversity()` - diversity boosting
+- `_normalize_scores()` - score normalization
+
+**Test Categories:**
+1. **Initial Ranking** (10+ tests): TF-IDF, PageRank weights
+2. **Reranking** (10+ tests): context signals, boosts
+3. **Diversity** (5+ tests): diversity calculation, application
+4. **Normalization** (5+ tests): score ranges, edge cases
+
+**Acceptance Criteria:**
+- [ ] 30+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <2 seconds
+
+---
+
+### 176. Unit Tests for analysis.py (16% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_analysis_algorithms.py` (new), `cortical/analysis.py`
+**Effort:** Large
+**Depends:** ~~150~~
+
+**Problem:** analysis.py has 16% coverage. Core algorithms need comprehensive testing.
+
+**Strategy:** Extract and test pure algorithm cores:
+- `_pagerank_iteration()` - single PageRank iteration
+- `_louvain_phase1()` - local modularity optimization
+- `_louvain_phase2()` - network aggregation
+- `_compute_modularity()` - modularity calculation
+- `_compute_silhouette()` - silhouette calculation
+- `_tfidf_score()` - TF-IDF scoring formula
+
+**Test Categories:**
+1. **PageRank** (15+ tests): convergence, damping, edge cases
+2. **TF-IDF** (10+ tests): scoring, IDF, normalization
+3. **Louvain** (15+ tests): phases, resolution, determinism
+4. **Metrics** (10+ tests): modularity, silhouette, balance
+
+**Acceptance Criteria:**
+- [ ] 50+ unit tests
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <5 seconds
+
+---
+
+### 177. Unit Tests for semantics.py (24% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_semantics.py` (extend existing), `cortical/semantics.py`
+**Effort:** Medium
+**Depends:** ~~150~~
+
+**Problem:** semantics.py has 24% coverage (48 tests exist). Need comprehensive coverage.
+
+**Additional Tests Needed:**
+1. **Pattern Extraction** (15+ tests): all pattern types, edge cases
+2. **Relation Building** (15+ tests): hierarchy construction, retrofitting
+3. **Similarity** (10+ tests): context similarity, thresholds
+4. **Integration** (10+ tests): full extraction pipeline
+
+**Acceptance Criteria:**
+- [ ] 50+ total unit tests (48 existing + new)
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <3 seconds
+
+---
+
+### 178. Unit Tests for persistence.py (18% → 90%)
+
+**Meta:** `status:pending` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/test_persistence.py` (extend existing), `cortical/persistence.py`
+**Effort:** Medium
+**Depends:** ~~150~~
+
+**Problem:** persistence.py has 18% coverage (36 tests exist). Need comprehensive coverage.
+
+**Additional Tests Needed:**
+1. **Full Serialization** (15+ tests): processor state, layers, connections
+2. **Export Formats** (10+ tests): JSON, GraphML, adjacency
+3. **Import/Load** (10+ tests): version migration, backward compat
+4. **Edge Cases** (10+ tests): large state, special values
+
+**Acceptance Criteria:**
+- [ ] 45+ total unit tests (36 existing + new)
+- [ ] Coverage ≥ 90%
+- [ ] Tests run in <3 seconds
 
 ---
 
@@ -2037,7 +2253,7 @@ user outcomes, catching the kinds of issues discovered during dog-fooding.
 
 | Category | Pending | Description |
 |----------|---------|-------------|
-| UnitTest | 8 | Unit test coverage initiative (#151-158) |
+| UnitTest | 20 | Unit test coverage initiative (#159-178) - Target 90% |
 | Arch | 6 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
 | CodeQual | 2 | Code quality improvements (#98, 99) |
 | Testing | 4 | Test coverage and performance (#102, 129, 148, 149) |
@@ -2049,7 +2265,7 @@ user outcomes, catching the kinds of issues discovered during dog-fooding.
 | Showcase | 1 | In progress (#87) |
 | Deferred | 7 | Low priority or superseded |
 
-*Updated 2025-12-12 - Added unit test coverage initiative (#150-158)*
+*Updated 2025-12-12 - Comprehensive unit test coverage initiative (#159-178) targeting 90% coverage from unit tests alone*
 
 ---
 
