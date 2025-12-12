@@ -1,0 +1,315 @@
+"""
+Document Search Module
+=====================
+
+Functions for searching and retrieving documents from the corpus.
+
+This module provides:
+- Basic document search using TF-IDF scoring
+- Fast document search with candidate filtering
+- Pre-built search index for repeated queries
+- Spreading activation search
+- Related document discovery
+"""
+
+from typing import Dict, List, Tuple, Optional
+from collections import defaultdict
+
+from ..layers import CorticalLayer, HierarchicalLayer
+from ..tokenizer import Tokenizer
+from ..code_concepts import get_related_terms
+
+from .expansion import expand_query, get_expanded_query_terms
+
+
+def find_documents_for_query(
+    query_text: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    tokenizer: Tokenizer,
+    top_n: int = 5,
+    use_expansion: bool = True,
+    semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
+    use_semantic: bool = True
+) -> List[Tuple[str, float]]:
+    """
+    Find documents most relevant to a query using TF-IDF and optional expansion.
+
+    Args:
+        query_text: Search query
+        layers: Dictionary of layers
+        tokenizer: Tokenizer instance
+        top_n: Number of documents to return
+        use_expansion: Whether to expand query terms using lateral connections
+        semantic_relations: Optional list of semantic relations for expansion
+        use_semantic: Whether to use semantic relations for expansion (if available)
+
+    Returns:
+        List of (doc_id, score) tuples ranked by relevance
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+
+    query_terms = get_expanded_query_terms(
+        query_text, layers, tokenizer,
+        use_expansion=use_expansion,
+        semantic_relations=semantic_relations,
+        use_semantic=use_semantic
+    )
+
+    # Score each document
+    doc_scores: Dict[str, float] = defaultdict(float)
+
+    for term, term_weight in query_terms.items():
+        col = layer0.get_minicolumn(term)
+        if col:
+            for doc_id in col.document_ids:
+                tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
+                doc_scores[doc_id] += tfidf * term_weight
+
+    sorted_docs = sorted(doc_scores.items(), key=lambda x: -x[1])
+    return sorted_docs[:top_n]
+
+
+def fast_find_documents(
+    query_text: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    tokenizer: Tokenizer,
+    top_n: int = 5,
+    candidate_multiplier: int = 3,
+    use_code_concepts: bool = True
+) -> List[Tuple[str, float]]:
+    """
+    Fast document search using candidate filtering.
+
+    Optimizes search by:
+    1. Using set intersection to find candidate documents
+    2. Only scoring top candidates fully
+    3. Using code concept expansion for better recall
+
+    This is ~2-3x faster than full search on large corpora while
+    maintaining similar result quality.
+
+    Args:
+        query_text: Search query
+        layers: Dictionary of layers
+        tokenizer: Tokenizer instance
+        top_n: Number of results to return
+        candidate_multiplier: Multiplier for candidate set size
+        use_code_concepts: Whether to use code concept expansion
+
+    Returns:
+        List of (doc_id, score) tuples ranked by relevance
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+
+    # Tokenize query
+    tokens = tokenizer.tokenize(query_text)
+    if not tokens:
+        return []
+
+    # Phase 1: Find candidate documents (fast set operations)
+    # Get documents containing ANY query term
+    candidate_docs: Dict[str, int] = defaultdict(int)  # doc_id -> match count
+
+    for token in tokens:
+        col = layer0.get_minicolumn(token)
+        if col:
+            for doc_id in col.document_ids:
+                candidate_docs[doc_id] += 1
+
+    # If no candidates, try code concept expansion for recall
+    if not candidate_docs and use_code_concepts:
+        for token in tokens:
+            related = get_related_terms(token, max_terms=3)
+            for related_term in related:
+                col = layer0.get_minicolumn(related_term)
+                if col:
+                    for doc_id in col.document_ids:
+                        candidate_docs[doc_id] += 0.5  # Lower weight for expansion
+
+    if not candidate_docs:
+        return []
+
+    # Rank candidates by match count first (fast pre-filter)
+    sorted_candidates = sorted(
+        candidate_docs.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    # Take top N * multiplier candidates for full scoring
+    max_candidates = top_n * candidate_multiplier
+    top_candidates = sorted_candidates[:max_candidates]
+
+    # Phase 2: Full scoring only on top candidates
+    doc_scores: Dict[str, float] = {}
+
+    for doc_id, match_count in top_candidates:
+        score = 0.0
+        for token in tokens:
+            col = layer0.get_minicolumn(token)
+            if col and doc_id in col.document_ids:
+                tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
+                score += tfidf
+
+        # Boost by match coverage
+        coverage_boost = match_count / len(tokens)
+        doc_scores[doc_id] = score * (1 + 0.5 * coverage_boost)
+
+    # Return top results
+    sorted_docs = sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)
+    return sorted_docs[:top_n]
+
+
+def build_document_index(
+    layers: Dict[CorticalLayer, HierarchicalLayer]
+) -> Dict[str, Dict[str, float]]:
+    """
+    Build an optimized inverted index for fast querying.
+
+    Creates a term -> {doc_id: score} mapping that can be used
+    for fast set operations during search.
+
+    Args:
+        layers: Dictionary of layers
+
+    Returns:
+        Dict mapping terms to {doc_id: tfidf_score} dicts
+    """
+    layer0 = layers.get(CorticalLayer.TOKENS)
+    if not layer0:
+        return {}
+
+    index: Dict[str, Dict[str, float]] = {}
+
+    for col in layer0.minicolumns.values():
+        term = col.content
+        term_index: Dict[str, float] = {}
+
+        for doc_id in col.document_ids:
+            tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
+            term_index[doc_id] = tfidf
+
+        if term_index:
+            index[term] = term_index
+
+    return index
+
+
+def search_with_index(
+    query_text: str,
+    index: Dict[str, Dict[str, float]],
+    tokenizer: Tokenizer,
+    top_n: int = 5
+) -> List[Tuple[str, float]]:
+    """
+    Search using a pre-built inverted index.
+
+    This is the fastest search method when the index is cached.
+
+    Args:
+        query_text: Search query
+        index: Pre-built index from build_document_index()
+        tokenizer: Tokenizer instance
+        top_n: Number of results to return
+
+    Returns:
+        List of (doc_id, score) tuples ranked by relevance
+    """
+    tokens = tokenizer.tokenize(query_text)
+    if not tokens:
+        return []
+
+    doc_scores: Dict[str, float] = defaultdict(float)
+
+    for token in tokens:
+        if token in index:
+            for doc_id, score in index[token].items():
+                doc_scores[doc_id] += score
+
+    sorted_docs = sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)
+    return sorted_docs[:top_n]
+
+
+def query_with_spreading_activation(
+    query_text: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    tokenizer: Tokenizer,
+    top_n: int = 10,
+    max_expansions: int = 8
+) -> List[Tuple[str, float]]:
+    """
+    Query with automatic expansion using spreading activation.
+
+    This is like the brain's spreading activation during memory retrieval:
+    a cue activates not just direct matches but semantically related concepts.
+
+    Args:
+        query_text: Search query
+        layers: Dictionary of layers
+        tokenizer: Tokenizer instance
+        top_n: Number of results to return
+        max_expansions: How many expansion terms to add
+
+    Returns:
+        List of (concept, score) tuples ranked by relevance
+    """
+    expanded_terms = expand_query(
+        query_text, layers, tokenizer,
+        max_expansions=max_expansions
+    )
+
+    if not expanded_terms:
+        return []
+
+    layer0 = layers[CorticalLayer.TOKENS]
+    activated: Dict[str, float] = {}
+
+    # Activate based on expanded query
+    for term, term_weight in expanded_terms.items():
+        col = layer0.get_minicolumn(term)
+        if col:
+            # Direct activation
+            score = col.pagerank * col.activation * term_weight
+            activated[col.content] = activated.get(col.content, 0) + score
+
+            # Spread to neighbors using O(1) ID lookup
+            for neighbor_id, conn_weight in col.lateral_connections.items():
+                neighbor = layer0.get_by_id(neighbor_id)
+                if neighbor:
+                    spread_score = neighbor.pagerank * conn_weight * term_weight * 0.3
+                    activated[neighbor.content] = activated.get(neighbor.content, 0) + spread_score
+
+    sorted_concepts = sorted(activated.items(), key=lambda x: -x[1])
+    return sorted_concepts[:top_n]
+
+
+def find_related_documents(
+    doc_id: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer]
+) -> List[Tuple[str, float]]:
+    """
+    Find documents related to a given document via lateral connections.
+
+    Args:
+        doc_id: Source document ID
+        layers: Dictionary of layers
+
+    Returns:
+        List of (doc_id, weight) tuples for related documents
+    """
+    layer3 = layers.get(CorticalLayer.DOCUMENTS)
+    if not layer3:
+        return []
+
+    col = layer3.get_minicolumn(doc_id)
+    if not col:
+        return []
+
+    related = []
+    for neighbor_id, weight in col.lateral_connections.items():
+        # Use O(1) ID lookup instead of linear search
+        neighbor = layer3.get_by_id(neighbor_id)
+        if neighbor:
+            related.append((neighbor.content, weight))
+
+    return sorted(related, key=lambda x: -x[1])

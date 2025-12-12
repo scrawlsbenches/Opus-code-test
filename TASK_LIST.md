@@ -2,9 +2,9 @@
 
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
-**Last Updated:** 2025-12-11
-**Pending Tasks:** 34
-**Completed Tasks:** 90+ (see archive)
+**Last Updated:** 2025-12-12
+**Pending Tasks:** 33
+**Completed Tasks:** 91+ (see archive)
 
 ---
 
@@ -18,9 +18,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 ### 🟠 High (Do This Week)
 
-| # | Task | Category | Depends | Effort |
-|---|------|----------|---------|--------|
-| 94 | Split query.py into focused modules | Arch | - | Large |
+*All high-priority tasks completed!*
 
 ### 🟡 Medium (Do This Month)
 
@@ -92,6 +90,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 94 | Split query.py into focused modules | 2025-12-12 | 8 modules: expansion, search, passages, chunking, intent, definitions, ranking, analogy |
 | 97 | Integrate CorticalConfig into processor | 2025-12-11 | Config stored on processor, used in method defaults, saved/loaded |
 | 127 | Create cluster coverage evaluation script | 2025-12-11 | scripts/evaluate_cluster.py with 24 tests |
 | 125 | Add clustering quality metrics (modularity, silhouette) | 2025-12-11 | compute_clustering_quality() in analysis.py, showcase display |
