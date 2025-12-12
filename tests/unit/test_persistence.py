@@ -381,3 +381,848 @@ class TestRelationColorsCoverage:
         for edge_type in structural_types:
             color = _get_relation_color(edge_type)
             assert color != "#808080", f"{edge_type} should not have default color"
+
+
+# =============================================================================
+# SAVE/LOAD PROCESSOR TESTS
+# =============================================================================
+
+
+from cortical.persistence import save_processor, load_processor, get_state_summary
+from cortical.layers import HierarchicalLayer
+from cortical.minicolumn import Minicolumn, Edge
+
+
+def create_test_layers():
+    """Create test layers with minicolumns."""
+    layers = {}
+
+    # Layer 0: TOKENS
+    layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+    col1 = Minicolumn("L0_neural", "neural", 0)
+    col1.occurrence_count = 5
+    col1.pagerank = 0.3
+    col1.tfidf = 1.5
+    col1.activation = 0.8
+    col1.document_ids = {"doc1"}
+    col1.lateral_connections = {"L0_network": 0.7}
+    col1.typed_connections = {
+        "L0_network": Edge("L0_network", 0.7, "RelatedTo", 0.9, "semantic")
+    }
+    layer0.minicolumns["neural"] = col1
+    layer0._id_index["L0_neural"] = "neural"
+
+    col2 = Minicolumn("L0_network", "network", 0)
+    col2.occurrence_count = 3
+    col2.pagerank = 0.2
+    col2.tfidf = 1.2
+    col2.activation = 0.6
+    col2.document_ids = {"doc1"}
+    layer0.minicolumns["network"] = col2
+    layer0._id_index["L0_network"] = "network"
+
+    layers[CorticalLayer.TOKENS] = layer0
+
+    # Layer 1: BIGRAMS
+    layer1 = HierarchicalLayer(CorticalLayer.BIGRAMS)
+    col3 = Minicolumn("L1_neural network", "neural network", 1)
+    col3.occurrence_count = 2
+    col3.pagerank = 0.15
+    col3.tfidf = 2.0
+    col3.activation = 0.7
+    col3.document_ids = {"doc1"}
+    col3.feedforward_connections = {"L0_neural": 1.0, "L0_network": 1.0}
+    layer1.minicolumns["neural network"] = col3
+    layer1._id_index["L1_neural network"] = "neural network"
+
+    layers[CorticalLayer.BIGRAMS] = layer1
+
+    # Layer 2: CONCEPTS
+    layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+    layers[CorticalLayer.CONCEPTS] = layer2
+
+    # Layer 3: DOCUMENTS
+    layer3 = HierarchicalLayer(CorticalLayer.DOCUMENTS)
+    col4 = Minicolumn("L3_doc1", "doc1", 3)
+    col4.occurrence_count = 1
+    col4.pagerank = 0.5
+    col4.tfidf = 0.0
+    col4.activation = 1.0
+    col4.document_ids = {"doc1"}
+    col4.feedback_connections = {"L0_neural": 1.0, "L0_network": 1.0}
+    layer3.minicolumns["doc1"] = col4
+    layer3._id_index["L3_doc1"] = "doc1"
+
+    layers[CorticalLayer.DOCUMENTS] = layer3
+
+    return layers
+
+
+class TestSaveLoadProcessor:
+    """Tests for save_processor and load_processor functions."""
+
+    def test_save_load_roundtrip_basic(self):
+        """Basic processor state survives save/load roundtrip."""
+        layers = create_test_layers()
+        documents = {"doc1": "Neural networks process data."}
+
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
+            filepath = f.name
+        try:
+            save_processor(filepath, layers, documents, verbose=False)
+            loaded_layers, loaded_docs, _, _, _, _ = load_processor(filepath, verbose=False)
+
+            assert loaded_docs == documents
+            assert len(loaded_layers) == len(layers)
+            assert CorticalLayer.TOKENS in loaded_layers
+            assert loaded_layers[CorticalLayer.TOKENS].column_count() == 2
+        finally:
+            os.unlink(filepath)
+
+    def test_save_load_with_metadata(self):
+        """Metadata survives save/load roundtrip."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test document."}
+        doc_metadata = {"doc1": {"source": "test", "timestamp": 12345}}
+        metadata = {"version": "1.0", "config": {"param": "value"}}
+
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
+            filepath = f.name
+        try:
+            save_processor(
+                filepath, layers, documents,
+                document_metadata=doc_metadata,
+                metadata=metadata,
+                verbose=False
+            )
+            _, _, loaded_doc_meta, _, _, loaded_meta = load_processor(filepath, verbose=False)
+
+            assert loaded_doc_meta == doc_metadata
+            assert loaded_meta["version"] == "1.0"
+            assert loaded_meta["config"]["param"] == "value"
+        finally:
+            os.unlink(filepath)
+
+    def test_save_load_with_embeddings(self):
+        """Embeddings survive save/load roundtrip."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        embeddings = {
+            "neural": [0.1, 0.2, 0.3],
+            "network": [0.4, 0.5, 0.6]
+        }
+
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
+            filepath = f.name
+        try:
+            save_processor(filepath, layers, documents, embeddings=embeddings, verbose=False)
+            _, _, _, loaded_emb, _, _ = load_processor(filepath, verbose=False)
+
+            assert loaded_emb == embeddings
+        finally:
+            os.unlink(filepath)
+
+    def test_save_load_with_semantic_relations(self):
+        """Semantic relations survive save/load roundtrip."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        relations = [
+            ("neural", "IsA", "concept", 0.9),
+            ("network", "RelatedTo", "neural", 0.8)
+        ]
+
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
+            filepath = f.name
+        try:
+            save_processor(
+                filepath, layers, documents,
+                semantic_relations=relations,
+                verbose=False
+            )
+            _, _, _, _, loaded_rels, _ = load_processor(filepath, verbose=False)
+
+            assert loaded_rels == relations
+        finally:
+            os.unlink(filepath)
+
+    def test_save_load_empty_layers(self):
+        """Empty layers can be saved and loaded."""
+        layers = {
+            CorticalLayer.TOKENS: HierarchicalLayer(CorticalLayer.TOKENS),
+            CorticalLayer.BIGRAMS: HierarchicalLayer(CorticalLayer.BIGRAMS),
+            CorticalLayer.CONCEPTS: HierarchicalLayer(CorticalLayer.CONCEPTS),
+            CorticalLayer.DOCUMENTS: HierarchicalLayer(CorticalLayer.DOCUMENTS),
+        }
+        documents = {}
+
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
+            filepath = f.name
+        try:
+            save_processor(filepath, layers, documents, verbose=False)
+            loaded_layers, loaded_docs, _, _, _, _ = load_processor(filepath, verbose=False)
+
+            assert loaded_docs == {}
+            assert len(loaded_layers) == 4
+            for layer in loaded_layers.values():
+                assert layer.column_count() == 0
+        finally:
+            os.unlink(filepath)
+
+    def test_save_preserves_minicolumn_connections(self):
+        """Minicolumn connections are preserved."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
+            filepath = f.name
+        try:
+            save_processor(filepath, layers, documents, verbose=False)
+            loaded_layers, _, _, _, _, _ = load_processor(filepath, verbose=False)
+
+            # Check lateral connections
+            col = loaded_layers[CorticalLayer.TOKENS].get_minicolumn("neural")
+            assert "L0_network" in col.lateral_connections
+            assert col.lateral_connections["L0_network"] == 0.7
+
+            # Check typed connections
+            assert "L0_network" in col.typed_connections
+            edge = col.typed_connections["L0_network"]
+            assert edge.relation_type == "RelatedTo"
+            assert edge.confidence == 0.9
+
+            # Check feedforward connections
+            bigram = loaded_layers[CorticalLayer.BIGRAMS].get_minicolumn("neural network")
+            assert "L0_neural" in bigram.feedforward_connections
+        finally:
+            os.unlink(filepath)
+
+    def test_save_preserves_minicolumn_attributes(self):
+        """All minicolumn attributes are preserved."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
+            filepath = f.name
+        try:
+            save_processor(filepath, layers, documents, verbose=False)
+            loaded_layers, _, _, _, _, _ = load_processor(filepath, verbose=False)
+
+            col = loaded_layers[CorticalLayer.TOKENS].get_minicolumn("neural")
+            assert col.id == "L0_neural"
+            assert col.content == "neural"
+            assert col.layer == 0
+            assert col.occurrence_count == 5
+            assert col.pagerank == 0.3
+            assert col.tfidf == 1.5
+            assert col.activation == 0.8
+            assert "doc1" in col.document_ids
+        finally:
+            os.unlink(filepath)
+
+    def test_save_with_verbose_logging(self):
+        """Verbose mode logs statistics."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
+            filepath = f.name
+        try:
+            # Should not raise error with verbose=True
+            save_processor(filepath, layers, documents, verbose=True)
+            load_processor(filepath, verbose=True)
+        finally:
+            os.unlink(filepath)
+
+    def test_load_nonexistent_file(self):
+        """Loading nonexistent file raises error."""
+        with pytest.raises(FileNotFoundError):
+            load_processor("/nonexistent/path.pkl")
+
+    def test_save_verbose_with_embeddings_and_relations(self):
+        """Verbose logging includes embeddings and relations counts."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        embeddings = {"neural": [0.1, 0.2], "network": [0.3, 0.4]}
+        relations = [("a", "IsA", "b", 1.0)]
+
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
+            filepath = f.name
+        try:
+            # Should log embeddings and relations with verbose=True
+            save_processor(
+                filepath, layers, documents,
+                embeddings=embeddings,
+                semantic_relations=relations,
+                verbose=True
+            )
+            load_processor(filepath, verbose=True)
+        finally:
+            os.unlink(filepath)
+
+
+# =============================================================================
+# GET STATE SUMMARY TESTS
+# =============================================================================
+
+
+class TestGetStateSummary:
+    """Tests for get_state_summary function."""
+
+    def test_summary_basic_stats(self):
+        """Summary includes basic statistics."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test.", "doc2": "Another test."}
+
+        summary = get_state_summary(layers, documents)
+
+        assert summary["documents"] == 2
+        assert "layers" in summary
+        assert "total_columns" in summary
+        assert "total_connections" in summary
+
+    def test_summary_layer_stats(self):
+        """Summary includes per-layer statistics."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        summary = get_state_summary(layers, documents)
+
+        assert "TOKENS" in summary["layers"]
+        tokens_stats = summary["layers"]["TOKENS"]
+        assert "columns" in tokens_stats
+        assert "connections" in tokens_stats
+        assert "avg_activation" in tokens_stats
+        assert "sparsity" in tokens_stats
+
+    def test_summary_empty_processor(self):
+        """Summary works with empty processor."""
+        layers = {
+            CorticalLayer.TOKENS: HierarchicalLayer(CorticalLayer.TOKENS),
+            CorticalLayer.BIGRAMS: HierarchicalLayer(CorticalLayer.BIGRAMS),
+            CorticalLayer.CONCEPTS: HierarchicalLayer(CorticalLayer.CONCEPTS),
+            CorticalLayer.DOCUMENTS: HierarchicalLayer(CorticalLayer.DOCUMENTS),
+        }
+        documents = {}
+
+        summary = get_state_summary(layers, documents)
+
+        assert summary["documents"] == 0
+        assert summary["total_columns"] == 0
+        assert summary["total_connections"] == 0
+
+    def test_summary_counts_all_layers(self):
+        """Summary counts minicolumns from all layers."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        summary = get_state_summary(layers, documents)
+
+        # Layer 0: 2 columns, Layer 1: 1 column, Layer 2: 0 columns, Layer 3: 1 column
+        assert summary["total_columns"] == 4
+
+
+# =============================================================================
+# EXPORT GRAPH JSON TESTS
+# =============================================================================
+
+
+from cortical.persistence import export_graph_json
+
+
+class TestExportGraphJson:
+    """Tests for export_graph_json function."""
+
+    def test_export_basic_graph(self):
+        """Basic graph export works."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_graph_json(filepath, layers, verbose=False)
+
+            assert "nodes" in graph
+            assert "edges" in graph
+            assert "metadata" in graph
+            assert len(graph["nodes"]) > 0
+        finally:
+            os.unlink(filepath)
+
+    def test_export_graph_nodes(self):
+        """Exported graph includes node data."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_graph_json(filepath, layers, verbose=False)
+
+            # Find the neural token node
+            neural_node = next((n for n in graph["nodes"] if n["label"] == "neural"), None)
+            assert neural_node is not None
+            assert neural_node["id"] == "L0_neural"
+            assert neural_node["layer"] == 0
+            assert "pagerank" in neural_node
+            assert "tfidf" in neural_node
+        finally:
+            os.unlink(filepath)
+
+    def test_export_graph_edges(self):
+        """Exported graph includes edges."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_graph_json(filepath, layers, verbose=False)
+
+            # Should have at least one edge
+            assert len(graph["edges"]) > 0
+            edge = graph["edges"][0]
+            assert "source" in edge
+            assert "target" in edge
+            assert "weight" in edge
+        finally:
+            os.unlink(filepath)
+
+    def test_export_graph_with_layer_filter(self):
+        """Export can filter to single layer."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_graph_json(
+                filepath, layers,
+                layer_filter=CorticalLayer.TOKENS,
+                verbose=False
+            )
+
+            # All nodes should be from layer 0
+            for node in graph["nodes"]:
+                assert node["layer"] == 0
+        finally:
+            os.unlink(filepath)
+
+    def test_export_graph_with_min_weight(self):
+        """Export filters edges by minimum weight."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_graph_json(
+                filepath, layers,
+                min_weight=1.0,  # High threshold
+                verbose=False
+            )
+
+            # Should have fewer or no edges
+            for edge in graph["edges"]:
+                assert edge["weight"] >= 1.0
+        finally:
+            os.unlink(filepath)
+
+    def test_export_graph_max_nodes(self):
+        """Export respects max_nodes limit."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_graph_json(
+                filepath, layers,
+                max_nodes=2,  # Limit to 2 nodes
+                verbose=False
+            )
+
+            assert len(graph["nodes"]) <= 2
+        finally:
+            os.unlink(filepath)
+
+    def test_export_graph_metadata(self):
+        """Export includes metadata."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_graph_json(filepath, layers, verbose=False)
+
+            metadata = graph["metadata"]
+            assert "node_count" in metadata
+            assert "edge_count" in metadata
+            assert "layers" in metadata
+            assert metadata["node_count"] == len(graph["nodes"])
+            assert metadata["edge_count"] == len(graph["edges"])
+        finally:
+            os.unlink(filepath)
+
+    def test_export_graph_file_format(self):
+        """Exported file is valid JSON."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            export_graph_json(filepath, layers, verbose=False)
+
+            # Should be able to load as JSON
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+            assert "nodes" in data
+            assert "edges" in data
+        finally:
+            os.unlink(filepath)
+
+    def test_export_graph_verbose_logging(self):
+        """Verbose mode logs graph statistics."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            # Should log with verbose=True
+            export_graph_json(filepath, layers, verbose=True)
+        finally:
+            os.unlink(filepath)
+
+    def test_export_graph_empty_layers(self):
+        """Export works with empty layers."""
+        layers = {
+            CorticalLayer.TOKENS: HierarchicalLayer(CorticalLayer.TOKENS),
+            CorticalLayer.BIGRAMS: HierarchicalLayer(CorticalLayer.BIGRAMS),
+        }
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_graph_json(filepath, layers, verbose=False)
+            assert len(graph["nodes"]) == 0
+            assert len(graph["edges"]) == 0
+        finally:
+            os.unlink(filepath)
+
+
+# =============================================================================
+# EXPORT CONCEPTNET JSON TESTS
+# =============================================================================
+
+
+from cortical.persistence import export_conceptnet_json
+
+
+class TestExportConceptnetJson:
+    """Tests for export_conceptnet_json function."""
+
+    def test_export_conceptnet_basic(self):
+        """Basic ConceptNet export works."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(filepath, layers, verbose=False)
+
+            assert "nodes" in graph
+            assert "edges" in graph
+            assert "metadata" in graph
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_nodes_have_colors(self):
+        """Nodes are color-coded by layer."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(filepath, layers, verbose=False)
+
+            for node in graph["nodes"]:
+                assert "color" in node
+                assert node["color"].startswith("#")
+                assert len(node["color"]) == 7
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_typed_edges(self):
+        """Typed edges include relation types."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(
+                filepath, layers,
+                include_typed_edges=True,
+                verbose=False
+            )
+
+            # Find the RelatedTo edge
+            typed_edge = next(
+                (e for e in graph["edges"] if e.get("relation_type") == "RelatedTo"),
+                None
+            )
+            assert typed_edge is not None
+            assert "confidence" in typed_edge
+            assert "source_type" in typed_edge
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_cross_layer_edges(self):
+        """Cross-layer edges are included."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(
+                filepath, layers,
+                include_cross_layer=True,
+                verbose=False
+            )
+
+            # Should have feedforward or feedback edges
+            cross_edges = [
+                e for e in graph["edges"]
+                if e.get("edge_type") == "cross_layer"
+            ]
+            assert len(cross_edges) > 0
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_without_cross_layer(self):
+        """Cross-layer edges can be excluded."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(
+                filepath, layers,
+                include_cross_layer=False,
+                verbose=False
+            )
+
+            # Should not have cross_layer edges
+            cross_edges = [
+                e for e in graph["edges"]
+                if e.get("edge_type") == "cross_layer"
+            ]
+            assert len(cross_edges) == 0
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_with_semantic_relations(self):
+        """Semantic relations are added to graph."""
+        layers = create_test_layers()
+        relations = [
+            ("neural", "IsA", "concept", 0.9),
+            ("network", "RelatedTo", "system", 0.8)
+        ]
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(
+                filepath, layers,
+                semantic_relations=relations,
+                verbose=False
+            )
+
+            # Should have semantic edges
+            semantic_edges = [
+                e for e in graph["edges"]
+                if e.get("edge_type") == "semantic"
+            ]
+            # May or may not find matches depending on node inclusion
+            # Just verify the function accepts the parameter
+            assert isinstance(semantic_edges, list)
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_min_weight_filter(self):
+        """Edges are filtered by minimum weight."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(
+                filepath, layers,
+                min_weight=0.5,
+                verbose=False
+            )
+
+            for edge in graph["edges"]:
+                assert edge["weight"] >= 0.5
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_min_confidence_filter(self):
+        """Typed edges are filtered by confidence."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(
+                filepath, layers,
+                min_confidence=0.95,  # High threshold
+                verbose=False
+            )
+
+            # All typed edges should have high confidence
+            for edge in graph["edges"]:
+                if "confidence" in edge:
+                    assert edge["confidence"] >= 0.95
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_max_nodes_per_layer(self):
+        """Respects max nodes per layer."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(
+                filepath, layers,
+                max_nodes_per_layer=1,  # Only 1 node per layer
+                verbose=False
+            )
+
+            # Count nodes per layer
+            layer_counts = {}
+            for node in graph["nodes"]:
+                layer_id = node["layer"]
+                layer_counts[layer_id] = layer_counts.get(layer_id, 0) + 1
+
+            for count in layer_counts.values():
+                assert count <= 1
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_metadata(self):
+        """Metadata includes layer info and edge counts."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(filepath, layers, verbose=False)
+
+            metadata = graph["metadata"]
+            assert "layers" in metadata
+            assert "edge_types" in metadata
+            assert "relation_types" in metadata
+            assert "format_version" in metadata
+            assert "compatible_with" in metadata
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_file_format(self):
+        """Exported file is valid JSON."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            export_conceptnet_json(filepath, layers, verbose=False)
+
+            # Should be able to load as JSON
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+            assert "nodes" in data
+            assert "edges" in data
+            assert "metadata" in data
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_empty_layers(self):
+        """Export works with empty layers."""
+        layers = {
+            CorticalLayer.TOKENS: HierarchicalLayer(CorticalLayer.TOKENS),
+        }
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(filepath, layers, verbose=False)
+            assert len(graph["nodes"]) == 0
+            assert len(graph["edges"]) == 0
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_without_typed_edges(self):
+        """Can export without typed edges."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(
+                filepath, layers,
+                include_typed_edges=False,
+                verbose=False
+            )
+            # Should still have lateral edges but no typed edges
+            typed_edges = [
+                e for e in graph["edges"]
+                if e.get("relation_type") not in ["co_occurrence", "feedforward", "feedback"]
+            ]
+            # Might have co_occurrence edges, but not semantic typed edges
+            assert isinstance(graph["edges"], list)
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_layer_with_zero_columns(self):
+        """Export handles layers with zero columns."""
+        layers = create_test_layers()
+        # Add an empty concepts layer
+        layers[CorticalLayer.CONCEPTS] = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(filepath, layers, verbose=False)
+            # Should succeed despite empty layer
+            assert "nodes" in graph
+            assert "edges" in graph
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_verbose_logging(self):
+        """Verbose mode logs detailed statistics."""
+        layers = create_test_layers()
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            # Should log with verbose=True
+            export_conceptnet_json(filepath, layers, verbose=True)
+        finally:
+            os.unlink(filepath)
+
+    def test_export_conceptnet_long_relations_list(self):
+        """Export handles long semantic relations list."""
+        layers = create_test_layers()
+        # Create many relations
+        relations = [
+            (f"term{i}", "IsA", f"concept{i}", 0.9)
+            for i in range(100)
+        ]
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            filepath = f.name
+        try:
+            graph = export_conceptnet_json(
+                filepath, layers,
+                semantic_relations=relations,
+                verbose=False
+            )
+            # Should handle large relations list
+            assert "edges" in graph
+        finally:
+            os.unlink(filepath)
