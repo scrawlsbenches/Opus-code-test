@@ -2,9 +2,13 @@ name: CI - Coverage Check and Showcase
 
 on:
   push:
-    branches: [ main, master, 'claude/**' ]
+    branches: [ main, 'claude/**' ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test-and-showcase:
