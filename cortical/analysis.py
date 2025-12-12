@@ -21,6 +21,103 @@ from .minicolumn import Minicolumn
 from .constants import RELATION_WEIGHTS
 
 
+# =============================================================================
+# SPARSE MATRIX UTILITIES (Zero-dependency sparse matrix for bigram connections)
+# =============================================================================
+
+
+class SparseMatrix:
+    """
+    Simple sparse matrix implementation using dictionary of keys (DOK) format.
+
+    This is a zero-dependency alternative to scipy.sparse for the specific
+    use case of computing bigram co-occurrence matrices.
+
+    Attributes:
+        rows: Number of rows
+        cols: Number of columns
+        data: Dictionary mapping (row, col) to value
+    """
+
+    def __init__(self, rows: int, cols: int):
+        """
+        Initialize sparse matrix.
+
+        Args:
+            rows: Number of rows
+            cols: Number of columns
+        """
+        self.rows = rows
+        self.cols = cols
+        self.data: Dict[Tuple[int, int], float] = {}
+
+    def set(self, row: int, col: int, value: float) -> None:
+        """Set value at (row, col)."""
+        if value != 0:
+            self.data[(row, col)] = value
+        elif (row, col) in self.data:
+            del self.data[(row, col)]
+
+    def get(self, row: int, col: int) -> float:
+        """Get value at (row, col)."""
+        return self.data.get((row, col), 0.0)
+
+    def multiply_transpose(self) -> 'SparseMatrix':
+        """
+        Multiply this matrix by its transpose: M * M^T
+
+        For a document-term matrix D (docs x terms), D * D^T gives
+        a term-term co-occurrence matrix showing which terms appear
+        in the same documents.
+
+        Returns:
+            SparseMatrix of shape (cols, cols)
+        """
+        result = SparseMatrix(self.cols, self.cols)
+
+        # Group by column for efficient computation
+        # col_entries[col] = [(row, value), ...]
+        col_entries: Dict[int, List[Tuple[int, float]]] = defaultdict(list)
+        for (row, col), value in self.data.items():
+            col_entries[col].append((row, value))
+
+        # For each pair of columns, compute dot product
+        cols_list = sorted(col_entries.keys())
+        for i, col1 in enumerate(cols_list):
+            entries1 = col_entries[col1]
+
+            # Diagonal element (col1 with itself)
+            diagonal = sum(val * val for _, val in entries1)
+            result.set(col1, col1, diagonal)
+
+            # Off-diagonal elements (col1 with col2)
+            for col2 in cols_list[i+1:]:
+                entries2 = col_entries[col2]
+
+                # Compute dot product of columns col1 and col2
+                # Both columns must have non-zero entries in the same row
+                dict1 = {row: val for row, val in entries1}
+                dot_product = 0.0
+                for row, val2 in entries2:
+                    if row in dict1:
+                        dot_product += dict1[row] * val2
+
+                if dot_product != 0:
+                    result.set(col1, col2, dot_product)
+                    result.set(col2, col1, dot_product)  # Symmetric
+
+        return result
+
+    def get_nonzero(self) -> List[Tuple[int, int, float]]:
+        """
+        Get all non-zero entries.
+
+        Returns:
+            List of (row, col, value) tuples
+        """
+        return [(row, col, value) for (row, col), value in self.data.items()]
+
+
 def compute_pagerank(
     layer: HierarchicalLayer,
     damping: float = 0.85,
@@ -1357,39 +1454,80 @@ def compute_bigram_connections(
                         add_connection(b_left, b_right, chain_weight, 'chain')
 
     # 3. Connect bigrams that co-occur in the same documents
-    # Use inverted index for O(d * b²) instead of O(n²) where d=docs, b=bigrams per doc
-    doc_to_bigrams: Dict[str, List[Minicolumn]] = defaultdict(list)
-    for bigram in bigrams:
-        for doc_id in bigram.document_ids:
-            doc_to_bigrams[doc_id].append(bigram)
-
-    # Track pairs we've already processed to avoid duplicate work
-    cooccur_processed: Set[Tuple[str, str]] = set()
+    # Use sparse matrix multiplication for efficient co-occurrence computation
     skipped_large_docs = 0
 
-    for doc_id, doc_bigrams in doc_to_bigrams.items():
-        # Skip documents with too many bigrams to avoid O(n²) explosion
-        if len(doc_bigrams) > max_bigrams_per_doc:
+    # Build document-term matrix using sparse representation
+    # Create mappings: doc_id -> row index, bigram -> col index
+    doc_to_row: Dict[str, int] = {}
+    bigram_to_col: Dict[str, int] = {}
+
+    # Collect all documents first
+    all_docs: Set[str] = set()
+    for bigram in bigrams:
+        all_docs.update(bigram.document_ids)
+
+    # Assign row indices to documents (excluding large docs)
+    row_idx = 0
+    for doc_id in sorted(all_docs):
+        # Count bigrams in this doc
+        doc_bigram_count = sum(1 for b in bigrams if doc_id in b.document_ids)
+        if doc_bigram_count > max_bigrams_per_doc:
             skipped_large_docs += 1
             continue
+        doc_to_row[doc_id] = row_idx
+        row_idx += 1
 
-        # Only compare bigrams within the same document
-        for i, b1 in enumerate(doc_bigrams):
-            docs1 = b1.document_ids
-            for b2 in doc_bigrams[i+1:]:
-                # Skip if already processed this pair
-                pair_key = tuple(sorted([b1.id, b2.id]))
-                if pair_key in cooccur_processed:
-                    continue
-                cooccur_processed.add(pair_key)
+    # Assign column indices to bigrams
+    for col_idx, bigram in enumerate(bigrams):
+        bigram_to_col[bigram.id] = col_idx
 
+    # Build sparse document-term matrix
+    # Rows = documents, Cols = bigrams
+    # Entry [d, b] = 1 if bigram b appears in document d
+    if doc_to_row:  # Only if we have valid documents
+        doc_term_matrix = SparseMatrix(len(doc_to_row), len(bigrams))
+
+        for bigram in bigrams:
+            col_idx = bigram_to_col[bigram.id]
+            for doc_id in bigram.document_ids:
+                if doc_id in doc_to_row:  # Skip large docs
+                    row_idx = doc_to_row[doc_id]
+                    doc_term_matrix.set(row_idx, col_idx, 1.0)
+
+        # Compute bigram-bigram co-occurrence matrix: D^T * D
+        # Result[i, j] = number of shared documents between bigram i and bigram j
+        cooccur_matrix = doc_term_matrix.multiply_transpose()
+
+        # Create inverse mapping: col_idx -> bigram
+        col_to_bigram = {col_idx: bigram for bigram, col_idx in bigram_to_col.items()}
+
+        # Process co-occurrence matrix to create connections
+        for col1, col2, shared_count in cooccur_matrix.get_nonzero():
+            # Skip diagonal (bigram with itself)
+            if col1 == col2:
+                continue
+
+            # Skip if below threshold
+            if shared_count < min_shared_docs:
+                continue
+
+            # Get bigrams
+            bigram1_id = col_to_bigram[col1]
+            bigram2_id = col_to_bigram[col2]
+
+            # Find the actual minicolumn objects
+            b1 = layer1.get_by_id(bigram1_id)
+            b2 = layer1.get_by_id(bigram2_id)
+
+            if b1 and b2:
+                # Compute Jaccard similarity
+                docs1 = b1.document_ids
                 docs2 = b2.document_ids
                 shared_docs = docs1 & docs2
-                if len(shared_docs) >= min_shared_docs:
-                    # Weight by Jaccard similarity of document sets
-                    jaccard = len(shared_docs) / len(docs1 | docs2)
-                    weight = cooccurrence_weight * jaccard
-                    add_connection(b1, b2, weight, 'cooccurrence')
+                jaccard = len(shared_docs) / len(docs1 | docs2)
+                weight = cooccurrence_weight * jaccard
+                add_connection(b1, b2, weight, 'cooccurrence')
 
     return {
         'connections_created': len(connected_pairs),

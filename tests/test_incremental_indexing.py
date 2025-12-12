@@ -14,7 +14,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+# unittest.mock removed - using assertLogs for verbose tests
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -115,10 +115,12 @@ class TestRemoveDocument(unittest.TestCase):
         self.assertGreater(result['bigrams_affected'], 0)
 
     def test_remove_document_verbose(self):
-        """Test verbose mode prints output."""
-        with patch('builtins.print') as mock_print:
+        """Test verbose mode logs output."""
+        with self.assertLogs('cortical.processor', level='INFO') as cm:
             self.processor.remove_document("doc1", verbose=True)
-            mock_print.assert_called()
+        # Should have logged something about removing
+        output = '\n'.join(cm.output)
+        self.assertIn('Removing', output)
 
 
 class TestRemoveDocumentsBatch(unittest.TestCase):

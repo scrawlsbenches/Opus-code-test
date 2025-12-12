@@ -178,8 +178,8 @@ class TestSaveLoad(unittest.TestCase):
 
     def test_save_verbose_with_embeddings_and_relations(self):
         """Test save with verbose=True when embeddings and relations exist."""
-        import io
-        import sys
+        import logging
+        from io import StringIO
 
         processor = CorticalTextProcessor()
         processor.process_document("doc1", "Neural networks are computational models.")
@@ -191,9 +191,14 @@ class TestSaveLoad(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
 
-            # Capture stdout
-            captured = io.StringIO()
-            sys.stdout = captured
+            # Capture logging output
+            log_buffer = StringIO()
+            handler = logging.StreamHandler(log_buffer)
+            handler.setLevel(logging.INFO)
+            logger = logging.getLogger('cortical.persistence')
+            logger.addHandler(handler)
+            logger.setLevel(logging.INFO)
+
             try:
                 save_processor(
                     filepath, processor.layers, processor.documents,
@@ -201,9 +206,10 @@ class TestSaveLoad(unittest.TestCase):
                     processor.semantic_relations, verbose=True
                 )
             finally:
-                sys.stdout = sys.__stdout__
+                logger.removeHandler(handler)
+                logger.setLevel(logging.WARNING)
 
-            output = captured.getvalue()
+            output = log_buffer.getvalue()
             # Check verbose output mentions embeddings and relations
             self.assertIn("Saved processor", output)
             self.assertIn("embeddings", output)
@@ -211,8 +217,8 @@ class TestSaveLoad(unittest.TestCase):
 
     def test_load_verbose_with_embeddings_and_relations(self):
         """Test load with verbose=True when embeddings and relations exist."""
-        import io
-        import sys
+        import logging
+        from io import StringIO
 
         processor = CorticalTextProcessor()
         processor.process_document("doc1", "Neural networks are computational models.")
@@ -229,15 +235,21 @@ class TestSaveLoad(unittest.TestCase):
                 processor.semantic_relations, verbose=False
             )
 
-            # Capture stdout
-            captured = io.StringIO()
-            sys.stdout = captured
+            # Capture logging output
+            log_buffer = StringIO()
+            handler = logging.StreamHandler(log_buffer)
+            handler.setLevel(logging.INFO)
+            logger = logging.getLogger('cortical.persistence')
+            logger.addHandler(handler)
+            logger.setLevel(logging.INFO)
+
             try:
                 load_processor(filepath, verbose=True)
             finally:
-                sys.stdout = sys.__stdout__
+                logger.removeHandler(handler)
+                logger.setLevel(logging.WARNING)
 
-            output = captured.getvalue()
+            output = log_buffer.getvalue()
             # Check verbose output mentions embeddings and relations
             self.assertIn("Loaded processor", output)
             self.assertIn("embeddings", output)

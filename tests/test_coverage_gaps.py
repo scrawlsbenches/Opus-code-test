@@ -132,23 +132,17 @@ class TestProcessorEdgeCases(unittest.TestCase):
 
     def test_compute_importance_verbose(self):
         """Test compute_importance with verbose output."""
-        import io
-        import sys
+        import logging
 
         processor = CorticalTextProcessor()
         processor.process_document("doc1", "neural network deep learning models")
         processor.propagate_activation(iterations=3, verbose=False)
 
-        captured = io.StringIO()
-        old_stdout = sys.stdout
-        sys.stdout = captured
-        try:
+        with self.assertLogs('cortical.processor', level='INFO') as cm:
             processor.compute_importance(verbose=True)
-        finally:
-            sys.stdout = old_stdout
 
-        output = captured.getvalue()
-        # Should have printed something about PageRank
+        # Should have logged something about PageRank
+        output = '\n'.join(cm.output)
         self.assertIn('PageRank', output)
 
 
@@ -632,23 +626,15 @@ class TestVerboseOutputPaths(unittest.TestCase):
 
     def test_compute_all_verbose(self):
         """Test compute_all with verbose output."""
-        import io
-        import sys
-
         processor = CorticalTextProcessor()
         processor.process_document("doc1", "neural network learning models")
         processor.process_document("doc2", "deep learning neural algorithms")
 
-        captured = io.StringIO()
-        old_stdout = sys.stdout
-        sys.stdout = captured
-        try:
+        with self.assertLogs('cortical.processor', level='INFO') as cm:
             processor.compute_all(verbose=True)
-        finally:
-            sys.stdout = old_stdout
 
-        output = captured.getvalue()
         # Should have output from various phases
+        output = '\n'.join(cm.output)
         self.assertTrue(len(output) > 0)
 
     def test_export_graph_json(self):
@@ -866,24 +852,16 @@ class TestProcessorVerboseCoverage(unittest.TestCase):
 
     def test_add_documents_batch_verbose(self):
         """Test verbose output during batch document processing."""
-        import io
-        import sys
-
         processor = CorticalTextProcessor()
         docs = [
             ("doc1", "first document content", None),
             ("doc2", "second document content", None),
         ]
 
-        captured = io.StringIO()
-        old_stdout = sys.stdout
-        sys.stdout = captured
-        try:
+        with self.assertLogs('cortical.processor', level='INFO') as cm:
             processor.add_documents_batch(docs, verbose=True, recompute='full')
-        finally:
-            sys.stdout = old_stdout
 
-        output = captured.getvalue()
+        output = '\n'.join(cm.output)
         self.assertIn("Adding", output)
 
     def test_add_documents_batch_invalid_content(self):
@@ -897,44 +875,28 @@ class TestProcessorVerboseCoverage(unittest.TestCase):
 
     def test_compute_importance_verbose(self):
         """Test compute_importance with verbose output."""
-        import io
-        import sys
-
         processor = CorticalTextProcessor()
         processor.process_document("doc1", "neural network deep learning")
         processor.process_document("doc2", "machine learning models")
         processor.propagate_activation(iterations=3, verbose=False)
 
-        captured = io.StringIO()
-        old_stdout = sys.stdout
-        sys.stdout = captured
-        try:
+        with self.assertLogs('cortical.processor', level='INFO') as cm:
             processor.compute_importance(verbose=True)
-        finally:
-            sys.stdout = old_stdout
 
-        output = captured.getvalue()
+        output = '\n'.join(cm.output)
         self.assertIn("PageRank", output)
 
     def test_compute_semantic_importance_verbose(self):
         """Test semantic importance with verbose output."""
-        import io
-        import sys
-
         processor = CorticalTextProcessor()
         processor.process_document("doc1", "neural network deep learning")
         processor.propagate_activation(iterations=3, verbose=False)
         processor.extract_corpus_semantics(verbose=False)
 
-        captured = io.StringIO()
-        old_stdout = sys.stdout
-        sys.stdout = captured
-        try:
+        with self.assertLogs('cortical.processor', level='INFO') as cm:
             processor.compute_semantic_importance(verbose=True)
-        finally:
-            sys.stdout = old_stdout
 
-        output = captured.getvalue()
+        output = '\n'.join(cm.output)
         self.assertTrue(len(output) > 0)
 
     def test_build_concept_clusters_label_propagation(self):
@@ -953,23 +915,15 @@ class TestProcessorVerboseCoverage(unittest.TestCase):
 
     def test_extract_corpus_semantics_verbose(self):
         """Test verbose output during semantic extraction."""
-        import io
-        import sys
-
         processor = CorticalTextProcessor()
         processor.process_document("doc1", "neural networks learn patterns")
         processor.process_document("doc2", "deep learning neural models")
         processor.propagate_activation(iterations=3, verbose=False)
 
-        captured = io.StringIO()
-        old_stdout = sys.stdout
-        sys.stdout = captured
-        try:
+        with self.assertLogs('cortical.processor', level='INFO') as cm:
             processor.extract_corpus_semantics(verbose=True)
-        finally:
-            sys.stdout = old_stdout
 
-        output = captured.getvalue()
+        output = '\n'.join(cm.output)
         self.assertIn("Extracted", output)
 
 
@@ -1339,8 +1293,6 @@ class TestPersistenceTypedConnections(unittest.TestCase):
 
     def test_export_conceptnet_verbose(self):
         """Test verbose output in export."""
-        import io
-        import sys
         from cortical.persistence import export_conceptnet_json
 
         processor = CorticalTextProcessor()
@@ -1350,17 +1302,13 @@ class TestPersistenceTypedConnections(unittest.TestCase):
         with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
             temp_path = f.name
 
-        captured = io.StringIO()
-        old_stdout = sys.stdout
-        sys.stdout = captured
         try:
-            export_conceptnet_json(temp_path, processor.layers, verbose=True)
+            with self.assertLogs('cortical.persistence', level='INFO') as cm:
+                export_conceptnet_json(temp_path, processor.layers, verbose=True)
+            output = '\n'.join(cm.output)
+            self.assertIn("exported", output.lower())
         finally:
-            sys.stdout = old_stdout
             os.unlink(temp_path)
-
-        output = captured.getvalue()
-        self.assertIn("exported", output.lower())
 
 
 class TestProcessorConfigRestoration(unittest.TestCase):
@@ -1422,27 +1370,19 @@ class TestAnalysisCoverage(unittest.TestCase):
 
     def test_compute_bigram_connections_verbose_limits(self):
         """Test verbose output when bigram limits are hit."""
-        import io
-        import sys
-
         processor = CorticalTextProcessor()
         # Create document with common terms that will hit limits
         processor.process_document("doc1", "the the the test test test word word word")
         processor.propagate_activation(iterations=1, verbose=False)
 
-        captured = io.StringIO()
-        old_stdout = sys.stdout
-        sys.stdout = captured
-        try:
+        with self.assertLogs('cortical.processor', level='INFO') as cm:
             processor.compute_bigram_connections(
                 verbose=True,
                 max_bigrams_per_term=2
             )
-        finally:
-            sys.stdout = old_stdout
 
         # Should have some output
-        output = captured.getvalue()
+        output = '\n'.join(cm.output)
         self.assertTrue(len(output) > 0)
 
 

@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-12
-**Pending Tasks:** 35
-**Completed Tasks:** 94+ (see archive)
+**Pending Tasks:** 31
+**Completed Tasks:** 98+ (see archive)
 
 ---
 
@@ -24,16 +24,12 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 138 | Use sparse matrix multiplication for bigram connections | Perf | - | Medium |
 | 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
 | 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
 | 95 | Split processor.py into modules | Arch | 97 | Large |
-| 98 | Replace print() with logging | CodeQual | - | Medium |
 | 99 | Add input validation to public methods | CodeQual | - | Medium |
-| 102 | Add tests for edge cases | Testing | - | Medium |
 | 107 | Add Quick Context to tasks | TaskMgmt | - | Medium |
-| 115 | Create component interaction diagram | AINav | - | Medium |
 
 ### 🟢 Low (Backlog)
 
@@ -81,6 +77,10 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 138 | Use sparse matrix multiplication for bigram connections | 2025-12-12 | Zero-dep SparseMatrix class in analysis.py for O(n²) → O(n*k) improvement |
+| 98 | Replace print() with logging | 2025-12-12 | 52+ print statements → logging.info(), all modules use getLogger(__name__) |
+| 102 | Add tests for edge cases | 2025-12-12 | 53 new tests in test_edge_cases.py: Unicode, large docs, malformed inputs |
+| 115 | Create component interaction diagram | 2025-12-12 | docs/architecture.md with ASCII + Mermaid diagrams, module dependencies |
 | 139 | Batch bigram connection updates to reduce dict overhead | 2025-12-12 | add_lateral_connections_batch() method in minicolumn.py |
 | 137 | Cap bigram connections to top-K per bigram | 2025-12-12 | max_connections_per_bigram parameter (default 50) in analysis.py |
 | 116 | Document return value semantics | 2025-12-12 | Edge cases, score ranges, None vs exceptions, default parameters |

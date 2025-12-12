@@ -2893,69 +2893,93 @@ class TestVerboseOutputBranches(unittest.TestCase):
 
     def test_compute_concept_connections_verbose(self):
         """Test compute_concept_connections with verbose output."""
-        import io
-        import sys
+        import logging
+        from io import StringIO
 
-        captured = io.StringIO()
-        sys.stdout = captured
+        log_buffer = StringIO()
+        handler = logging.StreamHandler(log_buffer)
+        handler.setLevel(logging.INFO)
+        logger = logging.getLogger('cortical.processor')
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
         try:
             self.processor.compute_concept_connections(
                 use_semantics=True,
                 verbose=True
             )
         finally:
-            sys.stdout = sys.__stdout__
+            logger.removeHandler(handler)
+            logger.setLevel(logging.WARNING)
 
-        output = captured.getvalue()
+        output = log_buffer.getvalue()
         self.assertIn("concept connections", output.lower())
 
     def test_extract_pattern_relations_verbose(self):
         """Test extract_pattern_relations with verbose output."""
-        import io
-        import sys
+        import logging
+        from io import StringIO
 
         processor = CorticalTextProcessor()
         processor.process_document("doc1", "A neural network is a type of model.")
         processor.compute_all(verbose=False)
 
-        captured = io.StringIO()
-        sys.stdout = captured
+        log_buffer = StringIO()
+        handler = logging.StreamHandler(log_buffer)
+        handler.setLevel(logging.INFO)
+        logger = logging.getLogger('cortical.processor')
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
         try:
             processor.extract_pattern_relations(verbose=True)
         finally:
-            sys.stdout = sys.__stdout__
+            logger.removeHandler(handler)
+            logger.setLevel(logging.WARNING)
 
-        output = captured.getvalue()
+        output = log_buffer.getvalue()
         self.assertGreater(len(output), 0)
 
     def test_retrofit_connections_verbose(self):
         """Test retrofit_connections with verbose output."""
-        import io
-        import sys
+        import logging
+        from io import StringIO
 
-        captured = io.StringIO()
-        sys.stdout = captured
+        log_buffer = StringIO()
+        handler = logging.StreamHandler(log_buffer)
+        handler.setLevel(logging.INFO)
+        logger = logging.getLogger('cortical.processor')
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
         try:
             self.processor.retrofit_connections(iterations=5, alpha=0.3, verbose=True)
         finally:
-            sys.stdout = sys.__stdout__
+            logger.removeHandler(handler)
+            logger.setLevel(logging.WARNING)
 
-        output = captured.getvalue()
+        output = log_buffer.getvalue()
         self.assertIn("Retrofitted", output)
 
     def test_hierarchical_importance_verbose(self):
         """Test compute_hierarchical_importance with verbose output."""
-        import io
-        import sys
+        import logging
+        from io import StringIO
 
-        captured = io.StringIO()
-        sys.stdout = captured
+        log_buffer = StringIO()
+        handler = logging.StreamHandler(log_buffer)
+        handler.setLevel(logging.INFO)
+        logger = logging.getLogger('cortical.processor')
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
         try:
             self.processor.compute_hierarchical_importance(verbose=True)
         finally:
-            sys.stdout = sys.__stdout__
+            logger.removeHandler(handler)
+            logger.setLevel(logging.WARNING)
 
-        output = captured.getvalue()
+        output = log_buffer.getvalue()
         self.assertIn("PageRank", output)
 
     def test_invalid_clustering_method(self):
@@ -2978,8 +3002,8 @@ class TestConceptConnectionVerboseBranches(unittest.TestCase):
 
     def test_verbose_with_semantic_and_embedding_connections(self):
         """Test verbose output when both semantic and embedding connections are created."""
-        import io
-        import sys
+        import logging
+        from io import StringIO
 
         processor = CorticalTextProcessor()
         processor.process_document("doc1", "Neural networks are computational models.")
@@ -2989,8 +3013,13 @@ class TestConceptConnectionVerboseBranches(unittest.TestCase):
         processor.compute_graph_embeddings(dimensions=8, verbose=False)
         processor.extract_corpus_semantics(verbose=False)
 
-        captured = io.StringIO()
-        sys.stdout = captured
+        log_buffer = StringIO()
+        handler = logging.StreamHandler(log_buffer)
+        handler.setLevel(logging.INFO)
+        logger = logging.getLogger('cortical.processor')
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
         try:
             processor.compute_concept_connections(
                 use_semantics=True,
@@ -2999,10 +3028,152 @@ class TestConceptConnectionVerboseBranches(unittest.TestCase):
                 verbose=True
             )
         finally:
-            sys.stdout = sys.__stdout__
+            logger.removeHandler(handler)
+            logger.setLevel(logging.WARNING)
 
-        output = captured.getvalue()
+        output = log_buffer.getvalue()
         self.assertIn("connections", output.lower())
+
+
+class TestLogging(unittest.TestCase):
+    """Test logging functionality."""
+
+    def test_verbose_parameter_enables_logging(self):
+        """Test that verbose=True enables logging output."""
+        import logging
+        from io import StringIO
+
+        # Create a string buffer to capture log output
+        log_buffer = StringIO()
+        handler = logging.StreamHandler(log_buffer)
+        handler.setLevel(logging.INFO)
+
+        # Get the logger and add handler
+        logger = logging.getLogger('cortical.processor')
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+        try:
+            processor = CorticalTextProcessor()
+            processor.process_document("doc1", "Neural networks process information.")
+            processor.process_document("doc2", "Deep learning is powerful.")
+
+            # Call compute_all with verbose=True
+            processor.compute_all(verbose=True)
+
+            # Check that log messages were written
+            log_output = log_buffer.getvalue()
+            self.assertIn("Computing", log_output)
+
+        finally:
+            logger.removeHandler(handler)
+            logger.setLevel(logging.WARNING)
+
+    def test_verbose_false_no_logging(self):
+        """Test that verbose=False produces no logging output."""
+        import logging
+        from io import StringIO
+
+        log_buffer = StringIO()
+        handler = logging.StreamHandler(log_buffer)
+        handler.setLevel(logging.INFO)
+
+        logger = logging.getLogger('cortical.processor')
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+        try:
+            processor = CorticalTextProcessor()
+            processor.process_document("doc1", "Neural networks process information.")
+
+            # Call compute_all with verbose=False
+            processor.compute_all(verbose=False)
+
+            # Check that no log messages were written
+            log_output = log_buffer.getvalue()
+            self.assertEqual(log_output, "")
+
+        finally:
+            logger.removeHandler(handler)
+            logger.setLevel(logging.WARNING)
+
+    def test_save_load_logging(self):
+        """Test logging in save/load operations."""
+        import logging
+        from io import StringIO
+        import tempfile
+        import os
+
+        log_buffer = StringIO()
+        handler = logging.StreamHandler(log_buffer)
+        handler.setLevel(logging.INFO)
+
+        logger = logging.getLogger('cortical.persistence')
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+        try:
+            processor = CorticalTextProcessor()
+            processor.process_document("doc1", "Neural networks process information.")
+            processor.compute_all(verbose=False)
+
+            # Save with verbose=True
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.pkl') as f:
+                temp_file = f.name
+
+            try:
+                processor.save(temp_file, verbose=True)
+                log_output = log_buffer.getvalue()
+                self.assertIn("Saved", log_output)
+
+                # Clear buffer
+                log_buffer.truncate(0)
+                log_buffer.seek(0)
+
+                # Load with verbose=True
+                loaded = CorticalTextProcessor.load(temp_file, verbose=True)
+                log_output = log_buffer.getvalue()
+                self.assertIn("Loaded", log_output)
+
+            finally:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+
+        finally:
+            logger.removeHandler(handler)
+            logger.setLevel(logging.WARNING)
+
+    def test_batch_operations_logging(self):
+        """Test logging in batch operations."""
+        import logging
+        from io import StringIO
+
+        log_buffer = StringIO()
+        handler = logging.StreamHandler(log_buffer)
+        handler.setLevel(logging.INFO)
+
+        logger = logging.getLogger('cortical.processor')
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+        try:
+            processor = CorticalTextProcessor()
+
+            # Test add_documents_batch
+            documents = [
+                ("doc1", "Neural networks process data.", {}),
+                ("doc2", "Deep learning is powerful.", {}),
+                ("doc3", "Machine learning algorithms.", {})
+            ]
+            processor.add_documents_batch(documents, verbose=True, recompute='none')
+
+            log_output = log_buffer.getvalue()
+            self.assertIn("Adding", log_output)
+            self.assertIn("documents", log_output.lower())
+
+        finally:
+            logger.removeHandler(handler)
+            logger.setLevel(logging.WARNING)
 
 
 if __name__ == "__main__":

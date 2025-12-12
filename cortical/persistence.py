@@ -13,10 +13,13 @@ Supports:
 import pickle
 import json
 import os
+import logging
 from typing import Dict, Optional, Any
 
 from .layers import CorticalLayer, HierarchicalLayer
 from .minicolumn import Minicolumn
+
+logger = logging.getLogger(__name__)
 
 
 def save_processor(
@@ -62,14 +65,14 @@ def save_processor(
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())
         total_conns = sum(layer.total_connections() for layer in layers.values())
-        print(f"✓ Saved processor to {filepath}")
-        print(f"  - {len(documents)} documents")
-        print(f"  - {total_cols} minicolumns")
-        print(f"  - {total_conns} connections")
+        logger.info(f"✓ Saved processor to {filepath}")
+        logger.info(f"  - {len(documents)} documents")
+        logger.info(f"  - {total_cols} minicolumns")
+        logger.info(f"  - {total_conns} connections")
         if embeddings:
-            print(f"  - {len(embeddings)} embeddings")
+            logger.info(f"  - {len(embeddings)} embeddings")
         if semantic_relations:
-            print(f"  - {len(semantic_relations)} semantic relations")
+            logger.info(f"  - {len(semantic_relations)} semantic relations")
 
 
 def load_processor(
@@ -104,14 +107,14 @@ def load_processor(
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())
         total_conns = sum(layer.total_connections() for layer in layers.values())
-        print(f"✓ Loaded processor from {filepath}")
-        print(f"  - {len(documents)} documents")
-        print(f"  - {total_cols} minicolumns")
-        print(f"  - {total_conns} connections")
+        logger.info(f"✓ Loaded processor from {filepath}")
+        logger.info(f"  - {len(documents)} documents")
+        logger.info(f"  - {total_cols} minicolumns")
+        logger.info(f"  - {total_conns} connections")
         if embeddings:
-            print(f"  - {len(embeddings)} embeddings")
+            logger.info(f"  - {len(embeddings)} embeddings")
         if semantic_relations:
-            print(f"  - {len(semantic_relations)} semantic relations")
+            logger.info(f"  - {len(semantic_relations)} semantic relations")
 
     return layers, documents, document_metadata, embeddings, semantic_relations, metadata
 
@@ -195,8 +198,8 @@ def export_graph_json(
         json.dump(graph, f, indent=2)
 
     if verbose:
-        print(f"Graph exported to {filepath}")
-        print(f"  - {len(nodes)} nodes, {len(edges)} edges")
+        logger.info(f"Graph exported to {filepath}")
+        logger.info(f"  - {len(nodes)} nodes, {len(edges)} edges")
 
     return graph
 
@@ -223,9 +226,9 @@ def export_embeddings_json(
     
     with open(filepath, 'w') as f:
         json.dump(data, f)
-    
-    print(f"Embeddings exported to {filepath}")
-    print(f"  - {len(embeddings)} terms, {data['dimensions']} dimensions")
+
+    logger.info(f"Embeddings exported to {filepath}")
+    logger.info(f"  - {len(embeddings)} terms, {data['dimensions']} dimensions")
 
 
 def load_embeddings_json(filepath: str) -> Dict[str, list]:
@@ -260,9 +263,9 @@ def export_semantic_relations_json(
             'relations': relations,
             'count': len(relations)
         }, f, indent=2)
-    
-    print(f"Relations exported to {filepath}")
-    print(f"  - {len(relations)} relations")
+
+    logger.info(f"Relations exported to {filepath}")
+    logger.info(f"  - {len(relations)} relations")
 
 
 def load_semantic_relations_json(filepath: str) -> list:
@@ -555,11 +558,11 @@ def export_conceptnet_json(
         json.dump(graph, f, indent=2)
 
     if verbose:
-        print(f"ConceptNet-style graph exported to {filepath}")
-        print(f"  Nodes: {len(nodes)}")
-        print(f"  Edges: {len(edges)}")
-        print(f"  Layers: {list(graph['metadata']['layers'].keys())}")
-        print(f"  Edge types: {graph['metadata']['edge_types']}")
+        logger.info(f"ConceptNet-style graph exported to {filepath}")
+        logger.info(f"  Nodes: {len(nodes)}")
+        logger.info(f"  Edges: {len(edges)}")
+        logger.info(f"  Layers: {list(graph['metadata']['layers'].keys())}")
+        logger.info(f"  Edge types: {graph['metadata']['edge_types']}")
 
     return graph
 
