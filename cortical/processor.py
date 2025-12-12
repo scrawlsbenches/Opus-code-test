@@ -11,6 +11,7 @@ from collections import defaultdict
 from .tokenizer import Tokenizer
 from .minicolumn import Minicolumn
 from .layers import CorticalLayer, HierarchicalLayer
+from .config import CorticalConfig
 from . import analysis
 from . import semantics
 from . import embeddings as emb_module
@@ -33,8 +34,20 @@ class CorticalTextProcessor:
     COMP_EMBEDDINGS = 'embeddings'
     COMP_SEMANTICS = 'semantics'
 
-    def __init__(self, tokenizer: Optional[Tokenizer] = None):
+    def __init__(
+        self,
+        tokenizer: Optional[Tokenizer] = None,
+        config: Optional[CorticalConfig] = None
+    ):
+        """
+        Initialize the Cortical Text Processor.
+
+        Args:
+            tokenizer: Optional custom tokenizer. Defaults to standard Tokenizer.
+            config: Optional configuration. Defaults to CorticalConfig with defaults.
+        """
         self.tokenizer = tokenizer or Tokenizer()
+        self.config = config or CorticalConfig()
         self.layers: Dict[CorticalLayer, HierarchicalLayer] = {
             CorticalLayer.TOKENS: HierarchicalLayer(CorticalLayer.TOKENS),
             CorticalLayer.BIGRAMS: HierarchicalLayer(CorticalLayer.BIGRAMS),
@@ -834,7 +847,7 @@ class CorticalTextProcessor:
         self,
         layer_iterations: int = 10,
         global_iterations: int = 5,
-        cross_layer_damping: float = 0.7,
+        cross_layer_damping: Optional[float] = None,
         verbose: bool = True
     ) -> Dict[str, Any]:
         """
@@ -851,7 +864,7 @@ class CorticalTextProcessor:
         Args:
             layer_iterations: Max iterations for intra-layer PageRank (default 10)
             global_iterations: Max iterations for cross-layer propagation (default 5)
-            cross_layer_damping: Damping factor at layer boundaries (default 0.7)
+            cross_layer_damping: Damping factor at layer boundaries (default from config)
             verbose: Print progress messages
 
         Returns:
@@ -866,6 +879,9 @@ class CorticalTextProcessor:
             >>> for layer, info in stats['layer_stats'].items():
             ...     print(f"{layer}: {info['nodes']} nodes, max PR={info['max_pagerank']:.4f}")
         """
+        if cross_layer_damping is None:
+            cross_layer_damping = self.config.cross_layer_damping
+
         result = analysis.compute_hierarchical_pagerank(
             self.layers,
             layer_iterations=layer_iterations,
@@ -958,9 +974,9 @@ class CorticalTextProcessor:
 
     def build_concept_clusters(
         self,
-        min_cluster_size: int = 3,
+        min_cluster_size: Optional[int] = None,
         clustering_method: str = 'louvain',
-        cluster_strictness: float = 1.0,
+        cluster_strictness: Optional[float] = None,
         bridge_weight: float = 0.0,
         resolution: float = 1.0,
         verbose: bool = True
@@ -969,7 +985,7 @@ class CorticalTextProcessor:
         Build concept clusters from token layer.
 
         Args:
-            min_cluster_size: Minimum tokens per cluster (default 3)
+            min_cluster_size: Minimum tokens per cluster (default from config)
             clustering_method: Algorithm to use for clustering.
                 - 'louvain' (default): Louvain community detection.
                   Recommended for dense graphs. Produces meaningful clusters
@@ -977,8 +993,8 @@ class CorticalTextProcessor:
                 - 'label_propagation': Legacy label propagation algorithm.
                   May produce mega-clusters on dense graphs (not recommended).
             cluster_strictness: For label_propagation only. Controls clustering
-                aggressiveness (0.0-1.0).
-                - 1.0 (default): Strict clustering, topics stay separate
+                aggressiveness (0.0-1.0, default from config).
+                - 1.0: Strict clustering, topics stay separate
                 - 0.5: Moderate mixing, allows some cross-topic clustering
                 - 0.0: Minimal clustering, most tokens group together
             bridge_weight: For label_propagation only. Weight for synthetic
@@ -1008,6 +1024,11 @@ class CorticalTextProcessor:
             ...     cluster_strictness=0.5
             ... )
         """
+        if min_cluster_size is None:
+            min_cluster_size = self.config.min_cluster_size
+        if cluster_strictness is None:
+            cluster_strictness = self.config.cluster_strictness
+
         if clustering_method == 'louvain':
             clusters = analysis.cluster_by_louvain(
                 self.layers[CorticalLayer.TOKENS],
@@ -1031,6 +1052,44 @@ class CorticalTextProcessor:
         if verbose:
             print(f"Built {len(clusters)} concept clusters using {clustering_method}")
         return clusters
+
+    def compute_clustering_quality(
+        self,
+        sample_size: int = 500
+    ) -> Dict[str, Any]:
+        """
+        Compute clustering quality metrics for the concept layer.
+
+        Evaluates how well the clustering algorithm has performed by computing:
+        - Modularity: Density of within-cluster connections vs between-cluster
+        - Silhouette: How similar tokens are to their cluster vs other clusters
+        - Balance (Gini): Distribution of cluster sizes
+
+        Args:
+            sample_size: Max tokens to sample for silhouette calculation
+                        (full calculation is O(n²), sampling keeps it tractable)
+
+        Returns:
+            Dictionary with:
+            - modularity: float (-1 to 1, higher is better, >0.3 is good)
+            - silhouette: float (-1 to 1, higher is better, >0.25 is reasonable)
+            - balance: float (0 to 1, 0 = perfectly balanced, 1 = all in one)
+            - num_clusters: int
+            - quality_assessment: str (human-readable interpretation)
+
+        Example:
+            >>> processor.compute_all()
+            >>> quality = processor.compute_clustering_quality()
+            >>> print(f"Modularity: {quality['modularity']:.3f}")
+            >>> print(quality['quality_assessment'])
+            37 clusters with Good community structure (modularity 0.40),
+            overlapping clusters (silhouette 0.15), moderately balanced sizes
+
+        See Also:
+            build_concept_clusters: Creates the clusters being evaluated
+            compute_all: Runs full pipeline including clustering
+        """
+        return analysis.compute_clustering_quality(self.layers, sample_size)
 
     def compute_concept_connections(
         self,
@@ -1318,7 +1377,7 @@ class CorticalTextProcessor:
     def expand_query(
         self,
         query_text: str,
-        max_expansions: int = 10,
+        max_expansions: Optional[int] = None,
         use_variants: bool = True,
         use_code_concepts: bool = False,
         filter_code_stop_words: bool = False,
@@ -1329,7 +1388,7 @@ class CorticalTextProcessor:
 
         Args:
             query_text: Original query string
-            max_expansions: Maximum expansion terms to add
+            max_expansions: Maximum expansion terms to add (default from config)
             use_variants: Try word variants when direct match fails
             use_code_concepts: Include programming synonym expansions
             filter_code_stop_words: Filter ubiquitous code tokens (self, cls, etc.)
@@ -1337,6 +1396,9 @@ class CorticalTextProcessor:
         Returns:
             Dict mapping terms to weights
         """
+        if max_expansions is None:
+            max_expansions = self.config.max_query_expansions
+
         return query_module.expand_query(
             query_text,
             self.layers,
@@ -1347,7 +1409,7 @@ class CorticalTextProcessor:
             filter_code_stop_words=filter_code_stop_words
         )
 
-    def expand_query_for_code(self, query_text: str, max_expansions: int = 15) -> Dict[str, float]:
+    def expand_query_for_code(self, query_text: str, max_expansions: Optional[int] = None) -> Dict[str, float]:
         """
         Expand a query optimized for code search.
 
@@ -1357,11 +1419,14 @@ class CorticalTextProcessor:
 
         Args:
             query_text: Original query string
-            max_expansions: Maximum expansion terms to add
+            max_expansions: Maximum expansion terms to add (default from config + 5)
 
         Returns:
             Dict mapping terms to weights
         """
+        if max_expansions is None:
+            max_expansions = self.config.max_query_expansions + 5  # Code search benefits from more expansions
+
         return query_module.expand_query(
             query_text,
             self.layers,
@@ -1375,7 +1440,7 @@ class CorticalTextProcessor:
     def expand_query_cached(
         self,
         query_text: str,
-        max_expansions: int = 10,
+        max_expansions: Optional[int] = None,
         use_variants: bool = True,
         use_code_concepts: bool = False
     ) -> Dict[str, float]:
@@ -1388,13 +1453,16 @@ class CorticalTextProcessor:
 
         Args:
             query_text: Original query string
-            max_expansions: Maximum expansion terms to add
+            max_expansions: Maximum expansion terms to add (default from config)
             use_variants: Try word variants when direct match fails
             use_code_concepts: Include programming synonym expansions
 
         Returns:
             Dict mapping terms to weights
         """
+        if max_expansions is None:
+            max_expansions = self.config.max_query_expansions
+
         # Create cache key from parameters
         cache_key = f"{query_text}|{max_expansions}|{use_variants}|{use_code_concepts}"
 
@@ -1821,8 +1889,8 @@ class CorticalTextProcessor:
         self,
         query_text: str,
         top_n: int = 5,
-        chunk_size: int = 512,
-        overlap: int = 128,
+        chunk_size: Optional[int] = None,
+        overlap: Optional[int] = None,
         use_expansion: bool = True,
         doc_filter: Optional[List[str]] = None,
         use_semantic: bool = True,
@@ -1853,8 +1921,8 @@ class CorticalTextProcessor:
         Args:
             query_text: Search query
             top_n: Number of passages to return
-            chunk_size: Size of each chunk in characters (default 512)
-            overlap: Overlap between chunks in characters (default 128)
+            chunk_size: Size of each chunk in characters (default from config)
+            overlap: Overlap between chunks in characters (default from config)
             use_expansion: Whether to expand query terms
             doc_filter: Optional list of doc_ids to restrict search to
             use_semantic: Whether to use semantic relations for expansion (if available)
@@ -1876,6 +1944,10 @@ class CorticalTextProcessor:
             >>> for passage, doc_id, start, end, score in results:
             ...     print(f"[{doc_id}:{start}-{end}] {passage[:50]}... (score: {score:.3f})")
         """
+        if chunk_size is None:
+            chunk_size = self.config.chunk_size
+        if overlap is None:
+            overlap = self.config.chunk_overlap
         return query_module.find_passages_for_query(
             query_text,
             self.layers,
@@ -2247,12 +2319,13 @@ class CorticalTextProcessor:
         """
         Save processor state to a file.
 
-        Saves all computed state including embeddings and semantic relations,
-        so they don't need to be recomputed when loading.
+        Saves all computed state including embeddings, semantic relations,
+        and configuration, so they don't need to be recomputed when loading.
         """
         metadata = {
             'has_embeddings': bool(self.embeddings),
-            'has_relations': bool(self.semantic_relations)
+            'has_relations': bool(self.semantic_relations),
+            'config': self.config.to_dict()  # Save config in metadata
         }
         persistence.save_processor(
             filepath,
@@ -2270,11 +2343,22 @@ class CorticalTextProcessor:
         """
         Load processor state from a file.
 
-        Restores all computed state including embeddings and semantic relations.
+        Restores all computed state including embeddings, semantic relations,
+        and configuration.
         """
         result = persistence.load_processor(filepath, verbose)
         layers, documents, document_metadata, embeddings, semantic_relations, metadata = result
-        processor = cls()
+
+        # Restore config if available, otherwise use defaults
+        config = None
+        if metadata and 'config' in metadata:
+            try:
+                config = CorticalConfig.from_dict(metadata['config'])
+            except (KeyError, TypeError):
+                # Fall back to default config if restoration fails
+                config = None
+
+        processor = cls(config=config)
         processor.layers = layers
         processor.documents = documents
         processor.document_metadata = document_metadata

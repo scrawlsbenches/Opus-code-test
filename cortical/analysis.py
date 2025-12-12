@@ -1446,28 +1446,395 @@ def compute_document_connections(
 def cosine_similarity(vec1: Dict[str, float], vec2: Dict[str, float]) -> float:
     """
     Compute cosine similarity between two sparse vectors.
-    
+
     Args:
         vec1: First vector as dict of term -> weight
         vec2: Second vector as dict of term -> weight
-        
+
     Returns:
         Cosine similarity between 0 and 1
     """
     # Find common keys
     common = set(vec1.keys()) & set(vec2.keys())
-    
+
     if not common:
         return 0.0
-    
+
     # Compute dot product
     dot = sum(vec1[k] * vec2[k] for k in common)
-    
+
     # Compute magnitudes
     mag1 = math.sqrt(sum(v * v for v in vec1.values()))
     mag2 = math.sqrt(sum(v * v for v in vec2.values()))
-    
+
     if mag1 == 0 or mag2 == 0:
         return 0.0
-    
+
     return dot / (mag1 * mag2)
+
+
+# =============================================================================
+# CLUSTERING QUALITY METRICS (Task #125)
+# =============================================================================
+
+
+def compute_clustering_quality(
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    sample_size: int = 500
+) -> Dict[str, Any]:
+    """
+    Compute clustering quality metrics for the concept layer.
+
+    Calculates modularity, silhouette score, and balance (Gini coefficient)
+    to evaluate how well the clustering algorithm has performed.
+
+    Args:
+        layers: Dictionary of hierarchical layers
+        sample_size: Max number of tokens to sample for silhouette calculation
+                    (full calculation is O(n²), sampling keeps it tractable)
+
+    Returns:
+        Dictionary with:
+        - modularity: float (-1 to 1, higher is better, >0.3 is good)
+        - silhouette: float (-1 to 1, higher is better, >0.25 is reasonable)
+        - balance: float (0 to 1, 0 = perfectly balanced, 1 = all in one cluster)
+        - num_clusters: int
+        - quality_assessment: str (interpretation of the metrics)
+
+    Example:
+        >>> quality = compute_clustering_quality(processor.layers)
+        >>> print(f"Modularity: {quality['modularity']:.3f}")
+        >>> print(quality['quality_assessment'])
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+    layer2 = layers[CorticalLayer.CONCEPTS]
+
+    num_clusters = layer2.column_count()
+
+    if layer0.column_count() == 0 or num_clusters == 0:
+        return {
+            'modularity': 0.0,
+            'silhouette': 0.0,
+            'balance': 1.0,
+            'num_clusters': 0,
+            'quality_assessment': 'No clusters to evaluate'
+        }
+
+    # Compute all metrics
+    modularity = _compute_modularity(layer0, layer2)
+    silhouette = _compute_silhouette(layer0, layer2, sample_size)
+    balance = _compute_cluster_balance(layer2)
+
+    # Generate quality assessment
+    assessment = _generate_quality_assessment(modularity, silhouette, balance, num_clusters)
+
+    return {
+        'modularity': modularity,
+        'silhouette': silhouette,
+        'balance': balance,
+        'num_clusters': num_clusters,
+        'quality_assessment': assessment
+    }
+
+
+def _compute_modularity(
+    layer0: HierarchicalLayer,
+    layer2: HierarchicalLayer
+) -> float:
+    """
+    Compute the modularity Q of the current clustering.
+
+    Modularity measures the density of connections within clusters
+    compared to connections between clusters.
+
+    Q = (1/2m) * Σ [A_ij - k_i*k_j/(2m)] * δ(c_i, c_j)
+
+    where:
+    - m = total edge weight
+    - A_ij = edge weight between i and j
+    - k_i = degree of node i
+    - δ(c_i, c_j) = 1 if nodes i and j are in the same community
+
+    Returns:
+        Modularity score between -0.5 and 1 (typically 0 to 0.7)
+        - Q > 0.3: Good community structure
+        - Q > 0.5: Strong community structure
+    """
+    # Build token -> cluster mapping
+    token_to_cluster: Dict[str, str] = {}
+    for cluster_col in layer2.minicolumns.values():
+        cluster_id = cluster_col.content
+        for token_id in cluster_col.feedforward_connections:
+            token_col = layer0.get_by_id(token_id)
+            if token_col:
+                token_to_cluster[token_col.content] = cluster_id
+
+    # Compute total edge weight m
+    total_weight = 0.0
+    for col in layer0.minicolumns.values():
+        for _, weight in col.lateral_connections.items():
+            total_weight += weight
+
+    m = total_weight / 2.0  # Each edge counted twice
+
+    if m == 0:
+        return 0.0
+
+    # Compute node degrees k
+    degrees: Dict[str, float] = {}
+    for content, col in layer0.minicolumns.items():
+        degrees[content] = sum(col.lateral_connections.values())
+
+    # Compute modularity Q
+    q = 0.0
+    for content, col in layer0.minicolumns.items():
+        c_i = token_to_cluster.get(content)
+        if c_i is None:
+            continue
+
+        k_i = degrees.get(content, 0.0)
+
+        for neighbor_id, weight in col.lateral_connections.items():
+            neighbor_col = layer0.get_by_id(neighbor_id)
+            if neighbor_col is None:
+                continue
+
+            neighbor_content = neighbor_col.content
+            c_j = token_to_cluster.get(neighbor_content)
+            if c_j is None:
+                continue
+
+            k_j = degrees.get(neighbor_content, 0.0)
+
+            # δ(c_i, c_j) - same cluster indicator
+            if c_i == c_j:
+                # A_ij - k_i*k_j/(2m)
+                q += weight - (k_i * k_j) / (2 * m)
+
+    return q / (2 * m)
+
+
+def _compute_silhouette(
+    layer0: HierarchicalLayer,
+    layer2: HierarchicalLayer,
+    sample_size: int = 500
+) -> float:
+    """
+    Compute silhouette score for the clustering.
+
+    For each token, silhouette measures how similar it is to its own cluster
+    compared to the nearest other cluster.
+
+    s(i) = (b(i) - a(i)) / max(a(i), b(i))
+
+    where:
+    - a(i) = mean distance to other points in same cluster
+    - b(i) = mean distance to points in nearest cluster
+
+    For our graph representation, distance = 1 - connection_similarity
+    where connection_similarity is based on shared lateral connections.
+
+    Returns:
+        Average silhouette score between -1 and 1
+        - s > 0.5: Strong cluster structure
+        - s > 0.25: Reasonable structure
+        - s < 0: Poor clustering
+    """
+    if layer2.column_count() < 2:
+        return 0.0  # Need at least 2 clusters
+
+    # Build cluster membership
+    token_to_cluster: Dict[str, str] = {}
+    cluster_tokens: Dict[str, List[str]] = defaultdict(list)
+
+    for cluster_col in layer2.minicolumns.values():
+        cluster_id = cluster_col.content
+        for token_id in cluster_col.feedforward_connections:
+            token_col = layer0.get_by_id(token_id)
+            if token_col:
+                token_to_cluster[token_col.content] = cluster_id
+                cluster_tokens[cluster_id].append(token_col.content)
+
+    # Skip clusters with < 2 tokens
+    valid_clusters = {k: v for k, v in cluster_tokens.items() if len(v) >= 2}
+    if len(valid_clusters) < 2:
+        return 0.0
+
+    # Get all tokens in valid clusters
+    all_tokens = []
+    for tokens in valid_clusters.values():
+        all_tokens.extend(tokens)
+
+    if len(all_tokens) == 0:
+        return 0.0
+
+    # Sample if too many tokens (silhouette is O(n²))
+    import random
+    if len(all_tokens) > sample_size:
+        all_tokens = random.sample(all_tokens, sample_size)
+
+    # Build connection vectors for sampled tokens
+    # Connection vector: {neighbor_id: weight}
+    token_vectors: Dict[str, Dict[str, float]] = {}
+    for token in all_tokens:
+        col = layer0.get_minicolumn(token)
+        if col:
+            token_vectors[token] = dict(col.lateral_connections)
+
+    # Compute silhouette for each token
+    silhouette_sum = 0.0
+    count = 0
+
+    for token in all_tokens:
+        if token not in token_to_cluster or token not in token_vectors:
+            continue
+
+        my_cluster = token_to_cluster[token]
+        my_vector = token_vectors[token]
+
+        if my_cluster not in valid_clusters:
+            continue
+
+        # a(i): mean distance to same-cluster tokens
+        same_cluster = [t for t in valid_clusters[my_cluster] if t != token and t in token_vectors]
+        if not same_cluster:
+            continue
+
+        a_i = 0.0
+        for other in same_cluster:
+            sim = _vector_similarity(my_vector, token_vectors[other])
+            a_i += 1.0 - sim  # Distance = 1 - similarity
+        a_i /= len(same_cluster)
+
+        # b(i): mean distance to nearest other cluster
+        b_i = float('inf')
+        for other_cluster, other_tokens in valid_clusters.items():
+            if other_cluster == my_cluster:
+                continue
+
+            other_tokens_filtered = [t for t in other_tokens if t in token_vectors]
+            if not other_tokens_filtered:
+                continue
+
+            cluster_dist = 0.0
+            for other in other_tokens_filtered:
+                sim = _vector_similarity(my_vector, token_vectors[other])
+                cluster_dist += 1.0 - sim
+            cluster_dist /= len(other_tokens_filtered)
+
+            b_i = min(b_i, cluster_dist)
+
+        if b_i == float('inf'):
+            continue
+
+        # Silhouette coefficient
+        max_ab = max(a_i, b_i)
+        if max_ab > 0:
+            s_i = (b_i - a_i) / max_ab
+            silhouette_sum += s_i
+            count += 1
+
+    return silhouette_sum / count if count > 0 else 0.0
+
+
+def _vector_similarity(vec1: Dict[str, float], vec2: Dict[str, float]) -> float:
+    """
+    Compute similarity between two connection vectors.
+
+    Uses Jaccard-style similarity based on shared connections.
+    """
+    if not vec1 or not vec2:
+        return 0.0
+
+    keys1 = set(vec1.keys())
+    keys2 = set(vec2.keys())
+
+    intersection = keys1 & keys2
+    union = keys1 | keys2
+
+    if not union:
+        return 0.0
+
+    # Weighted Jaccard: sum of mins / sum of maxes
+    min_sum = 0.0
+    max_sum = 0.0
+
+    for key in union:
+        v1 = vec1.get(key, 0.0)
+        v2 = vec2.get(key, 0.0)
+        min_sum += min(v1, v2)
+        max_sum += max(v1, v2)
+
+    return min_sum / max_sum if max_sum > 0 else 0.0
+
+
+def _compute_cluster_balance(layer2: HierarchicalLayer) -> float:
+    """
+    Compute Gini coefficient for cluster size balance.
+
+    Returns:
+        Gini coefficient (0 = perfectly balanced, 1 = all in one cluster)
+    """
+    cluster_sizes = [
+        len(col.feedforward_connections)
+        for col in layer2.minicolumns.values()
+    ]
+
+    if not cluster_sizes or len(cluster_sizes) == 1:
+        return 1.0
+
+    sorted_sizes = sorted(cluster_sizes)
+    n = len(sorted_sizes)
+    total = sum(sorted_sizes)
+
+    if total == 0:
+        return 1.0
+
+    # Standard Gini calculation:
+    # G = (2 * sum(i * x_i)) / (n * sum(x_i)) - (n + 1) / n
+    weighted_sum = sum((i + 1) * size for i, size in enumerate(sorted_sizes))
+    gini = (2 * weighted_sum) / (n * total) - (n + 1) / n
+
+    return max(0.0, min(1.0, gini))
+
+
+def _generate_quality_assessment(
+    modularity: float,
+    silhouette: float,
+    balance: float,
+    num_clusters: int
+) -> str:
+    """
+    Generate a human-readable assessment of clustering quality.
+    """
+    parts = []
+
+    # Modularity assessment
+    if modularity >= 0.5:
+        parts.append(f"Strong community structure (modularity {modularity:.2f})")
+    elif modularity >= 0.3:
+        parts.append(f"Good community structure (modularity {modularity:.2f})")
+    elif modularity >= 0.1:
+        parts.append(f"Weak community structure (modularity {modularity:.2f})")
+    else:
+        parts.append(f"No clear community structure (modularity {modularity:.2f})")
+
+    # Silhouette assessment
+    if silhouette >= 0.5:
+        parts.append(f"well-separated clusters (silhouette {silhouette:.2f})")
+    elif silhouette >= 0.25:
+        parts.append(f"reasonably separated clusters (silhouette {silhouette:.2f})")
+    elif silhouette >= 0:
+        parts.append(f"overlapping clusters (silhouette {silhouette:.2f})")
+    else:
+        parts.append(f"poorly separated clusters (silhouette {silhouette:.2f})")
+
+    # Balance assessment
+    if balance <= 0.3:
+        parts.append("well-balanced sizes")
+    elif balance <= 0.5:
+        parts.append("moderately balanced sizes")
+    else:
+        parts.append("imbalanced sizes (some clusters dominate)")
+
+    return f"{num_clusters} clusters with {parts[0]}, {parts[1]}, {parts[2]}"
