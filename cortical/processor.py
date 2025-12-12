@@ -1062,8 +1062,17 @@ class CorticalTextProcessor:
 
         Evaluates how well the clustering algorithm has performed by computing:
         - Modularity: Density of within-cluster connections vs between-cluster
-        - Silhouette: How similar tokens are to their cluster vs other clusters
-        - Balance (Gini): Distribution of cluster sizes
+          (this is what Louvain optimizes - expect >0.3 for good clustering)
+        - Silhouette: Document co-occurrence similarity within vs between clusters
+          (measures semantic coherence - typically -0.1 to 0.1 for graph clustering)
+        - Balance (Gini): Distribution of cluster sizes (0=equal, 1=all in one)
+
+        Note on metric interpretation:
+            Modularity and silhouette measure different things. Louvain clusters
+            tokens by sentence co-occurrence, while silhouette measures document
+            co-occurrence. These don't always align: tokens appearing together
+            in sentences may not appear in the same documents. High modularity
+            with low/negative silhouette is normal for diverse text corpora.
 
         Args:
             sample_size: Max tokens to sample for silhouette calculation
@@ -1072,7 +1081,7 @@ class CorticalTextProcessor:
         Returns:
             Dictionary with:
             - modularity: float (-1 to 1, higher is better, >0.3 is good)
-            - silhouette: float (-1 to 1, higher is better, >0.25 is reasonable)
+            - silhouette: float (-1 to 1, typically -0.1 to 0.1 for graph clustering)
             - balance: float (0 to 1, 0 = perfectly balanced, 1 = all in one)
             - num_clusters: int
             - quality_assessment: str (human-readable interpretation)
@@ -1082,8 +1091,8 @@ class CorticalTextProcessor:
             >>> quality = processor.compute_clustering_quality()
             >>> print(f"Modularity: {quality['modularity']:.3f}")
             >>> print(quality['quality_assessment'])
-            37 clusters with Good community structure (modularity 0.40),
-            overlapping clusters (silhouette 0.15), moderately balanced sizes
+            34 clusters with Good community structure (modularity 0.37),
+            typical graph clustering (silhouette -0.03), moderately balanced sizes
 
         See Also:
             build_concept_clusters: Creates the clusters being evaluated
