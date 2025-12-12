@@ -18,33 +18,22 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 ### 🟠 High (Do This Week)
 
-| # | Task | Category | Depends | Effort |
-|---|------|----------|---------|--------|
-| 146 | Create behavioral tests for core user workflows | Testing | - | Medium |
+*All high priority tasks completed!*
 
 ### 🟡 Medium (Do This Month)
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 137 | Cap bigram connections to top-K per bigram | Perf | - | Small |
 | 138 | Use sparse matrix multiplication for bigram connections | Perf | - | Medium |
-| 139 | Batch bigram connection updates to reduce dict overhead | Perf | - | Small |
 | 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
 | 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
-| 91 | Create docs/README.md index | Docs | - | Small |
-| 92 | Add badges to README.md | DevEx | - | Small |
-| 93 | Update README with docs references | Docs | 91 | Small |
 | 95 | Split processor.py into modules | Arch | 97 | Large |
-| 96 | Centralize duplicate constants | CodeQual | - | Small |
 | 98 | Replace print() with logging | CodeQual | - | Medium |
 | 99 | Add input validation to public methods | CodeQual | - | Medium |
 | 102 | Add tests for edge cases | Testing | - | Medium |
 | 107 | Add Quick Context to tasks | TaskMgmt | - | Medium |
-| 113 | Document staleness tracking system | AINav | - | Small |
-| 114 | Add type aliases for complex types | AINav | - | Small |
 | 115 | Create component interaction diagram | AINav | - | Medium |
-| 116 | Document return value semantics | AINav | - | Medium |
 
 ### 🟢 Low (Backlog)
 
@@ -92,6 +81,16 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 139 | Batch bigram connection updates to reduce dict overhead | 2025-12-12 | add_lateral_connections_batch() method in minicolumn.py |
+| 137 | Cap bigram connections to top-K per bigram | 2025-12-12 | max_connections_per_bigram parameter (default 50) in analysis.py |
+| 116 | Document return value semantics | 2025-12-12 | Edge cases, score ranges, None vs exceptions, default parameters |
+| 114 | Add type aliases for complex types | 2025-12-12 | cortical/types.py with 20+ aliases: DocumentScore, PassageResult, SemanticRelation, etc. |
+| 113 | Document staleness tracking system | 2025-12-12 | Comprehensive docs in CLAUDE.md: computation types, API, incremental updates |
+| 96 | Centralize duplicate constants | 2025-12-12 | cortical/constants.py with RELATION_WEIGHTS, DOC_TYPE_BOOSTS, query keywords |
+| 91 | Create docs/README.md index | 2025-12-12 | Navigation by audience, reading paths, categorized docs |
+| 92 | Add badges to README.md | 2025-12-12 | Python, License, Tests, Coverage, Zero Dependencies badges |
+| 93 | Update README with docs references | 2025-12-12 | Documentation section with table linking to docs/*.md |
+| 146 | Create behavioral tests for core user workflows | 2025-12-12 | 11 tests across 4 categories: Search, Performance, Quality, Robustness |
 | 145 | Improve graph embedding quality for common terms | 2025-12-12 | Added 'tfidf' method, IDF weighting to 'fast' method |
 | 143 | Investigate negative silhouette score in clustering | 2025-12-12 | Expected behavior: modularity ≠ silhouette (graph vs doc similarity) |
 | 142 | Investigate 74s compute_all() performance regression | 2025-12-12 | 5.2x speedup via fast embeddings + sampling (74s → 14s) |

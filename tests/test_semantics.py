@@ -164,7 +164,7 @@ class TestSemantics(unittest.TestCase):
         self.assertEqual(get_relation_type_weight('IsA'), 1.5)
         self.assertEqual(get_relation_type_weight('SameAs'), 2.0)
         self.assertEqual(get_relation_type_weight('Antonym'), -0.5)
-        self.assertEqual(get_relation_type_weight('RelatedTo'), 0.5)
+        self.assertEqual(get_relation_type_weight('RelatedTo'), 0.8)  # Centralized in constants.py
 
         # Test unknown relation type defaults to 0.5
         self.assertEqual(get_relation_type_weight('UnknownRelation'), 0.5)
