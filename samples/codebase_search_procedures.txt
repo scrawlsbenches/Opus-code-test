@@ -1,0 +1,84 @@
+Codebase Search Procedures: Finding Code Patterns and Implementations Effectively
+
+Codebase search applies the cortical processor to source code repositories,
+enabling semantic code search that understands programming concepts. These
+procedures establish effective approaches to code-oriented retrieval.
+
+Code indexing preparation differs from text indexing. Enable split_identifiers
+in tokenization to break camelCase and snake_case identifiers into constituent
+words. "getUserCredentials" becomes "get", "user", "credentials", enabling
+matches against related terms. Without identifier splitting, compound names
+match only as exact strings.
+
+Programming concept expansion uses code_concepts. The code concepts module
+provides programming synonyms: "get" expands to "fetch", "retrieve", "load".
+Enable use_code_concepts in query expansion for code search. This expansion
+bridges vocabulary differences between searchers and code authors.
+
+Definition search locates class and function definitions. Query patterns like
+"class DataProcessor" or "def calculate_statistics" trigger definition search
+mode. The system identifies these as definition queries and prioritizes files
+containing the specified definitions.
+
+Implementation versus documentation queries require different handling. "How
+does sorting work" is conceptual: boost documentation. "Sort function bubble"
+is implementation: boost code files. Intent detection classifies queries and
+adjusts document type weights accordingly.
+
+Test file handling prevents test code from dominating results. Test files
+often import and reference production code, containing many matching terms.
+Apply test_file_penalty to reduce test file scores when searching for
+implementations. Users explicitly searching for tests can disable the penalty.
+
+Code-aware chunking respects semantic boundaries. Rather than splitting code
+at arbitrary character counts, split at class and function definitions.
+This produces passages that contain complete logical units rather than
+fragments. Code-aware chunks improve passage retrieval quality for code.
+
+Query formulation for code search differs from prose. Effective code queries
+combine: the action (get, set, calculate), the subject (user, data, result),
+and sometimes the context (database, API, cache). "database connection pool"
+finds pool implementations. "validate user input" finds input validation.
+
+Search refinement narrows results. If initial results are too broad, add
+specificity: file type filters, module constraints, or additional terms.
+If results miss relevant code, broaden: remove constraints, expand terms,
+or try synonyms. Iterative refinement converges on useful results.
+
+Cross-referencing finds related code. When finding one relevant function,
+examine what it imports, calls, and is called by. The document relationship
+graph shows code file connections. Follow connections to discover related
+implementations.
+
+Fingerprint comparison identifies similar code. Compute semantic fingerprints
+for code blocks and compare similarity. Similar fingerprints suggest code
+duplication or shared patterns. Use fingerprinting to find copy-paste code
+or implementations of similar logic.
+
+Change impact analysis uses search to find affected code. When modifying
+a function, search for its usages across the codebase. Results show files
+that may need updates. Search-based impact analysis complements IDE features
+when working across language boundaries.
+
+Documentation search within code finds comments and docstrings. Code files
+contain embedded documentation. Searching this documentation helps understand
+unfamiliar code. Index documentation alongside code for unified search.
+
+API surface discovery finds public interfaces. Search for function signatures,
+class definitions, and exported names to understand module APIs. Filter
+for public symbols to focus on intended interfaces rather than internal
+implementation details.
+
+Bug localization uses search to find relevant code. Given a bug report with
+symptoms, search for related terms: error messages, affected features, data
+types involved. Search-based localization narrows investigation scope.
+
+Code review search finds patterns to check. Search for potentially problematic
+patterns: SQL concatenation, unchecked inputs, deprecated APIs. Pattern-based
+search supports systematic code review for security and quality.
+
+Index maintenance for evolving codebases requires regular updates. Code
+changes frequently. Use incremental indexing to keep the search index current
+with repository changes. Integrate indexing with version control hooks for
+automatic updates.
+

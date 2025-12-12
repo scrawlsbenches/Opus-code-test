@@ -1,0 +1,75 @@
+Knowledge Gap Analysis Process: Identifying and Addressing Corpus Deficiencies
+
+Knowledge gap analysis systematically identifies areas where corpus coverage
+is thin, disconnected, or missing entirely. This process enables targeted
+content development to strengthen weak areas and improve overall search quality.
+
+Gap detection begins with coverage assessment. The knowledge gap analysis function
+computes a coverage score indicating how well topics interconnect. Low coverage
+suggests isolated documents that share few concepts with the rest of the corpus.
+High coverage indicates dense interconnection where topics relate meaningfully.
+
+Isolated document identification finds outliers. Documents with low average
+similarity to other documents may represent unique topics worth expanding or
+irrelevant content worth removing. Review isolated documents to determine whether
+they add value or introduce noise.
+
+Weak topic detection scans for terms appearing in few documents. Terms with high
+TF-IDF but low document frequency indicate thin coverage. These distinctive terms
+lack supporting documents that would establish context and enable semantic
+connections. Weak topics represent opportunities for content expansion.
+
+Connectivity scoring evaluates network density. The connectivity score measures
+how well documents link through shared terms and concepts. Low connectivity
+suggests fragmentation: document clusters that do not connect to each other.
+High connectivity enables broader query expansion and better cross-topic retrieval.
+
+The gap analysis workflow follows systematic steps. First, run gap analysis on
+the indexed corpus to generate metrics. Second, review isolated documents to
+understand what topics lack support. Third, identify weak topics needing more
+coverage. Fourth, prioritize gaps by impact on search quality.
+
+Prioritization criteria rank gaps by importance. Consider: frequency of queries
+hitting the gap area, business importance of the topic, effort required to create
+supporting content, and potential to improve related areas. Address high-impact,
+low-effort gaps first.
+
+Content planning addresses identified gaps. For each priority gap, determine what
+documents would strengthen coverage. Plan documents that share terms with existing
+content while adding new perspectives. Overlapping coverage creates the connections
+that enable semantic expansion.
+
+Coverage validation verifies gap closure. After adding documents, re-run gap
+analysis to confirm improvement. Coverage score should increase. Previously
+isolated documents should gain connections. Previously weak topics should appear
+in more documents. Quantitative verification prevents subjective assessment.
+
+Iterative refinement continues the cycle. Gap analysis is not a one-time activity
+but ongoing maintenance. As corpora grow, new gaps emerge. Regular gap analysis
+identifies emerging weaknesses before they impact search quality significantly.
+
+Query log analysis supplements automated detection. Review search logs for queries
+with poor results or no results. These failed queries reveal user needs that the
+corpus does not address. Map failed queries to content gaps to align expansion
+with actual usage patterns.
+
+Concept cluster analysis reveals structural gaps. Well-formed clusters indicate
+coherent topic coverage. Fragmented or singleton clusters suggest insufficient
+documents to establish topic coherence. Aim for moderate-sized clusters with
+clear thematic unity.
+
+Document relationship mapping visualizes coverage. Export document connections
+and visualize as a graph. Dense regions indicate strong coverage. Sparse regions
+or disconnected components indicate gaps. Visual inspection often reveals patterns
+that metrics alone miss.
+
+Semantic relation gaps identify missing relationship types. The semantics layer
+extracts relations between terms. Review relation types to identify missing
+categories. If the corpus covers "is-a" relations but lacks "causes" relations,
+targeted content could address this structural gap.
+
+Cross-referencing external sources identifies absolute gaps. Compare corpus
+topics against domain taxonomies, Wikipedia categories, or textbook tables of
+contents. Topics present in references but absent from corpus represent clear
+expansion targets.
+

@@ -1,0 +1,69 @@
+Query Optimization Workflow: Improving Search Results Through Systematic Refinement
+
+Effective query optimization requires understanding how the cortical text processor
+expands and scores search terms. This workflow establishes a systematic approach
+to improving search results through iterative refinement and analysis.
+
+The initial query assessment examines raw query terms before expansion. Start by
+tokenizing the query to understand what tokens will match against the corpus.
+Stop words are removed, stemming normalizes variants, and the remaining tokens
+form the search basis. Understanding this transformation prevents surprises when
+results differ from expectations.
+
+Query expansion analysis reveals how the system broadens searches. The expand_query
+function adds semantically related terms based on lateral connections in the token
+layer. High-weight connections come from co-occurrence patterns: terms appearing
+frequently together in documents develop strong associations. Review the expanded
+terms to verify they align with search intent.
+
+The expansion weight distribution affects result ranking significantly. Original
+query terms receive weight 1.0 by default, while expanded terms receive decreasing
+weights based on connection strength. If expanded terms dominate results, consider
+reducing max_expansions or adjusting expansion weights. If results are too narrow,
+increase expansion to capture related concepts.
+
+Document scoring combines term weights with TF-IDF values. A document scores higher
+when it contains multiple query terms with high TF-IDF scores. Understanding this
+scoring mechanism helps diagnose why certain documents rank unexpectedly. Low TF-IDF
+terms (common words) contribute less to scores than distinctive terms.
+
+Iterative refinement follows a cycle: query, review results, analyze expansion,
+adjust parameters, repeat. Track which parameter changes improve relevance. Common
+adjustments include: changing max_expansions (default 10), adjusting top_n results,
+enabling code-aware expansion for programming content, or using intent detection
+for natural language queries.
+
+Query intent classification distinguishes conceptual from implementation queries.
+Conceptual queries seek explanations and definitions. Implementation queries seek
+code and technical details. The system detects intent through patterns like "what is"
+versus "how to implement". Matching query intent to document type improves relevance.
+
+Phrase queries leverage bigram matching. When searching for specific phrases like
+"neural networks", the bigram layer matches the phrase directly rather than
+individual tokens. This produces higher precision for known phrases while single
+tokens provide higher recall for exploratory searches.
+
+Performance monitoring tracks query latency and result quality. Average queries
+complete in under 100ms. Slow queries may indicate inefficient expansion or large
+result sets. Track latency alongside relevance to balance thoroughness with speed.
+
+Result diversity evaluation checks whether results span different topics or cluster
+around one area. The concept layer reveals topic distribution across results. If
+results lack diversity, consider boosting documents from underrepresented clusters
+or adjusting document connection weights.
+
+The optimization feedback loop captures improvements systematically. Document which
+queries benefited from which adjustments. Build a query tuning guide specific to
+your corpus. Different corpora require different optimal parameters based on their
+term distributions and document relationships.
+
+Baseline comparison validates improvements. Before optimizing, establish baseline
+metrics: precision at top-5, mean reciprocal rank, and query latency. Compare
+optimized results against baselines to verify actual improvement rather than
+subjective impression.
+
+Query logging enables analysis over time. Log queries, expansions, and result
+document IDs. Review logs to identify patterns: recurring queries suggest missing
+documents, consistently poor results indicate corpus gaps, and successful queries
+reveal effective patterns to replicate.
+

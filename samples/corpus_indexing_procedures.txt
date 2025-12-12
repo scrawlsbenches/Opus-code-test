@@ -1,0 +1,71 @@
+Corpus Indexing Procedures: Building and Maintaining Document Collections
+
+Corpus indexing transforms raw documents into searchable hierarchical representations.
+Following consistent procedures ensures reliable indexing, reproducible results,
+and efficient corpus maintenance over time.
+
+Document preparation standardizes content before indexing. Remove formatting artifacts,
+normalize whitespace, and ensure consistent encoding (UTF-8 preferred). Documents
+with inconsistent formatting produce noisy token distributions that degrade search
+quality. Clean documents yield cleaner connections and better retrieval.
+
+Document identification requires unique stable IDs. The doc_id parameter identifies
+documents throughout the system. Use meaningful identifiers that remain stable
+across re-indexing: filenames, URLs, or content hashes. Changing IDs breaks
+document references and connection tracking.
+
+Batch indexing processes multiple documents efficiently. The add_documents_batch
+method processes documents together, optimizing memory usage and computation.
+Process documents in batches of 50-100 for large corpora rather than one at a time.
+Batch processing reduces overhead from repeated computation setup.
+
+The processing pipeline flows through four layers. Layer 0 (tokens) extracts
+individual words. Layer 1 (bigrams) captures word pairs. Layer 2 (concepts) forms
+semantic clusters. Layer 3 (documents) stores full document representations.
+Each layer builds on previous layers, creating hierarchical structure.
+
+Compute phases follow processing. After adding documents, run compute_all to
+calculate derived values: TF-IDF scores, PageRank importance, bigram connections,
+document relationships, and concept clusters. These computations establish the
+network structure enabling search and analysis.
+
+Incremental indexing updates existing corpora without full recomputation. The
+add_document_incremental method adds single documents and updates TF-IDF efficiently.
+Use incremental indexing for live systems where documents arrive continuously.
+Full recomputation via compute_all remains necessary for PageRank and clustering.
+
+Staleness tracking monitors computation freshness. After adding documents, TF-IDF,
+PageRank, and other computed values become stale. Check staleness with is_stale
+method before relying on computed values. Recompute only stale computations to
+minimize unnecessary work.
+
+Persistence procedures save corpus state. The save method serializes all layers,
+connections, and computed values to disk. Save after compute_all completes to
+preserve computation results. Load restores full state including staleness tracking.
+Use descriptive filenames including corpus version and date.
+
+Corpus verification validates indexing completeness. After indexing, verify:
+document count matches expectations, token distribution appears reasonable, no
+documents have zero tokens, and concept clusters form meaningful groups. Automated
+verification catches indexing problems early.
+
+Re-indexing procedures handle corpus updates. When documents change significantly,
+consider full re-index rather than incremental updates. Re-indexing rebuilds all
+connections and recalculates all scores. Schedule re-indexing during low-usage
+periods for production systems.
+
+Index versioning tracks corpus evolution. Maintain version numbers or timestamps
+for indexed corpora. Document which version corresponds to which document set.
+Version tracking enables rollback when indexing problems occur and comparison
+across corpus versions.
+
+Performance monitoring during indexing tracks resource usage. Monitor memory
+consumption (large corpora may exceed available RAM), processing time per document,
+and total indexing duration. Set timeouts for each phase to catch runaway
+computations. Profile indexing to identify bottlenecks.
+
+Quality metrics evaluate indexed corpus health. Coverage score indicates how
+well documents connect. Connectivity score measures network density. Concept
+cluster quality metrics (modularity, silhouette) assess clustering effectiveness.
+Track these metrics across indexing runs to detect degradation.
+

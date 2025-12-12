@@ -1,0 +1,72 @@
+Computation Staleness Management: Ensuring Fresh Data in Dynamic Corpora
+
+Staleness management addresses the fundamental tension between computation
+cost and data freshness. Understanding when values are stale and strategically
+managing recomputation enables efficient corpus operation.
+
+Staleness fundamentals: computed values like TF-IDF and PageRank derive from
+corpus content. When documents change, these values become stale and no longer
+accurately reflect the current corpus state. Staleness tracking identifies
+which computations need refresh.
+
+The staleness lifecycle follows document operations. Adding a document marks
+all computations stale because term frequencies and graph structure change.
+Computing a value marks it fresh. The cycle continues as corpus evolves.
+
+Computation dependencies create staleness chains. TF-IDF depends on document
+frequencies. PageRank depends on connection structure. Concept clusters depend
+on term similarities. Changes propagate staleness through dependent computations.
+
+Staleness flags are computation-specific. Each computation type (COMP_TFIDF,
+COMP_PAGERANK, COMP_CONCEPTS, etc.) has an independent staleness flag.
+Recomputing one does not automatically refresh others. Selective recomputation
+addresses specific staleness.
+
+Checking staleness uses the is_stale method. Before using computed values,
+check their freshness. Stale values may be acceptable for approximate operations
+but problematic for precise requirements. Application context determines
+acceptable staleness.
+
+Staleness tolerance varies by use case. Interactive search may tolerate
+slightly stale TF-IDF for faster response. Batch analysis may require
+completely fresh values for accuracy. Define staleness tolerance per operation.
+
+Deferred recomputation batches updates. Rather than recomputing after each
+document addition, defer until a batch completes or a threshold triggers.
+Deferred recomputation amortizes the cost across multiple updates.
+
+Incremental versus full recomputation trades accuracy for speed. Incremental
+TF-IDF updates efficiently handle single documents. Full recomputation
+recalculates everything from scratch. Choose based on staleness severity
+and performance requirements.
+
+Staleness-aware caching invalidates cached results when source computations
+become stale. If query results cache TF-IDF-based scores, invalidate those
+cache entries when TF-IDF staleness occurs. Cache invalidation maintains
+result consistency.
+
+Recomputation priority ordering addresses critical staleness first. TF-IDF
+typically has highest priority because queries depend on it directly.
+PageRank and clustering have lower priority for most applications.
+Order recomputation by operational impact.
+
+Staleness propagation analysis identifies downstream effects. When TF-IDF
+becomes stale, what operations are affected? When PageRank becomes stale,
+what features degrade? Understanding propagation guides refresh scheduling.
+
+Persistence preserves staleness state. Saving a corpus includes current
+staleness flags. Loading restores those flags. This enables consistent
+operation across process restarts without unnecessary recomputation.
+
+Monitoring staleness duration tracks how long values remain stale. Long
+staleness durations indicate insufficient recomputation scheduling.
+Short durations may indicate unnecessary computation overhead.
+
+Staleness budgets limit acceptable freshness gaps. Define maximum staleness
+duration per computation type. Alert when budgets exceed. Budgets ensure
+freshness without mandating constant recomputation.
+
+Testing staleness handling verifies correct behavior. Tests should cover:
+staleness after document addition, freshness after computation, persistence
+of staleness state, and correct staleness checking before value usage.
+

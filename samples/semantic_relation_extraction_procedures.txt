@@ -1,0 +1,79 @@
+Semantic Relation Extraction Procedures: Discovering Meaningful Term Relationships
+
+Semantic relation extraction identifies meaningful relationships between terms
+in the corpus: synonyms, hierarchies, causes, parts, and more. These procedures
+establish systematic approaches to extracting and utilizing semantic relations.
+
+Relation extraction fundamentals begin with pattern matching. The semantics module
+uses linguistic patterns to identify relationships. Patterns like "X is a Y"
+suggest is-a relations. "X causes Y" suggests causal relations. "X contains Y"
+suggests part-whole relations. Pattern-based extraction requires no training data.
+
+Corpus semantics extraction runs extract_corpus_semantics. This method scans
+documents for relation patterns and populates the semantic_relations list with
+discovered relationships. Each relation includes: term1, relation_type, term2,
+and confidence weight based on pattern match quality and frequency.
+
+Relation type coverage depends on corpus content. Different domains emphasize
+different relation types. Technical corpora may have many is-a relations (class
+hierarchies). Scientific corpora may have causal relations. Evaluate which relation
+types your corpus supports and expand patterns for missing important types.
+
+Confidence scoring ranks relation reliability. High-confidence relations appear
+in multiple documents with clear pattern matches. Low-confidence relations appear
+once or match ambiguous patterns. Filter by confidence when applications require
+reliable relations; include low-confidence relations for exploration.
+
+Validation procedures verify extracted relations. Sample relations at each
+confidence level and manually assess accuracy. Calculate precision: what fraction
+of extracted relations are actually correct? Track precision over time as corpus
+and patterns evolve.
+
+Relation type refinement improves extraction quality. Review extracted relations
+to identify false positives. Adjust patterns to reduce spurious matches. Add new
+patterns for commonly missed relations. Pattern tuning iteratively improves
+extraction quality.
+
+Semantic retrofitting incorporates relations into term representations. After
+extraction, retrofit embeddings to bring related terms closer in vector space.
+This improves query expansion: queries expand to semantically related terms
+rather than just co-occurring terms.
+
+Graph construction from relations enables reasoning. Build a directed graph
+where nodes are terms and edges are relations. Graph algorithms (path finding,
+centrality, clustering) reveal structure not visible in raw relations.
+Hierarchies emerge from is-a chains. Causal paths emerge from cause chains.
+
+Cross-document relation aggregation strengthens confidence. A relation appearing
+in five documents has higher confidence than one appearing once. Aggregate
+relations across documents and weight by document count. This surfaces consistent
+patterns while filtering noise.
+
+Relation visualization aids understanding. Export relations to graph visualization
+tools. Color edges by relation type. Size nodes by term frequency. Layout
+algorithms reveal clusters and hierarchies. Visual inspection identifies
+extraction problems and corpus structure.
+
+Integration with query expansion uses relations for smarter expansion. Rather
+than expanding only via co-occurrence, expand via semantic relations. A query
+for "dog" expands to "canine" via synonym relation. A query for "car" expands
+to "vehicle" via is-a relation. Relation-based expansion improves relevance.
+
+Relation-based search enables structured queries. Users can search for specific
+relationships: "things that cause cancer", "parts of a cell", "types of machine
+learning". Parse these queries to identify the requested relation type and
+filter results accordingly.
+
+Continuous extraction maintains freshness. As documents are added, new relations
+may emerge. Run extraction periodically or incrementally to capture evolving
+corpus semantics. Track relation additions over time to monitor corpus growth.
+
+Quality metrics evaluate extraction effectiveness. Track: total relations
+extracted, relations per relation type, average confidence, coverage of corpus
+terms. Metrics reveal extraction health and guide improvement efforts.
+
+Documentation captures extraction configuration. Record which patterns are used,
+confidence thresholds, and post-processing steps. Configuration documentation
+enables reproducibility and facilitates troubleshooting when extraction quality
+changes.
+
