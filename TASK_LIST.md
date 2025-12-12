@@ -18,7 +18,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 ### 🟠 High (Do This Week)
 
-*All high-priority tasks completed!*
+| # | Task | Category | Depends | Effort |
+|---|------|----------|---------|--------|
+| 146 | Create behavioral tests for core user workflows | Testing | - | Medium |
 
 ### 🟡 Medium (Do This Month)
 
@@ -1471,6 +1473,90 @@ in similar documents are usually semantically related.
 - [x] High-frequency terms don't dominate (TF-IDF naturally down-weights)
 - [x] Existing good similarities preserved and improved
 - [x] New 'tfidf' method available for semantic similarity tasks
+
+---
+
+### 146. Create Behavioral Tests for Core User Workflows
+
+**Meta:** `status:pending` `priority:high` `category:testing`
+**Files:** `tests/test_behavioral.py` (new)
+**Effort:** Medium
+
+**Purpose:** Create acceptance/behavioral tests that verify the system delivers expected
+user outcomes. Unlike unit tests (function works correctly) or integration tests
+(components work together), behavioral tests verify "the system feels right to users."
+
+**Why This Matters:**
+Dog-fooding revealed issues that unit tests missed:
+- Search returning wrong documents for obvious queries
+- Python keywords polluting analysis results
+- Performance regressions making the system feel slow
+
+Behavioral tests would have caught these as regressions.
+
+**Test Categories to Implement:**
+
+1. **SearchBehavior** - "Search should feel relevant"
+   ```python
+   def test_document_name_matches_rank_highly(self):
+       """Query matching document name should return that doc in top 2."""
+       # "distributed systems" → distributed_systems in top 2
+
+   def test_query_expansion_improves_recall(self):
+       """Expanded queries should find more relevant docs than exact match."""
+
+   def test_code_search_finds_implementations_not_tests(self):
+       """Code queries should prefer real implementations over test mocks."""
+   ```
+
+2. **PerformanceBehavior** - "System should feel responsive"
+   ```python
+   def test_compute_all_under_threshold(self):
+       """Full analysis should complete within reasonable time."""
+       # With 109 sample docs: < 20 seconds
+
+   def test_search_is_fast(self):
+       """Single query should return quickly."""
+       # < 100ms per query
+   ```
+
+3. **QualityBehavior** - "Results should make sense"
+   ```python
+   def test_pagerank_surfaces_meaningful_terms(self):
+       """Top PageRank terms should be domain concepts, not noise."""
+       # No 'self', 'def', 'assertequal' in top 20
+
+   def test_clustering_produces_coherent_groups(self):
+       """Clusters should have good community structure."""
+       # modularity > 0.3
+
+   def test_embeddings_capture_semantic_similarity(self):
+       """Similar terms by embedding should be semantically related."""
+       # 'learning' similar to 'neural', 'training', 'networks'
+   ```
+
+4. **RobustnessBehavior** - "System should handle edge cases gracefully"
+   ```python
+   def test_empty_query_returns_empty_results(self):
+       """Empty queries should not crash or return garbage."""
+
+   def test_unknown_terms_handled_gracefully(self):
+       """Queries with unknown terms should still return results."""
+   ```
+
+**Implementation Notes:**
+- Use `tests/test_behavioral.py` as a new test file
+- Load sample corpus once in `setUpClass` for performance
+- Use descriptive assertion messages explaining expected behavior
+- Document the "why" for each threshold/expectation
+
+**Acceptance Criteria:**
+- [ ] TestSearchBehavior class with 3+ tests
+- [ ] TestPerformanceBehavior class with 2+ tests
+- [ ] TestQualityBehavior class with 3+ tests
+- [ ] TestRobustnessBehavior class with 2+ tests
+- [ ] All tests pass on current codebase
+- [ ] Tests catch regressions from Tasks #141-145 if reverted
 
 ---
 
