@@ -176,9 +176,10 @@ def run_category(category, verbose=False, quiet=False, no_capture=False,
         if existing_files:
             print(f"\n--- Also running {len(existing_files)} legacy test files ---")
             for test_file in existing_files:
-                legacy_result = subprocess.run([
-                    sys.executable, '-m', 'unittest', test_file, '-v' if verbose else ''
-                ]).returncode
+                cmd = [sys.executable, '-m', 'unittest', test_file]
+                if verbose:
+                    cmd.append('-v')
+                legacy_result = subprocess.run(cmd).returncode
                 if legacy_result != 0:
                     result = legacy_result
                     if failfast:
