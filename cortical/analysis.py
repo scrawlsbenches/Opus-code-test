@@ -1209,7 +1209,8 @@ def compute_bigram_connections(
     chain_weight: float = 0.7,
     cooccurrence_weight: float = 0.3,
     max_bigrams_per_term: int = 100,
-    max_bigrams_per_doc: int = 500
+    max_bigrams_per_doc: int = 500,
+    max_connections_per_bigram: int = 50
 ) -> Dict[str, Any]:
     """
     Build lateral connections between bigrams in Layer 1.
@@ -1229,6 +1230,8 @@ def compute_bigram_connections(
             to avoid O(n²) explosion from common terms like "self", "return" (default 100)
         max_bigrams_per_doc: Skip documents with more than this many bigrams for
             co-occurrence connections to avoid O(n²) explosion (default 500)
+        max_connections_per_bigram: Maximum lateral connections per bigram minicolumn
+            to keep graph sparse and focused on strongest connections (default 50)
 
     Returns:
         Statistics about connections created:
@@ -1238,6 +1241,7 @@ def compute_bigram_connections(
         - cooccurrence_connections: Connections from document co-occurrence
         - skipped_common_terms: Number of terms skipped due to max_bigrams_per_term
         - skipped_large_docs: Number of docs skipped due to max_bigrams_per_doc
+        - skipped_max_connections: Number of connections skipped due to per-bigram limit
     """
     layer1 = layers[CorticalLayer.BIGRAMS]
 
@@ -1249,7 +1253,8 @@ def compute_bigram_connections(
             'chain_connections': 0,
             'cooccurrence_connections': 0,
             'skipped_common_terms': 0,
-            'skipped_large_docs': 0
+            'skipped_large_docs': 0,
+            'skipped_max_connections': 0
         }
 
     bigrams = list(layer1.minicolumns.values())
@@ -1271,13 +1276,17 @@ def compute_bigram_connections(
     component_connections = 0
     chain_connections = 0
     cooccurrence_connections = 0
+    skipped_max_connections = 0
 
     # Track which pairs we've already connected (avoid duplicates)
     connected_pairs: Set[Tuple[str, str]] = set()
 
+    # Track connection count per bigram to enforce max_connections_per_bigram
+    connection_counts: Dict[str, int] = defaultdict(int)
+
     def add_connection(b1: Minicolumn, b2: Minicolumn, weight: float, conn_type: str) -> bool:
-        """Add bidirectional connection if not already connected."""
-        nonlocal component_connections, chain_connections, cooccurrence_connections
+        """Add bidirectional connection if not already connected and under limit."""
+        nonlocal component_connections, chain_connections, cooccurrence_connections, skipped_max_connections
 
         pair = tuple(sorted([b1.id, b2.id]))
         if pair in connected_pairs:
@@ -1286,9 +1295,17 @@ def compute_bigram_connections(
             b2.add_lateral_connection(b1.id, weight)
             return False
 
+        # Check if either bigram has reached its connection limit
+        if (connection_counts[b1.id] >= max_connections_per_bigram or
+            connection_counts[b2.id] >= max_connections_per_bigram):
+            skipped_max_connections += 1
+            return False
+
         connected_pairs.add(pair)
         b1.add_lateral_connection(b2.id, weight)
         b2.add_lateral_connection(b1.id, weight)
+        connection_counts[b1.id] += 1
+        connection_counts[b2.id] += 1
 
         if conn_type == 'component':
             component_connections += 1
@@ -1381,7 +1398,8 @@ def compute_bigram_connections(
         'chain_connections': chain_connections,
         'cooccurrence_connections': cooccurrence_connections,
         'skipped_common_terms': skipped_common_terms,
-        'skipped_large_docs': skipped_large_docs
+        'skipped_large_docs': skipped_large_docs,
+        'skipped_max_connections': skipped_max_connections
     }
 
 

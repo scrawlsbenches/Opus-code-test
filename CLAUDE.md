@@ -355,6 +355,61 @@ processor = CorticalTextProcessor.load("corpus.pkl")
 # Staleness state is preserved from when it was saved
 ```
 
+### Return Value Semantics
+
+Understanding what functions return in edge cases prevents bugs and confusion.
+
+#### Edge Case Returns
+
+| Scenario | Return Value | Example Functions |
+|----------|--------------|-------------------|
+| Empty corpus | `[]` (empty list) | `find_documents_for_query()`, `find_passages_for_query()` |
+| No matches | `[]` (empty list) | `find_documents_for_query()`, `expand_query()` returns `{}` |
+| Unknown doc_id | `{}` (empty dict) | `get_document_metadata()` |
+| Unknown term | `None` | `layer.get_minicolumn()`, `layer.get_by_id()` |
+| Invalid layer | `KeyError` raised | `get_layer()` |
+| Empty query | `ValueError` raised | `find_documents_for_query()` |
+| Invalid top_n | `ValueError` raised | `find_documents_for_query()` |
+
+#### Score Ranges
+
+| Score Type | Range | Notes |
+|------------|-------|-------|
+| Relevance score | Unbounded (0+) | Sum of TF-IDF × expansion weights |
+| PageRank | 0.0-1.0 | Normalized probability distribution |
+| TF-IDF | Unbounded (0+) | Higher = more distinctive |
+| Connection weight | Unbounded (0+) | Co-occurrence count or semantic weight |
+| Similarity | 0.0-1.0 | Cosine similarity, Jaccard, etc. |
+| Confidence | 0.0-1.0 | Relation extraction confidence |
+
+#### Lookup Functions: None vs Exception
+
+**Return `None` for missing items:**
+```python
+col = layer.get_minicolumn("nonexistent")  # Returns None
+col = layer.get_by_id("L0_nonexistent")    # Returns None
+```
+
+**Raise exception for invalid structure:**
+```python
+layer = processor.get_layer(CorticalLayer.TOKENS)  # OK
+layer = processor.get_layer(999)  # Raises KeyError
+```
+
+#### Default Parameter Values
+
+Key defaults to know:
+
+| Parameter | Default | In Function |
+|-----------|---------|-------------|
+| `top_n` | `5` | `find_documents_for_query()` |
+| `top_n` | `5` | `find_passages_for_query()` |
+| `max_expansions` | `10` | `expand_query()` |
+| `damping` | `0.85` | `compute_pagerank()` |
+| `resolution` | `1.0` | `build_concept_clusters()` |
+| `chunk_size` | `200` | `find_passages_for_query()` |
+| `chunk_overlap` | `50` | `find_passages_for_query()` |
+
 ---
 
 ## Development Workflow

@@ -139,6 +139,20 @@ class Minicolumn:
             self.lateral_connections.get(target_id, 0) + weight
         )
 
+    def add_lateral_connections_batch(self, connections: Dict[str, float]) -> None:
+        """
+        Add or strengthen multiple lateral connections at once.
+
+        More efficient than calling add_lateral_connection() in a loop
+        because it reduces function call overhead.
+
+        Args:
+            connections: Dictionary mapping target_id to weight to add
+        """
+        lateral = self.lateral_connections
+        for target_id, weight in connections.items():
+            lateral[target_id] = lateral.get(target_id, 0) + weight
+
     def add_typed_connection(
         self,
         target_id: str,

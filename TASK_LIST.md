@@ -24,9 +24,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 137 | Cap bigram connections to top-K per bigram | Perf | - | Small |
 | 138 | Use sparse matrix multiplication for bigram connections | Perf | - | Medium |
-| 139 | Batch bigram connection updates to reduce dict overhead | Perf | - | Small |
 | 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
 | 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
@@ -36,7 +34,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 102 | Add tests for edge cases | Testing | - | Medium |
 | 107 | Add Quick Context to tasks | TaskMgmt | - | Medium |
 | 115 | Create component interaction diagram | AINav | - | Medium |
-| 116 | Document return value semantics | AINav | - | Medium |
 
 ### 🟢 Low (Backlog)
 
@@ -84,6 +81,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 139 | Batch bigram connection updates to reduce dict overhead | 2025-12-12 | add_lateral_connections_batch() method in minicolumn.py |
+| 137 | Cap bigram connections to top-K per bigram | 2025-12-12 | max_connections_per_bigram parameter (default 50) in analysis.py |
+| 116 | Document return value semantics | 2025-12-12 | Edge cases, score ranges, None vs exceptions, default parameters |
 | 114 | Add type aliases for complex types | 2025-12-12 | cortical/types.py with 20+ aliases: DocumentScore, PassageResult, SemanticRelation, etc. |
 | 113 | Document staleness tracking system | 2025-12-12 | Comprehensive docs in CLAUDE.md: computation types, API, incremental updates |
 | 96 | Centralize duplicate constants | 2025-12-12 | cortical/constants.py with RELATION_WEIGHTS, DOC_TYPE_BOOSTS, query keywords |

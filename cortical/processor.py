@@ -911,6 +911,7 @@ class CorticalTextProcessor:
         cooccurrence_weight: float = 0.3,
         max_bigrams_per_term: int = 100,
         max_bigrams_per_doc: int = 500,
+        max_connections_per_bigram: int = 50,
         verbose: bool = True
     ) -> Dict[str, Any]:
         """
@@ -930,6 +931,8 @@ class CorticalTextProcessor:
                 to avoid O(n²) explosion from common terms like "self", "return" (default 100)
             max_bigrams_per_doc: Skip documents with more than this many bigrams for
                 co-occurrence connections to avoid O(n²) explosion (default 500)
+            max_connections_per_bigram: Maximum lateral connections per bigram minicolumn
+                to keep graph sparse and focused on strongest connections (default 50)
             verbose: Print progress messages
 
         Returns:
@@ -940,6 +943,7 @@ class CorticalTextProcessor:
             - cooccurrence_connections: Connections from document co-occurrence
             - skipped_common_terms: Number of terms skipped due to max_bigrams_per_term
             - skipped_large_docs: Number of docs skipped due to max_bigrams_per_doc
+            - skipped_max_connections: Number of connections skipped due to per-bigram limit
 
         Example:
             >>> stats = processor.compute_bigram_connections()
@@ -955,16 +959,20 @@ class CorticalTextProcessor:
             chain_weight=chain_weight,
             cooccurrence_weight=cooccurrence_weight,
             max_bigrams_per_term=max_bigrams_per_term,
-            max_bigrams_per_doc=max_bigrams_per_doc
+            max_bigrams_per_doc=max_bigrams_per_doc,
+            max_connections_per_bigram=max_connections_per_bigram
         )
         if verbose:
             skipped_terms = stats.get('skipped_common_terms', 0)
             skipped_docs = stats.get('skipped_large_docs', 0)
+            skipped_conns = stats.get('skipped_max_connections', 0)
             skip_parts = []
             if skipped_terms:
                 skip_parts.append(f"{skipped_terms} common terms")
             if skipped_docs:
                 skip_parts.append(f"{skipped_docs} large docs")
+            if skipped_conns:
+                skip_parts.append(f"{skipped_conns} over-limit")
             skip_msg = f", skipped {', '.join(skip_parts)}" if skip_parts else ""
             print(f"Created {stats['connections_created']} bigram connections "
                   f"(component: {stats['component_connections']}, "
