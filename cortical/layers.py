@@ -177,20 +177,30 @@ class HierarchicalLayer:
         activations = [col.activation for col in self.minicolumns.values()]
         return (min(activations), max(activations))
     
-    def sparsity(self) -> float:
+    def sparsity(self, threshold_fraction: float = 0.5) -> float:
         """
-        Calculate sparsity (fraction of columns with low activation).
-        
+        Calculate sparsity (fraction of columns with below-average activation).
+
         In biological neural networks, sparse representations are
-        more efficient and allow for more distinct patterns.
-        
+        more efficient and allow for more distinct patterns. This measures
+        the fraction of columns activated below a threshold relative to
+        the average activation.
+
+        Args:
+            threshold_fraction: Fraction of average activation to use as threshold.
+                Columns with activation < (average * threshold_fraction) count as sparse.
+                Default 0.5 means columns below 50% of average activation.
+
         Returns:
             Fraction of columns with activation below threshold
         """
         if not self.minicolumns:
             return 0.0
-        threshold = 1.0  # Activation threshold
-        low_activation = sum(1 for col in self.minicolumns.values() 
+        avg_activation = self.average_activation()
+        if avg_activation == 0:
+            return 1.0  # All columns are sparse if no activation
+        threshold = avg_activation * threshold_fraction
+        low_activation = sum(1 for col in self.minicolumns.values()
                             if col.activation < threshold)
         return low_activation / len(self.minicolumns)
     

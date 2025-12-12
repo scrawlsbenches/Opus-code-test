@@ -1876,7 +1876,7 @@ class TestBoostDefinitionDocumentsTestFilePenalty(unittest.TestCase):
             "def compute_pagerank",
             documents,
             boost_factor=2.0,
-            test_file_boost_factor=0.5
+            test_with_definition_penalty=0.5
         )
 
         # Source file should be ranked first after boosting
@@ -1887,7 +1887,7 @@ class TestBoostDefinitionDocumentsTestFilePenalty(unittest.TestCase):
         self.assertEqual(boosted[1][1], 5.0)
 
     def test_test_file_penalty_can_be_disabled(self):
-        """Test that test_file_boost_factor=1.0 disables the penalty."""
+        """Test that test_with_definition_penalty=1.0 disables the penalty."""
         from cortical.query import boost_definition_documents
 
         doc_results = [
@@ -1905,13 +1905,13 @@ class TestBoostDefinitionDocumentsTestFilePenalty(unittest.TestCase):
             "def my_func",
             documents,
             boost_factor=2.0,
-            test_file_boost_factor=1.0  # No penalty
+            test_with_definition_penalty=1.0  # No penalty
         )
 
         # Both should get the same boost when penalty is disabled
         scores = {doc_id: score for doc_id, score in boosted}
-        # Test file doesn't get full boost, it gets test_file_boost_factor (1.0 here means no change)
-        # Wait, if test_file_boost_factor=1.0, test file gets 10.0 * 1.0 = 10.0
+        # Test file doesn't get full boost, it gets test_with_definition_penalty (1.0 here means no change)
+        # With test_with_definition_penalty=1.0, test file gets 10.0 * 1.0 = 10.0
         # Source file gets 10.0 * 2.0 = 20.0
         self.assertEqual(scores["src/module.py"], 20.0)
         self.assertEqual(scores["tests/test_module.py"], 10.0)
@@ -1962,8 +1962,8 @@ class TestBoostDefinitionDocumentsTestFilePenalty(unittest.TestCase):
             "def compute_pagerank",
             documents,
             boost_factor=2.0,
-            test_file_boost_factor=0.5,
-            test_file_penalty=0.7
+            test_with_definition_penalty=0.5,
+            test_without_definition_penalty=0.7
         )
 
         # Source file with definition should now rank first
