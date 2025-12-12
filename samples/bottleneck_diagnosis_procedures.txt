@@ -1,0 +1,81 @@
+Bottleneck Diagnosis Procedures: Systematic Performance Problem Identification
+
+Performance bottleneck diagnosis requires systematic investigation rather than
+guesswork. These procedures establish methodical approaches to identifying
+and resolving computational constraints.
+
+The diagnosis imperative: intuition about performance often misleads.
+Developers frequently blame complex algorithms when simple operations cause
+problems. Always profile to identify actual bottlenecks before attempting
+optimization.
+
+Profiling workflow starts with measurement. Run the profiling script to measure
+time spent in each computation phase. Record baseline metrics: TF-IDF time,
+PageRank time, bigram connection time, semantic extraction time, and
+clustering time.
+
+Phase identification isolates the problem area. Compare phase durations.
+A phase consuming 80% of total time is the primary bottleneck. Focus
+investigation on the dominant phase rather than spreading effort across
+all operations.
+
+Common bottleneck patterns recur across codebases. O(n^2) complexity from
+pairwise operations is frequent: computing similarity between all document
+pairs, creating connections between all term pairs, or checking all possible
+matches.
+
+Term frequency analysis reveals hidden causes. Common terms like "the" or
+"self" appear in many documents and create disproportionate work. A single
+term appearing 1000 times creates millions of potential bigram connections.
+Filtering common terms resolves these hidden bottlenecks.
+
+Memory bottlenecks differ from CPU bottlenecks. CPU bottlenecks show high
+utilization during processing. Memory bottlenecks show swapping or allocation
+failures. Distinguish the constraint type before selecting solutions.
+
+Parameter tuning resolves many bottlenecks. Limits like max_bigrams_per_term,
+max_similarity_pairs, and min_context_keys control combinatorial explosion.
+Profile with different parameter values to find the optimal tradeoff between
+thoroughness and performance.
+
+Algorithmic optimization addresses fundamental inefficiency. If a phase has
+poor algorithmic complexity, parameter tuning provides only temporary relief.
+Algorithmic improvement (better data structures, smarter algorithms) provides
+sustainable solutions.
+
+Incremental processing avoids recomputation bottlenecks. Rather than
+recomputing everything after each change, incremental updates process only
+what changed. Incremental approaches turn O(n) operations into O(1) operations
+for single updates.
+
+Caching eliminates redundant computation bottlenecks. If the same calculation
+runs repeatedly with the same inputs, cache results. Query expansion, term
+lookups, and similarity scores are common caching opportunities.
+
+Batch processing resolves per-item overhead bottlenecks. Per-item overhead
+(function calls, memory allocation) compounds across many items. Batch
+processing amortizes overhead across items, improving throughput.
+
+Parallel processing addresses CPU-bound bottlenecks. If one CPU core limits
+throughput, distribute work across multiple cores. Identify parallelizable
+operations: independent document processing, independent query handling,
+independent similarity calculations.
+
+Database optimization resolves storage bottlenecks. If persistence operations
+are slow, optimize storage format. Binary formats read faster than text.
+Indexed access is faster than sequential scan. Compression reduces I/O time.
+
+Regression testing prevents bottleneck recurrence. After resolving a bottleneck,
+add performance tests that fail if the bottleneck returns. Automated testing
+catches regressions before they reach production.
+
+Documentation captures diagnosis findings. Record: what bottleneck was found,
+how it was identified, what solution was applied, and what results were
+achieved. Documentation prevents repeating diagnosis efforts and enables
+team learning.
+
+Continuous profiling catches new bottlenecks. As code evolves and data grows,
+new bottlenecks emerge. Regular profiling identifies problems before users
+notice degradation. Integrate profiling into development and deployment
+workflows.
+

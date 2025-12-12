@@ -1,0 +1,79 @@
+Incremental Indexing Workflow: Maintaining Live Corpora with Continuous Updates
+
+Incremental indexing enables corpus updates without full recomputation, essential
+for systems where documents arrive continuously or change frequently. This workflow
+establishes procedures for efficient incremental maintenance.
+
+The incremental indexing advantage is efficiency. Full compute_all recalculates
+everything: TF-IDF, PageRank, bigram connections, concept clusters, and document
+relationships. Incremental updates recalculate only affected components, reducing
+update latency from seconds to milliseconds for single document additions.
+
+Document addition workflow uses add_document_incremental. This method processes
+the document through all layers and updates TF-IDF scores. The recompute parameter
+controls what gets recalculated: 'tfidf' updates only TF-IDF (fastest), 'all'
+triggers full recomputation (thorough), 'none' skips recomputation (deferred).
+
+Staleness tracking after incremental updates matters. After add_document_incremental,
+PageRank and concept clusters become stale. Check staleness before relying on
+these values. Deferred computation batches multiple updates before expensive
+recalculation.
+
+Batch incremental updates balance efficiency and freshness. Rather than recomputing
+after each document, batch updates and recompute periodically. Add 100 documents
+with recompute='none', then call compute_all once. This approach maintains near-
+real-time indexing with periodic full refresh.
+
+Document modification requires deletion and re-addition. The system does not
+support in-place document updates. To modify a document: remove the old version,
+add the new version, then recompute affected values. Track modifications separately
+from additions for accurate change monitoring.
+
+Document deletion procedures clean up connections. Removing a document requires
+removing its minicolumn from the document layer and updating connections in other
+layers. After deletion, TF-IDF scores change because document frequency changes.
+Recompute to reflect the updated corpus state.
+
+Concurrent access considerations apply to live systems. If multiple processes
+add documents simultaneously, coordinate access to prevent race conditions.
+Use locking or single-writer patterns to ensure consistent corpus state during
+updates.
+
+Persistence strategy for incremental systems balances durability and performance.
+Saving after every document addition ensures durability but creates I/O overhead.
+Save periodically (every N documents or every M minutes) and accept potential
+loss of recent updates. Configure based on durability requirements.
+
+Recovery procedures handle interrupted updates. If the system crashes during
+incremental indexing, the in-memory state is lost. On restart, load the last
+saved state and re-process documents added since the save. Track document
+addition timestamps to identify missed documents.
+
+Chunk-based persistence for team collaboration stores changes incrementally.
+Each indexing session creates a new chunk file with additions and modifications.
+Chunk files are git-friendly: small, append-only, and conflict-free. Periodic
+compaction consolidates chunks like git garbage collection.
+
+Monitoring incremental performance tracks update latency. Measure time per
+document addition, time per periodic recomputation, and queue depth if updates
+are buffered. Alert when latency exceeds thresholds indicating system stress.
+
+Cache invalidation coordinates with incremental updates. If query results are
+cached, invalidate affected cache entries when documents change. Track which
+documents affect which cached queries for precise invalidation rather than
+full cache flush.
+
+Testing incremental workflows verifies correctness. Compare results from
+incremental updates against full recomputation to verify equivalence. Any
+divergence indicates bugs in incremental logic. Automated regression tests
+catch incremental update problems early.
+
+Scalability planning anticipates growth. Incremental indexing maintains performance
+as corpora grow, but eventual limits exist. Plan for corpus size milestones
+and test performance at projected sizes before they occur.
+
+Operational runbooks document incremental procedures. Standard operating procedures
+for common scenarios: adding documents, handling failures, triggering recomputation,
+and performing maintenance. Runbooks ensure consistent operations across team
+members and shifts.
+
