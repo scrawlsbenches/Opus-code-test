@@ -4,7 +4,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 **Last Updated:** 2025-12-12
 **Pending Tasks:** 35
-**Completed Tasks:** 133+ (see archive and Recently Completed)
+**Completed Tasks:** 134+ (see archive and Recently Completed)
 
 ---
 
@@ -81,6 +81,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 147 | Fix misleading hardcoded values | 2025-12-12 | 5 fixes: backwards param names, sparsity threshold, config constant, tolerance param, confidence semantics |
 | 139 | Batch bigram connection updates to reduce dict overhead | 2025-12-12 | add_lateral_connections_batch() method in minicolumn.py |
 | 137 | Cap bigram connections to top-K per bigram | 2025-12-12 | max_connections_per_bigram parameter (default 50) in analysis.py |
 | 116 | Document return value semantics | 2025-12-12 | Edge cases, score ranges, None vs exceptions, default parameters |
@@ -1495,6 +1496,48 @@ user outcomes, catching the kinds of issues discovered during dog-fooding.
 - [x] TestRobustnessBehavior class with 2+ tests
 - [x] All tests pass on current codebase
 - [x] Tests catch regressions from Tasks #141-145 if reverted
+
+---
+
+### 147. Fix Misleading Hardcoded Values ✅
+
+**Meta:** `status:completed` `priority:high` `category:bugfix`
+**Files:** `cortical/query/definitions.py`, `cortical/layers.py`, `cortical/query/expansion.py`, `cortical/analysis.py`, `cortical/minicolumn.py`, `tests/test_layers.py`, `tests/test_query.py`
+**Effort:** Medium
+**Completed:** 2025-12-12
+
+**Problem:** Several hardcoded values in the codebase were misleading - they made something appear to be true when it wasn't.
+
+**Issues Fixed:**
+
+1. **Backwards parameter names** (`definitions.py:309-310`):
+   - `test_file_boost_factor=0.5` sounded like a boost but actually reduced scores by 50%
+   - `test_file_penalty=0.7` was called "penalty" but was lighter than the "boost"
+   - Renamed to `test_with_definition_penalty` and `test_without_definition_penalty`
+
+2. **Useless sparsity threshold** (`layers.py:192`):
+   - Hardcoded `threshold=1.0` only counted terms with activation=0 (unused terms)
+   - Changed to use `threshold_fraction * average_activation` for meaningful sparsity
+
+3. **Hardcoded config value** (`expansion.py:77`):
+   - Hardcoded `0.4` instead of using `DEFAULT_CHAIN_VALIDITY` constant
+   - Now imports and uses the config constant
+
+4. **Tolerance parameter ignored** (`analysis.py:301`):
+   - `compute_hierarchical_pagerank()` ignored caller's `tolerance` parameter
+   - Was hardcoded to `1e-6` instead of using the function parameter
+
+5. **Confidence only increasing** (`minicolumn.py:189`):
+   - Used `max(old, new)` so confidence could only increase, never decrease
+   - Changed to weighted average so confidence can decrease with lower-confidence evidence
+
+**Acceptance Criteria:**
+- [x] All misleading parameter names clarified
+- [x] Sparsity threshold made meaningful
+- [x] Config constants used consistently
+- [x] Function parameters respected (not ignored)
+- [x] Confidence semantics corrected
+- [x] All 1133 tests pass
 
 ---
 

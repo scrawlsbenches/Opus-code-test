@@ -18,6 +18,7 @@ from collections import defaultdict
 from ..layers import CorticalLayer, HierarchicalLayer
 from ..tokenizer import Tokenizer, CODE_EXPANSION_STOP_WORDS
 from ..code_concepts import expand_code_concepts
+from ..config import DEFAULT_CHAIN_VALIDITY
 
 
 # Valid relation chain patterns for multi-hop inference
@@ -74,7 +75,7 @@ def score_relation_path(path: List[str]) -> float:
     for i in range(len(path) - 1):
         pair = (path[i], path[i + 1])
         # Check both orderings
-        pair_score = VALID_RELATION_CHAINS.get(pair, 0.4)  # Default: moderate validity
+        pair_score = VALID_RELATION_CHAINS.get(pair, DEFAULT_CHAIN_VALIDITY)
         total_score *= pair_score
 
     return total_score

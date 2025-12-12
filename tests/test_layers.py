@@ -333,14 +333,25 @@ class TestTypedConnections(unittest.TestCase):
         edge = col.typed_connections["L0_other"]
         self.assertEqual(edge.source, 'semantic')
 
-    def test_typed_connection_confidence_max(self):
-        """Test that confidence uses max value."""
+    def test_typed_connection_confidence_weighted_average(self):
+        """Test that confidence uses weighted average (can increase or decrease)."""
         col = Minicolumn("L0_test", "test", 0)
         col.add_typed_connection("L0_other", 0.5, confidence=0.7)
         col.add_typed_connection("L0_other", 0.3, confidence=0.9)
 
         edge = col.typed_connections["L0_other"]
-        self.assertEqual(edge.confidence, 0.9)
+        # Weighted average: (0.7 * 0.5 + 0.9 * 0.3) / 0.8 = 0.775
+        self.assertAlmostEqual(edge.confidence, 0.775, places=5)
+
+    def test_typed_connection_confidence_can_decrease(self):
+        """Test that confidence can decrease with lower-confidence evidence."""
+        col = Minicolumn("L0_test", "test", 0)
+        col.add_typed_connection("L0_other", 1.0, confidence=0.9)  # High confidence
+        col.add_typed_connection("L0_other", 1.0, confidence=0.3)  # Low confidence evidence
+
+        edge = col.typed_connections["L0_other"]
+        # Weighted average: (0.9 * 1.0 + 0.3 * 1.0) / 2.0 = 0.6
+        self.assertAlmostEqual(edge.confidence, 0.6, places=5)
 
     def test_get_typed_connection(self):
         """Test retrieving a typed connection."""
