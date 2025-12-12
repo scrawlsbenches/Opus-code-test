@@ -2,7 +2,6 @@ name: CI - Coverage Check and Showcase
 
 on:
   push:
-    branches: [ main, 'claude/**' ]
   pull_request:
     branches: [ main ]
 
