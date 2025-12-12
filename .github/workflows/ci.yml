@@ -44,7 +44,7 @@ jobs:
         path: coverage.xml
 
     - name: Run showcase
-      if: success()
+      if: success() && github.ref == 'refs/heads/main'
       run: |
         echo "=== Running showcase.py ==="
         python showcase.py
