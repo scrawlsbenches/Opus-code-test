@@ -220,9 +220,10 @@ class TestPerformanceBehavior(unittest.TestCase):
         processor.compute_all(verbose=False)
         elapsed = time.perf_counter() - start
 
-        # Threshold: 30 seconds for ~100 docs
-        # Actual performance should be ~14-20s based on Task #142
-        max_seconds = 30.0
+        # Threshold: 60 seconds for ~100 docs
+        # Normal performance is ~14-20s (Task #142), but coverage instrumentation
+        # adds ~2x overhead, so we use 60s to avoid false failures in CI
+        max_seconds = 60.0
 
         self.assertLess(
             elapsed,
