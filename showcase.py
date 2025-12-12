@@ -65,7 +65,11 @@ class CorticalShowcase:
 
     def __init__(self, samples_dir: str = "samples"):
         self.samples_dir = samples_dir
-        self.processor = CorticalTextProcessor()
+        # Use code noise filtering to exclude common Python keywords
+        # that pollute PageRank/TF-IDF in mixed text/code corpora
+        from cortical.tokenizer import Tokenizer
+        tokenizer = Tokenizer(filter_code_noise=True)
+        self.processor = CorticalTextProcessor(tokenizer=tokenizer)
         self.loaded_files = []
         self.timer = Timer()
 

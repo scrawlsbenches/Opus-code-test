@@ -24,6 +24,24 @@ CODE_EXPANSION_STOP_WORDS = frozenset({
     'def', 'class',             # Definitions (search for these explicitly)
 })
 
+# Very common code tokens that should be filtered from corpus analysis
+# when mixed text/code documents are present. These dominate PageRank/TF-IDF
+# due to appearing in almost every method/function.
+CODE_NOISE_TOKENS = frozenset({
+    # Python-specific
+    'self', 'cls', 'args', 'kwargs',
+    'def', 'class', 'return', 'pass',
+    'none', 'true', 'false',
+    'str', 'int', 'float', 'bool', 'list', 'dict', 'set', 'tuple',
+    'len', 'range', 'print', 'type', 'isinstance', 'hasattr',
+    # Test framework noise
+    'assertequal', 'asserttrue', 'assertfalse', 'assertnone',
+    'assertis', 'assertisnot', 'assertin', 'assertnotin',
+    'assertraises', 'setup', 'teardown', 'unittest',
+    # Common variable names that are too generic
+    'result', 'value', 'item', 'obj', 'data', 'func',
+})
+
 
 # Programming keywords that should be preserved even if in stop words
 PROGRAMMING_KEYWORDS = frozenset({
@@ -205,7 +223,8 @@ class Tokenizer:
         self,
         stop_words: Optional[Set[str]] = None,
         min_word_length: int = 3,
-        split_identifiers: bool = False
+        split_identifiers: bool = False,
+        filter_code_noise: bool = False
     ):
         """
         Initialize tokenizer.
@@ -215,10 +234,18 @@ class Tokenizer:
             min_word_length: Minimum word length to keep.
             split_identifiers: If True, split camelCase/underscore_style and include
                                both original and component tokens.
+            filter_code_noise: If True, filter out common code tokens (self, def, etc.)
+                              that dominate PageRank/TF-IDF in mixed text/code corpora.
         """
-        self.stop_words = stop_words if stop_words is not None else self.DEFAULT_STOP_WORDS
+        base_stop_words = stop_words if stop_words is not None else self.DEFAULT_STOP_WORDS
+        # Add code noise tokens to stop words if filtering is enabled
+        if filter_code_noise:
+            self.stop_words = base_stop_words | CODE_NOISE_TOKENS
+        else:
+            self.stop_words = base_stop_words
         self.min_word_length = min_word_length
         self.split_identifiers = split_identifiers
+        self.filter_code_noise = filter_code_noise
         
         # Simple suffix rules for stemming (Porter-lite)
         self._suffix_rules = [

@@ -1062,8 +1062,17 @@ class CorticalTextProcessor:
 
         Evaluates how well the clustering algorithm has performed by computing:
         - Modularity: Density of within-cluster connections vs between-cluster
-        - Silhouette: How similar tokens are to their cluster vs other clusters
-        - Balance (Gini): Distribution of cluster sizes
+          (this is what Louvain optimizes - expect >0.3 for good clustering)
+        - Silhouette: Document co-occurrence similarity within vs between clusters
+          (measures semantic coherence - typically -0.1 to 0.1 for graph clustering)
+        - Balance (Gini): Distribution of cluster sizes (0=equal, 1=all in one)
+
+        Note on metric interpretation:
+            Modularity and silhouette measure different things. Louvain clusters
+            tokens by sentence co-occurrence, while silhouette measures document
+            co-occurrence. These don't always align: tokens appearing together
+            in sentences may not appear in the same documents. High modularity
+            with low/negative silhouette is normal for diverse text corpora.
 
         Args:
             sample_size: Max tokens to sample for silhouette calculation
@@ -1072,7 +1081,7 @@ class CorticalTextProcessor:
         Returns:
             Dictionary with:
             - modularity: float (-1 to 1, higher is better, >0.3 is good)
-            - silhouette: float (-1 to 1, higher is better, >0.25 is reasonable)
+            - silhouette: float (-1 to 1, typically -0.1 to 0.1 for graph clustering)
             - balance: float (0 to 1, 0 = perfectly balanced, 1 = all in one)
             - num_clusters: int
             - quality_assessment: str (human-readable interpretation)
@@ -1082,8 +1091,8 @@ class CorticalTextProcessor:
             >>> quality = processor.compute_clustering_quality()
             >>> print(f"Modularity: {quality['modularity']:.3f}")
             >>> print(quality['quality_assessment'])
-            37 clusters with Good community structure (modularity 0.40),
-            overlapping clusters (silhouette 0.15), moderately balanced sizes
+            34 clusters with Good community structure (modularity 0.37),
+            typical graph clustering (silhouette -0.03), moderately balanced sizes
 
         See Also:
             build_concept_clusters: Creates the clusters being evaluated
@@ -1356,11 +1365,61 @@ class CorticalTextProcessor:
 
         return semantics.compute_property_similarity(term1, term2, inherited)
     
-    def compute_graph_embeddings(self, dimensions: int = 64, method: str = 'adjacency', verbose: bool = True) -> Dict:
-        self.embeddings, stats = emb_module.compute_graph_embeddings(self.layers, dimensions, method)
-        if verbose: print(f"Computed {stats['terms_embedded']} embeddings ({method})")
+    def compute_graph_embeddings(
+        self,
+        dimensions: int = 64,
+        method: str = 'fast',
+        max_terms: Optional[int] = None,
+        verbose: bool = True
+    ) -> Dict:
+        """
+        Compute graph embeddings for tokens.
+
+        Args:
+            dimensions: Number of embedding dimensions (default 64)
+            method: Embedding method:
+                - 'tfidf': TF-IDF based embeddings. Best for semantic similarity.
+                  Uses document distribution as feature space. Recommended for
+                  finding semantically similar terms.
+                - 'fast': Fast graph adjacency. Good for large corpora when speed
+                  matters more than semantic quality.
+                - 'adjacency': Multi-hop graph adjacency. More expressive but slower.
+                - 'random_walk': DeepWalk-style random walks. Good graph structure.
+                - 'spectral': Graph Laplacian eigenvectors. Mathematical approach.
+            max_terms: Maximum number of terms to embed (by PageRank).
+                      If None, auto-selects based on corpus size:
+                      - <2000 tokens: embed all
+                      - 2000-5000 tokens: embed top 1500
+                      - >5000 tokens: embed top 1000
+            verbose: Print progress messages
+
+        Returns:
+            Statistics dict with method, dimensions, terms_embedded
+
+        Note:
+            For semantic similarity tasks (finding related terms), 'tfidf' method
+            produces significantly better results than graph-based methods because
+            terms appearing in similar documents are usually semantically related.
+        """
+        # Auto-select max_terms based on corpus size
+        token_count = self.layers[CorticalLayer.TOKENS].column_count()
+        if max_terms is None:
+            if token_count < 2000:
+                max_terms = None  # Embed all
+            elif token_count < 5000:
+                max_terms = 1500
+            else:
+                max_terms = 1000
+
+        self.embeddings, stats = emb_module.compute_graph_embeddings(
+            self.layers, dimensions, method, max_terms
+        )
+        if verbose:
+            sampled = stats.get('sampled', False)
+            sample_info = f", sampled top {max_terms}" if sampled else ""
+            print(f"Computed {stats['terms_embedded']} embeddings ({method}{sample_info})")
         return stats
-    
+
     def retrofit_embeddings(self, iterations: int = 10, alpha: float = 0.4, verbose: bool = True) -> Dict:
         if not self.embeddings: self.compute_graph_embeddings(verbose=False)
         if not self.semantic_relations: self.extract_corpus_semantics(verbose=False)

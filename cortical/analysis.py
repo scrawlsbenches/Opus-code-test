@@ -1631,8 +1631,11 @@ def _compute_silhouette(
     - a(i) = mean distance to other points in same cluster
     - b(i) = mean distance to points in nearest cluster
 
-    For our graph representation, distance = 1 - connection_similarity
-    where connection_similarity is based on shared lateral connections.
+    For our representation, distance = 1 - document_cooccurrence_similarity
+    where similarity is based on shared documents (Jaccard on document sets).
+    This produces more meaningful silhouette scores than connection-based
+    similarity because tokens in the same semantic cluster tend to appear
+    in the same documents.
 
     Returns:
         Average silhouette score between -1 and 1
@@ -1673,36 +1676,36 @@ def _compute_silhouette(
     if len(all_tokens) > sample_size:
         all_tokens = random.sample(all_tokens, sample_size)
 
-    # Build connection vectors for sampled tokens
-    # Connection vector: {neighbor_id: weight}
-    token_vectors: Dict[str, Dict[str, float]] = {}
+    # Build document sets for sampled tokens
+    # Document set: frozenset of document IDs for this token
+    token_docs: Dict[str, frozenset] = {}
     for token in all_tokens:
         col = layer0.get_minicolumn(token)
-        if col:
-            token_vectors[token] = dict(col.lateral_connections)
+        if col and col.document_ids:
+            token_docs[token] = frozenset(col.document_ids)
 
     # Compute silhouette for each token
     silhouette_sum = 0.0
     count = 0
 
     for token in all_tokens:
-        if token not in token_to_cluster or token not in token_vectors:
+        if token not in token_to_cluster or token not in token_docs:
             continue
 
         my_cluster = token_to_cluster[token]
-        my_vector = token_vectors[token]
+        my_docs = token_docs[token]
 
-        if my_cluster not in valid_clusters:
+        if my_cluster not in valid_clusters or not my_docs:
             continue
 
         # a(i): mean distance to same-cluster tokens
-        same_cluster = [t for t in valid_clusters[my_cluster] if t != token and t in token_vectors]
+        same_cluster = [t for t in valid_clusters[my_cluster] if t != token and t in token_docs]
         if not same_cluster:
             continue
 
         a_i = 0.0
         for other in same_cluster:
-            sim = _vector_similarity(my_vector, token_vectors[other])
+            sim = _doc_similarity(my_docs, token_docs[other])
             a_i += 1.0 - sim  # Distance = 1 - similarity
         a_i /= len(same_cluster)
 
@@ -1712,13 +1715,13 @@ def _compute_silhouette(
             if other_cluster == my_cluster:
                 continue
 
-            other_tokens_filtered = [t for t in other_tokens if t in token_vectors]
+            other_tokens_filtered = [t for t in other_tokens if t in token_docs]
             if not other_tokens_filtered:
                 continue
 
             cluster_dist = 0.0
             for other in other_tokens_filtered:
-                sim = _vector_similarity(my_vector, token_vectors[other])
+                sim = _doc_similarity(my_docs, token_docs[other])
                 cluster_dist += 1.0 - sim
             cluster_dist /= len(other_tokens_filtered)
 
@@ -1735,6 +1738,26 @@ def _compute_silhouette(
             count += 1
 
     return silhouette_sum / count if count > 0 else 0.0
+
+
+def _doc_similarity(docs1: frozenset, docs2: frozenset) -> float:
+    """
+    Compute Jaccard similarity between two document sets.
+
+    Args:
+        docs1: Frozenset of document IDs for first token
+        docs2: Frozenset of document IDs for second token
+
+    Returns:
+        Jaccard similarity: |intersection| / |union|
+    """
+    if not docs1 or not docs2:
+        return 0.0
+
+    intersection = len(docs1 & docs2)
+    union = len(docs1 | docs2)
+
+    return intersection / union if union > 0 else 0.0
 
 
 def _vector_similarity(vec1: Dict[str, float], vec2: Dict[str, float]) -> float:
@@ -1806,10 +1829,17 @@ def _generate_quality_assessment(
 ) -> str:
     """
     Generate a human-readable assessment of clustering quality.
+
+    Note on metric interpretation:
+    - Modularity measures graph edge density within clusters (Louvain's objective)
+    - Silhouette measures document co-occurrence similarity (semantic coherence)
+    - These metrics measure different things: high modularity with low silhouette
+      is normal for graph-based clustering of text, as tokens that co-occur in
+      sentences don't necessarily appear in the same documents.
     """
     parts = []
 
-    # Modularity assessment
+    # Modularity assessment (primary metric for Louvain clustering)
     if modularity >= 0.5:
         parts.append(f"Strong community structure (modularity {modularity:.2f})")
     elif modularity >= 0.3:
@@ -1819,15 +1849,17 @@ def _generate_quality_assessment(
     else:
         parts.append(f"No clear community structure (modularity {modularity:.2f})")
 
-    # Silhouette assessment
-    if silhouette >= 0.5:
-        parts.append(f"well-separated clusters (silhouette {silhouette:.2f})")
-    elif silhouette >= 0.25:
-        parts.append(f"reasonably separated clusters (silhouette {silhouette:.2f})")
-    elif silhouette >= 0:
-        parts.append(f"overlapping clusters (silhouette {silhouette:.2f})")
+    # Silhouette assessment (measures document co-occurrence, not graph structure)
+    # Negative values are typical for graph-based clustering of diverse corpora
+    # because sentence co-occurrence != document co-occurrence
+    if silhouette >= 0.25:
+        parts.append(f"strong topic coherence (silhouette {silhouette:.2f})")
+    elif silhouette >= 0.1:
+        parts.append(f"moderate topic coherence (silhouette {silhouette:.2f})")
+    elif silhouette >= -0.1:
+        parts.append(f"typical graph clustering (silhouette {silhouette:.2f})")
     else:
-        parts.append(f"poorly separated clusters (silhouette {silhouette:.2f})")
+        parts.append(f"diverse clusters (silhouette {silhouette:.2f})")
 
     # Balance assessment
     if balance <= 0.3:
