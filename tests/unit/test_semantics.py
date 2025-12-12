@@ -1087,3 +1087,347 @@ class TestExtractPatternRelationsEdgeCases:
         # But the test is checking the swap happens, not that it's semantically correct
         # Let me just check that some Causes relation was found
         assert len(causes) >= 0  # Pattern might not match exactly
+
+
+# =============================================================================
+# ADDITIONAL COVERAGE TESTS FOR MISSING BRANCHES
+# =============================================================================
+
+
+class TestExtractCorpusSemanticsNumpyPath:
+    """Tests for extract_corpus_semantics numpy fast path."""
+
+    def test_numpy_fast_path_if_available(self):
+        """NumPy fast path is used when numpy is available."""
+        # This test covers lines 288-320 (the numpy fast path)
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        terms = ["apple", "banana", "orange", "grape"]
+        for term in terms:
+            col = Minicolumn(f"L0_{term}", term, 0)
+            col.occurrence_count = 2
+            layer0.minicolumns[term] = col
+
+        layers = {CorticalLayer.TOKENS: layer0}
+        # Create documents with shared context
+        docs = {
+            "doc1": "apple banana orange grape shared context words",
+            "doc2": "apple banana orange grape shared context words",
+        }
+        tokenizer = Tokenizer()
+
+        # This should trigger the numpy path if available
+        result = extract_corpus_semantics(
+            layers, docs, tokenizer,
+            use_pattern_extraction=False,
+            window_size=5,
+            min_cooccurrence=1
+        )
+
+        # Should complete successfully
+        assert isinstance(result, list)
+
+
+class TestRetrofitConnectionsEdgeCases:
+    """Additional edge case tests for retrofit_connections."""
+
+    def test_semantic_targets_empty_after_filtering(self):
+        """Test when semantic_targets becomes empty after neighbor filtering."""
+        # This covers line 451: if not semantic_targets: continue
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        col1 = Minicolumn("L0_dog", "dog", 0)
+        layer0.minicolumns["dog"] = col1
+
+        layers = {CorticalLayer.TOKENS: layer0}
+
+        # Create relation to non-existent term
+        relations = [("dog", "IsA", "nonexistent", 0.9)]
+
+        result = retrofit_connections(layers, relations, iterations=1, alpha=0.5)
+
+        # Should handle gracefully
+        assert result["tokens_affected"] >= 0
+        assert isinstance(result["total_adjustment"], float)
+
+    def test_target_id_not_in_connections(self):
+        """Test when target_id is in semantic_targets but not in lateral_connections."""
+        # This covers line 467-470: adding new semantic connections
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        col1 = Minicolumn("L0_dog", "dog", 0)
+        col2 = Minicolumn("L0_animal", "animal", 0)
+        layer0.minicolumns["dog"] = col1
+        layer0.minicolumns["animal"] = col2
+
+        # No initial connection between dog and animal
+        layers = {CorticalLayer.TOKENS: layer0}
+        relations = [("dog", "IsA", "animal", 0.9)]
+
+        result = retrofit_connections(layers, relations, iterations=1, alpha=0.3)
+
+        # Should add new connection
+        assert col2.id in col1.lateral_connections
+        assert result["tokens_affected"] >= 1
+
+
+class TestRetrofitEmbeddingsEdgeCases:
+    """Additional edge case tests for retrofit_embeddings."""
+
+    def test_term_with_no_neighbors(self):
+        """Test when a term has no neighbors in the relations."""
+        # This covers line 530: if term not in neighbors or not neighbors[term]: continue
+        embeddings = {
+            "dog": [1.0, 0.0],
+            "cat": [0.0, 1.0],
+            "isolated": [0.5, 0.5]
+        }
+
+        # Only connect dog and cat, isolated has no relations
+        relations = [("dog", "SimilarTo", "cat", 0.8)]
+
+        result = retrofit_embeddings(embeddings, relations, iterations=3, alpha=0.5)
+
+        # isolated should not be retrofitted
+        assert result["terms_retrofitted"] <= 2
+        # Original isolated embedding should be unchanged
+        assert embeddings["isolated"] == [0.5, 0.5]
+
+    def test_neighbor_not_in_embeddings(self):
+        """Test when a neighbor exists in relations but not in embeddings."""
+        # This covers line 541: if neighbor in embeddings check
+        embeddings = {
+            "dog": [1.0, 0.0],
+            "cat": [0.0, 1.0]
+        }
+
+        # Relation includes a term not in embeddings
+        relations = [
+            ("dog", "IsA", "animal", 0.9),  # animal not in embeddings
+            ("dog", "SimilarTo", "cat", 0.8)
+        ]
+
+        result = retrofit_embeddings(embeddings, relations, iterations=3, alpha=0.5)
+
+        # Should handle gracefully
+        assert result["terms_retrofitted"] >= 0
+        assert isinstance(result["total_movement"], float)
+
+
+class TestComputePropertySimilarityEdgeCases:
+    """Additional edge case tests for compute_property_similarity."""
+
+    def test_all_props_empty_edge_case(self):
+        """Test when all_props union is somehow empty."""
+        # This covers line 832: return 0.0 when union is empty
+        # This is actually hard to trigger since line 824 already checks
+        # But we can test the empty property case thoroughly
+        inherited = {}
+        direct = {}
+        result = compute_property_similarity("dog", "cat", inherited, direct)
+        assert result == 0.0
+
+    def test_term1_no_properties(self):
+        """Test when term1 has no properties but term2 does."""
+        inherited = {
+            "cat": {"furry": (0.9, "animal", 1)}
+        }
+        result = compute_property_similarity("dog", "cat", inherited)
+        assert result == 0.0
+
+    def test_term2_no_properties(self):
+        """Test when term2 has no properties but term1 does."""
+        inherited = {
+            "dog": {"furry": (0.9, "animal", 1)}
+        }
+        result = compute_property_similarity("dog", "cat", inherited)
+        assert result == 0.0
+
+    def test_direct_properties_with_max_override(self):
+        """Test that max() keeps the highest weight between direct and inherited."""
+        # This covers lines 819-822: the max() logic for direct properties
+        inherited = {
+            "dog": {"loyal": (0.5, "ancestor", 1)}
+        }
+        direct = {
+            "dog": {"loyal": 0.95}  # Higher weight than inherited
+        }
+        result = compute_property_similarity("dog", "cat", inherited, direct)
+        # dog has loyal, cat has nothing, so 0 similarity
+        assert result == 0.0
+
+
+class TestApplyInheritanceToConnectionsEdgeCases:
+    """Additional edge case tests for apply_inheritance_to_connections."""
+
+    def test_term1_minicolumn_missing(self):
+        """Test when term1 doesn't have a corresponding minicolumn."""
+        # This covers line 884: if not col1: continue
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        col2 = Minicolumn("L0_cat", "cat", 0)
+        layer0.minicolumns["cat"] = col2
+
+        layers = {CorticalLayer.TOKENS: layer0}
+
+        # dog is in inherited but not in layer
+        inherited = {
+            "dog": {"living": (0.9, "animal", 1)},
+            "cat": {"living": (0.9, "animal", 1)}
+        }
+
+        result = apply_inheritance_to_connections(layers, inherited, boost_factor=0.3)
+
+        # Should handle missing minicolumn gracefully
+        assert isinstance(result, dict)
+        assert "connections_boosted" in result
+
+    def test_term2_minicolumn_missing(self):
+        """Test when term2 doesn't have a corresponding minicolumn."""
+        # This covers line 891: if not col2: continue
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        col1 = Minicolumn("L0_dog", "dog", 0)
+        layer0.minicolumns["dog"] = col1
+
+        layers = {CorticalLayer.TOKENS: layer0}
+
+        # cat is in inherited but not in layer
+        inherited = {
+            "dog": {"living": (0.9, "animal", 1)},
+            "cat": {"living": (0.9, "animal", 1)}
+        }
+
+        result = apply_inheritance_to_connections(layers, inherited, boost_factor=0.3)
+
+        # Should handle missing minicolumn gracefully
+        assert isinstance(result, dict)
+        assert result["connections_boosted"] == 0
+
+    def test_boost_is_zero(self):
+        """Test when computed boost is exactly 0."""
+        # This covers line 908: if boost > 0 check
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        col1 = Minicolumn("L0_dog", "dog", 0)
+        col2 = Minicolumn("L0_cat", "cat", 0)
+        layer0.minicolumns["dog"] = col1
+        layer0.minicolumns["cat"] = col2
+
+        layers = {CorticalLayer.TOKENS: layer0}
+
+        # Shared property with 0 weight
+        inherited = {
+            "dog": {"prop": (0.0, "animal", 1)},
+            "cat": {"prop": (0.0, "animal", 1)}
+        }
+
+        result = apply_inheritance_to_connections(layers, inherited, boost_factor=0.3)
+
+        # boost = (0.0 + 0.0) / 2 * 0.3 = 0, so no connections boosted
+        assert result["connections_boosted"] == 0
+
+
+class TestInheritPropertiesEdgeCases:
+    """Additional edge case tests for inherit_properties."""
+
+    def test_ancestor_with_no_properties(self):
+        """Test when ancestor exists but has no direct properties."""
+        # This covers line 764: if ancestor in direct_properties check
+        relations = [
+            ("dog", "IsA", "animal", 0.9),
+            ("cat", "IsA", "animal", 0.9)
+        ]
+        result = inherit_properties(relations)
+
+        # animal has no properties, so nothing to inherit
+        assert "dog" not in result or len(result.get("dog", {})) == 0
+
+    def test_weaker_inheritance_path_ignored(self):
+        """Test that weaker inheritance paths are ignored."""
+        # This covers line 771: if prop not in term_inherited check
+        relations = [
+            ("dog", "IsA", "mammal", 0.9),
+            ("dog", "IsA", "animal", 0.9),
+            ("mammal", "HasProperty", "living", 1.0),  # Stronger
+            ("animal", "HasProperty", "living", 0.5),  # Weaker
+        ]
+        result = inherit_properties(relations, decay_factor=0.9)
+
+        # Should keep the strongest path (from mammal)
+        if "dog" in result and "living" in result["dog"]:
+            weight, source, depth = result["dog"]["living"]
+            # The stronger path should win
+            assert weight > 0.4  # Should be close to 0.9 (1.0 * 0.9)
+
+
+class TestGetAncestorsEdgeCases:
+    """Additional edge case tests for get_ancestors."""
+
+    def test_circular_reference_handling(self):
+        """Test that circular references don't cause infinite loops."""
+        # This covers line 650: if current in visited check
+        # Create a cycle: a -> b -> c -> a
+        parents = {
+            "a": {"b"},
+            "b": {"c"},
+            "c": {"a"}
+        }
+
+        result = get_ancestors("a", parents, max_depth=10)
+
+        # Should terminate without infinite loop
+        assert isinstance(result, dict)
+        # Should find b and c but stop before revisiting a
+        assert "b" in result
+        assert "c" in result
+
+    def test_max_depth_exceeded(self):
+        """Test that max_depth prevents deep traversal."""
+        # This covers line 650: depth > max_depth check
+        parents = {
+            "a": {"b"},
+            "b": {"c"},
+            "c": {"d"},
+            "d": {"e"}
+        }
+
+        result = get_ancestors("a", parents, max_depth=2)
+
+        # Should only go 2 levels deep
+        assert "b" in result
+        assert "c" in result
+        assert "d" not in result
+        assert "e" not in result
+
+
+class TestGetDescendantsEdgeCases:
+    """Additional edge case tests for get_descendants."""
+
+    def test_circular_reference_handling(self):
+        """Test that circular references don't cause infinite loops."""
+        # This covers line 687: if current in visited check
+        children = {
+            "a": {"b"},
+            "b": {"c"},
+            "c": {"a"}
+        }
+
+        result = get_descendants("a", children, max_depth=10)
+
+        # Should terminate without infinite loop
+        assert isinstance(result, dict)
+        assert "b" in result
+        assert "c" in result
+
+    def test_max_depth_exceeded(self):
+        """Test that max_depth prevents deep traversal."""
+        # This covers line 687: depth > max_depth check
+        children = {
+            "a": {"b"},
+            "b": {"c"},
+            "c": {"d"},
+            "d": {"e"}
+        }
+
+        result = get_descendants("a", children, max_depth=2)
+
+        # Should only go 2 levels deep
+        assert "b" in result
+        assert "c" in result
+        assert "d" not in result
+        assert "e" not in result

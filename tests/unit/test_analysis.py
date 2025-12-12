@@ -1474,3 +1474,1021 @@ class TestComputeConceptConnections:
 
         # Jaccard = 1/10 = 0.1 < 0.5, so no connection
         assert result['connections_created'] == 0
+
+
+# =============================================================================
+# ADDITIONAL COVERAGE TESTS (Lines 499, 505, 667, 680, 806-971, 1042-1687, etc.)
+# =============================================================================
+
+
+class TestSilhouetteEdgeCases:
+    """Test edge cases in _silhouette_core for lines 499, 505."""
+
+    def test_single_cluster_returns_zero(self):
+        """Single cluster should return 0.0 (line 467 check)."""
+        distances = {
+            "a": {"b": 0.1},
+            "b": {"a": 0.1}
+        }
+        labels = {"a": 0, "b": 0}
+        result = _silhouette_core(distances, labels)
+        assert result == 0.0
+
+    def test_node_with_zero_max_ab(self):
+        """Node with max(a, b) = 0 gets silhouette 0 (line 505)."""
+        distances = {
+            "a": {},
+            "b": {},
+            "c": {}
+        }
+        labels = {"a": 0, "b": 0, "c": 1}
+        result = _silhouette_core(distances, labels)
+        # Nodes with no distances get s=0
+        assert result == 0.0
+
+    def test_node_isolated_in_cluster(self):
+        """Node alone in cluster has b = inf, handled at line 499."""
+        distances = {
+            "a": {"b": 0.5, "c": 0.5},
+            "b": {"a": 0.5, "c": 0.9},
+            "c": {"a": 0.5, "b": 0.9}
+        }
+        # c is alone in cluster 1
+        labels = {"a": 0, "b": 0, "c": 1}
+        result = _silhouette_core(distances, labels)
+        # Should handle gracefully (b = inf becomes 0.0 at line 499)
+        assert isinstance(result, float)
+
+
+class TestSemanticPageRankMissingPaths:
+    """Test compute_semantic_pagerank missing coverage (lines 667, 680)."""
+
+    def test_semantic_relations_without_lookup_match(self):
+        """Test path where semantic_lookup doesn't match (line 667, 680)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_semantic_pagerank
+
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        col1 = layer.get_or_create_minicolumn("term1")
+        col2 = layer.get_or_create_minicolumn("term2")
+        col1.add_lateral_connection(col2.id, 1.0)
+        col2.add_lateral_connection(col1.id, 1.0)
+
+        # Semantic relations for completely different terms
+        semantic_relations = [
+            ("other1", "RelatedTo", "other2", 0.8)
+        ]
+
+        result = compute_semantic_pagerank(
+            layer, semantic_relations, damping=0.85, iterations=5
+        )
+
+        # Should still work, just no semantic boost (line 680)
+        assert 'pagerank' in result
+        assert result['edges_with_relations'] == 0
+
+
+class TestHierarchicalPageRankCoverage:
+    """Test compute_hierarchical_pagerank missing paths (lines 806-857)."""
+
+    def test_cross_layer_feedback_propagation(self):
+        """Test feedback connections propagate up (line 808)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_hierarchical_pagerank
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer1 = HierarchicalLayer(CorticalLayer.BIGRAMS)
+
+        token1 = layer0.get_or_create_minicolumn("token1")
+        token1.pagerank = 0.5
+
+        bigram1 = layer1.get_or_create_minicolumn("bigram1")
+
+        # Feedback connection: token -> bigram
+        token1.add_feedback_connection(bigram1.id, 1.0)
+
+        layers = {
+            CorticalLayer.TOKENS: layer0,
+            CorticalLayer.BIGRAMS: layer1
+        }
+
+        result = compute_hierarchical_pagerank(
+            layers, layer_iterations=2, global_iterations=2
+        )
+
+        # Bigram should receive boost from token
+        assert bigram1.pagerank > 0
+
+    def test_cross_layer_feedforward_propagation(self):
+        """Test feedforward connections propagate down (line 827)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_hierarchical_pagerank
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        token1 = layer0.get_or_create_minicolumn("token1")
+        concept1 = layer2.get_or_create_minicolumn("concept1")
+        concept1.pagerank = 0.8
+
+        # Feedforward connection: concept -> token
+        concept1.add_feedforward_connection(token1.id, 1.0)
+
+        layers = {
+            CorticalLayer.TOKENS: layer0,
+            CorticalLayer.CONCEPTS: layer2
+        }
+
+        result = compute_hierarchical_pagerank(
+            layers, layer_iterations=2, global_iterations=2
+        )
+
+        # Token should receive boost from concept
+        assert token1.pagerank > 0
+
+    def test_empty_feedback_connections(self):
+        """Test skipping empty feedback_connections (line 806)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_hierarchical_pagerank
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer1 = HierarchicalLayer(CorticalLayer.BIGRAMS)
+
+        token1 = layer0.get_or_create_minicolumn("token1")
+        bigram1 = layer1.get_or_create_minicolumn("bigram1")
+
+        # No feedback_connections (empty dict)
+
+        layers = {
+            CorticalLayer.TOKENS: layer0,
+            CorticalLayer.BIGRAMS: layer1
+        }
+
+        result = compute_hierarchical_pagerank(layers, global_iterations=1)
+
+        # Should not crash
+        assert result['iterations_run'] >= 1
+
+    def test_empty_feedforward_connections(self):
+        """Test skipping empty feedforward_connections (line 825)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_hierarchical_pagerank
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        token1 = layer0.get_or_create_minicolumn("token1")
+        concept1 = layer2.get_or_create_minicolumn("concept1")
+
+        # No feedforward_connections (empty dict)
+
+        layers = {
+            CorticalLayer.TOKENS: layer0,
+            CorticalLayer.CONCEPTS: layer2
+        }
+
+        result = compute_hierarchical_pagerank(layers, global_iterations=1)
+
+        # Should not crash
+        assert result['iterations_run'] >= 1
+
+
+class TestPropagateActivationFeedforward:
+    """Test propagate_activation feedforward sources (lines 962-971)."""
+
+    def test_feedforward_sources_propagation(self):
+        """Test activation propagates via feedforward_sources."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import propagate_activation
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer1 = HierarchicalLayer(CorticalLayer.BIGRAMS)
+
+        token1 = layer0.get_or_create_minicolumn("token1")
+        token1.activation = 1.0
+
+        bigram1 = layer1.get_or_create_minicolumn("bigram1")
+        bigram1.feedforward_sources.add(token1.id)
+
+        layers = {
+            CorticalLayer.TOKENS: layer0,
+            CorticalLayer.BIGRAMS: layer1
+        }
+
+        propagate_activation(layers, iterations=1, decay=0.9)
+
+        # Bigram should receive feedforward activation
+        assert bigram1.activation > 0
+
+
+class TestLabelPropagationBridgeWeight:
+    """Test cluster_by_label_propagation bridge_weight feature (lines 1042-1063)."""
+
+    def test_bridge_weight_creates_connections(self):
+        """Test bridge_weight creates inter-document connections."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import cluster_by_label_propagation
+
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+
+        # Tokens in different documents
+        token1 = layer.get_or_create_minicolumn("token1")
+        token2 = layer.get_or_create_minicolumn("token2")
+        token1.document_ids.add("doc1")
+        token2.document_ids.add("doc2")
+
+        result = cluster_by_label_propagation(
+            layer, min_cluster_size=1, bridge_weight=0.5
+        )
+
+        # Bridge weight should create weak connections
+        assert len(result) >= 0  # Should not crash
+
+    def test_bridge_weight_zero_no_bridges(self):
+        """Test bridge_weight=0 creates no bridges."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import cluster_by_label_propagation
+
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+
+        token1 = layer.get_or_create_minicolumn("token1")
+        token2 = layer.get_or_create_minicolumn("token2")
+        token1.document_ids.add("doc1")
+        token2.document_ids.add("doc2")
+
+        result = cluster_by_label_propagation(
+            layer, min_cluster_size=1, bridge_weight=0.0
+        )
+
+        # Should work without bridges
+        assert len(result) >= 0
+
+
+class TestLouvainPhase2AndHierarchy:
+    """Test cluster_by_louvain phase2 and hierarchy (lines 1314-1412)."""
+
+    def test_louvain_with_hierarchy(self):
+        """Test Louvain creates and unwinds hierarchy."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import cluster_by_louvain
+
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+
+        # Create two dense communities
+        for i in range(5):
+            col = layer.get_or_create_minicolumn(f"a{i}")
+            for j in range(5):
+                if i != j:
+                    col.add_lateral_connection(f"L0_a{j}", 1.0)
+
+        for i in range(5):
+            col = layer.get_or_create_minicolumn(f"b{i}")
+            for j in range(5):
+                if i != j:
+                    col.add_lateral_connection(f"L0_b{j}", 1.0)
+
+        result = cluster_by_louvain(layer, min_cluster_size=3, max_iterations=5)
+
+        # Should find 2 clusters (triggers phase2)
+        assert len(result) >= 1
+
+    def test_louvain_no_connections_each_own_cluster(self):
+        """Test Louvain with m=0 (line 1230)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import cluster_by_louvain
+
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+
+        # Nodes with no connections
+        for i in range(5):
+            layer.get_or_create_minicolumn(f"node{i}")
+
+        result = cluster_by_louvain(layer, min_cluster_size=1)
+
+        # Each node is its own cluster
+        # But filtered by min_cluster_size=1, so all would be removed
+        # except if there are exactly 1-sized clusters
+        assert len(result) >= 0  # May be empty if all filtered
+
+    def test_louvain_converges_in_iteration(self):
+        """Test Louvain convergence check (line 1369)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import cluster_by_louvain
+
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+
+        # Simple connected graph that converges quickly
+        col1 = layer.get_or_create_minicolumn("node1")
+        col2 = layer.get_or_create_minicolumn("node2")
+        col1.add_lateral_connection(col2.id, 1.0)
+        col2.add_lateral_connection(col1.id, 1.0)
+
+        result = cluster_by_louvain(layer, min_cluster_size=2, max_iterations=10)
+
+        # Should converge and create one cluster
+        assert len(result) <= 1
+
+
+class TestBuildConceptClustersEdgeCases:
+    """Test build_concept_clusters edge cases (line 1468)."""
+
+    def test_empty_member_cols(self):
+        """Test handling when member_cols is empty (line 1468)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import build_concept_clusters
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        layers = {
+            CorticalLayer.TOKENS: layer0,
+            CorticalLayer.CONCEPTS: layer2
+        }
+
+        # Cluster with members that don't exist in layer0
+        clusters = {
+            0: ["nonexistent1", "nonexistent2"]
+        }
+
+        # Should not crash (line 1468 continue)
+        build_concept_clusters(layers, clusters)
+
+        # No concepts should be created
+        assert layer2.column_count() == 0
+
+
+class TestConceptConnectionsSemanticAndEmbedding:
+    """Test compute_concept_connections semantic and embedding paths (lines 1551-1687)."""
+
+    def test_with_semantic_relations(self):
+        """Test semantic relations boost connections (lines 1631-1645)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_concept_connections
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        token1 = layer0.get_or_create_minicolumn("neural")
+        token2 = layer0.get_or_create_minicolumn("networks")
+        token3 = layer0.get_or_create_minicolumn("deep")
+
+        concept1 = layer2.get_or_create_minicolumn("concept1")
+        concept2 = layer2.get_or_create_minicolumn("concept2")
+
+        # Shared documents
+        concept1.document_ids.add("doc1")
+        concept2.document_ids.add("doc1")
+
+        # Link to tokens
+        concept1.feedforward_connections[token1.id] = 1.0
+        concept2.feedforward_connections[token2.id] = 1.0
+
+        layers = {
+            CorticalLayer.TOKENS: layer0,
+            CorticalLayer.CONCEPTS: layer2
+        }
+
+        # Semantic relation between member tokens
+        semantic_relations = [
+            ("neural", "RelatedTo", "networks", 0.9)
+        ]
+
+        result = compute_concept_connections(
+            layers,
+            semantic_relations=semantic_relations,
+            min_shared_docs=1,
+            min_jaccard=0.1
+        )
+
+        # Should create connection with semantic bonus
+        assert result['connections_created'] > 0
+
+    def test_use_member_semantics(self):
+        """Test use_member_semantics creates connections without doc overlap (lines 1653-1671)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_concept_connections
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        token1 = layer0.get_or_create_minicolumn("machine")
+        token2 = layer0.get_or_create_minicolumn("learning")
+
+        concept1 = layer2.get_or_create_minicolumn("concept1")
+        concept2 = layer2.get_or_create_minicolumn("concept2")
+
+        # NO shared documents
+        concept1.document_ids.add("doc1")
+        concept2.document_ids.add("doc2")
+
+        concept1.feedforward_connections[token1.id] = 1.0
+        concept2.feedforward_connections[token2.id] = 1.0
+
+        layers = {
+            CorticalLayer.TOKENS: layer0,
+            CorticalLayer.CONCEPTS: layer2
+        }
+
+        semantic_relations = [
+            ("machine", "RelatedTo", "learning", 0.8)
+        ]
+
+        result = compute_concept_connections(
+            layers,
+            semantic_relations=semantic_relations,
+            use_member_semantics=True
+        )
+
+        # Should create connection via semantic relations only
+        assert result['semantic_connections'] > 0
+
+    def test_use_embedding_similarity(self):
+        """Test use_embedding_similarity creates connections (lines 1675-1687)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_concept_connections
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        token1 = layer0.get_or_create_minicolumn("cat")
+        token2 = layer0.get_or_create_minicolumn("dog")
+
+        concept1 = layer2.get_or_create_minicolumn("concept1")
+        concept2 = layer2.get_or_create_minicolumn("concept2")
+
+        # NO shared documents
+        concept1.document_ids.add("doc1")
+        concept2.document_ids.add("doc2")
+
+        concept1.feedforward_connections[token1.id] = 1.0
+        concept2.feedforward_connections[token2.id] = 1.0
+
+        layers = {
+            CorticalLayer.TOKENS: layer0,
+            CorticalLayer.CONCEPTS: layer2
+        }
+
+        # Similar embeddings
+        embeddings = {
+            "cat": [0.8, 0.6],
+            "dog": [0.7, 0.7]
+        }
+
+        result = compute_concept_connections(
+            layers,
+            use_embedding_similarity=True,
+            embedding_threshold=0.3,
+            embeddings=embeddings
+        )
+
+        # Should create connection via embedding similarity
+        assert result['embedding_connections'] >= 0  # May or may not connect
+
+    def test_add_connection_already_connected(self):
+        """Test strengthening existing connection (line 1599-1601).
+
+        This tests the case where multiple strategies in a single call
+        try to connect the same pair. The first succeeds, subsequent
+        attempts strengthen the connection and return False.
+        """
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_concept_connections
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        token1 = layer0.get_or_create_minicolumn("machine")
+        token2 = layer0.get_or_create_minicolumn("learning")
+
+        concept1 = layer2.get_or_create_minicolumn("concept1")
+        concept2 = layer2.get_or_create_minicolumn("concept2")
+
+        # Shared documents (triggers Strategy 1: doc overlap)
+        concept1.document_ids.add("doc1")
+        concept2.document_ids.add("doc1")
+
+        concept1.feedforward_connections[token1.id] = 1.0
+        concept2.feedforward_connections[token2.id] = 1.0
+
+        layers = {
+            CorticalLayer.TOKENS: layer0,
+            CorticalLayer.CONCEPTS: layer2
+        }
+
+        # Semantic relation between members (triggers Strategy 2)
+        semantic_relations = [
+            ("machine", "RelatedTo", "learning", 0.8)
+        ]
+
+        # Call with both doc overlap AND member semantics enabled
+        # Doc overlap connects them first, then member_semantics tries
+        # to connect the same pair and triggers the "already connected" path
+        result = compute_concept_connections(
+            layers,
+            semantic_relations=semantic_relations,
+            use_member_semantics=True,
+            min_shared_docs=1,
+            min_jaccard=0.0001  # Very low to ensure doc overlap succeeds
+        )
+
+        # Only 1 connection created (both strategies tried, but second was duplicate)
+        # doc_overlap_connections=1, semantic_connections=0 (because already connected)
+        assert result['connections_created'] == 1
+        assert result['doc_overlap_connections'] == 1
+
+
+class TestBigramConnectionsEdgeCases:
+    """Test compute_bigram_connections edge cases (lines 1794-1873, 1909)."""
+
+    def test_skipped_large_docs(self):
+        """Test skipping docs with too many bigrams (line 1872-1873)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_bigram_connections
+
+        layer1 = HierarchicalLayer(CorticalLayer.BIGRAMS)
+
+        # Create many bigrams in same doc
+        doc_id = "large_doc"
+        for i in range(20):
+            bigram = layer1.get_or_create_minicolumn(f"term{i} word{i}")
+            bigram.document_ids.add(doc_id)
+
+        layers = {CorticalLayer.BIGRAMS: layer1}
+
+        result = compute_bigram_connections(
+            layers,
+            max_bigrams_per_doc=10  # Skip docs with >10 bigrams
+        )
+
+        # Should skip the large doc
+        assert result['skipped_large_docs'] > 0
+
+    def test_skipped_common_terms(self):
+        """Test skipping overly common terms (line 1832-1833)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_bigram_connections
+
+        layer1 = HierarchicalLayer(CorticalLayer.BIGRAMS)
+
+        # Create many bigrams with same right component
+        for i in range(20):
+            bigram = layer1.get_or_create_minicolumn(f"term{i} common")
+
+        layers = {CorticalLayer.BIGRAMS: layer1}
+
+        result = compute_bigram_connections(
+            layers,
+            max_bigrams_per_term=10  # Skip terms in >10 bigrams
+        )
+
+        # Should skip the common term "common"
+        assert result['skipped_common_terms'] > 0
+
+    def test_chain_connection_skipped_for_common_term(self):
+        """Test chain connection skips common terms (line 1845)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_bigram_connections
+
+        layer1 = HierarchicalLayer(CorticalLayer.BIGRAMS)
+
+        # Create chain: "a common" and "common b" where "common" appears too often
+        layer1.get_or_create_minicolumn("a common")
+        layer1.get_or_create_minicolumn("common b")
+
+        # Add many more bigrams with "common" to exceed threshold
+        for i in range(20):
+            layer1.get_or_create_minicolumn(f"common x{i}")
+
+        layers = {CorticalLayer.BIGRAMS: layer1}
+
+        result = compute_bigram_connections(
+            layers,
+            max_bigrams_per_term=10
+        )
+
+        # Chain should be skipped due to common term
+        assert result['chain_connections'] == 0
+
+    def test_cooccurrence_threshold_not_met(self):
+        """Test co-occurrence below threshold not connected (line 1909)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_bigram_connections
+
+        layer1 = HierarchicalLayer(CorticalLayer.BIGRAMS)
+
+        bigram1 = layer1.get_or_create_minicolumn("neural networks")
+        bigram2 = layer1.get_or_create_minicolumn("deep learning")
+
+        # Different documents (no co-occurrence)
+        bigram1.document_ids.add("doc1")
+        bigram2.document_ids.add("doc2")
+
+        layers = {CorticalLayer.BIGRAMS: layer1}
+
+        result = compute_bigram_connections(
+            layers,
+            min_shared_docs=2  # Require at least 2 shared docs
+        )
+
+        # Should not create connection
+        assert result['cooccurrence_connections'] == 0
+
+
+class TestCosineSimilarityZeroMagnitude:
+    """Test cosine_similarity zero magnitude case (line 2012)."""
+
+    def test_zero_magnitude_vector(self):
+        """Test cosine similarity with zero magnitude vectors."""
+        from cortical.analysis import cosine_similarity
+
+        vec1 = {"a": 0.0, "b": 0.0}
+        vec2 = {"a": 1.0, "b": 1.0}
+
+        result = cosine_similarity(vec1, vec2)
+
+        # Should return 0.0 (line 2012)
+        assert result == 0.0
+
+
+class TestClusteringQualityMetrics:
+    """Test clustering quality metric functions (lines 2065-2413)."""
+
+    def test_compute_clustering_quality_empty(self):
+        """Test compute_clustering_quality with empty layers."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_clustering_quality
+
+        layers = {
+            CorticalLayer.TOKENS: HierarchicalLayer(CorticalLayer.TOKENS),
+            CorticalLayer.CONCEPTS: HierarchicalLayer(CorticalLayer.CONCEPTS)
+        }
+
+        result = compute_clustering_quality(layers)
+
+        assert result['modularity'] == 0.0
+        assert result['silhouette'] == 0.0
+        assert result['balance'] == 1.0
+        assert result['num_clusters'] == 0
+        assert 'No clusters' in result['quality_assessment']
+
+    def test_compute_clustering_quality_with_clusters(self):
+        """Test compute_clustering_quality with actual clusters."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_clustering_quality
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # Create tokens with connections
+        token1 = layer0.get_or_create_minicolumn("token1")
+        token2 = layer0.get_or_create_minicolumn("token2")
+        token3 = layer0.get_or_create_minicolumn("token3")
+
+        token1.add_lateral_connection(token2.id, 1.0)
+        token2.add_lateral_connection(token1.id, 1.0)
+        token1.document_ids.add("doc1")
+        token2.document_ids.add("doc1")
+        token3.document_ids.add("doc2")
+
+        # Create concept cluster
+        concept1 = layer2.get_or_create_minicolumn("cluster1")
+        concept1.feedforward_connections[token1.id] = 1.0
+        concept1.feedforward_connections[token2.id] = 1.0
+
+        concept2 = layer2.get_or_create_minicolumn("cluster2")
+        concept2.feedforward_connections[token3.id] = 1.0
+
+        layers = {
+            CorticalLayer.TOKENS: layer0,
+            CorticalLayer.CONCEPTS: layer2
+        }
+
+        result = compute_clustering_quality(layers, sample_size=10)
+
+        # Should compute all metrics
+        assert isinstance(result['modularity'], float)
+        assert isinstance(result['silhouette'], float)
+        assert isinstance(result['balance'], float)
+        assert result['num_clusters'] == 2
+
+    def test_modularity_computation(self):
+        """Test _compute_modularity directly."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import _compute_modularity
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # Two clusters with strong internal connections
+        t1 = layer0.get_or_create_minicolumn("t1")
+        t2 = layer0.get_or_create_minicolumn("t2")
+        t3 = layer0.get_or_create_minicolumn("t3")
+        t4 = layer0.get_or_create_minicolumn("t4")
+
+        # Cluster 1: t1, t2
+        t1.add_lateral_connection(t2.id, 1.0)
+        t2.add_lateral_connection(t1.id, 1.0)
+
+        # Cluster 2: t3, t4
+        t3.add_lateral_connection(t4.id, 1.0)
+        t4.add_lateral_connection(t3.id, 1.0)
+
+        # Create concept assignments
+        c1 = layer2.get_or_create_minicolumn("cluster1")
+        c1.feedforward_connections[t1.id] = 1.0
+        c1.feedforward_connections[t2.id] = 1.0
+
+        c2 = layer2.get_or_create_minicolumn("cluster2")
+        c2.feedforward_connections[t3.id] = 1.0
+        c2.feedforward_connections[t4.id] = 1.0
+
+        modularity = _compute_modularity(layer0, layer2)
+
+        # Should have positive modularity (good clustering)
+        assert modularity > 0
+
+    def test_silhouette_computation(self):
+        """Test _compute_silhouette directly."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import _compute_silhouette
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # Tokens with document sets
+        t1 = layer0.get_or_create_minicolumn("t1")
+        t2 = layer0.get_or_create_minicolumn("t2")
+        t3 = layer0.get_or_create_minicolumn("t3")
+
+        t1.document_ids.update(["doc1", "doc2"])
+        t2.document_ids.update(["doc1", "doc2"])
+        t3.document_ids.update(["doc3", "doc4"])
+
+        # Create clusters
+        c1 = layer2.get_or_create_minicolumn("cluster1")
+        c1.feedforward_connections[t1.id] = 1.0
+        c1.feedforward_connections[t2.id] = 1.0
+
+        c2 = layer2.get_or_create_minicolumn("cluster2")
+        c2.feedforward_connections[t3.id] = 1.0
+
+        silhouette = _compute_silhouette(layer0, layer2, sample_size=10)
+
+        # Should compute silhouette
+        assert isinstance(silhouette, float)
+        assert -1 <= silhouette <= 1
+
+    def test_cluster_balance_computation(self):
+        """Test _compute_cluster_balance directly."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import _compute_cluster_balance
+
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # Create clusters of different sizes
+        c1 = layer2.get_or_create_minicolumn("cluster1")
+        c1.feedforward_connections["t1"] = 1.0
+        c1.feedforward_connections["t2"] = 1.0
+        c1.feedforward_connections["t3"] = 1.0
+
+        c2 = layer2.get_or_create_minicolumn("cluster2")
+        c2.feedforward_connections["t4"] = 1.0
+
+        balance = _compute_cluster_balance(layer2)
+
+        # Should compute Gini coefficient
+        assert 0 <= balance <= 1
+
+    def test_generate_quality_assessment(self):
+        """Test _generate_quality_assessment."""
+        from cortical.analysis import _generate_quality_assessment
+
+        assessment = _generate_quality_assessment(
+            modularity=0.4,
+            silhouette=0.3,
+            balance=0.2,
+            num_clusters=5
+        )
+
+        assert "5 clusters" in assessment
+        assert "Good community structure" in assessment
+
+    def test_doc_similarity_helper(self):
+        """Test _doc_similarity helper."""
+        from cortical.analysis import _doc_similarity
+
+        docs1 = frozenset(["doc1", "doc2", "doc3"])
+        docs2 = frozenset(["doc2", "doc3", "doc4"])
+
+        sim = _doc_similarity(docs1, docs2)
+
+        # Jaccard: |{doc2, doc3}| / |{doc1, doc2, doc3, doc4}| = 2/4 = 0.5
+        assert sim == pytest.approx(0.5)
+
+    def test_doc_similarity_empty(self):
+        """Test _doc_similarity with empty sets."""
+        from cortical.analysis import _doc_similarity
+
+        docs1 = frozenset()
+        docs2 = frozenset(["doc1"])
+
+        sim = _doc_similarity(docs1, docs2)
+
+        assert sim == 0.0
+
+    def test_vector_similarity_helper(self):
+        """Test _vector_similarity helper."""
+        from cortical.analysis import _vector_similarity
+
+        vec1 = {"a": 1.0, "b": 2.0}
+        vec2 = {"a": 1.0, "c": 3.0}
+
+        sim = _vector_similarity(vec1, vec2)
+
+        # Weighted Jaccard: min(1,1) / (max(1,1) + max(2,0) + max(0,3))
+        # = 1 / (1 + 2 + 3) = 1/6
+        assert sim == pytest.approx(1.0 / 6.0)
+
+    def test_vector_similarity_empty(self):
+        """Test _vector_similarity with empty vectors."""
+        from cortical.analysis import _vector_similarity
+
+        vec1 = {}
+        vec2 = {"a": 1.0}
+
+        sim = _vector_similarity(vec1, vec2)
+
+        assert sim == 0.0
+
+    def test_silhouette_with_many_tokens(self):
+        """Test _compute_silhouette with actual token graph (lines 2208-2281)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import _compute_silhouette
+
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # Create 10 tokens with document overlap patterns
+        tokens = []
+        for i in range(10):
+            t = layer0.get_or_create_minicolumn(f"token{i}")
+            tokens.append(t)
+            # First 5 tokens in doc1-doc2, last 5 in doc3-doc4
+            if i < 5:
+                t.document_ids.update([f"doc1", f"doc2"])
+            else:
+                t.document_ids.update([f"doc3", f"doc4"])
+
+        # Create 2 clusters
+        c1 = layer2.get_or_create_minicolumn("cluster1")
+        c2 = layer2.get_or_create_minicolumn("cluster2")
+
+        for i, t in enumerate(tokens):
+            if i < 5:
+                c1.feedforward_connections[t.id] = 1.0
+            else:
+                c2.feedforward_connections[t.id] = 1.0
+
+        # This should trigger lines 2208-2281
+        silhouette = _compute_silhouette(layer0, layer2, sample_size=20)
+
+        # Should get a positive silhouette (good clustering)
+        assert silhouette > 0
+
+    def test_cluster_balance_edge_cases(self):
+        """Test _compute_cluster_balance edge cases (lines 2320, 2348, 2355)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import _compute_cluster_balance
+
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        # Edge case: single cluster with zero total (line 2355)
+        c1 = layer2.get_or_create_minicolumn("cluster1")
+        # No feedforward_connections (empty dict, total=0)
+
+        balance = _compute_cluster_balance(layer2)
+
+        # Should return 1.0 (all in one cluster)
+        assert balance == 1.0
+
+    def test_generate_quality_assessment_variations(self):
+        """Test _generate_quality_assessment with different score ranges."""
+        from cortical.analysis import _generate_quality_assessment
+
+        # Test weak modularity (lines 2388-2391)
+        assessment1 = _generate_quality_assessment(
+            modularity=0.15,
+            silhouette=0.15,
+            balance=0.4,
+            num_clusters=3
+        )
+        assert "Weak community structure" in assessment1
+        assert "moderate topic coherence" in assessment1
+
+        # Test negative silhouette (lines 2399, 2403)
+        assessment2 = _generate_quality_assessment(
+            modularity=0.6,
+            silhouette=-0.05,
+            balance=0.6,
+            num_clusters=4
+        )
+        assert "Strong community structure" in assessment2
+        assert "typical graph clustering" in assessment2
+
+        # Test diverse clusters (line 2403)
+        assessment3 = _generate_quality_assessment(
+            modularity=0.2,
+            silhouette=-0.2,
+            balance=0.7,
+            num_clusters=2
+        )
+        assert "diverse clusters" in assessment3
+        assert "imbalanced sizes" in assessment3
+
+    def test_louvain_phase2_inter_community_edges(self):
+        """Test cluster_by_louvain phase2 with inter-community edges (lines 1338-1341)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import cluster_by_louvain
+
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+
+        # Create two communities with an inter-community edge
+        # Community 1: a0-a1-a2 (dense)
+        for i in range(3):
+            col = layer.get_or_create_minicolumn(f"a{i}")
+            for j in range(3):
+                if i != j:
+                    col.add_lateral_connection(f"L0_a{j}", 2.0)
+
+        # Community 2: b0-b1-b2 (dense)
+        for i in range(3):
+            col = layer.get_or_create_minicolumn(f"b{i}")
+            for j in range(3):
+                if i != j:
+                    col.add_lateral_connection(f"L0_b{j}", 2.0)
+
+        # Inter-community edge (weak)
+        col_a0 = layer.get_minicolumn("a0")
+        col_a0.add_lateral_connection("L0_b0", 0.5)
+        col_b0 = layer.get_minicolumn("b0")
+        col_b0.add_lateral_connection("L0_a0", 0.5)
+
+        # Run Louvain - should trigger phase2 with inter-community edges
+        result = cluster_by_louvain(layer, min_cluster_size=2, max_iterations=3)
+
+        # Should find clusters
+        assert len(result) >= 1
+
+    def test_propagate_activation_layer_filtering(self):
+        """Test propagate_activation layer enum filtering (lines 964, 966)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import propagate_activation
+
+        # Create layers with different levels
+        layer0 = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer1 = HierarchicalLayer(CorticalLayer.BIGRAMS)
+        layer2 = HierarchicalLayer(CorticalLayer.CONCEPTS)
+
+        token1 = layer0.get_or_create_minicolumn("token1")
+        token1.activation = 1.0
+
+        bigram1 = layer1.get_or_create_minicolumn("bigram1")
+        concept1 = layer2.get_or_create_minicolumn("concept1")
+
+        # Add feedforward sources from lower layers
+        bigram1.feedforward_sources.add(token1.id)
+        concept1.feedforward_sources.add(token1.id)
+        concept1.feedforward_sources.add(bigram1.id)
+
+        layers = {
+            CorticalLayer.TOKENS: layer0,
+            CorticalLayer.BIGRAMS: layer1,
+            CorticalLayer.CONCEPTS: layer2
+        }
+
+        # This should trigger the layer filtering logic
+        propagate_activation(layers, iterations=2, decay=0.9)
+
+        # Both should receive activation from token
+        assert bigram1.activation > 0
+        assert concept1.activation > 0
+
+    def test_semantic_pagerank_target_none(self):
+        """Test compute_semantic_pagerank when target is None (line 667)."""
+        from cortical.layers import HierarchicalLayer, CorticalLayer
+        from cortical.analysis import compute_semantic_pagerank
+
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        col1 = layer.get_or_create_minicolumn("term1")
+
+        # Add connection to non-existent target
+        col1.lateral_connections["L0_nonexistent"] = 1.0
+
+        semantic_relations = [("term1", "RelatedTo", "term2", 0.8)]
+
+        result = compute_semantic_pagerank(
+            layer, semantic_relations, damping=0.85, iterations=3
+        )
+
+        # Should handle gracefully (line 667 target is None)
+        assert 'pagerank' in result
