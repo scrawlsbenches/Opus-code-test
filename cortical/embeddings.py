@@ -51,6 +51,9 @@ def compute_graph_embeddings(
     if method == 'fast':
         # Fast direct adjacency without multi-hop propagation
         embeddings = _fast_adjacency_embeddings(layer0, dimensions, sampled_terms)
+    elif method == 'tfidf':
+        # TF-IDF based embeddings (best for semantic similarity)
+        embeddings = _tfidf_embeddings(layer0, dimensions, sampled_terms)
     elif method == 'adjacency':
         embeddings = _adjacency_embeddings(layer0, dimensions, sampled_terms)
     elif method == 'random_walk':
@@ -74,7 +77,8 @@ def compute_graph_embeddings(
 def _fast_adjacency_embeddings(
     layer: HierarchicalLayer,
     dimensions: int,
-    sampled_terms: Optional[set] = None
+    sampled_terms: Optional[set] = None,
+    use_idf_weighting: bool = True
 ) -> Dict[str, List[float]]:
     """
     Fast direct adjacency embeddings without multi-hop propagation.
@@ -86,12 +90,29 @@ def _fast_adjacency_embeddings(
         layer: Layer to compute embeddings for
         dimensions: Number of embedding dimensions (= number of landmarks)
         sampled_terms: If set, only compute embeddings for these terms
+        use_idf_weighting: If True, weight connections by IDF of the target term.
+                          This down-weights connections to very common terms,
+                          improving embedding quality for diverse corpora.
     """
     embeddings: Dict[str, List[float]] = {}
 
     sorted_cols = sorted(layer.minicolumns.values(), key=lambda c: c.pagerank, reverse=True)
     landmarks = sorted_cols[:dimensions]
     landmark_ids = {lm.id: i for i, lm in enumerate(landmarks)}
+
+    # Compute IDF weights for landmarks if enabled
+    # IDF = log(N / df) where df = number of documents containing the term
+    total_docs = len(set(doc_id for col in layer.minicolumns.values() for doc_id in col.document_ids))
+    landmark_idf = {}
+    if use_idf_weighting and total_docs > 0:
+        for lm in landmarks:
+            doc_freq = max(1, len(lm.document_ids))
+            # Using smoothed IDF: log((N + 1) / (df + 1)) + 1
+            landmark_idf[lm.id] = math.log((total_docs + 1) / (doc_freq + 1)) + 1.0
+    else:
+        # No weighting - all landmarks have weight 1.0
+        for lm in landmarks:
+            landmark_idf[lm.id] = 1.0
 
     cols_to_process = layer.minicolumns.values()
     if sampled_terms is not None:
@@ -100,10 +121,69 @@ def _fast_adjacency_embeddings(
     for col in cols_to_process:
         vec = [0.0] * dimensions
 
-        # Direct connections only
+        # Direct connections only, weighted by landmark IDF
         for lm_id, lm_idx in landmark_ids.items():
             if lm_id in col.lateral_connections:
-                vec[lm_idx] = col.lateral_connections[lm_id]
+                raw_weight = col.lateral_connections[lm_id]
+                idf_weight = landmark_idf.get(lm_id, 1.0)
+                vec[lm_idx] = raw_weight * idf_weight
+
+        # Normalize
+        mag = math.sqrt(sum(v*v for v in vec)) + 1e-10
+        embeddings[col.content] = [v / mag for v in vec]
+
+    return embeddings
+
+
+def _tfidf_embeddings(
+    layer: HierarchicalLayer,
+    dimensions: int,
+    sampled_terms: Optional[set] = None
+) -> Dict[str, List[float]]:
+    """
+    TF-IDF based embeddings using document distribution as feature space.
+
+    Each term's embedding is its TF-IDF scores across documents. This produces
+    embeddings where semantically similar terms (those appearing in similar
+    documents) have high cosine similarity.
+
+    This method is generally better for semantic similarity than graph-based
+    methods because:
+    1. Terms appearing in similar documents are likely semantically related
+    2. TF-IDF naturally down-weights common terms
+    3. Embeddings are dense (no sparse landmark issues)
+
+    Args:
+        layer: Layer to compute embeddings for
+        dimensions: Maximum number of document dimensions (uses top N docs by size)
+        sampled_terms: If set, only compute embeddings for these terms
+    """
+    embeddings: Dict[str, List[float]] = {}
+
+    # Get all documents and sort by document "importance" (term count)
+    all_docs = set()
+    doc_term_count = defaultdict(int)
+    for col in layer.minicolumns.values():
+        for doc_id in col.document_ids:
+            all_docs.add(doc_id)
+            doc_term_count[doc_id] += 1
+
+    # Use top N documents as dimensions (by term coverage)
+    sorted_docs = sorted(all_docs, key=lambda d: -doc_term_count[d])
+    doc_dims = sorted_docs[:dimensions]
+    doc_to_idx = {doc: i for i, doc in enumerate(doc_dims)}
+
+    cols_to_process = layer.minicolumns.values()
+    if sampled_terms is not None:
+        cols_to_process = [c for c in cols_to_process if c.content in sampled_terms]
+
+    for col in cols_to_process:
+        vec = [0.0] * len(doc_dims)
+
+        # Fill in TF-IDF values for documents in our dimension space
+        for doc_id, tfidf_score in col.tfidf_per_doc.items():
+            if doc_id in doc_to_idx:
+                vec[doc_to_idx[doc_id]] = tfidf_score
 
         # Normalize
         mag = math.sqrt(sum(v*v for v in vec)) + 1e-10

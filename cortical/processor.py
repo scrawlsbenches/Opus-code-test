@@ -1377,8 +1377,15 @@ class CorticalTextProcessor:
 
         Args:
             dimensions: Number of embedding dimensions (default 64)
-            method: Embedding method - 'fast', 'adjacency', 'random_walk', or 'spectral'
-                   'fast' is recommended for large corpora (>3000 tokens)
+            method: Embedding method:
+                - 'tfidf': TF-IDF based embeddings. Best for semantic similarity.
+                  Uses document distribution as feature space. Recommended for
+                  finding semantically similar terms.
+                - 'fast': Fast graph adjacency. Good for large corpora when speed
+                  matters more than semantic quality.
+                - 'adjacency': Multi-hop graph adjacency. More expressive but slower.
+                - 'random_walk': DeepWalk-style random walks. Good graph structure.
+                - 'spectral': Graph Laplacian eigenvectors. Mathematical approach.
             max_terms: Maximum number of terms to embed (by PageRank).
                       If None, auto-selects based on corpus size:
                       - <2000 tokens: embed all
@@ -1388,6 +1395,11 @@ class CorticalTextProcessor:
 
         Returns:
             Statistics dict with method, dimensions, terms_embedded
+
+        Note:
+            For semantic similarity tasks (finding related terms), 'tfidf' method
+            produces significantly better results than graph-based methods because
+            terms appearing in similar documents are usually semantically related.
         """
         # Auto-select max_terms based on corpus size
         token_count = self.layers[CorticalLayer.TOKENS].column_count()
