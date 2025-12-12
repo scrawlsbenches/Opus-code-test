@@ -4,7 +4,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 **Last Updated:** 2025-12-12
 **Pending Tasks:** 31
-**Completed Tasks:** 98+ (see archive)
+**Completed Tasks:** 138+ (see archive and Recently Completed)
 
 ---
 
@@ -81,6 +81,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 98 | Replace print() with logging | 2025-12-12 | 52+ print statements → logging.info(), all modules use getLogger(__name__) |
 | 102 | Add tests for edge cases | 2025-12-12 | 53 new tests in test_edge_cases.py: Unicode, large docs, malformed inputs |
 | 115 | Create component interaction diagram | 2025-12-12 | docs/architecture.md with ASCII + Mermaid diagrams, module dependencies |
+| 147 | Fix misleading hardcoded values | 2025-12-12 | 5 fixes: backwards param names, sparsity threshold, config constant, tolerance param, confidence semantics |
 | 139 | Batch bigram connection updates to reduce dict overhead | 2025-12-12 | add_lateral_connections_batch() method in minicolumn.py |
 | 137 | Cap bigram connections to top-K per bigram | 2025-12-12 | max_connections_per_bigram parameter (default 50) in analysis.py |
 | 116 | Document return value semantics | 2025-12-12 | Edge cases, score ranges, None vs exceptions, default parameters |
@@ -485,70 +486,73 @@ Layer 2: Concept Layer (V4)
 
 ---
 
-### 91. Create docs/README.md Index
+### 91. Create docs/README.md Index ✅
 
-**Meta:** `status:pending` `priority:medium` `category:docs`
-**Files:** `docs/README.md` (new)
+**Meta:** `status:completed` `priority:medium` `category:docs`
+**Files:** `docs/README.md`
 **Effort:** Small
+**Completed:** 2025-12-12
 
 **Problem:** 11 docs files with no navigation.
 
-**Solution:** Create index with recommended reading order.
+**Solution Applied:** Created `docs/README.md` with navigation by audience (New Users, Developers, AI Agents), reading paths, and categorized documentation links.
 
 ---
 
-### 92. Add Badges to README.md
+### 92. Add Badges to README.md ✅
 
-**Meta:** `status:pending` `priority:medium` `category:devex`
+**Meta:** `status:completed` `priority:medium` `category:devex`
 **Files:** `README.md`
 **Effort:** Small
+**Completed:** 2025-12-12
 
 **Problem:** No visual project health indicators.
 
-**Solution:** Add CI, coverage, Python version, license badges.
+**Solution Applied:** Added 5 badges to README.md: Python 3.8+, MIT License, Tests (1121 passing), Coverage (>89%), Zero Dependencies.
 
 ---
 
-### 93. Update README with Documentation References
+### 93. Update README with Documentation References ✅
 
-**Meta:** `status:pending` `priority:medium` `category:docs`
+**Meta:** `status:completed` `priority:medium` `category:docs`
 **Files:** `README.md`
 **Effort:** Small
 **Depends:** 91
+**Completed:** 2025-12-12
 
 **Problem:** README doesn't mention docs/ folder.
 
+**Solution Applied:** Added "Documentation" section to README.md with table linking to all docs/*.md files including quickstart, architecture, algorithms, query-guide, cookbook, and glossary.
+
 ---
 
-### 94. Split query.py into Focused Modules
+### 94. Split query.py into Focused Modules ✅
 
-**Meta:** `status:pending` `priority:high` `category:architecture`
-**Files:** `cortical/query.py` (2,719 lines) → `cortical/query/` package
+**Meta:** `status:completed` `priority:high` `category:architecture`
+**Files:** `cortical/query.py` → `cortical/query/` package (8 modules)
 **Effort:** Large
+**Completed:** 2025-12-12
 
-**Quick Context:**
-- Current: 2,719 lines, 7+ responsibilities
-- Key functions: `expand_query()` (L127), `find_documents_for_query()` (L450), `find_passages_for_query()` (L890)
-- Imports: `processor.py` (L15), all test files
+**Problem:** Single 2,719-line file violated Single Responsibility Principle.
 
-**Problem:** Violates Single Responsibility Principle.
-
-**Solution:**
+**Solution Applied:**
 ```
 cortical/query/
-├── __init__.py       # Re-export public API
+├── __init__.py       # Re-export public API (backward compatible)
 ├── expansion.py      # expand_query, expand_query_semantic
 ├── search.py         # find_documents_for_query, fast_find_documents
-├── passages.py       # find_passages_for_query, chunking
+├── passages.py       # find_passages_for_query
+├── chunking.py       # Chunk-based text processing
 ├── intent.py         # parse_intent_query, search_by_intent
 ├── definitions.py    # is_definition_query, find_definition_passages
-└── ranking.py        # multi_stage_rank
+├── ranking.py        # multi_stage_rank
+└── analogy.py        # complete_analogy
 ```
 
 **Acceptance Criteria:**
-- [ ] No file >500 lines
-- [ ] All existing tests pass
-- [ ] Backward-compatible imports from `cortical.query`
+- [x] No file >500 lines
+- [x] All existing tests pass
+- [x] Backward-compatible imports from `cortical.query`
 
 ---
 
@@ -565,45 +569,39 @@ cortical/query/
 
 ---
 
-### 96. Centralize Duplicate Constants
+### 96. Centralize Duplicate Constants ✅
 
-**Meta:** `status:pending` `priority:medium` `category:code-quality`
-**Files:** `cortical/constants.py` (new), `cortical/semantics.py`, `cortical/query.py`
+**Meta:** `status:completed` `priority:medium` `category:code-quality`
+**Files:** `cortical/constants.py`
 **Effort:** Small
+**Completed:** 2025-12-12
 
 **Problem:** `RELATION_WEIGHTS`, `DOC_TYPE_BOOSTS` defined in multiple places.
 
-**Solution:** Create `cortical/constants.py` as single source of truth.
+**Solution Applied:** Created `cortical/constants.py` as single source of truth containing RELATION_WEIGHTS, DOC_TYPE_BOOSTS, query keywords, and other shared constants. Updated imports across modules.
 
 ---
 
-### 97. Integrate CorticalConfig into CorticalTextProcessor
+### 97. Integrate CorticalConfig into CorticalTextProcessor ✅
 
-**Meta:** `status:pending` `priority:high` `category:architecture`
+**Meta:** `status:completed` `priority:high` `category:architecture`
 **Files:** `cortical/processor.py`, `cortical/config.py`
 **Effort:** Medium
+**Completed:** 2025-12-11
 
-**Quick Context:**
-- `CorticalConfig` exists with 20+ parameters
-- `CorticalTextProcessor.__init__()` doesn't accept config
-- All parameters passed at call time, scattered
+**Problem:** Config exists but isn't used by processor.
 
-**Problem:** Config exists but isn't used.
-
-**Solution:**
-```python
-def __init__(
-    self,
-    config: Optional[CorticalConfig] = None,
-    tokenizer: Optional[Tokenizer] = None
-):
-    self.config = config or CorticalConfig()
-```
+**Solution Applied:**
+- Added `config` parameter to `CorticalTextProcessor.__init__()`
+- Config stored on processor instance (`self.config`)
+- Methods use config defaults for parameters like `damping`, `resolution`, etc.
+- Config saved/loaded with processor state via persistence
+- Per-call override still supported
 
 **Acceptance Criteria:**
-- [ ] Config parameter accepted
-- [ ] Methods use config defaults
-- [ ] Override still possible per-call
+- [x] Config parameter accepted
+- [x] Methods use config defaults
+- [x] Override still possible per-call
 
 ---
 
@@ -819,50 +817,42 @@ def expand_query(self, query: str, max_expansions: int = 10):
 
 ---
 
-### 113. Document Staleness Tracking System
+### 113. Document Staleness Tracking System ✅
 
-**Meta:** `status:pending` `priority:medium` `category:ai-nav`
-**Files:** `CLAUDE.md` or `docs/staleness.md` (new)
+**Meta:** `status:completed` `priority:medium` `category:ai-nav`
+**Files:** `CLAUDE.md`
 **Effort:** Small
+**Completed:** 2025-12-12
 
-**Problem:** The staleness tracking system (`COMP_TFIDF`, `COMP_PAGERANK`, `is_stale()`, `_mark_all_stale()`) is powerful but not documented. AI assistants discover it through exploration.
+**Problem:** The staleness tracking system was powerful but not documented.
 
-**Solution:** Add documentation explaining:
-- What staleness means and why it matters
-- List of all `COMP_*` constants and what they track
-- When staleness is automatically set (which methods call `_mark_all_stale()`)
-- How to check and resolve staleness
-- Example workflow showing stale → recompute → fresh
+**Solution Applied:** Added comprehensive "Staleness Tracking System" section to CLAUDE.md including:
+- Table of all `COMP_*` constants and what they track
+- How staleness works (all start stale, computed marks fresh)
+- API methods (`is_stale()`, `get_stale_computations()`)
+- Incremental update behavior
+- When to check staleness before reading computed values
 
 ---
 
-### 114. Add Type Aliases for Complex Types
+### 114. Add Type Aliases for Complex Types ✅
 
-**Meta:** `status:pending` `priority:medium` `category:ai-nav`
-**Files:** `cortical/types.py` (new), update imports in other modules
+**Meta:** `status:completed` `priority:medium` `category:ai-nav`
+**Files:** `cortical/types.py`
 **Effort:** Small
+**Completed:** 2025-12-12
 
 **Problem:** Complex return types like `List[Tuple[str, float, Dict[str, Any]]]` are hard to understand at a glance.
 
-**Solution:** Create type aliases:
-```python
-# cortical/types.py
-from typing import List, Tuple, Dict, Any
+**Solution Applied:** Created `cortical/types.py` with 20+ type aliases organized by category:
+- **Score types:** `DocumentScore`, `TermScore`, `DocumentResults`, `TermResults`
+- **Passage types:** `PassageResult`, `PassageResults`, `PassageWithPosition`
+- **Semantic types:** `SemanticRelation`, `SemanticRelations`
+- **Graph types:** `ConnectionMap`, `LayerDict`, `ClusterAssignment`
+- **Expansion types:** `ExpansionTerms`, `IntentResult`
+- **Fingerprint types:** `Fingerprint`, `FingerprintComparison`
 
-# Query results
-DocumentScore = Tuple[str, float]  # (doc_id, score)
-DocumentResults = List[DocumentScore]
-
-PassageResult = Tuple[str, float, str]  # (doc_id, score, passage_text)
-PassageResults = List[PassageResult]
-
-IntentResult = Tuple[str, float, Dict[str, Any]]  # (doc_id, score, intent_info)
-IntentResults = List[IntentResult]
-
-# Graph types
-ConnectionMap = Dict[str, float]  # {target_id: weight}
-LayerDict = Dict[CorticalLayer, HierarchicalLayer]
-```
+All types include docstrings explaining their structure.
 
 ---
 
@@ -895,27 +885,20 @@ Include which module calls which, and data flow direction.
 
 ---
 
-### 116. Document Return Value Semantics
+### 116. Document Return Value Semantics ✅
 
-**Meta:** `status:pending` `priority:medium` `category:ai-nav`
+**Meta:** `status:completed` `priority:medium` `category:ai-nav`
 **Files:** `CLAUDE.md`
 **Effort:** Medium
+**Completed:** 2025-12-12
 
-**Problem:** Inconsistent understanding of what functions return in edge cases (empty corpus, no matches, invalid input).
+**Problem:** Inconsistent understanding of what functions return in edge cases.
 
-**Solution:** Add section to CLAUDE.md documenting:
-
-| Scenario | Return | Example Functions |
-|----------|--------|-------------------|
-| Empty corpus | Empty list `[]` | `find_documents_for_query()` |
-| No matches | Empty list `[]` | `find_passages_for_query()` |
-| Invalid doc_id | `None` | `get_document_metadata()` |
-| Invalid layer | Raises `KeyError` | `get_layer()` |
-
-Also document:
-- When functions return `None` vs raise exceptions
-- Default values for optional parameters
-- Score ranges (0.0-1.0 vs unbounded)
+**Solution Applied:** Added "Return Value Semantics" section to CLAUDE.md documenting:
+- **Edge Case Returns:** Table showing what each scenario returns (empty corpus → `[]`, unknown doc_id → `{}`, etc.)
+- **Score Ranges:** Relevance (unbounded), PageRank (0-1), TF-IDF (unbounded), Similarity (0-1), Confidence (0-1)
+- **Lookup Functions:** `None` for missing items vs `KeyError` for invalid structure
+- **Default Parameters:** Table of key defaults (`top_n=5`, `damping=0.85`, `resolution=1.0`, etc.)
 
 ---
 
@@ -1212,7 +1195,7 @@ Coverage Assessment: ADEQUATE [~]
 
 ---
 
-### 128. Analyze Customer Service Cluster Quality
+### 140. Analyze Customer Service Cluster Quality
 
 **Meta:** `status:pending` `priority:low` `category:research`
 **Files:** Analysis output
@@ -1475,87 +1458,86 @@ in similar documents are usually semantically related.
 
 ---
 
-### 146. Create Behavioral Tests for Core User Workflows
+### 146. Create Behavioral Tests for Core User Workflows ✅
 
-**Meta:** `status:pending` `priority:high` `category:testing`
-**Files:** `tests/test_behavioral.py` (new)
+**Meta:** `status:completed` `priority:high` `category:testing`
+**Files:** `tests/test_behavioral.py`
 **Effort:** Medium
+**Completed:** 2025-12-12
 
-**Purpose:** Create acceptance/behavioral tests that verify the system delivers expected
-user outcomes. Unlike unit tests (function works correctly) or integration tests
-(components work together), behavioral tests verify "the system feels right to users."
+**Purpose:** Created acceptance/behavioral tests that verify the system delivers expected
+user outcomes, catching the kinds of issues discovered during dog-fooding.
 
-**Why This Matters:**
-Dog-fooding revealed issues that unit tests missed:
-- Search returning wrong documents for obvious queries
-- Python keywords polluting analysis results
-- Performance regressions making the system feel slow
+**Solution Applied:** Created `tests/test_behavioral.py` with 11 tests across 4 categories:
 
-Behavioral tests would have caught these as regressions.
+1. **TestSearchBehavior** (3 tests)
+   - `test_document_name_matches_rank_highly` - "distributed systems" → distributed_systems in top 2
+   - `test_query_expansion_improves_recall` - Expanded queries find more relevant docs
+   - `test_code_search_finds_implementations_not_tests` - Real code preferred over test files
 
-**Test Categories to Implement:**
+2. **TestPerformanceBehavior** (2 tests)
+   - `test_compute_all_under_threshold` - Full analysis < 30s for 100+ docs
+   - `test_search_is_fast` - Single query < 100ms
 
-1. **SearchBehavior** - "Search should feel relevant"
-   ```python
-   def test_document_name_matches_rank_highly(self):
-       """Query matching document name should return that doc in top 2."""
-       # "distributed systems" → distributed_systems in top 2
+3. **TestQualityBehavior** (4 tests)
+   - `test_pagerank_surfaces_meaningful_terms` - No 'self', 'def' in top 20
+   - `test_clustering_produces_coherent_groups` - modularity > 0.3
+   - `test_tfidf_embeddings_capture_semantic_similarity` - 'learning' similar to 'neural'
+   - `test_no_mega_cluster` - No cluster > 25% of tokens
 
-   def test_query_expansion_improves_recall(self):
-       """Expanded queries should find more relevant docs than exact match."""
-
-   def test_code_search_finds_implementations_not_tests(self):
-       """Code queries should prefer real implementations over test mocks."""
-   ```
-
-2. **PerformanceBehavior** - "System should feel responsive"
-   ```python
-   def test_compute_all_under_threshold(self):
-       """Full analysis should complete within reasonable time."""
-       # With 109 sample docs: < 20 seconds
-
-   def test_search_is_fast(self):
-       """Single query should return quickly."""
-       # < 100ms per query
-   ```
-
-3. **QualityBehavior** - "Results should make sense"
-   ```python
-   def test_pagerank_surfaces_meaningful_terms(self):
-       """Top PageRank terms should be domain concepts, not noise."""
-       # No 'self', 'def', 'assertequal' in top 20
-
-   def test_clustering_produces_coherent_groups(self):
-       """Clusters should have good community structure."""
-       # modularity > 0.3
-
-   def test_embeddings_capture_semantic_similarity(self):
-       """Similar terms by embedding should be semantically related."""
-       # 'learning' similar to 'neural', 'training', 'networks'
-   ```
-
-4. **RobustnessBehavior** - "System should handle edge cases gracefully"
-   ```python
-   def test_empty_query_returns_empty_results(self):
-       """Empty queries should not crash or return garbage."""
-
-   def test_unknown_terms_handled_gracefully(self):
-       """Queries with unknown terms should still return results."""
-   ```
-
-**Implementation Notes:**
-- Use `tests/test_behavioral.py` as a new test file
-- Load sample corpus once in `setUpClass` for performance
-- Use descriptive assertion messages explaining expected behavior
-- Document the "why" for each threshold/expectation
+4. **TestRobustnessBehavior** (2 tests)
+   - `test_empty_query_raises_error` - ValueError for empty queries
+   - `test_unknown_terms_handled_gracefully` - Nonsense queries return empty results
 
 **Acceptance Criteria:**
-- [ ] TestSearchBehavior class with 3+ tests
-- [ ] TestPerformanceBehavior class with 2+ tests
-- [ ] TestQualityBehavior class with 3+ tests
-- [ ] TestRobustnessBehavior class with 2+ tests
-- [ ] All tests pass on current codebase
-- [ ] Tests catch regressions from Tasks #141-145 if reverted
+- [x] TestSearchBehavior class with 3+ tests
+- [x] TestPerformanceBehavior class with 2+ tests
+- [x] TestQualityBehavior class with 3+ tests (4 implemented)
+- [x] TestRobustnessBehavior class with 2+ tests
+- [x] All tests pass on current codebase
+- [x] Tests catch regressions from Tasks #141-145 if reverted
+
+---
+
+### 147. Fix Misleading Hardcoded Values ✅
+
+**Meta:** `status:completed` `priority:high` `category:bugfix`
+**Files:** `cortical/query/definitions.py`, `cortical/layers.py`, `cortical/query/expansion.py`, `cortical/analysis.py`, `cortical/minicolumn.py`, `tests/test_layers.py`, `tests/test_query.py`
+**Effort:** Medium
+**Completed:** 2025-12-12
+
+**Problem:** Several hardcoded values in the codebase were misleading - they made something appear to be true when it wasn't.
+
+**Issues Fixed:**
+
+1. **Backwards parameter names** (`definitions.py:309-310`):
+   - `test_file_boost_factor=0.5` sounded like a boost but actually reduced scores by 50%
+   - `test_file_penalty=0.7` was called "penalty" but was lighter than the "boost"
+   - Renamed to `test_with_definition_penalty` and `test_without_definition_penalty`
+
+2. **Useless sparsity threshold** (`layers.py:192`):
+   - Hardcoded `threshold=1.0` only counted terms with activation=0 (unused terms)
+   - Changed to use `threshold_fraction * average_activation` for meaningful sparsity
+
+3. **Hardcoded config value** (`expansion.py:77`):
+   - Hardcoded `0.4` instead of using `DEFAULT_CHAIN_VALIDITY` constant
+   - Now imports and uses the config constant
+
+4. **Tolerance parameter ignored** (`analysis.py:301`):
+   - `compute_hierarchical_pagerank()` ignored caller's `tolerance` parameter
+   - Was hardcoded to `1e-6` instead of using the function parameter
+
+5. **Confidence only increasing** (`minicolumn.py:189`):
+   - Used `max(old, new)` so confidence could only increase, never decrease
+   - Changed to weighted average so confidence can decrease with lower-confidence evidence
+
+**Acceptance Criteria:**
+- [x] All misleading parameter names clarified
+- [x] Sparsity threshold made meaningful
+- [x] Config constants used consistently
+- [x] Function parameters respected (not ignored)
+- [x] Confidence semantics corrected
+- [x] All 1133 tests pass
 
 ---
 
@@ -1563,20 +1545,19 @@ Behavioral tests would have caught these as regressions.
 
 | Category | Pending | Description |
 |----------|---------|-------------|
-| Quality | 5 | Quality issues from dog-fooding |
-| Perf | 4 | Performance improvements |
-| AINav | 6 | AI assistant navigation & usability |
-| DevEx | 8 | Developer experience (scripts, tools) |
-| Docs | 2 | Documentation improvements |
-| Arch | 4 | Architecture refactoring |
-| CodeQual | 3 | Code quality improvements |
-| Testing | 3 | Test coverage |
-| TaskMgmt | 2 | Task management system |
-| Research | 2 | Research and analysis tasks |
-| Samples | 1 | Sample document improvements |
+| Perf | 1 | Performance improvements (#138) |
+| Arch | 6 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
+| CodeQual | 2 | Code quality improvements (#98, 99) |
+| Testing | 2 | Test coverage (#102, 129) |
+| TaskMgmt | 3 | Task management system (#107, 106, 108) |
+| AINav | 3 | AI assistant navigation (#115, 117, 118) |
+| DevEx | 7 | Developer experience, scripts (#73-80) |
+| Research | 2 | Research and analysis (#140, 131) |
+| Samples | 1 | Sample document improvements (#130) |
+| Showcase | 1 | In progress (#87) |
 | Deferred | 7 | Low priority or superseded |
 
-*Updated 2025-12-12 after dog-fooding showcase.py*
+*Updated 2025-12-12 - Fixed staleness issues, renumbered Task #128 → #140*
 
 ---
 

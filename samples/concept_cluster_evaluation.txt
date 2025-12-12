@@ -1,0 +1,84 @@
+Concept Cluster Evaluation: Assessing and Improving Semantic Groupings
+
+Concept clusters group related terms into semantic units representing topics
+or themes in the corpus. Evaluating cluster quality and improving cluster
+formation creates better organization for search and analysis.
+
+Cluster quality metrics quantify effectiveness. Modularity measures how well
+clusters separate: high modularity means terms connect more within clusters
+than between clusters. Silhouette score measures how well terms fit their
+assigned clusters: high silhouette means tight, well-separated clusters.
+Balance measures cluster size distribution: balanced clusters avoid singleton
+outliers and dominant mega-clusters.
+
+Louvain clustering algorithm determines cluster boundaries. The algorithm
+optimizes modularity by iteratively reassigning terms to clusters. Resolution
+parameter controls granularity: lower resolution creates fewer larger clusters,
+higher resolution creates more smaller clusters. Tune resolution based on
+corpus size and desired granularity.
+
+Cluster interpretation assigns meaning to groups. Examine top terms in each
+cluster by PageRank or frequency. Identify the unifying theme: a cluster
+containing "neural", "network", "learning", "training" likely represents
+machine learning. Meaningful clusters aid navigation and understanding.
+
+Problematic cluster patterns indicate issues. Singleton clusters (one term)
+suggest insufficient content for that topic. Mega-clusters (containing most
+terms) suggest resolution is too low or corpus lacks clear structure.
+Mixed-theme clusters suggest resolution is too high or terms are ambiguous.
+
+Resolution tuning optimizes cluster formation. Start with default resolution
+(1.0). If clusters are too coarse, increase resolution. If clusters fragment
+excessively, decrease resolution. Use cluster quality metrics to guide
+adjustment. Optimal resolution varies by corpus.
+
+Cluster stability analysis tests robustness. Run clustering multiple times
+with slight parameter variations. Stable clusters appear consistently.
+Unstable clusters change membership frequently. Stable clusters represent
+real structure; unstable clusters represent noise or ambiguity.
+
+Manual cluster refinement overrides automatic assignment. When a term clearly
+belongs to a different cluster than assigned, manual adjustment improves
+quality. Document manual refinements to reapply after re-clustering.
+Balance manual effort against the cost of imperfect automatic clustering.
+
+Cross-validation with external categories evaluates alignment. If ground-truth
+categories exist (document tags, manual classifications), compare cluster
+membership against categories. High overlap suggests clusters capture real
+structure. Low overlap suggests clustering or categories need adjustment.
+
+Cluster evolution tracking monitors changes over time. As corpus grows,
+clusters should evolve meaningfully. New topics should form new clusters.
+Expanding topics should enlarge existing clusters. Track cluster changes
+across indexing runs to verify sensible evolution.
+
+Hierarchical clustering provides multiple granularities. Rather than choosing
+one resolution, compute clusters at multiple resolutions. Coarse clusters
+provide high-level topics. Fine clusters provide detailed subtopics. Users
+navigate from general to specific based on their needs.
+
+Cluster-based navigation enables browsing. Present clusters as navigation
+categories. Users click into clusters to see member terms and related
+documents. Cluster browsing complements keyword search by supporting
+exploration without specific query terms.
+
+Integration with query expansion uses clusters. Expand queries to include
+terms from the same cluster. This expands semantically rather than just
+by co-occurrence. Cluster-based expansion improves recall for conceptual
+queries.
+
+Visualization of clusters aids evaluation. Display clusters as colored groups
+in a term graph. Well-separated visual clusters indicate good quality.
+Overlapping or fragmented visual clusters indicate problems. Visual evaluation
+complements quantitative metrics.
+
+Cluster documentation captures interpretation. Record the theme or topic
+each cluster represents. Document which clusters are reliable versus noisy.
+Interpretation documentation guides users of cluster-based features and
+aids future evaluation.
+
+Iterative improvement cycle refines clusters. Evaluate metrics, identify
+problems, adjust parameters, re-cluster, re-evaluate. Iteration continues
+until quality metrics satisfy requirements or further improvement becomes
+impractical. Document the improvement process for future reference.
+

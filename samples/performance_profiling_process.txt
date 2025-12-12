@@ -1,0 +1,90 @@
+Performance Profiling Process: Identifying and Resolving Computational Bottlenecks
+
+Performance profiling systematically identifies bottlenecks in processing and
+search operations. This process establishes methodical approaches to finding
+and fixing performance problems.
+
+The profiling imperative: measure before optimizing. Intuition about performance
+is often wrong. The obvious culprit frequently is not the actual bottleneck.
+Always profile to identify actual slow operations before attempting optimization.
+Data-driven optimization succeeds; guesswork wastes effort.
+
+Full analysis profiling uses the profiling script. Run profile_full_analysis.py
+to measure time for each compute phase: TF-IDF, PageRank, bigram connections,
+semantic extraction, and concept clustering. Results reveal which phases
+dominate processing time.
+
+Phase-specific bottleneck identification focuses effort. If bigram_connections
+takes 80% of total time, optimize bigram processing rather than PageRank.
+If semantic extraction dominates, optimize pattern matching. Focus on the
+actual bottleneck, not the presumed bottleneck.
+
+O(n-squared) complexity detection identifies scaling problems. Loops that
+iterate over all pairs of items create O(n^2) complexity. Common culprits:
+similarity computation between all document pairs, connection creation
+between all term pairs. These operations explode as corpus grows.
+
+Parameter limits control combinatorial explosion. Max_bigrams_per_term limits
+how many bigram connections each term creates. Max_similarity_pairs limits
+total similarity computations. These limits trade completeness for tractability.
+Tune limits based on acceptable processing time.
+
+Common term filtering reduces unnecessary work. Terms like "the", "is", "self"
+appear everywhere and create massive connection counts without semantic value.
+Stop word removal and minimum document frequency thresholds filter common
+terms before they create computational problems.
+
+Memory profiling identifies resource constraints. Large corpora may exceed
+available memory. Profile memory usage during processing to identify peaks.
+If memory is the constraint, process documents in batches or use streaming
+approaches that avoid materializing all data simultaneously.
+
+Query performance profiling measures search latency. Profile representative
+queries to understand typical and worst-case latency. Identify queries that
+are unexpectedly slow. Slow queries often involve expensive expansion or
+large result sets.
+
+Caching strategies accelerate repeated operations. Cache expanded query terms
+to avoid recomputation. Cache document scores for common queries. Cache
+intermediate results during batch processing. Profile cache hit rates to
+verify caching effectiveness.
+
+Index optimization improves lookup speed. The _id_index in HierarchicalLayer
+provides O(1) lookups by ID. Ensure all lookups use indexed access rather
+than linear scans. Profile to verify lookups use indices as expected.
+
+Batch versus streaming tradeoffs affect resource usage. Batch processing
+uses more memory but enables optimization across items. Streaming processing
+uses less memory but processes items independently. Choose based on resource
+constraints and processing requirements.
+
+Parallel processing opportunities exist in independent operations. Query
+expansion, document scoring, and passage chunking can parallelize across
+items. Identify parallelizable operations and evaluate if parallelization
+improves throughput without excessive overhead.
+
+Regression testing catches performance degradation. Establish performance
+baselines and test against them regularly. Alert when performance regresses
+beyond acceptable thresholds. Performance regression tests prevent gradual
+degradation from going unnoticed.
+
+Profiling documentation records findings. Document: which operations were
+profiled, what bottlenecks were found, what optimizations were applied, and
+what results were achieved. Documentation enables learning from optimization
+efforts and prevents repeating unsuccessful approaches.
+
+Continuous monitoring in production tracks real-world performance. Development
+profiling uses synthetic workloads. Production monitoring captures actual
+usage patterns. Combine both to understand performance across representative
+and real-world conditions.
+
+Optimization prioritization balances effort and impact. Fix bottlenecks that
+affect common operations before rare edge cases. Consider maintainability
+cost of optimizations: complex optimizations create technical debt. Simple
+optimizations that deliver meaningful improvement are preferable.
+
+Performance budgets establish acceptable limits. Define target latencies for
+processing and queries. Design and optimize to meet budgets rather than
+pursuing unnecessary micro-optimization. Budgets focus effort on meaningful
+improvements.
+

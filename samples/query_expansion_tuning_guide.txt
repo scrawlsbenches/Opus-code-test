@@ -1,0 +1,77 @@
+Query Expansion Tuning Guide: Optimizing Search Recall and Precision
+
+Query expansion transforms user queries by adding semantically related terms,
+improving recall for searches that would otherwise miss relevant documents.
+Tuning expansion balances recall improvement against precision degradation.
+
+Expansion fundamentals: the expand_query function adds terms based on lateral
+connections in the token layer. Terms that frequently co-occur in documents
+form connections. Expansion adds connected terms to broaden the search.
+
+The max_expansions parameter controls breadth. Default value is 10, adding
+up to 10 related terms per query term. Lower values increase precision
+(fewer false positives). Higher values increase recall (fewer missed documents).
+Tune based on corpus characteristics and user needs.
+
+Expansion weight distribution affects ranking. Original query terms receive
+weight 1.0. Expanded terms receive weights based on connection strength,
+typically decreasing from 0.5 down to near zero. Strong connections receive
+higher weights; weak connections receive lower weights.
+
+Precision versus recall tradeoff is fundamental. More expansion increases
+recall (finding more relevant documents) but may decrease precision (more
+irrelevant results). Different applications favor different tradeoffs:
+exploratory search favors recall; precise lookup favors precision.
+
+Code-aware expansion uses programming synonyms. Enable use_code_concepts
+for code search. This adds programming vocabulary equivalents: "get" expands
+to "fetch", "retrieve", "load". Code-aware expansion bridges vocabulary
+differences between searchers and code authors.
+
+Query intent affects optimal expansion. Conceptual queries like "what is
+machine learning" benefit from more expansion to find explanatory documents.
+Implementation queries like "compute pagerank" benefit from less expansion
+to find specific code.
+
+Corpus characteristics influence expansion settings. Dense corpora with
+many shared terms may need lower expansion to avoid overwhelming results.
+Sparse corpora with distinct vocabularies may need higher expansion to
+find any connections.
+
+Evaluation methodology measures expansion effectiveness. Use test query sets
+with known relevant documents. Measure precision (relevant results / total
+results) and recall (found relevant / total relevant). Tune parameters to
+optimize desired metric.
+
+Per-query tuning handles diverse query types. Rather than global settings,
+adjust expansion based on query characteristics. Short queries may need
+more expansion. Long queries may need less. Query length heuristics can
+automate adjustment.
+
+Feedback-based tuning learns from usage. Track which queries succeed and
+which fail. Analyze failures to identify under-expansion (missing relevant
+docs) or over-expansion (too many irrelevant results). Adjust settings
+based on observed patterns.
+
+Expansion quality depends on corpus quality. If corpus lacks good lateral
+connections, expansion cannot find related terms. Invest in corpus coverage
+and connection quality before expecting expansion to perform well.
+
+Stop word handling affects expansion paths. Stop words removed from indexing
+do not participate in expansion. Ensure stop word lists are appropriate
+for your domain. Technical terms that are common in general text may be
+important in specialized corpora.
+
+Bigram expansion versus token expansion offers different behavior. Token
+expansion finds related individual words. Bigram expansion finds related
+phrases. Combine both for comprehensive query broadening.
+
+Testing expansion changes requires controlled comparison. Before deploying
+new expansion settings, A/B test against current settings. Statistical
+significance ensures observed improvements are real rather than noise.
+
+Documentation of tuning decisions preserves rationale. Record why each
+setting was chosen. Future maintainers need context to understand and
+update tuning. Without documentation, optimal settings may be lost to
+staff turnover or system changes.
+

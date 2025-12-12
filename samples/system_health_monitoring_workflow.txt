@@ -1,0 +1,73 @@
+System Health Monitoring Workflow: Tracking Corpus and Computation Freshness
+
+Effective system health monitoring combines staleness tracking, performance
+profiling, and validation procedures to ensure reliable corpus operations.
+This workflow establishes comprehensive monitoring practices.
+
+Staleness monitoring forms the foundation of computation tracking. The processor
+maintains staleness flags for each computation type: TF-IDF, PageRank, bigram
+connections, concept clusters, and semantic relations. Monitoring these flags
+prevents using outdated values that could produce incorrect results.
+
+The staleness check workflow runs before critical operations. Before querying,
+check TF-IDF staleness. Before importance-based ranking, check PageRank staleness.
+Before concept-based analysis, check cluster staleness. Systematic checks ensure
+computations are fresh when needed.
+
+Automated staleness alerts notify operators when computations become stale.
+Configure thresholds: if TF-IDF has been stale for more than N documents,
+alert. If PageRank staleness exceeds M minutes, alert. Proactive alerting
+prevents silent degradation from accumulating staleness.
+
+Recompute scheduling balances freshness against performance. Full recompute
+via compute_all is expensive. Schedule recomputation during low-traffic
+periods. For real-time systems, incremental recompute maintains TF-IDF
+freshness while deferring expensive computations.
+
+Performance monitoring tracks processing and query latency. Establish baselines
+for indexing speed, query response time, and recompute duration. Alert when
+metrics exceed baseline thresholds. Degrading performance often indicates
+corpus growth outpacing system capacity.
+
+Bottleneck detection identifies performance constraints. Profile compute phases
+to identify which operations dominate processing time. Common bottlenecks
+include bigram connection creation, similarity computation, and concept
+clustering. Targeted optimization addresses actual bottlenecks.
+
+Resource monitoring tracks memory and CPU utilization. Large corpora consume
+significant memory. Complex queries consume CPU. Monitor resource usage
+patterns to anticipate capacity needs and prevent out-of-memory failures.
+
+Connection health validates graph structure. Count total connections, average
+connections per minicolumn, and isolated nodes. Healthy corpora show dense
+connection patterns. Sparse connections indicate indexing problems or
+inappropriate parameters.
+
+Coverage metrics track corpus completeness. The coverage score indicates how
+well documents interconnect. Monitor coverage over time. Declining coverage
+suggests new documents are not integrating well with existing content.
+
+Quality validation runs periodic checks. Sample queries with known-good results
+should continue producing expected output. Quality regression indicates
+problems with indexing, parameters, or corpus content changes.
+
+Logging captures operational history. Log document additions, computation runs,
+staleness transitions, and query patterns. Logs enable post-incident analysis
+and trend identification over time.
+
+Dashboard visualization presents monitoring data. Display staleness status,
+performance metrics, resource utilization, and quality indicators on a
+unified dashboard. Visual monitoring enables rapid problem identification.
+
+Incident response procedures handle monitoring alerts. Define escalation paths
+for different alert types. Document resolution procedures for common issues.
+Trained responders resolve incidents faster than ad-hoc troubleshooting.
+
+Maintenance windows allow scheduled operations. Heavy recomputation, corpus
+compaction, and backup procedures require dedicated time. Schedule maintenance
+to avoid impacting user-facing operations.
+
+Trend analysis identifies gradual changes. Compare metrics week-over-week
+and month-over-month. Gradual degradation is harder to notice than sudden
+failures. Trend analysis catches slow problems before they become critical.
+

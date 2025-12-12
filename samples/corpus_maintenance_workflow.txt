@@ -1,0 +1,75 @@
+Corpus Maintenance Workflow: Sustaining Healthy Document Collections Over Time
+
+Corpus maintenance encompasses the ongoing activities required to keep document
+collections healthy, performant, and relevant. This workflow establishes
+regular maintenance procedures for sustained corpus quality.
+
+Maintenance philosophy: corpora are living systems that evolve with content
+changes, usage patterns, and requirements. Neglected corpora accumulate
+problems that compound over time. Regular maintenance prevents degradation.
+
+Content freshness procedures ensure documents remain current. Review content
+age distributions. Identify stale documents that may contain outdated
+information. Update or remove obsolete content. Fresh content improves
+search relevance.
+
+Connection quality validation checks graph health. Count orphaned minicolumns
+(no connections), measure connection density, and identify weak clusters.
+Unhealthy connection patterns indicate corpus structure problems requiring
+investigation.
+
+Index freshness maintenance keeps computations current. Monitor staleness
+duration for each computation type. Schedule recomputation before staleness
+exceeds acceptable thresholds. Balance freshness against computation cost.
+
+Storage optimization reduces corpus footprint. Compact chunk files to
+consolidate incremental changes. Remove deleted document artifacts.
+Compress rarely-accessed historical data. Optimized storage improves
+load times and reduces costs.
+
+Parameter review ensures settings match current needs. As corpus grows,
+optimal parameters may change. Periodically review limits like max_bigrams_per_term,
+max_expansions, and similarity thresholds. Adjust parameters to maintain
+performance as scale increases.
+
+Coverage analysis identifies content gaps. Run gap analysis to find isolated
+documents and weak topics. Plan content additions to strengthen weak areas.
+Coverage maintenance keeps the corpus balanced and well-connected.
+
+Quality metric tracking monitors corpus health trends. Track metrics like
+coverage score, connectivity score, query success rate, and response latency.
+Trending analysis reveals gradual degradation before acute problems occur.
+
+Backup procedures protect against data loss. Regular backups capture corpus
+state. Test backup restoration periodically. Backup validation ensures
+recovery capability when needed.
+
+Version control for configuration tracks parameter changes. Store settings
+in version control. Review configuration history to understand how settings
+evolved. Configuration versioning enables rollback if changes cause problems.
+
+Dependency updates maintain system health. Update tokenization rules, stop
+word lists, and code concept mappings as language evolves. Outdated
+dependencies cause indexing drift from actual usage patterns.
+
+Performance baseline updates account for growth. As corpus grows, baseline
+expectations should adjust. A query that was fast on 100 documents may be
+slower on 10,000 documents. Update baselines to reflect current scale.
+
+User feedback integration guides maintenance priorities. Users notice
+problems that automated monitoring misses. Collect and analyze user feedback
+to identify maintenance needs. User-reported issues often indicate high-impact
+problems.
+
+Audit procedures verify maintenance completion. Document maintenance activities.
+Verify scheduled tasks actually ran. Audit logs ensure maintenance
+commitments translate to actual work.
+
+Runbook documentation enables consistent maintenance. Document step-by-step
+procedures for each maintenance task. Runbooks enable any trained operator
+to perform maintenance correctly.
+
+Maintenance scheduling distributes work appropriately. Heavy maintenance
+runs during off-peak hours. Light maintenance can run continuously.
+Scheduled maintenance prevents both neglect and excessive overhead.
+

@@ -1,0 +1,74 @@
+Document Relevance Tuning: Improving Search Result Quality Through Configuration
+
+Document relevance tuning adjusts search behavior to surface the most useful
+documents for user queries. Systematic tuning improves precision without sacrificing
+recall, creating better search experiences across different query types.
+
+Relevance scoring fundamentals establish the baseline. Documents score based on
+term matches weighted by TF-IDF values. Higher TF-IDF terms contribute more to
+scores. Understanding this mechanism enables targeted adjustments: boost distinctive
+terms, reduce common term influence, or adjust term weights.
+
+Document type boosting prioritizes certain content types. The doc_type_boost
+parameter applies multipliers based on document classification. Boost documentation
+for conceptual queries, boost code for implementation queries, penalize test files
+when searching for source implementations. Type-based boosting aligns results with
+likely user intent.
+
+Test file penalties prevent test code from dominating results. Test files often
+contain the same terms as source files but with less useful context. Apply a
+test_file_penalty (default 0.5) to reduce test file scores. This surfaces source
+implementations while keeping tests findable when explicitly sought.
+
+Definition boost prioritizes files containing class or function definitions.
+When queries match definition patterns (class Foo, def bar), apply definition_boost
+to files containing those definitions. This helps implementation queries find
+source code rather than usage examples.
+
+Query expansion parameters balance precision and recall. Lower max_expansions
+increases precision by restricting query breadth. Higher max_expansions increases
+recall by including more related terms. Tune expansion based on corpus characteristics:
+specialized corpora may need less expansion than general collections.
+
+TF-IDF weighting adjustments customize term importance. Global TF-IDF uses corpus-wide
+statistics. Per-document TF-IDF considers document-specific term frequency. Choose
+the appropriate measure based on query needs. Per-document TF-IDF often provides
+better relevance for specific document retrieval.
+
+PageRank integration adds network centrality to scoring. Terms with high PageRank
+connect to many other important terms. Incorporating PageRank boosts documents
+containing central concepts. This helps for exploratory queries where users seek
+authoritative coverage rather than specific details.
+
+Passage retrieval parameters affect chunk quality. Chunk size determines passage
+length: smaller chunks provide more precise excerpts, larger chunks provide more
+context. Chunk overlap ensures important content at boundaries is not missed.
+Tune these parameters based on downstream usage requirements.
+
+Result diversity controls prevent result clustering. Without diversity controls,
+top results may all cover the same narrow topic. Diversity parameters ensure
+results span different concept clusters when multiple relevant topics exist.
+Balance diversity against pure relevance based on use case.
+
+Feedback integration improves tuning over time. Collect implicit feedback through
+click patterns or explicit feedback through ratings. Documents consistently clicked
+or highly rated should rank higher. Feedback-based tuning adapts to actual user
+needs rather than assumed preferences.
+
+A/B testing validates tuning changes. Before deploying tuning adjustments, compare
+new parameters against baseline in controlled tests. Measure precision, recall,
+user satisfaction, and task completion. Deploy changes only when testing confirms
+improvement.
+
+Tuning profiles store configurations for different use cases. A code search profile
+may differ from a documentation search profile. Save tuning parameters as named
+profiles that can be selected based on query context or user preference.
+
+Monitoring detects tuning degradation. Track relevance metrics continuously.
+As corpus content changes, tuning may become less effective. Establish alerts
+when metrics drop below thresholds to trigger re-tuning cycles.
+
+Documentation captures tuning rationale. Record why each parameter was set to
+its current value. When revisiting tuning, understanding past decisions prevents
+repeating unsuccessful experiments and preserves institutional knowledge.
+

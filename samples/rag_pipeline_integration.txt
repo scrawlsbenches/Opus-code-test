@@ -1,0 +1,86 @@
+RAG Pipeline Integration: Connecting Passage Retrieval to Language Models
+
+Retrieval-augmented generation (RAG) combines document retrieval with language
+model generation. This integration process establishes reliable pipelines from
+corpus search to augmented responses.
+
+RAG architecture overview connects components. The cortical processor provides
+retrieval: given a query, find relevant passages. The language model provides
+generation: given context passages, produce a response. Integration coordinates
+these components to produce grounded, accurate answers.
+
+Passage retrieval configuration optimizes for RAG. Use find_passages_for_query
+with appropriate chunk_size and chunk_overlap. Chunk size balances context
+completeness against token limits. Overlap ensures content at boundaries is
+captured. Tune based on language model context window size.
+
+Query preprocessing prepares user questions. Natural language questions may
+need transformation for effective retrieval. Intent parsing identifies what
+the user seeks. Query rewriting converts questions to keyword-style queries.
+Both original and rewritten queries can be used for diverse retrieval.
+
+Passage selection determines what context to provide. Retrieve more passages
+than needed, then select the best subset. Selection criteria: relevance score,
+diversity of sources, recency if applicable, and fit within token budget.
+Over-retrieval followed by selection improves context quality.
+
+Context formatting structures passages for the language model. Include passage
+content, source document ID, and relevance indicators. Formatting affects how
+the model interprets and uses the context. Consistent formatting enables
+reliable citation and grounding.
+
+Prompt engineering integrates context effectively. Instruct the model to use
+retrieved passages, cite sources, and acknowledge when passages do not contain
+the answer. Prompt design affects response quality as much as retrieval quality.
+Test prompts systematically to optimize.
+
+Response grounding verification checks accuracy. Compare model responses against
+retrieved passages. Responses should be supported by passage content. Unsupported
+claims indicate hallucination. Implement verification checks in the pipeline
+to catch and flag ungrounded responses.
+
+Source citation enables verification. Include source document IDs in responses.
+Users can verify claims by consulting original documents. Citation improves
+trust and enables fact-checking. Design citation format for clarity and
+actionability.
+
+Fallback handling addresses retrieval failures. When no relevant passages exist,
+the pipeline needs a fallback strategy. Options: acknowledge the information
+gap, expand the search, or provide general responses without retrieval. Define
+fallback behavior explicitly rather than relying on implicit model behavior.
+
+Latency optimization keeps responses fast. Retrieval adds latency before
+generation begins. Pre-compute common queries, cache frequent retrievals,
+and optimize passage selection to minimize delay. Users expect responsive
+interactions; latency budgets constrain pipeline design.
+
+Quality monitoring tracks pipeline performance. Measure: retrieval relevance,
+response accuracy, user satisfaction, and latency. Establish baselines and
+alert thresholds. Continuous monitoring detects degradation before users
+notice significant quality drops.
+
+Feedback loop integration improves over time. Collect signals: which responses
+users accept, which they reject, what follow-up questions they ask. Use
+feedback to improve retrieval tuning, expand corpus content, and refine
+prompt engineering.
+
+Testing strategies validate pipeline correctness. Unit tests verify each
+component. Integration tests verify end-to-end flow. Evaluation tests measure
+quality on benchmark query sets. Regression tests catch quality degradation
+from changes. Comprehensive testing ensures reliable operation.
+
+Error handling provides graceful degradation. When retrieval fails, when the
+model times out, when responses are malformed: handle each failure mode
+explicitly. Users should receive helpful responses even when components fail.
+Design error handling as carefully as the happy path.
+
+Scalability planning anticipates load growth. RAG pipelines may need to handle
+many concurrent requests. Plan for horizontal scaling of retrieval, efficient
+use of model API rate limits, and caching strategies. Test at projected load
+before production deployment.
+
+Documentation captures pipeline design. Record: component configurations,
+integration points, prompt templates, error handling strategies, and
+operational procedures. Documentation enables team collaboration and
+facilitates troubleshooting during incidents.
+

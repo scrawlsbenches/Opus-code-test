@@ -306,8 +306,8 @@ def boost_definition_documents(
     query_text: str,
     documents: Dict[str, str],
     boost_factor: float = 2.0,
-    test_file_boost_factor: float = 0.5,
-    test_file_penalty: float = 0.7
+    test_with_definition_penalty: float = 0.5,
+    test_without_definition_penalty: float = 0.7
 ) -> List[Tuple[str, float]]:
     """
     Boost documents that contain the actual definition being searched for.
@@ -318,17 +318,18 @@ def boost_definition_documents(
 
     For definition queries:
     - Source files with the definition pattern get boost_factor (default 2.0x)
-    - Test files with the definition pattern get test_file_boost_factor (default 0.5x)
-    - All other test files get test_file_penalty (default 0.7x) to deprioritize them
+    - Test files with the definition pattern get test_with_definition_penalty (default 0.5x)
+    - All other test files get test_without_definition_penalty (default 0.7x)
 
     Args:
         doc_results: List of (doc_id, score) tuples
         query_text: The original search query
         documents: Dict mapping doc_id to document text
         boost_factor: Multiplier for definition-containing source docs (default 2.0)
-        test_file_boost_factor: Multiplier for test files with definition (default 0.5)
-        test_file_penalty: Multiplier for test files without definition (default 0.7)
-            Set to 1.0 to disable test file penalty.
+        test_with_definition_penalty: Multiplier for test files that contain the definition
+            (default 0.5). Even test files with definitions are penalized vs source files.
+        test_without_definition_penalty: Multiplier for test files without the definition
+            (default 0.7). Set to 1.0 to disable test file penalty.
 
     Returns:
         Re-scored document results with definition boost applied
@@ -348,14 +349,14 @@ def boost_definition_documents(
 
         if has_definition:
             if is_test:
-                # Test file with definition: apply reduced boost
-                boosted_docs.append((doc_id, score * test_file_boost_factor))
+                # Test file with definition: still penalized vs source files
+                boosted_docs.append((doc_id, score * test_with_definition_penalty))
             else:
                 # Source file with definition: apply full boost
                 boosted_docs.append((doc_id, score * boost_factor))
         elif is_test:
             # Test file without definition: apply penalty to deprioritize
-            boosted_docs.append((doc_id, score * test_file_penalty))
+            boosted_docs.append((doc_id, score * test_without_definition_penalty))
         else:
             # Source file without definition: keep original score
             boosted_docs.append((doc_id, score))

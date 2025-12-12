@@ -185,8 +185,8 @@ class Minicolumn:
             new_weight = existing.weight + weight
             # Prefer more specific relation types over 'co_occurrence'
             new_relation = relation_type if relation_type != 'co_occurrence' else existing.relation_type
-            # Use higher confidence
-            new_confidence = max(confidence, existing.confidence)
+            # Weighted average of confidence (allows confidence to decrease with weaker evidence)
+            new_confidence = (existing.confidence * existing.weight + confidence * weight) / new_weight
             # Prefer semantic/inferred over corpus
             source_priority = {'inferred': 3, 'semantic': 2, 'corpus': 1}
             new_source = source if source_priority.get(source, 0) > source_priority.get(existing.source, 0) else existing.source
