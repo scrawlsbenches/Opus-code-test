@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-12
-**Pending Tasks:** 42
+**Pending Tasks:** 41
 **Completed Tasks:** 138+ (see archive and Recently Completed)
 
 ---
@@ -27,15 +27,14 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 150 | Create unit test fixtures and mocks for core data structures | UnitTest | - | Medium |
-| 151 | Refactor analysis.py algorithms for unit testability | UnitTest | 150 | Medium |
+| 151 | Refactor analysis.py algorithms for unit testability | UnitTest | ~~150~~ | Medium |
 | 152 | Add unit tests for analysis.py (target: 80% coverage) | UnitTest | 151 | Medium |
-| 153 | Refactor query/* modules for unit testability | UnitTest | 150 | Medium |
+| 153 | Refactor query/* modules for unit testability | UnitTest | ~~150~~ | Medium |
 | 154 | Add unit tests for query/* modules (target: 70% coverage) | UnitTest | 153 | Large |
-| 155 | Refactor processor.py computation methods for unit testability | UnitTest | 150 | Large |
+| 155 | Refactor processor.py computation methods for unit testability | UnitTest | ~~150~~ | Large |
 | 156 | Add unit tests for processor.py (target: 60% coverage) | UnitTest | 155 | Large |
-| 157 | Add unit tests for semantics.py (target: 60% coverage) | UnitTest | 150 | Medium |
-| 158 | Add unit tests for persistence.py (target: 50% coverage) | UnitTest | 150 | Medium |
+| 157 | Add unit tests for semantics.py (target: 60% coverage) | UnitTest | ~~150~~ | Medium |
+| 158 | Add unit tests for persistence.py (target: 50% coverage) | UnitTest | ~~150~~ | Medium |
 | 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
 | 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
@@ -89,6 +88,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 150 | Create unit test fixtures and mocks for core data structures | 2025-12-12 | MockMinicolumn, MockHierarchicalLayer, MockLayers factory, LayerBuilder fluent API |
 | 138 | Use sparse matrix multiplication for bigram connections | 2025-12-12 | Zero-dep SparseMatrix class in analysis.py for O(n²) → O(n*k) improvement |
 | 98 | Replace print() with logging | 2025-12-12 | 52+ print statements → logging.info(), all modules use getLogger(__name__) |
 | 102 | Add tests for edge cases | 2025-12-12 | 53 new tests in test_edge_cases.py: Unicode, large docs, malformed inputs |
@@ -139,64 +139,26 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 ## Pending Task Details
 
-### 150. Create Unit Test Fixtures and Mocks for Core Data Structures
+### ~~150. Create Unit Test Fixtures and Mocks for Core Data Structures~~ ✓ COMPLETED
 
-**Meta:** `status:pending` `priority:medium` `category:unit-test`
-**Files:** `tests/unit/fixtures.py` (new), `tests/unit/mocks.py` (new)
-**Effort:** Medium
+**Meta:** `status:completed` `priority:medium` `category:unit-test`
+**Files:** `tests/unit/mocks.py`, `tests/unit/test_mocks.py`
+**Completed:** 2025-12-12
 
-**Problem:** Current unit test coverage is only 33% because core modules require a populated processor to test. We need test doubles that allow testing logic in isolation.
+**Implementation Summary:**
 
-**Current Coverage Gap:**
-| Module | Unit Coverage | Gap |
-|--------|--------------|-----|
-| analysis.py | 48% | Algorithm logic mixed with data access |
-| query/* | 3-36% | Functions require populated layers |
-| processor.py | 35% | Methods require full processor state |
-| semantics.py | 5% | Pattern extraction needs minicolumns |
-| persistence.py | 16% | File I/O intertwined with logic |
+Created comprehensive test doubles (600+ lines) enabling isolated unit testing:
 
-**Deliverables:**
+1. **MockMinicolumn** - Full test double with all controllable attributes
+2. **MockHierarchicalLayer** - Supports get_minicolumn(), get_by_id(), column_count(), iteration
+3. **MockLayers Factory** - 10 factory methods:
+   - `empty()`, `single_term()`, `two_connected_terms()`, `connected_chain()`
+   - `complete_graph()`, `disconnected_terms()`, `document_with_terms()`
+   - `multi_document_corpus()`, `clustered_terms()`, `with_bigrams()`
+4. **LayerBuilder** - Fluent API: `with_term()`, `with_connection()`, `with_document()`, `with_cluster()`
+5. **Graph helpers** - `layers_to_graph()`, `layers_to_adjacency()` for algorithm testing
 
-1. **MockMinicolumn** - Test double with controllable attributes:
-   ```python
-   mock_col = MockMinicolumn(
-       id="L0_test",
-       content="test",
-       pagerank=0.5,
-       tfidf=2.0,
-       lateral_connections={"other": 0.8}
-   )
-   ```
-
-2. **MockHierarchicalLayer** - Test double with preset minicolumns:
-   ```python
-   mock_layer = MockHierarchicalLayer([mock_col1, mock_col2])
-   assert mock_layer.get_minicolumn("test") == mock_col1
-   ```
-
-3. **MockLayers** - Factory for common test scenarios:
-   ```python
-   layers = MockLayers.two_connected_terms("neural", "networks", weight=0.9)
-   layers = MockLayers.document_with_terms("doc1", ["term1", "term2"])
-   layers = MockLayers.clustered_terms({"cluster1": ["a", "b"], "cluster2": ["c", "d"]})
-   ```
-
-4. **Test data builders** - Fluent API for complex test data:
-   ```python
-   layer = LayerBuilder() \
-       .with_term("neural", pagerank=0.8) \
-       .with_term("networks", pagerank=0.6) \
-       .with_connection("neural", "networks", 0.9) \
-       .build()
-   ```
-
-**Acceptance Criteria:**
-- [ ] MockMinicolumn supports all Minicolumn attributes needed for tests
-- [ ] MockHierarchicalLayer supports get_minicolumn(), get_by_id(), column_count()
-- [ ] MockLayers provides 5+ common test scenarios
-- [ ] Builder pattern allows custom test data construction
-- [ ] Documentation with usage examples
+**Verification:** 39 unit tests in test_mocks.py, all passing.
 
 ---
 
@@ -2075,7 +2037,7 @@ user outcomes, catching the kinds of issues discovered during dog-fooding.
 
 | Category | Pending | Description |
 |----------|---------|-------------|
-| UnitTest | 9 | Unit test coverage initiative (#150-158) |
+| UnitTest | 8 | Unit test coverage initiative (#151-158) |
 | Arch | 6 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
 | CodeQual | 2 | Code quality improvements (#98, 99) |
 | Testing | 4 | Test coverage and performance (#102, 129, 148, 149) |
