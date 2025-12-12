@@ -30,19 +30,26 @@ from cortical import CorticalTextProcessor, CorticalLayer
 from cortical.tokenizer import Tokenizer
 
 
-def load_sample_corpus(filter_code_noise: bool = True) -> CorticalTextProcessor:
-    """
-    Load the sample corpus for behavioral tests.
+# Module-level singleton for shared corpus (load once, reuse everywhere)
+_SHARED_PROCESSOR = None
+_SHARED_PROCESSOR_LOADED = False
 
-    Args:
-        filter_code_noise: Filter common code tokens like 'self', 'def'
 
-    Returns:
-        Processor loaded with sample corpus and compute_all() run
+def get_shared_processor() -> CorticalTextProcessor:
     """
+    Get or create the shared processor with sample corpus.
+
+    This singleton ensures we only load the corpus once per test run,
+    dramatically reducing test time (from 5x compute_all to 1x).
+    """
+    global _SHARED_PROCESSOR, _SHARED_PROCESSOR_LOADED
+
+    if _SHARED_PROCESSOR_LOADED:
+        return _SHARED_PROCESSOR
+
     samples_dir = os.path.join(os.path.dirname(__file__), '..', 'samples')
 
-    tokenizer = Tokenizer(filter_code_noise=filter_code_noise)
+    tokenizer = Tokenizer(filter_code_noise=True)
     processor = CorticalTextProcessor(tokenizer=tokenizer)
 
     # Load all sample files
@@ -53,7 +60,6 @@ def load_sample_corpus(filter_code_noise: bool = True) -> CorticalTextProcessor:
             try:
                 with open(filepath, 'r', encoding='utf-8') as f:
                     content = f.read()
-                # Use filename without extension as doc_id
                 doc_id = os.path.splitext(filename)[0]
                 processor.process_document(doc_id, content)
                 loaded += 1
@@ -63,6 +69,8 @@ def load_sample_corpus(filter_code_noise: bool = True) -> CorticalTextProcessor:
     if loaded > 0:
         processor.compute_all(verbose=False)
 
+    _SHARED_PROCESSOR = processor
+    _SHARED_PROCESSOR_LOADED = True
     return processor
 
 
@@ -79,7 +87,7 @@ class TestSearchBehavior(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Load corpus once for all search tests."""
-        cls.processor = load_sample_corpus()
+        cls.processor = get_shared_processor()
 
     def test_document_name_matches_rank_highly(self):
         """
@@ -186,6 +194,10 @@ class TestPerformanceBehavior(unittest.TestCase):
     - Individual searches are fast enough for interactive use
     """
 
+    @unittest.skipIf(
+        'coverage' in sys.modules,
+        "Skipping performance test under coverage (adds ~10x overhead)"
+    )
     def test_compute_all_under_threshold(self):
         """
         Full analysis should complete within reasonable time.
@@ -195,6 +207,9 @@ class TestPerformanceBehavior(unittest.TestCase):
 
         Threshold: 30 seconds for full analysis on ~100 docs
         (Based on Task #142: achieved 14.21s after optimization)
+
+        NOTE: Skipped when running under coverage since instrumentation adds
+        significant overhead (10x+), making timing unreliable.
         """
         samples_dir = os.path.join(os.path.dirname(__file__), '..', 'samples')
 
@@ -220,10 +235,9 @@ class TestPerformanceBehavior(unittest.TestCase):
         processor.compute_all(verbose=False)
         elapsed = time.perf_counter() - start
 
-        # Threshold: 60 seconds for ~100 docs
-        # Normal performance is ~14-20s (Task #142), but coverage instrumentation
-        # adds ~2x overhead, so we use 60s to avoid false failures in CI
-        max_seconds = 60.0
+        # Threshold: 30 seconds for ~100 docs (realistic without coverage)
+        # Normal performance is ~14-20s (Task #142)
+        max_seconds = 30.0
 
         self.assertLess(
             elapsed,
@@ -242,7 +256,7 @@ class TestPerformanceBehavior(unittest.TestCase):
 
         Threshold: 500ms per query (generous for CI environments)
         """
-        processor = load_sample_corpus()
+        processor = get_shared_processor()
 
         # Test multiple queries
         queries = [
@@ -283,7 +297,7 @@ class TestQualityBehavior(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Load corpus once for all quality tests."""
-        cls.processor = load_sample_corpus()
+        cls.processor = get_shared_processor()
 
     def test_pagerank_surfaces_meaningful_terms(self):
         """
@@ -433,7 +447,7 @@ class TestRobustnessBehavior(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Load corpus once for all robustness tests."""
-        cls.processor = load_sample_corpus()
+        cls.processor = get_shared_processor()
 
     def test_empty_query_raises_value_error(self):
         """

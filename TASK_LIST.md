@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-12
-**Pending Tasks:** 35
-**Completed Tasks:** 134+ (see archive and Recently Completed)
+**Pending Tasks:** 33
+**Completed Tasks:** 138+ (see archive and Recently Completed)
 
 ---
 
@@ -18,22 +18,21 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 ### 🟠 High (Do This Week)
 
-*All high priority tasks completed!*
+| # | Task | Category | Depends | Effort |
+|---|------|----------|---------|--------|
+| 148 | Investigate test_search_is_fast taking 137s | Testing | - | Medium |
+| 149 | Fix test_compute_all_under_threshold failing (135s > 30s) | Testing | - | Medium |
 
 ### 🟡 Medium (Do This Month)
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 138 | Use sparse matrix multiplication for bigram connections | Perf | - | Medium |
 | 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
 | 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
 | 95 | Split processor.py into modules | Arch | 97 | Large |
-| 98 | Replace print() with logging | CodeQual | - | Medium |
 | 99 | Add input validation to public methods | CodeQual | - | Medium |
-| 102 | Add tests for edge cases | Testing | - | Medium |
 | 107 | Add Quick Context to tasks | TaskMgmt | - | Medium |
-| 115 | Create component interaction diagram | AINav | - | Medium |
 
 ### 🟢 Low (Backlog)
 
@@ -81,6 +80,10 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Completed | Notes |
 |---|------|-----------|-------|
+| 138 | Use sparse matrix multiplication for bigram connections | 2025-12-12 | Zero-dep SparseMatrix class in analysis.py for O(n²) → O(n*k) improvement |
+| 98 | Replace print() with logging | 2025-12-12 | 52+ print statements → logging.info(), all modules use getLogger(__name__) |
+| 102 | Add tests for edge cases | 2025-12-12 | 53 new tests in test_edge_cases.py: Unicode, large docs, malformed inputs |
+| 115 | Create component interaction diagram | 2025-12-12 | docs/architecture.md with ASCII + Mermaid diagrams, module dependencies |
 | 147 | Fix misleading hardcoded values | 2025-12-12 | 5 fixes: backwards param names, sparsity threshold, config constant, tolerance param, confidence semantics |
 | 139 | Batch bigram connection updates to reduce dict overhead | 2025-12-12 | add_lateral_connections_batch() method in minicolumn.py |
 | 137 | Cap bigram connections to top-K per bigram | 2025-12-12 | max_connections_per_bigram parameter (default 50) in analysis.py |
@@ -126,6 +129,69 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 ---
 
 ## Pending Task Details
+
+### 148. Investigate test_search_is_fast Taking 137s
+
+**Meta:** `status:pending` `priority:high` `category:testing`
+**Files:** `tests/test_behavioral.py`
+**Effort:** Medium
+
+**Problem:** `test_search_is_fast` in `TestPerformanceBehavior` takes 137 seconds to run, making it the slowest test in the suite.
+
+**Root Cause Analysis Needed:**
+- Test loads full sample corpus via `get_shared_processor()` singleton
+- `compute_all()` is called during corpus loading
+- The 137s includes corpus load time, not just search time
+- Search itself is fast (~100ms) but corpus loading dominates
+
+**Potential Solutions:**
+1. Use a smaller synthetic corpus for performance tests
+2. Pre-compute and cache the corpus as a pickle file in test fixtures
+3. Split into two tests: corpus load time + search time
+4. Mock `compute_all()` and only test search on pre-loaded state
+
+**Acceptance Criteria:**
+- [ ] Test completes in < 5 seconds
+- [ ] Search performance is still validated
+- [ ] No false positives (test should still catch slow searches)
+
+---
+
+### 149. Fix test_compute_all_under_threshold Failing (135s > 30s)
+
+**Meta:** `status:pending` `priority:high` `category:testing`
+**Files:** `tests/test_behavioral.py`
+**Effort:** Medium
+
+**Problem:** `test_compute_all_under_threshold` takes 135 seconds, far exceeding the 30s threshold. Test is currently failing.
+
+**Context:**
+- Test is skipped under coverage (`@unittest.skipIf('coverage' in sys.modules...)`)
+- But fails when run directly: `python -m unittest discover`
+- Threshold was set to 30s assuming optimized corpus
+- Real corpus with 100+ docs takes much longer
+
+**Potential Solutions:**
+1. **Use smaller test corpus** - Create dedicated test fixture with ~20 docs
+2. **Increase threshold** - Accept that full corpus takes longer (not recommended)
+3. **Profile and optimize** - Find remaining bottlenecks in `compute_all()`
+4. **Make test conditional** - Only run on CI with pre-warmed cache
+5. **Split test** - Test individual `compute_*` methods with smaller inputs
+
+**Benchmark Data:**
+```
+Found 1196 tests
+test_search_is_fast: 136.60s (PASS - corpus already loaded)
+test_compute_all_under_threshold: 134.86s (FAIL - reloads corpus)
+All other tests: < 1s each
+```
+
+**Acceptance Criteria:**
+- [ ] Test passes consistently
+- [ ] Performance regression detection still works
+- [ ] CI build time < 5 minutes for test suite
+
+---
 
 ### 123. Replace Label Propagation with Louvain Community Detection ✅
 
@@ -1548,7 +1614,7 @@ user outcomes, catching the kinds of issues discovered during dog-fooding.
 | Perf | 1 | Performance improvements (#138) |
 | Arch | 6 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
 | CodeQual | 2 | Code quality improvements (#98, 99) |
-| Testing | 2 | Test coverage (#102, 129) |
+| Testing | 4 | Test coverage and performance (#102, 129, 148, 149) |
 | TaskMgmt | 3 | Task management system (#107, 106, 108) |
 | AINav | 3 | AI assistant navigation (#115, 117, 118) |
 | DevEx | 7 | Developer experience, scripts (#73-80) |

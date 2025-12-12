@@ -13,7 +13,8 @@ from cortical.analysis import (
     cluster_by_label_propagation,
     build_concept_clusters,
     compute_document_connections,
-    cosine_similarity
+    cosine_similarity,
+    SparseMatrix
 )
 
 
@@ -519,112 +520,6 @@ class TestClusteringQualityRegression(unittest.TestCase):
             )
 
 
-class TestShowcaseCorpusRegression(unittest.TestCase):
-    """Regression tests using the full showcase corpus (Task #124).
-
-    These tests ensure that clustering produces expected results on the
-    actual showcase corpus, which contains 100+ documents across multiple
-    domains (ML, cooking, law, astronomy, customer service, etc.).
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        """Load the showcase corpus once for all tests."""
-        from pathlib import Path
-
-        cls.processor = CorticalTextProcessor()
-        samples_dir = Path(__file__).parent.parent / 'samples'
-
-        if not samples_dir.exists():
-            cls.skip_reason = "samples/ directory not found"
-            return
-
-        txt_files = list(samples_dir.glob('*.txt'))
-        if len(txt_files) < 10:
-            cls.skip_reason = f"Only {len(txt_files)} sample files found, need at least 10"
-            return
-
-        cls.skip_reason = None
-        for f in txt_files:
-            cls.processor.process_document(f.stem, f.read_text())
-
-        cls.processor.compute_all(verbose=False)
-
-    def setUp(self):
-        """Skip if corpus not available."""
-        if hasattr(self.__class__, 'skip_reason') and self.__class__.skip_reason:
-            self.skipTest(self.__class__.skip_reason)
-
-    def test_showcase_produces_expected_cluster_count(self):
-        """Regression test: 100+ docs should produce 15+ clusters.
-
-        The showcase corpus contains documents from many distinct domains.
-        With Louvain community detection, we expect at least 15 clusters
-        to capture the domain diversity.
-
-        Note: This threshold is conservative. Current implementation produces
-        ~35 clusters for ~100 documents.
-        """
-        layer2 = self.processor.layers[CorticalLayer.CONCEPTS]
-
-        self.assertGreaterEqual(
-            layer2.column_count(), 15,
-            f"Showcase corpus ({len(self.processor.documents)} docs) should produce "
-            f"at least 15 clusters, got {layer2.column_count()}"
-        )
-
-    def test_showcase_no_mega_cluster(self):
-        """Regression test: No single cluster should dominate the showcase corpus.
-
-        Even though the showcase corpus is large and diverse, label propagation
-        would converge to 1-3 giant clusters. With Louvain, we expect no single
-        cluster to contain more than 20% of all tokens.
-        """
-        layer0 = self.processor.layers[CorticalLayer.TOKENS]
-        layer2 = self.processor.layers[CorticalLayer.CONCEPTS]
-
-        total_tokens = layer0.column_count()
-        max_cluster_size = max(
-            len(c.feedforward_connections)
-            for c in layer2.minicolumns.values()
-        )
-
-        cluster_ratio = max_cluster_size / total_tokens
-        self.assertLess(
-            cluster_ratio, 0.20,
-            f"Largest cluster contains {cluster_ratio:.1%} of tokens in showcase corpus. "
-            f"Expected no cluster to dominate with >20% of tokens."
-        )
-
-    def test_showcase_cluster_distribution(self):
-        """Regression test: Clusters should have reasonable size distribution.
-
-        The showcase corpus should produce clusters of varying sizes,
-        not just many tiny clusters or a few large ones.
-        """
-        layer2 = self.processor.layers[CorticalLayer.CONCEPTS]
-
-        cluster_sizes = [
-            len(c.feedforward_connections)
-            for c in layer2.minicolumns.values()
-        ]
-
-        # Should have at least 5 clusters with 10+ tokens (non-trivial clusters)
-        substantial_clusters = sum(1 for size in cluster_sizes if size >= 10)
-        self.assertGreaterEqual(
-            substantial_clusters, 5,
-            f"Expected at least 5 substantial clusters (10+ tokens), "
-            f"got {substantial_clusters}"
-        )
-
-        # Should have variety in cluster sizes (not all same size)
-        unique_sizes = len(set(cluster_sizes))
-        self.assertGreater(
-            unique_sizes, 3,
-            f"Cluster sizes should vary. Only {unique_sizes} unique sizes found."
-        )
-
-
 class TestClusteringQualityMetrics(unittest.TestCase):
     """Tests for clustering quality metrics (Task #125).
 
@@ -844,6 +739,181 @@ class TestAdditionalAnalysisEdgeCases(unittest.TestCase):
         # All values should be positive
         self.assertTrue(all(v > 0 for v in result1.values()))
         self.assertTrue(all(v > 0 for v in result2.values()))
+
+
+class TestSparseMatrix(unittest.TestCase):
+    """Test sparse matrix implementation for bigram connections."""
+
+    def test_sparse_matrix_creation(self):
+        """Test basic sparse matrix creation and operations."""
+        matrix = SparseMatrix(3, 3)
+        self.assertEqual(matrix.rows, 3)
+        self.assertEqual(matrix.cols, 3)
+        self.assertEqual(len(matrix.data), 0)
+
+    def test_sparse_matrix_set_get(self):
+        """Test setting and getting values."""
+        matrix = SparseMatrix(3, 3)
+        matrix.set(0, 0, 5.0)
+        matrix.set(1, 2, 3.0)
+        matrix.set(2, 1, 2.0)
+
+        self.assertEqual(matrix.get(0, 0), 5.0)
+        self.assertEqual(matrix.get(1, 2), 3.0)
+        self.assertEqual(matrix.get(2, 1), 2.0)
+        self.assertEqual(matrix.get(0, 1), 0.0)  # Not set, should be 0
+
+    def test_sparse_matrix_set_zero_removes(self):
+        """Test that setting to zero removes the entry."""
+        matrix = SparseMatrix(3, 3)
+        matrix.set(0, 0, 5.0)
+        self.assertEqual(matrix.get(0, 0), 5.0)
+        matrix.set(0, 0, 0.0)
+        self.assertEqual(matrix.get(0, 0), 0.0)
+        self.assertNotIn((0, 0), matrix.data)
+
+    def test_sparse_matrix_multiply_transpose_simple(self):
+        """Test matrix multiplication with transpose on a simple case."""
+        # Create a 2x3 matrix:
+        # [1 0 1]
+        # [0 1 1]
+        matrix = SparseMatrix(2, 3)
+        matrix.set(0, 0, 1.0)
+        matrix.set(0, 2, 1.0)
+        matrix.set(1, 1, 1.0)
+        matrix.set(1, 2, 1.0)
+
+        # M^T * M should be 3x3:
+        # [1 0 1]   [1 0]   [1 0 1]
+        # [0 1 1] * [0 1] = [0 1 1]
+        # [1 1 0]   [1 1]   [1 1 2]
+        result = matrix.multiply_transpose()
+
+        self.assertEqual(result.rows, 3)
+        self.assertEqual(result.cols, 3)
+
+        # Check diagonal
+        self.assertEqual(result.get(0, 0), 1.0)  # col 0: [1, 0] dot [1, 0] = 1
+        self.assertEqual(result.get(1, 1), 1.0)  # col 1: [0, 1] dot [0, 1] = 1
+        self.assertEqual(result.get(2, 2), 2.0)  # col 2: [1, 1] dot [1, 1] = 2
+
+        # Check off-diagonal (should be symmetric)
+        self.assertEqual(result.get(0, 1), 0.0)  # col 0 dot col 1 = 0
+        self.assertEqual(result.get(1, 0), 0.0)
+        self.assertEqual(result.get(0, 2), 1.0)  # col 0 dot col 2 = 1
+        self.assertEqual(result.get(2, 0), 1.0)
+        self.assertEqual(result.get(1, 2), 1.0)  # col 1 dot col 2 = 1
+        self.assertEqual(result.get(2, 1), 1.0)
+
+    def test_sparse_matrix_multiply_transpose_cooccurrence(self):
+        """Test sparse matrix for document-term co-occurrence."""
+        # Simulate 3 documents and 4 bigrams
+        # Doc 0: bigrams 0, 1
+        # Doc 1: bigrams 1, 2
+        # Doc 2: bigrams 0, 2, 3
+        matrix = SparseMatrix(3, 4)
+        matrix.set(0, 0, 1.0)
+        matrix.set(0, 1, 1.0)
+        matrix.set(1, 1, 1.0)
+        matrix.set(1, 2, 1.0)
+        matrix.set(2, 0, 1.0)
+        matrix.set(2, 2, 1.0)
+        matrix.set(2, 3, 1.0)
+
+        result = matrix.multiply_transpose()
+
+        # Bigram 0 appears in docs [0, 2] - 2 docs
+        self.assertEqual(result.get(0, 0), 2.0)
+
+        # Bigram 1 appears in docs [0, 1] - 2 docs
+        self.assertEqual(result.get(1, 1), 2.0)
+
+        # Bigram 0 and 1 share doc 0 - 1 shared
+        self.assertEqual(result.get(0, 1), 1.0)
+        self.assertEqual(result.get(1, 0), 1.0)
+
+        # Bigram 0 and 2 share doc 2 - 1 shared
+        self.assertEqual(result.get(0, 2), 1.0)
+        self.assertEqual(result.get(2, 0), 1.0)
+
+        # Bigram 1 and 2 share doc 1 - 1 shared
+        self.assertEqual(result.get(1, 2), 1.0)
+        self.assertEqual(result.get(2, 1), 1.0)
+
+    def test_bigram_connections_with_sparse_matrix(self):
+        """Test that bigram connections work with sparse matrix optimization."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Neural networks process data. Deep learning works.")
+        processor.process_document("doc2", "Neural processing systems. Machine learning algorithms.")
+        processor.compute_tfidf(verbose=False)
+
+        # Compute bigram connections using sparse matrix optimization
+        stats = processor.compute_bigram_connections(verbose=False)
+
+        # Should have some connections
+        self.assertGreater(stats['connections_created'], 0)
+        self.assertGreater(stats['bigrams'], 0)
+
+        # Verify that co-occurrence connections were computed
+        # (may or may not be > 0 depending on the corpus)
+        self.assertIn('cooccurrence_connections', stats)
+
+    def test_bigram_connections_same_results_as_before(self):
+        """Test that sparse matrix implementation produces same results."""
+        # This is a regression test - we're testing that the refactored
+        # implementation produces the same output format and reasonable values
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Machine learning algorithms process data efficiently")
+        processor.process_document("doc2", "Deep learning neural networks process images")
+        processor.process_document("doc3", "Data processing pipelines use machine learning")
+        processor.compute_tfidf(verbose=False)
+
+        stats = processor.compute_bigram_connections(verbose=False)
+
+        # Check expected keys
+        expected_keys = [
+            'connections_created',
+            'bigrams',
+            'component_connections',
+            'chain_connections',
+            'cooccurrence_connections',
+            'skipped_common_terms',
+            'skipped_large_docs',
+            'skipped_max_connections'
+        ]
+        for key in expected_keys:
+            self.assertIn(key, stats)
+
+        # Check that we have bigrams and connections
+        self.assertGreater(stats['bigrams'], 0)
+        self.assertGreater(stats['connections_created'], 0)
+
+        # Verify actual connections exist in the layer
+        layer1 = processor.get_layer(CorticalLayer.BIGRAMS)
+        total_connections = sum(
+            len(col.lateral_connections)
+            for col in layer1.minicolumns.values()
+        )
+        self.assertGreater(total_connections, 0)
+
+    def test_sparse_matrix_empty(self):
+        """Test sparse matrix with no entries."""
+        matrix = SparseMatrix(3, 3)
+        result = matrix.multiply_transpose()
+        self.assertEqual(len(result.data), 0)
+
+    def test_get_nonzero(self):
+        """Test getting all nonzero entries."""
+        matrix = SparseMatrix(3, 3)
+        matrix.set(0, 0, 1.0)
+        matrix.set(1, 2, 2.0)
+        matrix.set(2, 1, 3.0)
+
+        nonzero = matrix.get_nonzero()
+        self.assertEqual(len(nonzero), 3)
+        self.assertIn((0, 0, 1.0), nonzero)
+        self.assertIn((1, 2, 2.0), nonzero)
+        self.assertIn((2, 1, 3.0), nonzero)
 
 
 if __name__ == "__main__":

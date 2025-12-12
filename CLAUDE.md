@@ -147,6 +147,12 @@ cortical/
 
 **Total:** ~10,700 lines of core library code
 
+**For detailed architecture documentation**, see [docs/architecture.md](docs/architecture.md), which includes:
+- Complete module dependency graphs (ASCII + Mermaid)
+- Component interaction patterns
+- Data flow diagrams
+- Layer hierarchy details
+
 ### Module Purpose Quick Reference
 
 | If you need to... | Look in... |

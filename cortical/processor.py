@@ -4,6 +4,7 @@ Cortical Text Processor - Main processor class that orchestrates all components.
 
 import os
 import re
+import logging
 from typing import Dict, List, Tuple, Optional, Any
 import copy
 from collections import defaultdict
@@ -19,6 +20,8 @@ from . import query as query_module
 from . import gaps as gaps_module
 from . import persistence
 from . import fingerprint as fp_module
+
+logger = logging.getLogger(__name__)
 
 
 class CorticalTextProcessor:
@@ -339,7 +342,7 @@ class CorticalTextProcessor:
         total_bigrams = 0
 
         if verbose:
-            print(f"Adding {len(documents)} documents...")
+            logger.info(f"Adding {len(documents)} documents...")
 
         for doc_id, content, metadata in documents:
             # Use process_document directly (not add_document_incremental)
@@ -349,22 +352,22 @@ class CorticalTextProcessor:
             total_bigrams += stats['bigrams']
 
         if verbose:
-            print(f"Processed {total_tokens} tokens, {total_bigrams} bigrams")
+            logger.info(f"Processed {total_tokens} tokens, {total_bigrams} bigrams")
 
         # Perform single recomputation for entire batch
         if recompute == 'tfidf':
             if verbose:
-                print("Recomputing TF-IDF...")
+                logger.info("Recomputing TF-IDF...")
             self.compute_tfidf(verbose=False)
             self._mark_fresh(self.COMP_TFIDF)
         elif recompute == 'full':
             if verbose:
-                print("Running full recomputation...")
+                logger.info("Running full recomputation...")
             self.compute_all(verbose=False)
             self._stale_computations.clear()
 
         if verbose:
-            print("Done.")
+            logger.info("Done.")
 
         return {
             'documents_added': len(documents),
@@ -404,7 +407,7 @@ class CorticalTextProcessor:
             return {'found': False, 'tokens_affected': 0, 'bigrams_affected': 0}
 
         if verbose:
-            print(f"Removing document: {doc_id}")
+            logger.info(f"Removing document: {doc_id}")
 
         # Remove from documents and metadata
         del self.documents[doc_id]
@@ -458,7 +461,7 @@ class CorticalTextProcessor:
             self._query_expansion_cache.clear()
 
         if verbose:
-            print(f"  Affected: {tokens_affected} tokens, {bigrams_affected} bigrams")
+            logger.info(f"  Affected: {tokens_affected} tokens, {bigrams_affected} bigrams")
 
         return {
             'found': True,
@@ -499,7 +502,7 @@ class CorticalTextProcessor:
         total_bigrams = 0
 
         if verbose:
-            print(f"Removing {len(doc_ids)} documents...")
+            logger.info(f"Removing {len(doc_ids)} documents...")
 
         for doc_id in doc_ids:
             result = self.remove_document(doc_id, verbose=False)
@@ -511,18 +514,18 @@ class CorticalTextProcessor:
                 not_found += 1
 
         if verbose:
-            print(f"  Removed: {removed}, Not found: {not_found}")
-            print(f"  Affected: {total_tokens} tokens, {total_bigrams} bigrams")
+            logger.info(f"  Removed: {removed}, Not found: {not_found}")
+            logger.info(f"  Affected: {total_tokens} tokens, {total_bigrams} bigrams")
 
         # Perform recomputation
         if recompute == 'tfidf':
             if verbose:
-                print("Recomputing TF-IDF...")
+                logger.info("Recomputing TF-IDF...")
             self.compute_tfidf(verbose=False)
             self._mark_fresh(self.COMP_TFIDF)
         elif recompute == 'full':
             if verbose:
-                print("Running full recomputation...")
+                logger.info("Running full recomputation...")
             self.compute_all(verbose=False)
             self._stale_computations.clear()
 
@@ -672,39 +675,39 @@ class CorticalTextProcessor:
         stats: Dict[str, Any] = {}
 
         if verbose:
-            print("Computing activation propagation...")
+            logger.info("Computing activation propagation...")
         self.propagate_activation(verbose=False)
 
         if pagerank_method == 'semantic':
             # Extract semantic relations if not already done
             if not self.semantic_relations:
                 if verbose:
-                    print("Extracting semantic relations...")
+                    logger.info("Extracting semantic relations...")
                 self.extract_corpus_semantics(verbose=False)
             if verbose:
-                print("Computing importance (Semantic PageRank)...")
+                logger.info("Computing importance (Semantic PageRank)...")
             self.compute_semantic_importance(verbose=False)
         elif pagerank_method == 'hierarchical':
             if verbose:
-                print("Computing importance (Hierarchical PageRank)...")
+                logger.info("Computing importance (Hierarchical PageRank)...")
             self.compute_hierarchical_importance(verbose=False)
         else:
             if verbose:
-                print("Computing importance (PageRank)...")
+                logger.info("Computing importance (PageRank)...")
             self.compute_importance(verbose=False)
         if verbose:
-            print("Computing TF-IDF...")
+            logger.info("Computing TF-IDF...")
         self.compute_tfidf(verbose=False)
         if verbose:
-            print("Computing document connections...")
+            logger.info("Computing document connections...")
         self.compute_document_connections(verbose=False)
         if verbose:
-            print("Computing bigram connections...")
+            logger.info("Computing bigram connections...")
         self.compute_bigram_connections(verbose=False)
 
         if build_concepts:
             if verbose:
-                print("Building concept clusters...")
+                logger.info("Building concept clusters...")
             clusters = self.build_concept_clusters(
                 cluster_strictness=cluster_strictness,
                 bridge_weight=bridge_weight,
@@ -719,12 +722,12 @@ class CorticalTextProcessor:
             # For semantic/embedding strategies, extract/compute prerequisites
             if use_member_semantics and not self.semantic_relations:
                 if verbose:
-                    print("Extracting semantic relations...")
+                    logger.info("Extracting semantic relations...")
                 self.extract_corpus_semantics(verbose=False)
 
             if use_embedding_similarity and not self.embeddings:
                 if verbose:
-                    print("Computing graph embeddings...")
+                    logger.info("Computing graph embeddings...")
                 self.compute_graph_embeddings(verbose=False)
 
             # Set thresholds based on strategy
@@ -739,7 +742,7 @@ class CorticalTextProcessor:
                 min_jaccard = 0.1
 
             if verbose:
-                print(f"Computing concept connections ({connection_strategy})...")
+                logger.info(f"Computing concept connections ({connection_strategy})...")
             concept_stats = self.compute_concept_connections(
                 use_member_semantics=use_member_semantics,
                 use_embedding_similarity=use_embedding_similarity,
@@ -765,18 +768,18 @@ class CorticalTextProcessor:
         self._query_expansion_cache.clear()
 
         if verbose:
-            print("Done.")
+            logger.info("Done.")
 
         return stats
     
     def propagate_activation(self, iterations: int = 3, decay: float = 0.8, verbose: bool = True) -> None:
         analysis.propagate_activation(self.layers, iterations, decay)
-        if verbose: print(f"Propagated activation ({iterations} iterations)")
-    
+        if verbose: logger.info(f"Propagated activation ({iterations} iterations)")
+
     def compute_importance(self, verbose: bool = True) -> None:
         for layer_enum in [CorticalLayer.TOKENS, CorticalLayer.BIGRAMS]:
             analysis.compute_pagerank(self.layers[layer_enum])
-        if verbose: print("Computed PageRank importance")
+        if verbose: logger.info("Computed PageRank importance")
 
     def compute_semantic_importance(
         self,
@@ -836,7 +839,7 @@ class CorticalTextProcessor:
             total_edges += result['edges_with_relations']
 
         if verbose:
-            print(f"Computed semantic PageRank ({total_edges} relation-weighted edges)")
+            logger.info(f"Computed semantic PageRank ({total_edges} relation-weighted edges)")
 
         return {
             'total_edges_with_relations': total_edges,
@@ -891,17 +894,17 @@ class CorticalTextProcessor:
 
         if verbose:
             status = "converged" if result['converged'] else "did not converge"
-            print(f"Computed hierarchical PageRank ({result['iterations_run']} iterations, {status})")
+            logger.info(f"Computed hierarchical PageRank ({result['iterations_run']} iterations, {status})")
 
         return result
 
     def compute_tfidf(self, verbose: bool = True) -> None:
         analysis.compute_tfidf(self.layers, self.documents)
-        if verbose: print("Computed TF-IDF scores")
-    
+        if verbose: logger.info("Computed TF-IDF scores")
+
     def compute_document_connections(self, min_shared_terms: int = 3, verbose: bool = True) -> None:
         analysis.compute_document_connections(self.layers, self.documents, min_shared_terms)
-        if verbose: print("Computed document connections")
+        if verbose: logger.info("Computed document connections")
 
     def compute_bigram_connections(
         self,
@@ -974,10 +977,10 @@ class CorticalTextProcessor:
             if skipped_conns:
                 skip_parts.append(f"{skipped_conns} over-limit")
             skip_msg = f", skipped {', '.join(skip_parts)}" if skip_parts else ""
-            print(f"Created {stats['connections_created']} bigram connections "
-                  f"(component: {stats['component_connections']}, "
-                  f"chain: {stats['chain_connections']}, "
-                  f"cooccur: {stats['cooccurrence_connections']}{skip_msg})")
+            logger.info(f"Created {stats['connections_created']} bigram connections "
+                        f"(component: {stats['component_connections']}, "
+                        f"chain: {stats['chain_connections']}, "
+                        f"cooccur: {stats['cooccurrence_connections']}{skip_msg})")
         return stats
 
     def build_concept_clusters(
@@ -1058,7 +1061,7 @@ class CorticalTextProcessor:
 
         analysis.build_concept_clusters(self.layers, clusters)
         if verbose:
-            print(f"Built {len(clusters)} concept clusters using {clustering_method}")
+            logger.info(f"Built {len(clusters)} concept clusters using {clustering_method}")
         return clusters
 
     def compute_clustering_quality(
@@ -1179,7 +1182,7 @@ class CorticalTextProcessor:
                 parts.append(f"semantic: {stats['semantic_connections']}")
             if stats.get('embedding_connections', 0) > 0:
                 parts.append(f"embedding: {stats['embedding_connections']}")
-            print(", ".join(parts) if len(parts) > 1 else parts[0])
+            logger.info(", ".join(parts) if len(parts) > 1 else parts[0])
         return stats
 
     def extract_corpus_semantics(
@@ -1222,7 +1225,7 @@ class CorticalTextProcessor:
             min_context_keys=min_context_keys
         )
         if verbose:
-            print(f"Extracted {len(self.semantic_relations)} semantic relations")
+            logger.info(f"Extracted {len(self.semantic_relations)} semantic relations")
         return len(self.semantic_relations)
 
     def extract_pattern_relations(
@@ -1259,15 +1262,15 @@ class CorticalTextProcessor:
 
         if verbose:
             stats = semantics.get_pattern_statistics(relations)
-            print(f"Extracted {stats['total_relations']} pattern-based relations")
-            print(f"  Types: {stats['relation_type_counts']}")
+            logger.info(f"Extracted {stats['total_relations']} pattern-based relations")
+            logger.info(f"  Types: {stats['relation_type_counts']}")
 
         return relations
-    
+
     def retrofit_connections(self, iterations: int = 10, alpha: float = 0.3, verbose: bool = True) -> Dict:
         if not self.semantic_relations: self.extract_corpus_semantics(verbose=False)
         stats = semantics.retrofit_connections(self.layers, self.semantic_relations, iterations, alpha)
-        if verbose: print(f"Retrofitted {stats['tokens_affected']} tokens")
+        if verbose: logger.info(f"Retrofitted {stats['tokens_affected']} tokens")
         return stats
 
     def compute_property_inheritance(
@@ -1340,8 +1343,8 @@ class CorticalTextProcessor:
             result['total_boost'] = 0.0
 
         if verbose:
-            print(f"Computed property inheritance: {result['terms_with_inheritance']} terms, "
-                  f"{total_props} properties, {result['connections_boosted']} connections boosted")
+            logger.info(f"Computed property inheritance: {result['terms_with_inheritance']} terms, "
+                        f"{total_props} properties, {result['connections_boosted']} connections boosted")
 
         return result
 
@@ -1425,14 +1428,14 @@ class CorticalTextProcessor:
         if verbose:
             sampled = stats.get('sampled', False)
             sample_info = f", sampled top {max_terms}" if sampled else ""
-            print(f"Computed {stats['terms_embedded']} embeddings ({method}{sample_info})")
+            logger.info(f"Computed {stats['terms_embedded']} embeddings ({method}{sample_info})")
         return stats
 
     def retrofit_embeddings(self, iterations: int = 10, alpha: float = 0.4, verbose: bool = True) -> Dict:
         if not self.embeddings: self.compute_graph_embeddings(verbose=False)
         if not self.semantic_relations: self.extract_corpus_semantics(verbose=False)
         stats = semantics.retrofit_embeddings(self.embeddings, self.semantic_relations, iterations, alpha)
-        if verbose: print(f"Retrofitted embeddings (moved {stats['total_movement']:.2f} total)")
+        if verbose: logger.info(f"Retrofitted embeddings (moved {stats['total_movement']:.2f} total)")
         return stats
     
     def embedding_similarity(self, term1: str, term2: str) -> float:

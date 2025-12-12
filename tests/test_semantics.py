@@ -982,8 +982,6 @@ class TestProcessorVerboseOutput(unittest.TestCase):
 
     def test_compute_bigram_connections_verbose_skipped(self):
         """Test verbose output includes skipped info."""
-        import io
-        import sys
         from cortical.processor import CorticalTextProcessor
 
         processor = CorticalTextProcessor()
@@ -992,18 +990,13 @@ class TestProcessorVerboseOutput(unittest.TestCase):
                 f"the quick brown fox jumps over the lazy dog number {i}")
         processor.compute_all(verbose=False, build_concepts=False)
 
-        # Capture stdout
-        captured = io.StringIO()
-        sys.stdout = captured
-        try:
+        with self.assertLogs('cortical.processor', level='INFO') as cm:
             processor.compute_bigram_connections(
                 max_bigrams_per_term=3,
                 verbose=True
             )
-        finally:
-            sys.stdout = sys.__stdout__
 
-        output = captured.getvalue()
+        output = '\n'.join(cm.output)
         # Should mention "bigram connections"
         self.assertIn('bigram connections', output)
 

@@ -1,0 +1,23 @@
+name: Run Showcase
+
+on:
+  workflow_dispatch:  # Manual trigger from GitHub UI
+  push:
+    branches: [ main ]  # Also run on main merges
+
+jobs:
+  showcase:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Run showcase
+      run: |
+        echo "=== Running showcase.py ==="
+        python showcase.py

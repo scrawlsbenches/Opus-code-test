@@ -1,6 +1,563 @@
-# System Architecture
+# Cortical Text Processor Architecture
 
-This document describes the 4-layer hierarchical architecture of the Cortical Text Processor. The design is inspired by visual cortex organization, processing text at increasing levels of abstraction.
+This document describes both the **module architecture** (how code files interact) and the **layer architecture** (how data flows through hierarchical layers). The system is inspired by visual cortex organization, processing text at increasing levels of abstraction.
+
+---
+
+# Part 1: Module Architecture
+
+This section maps the codebase structure, showing which modules depend on which, and how components interact.
+
+## Module Dependency Overview
+
+The codebase is organized into five architectural layers:
+
+1. **Foundation Layer** - Data structures and utilities (no cortical dependencies)
+2. **Algorithm Layer** - Domain logic for analysis, semantics, embeddings
+3. **Query Layer** - Modular search and retrieval functions
+4. **Persistence Layer** - Save/load and git-friendly chunk storage
+5. **Orchestration Layer** - processor.py coordinates everything
+
+### Complete Module Dependency Graph
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                       ORCHESTRATION LAYER                        │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │              processor.py (Public API)                     │ │
+│  │  - CorticalTextProcessor class                             │ │
+│  │  - Coordinates all components                              │ │
+│  │  - Staleness tracking                                      │ │
+│  └───────┬──────────────────────────────────────────────────┬─┘ │
+└──────────┼──────────────────────────────────────────────────┼───┘
+           │                                                  │
+           ▼                                                  ▼
+┌──────────────────────────────────────────────┐   ┌─────────────────┐
+│          ALGORITHM LAYER                     │   │ PERSISTENCE     │
+│                                              │   │                 │
+│  ┌──────────────┐  ┌──────────────┐         │   │ persistence.py  │
+│  │ analysis.py  │  │ semantics.py │         │   │ chunk_index.py  │
+│  │ - PageRank   │  │ - Relations  │         │   │                 │
+│  │ - TF-IDF     │  │ - Patterns   │         │   └─────────────────┘
+│  │ - Clustering │  │ - Retrofit   │         │
+│  └──────────────┘  └──────────────┘         │
+│                                              │
+│  ┌──────────────┐  ┌──────────────┐         │
+│  │embeddings.py │  │   gaps.py    │         │
+│  │ - Random Walk│  │ - Isolation  │         │
+│  │ - Adjacency  │  │ - Bridges    │         │
+│  │ - Spectral   │  │ - Topics     │         │
+│  └──────────────┘  └──────────────┘         │
+│                                              │
+│  ┌──────────────┐                            │
+│  │fingerprint.py│                            │
+│  │ - Similarity │                            │
+│  │ - Comparison │                            │
+│  └──────────────┘                            │
+└──────────────┬───────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                         QUERY LAYER                               │
+│                                                                   │
+│  query/ (Modular Package)                                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+│  │expansion.py  │  │  search.py   │  │ passages.py  │           │
+│  │ - Lateral    │  │ - Documents  │  │ - RAG chunks │           │
+│  │ - Semantic   │  │ - Fast index │  │ - Batching   │           │
+│  │ - Multihop   │  │ - Activation │  │              │           │
+│  └──────────────┘  └──────────────┘  └──────────────┘           │
+│                                                                   │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+│  │ ranking.py   │  │ chunking.py  │  │  intent.py   │           │
+│  │ - Multi-stage│  │ - Text split │  │ - Parsing    │           │
+│  │ - Doc types  │  │ - Code aware │  │ - Intent map │           │
+│  └──────────────┘  └──────────────┘  └──────────────┘           │
+│                                                                   │
+│  ┌──────────────┐  ┌──────────────┐                              │
+│  │definitions.py│  │  analogy.py  │                              │
+│  │ - Detection  │  │ - Relations  │                              │
+│  │ - Boosting   │  │ - Completion │                              │
+│  └──────────────┘  └──────────────┘                              │
+└──────────────┬───────────────────────────────────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                    FOUNDATION LAYER                               │
+│                                                                   │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │  Data Structures                                            │ │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │ │
+│  │  │minicolumn.py │  │  layers.py   │  │  config.py   │     │ │
+│  │  │ - Minicolumn │  │ - CortLayer  │  │ - Settings   │     │ │
+│  │  │ - Edge       │  │ - HierLayer  │  │ - Defaults   │     │ │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘     │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │  Utilities                                                  │ │
+│  │  ┌──────────────┐  ┌──────────────┐                        │ │
+│  │  │tokenizer.py  │  │code_concepts │                        │ │
+│  │  │ - Stemming   │  │ - Synonyms   │                        │ │
+│  │  │ - Stop words │  │ - Expansion  │                        │ │
+│  │  └──────────────┘  └──────────────┘                        │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+## Component Responsibilities
+
+### Orchestration Layer
+
+**processor.py** (2,301 lines)
+- **Role**: Main orchestrator and public API
+- **Pattern**: Facade - delegates to specialized modules
+- **Key Functions**:
+  - `process_document()` - Add documents to corpus
+  - `compute_all()` - Run all analysis phases
+  - `find_documents_for_query()` - Search wrapper
+  - `find_passages_for_query()` - RAG wrapper
+  - Staleness tracking for incremental updates
+- **Imports**: All other modules (analysis, semantics, embeddings, gaps, fingerprint, query, persistence)
+- **Used By**: External users, scripts
+
+### Algorithm Layer
+
+**analysis.py** (1,123 lines)
+- **Role**: Graph algorithms
+- **Key Functions**:
+  - `compute_pagerank()` - Importance scoring
+  - `compute_tfidf()` - Term weighting
+  - `build_concept_clusters()` - Louvain clustering
+  - `compute_activation()` - Spreading activation
+- **Imports**: layers, minicolumn, constants
+- **Used By**: processor, gaps
+
+**semantics.py** (915 lines)
+- **Role**: Semantic relation extraction
+- **Key Functions**:
+  - `extract_relations_from_text()` - Pattern matching
+  - `extract_corpus_semantics()` - Corpus-wide extraction
+  - `retrofit_connections()` - Adjust weights using relations
+- **Imports**: layers, minicolumn, constants
+- **Used By**: processor
+
+**embeddings.py** (209 lines)
+- **Role**: Graph-based embeddings
+- **Key Functions**:
+  - `compute_graph_embeddings()` - Main entry point
+  - `adjacency_embeddings()` - Landmark-based
+  - `random_walk_embeddings()` - DeepWalk-style
+- **Imports**: layers
+- **Used By**: processor
+
+**gaps.py** (245 lines)
+- **Role**: Knowledge gap detection
+- **Key Functions**:
+  - `detect_isolated_documents()` - Outlier detection
+  - `detect_weak_topics()` - Undercovered areas
+  - `find_bridge_opportunities()` - Connection suggestions
+- **Imports**: layers, analysis
+- **Used By**: processor
+
+**fingerprint.py** (315 lines)
+- **Role**: Semantic fingerprinting
+- **Key Functions**:
+  - `compute_fingerprint()` - Extract semantic signature
+  - `compare_fingerprints()` - Similarity scoring
+  - `explain_similarity()` - Human-readable comparison
+- **Imports**: layers, tokenizer, code_concepts
+- **Used By**: processor
+
+### Query Layer (Modular Package)
+
+The query layer is split into focused submodules, all re-exported from `query/__init__.py`:
+
+**query/expansion.py**
+- **Role**: Query term expansion
+- **Imports**: layers, tokenizer, code_concepts
+- **Used By**: processor, query/search, query/passages, query/ranking
+
+**query/search.py**
+- **Role**: Document retrieval
+- **Imports**: layers, tokenizer, code_concepts, expansion
+- **Used By**: processor, query/passages, query/ranking
+
+**query/passages.py**
+- **Role**: Passage retrieval for RAG
+- **Imports**: layers, tokenizer, search, expansion, ranking, chunking, definitions
+- **Used By**: processor
+
+**query/ranking.py**
+- **Role**: Multi-stage ranking
+- **Imports**: layers, tokenizer, constants, expansion, search
+- **Used By**: processor, query/passages
+
+**query/chunking.py**
+- **Role**: Text chunking
+- **Imports**: layers, tokenizer
+- **Used By**: query/passages
+
+**query/intent.py**
+- **Role**: Intent parsing
+- **Imports**: layers, code_concepts
+- **Used By**: processor
+
+**query/definitions.py**
+- **Role**: Definition search
+- **Imports**: None (standalone)
+- **Used By**: processor, query/passages
+
+**query/analogy.py**
+- **Role**: Analogy completion
+- **Imports**: layers
+- **Used By**: processor
+
+### Persistence Layer
+
+**persistence.py** (606 lines)
+- **Role**: Save/load processor state
+- **Key Functions**:
+  - `save_processor()` - Pickle serialization
+  - `load_processor()` - Restore state
+  - `export_to_json()` - Graph export
+- **Imports**: layers, minicolumn
+- **Used By**: processor
+
+**chunk_index.py** (574 lines)
+- **Role**: Git-compatible chunk storage
+- **Key Functions**:
+  - `ChunkIndex.save_chunk()` - Append-only chunks
+  - `ChunkIndex.load_chunks()` - Replay operations
+  - `compact_chunks()` - Consolidate history
+- **Imports**: layers, minicolumn
+- **Used By**: processor, scripts/index_codebase.py
+
+### Foundation Layer
+
+**minicolumn.py** (357 lines)
+- **Role**: Core data structure
+- **Classes**: `Minicolumn`, `Edge`
+- **Imports**: None (pure data structure)
+- **Used By**: layers, processor, all algorithm modules
+
+**layers.py** (294 lines)
+- **Role**: Layer container and management
+- **Classes**: `CorticalLayer` (enum), `HierarchicalLayer`
+- **Key Methods**: `get_by_id()` (O(1) lookups), `get_or_create_minicolumn()`
+- **Imports**: minicolumn
+- **Used By**: All modules that work with layers
+
+**config.py** (352 lines)
+- **Role**: Configuration management
+- **Classes**: `CorticalConfig` (dataclass)
+- **Imports**: None (pure configuration)
+- **Used By**: processor, passed to algorithm modules
+
+**tokenizer.py** (398 lines)
+- **Role**: Text preprocessing
+- **Key Functions**: `tokenize()`, `extract_bigrams()`, `split_camelcase()`
+- **Imports**: None (standalone)
+- **Used By**: processor, query modules, fingerprint
+
+**code_concepts.py** (249 lines)
+- **Role**: Programming concept synonyms
+- **Key Data**: `CODE_CONCEPT_GROUPS` - Synonym mappings
+- **Imports**: None (data structure)
+- **Used By**: query/expansion, query/search, fingerprint
+
+## Data Flow Diagrams
+
+### Document Processing Flow
+
+```
+                    Input Document
+                         │
+                         ▼
+                  ┌─────────────┐
+                  │ tokenizer.py│
+                  │  Tokenize   │
+                  │  + Stem     │
+                  │  + Filter   │
+                  └──────┬──────┘
+                         │
+                         ▼
+        ┌────────────────────────────────────┐
+        │       processor.py                 │
+        │    process_document()              │
+        └────────────────┬───────────────────┘
+                         │
+         ┌───────────────┼───────────────┐
+         │               │               │
+         ▼               ▼               ▼
+    ┌────────┐     ┌─────────┐     ┌─────────┐
+    │Layer 0 │     │ Layer 1 │     │ Layer 3 │
+    │ TOKENS │────▶│ BIGRAMS │     │   DOC   │
+    └────────┘     └─────────┘     └─────────┘
+         │
+         │ Lateral connections (co-occurrence)
+         ▼
+    ┌────────────────────────────────────────┐
+    │      Compute Phase (compute_all)       │
+    ├────────────────────────────────────────┤
+    │  1. analysis.compute_tfidf()           │
+    │  2. processor.compute_bigram_conns()   │
+    │  3. analysis.compute_pagerank()        │
+    │  4. analysis.build_concept_clusters()  │──▶ Layer 2 (CONCEPTS)
+    │  5. semantics.extract_relations()      │
+    │  6. embeddings.compute_embeddings()    │
+    └────────────────────────────────────────┘
+                         │
+                         ▼
+                  ┌─────────────┐
+                  │ persistence │
+                  │   .save()   │
+                  └─────────────┘
+```
+
+### Query Processing Flow
+
+```
+                    User Query
+                         │
+                         ▼
+                  ┌─────────────┐
+                  │ tokenizer.py│
+                  │  Tokenize   │
+                  └──────┬──────┘
+                         │
+                         ▼
+        ┌────────────────────────────────────┐
+        │    query/expansion.py              │
+        │    - Lateral connections           │
+        │    - Semantic relations            │
+        │    - Multihop expansion            │
+        └────────────────┬───────────────────┘
+                         │
+                    Expanded terms
+                         │
+         ┌───────────────┼───────────────┐
+         │               │               │
+         ▼               ▼               ▼
+    ┌─────────┐    ┌──────────┐    ┌──────────┐
+    │search.py│    │ranking.py│    │passages  │
+    │ TF-IDF  │    │Multi-stage│   │ Chunking │
+    │ scoring │    │  boost    │   │  + score │
+    └─────────┘    └──────────┘    └──────────┘
+         │               │               │
+         └───────────────┼───────────────┘
+                         │
+                    Ranked Results
+                         │
+                         ▼
+                   Return to User
+```
+
+## Interaction Patterns
+
+### Pattern 1: Orchestrator Pattern
+
+processor.py acts as a facade, delegating to specialized modules:
+
+```python
+# processor.py delegates to analysis.py
+def compute_importance(self):
+    pagerank_scores = analysis.compute_pagerank(
+        self.layers[CorticalLayer.TOKENS],
+        damping=self.config.pagerank_damping
+    )
+    # Update minicolumns with scores
+```
+
+**Benefits**: Clean public API, focused modules, easy testing
+
+### Pattern 2: Layered Processing
+
+All algorithm modules operate on the same layer abstraction:
+
+```python
+# Common pattern across analysis, semantics, embeddings, gaps
+def some_algorithm(
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    **kwargs
+) -> Dict[str, Any]:
+    layer0 = layers[CorticalLayer.TOKENS]
+    # Process using O(1) lookups
+    for col in layer0.minicolumns.values():
+        target_col = layer0.get_by_id(target_id)  # O(1)
+```
+
+**Benefits**: Consistent interface, reusable logic, O(1) lookups
+
+### Pattern 3: Modular Query Package
+
+Query package splits concerns into focused submodules:
+
+```
+query/__init__.py     ← Re-exports all public symbols
+├── expansion.py      ← Expansion logic
+├── search.py         ← Document retrieval
+├── passages.py       ← RAG chunks
+├── ranking.py        ← Multi-stage ranking
+├── chunking.py       ← Text splitting
+├── intent.py         ← Intent parsing
+├── definitions.py    ← Definition-specific
+└── analogy.py        ← Analogy completion
+```
+
+**Benefits**: Files stay under 400 lines, clear boundaries, easy to extend
+
+### Pattern 4: Staleness Tracking
+
+processor.py tracks which computations need recomputation:
+
+```python
+# Mark all stale when documents change
+def process_document(self, doc_id, content):
+    # ... process ...
+    self._mark_all_stale()
+
+# compute_all() only recomputes stale components
+def compute_all(self):
+    if self.is_stale(self.COMP_TFIDF):
+        self.compute_tfidf()
+    if self.is_stale(self.COMP_PAGERANK):
+        self.compute_importance()
+```
+
+**Benefits**: Avoids redundant computation, supports incremental updates
+
+## Mermaid Diagrams
+
+### Module Dependency Graph
+
+```mermaid
+graph TD
+    %% Foundation Layer
+    minicolumn[minicolumn.py<br/>Minicolumn + Edge]
+    layers[layers.py<br/>HierarchicalLayer]
+    config[config.py<br/>CorticalConfig]
+    tokenizer[tokenizer.py<br/>Text processing]
+    code_concepts[code_concepts.py<br/>Synonyms]
+    constants[constants.py<br/>Constants]
+
+    %% Algorithm Layer
+    analysis[analysis.py<br/>PageRank + TF-IDF]
+    semantics[semantics.py<br/>Relations]
+    embeddings[embeddings.py<br/>Graph embeddings]
+    gaps[gaps.py<br/>Gap detection]
+    fingerprint[fingerprint.py<br/>Fingerprinting]
+
+    %% Query Layer
+    query_expansion[query/expansion.py<br/>Query expansion]
+    query_search[query/search.py<br/>Document search]
+    query_passages[query/passages.py<br/>RAG passages]
+    query_ranking[query/ranking.py<br/>Multi-stage rank]
+    query_chunking[query/chunking.py<br/>Text chunking]
+    query_intent[query/intent.py<br/>Intent parsing]
+    query_analogy[query/analogy.py<br/>Analogies]
+
+    %% Persistence Layer
+    persistence[persistence.py<br/>Save/load]
+    chunk_index[chunk_index.py<br/>Chunk storage]
+
+    %% Orchestration
+    processor[processor.py<br/>CorticalTextProcessor]
+
+    %% Dependencies
+    layers --> minicolumn
+
+    analysis --> layers
+    analysis --> minicolumn
+    analysis --> constants
+
+    semantics --> layers
+    semantics --> minicolumn
+    semantics --> constants
+
+    embeddings --> layers
+
+    gaps --> layers
+    gaps --> analysis
+
+    fingerprint --> layers
+    fingerprint --> tokenizer
+    fingerprint --> code_concepts
+
+    query_expansion --> layers
+    query_expansion --> tokenizer
+    query_expansion --> code_concepts
+
+    query_search --> layers
+    query_search --> tokenizer
+    query_search --> code_concepts
+    query_search --> query_expansion
+
+    query_passages --> layers
+    query_passages --> tokenizer
+    query_passages --> query_search
+    query_passages --> query_expansion
+    query_passages --> query_ranking
+    query_passages --> query_chunking
+
+    query_ranking --> layers
+    query_ranking --> tokenizer
+    query_ranking --> constants
+    query_ranking --> query_expansion
+    query_ranking --> query_search
+
+    query_chunking --> layers
+    query_chunking --> tokenizer
+
+    query_intent --> layers
+    query_intent --> code_concepts
+
+    query_analogy --> layers
+
+    persistence --> layers
+    persistence --> minicolumn
+
+    chunk_index --> layers
+    chunk_index --> minicolumn
+
+    processor --> tokenizer
+    processor --> minicolumn
+    processor --> layers
+    processor --> config
+    processor --> analysis
+    processor --> semantics
+    processor --> embeddings
+    processor --> gaps
+    processor --> fingerprint
+    processor --> query_expansion
+    processor --> query_search
+    processor --> query_passages
+    processor --> query_ranking
+    processor --> query_intent
+    processor --> query_analogy
+    processor --> persistence
+    processor --> chunk_index
+
+    %% Styling
+    classDef foundation fill:#e1f5ff,stroke:#333,stroke-width:2px
+    classDef algorithm fill:#fff4e1,stroke:#333,stroke-width:2px
+    classDef query fill:#f0e1ff,stroke:#333,stroke-width:2px
+    classDef persist fill:#e1ffe1,stroke:#333,stroke-width:2px
+    classDef orchestrate fill:#ffe1e1,stroke:#333,stroke-width:2px
+
+    class minicolumn,layers,config,tokenizer,code_concepts,constants foundation
+    class analysis,semantics,embeddings,gaps,fingerprint algorithm
+    class query_expansion,query_search,query_passages,query_ranking,query_chunking,query_intent,query_analogy query
+    class persistence,chunk_index persist
+    class processor orchestrate
+```
+
+---
+
+# Part 2: Layer Hierarchy Architecture
+
+This section describes the 4-layer hierarchical architecture of the Cortical Text Processor. The design is inspired by visual cortex organization, processing text at increasing levels of abstraction.
 
 ## Layer Overview
 
