@@ -22,42 +22,100 @@ from .layers import CorticalLayer, HierarchicalLayer
 def compute_graph_embeddings(
     layers: Dict[CorticalLayer, HierarchicalLayer],
     dimensions: int = 64,
-    method: str = 'adjacency'
+    method: str = 'adjacency',
+    max_terms: Optional[int] = None
 ) -> Tuple[Dict[str, List[float]], Dict[str, Any]]:
     """
     Compute embeddings for tokens based on graph structure.
-    
+
     Args:
         layers: Dictionary of layers (needs TOKENS)
         dimensions: Number of embedding dimensions
-        method: 'adjacency', 'random_walk', or 'spectral'
-        
+        method: 'adjacency', 'random_walk', 'spectral', or 'fast'
+        max_terms: If set, only compute embeddings for top N terms by PageRank.
+                   This significantly speeds up computation for large corpora.
+                   Recommended: 1000-2000 for large corpora (5000+ tokens).
+
     Returns:
         Tuple of (embeddings dict, statistics dict)
     """
     layer0 = layers[CorticalLayer.TOKENS]
-    
-    if method == 'adjacency':
-        embeddings = _adjacency_embeddings(layer0, dimensions)
+
+    # Sample top terms if max_terms is specified
+    if max_terms is not None and max_terms < layer0.column_count():
+        sorted_cols = sorted(layer0.minicolumns.values(), key=lambda c: c.pagerank, reverse=True)
+        sampled_terms = {col.content for col in sorted_cols[:max_terms]}
+    else:
+        sampled_terms = None
+
+    if method == 'fast':
+        # Fast direct adjacency without multi-hop propagation
+        embeddings = _fast_adjacency_embeddings(layer0, dimensions, sampled_terms)
+    elif method == 'adjacency':
+        embeddings = _adjacency_embeddings(layer0, dimensions, sampled_terms)
     elif method == 'random_walk':
-        embeddings = _random_walk_embeddings(layer0, dimensions)
+        embeddings = _random_walk_embeddings(layer0, dimensions, sampled_terms)
     elif method == 'spectral':
-        embeddings = _spectral_embeddings(layer0, dimensions)
+        embeddings = _spectral_embeddings(layer0, dimensions, sampled_terms)
     else:
         raise ValueError(f"Unknown embedding method: {method}")
-    
+
     stats = {
         'method': method,
         'dimensions': dimensions,
-        'terms_embedded': len(embeddings)
+        'terms_embedded': len(embeddings),
+        'max_terms': max_terms,
+        'sampled': max_terms is not None and max_terms < layer0.column_count()
     }
-    
+
     return embeddings, stats
+
+
+def _fast_adjacency_embeddings(
+    layer: HierarchicalLayer,
+    dimensions: int,
+    sampled_terms: Optional[set] = None
+) -> Dict[str, List[float]]:
+    """
+    Fast direct adjacency embeddings without multi-hop propagation.
+
+    Much faster than full adjacency but less expressive. Good for large corpora
+    where speed is more important than embedding quality.
+
+    Args:
+        layer: Layer to compute embeddings for
+        dimensions: Number of embedding dimensions (= number of landmarks)
+        sampled_terms: If set, only compute embeddings for these terms
+    """
+    embeddings: Dict[str, List[float]] = {}
+
+    sorted_cols = sorted(layer.minicolumns.values(), key=lambda c: c.pagerank, reverse=True)
+    landmarks = sorted_cols[:dimensions]
+    landmark_ids = {lm.id: i for i, lm in enumerate(landmarks)}
+
+    cols_to_process = layer.minicolumns.values()
+    if sampled_terms is not None:
+        cols_to_process = [c for c in cols_to_process if c.content in sampled_terms]
+
+    for col in cols_to_process:
+        vec = [0.0] * dimensions
+
+        # Direct connections only
+        for lm_id, lm_idx in landmark_ids.items():
+            if lm_id in col.lateral_connections:
+                vec[lm_idx] = col.lateral_connections[lm_id]
+
+        # Normalize
+        mag = math.sqrt(sum(v*v for v in vec)) + 1e-10
+        embeddings[col.content] = [v / mag for v in vec]
+
+    return embeddings
 
 
 def _adjacency_embeddings(
     layer: HierarchicalLayer,
     dimensions: int,
+    sampled_terms: Optional[set] = None,
     propagation_steps: int = 2,
     damping: float = 0.5
 ) -> Dict[str, List[float]]:
@@ -70,6 +128,7 @@ def _adjacency_embeddings(
     Args:
         layer: Layer to compute embeddings for
         dimensions: Number of embedding dimensions (= number of landmarks)
+        sampled_terms: If set, only compute embeddings for these terms
         propagation_steps: Number of propagation steps (default 2)
         damping: Weight decay per step (default 0.5)
     """
@@ -82,7 +141,11 @@ def _adjacency_embeddings(
     # Build adjacency lookup for efficient propagation
     id_to_col = {col.id: col for col in layer.minicolumns.values()}
 
-    for col in layer.minicolumns.values():
+    cols_to_process = layer.minicolumns.values()
+    if sampled_terms is not None:
+        cols_to_process = [c for c in cols_to_process if c.content in sampled_terms]
+
+    for col in cols_to_process:
         vec = [0.0] * dimensions
 
         # Direct connections (weight = 1.0)
@@ -130,6 +193,7 @@ def _adjacency_embeddings(
 def _random_walk_embeddings(
     layer: HierarchicalLayer,
     dimensions: int,
+    sampled_terms: Optional[set] = None,
     walks_per_node: int = 10,
     walk_length: int = 40,
     window_size: int = 5
@@ -138,23 +202,30 @@ def _random_walk_embeddings(
     embeddings: Dict[str, List[float]] = {}
     id_to_term = {col.id: col.content for col in layer.minicolumns.values()}
     cooccurrence: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
-    
-    for col in layer.minicolumns.values():
+
+    # Only walk from sampled terms if specified
+    cols_to_walk = layer.minicolumns.values()
+    if sampled_terms is not None:
+        cols_to_walk = [c for c in cols_to_walk if c.content in sampled_terms]
+
+    for col in cols_to_walk:
         for _ in range(walks_per_node):
             walk = _weighted_random_walk(col, layer, walk_length, id_to_term)
             for i, term in enumerate(walk):
                 for j in range(max(0, i - window_size), min(len(walk), i + window_size + 1)):
                     if i != j:
                         cooccurrence[term][walk[j]] += 1.0
-    
+
     sorted_cols = sorted(layer.minicolumns.values(), key=lambda c: c.pagerank, reverse=True)
     landmarks = [c.content for c in sorted_cols[:dimensions]]
-    
-    for term in layer.minicolumns:
-        vec = [cooccurrence[term].get(lm, 0) for lm in landmarks]
-        mag = math.sqrt(sum(v*v for v in vec)) + 1e-10
-        embeddings[term] = [v / mag for v in vec]
-    
+
+    terms_to_embed = layer.minicolumns.keys() if sampled_terms is None else sampled_terms
+    for term in terms_to_embed:
+        if term in layer.minicolumns:
+            vec = [cooccurrence[term].get(lm, 0) for lm in landmarks]
+            mag = math.sqrt(sum(v*v for v in vec)) + 1e-10
+            embeddings[term] = [v / mag for v in vec]
+
     return embeddings
 
 
@@ -190,19 +261,36 @@ def _weighted_random_walk(start_col, layer: HierarchicalLayer, length: int, id_t
     return walk
 
 
-def _spectral_embeddings(layer: HierarchicalLayer, dimensions: int, iterations: int = 100) -> Dict[str, List[float]]:
-    """Compute embeddings using spectral methods (graph Laplacian)."""
+def _spectral_embeddings(
+    layer: HierarchicalLayer,
+    dimensions: int,
+    sampled_terms: Optional[set] = None,
+    iterations: int = 50
+) -> Dict[str, List[float]]:
+    """Compute embeddings using spectral methods (graph Laplacian).
+
+    Note: This is inherently O(dimensions × iterations × n²) so it's slow for large graphs.
+    When sampled_terms is provided, only those terms get embeddings but the full graph
+    structure is still used for computation.
+    """
     embeddings: Dict[str, List[float]] = {}
-    terms = list(layer.minicolumns.keys())
+
+    # If sampling, use only sampled terms for the graph
+    if sampled_terms is not None:
+        terms = [t for t in layer.minicolumns.keys() if t in sampled_terms]
+    else:
+        terms = list(layer.minicolumns.keys())
+
     n = len(terms)
     if n == 0:
         return embeddings
-    
+
     term_to_idx = {t: i for i, t in enumerate(terms)}
     adjacency: Dict[int, Dict[int, float]] = defaultdict(dict)
     degrees = [0.0] * n
-    
-    for term, col in layer.minicolumns.items():
+
+    for term in terms:
+        col = layer.minicolumns[term]
         i = term_to_idx[term]
         for neighbor_id, weight in col.lateral_connections.items():
             neighbor = layer.get_by_id(neighbor_id)
@@ -210,11 +298,11 @@ def _spectral_embeddings(layer: HierarchicalLayer, dimensions: int, iterations: 
                 j = term_to_idx[neighbor.content]
                 adjacency[i][j] = weight
                 degrees[i] += weight
-    
+
     degrees = [d if d > 0 else 1.0 for d in degrees]
     actual_dims = min(dimensions, n)
     vectors = []
-    
+
     for d in range(actual_dims):
         vec = [random.gauss(0, 1) for _ in range(n)]
         for prev in vectors:
@@ -222,7 +310,7 @@ def _spectral_embeddings(layer: HierarchicalLayer, dimensions: int, iterations: 
             vec = [v - dot * p for v, p in zip(vec, prev)]
         mag = math.sqrt(sum(v*v for v in vec)) + 1e-10
         vec = [v / mag for v in vec]
-        
+
         for _ in range(iterations):
             new_vec = [0.0] * n
             for i in range(n):
@@ -230,15 +318,15 @@ def _spectral_embeddings(layer: HierarchicalLayer, dimensions: int, iterations: 
                     norm_weight = weight / math.sqrt(degrees[i] * degrees[j])
                     new_vec[i] -= norm_weight * vec[j]
                 new_vec[i] += vec[i]
-            
+
             for prev in vectors:
                 dot = sum(v * p for v, p in zip(new_vec, prev))
                 new_vec = [v - dot * p for v, p in zip(new_vec, prev)]
             mag = math.sqrt(sum(v*v for v in new_vec)) + 1e-10
             vec = [v / mag for v in new_vec]
-        
+
         vectors.append(vec)
-    
+
     for term in terms:
         i = term_to_idx[term]
         embeddings[term] = [vectors[d][i] if d < len(vectors) else 0.0 for d in range(dimensions)]

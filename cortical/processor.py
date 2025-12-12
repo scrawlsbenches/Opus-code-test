@@ -1356,11 +1356,49 @@ class CorticalTextProcessor:
 
         return semantics.compute_property_similarity(term1, term2, inherited)
     
-    def compute_graph_embeddings(self, dimensions: int = 64, method: str = 'adjacency', verbose: bool = True) -> Dict:
-        self.embeddings, stats = emb_module.compute_graph_embeddings(self.layers, dimensions, method)
-        if verbose: print(f"Computed {stats['terms_embedded']} embeddings ({method})")
+    def compute_graph_embeddings(
+        self,
+        dimensions: int = 64,
+        method: str = 'fast',
+        max_terms: Optional[int] = None,
+        verbose: bool = True
+    ) -> Dict:
+        """
+        Compute graph embeddings for tokens.
+
+        Args:
+            dimensions: Number of embedding dimensions (default 64)
+            method: Embedding method - 'fast', 'adjacency', 'random_walk', or 'spectral'
+                   'fast' is recommended for large corpora (>3000 tokens)
+            max_terms: Maximum number of terms to embed (by PageRank).
+                      If None, auto-selects based on corpus size:
+                      - <2000 tokens: embed all
+                      - 2000-5000 tokens: embed top 1500
+                      - >5000 tokens: embed top 1000
+            verbose: Print progress messages
+
+        Returns:
+            Statistics dict with method, dimensions, terms_embedded
+        """
+        # Auto-select max_terms based on corpus size
+        token_count = self.layers[CorticalLayer.TOKENS].column_count()
+        if max_terms is None:
+            if token_count < 2000:
+                max_terms = None  # Embed all
+            elif token_count < 5000:
+                max_terms = 1500
+            else:
+                max_terms = 1000
+
+        self.embeddings, stats = emb_module.compute_graph_embeddings(
+            self.layers, dimensions, method, max_terms
+        )
+        if verbose:
+            sampled = stats.get('sampled', False)
+            sample_info = f", sampled top {max_terms}" if sampled else ""
+            print(f"Computed {stats['terms_embedded']} embeddings ({method}{sample_info})")
         return stats
-    
+
     def retrofit_embeddings(self, iterations: int = 10, alpha: float = 0.4, verbose: bool = True) -> Dict:
         if not self.embeddings: self.compute_graph_embeddings(verbose=False)
         if not self.semantic_relations: self.extract_corpus_semantics(verbose=False)

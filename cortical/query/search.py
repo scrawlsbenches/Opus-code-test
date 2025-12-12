@@ -29,7 +29,8 @@ def find_documents_for_query(
     top_n: int = 5,
     use_expansion: bool = True,
     semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
-    use_semantic: bool = True
+    use_semantic: bool = True,
+    doc_name_boost: float = 2.0
 ) -> List[Tuple[str, float]]:
     """
     Find documents most relevant to a query using TF-IDF and optional expansion.
@@ -42,6 +43,7 @@ def find_documents_for_query(
         use_expansion: Whether to expand query terms using lateral connections
         semantic_relations: Optional list of semantic relations for expansion
         use_semantic: Whether to use semantic relations for expansion (if available)
+        doc_name_boost: Multiplier for documents whose name matches query terms (default 2.0)
 
     Returns:
         List of (doc_id, score) tuples ranked by relevance
@@ -65,6 +67,20 @@ def find_documents_for_query(
                 tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
                 doc_scores[doc_id] += tfidf * term_weight
 
+    # Boost documents whose name matches query terms
+    if doc_name_boost > 1.0:
+        query_tokens = set(tokenizer.tokenize(query_text))
+        for doc_id in doc_scores:
+            # Tokenize document ID (handle underscores as separators)
+            doc_name_tokens = set(tokenizer.tokenize(doc_id.replace('_', ' ')))
+            # Count how many query tokens appear in doc name
+            matches = len(query_tokens & doc_name_tokens)
+            if matches > 0:
+                # Boost proportional to match ratio
+                match_ratio = matches / len(query_tokens) if query_tokens else 0
+                boost = 1 + (doc_name_boost - 1) * match_ratio
+                doc_scores[doc_id] *= boost
+
     sorted_docs = sorted(doc_scores.items(), key=lambda x: -x[1])
     return sorted_docs[:top_n]
 
@@ -75,7 +91,8 @@ def fast_find_documents(
     tokenizer: Tokenizer,
     top_n: int = 5,
     candidate_multiplier: int = 3,
-    use_code_concepts: bool = True
+    use_code_concepts: bool = True,
+    doc_name_boost: float = 2.0
 ) -> List[Tuple[str, float]]:
     """
     Fast document search using candidate filtering.
@@ -95,6 +112,7 @@ def fast_find_documents(
         top_n: Number of results to return
         candidate_multiplier: Multiplier for candidate set size
         use_code_concepts: Whether to use code concept expansion
+        doc_name_boost: Multiplier for documents whose name matches query terms (default 2.0)
 
     Returns:
         List of (doc_id, score) tuples ranked by relevance
@@ -105,6 +123,8 @@ def fast_find_documents(
     tokens = tokenizer.tokenize(query_text)
     if not tokens:
         return []
+
+    query_tokens = set(tokens)
 
     # Phase 1: Find candidate documents (fast set operations)
     # Get documents containing ANY query term
@@ -153,7 +173,18 @@ def fast_find_documents(
 
         # Boost by match coverage
         coverage_boost = match_count / len(tokens)
-        doc_scores[doc_id] = score * (1 + 0.5 * coverage_boost)
+        score *= (1 + 0.5 * coverage_boost)
+
+        # Boost documents whose name matches query terms
+        if doc_name_boost > 1.0:
+            doc_name_tokens = set(tokenizer.tokenize(doc_id.replace('_', ' ')))
+            matches = len(query_tokens & doc_name_tokens)
+            if matches > 0:
+                match_ratio = matches / len(query_tokens)
+                boost = 1 + (doc_name_boost - 1) * match_ratio
+                score *= boost
+
+        doc_scores[doc_id] = score
 
     # Return top results
     sorted_docs = sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)
