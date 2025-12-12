@@ -190,6 +190,7 @@ cortical/
 | Chunk indexing | `tests/test_chunk_indexing.py` |
 | Incremental updates | `tests/test_incremental_indexing.py` |
 | Intent queries | `tests/test_intent_query.py` |
+| **User workflows** | `tests/test_behavioral.py` (search relevance, performance, quality) |
 
 ---
 
