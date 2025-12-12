@@ -298,7 +298,7 @@ def compute_hierarchical_pagerank(
         # Step 1: Compute local PageRank for each layer
         for layer_enum in active_layers:
             layer = layers[layer_enum]
-            compute_pagerank(layer, damping=damping, iterations=layer_iterations, tolerance=1e-6)
+            compute_pagerank(layer, damping=damping, iterations=layer_iterations, tolerance=tolerance)
 
         # Step 2: Propagate up (tokens → bigrams → concepts → documents)
         for i in range(len(active_layers) - 1):
