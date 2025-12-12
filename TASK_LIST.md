@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-12
-**Pending Tasks:** 31
+**Pending Tasks:** 33
 **Completed Tasks:** 138+ (see archive and Recently Completed)
 
 ---
@@ -18,7 +18,10 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 ### 🟠 High (Do This Week)
 
-*All high priority tasks completed!*
+| # | Task | Category | Depends | Effort |
+|---|------|----------|---------|--------|
+| 148 | Investigate test_search_is_fast taking 137s | Testing | - | Medium |
+| 149 | Fix test_compute_all_under_threshold failing (135s > 30s) | Testing | - | Medium |
 
 ### 🟡 Medium (Do This Month)
 
@@ -126,6 +129,69 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 ---
 
 ## Pending Task Details
+
+### 148. Investigate test_search_is_fast Taking 137s
+
+**Meta:** `status:pending` `priority:high` `category:testing`
+**Files:** `tests/test_behavioral.py`
+**Effort:** Medium
+
+**Problem:** `test_search_is_fast` in `TestPerformanceBehavior` takes 137 seconds to run, making it the slowest test in the suite.
+
+**Root Cause Analysis Needed:**
+- Test loads full sample corpus via `get_shared_processor()` singleton
+- `compute_all()` is called during corpus loading
+- The 137s includes corpus load time, not just search time
+- Search itself is fast (~100ms) but corpus loading dominates
+
+**Potential Solutions:**
+1. Use a smaller synthetic corpus for performance tests
+2. Pre-compute and cache the corpus as a pickle file in test fixtures
+3. Split into two tests: corpus load time + search time
+4. Mock `compute_all()` and only test search on pre-loaded state
+
+**Acceptance Criteria:**
+- [ ] Test completes in < 5 seconds
+- [ ] Search performance is still validated
+- [ ] No false positives (test should still catch slow searches)
+
+---
+
+### 149. Fix test_compute_all_under_threshold Failing (135s > 30s)
+
+**Meta:** `status:pending` `priority:high` `category:testing`
+**Files:** `tests/test_behavioral.py`
+**Effort:** Medium
+
+**Problem:** `test_compute_all_under_threshold` takes 135 seconds, far exceeding the 30s threshold. Test is currently failing.
+
+**Context:**
+- Test is skipped under coverage (`@unittest.skipIf('coverage' in sys.modules...)`)
+- But fails when run directly: `python -m unittest discover`
+- Threshold was set to 30s assuming optimized corpus
+- Real corpus with 100+ docs takes much longer
+
+**Potential Solutions:**
+1. **Use smaller test corpus** - Create dedicated test fixture with ~20 docs
+2. **Increase threshold** - Accept that full corpus takes longer (not recommended)
+3. **Profile and optimize** - Find remaining bottlenecks in `compute_all()`
+4. **Make test conditional** - Only run on CI with pre-warmed cache
+5. **Split test** - Test individual `compute_*` methods with smaller inputs
+
+**Benchmark Data:**
+```
+Found 1196 tests
+test_search_is_fast: 136.60s (PASS - corpus already loaded)
+test_compute_all_under_threshold: 134.86s (FAIL - reloads corpus)
+All other tests: < 1s each
+```
+
+**Acceptance Criteria:**
+- [ ] Test passes consistently
+- [ ] Performance regression detection still works
+- [ ] CI build time < 5 minutes for test suite
+
+---
 
 ### 123. Replace Label Propagation with Louvain Community Detection ✅
 
@@ -1548,7 +1614,7 @@ user outcomes, catching the kinds of issues discovered during dog-fooding.
 | Perf | 1 | Performance improvements (#138) |
 | Arch | 6 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
 | CodeQual | 2 | Code quality improvements (#98, 99) |
-| Testing | 2 | Test coverage (#102, 129) |
+| Testing | 4 | Test coverage and performance (#102, 129, 148, 149) |
 | TaskMgmt | 3 | Task management system (#107, 106, 108) |
 | AINav | 3 | AI assistant navigation (#115, 117, 118) |
 | DevEx | 7 | Developer experience, scripts (#73-80) |
