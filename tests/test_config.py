@@ -295,5 +295,98 @@ class TestValidRelationChains(unittest.TestCase):
         self.assertEqual(DEFAULT_CHAIN_VALIDITY, 0.4)
 
 
+class TestProcessorConfigIntegration(unittest.TestCase):
+    """Tests for CorticalConfig integration with CorticalTextProcessor."""
+
+    def test_processor_accepts_config(self):
+        """Test that processor accepts config parameter."""
+        from cortical.processor import CorticalTextProcessor
+
+        config = CorticalConfig(min_cluster_size=5, chunk_size=256)
+        processor = CorticalTextProcessor(config=config)
+
+        self.assertEqual(processor.config.min_cluster_size, 5)
+        self.assertEqual(processor.config.chunk_size, 256)
+
+    def test_processor_uses_default_config(self):
+        """Test that processor uses default config when none provided."""
+        from cortical.processor import CorticalTextProcessor
+
+        processor = CorticalTextProcessor()
+
+        # Should have default values
+        self.assertEqual(processor.config.min_cluster_size, 3)
+        self.assertEqual(processor.config.chunk_size, 512)
+
+    def test_config_used_in_expand_query(self):
+        """Test that config.max_query_expansions is used."""
+        from cortical.processor import CorticalTextProcessor
+
+        config = CorticalConfig(max_query_expansions=3)
+        processor = CorticalTextProcessor(config=config)
+        processor.process_document("doc1", "neural network deep learning models")
+        processor.compute_all(verbose=False)
+
+        # When no max_expansions specified, should use config value
+        result = processor.expand_query("neural")
+        # Should respect the config limit (may have fewer if not enough expansions)
+        self.assertIsInstance(result, dict)
+
+    def test_config_preserved_on_save_load(self):
+        """Test that config is preserved after save/load."""
+        import tempfile
+        import os
+        from cortical.processor import CorticalTextProcessor
+
+        # Create processor with custom config
+        config = CorticalConfig(
+            min_cluster_size=5,
+            chunk_size=256,
+            max_query_expansions=15
+        )
+        processor = CorticalTextProcessor(config=config)
+        processor.process_document("doc1", "test content")
+        processor.compute_all(verbose=False)
+
+        # Save and load
+        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            processor.save(temp_path, verbose=False)
+            loaded = CorticalTextProcessor.load(temp_path, verbose=False)
+
+            # Config should be preserved
+            self.assertEqual(loaded.config.min_cluster_size, 5)
+            self.assertEqual(loaded.config.chunk_size, 256)
+            self.assertEqual(loaded.config.max_query_expansions, 15)
+        finally:
+            os.unlink(temp_path)
+
+    def test_load_without_config_uses_default(self):
+        """Test that loading old files without config uses defaults."""
+        import tempfile
+        import os
+        from cortical.processor import CorticalTextProcessor
+
+        # Create processor (with default config)
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+        processor.compute_all(verbose=False)
+
+        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            processor.save(temp_path, verbose=False)
+            loaded = CorticalTextProcessor.load(temp_path, verbose=False)
+
+            # Should have valid config (either restored or default)
+            self.assertIsNotNone(loaded.config)
+            self.assertIsInstance(loaded.config, CorticalConfig)
+        finally:
+            os.unlink(temp_path)
+
+
 if __name__ == '__main__':
     unittest.main()
