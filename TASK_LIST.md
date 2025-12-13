@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 16
-**Completed Tasks:** 238 (see archive)
+**Pending Tasks:** 13
+**Completed Tasks:** 241 (see archive)
 
 **Legacy Test Cleanup:** ✅ COMPLETE - All 8 tasks investigated (#198-205)
 - **KEEP (7 files, 506 tests):** Provide unique coverage not duplicated in unit tests
@@ -32,8 +32,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 206 | Update README.md with current statistics (161 docs, 8,789 tokens, 2.4M connections) | Docs | - | Small |
-| 207 | Document MCP Server in README (5 tools, Claude Desktop integration) | Docs | - | Small |
 | 208 | Create Claude Code hooks documentation | Docs | - | Medium |
 | 209 | Add session-start hook for auto-corpus indexing | DevEx | - | Small |
 
@@ -42,7 +40,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
 | 210 | Add pre-commit hook for auto-reindex after code changes | DevEx | - | Small |
-| 211 | Document simplified facade methods (quick_search, rag_retrieve, explore) | Docs | - | Small |
 | 212 | Create architectural roadmap diagram (Mermaid) | Docs | - | Medium |
 | 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
@@ -93,7 +90,12 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
-**Latest completions (2025-12-13) - Parallel Sub-Agent Implementation:**
+**Latest completions (2025-12-13) - README Deep Analysis Update:**
+- #206 README statistics updated - 161 docs, 8,789 tokens, 46,374 bigrams, 2.4M connections
+- #207 MCP Server documented - 5 tools, Claude Desktop config example
+- #211 Simplified facade methods documented - quick_search(), rag_retrieve(), explore()
+
+**Previous completions (2025-12-13) - Parallel Sub-Agent Implementation:**
 - #184 MCP Server for Claude Desktop - 5 tools (search, passages, expand_query, corpus_stats, add_document), 22 tests
 - #73 "Find Similar Code" command - `scripts/find_similar.py` with fingerprint-based similarity
 - #74 "Explain This Code" command - `scripts/explain_code.py` with concept/relation analysis
@@ -121,40 +123,6 @@ All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 ---
 
 ## Pending Task Details
-
-### 206. Update README.md with Current Statistics
-
-**Meta:** `status:pending` `priority:high` `category:docs`
-**Files:** `README.md`
-**Effort:** Small
-
-**Problem:** README.md contains outdated statistics (92 docs vs 161 actual, 116K connections vs 2.4M actual).
-
-**Solution:** Update all statistics in README.md:
-- Documents: 92 → 161
-- Token minicolumns: 6,506 → 8,789
-- Bigram minicolumns: 20,114 → 46,374
-- Lateral connections: 116,332 → 2,483,316
-- Tests: 337 → 1,729
-- Lines of code: 7,000 → 16,798+
-
----
-
-### 207. Document MCP Server in README
-
-**Meta:** `status:pending` `priority:high` `category:docs`
-**Files:** `README.md`, `docs/mcp-server.md` (new)
-**Effort:** Small
-
-**Problem:** MCP server (`cortical/mcp_server.py`) exists with 5 tools but is not documented.
-
-**Solution:** Add MCP Server section to README with:
-- Installation and setup instructions
-- 5 available tools: search, passages, expand_query, corpus_stats, add_document
-- Claude Desktop integration example
-- Example MCP config file
-
----
 
 ### 208. Create Claude Code Hooks Documentation
 
