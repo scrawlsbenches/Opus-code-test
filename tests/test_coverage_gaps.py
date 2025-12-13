@@ -1266,14 +1266,17 @@ class TestPersistenceTypedConnections(unittest.TestCase):
         from cortical.persistence import export_conceptnet_json
 
         processor = CorticalTextProcessor()
-        processor.process_document("doc1", "neural network")
-        processor.compute_all(verbose=False)
+        # Process two separate words to create tokens without co-occurrence connections
+        processor.process_document("doc1", "neural")
+        processor.process_document("doc2", "network")
+        # Don't call compute_all() - we want to test typed edges without
+        # co-occurrence connections that would accumulate weights
 
         layer0 = processor.layers[CorticalLayer.TOKENS]
         col1 = layer0.get_minicolumn("neural")
         col2 = layer0.get_minicolumn("network")
         if col1 and col2:
-            # Low weight connection
+            # Low weight typed connection only
             col1.add_typed_connection(col2.id, weight=0.3, relation_type='IsA', confidence=0.9)
 
         with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as f:
