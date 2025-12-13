@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 9
+**Pending Tasks:** 10
 **Completed Tasks:** 238 (see archive)
 
 **Legacy Test Cleanup:** ✅ COMPLETE - All 8 tasks investigated (#198-205)
@@ -32,7 +32,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| *None - all high priority completed* |||||
+| 206 | Replace pkl with git-friendly JSON state storage | Arch | - | Large |
 
 ### 🟡 Medium (Do This Month)
 
@@ -115,6 +115,85 @@ All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 ---
 
 ## Pending Task Details
+
+### 206. Replace pkl with Git-Friendly JSON State Storage
+
+**Meta:** `status:pending` `priority:high` `category:arch`
+**Files:** `cortical/persistence.py`, `cortical/state_storage.py` (new), `cortical/chunk_index.py`
+**Effort:** Large
+
+**Problem:** Pickle files cause merge conflicts in git collaboration. When multiple team members index documents, the binary `.pkl` files cannot be merged, and one version must be discarded. Additionally:
+- Pickle is Python-version specific and can break across upgrades
+- Binary format cannot be code-reviewed or diff'd
+- Security concerns with pickle deserialization
+
+**Current State:**
+- `chunk_index.py` already stores documents as git-friendly JSON chunks ✅
+- Full processor state (layers, connections, TF-IDF, PageRank) still uses pickle ❌
+
+**Solution:** Extend the chunk-based architecture to store ALL processor state as JSON:
+
+```
+corpus_state/
+├── manifest.json           # Version, checksums, staleness flags
+├── chunks/                  # Document content (existing chunk_index.py)
+├── layers/
+│   ├── L0_tokens.json      # Token minicolumns
+│   ├── L1_bigrams.json     # Bigram minicolumns
+│   ├── L2_concepts.json    # Concept clusters
+│   └── L3_documents.json   # Document minicolumns
+├── connections/
+│   ├── lateral.json        # Lateral connections (or split by layer)
+│   ├── typed.json          # Typed edges with relations
+│   └── cross_layer.json    # Feedforward/feedback connections
+├── computed/
+│   ├── tfidf.json          # TF-IDF scores per term
+│   ├── pagerank.json       # PageRank values
+│   └── embeddings.json     # Graph embeddings (optional, can be large)
+└── semantic_relations.json # Extracted relations
+```
+
+**Incremental Efficiency Strategy:**
+1. Use content hashing to detect changes (like chunk_index.py)
+2. Only re-serialize layers/files that changed
+3. Store computed values separately (can be regenerated from documents)
+4. Add `--rebuild-computed` flag to regenerate TF-IDF/PageRank from chunks
+
+**Implementation Phases:**
+
+**Phase 1: State Serialization Module**
+- Create `cortical/state_storage.py` with JSON serialization
+- Add `StateWriter` class (mirrors `ChunkWriter` pattern)
+- Add `StateLoader` class with hash validation
+- Implement incremental save (only changed components)
+
+**Phase 2: Integration with Processor**
+- Add `save_json(path)` and `load_json(path)` methods to processor
+- Maintain backward compatibility with `save()`/`load()` for pkl
+- Add migration utility: `migrate_pkl_to_json()`
+
+**Phase 3: Incremental Computed Value Updates**
+- Track which documents changed since last computation
+- Implement incremental TF-IDF update (add/remove terms)
+- Add manifest tracking for staleness
+
+**Quick Context:**
+- Entry point: `cortical/persistence.py::save_processor()` (line 25)
+- State structure: layers, documents, document_metadata, embeddings, semantic_relations
+- Existing pattern: `cortical/chunk_index.py::ChunkWriter` and `ChunkLoader` classes
+- Minicolumn serialization: `cortical/minicolumn.py::Minicolumn.to_dict()` (already exists)
+- Layer serialization: `cortical/layers.py::HierarchicalLayer.to_dict()` (already exists)
+
+**Acceptance Criteria:**
+- [ ] All processor state can be saved/loaded as JSON
+- [ ] No merge conflicts when multiple users index concurrently
+- [ ] Incremental saves only update changed components
+- [ ] Backward compatibility: can still load existing pkl files
+- [ ] Migration script converts pkl → JSON
+- [ ] Full test coverage for new module
+- [ ] Performance: save/load within 2x of pkl for typical corpus
+
+---
 
 ### 184. Implement MCP Server for Claude Desktop Integration
 
@@ -330,7 +409,7 @@ All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 | Category | Pending | Description |
 |----------|---------|-------------|
-| Arch | 5 | Architecture refactoring (#133, 134, 135, 95, 100) |
+| Arch | 6 | Architecture refactoring (#206, 133, 134, 135, 95, 100) |
 | DevEx | 3 | Developer experience, scripts (#75, 78, 80) |
 | Samples | 1 | Sample document improvements (#130) |
 
