@@ -1953,6 +1953,113 @@ class CorticalTextProcessor:
             use_code_concepts=use_code_concepts
         )
 
+    # =========================================================================
+    # SIMPLIFIED FACADE METHODS
+    # =========================================================================
+    # These methods provide simple, one-call interfaces for common use cases.
+    # They use sensible defaults and simplified return types.
+
+    def quick_search(self, query: str, top_n: int = 5) -> List[str]:
+        """
+        One-call document search with sensible defaults.
+
+        This is the simplest way to search. Returns just document IDs,
+        ranked by relevance.
+
+        Args:
+            query: Search query string
+            top_n: Number of results to return (default 5)
+
+        Returns:
+            List of document IDs ranked by relevance
+
+        Example:
+            >>> docs = processor.quick_search("pagerank algorithm")
+            >>> for doc_id in docs:
+            ...     print(doc_id)
+        """
+        results = self.find_documents_for_query(query, top_n=top_n)
+        return [doc_id for doc_id, _score in results]
+
+    def rag_retrieve(
+        self,
+        query: str,
+        top_n: int = 3,
+        max_chars_per_passage: int = 500
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve passages optimized for RAG (Retrieval-Augmented Generation).
+
+        Returns structured passage data ready for LLM context injection.
+        Each passage includes the text, source document, and position info.
+
+        Args:
+            query: Search query string
+            top_n: Number of passages to return (default 3)
+            max_chars_per_passage: Maximum characters per passage (default 500)
+
+        Returns:
+            List of passage dictionaries with keys:
+                - text: The passage text
+                - doc_id: Source document ID
+                - start: Start character position in document
+                - end: End character position in document
+                - score: Relevance score
+
+        Example:
+            >>> passages = processor.rag_retrieve("how does pagerank work")
+            >>> for p in passages:
+            ...     print(f"[{p['doc_id']}] {p['text'][:100]}...")
+        """
+        results = self.find_passages_for_query(
+            query,
+            top_n=top_n,
+            chunk_size=max_chars_per_passage
+        )
+        return [
+            {
+                'text': text,
+                'doc_id': doc_id,
+                'start': start,
+                'end': end,
+                'score': score
+            }
+            for text, doc_id, start, end, score in results
+        ]
+
+    def explore(self, query: str, top_n: int = 5) -> Dict[str, Any]:
+        """
+        Search with query expansion visibility.
+
+        Like quick_search, but also shows how the query was expanded.
+        Useful for understanding why certain results were returned
+        and for debugging search quality.
+
+        Args:
+            query: Search query string
+            top_n: Number of results to return (default 5)
+
+        Returns:
+            Dictionary with:
+                - results: List of (doc_id, score) tuples
+                - expansion: Dict mapping expanded terms to weights
+                - original_terms: List of original query terms
+
+        Example:
+            >>> result = processor.explore("neural network")
+            >>> print("Expanded to:", list(result['expansion'].keys())[:5])
+            >>> print("Top result:", result['results'][0][0])
+        """
+        expansion = self.expand_query(query)
+        results = self.find_documents_for_query(query, top_n=top_n)
+        original_terms = list(self.tokenizer.tokenize(query))
+
+        return {
+            'results': results,
+            'expansion': expansion,
+            'original_terms': original_terms
+        }
+
     def find_documents_with_boost(
         self,
         query_text: str,

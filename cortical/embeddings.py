@@ -353,6 +353,8 @@ def _spectral_embeddings(
     When sampled_terms is provided, only those terms get embeddings but the full graph
     structure is still used for computation.
     """
+    import warnings
+
     embeddings: Dict[str, List[float]] = {}
 
     # If sampling, use only sampled terms for the graph
@@ -364,6 +366,15 @@ def _spectral_embeddings(
     n = len(terms)
     if n == 0:
         return embeddings
+
+    # Warn about slow computation on large graphs
+    if n > 5000:
+        warnings.warn(
+            f"Spectral embeddings with {n} terms will be slow (O(n²) complexity). "
+            f"Consider using max_terms parameter or 'fast'/'tfidf' method instead.",
+            RuntimeWarning,
+            stacklevel=3  # Points to compute_graph_embeddings() caller
+        )
 
     term_to_idx = {t: i for i, t in enumerate(terms)}
     adjacency: Dict[int, Dict[int, float]] = defaultdict(dict)

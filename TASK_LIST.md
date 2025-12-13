@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 27
-**Completed Tasks:** 211 (see archive)
+**Pending Tasks:** 24
+**Completed Tasks:** 214 (see archive)
 
 **Legacy Test Cleanup:** 16 duplicated legacy tests removed, 13 remaining need investigation
 - See Tasks #198-205 for legacy test investigation
@@ -30,7 +30,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 186 | Add simplified facade methods (quick_search, rag_retrieve) | API | - | Small |
 | 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
 | 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
@@ -67,8 +66,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 129 | Test customer service retrieval quality | Testing | - | Small |
 | 130 | Expand customer service sample cluster | Samples | - | Medium |
 | 131 | Investigate cross-domain semantic bridges | Research | - | Medium |
-| 196 | Add runtime warning for spectral embeddings on large graphs | DevEx | - | Small |
-| 197 | Add task list validation to CI | TaskMgmt | - | Small |
 
 ### ⏸️ Deferred
 
@@ -105,6 +102,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Latest completions (2025-12-13):**
+- #197 Task list validation in CI - Added validate-task-list job to workflow
+- #186 Simplified facade methods - quick_search(), rag_retrieve(), explore() (23 tests)
+- #196 Spectral embeddings warning - RuntimeWarning for large graphs (>5000 terms)
 - #193 Unify alpha validation - retrofit_embeddings() now accepts [0,1] consistently
 - #194 Layer validation - Added checks for invalid layer values (0-3) in persistence/layers
 - #195 Stopwords import - semantics.py now uses Tokenizer.DEFAULT_STOP_WORDS
@@ -146,28 +146,6 @@ All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 ---
 
-### 186. Add Simplified Facade Methods
-
-**Meta:** `status:pending` `priority:medium` `category:api`
-**Files:** `cortical/processor.py`
-**Effort:** Small
-
-**Problem:** 80+ public methods; users don't know which to call for common tasks.
-
-**Solution:** Add purpose-focused facades:
-```python
-processor.quick_search(query)          # One-call document search
-processor.rag_retrieve(query, top_n=3) # Pre-configured for RAG
-processor.explore(query)               # With expansion visibility
-```
-
-**Acceptance:**
-- [ ] 3-4 facade methods added
-- [ ] Sensible defaults for each use case
-- [ ] Examples in quickstart.md
-
----
-
 ### 192. Deduplicate lateral_connections and typed_connections storage
 
 **Meta:** `status:pending` `priority:high` `category:memory`
@@ -184,44 +162,6 @@ Every typed connection is duplicated in `lateral_connections` for backward compa
 **Context from code review (2025-12-13):**
 - Found in comprehensive code review of core classes
 - Memory concern for large corpora with millions of edges
-
----
-
-### 196. Add runtime warning for spectral embeddings on large graphs
-
-**Meta:** `status:pending` `priority:low` `category:devex`
-**Files:** `cortical/embeddings.py`
-
-**Problem:**
-Spectral embeddings are O(n²) but there's no runtime warning when called with large graphs. Users may wait unexpectedly.
-
-**Fix:** Add warning for large graphs:
-```python
-if n > 5000:
-    import warnings
-    warnings.warn(f"Spectral embeddings with {n} terms will be slow (O(n²))")
-```
-
----
-
-### 197. Add Task List Validation to CI
-
-**Meta:** `status:pending` `priority:low` `category:taskmgmt`
-**Files:** `.github/workflows/ci.yml`, `scripts/validate_task_list.py`
-**Effort:** Small
-
-**Problem:** Task list staleness can accumulate unnoticed between reviews. Manual validation catches issues but isn't enforced.
-
-**Solution:** Add validation step to CI:
-```yaml
-- name: Validate task list
-  run: python scripts/validate_task_list.py
-```
-
-**Acceptance:**
-- [ ] CI runs `validate_task_list.py` on every PR
-- [ ] Fails build if stale tasks detected
-- [ ] Clear error messages guide resolution
 
 ---
 
@@ -369,14 +309,13 @@ These tasks were created during the test coverage review (2025-12-13). 16 duplic
 | Arch | 5 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
 | CodeQual | 1 | Code quality improvements (#99) |
 | Testing | 9 | Test coverage and legacy investigation (#129, 198-205) |
-| TaskMgmt | 4 | Task management system (#106, 107, 108, 197) |
+| TaskMgmt | 3 | Task management system (#106, 107, 108) |
 | AINav | 2 | AI assistant navigation (#117, 118) |
-| DevEx | 8 | Developer experience, scripts (#73-80, 196) |
+| DevEx | 7 | Developer experience, scripts (#73-80) |
 | Research | 2 | Research and analysis (#140, 131) |
 | Samples | 1 | Sample document improvements (#130) |
 | Integration | 1 | MCP Server (#184) |
 | Memory | 1 | Optimization (#192) |
-| API | 1 | Simplified facades (#186) |
 
 *Updated 2025-12-13 - Unit test initiative COMPLETE (85% coverage, 1,729 tests)*
 

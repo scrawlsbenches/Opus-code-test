@@ -45,6 +45,39 @@ ml_basics: 2.15
 
 The processor found relevant documents and ranked them by semantic similarity.
 
+## Simplified Facade Methods
+
+For common use cases, these simplified methods provide sensible defaults:
+
+### Quick Search (Just Doc IDs)
+
+```python
+# One-call search - returns just document IDs
+docs = processor.quick_search("neural learning")
+print(docs)  # ['ai_intro', 'ml_basics']
+```
+
+### RAG Retrieve (For LLMs)
+
+```python
+# Get passages ready for LLM context injection
+passages = processor.rag_retrieve("how do neural networks work", top_n=3)
+for p in passages:
+    print(f"[{p['doc_id']}] {p['text'][:60]}... (score: {p['score']:.2f})")
+```
+
+Each passage dict contains: `text`, `doc_id`, `start`, `end`, `score`.
+
+### Explore (With Query Expansion)
+
+```python
+# See how your query was expanded
+result = processor.explore("machine learning")
+print(f"Original: {result['original_terms']}")
+print(f"Expanded to: {list(result['expansion'].keys())[:5]}")
+print(f"Top result: {result['results'][0][0]}")
+```
+
 ## Understanding the Results
 
 The Cortical Text Processor builds a graph of your documents:

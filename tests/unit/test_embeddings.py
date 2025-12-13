@@ -959,6 +959,43 @@ class TestSpectralEmbeddings:
         for term in ["a", "b", "c", "d"]:
             assert term in embeddings
 
+    def test_large_graph_warning(self):
+        """Emits RuntimeWarning for graphs with >5000 terms."""
+        import warnings
+        # Create layer with >5000 terms
+        cols = [
+            MockMinicolumn(content=f"term{i}")
+            for i in range(5001)
+        ]
+        layer = MockHierarchicalLayer(cols, level=0)
+
+        random.seed(42)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            # Use iterations=1 and dimensions=1 for speed
+            _spectral_embeddings(layer, dimensions=1, iterations=1)
+
+            # Should have emitted a RuntimeWarning
+            assert len(w) >= 1
+            warning_messages = [str(warning.message) for warning in w]
+            assert any("5001 terms will be slow" in msg for msg in warning_messages)
+            assert any("O(n²)" in msg for msg in warning_messages)
+
+    def test_small_graph_no_warning(self):
+        """No warning for graphs with <=5000 terms."""
+        import warnings
+        cols = [MockMinicolumn(content=f"term{i}") for i in range(100)]
+        layer = MockHierarchicalLayer(cols, level=0)
+
+        random.seed(42)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            _spectral_embeddings(layer, dimensions=2, iterations=1)
+
+            # Should NOT have emitted a RuntimeWarning about large graphs
+            warning_messages = [str(warning.message) for warning in w]
+            assert not any("will be slow" in msg for msg in warning_messages)
+
 
 # =============================================================================
 # EMBEDDING SIMILARITY
