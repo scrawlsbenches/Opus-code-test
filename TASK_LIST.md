@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 24
-**Completed Tasks:** 214 (see archive)
+**Pending Tasks:** 23
+**Completed Tasks:** 215 (see archive)
 
 **Legacy Test Cleanup:** 16 duplicated legacy tests removed, 13 remaining need investigation
 - See Tasks #198-205 for legacy test investigation
@@ -24,7 +24,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
 | 184 | Implement MCP Server for Claude Desktop integration | Integration | - | Large |
-| 192 | Deduplicate lateral_connections and typed_connections storage | Memory | - | Medium |
 
 ### 🟡 Medium (Do This Month)
 
@@ -102,6 +101,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Latest completions (2025-12-13):**
+- #192 Deduplicate connections storage - typed_connections is now single source of truth, lateral_connections is cached property (15 tests)
 - #197 Task list validation in CI - Added validate-task-list job to workflow
 - #186 Simplified facade methods - quick_search(), rag_retrieve(), explore() (23 tests)
 - #196 Spectral embeddings warning - RuntimeWarning for large graphs (>5000 terms)
@@ -143,25 +143,6 @@ All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 - [ ] 5+ core tools implemented
 - [ ] Documentation for installation
 - [ ] Example MCP config file
-
----
-
-### 192. Deduplicate lateral_connections and typed_connections storage
-
-**Meta:** `status:pending` `priority:high` `category:memory`
-**Files:** `cortical/minicolumn.py`
-
-**Problem:**
-Every typed connection is duplicated in `lateral_connections` for backward compatibility (`minicolumn.py:209-212`). For large graphs, this doubles memory for edge weights.
-
-**Options:**
-1. Deprecate `lateral_connections` in favor of `typed_connections`
-2. Make `lateral_connections` a property that derives from `typed_connections`
-3. Keep both but document the trade-off
-
-**Context from code review (2025-12-13):**
-- Found in comprehensive code review of core classes
-- Memory concern for large corpora with millions of edges
 
 ---
 
@@ -315,7 +296,6 @@ These tasks were created during the test coverage review (2025-12-13). 16 duplic
 | Research | 2 | Research and analysis (#140, 131) |
 | Samples | 1 | Sample document improvements (#130) |
 | Integration | 1 | MCP Server (#184) |
-| Memory | 1 | Optimization (#192) |
 
 *Updated 2025-12-13 - Unit test initiative COMPLETE (85% coverage, 1,729 tests)*
 
