@@ -88,6 +88,9 @@ def load_processor(
 
     Returns:
         Tuple of (layers, documents, document_metadata, embeddings, semantic_relations, metadata)
+
+    Raises:
+        ValueError: If layer values are invalid (must be 0-3)
     """
     with open(filepath, 'rb') as f:
         state = pickle.load(f)
@@ -95,8 +98,15 @@ def load_processor(
     # Reconstruct layers
     layers = {}
     for level_value, layer_data in state.get('layers', {}).items():
+        # Validate layer value before creating enum
+        level_int = int(level_value)
+        if level_int not in [0, 1, 2, 3]:
+            raise ValueError(
+                f"Invalid layer value {level_int} in saved state. "
+                f"Layer values must be 0-3 (TOKENS=0, BIGRAMS=1, CONCEPTS=2, DOCUMENTS=3)."
+            )
         layer = HierarchicalLayer.from_dict(layer_data)
-        layers[CorticalLayer(int(level_value))] = layer
+        layers[CorticalLayer(level_int)] = layer
 
     documents = state.get('documents', {})
     document_metadata = state.get('document_metadata', {})

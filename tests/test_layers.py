@@ -203,6 +203,44 @@ class TestHierarchicalLayer(unittest.TestCase):
         self.assertEqual(top[1][0], "c")  # Second highest
         self.assertEqual(top[1][1], 5.0)
 
+    def test_from_dict_validates_layer_value(self):
+        """Test that from_dict validates layer values."""
+        # Valid layer values (0-3) should work
+        for valid_level in [0, 1, 2, 3]:
+            data = {'level': valid_level, 'minicolumns': {}}
+            layer = HierarchicalLayer.from_dict(data)
+            self.assertEqual(layer.level, CorticalLayer(valid_level))
+
+    def test_from_dict_rejects_invalid_positive_layer_value(self):
+        """Test that from_dict rejects layer values > 3."""
+        data = {'level': 5, 'minicolumns': {}}
+        with self.assertRaises(ValueError) as context:
+            HierarchicalLayer.from_dict(data)
+
+        # Check error message is informative
+        self.assertIn("Invalid layer value 5", str(context.exception))
+        self.assertIn("must be 0-3", str(context.exception))
+
+    def test_from_dict_rejects_negative_layer_value(self):
+        """Test that from_dict rejects negative layer values."""
+        data = {'level': -1, 'minicolumns': {}}
+        with self.assertRaises(ValueError) as context:
+            HierarchicalLayer.from_dict(data)
+
+        # Check error message is informative
+        self.assertIn("Invalid layer value -1", str(context.exception))
+        self.assertIn("must be 0-3", str(context.exception))
+
+    def test_from_dict_rejects_large_invalid_layer_value(self):
+        """Test that from_dict rejects large invalid layer values."""
+        data = {'level': 999, 'minicolumns': {}}
+        with self.assertRaises(ValueError) as context:
+            HierarchicalLayer.from_dict(data)
+
+        # Check error message is informative
+        self.assertIn("Invalid layer value 999", str(context.exception))
+        self.assertIn("must be 0-3", str(context.exception))
+
 
 class TestCorticalLayerEnum(unittest.TestCase):
     """Test the CorticalLayer enum."""

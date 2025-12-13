@@ -286,14 +286,24 @@ class HierarchicalLayer:
     def from_dict(cls, data: Dict) -> 'HierarchicalLayer':
         """
         Create a layer from dictionary representation.
-        
+
         Args:
             data: Dictionary with layer data
-            
+
         Returns:
             New HierarchicalLayer instance
+
+        Raises:
+            ValueError: If layer value is invalid (must be 0-3)
         """
-        layer = cls(CorticalLayer(data['level']))
+        # Validate layer value before creating enum
+        level_value = data['level']
+        if level_value not in [0, 1, 2, 3]:
+            raise ValueError(
+                f"Invalid layer value {level_value} in layer data. "
+                f"Layer values must be 0-3 (TOKENS=0, BIGRAMS=1, CONCEPTS=2, DOCUMENTS=3)."
+            )
+        layer = cls(CorticalLayer(level_value))
         for content, col_data in data.get('minicolumns', {}).items():
             col = Minicolumn.from_dict(col_data)
             layer.minicolumns[content] = col

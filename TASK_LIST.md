@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 43
-**Completed Tasks:** 186 (see archive)
+**Pending Tasks:** 40
+**Completed Tasks:** 189 (see archive)
 
 **Unit Test Initiative:** ✅ COMPLETE - 85% coverage from unit tests (1,729 tests)
 - 19 modules at 90%+ coverage
@@ -34,8 +34,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 95 | Split processor.py into modules | Arch | 97 | Large |
 | 99 | Add input validation to public methods | CodeQual | - | Medium |
 | 107 | Add Quick Context to tasks | TaskMgmt | - | Medium |
-| 193 | Unify alpha parameter validation in semantics.py | CodeQual | - | Small |
-| 194 | Add validation for invalid layer values in persistence.py load | CodeQual | - | Small |
 
 ### 🟢 Low (Backlog)
 
@@ -58,7 +56,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 129 | Test customer service retrieval quality | Testing | - | Small |
 | 130 | Expand customer service sample cluster | Samples | - | Medium |
 | 131 | Investigate cross-domain semantic bridges | Research | - | Medium |
-| 195 | Import stopwords from tokenizer.py in semantics.py | CodeQual | - | Small |
 | 196 | Add runtime warning for spectral embeddings on large graphs | DevEx | - | Small |
 
 ### ⏸️ Deferred
@@ -94,6 +91,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Latest completions (2025-12-13):**
+- #193 Unify alpha validation - retrofit_embeddings() now accepts [0,1] consistently
+- #194 Layer validation - Added checks for invalid layer values (0-3) in persistence/layers
+- #195 Stopwords import - semantics.py now uses Tokenizer.DEFAULT_STOP_WORDS
 - #148 Performance test refactor - Moved to small synthetic corpus (25 docs)
 - #149 Performance test fix - Tests now use small_corpus.py fixtures
 - #182 Fluent API - FluentProcessor with method chaining (44 tests)
