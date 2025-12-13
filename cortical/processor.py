@@ -989,7 +989,7 @@ class CorticalTextProcessor:
         clustering_method: str = 'louvain',
         cluster_strictness: Optional[float] = None,
         bridge_weight: float = 0.0,
-        resolution: float = 1.0,
+        resolution: Optional[float] = None,
         verbose: bool = True
     ) -> Dict[int, List[str]]:
         """
@@ -1010,10 +1010,11 @@ class CorticalTextProcessor:
                 - 0.0: Minimal clustering, most tokens group together
             bridge_weight: For label_propagation only. Weight for synthetic
                 inter-document connections (0.0-1.0).
-            resolution: For louvain only. Resolution parameter for modularity.
+            resolution: For louvain only. Resolution parameter for modularity
+                (default from config.louvain_resolution, typically 2.0).
                 - Higher values (>1.0): More, smaller clusters
                 - Lower values (<1.0): Fewer, larger clusters
-                - 1.0 (default): Standard modularity
+                - 2.0 (recommended default): ~50-100 clusters for medium corpora
             verbose: Print progress messages
 
         Returns:
@@ -1039,6 +1040,8 @@ class CorticalTextProcessor:
             min_cluster_size = self.config.min_cluster_size
         if cluster_strictness is None:
             cluster_strictness = self.config.cluster_strictness
+        if resolution is None:
+            resolution = self.config.louvain_resolution
 
         if clustering_method == 'louvain':
             clusters = analysis.cluster_by_louvain(
