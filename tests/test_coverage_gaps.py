@@ -761,15 +761,17 @@ class TestSemanticsRetrofitCoverage(unittest.TestCase):
             retrofit_connections(processor.layers, [], alpha=-0.1)
         self.assertIn("between 0 and 1", str(ctx.exception))
 
-    def test_retrofit_embeddings_invalid_alpha_zero(self):
-        """Test retrofit_embeddings raises ValueError when alpha <= 0."""
+    def test_retrofit_embeddings_invalid_alpha_negative(self):
+        """Test retrofit_embeddings raises ValueError when alpha < 0."""
         from cortical.semantics import retrofit_embeddings
 
         embeddings = {"word1": [0.1, 0.2], "word2": [0.3, 0.4]}
 
+        # alpha=0 is now valid (means 100% semantic, 0% original)
+        # Test negative alpha which is still invalid
         with self.assertRaises(ValueError) as ctx:
-            retrofit_embeddings(embeddings, [], alpha=0.0)
-        self.assertIn("exclusive of 0", str(ctx.exception))
+            retrofit_embeddings(embeddings, [], alpha=-0.1)
+        self.assertIn("between 0 and 1", str(ctx.exception))
 
     def test_retrofit_embeddings_invalid_alpha_too_high(self):
         """Test retrofit_embeddings raises ValueError when alpha > 1."""
