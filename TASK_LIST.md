@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 42
+**Pending Tasks:** 47
 **Completed Tasks:** 170+ (see archive and Recently Completed)
 
 **Unit Test Initiative:** ✅ COMPLETE - 85% coverage from unit tests (1,729 tests)
@@ -26,6 +26,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 |---|------|----------|---------|--------|
 | 148 | Investigate test_search_is_fast taking 137s | Testing | - | Medium |
 | 149 | Fix test_compute_all_under_threshold failing (135s > 30s) | Testing | - | Medium |
+| 179 | Deduplicate lateral_connections and typed_connections storage | Memory | - | Medium |
 
 ### 🟡 Medium (Do This Month)
 
@@ -37,6 +38,8 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 95 | Split processor.py into modules | Arch | 97 | Large |
 | 99 | Add input validation to public methods | CodeQual | - | Medium |
 | 107 | Add Quick Context to tasks | TaskMgmt | - | Medium |
+| 180 | Unify alpha parameter validation in semantics.py | CodeQual | - | Small |
+| 181 | Add validation for invalid layer values in persistence.py load | CodeQual | - | Small |
 
 ### 🟢 Low (Backlog)
 
@@ -59,6 +62,8 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 129 | Test customer service retrieval quality | Testing | - | Small |
 | 130 | Expand customer service sample cluster | Samples | - | Medium |
 | 131 | Investigate cross-domain semantic bridges | Research | - | Medium |
+| 182 | Import stopwords from tokenizer.py in semantics.py | CodeQual | - | Small |
+| 183 | Add runtime warning for spectral embeddings on large graphs | DevEx | - | Small |
 
 ### ⏸️ Deferred
 
@@ -179,6 +184,86 @@ Created comprehensive test doubles (600+ lines) enabling isolated unit testing:
 5. **Graph helpers** - `layers_to_graph()`, `layers_to_adjacency()` for algorithm testing
 
 **Verification:** 39 unit tests in test_mocks.py, all passing.
+
+---
+
+### 179. Deduplicate lateral_connections and typed_connections storage
+
+**Meta:** `status:pending` `priority:high` `category:memory`
+**Files:** `cortical/minicolumn.py`
+
+**Problem:**
+Every typed connection is duplicated in `lateral_connections` for backward compatibility (`minicolumn.py:209-212`). For large graphs, this doubles memory for edge weights.
+
+**Options:**
+1. Deprecate `lateral_connections` in favor of `typed_connections`
+2. Make `lateral_connections` a property that derives from `typed_connections`
+3. Keep both but document the trade-off
+
+**Context from code review (2025-12-13):**
+- Found in comprehensive code review of core classes
+- Memory concern for large corpora with millions of edges
+
+---
+
+### 180. Unify alpha parameter validation in semantics.py
+
+**Meta:** `status:pending` `priority:medium` `category:codequal`
+**Files:** `cortical/semantics.py`
+
+**Problem:**
+`retrofit_connections()` allows `alpha=0` but `retrofit_embeddings()` excludes it:
+- Line 405-408: `if not (0 <= alpha <= 1):`
+- Line 507-508: `if not (0 < alpha <= 1):`
+
+**Fix:** Either document why the difference exists or unify the validation.
+
+---
+
+### 181. Add validation for invalid layer values in persistence.py load
+
+**Meta:** `status:pending` `priority:medium` `category:codequal`
+**Files:** `cortical/persistence.py`
+
+**Problem:**
+In `load_processor()` (line 97-99), if `level_value` isn't a valid `CorticalLayer` enum value (0-3), an unclear `ValueError` is raised.
+
+**Fix:** Add explicit validation with helpful error message:
+```python
+try:
+    layer_enum = CorticalLayer(int(level_value))
+except ValueError:
+    raise ValueError(f"Invalid layer level in saved state: {level_value}")
+```
+
+---
+
+### 182. Import stopwords from tokenizer.py in semantics.py
+
+**Meta:** `status:pending` `priority:low` `category:codequal`
+**Files:** `cortical/semantics.py`, `cortical/tokenizer.py`
+
+**Problem:**
+`semantics.py` (lines 144-151) has its own hardcoded stopword set that duplicates `Tokenizer.DEFAULT_STOP_WORDS`. Changes to one won't affect the other.
+
+**Fix:** Import from `Tokenizer.DEFAULT_STOP_WORDS` or move to `constants.py`.
+
+---
+
+### 183. Add runtime warning for spectral embeddings on large graphs
+
+**Meta:** `status:pending` `priority:low` `category:devex`
+**Files:** `cortical/embeddings.py`
+
+**Problem:**
+Spectral embeddings are O(n²) but there's no runtime warning when called with large graphs. Users may wait unexpectedly.
+
+**Fix:** Add warning for large graphs:
+```python
+if n > 5000:
+    import warnings
+    warnings.warn(f"Spectral embeddings with {n} terms will be slow (O(n²))")
+```
 
 ---
 
