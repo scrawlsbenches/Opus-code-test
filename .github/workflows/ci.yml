@@ -163,15 +163,14 @@ jobs:
       run: |
         echo "=== Running Integration Tests ==="
         # Run integration tests - single pytest call is faster than multiple unittest discovers
-        # Includes tests/integration/ plus remaining legacy tests (not yet migrated)
-        # Note: 16 legacy tests removed 2025-12-13 - now covered by tests/unit/
+        # Includes tests/integration/ plus remaining legacy tests that provide unique coverage
+        # Note: 3 legacy tests removed 2025-12-13 (test_behavioral.py, test_intent_query.py,
+        #       test_query_optimization.py) - now covered by unit tests
         coverage run --source=cortical -m pytest \
           tests/integration/ \
           tests/test_incremental_indexing.py \
           tests/test_edge_cases.py \
           tests/test_coverage_gaps.py \
-          tests/test_query_optimization.py \
-          tests/test_intent_query.py \
           tests/test_analyze_louvain_resolution.py \
           tests/test_evaluate_cluster.py \
           tests/test_cli_wrapper.py \
@@ -243,8 +242,8 @@ jobs:
     - name: Run behavioral tests
       run: |
         echo "=== Running Behavioral Tests ==="
-        # Includes tests/behavioral/ plus legacy test_behavioral.py
-        python -m pytest tests/behavioral/ tests/test_behavioral.py -v --tb=short
+        # Note: tests/test_behavioral.py removed 2025-12-13 - superseded by tests/behavioral/
+        python -m pytest tests/behavioral/ -v --tb=short
         echo "✅ Behavioral quality verified"
 
   # ==========================================================================
