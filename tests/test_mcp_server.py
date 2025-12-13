@@ -172,6 +172,14 @@ class TestPassagesTool(TestMCPServerToolsBase):
 
         self.assertIn("passages", result)
 
+    def test_passages_invalid_top_n(self):
+        """Test passages with invalid top_n (< 1)."""
+        import asyncio
+        result = asyncio.run(self.async_passages(query="neural", top_n=0))
+
+        self.assertIn("error", result)
+        self.assertEqual(result["count"], 0)
+
 
 class TestExpandQueryTool(TestMCPServerToolsBase):
     """Test the expand_query tool."""
@@ -252,6 +260,18 @@ class TestCorpusStatsTool(TestMCPServerToolsBase):
 
         result = asyncio.run(get_stats())
         self.assertIsInstance(result, dict)
+
+    def test_corpus_stats_serialization(self):
+        """Test corpus stats handles complex types for JSON serialization."""
+        import asyncio
+        result = asyncio.run(self.async_corpus_stats())
+
+        # Verify result is JSON-serializable
+        import json
+        try:
+            json.dumps(result)
+        except (TypeError, ValueError) as e:
+            self.fail(f"Result is not JSON-serializable: {e}")
 
 
 class TestAddDocumentTool(TestMCPServerToolsBase):
