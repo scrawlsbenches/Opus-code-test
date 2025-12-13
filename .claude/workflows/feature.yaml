@@ -1,0 +1,90 @@
+# Workflow: Feature Implementation
+# Creates tasks for implementing a new feature
+
+name: "Feature"
+description: "Design -> Implement -> Test -> Review"
+category: "feature"
+
+variables:
+  - name: feature_name
+    description: "Name of the feature"
+    required: true
+  - name: priority
+    description: "Feature priority"
+    default: "medium"
+    choices: ["high", "medium", "low"]
+  - name: effort
+    description: "Overall effort estimate"
+    default: "large"
+    choices: ["small", "medium", "large"]
+
+tasks:
+  - id: design
+    title: "Design: {feature_name}"
+    category: "arch"
+    priority: "{priority}"
+    effort: "medium"
+    description: |
+      Design the API and architecture for: {feature_name}
+
+      Deliverables:
+      - API design (function signatures, data structures)
+      - Integration points with existing code
+      - Edge cases to handle
+
+  - id: implement
+    title: "Implement: {feature_name}"
+    category: "feature"
+    priority: "{priority}"
+    effort: "{effort}"
+    depends_on: [design]
+    description: |
+      Implement the core functionality for: {feature_name}
+
+      Checklist:
+      - [ ] Core logic implemented
+      - [ ] Error handling added
+      - [ ] Follows existing code patterns
+
+  - id: unit_tests
+    title: "Unit tests for: {feature_name}"
+    category: "test"
+    priority: "high"
+    effort: "medium"
+    depends_on: [implement]
+    description: |
+      Write comprehensive unit tests.
+
+      Coverage requirements:
+      - Happy path scenarios
+      - Edge cases
+      - Error conditions
+      - Target: 90%+ coverage for new code
+
+  - id: integration_tests
+    title: "Integration tests for: {feature_name}"
+    category: "test"
+    priority: "high"
+    effort: "medium"
+    depends_on: [implement]
+    description: |
+      Write integration tests verifying feature works with existing system.
+
+      Test scenarios:
+      - End-to-end workflows
+      - Interaction with other components
+      - Performance characteristics
+
+  - id: documentation
+    title: "Documentation for: {feature_name}"
+    category: "docs"
+    priority: "medium"
+    effort: "small"
+    depends_on: [unit_tests, integration_tests]
+    description: |
+      Document the new feature.
+
+      Include:
+      - Usage examples
+      - API reference updates
+      - CLAUDE.md updates if applicable
