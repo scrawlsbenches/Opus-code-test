@@ -1205,3 +1205,71 @@ class MyClass:
         # Results should match
         assert len(batch) == 1
         assert len(batch[0]) == len(single)
+
+    def test_doc_type_boosting_changes_scores(self):
+        """Doc-type boosting changes scores for test files.
+
+        Task #180: Verify that apply_doc_boost parameter actually affects scores.
+        Test files (with 'test' in name) should get lower scores when boosted.
+        """
+        # Create two documents: regular code and test file
+        col = MockMinicolumn(
+            content="filter",
+            tfidf=2.0,
+            document_ids={"data_processor.py", "test_data_processor.py"}
+        )
+        layers = MockLayers.empty()
+        layers[0] = MockHierarchicalLayer([col])
+        tokenizer = Tokenizer()
+        documents = {
+            "data_processor.py": "filter data records efficiently",
+            "test_data_processor.py": "filter data records in tests",
+        }
+
+        # Without boosting
+        results_no_boost = find_passages_for_query(
+            "filter data", layers, tokenizer, documents,
+            apply_doc_boost=False, use_expansion=False, use_definition_search=False
+        )
+
+        # With boosting (prefer_docs=True to enable boosting)
+        results_with_boost = find_passages_for_query(
+            "filter data", layers, tokenizer, documents,
+            apply_doc_boost=True, prefer_docs=True, use_expansion=False, use_definition_search=False
+        )
+
+        # Both should return results
+        assert len(results_no_boost) > 0
+        assert len(results_with_boost) > 0
+
+        # Extract scores for each document
+        def get_scores_by_doc(results):
+            scores = {}
+            for _, doc_id, _, _, score in results:
+                if doc_id not in scores or score > scores[doc_id]:
+                    scores[doc_id] = score
+            return scores
+
+        scores_no_boost = get_scores_by_doc(results_no_boost)
+        scores_with_boost = get_scores_by_doc(results_with_boost)
+
+        # Without boosting, both files should have similar scores
+        # (may differ slightly due to document length normalization)
+
+        # With boosting, test file should have lower score than regular file
+        if "data_processor.py" in scores_with_boost and "test_data_processor.py" in scores_with_boost:
+            # Test file should be penalized (0.8x boost vs 1.0x)
+            assert scores_with_boost["test_data_processor.py"] < scores_with_boost["data_processor.py"], \
+                f"Test file should have lower score with boosting. " \
+                f"Got test={scores_with_boost['test_data_processor.py']:.3f}, " \
+                f"regular={scores_with_boost['data_processor.py']:.3f}"
+
+        # Verify scores actually changed between boosted and non-boosted
+        # At least one document's score should be different
+        changed = False
+        for doc_id in set(scores_no_boost.keys()) & set(scores_with_boost.keys()):
+            if abs(scores_no_boost[doc_id] - scores_with_boost[doc_id]) > 0.001:
+                changed = True
+                break
+
+        assert changed, "Boosting should change at least one document's score"

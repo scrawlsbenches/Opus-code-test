@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 42
-**Completed Tasks:** 170+ (see archive and Recently Completed)
+**Pending Tasks:** 44
+**Completed Tasks:** 184 (see archive)
 
 **Unit Test Initiative:** ✅ COMPLETE - 85% coverage from unit tests (1,729 tests)
 - 19 modules at 90%+ coverage
@@ -16,21 +16,19 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 <!-- Machine-parseable format for automation -->
 
-### 🔴 Critical (Do Now)
-
-*All critical tasks completed!*
-
 ### 🟠 High (Do This Week)
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
 | 148 | Investigate test_search_is_fast taking 137s | Testing | - | Medium |
 | 149 | Fix test_compute_all_under_threshold failing (135s > 30s) | Testing | - | Medium |
+| 184 | Implement MCP Server for Claude Desktop integration | Integration | - | Large |
 
 ### 🟡 Medium (Do This Month)
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
+| 186 | Add simplified facade methods (quick_search, rag_retrieve) | API | - | Small |
 | 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
 | 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
@@ -70,115 +68,84 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 7 | Document magic numbers in gaps.py | Low priority, functional as-is |
 | 42 | Add simple query language | Nice-to-have, not blocking |
 | 44 | Remove deprecated feedforward_sources | Cleanup, low impact |
-| 46 | Standardize return types with dataclasses | Nice-to-have |
+| 46 | Standardize return types with dataclasses | Superseded by #185 |
+
+### 🔮 Future (Async/Advanced)
+
+| # | Task | Category | Notes |
+|---|------|----------|-------|
+| 187 | Add async API support (AsyncCorticalTextProcessor) | Architecture | Enables FastAPI, async frameworks |
+| 188 | Add streaming query results | Architecture | Depends on #187 |
+| 189 | Add observability hooks (timing, traces, metrics) | DevEx | OpenTelemetry integration |
+| 190 | Create REST API wrapper (FastAPI) | Integration | Depends on #187 |
+| 191 | Add Interactive REPL mode | DevEx | `python -m cortical --interactive` |
 
 ### 🔄 In Progress
 
-| # | Task | Started | Notes |
-|---|------|---------|-------|
-| 87 | Add Python code samples and showcase | 2025-12-11 | samples/*.py created |
+*No tasks currently in progress*
 
 ---
 
-## Recently Completed (Last 7 Days)
+## Recently Completed
 
-| # | Task | Completed | Notes |
-|---|------|-----------|-------|
-| 159-178 | **Unit Test Coverage Initiative** | 2025-12-13 | 1,729 tests, 85% overall coverage, 19 modules at 90%+ |
-| 159 | Unit tests for tokenizer.py | 2025-12-13 | 77 tests, 99% coverage |
-| 160 | Unit tests for embeddings.py | 2025-12-13 | 72 tests, 98% coverage |
-| 161 | Unit tests for layers.py | 2025-12-13 | 70 tests, 99% coverage |
-| 162 | Unit tests for minicolumn.py | 2025-12-13 | 54 tests, 100% coverage |
-| 163 | Unit tests for fingerprint.py | 2025-12-13 | 61 tests, 99% coverage |
-| 164 | Unit tests for gaps.py | 2025-12-13 | 49 tests, 98% coverage |
-| 165-166 | Unit tests for processor.py | 2025-12-13 | 290 tests, 85% coverage |
-| 167 | Unit tests for chunk_index.py | 2025-12-13 | 82 tests, 98% coverage |
-| 168 | Unit tests for config.py | 2025-12-13 | 84 tests, 100% coverage |
-| 169 | Unit tests for code_concepts.py | 2025-12-13 | 78 tests, 98% coverage |
-| 170 | Unit tests for query/expansion.py | 2025-12-13 | 61 tests, 94% coverage |
-| 171 | Unit tests for query/search.py | 2025-12-13 | 52 tests, 95% coverage |
-| 172 | Unit tests for query/passages.py | 2025-12-13 | 94 tests, 92% coverage |
-| 173 | Unit tests for query/definitions.py | 2025-12-13 | 72 tests, 100% coverage |
-| 174 | Unit tests for query/analogy.py | 2025-12-13 | 55 tests, 90% coverage |
-| 175 | Unit tests for query/ranking.py | 2025-12-13 | 65 tests, 99% coverage |
-| 176 | Unit tests for analysis.py | 2025-12-13 | 140 tests, 94% coverage |
-| 177 | Unit tests for semantics.py | 2025-12-13 | 99 tests, 91% coverage |
-| 178 | Unit tests for persistence.py | 2025-12-13 | 76 tests, 94% coverage |
-| 157 | Add unit tests for semantics.py | 2025-12-12 | 48 tests, 24% coverage - superseded by #177 for 90% target |
-| 158 | Add unit tests for persistence.py | 2025-12-12 | 36 tests, 18% coverage - superseded by #178 for 90% target |
-| 153 | Refactor query/* for unit testability (partial) | 2025-12-12 | intent.py 72%, chunking.py 60% - remaining modules in #170-175 |
-| 154 | Add unit tests for query/* (partial) | 2025-12-12 | 67 tests for intent/chunking - remaining modules in #170-175 |
-| 150 | Create unit test fixtures and mocks for core data structures | 2025-12-12 | MockMinicolumn, MockHierarchicalLayer, MockLayers factory, LayerBuilder fluent API |
-| 138 | Use sparse matrix multiplication for bigram connections | 2025-12-12 | Zero-dep SparseMatrix class in analysis.py for O(n²) → O(n*k) improvement |
-| 98 | Replace print() with logging | 2025-12-12 | 52+ print statements → logging.info(), all modules use getLogger(__name__) |
-| 102 | Add tests for edge cases | 2025-12-12 | 53 new tests in test_edge_cases.py: Unicode, large docs, malformed inputs |
-| 115 | Create component interaction diagram | 2025-12-12 | docs/architecture.md with ASCII + Mermaid diagrams, module dependencies |
-| 147 | Fix misleading hardcoded values | 2025-12-12 | 5 fixes: backwards param names, sparsity threshold, config constant, tolerance param, confidence semantics |
-| 139 | Batch bigram connection updates to reduce dict overhead | 2025-12-12 | add_lateral_connections_batch() method in minicolumn.py |
-| 137 | Cap bigram connections to top-K per bigram | 2025-12-12 | max_connections_per_bigram parameter (default 50) in analysis.py |
-| 116 | Document return value semantics | 2025-12-12 | Edge cases, score ranges, None vs exceptions, default parameters |
-| 114 | Add type aliases for complex types | 2025-12-12 | cortical/types.py with 20+ aliases: DocumentScore, PassageResult, SemanticRelation, etc. |
-| 113 | Document staleness tracking system | 2025-12-12 | Comprehensive docs in CLAUDE.md: computation types, API, incremental updates |
-| 96 | Centralize duplicate constants | 2025-12-12 | cortical/constants.py with RELATION_WEIGHTS, DOC_TYPE_BOOSTS, query keywords |
-| 91 | Create docs/README.md index | 2025-12-12 | Navigation by audience, reading paths, categorized docs |
-| 92 | Add badges to README.md | 2025-12-12 | Python, License, Tests, Coverage, Zero Dependencies badges |
-| 93 | Update README with docs references | 2025-12-12 | Documentation section with table linking to docs/*.md |
-| 146 | Create behavioral tests for core user workflows | 2025-12-12 | 11 tests across 4 categories: Search, Performance, Quality, Robustness |
-| 145 | Improve graph embedding quality for common terms | 2025-12-12 | Added 'tfidf' method, IDF weighting to 'fast' method |
-| 143 | Investigate negative silhouette score in clustering | 2025-12-12 | Expected behavior: modularity ≠ silhouette (graph vs doc similarity) |
-| 142 | Investigate 74s compute_all() performance regression | 2025-12-12 | 5.2x speedup via fast embeddings + sampling (74s → 14s) |
-| 144 | Boost exact document name matches in search | 2025-12-12 | doc_name_boost parameter in search functions |
-| 141 | Filter Python keywords/artifacts from analysis | 2025-12-12 | CODE_NOISE_TOKENS + filter_code_noise tokenizer option |
-| 94 | Split query.py into focused modules | 2025-12-12 | 8 modules: expansion, search, passages, chunking, intent, definitions, ranking, analogy |
-| 97 | Integrate CorticalConfig into processor | 2025-12-11 | Config stored on processor, used in method defaults, saved/loaded |
-| 127 | Create cluster coverage evaluation script | 2025-12-11 | scripts/evaluate_cluster.py with 24 tests |
-| 125 | Add clustering quality metrics (modularity, silhouette) | 2025-12-11 | compute_clustering_quality() in analysis.py, showcase display |
-| 124 | Add minimum cluster count regression tests | 2025-12-11 | 4 new tests: coherence, showcase count, mega-cluster, distribution |
-| 128 | Fix definition boost that favors test mocks over real implementations | 2025-12-11 | Added is_test_file() and test file penalty |
-| 132 | Profile full-analysis bottleneck (bigram, semantics O(n²)) | 2025-12-11 | Created profile_full_analysis.py, fixed bottlenecks |
-| 136 | Optimize semantics O(n²) similarity with early termination | 2025-12-11 | Added max_similarity_pairs, min_context_keys |
-| 126 | Investigate optimal Louvain resolution for sample corpus | 2025-12-11 | Research confirms default 1.0 is optimal |
-| 123 | Replace label propagation with Louvain community detection | 2025-12-11 | Implemented Louvain algorithm, 34 clusters for 92 docs |
-| 122 | Investigate Concept Layer & Embeddings regressions | 2025-12-11 | Fixed inverted strictness, improved embeddings |
-| 119 | Create AI metadata generator script | 2025-12-11 | scripts/generate_ai_metadata.py with tests |
-| 120 | Add AI metadata loader to Claude skills | 2025-12-11 | ai-metadata skill created |
-| 121 | Auto-regenerate AI metadata on changes | 2025-12-11 | Documented in CLAUDE.md, skills |
-| 88 | Create package installation files | 2025-12-11 | pyproject.toml, requirements.txt |
-| 89 | Create CONTRIBUTING.md | 2025-12-11 | Contribution guide |
-| 90 | Create docs/quickstart.md | 2025-12-11 | 5-minute tutorial |
-| 103 | Add Priority Backlog Summary | 2025-12-11 | TASK_LIST.md restructure |
-| 104 | Create TASK_ARCHIVE.md | 2025-12-11 | 75+ tasks archived |
-| 105 | Standardize task format | 2025-12-11 | Meta tags, effort estimates |
-| 109 | Add Recently Completed section | 2025-12-11 | Session context |
-| 86 | Add semantic chunk boundaries for code | 2025-12-11 | In query.py |
-| 85 | Improve test vs source ranking | 2025-12-11 | DOC_TYPE_BOOSTS |
+All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
-*Full details in [TASK_ARCHIVE.md](TASK_ARCHIVE.md)*
+**Latest completions (2025-12-13):**
+- #182 Fluent API - FluentProcessor with method chaining (44 tests)
+- #183 Progress Feedback - ConsoleProgressReporter, callbacks (30 tests)
+- #185 Result Dataclasses - DocumentMatch, PassageMatch, QueryResult (56 tests)
+- #179 Fix definition search - line boundary fix in `find_definition_in_text()`
+- #180 Fix doc-type boosting - filename pattern + empty metadata fallback
+- #181 Fix query ranking - hybrid boost strategy for exact name matches
+- Unit Test Coverage Initiative: 1,729 tests, 85% coverage, 19 modules at 90%+
+- Tasks #159-178 (unit tests for all modules)
 
 ---
 
 ## Pending Task Details
 
-### ~~150. Create Unit Test Fixtures and Mocks for Core Data Structures~~ ✓ COMPLETED
+### 184. Implement MCP Server for Claude Desktop Integration
 
-**Meta:** `status:completed` `priority:medium` `category:unit-test`
-**Files:** `tests/unit/mocks.py`, `tests/unit/test_mocks.py`
-**Completed:** 2025-12-12
+**Meta:** `status:pending` `priority:high` `category:integration`
+**Files:** `cortical/mcp_server.py` (new), `mcp_config.json` (new)
+**Effort:** Large
 
-**Implementation Summary:**
+**Problem:** AI agents must call subprocess scripts instead of native integration. Claude Desktop users can't access the processor directly.
 
-Created comprehensive test doubles (600+ lines) enabling isolated unit testing:
+**Solution:** Create MCP (Model Context Protocol) server with tools:
+- `search(query, top_n)` → document results
+- `passages(query, top_n)` → RAG passages
+- `expand_query(query)` → expansion terms
+- `corpus_stats()` → statistics
+- `add_document(doc_id, content)` → index document
 
-1. **MockMinicolumn** - Full test double with all controllable attributes
-2. **MockHierarchicalLayer** - Supports get_minicolumn(), get_by_id(), column_count(), iteration
-3. **MockLayers Factory** - 10 factory methods:
-   - `empty()`, `single_term()`, `two_connected_terms()`, `connected_chain()`
-   - `complete_graph()`, `disconnected_terms()`, `document_with_terms()`
-   - `multi_document_corpus()`, `clustered_terms()`, `with_bigrams()`
-4. **LayerBuilder** - Fluent API: `with_term()`, `with_connection()`, `with_document()`, `with_cluster()`
-5. **Graph helpers** - `layers_to_graph()`, `layers_to_adjacency()` for algorithm testing
+**Acceptance:**
+- [ ] Works in Claude Desktop
+- [ ] 5+ core tools implemented
+- [ ] Documentation for installation
+- [ ] Example MCP config file
 
-**Verification:** 39 unit tests in test_mocks.py, all passing.
+---
+
+### 186. Add Simplified Facade Methods
+
+**Meta:** `status:pending` `priority:medium` `category:api`
+**Files:** `cortical/processor.py`
+**Effort:** Small
+
+**Problem:** 80+ public methods; users don't know which to call for common tasks.
+
+**Solution:** Add purpose-focused facades:
+```python
+processor.quick_search(query)          # One-call document search
+processor.rag_retrieve(query, top_n=3) # Pre-configured for RAG
+processor.explore(query)               # With expansion visibility
+```
+
+**Acceptance:**
+- [ ] 3-4 facade methods added
+- [ ] Sensible defaults for each use case
+- [ ] Examples in quickstart.md
 
 ---
 

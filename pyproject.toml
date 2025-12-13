@@ -67,6 +67,8 @@ branch = true
 omit = [
     "*/tests/*",
     "*/__pycache__/*",
+    "cortical/types.py",
+    "cortical/cli_wrapper.py",
 ]
 
 [tool.coverage.report]

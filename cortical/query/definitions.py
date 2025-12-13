@@ -117,8 +117,17 @@ def find_definition_in_text(
         pattern = pattern_template.format(name=re.escape(identifier))
         match = re.search(pattern, text, re.MULTILINE | re.IGNORECASE)
         if match:
-            # Extract context around the definition
-            start = max(0, match.start() - 50)  # Small lead-in for context
+            # Find the start of the line containing the definition
+            # This ensures the passage starts with the actual definition line
+            line_start = text.rfind('\n', 0, match.start())
+            if line_start == -1:
+                # Match is on the first line of the text
+                start = 0
+            else:
+                # Start from the character after the newline
+                start = line_start + 1
+
+            # Extract context after the definition
             end = min(len(text), match.end() + context_chars)
 
             # Try to extend to next blank line or class/function boundary

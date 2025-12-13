@@ -19,10 +19,26 @@ from .minicolumn import Minicolumn, Edge
 from .layers import CorticalLayer, HierarchicalLayer
 from .processor import CorticalTextProcessor
 from .config import CorticalConfig, get_default_config, VALID_RELATION_CHAINS
+from .fluent import FluentProcessor
+from .progress import (
+    ProgressReporter,
+    ConsoleProgressReporter,
+    CallbackProgressReporter,
+    SilentProgressReporter,
+    MultiPhaseProgress,
+)
+from .results import (
+    DocumentMatch,
+    PassageMatch,
+    QueryResult,
+    convert_document_matches,
+    convert_passage_matches
+)
 
 __version__ = "2.0.0"
 __all__ = [
     "CorticalTextProcessor",
+    "FluentProcessor",
     "CorticalConfig",
     "CorticalLayer",
     "HierarchicalLayer",
@@ -31,4 +47,14 @@ __all__ = [
     "Tokenizer",
     "get_default_config",
     "VALID_RELATION_CHAINS",
+    "ProgressReporter",
+    "ConsoleProgressReporter",
+    "CallbackProgressReporter",
+    "SilentProgressReporter",
+    "MultiPhaseProgress",
+    "DocumentMatch",
+    "PassageMatch",
+    "QueryResult",
+    "convert_document_matches",
+    "convert_passage_matches",
 ]
