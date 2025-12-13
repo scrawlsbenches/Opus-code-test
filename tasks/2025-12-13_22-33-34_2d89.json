@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "2d89",
   "started_at": "2025-12-13T22:33:34.431014",
-  "saved_at": "2025-12-13T23:25:22.253602",
+  "saved_at": "2025-12-13T23:34:11.766195",
   "tasks": [
     {
       "id": "T-20251213-223334-2d89-01",
@@ -21,15 +21,15 @@
     {
       "id": "T-20251213-232522-2d89-002",
       "title": "Update CI to output pending tasks intelligently",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "automation",
       "description": "Add a CI step that shows pending tasks in a smart way: grouped by priority, showing blockers first, with context about what's ready to work on next. Could integrate with the workflow system to show task chains and dependencies.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-13T23:25:22.253447",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-13T23:34:11.766071",
+      "completed_at": "2025-12-13T23:34:11.766071",
       "context": {}
     }
   ]
