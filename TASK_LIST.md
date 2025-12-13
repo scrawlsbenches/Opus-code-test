@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 9
+**Pending Tasks:** 16
 **Completed Tasks:** 238 (see archive)
 
 **Legacy Test Cleanup:** ✅ COMPLETE - All 8 tasks investigated (#198-205)
@@ -32,12 +32,18 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| *None - all high priority completed* |||||
+| 206 | Update README.md with current statistics (161 docs, 8,789 tokens, 2.4M connections) | Docs | - | Small |
+| 207 | Document MCP Server in README (5 tools, Claude Desktop integration) | Docs | - | Small |
+| 208 | Create Claude Code hooks documentation | Docs | - | Medium |
+| 209 | Add session-start hook for auto-corpus indexing | DevEx | - | Small |
 
 ### 🟡 Medium (Do This Month)
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
+| 210 | Add pre-commit hook for auto-reindex after code changes | DevEx | - | Small |
+| 211 | Document simplified facade methods (quick_search, rag_retrieve, explore) | Docs | - | Small |
+| 212 | Create architectural roadmap diagram (Mermaid) | Docs | - | Medium |
 | 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
 | 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
@@ -116,33 +122,75 @@ All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 ## Pending Task Details
 
-### 184. Implement MCP Server for Claude Desktop Integration
+### 206. Update README.md with Current Statistics
 
-**Meta:** `status:pending` `priority:high` `category:integration`
-**Files:** `cortical/mcp_server.py` (new), `mcp_config.json` (new)
-**Effort:** Large
+**Meta:** `status:pending` `priority:high` `category:docs`
+**Files:** `README.md`
+**Effort:** Small
 
-**Problem:** AI agents must call subprocess scripts instead of native integration. Claude Desktop users can't access the processor directly.
+**Problem:** README.md contains outdated statistics (92 docs vs 161 actual, 116K connections vs 2.4M actual).
 
-**Solution:** Create MCP (Model Context Protocol) server with tools:
-- `search(query, top_n)` → document results
-- `passages(query, top_n)` → RAG passages
-- `expand_query(query)` → expansion terms
-- `corpus_stats()` → statistics
-- `add_document(doc_id, content)` → index document
+**Solution:** Update all statistics in README.md:
+- Documents: 92 → 161
+- Token minicolumns: 6,506 → 8,789
+- Bigram minicolumns: 20,114 → 46,374
+- Lateral connections: 116,332 → 2,483,316
+- Tests: 337 → 1,729
+- Lines of code: 7,000 → 16,798+
 
-**Quick Context:**
-- Entry point: `cortical/processor.py::CorticalTextProcessor`
-- Key methods: `find_documents_for_query()` (line 1883), `find_passages_for_query()` (line 2161), `expand_query()`
-- See `cortical/cli_wrapper.py` for CLI wrapper pattern (lines 1-50)
-- MCP protocol: expose processor methods as JSON-RPC tools
-- Reference: `scripts/search_codebase.py` for how to load and query processor
+---
 
-**Acceptance:**
-- [ ] Works in Claude Desktop
-- [ ] 5+ core tools implemented
-- [ ] Documentation for installation
-- [ ] Example MCP config file
+### 207. Document MCP Server in README
+
+**Meta:** `status:pending` `priority:high` `category:docs`
+**Files:** `README.md`, `docs/mcp-server.md` (new)
+**Effort:** Small
+
+**Problem:** MCP server (`cortical/mcp_server.py`) exists with 5 tools but is not documented.
+
+**Solution:** Add MCP Server section to README with:
+- Installation and setup instructions
+- 5 available tools: search, passages, expand_query, corpus_stats, add_document
+- Claude Desktop integration example
+- Example MCP config file
+
+---
+
+### 208. Create Claude Code Hooks Documentation
+
+**Meta:** `status:pending` `priority:high` `category:docs`
+**Files:** `docs/hooks.md` (new), `CLAUDE.md`
+**Effort:** Medium
+
+**Problem:** No hooks exist in `.claude/hooks/` and hooks are not documented.
+
+**Solution:** Create documentation for Claude Code hooks:
+- What hooks are and when they run
+- Available hook types (session-start, pre-commit, etc.)
+- Example implementations
+- Integration with corpus indexing
+
+---
+
+### 209. Add Session-Start Hook for Auto-Corpus Indexing
+
+**Meta:** `status:pending` `priority:high` `category:devex`
+**Files:** `.claude/hooks/session_start.sh` (new)
+**Effort:** Small
+
+**Problem:** Corpus must be manually indexed before codebase search works.
+
+**Solution:** Create session-start hook that:
+- Checks if `corpus_dev.pkl` exists and is up-to-date
+- Runs incremental indexing if needed
+- Generates AI metadata if missing
+
+**Example:**
+```bash
+#!/bin/bash
+# .claude/hooks/session_start.sh
+python scripts/index_codebase.py --incremental 2>/dev/null || true
+```
 
 ---
 
