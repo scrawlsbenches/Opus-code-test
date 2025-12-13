@@ -15,12 +15,26 @@ name: CI - Test Suite
 # ✅ CORRECT (pytest handles both):
 #    coverage run -m pytest tests/
 #
-# Test stages run in dependency order:
-#   smoke → unit → integration → [regression, behavioral, performance]
-#                              → coverage-report
+# PARALLEL ARCHITECTURE (optimized for speed):
 #
-# Each stage runs specific test directories/files to avoid duplication.
-# The final coverage-report stage runs ALL tests once for the combined number.
+#   smoke-tests (< 30s)
+#        │
+#        ├──────────────────────────────────────────────┐
+#        │                                              │
+#        ▼                                              ▼
+#   ┌─────────────────────────────────────┐    ┌──────────────────┐
+#   │ unit-tests ─────┐                   │    │ regression-tests │
+#   │ integration-tests │ (with coverage) │    │ behavioral-tests │
+#   └──────────┬──────┴───────────────────┘    │ performance-tests│
+#              │                                └──────────────────┘
+#              ▼                                    (no coverage)
+#       coverage-report
+#     (combines coverage
+#      from unit + integration
+#      WITHOUT re-running tests)
+#
+# Each stage runs specific test files to avoid duplication.
+# coverage-report ONLY combines coverage data - it does NOT run tests again.
 # =============================================================================
 
 on:
@@ -63,6 +77,7 @@ jobs:
   # ==========================================================================
   # Stage 2: Unit Tests with Coverage (< 2 min)
   # Fast, isolated tests for individual components
+  # Runs in PARALLEL with integration-tests after smoke-tests pass
   # ==========================================================================
   unit-tests:
     name: "🧪 Unit Tests"
@@ -84,35 +99,42 @@ jobs:
     - name: Run unit tests with coverage
       run: |
         echo "=== Running Unit Tests ==="
-        # Run new pytest-based unit tests
-        coverage run --source=cortical -m pytest tests/unit/ -v --tb=short
-
-        # Also run existing unittest-based tests (they're still valuable)
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_tokenizer.py" -v
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_layers.py" -v
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_config.py" -v
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_code_concepts.py" -v
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_embeddings.py" -v
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_fingerprint.py" -v
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_gaps.py" -v
+        # Run unit tests - pytest handles both pytest AND unittest style tests
+        # Using a single pytest call is faster than multiple unittest discovers
+        # Includes tests/unit/ plus related legacy tests
+        coverage run --source=cortical -m pytest \
+          tests/unit/ \
+          tests/test_tokenizer.py \
+          tests/test_layers.py \
+          tests/test_config.py \
+          tests/test_code_concepts.py \
+          tests/test_embeddings.py \
+          tests/test_fingerprint.py \
+          tests/test_gaps.py \
+          tests/test_fluent.py \
+          tests/test_progress.py \
+          tests/test_results.py \
+          -v --tb=short
 
         coverage report --include="cortical/*"
-        coverage xml -o coverage-unit.xml
 
-    - name: Upload unit test coverage
+    - name: Upload unit test coverage data
       uses: actions/upload-artifact@v4
       with:
         name: coverage-unit
-        path: coverage-unit.xml
+        path: .coverage
+        # Rename to avoid collision when combining
+        include-hidden-files: true
 
   # ==========================================================================
   # Stage 3: Integration Tests (< 3 min)
   # Tests for component interactions
+  # Runs in PARALLEL with unit-tests after smoke-tests pass
   # ==========================================================================
   integration-tests:
     name: "🔗 Integration Tests"
     runs-on: ubuntu-latest
-    needs: unit-tests
+    needs: smoke-tests  # Changed: runs parallel with unit-tests
     steps:
     - uses: actions/checkout@v4
 
@@ -129,32 +151,48 @@ jobs:
     - name: Run integration tests with coverage
       run: |
         echo "=== Running Integration Tests ==="
-        # Run existing integration-style tests
-        coverage run --source=cortical -m unittest discover -s tests -p "test_processor.py" -v
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_query.py" -v
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_analysis.py" -v
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_semantics.py" -v
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_persistence.py" -v
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_incremental_indexing.py" -v
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_chunk_indexing.py" -v
+        # Run integration tests - single pytest call is faster than multiple unittest discovers
+        # Includes tests/integration/ plus related legacy tests
+        coverage run --source=cortical -m pytest \
+          tests/integration/ \
+          tests/test_processor.py \
+          tests/test_query.py \
+          tests/test_analysis.py \
+          tests/test_semantics.py \
+          tests/test_persistence.py \
+          tests/test_incremental_indexing.py \
+          tests/test_chunk_indexing.py \
+          tests/test_edge_cases.py \
+          tests/test_coverage_gaps.py \
+          tests/test_query_optimization.py \
+          tests/test_intent_query.py \
+          tests/test_analyze_louvain_resolution.py \
+          tests/test_evaluate_cluster.py \
+          tests/test_cli_wrapper.py \
+          tests/test_search_codebase.py \
+          tests/test_ask_codebase.py \
+          tests/test_generate_ai_metadata.py \
+          tests/test_showcase.py \
+          -v --tb=short
 
         coverage report --include="cortical/*"
-        coverage xml -o coverage-integration.xml
 
-    - name: Upload integration test coverage
+    - name: Upload integration test coverage data
       uses: actions/upload-artifact@v4
       with:
         name: coverage-integration
-        path: coverage-integration.xml
+        path: .coverage
+        include-hidden-files: true
 
   # ==========================================================================
   # Stage 4: Regression Tests (< 1 min)
   # Tests for specific bugs that were fixed
+  # Runs in PARALLEL with unit/integration after smoke-tests pass
   # ==========================================================================
   regression-tests:
     name: "🔒 Regression Tests"
     runs-on: ubuntu-latest
-    needs: integration-tests
+    needs: smoke-tests  # Changed: runs parallel, only needs smoke
     steps:
     - uses: actions/checkout@v4
 
@@ -177,11 +215,12 @@ jobs:
   # ==========================================================================
   # Stage 5: Behavioral Tests (< 2 min)
   # Tests for user-facing quality and relevance
+  # Runs in PARALLEL with unit/integration after smoke-tests pass
   # ==========================================================================
   behavioral-tests:
     name: "🎯 Behavioral Tests"
     runs-on: ubuntu-latest
-    needs: integration-tests
+    needs: smoke-tests  # Changed: runs parallel, only needs smoke
     steps:
     - uses: actions/checkout@v4
 
@@ -198,17 +237,19 @@ jobs:
     - name: Run behavioral tests
       run: |
         echo "=== Running Behavioral Tests ==="
-        python -m pytest tests/behavioral/ -v --tb=short
+        # Includes tests/behavioral/ plus legacy test_behavioral.py
+        python -m pytest tests/behavioral/ tests/test_behavioral.py -v --tb=short
         echo "✅ Behavioral quality verified"
 
   # ==========================================================================
   # Stage 6: Performance Tests (< 1 min, no coverage)
   # Timing-based tests to catch performance regressions
+  # Runs in PARALLEL with unit/integration after smoke-tests pass
   # ==========================================================================
   performance-tests:
     name: "⏱️ Performance Tests"
     runs-on: ubuntu-latest
-    needs: integration-tests
+    needs: smoke-tests  # Changed: runs parallel, only needs smoke
     steps:
     - uses: actions/checkout@v4
 
@@ -230,7 +271,7 @@ jobs:
 
   # ==========================================================================
   # Stage 7: Full Coverage Report
-  # Combines coverage from unit + integration tests
+  # Combines coverage from unit + integration tests WITHOUT re-running tests
   # ==========================================================================
   coverage-report:
     name: "📊 Coverage Report"
@@ -247,42 +288,46 @@ jobs:
     - name: Install coverage
       run: |
         python -m pip install --upgrade pip
-        pip install coverage pytest
+        pip install coverage
 
     - name: Download unit coverage
       uses: actions/download-artifact@v4
       with:
         name: coverage-unit
-        path: .
+        path: coverage-unit
 
     - name: Download integration coverage
       uses: actions/download-artifact@v4
       with:
         name: coverage-integration
-        path: .
+        path: coverage-integration
 
-    - name: Generate combined coverage report
+    - name: Combine coverage data and generate report
       run: |
-        echo "=== Combined Coverage Report ==="
-        # ⚠️  IMPORTANT: DO NOT add duplicate test runs here!
+        echo "=== Combining Coverage Data ==="
+        # ⚠️  IMPORTANT: This job ONLY combines coverage - NO test runs!
         #
-        # Pytest runs unittest-based tests natively - no need to run both.
-        # Running tests twice doubles CI time (from ~7min to ~15min+).
+        # Tests were already run in unit-tests and integration-tests stages.
+        # Running tests again here would double CI time.
         #
-        # If you need to add tests, add them to the appropriate stage above
-        # (unit-tests, integration-tests, etc.) NOT here.
-        #
-        # This job combines coverage from artifacts, then runs a single
-        # comprehensive pass for the final coverage number.
+        # We use 'coverage combine' to merge the .coverage files from
+        # the parallel test jobs.
 
-        # Single test run - pytest handles both pytest AND unittest style tests
-        coverage run --source=cortical -m pytest tests/ -v --ignore=tests/performance/
+        # Move coverage files to current directory with unique names
+        mv coverage-unit/.coverage .coverage.unit
+        mv coverage-integration/.coverage .coverage.integration
 
+        # Combine coverage data from both jobs
+        coverage combine .coverage.unit .coverage.integration
+
+        # Generate reports
+        echo "=== Coverage Report ==="
         coverage report -m --include="cortical/*"
         coverage xml -o coverage.xml
 
-        # Check threshold
+        # Check threshold (fail if below 89%)
         coverage report --fail-under=89 --include="cortical/*"
+        echo "✅ Coverage threshold met"
 
     - name: Upload final coverage report
       uses: actions/upload-artifact@v4
