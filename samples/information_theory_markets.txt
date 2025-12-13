@@ -1,0 +1,47 @@
+Information Theory for Market Analysis
+
+Information theory quantifies uncertainty, information content, and communication capacity. For financial markets, information-theoretic tools measure predictability, quantify relationships between variables, and provide theoretical bounds on forecasting performance. These measures avoid distributional assumptions that limit traditional statistical approaches.
+
+Shannon entropy measures uncertainty in a probability distribution. High entropy distributions are unpredictable; low entropy distributions are concentrated and predictable. Market return distribution entropy characterizes inherent unpredictability before considering conditioning information.
+
+Differential entropy extends to continuous distributions. Market returns have continuous support requiring differential entropy formulations. Gaussian distributions maximize entropy for given variance, providing baseline comparisons for actual return distributions.
+
+Conditional entropy measures remaining uncertainty after observing conditioning variables. How much uncertainty about tomorrow's return remains after observing today's return? Conditional entropy bounds achievable prediction accuracy regardless of model sophistication.
+
+Mutual information quantifies shared information between variables. High mutual information between predictor and target indicates potential forecasting value. Mutual information captures non-linear dependencies that correlation misses.
+
+Relative entropy (KL divergence) measures distribution dissimilarity. Divergence between forecast and realized distributions evaluates prediction quality. Divergence between market regimes quantifies regime distinctiveness.
+
+Information gain from observing a variable equals mutual information with the target. Ranking predictors by information gain identifies most valuable features. Information-theoretic feature selection complements correlation-based approaches.
+
+Channel capacity bounds maximum reliable transmission rate. Market microstructure can be viewed as a noisy channel transmitting information from informed to uninformed traders. Channel capacity concepts inform understanding of price discovery efficiency.
+
+Rate-distortion theory addresses lossy compression tradeoffs. How much can market data be compressed while preserving essential structure? Rate-distortion analysis guides dimensionality reduction and representation learning.
+
+Minimum description length balances model complexity against fit. Simpler models that adequately describe data are preferred. MDL provides principled model selection avoiding overfitting without arbitrary complexity penalties.
+
+Algorithmic information theory uses program length to measure complexity. Kolmogorov complexity of a price sequence is the shortest program generating it. While uncomputable, approximations guide complexity estimation.
+
+Fisher information measures parameter estimation difficulty. High Fisher information enables precise parameter estimates. Market regimes with high Fisher information for relevant parameters support confident inference.
+
+Entropy production rate characterizes irreversibility in stochastic processes. Market processes should produce entropy—they're irreversible. Entropy production rates connect to arbitrage opportunities and market efficiency.
+
+Maximum entropy inference constructs least-biased distributions satisfying constraints. Given known moments or other constraints, maximum entropy distributions make minimal assumptions. This principle guides prior construction and missing data imputation.
+
+Information bottleneck finds compressed representations preserving relevant information. What minimal representation of market data preserves target predictability? Information bottleneck provides theoretical foundation for representation learning.
+
+Directed information captures causal information flow in feedback systems. Markets exhibit feedback—prices influence trading which influences prices. Directed information properly accounts for this feedback structure.
+
+Granger causality relates to transfer entropy. Transfer entropy generalizes Granger causality beyond linear autoregressive models. Non-linear causal relationships invisible to linear Granger tests appear in transfer entropy analysis.
+
+Integrated information measures how much a system is "more than the sum of its parts." Markets with high integrated information exhibit emergent properties unpredictable from components. This connects to complexity science perspectives on markets.
+
+Information geometry treats probability distributions as geometric objects. The Fisher information matrix defines a natural metric. Geodesics on statistical manifolds connect distributions optimally. This geometric perspective provides elegant theoretical insights.
+
+Lossy source coding with side information addresses prediction with auxiliary data. What's the optimal way to predict given both historical prices and external signals? Side information capacity concepts bound achievable performance.
+
+Network information theory extends to multi-agent settings. Multiple traders accessing different information sources interact through prices. Multi-terminal information theory provides relevant theoretical frameworks.
+
+Practical estimation of information-theoretic quantities requires careful attention to bias and variance. Plug-in estimators from finite samples are biased. Regularization, jackknife correction, and Bayesian approaches improve estimation quality.
+
+Information-theoretic model comparison evaluates forecasting systems. Minimum description length, normalized compression distance, and cross-entropy loss provide principled comparison metrics grounded in information theory.

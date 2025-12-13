@@ -1,0 +1,43 @@
+Options Greeks and Derivative Risk Management
+
+Options Greeks measure sensitivity of derivative positions to underlying risk factors. Delta, gamma, vega, theta, and rho quantify exposure to price, volatility, and time changes. Managing Greeks enables precise risk control, hedging strategy design, and options portfolio optimization.
+
+Delta measures option price sensitivity to underlying price changes. At-the-money options have deltas near 0.5 while deep in-the-money options approach delta 1.0. Delta hedging neutralizes directional exposure by holding offsetting underlying positions. Delta changes with price, requiring dynamic rebalancing.
+
+Gamma measures how delta changes as underlying price moves. High gamma positions experience rapid delta shifts, requiring frequent rehedging. Gamma is highest for at-the-money options near expiration. Gamma trading profits from realized volatility exceeding implied through delta rebalancing.
+
+Vega quantifies sensitivity to implied volatility changes. Long option positions are long vega—they profit from volatility increases. Vega exposure enables trading views on volatility direction. Vega hedging using options at different strikes or expirations manages volatility risk.
+
+Theta represents time decay—the rate at which option value erodes as expiration approaches. Option sellers collect theta while option buyers pay it. Theta accelerates near expiration for at-the-money options. The theta-gamma relationship reflects the fundamental tradeoff between time decay and convexity value.
+
+Rho measures interest rate sensitivity, typically small for short-dated options but significant for long-dated positions. Higher rates increase call values and decrease put values through present-value effects. Rho exposure matters for long-term option strategies and LEAPS.
+
+Higher-order Greeks refine risk measurement. Vanna measures delta sensitivity to volatility—how delta changes when implied volatility moves. Volga measures vega sensitivity to volatility—how vega changes with volatility level. These second-order Greeks matter for complex positions and extreme moves.
+
+Charm measures delta decay over time—how delta changes as time passes with price fixed. Weekend and overnight decay affect delta hedging frequency decisions. Charm is particularly important for positions held through significant time decay.
+
+Greek aggregation combines individual position Greeks into portfolio-level exposures. Net portfolio delta, gamma, vega, and theta summarize overall risk profile. Offsetting positions can create apparently flat portfolios that carry hidden risks at individual legs.
+
+Delta-neutral portfolios eliminate directional exposure while retaining other Greeks. Straddles and strangles are delta-neutral but long gamma and vega. Delta neutrality is the foundation for volatility trading strategies isolated from price direction.
+
+Gamma scalping profits from realized volatility by delta-hedging a long gamma position. Each rehedge locks in small profits when price moves significantly. Total gamma scalping P&L depends on realized versus implied volatility spread.
+
+Vega trading expresses views on volatility direction. Calendar spreads trade the volatility term structure—long near-dated and short far-dated vega for steepening bets. Ratio spreads and butterflies enable more nuanced volatility surface trades.
+
+Skew trading exploits differences in implied volatility across strikes. Risk reversals—long out-of-money call and short out-of-money put—express skew views. Skew dynamics during market moves create trading opportunities.
+
+Pin risk arises when underlying prices expire exactly at strike. Delta discontinuously jumps from 0 to 1 or vice versa. Hedging pin risk requires position adjustments ahead of expiration for near-the-money strikes.
+
+Assignment risk for American options requires monitoring early exercise probability. Dividend capture, deep-in-money calls, and high interest rate environments increase early exercise likelihood. Short option positions must manage unexpected assignment.
+
+Portfolio margin accounts for offsetting risks across positions. Spread positions require less margin than individual legs. Proper Greek aggregation and scenario analysis support margin optimization.
+
+Stress testing Greek positions examines behavior under extreme scenarios. How would the portfolio perform if volatility doubled? If price gapped 10%? Scenario matrices across price and volatility dimensions reveal hidden risks.
+
+Hedging costs accumulate from transaction costs and bid-ask spreads on rehedging trades. Optimal hedge frequency balances tracking error against transaction costs. Too frequent hedging wastes money on costs while too infrequent hedging allows risk accumulation.
+
+Non-linear Greeks mean that small position Greek summaries incompletely describe risk. Convexity, skew, and term structure effects create position-specific behavior that aggregate Greeks miss. Full revaluation under scenarios complements Greek-based risk management.
+
+Exotic option Greeks can behave non-intuitively. Barrier options have discontinuous Greeks at barriers. Path-dependent options require Monte Carlo Greek estimation. Asian options have time-varying Greek profiles as averaging windows progress.
+
+Dynamic hedging adjusts hedge ratios as conditions evolve. Static hedges established at inception remain fixed while dynamic hedges respond to changing Greeks. Each approach suits different positions and market environments.

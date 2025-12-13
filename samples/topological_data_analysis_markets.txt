@@ -1,0 +1,41 @@
+Topological Data Analysis for Market Structure
+
+Topological data analysis applies algebraic topology methods to extract shape-based features from complex data. For financial markets, TDA reveals structural patterns invisible to traditional statistical methods—holes, loops, and higher-dimensional features in market data that persist across scales and provide robust signals for regime detection and prediction.
+
+Persistent homology is TDA's core technique. It tracks topological features across varying scale parameters, identifying features that persist over wide scale ranges as robust structural elements. Features that appear briefly are noise; features that persist reveal genuine structure.
+
+Simplicial complexes build combinatorial models from data points. Vertices represent data points, edges connect nearby points, triangles fill connected triplets, and higher simplices extend this hierarchy. The Vietoris-Rips complex connects points within a threshold distance, with varying thresholds revealing multi-scale structure.
+
+Betti numbers count topological features at each dimension. Betti-0 counts connected components, Betti-1 counts loops or holes, Betti-2 counts voids, and so on. For market data, these counts characterize connectivity and cyclic structure of return landscapes.
+
+Persistence diagrams plot feature birth and death across scale parameters. Points far from the diagonal represent persistent features; points near the diagonal are noise. Diagram structure summarizes multi-scale topology in a stable, interpretable format.
+
+Persistence landscapes transform persistence diagrams into functional representations. These functions support statistical operations—averaging, hypothesis testing, machine learning input. Landscape representations enable rigorous topological inference.
+
+Market application of TDA reveals regime structure. Bull markets, bear markets, and ranging periods create different topological signatures. Persistent holes in return correlations indicate market segmentation. Topological change detection signals regime transitions.
+
+Crash detection uses topological early warning signals. Before crashes, correlation networks often show topological simplification—holes close, connectivity increases. These pre-crash topological changes may precede price drops by days or weeks.
+
+Portfolio topology examines the shape of return space. Diversified portfolios span multiple topological components. Concentration creates correlation clusters. Topological diversification complements traditional correlation-based diversification.
+
+Time series TDA applies topology to temporal dynamics. Delay embeddings reconstruct phase space from scalar time series. Topological features of reconstructed attractors characterize dynamical regimes. Sliding window TDA tracks how topology evolves through time.
+
+Mapper algorithm provides topological visualization of high-dimensional data. Mapper builds simplified network representations preserving essential topological structure. Market visualization through Mapper reveals cluster structure, transition pathways, and outlier behavior.
+
+Stability theorems guarantee TDA robustness. Small data perturbations cause small changes in persistence diagrams. This stability makes topological features reliable despite market noise—a crucial property for practical application.
+
+Topological machine learning uses persistent features as inputs. Persistence images, landscapes, and silhouettes convert topological summaries to vectors suitable for classification and regression. These features capture information orthogonal to traditional statistics.
+
+Network topology of market correlation graphs reveals structure. Minimum spanning trees filter to essential connections. Community detection finds sector structure. Topological analysis of these networks adds another analytical dimension.
+
+Contagion topology models how distress propagates through connected markets. Topological connectivity predicts which failures cascade system-wide. Identifying topologically central nodes highlights systemic risk concentrations.
+
+Cross-sectional TDA examines topology across securities at each time point. Which stocks cluster together? What separates clusters? How does cluster structure evolve? Cross-sectional topology complements time-series analysis.
+
+Optimal transport provides distances between persistence diagrams. Wasserstein distances quantify topological dissimilarity. This enables clustering of market states by topological similarity and tracking topological drift through time.
+
+Computational considerations affect TDA applicability. Persistence computation scales polynomially with data size. Approximation algorithms and sampling approaches enable TDA on large market datasets. Parallelization exploits GPU and distributed computing.
+
+Interpretation challenges arise from TDA's mathematical abstraction. Explaining what a persistent hole means for market dynamics requires translation from topology to finance. Building intuition for topological features supports practical application.
+
+Integration with traditional analysis combines TDA with standard quantitative methods. Topological features augment factor models, enhance risk measures, and improve regime detection. This integration leverages TDA's unique perspective within established frameworks.

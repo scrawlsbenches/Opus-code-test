@@ -1,0 +1,41 @@
+Sentiment Analysis for Market Intelligence
+
+Sentiment analysis extracts subjective information from text, quantifying market participant attitudes, emotions, and opinions. Financial news, social media, analyst reports, and corporate communications all contain sentiment signals that precede or amplify price movements. Incorporating sentiment extends market cognition beyond purely quantitative price and volume data.
+
+News sentiment scoring rates articles from negative through neutral to positive. Aggregated news sentiment across sources provides market-level mood indicators. Firm-specific sentiment filters relevant news for individual securities. Domain-specific sentiment lexicons capture financial language nuances missed by general-purpose sentiment tools.
+
+Social media sentiment captures retail investor and trader opinions. Twitter, Reddit, StockTwits, and other platforms provide real-time sentiment streams. Unusual sentiment spikes may precede price moves, particularly for stocks with active retail followings. Separating signal from noise in social data requires sophisticated filtering.
+
+Analyst sentiment derives from research reports and rating changes. Upgrade-downgrade ratios and estimate revision directions indicate analyst community outlook. Analyst sentiment may lead price movements as institutional investors act on research. Linguistic analysis of report text provides sentiment beyond discrete ratings.
+
+Earnings call sentiment analyzes management tone during conference calls. Natural language processing extracts sentiment from prepared remarks and Q&A responses. Changes in management tone across quarters may signal future performance. Linguistic complexity and hedging language provide additional signals.
+
+Sentiment momentum examines changes in sentiment over time. Rapidly improving sentiment may predict positive returns while deteriorating sentiment forecasts weakness. Sentiment trend direction matters beyond absolute sentiment level.
+
+Contrarian sentiment strategies trade against extreme sentiment readings. When bullish sentiment reaches extremes, markets may be overbought. Extreme bearishness may indicate oversold conditions. Contrarian approaches profit from sentiment mean reversion.
+
+Sentiment dispersion measures disagreement among market participants. High dispersion indicates uncertainty and conflicting views. Low dispersion suggests consensus that may indicate complacency or crowded positioning. Dispersion dynamics complement level-based sentiment signals.
+
+Entity extraction identifies companies, people, and events mentioned in text. Linking extracted entities to securities enables mapping textual information to tradable instruments. Coreference resolution handles pronouns and aliases referring to the same entity.
+
+Event detection identifies market-relevant occurrences from news flow. Mergers, earnings surprises, management changes, and regulatory actions all move prices. Automated event detection enables rapid response before human analysis.
+
+Topic modeling discovers themes across large document collections. Latent Dirichlet allocation and neural topic models reveal what markets are discussing. Topic prominence changes signal shifting attention and emerging narratives.
+
+Sentiment aggregation combines signals across sources and time. Real-time social sentiment differs from daily news sentiment which differs from quarterly analyst sentiment. Proper weighting across timescales and sources maximizes combined signal value.
+
+Fake news and manipulation require detection and filtering. Coordinated disinformation campaigns can artificially move sentiment indicators. Bot detection, source credibility scoring, and anomaly detection help identify suspicious sentiment patterns.
+
+Language models trained on financial text improve domain-specific sentiment analysis. FinBERT, financial word embeddings, and domain-adapted transformers capture financial language better than general-purpose models. Transfer learning from large language models improves performance on limited financial training data.
+
+Multilingual sentiment extends analysis to global markets. Non-English news and social media carry sentiment information about local markets. Translation quality and language-specific sentiment nuances affect cross-lingual analysis accuracy.
+
+Sentiment decay describes how sentiment signal predictiveness fades over time. Fresh sentiment signals predict near-term returns while older sentiment information is already incorporated in prices. Optimal sentiment strategy design accounts for decay patterns.
+
+Real-time processing requirements for sentiment trading demand low-latency infrastructure. News arrives continuously and social media volumes can spike during events. Processing delays reduce signal value as fast traders act on sentiment first.
+
+Backtesting sentiment strategies requires careful handling of lookahead bias. News timestamps may not reflect actual availability. Social media archives may be incomplete. Proper out-of-sample testing validates sentiment signal persistence.
+
+Sentiment factor integration incorporates sentiment into multi-factor models. Sentiment provides incremental information beyond traditional factors. Factor timing using sentiment indicators adjusts factor exposures based on mood readings.
+
+Regulatory considerations affect sentiment data usage. Material non-public information concerns arise with certain sentiment sources. Compliance monitoring ensures sentiment strategies operate within legal boundaries.

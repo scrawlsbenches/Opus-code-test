@@ -1,0 +1,45 @@
+Failure Mode Taxonomy for Trading Systems
+
+Systematic classification of how trading systems fail enables proactive detection and mitigation. Rather than treating each failure as unique, failure mode taxonomy identifies recurring patterns, root causes, and warning signs. This structured approach to failure transforms individual disasters into learning opportunities and prevention strategies.
+
+Model degradation occurs when previously predictive relationships weaken. Alpha decay from crowding, regime changes invalidating assumptions, or structural market evolution all cause gradual model degradation. Monitoring prediction accuracy trends detects degradation before catastrophic failure.
+
+Overfitting failures happen when models capture noise rather than signal. In-sample performance vastly exceeds out-of-sample results. Complex models with many parameters are especially vulnerable. Regularization, cross-validation, and ensemble methods mitigate overfitting risk.
+
+Data quality failures stem from errors in input data. Missing data, incorrect timestamps, survivor bias, and look-ahead bias corrupt analysis. Data validation pipelines should catch quality issues before they propagate to trading decisions.
+
+Execution failures occur between decision and trade completion. Slippage, partial fills, rejected orders, and system latency all degrade execution quality. Real-time execution monitoring and algorithmic fallback strategies handle execution failures.
+
+Infrastructure failures involve hardware, software, and connectivity problems. Server crashes, network outages, and database corruption halt trading capability. Redundancy, failover systems, and disaster recovery plans address infrastructure risk.
+
+Liquidity failures arise when markets cannot absorb intended trades. Flash crashes, market holidays, and crises can eliminate liquidity. Liquidity monitoring and adaptive position sizing respond to liquidity conditions.
+
+Risk system failures involve incorrectly measured or managed risk. VaR models underestimating tail risk, correlation breakdown during stress, and hedging instrument divergence all represent risk system failures. Stress testing and scenario analysis complement routine risk measures.
+
+Feedback loop failures occur when trading activity affects the signals driving it. Large positions influencing prices that trigger further position changes create unstable feedback. Position limits and impact-aware strategies prevent feedback disasters.
+
+Concentration failures result from excessive exposure to single positions, factors, or market segments. Diversification benefits evaporate in concentrated portfolios. Concentration limits and factor exposure monitoring prevent over-concentration.
+
+Crowding failures happen when many participants pursue similar strategies. Crowded trades unwind violently when sentiment shifts. Monitoring crowding indicators and maintaining strategy differentiation reduce crowding vulnerability.
+
+Regulatory failures involve non-compliance with market rules. Trading halts, position limits, reporting requirements, and other regulations create compliance risks. Compliance monitoring and automated rule enforcement prevent regulatory failures.
+
+Operational failures include human errors, process breakdowns, and organizational dysfunction. Fat-finger errors, miscommunication, and inadequate supervision cause operational incidents. Process documentation, checks, and training reduce operational risk.
+
+Counterparty failures occur when trading partners default on obligations. Prime broker failures, exchange defaults, and settlement failures all represent counterparty risk. Diversified counterparty relationships and collateral management mitigate these risks.
+
+Model specification failures involve fundamentally wrong model structure. Using linear models for non-linear relationships, assuming stationarity in non-stationary data, or ignoring important variables all represent specification errors. Model validation against diverse benchmarks detects specification problems.
+
+Timing failures relate to being right directionally but wrong on timing. Correct long-term views that lose money in the short term due to leverage constraints or risk limits represent timing failures. Position sizing appropriate for investment horizon manages timing risk.
+
+Correlation breakdown failures happen when diversification benefits disappear during stress. Assets that historically moved independently become highly correlated during crises. Stress testing with crisis correlation assumptions reveals hidden concentration.
+
+Gap risk failures involve overnight or weekend price gaps that bypass stop losses. Limit moves, trading halts, and weekend gaps can cause losses exceeding risk limits. Gap-aware position sizing and option hedging address gap risk.
+
+Technology obsolescence failures occur when systems become outdated. Faster competitors, changed market microstructure, and deprecated infrastructure create obsolescence risk. Continuous technology investment maintains competitive capability.
+
+Detection and early warning systems should monitor for each failure mode. Leading indicators—performance degradation, unusual market conditions, system anomalies—provide advance warning. Automated alerts enable rapid response before failures cascade.
+
+Root cause analysis after failures identifies underlying causes beyond surface symptoms. Why did the model degrade? What enabled the operational error? Understanding root causes prevents recurrence and improves system resilience.
+
+Failure recovery procedures define responses to each failure type. Who is notified? What positions are closed? How is normal operation restored? Documented, rehearsed recovery procedures enable effective response under pressure.

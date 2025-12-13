@@ -1,0 +1,39 @@
+Factor Models for Systematic Investing
+
+Factor models decompose security returns into exposures to systematic risk factors. Rather than analyzing thousands of individual securities, factor investing identifies a small number of return drivers that explain most cross-sectional variation. This dimensionality reduction enables tractable portfolio construction and risk management.
+
+The capital asset pricing model posits a single market factor. All securities are priced according to their beta—sensitivity to market returns. The market risk premium compensates investors for bearing systematic risk while idiosyncratic risk can be diversified away.
+
+Multi-factor models extend CAPM with additional systematic factors. The Fama-French three-factor model adds size and value factors, capturing the historical outperformance of small stocks and high book-to-market stocks. These factors explain return variation beyond market beta alone.
+
+Momentum captures the tendency for recent winners to continue winning and losers to continue losing. Intermediate-horizon momentum—roughly 2-12 months—has been remarkably persistent across markets and time periods. Momentum profits likely reflect delayed information incorporation and investor behavioral biases.
+
+Quality factors identify financially healthy firms with stable earnings, low leverage, and consistent profitability. Quality stocks outperform junky stocks, particularly during market stress. Quality exposure provides defensive portfolio characteristics while maintaining equity upside.
+
+Low volatility anomaly challenges efficient market assumptions—historically, low-risk stocks have not underperformed high-risk stocks despite bearing less systematic risk. Betting against beta strategies exploit this anomaly by going long low-beta stocks and short high-beta stocks.
+
+Value investing buys cheap stocks measured by price ratios—low price-to-book, price-to-earnings, or price-to-cashflow. Value has experienced extended periods of underperformance, challenging whether the premium persists. Style timing attempts to rotate into value when conditions favor it.
+
+Growth investing targets companies with rapid revenue and earnings expansion. Growth stocks command premium valuations justified by expected future earnings. The growth-value spectrum represents a fundamental investment style dimension.
+
+Factor construction requires careful methodological choices. Sort-based portfolios form long-short portfolios from characteristic-sorted quintiles or deciles. Regression-based factors use cross-sectional regressions to extract factor returns. Construction methodology affects factor properties and investability.
+
+Factor exposure estimation maps securities to their factor loadings. Fundamental factors use accounting characteristics directly. Statistical factors extract loadings from return covariances. Time-varying factor exposures require dynamic estimation approaches.
+
+Factor timing attempts to predict which factors will outperform. Economic indicators, valuation spreads, and sentiment measures all show some timing ability. However, timing is difficult and potentially dangerous—factor premia often concentrate in brief periods easily missed by timers.
+
+Factor crowding occurs when too much capital chases the same factor exposures. Crowded factors may underperform as trades become expensive to enter and vulnerable to forced selling during stress. Measuring and avoiding crowded factors protects against these risks.
+
+Multi-factor portfolios combine exposures to harvest diversified factor premia. Combining value, momentum, quality, and low volatility creates portfolios with higher risk-adjusted returns than single-factor approaches. Factor correlation structure determines optimal combination weights.
+
+Risk parity equalizes risk contribution across factors rather than equalizing capital. This approach increases allocation to lower-volatility factors, often requiring leverage to achieve target returns. Risk parity portfolios behave differently from cap-weighted alternatives.
+
+Smart beta products offer factor exposure through transparent, rules-based indices. These products democratize factor investing previously available only to sophisticated institutions. Fee compression in smart beta intensifies competition among factor strategies.
+
+Alternative factors extend beyond traditional style factors. Environmental, social, and governance factors incorporate sustainability considerations. Machine learning discovers novel factors from large feature sets. The factor zoo raises concerns about data mining and multiple testing.
+
+Factor attribution decomposes portfolio performance into factor contributions. Understanding return sources reveals whether active management adds value beyond factor exposure. Attribution also supports risk monitoring by tracking factor concentration.
+
+Transaction costs matter for factor implementation. High-turnover factors like short-term reversal generate large trading costs that can eliminate gross alpha. Net-of-cost factor returns determine actual investor experience.
+
+Factor decay concerns arise as factors become widely known. Academic publication and product proliferation may arbitrage away factor premia. Monitoring factor efficacy through time helps detect decay before losses accumulate.

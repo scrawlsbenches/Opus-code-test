@@ -1,0 +1,39 @@
+Market Ontology Learning: Autonomous Concept Discovery
+
+Traditional market analysis imposes pre-defined categories—sectors, factors, asset classes—onto market data. Market ontology learning inverts this relationship, discovering natural categories and relationships directly from market dynamics. Rather than asking whether tech stocks correlate with each other, the system discovers what coherent groups exist and what relationships characterize them.
+
+Emergent taxonomy construction lets markets define their own structure. Clustering algorithms applied to return correlations, trading pattern similarities, and fundamental metrics reveal natural groupings that may not match human-defined sectors. These emergent categories often cut across traditional boundaries, revealing functional market structure.
+
+Relationship type discovery identifies what kinds of connections exist between market entities. Beyond simple correlation, the system learns that some relationships are competitive (sector peers), some are supply-chain based (input-output), some reflect common factor exposure, and others represent genuine causation. Each relationship type has different persistence and predictive implications.
+
+Concept hierarchy learning organizes discovered categories into taxonomies. Broad concepts decompose into narrower sub-concepts. Technology might decompose into software, hardware, and services, which further decompose into specific niches. This hierarchy enables multi-resolution analysis matching human cognitive organization.
+
+Temporal concept evolution tracks how market categories change over time. What constituted "technology" in 1990 differs from today's tech sector. Ontology learning should capture this evolution, recognizing when categories split, merge, or fundamentally change character.
+
+Cross-market ontology alignment connects concepts across different markets. How does the U.S. tech sector relate to Asian technology companies? Different markets may use different categorization schemes; alignment enables cross-market analysis and arbitrage identification.
+
+Entity resolution identifies when different symbols or names refer to the same underlying entity. Company name changes, ticker changes, and cross-listing create multiple representations of single entities. Proper resolution prevents double-counting and enables complete entity analysis.
+
+Attribute discovery identifies what properties characterize market entities. Beyond obvious attributes like market cap and sector, learned attributes might include trading pattern type, information sensitivity, or behavioral trader segment appeal. Discovered attributes may have predictive power unexploited by traditional factors.
+
+Relation prediction uses learned ontology to predict unobserved relationships. If company A and company B share customers, suppliers, and geography with company C, they likely share unobserved properties with C as well. Ontological reasoning enables inference beyond direct observation.
+
+Commonsense market knowledge emerges from ontology learning. The system learns that earnings announcements affect prices, that correlated stocks often move together, that sector leaders influence followers. This background knowledge, obvious to human traders, must be explicitly learned by automated systems.
+
+Anomaly detection against ontological expectations identifies surprising market behavior. When entities behave inconsistently with their learned category, something unusual is happening. These ontological anomalies may signal regime changes, company-specific events, or data errors.
+
+Natural language grounding connects learned ontology to textual information. When news mentions "semiconductor shortage," which entities are affected? Ontology provides the conceptual structure for mapping text to market implications.
+
+Causal versus correlational relationships require distinction within the ontology. Supply chain relationships are causal while sector correlations often reflect common exposure. Learned causal structure supports intervention reasoning—what happens if a supplier fails?
+
+Hierarchical attention uses ontology to guide information processing. When analyzing a specific stock, attend to its sector, its suppliers, its competitors according to learned relationships. Ontological structure provides principled attention allocation.
+
+Concept drift detection identifies when learned categories no longer fit data. Markets change; ontologies must adapt. Detecting concept drift triggers re-learning or incremental ontology update. Stable ontologies over long periods suggest genuine market structure rather than noise.
+
+Human-AI ontology collaboration combines machine-discovered structure with human expertise. Machines find patterns humans miss while humans provide contextual knowledge machines lack. Interactive refinement converges to ontologies capturing both statistical patterns and domain knowledge.
+
+Explainable predictions ground explanations in ontological relationships. "Stock X declined because its primary customer Y reported weak results" uses ontological customer relationship knowledge. This explanation style matches human reasoning about markets.
+
+Ontology evaluation requires appropriate metrics. Does the learned ontology predict better than alternatives? Do humans find it interpretable and useful? Does it remain stable across time? These criteria evaluate ontology learning success.
+
+Transfer across markets tests ontology generality. Do relationships learned in equity markets transfer to commodities? Cross-market transfer success indicates discovery of fundamental market principles versus market-specific artifacts.

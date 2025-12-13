@@ -1,0 +1,41 @@
+Invariance Discovery in Financial Markets
+
+Invariance discovery seeks pattern-preserving transformations—changes in market conditions that leave certain relationships unchanged. Understanding invariances reveals what aspects of market dynamics are fundamental versus contingent. Trading strategies built on genuine invariances generalize across regimes while strategies dependent on specific conditions fail when conditions change.
+
+Scale invariance tests whether patterns persist across different magnitudes. Does the same momentum strategy work for small and large price moves? True scale invariance suggests patterns reflect fundamental dynamics rather than specific parameter ranges. Markets exhibit approximate scale invariance in many domains.
+
+Time invariance asks whether patterns are stable across different periods. Strategies that worked in the 1990s may not work today. Testing temporal invariance identifies which patterns represent enduring market structure versus historical artifacts. Truly invariant patterns provide confidence for future application.
+
+Translation invariance examines patterns shifted in space or time. Does a double bottom at $50 behave like one at $500? Does January seasonality persist year after year? Translation invariance enables generalization from specific instances to pattern classes.
+
+Rotation invariance in factor space asks whether factor definitions can be transformed without changing predictive content. If momentum and mean-reversion can be rotated to equivalent alternative factors, the specific factor definitions are arbitrary. Identifying invariant factor structures reveals what really matters.
+
+Permutation invariance tests whether entity labels matter. Should prediction for stock A use different rules than stock B? If not, permutation-invariant models share parameters across entities. Invariance assumptions determine appropriate model architecture.
+
+Symmetry groups formalize invariance mathematically. Transformations preserving some structure form groups. Identifying the symmetry group of market dynamics provides theoretical foundation for invariance-based modeling.
+
+Data augmentation exploits invariances for training. If scale invariance holds, training data can be augmented by rescaling, multiplying effective sample size. Augmentation through invariance-preserving transformations improves model robustness.
+
+Invariance testing identifies which transformations preserve predictive relationships. Systematic testing across transformation types catalogs market invariances. This catalog guides strategy design and highlights fragile versus robust signals.
+
+Breaking invariances provides trading signals. When approximate invariances are violated—when small-cap momentum diverges from large-cap momentum—something unusual is occurring. Invariance violations may predict regime transitions or represent exploitable mispricings.
+
+Physics analogies inspire invariance thinking. Conservation laws in physics correspond to symmetries. Market analogues might include conservation of relative pricing relationships (arbitrage bounds) or invariance of risk-return tradeoffs (capital asset pricing).
+
+Dimensional analysis ensures relationships have correct units. Return predictors with incompatible units cannot be fundamental. Dimensional consistency constraints guide valid model specification and reveal nonsensical relationships.
+
+Renormalization group methods from physics handle multi-scale systems. These methods identify what remains invariant as one zooms between scales. Applying renormalization concepts to markets might reveal truly scale-invariant dynamics.
+
+Feature engineering for invariance constructs inputs respecting known invariances. Ratios are scale-invariant. Z-scores are translation-invariant. Choosing invariant features embeds prior knowledge about market structure into models.
+
+Equivariant networks architecturally encode invariances. Rather than learning invariances from data, equivariant architectures guarantee them by construction. This inductive bias improves generalization when invariances genuinely hold.
+
+Causal invariance connects to invariant mechanisms. True causal relationships should persist across different contexts—they exhibit invariance under interventions. Identifying causally invariant relationships provides robust prediction foundations.
+
+Adversarial invariance testing attempts to break learned patterns. Can regime changes, policy shifts, or market structure evolution invalidate the strategy? Identifying which perturbations preserve versus destroy predictiveness characterizes invariance boundaries.
+
+Conditional invariance refines invariance claims. Momentum may be invariant across market caps within trending regimes but not within mean-reverting regimes. Conditioning on regime context may be necessary for invariance to hold.
+
+Meta-level invariance asks whether the process of discovering invariances is itself invariant. Do the same methods work across different markets and time periods? Meta-invariance provides confidence in the discovery process itself.
+
+Practical invariance exploitation builds trading strategies on discovered invariances. Invariant patterns justify parameter sharing, regime-agnostic deployment, and cross-market application. Non-invariant patterns require adaptation mechanisms for regime changes.

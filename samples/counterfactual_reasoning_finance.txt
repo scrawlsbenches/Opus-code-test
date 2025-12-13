@@ -1,0 +1,33 @@
+Counterfactual Reasoning in Financial Analysis
+
+Counterfactual reasoning examines what would have happened under alternative conditions. In finance, this capability enables learning from both taken and foregone opportunities, understanding causal mechanisms, and improving decision processes. Systems limited to observed outcomes miss valuable information contained in hypothetical alternatives.
+
+Path-dependent analysis considers how different historical trajectories would have unfolded. If the system had entered a position earlier, how would subsequent price movements have affected returns? If different stop-loss levels had been used, which trades would have been stopped out versus held? These counterfactual reconstructions inform parameter optimization beyond simple backtesting.
+
+Foregone opportunity analysis examines rejected trades. The system considered but declined a position—what would have happened? Tracking phantom portfolios of rejected opportunities reveals whether selection criteria are too restrictive or appropriately conservative. Systematic analysis of foregone profits identifies improvement opportunities.
+
+Alternative action evaluation compares actual decisions against alternatives at each choice point. Given the same information available at decision time, what would different strategies have produced? This retrospective analysis must carefully avoid hindsight bias—evaluating alternatives using only information actually available when decisions were made.
+
+Causal mechanism identification distinguishes correlation from causation. Counterfactual reasoning asks: if this factor had been different, would the outcome have changed? Factors that would have altered outcomes play causal roles while correlated-but-non-causal factors do not. Understanding true causal structure enables more robust predictions.
+
+Intervention modeling considers how market participants would respond to hypothetical actions. If the system placed a large order, how would other participants react? Counterfactual reasoning about market response to hypothetical actions informs execution strategy and market impact estimation.
+
+Scenario generation creates plausible alternative market histories. Given current conditions, what range of future paths remains possible? Monte Carlo simulation generates counterfactual trajectories by sampling from estimated probability distributions. These synthetic histories support risk assessment and strategy stress testing.
+
+Regret minimization uses counterfactual comparison to optimize decisions under uncertainty. Regret measures the difference between actual outcome and best possible outcome given realized conditions. Decision rules that minimize worst-case regret provide robustness against adverse scenarios.
+
+Attribution analysis decomposes performance into contributing factors. How much return derived from market exposure versus active positioning? Counterfactual portfolios with different exposures isolate each factor's contribution. This analysis reveals whether returns reflect skill or systematic risk premiums.
+
+Debugging through counterfactuals identifies why predictions failed. If inputs had been different, would the prediction have been correct? Sensitivity analysis across counterfactual input variations reveals which features most influenced erroneous predictions.
+
+Credit assignment in reinforcement learning requires counterfactual reasoning. When a sequence of actions leads to eventual profit or loss, which specific actions deserve credit? Counterfactual comparison against alternative action sequences enables proper credit allocation across temporal sequences.
+
+Counterfactual data augmentation expands training sets through synthetic examples. Real market data is limited and expensive. Generating plausible counterfactual scenarios—what if volatility had been higher, correlations different, trends stronger—provides additional training signal while respecting market structure.
+
+Selection bias correction addresses the problem that only realized trades generate outcome data. Positions that were never taken have no observable P&L. Counterfactual modeling estimates what returns would have been on rejected opportunities, enabling unbiased strategy evaluation.
+
+Moral hazard and strategic considerations arise when market participants reason counterfactually about system behavior. If competitors predict how the system responds to various scenarios, they may exploit this predictability. Robust systems must consider counterfactual reasoning by adversarial participants.
+
+Temporal counterfactuals ask about timing alternatives. What if the position had been entered a day earlier or exited a week later? These timing counterfactuals inform optimal execution scheduling and identify sensitivity to entry and exit timing.
+
+Aggregation of counterfactual estimates must handle uncertainty appropriately. Individual counterfactual estimates carry estimation error. Combining multiple counterfactual analyses requires propagating uncertainty to avoid false precision in aggregate conclusions.
