@@ -17,21 +17,21 @@ name: CI - Test Suite
 #
 # PARALLEL ARCHITECTURE (optimized for speed):
 #
-#   smoke-tests (< 30s)
-#        │
-#        ├──────────────────────────────────────────────┐
-#        │                                              │
-#        ▼                                              ▼
-#   ┌─────────────────────────────────────┐    ┌──────────────────┐
-#   │ unit-tests ─────┐                   │    │ regression-tests │
-#   │ integration-tests │ (with coverage) │    │ behavioral-tests │
-#   └──────────┬──────┴───────────────────┘    │ performance-tests│
-#              │                                └──────────────────┘
-#              ▼                                    (no coverage)
-#       coverage-report
-#     (combines coverage
-#      from unit + integration
-#      WITHOUT re-running tests)
+#   validate-task-list (< 5s)   smoke-tests (< 30s)
+#          │                          │
+#          │                          ├──────────────────────────────────┐
+#          │                          │                                  │
+#          ▼                          ▼                                  ▼
+#    (continues)      ┌─────────────────────────────────────┐    ┌──────────────────┐
+#                     │ unit-tests ─────┐                   │    │ regression-tests │
+#                     │ integration-tests │ (with coverage) │    │ behavioral-tests │
+#                     └──────────┬──────┴───────────────────┘    │ performance-tests│
+#                                │                                └──────────────────┘
+#                                ▼                                    (no coverage)
+#                         coverage-report
+#                       (combines coverage
+#                        from unit + integration
+#                        WITHOUT re-running tests)
 #
 # Each stage runs specific test files to avoid duplication.
 # coverage-report ONLY combines coverage data - it does NOT run tests again.
@@ -48,6 +48,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ==========================================================================
+  # Stage 0: Task List Validation (< 5s)
+  # Quick check for stale/inconsistent task list - runs in parallel with smoke
+  # ==========================================================================
+  validate-task-list:
+    name: "📋 Validate Task List"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Validate TASK_LIST.md
+      run: |
+        echo "=== Validating Task List ==="
+        python scripts/validate_task_list.py
+        echo "✅ Task list validation passed"
+
   # ==========================================================================
   # Stage 1: Smoke Tests (< 30s)
   # Quick sanity check - if this fails, something is fundamentally broken
