@@ -129,8 +129,13 @@ def run_pytest(paths, verbose=False, quiet=False, no_capture=False,
         cmd.append('-x')
 
     # Performance tests should not run under coverage
+    # Only add --no-cov if pytest-cov is installed
     if no_coverage:
-        cmd.append('--no-cov')
+        try:
+            import pytest_cov
+            cmd.append('--no-cov')
+        except ImportError:
+            pass  # pytest-cov not installed, coverage is already disabled
 
     return subprocess.run(cmd).returncode
 
@@ -157,10 +162,18 @@ def run_category(category, verbose=False, quiet=False, no_capture=False,
 
     start_time = time.time()
 
-    # Run pytest tests
-    paths = config['paths']
+    # Collect all test paths (directory + legacy files)
+    paths = list(config['paths'])
+
+    # Add legacy test files if they exist
+    if 'also_run' in config:
+        existing_files = [f for f in config['also_run'] if os.path.exists(f)]
+        paths.extend(existing_files)
+
     no_coverage = config.get('no_coverage', False)
 
+    # Run all tests together in a single pytest call
+    # This matches CI behavior and avoids issues with empty directories
     result = run_pytest(
         paths,
         verbose=verbose,
@@ -169,21 +182,6 @@ def run_category(category, verbose=False, quiet=False, no_capture=False,
         failfast=failfast,
         no_coverage=no_coverage
     )
-
-    # Run legacy unittest tests if configured
-    if 'also_run' in config and result == 0:
-        existing_files = [f for f in config['also_run'] if os.path.exists(f)]
-        if existing_files:
-            print(f"\n--- Also running {len(existing_files)} legacy test files ---")
-            for test_file in existing_files:
-                cmd = [sys.executable, '-m', 'unittest', test_file]
-                if verbose:
-                    cmd.append('-v')
-                legacy_result = subprocess.run(cmd).returncode
-                if legacy_result != 0:
-                    result = legacy_result
-                    if failfast:
-                        break
 
     elapsed = time.time() - start_time
 
