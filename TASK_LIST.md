@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 50
-**Completed Tasks:** 178 (see archive)
+**Pending Tasks:** 47
+**Completed Tasks:** 181 (see archive)
 
 **Unit Test Initiative:** ✅ COMPLETE - 85% coverage from unit tests (1,729 tests)
 - 19 modules at 90%+ coverage
@@ -15,14 +15,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 ## Active Backlog
 
 <!-- Machine-parseable format for automation -->
-
-### 🔴 Critical (Bug Fixes - Do Now)
-
-| # | Task | Category | Depends | Effort |
-|---|------|----------|---------|--------|
-| 179 | Fix definition search showing wrong/truncated content | Bug | - | Small |
-| 180 | Fix doc-type boosting showing identical results | Bug | - | Small |
-| 181 | Fix "distributed systems" query ranking target doc 3rd | Bug | - | Small |
 
 ### 🟠 High (Do This Week)
 
@@ -102,71 +94,15 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Latest completions (2025-12-13):**
+- #179 Fix definition search - line boundary fix in `find_definition_in_text()`
+- #180 Fix doc-type boosting - filename pattern + empty metadata fallback
+- #181 Fix query ranking - hybrid boost strategy for exact name matches
 - Unit Test Coverage Initiative: 1,729 tests, 85% coverage, 19 modules at 90%+
 - Tasks #159-178 (unit tests for all modules)
 
 ---
 
 ## Pending Task Details
-
-### 179. Fix Definition Search Showing Wrong/Truncated Content
-
-**Meta:** `status:pending` `priority:critical` `category:bug`
-**Files:** `cortical/query/definitions.py`, `showcase.py`
-**Effort:** Small
-
-**Problem:** In showcase.py, definition search shows wrong content:
-- Query "class DataProcessor" → shows "etadata is None:..." (truncated/wrong location)
-- Query "def calculate_statistics" → shows "records.clear()..." (not the definition)
-
-**Root Cause:** `find_definition_passages()` returns wrong text positions or the first line extraction is incorrect.
-
-**Acceptance:**
-- [ ] "class DataProcessor" shows "class DataProcessor:" line
-- [ ] "def calculate_statistics" shows the actual function signature
-- [ ] Add regression test for definition search accuracy
-
----
-
-### 180. Fix Doc-Type Boosting Showing Identical Results
-
-**Meta:** `status:pending` `priority:critical` `category:bug`
-**Files:** `cortical/query/search.py`, `showcase.py`
-**Effort:** Small
-
-**Problem:** Showcase shows identical results with/without boost:
-```
-Without doc-type boost: data_processor: 46.095
-With doc-type boost:    data_processor: 46.095 (same!)
-```
-
-**Root Cause:** `apply_doc_boost` parameter may not be wired correctly, or test files aren't present in results.
-
-**Acceptance:**
-- [ ] Boosted and non-boosted results show different scores
-- [ ] Test files visibly penalized (lower scores)
-- [ ] Add test verifying boost changes results
-
----
-
-### 181. Fix Query Ranking for Exact Document Matches
-
-**Meta:** `status:pending` `priority:critical` `category:bug`
-**Files:** `cortical/query/search.py`, `cortical/query/ranking.py`
-**Effort:** Small
-
-**Problem:** Query "distributed systems" ranks:
-1. unix_evolution (19.96)
-2. database_design_patterns (16.81)
-3. distributed_systems (14.96) ← should be #1!
-
-**Root Cause:** doc_name_boost may be insufficient, or expansion terms are diluting the exact match.
-
-**Acceptance:**
-- [ ] Exact document name matches rank first
-- [ ] Add test: query matching doc name should return that doc first
-
----
 
 ### 182. Create Fluent API for CorticalTextProcessor
 
