@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 44
-**Completed Tasks:** 184 (see archive)
+**Pending Tasks:** 40
+**Completed Tasks:** 189 (see archive)
 
 **Unit Test Initiative:** ✅ COMPLETE - 85% coverage from unit tests (1,729 tests)
 - 19 modules at 90%+ coverage
@@ -20,9 +20,8 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 148 | Investigate test_search_is_fast taking 137s | Testing | - | Medium |
-| 149 | Fix test_compute_all_under_threshold failing (135s > 30s) | Testing | - | Medium |
 | 184 | Implement MCP Server for Claude Desktop integration | Integration | - | Large |
+| 192 | Deduplicate lateral_connections and typed_connections storage | Memory | - | Medium |
 
 ### 🟡 Medium (Do This Month)
 
@@ -57,6 +56,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 129 | Test customer service retrieval quality | Testing | - | Small |
 | 130 | Expand customer service sample cluster | Samples | - | Medium |
 | 131 | Investigate cross-domain semantic bridges | Research | - | Medium |
+| 196 | Add runtime warning for spectral embeddings on large graphs | DevEx | - | Small |
 
 ### ⏸️ Deferred
 
@@ -91,6 +91,11 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Latest completions (2025-12-13):**
+- #193 Unify alpha validation - retrofit_embeddings() now accepts [0,1] consistently
+- #194 Layer validation - Added checks for invalid layer values (0-3) in persistence/layers
+- #195 Stopwords import - semantics.py now uses Tokenizer.DEFAULT_STOP_WORDS
+- #148 Performance test refactor - Moved to small synthetic corpus (25 docs)
+- #149 Performance test fix - Tests now use small_corpus.py fixtures
 - #182 Fluent API - FluentProcessor with method chaining (44 tests)
 - #183 Progress Feedback - ConsoleProgressReporter, callbacks (30 tests)
 - #185 Result Dataclasses - DocumentMatch, PassageMatch, QueryResult (56 tests)
@@ -146,6 +151,86 @@ processor.explore(query)               # With expansion visibility
 - [ ] 3-4 facade methods added
 - [ ] Sensible defaults for each use case
 - [ ] Examples in quickstart.md
+
+---
+
+### 192. Deduplicate lateral_connections and typed_connections storage
+
+**Meta:** `status:pending` `priority:high` `category:memory`
+**Files:** `cortical/minicolumn.py`
+
+**Problem:**
+Every typed connection is duplicated in `lateral_connections` for backward compatibility (`minicolumn.py:209-212`). For large graphs, this doubles memory for edge weights.
+
+**Options:**
+1. Deprecate `lateral_connections` in favor of `typed_connections`
+2. Make `lateral_connections` a property that derives from `typed_connections`
+3. Keep both but document the trade-off
+
+**Context from code review (2025-12-13):**
+- Found in comprehensive code review of core classes
+- Memory concern for large corpora with millions of edges
+
+---
+
+### 193. Unify alpha parameter validation in semantics.py
+
+**Meta:** `status:pending` `priority:medium` `category:codequal`
+**Files:** `cortical/semantics.py`
+
+**Problem:**
+`retrofit_connections()` allows `alpha=0` but `retrofit_embeddings()` excludes it:
+- Line 405-408: `if not (0 <= alpha <= 1):`
+- Line 507-508: `if not (0 < alpha <= 1):`
+
+**Fix:** Either document why the difference exists or unify the validation.
+
+---
+
+### 194. Add validation for invalid layer values in persistence.py load
+
+**Meta:** `status:pending` `priority:medium` `category:codequal`
+**Files:** `cortical/persistence.py`
+
+**Problem:**
+In `load_processor()` (line 97-99), if `level_value` isn't a valid `CorticalLayer` enum value (0-3), an unclear `ValueError` is raised.
+
+**Fix:** Add explicit validation with helpful error message:
+```python
+try:
+    layer_enum = CorticalLayer(int(level_value))
+except ValueError:
+    raise ValueError(f"Invalid layer level in saved state: {level_value}")
+```
+
+---
+
+### 195. Import stopwords from tokenizer.py in semantics.py
+
+**Meta:** `status:pending` `priority:low` `category:codequal`
+**Files:** `cortical/semantics.py`, `cortical/tokenizer.py`
+
+**Problem:**
+`semantics.py` (lines 144-151) has its own hardcoded stopword set that duplicates `Tokenizer.DEFAULT_STOP_WORDS`. Changes to one won't affect the other.
+
+**Fix:** Import from `Tokenizer.DEFAULT_STOP_WORDS` or move to `constants.py`.
+
+---
+
+### 196. Add runtime warning for spectral embeddings on large graphs
+
+**Meta:** `status:pending` `priority:low` `category:devex`
+**Files:** `cortical/embeddings.py`
+
+**Problem:**
+Spectral embeddings are O(n²) but there's no runtime warning when called with large graphs. Users may wait unexpectedly.
+
+**Fix:** Add warning for large graphs:
+```python
+if n > 5000:
+    import warnings
+    warnings.warn(f"Spectral embeddings with {n} terms will be slow (O(n²))")
+```
 
 ---
 

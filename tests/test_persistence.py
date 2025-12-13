@@ -4,6 +4,7 @@ import unittest
 import tempfile
 import os
 import json
+import pickle
 import sys
 sys.path.insert(0, '..')
 
@@ -254,6 +255,91 @@ class TestSaveLoad(unittest.TestCase):
             self.assertIn("Loaded processor", output)
             self.assertIn("embeddings", output)
             self.assertIn("semantic relations", output)
+
+    def test_load_invalid_layer_value(self):
+        """Test that loading with invalid layer value raises ValueError."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Test content")
+        processor.compute_all(verbose=False)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, processor.embeddings,
+                processor.semantic_relations, verbose=False
+            )
+
+            # Corrupt the file by adding invalid layer value
+            with open(filepath, 'rb') as f:
+                state = pickle.load(f)
+
+            # Add an invalid layer value (5 is not valid, only 0-3 are valid)
+            state['layers'][5] = state['layers'][0].copy()
+
+            corrupted_filepath = os.path.join(tmpdir, "corrupted.pkl")
+            with open(corrupted_filepath, 'wb') as f:
+                pickle.dump(state, f)
+
+            # Try to load the corrupted file
+            with self.assertRaises(ValueError) as context:
+                load_processor(corrupted_filepath, verbose=False)
+
+            # Check error message is informative
+            self.assertIn("Invalid layer value 5", str(context.exception))
+            self.assertIn("must be 0-3", str(context.exception))
+
+    def test_load_negative_layer_value(self):
+        """Test that loading with negative layer value raises ValueError."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Test content")
+        processor.compute_all(verbose=False)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            save_processor(
+                filepath, processor.layers, processor.documents,
+                processor.document_metadata, processor.embeddings,
+                processor.semantic_relations, verbose=False
+            )
+
+            # Corrupt the file by adding negative layer value
+            with open(filepath, 'rb') as f:
+                state = pickle.load(f)
+
+            # Add an invalid negative layer value
+            state['layers'][-1] = state['layers'][0].copy()
+
+            corrupted_filepath = os.path.join(tmpdir, "corrupted.pkl")
+            with open(corrupted_filepath, 'wb') as f:
+                pickle.dump(state, f)
+
+            # Try to load the corrupted file
+            with self.assertRaises(ValueError) as context:
+                load_processor(corrupted_filepath, verbose=False)
+
+            # Check error message is informative
+            self.assertIn("Invalid layer value -1", str(context.exception))
+            self.assertIn("must be 0-3", str(context.exception))
+
+    def test_load_valid_layer_values(self):
+        """Test that loading with all valid layer values (0-3) works."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Test content for validation")
+        processor.compute_all(verbose=False)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            processor.save(filepath, verbose=False)
+
+            # Should load successfully without raising ValueError
+            loaded = CorticalTextProcessor.load(filepath, verbose=False)
+
+            # Verify all 4 layers are present and valid
+            for layer_enum in [CorticalLayer.TOKENS, CorticalLayer.BIGRAMS,
+                             CorticalLayer.CONCEPTS, CorticalLayer.DOCUMENTS]:
+                self.assertIn(layer_enum, loaded.layers)
+                self.assertEqual(loaded.layers[layer_enum].level, layer_enum)
 
 
 class TestExportGraphJSON(unittest.TestCase):

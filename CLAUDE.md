@@ -339,6 +339,33 @@ if processor.is_stale(processor.COMP_PAGERANK):
     processor.compute_importance()
 ```
 
+### Changing Validation Logic (IMPORTANT!)
+
+When modifying validation rules (e.g., parameter ranges, input constraints), **tests are scattered across multiple files**. Missing any will cause CI failures.
+
+**Before changing validation:**
+```bash
+# Find ALL tests related to the parameter/function you're changing
+# Example: changing alpha parameter validation
+grep -rn "alpha" tests/ | grep -i "invalid\|error\|raise\|ValueError"
+
+# More specific patterns:
+grep -rn "alpha.*0\|alpha.*1\|invalid.*alpha" tests/
+```
+
+**Checklist for validation changes:**
+1. ✅ Search for the parameter name + "invalid", "error", "raise", "ValueError" in tests/
+2. ✅ Check both `tests/unit/` AND legacy `tests/test_*.py` files
+3. ✅ Check `tests/test_coverage_gaps.py` (often has validation edge cases)
+4. ✅ Update ALL matching tests, not just the first one found
+5. ✅ Run full test suite locally before pushing: `python -m pytest tests/ -v`
+
+**Example: Changing alpha from (0, 1] to [0, 1]**
+```bash
+# This finds tests expecting alpha=0 to be invalid:
+grep -rn "alpha.*0\.0\|alpha.*=.*0[^.]\|exclusive of 0" tests/
+```
+
 ### Staleness Tracking System
 
 The processor tracks which computations are up-to-date vs needing recalculation. This prevents unnecessary recomputation while ensuring data consistency.
@@ -583,6 +610,32 @@ class TestYourFeature(unittest.TestCase):
 - Multiple documents case
 - Edge cases specific to your feature
 - Add regression test if fixing a bug
+
+### CI/CD Best Practices
+
+**CRITICAL: Pytest runs unittest-based tests natively!**
+
+Never run both pytest and unittest on the same test files - this doubles CI time:
+
+```bash
+# ❌ WRONG - runs tests twice (doubles CI time from ~7min to ~15min+)
+coverage run -m pytest tests/
+coverage run --append -m unittest discover -s tests
+
+# ✅ CORRECT - pytest handles both pytest AND unittest style tests
+coverage run -m pytest tests/
+```
+
+**Why this matters:**
+- All `test_*.py` files using `unittest.TestCase` are discovered and run by pytest
+- Running unittest separately re-runs the exact same tests
+- With 3000+ tests and coverage overhead, this can add 10+ minutes to CI
+
+**When modifying `.github/workflows/ci.yml`:**
+1. Read the header comment explaining the test architecture
+2. Add new tests to the appropriate stage (smoke, unit, integration, etc.)
+3. Never add duplicate test runners in the coverage-report job
+4. When in doubt, run locally first: `time python -m pytest tests/ -v`
 
 ---
 

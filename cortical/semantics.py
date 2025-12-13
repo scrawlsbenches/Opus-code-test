@@ -24,6 +24,7 @@ except ImportError:
 from .layers import CorticalLayer, HierarchicalLayer
 from .minicolumn import Minicolumn
 from .constants import RELATION_WEIGHTS
+from .tokenizer import Tokenizer
 
 
 # Commonsense relation patterns with confidence scores
@@ -141,13 +142,7 @@ def extract_pattern_relations(
                         continue
 
                     # Skip common stopwords that might slip through patterns
-                    stopwords = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be',
-                                 'been', 'being', 'have', 'has', 'had', 'do', 'does',
-                                 'did', 'will', 'would', 'could', 'should', 'may',
-                                 'might', 'must', 'shall', 'can', 'this', 'that',
-                                 'these', 'those', 'it', 'its', 'they', 'them',
-                                 'their', 'we', 'us', 'our', 'you', 'your', 'i', 'me', 'my'}
-                    if t1 in stopwords or t2 in stopwords:
+                    if t1 in Tokenizer.DEFAULT_STOP_WORDS or t2 in Tokenizer.DEFAULT_STOP_WORDS:
                         continue
 
                     # Create relation key to avoid duplicates
@@ -502,10 +497,10 @@ def retrofit_embeddings(
         Dictionary with retrofitting statistics
 
     Raises:
-        ValueError: If alpha is not in range (0, 1]
+        ValueError: If alpha is not in range [0, 1]
     """
-    if not (0 < alpha <= 1):
-        raise ValueError(f"alpha must be between 0 and 1 (exclusive of 0), got {alpha}")
+    if not (0 <= alpha <= 1):
+        raise ValueError(f"alpha must be between 0 and 1, got {alpha}")
 
     # Store original embeddings
     original = copy.deepcopy(embeddings)
