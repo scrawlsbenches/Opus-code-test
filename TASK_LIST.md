@@ -3,11 +3,16 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 24
-**Completed Tasks:** 214 (see archive)
+**Pending Tasks:** 19
+**Completed Tasks:** 219 (see archive)
 
-**Legacy Test Cleanup:** 16 duplicated legacy tests removed, 13 remaining need investigation
-- See Tasks #198-205 for legacy test investigation
+**Legacy Test Cleanup:** Investigation complete for 5 small files (Tasks #200-204)
+- #200 test_edge_cases.py: KEEP - unique edge case tests (53 tests)
+- #201 test_incremental_indexing.py: KEEP - unique script tests (47 tests)
+- #202 test_intent_query.py: COVERED by tests/unit/test_query.py - can delete (24 tests)
+- #203 test_behavioral.py: SUPERSEDED by tests/behavioral/ - can delete (9 tests)
+- #204 test_query_optimization.py: COVERED by tests/unit/test_query_search.py - can delete (20 tests)
+- See Tasks #198-199, #205 for remaining investigation
 
 **Unit Test Initiative:** ✅ COMPLETE - 85% coverage from unit tests (1,729 tests)
 - 19 modules at 90%+ coverage
@@ -38,11 +43,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 107 | Add Quick Context to tasks | TaskMgmt | - | Medium |
 | 198 | Investigate legacy test_coverage_gaps.py (91 tests) | Testing | - | Medium |
 | 199 | Investigate legacy test_cli_wrapper.py (96 tests) | Testing | - | Medium |
-| 200 | Investigate legacy test_edge_cases.py (53 tests) | Testing | - | Small |
-| 201 | Investigate legacy test_incremental_indexing.py (47 tests) | Testing | - | Small |
-| 202 | Investigate legacy test_intent_query.py (24 tests) | Testing | - | Small |
-| 203 | Investigate legacy test_behavioral.py (9 tests) | Testing | - | Small |
-| 204 | Investigate legacy test_query_optimization.py (20 tests) | Testing | - | Small |
 | 205 | Investigate legacy script tests (6 files, 132 tests) | Testing | - | Medium |
 
 ### 🟢 Low (Backlog)
@@ -102,6 +102,12 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Latest completions (2025-12-13):**
+- #200-204 Legacy test investigation - 5 files reviewed (153 tests total)
+  - #200 test_edge_cases.py: KEEP - unique robustness tests
+  - #201 test_incremental_indexing.py: KEEP - unique script integration tests
+  - #202 test_intent_query.py: DELETE - covered by tests/unit/test_query.py
+  - #203 test_behavioral.py: DELETE - superseded by tests/behavioral/
+  - #204 test_query_optimization.py: DELETE - covered by tests/unit/test_query_search.py
 - #197 Task list validation in CI - Added validate-task-list job to workflow
 - #186 Simplified facade methods - quick_search(), rag_retrieve(), explore() (23 tests)
 - #196 Spectral embeddings warning - RuntimeWarning for large graphs (>5000 terms)
@@ -167,7 +173,7 @@ Every typed connection is duplicated in `lateral_connections` for backward compa
 
 ## Legacy Test Investigation Tasks
 
-These tasks were created during the test coverage review (2025-12-13). 16 duplicated legacy tests were removed, and 13 remaining tests need investigation to determine if they should be migrated to categorized test directories or kept as-is. Check git history for any previous migration work.
+Investigation in progress for remaining legacy test files. 5 of 8 tasks completed (Tasks #200-204).
 
 ### 198. Investigate test_coverage_gaps.py (91 tests)
 
@@ -195,65 +201,71 @@ These tasks were created during the test coverage review (2025-12-13). 16 duplic
 
 ---
 
-### 200. Investigate test_edge_cases.py (53 tests)
+### 200. ✅ test_edge_cases.py (53 tests) - KEEP
 
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_edge_cases.py`
-**Effort:** Small
+**Meta:** `status:completed` `priority:medium` `category:testing`
+**Recommendation:** KEEP - unique edge case/robustness tests not covered elsewhere
 
-**Problem:** 53 tests for edge cases (Unicode, large docs, malformed inputs). Investigate:
-1. Check git history
-2. Consider moving to `tests/unit/` or creating `tests/robustness/`
-
----
-
-### 201. Investigate test_incremental_indexing.py (47 tests)
-
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_incremental_indexing.py`
-**Effort:** Small
-
-**Problem:** 47 tests for incremental document operations. Investigate:
-1. Check git history
-2. Verify no overlap with `tests/unit/test_processor_core.py`
-3. Consider moving to `tests/integration/`
+**Findings:**
+- Tests Unicode/i18n handling (Arabic, Chinese, emoji, mixed scripts)
+- Tests large documents (10K+ words, very long lines)
+- Tests malformed inputs (empty, None, non-string)
+- Tests boundary conditions (single word, repeated words)
+- Tests query edge cases (special chars, Unicode, negative top_n)
+- **No significant overlap** with unit tests - these are comprehensive robustness tests
 
 ---
 
-### 202. Investigate test_intent_query.py (24 tests)
+### 201. ✅ test_incremental_indexing.py (47 tests) - KEEP (partial)
 
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_intent_query.py`
-**Effort:** Small
+**Meta:** `status:completed` `priority:medium` `category:testing`
+**Recommendation:** KEEP script-specific tests, consider removing duplicated remove_document tests
 
-**Problem:** 24 tests for intent-based query parsing. Investigate:
-1. Check git history
-2. Check if `tests/unit/test_query.py` covers this
-3. Consider moving to `tests/unit/test_query_intent.py`
-
----
-
-### 203. Investigate test_behavioral.py (9 tests)
-
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_behavioral.py`
-**Effort:** Small
-
-**Problem:** 9 behavioral/acceptance tests. Investigate:
-1. Check git history
-2. Move to `tests/behavioral/` if appropriate
+**Findings:**
+- remove_document/remove_minicolumn tests: COVERED by tests/unit/test_processor_core.py and tests/unit/test_layers.py
+- Script-specific tests (UNIQUE, keep):
+  - Manifest operations for scripts/index_codebase.py
+  - File change detection
+  - Progress tracker
+  - Timeout handler
+  - Full/Incremental index functions
 
 ---
 
-### 204. Investigate test_query_optimization.py (20 tests)
+### 202. ✅ test_intent_query.py (24 tests) - DELETE
 
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_query_optimization.py`
-**Effort:** Small
+**Meta:** `status:completed` `priority:medium` `category:testing`
+**Recommendation:** DELETE - fully covered by tests/unit/test_query.py
 
-**Problem:** 20 tests for query performance. Investigate:
-1. Check git history
-2. Consider moving to `tests/performance/`
+**Findings:**
+- parse_intent_query tests: COVERED by 12+ tests in tests/unit/test_query.py
+- search_by_intent tests: COVERED by tests/unit/test_processor_core.py
+- QUESTION_INTENTS/ACTION_VERBS constant tests: minor, can be added to unit tests if needed
+
+---
+
+### 203. ✅ test_behavioral.py (9 tests) - DELETE
+
+**Meta:** `status:completed` `priority:medium` `category:testing`
+**Recommendation:** DELETE - superseded by tests/behavioral/test_behavioral.py
+
+**Findings:**
+- Legacy file uses unittest + loads real samples/ corpus (256s runtime!)
+- tests/behavioral/test_behavioral.py uses pytest fixtures + synthetic corpus (<5s)
+- Same test categories: SearchBehavior, QualityBehavior, RobustnessBehavior
+- Categorized version has MORE tests (18 vs 9) with better coverage
+
+---
+
+### 204. ✅ test_query_optimization.py (20 tests) - DELETE
+
+**Meta:** `status:completed` `priority:medium` `category:testing`
+**Recommendation:** DELETE - fully covered by tests/unit/test_query_search.py
+
+**Findings:**
+- fast_find_documents: COVERED by 15+ tests in tests/unit/test_query_search.py
+- build_document_index: COVERED by 7+ tests in tests/unit/test_query_search.py
+- search_with_index: COVERED by 8+ tests in tests/unit/test_query_search.py
 
 ---
 
@@ -308,7 +320,7 @@ These tasks were created during the test coverage review (2025-12-13). 16 duplic
 |----------|---------|-------------|
 | Arch | 5 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
 | CodeQual | 1 | Code quality improvements (#99) |
-| Testing | 9 | Test coverage and legacy investigation (#129, 198-205) |
+| Testing | 4 | Test coverage and legacy investigation (#129, 198, 199, 205) |
 | TaskMgmt | 3 | Task management system (#106, 107, 108) |
 | AINav | 2 | AI assistant navigation (#117, 118) |
 | DevEx | 7 | Developer experience, scripts (#73-80) |
