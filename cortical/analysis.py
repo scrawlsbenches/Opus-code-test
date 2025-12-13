@@ -1438,50 +1438,64 @@ def cluster_by_louvain(
 
 def build_concept_clusters(
     layers: Dict[CorticalLayer, HierarchicalLayer],
-    clusters: Dict[int, List[str]]
+    clusters: Dict[int, List[str]],
+    doc_vote_threshold: float = 0.1
 ) -> None:
     """
     Build concept layer from token clusters.
-    
+
     Creates Layer 2 (Concepts) minicolumns from clustered tokens.
     Each concept is named after its most important members.
-    
+
     Args:
         layers: Dictionary of all layers
         clusters: Cluster dictionary from label propagation
+        doc_vote_threshold: Minimum fraction of cluster members that must
+            contain a document for it to be assigned to the concept.
+            Default 0.1 (10%) prevents high-frequency tokens from causing
+            every concept to contain every document.
     """
     layer0 = layers[CorticalLayer.TOKENS]
     layer2 = layers[CorticalLayer.CONCEPTS]
-    
+
     for cluster_id, members in clusters.items():
         if len(members) < 2:
             continue
-        
+
         # Get member columns and sort by PageRank
         member_cols = []
         for m in members:
             col = layer0.get_minicolumn(m)
             if col:
                 member_cols.append(col)
-        
+
         if not member_cols:
             continue
-        
+
         member_cols.sort(key=lambda c: c.pagerank, reverse=True)
-        
+
         # Name concept after top members
         top_names = [c.content for c in member_cols[:3]]
         concept_name = '/'.join(top_names)
-        
+
         # Create concept minicolumn
         concept = layer2.get_or_create_minicolumn(concept_name)
         concept.cluster_id = cluster_id
-        
+
+        # Count document votes across cluster members
+        # A document is assigned to the concept only if enough members contain it
+        doc_votes: Dict[str, int] = {}
+        for col in member_cols:
+            for doc_id in col.document_ids:
+                doc_votes[doc_id] = doc_votes.get(doc_id, 0) + 1
+
+        # Calculate vote threshold (minimum votes needed)
+        min_votes = max(1, int(len(member_cols) * doc_vote_threshold))
+
         # Aggregate properties from members with weighted connections
         max_pagerank = max(c.pagerank for c in member_cols) if member_cols else 1.0
         for col in member_cols:
             concept.feedforward_sources.add(col.id)
-            concept.document_ids.update(col.document_ids)
             concept.activation += col.activation * 0.5
             concept.occurrence_count += col.occurrence_count
             # Weighted feedforward: concept → token (weight by normalized PageRank)
@@ -1489,6 +1503,11 @@ def build_concept_clusters(
             concept.add_feedforward_connection(col.id, weight)
             # Weighted feedback: token → concept (weight by normalized PageRank)
             col.add_feedback_connection(concept.id, weight)
+
+        # Assign documents that meet the vote threshold
+        for doc_id, votes in doc_votes.items():
+            if votes >= min_votes:
+                concept.document_ids.add(doc_id)
 
         # Set PageRank as average of members
         concept.pagerank = sum(c.pagerank for c in member_cols) / len(member_cols)
