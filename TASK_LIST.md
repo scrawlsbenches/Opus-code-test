@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 47
-**Completed Tasks:** 181 (see archive)
+**Pending Tasks:** 44
+**Completed Tasks:** 184 (see archive)
 
 **Unit Test Initiative:** ✅ COMPLETE - 85% coverage from unit tests (1,729 tests)
 - 19 modules at 90%+ coverage
@@ -22,16 +22,13 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 |---|------|----------|---------|--------|
 | 148 | Investigate test_search_is_fast taking 137s | Testing | - | Medium |
 | 149 | Fix test_compute_all_under_threshold failing (135s > 30s) | Testing | - | Medium |
-| 182 | Create Fluent API for CorticalTextProcessor | API | - | Medium |
-| 183 | Add progress feedback during long operations | UX | - | Medium |
 | 184 | Implement MCP Server for Claude Desktop integration | Integration | - | Large |
 
 ### 🟡 Medium (Do This Month)
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 185 | Create result dataclasses (DocumentMatch, PassageMatch) | API | - | Medium |
-| 186 | Add simplified facade methods (quick_search, rag_retrieve) | API | 182 | Small |
+| 186 | Add simplified facade methods (quick_search, rag_retrieve) | API | - | Small |
 | 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
 | 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
@@ -94,6 +91,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Latest completions (2025-12-13):**
+- #182 Fluent API - FluentProcessor with method chaining (44 tests)
+- #183 Progress Feedback - ConsoleProgressReporter, callbacks (30 tests)
+- #185 Result Dataclasses - DocumentMatch, PassageMatch, QueryResult (56 tests)
 - #179 Fix definition search - line boundary fix in `find_definition_in_text()`
 - #180 Fix doc-type boosting - filename pattern + empty metadata fallback
 - #181 Fix query ranking - hybrid boost strategy for exact name matches
@@ -103,63 +103,6 @@ All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 ---
 
 ## Pending Task Details
-
-### 182. Create Fluent API for CorticalTextProcessor
-
-**Meta:** `status:pending` `priority:high` `category:api`
-**Files:** `cortical/processor.py` or `cortical/fluent.py` (new)
-**Effort:** Medium
-
-**Problem:** Current API requires many chained calls:
-```python
-processor = CorticalTextProcessor()
-processor.process_document("doc1", "content")
-processor.compute_all()
-results = processor.find_documents_for_query("query", top_n=5)
-```
-
-**Solution:** Create fluent/chainable API:
-```python
-results = (CorticalTextProcessor()
-    .add_document("doc1", "content")
-    .add_document("doc2", "more content")
-    .build()  # Calls compute_all()
-    .search("query", top_n=5))
-```
-
-**Acceptance:**
-- [ ] Fluent builder pattern implemented
-- [ ] Method chaining works for document addition
-- [ ] `.build()` returns searchable processor
-- [ ] Examples in quickstart.md
-
----
-
-### 183. Add Progress Feedback During Long Operations
-
-**Meta:** `status:pending` `priority:high` `category:ux`
-**Files:** `cortical/processor.py`, `cortical/progress.py` (new)
-**Effort:** Medium
-
-**Problem:** `compute_all()` takes 148s with zero feedback. Users think the process crashed.
-
-**Solution:** Add progress callback support:
-```python
-def on_progress(phase: str, percent: float, elapsed: float):
-    print(f"{phase}: {percent:.0f}% ({elapsed:.1f}s)")
-
-processor.compute_all(progress_callback=on_progress)
-```
-
-**Phases to report:** tokenization, bigrams, semantics, pagerank, concepts, embeddings
-
-**Acceptance:**
-- [ ] Optional progress_callback parameter on compute_all()
-- [ ] CLI scripts show progress bar/spinner
-- [ ] < 1% performance overhead
-- [ ] Phase names and percentages accurate
-
----
 
 ### 184. Implement MCP Server for Claude Desktop Integration
 
@@ -184,41 +127,9 @@ processor.compute_all(progress_callback=on_progress)
 
 ---
 
-### 185. Create Result Dataclasses
-
-**Meta:** `status:pending` `priority:medium` `category:api`
-**Files:** `cortical/results.py` (new), `cortical/query/*.py`
-**Effort:** Medium
-
-**Problem:** Results are tuples - `(text, doc_id, start, end, score)`. No IDE autocomplete, easy to mix up positions.
-
-**Solution:** Create dataclasses:
-```python
-@dataclass
-class DocumentMatch:
-    doc_id: str
-    score: float
-    metadata: Dict[str, Any] = None
-
-@dataclass
-class PassageMatch:
-    text: str
-    doc_id: str
-    line_start: int
-    line_end: int
-    score: float
-```
-
-**Acceptance:**
-- [ ] DocumentMatch, PassageMatch, QueryExpansion dataclasses
-- [ ] IDE autocomplete works
-- [ ] Backward compatible (old tuple access still works via __iter__)
-
----
-
 ### 186. Add Simplified Facade Methods
 
-**Meta:** `status:pending` `priority:medium` `category:api` `depends:182`
+**Meta:** `status:pending` `priority:medium` `category:api`
 **Files:** `cortical/processor.py`
 **Effort:** Small
 

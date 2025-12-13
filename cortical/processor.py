@@ -20,6 +20,13 @@ from . import query as query_module
 from . import gaps as gaps_module
 from . import persistence
 from . import fingerprint as fp_module
+from .progress import (
+    ProgressReporter,
+    ConsoleProgressReporter,
+    CallbackProgressReporter,
+    SilentProgressReporter,
+    MultiPhaseProgress
+)
 
 logger = logging.getLogger(__name__)
 
@@ -633,13 +640,15 @@ class CorticalTextProcessor:
         pagerank_method: str = 'standard',
         connection_strategy: str = 'document_overlap',
         cluster_strictness: float = 1.0,
-        bridge_weight: float = 0.0
+        bridge_weight: float = 0.0,
+        progress_callback: Optional[ProgressReporter] = None,
+        show_progress: bool = False
     ) -> Dict[str, Any]:
         """
         Run all computation steps.
 
         Args:
-            verbose: Print progress messages
+            verbose: Print progress messages (deprecated, use show_progress)
             build_concepts: Build concept clusters in Layer 2 (default True)
                            This enables topic-based filtering and hierarchical search.
             pagerank_method: PageRank algorithm to use:
@@ -657,13 +666,25 @@ class CorticalTextProcessor:
                 Lower values create fewer, larger clusters with more connections.
             bridge_weight: Weight for inter-document token bridging (0.0-1.0).
                 Higher values help bridge topic-isolated clusters.
+            progress_callback: Optional ProgressReporter for custom progress tracking
+            show_progress: Show progress bar on console (uses stderr)
 
         Returns:
             Dict with computation statistics (concept_stats, etc.)
 
         Example:
-            >>> # Default behavior
+            >>> # Default behavior (silent)
             >>> processor.compute_all()
+            >>>
+            >>> # With console progress bar
+            >>> processor.compute_all(show_progress=True)
+            >>>
+            >>> # With custom callback
+            >>> processor.compute_all(
+            ...     progress_callback=CallbackProgressReporter(
+            ...         lambda phase, pct, msg: print(f"{phase}: {pct}%")
+            ...     )
+            ... )
             >>>
             >>> # Maximum connectivity for diverse documents
             >>> processor.compute_all(
@@ -674,38 +695,97 @@ class CorticalTextProcessor:
         """
         stats: Dict[str, Any] = {}
 
+        # Set up progress reporter
+        if progress_callback:
+            reporter = progress_callback
+        elif show_progress:
+            reporter = ConsoleProgressReporter()
+        else:
+            reporter = SilentProgressReporter()
+
+        # Define phase weights based on typical execution times
+        # These are estimates and may vary based on corpus size
+        phase_weights = {
+            "Activation propagation": 5,
+            "PageRank computation": 10,
+            "TF-IDF computation": 15,
+            "Document connections": 10,
+            "Bigram connections": 30,
+        }
+
+        # Add concept-related phases if building concepts
+        if build_concepts:
+            phase_weights["Concept clustering"] = 15
+            if connection_strategy in ('semantic', 'hybrid'):
+                phase_weights["Semantic extraction"] = 10
+            if connection_strategy in ('embedding', 'hybrid'):
+                phase_weights["Graph embeddings"] = 10
+            phase_weights["Concept connections"] = 15
+
+        # Create multi-phase progress tracker
+        progress = MultiPhaseProgress(reporter, phase_weights)
+
+        # Phase 1: Activation propagation
+        progress.start_phase("Activation propagation")
         if verbose:
             logger.info("Computing activation propagation...")
         self.propagate_activation(verbose=False)
+        progress.update(100)
+        progress.complete_phase()
 
+        # Phase 2: PageRank (varies by method)
+        progress.start_phase("PageRank computation")
         if pagerank_method == 'semantic':
             # Extract semantic relations if not already done
             if not self.semantic_relations:
                 if verbose:
                     logger.info("Extracting semantic relations...")
+                progress.update(30, "Extracting semantic relations")
                 self.extract_corpus_semantics(verbose=False)
             if verbose:
                 logger.info("Computing importance (Semantic PageRank)...")
+            progress.update(70, "Computing semantic PageRank")
             self.compute_semantic_importance(verbose=False)
         elif pagerank_method == 'hierarchical':
             if verbose:
                 logger.info("Computing importance (Hierarchical PageRank)...")
+            progress.update(50, "Computing hierarchical PageRank")
             self.compute_hierarchical_importance(verbose=False)
         else:
             if verbose:
                 logger.info("Computing importance (PageRank)...")
+            progress.update(50, "Computing PageRank")
             self.compute_importance(verbose=False)
+        progress.update(100)
+        progress.complete_phase()
+
+        # Phase 3: TF-IDF
+        progress.start_phase("TF-IDF computation")
         if verbose:
             logger.info("Computing TF-IDF...")
         self.compute_tfidf(verbose=False)
+        progress.update(100)
+        progress.complete_phase()
+
+        # Phase 4: Document connections
+        progress.start_phase("Document connections")
         if verbose:
             logger.info("Computing document connections...")
         self.compute_document_connections(verbose=False)
+        progress.update(100)
+        progress.complete_phase()
+
+        # Phase 5: Bigram connections
+        progress.start_phase("Bigram connections")
         if verbose:
             logger.info("Computing bigram connections...")
         self.compute_bigram_connections(verbose=False)
+        progress.update(100)
+        progress.complete_phase()
 
         if build_concepts:
+            # Phase 6: Concept clustering
+            progress.start_phase("Concept clustering")
             if verbose:
                 logger.info("Building concept clusters...")
             clusters = self.build_concept_clusters(
@@ -714,21 +794,30 @@ class CorticalTextProcessor:
                 verbose=False
             )
             stats['clusters_created'] = len(clusters)
+            progress.update(100)
+            progress.complete_phase()
 
             # Determine connection parameters based on strategy
             use_member_semantics = connection_strategy in ('semantic', 'hybrid')
             use_embedding_similarity = connection_strategy in ('embedding', 'hybrid')
 
-            # For semantic/embedding strategies, extract/compute prerequisites
+            # Phase 7: Semantic extraction (if needed)
             if use_member_semantics and not self.semantic_relations:
+                progress.start_phase("Semantic extraction")
                 if verbose:
                     logger.info("Extracting semantic relations...")
                 self.extract_corpus_semantics(verbose=False)
+                progress.update(100)
+                progress.complete_phase()
 
+            # Phase 8: Graph embeddings (if needed)
             if use_embedding_similarity and not self.embeddings:
+                progress.start_phase("Graph embeddings")
                 if verbose:
                     logger.info("Computing graph embeddings...")
                 self.compute_graph_embeddings(verbose=False)
+                progress.update(100)
+                progress.complete_phase()
 
             # Set thresholds based on strategy
             if connection_strategy == 'hybrid':
@@ -741,6 +830,8 @@ class CorticalTextProcessor:
                 min_shared_docs = 1
                 min_jaccard = 0.1
 
+            # Phase 9: Concept connections
+            progress.start_phase("Concept connections")
             if verbose:
                 logger.info(f"Computing concept connections ({connection_strategy})...")
             concept_stats = self.compute_concept_connections(
@@ -751,6 +842,8 @@ class CorticalTextProcessor:
                 verbose=False
             )
             stats['concept_connections'] = concept_stats
+            progress.update(100)
+            progress.complete_phase()
 
         # Mark core computations as fresh
         fresh_comps = [
