@@ -118,6 +118,402 @@ class SparseMatrix:
         return [(row, col, value) for (row, col), value in self.data.items()]
 
 
+# =============================================================================
+# PURE ALGORITHM CORE FUNCTIONS (for unit testing without layer dependencies)
+# =============================================================================
+
+
+def _pagerank_core(
+    graph: Dict[str, List[Tuple[str, float]]],
+    damping: float = 0.85,
+    iterations: int = 20,
+    tolerance: float = 1e-6
+) -> Dict[str, float]:
+    """
+    Pure PageRank algorithm on a graph.
+
+    This core function takes primitive types and can be unit tested without
+    needing HierarchicalLayer objects.
+
+    Args:
+        graph: Adjacency list mapping node_id to list of (target_id, weight) tuples.
+               Each entry represents outgoing edges from that node.
+        damping: Damping factor (probability of following links), must be in (0, 1)
+        iterations: Maximum number of iterations
+        tolerance: Convergence threshold
+
+    Returns:
+        Dictionary mapping node_id to PageRank score
+
+    Example:
+        >>> graph = {
+        ...     "a": [("b", 1.0)],
+        ...     "b": [("a", 1.0), ("c", 1.0)],
+        ...     "c": [("a", 1.0)]
+        ... }
+        >>> ranks = _pagerank_core(graph)
+        >>> assert ranks["a"] > ranks["c"]  # "a" has more incoming links
+    """
+    n = len(graph)
+    if n == 0:
+        return {}
+
+    nodes = list(graph.keys())
+
+    # Initialize PageRank uniformly
+    pagerank = {node: 1.0 / n for node in nodes}
+
+    # Build incoming links map and outgoing sums
+    incoming: Dict[str, List[Tuple[str, float]]] = defaultdict(list)
+    outgoing_sum: Dict[str, float] = defaultdict(float)
+
+    for source, edges in graph.items():
+        for target, weight in edges:
+            if target in graph:  # Only count edges to nodes in the graph
+                incoming[target].append((source, weight))
+                outgoing_sum[source] += weight
+
+    # Iterate until convergence
+    for _ in range(iterations):
+        new_pagerank = {}
+        max_diff = 0.0
+
+        for node in nodes:
+            # Sum of weighted incoming PageRank
+            incoming_sum = 0.0
+            for source, weight in incoming[node]:
+                if source in pagerank and outgoing_sum[source] > 0:
+                    incoming_sum += pagerank[source] * weight / outgoing_sum[source]
+
+            # Apply damping
+            new_rank = (1 - damping) / n + damping * incoming_sum
+            new_pagerank[node] = new_rank
+            max_diff = max(max_diff, abs(new_rank - pagerank.get(node, 0)))
+
+        pagerank = new_pagerank
+
+        if max_diff < tolerance:
+            break
+
+    return pagerank
+
+
+def _tfidf_core(
+    term_stats: Dict[str, Tuple[int, int, Dict[str, int]]],
+    num_docs: int
+) -> Dict[str, Tuple[float, Dict[str, float]]]:
+    """
+    Pure TF-IDF calculation.
+
+    This core function takes primitive types and can be unit tested without
+    needing HierarchicalLayer objects.
+
+    Args:
+        term_stats: Dictionary mapping term to (occurrence_count, doc_frequency, {doc_id: count})
+                   - occurrence_count: total times term appears in corpus
+                   - doc_frequency: number of documents containing term
+                   - doc_counts: per-document occurrence counts
+        num_docs: Total number of documents in corpus
+
+    Returns:
+        Dictionary mapping term to (global_tfidf, {doc_id: per_doc_tfidf})
+
+    Example:
+        >>> stats = {
+        ...     "rare": (5, 1, {"doc1": 5}),      # Rare term in one doc
+        ...     "common": (100, 10, {"doc1": 10, "doc2": 10, ...})  # Common term
+        ... }
+        >>> results = _tfidf_core(stats, num_docs=10)
+        >>> assert results["rare"][0] > results["common"][0]  # Rare term has higher TF-IDF
+    """
+    if num_docs == 0:
+        return {}
+
+    results = {}
+
+    for term, (occurrence_count, doc_frequency, doc_counts) in term_stats.items():
+        if doc_frequency > 0:
+            # Inverse document frequency
+            idf = math.log(num_docs / doc_frequency)
+
+            # Global TF-IDF (using total occurrence count)
+            tf = math.log1p(occurrence_count)
+            global_tfidf = tf * idf
+
+            # Per-document TF-IDF
+            per_doc_tfidf = {}
+            for doc_id, count in doc_counts.items():
+                doc_tf = math.log1p(count)
+                per_doc_tfidf[doc_id] = doc_tf * idf
+
+            results[term] = (global_tfidf, per_doc_tfidf)
+        else:
+            results[term] = (0.0, {})
+
+    return results
+
+
+def _louvain_core(
+    adjacency: Dict[str, Dict[str, float]],
+    resolution: float = 1.0,
+    max_iterations: int = 10
+) -> Dict[str, int]:
+    """
+    Pure Louvain community detection algorithm.
+
+    This core function takes primitive types and can be unit tested without
+    needing HierarchicalLayer objects.
+
+    Args:
+        adjacency: Adjacency dict mapping node to {neighbor: weight}.
+                  Graph should be undirected (if A->B exists, B->A should too).
+        resolution: Resolution parameter for modularity (default 1.0).
+                   Higher = more, smaller clusters. Lower = fewer, larger clusters.
+        max_iterations: Maximum optimization passes
+
+    Returns:
+        Dictionary mapping node to community_id (integer)
+
+    Example:
+        >>> adj = {
+        ...     "a": {"b": 1.0, "c": 1.0},
+        ...     "b": {"a": 1.0, "c": 1.0},
+        ...     "c": {"a": 1.0, "b": 1.0},
+        ...     "d": {"e": 1.0},
+        ...     "e": {"d": 1.0}
+        ... }
+        >>> communities = _louvain_core(adj)
+        >>> assert communities["a"] == communities["b"] == communities["c"]
+        >>> assert communities["d"] == communities["e"]
+        >>> assert communities["a"] != communities["d"]  # Two separate communities
+    """
+    nodes = list(adjacency.keys())
+    n = len(nodes)
+
+    if n == 0:
+        return {}
+
+    # Compute total edge weight
+    total_weight = sum(
+        sum(neighbors.values())
+        for neighbors in adjacency.values()
+    ) / 2.0  # Divided by 2 because undirected graph counts each edge twice
+
+    if total_weight == 0:
+        # No connections - each node is its own community
+        return {node: i for i, node in enumerate(nodes)}
+
+    # Initialize: each node in its own community
+    community = {node: i for i, node in enumerate(nodes)}
+
+    # Precompute node degrees
+    k = {node: sum(adjacency[node].values()) for node in nodes}
+
+    # Cache community degree sums
+    sigma_tot = {i: k[node] for i, node in enumerate(nodes)}
+
+    m = total_weight
+
+    def compute_modularity_gain(node: str, target_comm: int) -> float:
+        """Compute modularity gain from moving node to target community."""
+        k_i = k[node]
+
+        # Sum of edge weights from node to nodes in target community
+        k_i_in = sum(
+            weight for neighbor, weight in adjacency[node].items()
+            if community.get(neighbor) == target_comm
+        )
+
+        sigma = sigma_tot.get(target_comm, 0.0)
+
+        # Modularity gain formula with resolution parameter
+        delta_q = (k_i_in / m) - resolution * (sigma * k_i) / (2 * m * m)
+        return delta_q
+
+    # Optimization loop
+    for _ in range(max_iterations):
+        moved = False
+
+        for node in nodes:
+            current_comm = community[node]
+            k_i = k[node]
+
+            # Remove node from its community temporarily
+            sigma_tot[current_comm] -= k_i
+
+            # Find best community
+            best_comm = current_comm
+            best_gain = 0.0
+
+            # Get neighboring communities
+            neighbor_comms = set(
+                community[neighbor]
+                for neighbor in adjacency[node]
+                if neighbor in community
+            )
+            neighbor_comms.add(current_comm)
+
+            for target_comm in neighbor_comms:
+                gain = compute_modularity_gain(node, target_comm)
+                if gain > best_gain:
+                    best_gain = gain
+                    best_comm = target_comm
+
+            # Move to best community
+            community[node] = best_comm
+            sigma_tot[best_comm] = sigma_tot.get(best_comm, 0.0) + k_i
+
+            if best_comm != current_comm:
+                moved = True
+
+        if not moved:
+            break
+
+    # Renumber communities to be contiguous
+    unique_comms = sorted(set(community.values()))
+    comm_map = {old: new for new, old in enumerate(unique_comms)}
+    return {node: comm_map[comm] for node, comm in community.items()}
+
+
+def _modularity_core(
+    adjacency: Dict[str, Dict[str, float]],
+    community: Dict[str, int]
+) -> float:
+    """
+    Compute modularity Q for a given community assignment.
+
+    Modularity measures the density of connections within communities
+    compared to connections between communities.
+
+    Q = (1/2m) * Σ [A_ij - k_i*k_j/(2m)] * δ(c_i, c_j)
+
+    Args:
+        adjacency: Adjacency dict mapping node to {neighbor: weight}
+        community: Dict mapping node to community_id
+
+    Returns:
+        Modularity score between -0.5 and 1 (typically 0 to 0.7)
+        - Q > 0.3: Good community structure
+        - Q > 0.5: Strong community structure
+
+    Example:
+        >>> adj = {"a": {"b": 1.0}, "b": {"a": 1.0}, "c": {"d": 1.0}, "d": {"c": 1.0}}
+        >>> comm = {"a": 0, "b": 0, "c": 1, "d": 1}
+        >>> q = _modularity_core(adj, comm)
+        >>> assert q > 0.3  # Good separation
+    """
+    nodes = list(adjacency.keys())
+    if not nodes:
+        return 0.0
+
+    # Compute m (total edge weight / 2)
+    total_weight = sum(
+        sum(neighbors.values())
+        for neighbors in adjacency.values()
+    ) / 2.0
+
+    if total_weight == 0:
+        return 0.0
+
+    m = total_weight
+
+    # Compute degree of each node
+    k = {node: sum(adjacency[node].values()) for node in nodes}
+
+    # Compute modularity
+    q = 0.0
+    for i in nodes:
+        for j, weight in adjacency[i].items():
+            if j in community:
+                if community[i] == community[j]:
+                    q += weight - (k[i] * k[j]) / (2 * m)
+
+    return q / (2 * m)
+
+
+def _silhouette_core(
+    distances: Dict[str, Dict[str, float]],
+    labels: Dict[str, int]
+) -> float:
+    """
+    Compute silhouette score for a clustering.
+
+    The silhouette score measures how similar an object is to its own cluster
+    compared to other clusters. Range is -1 to 1, higher is better.
+
+    Args:
+        distances: Distance matrix as dict of dicts: distances[i][j] = distance from i to j
+        labels: Dict mapping node to cluster_id
+
+    Returns:
+        Average silhouette score across all nodes (-1 to 1)
+        - > 0.5: Strong clustering
+        - 0.25-0.5: Reasonable clustering
+        - < 0.25: Weak or no structure
+
+    Example:
+        >>> # Two tight clusters far apart
+        >>> distances = {
+        ...     "a": {"b": 0.1, "c": 0.9, "d": 0.9},
+        ...     "b": {"a": 0.1, "c": 0.9, "d": 0.9},
+        ...     "c": {"a": 0.9, "b": 0.9, "d": 0.1},
+        ...     "d": {"a": 0.9, "b": 0.9, "c": 0.1}
+        ... }
+        >>> labels = {"a": 0, "b": 0, "c": 1, "d": 1}
+        >>> s = _silhouette_core(distances, labels)
+        >>> assert s > 0.5  # Strong clustering
+    """
+    if not labels or len(set(labels.values())) < 2:
+        return 0.0
+
+    nodes = list(labels.keys())
+    silhouettes = []
+
+    # Group nodes by cluster
+    clusters: Dict[int, List[str]] = defaultdict(list)
+    for node, cluster in labels.items():
+        clusters[cluster].append(node)
+
+    for node in nodes:
+        my_cluster = labels[node]
+        my_cluster_nodes = [n for n in clusters[my_cluster] if n != node]
+
+        # a = average distance to nodes in same cluster
+        if my_cluster_nodes:
+            a = sum(distances.get(node, {}).get(other, 0.0) for other in my_cluster_nodes)
+            a /= len(my_cluster_nodes)
+        else:
+            a = 0.0
+
+        # b = minimum average distance to nodes in any other cluster
+        b = float('inf')
+        for other_cluster, other_nodes in clusters.items():
+            if other_cluster != my_cluster and other_nodes:
+                avg_dist = sum(
+                    distances.get(node, {}).get(other, 0.0)
+                    for other in other_nodes
+                ) / len(other_nodes)
+                b = min(b, avg_dist)
+
+        if b == float('inf'):
+            b = 0.0
+
+        # Silhouette for this node
+        if max(a, b) > 0:
+            s = (b - a) / max(a, b)
+        else:
+            s = 0.0
+
+        silhouettes.append(s)
+
+    return sum(silhouettes) / len(silhouettes) if silhouettes else 0.0
+
+
+# =============================================================================
+# LAYER-BASED WRAPPER FUNCTIONS (existing API, uses core functions internally)
+# =============================================================================
+
+
 def compute_pagerank(
     layer: HierarchicalLayer,
     damping: float = 0.85,

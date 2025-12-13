@@ -177,7 +177,34 @@ cortical/
 - `Edge`: Typed connection with `relation_type`, `weight`, `confidence`, `source`
 - `HierarchicalLayer`: Container with `minicolumns` dict and `_id_index` for O(1) lookups
 
-### Test File Locations
+### Test Organization
+
+Tests are organized by category for clear CI diagnostics and efficient local development:
+
+```
+tests/
+├── smoke/                   # Quick sanity checks (<30s)
+├── unit/                    # Fast isolated tests
+├── integration/             # Component interaction tests
+├── performance/             # Timing tests (uses small synthetic corpus)
+├── regression/              # Bug-specific regression tests
+├── behavioral/              # User workflow quality tests
+├── fixtures/                # Shared test data (small_corpus, shared_processor)
+└── *.py                     # Legacy tests (still run for coverage)
+```
+
+**Test Categories:**
+
+| Category | Purpose | When to Use |
+|----------|---------|-------------|
+| `tests/smoke/` | Quick sanity checks | After major changes |
+| `tests/unit/` | Fast isolated tests | New function/class tests |
+| `tests/integration/` | Component interaction | Cross-module functionality |
+| `tests/performance/` | Timing regression | Performance-sensitive code |
+| `tests/regression/` | Bug-specific tests | After fixing a bug |
+| `tests/behavioral/` | User workflow quality | Search relevance, quality metrics |
+
+**Legacy Test Files** (still maintained for coverage):
 
 | When testing... | Add tests to... |
 |-----------------|-----------------|
@@ -196,7 +223,24 @@ cortical/
 | Chunk indexing | `tests/test_chunk_indexing.py` |
 | Incremental updates | `tests/test_incremental_indexing.py` |
 | Intent queries | `tests/test_intent_query.py` |
-| **User workflows** | `tests/test_behavioral.py` (search relevance, performance, quality) |
+
+**Running Tests:**
+
+```bash
+# Quick feedback during development
+python scripts/run_tests.py smoke        # ~1s - sanity check
+python scripts/run_tests.py quick        # smoke + unit
+
+# Before committing
+python scripts/run_tests.py precommit    # smoke + unit + integration
+
+# Full test suite
+python -m unittest discover -s tests -v  # All tests with coverage
+
+# Specific category
+python -m pytest tests/performance/ -v   # Performance tests
+python -m pytest tests/regression/ -v    # Regression tests
+```
 
 ---
 
@@ -482,9 +526,36 @@ Key defaults to know:
 
 ## Testing Patterns
 
-Tests follow `unittest` conventions in `tests/` directory:
+The codebase supports both `unittest` (legacy) and `pytest` (new categorized tests):
+
+### Pytest Pattern (Recommended for New Tests)
 
 ```python
+# tests/regression/test_regressions.py
+import pytest
+
+class TestYourBugFix:
+    """
+    Task #XXX: Description of the bug that was fixed.
+    """
+
+    def test_bug_is_fixed(self, small_processor):
+        """Verify the specific bug is fixed."""
+        # small_processor fixture provides pre-loaded corpus
+        result = small_processor.your_feature()
+        assert result is not None
+
+    def test_edge_case(self, fresh_processor):
+        """Test with empty processor."""
+        # fresh_processor fixture provides empty processor
+        result = fresh_processor.your_feature()
+        assert result == expected_value
+```
+
+### Unittest Pattern (Legacy Tests)
+
+```python
+# tests/test_processor.py
 class TestYourFeature(unittest.TestCase):
     def setUp(self):
         self.processor = CorticalTextProcessor()
@@ -495,19 +566,23 @@ class TestYourFeature(unittest.TestCase):
         """Test basic functionality."""
         result = self.processor.your_feature()
         self.assertIsNotNone(result)
-
-    def test_feature_empty_corpus(self):
-        """Test with empty processor."""
-        empty = CorticalTextProcessor()
-        result = empty.your_feature()
-        self.assertEqual(result, expected_empty_value)
 ```
+
+### Available Fixtures (pytest)
+
+| Fixture | Scope | Description |
+|---------|-------|-------------|
+| `small_processor` | session | 25-doc synthetic corpus, pre-computed |
+| `shared_processor` | session | Full samples/ corpus (~125 docs) |
+| `fresh_processor` | function | Empty processor for isolated tests |
+| `small_corpus_docs` | function | Raw document dict |
 
 **Always test:**
 - Empty corpus case
 - Single document case
 - Multiple documents case
 - Edge cases specific to your feature
+- Add regression test if fixing a bug
 
 ---
 
@@ -707,8 +782,13 @@ python scripts/profile_full_analysis.py
 | Compare | `processor.compare_fingerprints(fp1, fp2)` |
 | Save state | `processor.save("corpus.pkl")` |
 | Load state | `processor = CorticalTextProcessor.load("corpus.pkl")` |
-| Run tests | `python -m unittest discover -s tests -v` |
-| Check coverage | `python -m coverage run -m unittest discover -s tests && python -m coverage report --include="cortical/*"` |
+| Run all tests | `python scripts/run_tests.py all` |
+| Run smoke tests | `python scripts/run_tests.py smoke` |
+| Run unit tests | `python scripts/run_tests.py unit` |
+| Run quick tests | `python scripts/run_tests.py quick` (smoke + unit) |
+| Run pre-commit | `python scripts/run_tests.py precommit` (smoke + unit + integration) |
+| Run performance | `python scripts/run_tests.py performance` (no coverage) |
+| Check coverage | `python -m coverage run --source=cortical -m pytest tests/ && python -m coverage report --include="cortical/*"` |
 | Run showcase | `python showcase.py` |
 | Profile analysis | `python scripts/profile_full_analysis.py` |
 
