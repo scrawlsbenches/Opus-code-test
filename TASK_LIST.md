@@ -3,11 +3,20 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 24
-**Completed Tasks:** 214 (see archive)
+**Pending Tasks:** 25
+**Completed Tasks:** 222 (see archive)
 
-**Legacy Test Cleanup:** 16 duplicated legacy tests removed, 13 remaining need investigation
-- See Tasks #198-205 for legacy test investigation
+**Legacy Test Cleanup:** ✅ COMPLETE - All 8 tasks investigated (#198-205)
+- **KEEP (7 files, 506 tests):** Provide unique coverage not duplicated in unit tests
+  - #198 test_coverage_gaps.py (91 tests) - edge case coverage
+  - #199 test_cli_wrapper.py (96 tests) - CLI wrapper framework
+  - #200 test_edge_cases.py (53 tests) - robustness tests
+  - #201 test_incremental_indexing.py (47 tests) - script integration
+  - #205 Script tests: 6 files (132 tests) - scripts/ directory
+- **DELETED (3 files, 53 tests):** Covered by unit tests
+  - #202 test_intent_query.py - covered by tests/unit/test_query.py
+  - #203 test_behavioral.py - superseded by tests/behavioral/
+  - #204 test_query_optimization.py - covered by tests/unit/test_query_search.py
 
 **Unit Test Initiative:** ✅ COMPLETE - 85% coverage from unit tests (1,729 tests)
 - 19 modules at 90%+ coverage
@@ -36,14 +45,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 95 | Split processor.py into modules | Arch | - | Large |
 | 99 | Add input validation to public methods | CodeQual | - | Medium |
 | 107 | Add Quick Context to tasks | TaskMgmt | - | Medium |
-| 198 | Investigate legacy test_coverage_gaps.py (91 tests) | Testing | - | Medium |
-| 199 | Investigate legacy test_cli_wrapper.py (96 tests) | Testing | - | Medium |
-| 200 | Investigate legacy test_edge_cases.py (53 tests) | Testing | - | Small |
-| 201 | Investigate legacy test_incremental_indexing.py (47 tests) | Testing | - | Small |
-| 202 | Investigate legacy test_intent_query.py (24 tests) | Testing | - | Small |
-| 203 | Investigate legacy test_behavioral.py (9 tests) | Testing | - | Small |
-| 204 | Investigate legacy test_query_optimization.py (20 tests) | Testing | - | Small |
-| 205 | Investigate legacy script tests (6 files, 132 tests) | Testing | - | Medium |
 
 ### 🟢 Low (Backlog)
 
@@ -102,6 +103,9 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Latest completions (2025-12-13):**
+- #198-205 Legacy test investigation COMPLETE - 8 tasks, 10 files reviewed
+  - DELETED 3 duplicate files (53 tests): test_behavioral.py, test_intent_query.py, test_query_optimization.py
+  - KEPT 7 unique files (506 tests): test_coverage_gaps.py, test_cli_wrapper.py, test_edge_cases.py, test_incremental_indexing.py, + 6 script tests
 - #197 Task list validation in CI - Added validate-task-list job to workflow
 - #186 Simplified facade methods - quick_search(), rag_retrieve(), explore() (23 tests)
 - #196 Spectral embeddings warning - RuntimeWarning for large graphs (>5000 terms)
@@ -165,111 +169,6 @@ Every typed connection is duplicated in `lateral_connections` for backward compa
 
 ---
 
-## Legacy Test Investigation Tasks
-
-These tasks were created during the test coverage review (2025-12-13). 16 duplicated legacy tests were removed, and 13 remaining tests need investigation to determine if they should be migrated to categorized test directories or kept as-is. Check git history for any previous migration work.
-
-### 198. Investigate test_coverage_gaps.py (91 tests)
-
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_coverage_gaps.py`
-**Effort:** Medium
-
-**Problem:** 91 tests covering edge cases and coverage gaps. Investigate:
-1. Check git history for previous migration attempts
-2. Determine if tests should move to `tests/unit/` or `tests/regression/`
-3. Check for overlap with existing unit tests
-
----
-
-### 199. Investigate test_cli_wrapper.py (96 tests)
-
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_cli_wrapper.py`
-**Effort:** Medium
-
-**Problem:** 96 tests for CLI wrapper. Investigate:
-1. Check git history for migration attempts
-2. Determine if these belong in `tests/integration/`
-3. Verify no unit test coverage exists
-
----
-
-### 200. Investigate test_edge_cases.py (53 tests)
-
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_edge_cases.py`
-**Effort:** Small
-
-**Problem:** 53 tests for edge cases (Unicode, large docs, malformed inputs). Investigate:
-1. Check git history
-2. Consider moving to `tests/unit/` or creating `tests/robustness/`
-
----
-
-### 201. Investigate test_incremental_indexing.py (47 tests)
-
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_incremental_indexing.py`
-**Effort:** Small
-
-**Problem:** 47 tests for incremental document operations. Investigate:
-1. Check git history
-2. Verify no overlap with `tests/unit/test_processor_core.py`
-3. Consider moving to `tests/integration/`
-
----
-
-### 202. Investigate test_intent_query.py (24 tests)
-
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_intent_query.py`
-**Effort:** Small
-
-**Problem:** 24 tests for intent-based query parsing. Investigate:
-1. Check git history
-2. Check if `tests/unit/test_query.py` covers this
-3. Consider moving to `tests/unit/test_query_intent.py`
-
----
-
-### 203. Investigate test_behavioral.py (9 tests)
-
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_behavioral.py`
-**Effort:** Small
-
-**Problem:** 9 behavioral/acceptance tests. Investigate:
-1. Check git history
-2. Move to `tests/behavioral/` if appropriate
-
----
-
-### 204. Investigate test_query_optimization.py (20 tests)
-
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_query_optimization.py`
-**Effort:** Small
-
-**Problem:** 20 tests for query performance. Investigate:
-1. Check git history
-2. Consider moving to `tests/performance/`
-
----
-
-### 205. Investigate legacy script tests (6 files)
-
-**Meta:** `status:pending` `priority:medium` `category:testing`
-**Files:** `tests/test_analyze_louvain_resolution.py`, `tests/test_ask_codebase.py`, `tests/test_evaluate_cluster.py`, `tests/test_generate_ai_metadata.py`, `tests/test_search_codebase.py`, `tests/test_showcase.py`
-**Effort:** Medium
-
-**Problem:** 6 test files (132 tests total) for scripts and showcase. Investigate:
-1. Check git history for each
-2. Consider creating `tests/scripts/` directory
-3. Or moving to `tests/integration/`
-
----
-
 ## Unit Test Coverage Baseline
 
 ✅ **Unit test coverage as of 2025-12-13 (1,729 tests, 85% overall):**
@@ -306,9 +205,9 @@ These tasks were created during the test coverage review (2025-12-13). 16 duplic
 
 | Category | Pending | Description |
 |----------|---------|-------------|
-| Arch | 5 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
+| Arch | 6 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
 | CodeQual | 1 | Code quality improvements (#99) |
-| Testing | 9 | Test coverage and legacy investigation (#129, 198-205) |
+| Testing | 1 | Test coverage (#129) |
 | TaskMgmt | 3 | Task management system (#106, 107, 108) |
 | AINav | 2 | AI assistant navigation (#117, 118) |
 | DevEx | 7 | Developer experience, scripts (#73-80) |
