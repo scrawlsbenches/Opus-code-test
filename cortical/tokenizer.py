@@ -204,7 +204,8 @@ class Tokenizer:
         'become', 'becomes', 'became', 'becoming',
         'remain', 'remains', 'remained', 'remaining',
         'offer', 'offers', 'offered', 'offering',
-        'support', 'supports', 'supported', 'supporting',
+        # Note: 'support' removed - it's a meaningful concept in many domains
+        # (customer support, technical support, infrastructure support, etc.)
         # Quantifiers and determiners
         'each', 'every', 'any', 'some', 'all', 'both', 'few', 'many', 'several',
         'such', 'other', 'another', 'same', 'different', 'own', 'certain',
