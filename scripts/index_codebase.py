@@ -67,14 +67,14 @@ def create_code_processor() -> CorticalTextProcessor:
     """
     Create a CorticalTextProcessor configured for code indexing.
 
-    Enables split_identifiers so that:
-    - getUserCredentials → ['getusercredentials', 'get', 'user', 'credentials']
-    - auth_service → ['auth_service', 'auth', 'service']
+    Enables:
+    - split_identifiers: getUserCredentials → ['getusercredentials', 'get', 'user', 'credentials']
+    - filter_code_noise: Filters Python syntax tokens (self, def, return, etc.)
 
     This dramatically improves code search - "auth" will find AuthService,
-    authenticate, user_auth, etc.
+    authenticate, user_auth, etc., without noise tokens polluting results.
     """
-    tokenizer = Tokenizer(split_identifiers=True)
+    tokenizer = Tokenizer(split_identifiers=True, filter_code_noise=True)
     return CorticalTextProcessor(tokenizer=tokenizer)
 
 

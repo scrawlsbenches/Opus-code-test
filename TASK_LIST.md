@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 45
-**Completed Tasks:** 184 (see archive)
+**Pending Tasks:** 43
+**Completed Tasks:** 186 (see archive)
 
 **Unit Test Initiative:** ✅ COMPLETE - 85% coverage from unit tests (1,729 tests)
 - 19 modules at 90%+ coverage
@@ -20,8 +20,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 148 | Investigate test_search_is_fast taking 137s | Testing | - | Medium |
-| 149 | Fix test_compute_all_under_threshold failing (135s > 30s) | Testing | - | Medium |
 | 184 | Implement MCP Server for Claude Desktop integration | Integration | - | Large |
 | 192 | Deduplicate lateral_connections and typed_connections storage | Memory | - | Medium |
 
@@ -96,6 +94,8 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Latest completions (2025-12-13):**
+- #148 Performance test refactor - Moved to small synthetic corpus (25 docs)
+- #149 Performance test fix - Tests now use small_corpus.py fixtures
 - #182 Fluent API - FluentProcessor with method chaining (44 tests)
 - #183 Progress Feedback - ConsoleProgressReporter, callbacks (30 tests)
 - #185 Result Dataclasses - DocumentMatch, PassageMatch, QueryResult (56 tests)
