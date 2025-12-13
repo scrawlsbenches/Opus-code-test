@@ -1,0 +1,72 @@
+# Workflow: Refactoring
+# Creates tasks for safe refactoring
+
+name: "Refactor"
+description: "Analyze -> Refactor -> Verify -> Cleanup"
+category: "refactor"
+
+variables:
+  - name: refactor_target
+    description: "What is being refactored (module, function, pattern)"
+    required: true
+  - name: priority
+    description: "Refactor priority"
+    default: "medium"
+    choices: ["high", "medium", "low"]
+
+tasks:
+  - id: analyze
+    title: "Analyze before refactor: {refactor_target}"
+    category: "research"
+    priority: "{priority}"
+    effort: "small"
+    description: |
+      Understand current state before refactoring.
+
+      Document:
+      - Current behavior and edge cases
+      - All callers/dependencies
+      - Test coverage baseline
+
+  - id: refactor
+    title: "Refactor: {refactor_target}"
+    category: "refactor"
+    priority: "{priority}"
+    effort: "medium"
+    depends_on: [analyze]
+    description: |
+      Perform the refactoring.
+
+      Guidelines:
+      - Make small, incremental changes
+      - Run tests after each change
+      - Keep commits atomic
+
+  - id: verify
+    title: "Verify refactor: {refactor_target}"
+    category: "test"
+    priority: "high"
+    effort: "small"
+    depends_on: [refactor]
+    description: |
+      Verify refactoring didn't break anything.
+
+      Checklist:
+      - [ ] All existing tests pass
+      - [ ] Coverage didn't decrease
+      - [ ] No new warnings
+      - [ ] Performance not degraded
+
+  - id: cleanup
+    title: "Cleanup after refactor: {refactor_target}"
+    category: "codequal"
+    priority: "low"
+    effort: "small"
+    depends_on: [verify]
+    description: |
+      Final cleanup tasks.
+
+      Consider:
+      - Remove dead code
+      - Update comments
+      - Remove temporary scaffolding
