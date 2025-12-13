@@ -10,3 +10,4 @@
 
 # Development dependencies
 coverage>=7.0        # Test coverage reporting
+pytest>=7.0          # Test framework (required by tests/unit/)
