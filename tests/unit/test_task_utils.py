@@ -136,16 +136,28 @@ class TestTaskSession(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     def test_session_id_consistency(self):
-        """All tasks in session should share same suffix."""
+        """All tasks in session should share same session suffix."""
         session = TaskSession()
         id1 = session.new_task_id()
         id2 = session.new_task_id()
 
-        suffix1 = id1.split("-")[-1]
-        suffix2 = id2.split("-")[-1]
+        # Format: T-YYYYMMDD-HHMMSS-XXXX-NN
+        # Session suffix is second to last part
+        parts1 = id1.split("-")
+        parts2 = id2.split("-")
 
-        self.assertEqual(suffix1, suffix2)
-        self.assertEqual(suffix1, session.session_id)
+        session_suffix1 = parts1[-2]
+        session_suffix2 = parts2[-2]
+
+        self.assertEqual(session_suffix1, session_suffix2)
+        self.assertEqual(session_suffix1, session.session_id)
+
+        # Task counters should be different
+        counter1 = parts1[-1]
+        counter2 = parts2[-1]
+        self.assertNotEqual(counter1, counter2)
+        self.assertEqual(counter1, "01")
+        self.assertEqual(counter2, "02")
 
     def test_create_task(self):
         """create_task should add task to session."""

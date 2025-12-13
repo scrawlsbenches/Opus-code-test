@@ -7,27 +7,31 @@ conflict when multiple agents work in parallel. Follows the same pattern
 as cortical/chunk_index.py for append-only, git-friendly storage.
 
 Task ID Format:
-    T-YYYYMMDD-HHMMSS-XXXX
+    Standalone: T-YYYYMMDD-HHMMSS-XXXX
+    Session:    T-YYYYMMDD-HHMMSS-XXXX-NN
 
     Where:
     - T = Task prefix
     - YYYYMMDD = Date created
     - HHMMSS = Time created
     - XXXX = 4-char random suffix (from session UUID)
+    - NN = Task number within session (01, 02, etc.)
 
 Example:
-    T-20251213-143052-a1b2
+    T-20251213-143052-a1b2       # Standalone
+    T-20251213-143052-a1b2-01    # Session task 1
+    T-20251213-143052-a1b2-02    # Session task 2
 
 Usage:
     from scripts.task_utils import generate_task_id, TaskSession
 
-    # Simple ID generation
+    # Simple ID generation (standalone)
     task_id = generate_task_id()  # T-20251213-143052-a1b2
 
-    # Session-based (all tasks in session share suffix)
+    # Session-based (guaranteed unique within session)
     session = TaskSession()
-    task1 = session.new_task_id()  # T-20251213-143052-a1b2
-    task2 = session.new_task_id()  # T-20251213-143053-a1b2
+    task1 = session.new_task_id()  # T-20251213-143052-a1b2-01
+    task2 = session.new_task_id()  # T-20251213-143052-a1b2-02
 """
 
 import json
@@ -140,10 +144,20 @@ class TaskSession:
     tasks: List[Task] = field(default_factory=list)
     started_at: str = field(default_factory=lambda: datetime.now().isoformat())
     tasks_dir: str = DEFAULT_TASKS_DIR
+    _task_counter: int = field(default=0, repr=False)
 
     def new_task_id(self) -> str:
-        """Generate a new task ID with this session's suffix."""
-        return generate_task_id(self.session_id)
+        """Generate a new task ID with this session's suffix and counter.
+
+        The counter ensures unique IDs even when multiple tasks are created
+        within the same second.
+        """
+        self._task_counter += 1
+        now = datetime.now()
+        date_str = now.strftime("%Y%m%d")
+        time_str = now.strftime("%H%M%S")
+        # Format: T-YYYYMMDD-HHMMSS-SSSS-NN where NN is task number
+        return f"T-{date_str}-{time_str}-{self.session_id}-{self._task_counter:02d}"
 
     def create_task(
         self,
