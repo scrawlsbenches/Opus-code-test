@@ -741,8 +741,9 @@ class TestRetrofitEmbeddings:
     def test_invalid_alpha(self):
         """Invalid alpha raises ValueError."""
         embeddings = {"test": [1.0, 2.0]}
+        # alpha must be in [0, 1] - test values outside this range
         with pytest.raises(ValueError, match="alpha must be between 0 and 1"):
-            retrofit_embeddings(embeddings, [], alpha=0.0)
+            retrofit_embeddings(embeddings, [], alpha=-0.1)
 
         with pytest.raises(ValueError, match="alpha must be between 0 and 1"):
             retrofit_embeddings(embeddings, [], alpha=1.5)
