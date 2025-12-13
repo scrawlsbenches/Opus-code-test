@@ -101,19 +101,9 @@ jobs:
         echo "=== Running Unit Tests ==="
         # Run unit tests - pytest handles both pytest AND unittest style tests
         # Using a single pytest call is faster than multiple unittest discovers
-        # Includes tests/unit/ plus related legacy tests
+        # Note: Legacy tests removed 2025-12-13 - now covered by tests/unit/
         coverage run --source=cortical -m pytest \
           tests/unit/ \
-          tests/test_tokenizer.py \
-          tests/test_layers.py \
-          tests/test_config.py \
-          tests/test_code_concepts.py \
-          tests/test_embeddings.py \
-          tests/test_fingerprint.py \
-          tests/test_gaps.py \
-          tests/test_fluent.py \
-          tests/test_progress.py \
-          tests/test_results.py \
           -v --tb=short
 
         coverage report --include="cortical/*"
@@ -152,16 +142,11 @@ jobs:
       run: |
         echo "=== Running Integration Tests ==="
         # Run integration tests - single pytest call is faster than multiple unittest discovers
-        # Includes tests/integration/ plus related legacy tests
+        # Includes tests/integration/ plus remaining legacy tests (not yet migrated)
+        # Note: 16 legacy tests removed 2025-12-13 - now covered by tests/unit/
         coverage run --source=cortical -m pytest \
           tests/integration/ \
-          tests/test_processor.py \
-          tests/test_query.py \
-          tests/test_analysis.py \
-          tests/test_semantics.py \
-          tests/test_persistence.py \
           tests/test_incremental_indexing.py \
-          tests/test_chunk_indexing.py \
           tests/test_edge_cases.py \
           tests/test_coverage_gaps.py \
           tests/test_query_optimization.py \
