@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 18
+**Pending Tasks:** 19
 **Completed Tasks:** 211 (see archive)
 
 **Unit Test Initiative:** ✅ COMPLETE - 85% coverage from unit tests (1,729 tests)
@@ -57,6 +57,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 130 | Expand customer service sample cluster | Samples | - | Medium |
 | 131 | Investigate cross-domain semantic bridges | Research | - | Medium |
 | 196 | Add runtime warning for spectral embeddings on large graphs | DevEx | - | Small |
+| 197 | Add task list validation to CI | TaskMgmt | - | Small |
 
 ### ⏸️ Deferred
 
@@ -192,6 +193,27 @@ if n > 5000:
 
 ---
 
+### 197. Add Task List Validation to CI
+
+**Meta:** `status:pending` `priority:low` `category:taskmgmt`
+**Files:** `.github/workflows/ci.yml`, `scripts/validate_task_list.py`
+**Effort:** Small
+
+**Problem:** Task list staleness can accumulate unnoticed between reviews. Manual validation catches issues but isn't enforced.
+
+**Solution:** Add validation step to CI:
+```yaml
+- name: Validate task list
+  run: python scripts/validate_task_list.py
+```
+
+**Acceptance:**
+- [ ] CI runs `validate_task_list.py` on every PR
+- [ ] Fails build if stale tasks detected
+- [ ] Clear error messages guide resolution
+
+---
+
 ## Unit Test Coverage Baseline
 
 ✅ **Unit test coverage as of 2025-12-13 (1,729 tests, 85% overall):**
@@ -231,7 +253,7 @@ if n > 5000:
 | Arch | 5 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
 | CodeQual | 1 | Code quality improvements (#99) |
 | Testing | 1 | Test coverage (#129) |
-| TaskMgmt | 3 | Task management system (#107, 106, 108) |
+| TaskMgmt | 4 | Task management system (#106, 107, 108, 197) |
 | AINav | 2 | AI assistant navigation (#117, 118) |
 | DevEx | 8 | Developer experience, scripts (#73-80, 196) |
 | Research | 2 | Research and analysis (#140, 131) |
