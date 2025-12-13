@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 13
-**Completed Tasks:** 241 (see archive)
+**Pending Tasks:** 12
+**Completed Tasks:** 242 (see archive)
 
 **Legacy Test Cleanup:** ✅ COMPLETE - All 8 tasks investigated (#198-205)
 - **KEEP (7 files, 506 tests):** Provide unique coverage not duplicated in unit tests
@@ -40,7 +40,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
 | 210 | Add pre-commit hook for auto-reindex after code changes | DevEx | - | Small |
-| 212 | Create architectural roadmap diagram (Mermaid) | Docs | - | Medium |
 | 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
 | 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
@@ -91,6 +90,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Latest completions (2025-12-13) - README Deep Analysis Update:**
+- #212 Architectural roadmap diagram - docs/roadmap.md with 10 Mermaid diagrams
 - #206 README statistics updated - 161 docs, 8,789 tokens, 46,374 bigrams, 2.4M connections
 - #207 MCP Server documented - 5 tools, Claude Desktop config example
 - #211 Simplified facade methods documented - quick_search(), rag_retrieve(), explore()

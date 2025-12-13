@@ -10,6 +10,7 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 |----------|-------------|----------|
 | [quickstart.md](quickstart.md) | 5-minute getting started guide | New users |
 | [architecture.md](architecture.md) | 4-layer hierarchical system design | All |
+| [roadmap.md](roadmap.md) | Visual roadmap with Mermaid diagrams | Contributors |
 | [algorithms.md](algorithms.md) | Core IR algorithms (PageRank, TF-IDF, Louvain) | Developers |
 | [query-guide.md](query-guide.md) | How to formulate effective queries | Users |
 | [cookbook.md](cookbook.md) | Common patterns and recipes | Users |
@@ -58,6 +59,7 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 | Document | Purpose |
 |----------|---------|
 | [architecture.md](architecture.md) | 4-layer system design (Tokens → Bigrams → Concepts → Documents) |
+| [roadmap.md](roadmap.md) | Architectural roadmap with Mermaid diagrams (NEW) |
 | [algorithms.md](algorithms.md) | PageRank, TF-IDF, Louvain clustering, co-occurrence |
 | [louvain_resolution_analysis.md](louvain_resolution_analysis.md) | Research on clustering resolution parameter |
 
@@ -96,4 +98,4 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 
 ---
 
-*Last updated: 2025-12-12*
+*Last updated: 2025-12-13*
