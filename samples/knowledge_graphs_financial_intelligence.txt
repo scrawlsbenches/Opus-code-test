@@ -1,0 +1,49 @@
+Knowledge Graphs for Financial Intelligence
+
+Financial markets generate vast unstructured data including earnings calls, news articles, regulatory filings, analyst reports, and social media discussions. Extracting actionable intelligence requires structuring this information into queryable representations. Knowledge graphs provide frameworks connecting entities, events, and relationships in machine-readable formats that support reasoning and discovery.
+
+Entity extraction identifies market-relevant entities in text. Named entity recognition systems detect company mentions, people, locations, products, and financial instruments. Disambiguation resolves whether Apple refers to the technology company or the fruit, whether Paris means the French capital or a person's name. Linked entities ground textual mentions in canonical knowledge base representations.
+
+Relation extraction discovers connections between entities. From a sentence like Tesla announced Gigafactory expansion in Texas, the system extracts relations including Tesla announced Gigafactory expansion and Gigafactory located in Texas. Pattern-based extraction uses linguistic templates. Dependency parsing identifies syntactic relationships. Neural relation extractors learn extraction patterns from labeled examples.
+
+Temporal information extraction captures when events occur. Market-moving events are time-sensitive. Systems extract event timestamps, publication dates, and temporal relations like before and after. Temporal knowledge graphs maintain history, enabling queries about which companies announced earnings before the market crash. Time-aware reasoning supports causality analysis.
+
+Event extraction structures happenings into semantic frames. An acquisition event includes acquirer, target, price, date, and regulatory status. Earnings events capture company, quarter, revenue, profit, and guidance. Event schemas provide templates for extraction. Populated event structures feed directly into trading models analyzing corporate actions.
+
+Sentiment analysis enriches knowledge graphs with opinion information. Analyst sentiment toward companies, product reviews, and social media buzz all carry signals. Aspect-based sentiment distinguishes overall company sentiment from sentiment toward specific products or executives. Sentiment scores become edge attributes in knowledge graphs.
+
+Entity resolution merges references to the same real-world entity. International Business Machines, IBM, and Big Blue refer to the same company. Resolution systems use string similarity, acronym expansion, and contextual clues. Merged entities create more connected graphs revealing relationships missed when entities fragment.
+
+Ontology alignment maps company-specific taxonomies to standard representations. Different data vendors classify industries differently. Ontology alignment identifies corresponding concepts across schemes. This enables aggregating data from heterogeneous sources into unified knowledge graphs.
+
+Coreference resolution tracks entity mentions across text. In a passage where Apple released new iPhone and the company expects strong demand, the system resolves that the company refers to Apple. Coreference chains enable extracting complete entity information scattered across sentences and documents.
+
+Supply chain graphs map dependencies between companies. Automotive manufacturers depend on semiconductor suppliers. Cloud providers depend on server hardware vendors. Supply chain disruptions propagate through these networks. Knowledge graphs encoding supplier-customer relationships support risk analysis and impact prediction.
+
+Competitive intelligence graphs capture market structure. Companies compete in product categories, bid for contracts, and recruit from similar talent pools. Graph queries identify competitors, substitute products, and market positioning. Centrality metrics highlight dominant players and emerging challengers.
+
+News propagation graphs track information flow. Which news sources report events first? How does information spread across media outlets? Citation networks reveal source credibility. Propagation patterns distinguish genuine news from coordinated campaigns.
+
+Regulatory knowledge graphs structure legal and compliance information. Securities regulations, accounting standards, and tax codes all form complex rule systems. Graph representations enable compliance checking through rule-based reasoning. Changes to regulations propagate through graphs identifying affected entities and processes.
+
+Macroeconomic knowledge graphs connect indicators, policies, and outcomes. Interest rate changes affect bond yields, currency values, and equity valuations. Fiscal stimulus influences GDP growth and inflation. Causal graphs encode economic mechanisms supporting scenario analysis and policy impact assessment.
+
+Merger and acquisition graphs track corporate structure evolution. Company ownership, subsidiary relationships, and control structures change through M&A activity. Temporal graphs maintain acquisition history. Queries traverse ownership chains identifying ultimate beneficial owners and corporate family trees.
+
+Person graphs map professional networks. Board memberships, executive moves, educational backgrounds, and advisor relationships form networks. Graph queries identify influential individuals, detect potential conflicts of interest, and predict future appointments.
+
+Product graphs organize offerings, features, and competitive positioning. Smartphones connect to operating systems, screen technologies, and chip architectures. Product attribute graphs support comparative analysis and trend detection. New product launches connect to companies through production relationships.
+
+Recommendation systems leverage knowledge graphs for contextualization. Rather than purely collaborative filtering, graph-based recommendations incorporate entity attributes and relationships. Suggesting similar companies considers industry, size, geography, and business model rather than just co-occurrence in portfolios.
+
+Risk assessment integrates multiple graph projections. Credit risk graphs capture payment histories and exposures. Operational risk graphs map process dependencies and failure modes. Market risk graphs represent portfolio exposures and correlation structures. Unified risk knowledge graphs provide holistic views.
+
+Query interfaces enable natural language access to structured knowledge. Questions like which semiconductor companies supply Tesla translate to graph queries traversing supplier relationships filtered by industry and customer. Semantic parsing and entity linking convert questions into executable queries.
+
+Graph embeddings represent entities as vectors supporting machine learning. Node2vec, GraphSAGE, and transformer-based graph encoders learn entity representations capturing graph structure. These embeddings feed into predictive models for classification, ranking, and similarity tasks.
+
+Inference expands graphs beyond explicit facts through reasoning. If company A owns company B, and B owns C, then A controls C through transitivity. Symmetric relations like partnership propagate bidirectionally. Rule-based reasoning and graph neural networks both support inference generating implicit knowledge.
+
+Knowledge graph construction for financial intelligence requires integrating structured databases, unstructured documents, and real-time streams. Entity linking connects mentions across sources. Contradiction resolution handles conflicting information. Uncertainty modeling represents confidence in extracted facts. The resulting graphs provide queryable, machine-readable representations supporting algorithmic trading, risk management, and strategic analysis.
+
+Financial knowledge graphs extend general knowledge bases like Wikidata with domain-specific entities and relations. Industry-specific ontologies capture financial concepts absent from general knowledge. Private knowledge graphs incorporate proprietary data and analysis. These specialized graphs provide competitive intelligence advantages through superior market understanding.

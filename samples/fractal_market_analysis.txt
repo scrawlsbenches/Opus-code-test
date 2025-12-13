@@ -1,0 +1,41 @@
+Fractal Analysis in Financial Markets
+
+Fractal geometry describes self-similar structures that repeat across scales. Financial markets exhibit fractal properties—patterns at minute resolution resemble patterns at daily, weekly, and monthly scales. This self-similarity has profound implications for market modeling, risk management, and the theoretical foundations of quantitative finance.
+
+Self-similarity means that zooming into a structure reveals patterns resembling the whole. Market price charts at one-minute intervals look statistically similar to charts at daily intervals. This scale invariance distinguishes fractal processes from processes with characteristic scales.
+
+Fractional Brownian motion extends standard Brownian motion with a Hurst exponent parameter. The Hurst exponent measures long-range dependence—values above 0.5 indicate persistence (trends continue), below 0.5 indicate anti-persistence (reversals), and 0.5 matches random walk behavior. Estimating market Hurst exponents reveals trending or mean-reverting character.
+
+Multifractal models capture varying self-similarity across different price movement magnitudes. Small moves may have different scaling than large moves. Multifractal spectrum analysis characterizes this heterogeneous scaling, revealing fat tails and volatility clustering beyond simple fractal models.
+
+Fractal dimension quantifies geometric complexity. Higher dimensions indicate more complex, space-filling patterns. Market fractal dimensions vary across instruments and time periods, potentially signaling regime changes or predictability differences.
+
+R/S analysis estimates Hurst exponents from rescaled range statistics. The range of cumulative deviations from the mean, divided by standard deviation, scales as a power of time for fractal processes. This classic method provides robust long-memory estimates.
+
+Detrended fluctuation analysis improves Hurst estimation by removing polynomial trends. DFA handles non-stationarity better than R/S analysis, making it preferred for financial applications where trends and level shifts are common.
+
+Wavelet-based fractal analysis exploits time-frequency decomposition. Wavelet coefficients at different scales reveal scale-dependent structure. Wavelet leaders provide multifractal spectrum estimates with good statistical properties.
+
+The Mandelbrot contribution brought fractal geometry to finance. Benoit Mandelbrot documented cotton price scaling inconsistent with Gaussian random walks. His fractal market hypothesis challenged efficient market assumptions built on normal distributions.
+
+Fat tails emerge from fractal processes. Self-similarity implies that extreme moves scale with typical moves—large price changes are more common than Gaussian models predict. This tail fatness has enormous risk management implications.
+
+Volatility clustering reflects fractal intermittency. Periods of high volatility cluster together, as do calm periods. This clustering creates long-range dependence in volatility—high volatility today predicts high volatility weeks ahead.
+
+Fractal markets are inefficient in traditional terms. Long-range dependence implies predictability that random walk efficiency denies. However, fractal predictability may be statistical rather than economically exploitable after transaction costs.
+
+Fractal dimension trading generates signals from dimension estimates. Low dimension indicates strong trends suitable for momentum strategies. High dimension indicates choppy, unpredictable conditions favoring mean reversion or abstention.
+
+Scale selection matters for fractal trading systems. Which scales contain exploitable information? Fractal analysis across multiple scales identifies where predictability concentrates, guiding timeframe selection.
+
+Local fractal properties vary through time. Markets may be persistent in some periods and anti-persistent in others. Tracking local Hurst exponent evolution supports regime-adaptive trading strategies.
+
+Fractal cointegration extends cointegration to fractionally integrated processes. Long-memory processes may share common long-range components that cointegrate at fractional integration orders. This generalization captures market relationships beyond standard cointegration.
+
+Fractal risk measures incorporate self-similarity into risk calculation. Standard VaR assumes Gaussian returns; fractal VaR uses appropriate fat-tailed distributions. Fractal-based risk measures avoid underestimating tail risk that causes spectacular trading failures.
+
+Agent-based fractal emergence shows how fractal patterns arise from heterogeneous trader interactions. Traders operating at different frequencies create aggregate dynamics exhibiting fractal properties. This provides microeconomic foundation for observed fractal regularities.
+
+Criticality and phase transitions connect fractal markets to physics. Markets near critical points exhibit power-law behavior and fractal structure. Crash dynamics may reflect critical phenomena where correlations diverge and scale-free behavior emerges.
+
+Fractal limitations include estimation uncertainty in fractal parameters and debates about whether observed scaling is truly fractal or an artifact of other market features. Careful statistical analysis distinguishes genuine fractal structure from spurious patterns.

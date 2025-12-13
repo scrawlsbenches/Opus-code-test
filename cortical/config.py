@@ -51,6 +51,10 @@ class CorticalConfig:
             Smaller values create more fine-grained concepts.
         cluster_strictness: Controls clustering aggressiveness (0.0-1.0).
             Lower values allow more cross-topic mixing.
+        louvain_resolution: Resolution parameter for Louvain clustering (>0).
+            Higher values produce more, smaller clusters. Lower values produce
+            fewer, larger clusters. Default 2.0 produces ~50-100 clusters for
+            medium corpora (50-200 docs). Typical range: 1.0-10.0.
 
         isolation_threshold: Documents below this average similarity are
             considered isolated from the corpus.
@@ -83,6 +87,7 @@ class CorticalConfig:
     # Clustering settings
     min_cluster_size: int = 3
     cluster_strictness: float = 1.0
+    louvain_resolution: float = 2.0  # Resolution for Louvain clustering (higher = more clusters)
 
     # Gap detection thresholds
     isolation_threshold: float = 0.02
@@ -173,6 +178,17 @@ class CorticalConfig:
             raise ValueError(
                 f"cluster_strictness must be between 0 and 1, got {self.cluster_strictness}"
             )
+        if self.louvain_resolution <= 0:
+            raise ValueError(
+                f"louvain_resolution must be positive, got {self.louvain_resolution}"
+            )
+        if self.louvain_resolution > 20:
+            import warnings
+            warnings.warn(
+                f"louvain_resolution={self.louvain_resolution} is very high. "
+                f"This may produce hundreds of tiny clusters. "
+                f"Typical range is 1.0-10.0."
+            )
 
         # Threshold validation
         if self.isolation_threshold < 0:
@@ -231,6 +247,7 @@ class CorticalConfig:
             pagerank_tolerance=self.pagerank_tolerance,
             min_cluster_size=self.min_cluster_size,
             cluster_strictness=self.cluster_strictness,
+            louvain_resolution=self.louvain_resolution,
             isolation_threshold=self.isolation_threshold,
             well_connected_threshold=self.well_connected_threshold,
             weak_topic_tfidf_threshold=self.weak_topic_tfidf_threshold,
@@ -269,6 +286,7 @@ class CorticalConfig:
             'pagerank_tolerance': self.pagerank_tolerance,
             'min_cluster_size': self.min_cluster_size,
             'cluster_strictness': self.cluster_strictness,
+            'louvain_resolution': self.louvain_resolution,
             'isolation_threshold': self.isolation_threshold,
             'well_connected_threshold': self.well_connected_threshold,
             'weak_topic_tfidf_threshold': self.weak_topic_tfidf_threshold,

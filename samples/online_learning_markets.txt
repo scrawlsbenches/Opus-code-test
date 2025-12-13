@@ -1,0 +1,39 @@
+Online Learning for Adaptive Market Systems
+
+Online learning adapts models continuously as new data arrives rather than training on fixed datasets. Markets evolve constantly—relationships that held historically may not persist, new instruments emerge, regulations change, and participant behavior shifts. Systems that cannot learn online become obsolete as markets drift from their training distributions.
+
+Streaming data processing handles continuous market feeds without storing complete histories. Online algorithms maintain sufficient statistics that summarize historical data compactly, updating these statistics incrementally as new observations arrive. Memory requirements remain bounded regardless of how much data has been processed.
+
+Non-stationarity drives the need for online adaptation. Market dynamics exhibit regime changes, trend breaks, and structural shifts that invalidate static models. Online learning treats recent data as more relevant than distant history, continuously adapting to current conditions rather than averaging over outdated patterns.
+
+Concept drift detection identifies when underlying data distributions change. Abrupt drifts occur during market crashes or policy announcements. Gradual drifts reflect slow evolution of market structure. Drift detection triggers model updates—retraining, weight resets, or increased learning rates depending on drift severity.
+
+Forgetting mechanisms reduce influence of old data over time. Exponential forgetting weights recent observations more heavily than distant ones. Sliding windows discard observations beyond a fixed horizon. Adaptive forgetting adjusts the forgetting rate based on detected drift severity.
+
+Ensemble methods maintain multiple models with different forgetting rates or training windows. Short-memory models adapt quickly but are noisy. Long-memory models are stable but slow to adapt. Combining predictions across the ensemble balances adaptability against stability.
+
+Regret bounds measure online learning performance relative to the best fixed strategy in hindsight. No-regret algorithms guarantee convergence to optimal performance over time even in adversarial environments. These theoretical guarantees provide confidence in long-term learning dynamics.
+
+Bandit algorithms balance exploration against exploitation in online settings. Multi-armed bandit formulations model strategy selection where each pull of an arm reveals information about its reward distribution. Thompson sampling, UCB, and other bandit algorithms provide principled exploration strategies.
+
+Online gradient descent updates model parameters incrementally after each observation. Learning rates control update magnitude—too large causes instability, too small prevents adaptation. Adaptive learning rates like Adam adjust per-parameter rates based on gradient history.
+
+Incremental dimensionality reduction handles high-dimensional streaming data. Online PCA and incremental SVD maintain low-rank approximations updated with each new observation. These techniques enable real-time factor model updates as new market data arrives.
+
+Change point detection identifies specific times when dynamics shift. Rather than continuous adaptation, change point methods segment market history into distinct regimes. Model parameters can be reset at detected change points for fresh learning in new regimes.
+
+Meta-learning for fast adaptation trains models that learn quickly from few examples. When regimes change, meta-learned models adapt faster than conventionally trained models. This rapid adaptation reduces performance degradation during regime transitions.
+
+Online ensemble pruning removes poorly performing models from ensembles. As markets evolve, some ensemble members become obsolete. Pruning these and potentially adding new members keeps the ensemble adapted to current conditions.
+
+Warm starting uses learned models from related tasks to initialize online learning. Rather than starting from scratch when conditions change, warm starting leverages previous knowledge, accelerating adaptation to new but related regimes.
+
+Delayed feedback complicates online learning when outcomes are not immediately observable. Position P&L realizes over holding periods, not instantaneously. Online algorithms must handle this temporal credit assignment, updating models when delayed feedback eventually arrives.
+
+Adversarial online learning assumes worst-case data generation rather than statistical i.i.d. assumptions. Markets may be adversarial in the sense that other participants exploit detectable patterns. Adversarial-robust online algorithms provide stronger guarantees under strategic data generation.
+
+Distributed online learning scales to large systems by partitioning data or models across multiple machines. Synchronization strategies coordinate learning across distributed components while maintaining low latency for real-time applications.
+
+Online model selection chooses among candidate models in real time. As market conditions evolve, the best model changes. Prediction with expert advice frameworks provide theoretically grounded approaches to dynamic model selection.
+
+Catastrophic forgetting occurs when learning new patterns destroys previously learned knowledge. Continual learning techniques preserve important knowledge while adapting to new data. This prevents the system from forgetting valuable patterns when markets enter new regimes.

@@ -1,0 +1,39 @@
+Meta-Learning for Rapid Regime Adaptation
+
+Meta-learning trains models to learn quickly from limited data—learning to learn. Markets exhibit regime changes where dynamics shift abruptly, rendering models trained on old regimes ineffective. Meta-learned models adapt to new regimes in minutes or hours rather than requiring weeks of retraining data.
+
+Few-shot learning enables accurate predictions from minimal examples of new conditions. When a market regime changes, only a few observations of the new regime are initially available. Few-shot capable models leverage these sparse observations to rapidly adjust predictions.
+
+Model-agnostic meta-learning (MAML) finds parameter initializations that enable fast adaptation. MAML-trained networks can be fine-tuned to new tasks with just a few gradient steps. For markets, MAML might pre-train on diverse historical regimes, enabling rapid fine-tuning when new regimes emerge.
+
+Prototypical networks learn embeddings where examples cluster by class. New classes can be recognized by computing distance to prototype representations. Market regimes might be characterized by prototypes in learned feature spaces, enabling regime identification and transfer.
+
+Memory-augmented neural networks maintain external memory banks that store and retrieve relevant experiences. When new situations arise, the network retrieves similar past experiences to inform current predictions. This episodic memory enables rapid adaptation through analogical reasoning.
+
+Hypernetworks generate task-specific parameters from task descriptions. For markets, a hypernetwork might take regime characteristics as input and output model parameters adapted to that regime. This architectural approach enables instant adaptation without gradient-based fine-tuning.
+
+Task distribution assumptions shape meta-learning design. Market meta-learning assumes future regimes are drawn from the same distribution as historical regimes. If truly novel regimes occur, even meta-learned models may struggle. Understanding the limits of task distribution coverage is crucial.
+
+Inner and outer loops distinguish task-level and meta-level optimization. Inner loops adapt to specific tasks while outer loops improve meta-parameters that facilitate inner loop learning. For markets, inner loops might adapt to specific regime episodes while outer loops improve regime adaptation capabilities.
+
+Curriculum learning presents training tasks in meaningful order. Starting with simple regimes and progressing to complex ones might improve meta-learning. Alternatively, presenting regimes in historical order might teach the model about regime transitions.
+
+Transfer versus adaptation balances using prior knowledge against learning from scratch. Some regime changes require only parameter adjustment while others require structural model changes. Meta-learning systems should recognize which type of change has occurred and respond appropriately.
+
+Online meta-learning combines meta-learning with continual adaptation. Rather than fixed meta-training followed by deployment, online meta-learning continues improving meta-parameters as new regimes are encountered. This enables lifelong learning that improves regime adaptation capability over time.
+
+Ensemble meta-learning maintains multiple meta-learned models, each specialized for different regime types. When a new regime is detected, the most suitable specialist quickly adapts while others stand by. This division of labor enables both specialization and breadth.
+
+Context inference identifies which regime currently applies. Meta-learned models often condition on context—explicit regime labels or inferred context vectors. Accurate context inference enables appropriate model selection and adaptation strategies.
+
+Uncertainty during adaptation must be managed carefully. Early in a new regime, predictions carry high uncertainty due to limited adaptation data. Position sizing should reflect this uncertainty, scaling up as regime-specific predictions improve through accumulating adaptation data.
+
+Negative transfer occurs when prior knowledge hinders rather than helps learning. If a new regime differs substantially from training regimes, meta-learned initializations may be worse than random. Detecting and avoiding negative transfer maintains adaptation reliability.
+
+Meta-testing evaluates generalization to held-out regimes. Proper meta-learning evaluation requires testing on regime types not seen during meta-training. Cross-validation across regime types estimates true adaptation performance on future novel regimes.
+
+Computational efficiency matters for real-time adaptation. MAML requires computing gradients of gradients, which is expensive. First-order approximations and implicit differentiation reduce computational cost while maintaining adaptation quality.
+
+Compositional meta-learning handles regimes as combinations of simpler components. A regime might combine high volatility, low correlation, and trending dynamics. Meta-learning these components separately and combining them compositionally enables generalization to novel component combinations.
+
+Interpretable adaptation reveals what the model learns during adaptation. Which features become more important? How do predictions change? Interpretable adaptation builds confidence that the model is adapting appropriately rather than overfitting to noise in limited regime data.

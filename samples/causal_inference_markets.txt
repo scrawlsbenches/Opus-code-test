@@ -1,0 +1,39 @@
+Causal Inference for Market Analysis
+
+Causal inference distinguishes genuine cause-effect relationships from mere correlations. Markets generate countless correlations—most are spurious or confounded. Understanding true causal structure enables predictions that generalize across market regimes rather than exploiting coincidental patterns that will eventually fail.
+
+Correlation is not causation—the fundamental insight motivating causal inference. Two variables may correlate because one causes the other, because both share a common cause, or due to pure chance. Only causal relationships support intervention reasoning and counterfactual prediction.
+
+Confounding occurs when unmeasured common causes create spurious associations. Risk appetite might drive both equity returns and commodity prices, creating correlation without direct causation. Identifying and controlling for confounders reveals true causal effects from observed correlations.
+
+Directed acyclic graphs represent causal structure visually. Nodes represent variables while directed edges indicate causal influence. The graph structure determines which correlations reflect causation versus confounding, guiding appropriate statistical adjustments.
+
+The do-calculus formalizes causal reasoning mathematically. It distinguishes observational distributions P(Y|X) from interventional distributions P(Y|do(X)). Interventional queries ask what happens when we force X to a value, not merely observe it—crucial for trading decisions that actively intervene in markets.
+
+Instrumental variables identify causal effects when confounding is present but instruments are available. An instrument affects outcome only through the treatment variable, not directly or through confounders. Weather affecting agricultural commodities might instrument crop prices' effect on related equities.
+
+Regression discontinuity exploits sharp thresholds that create quasi-random variation. Index inclusion thresholds create discontinuities where stocks just above and below the cutoff are otherwise similar. Comparing outcomes across such thresholds identifies causal index effects.
+
+Difference-in-differences compares treated and control groups before and after an intervention. Policy changes affecting some markets but not others enable diff-in-diff estimation of policy effects. This design controls for time-invariant confounders through the differencing.
+
+Propensity score methods reweight observations to balance treatment and control groups on observed confounders. For market analysis, propensity scores might balance stocks that experienced an event against similar stocks that didn't, enabling causal event impact estimation.
+
+Synthetic control constructs counterfactual outcomes from weighted combinations of control units. What would a market have done absent some intervention? Synthetic control answers this by finding weighted averages of unaffected markets that best predict the affected market's pre-intervention behavior.
+
+Granger causality tests whether past values of one series predict another beyond its own history. While not true causality, Granger causality identifies predictive relationships useful for forecasting. Lead-lag relationships between markets often exhibit Granger causal structure.
+
+Causal discovery algorithms learn graph structure from observational data. PC algorithm, FCI, and variants infer causal relationships from conditional independence patterns. These methods can suggest causal hypotheses but cannot definitively establish causation without interventional data.
+
+Natural experiments exploit random or quasi-random variation in market conditions. Random trading halts, weather events, or regulatory lotteries create variation that mimics experimental assignment, enabling causal inference from observational market data.
+
+Mediation analysis decomposes causal effects into direct and indirect components. Does news affect prices directly or through intermediate variables like trading volume? Mediation analysis quantifies each pathway's contribution to total causal effects.
+
+Causal forests extend causal inference to heterogeneous treatment effects. The effect of an event might vary across stocks depending on their characteristics. Causal forest methods estimate conditional average treatment effects as functions of covariates.
+
+Time series causality requires special consideration of temporal structure. Lagged relationships, contemporaneous correlations, and feedback loops complicate causal inference from market time series. Structural VAR and state space approaches model these temporal dynamics causally.
+
+External validity asks whether causal findings generalize beyond the studied sample. Effects identified in one market period may not hold in other periods or markets. Understanding what features enable generalization guides application of causal findings.
+
+Causal effect bounds acknowledge that point identification is not always possible. When confounding cannot be fully controlled, partial identification provides bounds on causal effects. These bounds, while wider than point estimates, provide honest uncertainty quantification.
+
+Transportability formalizes conditions under which causal findings transfer across populations. Can effects measured in US markets transport to European markets? Causal graphs clarify when such transfers are valid and what adjustments might be needed.

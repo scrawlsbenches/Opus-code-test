@@ -1,0 +1,35 @@
+Multi-Timescale Integration in Market Systems
+
+Financial markets exhibit dynamics across multiple simultaneous timescales. Tick-by-tick microstructure coexists with intraday patterns, daily trends, weekly cycles, monthly seasonality, and multi-year secular movements. Effective market cognition must integrate information across these nested temporal scales rather than operating at a single frequency.
+
+Hierarchical temporal memory provides a biological template for multi-timescale processing. Cortical regions maintain representations at different temporal resolutions, with higher regions capturing slower dynamics and lower regions encoding rapid fluctuations. Information flows bidirectionally—predictions propagate downward while prediction errors propagate upward.
+
+Timescale separation identifies natural frequency bands in market data. High-frequency noise dominates sub-minute data while fundamental trends emerge over months. Filtering techniques separate fast and slow components, enabling appropriate processing for each timescale. Cross-scale interactions occur when dynamics at one timescale influence others.
+
+Wavelet decomposition provides mathematical tools for multi-resolution analysis. Different wavelet scales capture different frequency components of price series. Wavelet coefficients at each scale reveal patterns invisible in raw data. Reconstruction combines information across scales for unified predictions.
+
+Fast-slow dynamics modeling treats markets as coupled systems with different characteristic times. Order book dynamics operate in milliseconds while position buildup occurs over days. These timescales interact—fast dynamics generate the noise around slow trend evolution. Proper modeling must capture both scales and their coupling.
+
+Temporal abstraction creates higher-level representations from lower-level sequences. Sequences of minute bars compress into hourly patterns. Daily patterns aggregate into weekly formations. This abstraction hierarchy enables recognition of patterns too large to fit in short-term memory at fine resolution.
+
+Prediction horizons vary with timescale of interest. Microstructure models predict next-tick movements while macro models forecast multi-month trends. Different features and model architectures suit different horizons. Multi-horizon systems maintain separate models for each timescale while coordinating their predictions.
+
+Information decay varies across timescales. Yesterday's order flow carries little information for next-tick predictions but may inform daily positioning. News events have immediate impact that decays over hours but may also initiate regime changes affecting longer timescales. Proper information weighting respects these decay patterns.
+
+Regime detection benefits from multi-timescale analysis. Regime changes manifest differently at different frequencies—high-frequency data shows early warning signs while low-frequency data confirms persistent shifts. Combining signals across timescales improves regime detection accuracy and timeliness.
+
+Memory and attention spans must scale with timescale of interest. Minute-resolution trading requires remembering recent minutes while weekly analysis needs months of history. Attention mechanisms that adapt temporal span to timescale enable efficient multi-scale processing.
+
+Phase relationships between timescales carry information. Are daily patterns in phase with weekly cycles or counter-phase? Lead-lag relationships across timescales predict future evolution. Multi-scale coherence analysis quantifies these phase relationships.
+
+Sampling rate matching aligns data from different timescale sources. Tick data arrives irregularly while daily data comes at fixed intervals. Integrating heterogeneous temporal sampling requires careful alignment and potentially resampling to common grids.
+
+Transaction cost implications vary with timescale. High-frequency trading faces proportionally larger costs than position trading. Strategy timescale must match cost structure—strategies with holding periods mismatched to their edge versus costs will fail.
+
+Risk also manifests across timescales. Intraday drawdowns differ from monthly drawdowns which differ from multi-year drawdowns. Risk budgets should be specified and monitored at each relevant timescale rather than a single aggregate measure.
+
+Model uncertainty grows with prediction horizon. Next-tick predictions can achieve meaningful accuracy while multi-year forecasts remain highly uncertain. Confidence intervals must expand appropriately with timescale, informing position sizing and risk management.
+
+Nested iteration handles decisions at multiple timescales. Portfolio allocation operates monthly while execution operates intraday. Outer loops set constraints for inner loops. Each timescale optimization takes higher-timescale decisions as given while influencing lower-timescale operations.
+
+Emergent phenomena arise from cross-scale interactions. Herding behavior aggregates individual microstructure decisions into macro price movements. Feedback loops between timescales can amplify small perturbations into large regime shifts. Multi-scale models must capture these emergent dynamics.
