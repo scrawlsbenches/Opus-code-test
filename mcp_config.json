@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "cortical-text-processor": {
+      "command": "python",
+      "args": [
+        "-m",
+        "cortical.mcp_server"
+      ],
+      "env": {
+        "CORTICAL_CORPUS_PATH": "/path/to/your/corpus.pkl",
+        "CORTICAL_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}

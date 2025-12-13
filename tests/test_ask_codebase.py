@@ -119,9 +119,9 @@ class TestCodebaseQA(unittest.TestCase):
         self.assertIsInstance(passage[3], float)  # score
 
     def test_find_relevant_passages_empty_query(self):
-        """Test with empty query."""
-        passages = self.qa.find_relevant_passages("", top_n=2)
-        self.assertIsInstance(passages, list)
+        """Test with empty query raises ValueError."""
+        with self.assertRaises(ValueError):
+            self.qa.find_relevant_passages("", top_n=2)
 
     def test_format_answer_with_passages(self):
         """Test answer formatting with passages."""

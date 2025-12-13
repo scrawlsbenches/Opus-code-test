@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 24
-**Completed Tasks:** 223 (see archive)
+**Pending Tasks:** 9
+**Completed Tasks:** 238 (see archive)
 
 **Legacy Test Cleanup:** ✅ COMPLETE - All 8 tasks investigated (#198-205)
 - **KEEP (7 files, 506 tests):** Provide unique coverage not duplicated in unit tests
@@ -32,7 +32,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 184 | Implement MCP Server for Claude Desktop integration | Integration | - | Large |
+| *None - all high priority completed* |||||
 
 ### 🟡 Medium (Do This Month)
 
@@ -42,30 +42,16 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |
 | 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |
 | 95 | Split processor.py into modules | Arch | - | Large |
-| 99 | Add input validation to public methods | CodeQual | - | Medium |
-| 107 | Add Quick Context to tasks | TaskMgmt | - | Medium |
 
 ### 🟢 Low (Backlog)
 
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
-| 73 | Add "Find Similar Code" command | DevEx | - | Medium |
-| 74 | Add "Explain This Code" command | DevEx | - | Medium |
 | 75 | Add "What Changed?" semantic diff | DevEx | - | Large |
-| 76 | Add "Suggest Related Files" feature | DevEx | - | Medium |
 | 78 | Add code pattern detection | DevEx | - | Large |
-| 79 | Add corpus health dashboard | DevEx | - | Medium |
 | 80 | Add "Learning Mode" for contributors | DevEx | - | Large |
 | 100 | Implement plugin/extension registry | Arch | - | Large |
-| 101 | Automate staleness tracking | Arch | - | Medium |
-| 106 | Add task dependency graph | TaskMgmt | - | Small |
-| 108 | Create task selection script | TaskMgmt | - | Medium |
-| 117 | Create debugging cookbook | AINav | - | Medium |
-| 118 | Add function complexity annotations | AINav | - | Small |
-| 140 | Analyze customer service cluster quality | Research | 127 | Small |
-| 129 | Test customer service retrieval quality | Testing | - | Small |
 | 130 | Expand customer service sample cluster | Samples | - | Medium |
-| 131 | Investigate cross-domain semantic bridges | Research | - | Medium |
 
 ### ⏸️ Deferred
 
@@ -101,27 +87,30 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
-**Latest completions (2025-12-13):**
-- #192 Deduplicate connections storage - typed_connections is now single source of truth, lateral_connections is cached property (15 tests)
+**Latest completions (2025-12-13) - Parallel Sub-Agent Implementation:**
+- #184 MCP Server for Claude Desktop - 5 tools (search, passages, expand_query, corpus_stats, add_document), 22 tests
+- #73 "Find Similar Code" command - `scripts/find_similar.py` with fingerprint-based similarity
+- #74 "Explain This Code" command - `scripts/explain_code.py` with concept/relation analysis
+- #76 "Suggest Related Files" feature - `scripts/suggest_related.py` with import/semantic analysis
+- #79 Corpus health dashboard - `scripts/corpus_health.py` with metrics and recommendations
+- #99 Add input validation - `cortical/validation.py` module with decorators and validators
+- #101 Automate staleness tracking - `@marks_stale`, `@marks_fresh` decorators
+- #118 Function complexity annotations - O(n²) annotations on key analysis functions
+- #106 Task dependency graph - `scripts/task_graph.py` with ASCII/Mermaid output
+- #107 Quick Context to tasks - Added to all high/medium priority tasks in TASK_LIST.md
+- #108 Create task selection script - `scripts/select_task.py` with scoring algorithm
+- #117 Create debugging cookbook - `docs/debugging-cookbook.md` with 7 scenarios
+- #129 Test customer service retrieval quality - `tests/behavioral/test_customer_service_quality.py`
+- #131 Investigate cross-domain semantic bridges - `docs/research/cross-domain-bridges.md`
+- #140 Analyze customer service cluster quality - `docs/research/customer-service-cluster-analysis.md`
+
+**Previous completions (2025-12-13):**
+- #192 Deduplicate connections storage - typed_connections is now single source of truth
 - #198-205 Legacy test investigation COMPLETE - 8 tasks, 10 files reviewed
-  - DELETED 3 duplicate files (53 tests): test_behavioral.py, test_intent_query.py, test_query_optimization.py
-  - KEPT 7 unique files (506 tests): test_coverage_gaps.py, test_cli_wrapper.py, test_edge_cases.py, test_incremental_indexing.py, + 6 script tests
 - #197 Task list validation in CI - Added validate-task-list job to workflow
 - #186 Simplified facade methods - quick_search(), rag_retrieve(), explore() (23 tests)
 - #196 Spectral embeddings warning - RuntimeWarning for large graphs (>5000 terms)
-- #193 Unify alpha validation - retrofit_embeddings() now accepts [0,1] consistently
-- #194 Layer validation - Added checks for invalid layer values (0-3) in persistence/layers
-- #195 Stopwords import - semantics.py now uses Tokenizer.DEFAULT_STOP_WORDS
-- #148 Performance test refactor - Moved to small synthetic corpus (25 docs)
-- #149 Performance test fix - Tests now use small_corpus.py fixtures
-- #182 Fluent API - FluentProcessor with method chaining (44 tests)
-- #183 Progress Feedback - ConsoleProgressReporter, callbacks (30 tests)
-- #185 Result Dataclasses - DocumentMatch, PassageMatch, QueryResult (56 tests)
-- #179 Fix definition search - line boundary fix in `find_definition_in_text()`
-- #180 Fix doc-type boosting - filename pattern + empty metadata fallback
-- #181 Fix query ranking - hybrid boost strategy for exact name matches
 - Unit Test Coverage Initiative: 1,729 tests, 85% coverage, 19 modules at 90%+
-- Tasks #159-178 (unit tests for all modules)
 
 ---
 
@@ -142,11 +131,166 @@ All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 - `corpus_stats()` → statistics
 - `add_document(doc_id, content)` → index document
 
+**Quick Context:**
+- Entry point: `cortical/processor.py::CorticalTextProcessor`
+- Key methods: `find_documents_for_query()` (line 1883), `find_passages_for_query()` (line 2161), `expand_query()`
+- See `cortical/cli_wrapper.py` for CLI wrapper pattern (lines 1-50)
+- MCP protocol: expose processor methods as JSON-RPC tools
+- Reference: `scripts/search_codebase.py` for how to load and query processor
+
 **Acceptance:**
 - [ ] Works in Claude Desktop
 - [ ] 5+ core tools implemented
 - [ ] Documentation for installation
 - [ ] Example MCP config file
+
+---
+
+### 133. Implement WAL + Snapshot Persistence (Fault-Tolerant Rebuild)
+
+**Meta:** `status:pending` `priority:medium` `category:arch`
+**Files:** `cortical/persistence.py`, `cortical/wal.py` (new)
+**Effort:** Large
+**Depends:** #132 (completed)
+
+**Problem:** If `compute_all()` crashes mid-computation, all work is lost. Large corpora take minutes to rebuild from scratch.
+
+**Solution:** Write-Ahead Logging (WAL) + periodic snapshots:
+- Log each document addition to WAL file
+- Save snapshots at checkpoints (every N documents or M minutes)
+- On crash: load latest snapshot + replay WAL
+- Similar to SQLite's WAL mode
+
+**Quick Context:**
+- Current save/load: `cortical/persistence.py::save_processor()` (line 25), `load_processor()` (line 78)
+- Uses `pickle.dump()` for full state serialization (line 63)
+- Add: `wal_append(operation, data)`, `wal_replay(from_snapshot)`
+- Checkpoint: `save_snapshot(filepath)` periodically during `compute_all()`
+- See `cortical/chunk_index.py` for append-only pattern (similar concept)
+
+---
+
+### 134. Implement Protobuf Serialization for Corpus
+
+**Meta:** `status:pending` `priority:medium` `category:arch`
+**Files:** `cortical/persistence.py`, `cortical/proto/` (new), `schema.proto` (new)
+**Effort:** Medium
+**Depends:** #132 (completed)
+
+**Problem:** Pickle is Python-specific and fragile across versions. Can't share corpora with other languages or tools.
+
+**Solution:** Protocol Buffers for cross-language serialization:
+- Define `.proto` schema for Minicolumn, Layer, Processor state
+- Add `to_proto()` and `from_proto()` methods
+- Keep pickle for backward compatibility, add protobuf option
+- Enable `processor.save(path, format='protobuf')`
+
+**Quick Context:**
+- Current serialization: `cortical/persistence.py::save_processor()` (line 25-76)
+- State structure: `layers`, `documents`, `document_metadata`, `embeddings`, `semantic_relations`
+- Minicolumn structure: `cortical/minicolumn.py::Minicolumn` (has `to_dict()/from_dict()`)
+- Layer structure: `cortical/layers.py::HierarchicalLayer::to_dict()` (line ~200)
+- Add `format` parameter to `save()`/`load()` methods
+
+---
+
+### 135. Implement Chunked Parallel Processing for Full-Analysis
+
+**Meta:** `status:pending` `priority:medium` `category:arch`
+**Files:** `cortical/processor.py`, `cortical/analysis.py`
+**Effort:** Large
+**Depends:** #132 (completed)
+
+**Problem:** `compute_all()` processes entire corpus serially. For 10,000+ document corpora, this takes 10+ minutes.
+
+**Solution:** Parallelize independent computations:
+- Split TF-IDF computation across document chunks
+- Parallelize PageRank iterations (graph partitioning)
+- Use `multiprocessing.Pool` for CPU-bound tasks
+- Add `parallel=True` option to `compute_all(parallel=True, workers=4)`
+
+**Quick Context:**
+- Entry point: `cortical/processor.py::compute_all()` (line 636)
+- Phases: TF-IDF → bigram connections → PageRank → concepts → semantics
+- TF-IDF: `analysis.py::compute_tfidf()` - can split by document chunks
+- PageRank: `analysis.py::compute_pagerank()` - iterative, harder to parallelize
+- Bigram connections: `processor.py::compute_bigram_connections()` (line 839) - parallelizable by document
+- See `tests/performance/` for timing baselines
+
+---
+
+### 95. Split processor.py into Modules
+
+**Meta:** `status:pending` `priority:medium` `category:arch`
+**Files:** `cortical/processor.py` → `cortical/processor/` (directory)
+**Effort:** Large
+
+**Problem:** `processor.py` is 2,301 lines and handles too many responsibilities. Hard to navigate and test.
+
+**Solution:** Split into focused modules:
+- `processor/core.py` - main CorticalTextProcessor class
+- `processor/documents.py` - document processing methods
+- `processor/computation.py` - compute_all, staleness tracking
+- `processor/query.py` - search/retrieval wrappers
+- `processor/export.py` - export/visualization methods
+
+**Quick Context:**
+- Current file: `cortical/processor.py` (2,301 lines)
+- Sections: __init__ → document processing → computation → queries → export
+- Key class: `CorticalTextProcessor` (line ~40)
+- Public API: ~60 methods, most are wrappers calling other modules
+- Staleness tracking: `_stale_computations` set, `COMP_*` constants
+- Keep public API unchanged - only internal reorganization
+
+---
+
+### 99. Add Input Validation to Public Methods
+
+**Meta:** `status:pending` `priority:medium` `category:codequal`
+**Files:** `cortical/processor.py`, `cortical/query/*.py`
+**Effort:** Medium
+
+**Problem:** Some public methods don't validate inputs, leading to confusing errors deep in call stack.
+
+**Solution:** Add validation to all public methods:
+- Type checks: `isinstance(doc_id, str)`, `isinstance(top_n, int)`
+- Range checks: `top_n > 0`, `alpha in [0, 1]`
+- Empty checks: `doc_id.strip()`, `query.strip()`
+- Raise `ValueError` with clear messages
+
+**Quick Context:**
+- Example pattern: `cortical/processor.py::process_document()` (lines 98-103)
+  ```python
+  if not isinstance(doc_id, str) or not doc_id:
+      raise ValueError("doc_id must be a non-empty string")
+  if not isinstance(content, str):
+      raise ValueError("content must be a string")
+  ```
+- Apply to: `find_documents_for_query()`, `expand_query()`, `compute_importance()`, etc.
+- Check all methods with user-facing parameters
+- Add tests in `tests/unit/test_validation.py` (new file)
+
+---
+
+### 107. Add Quick Context to Tasks
+
+**Meta:** `status:pending` `priority:medium` `category:taskmgmt`
+**Files:** `TASK_LIST.md`
+**Effort:** Medium
+
+**Problem:** Starting a task requires extensive code exploration to find entry points, key files, and patterns.
+
+**Solution:** Add "Quick Context" section to high/medium priority tasks with:
+- Entry point files and line numbers
+- Key methods/functions to understand
+- Related patterns in codebase
+- Relevant test files
+
+**Quick Context:**
+- Target tasks: #184, #133, #134, #135, #95, #99 (high/medium priority)
+- Format: See task #184 above for example
+- Use `grep`, search_codebase.py, and .ai_meta files to find context
+- Keep context brief (3-5 bullet points)
 
 ---
 
@@ -186,17 +330,11 @@ All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 | Category | Pending | Description |
 |----------|---------|-------------|
-| Arch | 6 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
-| CodeQual | 1 | Code quality improvements (#99) |
-| Testing | 1 | Test coverage (#129) |
-| TaskMgmt | 3 | Task management system (#106, 107, 108) |
-| AINav | 2 | AI assistant navigation (#117, 118) |
-| DevEx | 7 | Developer experience, scripts (#73-80) |
-| Research | 2 | Research and analysis (#140, 131) |
+| Arch | 5 | Architecture refactoring (#133, 134, 135, 95, 100) |
+| DevEx | 3 | Developer experience, scripts (#75, 78, 80) |
 | Samples | 1 | Sample document improvements (#130) |
-| Integration | 1 | MCP Server (#184) |
 
-*Updated 2025-12-13 - Unit test initiative COMPLETE (85% coverage, 1,729 tests)*
+*Updated 2025-12-13 - 15 tasks completed via parallel sub-agents*
 
 ---
 

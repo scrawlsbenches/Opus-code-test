@@ -154,6 +154,7 @@ def _pagerank_core(
         >>> ranks = _pagerank_core(graph)
         >>> assert ranks["a"] > ranks["c"]  # "a" has more incoming links
     """
+    # O(iterations * edges) where edges = total number of connections in the graph
     n = len(graph)
     if n == 0:
         return {}
@@ -226,6 +227,7 @@ def _tfidf_core(
         >>> results = _tfidf_core(stats, num_docs=10)
         >>> assert results["rare"][0] > results["common"][0]  # Rare term has higher TF-IDF
     """
+    # O(total_term_occurrences) = sum over all terms of their document frequencies
     if num_docs == 0:
         return {}
 
@@ -287,6 +289,8 @@ def _louvain_core(
         >>> assert communities["d"] == communities["e"]
         >>> assert communities["a"] != communities["d"]  # Two separate communities
     """
+    # O(n * edges) per iteration, typically converges in O(log n) iterations
+    # Overall: O(n * edges * log n) typical case
     nodes = list(adjacency.keys())
     n = len(nodes)
 
@@ -539,6 +543,8 @@ def compute_pagerank(
     Raises:
         ValueError: If damping is not in range (0, 1)
     """
+    # O(iterations * n * avg_degree) where n = number of minicolumns, avg_degree = avg connections per column
+    # Typical: O(20 * n * d) where d is average number of lateral connections
     if not (0 < damping < 1):
         raise ValueError(f"damping must be between 0 and 1, got {damping}")
 
@@ -880,15 +886,16 @@ def compute_tfidf(
 ) -> None:
     """
     Compute TF-IDF scores for tokens.
-    
+
     TF-IDF (Term Frequency - Inverse Document Frequency) measures
     how distinctive a term is to the corpus. High TF-IDF terms are
     both frequent in their documents and rare across the corpus.
-    
+
     Args:
         layers: Dictionary of layers (needs TOKENS layer)
         documents: Dictionary mapping doc_id to content
     """
+    # O(total_term_document_occurrences) = sum over all tokens of len(token.document_ids)
     layer0 = layers[CorticalLayer.TOKENS]
     num_docs = len(documents)
     
@@ -1455,6 +1462,8 @@ def build_concept_clusters(
             Default 0.1 (10%) prevents high-frequency tokens from causing
             every concept to contain every document.
     """
+    # O(num_clusters * avg_members_per_cluster * (log(avg_members) + avg_docs))
+    # Dominated by sorting members by PageRank: O(total_tokens * log(avg_cluster_size))
     layer0 = layers[CorticalLayer.TOKENS]
     layer2 = layers[CorticalLayer.CONCEPTS]
 
@@ -1755,6 +1764,9 @@ def compute_bigram_connections(
         - skipped_large_docs: Number of docs skipped due to max_bigrams_per_doc
         - skipped_max_connections: Number of connections skipped due to per-bigram limit
     """
+    # Without limits: O(n_bigrams²) worst case from common terms creating all-to-all connections
+    # With limits: O(n_terms * max_bigrams_per_term² + n_docs * max_bigrams_per_doc²)
+    # Typical with defaults (100, 500): O(n_terms * 10000 + n_docs * 250000) ≈ O(n_bigrams) linear
     layer1 = layers[CorticalLayer.BIGRAMS]
 
     if layer1.column_count() == 0:
