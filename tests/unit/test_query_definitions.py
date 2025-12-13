@@ -296,6 +296,92 @@ def complex_function(
         result = find_definition_in_text(text, "Foo", "invalid_type")
         assert result is None
 
+    def test_passage_starts_with_definition_line(self):
+        """
+        Regression test for Task #179: Passage must start with definition line.
+
+        Bug: Previously, find_definition_in_text used `start = match.start() - 50`,
+        which could place start in the middle of an earlier line. When showcase.py
+        extracted the first line, it showed truncated/wrong content.
+
+        Fix: Now finds the start of the line containing the match, ensuring the
+        passage always starts with the actual definition line.
+        """
+        # Simulate a realistic file structure with content before the definition
+        text = """
+from typing import Dict, List
+from dataclasses import dataclass
+
+
+@dataclass
+class DataRecord:
+    id: str
+    content: str
+
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}
+
+
+class DataProcessor:
+    '''Main processor for handling data records.'''
+
+    def __init__(self):
+        self._records = {}
+
+    def clear(self):
+        '''Remove all records.'''
+        self._records.clear()
+
+
+def calculate_statistics(records: List[DataRecord]) -> Dict:
+    '''Calculate statistics for records.'''
+    if not records:
+        return {}
+    return {'count': len(records)}
+"""
+
+        # Test class definition
+        result = find_definition_in_text(text, "DataProcessor", "class")
+        assert result is not None
+        passage, start, end = result
+
+        # The passage should start with the actual definition line
+        first_line = passage.strip().split('\n')[0]
+        assert first_line.startswith("class DataProcessor"), (
+            f"Expected first line to start with 'class DataProcessor', "
+            f"but got: {first_line!r}"
+        )
+        # Should NOT start with truncated content like "etadata is None"
+        assert "metadata" not in first_line.lower() or "dataprocessor" in first_line.lower()
+
+        # Test function definition
+        result = find_definition_in_text(text, "calculate_statistics", "function")
+        assert result is not None
+        passage, start, end = result
+
+        # The passage should start with the function definition
+        first_line = passage.strip().split('\n')[0]
+        assert first_line.startswith("def calculate_statistics"), (
+            f"Expected first line to start with 'def calculate_statistics', "
+            f"but got: {first_line!r}"
+        )
+        # Should NOT start with truncated content like "records.clear()"
+        assert "calculate_statistics" in first_line
+
+    def test_definition_at_file_start(self):
+        """Definition at the very start of file works correctly."""
+        text = "class FirstClass:\n    pass"
+        result = find_definition_in_text(text, "FirstClass", "class")
+        assert result is not None
+        passage, start, end = result
+
+        # Start should be 0 (beginning of file)
+        assert start == 0
+        # First line should be the definition
+        first_line = passage.strip().split('\n')[0]
+        assert first_line.startswith("class FirstClass")
+
 
 # =============================================================================
 # DEFINITION PASSAGES SEARCH TESTS

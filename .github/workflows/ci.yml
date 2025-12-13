@@ -241,8 +241,12 @@ jobs:
     - name: Generate combined coverage report
       run: |
         echo "=== Combined Coverage Report ==="
-        # Run full test suite for comprehensive coverage
-        coverage run --source=cortical -m unittest discover -s tests -v
+        # Run pytest-based tests (tests/unit/, tests/smoke/, etc.)
+        coverage run --source=cortical -m pytest tests/ -v --ignore=tests/performance/
+
+        # Append unittest-based legacy tests
+        coverage run --append --source=cortical -m unittest discover -s tests -p "test_*.py" -v
+
         coverage report -m --include="cortical/*"
         coverage xml -o coverage.xml
 

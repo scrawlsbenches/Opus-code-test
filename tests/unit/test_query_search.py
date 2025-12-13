@@ -246,6 +246,46 @@ class TestFindDocumentsForQuery:
         # doc1 should win on TF-IDF alone
         assert result[0][0] == "doc1"
 
+    def test_exact_doc_name_match_beats_high_tfidf(self):
+        """
+        Task #181: Exact document name match ranks first even with lower TF-IDF.
+
+        Bug: Documents with high content scores could outrank exact name matches.
+        Fix: Exact matches get additive boost to ensure top ranking.
+        """
+        layers = (
+            LayerBuilder()
+            .with_term("distributed", tfidf=5.0)
+            .with_term("systems", tfidf=5.0)
+            # distributed_systems doc has exact name match but low content
+            .with_document("distributed_systems", ["distributed"])
+            # other_doc has high content score
+            .with_document("other_doc", ["distributed", "systems"])
+            .build()
+        )
+
+        layer0 = layers[MockLayers.TOKENS]
+        # other_doc has MUCH higher TF-IDF scores
+        layer0.get_minicolumn("distributed").tfidf_per_doc = {
+            "distributed_systems": 0.5,  # Low score
+            "other_doc": 10.0  # Very high score
+        }
+        layer0.get_minicolumn("systems").tfidf_per_doc = {
+            "other_doc": 10.0  # Very high score
+        }
+
+        tokenizer = Tokenizer()
+        result = find_documents_for_query(
+            "distributed systems", layers, tokenizer,
+            use_expansion=False,
+            doc_name_boost=2.0
+        )
+
+        # distributed_systems should rank first due to exact name match
+        # despite having much lower TF-IDF score
+        assert result[0][0] == "distributed_systems"
+        assert result[0][1] > result[1][1]  # Score should be higher
+
     def test_query_expansion_disabled(self):
         """use_expansion=False uses only query terms."""
         # Create connected terms
@@ -542,6 +582,43 @@ class TestFastFindDocuments:
 
         # high_score_doc should win on TF-IDF alone
         assert result[0][0] == "high_score_doc"
+
+    def test_exact_name_match_added_to_candidates(self):
+        """
+        Task #181: Exact name matches included in candidates even without content.
+
+        Bug: fast_find_documents excluded docs whose name matched but content didn't.
+        Fix: Add name-matching docs to candidate set.
+        """
+        # Create doc that has exact name match but no matching content
+        layers = (
+            LayerBuilder()
+            .with_term("other", tfidf=5.0)
+            .with_document("distributed_systems", ["other"])  # No 'distributed' or 'systems' in content
+            .with_document("high_content_doc", ["other"])
+            .build()
+        )
+
+        # Add layer3 (DOCUMENTS) for name matching
+        doc1 = MockMinicolumn(
+            content="distributed_systems",
+            document_ids={"distributed_systems"}
+        )
+        doc2 = MockMinicolumn(
+            content="high_content_doc",
+            document_ids={"high_content_doc"}
+        )
+
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([doc1, doc2])
+
+        tokenizer = Tokenizer()
+        result = fast_find_documents(
+            "distributed systems", layers, tokenizer, doc_name_boost=2.0
+        )
+
+        # distributed_systems should be in results despite not having content match
+        doc_ids = [doc_id for doc_id, _ in result]
+        assert "distributed_systems" in doc_ids
 
 
 # =============================================================================

@@ -74,9 +74,9 @@ def get_doc_type_boost(
     """
     boosts = custom_boosts or DOC_TYPE_BOOSTS
 
-    # If we have metadata, use doc_type
-    if doc_metadata and doc_id in doc_metadata:
-        doc_type = doc_metadata[doc_id].get('doc_type', 'code')
+    # If we have metadata with doc_type, use it
+    if doc_metadata and doc_id in doc_metadata and 'doc_type' in doc_metadata[doc_id]:
+        doc_type = doc_metadata[doc_id]['doc_type']
         return boosts.get(doc_type, 1.0)
 
     # Fallback: infer from doc_id path
@@ -84,7 +84,8 @@ def get_doc_type_boost(
         if doc_id.startswith('docs/'):
             return boosts.get('docs', 1.5)
         return boosts.get('root_docs', 1.3)
-    elif doc_id.startswith('tests/'):
+    elif doc_id.startswith('tests/') or 'test' in doc_id.lower():
+        # Check both tests/ directory and files with 'test' in name
         return boosts.get('test', 0.8)
     return boosts.get('code', 1.0)
 

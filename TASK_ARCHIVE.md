@@ -83,6 +83,72 @@ Completed tasks moved from TASK_LIST.md. Search here for historical context and 
 | 84 | Add Direct Definition Pattern Search | Code Search | 2025-12-11 |
 | 85 | Improve Test vs Source File Ranking | Code Search | 2025-12-11 |
 | 86 | Add Semantic Chunk Boundaries for Code | Code Search | 2025-12-11 |
+| 87 | Add Python Code Samples and Showcase | Showcase | 2025-12-13 |
+| 88 | Create Package Installation Files | DevEx | 2025-12-11 |
+| 89 | Create CONTRIBUTING.md | DevEx | 2025-12-11 |
+| 90 | Create docs/quickstart.md | Docs | 2025-12-11 |
+| 91 | Create docs/README.md Index | Docs | 2025-12-12 |
+| 92 | Add Badges to README.md | DevEx | 2025-12-12 |
+| 93 | Update README with Docs References | Docs | 2025-12-12 |
+| 94 | Split query.py into Focused Modules | Architecture | 2025-12-12 |
+| 96 | Centralize Duplicate Constants | Code Quality | 2025-12-12 |
+| 97 | Integrate CorticalConfig into Processor | Architecture | 2025-12-11 |
+| 98 | Replace print() with Logging | Code Quality | 2025-12-12 |
+| 102 | Add Tests for Edge Cases | Testing | 2025-12-12 |
+| 103 | Add Priority Backlog Summary | Task Mgmt | 2025-12-11 |
+| 104 | Create TASK_ARCHIVE.md | Task Mgmt | 2025-12-11 |
+| 105 | Standardize Task Format | Task Mgmt | 2025-12-11 |
+| 109 | Add Recently Completed Section | Task Mgmt | 2025-12-11 |
+| 113 | Document Staleness Tracking System | Docs | 2025-12-12 |
+| 114 | Add Type Aliases for Complex Types | Code Quality | 2025-12-12 |
+| 115 | Create Component Interaction Diagram | Docs | 2025-12-12 |
+| 116 | Document Return Value Semantics | Docs | 2025-12-12 |
+| 119 | Create AI Metadata Generator Script | DevEx | 2025-12-11 |
+| 120 | Add AI Metadata Loader to Claude Skills | DevEx | 2025-12-11 |
+| 121 | Auto-regenerate AI Metadata on Changes | DevEx | 2025-12-11 |
+| 122 | Investigate Concept Layer Regressions | Research | 2025-12-11 |
+| 123 | Replace Label Propagation with Louvain | Algorithm | 2025-12-11 |
+| 124 | Add Minimum Cluster Count Tests | Testing | 2025-12-11 |
+| 125 | Add Clustering Quality Metrics | Algorithm | 2025-12-11 |
+| 126 | Investigate Louvain Resolution | Research | 2025-12-11 |
+| 127 | Create Cluster Coverage Evaluation Script | DevEx | 2025-12-11 |
+| 128 | Fix Definition Boost Test File Penalty | Bug Fix | 2025-12-11 |
+| 132 | Profile Full-Analysis Bottleneck | Performance | 2025-12-11 |
+| 136 | Optimize Semantics O(n²) Similarity | Performance | 2025-12-11 |
+| 137 | Cap Bigram Connections to Top-K | Performance | 2025-12-12 |
+| 138 | Sparse Matrix for Bigram Connections | Performance | 2025-12-12 |
+| 139 | Batch Bigram Connection Updates | Performance | 2025-12-12 |
+| 141 | Filter Python Keywords from Analysis | Code Quality | 2025-12-12 |
+| 142 | Investigate compute_all() Regression | Performance | 2025-12-12 |
+| 143 | Investigate Negative Silhouette Score | Research | 2025-12-12 |
+| 144 | Boost Exact Document Name Matches | Search | 2025-12-12 |
+| 145 | Improve Graph Embedding Quality | Algorithm | 2025-12-12 |
+| 146 | Create Behavioral Tests | Testing | 2025-12-12 |
+| 147 | Fix Misleading Hardcoded Values | Bug Fix | 2025-12-12 |
+| 150 | Create Unit Test Fixtures and Mocks | Testing | 2025-12-12 |
+| 153 | Refactor query/* for Unit Testability | Testing | 2025-12-12 |
+| 154 | Add Unit Tests for query/* (partial) | Testing | 2025-12-12 |
+| 157 | Add Unit Tests for semantics.py | Testing | 2025-12-12 |
+| 158 | Add Unit Tests for persistence.py | Testing | 2025-12-12 |
+| 159 | Unit Tests for tokenizer.py | Unit Test | 2025-12-13 |
+| 160 | Unit Tests for embeddings.py | Unit Test | 2025-12-13 |
+| 161 | Unit Tests for layers.py | Unit Test | 2025-12-13 |
+| 162 | Unit Tests for minicolumn.py | Unit Test | 2025-12-13 |
+| 163 | Unit Tests for fingerprint.py | Unit Test | 2025-12-13 |
+| 164 | Unit Tests for gaps.py | Unit Test | 2025-12-13 |
+| 165-166 | Unit Tests for processor.py | Unit Test | 2025-12-13 |
+| 167 | Unit Tests for chunk_index.py | Unit Test | 2025-12-13 |
+| 168 | Unit Tests for config.py | Unit Test | 2025-12-13 |
+| 169 | Unit Tests for code_concepts.py | Unit Test | 2025-12-13 |
+| 170 | Unit Tests for query/expansion.py | Unit Test | 2025-12-13 |
+| 171 | Unit Tests for query/search.py | Unit Test | 2025-12-13 |
+| 172 | Unit Tests for query/passages.py | Unit Test | 2025-12-13 |
+| 173 | Unit Tests for query/definitions.py | Unit Test | 2025-12-13 |
+| 174 | Unit Tests for query/analogy.py | Unit Test | 2025-12-13 |
+| 175 | Unit Tests for query/ranking.py | Unit Test | 2025-12-13 |
+| 176 | Unit Tests for analysis.py | Unit Test | 2025-12-13 |
+| 177 | Unit Tests for semantics.py | Unit Test | 2025-12-13 |
+| 178 | Unit Tests for persistence.py | Unit Test | 2025-12-13 |
 
 ---
 

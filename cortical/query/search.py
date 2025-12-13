@@ -68,18 +68,39 @@ def find_documents_for_query(
                 doc_scores[doc_id] += tfidf * term_weight
 
     # Boost documents whose name matches query terms
-    if doc_name_boost > 1.0:
+    if doc_name_boost > 1.0 and doc_scores:
         query_tokens = set(tokenizer.tokenize(query_text))
+        max_score = max(doc_scores.values()) if doc_scores else 0.0
+
+        # First pass: identify exact and partial matches
+        exact_matches = []
+        partial_matches = []
+
         for doc_id in doc_scores:
             # Tokenize document ID (handle underscores as separators)
             doc_name_tokens = set(tokenizer.tokenize(doc_id.replace('_', ' ')))
             # Count how many query tokens appear in doc name
             matches = len(query_tokens & doc_name_tokens)
             if matches > 0:
-                # Boost proportional to match ratio
                 match_ratio = matches / len(query_tokens) if query_tokens else 0
-                boost = 1 + (doc_name_boost - 1) * match_ratio
-                doc_scores[doc_id] *= boost
+
+                if match_ratio == 1.0:
+                    exact_matches.append(doc_id)
+                else:
+                    partial_matches.append((doc_id, match_ratio))
+
+        # Apply boosts:
+        # - Exact matches: ensure they rank above all non-exact matches
+        # - Partial matches: proportional boost
+        for doc_id in exact_matches:
+            # For exact matches, add max_score to ensure they rank first
+            # This guarantees exact match beats all other documents
+            doc_scores[doc_id] += max_score * doc_name_boost
+
+        for doc_id, match_ratio in partial_matches:
+            # Partial matches use proportional boost
+            boost = 1 + (doc_name_boost - 1) * match_ratio
+            doc_scores[doc_id] *= boost
 
     sorted_docs = sorted(doc_scores.items(), key=lambda x: -x[1])
     return sorted_docs[:top_n]
@@ -146,6 +167,21 @@ def fast_find_documents(
                     for doc_id in col.document_ids:
                         candidate_docs[doc_id] += 0.5  # Lower weight for expansion
 
+    # Add documents whose names match query terms to candidates
+    # This ensures exact name matches are considered even if content doesn't match
+    if doc_name_boost > 1.0:
+        layer3 = layers.get(CorticalLayer.DOCUMENTS)
+        if layer3:
+            for doc_col in layer3.minicolumns.values():
+                doc_id = doc_col.content
+                doc_name_tokens = set(tokenizer.tokenize(doc_id.replace('_', ' ')))
+                matches = len(query_tokens & doc_name_tokens)
+                if matches > 0:
+                    # Ensure name-matching docs are in candidates
+                    # High initial score to prioritize them
+                    if doc_id not in candidate_docs:
+                        candidate_docs[doc_id] = matches * 2
+
     if not candidate_docs:
         return []
 
@@ -175,16 +211,33 @@ def fast_find_documents(
         coverage_boost = match_count / len(tokens)
         score *= (1 + 0.5 * coverage_boost)
 
-        # Boost documents whose name matches query terms
-        if doc_name_boost > 1.0:
+        doc_scores[doc_id] = score
+
+    # Apply document name boost after all scores calculated
+    if doc_name_boost > 1.0 and doc_scores:
+        max_score = max(doc_scores.values())
+        exact_matches = []
+        partial_matches = []
+
+        for doc_id in doc_scores:
             doc_name_tokens = set(tokenizer.tokenize(doc_id.replace('_', ' ')))
             matches = len(query_tokens & doc_name_tokens)
             if matches > 0:
                 match_ratio = matches / len(query_tokens)
-                boost = 1 + (doc_name_boost - 1) * match_ratio
-                score *= boost
 
-        doc_scores[doc_id] = score
+                if match_ratio == 1.0:
+                    exact_matches.append(doc_id)
+                else:
+                    partial_matches.append((doc_id, match_ratio))
+
+        # Exact matches get additive boost to ensure top ranking
+        for doc_id in exact_matches:
+            doc_scores[doc_id] += max_score * doc_name_boost
+
+        # Partial matches get multiplicative boost
+        for doc_id, match_ratio in partial_matches:
+            boost = 1 + (doc_name_boost - 1) * match_ratio
+            doc_scores[doc_id] *= boost
 
     # Return top results
     sorted_docs = sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)
