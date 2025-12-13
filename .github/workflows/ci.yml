@@ -4,6 +4,7 @@ on:
   push:
   pull_request:
     branches: [ main ]
+  workflow_dispatch:  # Allow manual triggering
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -255,13 +256,13 @@ jobs:
         path: coverage.xml
 
   # ==========================================================================
-  # Showcase (main branch only, runs in parallel)
+  # Showcase (main branch or manual trigger, runs in parallel)
   # Runs the full showcase demo - independent of test results
   # ==========================================================================
   showcase:
     name: "🎭 Showcase Demo"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     steps:
     - uses: actions/checkout@v4
 
