@@ -1,5 +1,28 @@
 name: CI - Test Suite
 
+# =============================================================================
+# CI TEST ARCHITECTURE - READ BEFORE MODIFYING
+# =============================================================================
+#
+# CRITICAL: Pytest runs unittest-based tests natively!
+# DO NOT run both pytest and unittest on the same test files.
+# This doubles CI time and provides no benefit.
+#
+# ❌ WRONG (runs tests twice):
+#    coverage run -m pytest tests/
+#    coverage run --append -m unittest discover -s tests
+#
+# ✅ CORRECT (pytest handles both):
+#    coverage run -m pytest tests/
+#
+# Test stages run in dependency order:
+#   smoke → unit → integration → [regression, behavioral, performance]
+#                              → coverage-report
+#
+# Each stage runs specific test directories/files to avoid duplication.
+# The final coverage-report stage runs ALL tests once for the combined number.
+# =============================================================================
+
 on:
   push:
   pull_request:
@@ -241,11 +264,19 @@ jobs:
     - name: Generate combined coverage report
       run: |
         echo "=== Combined Coverage Report ==="
-        # Run pytest-based tests (tests/unit/, tests/smoke/, etc.)
-        coverage run --source=cortical -m pytest tests/ -v --ignore=tests/performance/
+        # ⚠️  IMPORTANT: DO NOT add duplicate test runs here!
+        #
+        # Pytest runs unittest-based tests natively - no need to run both.
+        # Running tests twice doubles CI time (from ~7min to ~15min+).
+        #
+        # If you need to add tests, add them to the appropriate stage above
+        # (unit-tests, integration-tests, etc.) NOT here.
+        #
+        # This job combines coverage from artifacts, then runs a single
+        # comprehensive pass for the final coverage number.
 
-        # Append unittest-based legacy tests
-        coverage run --append --source=cortical -m unittest discover -s tests -p "test_*.py" -v
+        # Single test run - pytest handles both pytest AND unittest style tests
+        coverage run --source=cortical -m pytest tests/ -v --ignore=tests/performance/
 
         coverage report -m --include="cortical/*"
         coverage xml -o coverage.xml

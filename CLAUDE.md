@@ -584,6 +584,32 @@ class TestYourFeature(unittest.TestCase):
 - Edge cases specific to your feature
 - Add regression test if fixing a bug
 
+### CI/CD Best Practices
+
+**CRITICAL: Pytest runs unittest-based tests natively!**
+
+Never run both pytest and unittest on the same test files - this doubles CI time:
+
+```bash
+# ❌ WRONG - runs tests twice (doubles CI time from ~7min to ~15min+)
+coverage run -m pytest tests/
+coverage run --append -m unittest discover -s tests
+
+# ✅ CORRECT - pytest handles both pytest AND unittest style tests
+coverage run -m pytest tests/
+```
+
+**Why this matters:**
+- All `test_*.py` files using `unittest.TestCase` are discovered and run by pytest
+- Running unittest separately re-runs the exact same tests
+- With 3000+ tests and coverage overhead, this can add 10+ minutes to CI
+
+**When modifying `.github/workflows/ci.yml`:**
+1. Read the header comment explaining the test architecture
+2. Add new tests to the appropriate stage (smoke, unit, integration, etc.)
+3. Never add duplicate test runners in the coverage-report job
+4. When in doubt, run locally first: `time python -m pytest tests/ -v`
+
 ---
 
 ## Common Tasks
