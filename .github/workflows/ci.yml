@@ -17,21 +17,22 @@ name: CI - Test Suite
 #
 # PARALLEL ARCHITECTURE (optimized for speed):
 #
-#   validate-task-list (< 5s)   smoke-tests (< 30s)
-#          │                          │
-#          │                          ├──────────────────────────────────┐
-#          │                          │                                  │
-#          ▼                          ▼                                  ▼
-#    (continues)      ┌─────────────────────────────────────┐    ┌──────────────────┐
-#                     │ unit-tests ─────┐                   │    │ regression-tests │
-#                     │ integration-tests │ (with coverage) │    │ behavioral-tests │
-#                     └──────────┬──────┴───────────────────┘    │ performance-tests│
-#                                │                                └──────────────────┘
-#                                ▼                                    (no coverage)
-#                         coverage-report
-#                       (combines coverage
-#                        from unit + integration
-#                        WITHOUT re-running tests)
+#   validate-task-list   smoke-tests      showcase
+#        (< 5s)           (< 30s)         (parallel)
+#          │                 │                │
+#          │                 ├────────────────┼─────────────────┐
+#          │                 │                │                 │
+#          ▼                 ▼                ▼                 ▼
+#    (continues)  ┌────────────────────────┐      ┌──────────────────┐
+#                 │ unit-tests ────┐       │      │ regression-tests │
+#                 │ integration    │ (cov) │      │ behavioral-tests │
+#                 └───────┬────────┴───────┘      │ performance-tests│
+#                         │                       └──────────────────┘
+#                         ▼                           (no coverage)
+#                  coverage-report
+#                (combines coverage
+#                 from unit + integration
+#                 WITHOUT re-running tests)
 #
 # Each stage runs specific test files to avoid duplication.
 # coverage-report ONLY combines coverage data - it does NOT run tests again.
@@ -341,13 +342,12 @@ jobs:
         path: coverage.xml
 
   # ==========================================================================
-  # Showcase (main branch or manual trigger, runs in parallel)
+  # Showcase (runs in parallel with all other jobs)
   # Runs the full showcase demo - independent of test results
   # ==========================================================================
   showcase:
     name: "🎭 Showcase Demo"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     steps:
     - uses: actions/checkout@v4
 
