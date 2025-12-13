@@ -1561,9 +1561,17 @@ class CorticalTextProcessor:
 
         Returns:
             Dict mapping terms to weights
+
+        Raises:
+            ValueError: If query_text is empty or max_expansions is negative
         """
+        # Input validation
+        if not isinstance(query_text, str) or not query_text.strip():
+            raise ValueError("query_text must be a non-empty string")
         if max_expansions is None:
             max_expansions = self.config.max_query_expansions
+        if not isinstance(max_expansions, int) or max_expansions < 0:
+            raise ValueError("max_expansions must be a non-negative integer")
 
         return query_module.expand_query(
             query_text,
@@ -1943,7 +1951,18 @@ class CorticalTextProcessor:
 
         Returns:
             List of (doc_id, score) tuples ranked by relevance
+
+        Raises:
+            ValueError: If query_text is empty or top_n is not positive
         """
+        # Input validation
+        if not isinstance(query_text, str) or not query_text.strip():
+            raise ValueError("query_text must be a non-empty string")
+        if not isinstance(top_n, int) or top_n < 1:
+            raise ValueError("top_n must be a positive integer")
+        if not isinstance(candidate_multiplier, int) or candidate_multiplier < 1:
+            raise ValueError("candidate_multiplier must be a positive integer")
+
         return query_module.fast_find_documents(
             query_text,
             self.layers,
@@ -2211,16 +2230,35 @@ class CorticalTextProcessor:
             List of (passage_text, doc_id, start_char, end_char, score) tuples
             ranked by relevance
 
+        Raises:
+            ValueError: If query_text is empty, top_n is not positive, or chunk parameters are invalid
+
         Example:
             >>> # For conceptual queries, docs are auto-boosted
             >>> results = processor.find_passages_for_query("what is PageRank")
             >>> for passage, doc_id, start, end, score in results:
             ...     print(f"[{doc_id}:{start}-{end}] {passage[:50]}... (score: {score:.3f})")
         """
+        # Input validation
+        if not isinstance(query_text, str) or not query_text.strip():
+            raise ValueError("query_text must be a non-empty string")
+        if not isinstance(top_n, int) or top_n < 1:
+            raise ValueError("top_n must be a positive integer")
+
         if chunk_size is None:
             chunk_size = self.config.chunk_size
+        else:
+            if not isinstance(chunk_size, int) or chunk_size < 1:
+                raise ValueError("chunk_size must be a positive integer")
+
         if overlap is None:
             overlap = self.config.chunk_overlap
+        else:
+            if not isinstance(overlap, int) or overlap < 0:
+                raise ValueError("overlap must be a non-negative integer")
+            if overlap >= chunk_size:
+                raise ValueError(f"overlap ({overlap}) must be less than chunk_size ({chunk_size})")
+
         return query_module.find_passages_for_query(
             query_text,
             self.layers,

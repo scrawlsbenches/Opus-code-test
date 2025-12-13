@@ -35,6 +35,15 @@ from .results import (
     convert_passage_matches
 )
 
+# MCP Server support (optional import)
+try:
+    from .mcp_server import CorticalMCPServer, create_mcp_server
+    _has_mcp = True
+except ImportError:
+    _has_mcp = False
+    CorticalMCPServer = None
+    create_mcp_server = None
+
 __version__ = "2.0.0"
 __all__ = [
     "CorticalTextProcessor",
@@ -58,3 +67,10 @@ __all__ = [
     "convert_document_matches",
     "convert_passage_matches",
 ]
+
+# Add MCP exports if available
+if _has_mcp:
+    __all__.extend([
+        "CorticalMCPServer",
+        "create_mcp_server",
+    ])

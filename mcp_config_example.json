@@ -1,0 +1,28 @@
+{
+  "$schema": "https://github.com/modelcontextprotocol/servers/blob/main/schema.json",
+  "mcpServers": {
+    "cortical-text-processor": {
+      "command": "python",
+      "args": [
+        "-m",
+        "cortical.mcp_server"
+      ],
+      "env": {
+        "CORTICAL_CORPUS_PATH": "/path/to/your/corpus.pkl",
+        "CORTICAL_LOG_LEVEL": "INFO"
+      },
+      "description": "Cortical Text Processor - Semantic search and text analysis for AI agents"
+    },
+    "cortical-empty-corpus": {
+      "command": "python",
+      "args": [
+        "-m",
+        "cortical.mcp_server"
+      ],
+      "env": {
+        "CORTICAL_LOG_LEVEL": "INFO"
+      },
+      "description": "Cortical Text Processor - Start with empty corpus (for dynamic document addition)"
+    }
+  }
+}
