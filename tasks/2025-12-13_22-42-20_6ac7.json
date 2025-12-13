@@ -2,20 +2,20 @@
   "version": 1,
   "session_id": "6ac7",
   "started_at": "2025-12-13T22:42:20.986896",
-  "saved_at": "2025-12-13T22:42:20.987134",
+  "saved_at": "2025-12-13T22:48:20.764101",
   "tasks": [
     {
       "id": "T-20251213-224220-6ac7-01",
       "title": "Fix non-atomic file writes (data loss risk)",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "bugfix",
       "description": "TaskSession.save() should write to .tmp then atomic rename",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-13T22:42:20.986937",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-13T22:48:20.519513",
+      "completed_at": "2025-12-13T22:48:20.519513",
       "context": {
         "files": [
           "scripts/task_utils.py"
@@ -26,15 +26,15 @@
     {
       "id": "T-20251213-224220-6ac7-02",
       "title": "Fix path traversal vulnerability in archive",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "security",
       "description": "archive_old_session_files() must validate paths stay within tasks/",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-13T22:42:20.986947",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-13T22:48:20.628391",
+      "completed_at": "2025-12-13T22:48:20.628391",
       "context": {
         "files": [
           "scripts/consolidate_tasks.py"
@@ -45,15 +45,15 @@
     {
       "id": "T-20251213-224220-6ac7-03",
       "title": "Fix task counter overflow at 100 tasks",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "bugfix",
       "description": "Expand counter format from 02d to 03d or use base36",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-13T22:42:20.986955",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-13T22:48:20.763992",
+      "completed_at": "2025-12-13T22:48:20.763992",
       "context": {
         "files": [
           "scripts/task_utils.py"

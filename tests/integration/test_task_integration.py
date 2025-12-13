@@ -405,5 +405,99 @@ class TestFileSystemResilience(unittest.TestCase):
         self.assertTrue(nested_dir.exists())
 
 
+class TestSecurityAndRobustness(unittest.TestCase):
+    """Test security fixes and robustness improvements."""
+
+    def setUp(self):
+        """Create temporary directory for task files."""
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up temporary directory."""
+        shutil.rmtree(self.temp_dir)
+
+    def test_path_traversal_rejected(self):
+        """Archive should reject path traversal attempts."""
+        # Create a session with tasks
+        session = TaskSession()
+        session.create_task(title="Task")
+        session.save(self.temp_dir)
+
+        # Attempt path traversal with ..
+        evil_archive = str(Path(self.temp_dir) / ".." / "evil_dir")
+        with self.assertRaises(ValueError) as cm:
+            archive_old_session_files(self.temp_dir, archive_dir=evil_archive)
+        self.assertIn("path traversal", str(cm.exception).lower())
+
+    def test_absolute_path_outside_tasks_rejected(self):
+        """Archive should reject absolute paths outside tasks directory."""
+        session = TaskSession()
+        session.create_task(title="Task")
+        session.save(self.temp_dir)
+
+        # Attempt to use /tmp as archive (outside tasks_dir)
+        with self.assertRaises(ValueError) as cm:
+            archive_old_session_files(self.temp_dir, archive_dir="/tmp")
+        self.assertIn("must be within", str(cm.exception).lower())
+
+    def test_subdirectory_archive_allowed(self):
+        """Archive within tasks directory should be allowed."""
+        session = TaskSession()
+        session.create_task(title="Task")
+        session.save(self.temp_dir)
+
+        # Subdirectory should work fine
+        sub_archive = str(Path(self.temp_dir) / "deep" / "archive")
+        archived = archive_old_session_files(self.temp_dir, archive_dir=sub_archive)
+        self.assertEqual(len(archived), 1)
+        self.assertTrue(Path(sub_archive).exists())
+
+    def test_counter_supports_100_plus_tasks(self):
+        """Session should support 100+ tasks without format issues."""
+        session = TaskSession()
+
+        # Create 150 tasks
+        for i in range(150):
+            task = session.create_task(title=f"Task {i}")
+
+        # All IDs should be unique and follow pattern
+        all_ids = [t.id for t in session.tasks]
+        self.assertEqual(len(set(all_ids)), 150)
+
+        # Check format consistency (3-digit counter)
+        for task in session.tasks:
+            parts = task.id.split("-")
+            self.assertEqual(len(parts), 5)  # T-YYYYMMDD-HHMMSS-XXXX-NNN
+            counter = parts[-1]
+            self.assertEqual(len(counter), 3)  # Always 3 digits
+
+    def test_atomic_write_no_temp_file_left_on_success(self):
+        """Successful save should not leave temp files."""
+        session = TaskSession()
+        session.create_task(title="Task")
+        filepath = session.save(self.temp_dir)
+
+        # Check no .tmp files exist
+        tmp_files = list(Path(self.temp_dir).glob("*.tmp"))
+        self.assertEqual(len(tmp_files), 0)
+
+        # Main file should exist
+        self.assertTrue(filepath.exists())
+
+    def test_save_creates_valid_json(self):
+        """Saved file should be valid JSON after atomic write."""
+        session = TaskSession()
+        for i in range(10):
+            session.create_task(title=f"Task {i}")
+        filepath = session.save(self.temp_dir)
+
+        # Should load without error
+        with open(filepath) as f:
+            data = json.load(f)
+
+        self.assertEqual(len(data["tasks"]), 10)
+        self.assertEqual(data["session_id"], session.session_id)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -152,12 +152,12 @@ class TestTaskSession(unittest.TestCase):
         self.assertEqual(session_suffix1, session_suffix2)
         self.assertEqual(session_suffix1, session.session_id)
 
-        # Task counters should be different
+        # Task counters should be different (3-digit format)
         counter1 = parts1[-1]
         counter2 = parts2[-1]
         self.assertNotEqual(counter1, counter2)
-        self.assertEqual(counter1, "01")
-        self.assertEqual(counter2, "02")
+        self.assertEqual(counter1, "001")
+        self.assertEqual(counter2, "002")
 
     def test_create_task(self):
         """create_task should add task to session."""

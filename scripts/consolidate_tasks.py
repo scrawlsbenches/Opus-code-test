@@ -205,10 +205,41 @@ def write_consolidated_file(
         "tasks": [t.to_dict() for t in tasks]
     }
 
-    with open(filepath, 'w') as f:
-        json.dump(data, f, indent=2)
+    # Atomic write: temp file then rename
+    temp_filepath = filepath.with_suffix('.json.tmp')
+    try:
+        with open(temp_filepath, 'w') as f:
+            json.dump(data, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        temp_filepath.rename(filepath)
+    except Exception:
+        if temp_filepath.exists():
+            temp_filepath.unlink()
+        raise
 
     return filepath
+
+
+def _validate_archive_path(tasks_dir: Path, archive_path: Path) -> None:
+    """
+    Validate that archive_path is within or under tasks_dir.
+
+    Raises:
+        ValueError: If archive_path escapes tasks_dir boundary
+    """
+    # Resolve to absolute paths for comparison
+    tasks_resolved = tasks_dir.resolve()
+    archive_resolved = archive_path.resolve()
+
+    # Check that archive is within tasks directory
+    try:
+        archive_resolved.relative_to(tasks_resolved)
+    except ValueError:
+        raise ValueError(
+            f"Archive path '{archive_path}' must be within tasks directory '{tasks_dir}'. "
+            f"Path traversal is not allowed for security reasons."
+        )
 
 
 def archive_old_session_files(
@@ -221,14 +252,26 @@ def archive_old_session_files(
 
     Args:
         tasks_dir: Directory containing task files
-        archive_dir: Where to move old files (default: tasks/archive/)
+        archive_dir: Where to move old files (default: tasks/archive/).
+                     Must be within tasks_dir for security.
         keep_consolidated: Don't archive consolidated_*.json files
 
     Returns:
         List of archived file paths
+
+    Raises:
+        ValueError: If archive_dir attempts path traversal outside tasks_dir
     """
     dir_path = Path(tasks_dir)
-    archive_path = Path(archive_dir or (dir_path / "archive"))
+
+    # Default to subdirectory, validate if custom path provided
+    if archive_dir is None:
+        archive_path = dir_path / "archive"
+    else:
+        archive_path = Path(archive_dir)
+        # Security: validate path stays within tasks directory
+        _validate_archive_path(dir_path, archive_path)
+
     archive_path.mkdir(parents=True, exist_ok=True)
 
     archived = []

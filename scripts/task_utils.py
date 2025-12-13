@@ -156,8 +156,8 @@ class TaskSession:
         now = datetime.now()
         date_str = now.strftime("%Y%m%d")
         time_str = now.strftime("%H%M%S")
-        # Format: T-YYYYMMDD-HHMMSS-SSSS-NN where NN is task number
-        return f"T-{date_str}-{time_str}-{self.session_id}-{self._task_counter:02d}"
+        # Format: T-YYYYMMDD-HHMMSS-SSSS-NNN where NNN is task number (supports 999 tasks)
+        return f"T-{date_str}-{time_str}-{self.session_id}-{self._task_counter:03d}"
 
     def create_task(
         self,
@@ -205,18 +205,25 @@ class TaskSession:
 
     def save(self, tasks_dir: Optional[str] = None) -> Path:
         """
-        Save session tasks to a JSON file.
+        Save session tasks to a JSON file atomically.
+
+        Uses write-to-temp-then-rename pattern to prevent data loss
+        if the process crashes during write.
 
         Args:
             tasks_dir: Directory for task files (default: tasks/)
 
         Returns:
             Path to the saved file
+
+        Raises:
+            OSError: If write or rename fails
         """
         dir_path = Path(tasks_dir or self.tasks_dir)
         dir_path.mkdir(parents=True, exist_ok=True)
 
         filepath = dir_path / self.get_filename()
+        temp_filepath = filepath.with_suffix('.json.tmp')
 
         data = {
             "version": 1,
@@ -226,8 +233,20 @@ class TaskSession:
             "tasks": [t.to_dict() for t in self.tasks]
         }
 
-        with open(filepath, 'w') as f:
-            json.dump(data, f, indent=2)
+        try:
+            # Write to temp file first
+            with open(temp_filepath, 'w') as f:
+                json.dump(data, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())  # Ensure data is on disk
+
+            # Atomic rename (on POSIX systems)
+            temp_filepath.rename(filepath)
+        except Exception:
+            # Clean up temp file on failure
+            if temp_filepath.exists():
+                temp_filepath.unlink()
+            raise
 
         return filepath
 
