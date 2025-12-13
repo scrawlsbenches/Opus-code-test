@@ -339,6 +339,33 @@ if processor.is_stale(processor.COMP_PAGERANK):
     processor.compute_importance()
 ```
 
+### Changing Validation Logic (IMPORTANT!)
+
+When modifying validation rules (e.g., parameter ranges, input constraints), **tests are scattered across multiple files**. Missing any will cause CI failures.
+
+**Before changing validation:**
+```bash
+# Find ALL tests related to the parameter/function you're changing
+# Example: changing alpha parameter validation
+grep -rn "alpha" tests/ | grep -i "invalid\|error\|raise\|ValueError"
+
+# More specific patterns:
+grep -rn "alpha.*0\|alpha.*1\|invalid.*alpha" tests/
+```
+
+**Checklist for validation changes:**
+1. ✅ Search for the parameter name + "invalid", "error", "raise", "ValueError" in tests/
+2. ✅ Check both `tests/unit/` AND legacy `tests/test_*.py` files
+3. ✅ Check `tests/test_coverage_gaps.py` (often has validation edge cases)
+4. ✅ Update ALL matching tests, not just the first one found
+5. ✅ Run full test suite locally before pushing: `python -m pytest tests/ -v`
+
+**Example: Changing alpha from (0, 1] to [0, 1]**
+```bash
+# This finds tests expecting alpha=0 to be invalid:
+grep -rn "alpha.*0\.0\|alpha.*=.*0[^.]\|exclusive of 0" tests/
+```
+
 ### Staleness Tracking System
 
 The processor tracks which computations are up-to-date vs needing recalculation. This prevents unnecessary recomputation while ensuring data consistency.
