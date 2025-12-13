@@ -164,9 +164,9 @@ class TestSearchCodebase(unittest.TestCase):
         self.assertIsInstance(results, list)
 
     def test_search_empty_query(self):
-        """Test search with empty query."""
-        results = search_codebase(self.processor, "", top_n=3)
-        self.assertIsInstance(results, list)
+        """Test search with empty query raises ValueError."""
+        with self.assertRaises(ValueError):
+            search_codebase(self.processor, "", top_n=3)
 
 
 class TestFindSimilarCode(unittest.TestCase):

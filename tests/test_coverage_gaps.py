@@ -273,13 +273,13 @@ class TestQueryEdgeCases(unittest.TestCase):
         self.assertIsInstance(results, list)
 
     def test_expand_query_empty(self):
-        """Test expanding empty query."""
+        """Test expanding empty query raises ValueError."""
         processor = CorticalTextProcessor()
         processor.process_document("doc1", "test content")
         processor.compute_all(verbose=False)
 
-        result = processor.expand_query("")
-        self.assertEqual(result, {})
+        with self.assertRaises(ValueError):
+            processor.expand_query("")
 
 
 class TestAnalysisEdgeCases(unittest.TestCase):

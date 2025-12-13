@@ -406,10 +406,9 @@ class TestQueryEdgeCases(unittest.TestCase):
             self.processor.find_documents_for_query("neural", top_n=0)
 
     def test_expand_query_empty(self):
-        """Test expand_query with empty string."""
-        result = self.processor.expand_query("")
-        # Should return empty dict or raise ValueError
-        self.assertIsInstance(result, dict)
+        """Test expand_query with empty string raises ValueError."""
+        with self.assertRaises(ValueError):
+            self.processor.expand_query("")
 
     def test_expand_query_nonexistent_terms(self):
         """Test expand_query with terms not in corpus."""
@@ -435,14 +434,13 @@ class TestPassageQueryEdgeCases(unittest.TestCase):
         self.processor.compute_tfidf(verbose=False)
 
     def test_find_passages_empty_query(self):
-        """Test find_passages_for_query with empty query.
+        """Test find_passages_for_query with empty query raises ValueError.
 
-        BUG FOUND: find_passages_for_query does not validate empty queries
-        and returns empty list instead of raising ValueError.
+        Previously this was a bug where empty queries returned empty list.
+        Now properly validates input and raises ValueError.
         """
-        # Current behavior: returns empty list, doesn't raise ValueError
-        results = self.processor.find_passages_for_query("")
-        self.assertEqual(results, [])
+        with self.assertRaises(ValueError):
+            self.processor.find_passages_for_query("")
 
     def test_find_passages_on_empty_corpus(self):
         """Test find_passages_for_query on empty corpus."""
