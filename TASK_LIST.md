@@ -3,7 +3,7 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 16
+**Pending Tasks:** 25
 **Completed Tasks:** 222 (see archive)
 
 **Legacy Test Cleanup:** ✅ COMPLETE - All 8 tasks investigated (#198-205)
@@ -324,7 +324,7 @@ Every typed connection is duplicated in `lateral_connections` for backward compa
 
 | Category | Pending | Description |
 |----------|---------|-------------|
-| Arch | 5 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
+| Arch | 6 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |
 | CodeQual | 1 | Code quality improvements (#99) |
 | Testing | 1 | Test coverage (#129) |
 | TaskMgmt | 3 | Task management system (#106, 107, 108) |
