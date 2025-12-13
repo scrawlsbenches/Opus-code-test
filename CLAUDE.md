@@ -35,6 +35,7 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 - Use the system to test itself when possible
 - Real usage reveals issues that unit tests miss
 - Document all findings in TASK_LIST.md
+- **Keep TASK_LIST.md current** - stale tasks waste investigative effort
 
 **Honest Assessment**
 - Acknowledge when something isn't working
@@ -130,7 +131,16 @@ python scripts/search_codebase.py "expand query"  # Find specific code
 cortical/
 ├── processor.py      # Main orchestrator (2,301 lines) - START HERE
 │                     # CorticalTextProcessor is the public API
-├── query.py          # Search, retrieval, query expansion (2,719 lines)
+├── query/            # Search, retrieval, query expansion (split into 8 modules)
+│   ├── __init__.py   # Re-exports public API
+│   ├── expansion.py  # Query expansion
+│   ├── search.py     # Document search
+│   ├── passages.py   # Passage retrieval
+│   ├── chunking.py   # Text chunking
+│   ├── intent.py     # Intent-based queries
+│   ├── definitions.py # Definition search
+│   ├── ranking.py    # Multi-stage ranking
+│   └── analogy.py    # Analogy completion
 ├── analysis.py       # Graph algorithms: PageRank, TF-IDF, clustering (1,123 lines)
 ├── semantics.py      # Relation extraction, inheritance, retrofitting (915 lines)
 ├── persistence.py    # Save/load with full state preservation (606 lines)
@@ -548,6 +558,29 @@ Key defaults to know:
 5. **Dog-food the feature** - test with real usage (see [dogfooding-checklist.md](docs/dogfooding-checklist.md))
 6. **Document all findings** - add issues to TASK_LIST.md (see [code-of-ethics.md](docs/code-of-ethics.md))
 7. **Verify completion** - use [definition-of-done.md](docs/definition-of-done.md) checklist
+8. **Update TASK_LIST.md** - Mark task complete and move details to archive (see below)
+
+### Task Completion Checklist
+
+**CRITICAL:** Task list staleness caused 2,000+ lines of stale data. Always complete this checklist:
+
+1. **Mark task status** in TASK_LIST.md backlog tables (change to ✅ or remove row)
+2. **Update "Recently Completed"** section with one-line summary
+3. **Move detailed task description** to TASK_ARCHIVE.md if substantial
+4. **Update counts** in header (`Pending Tasks:`, `Completed Tasks:`)
+5. **Remove from "In Progress"** section if applicable
+
+**Why this matters:**
+- Stale task lists waste time (agents investigate "pending" tasks that are done)
+- Inaccurate counts mislead planning
+- Bloated files slow navigation and context consumption
+
+**Quick validation:**
+```bash
+# Check for completed tasks still marked pending
+grep -n "status:pending" TASK_LIST.md | head -20
+# Should only show truly pending tasks
+```
 
 ---
 
