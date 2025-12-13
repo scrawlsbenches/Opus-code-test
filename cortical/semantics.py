@@ -449,19 +449,19 @@ def retrofit_connections(
             for target_id in list(col.lateral_connections.keys()):
                 original = original_weights[term].get(target_id, 0)
                 semantic = semantic_targets.get(target_id, 0)
-                
+
                 # Blend original and semantic
                 new_weight = alpha * original + (1 - alpha) * semantic
-                
+
                 if new_weight > 0:
                     adjustment = abs(col.lateral_connections[target_id] - new_weight)
                     iteration_adjustment += adjustment
-                    col.lateral_connections[target_id] = new_weight
-            
+                    col.set_lateral_connection_weight(target_id, new_weight)
+
             # Add new semantic connections
             for target_id, semantic_weight in semantic_targets.items():
                 if target_id not in col.lateral_connections:
-                    col.lateral_connections[target_id] = (1 - alpha) * semantic_weight
+                    col.set_lateral_connection_weight(target_id, (1 - alpha) * semantic_weight)
                     iteration_adjustment += (1 - alpha) * semantic_weight
         
         total_adjustment += iteration_adjustment

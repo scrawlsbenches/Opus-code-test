@@ -3,8 +3,8 @@
 Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Last Updated:** 2025-12-13
-**Pending Tasks:** 25
-**Completed Tasks:** 222 (see archive)
+**Pending Tasks:** 24
+**Completed Tasks:** 223 (see archive)
 
 **Legacy Test Cleanup:** ✅ COMPLETE - All 8 tasks investigated (#198-205)
 - **KEEP (7 files, 506 tests):** Provide unique coverage not duplicated in unit tests
@@ -33,7 +33,6 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 | # | Task | Category | Depends | Effort |
 |---|------|----------|---------|--------|
 | 184 | Implement MCP Server for Claude Desktop integration | Integration | - | Large |
-| 192 | Deduplicate lateral_connections and typed_connections storage | Memory | - | Medium |
 
 ### 🟡 Medium (Do This Month)
 
@@ -103,6 +102,7 @@ Active backlog for the Cortical Text Processor project. Completed tasks are arch
 All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 
 **Latest completions (2025-12-13):**
+- #192 Deduplicate connections storage - typed_connections is now single source of truth, lateral_connections is cached property (15 tests)
 - #198-205 Legacy test investigation COMPLETE - 8 tasks, 10 files reviewed
   - DELETED 3 duplicate files (53 tests): test_behavioral.py, test_intent_query.py, test_query_optimization.py
   - KEPT 7 unique files (506 tests): test_coverage_gaps.py, test_cli_wrapper.py, test_edge_cases.py, test_incremental_indexing.py, + 6 script tests
@@ -147,25 +147,6 @@ All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
 - [ ] 5+ core tools implemented
 - [ ] Documentation for installation
 - [ ] Example MCP config file
-
----
-
-### 192. Deduplicate lateral_connections and typed_connections storage
-
-**Meta:** `status:pending` `priority:high` `category:memory`
-**Files:** `cortical/minicolumn.py`
-
-**Problem:**
-Every typed connection is duplicated in `lateral_connections` for backward compatibility (`minicolumn.py:209-212`). For large graphs, this doubles memory for edge weights.
-
-**Options:**
-1. Deprecate `lateral_connections` in favor of `typed_connections`
-2. Make `lateral_connections` a property that derives from `typed_connections`
-3. Keep both but document the trade-off
-
-**Context from code review (2025-12-13):**
-- Found in comprehensive code review of core classes
-- Memory concern for large corpora with millions of edges
 
 ---
 
@@ -214,7 +195,6 @@ Every typed connection is duplicated in `lateral_connections` for backward compa
 | Research | 2 | Research and analysis (#140, 131) |
 | Samples | 1 | Sample document improvements (#130) |
 | Integration | 1 | MCP Server (#184) |
-| Memory | 1 | Optimization (#192) |
 
 *Updated 2025-12-13 - Unit test initiative COMPLETE (85% coverage, 1,729 tests)*
 

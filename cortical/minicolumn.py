@@ -91,7 +91,7 @@ class Minicolumn:
 
     __slots__ = [
         'id', 'content', 'layer', 'activation', 'occurrence_count',
-        'document_ids', 'lateral_connections', 'typed_connections',
+        'document_ids', '_lateral_cache', '_lateral_cache_valid', 'typed_connections',
         'feedforward_sources', 'feedforward_connections', 'feedback_connections',
         'tfidf', 'tfidf_per_doc', 'pagerank', 'cluster_id',
         'doc_occurrence_counts'
@@ -112,8 +112,9 @@ class Minicolumn:
         self.activation = 0.0
         self.occurrence_count = 0
         self.document_ids: Set[str] = set()
-        self.lateral_connections: Dict[str, float] = {}
-        self.typed_connections: Dict[str, Edge] = {}  # ConceptNet-style typed edges
+        self._lateral_cache: Dict[str, float] = {}  # Cached view of typed_connections weights
+        self._lateral_cache_valid: bool = True  # Cache starts valid (empty matches empty)
+        self.typed_connections: Dict[str, Edge] = {}  # Single source of truth for connections
         self.feedforward_sources: Set[str] = set()  # Deprecated: use feedforward_connections
         self.feedforward_connections: Dict[str, float] = {}  # Weighted links to lower layer
         self.feedback_connections: Dict[str, float] = {}  # Weighted links to higher layer
@@ -122,7 +123,60 @@ class Minicolumn:
         self.pagerank = 1.0
         self.cluster_id: Optional[int] = None
         self.doc_occurrence_counts: Dict[str, int] = {}
-    
+
+    @property
+    def lateral_connections(self) -> Dict[str, float]:
+        """
+        Get lateral connections as a simple weight dictionary.
+
+        This is a cached view derived from typed_connections. For backward
+        compatibility, this returns a dict mapping target_id to weight.
+        The cache is invalidated when connections are added/modified.
+
+        Returns:
+            Dictionary mapping target_id to connection weight
+
+        Note:
+            This property returns a reference to the internal cache. Modifying
+            it directly is deprecated - use add_lateral_connection() or
+            set_lateral_connection_weight() instead.
+        """
+        if not self._lateral_cache_valid:
+            self._lateral_cache = {
+                target_id: edge.weight
+                for target_id, edge in self.typed_connections.items()
+            }
+            self._lateral_cache_valid = True
+        return self._lateral_cache
+
+    @lateral_connections.setter
+    def lateral_connections(self, value: Dict[str, float]) -> None:
+        """
+        Set lateral connections from a dictionary (for deserialization).
+
+        This converts simple weight entries to typed connections with
+        default metadata (relation_type='co_occurrence', source='corpus').
+
+        Args:
+            value: Dictionary mapping target_id to weight
+        """
+        # Clear existing and rebuild from the provided dict
+        self.typed_connections.clear()
+        for target_id, weight in value.items():
+            self.typed_connections[target_id] = Edge(
+                target_id=target_id,
+                weight=weight,
+                relation_type='co_occurrence',
+                confidence=1.0,
+                source='corpus'
+            )
+        self._lateral_cache = dict(value)  # Copy to avoid external mutation
+        self._lateral_cache_valid = True
+
+    def _invalidate_lateral_cache(self) -> None:
+        """Invalidate the lateral connections cache."""
+        self._lateral_cache_valid = False
+
     def add_lateral_connection(self, target_id: str, weight: float = 1.0) -> None:
         """
         Add or strengthen a lateral connection to another column.
@@ -135,9 +189,24 @@ class Minicolumn:
             target_id: ID of the target minicolumn
             weight: Connection strength to add
         """
-        self.lateral_connections[target_id] = (
-            self.lateral_connections.get(target_id, 0) + weight
-        )
+        if target_id in self.typed_connections:
+            existing = self.typed_connections[target_id]
+            self.typed_connections[target_id] = Edge(
+                target_id=target_id,
+                weight=existing.weight + weight,
+                relation_type=existing.relation_type,
+                confidence=existing.confidence,
+                source=existing.source
+            )
+        else:
+            self.typed_connections[target_id] = Edge(
+                target_id=target_id,
+                weight=weight,
+                relation_type='co_occurrence',
+                confidence=1.0,
+                source='corpus'
+            )
+        self._invalidate_lateral_cache()
 
     def add_lateral_connections_batch(self, connections: Dict[str, float]) -> None:
         """
@@ -149,9 +218,61 @@ class Minicolumn:
         Args:
             connections: Dictionary mapping target_id to weight to add
         """
-        lateral = self.lateral_connections
+        typed = self.typed_connections
         for target_id, weight in connections.items():
-            lateral[target_id] = lateral.get(target_id, 0) + weight
+            if target_id in typed:
+                existing = typed[target_id]
+                typed[target_id] = Edge(
+                    target_id=target_id,
+                    weight=existing.weight + weight,
+                    relation_type=existing.relation_type,
+                    confidence=existing.confidence,
+                    source=existing.source
+                )
+            else:
+                typed[target_id] = Edge(
+                    target_id=target_id,
+                    weight=weight,
+                    relation_type='co_occurrence',
+                    confidence=1.0,
+                    source='corpus'
+                )
+        self._invalidate_lateral_cache()
+
+    def set_lateral_connection_weight(self, target_id: str, weight: float) -> None:
+        """
+        Set the weight of a lateral connection directly (not additive).
+
+        Unlike add_lateral_connection() which adds to existing weight,
+        this method sets the weight to an exact value. Used primarily
+        by semantic retrofitting which needs to adjust weights directly.
+
+        Args:
+            target_id: ID of the target minicolumn
+            weight: Exact weight to set (replaces existing weight)
+
+        Note:
+            If the connection doesn't exist, it will be created with
+            default metadata (relation_type='co_occurrence', source='corpus').
+        """
+        if target_id in self.typed_connections:
+            existing = self.typed_connections[target_id]
+            self.typed_connections[target_id] = Edge(
+                target_id=target_id,
+                weight=weight,
+                relation_type=existing.relation_type,
+                confidence=existing.confidence,
+                source=existing.source
+            )
+        else:
+            self.typed_connections[target_id] = Edge(
+                target_id=target_id,
+                weight=weight,
+                relation_type='co_occurrence',
+                confidence=1.0,
+                source='corpus'
+            )
+        self._invalidate_lateral_cache()
 
     def add_typed_connection(
         self,
@@ -206,10 +327,8 @@ class Minicolumn:
                 source=source
             )
 
-        # Also update simple lateral_connections for backward compatibility
-        self.lateral_connections[target_id] = (
-            self.lateral_connections.get(target_id, 0) + weight
-        )
+        # Invalidate cache so lateral_connections property rebuilds on next access
+        self._invalidate_lateral_cache()
 
     def get_typed_connection(self, target_id: str) -> Optional[Edge]:
         """
@@ -340,6 +459,9 @@ class Minicolumn:
         """
         Create a minicolumn from dictionary representation.
 
+        Handles backward compatibility: if typed_connections is present, use it.
+        If only lateral_connections is present (old format), convert it.
+
         Args:
             data: Dictionary with minicolumn data
 
@@ -350,13 +472,23 @@ class Minicolumn:
         col.activation = data.get('activation', 0.0)
         col.occurrence_count = data.get('occurrence_count', 0)
         col.document_ids = set(data.get('document_ids', []))
-        col.lateral_connections = data.get('lateral_connections', {})
-        # Deserialize typed connections
+
+        # Handle connection deserialization with backward compatibility
         typed_conn_data = data.get('typed_connections', {})
-        col.typed_connections = {
-            target_id: Edge.from_dict(edge_data)
-            for target_id, edge_data in typed_conn_data.items()
-        }
+        lateral_conn_data = data.get('lateral_connections', {})
+
+        if typed_conn_data:
+            # New format: deserialize typed connections directly
+            col.typed_connections = {
+                target_id: Edge.from_dict(edge_data)
+                for target_id, edge_data in typed_conn_data.items()
+            }
+            col._lateral_cache_valid = False  # Will rebuild on first access
+        elif lateral_conn_data:
+            # Old format: convert lateral_connections to typed_connections
+            col.lateral_connections = lateral_conn_data  # Uses setter
+        # else: both empty, nothing to do (already initialized empty)
+
         col.feedforward_sources = set(data.get('feedforward_sources', []))
         col.feedforward_connections = data.get('feedforward_connections', {})
         col.feedback_connections = data.get('feedback_connections', {})

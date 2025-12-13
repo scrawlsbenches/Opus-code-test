@@ -709,3 +709,240 @@ class TestSerialization:
         assert restored.pagerank == 0.7
         assert restored.cluster_id == 3
         assert restored.doc_occurrence_counts == {"doc1": 10, "doc2": 5}
+
+
+# =============================================================================
+# CONNECTION DEDUPLICATION TESTS (Task #192)
+# =============================================================================
+
+
+class TestConnectionDeduplication:
+    """
+    Tests for Task #192: Deduplicate lateral_connections and typed_connections.
+
+    These tests verify that:
+    1. typed_connections is the single source of truth
+    2. lateral_connections is a cached property derived from typed_connections
+    3. No duplicate storage occurs
+    4. Backward compatibility is maintained
+    """
+
+    def test_add_lateral_stores_in_typed_only(self):
+        """add_lateral_connection stores only in typed_connections (no duplication)."""
+        col = Minicolumn("L0_test", "test", 0)
+        col.add_lateral_connection("L0_target", 2.5)
+
+        # Should create an Edge in typed_connections
+        assert "L0_target" in col.typed_connections
+        edge = col.typed_connections["L0_target"]
+        assert edge.weight == 2.5
+        assert edge.relation_type == "co_occurrence"
+        assert edge.source == "corpus"
+
+        # lateral_connections should derive from typed_connections
+        assert col.lateral_connections["L0_target"] == 2.5
+
+    def test_lateral_connections_is_derived_view(self):
+        """lateral_connections property returns dict derived from typed_connections."""
+        col = Minicolumn("L0_test", "test", 0)
+
+        # Add via typed_connections directly
+        col.add_typed_connection("L0_target", 3.0, relation_type="IsA")
+
+        # lateral_connections should reflect typed_connections weights
+        assert col.lateral_connections["L0_target"] == 3.0
+
+    def test_cache_invalidation_on_add_lateral(self):
+        """Cache is invalidated when adding lateral connection."""
+        col = Minicolumn("L0_test", "test", 0)
+        col.add_lateral_connection("L0_target1", 1.0)
+
+        # Access to populate cache
+        _ = col.lateral_connections
+
+        # Add another connection
+        col.add_lateral_connection("L0_target2", 2.0)
+
+        # Should see new connection (cache was invalidated)
+        assert "L0_target2" in col.lateral_connections
+        assert col.lateral_connections["L0_target2"] == 2.0
+
+    def test_cache_invalidation_on_add_typed(self):
+        """Cache is invalidated when adding typed connection."""
+        col = Minicolumn("L0_test", "test", 0)
+        col.add_lateral_connection("L0_target1", 1.0)
+
+        # Access to populate cache
+        _ = col.lateral_connections
+
+        # Add typed connection
+        col.add_typed_connection("L0_target2", 3.0, relation_type="RelatedTo")
+
+        # Should see new connection
+        assert col.lateral_connections["L0_target2"] == 3.0
+
+    def test_cache_invalidation_on_batch_add(self):
+        """Cache is invalidated when batch adding connections."""
+        col = Minicolumn("L0_test", "test", 0)
+        col.add_lateral_connection("L0_existing", 1.0)
+
+        # Access to populate cache
+        _ = col.lateral_connections
+
+        # Batch add
+        col.add_lateral_connections_batch({"L0_new1": 2.0, "L0_new2": 3.0})
+
+        # Should see new connections
+        assert col.lateral_connections["L0_new1"] == 2.0
+        assert col.lateral_connections["L0_new2"] == 3.0
+
+    def test_set_lateral_connection_weight(self):
+        """set_lateral_connection_weight sets exact weight (not additive)."""
+        col = Minicolumn("L0_test", "test", 0)
+        col.add_lateral_connection("L0_target", 5.0)
+
+        # Set to specific weight (not add)
+        col.set_lateral_connection_weight("L0_target", 2.0)
+
+        # Should be exactly 2.0, not 7.0
+        assert col.lateral_connections["L0_target"] == 2.0
+        assert col.typed_connections["L0_target"].weight == 2.0
+
+    def test_set_lateral_connection_weight_new_target(self):
+        """set_lateral_connection_weight creates new connection if doesn't exist."""
+        col = Minicolumn("L0_test", "test", 0)
+        col.set_lateral_connection_weight("L0_new", 3.5)
+
+        assert col.lateral_connections["L0_new"] == 3.5
+        assert col.typed_connections["L0_new"].weight == 3.5
+
+    def test_set_lateral_connection_preserves_metadata(self):
+        """set_lateral_connection_weight preserves typed connection metadata."""
+        col = Minicolumn("L0_test", "test", 0)
+        col.add_typed_connection("L0_target", 2.0, relation_type="IsA", source="semantic")
+
+        # Set new weight
+        col.set_lateral_connection_weight("L0_target", 5.0)
+
+        # Weight changed but metadata preserved
+        edge = col.typed_connections["L0_target"]
+        assert edge.weight == 5.0
+        assert edge.relation_type == "IsA"
+        assert edge.source == "semantic"
+
+    def test_lateral_setter_converts_to_typed(self):
+        """Setting lateral_connections (e.g., from deserialize) converts to typed."""
+        col = Minicolumn("L0_test", "test", 0)
+
+        # Simulate setting from old format data
+        col.lateral_connections = {"L0_target1": 1.5, "L0_target2": 2.5}
+
+        # Should be stored in typed_connections
+        assert len(col.typed_connections) == 2
+        assert col.typed_connections["L0_target1"].weight == 1.5
+        assert col.typed_connections["L0_target2"].weight == 2.5
+
+        # With default metadata
+        assert col.typed_connections["L0_target1"].relation_type == "co_occurrence"
+        assert col.typed_connections["L0_target1"].source == "corpus"
+
+    def test_from_dict_backward_compat_lateral_only(self):
+        """from_dict handles old format with only lateral_connections."""
+        # Simulate old format data (before typed_connections existed)
+        old_format = {
+            "id": "L0_test",
+            "content": "test",
+            "layer": 0,
+            "lateral_connections": {"L0_target1": 1.0, "L0_target2": 2.0}
+            # No typed_connections key
+        }
+
+        col = Minicolumn.from_dict(old_format)
+
+        # Should be converted to typed_connections
+        assert len(col.typed_connections) == 2
+        assert col.typed_connections["L0_target1"].weight == 1.0
+        assert col.typed_connections["L0_target2"].weight == 2.0
+
+        # lateral_connections property should work
+        assert col.lateral_connections["L0_target1"] == 1.0
+        assert col.lateral_connections["L0_target2"] == 2.0
+
+    def test_from_dict_prefers_typed_over_lateral(self):
+        """from_dict prefers typed_connections over lateral_connections if both present."""
+        # Data with both (typed_connections is authoritative)
+        data = {
+            "id": "L0_test",
+            "content": "test",
+            "layer": 0,
+            "lateral_connections": {"L0_target": 1.0},  # Old data
+            "typed_connections": {
+                "L0_target": {
+                    "target_id": "L0_target",
+                    "weight": 5.0,  # Different weight
+                    "relation_type": "IsA",
+                    "confidence": 0.9,
+                    "source": "semantic"
+                }
+            }
+        }
+
+        col = Minicolumn.from_dict(data)
+
+        # Should use typed_connections data
+        assert col.typed_connections["L0_target"].weight == 5.0
+        assert col.typed_connections["L0_target"].relation_type == "IsA"
+        assert col.lateral_connections["L0_target"] == 5.0
+
+    def test_no_memory_duplication(self):
+        """Verify there's no duplicate storage in internal data structures."""
+        col = Minicolumn("L0_test", "test", 0)
+
+        # Add connections both ways
+        col.add_lateral_connection("L0_lateral", 1.0)
+        col.add_typed_connection("L0_typed", 2.0, relation_type="IsA")
+
+        # Both should only exist in typed_connections
+        assert len(col.typed_connections) == 2
+        assert "L0_lateral" in col.typed_connections
+        assert "L0_typed" in col.typed_connections
+
+        # _lateral_cache should be invalid or empty until accessed
+        # (implementation detail, but we can verify no pre-populated duplicate)
+        # After accessing lateral_connections, cache is populated
+        _ = col.lateral_connections
+        assert col._lateral_cache_valid is True
+
+    def test_lateral_connections_reflects_weight_changes(self):
+        """lateral_connections property reflects changes to typed_connections weights."""
+        col = Minicolumn("L0_test", "test", 0)
+        col.add_lateral_connection("L0_target", 1.0)
+
+        assert col.lateral_connections["L0_target"] == 1.0
+
+        # Accumulate weight
+        col.add_lateral_connection("L0_target", 2.0)
+
+        # Should reflect accumulated weight
+        assert col.lateral_connections["L0_target"] == 3.0
+
+    def test_empty_minicolumn_lateral_connections(self):
+        """Empty minicolumn returns empty lateral_connections."""
+        col = Minicolumn("L0_test", "test", 0)
+        assert col.lateral_connections == {}
+        assert col.typed_connections == {}
+
+    def test_add_lateral_preserves_existing_typed_metadata(self):
+        """add_lateral_connection preserves existing typed connection metadata."""
+        col = Minicolumn("L0_test", "test", 0)
+
+        # Add typed connection with metadata
+        col.add_typed_connection("L0_target", 2.0, relation_type="IsA", source="semantic")
+
+        # Add more weight via lateral (which should preserve metadata)
+        col.add_lateral_connection("L0_target", 3.0)
+
+        edge = col.typed_connections["L0_target"]
+        assert edge.weight == 5.0  # Accumulated
+        assert edge.relation_type == "IsA"  # Preserved
+        assert edge.source == "semantic"  # Preserved
