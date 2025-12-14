@@ -1,0 +1,2724 @@
+{
+  "version": 1,
+  "session_id": "legacy-migration",
+  "started_at": "2025-12-14T11:11:44.783627",
+  "saved_at": "2025-12-14T23:21:19.750928",
+  "tasks": [
+    {
+      "id": "LEGACY-001",
+      "title": "Fix Per-Document TF-IDF Calculation Bug",
+      "status": "completed",
+      "priority": "medium",
+      "category": "bug-fix",
+      "description": "Migrated from legacy TASK_LIST.md task #1",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 1
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-002",
+      "title": "Add ID-to-Minicolumn Lookup Optimization",
+      "status": "completed",
+      "priority": "medium",
+      "category": "performance",
+      "description": "Migrated from legacy TASK_LIST.md task #2",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 2
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-003",
+      "title": "Fix Type Annotation Errors",
+      "status": "completed",
+      "priority": "medium",
+      "category": "bug-fix",
+      "description": "Migrated from legacy TASK_LIST.md task #3",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 3
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-004",
+      "title": "Remove Unused Import",
+      "status": "completed",
+      "priority": "medium",
+      "category": "cleanup",
+      "description": "Migrated from legacy TASK_LIST.md task #4",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 4
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-005",
+      "title": "Fix Unconditional Print in Export",
+      "status": "completed",
+      "priority": "medium",
+      "category": "bug-fix",
+      "description": "Migrated from legacy TASK_LIST.md task #5",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 5
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-006",
+      "title": "Add Missing Test Coverage",
+      "status": "completed",
+      "priority": "medium",
+      "category": "testing",
+      "description": "Migrated from legacy TASK_LIST.md task #6",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 6
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-007",
+      "title": "Document magic numbers in gaps.py",
+      "status": "deferred",
+      "priority": "low",
+      "category": "deferred",
+      "description": "Low priority, functional as-is",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 7
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-008",
+      "title": "Implement Chunk-Level Retrieval",
+      "status": "completed",
+      "priority": "medium",
+      "category": "rag",
+      "description": "Migrated from legacy TASK_LIST.md task #8",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 8
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-009",
+      "title": "Add Document Metadata Support",
+      "status": "completed",
+      "priority": "medium",
+      "category": "rag",
+      "description": "Migrated from legacy TASK_LIST.md task #9",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 9
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-010",
+      "title": "Activate Layer 2 Concept Clustering",
+      "status": "completed",
+      "priority": "medium",
+      "category": "rag",
+      "description": "Migrated from legacy TASK_LIST.md task #10",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 10
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-011",
+      "title": "Integrate Semantic Relations into Retrieval",
+      "status": "completed",
+      "priority": "medium",
+      "category": "rag",
+      "description": "Migrated from legacy TASK_LIST.md task #11",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 11
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-012",
+      "title": "Persist Full Computed State",
+      "status": "completed",
+      "priority": "medium",
+      "category": "rag",
+      "description": "Migrated from legacy TASK_LIST.md task #12",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 12
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-013",
+      "title": "Fix Remaining Type Annotation",
+      "status": "completed",
+      "priority": "medium",
+      "category": "bug-fix",
+      "description": "Migrated from legacy TASK_LIST.md task #13",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 13
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-014",
+      "title": "Optimize Spectral Embeddings Lookup",
+      "status": "completed",
+      "priority": "medium",
+      "category": "performance",
+      "description": "Migrated from legacy TASK_LIST.md task #14",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 14
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-015",
+      "title": "Add Incremental Document Indexing",
+      "status": "completed",
+      "priority": "medium",
+      "category": "rag",
+      "description": "Migrated from legacy TASK_LIST.md task #15",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 15
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-016",
+      "title": "Document Magic Numbers in Gap Detection",
+      "status": "completed",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Migrated from legacy TASK_LIST.md task #16",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 16
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-017",
+      "title": "Add Multi-Stage Ranking Pipeline",
+      "status": "completed",
+      "priority": "medium",
+      "category": "rag",
+      "description": "Migrated from legacy TASK_LIST.md task #17",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 17
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-018",
+      "title": "Add Batch Query API",
+      "status": "completed",
+      "priority": "medium",
+      "category": "rag",
+      "description": "Migrated from legacy TASK_LIST.md task #18",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 18
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-019",
+      "title": "Build Cross-Layer Feedforward Connections",
+      "status": "completed",
+      "priority": "medium",
+      "category": "conceptnet",
+      "description": "Migrated from legacy TASK_LIST.md task #19",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 19
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-020",
+      "title": "Add Concept-Level Lateral Connections",
+      "status": "completed",
+      "priority": "medium",
+      "category": "conceptnet",
+      "description": "Migrated from legacy TASK_LIST.md task #20",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 20
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-021",
+      "title": "Add Bigram Lateral Connections",
+      "status": "completed",
+      "priority": "medium",
+      "category": "conceptnet",
+      "description": "Migrated from legacy TASK_LIST.md task #21",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 21
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-022",
+      "title": "Implement Relation-Weighted PageRank",
+      "status": "completed",
+      "priority": "medium",
+      "category": "conceptnet",
+      "description": "Migrated from legacy TASK_LIST.md task #22",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 22
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-023",
+      "title": "Implement Cross-Layer PageRank Propagation",
+      "status": "completed",
+      "priority": "medium",
+      "category": "conceptnet",
+      "description": "Migrated from legacy TASK_LIST.md task #23",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 23
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-024",
+      "title": "Add Typed Edge Storage",
+      "status": "completed",
+      "priority": "medium",
+      "category": "conceptnet",
+      "description": "Migrated from legacy TASK_LIST.md task #24",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 24
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-025",
+      "title": "Implement Multi-Hop Semantic Inference",
+      "status": "completed",
+      "priority": "medium",
+      "category": "conceptnet",
+      "description": "Migrated from legacy TASK_LIST.md task #25",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 25
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-026",
+      "title": "Add Relation Path Scoring",
+      "status": "completed",
+      "priority": "medium",
+      "category": "conceptnet",
+      "description": "Migrated from legacy TASK_LIST.md task #26",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 26
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-027",
+      "title": "Implement Concept Inheritance",
+      "status": "completed",
+      "priority": "medium",
+      "category": "conceptnet",
+      "description": "Migrated from legacy TASK_LIST.md task #27",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 27
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-028",
+      "title": "Add Commonsense Relation Extraction",
+      "status": "completed",
+      "priority": "medium",
+      "category": "conceptnet",
+      "description": "Migrated from legacy TASK_LIST.md task #28",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 28
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-029",
+      "title": "Visualize ConceptNet-Style Graph",
+      "status": "completed",
+      "priority": "medium",
+      "category": "conceptnet",
+      "description": "Migrated from legacy TASK_LIST.md task #29",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 29
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-030",
+      "title": "Add Analogy Completion",
+      "status": "completed",
+      "priority": "medium",
+      "category": "conceptnet",
+      "description": "Migrated from legacy TASK_LIST.md task #30",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 30
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-034",
+      "title": "Fix Bigram Separator Mismatch in Analogy",
+      "status": "completed",
+      "priority": "medium",
+      "category": "bug-fix",
+      "description": "Migrated from legacy TASK_LIST.md task #34",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 34
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-035",
+      "title": "Fix Bigram Separator Mismatch in Connections",
+      "status": "completed",
+      "priority": "medium",
+      "category": "bug-fix",
+      "description": "Migrated from legacy TASK_LIST.md task #35",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 35
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-037",
+      "title": "Create Dedicated Query Module Tests",
+      "status": "completed",
+      "priority": "medium",
+      "category": "testing",
+      "description": "Migrated from legacy TASK_LIST.md task #37",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 37
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-038",
+      "title": "Add Input Validation to Public API",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-quality",
+      "description": "Migrated from legacy TASK_LIST.md task #38",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 38
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-039",
+      "title": "Move Inline Imports to Module Top",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-quality",
+      "description": "Migrated from legacy TASK_LIST.md task #39",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 39
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-040",
+      "title": "Add Parameter Range Validation",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-quality",
+      "description": "Migrated from legacy TASK_LIST.md task #40",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 40
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-041",
+      "title": "Create Configuration Dataclass",
+      "status": "completed",
+      "priority": "medium",
+      "category": "architecture",
+      "description": "Migrated from legacy TASK_LIST.md task #41",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 41
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-042",
+      "title": "Add simple query language",
+      "status": "deferred",
+      "priority": "low",
+      "category": "deferred",
+      "description": "Nice-to-have, not blocking",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 42
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-043",
+      "title": "Optimize Chunk Scoring Performance",
+      "status": "completed",
+      "priority": "medium",
+      "category": "performance",
+      "description": "Migrated from legacy TASK_LIST.md task #43",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 43
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-044",
+      "title": "Remove deprecated feedforward_sources",
+      "status": "deferred",
+      "priority": "low",
+      "category": "deferred",
+      "description": "Cleanup, low impact",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 44
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-045",
+      "title": "Add LRU Cache for Query Results",
+      "status": "completed",
+      "priority": "medium",
+      "category": "performance",
+      "description": "Migrated from legacy TASK_LIST.md task #45",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 45
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-046",
+      "title": "Standardize return types with dataclasses",
+      "status": "deferred",
+      "priority": "low",
+      "category": "deferred",
+      "description": "Superseded by #185",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 46
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-047",
+      "title": "Dog-Food the System During Development",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #47",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 47
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-048",
+      "title": "Add Code-Aware Tokenization",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #48",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 48
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-049",
+      "title": "Add Synonym/Concept Mapping for Code",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #49",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 49
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-050",
+      "title": "Add Intent-Based Query Understanding",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #50",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 50
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-051",
+      "title": "Add Fingerprint Export API",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #51",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 51
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-052",
+      "title": "Optimize Query-to-Corpus Comparison",
+      "status": "completed",
+      "priority": "medium",
+      "category": "performance",
+      "description": "Migrated from legacy TASK_LIST.md task #52",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 52
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-053",
+      "title": "Create Algorithm Intelligence Docs",
+      "status": "completed",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Migrated from legacy TASK_LIST.md task #53",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 53
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-054",
+      "title": "Create Architecture Intelligence Docs",
+      "status": "completed",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Migrated from legacy TASK_LIST.md task #54",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 54
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-055",
+      "title": "Create Pattern Glossary",
+      "status": "completed",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Migrated from legacy TASK_LIST.md task #55",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 55
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-056",
+      "title": "Create Usage Patterns Documentation",
+      "status": "completed",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Migrated from legacy TASK_LIST.md task #56",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 56
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-057",
+      "title": "Add Incremental Codebase Indexing",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #57",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 57
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-058",
+      "title": "Git-Compatible Chunk-Based Indexing",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #58",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-10T00:00:00",
+      "context": {
+        "legacy_task_number": 58
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-059",
+      "title": "Rename TimeoutError to Avoid Shadowing",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-quality",
+      "description": "Migrated from legacy TASK_LIST.md task #59",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 59
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-060",
+      "title": "Add Windows Compatibility for Timeout",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-quality",
+      "description": "Migrated from legacy TASK_LIST.md task #60",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 60
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-061",
+      "title": "Add Chunk Size Warning",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-quality",
+      "description": "Migrated from legacy TASK_LIST.md task #61",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 61
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-062",
+      "title": "Add Chunk Compaction Documentation",
+      "status": "completed",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Migrated from legacy TASK_LIST.md task #62",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 62
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-063",
+      "title": "Improve Search Ranking for Docs",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #63",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 63
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-064",
+      "title": "Add Document Type Indicator",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #64",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 64
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-065",
+      "title": "Add Document Metadata to Chunk Indexing",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #65",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 65
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-066",
+      "title": "Add Doc-Type Boosting to Passage Search",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #66",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 66
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-067",
+      "title": "Fix O(n) Lookup in Showcase",
+      "status": "completed",
+      "priority": "medium",
+      "category": "showcase",
+      "description": "Migrated from legacy TASK_LIST.md task #67",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 67
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-068",
+      "title": "Add Code-Specific Features to Showcase",
+      "status": "completed",
+      "priority": "medium",
+      "category": "showcase",
+      "description": "Migrated from legacy TASK_LIST.md task #68",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 68
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-069",
+      "title": "Add Passage-Level Search Demo",
+      "status": "completed",
+      "priority": "medium",
+      "category": "showcase",
+      "description": "Migrated from legacy TASK_LIST.md task #69",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 69
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-070",
+      "title": "Add Performance Timing to Showcase",
+      "status": "completed",
+      "priority": "medium",
+      "category": "showcase",
+      "description": "Migrated from legacy TASK_LIST.md task #70",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 70
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-071",
+      "title": "Enable Code-Aware Tokenization in Index",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-index",
+      "description": "Migrated from legacy TASK_LIST.md task #71",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 71
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-072",
+      "title": "Use Programming Query Expansion",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-index",
+      "description": "Migrated from legacy TASK_LIST.md task #72",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 72
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-075",
+      "title": "Add \"What Changed?\" semantic diff",
+      "status": "completed",
+      "priority": "low",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #75",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:34:29.103266",
+      "completed_at": "2025-12-14T11:34:29.103248",
+      "context": {
+        "legacy_task_number": 75
+      },
+      "retrospective": {
+        "notes": "Implemented cortical/diff.py with compare_with(), compare_documents(), what_changed() methods"
+      }
+    },
+    {
+      "id": "LEGACY-077",
+      "title": "Add Interactive \"Ask the Codebase\" Mode",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #77",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 77
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-078",
+      "title": "Add code pattern detection",
+      "status": "completed",
+      "priority": "low",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #78",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T23:21:00.282637",
+      "completed_at": "2025-12-14T23:21:00.282637",
+      "context": {
+        "legacy_task_number": 78
+      },
+      "retrospective": {
+        "notes": "Created cortical/patterns.py (542 lines) with 32 patterns across 9 categories + processor integration",
+        "duration_minutes": 7161,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-14T23:21:00.282664"
+      }
+    },
+    {
+      "id": "LEGACY-080",
+      "title": "Add \"Learning Mode\" for contributors",
+      "status": "pending",
+      "priority": "low",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #80",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 80
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-081",
+      "title": "Fix Tokenizer Underscore Identifiers",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #81",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 81
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-082",
+      "title": "Add Code Stop Words Filter",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #82",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 82
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-083",
+      "title": "Add Definition-Aware Boosting",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #83",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 83
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-084",
+      "title": "Add Direct Definition Pattern Search",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #84",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 84
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-085",
+      "title": "Improve Test vs Source File Ranking",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #85",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 85
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-086",
+      "title": "Add Semantic Chunk Boundaries for Code",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-search",
+      "description": "Migrated from legacy TASK_LIST.md task #86",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 86
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-087",
+      "title": "Add Python Code Samples and Showcase",
+      "status": "completed",
+      "priority": "medium",
+      "category": "showcase",
+      "description": "Migrated from legacy TASK_LIST.md task #87",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 87
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-088",
+      "title": "Create Package Installation Files",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #88",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 88
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-089",
+      "title": "Create CONTRIBUTING.md",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #89",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 89
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-090",
+      "title": "Create docs/quickstart.md",
+      "status": "completed",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Migrated from legacy TASK_LIST.md task #90",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 90
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-091",
+      "title": "Create docs/README.md Index",
+      "status": "completed",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Migrated from legacy TASK_LIST.md task #91",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 91
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-092",
+      "title": "Add Badges to README.md",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #92",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 92
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-093",
+      "title": "Update README with Docs References",
+      "status": "completed",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Migrated from legacy TASK_LIST.md task #93",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 93
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-094",
+      "title": "Split query.py into Focused Modules",
+      "status": "completed",
+      "priority": "medium",
+      "category": "architecture",
+      "description": "Migrated from legacy TASK_LIST.md task #94",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 94
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-095",
+      "title": "Split processor.py into modules",
+      "status": "completed",
+      "priority": "medium",
+      "category": "arch",
+      "description": "Correction: processor.py still 3115 lines - not split into modules",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-14T21:43:24.122320",
+      "context": {
+        "legacy_task_number": 95
+      },
+      "retrospective": "Processor split was completed prior to this session. Verified processor/ package has 6 mixins: core.py, documents.py, compute.py, query_api.py, introspection.py, persistence_api.py"
+    },
+    {
+      "id": "LEGACY-096",
+      "title": "Centralize Duplicate Constants",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-quality",
+      "description": "Migrated from legacy TASK_LIST.md task #96",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 96
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-097",
+      "title": "Integrate CorticalConfig into Processor",
+      "status": "completed",
+      "priority": "medium",
+      "category": "architecture",
+      "description": "Migrated from legacy TASK_LIST.md task #97",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 97
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-098",
+      "title": "Replace print() with Logging",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-quality",
+      "description": "Migrated from legacy TASK_LIST.md task #98",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 98
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-100",
+      "title": "Implement plugin/extension registry",
+      "status": "pending",
+      "priority": "low",
+      "category": "arch",
+      "description": "Migrated from legacy TASK_LIST.md task #100",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 100
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-102",
+      "title": "Add Tests for Edge Cases",
+      "status": "completed",
+      "priority": "medium",
+      "category": "testing",
+      "description": "Migrated from legacy TASK_LIST.md task #102",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 102
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-103",
+      "title": "Add Priority Backlog Summary",
+      "status": "completed",
+      "priority": "medium",
+      "category": "task-mgmt",
+      "description": "Migrated from legacy TASK_LIST.md task #103",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 103
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-104",
+      "title": "Create TASK_ARCHIVE.md",
+      "status": "completed",
+      "priority": "medium",
+      "category": "task-mgmt",
+      "description": "Migrated from legacy TASK_LIST.md task #104",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 104
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-105",
+      "title": "Standardize Task Format",
+      "status": "completed",
+      "priority": "medium",
+      "category": "task-mgmt",
+      "description": "Migrated from legacy TASK_LIST.md task #105",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 105
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-109",
+      "title": "Add Recently Completed Section",
+      "status": "completed",
+      "priority": "medium",
+      "category": "task-mgmt",
+      "description": "Migrated from legacy TASK_LIST.md task #109",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 109
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-110",
+      "title": "Add section markers to large files",
+      "status": "deferred",
+      "priority": "low",
+      "category": "deferred",
+      "description": "Superseded by #119 (AI metadata generator)",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 110
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-111",
+      "title": "Add \"See Also\" cross-references",
+      "status": "deferred",
+      "priority": "low",
+      "category": "deferred",
+      "description": "Superseded by #119 (AI metadata generator)",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 111
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-112",
+      "title": "Add docstring examples",
+      "status": "deferred",
+      "priority": "low",
+      "category": "deferred",
+      "description": "Superseded by #119 (AI metadata generator)",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 112
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-113",
+      "title": "Document Staleness Tracking System",
+      "status": "completed",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Migrated from legacy TASK_LIST.md task #113",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 113
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-114",
+      "title": "Add Type Aliases for Complex Types",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-quality",
+      "description": "Migrated from legacy TASK_LIST.md task #114",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 114
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-115",
+      "title": "Create Component Interaction Diagram",
+      "status": "completed",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Migrated from legacy TASK_LIST.md task #115",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 115
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-116",
+      "title": "Document Return Value Semantics",
+      "status": "completed",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Migrated from legacy TASK_LIST.md task #116",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 116
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-119",
+      "title": "Create AI Metadata Generator Script",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #119",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 119
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-120",
+      "title": "Add AI Metadata Loader to Claude Skills",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #120",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 120
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-121",
+      "title": "Auto-regenerate AI Metadata on Changes",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #121",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 121
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-122",
+      "title": "Investigate Concept Layer Regressions",
+      "status": "completed",
+      "priority": "medium",
+      "category": "research",
+      "description": "Migrated from legacy TASK_LIST.md task #122",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 122
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-123",
+      "title": "Replace Label Propagation with Louvain",
+      "status": "completed",
+      "priority": "medium",
+      "category": "algorithm",
+      "description": "Migrated from legacy TASK_LIST.md task #123",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 123
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-124",
+      "title": "Add Minimum Cluster Count Tests",
+      "status": "completed",
+      "priority": "medium",
+      "category": "testing",
+      "description": "Migrated from legacy TASK_LIST.md task #124",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 124
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-125",
+      "title": "Add Clustering Quality Metrics",
+      "status": "completed",
+      "priority": "medium",
+      "category": "algorithm",
+      "description": "Migrated from legacy TASK_LIST.md task #125",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 125
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-126",
+      "title": "Investigate Louvain Resolution",
+      "status": "completed",
+      "priority": "medium",
+      "category": "research",
+      "description": "Migrated from legacy TASK_LIST.md task #126",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 126
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-127",
+      "title": "Create Cluster Coverage Evaluation Script",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #127",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 127
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-128",
+      "title": "Fix Definition Boost Test File Penalty",
+      "status": "completed",
+      "priority": "medium",
+      "category": "bug-fix",
+      "description": "Migrated from legacy TASK_LIST.md task #128",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 128
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-130",
+      "title": "Expand customer service sample cluster",
+      "status": "completed",
+      "priority": "low",
+      "category": "samples",
+      "description": "Migrated from legacy TASK_LIST.md task #130",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T23:21:19.750714",
+      "completed_at": "2025-12-14T23:21:19.750714",
+      "context": {
+        "legacy_task_number": 130
+      },
+      "retrospective": {
+        "notes": "Created 8 customer service documents (~80KB) covering billing, shipping, returns, privacy, and templates",
+        "duration_minutes": 7161,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-14T23:21:19.750745"
+      }
+    },
+    {
+      "id": "LEGACY-132",
+      "title": "Profile Full-Analysis Bottleneck",
+      "status": "completed",
+      "priority": "medium",
+      "category": "performance",
+      "description": "Migrated from legacy TASK_LIST.md task #132",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 132
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-133",
+      "title": "Implement WAL + snapshot persistence (fault-tolerant rebuild)",
+      "status": "pending",
+      "priority": "medium",
+      "category": "arch",
+      "description": "Correction: Checkpointing added to compute_all() but full WAL not implemented",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 133
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-134",
+      "title": "Implement protobuf serialization for corpus",
+      "status": "completed",
+      "priority": "medium",
+      "category": "arch",
+      "description": "Correction: cortical/proto/ directory with schema.proto and serialization.py",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 134
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-135",
+      "title": "Implement chunked parallel processing for full-analysis",
+      "status": "pending",
+      "priority": "medium",
+      "category": "arch",
+      "description": "Correction: Parallel processing not implemented - processor.py still sequential",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 135
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-136",
+      "title": "Optimize Semantics O(n\u00b2) Similarity",
+      "status": "completed",
+      "priority": "medium",
+      "category": "performance",
+      "description": "Migrated from legacy TASK_LIST.md task #136",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-11T00:00:00",
+      "context": {
+        "legacy_task_number": 136
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-137",
+      "title": "Cap Bigram Connections to Top-K",
+      "status": "completed",
+      "priority": "medium",
+      "category": "performance",
+      "description": "Migrated from legacy TASK_LIST.md task #137",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 137
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-138",
+      "title": "Sparse Matrix for Bigram Connections",
+      "status": "completed",
+      "priority": "medium",
+      "category": "performance",
+      "description": "Migrated from legacy TASK_LIST.md task #138",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 138
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-139",
+      "title": "Batch Bigram Connection Updates",
+      "status": "completed",
+      "priority": "medium",
+      "category": "performance",
+      "description": "Migrated from legacy TASK_LIST.md task #139",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 139
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-141",
+      "title": "Filter Python Keywords from Analysis",
+      "status": "completed",
+      "priority": "medium",
+      "category": "code-quality",
+      "description": "Migrated from legacy TASK_LIST.md task #141",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 141
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-142",
+      "title": "Investigate compute_all() Regression",
+      "status": "completed",
+      "priority": "medium",
+      "category": "performance",
+      "description": "Migrated from legacy TASK_LIST.md task #142",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 142
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-143",
+      "title": "Investigate Negative Silhouette Score",
+      "status": "completed",
+      "priority": "medium",
+      "category": "research",
+      "description": "Migrated from legacy TASK_LIST.md task #143",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 143
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-144",
+      "title": "Boost Exact Document Name Matches",
+      "status": "completed",
+      "priority": "medium",
+      "category": "search",
+      "description": "Migrated from legacy TASK_LIST.md task #144",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 144
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-145",
+      "title": "Improve Graph Embedding Quality",
+      "status": "completed",
+      "priority": "medium",
+      "category": "algorithm",
+      "description": "Migrated from legacy TASK_LIST.md task #145",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 145
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-146",
+      "title": "Create Behavioral Tests",
+      "status": "completed",
+      "priority": "medium",
+      "category": "testing",
+      "description": "Migrated from legacy TASK_LIST.md task #146",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 146
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-147",
+      "title": "Fix Misleading Hardcoded Values",
+      "status": "completed",
+      "priority": "medium",
+      "category": "bug-fix",
+      "description": "Migrated from legacy TASK_LIST.md task #147",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 147
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-150",
+      "title": "Create Unit Test Fixtures and Mocks",
+      "status": "completed",
+      "priority": "medium",
+      "category": "testing",
+      "description": "Migrated from legacy TASK_LIST.md task #150",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 150
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-153",
+      "title": "Refactor query/* for Unit Testability",
+      "status": "completed",
+      "priority": "medium",
+      "category": "testing",
+      "description": "Migrated from legacy TASK_LIST.md task #153",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 153
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-154",
+      "title": "Add Unit Tests for query/* (partial)",
+      "status": "completed",
+      "priority": "medium",
+      "category": "testing",
+      "description": "Migrated from legacy TASK_LIST.md task #154",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 154
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-157",
+      "title": "Add Unit Tests for semantics.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "testing",
+      "description": "Migrated from legacy TASK_LIST.md task #157",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 157
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-158",
+      "title": "Add Unit Tests for persistence.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "testing",
+      "description": "Migrated from legacy TASK_LIST.md task #158",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-12T00:00:00",
+      "context": {
+        "legacy_task_number": 158
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-159",
+      "title": "Unit Tests for tokenizer.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #159",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 159
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-160",
+      "title": "Unit Tests for embeddings.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #160",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 160
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-161",
+      "title": "Unit Tests for layers.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #161",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 161
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-162",
+      "title": "Unit Tests for minicolumn.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #162",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 162
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-163",
+      "title": "Unit Tests for fingerprint.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #163",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 163
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-164",
+      "title": "Unit Tests for gaps.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #164",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 164
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-167",
+      "title": "Unit Tests for chunk_index.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #167",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 167
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-168",
+      "title": "Unit Tests for config.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #168",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 168
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-169",
+      "title": "Unit Tests for code_concepts.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #169",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 169
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-170",
+      "title": "Unit Tests for query/expansion.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #170",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 170
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-171",
+      "title": "Unit Tests for query/search.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #171",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 171
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-172",
+      "title": "Unit Tests for query/passages.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #172",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 172
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-173",
+      "title": "Unit Tests for query/definitions.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #173",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 173
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-174",
+      "title": "Unit Tests for query/analogy.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #174",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 174
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-175",
+      "title": "Unit Tests for query/ranking.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #175",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 175
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-176",
+      "title": "Unit Tests for analysis.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #176",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 176
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-177",
+      "title": "Unit Tests for semantics.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #177",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 177
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-178",
+      "title": "Unit Tests for persistence.py",
+      "status": "completed",
+      "priority": "medium",
+      "category": "unit-test",
+      "description": "Migrated from legacy TASK_LIST.md task #178",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 178
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-187",
+      "title": "Add async API support (AsyncCorticalTextProcessor)",
+      "status": "pending",
+      "priority": "low",
+      "category": "architecture",
+      "description": "Migrated from legacy TASK_LIST.md task #187",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 187
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-188",
+      "title": "Add streaming query results",
+      "status": "pending",
+      "priority": "low",
+      "category": "architecture",
+      "description": "Migrated from legacy TASK_LIST.md task #188",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 188
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-189",
+      "title": "Add observability hooks (timing, traces, metrics)",
+      "status": "completed",
+      "priority": "low",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #189",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T23:21:04.236734",
+      "completed_at": "2025-12-14T23:21:04.236734",
+      "context": {
+        "legacy_task_number": 189
+      },
+      "retrospective": {
+        "notes": "Created cortical/observability.py (374 lines) with @timed decorator, MetricsCollector, TraceContext + processor integration",
+        "duration_minutes": 7161,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-14T23:21:04.236764"
+      }
+    },
+    {
+      "id": "LEGACY-190",
+      "title": "Create REST API wrapper (FastAPI)",
+      "status": "pending",
+      "priority": "low",
+      "category": "integration",
+      "description": "Migrated from legacy TASK_LIST.md task #190",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": null,
+      "context": {
+        "legacy_task_number": 190
+      },
+      "retrospective": null
+    },
+    {
+      "id": "LEGACY-191",
+      "title": "Add Interactive REPL mode",
+      "status": "completed",
+      "priority": "low",
+      "category": "devex",
+      "description": "Migrated from legacy TASK_LIST.md task #191",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T23:21:15.793340",
+      "completed_at": "2025-12-14T23:21:15.793340",
+      "context": {
+        "legacy_task_number": 191
+      },
+      "retrospective": {
+        "notes": "Created scripts/repl.py (1050 lines) with full REPL, tab completion, history, and 20+ commands",
+        "duration_minutes": 7161,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-14T23:21:15.793374"
+      }
+    },
+    {
+      "id": "LEGACY-206",
+      "title": "Replace pkl with git-friendly JSON state storage",
+      "status": "completed",
+      "priority": "high",
+      "category": "arch",
+      "description": "Correction: cortical/state_storage.py exists - JSON state storage implemented",
+      "depends_on": [],
+      "effort": "unknown",
+      "created_at": "2025-12-10T00:00:00",
+      "updated_at": "2025-12-14T11:11:44.783627",
+      "completed_at": "2025-12-13T00:00:00",
+      "context": {
+        "legacy_task_number": 206
+      },
+      "retrospective": null
+    }
+  ]
+}
