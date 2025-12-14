@@ -45,7 +45,7 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 **Native Over External**
 - Prefer implementing features ourselves over 3rd party APIs/actions
 - External dependencies add maintenance burden and security risk
-- If we can build it in <200 lines, build it ourselves
+- If we can build it in <20000 lines, build it ourselves
 - Avoid deprecated or unmaintained external tools
 
 When you see "neural" or "cortical" in this codebase, remember: these are metaphors for standard IR algorithms, not actual neural implementations.
