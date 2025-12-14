@@ -959,11 +959,12 @@ python scripts/search_codebase.py --interactive
 
 ### Claude Skills
 
-Three skills are available in `.claude/skills/`:
+Four skills are available in `.claude/skills/`:
 
 1. **codebase-search**: Search the indexed codebase for code patterns and implementations
 2. **corpus-indexer**: Re-index the codebase after making changes
 3. **ai-metadata**: View pre-generated module metadata for rapid understanding
+4. **memory-manager**: Create and manage knowledge memories (learnings, decisions, concepts)
 
 ### Indexer Options
 
@@ -1077,6 +1078,87 @@ python scripts/index_codebase.py --status --use-chunks
 
 ---
 
+## Text-as-Memories: Knowledge Management
+
+The project uses a text-as-memories system to capture and preserve institutional knowledge. Documents are treated as memories that, when stored in git, form a persistent, searchable knowledge base.
+
+### Memory Types
+
+| Type | Location | Purpose |
+|------|----------|---------|
+| **Daily Memories** | `samples/memories/YYYY-MM-DD-*.md` | Capture daily learnings and insights |
+| **Decision Records** | `samples/decisions/adr-NNN-*.md` | Document architectural decisions |
+| **Concept Docs** | `samples/memories/concept-*.md` | Consolidated knowledge on topics |
+
+### Creating Memories
+
+**Daily Memory:**
+```bash
+# Capture a learning
+cat > samples/memories/$(date +%Y-%m-%d)-topic.md << 'EOF'
+# Memory Entry: YYYY-MM-DD Topic
+
+**Tags:** `tag1`, `tag2`
+**Related:** [[other-doc.md]]
+
+## What I Learned
+- Key insight here
+
+## Connections
+- How this relates to other knowledge
+EOF
+git add samples/ && git commit -m "memory: topic insight"
+```
+
+**Decision Record:**
+```bash
+# Document a decision
+cat > samples/decisions/adr-001-title.md << 'EOF'
+# ADR-001: Title
+
+**Status:** Accepted
+**Date:** YYYY-MM-DD
+
+## Context
+What problem are we solving?
+
+## Decision
+What did we decide?
+
+## Consequences
+What are the trade-offs?
+EOF
+```
+
+### Searching Memories
+
+```bash
+# Index memories for search
+python scripts/index_codebase.py --incremental
+
+# Search across code AND memories
+python scripts/search_codebase.py "what did we learn about validation"
+```
+
+### Best Practices
+
+1. **Write immediately** - Capture insights while fresh
+2. **Use consistent tags** - Improves searchability
+3. **Link related docs** - Use `[[wiki-style]]` references
+4. **Commit to git** - Memories are only persistent once committed
+5. **Consolidate periodically** - Merge related memories into concept docs
+
+### Integration with Tasks
+
+When completing a task, consider creating a memory entry from the retrospective:
+- What was learned?
+- What connections were made?
+- What should future developers know?
+
+See `docs/text-as-memories.md` for the full guide.
+
+---
+
 ## File Quick Links
 
 - **Main API**: `cortical/processor.py` - `CorticalTextProcessor` class
@@ -1093,6 +1175,7 @@ python scripts/index_codebase.py --status --use-chunks
 - **Ethics**: `docs/code-of-ethics.md` - documentation, testing, and completion standards
 - **Dog-fooding**: `docs/dogfooding-checklist.md` - checklist for testing with real usage
 - **Definition of Done**: `docs/definition-of-done.md` - when is a task truly complete?
+- **Text-as-Memories**: `docs/text-as-memories.md` - knowledge management guide
 - **Task Archive**: `TASK_ARCHIVE.md` - completed tasks history
 
 ---
