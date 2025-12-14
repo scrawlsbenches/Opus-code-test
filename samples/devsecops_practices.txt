@@ -1,0 +1,13 @@
+DevSecOps Practices and Automation
+
+DevSecOps integrates security into DevOps pipelines, making security checks automatic and continuous rather than manual gates. Security becomes everyone's responsibility, not just the security team's. Automation enables fast feedback loops where developers learn about vulnerabilities within minutes of committing code.
+
+Pipeline security scanning runs multiple tools in parallel. Static Application Security Testing (SAST) analyzes source code for vulnerability patterns like SQL injection, command injection, and insecure deserialization. Software Composition Analysis (SCA) checks dependencies against vulnerability databases. Secret scanning detects accidentally committed credentials, API keys, and tokens.
+
+Container security addresses the unique risks of containerized deployments. Image scanning checks base images and installed packages for known vulnerabilities. Dockerfile linting enforces security best practices like non-root users and minimal base images. Runtime security monitors container behavior for anomalies suggesting compromise.
+
+Infrastructure as Code security applies the same rigor to infrastructure definitions. Terraform and CloudFormation templates undergo security review and scanning. Policy as code enforces security requirements automatically. Drift detection alerts when production configurations diverge from approved definitions.
+
+Dependency management automation keeps third-party code secure. Automated pull requests update vulnerable dependencies. Lock files ensure reproducible builds with known-good versions. Software Bill of Materials (SBOM) generation documents all components for supply chain transparency. Typosquatting detection prevents installation of malicious packages with similar names.
+
+Security testing in CI/CD provides fast feedback without blocking velocity. Critical vulnerabilities fail the build immediately. Medium-severity findings create tracked issues for remediation. False positive management prevents alert fatigue. Security dashboards track vulnerability trends over time, measuring improvement and identifying systemic issues.
