@@ -1,0 +1,73 @@
+Login and Account Access Troubleshooting Guide
+
+Forgot Password - Cannot Reset
+
+Password reset emails should arrive within 10 minutes of requesting them. Check your spam, junk, and promotions folders thoroughly as security-related emails often get filtered. Search your entire mailbox for emails from noreply@ourservice.com or security@ourservice.com to locate the reset message.
+
+Reset links expire after 2 hours for security purposes. If the link expired, request a new password reset and complete the process immediately. Only the most recent reset link remains valid - earlier reset requests are automatically invalidated when you request a new one.
+
+If you registered with a different email address than you remember, try common variations or check previous confirmation emails from our service. The password reset must be sent to your registered email address. Contact support with alternative verification information if you cannot access your registered email account.
+
+Email account access problems prevent you from receiving reset links. If you no longer have access to your registered email address, contact customer support with account verification details: username, previous transaction information, or answers to security questions configured during registration.
+
+"Invalid Email or Password" Error
+
+Double-check that you're entering the correct email address registered with your account. Email addresses are case-insensitive, but ensure no extra spaces, typos, or autocorrect changes. Copy-paste your email address carefully to eliminate typing errors.
+
+Passwords are case-sensitive and must be entered exactly as created, including uppercase letters, numbers, and special characters. Disable caps lock and ensure your keyboard layout matches the one used when creating the password. Number pad behavior differs from number row on some keyboards.
+
+Browser password managers sometimes autofill incorrect credentials from similar websites. Manually type your password instead of using autofill to verify saved credentials are current. Update your password manager after successful password resets to prevent future mismatches.
+
+After five failed login attempts, your account is temporarily locked for 30 minutes as a security measure. Wait for the lockout period to expire, then try again with correct credentials. If you're certain your credentials are correct but still cannot log in after the lockout period, request a password reset.
+
+Two-Factor Authentication Issues
+
+If you lost access to your two-factor authentication device, use backup codes provided during 2FA setup. Each backup code works once to bypass the 2FA requirement and access your account. After logging in with a backup code, reconfigure 2FA with your current device immediately.
+
+Time-based one-time passwords (TOTP) from authenticator apps are only valid for 30-60 seconds. Enter the code quickly after it's generated. Ensure your device's system clock is accurate - incorrect device time causes authentication code mismatches. Enable automatic date and time synchronization in your device settings.
+
+SMS-based two-factor codes may be delayed by carrier networks. Wait up to 5 minutes for code delivery. Check that your phone number registered in account settings is current and includes the correct country code. Request a new code if the first doesn't arrive within 5 minutes.
+
+Some regions or carriers block automated SMS messages including authentication codes. Contact your mobile carrier to remove SMS blocking restrictions. Authenticator apps are more reliable than SMS and recommended for primary 2FA method.
+
+Account Locked Due to Suspicious Activity
+
+Automated security systems lock accounts when detecting unusual login patterns: logins from new locations, multiple failed attempts, or simultaneous access from different IP addresses. Check your email for security alert notifications explaining the reason for the lockout and instructions for account recovery.
+
+Verify recent login activity in your account security settings after regaining access. Look for unfamiliar IP addresses, locations, or devices. If you don't recognize certain logins, your password may be compromised. Change your password immediately and enable two-factor authentication for enhanced protection.
+
+Contact customer support if the automated unlock process doesn't work. Provide verification information proving account ownership: registered email, billing information, security question answers, or recent transaction details. Security verification may take 24-48 hours for thorough investigation.
+
+VPN usage or traveling can trigger security locks when accessing your account from unusual locations. Adding trusted devices to your account or notifying us of travel plans before accessing from new locations prevents false security triggers.
+
+Session Expired - Repeatedly Logged Out
+
+Automatic session expiration after periods of inactivity is a security feature. Sessions typically expire after 30-60 minutes of no activity. Actively using the service should extend your session, but some actions don't count as activity. Enable "keep me logged in" option at login for extended sessions, but only on personal devices.
+
+Browser privacy settings that clear cookies on exit or block third-party cookies can cause session problems. Configure your browser to allow cookies from our domain. Add our website to your browser's exceptions list if you block cookies globally.
+
+Security software or browser extensions that block tracking cookies may interfere with session management. Disable these extensions temporarily to test if they're causing logout issues. Whitelist our service in privacy-focused extensions like Privacy Badger or uBlock Origin.
+
+Multiple device logins can cause session conflicts if security settings limit simultaneous sessions. Some account types permit only one active login at a time. Logging in from a new device automatically ends the previous session. Upgrade to plans supporting multiple concurrent sessions if needed.
+
+Cannot Access Account from Specific Device or Browser
+
+Clear your browser cache, cookies, and site data specifically for our website. Accumulated cache can cause login and session problems. After clearing, restart your browser completely before attempting to log in again. Most browsers allow clearing data for individual sites without affecting other websites.
+
+Ensure your browser is current and supported. We support recent versions of Chrome, Firefox, Safari, and Edge. Very old browsers lack security features required for modern authentication. Update your browser or try a different supported browser if update isn't possible.
+
+Private or incognito browsing modes have stricter security policies that can interfere with login functionality. Test login in normal browsing mode first. If private browsing is required, you may need to relax certain privacy settings or enable specific permissions for our site.
+
+Workplace or school networks may block access to certain services or restrict authentication methods. Corporate firewalls, content filters, or network policies can prevent successful logins. Contact your IT department about access requirements or try connecting from a different network to isolate the issue.
+
+Email Verification Link Not Working
+
+Verification links expire after 24 hours for security. Request a new verification email from your account settings if the original link expired. Only the most recent verification link sent remains active - previous links are automatically invalidated.
+
+Copy the entire verification URL from your email and paste it directly into your browser address bar. Email clients sometimes break long URLs across multiple lines, creating incomplete links when clicked. Ensure the complete URL is copied without extra characters or line breaks.
+
+Browser security settings or extensions may block the verification redirect. Disable popup blockers, tracking protection, and security extensions temporarily during verification. Try verifying in a different browser or incognito mode to bypass extension interference.
+
+Some email clients convert URLs into trackable links that break the verification token. Look for an "original message" or "plain text" view option in your email that displays the unmodified verification URL. Forward the verification email to a different email account if your email client consistently breaks verification links.
+
+If verification repeatedly fails despite trying different browsers and link formats, contact customer support. We can manually verify your email address or send verification through alternative methods. Provide your account username and registered email address for manual verification assistance.

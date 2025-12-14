@@ -1,0 +1,89 @@
+Shipping and Delivery Policy
+
+Processing Time and Order Fulfillment
+
+Orders placed before 2:00 PM EST on business days ship the same day. Orders placed after 2:00 PM EST or on weekends and holidays are processed the next business day. Business days are Monday through Friday excluding federal holidays. During high-volume periods like holidays, processing may extend to 1-2 business days.
+
+Order processing involves payment authorization, fraud screening, inventory verification, picking, packing, and carrier handoff. You'll receive an order confirmation email immediately after placing your order and a shipping confirmation with tracking number once the package leaves our warehouse. Most orders ship within 24 hours of order placement.
+
+Customized, personalized, or made-to-order products require additional production time before shipping. Estimated production times are displayed on product pages and vary by item complexity. Custom orders typically ship within 5-10 business days. You'll receive production status updates via email and can check progress in your account dashboard.
+
+Shipping Methods and Delivery Times
+
+Standard shipping via USPS or UPS Ground delivers within 5-7 business days after shipment. Expedited shipping options include 3-day, 2-day, and overnight delivery. Expedited delivery times are business days from shipment date, not order date. Choose expedited shipping at checkout and ensure orders are placed before cutoff time for same-day processing.
+
+Delivery times are estimates, not guarantees. Carrier delays due to weather, natural disasters, customs processing, or logistical issues are beyond our control. We're not responsible for carrier delays, but we'll assist with tracking and carrier communication for significantly delayed shipments. Contact carriers directly for real-time delivery information.
+
+Weekend and holiday delivery is not available for most shipping methods. Packages in transit over weekends show no tracking updates until the next business day. UPS and FedEx offer Saturday delivery for additional fees on some service levels. USPS Priority Mail may deliver on Saturdays depending on destination. Sunday delivery is generally unavailable except for Amazon Logistics in select areas.
+
+Shipping Costs and Calculation
+
+Shipping costs are calculated based on package weight, dimensions, destination, and selected shipping method. Real-time carrier rates are displayed during checkout before payment. Some promotions include free standard shipping - details appear on product pages and during checkout. Free shipping typically applies only to standard ground service within the continental United States.
+
+Oversized or heavy items may incur special handling fees beyond standard shipping costs. Weight-based pricing transitions to dimensional weight pricing for large but lightweight packages. Dimensional weight is calculated as length × width × height ÷ 166 (for inches) or 5000 (for centimeters). Items charged by dimensional weight are noted on product pages.
+
+Multi-item orders may ship from multiple warehouse locations to optimize delivery speed and costs. This results in multiple tracking numbers for one order. You'll receive separate shipping confirmations for each package. Partial shipments don't incur additional charges - total shipping cost is calculated on the complete order before splitting.
+
+Delivery Address Accuracy
+
+Verify your shipping address carefully before completing checkout. Address validation tools catch many errors, but you're responsible for ensuring accuracy. Incorrect addresses cause delivery delays, return-to-sender situations, or package loss. Correcting addresses after shipment is difficult or impossible depending on carrier and shipment progress.
+
+We ship to the address provided during checkout exactly as entered. If you realize an address error after ordering, contact customer service immediately - before order processing we can sometimes update the shipping address. After carrier pickup, address changes must be made through the carrier's interception or delivery change services which charge fees.
+
+Post office boxes are acceptable for small packages shipped via USPS. UPS and FedEx generally cannot deliver to PO boxes - use street addresses for non-USPS carriers. Some products cannot ship to PO boxes due to size or signature requirements. Address type restrictions are noted during checkout if applicable. Military APO/FPO addresses are supported via USPS with extended delivery times.
+
+International Shipping
+
+International shipping is available to most countries with extended delivery times of 7-21 business days depending on destination and customs clearance. International orders may incur customs duties, taxes, import fees, and brokerage charges upon delivery. These charges are the recipient's responsibility and are not included in order totals or shipping costs.
+
+Customs charges vary by country, product type, and declared value. Research your country's customs policies before ordering internationally. We cannot control or predict customs charges. Refusing delivery due to customs fees does not eliminate your responsibility for these charges and may result in package abandonment without refund.
+
+International shipments require customs declarations with accurate product descriptions and values. Deliberate misdeclaration to avoid customs fees is illegal and violates our terms of service. We declare actual product values on customs forms as required by law. International returns are customer's responsibility including return shipping costs and any customs fees incurred.
+
+Tracking and Delivery Confirmation
+
+Tracking numbers are emailed within 24 hours of shipment and are also visible in your order history. Allow 24 hours after receiving tracking numbers for information to appear in carrier systems. Tracking updates may be infrequent during transit - gaps of 24-48 hours between scans are normal, especially in rural areas.
+
+Signature confirmation can be requested during checkout for valuable items or added to existing orders before shipment. Some high-value items automatically include signature confirmation for security. If signature confirmation wasn't selected and you won't be home during delivery, carriers often allow release authorization or alternative delivery locations through their websites.
+
+Delivered packages show "Delivered" status in tracking with timestamp and location - "Front door," "Mailbox," etc. Check all potential delivery locations including side doors, garages, porches, mailrooms, or with neighbors. Delivery drivers sometimes leave packages in less visible locations for security. Contact carriers if tracking shows delivery but you cannot locate the package.
+
+Missing or Lost Packages
+
+If tracking shows delivery but you didn't receive the package, first check with neighbors, household members, building management, or mail rooms. Check all entrances and less obvious delivery spots. Misdeliveries to similar addresses are common - neighbors often hold packages for later return.
+
+Wait 24 hours after delivered status before reporting packages as missing - carriers occasionally mark packages delivered prematurely, with actual delivery following shortly. If 24 hours pass without locating the package, contact us to initiate a carrier investigation. Lost package claims require carrier investigations taking 5-10 business days.
+
+Once carriers conclude investigations, we'll reship lost items or issue refunds. We cannot reship or refund before investigation completion. For time-sensitive orders, you may purchase replacement items immediately and we'll refund if investigations confirm loss. Frequent missing package claims may require signature confirmation for future orders as a security measure.
+
+Delivery Delays and Service Disruptions
+
+Weather events, natural disasters, pandemic-related disruptions, or peak season congestion cause systemic carrier delays. These affect all shippers and cannot be avoided. We post service alerts on our shipping information page when widespread delays are occurring. Consider ordering early during known busy periods to ensure timely delivery.
+
+If your package shows no tracking updates for 7+ business days while in carrier possession, contact us to investigate potential transit issues. We'll coordinate with carriers to locate packages and determine estimated delivery. Significantly delayed packages may qualify for reshipment at our discretion if resolution is not forthcoming.
+
+Shipping refunds for late expedited delivery are provided when delays result from our error - such as late handoff to carrier or incorrect service level. Carrier-caused delays for expedited services may qualify for shipping refunds directly from carriers - we'll provide necessary documentation for carrier claims. Standard shipping refunds are not provided for late delivery as timeframes are estimates only.
+
+Refused or Undeliverable Packages
+
+Packages refused at delivery or deemed undeliverable by carriers return to our warehouse. Common undeliverable reasons include insufficient address, recipient moved, no access to delivery location, or excess storage time at carrier facilities. You'll be notified of returns with options to correct address and reship or cancel for refund.
+
+Reshipping refused or returned packages requires new shipping payment at current rates. Original shipping charges are not refunded for buyer-initiated refusals or incorrect addresses. If the undeliverable situation resulted from our error, reshipping is free. Review address carefully before ordering to avoid return-to-sender scenarios and delays.
+
+Unclaimed packages held at carrier facilities or post offices are eventually returned as undeliverable. Track packages and respond to carrier delivery notices promptly. Carriers typically hold packages 5-15 days depending on service level before returning to sender. Retrieve packages from carrier facilities before hold periods expire to avoid return-to-sender processing.
+
+Damaged in Transit
+
+Inspect packages immediately upon delivery before accepting them. Visible outer box damage should be noted with the delivery driver and photographed. Carriers may allow refusal of obviously damaged packages. If damage isn't visible until opening, document everything with photos showing outer box, inner packaging, and product damage.
+
+Report shipping damage within 48 hours of delivery with photos for fastest resolution. We'll file carrier damage claims and arrange replacement shipment or refund. Keep all packaging materials until the claim is resolved - carriers may request inspection of damaged items and packaging. Claims require complete packaging for investigation.
+
+Damaged items should not be discarded or returned without authorization. Disposing of damaged items before claim completion may invalidate claims. We handle all carrier claim filing - you don't need to contact carriers directly about damage. Once damage is confirmed, we ship replacements immediately rather than waiting for claim resolution.
+
+Holiday Shipping Deadlines
+
+Order by specific cutoff dates to ensure holiday delivery. Holiday shipping deadlines are posted on our homepage and shipping information page starting in November. These deadlines account for carrier capacity constraints during peak seasons. Order well before deadlines to accommodate potential delays.
+
+Last-minute orders require expedited shipping for holiday delivery guarantee. Standard shipping isn't recommended within 2 weeks of major holidays due to unpredictable delays. Consider sending digital gift cards if ordering close to holidays - these deliver instantly via email.
+
+December carrier cutoff dates for end-of-year holidays vary by service level: Standard Ground by December 15th, 3-Day by December 20th, 2-Day by December 22nd, Overnight by December 23rd. These are approximate dates that vary yearly - check current year deadlines on our website. International holiday orders require even earlier placement, typically early December.

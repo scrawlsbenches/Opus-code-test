@@ -18,6 +18,7 @@ from typing import Dict, Optional, Any
 
 from .layers import CorticalLayer, HierarchicalLayer
 from .minicolumn import Minicolumn
+from .proto import PROTOBUF_AVAILABLE, serialize_state, deserialize_state
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,8 @@ def save_processor(
     embeddings: Optional[Dict[str, list]] = None,
     semantic_relations: Optional[list] = None,
     metadata: Optional[Dict] = None,
-    verbose: bool = True
+    verbose: bool = True,
+    format: str = 'pickle'
 ) -> None:
     """
     Save processor state to a file.
@@ -44,28 +46,54 @@ def save_processor(
         semantic_relations: Extracted semantic relations (optional)
         metadata: Optional processor metadata (version, settings, etc.)
         verbose: Print progress
+        format: Serialization format ('pickle' or 'protobuf'). Default: 'pickle'
+
+    Raises:
+        ValueError: If format is not 'pickle' or 'protobuf'
+        ImportError: If format='protobuf' but protobuf package is not installed
     """
-    state = {
-        'version': '2.2',
-        'layers': {},
-        'documents': documents,
-        'document_metadata': document_metadata or {},
-        'embeddings': embeddings or {},
-        'semantic_relations': semantic_relations or [],
-        'metadata': metadata or {}
-    }
+    if format not in ['pickle', 'protobuf']:
+        raise ValueError(f"Invalid format '{format}'. Must be 'pickle' or 'protobuf'.")
 
-    # Serialize layers
-    for layer_enum, layer in layers.items():
-        state['layers'][layer_enum.value] = layer.to_dict()
+    if format == 'pickle':
+        # Original pickle serialization
+        state = {
+            'version': '2.2',
+            'layers': {},
+            'documents': documents,
+            'document_metadata': document_metadata or {},
+            'embeddings': embeddings or {},
+            'semantic_relations': semantic_relations or [],
+            'metadata': metadata or {}
+        }
 
-    with open(filepath, 'wb') as f:
-        pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
+        # Serialize layers
+        for layer_enum, layer in layers.items():
+            state['layers'][layer_enum.value] = layer.to_dict()
+
+        with open(filepath, 'wb') as f:
+            pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    elif format == 'protobuf':
+        # Protocol Buffers serialization (text format for git-friendliness)
+        if not PROTOBUF_AVAILABLE:
+            raise ImportError(
+                "protobuf package is required for Protocol Buffers serialization. "
+                "Install it with: pip install protobuf"
+            )
+
+        text_output = serialize_state(
+            layers, documents, document_metadata,
+            embeddings, semantic_relations, metadata
+        )
+
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(text_output)
 
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())
         total_conns = sum(layer.total_connections() for layer in layers.values())
-        logger.info(f"✓ Saved processor to {filepath}")
+        logger.info(f"✓ Saved processor to {filepath} (format: {format})")
         logger.info(f"  - {len(documents)} documents")
         logger.info(f"  - {total_cols} minicolumns")
         logger.info(f"  - {total_conns} connections")
@@ -77,7 +105,8 @@ def save_processor(
 
 def load_processor(
     filepath: str,
-    verbose: bool = True
+    verbose: bool = True,
+    format: Optional[str] = None
 ) -> tuple:
     """
     Load processor state from a file.
@@ -85,39 +114,83 @@ def load_processor(
     Args:
         filepath: Path to saved file
         verbose: Print progress
+        format: Serialization format ('pickle' or 'protobuf'). If None, auto-detect.
 
     Returns:
         Tuple of (layers, documents, document_metadata, embeddings, semantic_relations, metadata)
 
     Raises:
-        ValueError: If layer values are invalid (must be 0-3)
+        ValueError: If layer values are invalid (must be 0-3) or format is invalid
+        ImportError: If format='protobuf' but protobuf package is not installed
     """
-    with open(filepath, 'rb') as f:
-        state = pickle.load(f)
+    # Auto-detect format if not specified
+    if format is None:
+        # Try to detect based on file content
+        with open(filepath, 'rb') as f:
+            # Read first few bytes
+            header = f.read(64)
 
-    # Reconstruct layers
-    layers = {}
-    for level_value, layer_data in state.get('layers', {}).items():
-        # Validate layer value before creating enum
-        level_int = int(level_value)
-        if level_int not in [0, 1, 2, 3]:
-            raise ValueError(
-                f"Invalid layer value {level_int} in saved state. "
-                f"Layer values must be 0-3 (TOKENS=0, BIGRAMS=1, CONCEPTS=2, DOCUMENTS=3)."
+            # Pickle files start with 0x80 (protocol marker)
+            if header[0:1] == b'\x80':
+                format = 'pickle'
+            else:
+                # Protobuf text format starts with readable text like "version:" or "layers {"
+                # Check if it looks like text (ASCII/UTF-8)
+                try:
+                    header_text = header.decode('utf-8')
+                    if 'version' in header_text or 'layers' in header_text:
+                        format = 'protobuf'
+                    else:
+                        # Default to pickle for unknown formats
+                        format = 'pickle'
+                except UnicodeDecodeError:
+                    # Binary content - assume pickle
+                    format = 'pickle'
+
+    if format not in ['pickle', 'protobuf']:
+        raise ValueError(f"Invalid format '{format}'. Must be 'pickle' or 'protobuf'.")
+
+    if format == 'pickle':
+        # Original pickle deserialization
+        with open(filepath, 'rb') as f:
+            state = pickle.load(f)
+
+        # Reconstruct layers
+        layers = {}
+        for level_value, layer_data in state.get('layers', {}).items():
+            # Validate layer value before creating enum
+            level_int = int(level_value)
+            if level_int not in [0, 1, 2, 3]:
+                raise ValueError(
+                    f"Invalid layer value {level_int} in saved state. "
+                    f"Layer values must be 0-3 (TOKENS=0, BIGRAMS=1, CONCEPTS=2, DOCUMENTS=3)."
+                )
+            layer = HierarchicalLayer.from_dict(layer_data)
+            layers[CorticalLayer(level_int)] = layer
+
+        documents = state.get('documents', {})
+        document_metadata = state.get('document_metadata', {})
+        embeddings = state.get('embeddings', {})
+        semantic_relations = state.get('semantic_relations', [])
+        metadata = state.get('metadata', {})
+
+    elif format == 'protobuf':
+        # Protocol Buffers deserialization (text format)
+        if not PROTOBUF_AVAILABLE:
+            raise ImportError(
+                "protobuf package is required for Protocol Buffers deserialization. "
+                "Install it with: pip install protobuf"
             )
-        layer = HierarchicalLayer.from_dict(layer_data)
-        layers[CorticalLayer(level_int)] = layer
 
-    documents = state.get('documents', {})
-    document_metadata = state.get('document_metadata', {})
-    embeddings = state.get('embeddings', {})
-    semantic_relations = state.get('semantic_relations', [])
-    metadata = state.get('metadata', {})
+        with open(filepath, 'r', encoding='utf-8') as f:
+            proto_text = f.read()
+
+        layers, documents, document_metadata, embeddings, semantic_relations, metadata = deserialize_state(proto_text)
 
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())
         total_conns = sum(layer.total_connections() for layer in layers.values())
-        logger.info(f"✓ Loaded processor from {filepath}")
+        logger.info(f"✓ Loaded processor from {filepath} (format: {format})")
         logger.info(f"  - {len(documents)} documents")
         logger.info(f"  - {total_cols} minicolumns")
         logger.info(f"  - {total_conns} connections")

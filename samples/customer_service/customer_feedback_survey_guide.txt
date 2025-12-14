@@ -1,0 +1,248 @@
+Customer Feedback and Survey Guide
+
+Post-Purchase Satisfaction Survey
+
+Survey Timing: Send 7-10 days after delivery confirmation to allow sufficient product experience time. Earlier surveys capture initial impressions but miss usage-related issues. Later surveys risk lower response rates due to fading memory of purchase experience.
+
+Core Questions:
+
+1. Overall Satisfaction (1-5 scale)
+"How satisfied are you with your recent purchase from [Company Name]?"
+1 = Very Dissatisfied, 2 = Dissatisfied, 3 = Neutral, 4 = Satisfied, 5 = Very Satisfied
+
+2. Product Quality (1-5 scale)
+"How would you rate the quality of the product you received?"
+Follow-up for ratings 1-3: "What specific aspects fell short of your expectations?"
+
+3. Value Assessment (1-5 scale)
+"How would you rate the value for money of your purchase?"
+This measures price-to-quality perception and pricing strategy effectiveness.
+
+4. Delivery Experience (1-5 scale)
+"How satisfied were you with the delivery speed and packaging quality?"
+Follow-up: "Did your order arrive on time and undamaged?"
+
+5. Product Expectations (1-5 scale)
+"How well did the product match the description and images on our website?"
+Lower scores indicate listing accuracy issues requiring attention.
+
+6. Likelihood to Recommend (0-10 scale - Net Promoter Score)
+"How likely are you to recommend [Company Name] to friends or colleagues?"
+0 = Not at all likely, 10 = Extremely likely
+NPS calculation: % Promoters (9-10) minus % Detractors (0-6)
+
+7. Open Feedback (Text field)
+"Is there anything else you'd like to share about your experience?"
+Optional field captures unanticipated insights beyond structured questions.
+
+Target response rate: 15-25% for email surveys. Incentivize with discount codes for completion to boost participation. Keep total survey time under 2 minutes to minimize abandonment.
+
+Customer Support Interaction Survey
+
+Survey Timing: Send immediately after ticket closure while interaction memory is fresh. Same-day response rates are 3x higher than delayed surveys.
+
+Core Questions:
+
+1. Issue Resolution (Yes/No)
+"Was your issue completely resolved?"
+If No: "What remains unresolved?" (Text field for follow-up action)
+
+2. Resolution Time Satisfaction (1-5 scale)
+"How satisfied were you with the time it took to resolve your issue?"
+Measures whether SLA compliance meets customer expectations.
+
+3. Agent Knowledge (1-5 scale)
+"How knowledgeable was our support agent about your issue?"
+Identifies training needs and agent performance variations.
+
+4. Agent Professionalism (1-5 scale)
+"How would you rate the professionalism and courtesy of our support agent?"
+Tracks soft skills and customer service quality beyond technical competence.
+
+5. Communication Clarity (1-5 scale)
+"How clear and understandable was the support agent's communication?"
+Identifies needs for simplified explanations or better documentation.
+
+6. Effort Required (1-5 scale - Customer Effort Score)
+"How much effort did you personally have to put forth to resolve your issue?"
+1 = Very Low Effort, 5 = Very High Effort
+Lower scores indicate better self-service resources and efficient support processes.
+
+7. Support Channel Preference
+"Which support channel did you use? Was it your preferred method?"
+Options: Email, Phone, Chat, Knowledge Base, Community Forum
+Tracks channel usage patterns and preferences for capacity planning.
+
+8. Open Feedback (Text field)
+"How could we have improved your support experience?"
+
+Target response rate: 25-35% for post-support surveys. Higher engagement due to recent interaction and investment in resolution.
+
+Feature Request and Product Improvement Survey
+
+Survey Timing: Quarterly to active users, or triggered when customers use advanced features indicating higher engagement levels.
+
+Core Questions:
+
+1. Feature Usage Assessment
+"Which features do you use regularly?" (Multi-select checklist)
+Identifies popular features and underutilized functionality needing improvement or deprecation.
+
+2. Pain Points Identification (Text field)
+"What tasks or workflows are most frustrating or time-consuming in our product?"
+Uncovers improvement opportunities from user perspective.
+
+3. Missing Functionality (Text field)
+"What features or capabilities do you wish our product had?"
+Direct feature request gathering for product roadmap prioritization.
+
+4. Competitive Comparison
+"What features in competing products do you find valuable that we don't offer?"
+Competitive intelligence and gap analysis from customer viewpoint.
+
+5. Feature Importance Rating
+Present list of potential features: "Rate how valuable each feature would be to you"
+1 = Not valuable, 5 = Extremely valuable
+Quantifies demand for planned features to prioritize development.
+
+6. Integration Needs
+"What other tools or platforms would you like to see integrated with our product?"
+Identifies partnership and integration opportunities.
+
+7. Workflow Description (Text field)
+"Describe a typical workflow you perform with our product"
+Reveals how customers actually use the product versus intended usage patterns.
+
+Response rate: 10-15% for feature surveys as they require more thought and investment. Target power users and early adopters for higher-quality feedback.
+
+Website User Experience Survey
+
+Survey Format: Non-intrusive pop-up or slide-in after user completes action (purchase, account creation, etc.) or spends 60+ seconds on specific pages. Limit frequency to once per user per 30 days to avoid annoyance.
+
+Core Questions:
+
+1. Task Completion Success
+"Were you able to accomplish what you came to do today?"
+Yes/No with text field for "No" responses explaining barriers.
+
+2. Navigation Ease (1-5 scale)
+"How easy was it to find what you were looking for?"
+Identifies navigation, search, and information architecture issues.
+
+3. Page Load Performance
+"How satisfied were you with page loading speed?"
+Correlate with actual performance metrics to identify perception versus reality gaps.
+
+4. Mobile Experience (if applicable)
+"How would you rate your mobile browsing experience?"
+Mobile-specific pain points often differ from desktop issues.
+
+5. Visual Design Feedback (1-5 scale)
+"How appealing do you find our website design?"
+Tracks brand perception and aesthetic preferences.
+
+6. Checkout Experience (e-commerce)
+"How would you rate the checkout process?" (1-5 scale)
+Critical for conversion optimization and cart abandonment reduction.
+
+7. Improvement Suggestions (Text field)
+"What would make our website better?"
+
+Utilize exit intent surveys for visitors who don't convert asking: "What prevented you from completing your purchase/signup today?"
+
+Churn Prevention Survey
+
+Survey Timing: Send when cancellation detected or subscription not renewed. Time-sensitive as customer decision is fresh and potentially reversible.
+
+Core Questions:
+
+1. Cancellation Reason (Multi-select)
+- Too expensive / not worth the cost
+- Missing features I need
+- Found a better alternative
+- No longer need this type of service
+- Technical problems or poor performance
+- Difficult to use
+- Poor customer support
+- Other (text field)
+
+2. Decision Reversibility
+"Is there anything we could do to keep you as a customer?"
+Open text field for win-back opportunities.
+
+3. Alternative Solution
+"What product or service are you switching to, if any?"
+Competitive intelligence on churn destinations.
+
+4. Price Sensitivity
+"Would you reconsider if we offered [X% discount/different pricing tier]?"
+Tests price elasticity and retention offer effectiveness.
+
+5. Feature Gaps
+"What missing features led to your decision to cancel?"
+Product development priorities for retention.
+
+6. Overall Experience Rating (1-5 scale)
+"Overall, how would you rate your experience as our customer?"
+Tracks whether churn is due to dissatisfaction or changing needs.
+
+7. Willingness to Return
+"Would you consider using our service again in the future?"
+Identifies churned customers worth re-engagement campaigns.
+
+Response rate: 20-30% for cancellation surveys due to high engagement during decision moment. Offer incentive to complete survey and reconsider (limited-time retention discount).
+
+Survey Best Practices
+
+Keep surveys short: 5-7 questions maximum taking under 3 minutes. Higher question counts exponentially increase abandonment rates. Use branching logic to show follow-up questions only when relevant based on previous answers.
+
+Mix question types: Combine quantitative scales (for metrics tracking) with qualitative open text (for insight depth). Ratio of 60% quantitative, 40% qualitative balances analysis with nuance.
+
+Avoid leading questions: "How much do you love our product?" biases responses. Use neutral phrasing: "How do you feel about our product?"
+
+Provide context: Explain how feedback will be used. "Your responses help us improve our service" increases completion rates by 15-20%.
+
+Make surveys mobile-friendly: 40-60% of responses come from mobile devices. Test survey rendering on various screen sizes. Use large tap targets and minimal typing requirements.
+
+Time distribution appropriately: Send surveys during business hours Tuesday-Thursday for highest response rates. Avoid Mondays (email overload) and Fridays (weekend mindset).
+
+Close the feedback loop: Email respondents thanking them and summarizing how their feedback is being used. Share when suggested improvements are implemented to encourage future participation.
+
+Segment analysis: Analyze responses by customer segments (new vs. returning, account tier, product usage patterns) to identify segment-specific issues and opportunities.
+
+Track trends over time: Monitor metric changes month-over-month and year-over-year. Identify seasonal patterns and measure impact of improvement initiatives.
+
+Act on feedback: Surveys without action damage credibility and reduce future response rates. Prioritize high-impact issues mentioned frequently in feedback for addressing first.
+
+Response Analysis Framework
+
+Quantitative Metrics:
+- Calculate average scores for scale questions by segment
+- Track response distribution (% selecting each option)
+- Monitor trends over time periods
+- Set target thresholds (e.g., 4.0+ average satisfaction score)
+- Alert on significant drops month-over-month
+
+Qualitative Analysis:
+- Categorize open text responses into themes
+- Count frequency of each theme mention
+- Identify emerging patterns not captured by structured questions
+- Extract specific customer quotes for sharing with teams
+- Prioritize issues by severity and frequency
+
+Sentiment Analysis:
+- Classify text responses as positive, neutral, negative
+- Cross-reference sentiment with quantitative scores
+- Identify disconnects between numerical ratings and written feedback
+
+Response Prioritization:
+- High impact + high frequency = immediate action required
+- High impact + low frequency = monitor for trend emergence
+- Low impact + high frequency = process improvement opportunity
+- Low impact + low frequency = log for potential future consideration
+
+Reporting Cadence:
+- Daily: Critical support satisfaction scores for immediate intervention
+- Weekly: Support interaction metrics for agent coaching
+- Monthly: Overall satisfaction trends for management review
+- Quarterly: Comprehensive analysis for strategic planning

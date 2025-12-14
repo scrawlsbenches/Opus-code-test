@@ -1,0 +1,25 @@
+Software Product FAQ - CloudSync Pro
+
+Q: How do I install CloudSync Pro on my computer?
+A: Download the installer from our website, run the setup wizard, and sign in with your account credentials. The application will automatically configure itself based on your subscription tier. Installation typically takes 3-5 minutes. Make sure you have administrator privileges on your machine before beginning the installation process.
+
+Q: What are the system requirements?
+A: CloudSync Pro requires Windows 10 or later, macOS 10.15 or later, or Ubuntu 20.04 or later. You need at least 4GB of RAM, 500MB of free disk space, and a stable internet connection with minimum 5Mbps bandwidth. For optimal performance, we recommend 8GB RAM and SSD storage.
+
+Q: How many devices can I sync with one account?
+A: Basic plans support up to 3 devices, Professional plans allow 10 devices, and Enterprise plans offer unlimited device connections. Each device must be authorized through your account dashboard. You can deauthorize devices remotely if needed.
+
+Q: Can I share files with people who don't have CloudSync Pro?
+A: Yes, you can create public or password-protected share links that anyone can access through a web browser. Recipients can view and download files without creating an account. Link permissions can be customized to allow viewing only, downloading, or uploading. Links can be set to expire after a specified time period.
+
+Q: What happens if I exceed my storage limit?
+A: When you reach 90% capacity, we'll send notification emails. At 100%, new file uploads will be blocked, but existing files remain accessible. You can upgrade your plan, delete unnecessary files, or purchase additional storage. No files are automatically deleted due to storage limits.
+
+Q: How do I recover deleted files?
+A: Deleted files are moved to the trash folder where they remain for 30 days. Navigate to the trash in your application or web interface and select restore. Permanently deleted files cannot be recovered unless you have backup enabled. Premium plans include extended 90-day retention and version history.
+
+Q: Is my data encrypted?
+A: Yes, all files are encrypted in transit using TLS 1.3 and at rest using AES-256 encryption. Zero-knowledge encryption is available for Premium and Enterprise customers, meaning only you can decrypt your files. We never have access to your encryption keys when zero-knowledge mode is enabled.
+
+Q: Can I access my files offline?
+A: Files marked as "Available Offline" will sync to your local device and remain accessible without internet connectivity. Changes made offline will automatically sync when you reconnect. You can manage offline availability for individual files or entire folders through the application settings.
