@@ -54,7 +54,9 @@ def find_passages_for_query(
     auto_detect_intent: bool = True,
     prefer_docs: bool = False,
     custom_boosts: Optional[Dict[str, float]] = None,
-    use_code_aware_chunks: bool = True
+    use_code_aware_chunks: bool = True,
+    filter_code_stop_words: bool = True,
+    test_file_penalty: float = 0.8
 ) -> List[Tuple[str, str, int, int, float]]:
     """
     Find text passages most relevant to a query.
@@ -93,6 +95,10 @@ def find_passages_for_query(
         prefer_docs: Always boost documentation regardless of query type (default False)
         custom_boosts: Optional custom boost factors for doc types
         use_code_aware_chunks: Use semantic boundaries for code files (default True)
+        filter_code_stop_words: Filter ubiquitous code tokens (self, def, return)
+                                from expansion. Reduces noise in code search. (default True)
+        test_file_penalty: Multiplier for test files to rank them lower (default 0.8).
+                           Set to 1.0 to disable penalty.
 
     Returns:
         List of (passage_text, doc_id, start_char, end_char, score) tuples
@@ -120,7 +126,8 @@ def find_passages_for_query(
         query_text, layers, tokenizer,
         use_expansion=use_expansion,
         semantic_relations=semantic_relations,
-        use_semantic=use_semantic
+        use_semantic=use_semantic,
+        filter_code_stop_words=filter_code_stop_words
     )
 
     if not query_terms and not definition_passages:
@@ -151,7 +158,9 @@ def find_passages_for_query(
             top_n=min(len(documents), top_n * 3),
             use_expansion=use_expansion,
             semantic_relations=semantic_relations,
-            use_semantic=use_semantic
+            use_semantic=use_semantic,
+            filter_code_stop_words=filter_code_stop_words,
+            test_file_penalty=test_file_penalty
         )
 
     # Score passages within candidate documents

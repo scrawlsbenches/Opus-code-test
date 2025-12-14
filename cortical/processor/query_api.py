@@ -309,7 +309,9 @@ class QueryMixin:
         query_text: str,
         top_n: int = 5,
         use_expansion: bool = True,
-        use_semantic: bool = True
+        use_semantic: bool = True,
+        filter_code_stop_words: bool = True,
+        test_file_penalty: float = 0.8
     ) -> List[Tuple[str, float]]:
         """
         Find documents most relevant to a query.
@@ -319,6 +321,10 @@ class QueryMixin:
             top_n: Number of documents to return
             use_expansion: Whether to expand query terms
             use_semantic: Whether to use semantic relations for expansion
+            filter_code_stop_words: Filter ubiquitous code tokens (self, def, return)
+                                    from expansion. Reduces noise in code search. (default True)
+            test_file_penalty: Multiplier for test files to rank them lower (default 0.8).
+                               Set to 1.0 to disable penalty.
 
         Returns:
             List of (doc_id, score) tuples ranked by relevance
@@ -338,7 +344,9 @@ class QueryMixin:
             top_n=top_n,
             use_expansion=use_expansion,
             semantic_relations=self.semantic_relations if use_semantic else None,
-            use_semantic=use_semantic
+            use_semantic=use_semantic,
+            filter_code_stop_words=filter_code_stop_words,
+            test_file_penalty=test_file_penalty
         )
 
     def fast_find_documents(
@@ -523,7 +531,9 @@ class QueryMixin:
         auto_detect_intent: bool = True,
         prefer_docs: bool = False,
         custom_boosts: Optional[Dict[str, float]] = None,
-        use_code_aware_chunks: bool = True
+        use_code_aware_chunks: bool = True,
+        filter_code_stop_words: bool = True,
+        test_file_penalty: float = 0.8
     ) -> List[Tuple[str, str, int, int, float]]:
         """
         Find text passages most relevant to a query (for RAG systems).
@@ -543,6 +553,10 @@ class QueryMixin:
             prefer_docs: Always boost documentation
             custom_boosts: Optional custom boost factors for doc types
             use_code_aware_chunks: Use semantic boundaries for code files
+            filter_code_stop_words: Filter ubiquitous code tokens (self, def, return)
+                                    from expansion. Reduces noise in code search. (default True)
+            test_file_penalty: Multiplier for test files to rank them lower (default 0.8).
+                               Set to 1.0 to disable penalty.
 
         Returns:
             List of (passage_text, doc_id, start_char, end_char, score) tuples
@@ -588,7 +602,9 @@ class QueryMixin:
             auto_detect_intent=auto_detect_intent,
             prefer_docs=prefer_docs,
             custom_boosts=custom_boosts,
-            use_code_aware_chunks=use_code_aware_chunks
+            use_code_aware_chunks=use_code_aware_chunks,
+            filter_code_stop_words=filter_code_stop_words,
+            test_file_penalty=test_file_penalty
         )
 
     def is_definition_query(self, query_text: str) -> Tuple[bool, Optional[str], Optional[str]]:

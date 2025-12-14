@@ -30,7 +30,9 @@ def find_documents_for_query(
     use_expansion: bool = True,
     semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
     use_semantic: bool = True,
-    doc_name_boost: float = 2.0
+    doc_name_boost: float = 2.0,
+    filter_code_stop_words: bool = True,
+    test_file_penalty: float = 0.8
 ) -> List[Tuple[str, float]]:
     """
     Find documents most relevant to a query using TF-IDF and optional expansion.
@@ -44,6 +46,10 @@ def find_documents_for_query(
         semantic_relations: Optional list of semantic relations for expansion
         use_semantic: Whether to use semantic relations for expansion (if available)
         doc_name_boost: Multiplier for documents whose name matches query terms (default 2.0)
+        filter_code_stop_words: Filter ubiquitous code tokens (self, def, return)
+                                from expansion candidates. Reduces noise in code search. (default True)
+        test_file_penalty: Multiplier for test files to rank them lower (default 0.8).
+                           Set to 1.0 to disable penalty.
 
     Returns:
         List of (doc_id, score) tuples ranked by relevance
@@ -55,7 +61,8 @@ def find_documents_for_query(
         query_text, layers, tokenizer,
         use_expansion=use_expansion,
         semantic_relations=semantic_relations,
-        use_semantic=use_semantic
+        use_semantic=use_semantic,
+        filter_code_stop_words=filter_code_stop_words
     )
 
     # Score each document
@@ -107,6 +114,16 @@ def find_documents_for_query(
             # Partial matches use proportional boost
             boost = 1 + (doc_name_boost - 1) * match_ratio
             doc_scores[doc_id] *= boost
+
+    # Apply test file penalty to reduce test file ranking
+    if test_file_penalty < 1.0:
+        for doc_id in list(doc_scores.keys()):
+            # Detect test files by path patterns
+            if (doc_id.startswith('tests/') or
+                doc_id.startswith('test_') or
+                '/test_' in doc_id or
+                '/tests/' in doc_id):
+                doc_scores[doc_id] *= test_file_penalty
 
     sorted_docs = sorted(doc_scores.items(), key=lambda x: -x[1])
     return sorted_docs[:top_n]
