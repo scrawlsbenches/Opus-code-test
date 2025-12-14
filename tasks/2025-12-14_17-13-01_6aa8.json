@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "6aa8",
   "started_at": "2025-12-14T17:13:01.505357",
-  "saved_at": "2025-12-14T21:37:01.725943",
+  "saved_at": "2025-12-14T21:49:19.784103",
   "tasks": [
     {
       "id": "T-20251214-171301-6aa8-001",
@@ -67,7 +67,7 @@
     {
       "id": "T-20251214-172238-6aa8-005",
       "title": "Add wiki-link cross-reference resolution",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "feature",
       "description": "Parse and resolve [[wiki-style]] links in memory documents:\n\n1. Extract [[link]] patterns from markdown files\n2. Resolve to actual file paths (fuzzy matching)\n3. Build bidirectional link graph\n4. Add 'backlinks' section showing what links TO a document\n\nUse cases:\n- [[concepts/pagerank.md]] resolves to actual path\n- [[2025-12-14]] finds memory entries for that date\n- Search results show connection strength via links\n\nImplementation:\n- Add link extraction to tokenizer or separate module\n- Store links as typed_connections (relation_type='references')\n- Query can traverse link graph for related docs",
@@ -75,9 +75,9 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:22:38.635912",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T21:49:19.784103",
       "context": {},
-      "retrospective": null
+      "retrospective": "Implemented scripts/resolve_wiki_links.py with extract, resolve, backlinks, and directory check functionality"
     },
     {
       "id": "T-20251214-172243-6aa8-006",

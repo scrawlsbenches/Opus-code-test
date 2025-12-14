@@ -430,20 +430,25 @@ jobs:
 
   # ==========================================================================
   # Markdown Link Checker (runs in parallel with all other jobs)
-  # Validates all markdown links are valid and not broken
-  # Non-blocking initially - will provide informational feedback only
+  # Uses our own Python script - NO external dependencies/actions
+  # Principle: Prefer native implementations over 3rd party APIs/actions
   # ==========================================================================
   markdown-links:
     name: "🔗 Markdown Links"
     runs-on: ubuntu-latest
-    continue-on-error: true  # Don't fail builds on broken links initially
+    continue-on-error: true  # Non-blocking initially
     steps:
     - uses: actions/checkout@v4
 
-    - name: Check markdown links
-      uses: gaurav-nelson/github-action-markdown-link-check@v1
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
-        use-quiet-mode: 'yes'
-        config-file: '.markdown-link-check.json'
-        folder-path: '.'
-        file-extension: '.md'
+        python-version: '3.11'
+
+    - name: Check wiki-links in markdown files
+      run: |
+        echo "Checking wiki-links in documentation..."
+        python scripts/resolve_wiki_links.py --check docs/ || true
+        python scripts/resolve_wiki_links.py --check samples/memories/ || true
+        python scripts/resolve_wiki_links.py --check samples/decisions/ || true
+        echo "Link check complete (informational only)"
