@@ -30,7 +30,8 @@ def save_processor(
     embeddings: Optional[Dict[str, list]] = None,
     semantic_relations: Optional[list] = None,
     metadata: Optional[Dict] = None,
-    verbose: bool = True
+    verbose: bool = True,
+    format: str = 'pickle'
 ) -> None:
     """
     Save processor state to a file.
@@ -44,28 +45,56 @@ def save_processor(
         semantic_relations: Extracted semantic relations (optional)
         metadata: Optional processor metadata (version, settings, etc.)
         verbose: Print progress
+        format: Serialization format ('pickle' or 'protobuf'). Default: 'pickle'
+
+    Raises:
+        ValueError: If format is not 'pickle' or 'protobuf'
+        ImportError: If format='protobuf' but protobuf package is not installed
     """
-    state = {
-        'version': '2.2',
-        'layers': {},
-        'documents': documents,
-        'document_metadata': document_metadata or {},
-        'embeddings': embeddings or {},
-        'semantic_relations': semantic_relations or [],
-        'metadata': metadata or {}
-    }
+    if format not in ['pickle', 'protobuf']:
+        raise ValueError(f"Invalid format '{format}'. Must be 'pickle' or 'protobuf'.")
 
-    # Serialize layers
-    for layer_enum, layer in layers.items():
-        state['layers'][layer_enum.value] = layer.to_dict()
+    if format == 'pickle':
+        # Original pickle serialization
+        state = {
+            'version': '2.2',
+            'layers': {},
+            'documents': documents,
+            'document_metadata': document_metadata or {},
+            'embeddings': embeddings or {},
+            'semantic_relations': semantic_relations or [],
+            'metadata': metadata or {}
+        }
 
-    with open(filepath, 'wb') as f:
-        pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
+        # Serialize layers
+        for layer_enum, layer in layers.items():
+            state['layers'][layer_enum.value] = layer.to_dict()
+
+        with open(filepath, 'wb') as f:
+            pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    elif format == 'protobuf':
+        # Protocol Buffers serialization
+        try:
+            from .proto.serialization import to_proto
+        except ImportError as e:
+            raise ImportError(
+                "protobuf package is required for Protocol Buffers serialization. "
+                "Install it with: pip install protobuf"
+            ) from e
+
+        proto_state = to_proto(
+            layers, documents, document_metadata,
+            embeddings, semantic_relations, metadata
+        )
+
+        with open(filepath, 'wb') as f:
+            f.write(proto_state.SerializeToString())
 
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())
         total_conns = sum(layer.total_connections() for layer in layers.values())
-        logger.info(f"✓ Saved processor to {filepath}")
+        logger.info(f"✓ Saved processor to {filepath} (format: {format})")
         logger.info(f"  - {len(documents)} documents")
         logger.info(f"  - {total_cols} minicolumns")
         logger.info(f"  - {total_conns} connections")
@@ -77,7 +106,8 @@ def save_processor(
 
 def load_processor(
     filepath: str,
-    verbose: bool = True
+    verbose: bool = True,
+    format: Optional[str] = None
 ) -> tuple:
     """
     Load processor state from a file.
@@ -85,39 +115,81 @@ def load_processor(
     Args:
         filepath: Path to saved file
         verbose: Print progress
+        format: Serialization format ('pickle' or 'protobuf'). If None, auto-detect.
 
     Returns:
         Tuple of (layers, documents, document_metadata, embeddings, semantic_relations, metadata)
 
     Raises:
-        ValueError: If layer values are invalid (must be 0-3)
+        ValueError: If layer values are invalid (must be 0-3) or format is invalid
+        ImportError: If format='protobuf' but protobuf package is not installed
     """
-    with open(filepath, 'rb') as f:
-        state = pickle.load(f)
+    # Auto-detect format if not specified
+    if format is None:
+        # Try to detect based on file content
+        with open(filepath, 'rb') as f:
+            # Read first few bytes
+            header = f.read(16)
+            f.seek(0)
 
-    # Reconstruct layers
-    layers = {}
-    for level_value, layer_data in state.get('layers', {}).items():
-        # Validate layer value before creating enum
-        level_int = int(level_value)
-        if level_int not in [0, 1, 2, 3]:
-            raise ValueError(
-                f"Invalid layer value {level_int} in saved state. "
-                f"Layer values must be 0-3 (TOKENS=0, BIGRAMS=1, CONCEPTS=2, DOCUMENTS=3)."
-            )
-        layer = HierarchicalLayer.from_dict(layer_data)
-        layers[CorticalLayer(level_int)] = layer
+            # Pickle files start with 0x80 (protocol marker)
+            # Protobuf files have different structure
+            if header[0:1] == b'\x80':
+                format = 'pickle'
+            else:
+                # Try protobuf
+                format = 'protobuf'
 
-    documents = state.get('documents', {})
-    document_metadata = state.get('document_metadata', {})
-    embeddings = state.get('embeddings', {})
-    semantic_relations = state.get('semantic_relations', [])
-    metadata = state.get('metadata', {})
+    if format not in ['pickle', 'protobuf']:
+        raise ValueError(f"Invalid format '{format}'. Must be 'pickle' or 'protobuf'.")
+
+    if format == 'pickle':
+        # Original pickle deserialization
+        with open(filepath, 'rb') as f:
+            state = pickle.load(f)
+
+        # Reconstruct layers
+        layers = {}
+        for level_value, layer_data in state.get('layers', {}).items():
+            # Validate layer value before creating enum
+            level_int = int(level_value)
+            if level_int not in [0, 1, 2, 3]:
+                raise ValueError(
+                    f"Invalid layer value {level_int} in saved state. "
+                    f"Layer values must be 0-3 (TOKENS=0, BIGRAMS=1, CONCEPTS=2, DOCUMENTS=3)."
+                )
+            layer = HierarchicalLayer.from_dict(layer_data)
+            layers[CorticalLayer(level_int)] = layer
+
+        documents = state.get('documents', {})
+        document_metadata = state.get('document_metadata', {})
+        embeddings = state.get('embeddings', {})
+        semantic_relations = state.get('semantic_relations', [])
+        metadata = state.get('metadata', {})
+
+    elif format == 'protobuf':
+        # Protocol Buffers deserialization
+        try:
+            from .proto.serialization import from_proto
+            from .proto import schema_pb2
+        except ImportError as e:
+            raise ImportError(
+                "protobuf package is required for Protocol Buffers deserialization. "
+                "Install it with: pip install protobuf"
+            ) from e
+
+        with open(filepath, 'rb') as f:
+            proto_bytes = f.read()
+
+        proto_state = schema_pb2.ProcessorState()
+        proto_state.ParseFromString(proto_bytes)
+
+        layers, documents, document_metadata, embeddings, semantic_relations, metadata = from_proto(proto_state)
 
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())
         total_conns = sum(layer.total_connections() for layer in layers.values())
-        logger.info(f"✓ Loaded processor from {filepath}")
+        logger.info(f"✓ Loaded processor from {filepath} (format: {format})")
         logger.info(f"  - {len(documents)} documents")
         logger.info(f"  - {total_cols} minicolumns")
         logger.info(f"  - {total_conns} connections")
