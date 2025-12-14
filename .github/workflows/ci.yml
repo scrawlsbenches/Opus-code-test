@@ -96,7 +96,7 @@ jobs:
     - name: Install test dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest
+        pip install -e ".[dev]"
 
     - name: Run smoke tests
       run: |
@@ -124,7 +124,7 @@ jobs:
     - name: Install test dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest coverage
+        pip install -e ".[dev]"
 
     - name: Run unit tests with coverage
       run: |
@@ -166,7 +166,7 @@ jobs:
     - name: Install test dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest coverage
+        pip install -e ".[dev]"
 
     - name: Run integration tests with coverage
       run: |
@@ -218,7 +218,7 @@ jobs:
     - name: Install test dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest
+        pip install -e ".[dev]"
 
     - name: Run regression tests
       run: |
@@ -246,7 +246,7 @@ jobs:
     - name: Install test dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest
+        pip install -e ".[dev]"
 
     - name: Run behavioral tests
       run: |
@@ -275,7 +275,7 @@ jobs:
     - name: Install test dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest
+        pip install -e ".[dev]"
 
     - name: Run performance tests
       run: |
