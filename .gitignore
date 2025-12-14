@@ -87,3 +87,7 @@ nunit-*.xml
 .index_progress.json
 .index_incremental_progress.json
 tasks/.current_session.json
+
+# Generated protobuf code (regenerated at runtime from schema.proto)
+cortical/proto/schema_pb2.py
+cortical/proto/__pycache__/
