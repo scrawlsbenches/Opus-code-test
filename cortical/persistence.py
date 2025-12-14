@@ -18,6 +18,7 @@ from typing import Dict, Optional, Any
 
 from .layers import CorticalLayer, HierarchicalLayer
 from .minicolumn import Minicolumn
+from .proto import PROTOBUF_AVAILABLE, serialize_state, deserialize_state
 
 logger = logging.getLogger(__name__)
 
@@ -75,23 +76,19 @@ def save_processor(
 
     elif format == 'protobuf':
         # Protocol Buffers serialization (text format for git-friendliness)
-        try:
-            from .proto.serialization import to_proto
-            from google.protobuf import text_format
-        except ImportError as e:
+        if not PROTOBUF_AVAILABLE:
             raise ImportError(
                 "protobuf package is required for Protocol Buffers serialization. "
                 "Install it with: pip install protobuf"
-            ) from e
+            )
 
-        proto_state = to_proto(
+        text_output = serialize_state(
             layers, documents, document_metadata,
             embeddings, semantic_relations, metadata
         )
 
-        # Use text format for human-readable, git-friendly output
         with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(text_format.MessageToString(proto_state))
+            f.write(text_output)
 
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())
@@ -179,23 +176,16 @@ def load_processor(
 
     elif format == 'protobuf':
         # Protocol Buffers deserialization (text format)
-        try:
-            from .proto.serialization import from_proto
-            from .proto import schema_pb2
-            from google.protobuf import text_format
-        except ImportError as e:
+        if not PROTOBUF_AVAILABLE:
             raise ImportError(
                 "protobuf package is required for Protocol Buffers deserialization. "
                 "Install it with: pip install protobuf"
-            ) from e
+            )
 
         with open(filepath, 'r', encoding='utf-8') as f:
             proto_text = f.read()
 
-        proto_state = schema_pb2.ProcessorState()
-        text_format.Parse(proto_text, proto_state)
-
-        layers, documents, document_metadata, embeddings, semantic_relations, metadata = from_proto(proto_state)
+        layers, documents, document_metadata, embeddings, semantic_relations, metadata = deserialize_state(proto_text)
 
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())

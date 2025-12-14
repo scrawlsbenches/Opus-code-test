@@ -1,37 +1,108 @@
 """
-Protocol Buffers Serialization Module
+Protocol Buffers Serialization Facade
 =====================================
 
-Provides Protocol Buffers serialization for cross-language corpus sharing.
+Provides a clean API for Protocol Buffers text-format serialization.
 
-This module enables the Cortical Text Processor to serialize and deserialize
-its state using Protocol Buffers TEXT FORMAT, allowing corpus data to be:
-- Human-readable and diffable in git
-- Shared across different programming languages
-- Reviewed in pull requests
+This module hides protobuf implementation details and provides simple
+functions for serializing/deserializing processor state to git-friendly
+text format.
 
 Usage:
-    from cortical.proto.serialization import to_proto, from_proto
-    from google.protobuf import text_format
+    from cortical.proto import serialize_state, deserialize_state, PROTOBUF_AVAILABLE
 
-    # Convert processor state to protobuf
-    proto_state = to_proto(layers, documents, document_metadata,
-                           embeddings, semantic_relations, metadata)
+    if PROTOBUF_AVAILABLE:
+        # Serialize state to text
+        text = serialize_state(layers, documents, metadata, ...)
 
-    # Serialize to text format (git-friendly)
-    text_output = text_format.MessageToString(proto_state)
-
-    # Deserialize from text format
-    proto_state = ProcessorState()
-    text_format.Parse(text_input, proto_state)
-
-    # Convert back to Python objects
-    state = from_proto(proto_state)
+        # Deserialize text back to state
+        layers, docs, meta, emb, rels, info = deserialize_state(text)
 """
 
+from typing import Dict, List, Optional, Any, Tuple
+
+# Check if protobuf is available
+PROTOBUF_AVAILABLE = False
+_text_format = None
+_to_proto = None
+_from_proto = None
+_schema_pb2 = None
+
 try:
-    from .serialization import to_proto, from_proto
-    __all__ = ['to_proto', 'from_proto']
+    from google.protobuf import text_format as _text_format
+    from .serialization import to_proto as _to_proto, from_proto as _from_proto
+    from . import schema_pb2 as _schema_pb2
+    PROTOBUF_AVAILABLE = True
 except ImportError:
-    # Protobuf not installed - this is OK for core library functionality
-    __all__ = []
+    pass
+
+
+def serialize_state(
+    layers: Dict,
+    documents: Dict[str, str],
+    document_metadata: Optional[Dict[str, Dict[str, Any]]] = None,
+    embeddings: Optional[Dict[str, list]] = None,
+    semantic_relations: Optional[list] = None,
+    metadata: Optional[Dict] = None
+) -> str:
+    """
+    Serialize processor state to protobuf text format.
+
+    Args:
+        layers: Dictionary of CorticalLayer -> HierarchicalLayer
+        documents: Document collection {doc_id: content}
+        document_metadata: Per-document metadata
+        embeddings: Graph embeddings for terms
+        semantic_relations: Extracted semantic relations
+        metadata: Processor metadata (version, settings)
+
+    Returns:
+        Human-readable protobuf text format string
+
+    Raises:
+        ImportError: If protobuf package is not installed
+    """
+    if not PROTOBUF_AVAILABLE:
+        raise ImportError(
+            "protobuf package required for serialization. "
+            "Install with: pip install protobuf"
+        )
+
+    proto_state = _to_proto(
+        layers, documents, document_metadata,
+        embeddings, semantic_relations, metadata
+    )
+    return _text_format.MessageToString(proto_state)
+
+
+def deserialize_state(text: str) -> Tuple:
+    """
+    Deserialize protobuf text format to processor state.
+
+    Args:
+        text: Protobuf text format string
+
+    Returns:
+        Tuple of (layers, documents, document_metadata,
+                  embeddings, semantic_relations, metadata)
+
+    Raises:
+        ImportError: If protobuf package is not installed
+    """
+    if not PROTOBUF_AVAILABLE:
+        raise ImportError(
+            "protobuf package required for deserialization. "
+            "Install with: pip install protobuf"
+        )
+
+    proto_state = _schema_pb2.ProcessorState()
+    _text_format.Parse(text, proto_state)
+    return _from_proto(proto_state)
+
+
+# Export public API
+__all__ = [
+    'PROTOBUF_AVAILABLE',
+    'serialize_state',
+    'deserialize_state',
+]
