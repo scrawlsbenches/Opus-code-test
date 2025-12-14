@@ -47,6 +47,7 @@ dependencies = []
 dev = [
     "coverage>=7.0",
     "pytest>=7.0",
+    "mcp>=1.0",  # Required for MCP server tests
 ]
 
 [project.urls]
@@ -80,3 +81,10 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "if __name__ == .__main__.:",
 ]
+
+[tool.pytest.ini_options]
+# Treat warnings as errors to catch issues early
+filterwarnings = ["error"]
+# Exclude utility functions that start with test_ but aren't tests
+# The test_then_commit function in cli_wrapper.py is a utility, not a test
+python_functions = ["test_*", "!test_then_commit"]
