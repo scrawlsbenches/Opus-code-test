@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "6aa8",
   "started_at": "2025-12-14T17:13:01.505357",
-  "saved_at": "2025-12-14T20:56:22.394615",
+  "saved_at": "2025-12-14T21:37:01.725943",
   "tasks": [
     {
       "id": "T-20251214-171301-6aa8-001",
@@ -52,7 +52,7 @@
     {
       "id": "T-20251214-172216-6aa8-004",
       "title": "Auto-generate memory entries from completed tasks",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "feature",
       "description": "When a task is marked complete, offer to generate a memory entry:\n\n1. Extract task title, description, retrospective\n2. Create memory document with learnings\n3. Link to related files from task context\n4. Add tags from task category\n\nIntegration:\n- TaskSession.complete_task() could trigger this\n- Optional flag: --create-memory\n- Template pulls from task retrospective field\n\nBenefits:\n- Captures learnings automatically\n- Builds institutional memory from task work\n- Creates searchable knowledge base",
@@ -60,9 +60,9 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:22:16.074170",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T21:37:01.725943",
       "context": {},
-      "retrospective": null
+      "retrospective": "Added generate_memory_from_task() and create_memory_for_task() to task_utils.py"
     },
     {
       "id": "T-20251214-172238-6aa8-005",
@@ -97,7 +97,7 @@
     {
       "id": "T-20251214-172247-6aa8-007",
       "title": "Session handoff memory generator",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "feature",
       "description": "Generate memory documents for agent session continuity:\n\nWhen ending a session, create a handoff document containing:\n1. What was accomplished (from completed tasks)\n2. Current state (uncommitted changes, running processes)\n3. Blockers or issues encountered\n4. Suggested next steps\n5. Key context the next session needs\n\nIntegration:\n- Hook into session end (or manual trigger)\n- Pull from task retrospectives\n- Include git status summary\n- Link to relevant code locations\n\nFormat: memories/session-handoff-YYYY-MM-DD-HHMM.md\n\nThis enables smooth continuation across agent sessions\nand builds institutional memory of development flow.",
@@ -105,9 +105,9 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:22:47.634689",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T21:37:01.725943",
       "context": {},
-      "retrospective": null
+      "retrospective": "Implemented scripts/session_handoff.py with full CLI support"
     },
     {
       "id": "T-20251214-173831-6aa8-008",
@@ -157,7 +157,7 @@
     {
       "id": "T-20251214-174116-6aa8-011",
       "title": "Add markdown link checker to CI",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "infra",
       "description": "Add automated checking for broken links in markdown files.\n\nTools to consider:\n- markdown-link-check (npm)\n- mlc (rust-based, fast)\n- lychee (rust-based, comprehensive)\n\nCI integration:\n```yaml\nmarkdown-lint:\n  runs-on: ubuntu-latest\n  steps:\n    - uses: actions/checkout@v4\n    - name: Check markdown links\n      uses: gaurav-nelson/github-action-markdown-link-check@v1\n      with:\n        use-quiet-mode: 'yes'\n        config-file: '.markdown-link-check.json'\n```\n\nConfig file should:\n- Ignore external URLs (or check with timeout)\n- Check internal file references\n- Check anchor links (#section-name)\n- Whitelist known-good external domains\n\nAlso check:\n- [[wiki-style]] links resolve to real files\n- Code file references (cortical/foo.py:123) exist",
@@ -165,9 +165,9 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:41:16.926225",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T21:37:01.725943",
       "context": {},
-      "retrospective": null
+      "retrospective": "Added markdown-links job to CI with .markdown-link-check.json config"
     },
     {
       "id": "T-20251214-174530-6aa8-012",

@@ -427,3 +427,23 @@ jobs:
             else:
                 print('✅ No secrets detected in source files')
         PYTHON_SCRIPT
+
+  # ==========================================================================
+  # Markdown Link Checker (runs in parallel with all other jobs)
+  # Validates all markdown links are valid and not broken
+  # Non-blocking initially - will provide informational feedback only
+  # ==========================================================================
+  markdown-links:
+    name: "🔗 Markdown Links"
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Don't fail builds on broken links initially
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check markdown links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        config-file: '.markdown-link-check.json'
+        folder-path: '.'
+        file-extension: '.md'
