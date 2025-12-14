@@ -94,7 +94,7 @@ class Minicolumn:
         'document_ids', '_lateral_cache', '_lateral_cache_valid', 'typed_connections',
         'feedforward_sources', 'feedforward_connections', 'feedback_connections',
         'tfidf', 'tfidf_per_doc', 'pagerank', 'cluster_id',
-        'doc_occurrence_counts'
+        'doc_occurrence_counts', 'name_tokens'
     ]
     
     def __init__(self, id: str, content: str, layer: int):
@@ -123,6 +123,7 @@ class Minicolumn:
         self.pagerank = 1.0
         self.cluster_id: Optional[int] = None
         self.doc_occurrence_counts: Dict[str, int] = {}
+        self.name_tokens: Optional[Set[str]] = None  # Cached tokenized name for document minicolumns
 
     @property
     def lateral_connections(self) -> Dict[str, float]:
@@ -432,7 +433,7 @@ class Minicolumn:
         Returns:
             Dictionary representation of this minicolumn
         """
-        return {
+        d = {
             'id': self.id,
             'content': self.content,
             'layer': self.layer,
@@ -453,6 +454,10 @@ class Minicolumn:
             'cluster_id': self.cluster_id,
             'doc_occurrence_counts': self.doc_occurrence_counts
         }
+        # Only include name_tokens if it's set (for document minicolumns)
+        if self.name_tokens is not None:
+            d['name_tokens'] = list(self.name_tokens)
+        return d
     
     @classmethod
     def from_dict(cls, data: Dict) -> 'Minicolumn':
@@ -497,6 +502,8 @@ class Minicolumn:
         col.pagerank = data.get('pagerank', 1.0)
         col.cluster_id = data.get('cluster_id')
         col.doc_occurrence_counts = data.get('doc_occurrence_counts', {})
+        # Deserialize name_tokens if present (for document minicolumns)
+        col.name_tokens = set(data.get('name_tokens', [])) if data.get('name_tokens') else None
         return col
     
     def __repr__(self) -> str:

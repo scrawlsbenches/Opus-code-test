@@ -49,6 +49,7 @@ def find_documents_for_query(
         List of (doc_id, score) tuples ranked by relevance
     """
     layer0 = layers[CorticalLayer.TOKENS]
+    layer3 = layers[CorticalLayer.DOCUMENTS]
 
     query_terms = get_expanded_query_terms(
         query_text, layers, tokenizer,
@@ -77,8 +78,13 @@ def find_documents_for_query(
         partial_matches = []
 
         for doc_id in doc_scores:
-            # Tokenize document ID (handle underscores as separators)
-            doc_name_tokens = set(tokenizer.tokenize(doc_id.replace('_', ' ')))
+            # Use cached tokenized name if available, otherwise tokenize on-the-fly
+            doc_col = layer3.get_by_id(f"L3_{doc_id}")
+            if doc_col and hasattr(doc_col, 'name_tokens') and doc_col.name_tokens is not None:
+                doc_name_tokens = doc_col.name_tokens
+            else:
+                # Fallback for old data without cached tokens (or mock objects in tests)
+                doc_name_tokens = set(tokenizer.tokenize(doc_id.replace('_', ' ')))
             # Count how many query tokens appear in doc name
             matches = len(query_tokens & doc_name_tokens)
             if matches > 0:
