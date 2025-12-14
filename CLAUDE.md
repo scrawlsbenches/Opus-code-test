@@ -42,6 +42,12 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 - Say "I don't know" when uncertain, then investigate
 - Correct course based on evidence, not pride
 
+**Native Over External**
+- Prefer implementing features ourselves over 3rd party APIs/actions
+- External dependencies add maintenance burden and security risk
+- If we can build it in <200 lines, build it ourselves
+- Avoid deprecated or unmaintained external tools
+
 When you see "neural" or "cortical" in this codebase, remember: these are metaphors for standard IR algorithms, not actual neural implementations.
 
 ---
@@ -935,6 +941,12 @@ python scripts/profile_full_analysis.py
 | Check coverage | `python -m coverage run --source=cortical -m pytest tests/ && python -m coverage report --include="cortical/*"` |
 | Run showcase | `python showcase.py` |
 | Profile analysis | `python scripts/profile_full_analysis.py` |
+| Create memory | `python scripts/new_memory.py "topic"` |
+| Create decision | `python scripts/new_memory.py "topic" --decision` |
+| Session handoff | `python scripts/session_handoff.py` |
+| Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
+| Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
+| Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
 
 ---
 
