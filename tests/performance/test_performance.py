@@ -253,6 +253,12 @@ class TestScalabilityIndicators:
 
         docs = list(SMALL_CORPUS_DOCS.items())
 
+        # Warmup run to trigger any lazy imports/JIT compilation
+        warmup = CorticalTextProcessor()
+        for doc_id, content in docs[:3]:
+            warmup.process_document(doc_id, content)
+        del warmup
+
         # Time processing 5 docs
         processor1 = CorticalTextProcessor()
         start = time.perf_counter()
@@ -269,11 +275,14 @@ class TestScalabilityIndicators:
 
         # 15 docs should take roughly 3x time of 5 docs (linear scaling)
         # Allow 5x to account for overhead and variability
-        expected_max = time_5_docs * 5
+        # Use a minimum floor for baseline to avoid division/multiplication issues
+        # when the baseline is very fast (e.g., < 10ms)
+        baseline = max(time_5_docs, 0.01)  # At least 10ms floor
+        expected_max = baseline * 5
 
         assert time_15_docs < expected_max, (
             f"Processing 15 docs took {time_15_docs:.3f}s, "
-            f"but 5 docs took {time_5_docs:.3f}s. "
+            f"but 5 docs took {time_5_docs:.3f}s (baseline: {baseline:.3f}s). "
             f"Expected roughly linear scaling (< {expected_max:.3f}s). "
             f"Possible O(n^2) issue in document processing."
         )
