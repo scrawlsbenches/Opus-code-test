@@ -92,6 +92,12 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 | [security-knowledge-transfer.md](security-knowledge-transfer.md) | Full security review and findings |
 | [mcp-security.md](mcp-security.md) | MCP server security model and deployment |
 
+### Session Knowledge Transfer
+
+| Document | Purpose |
+|----------|---------|
+| [session-2025-12-14-security-and-features.md](session-2025-12-14-security-and-features.md) | Security hardening, semantic diff feature, CI fixes |
+
 ---
 
 ## Additional Resources
@@ -103,4 +109,4 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 
 ---
 
-*Last updated: 2025-12-12*
+*Last updated: 2025-12-14*
