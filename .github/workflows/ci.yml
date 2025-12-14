@@ -40,6 +40,8 @@ name: CI - Test Suite
 
 on:
   push:
+    branches:
+      - '**'  # Run on all branch pushes (explicit)
   pull_request:
     branches: [ main ]
   workflow_dispatch:  # Allow manual triggering
