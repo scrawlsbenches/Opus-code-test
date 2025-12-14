@@ -1,0 +1,15 @@
+Incident Response Procedures
+
+Incident response provides a structured approach to handling security breaches and cyberattacks. Preparation, detection, containment, eradication, recovery, and lessons learned form the incident response lifecycle. Having documented procedures before incidents occur enables faster, more effective response under pressure.
+
+Preparation establishes incident response capabilities before they're needed. Response teams with defined roles and communication channels coordinate effectively during incidents. Playbooks document procedures for common incident types. Regular tabletop exercises and simulations validate preparedness. Relationships with external resources like forensics firms and law enforcement facilitate response when needed.
+
+Detection and analysis identify that an incident has occurred and assess its scope. Security monitoring, intrusion detection, and user reports surface potential incidents. Triage prioritizes response based on severity and business impact. Initial analysis determines attack vectors, affected systems, and whether the attack is ongoing. Preserving evidence enables later forensic analysis and potential legal action.
+
+Containment limits damage while maintaining evidence for investigation. Short-term containment stops immediate harm, perhaps by isolating affected systems. Long-term containment allows continued operation while preparing permanent fixes. Containment strategies balance business continuity against security risks. Documentation captures actions taken and their effects.
+
+Eradication removes the attacker's presence from the environment. Malware removal, account cleanup, and vulnerability patching eliminate the initial access vector. Validation confirms removal was complete. Root cause analysis identifies how the attack succeeded to prevent recurrence. System hardening addresses weaknesses that enabled the breach.
+
+Recovery restores normal operations with confidence that threats are eliminated. Phased restoration prioritizes critical systems. Monitoring for reinfection or attacker return continues through recovery. Business validation confirms systems function correctly. Communication with stakeholders maintains trust and meets disclosure requirements.
+
+Post-incident activities improve future response. Lessons learned sessions identify what worked and what needs improvement. Metrics track response effectiveness over time. Updated procedures incorporate lessons learned. Threat intelligence sharing helps the broader community defend against similar attacks.

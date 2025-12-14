@@ -79,6 +79,10 @@ class SecurityShowcase:
         "static_analysis_tools",
         "input_validation_patterns",
         "authentication_patterns",
+        "network_security_fundamentals",
+        "incident_response_procedures",
+        "penetration_testing_methodology",
+        "security_compliance_frameworks",
     ]
 
     def __init__(self, samples_dir: str = "samples"):
