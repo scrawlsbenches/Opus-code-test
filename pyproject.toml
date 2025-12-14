@@ -85,4 +85,9 @@ exclude_lines = [
 
 [tool.pytest.ini_options]
 # Treat warnings as errors to catch issues early
-filterwarnings = ["error"]
+# But allow our intentional deprecation warnings
+filterwarnings = [
+    "error",
+    # Allow our intentional pickle deprecation warnings (SEC-008)
+    "ignore:Pickle format is deprecated:DeprecationWarning",
+]
