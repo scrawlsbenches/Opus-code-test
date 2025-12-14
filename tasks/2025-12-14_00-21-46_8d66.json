@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "session_id": "8d66",
+  "started_at": "2025-12-14T00:21:46.447704",
+  "saved_at": "2025-12-14T00:27:34.846899",
+  "tasks": [
+    {
+      "id": "T-20251214-002146-8d66-001",
+      "title": "Add session context generator for agent handoff",
+      "status": "pending",
+      "priority": "high",
+      "category": "agent-dx",
+      "description": "When a new agent session starts, generate a concise \"catch-up\" summary:\n- What work was done in the last N sessions\n- Current pending tasks sorted by priority\n- Recent file changes with semantic summaries\n- Key decisions made (from commit messages)\n\nThis reduces the 'cold start' problem where agents spend time re-understanding context.\n\nImplementation:\n- scripts/session_context.py with SessionContextGenerator class\n- Read from tasks/*.json for pending/completed work\n- Use git log for recent changes\n- Output: markdown summary suitable for agent consumption",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-14T00:21:46.447746",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {
+        "files": [
+          "scripts/task_utils.py",
+          "scripts/consolidate_tasks.py"
+        ],
+        "patterns": [
+          "chunk_index.py for similar git-friendly storage"
+        ]
+      }
+    },
+    {
+      "id": "T-20251214-002146-8d66-002",
+      "title": "Implement state_storage.py (Phase 1 of Task #206)",
+      "status": "completed",
+      "priority": "high",
+      "category": "arch",
+      "description": "Create cortical/state_storage.py with StateWriter and StateLoader classes.\nThis is Phase 1 of Task #206 (git-friendly pkl replacement).\n\nKey classes:\n- StateWriter: serialize layers, connections, computed values to JSON\n- StateLoader: load state with hash validation  \n- StateManifest: track versions, checksums, staleness\n\nDesign follows chunk_index.py pattern:\n- Append-only where possible\n- Content hashing for change detection\n- Split large state into multiple files\n\nFiles to create:\n- cortical/state_storage.py (main module)\n- tests/unit/test_state_storage.py (unit tests)\n\nLeverage existing:\n- Minicolumn.to_dict()/from_dict()\n- HierarchicalLayer.to_dict()/from_dict()\n- ChunkWriter/ChunkLoader patterns",
+      "depends_on": [],
+      "effort": "large",
+      "created_at": "2025-12-14T00:21:46.447756",
+      "updated_at": "2025-12-14T00:27:34.846812",
+      "completed_at": "2025-12-14T00:27:34.846812",
+      "context": {
+        "files": [
+          "cortical/persistence.py",
+          "cortical/chunk_index.py",
+          "cortical/minicolumn.py",
+          "cortical/layers.py"
+        ],
+        "methods": [
+          "save_processor()",
+          "load_processor()",
+          "ChunkWriter",
+          "ChunkLoader"
+        ]
+      }
+    },
+    {
+      "id": "T-20251214-002146-8d66-003",
+      "title": "Add progress checkpointing for compute_all()",
+      "status": "pending",
+      "priority": "medium",
+      "category": "agent-dx",
+      "description": "When compute_all() runs on large corpora, it can take 10+ minutes.\nIf the agent session times out, all work is lost.\n\nSolution: Add checkpointing after each major phase:\n1. After TF-IDF computation - save partial state\n2. After bigram connections - save partial state  \n3. After PageRank - save partial state\n4. After concepts - save partial state\n5. After semantics - final save\n\nBenefits:\n- Resume from checkpoint if session times out\n- Progress visibility (which phase are we on)\n- Partial results usable even if later phases fail\n\nImplementation:\n- Add checkpoint_dir parameter to compute_all()\n- Save phase completions as JSON markers\n- Add resume_from_checkpoint() method",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-14T00:21:46.447764",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {
+        "files": [
+          "cortical/processor.py"
+        ],
+        "methods": [
+          "compute_all()",
+          "compute_tfidf()",
+          "compute_bigram_connections()"
+        ]
+      }
+    },
+    {
+      "id": "T-20251214-002146-8d66-004",
+      "title": "Auto-suggest tasks from code changes",
+      "status": "pending",
+      "priority": "low",
+      "category": "agent-dx",
+      "description": "When code is modified, automatically suggest follow-up tasks:\n- Tests added? Suggest running test suite\n- New public method? Suggest adding docstring\n- Performance-sensitive code changed? Suggest profiling\n- Validation logic changed? Suggest checking all related tests\n\nUses the semantic understanding from Cortical to identify patterns.\n\nImplementation:\n- scripts/suggest_tasks.py\n- Hook into git pre-commit or post-commit\n- Output task suggestions in merge-friendly format",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-14T00:21:46.447781",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {
+        "files": [
+          "scripts/task_utils.py",
+          "cortical/semantics.py"
+        ],
+        "patterns": [
+          "Could use search_codebase.py patterns"
+        ]
+      }
+    }
+  ]
+}
