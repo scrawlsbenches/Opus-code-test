@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "session_id": "3058",
+  "started_at": "2025-12-14T23:31:16.044725",
+  "saved_at": "2025-12-14T23:31:43.882558",
+  "tasks": [
+    {
+      "id": "T-20251214-233116-3058-001",
+      "title": "Weight lateral connections by TF-IDF in query expansion",
+      "status": "pending",
+      "priority": "medium",
+      "category": "bugfix",
+      "description": "Incorporate IDF into lateral expansion scoring at cortical/query/expansion.py:164 to penalize ubiquitous terms. Currently: score = weight * neighbor.pagerank * 0.6. Proposed: Add idf_factor to penalize terms that appear everywhere. Medium risk - requires testing to ensure good queries aren't hurt.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-14T23:31:16.045127",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251214-233136-3058-002",
+      "title": "Enable code stop word filtering by default in search",
+      "status": "pending",
+      "priority": "high",
+      "category": "bugfix",
+      "description": "Set filter_code_stop_words=True by default in find_documents_for_query() at cortical/query/search.py:54-59. This filters ubiquitous code tokens (def, self, return) from expansion, reducing noise in code search results. Low risk - filtering logic already exists and is tested.",
+      "depends_on": [],
+      "effort": "small",
+      "created_at": "2025-12-14T23:31:36.020301",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251214-233140-3058-003",
+      "title": "Apply test file penalty by default in search",
+      "status": "pending",
+      "priority": "high",
+      "category": "bugfix",
+      "description": "Detect test files and apply 0.8 penalty in find_documents_for_query() at cortical/query/search.py. Files matching tests/ or test_ pattern should be penalized. Penalty already defined in constants.py. Low risk - easy implementation.",
+      "depends_on": [],
+      "effort": "small",
+      "created_at": "2025-12-14T23:31:40.104443",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251214-233143-3058-004",
+      "title": "Add security concept group to code_concepts.py",
+      "status": "pending",
+      "priority": "medium",
+      "category": "feature",
+      "description": "Add security-related terms to CODE_CONCEPT_GROUPS in cortical/code_concepts.py. Include: security, sanitize, validate, escape, injection, xss, csrf, fuzzing, exploit, vulnerability, attack, defense, protect, encrypt, decrypt, hash, permission, credential, token. Enables better query expansion for security-related searches.",
+      "depends_on": [],
+      "effort": "small",
+      "created_at": "2025-12-14T23:31:43.882369",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    }
+  ]
+}
