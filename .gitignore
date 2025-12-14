@@ -86,3 +86,4 @@ nunit-*.xml
 # Indexer progress files
 .index_progress.json
 .index_incremental_progress.json
+tasks/.current_session.json

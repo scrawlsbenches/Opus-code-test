@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "session_id": "e233",
+  "started_at": "2025-12-13T22:32:34.072421",
+  "saved_at": "2025-12-13T23:48:47.611980",
+  "tasks": [
+    {
+      "id": "T-20251213-223234-e233-01",
+      "title": "Document dog-fooding workflow",
+      "status": "completed",
+      "priority": "high",
+      "category": "docs",
+      "description": "Create a practical guide for using the task system in daily work",
+      "depends_on": [],
+      "effort": "small",
+      "created_at": "2025-12-13T22:32:34.072535",
+      "updated_at": "2025-12-13T23:48:47.611790",
+      "completed_at": "2025-12-13T23:48:47.611790",
+      "context": {
+        "files": [
+          "docs/merge-friendly-tasks.md"
+        ]
+      }
+    },
+    {
+      "id": "T-20251213-223234-e233-02",
+      "title": "Add convenience script for quick task creation",
+      "status": "completed",
+      "priority": "medium",
+      "category": "devex",
+      "description": "One-liner to create task from command line",
+      "depends_on": [
+        "T-20251213-223234-e233-01"
+      ],
+      "effort": "small",
+      "created_at": "2025-12-13T22:32:34.072592",
+      "updated_at": "2025-12-13T22:33:26.107132",
+      "completed_at": "2025-12-13T22:33:26.107132",
+      "context": {}
+    },
+    {
+      "id": "T-20251213-223234-e233-03",
+      "title": "Test task recovery from crash scenario",
+      "status": "pending",
+      "priority": "medium",
+      "category": "test",
+      "description": "Verify tasks persist correctly if agent crashes mid-work",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-13T22:32:34.072623",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {}
+    }
+  ]
+}

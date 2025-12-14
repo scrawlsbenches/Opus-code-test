@@ -1,0 +1,75 @@
+# Workflow: Bug Fix
+# Creates a standard set of tasks for fixing bugs
+
+name: "Bug Fix"
+description: "Investigation -> Fix -> Test -> Document"
+category: "bugfix"
+
+# Variables that will be prompted or provided
+variables:
+  - name: bug_title
+    description: "Brief description of the bug"
+    required: true
+  - name: priority
+    description: "Bug priority"
+    default: "high"
+    choices: ["high", "medium", "low"]
+  - name: affected_file
+    description: "Primary file affected (optional)"
+    required: false
+
+tasks:
+  - id: investigate
+    title: "Investigate: {bug_title}"
+    category: "research"
+    priority: "{priority}"
+    effort: "small"
+    description: |
+      Investigate the root cause of: {bug_title}
+
+      Steps:
+      1. Reproduce the issue
+      2. Identify the root cause
+      3. Document findings in task notes
+
+  - id: fix
+    title: "Fix: {bug_title}"
+    category: "bugfix"
+    priority: "{priority}"
+    effort: "medium"
+    depends_on: [investigate]
+    description: |
+      Implement the fix for: {bug_title}
+
+      Checklist:
+      - [ ] Fix implemented
+      - [ ] Code follows existing patterns
+      - [ ] No new warnings introduced
+
+  - id: test
+    title: "Add regression test for: {bug_title}"
+    category: "test"
+    priority: "high"
+    effort: "small"
+    depends_on: [fix]
+    description: |
+      Add test(s) to prevent regression.
+
+      Requirements:
+      - Test should fail without the fix
+      - Test should pass with the fix
+      - Test covers edge cases
+
+  - id: document
+    title: "Document fix for: {bug_title}"
+    category: "docs"
+    priority: "low"
+    effort: "small"
+    depends_on: [fix]
+    description: |
+      Update any relevant documentation.
+
+      Consider:
+      - CHANGELOG entry
+      - Code comments if complex
+      - Update troubleshooting docs if user-facing
