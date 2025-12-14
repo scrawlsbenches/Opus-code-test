@@ -5,9 +5,12 @@ Cortical Text Processor - Main processor class that orchestrates all components.
 import os
 import re
 import logging
-from typing import Dict, List, Tuple, Optional, Any
+import json
+from typing import Dict, List, Tuple, Optional, Any, Set
 import copy
 from collections import defaultdict
+from pathlib import Path
+from datetime import datetime
 
 from .tokenizer import Tokenizer
 from .minicolumn import Minicolumn
@@ -20,6 +23,7 @@ from . import query as query_module
 from . import gaps as gaps_module
 from . import persistence
 from . import fingerprint as fp_module
+from . import state_storage
 from .progress import (
     ProgressReporter,
     ConsoleProgressReporter,
@@ -119,7 +123,10 @@ class CorticalTextProcessor:
         
         doc_col = layer3.get_or_create_minicolumn(doc_id)
         doc_col.occurrence_count += 1
-        
+        # Cache tokenized document name for fast doc_name_boost in search
+        # This avoids re-tokenizing the doc_id on every query
+        doc_col.name_tokens = set(self.tokenizer.tokenize(doc_id.replace('_', ' ')))
+
         for token in tokens:
             col = layer0.get_or_create_minicolumn(token)
             col.occurrence_count += 1
@@ -642,7 +649,9 @@ class CorticalTextProcessor:
         cluster_strictness: float = 1.0,
         bridge_weight: float = 0.0,
         progress_callback: Optional[ProgressReporter] = None,
-        show_progress: bool = False
+        show_progress: bool = False,
+        checkpoint_dir: Optional[str] = None,
+        resume: bool = False
     ) -> Dict[str, Any]:
         """
         Run all computation steps.
@@ -668,6 +677,10 @@ class CorticalTextProcessor:
                 Higher values help bridge topic-isolated clusters.
             progress_callback: Optional ProgressReporter for custom progress tracking
             show_progress: Show progress bar on console (uses stderr)
+            checkpoint_dir: Directory to save checkpoints after each phase (enables checkpointing).
+                If None (default), no checkpointing is performed.
+            resume: If True, resume from last checkpoint in checkpoint_dir.
+                Requires checkpoint_dir to be set.
 
         Returns:
             Dict with computation statistics (concept_stats, etc.)
@@ -692,8 +705,22 @@ class CorticalTextProcessor:
             ...     cluster_strictness=0.5,
             ...     bridge_weight=0.3
             ... )
+            >>>
+            >>> # With checkpointing for long-running operations
+            >>> processor.compute_all(checkpoint_dir='checkpoints')
+            >>>
+            >>> # Resume from checkpoint after crash/timeout
+            >>> processor = CorticalTextProcessor.resume_from_checkpoint('checkpoints')
+            >>> processor.compute_all(checkpoint_dir='checkpoints', resume=True)
         """
         stats: Dict[str, Any] = {}
+
+        # Load checkpoint progress if resuming
+        completed_phases: Set[str] = set()
+        if resume and checkpoint_dir:
+            completed_phases = self._load_checkpoint_progress(checkpoint_dir)
+            if verbose and completed_phases:
+                logger.info(f"Resuming from checkpoint with {len(completed_phases)} completed phases")
 
         # Set up progress reporter
         if progress_callback:
@@ -726,76 +753,132 @@ class CorticalTextProcessor:
         progress = MultiPhaseProgress(reporter, phase_weights)
 
         # Phase 1: Activation propagation
-        progress.start_phase("Activation propagation")
-        if verbose:
-            logger.info("Computing activation propagation...")
-        self.propagate_activation(verbose=False)
-        progress.update(100)
-        progress.complete_phase()
+        phase_name = "activation_propagation"
+        if phase_name in completed_phases:
+            if verbose:
+                logger.info("  Skipping activation propagation (already checkpointed)")
+        else:
+            progress.start_phase("Activation propagation")
+            if verbose:
+                logger.info("Computing activation propagation...")
+            self.propagate_activation(verbose=False)
+            progress.update(100)
+            progress.complete_phase()
+
+            # Save checkpoint after phase
+            if checkpoint_dir:
+                self._save_checkpoint(checkpoint_dir, phase_name, verbose=verbose)
 
         # Phase 2: PageRank (varies by method)
-        progress.start_phase("PageRank computation")
-        if pagerank_method == 'semantic':
-            # Extract semantic relations if not already done
-            if not self.semantic_relations:
-                if verbose:
-                    logger.info("Extracting semantic relations...")
-                progress.update(30, "Extracting semantic relations")
-                self.extract_corpus_semantics(verbose=False)
+        phase_name = f"pagerank_{pagerank_method}"
+        if phase_name in completed_phases:
             if verbose:
-                logger.info("Computing importance (Semantic PageRank)...")
-            progress.update(70, "Computing semantic PageRank")
-            self.compute_semantic_importance(verbose=False)
-        elif pagerank_method == 'hierarchical':
-            if verbose:
-                logger.info("Computing importance (Hierarchical PageRank)...")
-            progress.update(50, "Computing hierarchical PageRank")
-            self.compute_hierarchical_importance(verbose=False)
+                logger.info(f"  Skipping PageRank computation ({pagerank_method}) (already checkpointed)")
         else:
-            if verbose:
-                logger.info("Computing importance (PageRank)...")
-            progress.update(50, "Computing PageRank")
-            self.compute_importance(verbose=False)
-        progress.update(100)
-        progress.complete_phase()
+            progress.start_phase("PageRank computation")
+            if pagerank_method == 'semantic':
+                # Extract semantic relations if not already done
+                if not self.semantic_relations:
+                    if verbose:
+                        logger.info("Extracting semantic relations...")
+                    progress.update(30, "Extracting semantic relations")
+                    self.extract_corpus_semantics(verbose=False)
+                if verbose:
+                    logger.info("Computing importance (Semantic PageRank)...")
+                progress.update(70, "Computing semantic PageRank")
+                self.compute_semantic_importance(verbose=False)
+            elif pagerank_method == 'hierarchical':
+                if verbose:
+                    logger.info("Computing importance (Hierarchical PageRank)...")
+                progress.update(50, "Computing hierarchical PageRank")
+                self.compute_hierarchical_importance(verbose=False)
+            else:
+                if verbose:
+                    logger.info("Computing importance (PageRank)...")
+                progress.update(50, "Computing PageRank")
+                self.compute_importance(verbose=False)
+            progress.update(100)
+            progress.complete_phase()
+
+            # Save checkpoint after phase
+            if checkpoint_dir:
+                self._save_checkpoint(checkpoint_dir, phase_name, verbose=verbose)
 
         # Phase 3: TF-IDF
-        progress.start_phase("TF-IDF computation")
-        if verbose:
-            logger.info("Computing TF-IDF...")
-        self.compute_tfidf(verbose=False)
-        progress.update(100)
-        progress.complete_phase()
+        phase_name = "tfidf"
+        if phase_name in completed_phases:
+            if verbose:
+                logger.info("  Skipping TF-IDF computation (already checkpointed)")
+        else:
+            progress.start_phase("TF-IDF computation")
+            if verbose:
+                logger.info("Computing TF-IDF...")
+            self.compute_tfidf(verbose=False)
+            progress.update(100)
+            progress.complete_phase()
+
+            # Save checkpoint after phase
+            if checkpoint_dir:
+                self._save_checkpoint(checkpoint_dir, phase_name, verbose=verbose)
 
         # Phase 4: Document connections
-        progress.start_phase("Document connections")
-        if verbose:
-            logger.info("Computing document connections...")
-        self.compute_document_connections(verbose=False)
-        progress.update(100)
-        progress.complete_phase()
+        phase_name = "document_connections"
+        if phase_name in completed_phases:
+            if verbose:
+                logger.info("  Skipping document connections (already checkpointed)")
+        else:
+            progress.start_phase("Document connections")
+            if verbose:
+                logger.info("Computing document connections...")
+            self.compute_document_connections(verbose=False)
+            progress.update(100)
+            progress.complete_phase()
+
+            # Save checkpoint after phase
+            if checkpoint_dir:
+                self._save_checkpoint(checkpoint_dir, phase_name, verbose=verbose)
 
         # Phase 5: Bigram connections
-        progress.start_phase("Bigram connections")
-        if verbose:
-            logger.info("Computing bigram connections...")
-        self.compute_bigram_connections(verbose=False)
-        progress.update(100)
-        progress.complete_phase()
+        phase_name = "bigram_connections"
+        if phase_name in completed_phases:
+            if verbose:
+                logger.info("  Skipping bigram connections (already checkpointed)")
+        else:
+            progress.start_phase("Bigram connections")
+            if verbose:
+                logger.info("Computing bigram connections...")
+            self.compute_bigram_connections(verbose=False)
+            progress.update(100)
+            progress.complete_phase()
+
+            # Save checkpoint after phase
+            if checkpoint_dir:
+                self._save_checkpoint(checkpoint_dir, phase_name, verbose=verbose)
 
         if build_concepts:
             # Phase 6: Concept clustering
-            progress.start_phase("Concept clustering")
-            if verbose:
-                logger.info("Building concept clusters...")
-            clusters = self.build_concept_clusters(
-                cluster_strictness=cluster_strictness,
-                bridge_weight=bridge_weight,
-                verbose=False
-            )
-            stats['clusters_created'] = len(clusters)
-            progress.update(100)
-            progress.complete_phase()
+            phase_name = "concept_clustering"
+            if phase_name in completed_phases:
+                if verbose:
+                    logger.info("  Skipping concept clustering (already checkpointed)")
+                # Load clusters count from previous run if available
+                stats['clusters_created'] = len([c for c in self.layers[CorticalLayer.CONCEPTS].minicolumns.values()])
+            else:
+                progress.start_phase("Concept clustering")
+                if verbose:
+                    logger.info("Building concept clusters...")
+                clusters = self.build_concept_clusters(
+                    cluster_strictness=cluster_strictness,
+                    bridge_weight=bridge_weight,
+                    verbose=False
+                )
+                stats['clusters_created'] = len(clusters)
+                progress.update(100)
+                progress.complete_phase()
+
+                # Save checkpoint after phase
+                if checkpoint_dir:
+                    self._save_checkpoint(checkpoint_dir, phase_name, verbose=verbose)
 
             # Determine connection parameters based on strategy
             use_member_semantics = connection_strategy in ('semantic', 'hybrid')
@@ -803,21 +886,39 @@ class CorticalTextProcessor:
 
             # Phase 7: Semantic extraction (if needed)
             if use_member_semantics and not self.semantic_relations:
-                progress.start_phase("Semantic extraction")
-                if verbose:
-                    logger.info("Extracting semantic relations...")
-                self.extract_corpus_semantics(verbose=False)
-                progress.update(100)
-                progress.complete_phase()
+                phase_name = "semantic_extraction"
+                if phase_name in completed_phases:
+                    if verbose:
+                        logger.info("  Skipping semantic extraction (already checkpointed)")
+                else:
+                    progress.start_phase("Semantic extraction")
+                    if verbose:
+                        logger.info("Extracting semantic relations...")
+                    self.extract_corpus_semantics(verbose=False)
+                    progress.update(100)
+                    progress.complete_phase()
+
+                    # Save checkpoint after phase
+                    if checkpoint_dir:
+                        self._save_checkpoint(checkpoint_dir, phase_name, verbose=verbose)
 
             # Phase 8: Graph embeddings (if needed)
             if use_embedding_similarity and not self.embeddings:
-                progress.start_phase("Graph embeddings")
-                if verbose:
-                    logger.info("Computing graph embeddings...")
-                self.compute_graph_embeddings(verbose=False)
-                progress.update(100)
-                progress.complete_phase()
+                phase_name = "graph_embeddings"
+                if phase_name in completed_phases:
+                    if verbose:
+                        logger.info("  Skipping graph embeddings (already checkpointed)")
+                else:
+                    progress.start_phase("Graph embeddings")
+                    if verbose:
+                        logger.info("Computing graph embeddings...")
+                    self.compute_graph_embeddings(verbose=False)
+                    progress.update(100)
+                    progress.complete_phase()
+
+                    # Save checkpoint after phase
+                    if checkpoint_dir:
+                        self._save_checkpoint(checkpoint_dir, phase_name, verbose=verbose)
 
             # Set thresholds based on strategy
             if connection_strategy == 'hybrid':
@@ -831,19 +932,30 @@ class CorticalTextProcessor:
                 min_jaccard = 0.1
 
             # Phase 9: Concept connections
-            progress.start_phase("Concept connections")
-            if verbose:
-                logger.info(f"Computing concept connections ({connection_strategy})...")
-            concept_stats = self.compute_concept_connections(
-                use_member_semantics=use_member_semantics,
-                use_embedding_similarity=use_embedding_similarity,
-                min_shared_docs=min_shared_docs,
-                min_jaccard=min_jaccard,
-                verbose=False
-            )
-            stats['concept_connections'] = concept_stats
-            progress.update(100)
-            progress.complete_phase()
+            phase_name = f"concept_connections_{connection_strategy}"
+            if phase_name in completed_phases:
+                if verbose:
+                    logger.info(f"  Skipping concept connections ({connection_strategy}) (already checkpointed)")
+                # Try to get stats from existing connections
+                stats['concept_connections'] = {'strategy': connection_strategy}
+            else:
+                progress.start_phase("Concept connections")
+                if verbose:
+                    logger.info(f"Computing concept connections ({connection_strategy})...")
+                concept_stats = self.compute_concept_connections(
+                    use_member_semantics=use_member_semantics,
+                    use_embedding_similarity=use_embedding_similarity,
+                    min_shared_docs=min_shared_docs,
+                    min_jaccard=min_jaccard,
+                    verbose=False
+                )
+                stats['concept_connections'] = concept_stats
+                progress.update(100)
+                progress.complete_phase()
+
+                # Save checkpoint after phase
+                if checkpoint_dir:
+                    self._save_checkpoint(checkpoint_dir, phase_name, verbose=verbose)
 
         # Mark core computations as fresh
         fresh_comps = [
@@ -864,7 +976,121 @@ class CorticalTextProcessor:
             logger.info("Done.")
 
         return stats
-    
+
+    def _save_checkpoint(self, checkpoint_dir: str, completed_phase: str, verbose: bool = True) -> None:
+        """
+        Save checkpoint after completing a phase.
+
+        Args:
+            checkpoint_dir: Directory to save checkpoint files
+            completed_phase: Name of the phase that was just completed
+            verbose: Print progress messages
+        """
+        checkpoint_path = Path(checkpoint_dir)
+        checkpoint_path.mkdir(parents=True, exist_ok=True)
+
+        # Save current state using save_json
+        self.save_json(checkpoint_dir, force=True, verbose=False)
+
+        # Track completed phases in a separate progress file
+        progress_file = checkpoint_path / 'checkpoint_progress.json'
+        progress_data = {
+            'completed_phases': [],
+            'last_updated': datetime.now().isoformat()
+        }
+
+        # Load existing progress if it exists
+        if progress_file.exists():
+            try:
+                with open(progress_file, 'r', encoding='utf-8') as f:
+                    progress_data = json.load(f)
+            except (json.JSONDecodeError, IOError):
+                pass  # Use fresh progress data
+
+        # Add newly completed phase
+        if completed_phase not in progress_data['completed_phases']:
+            progress_data['completed_phases'].append(completed_phase)
+            progress_data['last_updated'] = datetime.now().isoformat()
+
+        # Write progress file atomically
+        temp_progress_file = progress_file.with_suffix('.json.tmp')
+        try:
+            with open(temp_progress_file, 'w', encoding='utf-8') as f:
+                json.dump(progress_data, f, indent=2, ensure_ascii=False)
+            temp_progress_file.replace(progress_file)
+        except Exception:
+            if temp_progress_file.exists():
+                temp_progress_file.unlink()
+            raise
+
+        if verbose:
+            logger.info(f"  Checkpoint saved: {completed_phase}")
+
+    def _load_checkpoint_progress(self, checkpoint_dir: str) -> Set[str]:
+        """
+        Load completed phases from checkpoint directory.
+
+        Args:
+            checkpoint_dir: Directory containing checkpoint files
+
+        Returns:
+            Set of completed phase names
+        """
+        progress_file = Path(checkpoint_dir) / 'checkpoint_progress.json'
+        if not progress_file.exists():
+            return set()
+
+        try:
+            with open(progress_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return set(data.get('completed_phases', []))
+        except (json.JSONDecodeError, IOError) as e:
+            logger.warning(f"Failed to load checkpoint progress: {e}")
+            return set()
+
+    @classmethod
+    def resume_from_checkpoint(
+        cls,
+        checkpoint_dir: str,
+        config: Optional[CorticalConfig] = None,
+        verbose: bool = True
+    ) -> 'CorticalTextProcessor':
+        """
+        Resume processing from a checkpoint directory.
+
+        This is a convenience method that loads the processor state from
+        a checkpoint directory created by compute_all() with checkpointing enabled.
+
+        Args:
+            checkpoint_dir: Directory containing checkpoint files
+            config: Optional configuration (default: uses CorticalConfig defaults)
+            verbose: Print progress messages
+
+        Returns:
+            Reconstructed CorticalTextProcessor instance ready to resume computation
+
+        Raises:
+            FileNotFoundError: If checkpoint directory doesn't exist
+
+        Example:
+            >>> # After a crash during compute_all()
+            >>> processor = CorticalTextProcessor.resume_from_checkpoint('checkpoints')
+            >>> # Continue from where it left off
+            >>> processor.compute_all(checkpoint_dir='checkpoints', resume=True)
+        """
+        if verbose:
+            logger.info(f"Resuming from checkpoint: {checkpoint_dir}")
+
+        # Load the processor state from JSON
+        processor = cls.load_json(checkpoint_dir, config=config, verbose=verbose)
+
+        # Load and display progress
+        progress = processor._load_checkpoint_progress(checkpoint_dir)
+        if verbose and progress:
+            logger.info(f"Found {len(progress)} completed phases: {', '.join(sorted(progress))}")
+
+        return processor
+
     def propagate_activation(self, iterations: int = 3, decay: float = 0.8, verbose: bool = True) -> None:
         analysis.propagate_activation(self.layers, iterations, decay)
         if verbose: logger.info(f"Propagated activation ({iterations} iterations)")
@@ -2676,7 +2902,147 @@ class CorticalTextProcessor:
         processor.embeddings = embeddings
         processor.semantic_relations = semantic_relations
         return processor
-    
+
+    def save_json(self, state_dir: str, force: bool = False, verbose: bool = True) -> Dict[str, bool]:
+        """
+        Save processor state to git-friendly JSON format.
+
+        Instead of a single monolithic pickle file, creates a directory with:
+        - manifest.json: Version, checksums, staleness tracking
+        - documents.json: Document content and metadata
+        - layers/*.json: One file per layer (tokens, bigrams, concepts, documents)
+        - computed/*.json: Semantic relations and embeddings
+
+        Benefits over pickle:
+        - Git-friendly (can diff changes)
+        - No merge conflicts (incremental updates)
+        - Language/version independent (JSON)
+        - Only rewrites changed components
+
+        Args:
+            state_dir: Directory to write JSON state files
+            force: Force save even if unchanged (default: False)
+            verbose: Print progress messages (default: True)
+
+        Returns:
+            Dictionary mapping component names to whether they were written:
+            {'layer_0': True, 'layer_1': False, 'documents': True, ...}
+
+        Example:
+            >>> processor.save_json('corpus_state')
+            ✓ Saved state to corpus_state (3 files updated)
+
+            >>> # Incremental save only updates changed components
+            >>> processor.add_document("doc4", "New content")
+            >>> results = processor.save_json('corpus_state')
+            >>> # Only documents.json and affected layers are rewritten
+        """
+        writer = state_storage.StateWriter(state_dir)
+
+        # Prepare stale computations
+        stale = self._stale_computations if hasattr(self, '_stale_computations') else set()
+
+        return writer.save_all(
+            layers=self.layers,
+            documents=self.documents,
+            document_metadata=self.document_metadata,
+            embeddings=self.embeddings,
+            semantic_relations=self.semantic_relations,
+            stale_computations=stale,
+            force=force,
+            verbose=verbose
+        )
+
+    @classmethod
+    def load_json(cls, state_dir: str, config: Optional[CorticalConfig] = None, verbose: bool = True) -> 'CorticalTextProcessor':
+        """
+        Load processor from git-friendly JSON format.
+
+        Reconstructs the processor from JSON state files created by save_json().
+        If config is not provided, uses defaults (config is not stored in JSON state).
+
+        Args:
+            state_dir: Directory containing JSON state files
+            config: Optional configuration (default: uses CorticalConfig defaults)
+            verbose: Print progress messages (default: True)
+
+        Returns:
+            Reconstructed CorticalTextProcessor instance
+
+        Raises:
+            FileNotFoundError: If state directory or required files don't exist
+            ValueError: If state format is invalid
+
+        Example:
+            >>> processor = CorticalTextProcessor.load_json('corpus_state')
+            Loading state from corpus_state
+              Loaded L0_tokens.json: 1523 minicolumns
+              Loaded L1_bigrams.json: 847 minicolumns
+              ...
+            ✓ Loaded state from corpus_state
+
+            >>> # Use custom config
+            >>> config = CorticalConfig(chunk_size=300)
+            >>> processor = CorticalTextProcessor.load_json('corpus_state', config=config)
+        """
+        loader = state_storage.StateLoader(state_dir)
+
+        # Load all state components
+        layers, documents, metadata, embeddings, relations, manifest_data = loader.load_all(
+            validate=True,
+            verbose=verbose
+        )
+
+        # Create processor with provided or default config
+        processor = cls(config=config)
+
+        # Restore state
+        processor.layers = layers
+        processor.documents = documents
+        processor.document_metadata = metadata
+        processor.embeddings = embeddings
+        processor.semantic_relations = relations
+
+        # Restore staleness tracking
+        if 'stale_computations' in manifest_data:
+            processor._stale_computations = manifest_data['stale_computations']
+
+        return processor
+
+    def migrate_to_json(self, pkl_path: str, json_dir: str, verbose: bool = True) -> bool:
+        """
+        Migrate existing pickle file to git-friendly JSON format.
+
+        This is a convenience method that loads a pickle file and saves it as JSON.
+        Useful for converting legacy .pkl files to the new JSON format.
+
+        Args:
+            pkl_path: Path to existing .pkl file
+            json_dir: Directory to write JSON state
+            verbose: Print progress messages (default: True)
+
+        Returns:
+            True if migration successful
+
+        Raises:
+            FileNotFoundError: If pkl file doesn't exist
+
+        Example:
+            >>> # Convert old pickle file to JSON
+            >>> processor = CorticalTextProcessor.load('corpus.pkl')
+            >>> processor.migrate_to_json('corpus.pkl', 'corpus_state')
+            Migrating corpus.pkl to corpus_state
+              Saved L0_tokens.json: 1523 minicolumns
+              Saved L1_bigrams.json: 847 minicolumns
+              ...
+            ✓ Migration complete: corpus.pkl → corpus_state
+
+            >>> # Or use the standalone function
+            >>> from cortical.state_storage import migrate_pkl_to_json
+            >>> migrate_pkl_to_json('corpus.pkl', 'corpus_state')
+        """
+        return state_storage.migrate_pkl_to_json(pkl_path, json_dir, verbose=verbose)
+
     def export_graph(self, filepath: str, layer: Optional[CorticalLayer] = None, max_nodes: int = 500) -> Dict:
         return persistence.export_graph_json(filepath, self.layers, layer, max_nodes=max_nodes)
 

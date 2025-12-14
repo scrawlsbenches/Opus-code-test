@@ -104,6 +104,7 @@ class Task:
     updated_at: Optional[str] = None
     completed_at: Optional[str] = None
     context: Dict[str, Any] = field(default_factory=dict)
+    retrospective: Optional[Dict[str, Any]] = None  # Captured on completion
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -196,6 +197,132 @@ class TaskSession:
         )
         self.tasks.append(task)
         return task
+
+    def get_task(self, task_id: str) -> Optional[Task]:
+        """
+        Get a task by ID from this session.
+
+        Args:
+            task_id: The task ID to find
+
+        Returns:
+            The Task object, or None if not found
+        """
+        for task in self.tasks:
+            if task.id == task_id:
+                return task
+        return None
+
+    def _calculate_duration(self, start_time: str) -> int:
+        """
+        Calculate duration in minutes from start time to now.
+
+        Args:
+            start_time: ISO format datetime string
+
+        Returns:
+            Duration in minutes (rounded)
+        """
+        start = datetime.fromisoformat(start_time)
+        now = datetime.now()
+        delta = now - start
+        return round(delta.total_seconds() / 60)
+
+    def capture_retrospective(
+        self,
+        task_id: str,
+        files_touched: Optional[List[str]] = None,
+        tests_added: int = 0,
+        commits: Optional[List[str]] = None,
+        notes: Optional[str] = None
+    ) -> None:
+        """
+        Capture retrospective data for a completed task.
+
+        This records metadata about what actually happened during task completion:
+        - Which files were modified
+        - How long it took
+        - How many tests were added
+        - Which commits were made
+        - Any completion notes
+
+        Args:
+            task_id: The task ID to add retrospective to
+            files_touched: List of file paths that were modified
+            tests_added: Number of test cases/functions added
+            commits: List of commit SHAs related to this task
+            notes: Optional free-form notes about completion
+
+        Raises:
+            ValueError: If task_id is not found in this session
+        """
+        task = self.get_task(task_id)
+        if not task:
+            raise ValueError(f"Task not found: {task_id}")
+
+        # Calculate duration from creation to now
+        duration = self._calculate_duration(task.created_at)
+
+        task.retrospective = {
+            'files_touched': files_touched or [],
+            'duration_minutes': duration,
+            'tests_added': tests_added,
+            'commits': commits or [],
+            'notes': notes,
+            'captured_at': datetime.now().isoformat()
+        }
+
+    def get_retrospective_summary(self) -> Dict[str, Any]:
+        """
+        Get aggregate statistics from all completed tasks with retrospective data.
+
+        Returns:
+            Dictionary with aggregate stats:
+            - total_completed: Number of tasks with retrospective data
+            - avg_duration_minutes: Average task duration
+            - total_duration_minutes: Total time spent on all tasks
+            - total_tests_added: Sum of all tests added
+            - most_touched_files: List of (file, count) tuples for top 10 files
+            - tasks_with_retrospective: List of task IDs that have retrospective data
+        """
+        from collections import Counter
+
+        completed = [
+            t for t in self.tasks
+            if t.status == 'completed' and t.retrospective
+        ]
+
+        if not completed:
+            return {
+                'total_completed': 0,
+                'avg_duration_minutes': 0,
+                'total_duration_minutes': 0,
+                'total_tests_added': 0,
+                'most_touched_files': [],
+                'tasks_with_retrospective': []
+            }
+
+        # Calculate aggregates
+        durations = [t.retrospective['duration_minutes'] for t in completed]
+        total_duration = sum(durations)
+        avg_duration = total_duration / len(completed)
+
+        total_tests = sum(t.retrospective['tests_added'] for t in completed)
+
+        # Count file touches
+        all_files = []
+        for t in completed:
+            all_files.extend(t.retrospective['files_touched'])
+        file_counts = Counter(all_files)
+
+        return {
+            'total_completed': len(completed),
+            'avg_duration_minutes': round(avg_duration, 1),
+            'total_duration_minutes': total_duration,
+            'total_tests_added': total_tests,
+            'most_touched_files': file_counts.most_common(10),
+            'tasks_with_retrospective': [t.id for t in completed]
+        }
 
     def get_filename(self) -> str:
         """Get the session filename."""
