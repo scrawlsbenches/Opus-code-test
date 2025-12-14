@@ -14,6 +14,7 @@ import pickle
 import json
 import os
 import logging
+import warnings
 from typing import Dict, Optional, Any
 
 from .layers import CorticalLayer, HierarchicalLayer
@@ -56,6 +57,14 @@ def save_processor(
         raise ValueError(f"Invalid format '{format}'. Must be 'pickle' or 'protobuf'.")
 
     if format == 'pickle':
+        # Emit deprecation warning for pickle format due to security concerns
+        warnings.warn(
+            "Pickle format is deprecated due to security concerns (arbitrary code execution). "
+            "Consider using format='protobuf' or the StateLoader JSON format instead. "
+            "See README.md 'Security Considerations' for details.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         # Original pickle serialization
         state = {
             'version': '2.2',
@@ -151,6 +160,15 @@ def load_processor(
         raise ValueError(f"Invalid format '{format}'. Must be 'pickle' or 'protobuf'.")
 
     if format == 'pickle':
+        # Emit deprecation warning for pickle format due to security concerns
+        warnings.warn(
+            "Pickle format is deprecated due to security concerns (arbitrary code execution). "
+            "Only load pickle files from trusted sources. "
+            "Consider migrating to format='protobuf' or the StateLoader JSON format. "
+            "See README.md 'Security Considerations' for details.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         # Original pickle deserialization
         with open(filepath, 'rb') as f:
             state = pickle.load(f)
