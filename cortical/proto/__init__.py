@@ -5,22 +5,25 @@ Protocol Buffers Serialization Module
 Provides Protocol Buffers serialization for cross-language corpus sharing.
 
 This module enables the Cortical Text Processor to serialize and deserialize
-its state using Protocol Buffers, allowing corpus data to be shared across
-different programming languages and platforms.
+its state using Protocol Buffers TEXT FORMAT, allowing corpus data to be:
+- Human-readable and diffable in git
+- Shared across different programming languages
+- Reviewed in pull requests
 
 Usage:
     from cortical.proto.serialization import to_proto, from_proto
+    from google.protobuf import text_format
 
     # Convert processor state to protobuf
     proto_state = to_proto(layers, documents, document_metadata,
                            embeddings, semantic_relations, metadata)
 
-    # Serialize to bytes
-    serialized = proto_state.SerializeToString()
+    # Serialize to text format (git-friendly)
+    text_output = text_format.MessageToString(proto_state)
 
-    # Deserialize from bytes
+    # Deserialize from text format
     proto_state = ProcessorState()
-    proto_state.ParseFromString(serialized)
+    text_format.Parse(text_input, proto_state)
 
     # Convert back to Python objects
     state = from_proto(proto_state)

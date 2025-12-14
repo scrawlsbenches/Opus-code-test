@@ -74,9 +74,10 @@ def save_processor(
             pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     elif format == 'protobuf':
-        # Protocol Buffers serialization
+        # Protocol Buffers serialization (text format for git-friendliness)
         try:
             from .proto.serialization import to_proto
+            from google.protobuf import text_format
         except ImportError as e:
             raise ImportError(
                 "protobuf package is required for Protocol Buffers serialization. "
@@ -88,8 +89,9 @@ def save_processor(
             embeddings, semantic_relations, metadata
         )
 
-        with open(filepath, 'wb') as f:
-            f.write(proto_state.SerializeToString())
+        # Use text format for human-readable, git-friendly output
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(text_format.MessageToString(proto_state))
 
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())
@@ -129,16 +131,24 @@ def load_processor(
         # Try to detect based on file content
         with open(filepath, 'rb') as f:
             # Read first few bytes
-            header = f.read(16)
-            f.seek(0)
+            header = f.read(64)
 
             # Pickle files start with 0x80 (protocol marker)
-            # Protobuf files have different structure
             if header[0:1] == b'\x80':
                 format = 'pickle'
             else:
-                # Try protobuf
-                format = 'protobuf'
+                # Protobuf text format starts with readable text like "version:" or "layers {"
+                # Check if it looks like text (ASCII/UTF-8)
+                try:
+                    header_text = header.decode('utf-8')
+                    if 'version' in header_text or 'layers' in header_text:
+                        format = 'protobuf'
+                    else:
+                        # Default to pickle for unknown formats
+                        format = 'pickle'
+                except UnicodeDecodeError:
+                    # Binary content - assume pickle
+                    format = 'pickle'
 
     if format not in ['pickle', 'protobuf']:
         raise ValueError(f"Invalid format '{format}'. Must be 'pickle' or 'protobuf'.")
@@ -168,21 +178,22 @@ def load_processor(
         metadata = state.get('metadata', {})
 
     elif format == 'protobuf':
-        # Protocol Buffers deserialization
+        # Protocol Buffers deserialization (text format)
         try:
             from .proto.serialization import from_proto
             from .proto import schema_pb2
+            from google.protobuf import text_format
         except ImportError as e:
             raise ImportError(
                 "protobuf package is required for Protocol Buffers deserialization. "
                 "Install it with: pip install protobuf"
             ) from e
 
-        with open(filepath, 'rb') as f:
-            proto_bytes = f.read()
+        with open(filepath, 'r', encoding='utf-8') as f:
+            proto_text = f.read()
 
         proto_state = schema_pb2.ProcessorState()
-        proto_state.ParseFromString(proto_bytes)
+        text_format.Parse(proto_text, proto_state)
 
         layers, documents, document_metadata, embeddings, semantic_relations, metadata = from_proto(proto_state)
 
