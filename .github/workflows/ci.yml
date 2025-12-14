@@ -189,6 +189,7 @@ jobs:
           tests/test_ask_codebase.py \
           tests/test_generate_ai_metadata.py \
           tests/test_showcase.py \
+          tests/test_mcp_server.py \
           -v --tb=short
 
         coverage report --include="cortical/*"
