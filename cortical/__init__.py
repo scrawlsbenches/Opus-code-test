@@ -17,6 +17,7 @@ Example:
 from .tokenizer import Tokenizer
 from .minicolumn import Minicolumn, Edge
 from .layers import CorticalLayer, HierarchicalLayer
+# Import from processor package (split from monolithic processor.py)
 from .processor import CorticalTextProcessor
 from .config import CorticalConfig, get_default_config, VALID_RELATION_CHAINS
 from .fluent import FluentProcessor
