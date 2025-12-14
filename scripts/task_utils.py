@@ -60,17 +60,18 @@ def generate_task_id(session_id: Optional[str] = None) -> str:
         session_id: Optional session suffix. If None, generates random suffix.
 
     Returns:
-        Task ID in format T-YYYYMMDD-HHMMSS-XXXX
+        Task ID in format T-YYYYMMDD-HHMMSSffffff-XXXX (with microseconds)
 
     Example:
         >>> generate_task_id()
-        'T-20251213-143052-a1b2'
+        'T-20251213-143052123456-a1b2'
         >>> generate_task_id("test")
-        'T-20251213-143052-test'
+        'T-20251213-143052123456-test'
     """
     now = datetime.now()
     date_str = now.strftime("%Y%m%d")
-    time_str = now.strftime("%H%M%S")
+    # Include microseconds to avoid collisions in tight loops
+    time_str = now.strftime("%H%M%S%f")
     suffix = session_id or generate_session_id()
     return f"T-{date_str}-{time_str}-{suffix}"
 
