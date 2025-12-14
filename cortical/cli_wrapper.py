@@ -1015,6 +1015,10 @@ def test_then_commit(
     return commit_result.success, results
 
 
+# Tell pytest this is not a test function (it's a utility that runs tests)
+test_then_commit.__test__ = False
+
+
 def commit_and_push(
     message: str,
     add_all: bool = True,
