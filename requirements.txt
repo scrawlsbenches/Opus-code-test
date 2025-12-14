@@ -12,3 +12,4 @@
 coverage>=7.0        # Test coverage reporting
 pytest>=7.0          # Test framework (required by tests/unit/)
 mcp>=1.0             # MCP server tests (Model Context Protocol)
+pyyaml>=6.0          # Workflow integration tests
