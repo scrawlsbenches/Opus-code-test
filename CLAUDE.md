@@ -162,13 +162,14 @@ cortical/
 ├── minicolumn.py     # Core data structure with typed Edge connections (357 lines)
 ├── config.py         # CorticalConfig dataclass with validation (352 lines)
 ├── fingerprint.py    # Semantic fingerprinting and similarity (315 lines)
+├── observability.py  # Timing, metrics collection, and trace context (374 lines)
 ├── layers.py         # HierarchicalLayer with O(1) ID lookups via _id_index (294 lines)
 ├── code_concepts.py  # Programming concept synonyms for code search (249 lines)
 ├── gaps.py           # Knowledge gap detection and anomaly analysis (245 lines)
 └── embeddings.py     # Graph embeddings (adjacency, spectral, random walk) (209 lines)
 ```
 
-**Total:** ~10,700 lines of core library code
+**Total:** ~11,100 lines of core library code
 
 **For detailed architecture documentation**, see [docs/architecture.md](docs/architecture.md), which includes:
 - Complete module dependency graphs (ASCII + Mermaid)
@@ -199,6 +200,7 @@ cortical/
 | Change gap detection | `gaps.py` - knowledge gap analysis |
 | Add fingerprinting | `fingerprint.py` - semantic fingerprints |
 | Modify chunk storage | `chunk_index.py` - git-friendly indexing |
+| Add observability features | `observability.py` - timing, metrics, traces |
 
 **Key data structures:**
 - `Minicolumn`: Core unit with `lateral_connections`, `typed_connections`, `feedforward_connections`, `feedback_connections`
@@ -915,6 +917,72 @@ python scripts/profile_full_analysis.py
 # This reveals which phases are slow and helps identify O(n²) bottlenecks
 ```
 
+### Observability and Metrics
+
+The processor includes built-in observability features for tracking performance and operational metrics.
+
+**Enable metrics collection:**
+```python
+# Create processor with metrics enabled
+processor = CorticalTextProcessor(enable_metrics=True)
+
+# Process documents and run queries (all operations are timed)
+processor.process_document("doc1", "Neural networks process data.")
+processor.compute_all()
+processor.find_documents_for_query("neural networks")
+
+# Get metrics summary
+print(processor.get_metrics_summary())
+```
+
+**Access metrics programmatically:**
+```python
+metrics = processor.get_metrics()
+
+# Check specific operation stats
+if "compute_all" in metrics:
+    stats = metrics["compute_all"]
+    print(f"Average: {stats['avg_ms']:.2f}ms")
+    print(f"Count: {stats['count']}")
+    print(f"Min: {stats['min_ms']:.2f}ms")
+    print(f"Max: {stats['max_ms']:.2f}ms")
+
+# Check cache performance
+if "query_cache_hits" in metrics:
+    hits = metrics["query_cache_hits"]["count"]
+    misses = metrics["query_cache_misses"]["count"]
+    hit_rate = hits / (hits + misses) * 100
+    print(f"Cache hit rate: {hit_rate:.1f}%")
+```
+
+**Automatically timed operations:**
+- `compute_all()` and all compute phases (PageRank, TF-IDF, clustering, etc.)
+- `process_document()` with doc_id context
+- `find_documents_for_query()` with query context
+- `save()` operations
+- Query cache hits/misses via `expand_query_cached()`
+
+**Control metrics collection:**
+```python
+# Disable metrics temporarily
+processor.disable_metrics()
+# ... operations not timed ...
+processor.enable_metrics()
+
+# Reset all metrics
+processor.reset_metrics()
+
+# Record custom metrics
+processor.record_metric("api_calls", 10)
+processor.record_metric("documents_processed", 100)
+```
+
+**Demo:**
+```bash
+# Run the observability demo
+python examples/observability_demo.py
+```
+
 ---
 
 ## Quick Reference
@@ -932,6 +1000,11 @@ python scripts/profile_full_analysis.py
 | Compare | `processor.compare_fingerprints(fp1, fp2)` |
 | Save state | `processor.save("corpus.pkl")` |
 | Load state | `processor = CorticalTextProcessor.load("corpus.pkl")` |
+| Enable metrics | `processor = CorticalTextProcessor(enable_metrics=True)` |
+| Get metrics | `processor.get_metrics()` |
+| Metrics summary | `processor.get_metrics_summary()` |
+| Reset metrics | `processor.reset_metrics()` |
+| Record metric | `processor.record_metric("name", count)` |
 | Run all tests | `python scripts/run_tests.py all` |
 | Run smoke tests | `python scripts/run_tests.py smoke` |
 | Run unit tests | `python scripts/run_tests.py unit` |

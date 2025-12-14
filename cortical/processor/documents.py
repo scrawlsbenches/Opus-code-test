@@ -9,6 +9,7 @@ import logging
 from typing import Dict, List, Tuple, Optional, Any
 
 from ..layers import CorticalLayer
+from ..observability import timed
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ class DocumentsMixin:
     document_metadata, _mark_all_stale, _query_expansion_cache).
     """
 
+    @timed("process_document", include_args=True)
     def process_document(
         self,
         doc_id: str,

@@ -13,6 +13,7 @@ from ..layers import CorticalLayer
 from .. import gaps as gaps_module
 from .. import fingerprint as fp_module
 from .. import persistence
+from .. import patterns as patterns_module
 
 if TYPE_CHECKING:
     from . import CorticalTextProcessor
@@ -211,6 +212,145 @@ class IntrospectionMixin:
         scored.sort(key=lambda x: x[1], reverse=True)
         top = [s for s, _ in scored[:num_sentences]]
         return ' '.join([s for s in sentences if s in top])
+
+    # Pattern detection methods
+    def detect_patterns(
+        self,
+        doc_id: str,
+        patterns: Optional[List[str]] = None
+    ) -> Dict[str, List[int]]:
+        """
+        Detect programming patterns in a specific document.
+
+        Args:
+            doc_id: Document identifier
+            patterns: Specific pattern names to search for (None = all patterns)
+
+        Returns:
+            Dict mapping pattern names to list of line numbers where found
+
+        Example:
+            >>> processor.process_document("code.py", "async def fetch(): await get()")
+            >>> patterns = processor.detect_patterns("code.py")
+            >>> 'async_await' in patterns
+            True
+        """
+        if doc_id not in self.documents:
+            return {}
+
+        content = self.documents[doc_id]
+        return patterns_module.detect_patterns_in_text(content, patterns)
+
+    def detect_patterns_in_corpus(
+        self,
+        patterns: Optional[List[str]] = None
+    ) -> Dict[str, Dict[str, List[int]]]:
+        """
+        Detect patterns across all documents in the corpus.
+
+        Args:
+            patterns: Specific pattern names to search for (None = all patterns)
+
+        Returns:
+            Dict mapping doc_id to pattern detection results
+
+        Example:
+            >>> results = processor.detect_patterns_in_corpus()
+            >>> for doc_id, patterns in results.items():
+            ...     print(f"{doc_id}: {list(patterns.keys())}")
+        """
+        return patterns_module.detect_patterns_in_documents(self.documents, patterns)
+
+    def get_pattern_summary(
+        self,
+        doc_id: str
+    ) -> Dict[str, int]:
+        """
+        Get a summary of pattern occurrences in a document.
+
+        Args:
+            doc_id: Document identifier
+
+        Returns:
+            Dict mapping pattern names to occurrence counts
+
+        Example:
+            >>> summary = processor.get_pattern_summary("code.py")
+            >>> summary['async_await']
+            3
+        """
+        patterns = self.detect_patterns(doc_id)
+        return patterns_module.get_pattern_summary(patterns)
+
+    def get_corpus_pattern_statistics(self) -> Dict[str, Any]:
+        """
+        Get pattern statistics across the entire corpus.
+
+        Returns:
+            Dict with corpus-wide statistics including:
+            - total_documents: Number of documents analyzed
+            - patterns_found: Number of distinct patterns detected
+            - pattern_document_counts: How many docs contain each pattern
+            - pattern_occurrences: Total occurrences of each pattern
+            - most_common_pattern: Most frequently occurring pattern
+
+        Example:
+            >>> stats = processor.get_corpus_pattern_statistics()
+            >>> stats['most_common_pattern']
+            'error_handling'
+        """
+        doc_patterns = self.detect_patterns_in_corpus()
+        return patterns_module.get_corpus_pattern_statistics(doc_patterns)
+
+    def format_pattern_report(
+        self,
+        doc_id: str,
+        show_lines: bool = False
+    ) -> str:
+        """
+        Format pattern detection results as a human-readable report.
+
+        Args:
+            doc_id: Document identifier
+            show_lines: Whether to show line numbers in the report
+
+        Returns:
+            Formatted report string
+
+        Example:
+            >>> report = processor.format_pattern_report("code.py", show_lines=True)
+            >>> print(report)
+        """
+        patterns = self.detect_patterns(doc_id)
+        return patterns_module.format_pattern_report(patterns, show_lines)
+
+    def list_available_patterns(self) -> List[str]:
+        """
+        List all available pattern names that can be detected.
+
+        Returns:
+            Sorted list of pattern names
+
+        Example:
+            >>> patterns = processor.list_available_patterns()
+            >>> 'singleton' in patterns
+            True
+        """
+        return patterns_module.list_all_patterns()
+
+    def list_pattern_categories(self) -> List[str]:
+        """
+        List all pattern categories.
+
+        Returns:
+            Sorted list of category names
+
+        Example:
+            >>> categories = processor.list_pattern_categories()
+            >>> 'creational' in categories
+            True
+        """
+        return patterns_module.list_all_categories()
 
     def __repr__(self) -> str:
         stats = self.get_corpus_summary()

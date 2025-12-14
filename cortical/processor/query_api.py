@@ -8,6 +8,7 @@ import logging
 from typing import Dict, List, Tuple, Optional, Any
 
 from .. import query as query_module
+from ..observability import timed
 
 logger = logging.getLogger(__name__)
 
@@ -111,8 +112,10 @@ class QueryMixin:
         cache_key = f"{query_text}|{max_expansions}|{use_variants}|{use_code_concepts}"
 
         if cache_key in self._query_expansion_cache:
+            self._metrics.record_count("query_cache_hits")
             return self._query_expansion_cache[cache_key].copy()
 
+        self._metrics.record_count("query_cache_misses")
         result = query_module.expand_query(
             query_text,
             self.layers,
@@ -300,6 +303,7 @@ class QueryMixin:
             min_path_score=min_path_score
         )
 
+    @timed("find_documents_for_query", include_args=True)
     def find_documents_for_query(
         self,
         query_text: str,
