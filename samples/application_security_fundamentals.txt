@@ -1,0 +1,13 @@
+Application Security Fundamentals
+
+Application security encompasses the measures taken to improve the security of applications by finding, fixing, and preventing security vulnerabilities. The OWASP Top 10 represents the most critical security risks to web applications, including injection attacks, broken authentication, sensitive data exposure, and cross-site scripting.
+
+Input validation is the first line of defense against many attacks. All user input should be treated as untrusted and validated against expected formats, lengths, and character sets. Whitelisting acceptable input is preferred over blacklisting known bad patterns, as attackers constantly discover new attack vectors.
+
+Authentication verifies user identity through something they know (passwords), something they have (tokens), or something they are (biometrics). Multi-factor authentication combines these methods for stronger security. Session management must ensure tokens are unpredictable, properly scoped, and securely transmitted.
+
+Authorization determines what authenticated users can access. The principle of least privilege dictates granting only the minimum permissions necessary. Role-based access control (RBAC) and attribute-based access control (ABAC) provide frameworks for managing permissions at scale.
+
+Secure coding practices include parameterized queries to prevent SQL injection, output encoding to prevent XSS, and proper error handling that doesn't leak sensitive information. Security should be built into the development lifecycle through threat modeling, code review, and automated security testing.
+
+Cryptography protects data confidentiality and integrity. Encryption at rest protects stored data while encryption in transit (TLS) protects network communications. Hash functions verify data integrity, and digital signatures provide non-repudiation. Using well-tested cryptographic libraries is essential since implementing cryptography correctly is extremely difficult.
