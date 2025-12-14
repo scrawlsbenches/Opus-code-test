@@ -9,6 +9,7 @@ __pycache__/
 dist/
 build/
 .pytest_cache/
+.hypothesis/
 
 # Generated corpus files
 corpus_dev.pkl
