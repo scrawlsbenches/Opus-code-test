@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "6aa8",
   "started_at": "2025-12-14T17:13:01.505357",
-  "saved_at": "2025-12-14T17:45:30.067738",
+  "saved_at": "2025-12-14T20:56:22.394615",
   "tasks": [
     {
       "id": "T-20251214-171301-6aa8-001",
@@ -22,7 +22,7 @@
     {
       "id": "T-20251214-172207-6aa8-002",
       "title": "Add memory document templates and CLI",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "feature",
       "description": "Create templates and CLI tooling for the text-as-memories system:\n\n1. Memory entry template (memories/YYYY-MM-DD-topic.md)\n2. Decision record template (decisions/adr-NNN-title.md)\n3. Concept consolidation template (concepts/topic.md)\n\nCLI commands:\n- python scripts/new_memory.py 'What I learned today'\n- python scripts/new_decision.py 'ADR: Choose X over Y'\n\nAuto-populate:\n- Date, tags placeholder, related links section\n- Git author info\n- Link to recent tasks\n\nSee: docs/text-as-memories.md for format reference",
@@ -30,14 +30,14 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:22:07.596921",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T20:56:22.394615",
       "context": {},
-      "retrospective": null
+      "retrospective": "Completed in Director Mode session. See knowledge transfer: samples/memories/2025-12-14_20-55-23_632e-session-knowledge-transfer-director-mode-orchestra.md"
     },
     {
       "id": "T-20251214-172212-6aa8-003",
       "title": "Index memories and decisions in semantic search",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "feature",
       "description": "Extend the codebase indexer to include memory documents:\n\n1. Add samples/memories/ and samples/decisions/ to indexed paths\n2. Add doc-type detection for memory vs decision vs concept docs\n3. Apply appropriate boosting (decisions may be more authoritative)\n4. Support [[wiki-link]] extraction for cross-references\n\nIntegration points:\n- scripts/index_codebase.py: Add memory paths\n- cortical/processor: Add memory-specific metadata\n- scripts/search_codebase.py: Show memory type in results\n\nEnables: Searching across code AND institutional knowledge",
@@ -45,9 +45,9 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:22:12.010789",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T20:56:22.394615",
       "context": {},
-      "retrospective": null
+      "retrospective": "Completed in Director Mode session. See knowledge transfer: samples/memories/2025-12-14_20-55-23_632e-session-knowledge-transfer-director-mode-orchestra.md"
     },
     {
       "id": "T-20251214-172216-6aa8-004",
@@ -112,7 +112,7 @@
     {
       "id": "T-20251214-173831-6aa8-008",
       "title": "Make memory/decision filenames merge-safe",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "arch",
       "description": "Apply the same merge-safe pattern from tasks to memories and decisions.\n\nCurrent patterns (can conflict):\n- memories: YYYY-MM-DD-topic.md\n- decisions: adr-NNN-title.md\n\nProposed patterns (merge-safe):\n- memories: YYYY-MM-DD_HH-MM-SS_XXXX-topic.md\n- decisions: adr-YYYYMMDD-HHMMSS-XXXX-title.md\n\nChanges needed:\n1. Update memory-manager skill templates\n2. Update /knowledge-transfer command\n3. Update docs/text-as-memories.md examples\n4. Add helper: scripts/new_memory.py with auto-generated safe names\n5. Add helper: scripts/new_decision.py with auto-generated safe names\n\nAlternative: Use topic-hash suffix instead of timestamp\nExample: 2025-12-14-dogfooding-a1b2.md\n\nThe session ID approach mirrors the proven task system design.",
@@ -120,14 +120,14 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:38:31.813288",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T20:56:22.394615",
       "context": {},
-      "retrospective": null
+      "retrospective": "Completed in Director Mode session. See knowledge transfer: samples/memories/2025-12-14_20-55-23_632e-session-knowledge-transfer-director-mode-orchestra.md"
     },
     {
       "id": "T-20251214-174107-6aa8-009",
       "title": "Update README.md with comprehensive project overview",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "docs",
       "description": "The README.md needs to be updated to reflect current project state and be more engaging.\n\nCurrent issues:\n- May be outdated with recent features\n- Missing text-as-memories system\n- Missing security features (HMAC signing, Bandit CI)\n- Missing Claude skills and commands\n\nREADME should include:\n1. Compelling intro with the 'visual cortex for text' metaphor\n2. Quick start (5-line example)\n3. Key features table with badges\n4. Architecture diagram (ASCII or link to docs)\n5. Installation instructions\n6. Links to docs/quickstart.md for detailed guide\n7. Security section (pickle warnings, HMAC signing)\n8. Claude Code integration (skills, commands)\n9. Contributing section\n10. License\n\nMake it visually appealing with:\n- Feature badges\n- Code examples that actually run\n- Clear navigation to detailed docs\n- The 'neurons that fire together' quote",
@@ -135,14 +135,14 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:41:07.348022",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T20:56:22.394615",
       "context": {},
-      "retrospective": null
+      "retrospective": "Completed in Director Mode session. See knowledge transfer: samples/memories/2025-12-14_20-55-23_632e-session-knowledge-transfer-director-mode-orchestra.md"
     },
     {
       "id": "T-20251214-174112-6aa8-010",
       "title": "Audit markdown files for staleness",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "docs",
       "description": "Review all markdown documentation for outdated content.\n\nFiles to audit:\n- README.md - main project readme\n- CLAUDE.md - development guide\n- CONTRIBUTING.md - contribution guide\n- docs/*.md - all documentation files\n- samples/**/*.md - sample documents\n\nCheck for:\n1. Outdated code examples (do they still run?)\n2. Missing new features (text-as-memories, security, skills)\n3. Broken internal links ([[wiki-style]] and markdown links)\n4. Incorrect file paths or line numbers\n5. Deprecated APIs still documented\n6. Missing new configuration options\n7. Outdated task references\n\nCreate a staleness report:\n- List files with issues\n- Categorize by severity (broken vs outdated vs minor)\n- Link to specific lines needing updates\n\nConsider adding a CI check for:\n- Broken markdown links\n- Code blocks that don't parse\n- References to non-existent files",
@@ -150,9 +150,9 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:41:12.741156",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T20:56:22.394615",
       "context": {},
-      "retrospective": null
+      "retrospective": "Completed in Director Mode session. See knowledge transfer: samples/memories/2025-12-14_20-55-23_632e-session-knowledge-transfer-director-mode-orchestra.md"
     },
     {
       "id": "T-20251214-174116-6aa8-011",
