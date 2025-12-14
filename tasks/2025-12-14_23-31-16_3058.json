@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "3058",
   "started_at": "2025-12-14T23:31:16.044725",
-  "saved_at": "2025-12-14T23:31:43.882558",
+  "saved_at": "2025-12-14T23:46:35.265317",
   "tasks": [
     {
       "id": "T-20251214-233116-3058-001",
@@ -22,32 +22,46 @@
     {
       "id": "T-20251214-233136-3058-002",
       "title": "Enable code stop word filtering by default in search",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "bugfix",
       "description": "Set filter_code_stop_words=True by default in find_documents_for_query() at cortical/query/search.py:54-59. This filters ubiquitous code tokens (def, self, return) from expansion, reducing noise in code search results. Low risk - filtering logic already exists and is tested.",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-14T23:31:36.020301",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T23:46:35.265106",
+      "completed_at": "2025-12-14T23:46:35.265106",
       "context": {},
-      "retrospective": null
+      "retrospective": {
+        "notes": "Implemented: filter_code_stop_words=True by default in find_documents_for_query and find_passages_for_query",
+        "duration_minutes": 15,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-14T23:46:35.265137"
+      }
     },
     {
       "id": "T-20251214-233140-3058-003",
       "title": "Apply test file penalty by default in search",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "bugfix",
       "description": "Detect test files and apply 0.8 penalty in find_documents_for_query() at cortical/query/search.py. Files matching tests/ or test_ pattern should be penalized. Penalty already defined in constants.py. Low risk - easy implementation.",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-14T23:31:40.104443",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T23:46:35.265139",
+      "completed_at": "2025-12-14T23:46:35.265139",
       "context": {},
-      "retrospective": null
+      "retrospective": {
+        "notes": "Implemented: test_file_penalty=0.8 by default in find_documents_for_query and find_passages_for_query",
+        "duration_minutes": 15,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-14T23:46:35.265142"
+      }
     },
     {
       "id": "T-20251214-233143-3058-004",
