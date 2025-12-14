@@ -70,6 +70,14 @@ jobs:
         python scripts/validate_task_list.py
         echo "✅ Task list validation passed"
 
+    - name: Report Pending Tasks
+      if: always()
+      run: |
+        echo "=== Pending Tasks Report ==="
+        python scripts/ci_task_report.py --github
+      env:
+        GITHUB_STEP_SUMMARY: ${{ github.step_summary }}
+
   # ==========================================================================
   # Stage 1: Smoke Tests (< 30s)
   # Quick sanity check - if this fails, something is fundamentally broken

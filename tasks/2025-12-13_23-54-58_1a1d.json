@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "session_id": "1a1d",
+  "started_at": "2025-12-13T23:54:58.530536",
+  "saved_at": "2025-12-13T23:54:58.531057",
+  "tasks": [
+    {
+      "id": "T-20251213-235458-1a1d-001",
+      "title": "Optimize doc_name_boost: cache tokenized document names",
+      "status": "pending",
+      "priority": "medium",
+      "category": "perf",
+      "description": "Performance bottleneck identified: doc_name_boost re-tokenizes all document names on every search.\n\nRoot cause: Lines 70-103 in query/search.py tokenize every doc_id on every query.\nImpact: 70% of search time on 2000-doc corpus (3.95ms overhead).\n\nRecommendation: Cache tokenized doc names in Minicolumn during process_document().\nExpected benefit: 3-4x faster searches on large corpora.\nEffort estimate: 2-4 hours.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-13T23:54:58.530954",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {}
+    }
+  ]
+}

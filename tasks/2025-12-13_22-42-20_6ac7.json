@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "6ac7",
   "started_at": "2025-12-13T22:42:20.986896",
-  "saved_at": "2025-12-13T22:50:36.977690",
+  "saved_at": "2025-12-13T23:48:47.726752",
   "tasks": [
     {
       "id": "T-20251213-224220-6ac7-01",
@@ -82,15 +82,15 @@
     {
       "id": "T-20251213-224220-6ac7-05",
       "title": "Add auto-task creation from CI test failures",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "automation",
       "description": "Parse pytest failures, create bugfix tasks automatically",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-13T22:42:20.986976",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-13T23:48:47.726631",
+      "completed_at": "2025-12-13T23:48:47.726631",
       "context": {
         "files": [
           ".github/workflows/ci.yml",
