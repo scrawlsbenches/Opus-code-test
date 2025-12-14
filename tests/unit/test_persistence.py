@@ -30,6 +30,13 @@ from cortical.persistence import (
     load_embeddings_json,
     export_semantic_relations_json,
     load_semantic_relations_json,
+    # SEC-003: HMAC signature verification
+    SignatureVerificationError,
+    _compute_signature,
+    _save_signature,
+    _load_signature,
+    _verify_signature,
+    _get_signature_path,
 )
 from cortical.layers import CorticalLayer
 
@@ -1226,3 +1233,285 @@ class TestExportConceptnetJson:
             assert "edges" in graph
         finally:
             os.unlink(filepath)
+
+
+# =============================================================================
+# SEC-003: HMAC SIGNATURE VERIFICATION TESTS
+# =============================================================================
+
+
+class TestSignatureHelpers:
+    """Tests for HMAC signature helper functions (SEC-003)."""
+
+    def test_get_signature_path(self):
+        """Signature path is filename + .sig extension."""
+        assert _get_signature_path("/path/to/file.pkl") == "/path/to/file.pkl.sig"
+        assert _get_signature_path("data.pkl") == "data.pkl.sig"
+
+    def test_compute_signature_returns_32_bytes(self):
+        """HMAC-SHA256 signature is 32 bytes."""
+        data = b"test data"
+        key = b"secret key"
+        sig = _compute_signature(data, key)
+        assert len(sig) == 32  # SHA256 produces 32 bytes
+
+    def test_compute_signature_deterministic(self):
+        """Same data and key produces same signature."""
+        data = b"test data"
+        key = b"secret key"
+        sig1 = _compute_signature(data, key)
+        sig2 = _compute_signature(data, key)
+        assert sig1 == sig2
+
+    def test_compute_signature_different_with_different_key(self):
+        """Different keys produce different signatures."""
+        data = b"test data"
+        key1 = b"key1"
+        key2 = b"key2"
+        sig1 = _compute_signature(data, key1)
+        sig2 = _compute_signature(data, key2)
+        assert sig1 != sig2
+
+    def test_compute_signature_different_with_different_data(self):
+        """Different data produces different signatures."""
+        data1 = b"data1"
+        data2 = b"data2"
+        key = b"key"
+        sig1 = _compute_signature(data1, key)
+        sig2 = _compute_signature(data2, key)
+        assert sig1 != sig2
+
+    def test_verify_signature_correct(self):
+        """Correct signature verifies successfully."""
+        data = b"test data"
+        key = b"secret key"
+        sig = _compute_signature(data, key)
+        assert _verify_signature(data, sig, key) is True
+
+    def test_verify_signature_wrong_key(self):
+        """Signature fails with wrong key."""
+        data = b"test data"
+        key = b"secret key"
+        wrong_key = b"wrong key"
+        sig = _compute_signature(data, key)
+        assert _verify_signature(data, sig, wrong_key) is False
+
+    def test_verify_signature_tampered_data(self):
+        """Signature fails with tampered data."""
+        data = b"test data"
+        tampered = b"tampered data"
+        key = b"secret key"
+        sig = _compute_signature(data, key)
+        assert _verify_signature(tampered, sig, key) is False
+
+    def test_save_and_load_signature(self):
+        """Signature can be saved and loaded."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            signature = b"x" * 32
+
+            _save_signature(filepath, signature)
+            loaded = _load_signature(filepath)
+
+            assert loaded == signature
+
+    def test_load_signature_nonexistent_returns_none(self):
+        """Loading nonexistent signature returns None."""
+        result = _load_signature("/nonexistent/file.pkl")
+        assert result is None
+
+
+class TestSignatureVerificationError:
+    """Tests for SignatureVerificationError exception."""
+
+    def test_exception_is_raisable(self):
+        """Exception can be raised and caught."""
+        with pytest.raises(SignatureVerificationError):
+            raise SignatureVerificationError("test error")
+
+    def test_exception_message(self):
+        """Exception preserves message."""
+        try:
+            raise SignatureVerificationError("custom message")
+        except SignatureVerificationError as e:
+            assert "custom message" in str(e)
+
+
+class TestSaveLoadWithSignature:
+    """Tests for save_processor and load_processor with HMAC signatures (SEC-003)."""
+
+    def test_save_creates_signature_file(self):
+        """Saving with signing_key creates .sig file."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        key = b"my-secret-key"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            sig_path = filepath + ".sig"
+
+            save_processor(filepath, layers, documents, signing_key=key, verbose=False)
+
+            assert os.path.exists(filepath)
+            assert os.path.exists(sig_path)
+
+    def test_save_without_key_no_signature(self):
+        """Saving without signing_key creates no .sig file."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            sig_path = filepath + ".sig"
+
+            save_processor(filepath, layers, documents, verbose=False)
+
+            assert os.path.exists(filepath)
+            assert not os.path.exists(sig_path)
+
+    def test_load_with_correct_key_succeeds(self):
+        """Loading with correct verify_key succeeds."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        key = b"my-secret-key"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+
+            save_processor(filepath, layers, documents, signing_key=key, verbose=False)
+            result = load_processor(filepath, verify_key=key, verbose=False)
+
+            loaded_layers, loaded_docs, _, _, _, _ = result
+            assert loaded_docs == documents
+
+    def test_load_with_wrong_key_fails(self):
+        """Loading with wrong verify_key raises SignatureVerificationError."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        key = b"correct-key"
+        wrong_key = b"wrong-key"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+
+            save_processor(filepath, layers, documents, signing_key=key, verbose=False)
+
+            with pytest.raises(SignatureVerificationError):
+                load_processor(filepath, verify_key=wrong_key, verbose=False)
+
+    def test_load_tampered_file_fails(self):
+        """Loading tampered file raises SignatureVerificationError."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        key = b"my-secret-key"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+
+            save_processor(filepath, layers, documents, signing_key=key, verbose=False)
+
+            # Tamper with the file
+            with open(filepath, "r+b") as f:
+                f.seek(100)
+                f.write(b"TAMPERED")
+
+            with pytest.raises(SignatureVerificationError):
+                load_processor(filepath, verify_key=key, verbose=False)
+
+    def test_load_missing_signature_file_fails(self):
+        """Loading with verify_key but missing .sig raises FileNotFoundError."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        key = b"my-secret-key"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+
+            # Save without signing key (no .sig file)
+            save_processor(filepath, layers, documents, verbose=False)
+
+            # Try to load with verify_key
+            with pytest.raises(FileNotFoundError) as exc_info:
+                load_processor(filepath, verify_key=key, verbose=False)
+            assert ".sig" in str(exc_info.value)
+
+    def test_backward_compatibility_no_key(self):
+        """Loading without verify_key works (backward compatible)."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+
+            # Save without signing
+            save_processor(filepath, layers, documents, verbose=False)
+
+            # Load without verify_key
+            result = load_processor(filepath, verbose=False)
+            loaded_layers, loaded_docs, _, _, _, _ = result
+            assert loaded_docs == documents
+
+    def test_save_signed_load_unsigned_works(self):
+        """Loading signed file without verify_key works (ignores signature)."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        key = b"my-secret-key"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+
+            # Save with signing key
+            save_processor(filepath, layers, documents, signing_key=key, verbose=False)
+
+            # Load without verify_key (ignores .sig file)
+            result = load_processor(filepath, verbose=False)
+            loaded_layers, loaded_docs, _, _, _, _ = result
+            assert loaded_docs == documents
+
+    def test_signature_is_32_bytes(self):
+        """Signature file contains 32-byte HMAC-SHA256."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        key = b"my-secret-key"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+            sig_path = filepath + ".sig"
+
+            save_processor(filepath, layers, documents, signing_key=key, verbose=False)
+
+            with open(sig_path, "rb") as f:
+                signature = f.read()
+            assert len(signature) == 32
+
+    def test_different_keys_different_signatures(self):
+        """Different signing keys produce different signatures."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        key1 = b"key1"
+        key2 = b"key2"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath1 = os.path.join(tmpdir, "test1.pkl")
+            filepath2 = os.path.join(tmpdir, "test2.pkl")
+
+            save_processor(filepath1, layers, documents, signing_key=key1, verbose=False)
+            save_processor(filepath2, layers, documents, signing_key=key2, verbose=False)
+
+            sig1 = _load_signature(filepath1)
+            sig2 = _load_signature(filepath2)
+
+            assert sig1 != sig2
+
+    def test_verbose_logging_with_signature(self):
+        """Verbose mode logs signature operations."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        key = b"my-secret-key"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+
+            # Should not raise with verbose=True
+            save_processor(filepath, layers, documents, signing_key=key, verbose=True)
+            load_processor(filepath, verify_key=key, verbose=True)

@@ -43,6 +43,7 @@ from .diff import (
     compare_documents,
     what_changed
 )
+from .persistence import SignatureVerificationError
 
 # MCP Server support (optional import)
 try:
@@ -83,6 +84,8 @@ __all__ = [
     "compare_processors",
     "compare_documents",
     "what_changed",
+    # Security
+    "SignatureVerificationError",
 ]
 
 # Add MCP exports if available

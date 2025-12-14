@@ -8,6 +8,7 @@ Supports:
 - Pickle serialization for full state
 - JSON export for graph visualization
 - Incremental updates
+- HMAC signature verification for pickle files (SEC-003)
 """
 
 import pickle
@@ -15,13 +16,81 @@ import json
 import os
 import logging
 import warnings
-from typing import Dict, Optional, Any
+import hmac
+import hashlib
+from typing import Dict, Optional, Any, Union
 
 from .layers import CorticalLayer, HierarchicalLayer
 from .minicolumn import Minicolumn
 from .proto import PROTOBUF_AVAILABLE, serialize_state, deserialize_state
 
 logger = logging.getLogger(__name__)
+
+
+class SignatureVerificationError(Exception):
+    """
+    Raised when HMAC signature verification fails.
+
+    This indicates the file has been tampered with or the wrong key was used.
+    """
+    pass
+
+
+def _get_signature_path(filepath: str) -> str:
+    """Get the path to the signature file for a given data file."""
+    return f"{filepath}.sig"
+
+
+def _compute_signature(data: bytes, key: bytes) -> bytes:
+    """
+    Compute HMAC-SHA256 signature for data.
+
+    Args:
+        data: The data to sign
+        key: The secret key for HMAC
+
+    Returns:
+        The HMAC signature (32 bytes)
+    """
+    return hmac.new(key, data, hashlib.sha256).digest()
+
+
+def _save_signature(filepath: str, signature: bytes) -> None:
+    """Save signature to a .sig file."""
+    sig_path = _get_signature_path(filepath)
+    with open(sig_path, 'wb') as f:
+        f.write(signature)
+
+
+def _load_signature(filepath: str) -> Optional[bytes]:
+    """
+    Load signature from a .sig file.
+
+    Returns:
+        The signature bytes, or None if file doesn't exist
+    """
+    sig_path = _get_signature_path(filepath)
+    if not os.path.exists(sig_path):
+        return None
+    with open(sig_path, 'rb') as f:
+        return f.read()
+
+
+def _verify_signature(data: bytes, signature: bytes, key: bytes) -> bool:
+    """
+    Verify HMAC signature using constant-time comparison.
+
+    Args:
+        data: The data that was signed
+        signature: The signature to verify
+        key: The secret key used for signing
+
+    Returns:
+        True if signature is valid, False otherwise
+    """
+    expected = _compute_signature(data, key)
+    # Use constant-time comparison to prevent timing attacks
+    return hmac.compare_digest(signature, expected)
 
 
 def save_processor(
@@ -33,7 +102,8 @@ def save_processor(
     semantic_relations: Optional[list] = None,
     metadata: Optional[Dict] = None,
     verbose: bool = True,
-    format: str = 'pickle'
+    format: str = 'pickle',
+    signing_key: Optional[bytes] = None
 ) -> None:
     """
     Save processor state to a file.
@@ -48,6 +118,9 @@ def save_processor(
         metadata: Optional processor metadata (version, settings, etc.)
         verbose: Print progress
         format: Serialization format ('pickle' or 'protobuf'). Default: 'pickle'
+        signing_key: Optional HMAC key for signing pickle files (SEC-003).
+            If provided, creates a .sig file alongside the pickle file.
+            The same key must be used to verify when loading.
 
     Raises:
         ValueError: If format is not 'pickle' or 'protobuf'
@@ -80,8 +153,19 @@ def save_processor(
         for layer_enum, layer in layers.items():
             state['layers'][layer_enum.value] = layer.to_dict()
 
+        # Serialize to bytes
+        pickle_data = pickle.dumps(state, protocol=pickle.HIGHEST_PROTOCOL)
+
+        # Sign if key provided (SEC-003)
+        if signing_key is not None:
+            signature = _compute_signature(pickle_data, signing_key)
+            _save_signature(filepath, signature)
+            if verbose:
+                logger.info(f"  - HMAC signature saved to {_get_signature_path(filepath)}")
+
+        # Write pickle data
         with open(filepath, 'wb') as f:
-            pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
+            f.write(pickle_data)
 
     elif format == 'protobuf':
         # Protocol Buffers serialization (text format for git-friendliness)
@@ -115,7 +199,8 @@ def save_processor(
 def load_processor(
     filepath: str,
     verbose: bool = True,
-    format: Optional[str] = None
+    format: Optional[str] = None,
+    verify_key: Optional[bytes] = None
 ) -> tuple:
     """
     Load processor state from a file.
@@ -124,6 +209,9 @@ def load_processor(
         filepath: Path to saved file
         verbose: Print progress
         format: Serialization format ('pickle' or 'protobuf'). If None, auto-detect.
+        verify_key: Optional HMAC key for verifying pickle file signatures (SEC-003).
+            If provided, the signature file (.sig) must exist and match.
+            This protects against tampering of pickle files.
 
     Returns:
         Tuple of (layers, documents, document_metadata, embeddings, semantic_relations, metadata)
@@ -131,6 +219,8 @@ def load_processor(
     Raises:
         ValueError: If layer values are invalid (must be 0-3) or format is invalid
         ImportError: If format='protobuf' but protobuf package is not installed
+        SignatureVerificationError: If verify_key is provided and signature verification fails
+        FileNotFoundError: If verify_key is provided but no .sig file exists
     """
     # Auto-detect format if not specified
     if format is None:
@@ -169,9 +259,29 @@ def load_processor(
             DeprecationWarning,
             stacklevel=2
         )
-        # Original pickle deserialization
+
+        # Read pickle data as bytes (for signature verification)
         with open(filepath, 'rb') as f:
-            state = pickle.load(f)
+            pickle_data = f.read()
+
+        # Verify signature if key provided (SEC-003)
+        if verify_key is not None:
+            signature = _load_signature(filepath)
+            if signature is None:
+                raise FileNotFoundError(
+                    f"Signature file not found: {_get_signature_path(filepath)}. "
+                    f"Cannot verify file integrity without signature."
+                )
+            if not _verify_signature(pickle_data, signature, verify_key):
+                raise SignatureVerificationError(
+                    f"Signature verification failed for {filepath}. "
+                    f"The file may have been tampered with or the wrong key was used."
+                )
+            if verbose:
+                logger.info(f"  - HMAC signature verified successfully")
+
+        # Deserialize pickle
+        state = pickle.loads(pickle_data)
 
         # Reconstruct layers
         layers = {}

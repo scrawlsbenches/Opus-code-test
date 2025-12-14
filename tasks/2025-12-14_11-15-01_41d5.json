@@ -51,24 +51,30 @@
     {
       "id": "T-20251214-111501-41d5-003",
       "title": "SEC-003: Implement pickle HMAC verification",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "security",
       "description": "Add HMAC signature verification before loading pickle files.\n\nImplementation:\n1. Generate HMAC when saving: hmac.new(secret_key, pickle_data, 'sha256')\n2. Store signature alongside pickle file (.pkl.sig)\n3. Verify signature before pickle.load()\n4. Reject files with invalid/missing signatures\n\nThis prevents loading tampered pickle files even from trusted sources.\n\nEffort: 4 hours",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-14T11:15:01.281835",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T12:30:00.000000",
+      "completed_at": "2025-12-14T12:30:00.000000",
       "context": {
         "files": [
-          "cortical/persistence.py"
+          "cortical/persistence.py",
+          "cortical/processor.py",
+          "cortical/__init__.py"
         ],
         "methods": [
-          "load_processor()"
+          "load_processor()",
+          "save_processor()"
         ]
       },
-      "retrospective": null
+      "retrospective": {
+        "notes": "Implemented HMAC-SHA256 signature verification. Added signing_key parameter to save() and verify_key parameter to load(). Exported SignatureVerificationError exception. Added 23 tests covering all edge cases. Uses constant-time comparison to prevent timing attacks.",
+        "branch": "claude/review-security-features-OtjPE"
+      }
     },
     {
       "id": "T-20251214-111501-41d5-004",
