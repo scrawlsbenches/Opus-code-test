@@ -129,8 +129,15 @@ python scripts/search_codebase.py "expand query"  # Find specific code
 
 ```
 cortical/
-├── processor.py      # Main orchestrator (2,301 lines) - START HERE
-│                     # CorticalTextProcessor is the public API
+├── processor/        # Main orchestrator package - START HERE
+│   │                 # CorticalTextProcessor is the public API (composed from mixins)
+│   ├── __init__.py   # Re-exports CorticalTextProcessor class
+│   ├── core.py       # Initialization, staleness tracking, layer management (~100 lines)
+│   ├── documents.py  # Document processing, add/remove, metadata (~450 lines)
+│   ├── compute.py    # compute_all, PageRank, TF-IDF, clustering (~750 lines)
+│   ├── query_api.py  # Search, expansion, retrieval methods (~550 lines)
+│   ├── introspection.py  # State inspection, fingerprints, summaries (~200 lines)
+│   └── persistence_api.py # Save/load/export methods (~200 lines)
 ├── query/            # Search, retrieval, query expansion (split into 8 modules)
 │   ├── __init__.py   # Re-exports public API
 │   ├── expansion.py  # Query expansion
@@ -167,8 +174,13 @@ cortical/
 
 | If you need to... | Look in... |
 |-------------------|------------|
-| Add/modify public API | `processor.py` - wrapper methods call other modules |
-| Implement search/retrieval | `query.py` - all search functions |
+| Add/modify public API | `processor/` package - methods split into focused mixins |
+| Modify document processing | `processor/documents.py` - add/remove documents |
+| Modify compute methods | `processor/compute.py` - PageRank, TF-IDF, clustering |
+| Add query features | `processor/query_api.py` - search, expansion, retrieval |
+| Add introspection | `processor/introspection.py` - fingerprints, gaps, summaries |
+| Modify persistence | `processor/persistence_api.py` - save/load/export |
+| Implement search/retrieval | `query/` - all search functions (8 modules) |
 | Add graph algorithms | `analysis.py` - PageRank, TF-IDF, clustering |
 | Add semantic relations | `semantics.py` - pattern extraction, retrofitting |
 | Modify data structures | `minicolumn.py` - Minicolumn, Edge classes |
