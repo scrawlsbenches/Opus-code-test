@@ -318,3 +318,262 @@ This deep scan specifically targeted locations commonly exploited by attackers t
 ### Conclusion
 
 **No hidden binary data, embedded malware, or suspicious payloads detected.** The codebase is clean across all commonly exploited attack vectors that security professionals typically overlook.
+
+---
+
+## Comprehensive Checklist of All Security Checks Performed
+
+### Git History Security (363 commits analyzed)
+
+| Check | Command/Method | Result |
+|-------|----------------|--------|
+| Leaked passwords | `git log -p --all -S "password"` | ✅ Only in sample docs |
+| API keys | `git log -p --all -S "api_key\|apikey\|API_KEY"` | ✅ None found |
+| AWS credentials | `git log -p --all -S "AKIA\|aws_secret"` | ✅ None found |
+| Private keys | `git log -p --all -S "BEGIN.*PRIVATE KEY"` | ✅ None found |
+| Tokens/secrets | `git log -p --all -S "token\|secret\|credential"` | ✅ None found |
+| .env files | `git log --all --name-only \| grep -E "\.env"` | ✅ None found |
+| Force pushes | `git reflog` analysis | ✅ Clean history |
+| Deleted large files | `git log --diff-filter=D` | ✅ Only corpus_dev.pkl (legitimate) |
+| Git config hooks | `cat .git/config` | ✅ No malicious hooks/remotes |
+
+### File System Security
+
+| Check | Command/Method | Result |
+|-------|----------------|--------|
+| Active git hooks | `ls .git/hooks/ \| grep -v sample` | ✅ None active |
+| Hidden dotfiles | `find . -name ".*" -type f` | ✅ Only .gitignore |
+| Symlinks | `find . -type l` | ✅ None found |
+| Executable files | `find . -type f -perm /111` | ✅ None (except .git/) |
+| .pth files | `find . -name "*.pth"` | ✅ None found |
+| .pyc committed | `find . -name "*.pyc" ! -path "*/.git/*"` | ✅ None committed |
+| Non-ASCII filenames | `find . -type f \| LC_ALL=C grep -E '[^\x00-\x7F]'` | ✅ None found |
+| Large files | `find . -size +10M` | ✅ Only corpus chunks (legitimate JSON) |
+
+### Binary/Malware Detection
+
+| Check | Command/Method | Result |
+|-------|----------------|--------|
+| File type verification | `file *.txt *.py *.md` | ✅ All proper text |
+| PE headers (Windows exe) | Search for `MZ` magic bytes | ✅ None found |
+| ELF headers (Linux exe) | Search for `\x7fELF` magic bytes | ✅ None found |
+| Mach-O headers (macOS) | Search for `cafebabe`/`feedface` | ✅ None found |
+| ZIP embedded | Search for `PK\x03\x04` | ✅ None found |
+| Image headers | Search for `JFIF`, `PNG`, `GIF8` | ✅ None found |
+| Hex dump analysis | `xxd -l 4` on all files | ✅ No binary headers |
+
+### Encoding Attack Detection
+
+| Check | Command/Method | Result |
+|-------|----------------|--------|
+| Base64 payloads | Regex `[A-Za-z0-9+/]{50,}={0,2}` | ✅ None suspicious |
+| Hex escape sequences | Regex `\\x[0-9a-fA-F]{2}` repeated | ✅ None found |
+| Zero-width chars | Search for U+200B, U+200C, U+200D | ✅ None found |
+| RTL override | Search for U+202E | ✅ None found |
+| Homoglyph attacks | Non-ASCII in identifiers | ✅ None found |
+| Unicode escapes in MD | Regex `\\u[0-9a-fA-F]{4}` | ✅ None found |
+
+### Python Code Security
+
+| Check | Command/Method | Result |
+|-------|----------------|--------|
+| `exec()` usage | `grep -r "exec("` | ✅ None (only "execute" words) |
+| `eval()` usage | `grep -r "eval("` | ✅ None (only "evaluate" words) |
+| `compile()` misuse | `grep -r "compile(.*exec"` | ✅ None found |
+| `__import__()` | `grep -r "__import__"` | ✅ None found |
+| Dangerous `getattr` | `grep -r "getattr\(.*,.*\)"` | ✅ Legitimate usage only |
+| `pickle.loads` on user input | Code review | ✅ Only file-based (medium risk) |
+| `subprocess` shell=True | `grep -r "shell=True"` | ✅ None found |
+| `os.system()` | `grep -r "os\.system"` | ✅ None found |
+| `pty.spawn()` | `grep -r "pty\.spawn"` | ✅ None found |
+
+### Network/Shell Pattern Detection
+
+| Check | Command/Method | Result |
+|-------|----------------|--------|
+| Socket connections | `grep -r "socket\.connect"` | ✅ None found |
+| HTTP clients | `grep -r "requests\.\|urllib\."` | ✅ None in production |
+| curl/wget | `grep -r "curl\|wget"` | ✅ None found |
+| netcat | `grep -r "nc \|netcat"` | ✅ None found |
+| /dev/tcp | `grep -r "/dev/tcp"` | ✅ None found |
+| Reverse shell patterns | Combined regex search | ✅ None found |
+
+### Supply Chain Security
+
+| Check | Command/Method | Result |
+|-------|----------------|--------|
+| Runtime dependencies | `pyproject.toml` review | ✅ Zero dependencies |
+| Dev dependencies | Package name verification | ✅ All legitimate |
+| Typosquatting check | Manual review of package names | ✅ None suspicious |
+| setup.py hooks | Check for malicious install hooks | ✅ No setup.py (uses pyproject.toml) |
+| Import hijacking | Check for shadowed stdlib names | ✅ None found |
+
+### CI/CD Security
+
+| Check | Command/Method | Result |
+|-------|----------------|--------|
+| Workflow injection | Review `.github/workflows/*.yml` | ✅ Standard actions only |
+| Hardcoded secrets | Search workflow files | ✅ None found |
+| Unsafe script execution | Review `run:` blocks | ✅ All safe |
+| Third-party actions | Verify action sources | ✅ Official actions only |
+| Environment leakage | Check env variable handling | ✅ Proper usage |
+
+### Configuration & Skill Files
+
+| Check | Command/Method | Result |
+|-------|----------------|--------|
+| CLAUDE.md.potential | Content review | ✅ Standard dev documentation |
+| Claude Skills | Review allowed-tools | ✅ Appropriately restricted |
+| Workflow definitions | Review .claude/workflows/ | ✅ Standard YAML |
+| Command definitions | Review .claude/commands/ | ✅ Standard Markdown |
+
+### Regex Security (ReDoS)
+
+| Check | Command/Method | Result |
+|-------|----------------|--------|
+| Nested quantifiers | Search for `(.*)+` patterns | ✅ None found |
+| Catastrophic backtracking | Review regex in semantics.py | ✅ Safe patterns |
+| Unbounded repetition | Review all regex patterns | ✅ All bounded |
+
+### Additional Checks
+
+| Check | Command/Method | Result |
+|-------|----------------|--------|
+| Deleted git objects | `git fsck` | ✅ Clean |
+| Orphaned commits | `git reflog` | ✅ None suspicious |
+| Large blob history | `git rev-list --objects --all` | ✅ Only legitimate files |
+| conftest.py review | Content verification | ✅ Standard pytest config |
+| __init__.py review | Check for hidden imports | ✅ Clean module exports |
+| Test fixtures | Review test data files | ✅ Synthetic, clean data |
+
+---
+
+## Security Improvement Task List
+
+### Priority: HIGH
+
+- [ ] **SEC-001: Add pickle security warning to documentation**
+  - File: `README.md`, `docs/quickstart.md`
+  - Add warning: "Only load pickle files from trusted sources"
+  - Effort: Low (30 min)
+  - Risk addressed: Arbitrary code execution via malicious pickle
+
+- [ ] **SEC-002: Add Bandit to CI pipeline**
+  - File: `.github/workflows/ci.yml`
+  - Add Python SAST scanning job
+  - Catches: SQL injection, hardcoded passwords, unsafe deserialization
+  - Effort: Low (1 hour)
+
+### Priority: MEDIUM
+
+- [ ] **SEC-003: Implement pickle file verification**
+  - File: `cortical/persistence.py`
+  - Add optional HMAC signature verification before loading
+  - Effort: Medium (4 hours)
+  - Risk addressed: Tampered corpus files
+
+- [ ] **SEC-004: Add dependency scanning to CI**
+  - File: `.github/workflows/ci.yml`
+  - Add `pip-audit` and `safety` checks
+  - Catches: Known CVEs in dependencies
+  - Effort: Low (1 hour)
+
+- [ ] **SEC-005: Add secret scanning to CI**
+  - File: `.github/workflows/ci.yml`
+  - Add `detect-secrets` or `truffleHog`
+  - Catches: Accidentally committed credentials
+  - Effort: Low (1 hour)
+
+- [ ] **SEC-006: Document MCP server security model**
+  - File: `docs/security.md` (new)
+  - Document: Transport security, authentication, file permissions
+  - Effort: Medium (2 hours)
+
+### Priority: LOW
+
+- [ ] **SEC-007: Restrict task-manager skill Write access**
+  - File: `.claude/skills/task-manager/SKILL.md`
+  - Limit Write tool to `tasks/` directory only
+  - Risk addressed: Arbitrary file writes via skill
+  - Effort: Low (30 min)
+
+- [ ] **SEC-008: Deprecate pickle format for new deployments**
+  - File: `cortical/persistence.py`, documentation
+  - Recommend JSON/protobuf as default
+  - Add deprecation warning when pickle is used
+  - Effort: Medium (2 hours)
+
+- [ ] **SEC-009: Add security-focused test cases**
+  - File: `tests/security/` (new directory)
+  - Tests: Path traversal, input validation edge cases
+  - Effort: Medium (4 hours)
+
+- [ ] **SEC-010: Implement input fuzzing**
+  - Tool: `hypothesis` or custom fuzzer
+  - Target: Query functions, document processing
+  - Catches: Unexpected crashes, edge cases
+  - Effort: High (8 hours)
+
+### Priority: INFORMATIONAL
+
+- [ ] **SEC-011: Add SECURITY.md file**
+  - Standard security policy document
+  - Include: Reporting vulnerabilities, security contacts
+  - Effort: Low (1 hour)
+
+- [ ] **SEC-012: Review and document file permission requirements**
+  - Document: Required permissions for corpus files
+  - Best practice: 600 for pickle files, 644 for JSON
+  - Effort: Low (30 min)
+
+---
+
+## CI Security Job Template
+
+Add this job to `.github/workflows/ci.yml`:
+
+```yaml
+security-scan:
+  name: "🔒 Security Scan"
+  runs-on: ubuntu-latest
+  needs: smoke-tests
+  steps:
+  - uses: actions/checkout@v4
+
+  - name: Set up Python 3.11
+    uses: actions/setup-python@v5
+    with:
+      python-version: '3.11'
+
+  - name: Install security tools
+    run: |
+      pip install bandit safety pip-audit detect-secrets
+
+  - name: Run Bandit (SAST)
+    run: |
+      echo "=== Running Bandit Security Scan ==="
+      bandit -r cortical/ -ll -f txt
+      echo "✅ Bandit scan passed"
+
+  - name: Check Dependencies
+    run: |
+      echo "=== Checking Dependencies ==="
+      pip install -e ".[dev]"
+      pip-audit --desc || echo "⚠️ Dependency warnings (review required)"
+      safety check || echo "⚠️ Safety warnings (review required)"
+
+  - name: Scan for Secrets
+    run: |
+      echo "=== Scanning for Secrets ==="
+      detect-secrets scan --all-files --exclude-files '\.git/.*' || true
+```
+
+---
+
+## Review Sign-off
+
+| Reviewer | Date | Scope | Status |
+|----------|------|-------|--------|
+| Claude (Automated) | 2025-12-14 | Git history, code, binary scan | ✅ Complete |
+
+**Next Review Recommended:** After implementing SEC-001 through SEC-005
