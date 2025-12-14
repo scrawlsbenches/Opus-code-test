@@ -2942,12 +2942,24 @@ class CorticalTextProcessor:
         from . import diff as diff_module
         return diff_module.what_changed(self, old_content, new_content)
 
-    def save(self, filepath: str, verbose: bool = True) -> None:
+    def save(
+        self,
+        filepath: str,
+        verbose: bool = True,
+        signing_key: Optional[bytes] = None
+    ) -> None:
         """
         Save processor state to a file.
 
         Saves all computed state including embeddings, semantic relations,
         and configuration, so they don't need to be recomputed when loading.
+
+        Args:
+            filepath: Path to save file
+            verbose: Print progress
+            signing_key: Optional HMAC key for signing pickle files (SEC-003).
+                If provided, creates a .sig file alongside the pickle file.
+                Use the same key with verify_key when loading.
         """
         metadata = {
             'has_embeddings': bool(self.embeddings),
@@ -2962,18 +2974,35 @@ class CorticalTextProcessor:
             self.embeddings,
             self.semantic_relations,
             metadata,
-            verbose
+            verbose,
+            signing_key=signing_key
         )
 
     @classmethod
-    def load(cls, filepath: str, verbose: bool = True) -> 'CorticalTextProcessor':
+    def load(
+        cls,
+        filepath: str,
+        verbose: bool = True,
+        verify_key: Optional[bytes] = None
+    ) -> 'CorticalTextProcessor':
         """
         Load processor state from a file.
 
         Restores all computed state including embeddings, semantic relations,
         and configuration.
+
+        Args:
+            filepath: Path to saved file
+            verbose: Print progress
+            verify_key: Optional HMAC key for verifying pickle file signatures (SEC-003).
+                If provided, the .sig file must exist and the signature must match.
+                This protects against tampering of pickle files.
+
+        Raises:
+            SignatureVerificationError: If verify_key is provided and verification fails
+            FileNotFoundError: If verify_key is provided but no .sig file exists
         """
-        result = persistence.load_processor(filepath, verbose)
+        result = persistence.load_processor(filepath, verbose, verify_key=verify_key)
         layers, documents, document_metadata, embeddings, semantic_relations, metadata = result
 
         # Restore config if available, otherwise use defaults
