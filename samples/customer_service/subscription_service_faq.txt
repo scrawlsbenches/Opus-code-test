@@ -1,0 +1,28 @@
+Subscription Service FAQ - StreamFlix Entertainment
+
+Q: What plans are available and what's included?
+A: We offer three subscription tiers. Basic plan ($9.99/month) includes HD streaming on one device with limited content library. Standard plan ($14.99/month) provides Full HD streaming on two simultaneous devices with complete content access. Premium plan ($19.99/month) offers 4K Ultra HD streaming on four devices plus offline downloads and exclusive early access to new releases. All plans include ad-free viewing and parental controls.
+
+Q: Can I cancel my subscription at any time?
+A: Yes, you can cancel anytime without penalty or cancellation fees. Your service continues until the end of your current billing period. After cancellation, you won't be charged for subsequent months, but you'll lose access to content when the period ends. You can reactivate your subscription anytime, and your viewing history and preferences will be preserved for 12 months.
+
+Q: How do I change my subscription plan?
+A: Log into your account dashboard and navigate to Subscription Settings. Select your desired plan and confirm the change. Upgrades take effect immediately, and you'll be charged the prorated difference for the remainder of your billing cycle. Downgrades become effective at the start of your next billing period to maximize your current plan benefits.
+
+Q: What payment methods do you accept?
+A: We accept major credit cards (Visa, MasterCard, American Express, Discover), debit cards, PayPal, Apple Pay, Google Pay, and gift cards. Payment information is securely stored and automatically charged on your billing date. You can update payment methods in your account settings. Failed payments trigger email notifications with instructions to update your payment information within 7 days to avoid service interruption.
+
+Q: Can I share my account with family members?
+A: Yes, all subscription plans support multiple user profiles within a single account. Standard and Premium plans allow simultaneous streaming on multiple devices as specified in your plan. Each user can maintain separate watchlists, viewing history, and personalized recommendations. Parental controls can be configured individually for each profile to restrict age-inappropriate content.
+
+Q: Do you offer student or family discounts?
+A: Students enrolled in accredited universities receive 25% off any plan with valid student email verification through our education partner. Family plans bundling multiple profiles at discounted rates are available for Premium subscribers. Annual subscription payments receive two months free compared to monthly billing. Military personnel and first responders qualify for 15% discount with verification.
+
+Q: What devices are supported?
+A: StreamFlix works on smart TVs (Samsung, LG, Sony, Vizio), streaming devices (Roku, Apple TV, Chromecast, Fire TV), game consoles (PlayStation, Xbox), computers (Windows, Mac, Linux via web browser), smartphones and tablets (iOS, Android), and web browsers (Chrome, Firefox, Safari, Edge). Download the StreamFlix app from your device's app store or visit our website to stream directly.
+
+Q: Can I download content for offline viewing?
+A: Premium subscribers can download select movies and TV shows to watch without internet connection. Downloads are available in the mobile apps for iOS and Android devices only. Most content allows up to 100 downloads across your devices simultaneously. Downloaded content expires after 30 days or 48 hours after you start watching, whichever comes first. Downloaded files cannot be transferred to other devices or external storage.
+
+Q: Why isn't certain content available in my region?
+A: Content availability varies by geographic location due to licensing agreements with content providers and studios. We continuously work to expand our library globally, but distribution rights determine regional availability. Using VPNs or proxy services to access content from other regions violates our Terms of Service and may result in account suspension. Check your local content catalog for available titles in your country.

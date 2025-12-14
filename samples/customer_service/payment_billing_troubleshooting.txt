@@ -1,0 +1,75 @@
+Payment and Billing Troubleshooting Guide
+
+Payment Declined or Failed
+
+Payment declines occur for numerous reasons, most commonly insufficient funds, expired cards, incorrect billing information, or fraud prevention triggers. Contact your bank or credit card issuer first to determine why the charge was declined. Banks often have more detailed information about decline reasons than merchants receive.
+
+Verify all payment information entered correctly: card number, expiration date, CVV security code, billing address, and ZIP code. Even minor discrepancies between entered information and your card's billing address can cause declines. Billing addresses must match exactly what your bank has on file, including apartment numbers and street abbreviations.
+
+Fraud detection systems sometimes block legitimate transactions appearing suspicious due to unusual purchase patterns, international transactions, or first-time vendor charges. Call your bank to approve the transaction and remove temporary blocks. Inform your bank that you're attempting to purchase from our service and the approximate amount.
+
+Prepaid cards and some debit cards require pre-authorization holds that temporarily reserve the full transaction amount. Ensure your card has sufficient balance for both the purchase amount and potential authorization holds. Virtual cards, gift cards, or limited-use card numbers may have restrictions preventing recurring subscription charges.
+
+Duplicate Charges or Multiple Billing
+
+Check your statement carefully - authorization holds appear as separate pending transactions but only one charge will post to your account. Authorization holds typically disappear within 3-5 business days. If you see multiple completed charges for the same subscription period, contact our billing support immediately.
+
+Duplicate charges sometimes occur when customers repeatedly retry failed payments or click "submit" multiple times during checkout. Only one charge should finalize, but contact us if you see duplicate completed transactions. Provide transaction IDs, dates, and amounts for investigation.
+
+Multiple subscriptions on one account can appear as duplicate charges but represent separate billing cycles or different service tiers. Review your subscription settings to identify all active subscriptions. Cancel any unwanted subscriptions immediately to prevent future charges.
+
+Cannot Update Payment Method
+
+Payment method updates may fail during active subscription renewal attempts. Wait until the current billing cycle processes, then update your payment information. If your card expired and renewal failed, you may need to contact support for manual payment method updates to restore service access.
+
+Browser cache and cookies sometimes prevent payment form updates from saving properly. Clear your browser cache, disable browser extensions, or try a different browser. Ensure JavaScript is enabled as payment forms require it for validation and encryption.
+
+Some payment processors require phone number or address verification before allowing payment method changes. Complete any verification steps requested during the update process. Check your email for verification links or codes that must be confirmed before changes take effect.
+
+Subscription Cancelled But Still Being Charged
+
+Verify cancellation processed successfully by checking your account subscription status. You should see a cancellation confirmation email and your account dashboard should show subscription end date. If you don't have confirmation, the cancellation may not have completed properly.
+
+Cancellations take effect at the end of your current billing period, so one more charge after cancelling is expected and correct. Review the cancellation date and the charge date to confirm this is the final charge. No refunds are provided for early cancellation within a billing period unless otherwise stated in our refund policy.
+
+If you're being charged after your subscription end date, contact billing support immediately with your cancellation confirmation email, account details, and statement showing unexpected charges. We'll investigate and process refunds for any charges that occurred after confirmed cancellation dates.
+
+Wrong Amount Charged
+
+Verify the charge amount matches your subscription plan pricing. Check for any add-ons, extra features, or one-time purchases included in the charge. Promotional pricing or discount codes expire, potentially causing prices to return to standard rates.
+
+Currency conversion fees applied by your bank or credit card processor can make charges appear higher than expected. International transaction fees typically add 1-3% to the base charge. These fees are charged by your financial institution, not by us. Check with your bank about foreign transaction fees if our company is based in a different country.
+
+Tax amounts vary by location and change when you move or update your billing address. Sales tax, VAT, GST, or other regional taxes are calculated based on your billing location and added to subscription prices. Review the itemized charge breakdown in your invoice for tax amounts and rates applied.
+
+Refund Not Received
+
+Refund processing requires 5-10 business days for the funds to appear in your account after we initiate the refund. Credit card refunds take longer than the original charge due to banking processing times. Check your original payment method - refunds return to the same card or account used for purchase.
+
+Refunds to expired or closed cards are processed by your bank, which typically issues a check or transfers funds to your current account. Contact your card issuer if a refund was processed but hasn't appeared after 14 days. We can provide proof of refund processing to help your bank locate the transaction.
+
+PayPal, digital wallets, and alternative payment methods have different refund timeframes. Check your payment provider's account for refund status. Some payment processors hold refunds for verification before crediting your account balance.
+
+Invoice or Receipt Not Received
+
+Invoices and receipts are automatically emailed to your account's registered email address after each successful charge. Check your spam, junk, or promotions folders if you don't see the email in your inbox. Add billing@ourservice.com to your email contacts to prevent future filtering.
+
+Download invoices directly from your account dashboard under Billing History. Click any transaction to view detailed invoice information and download PDF copies. Invoice history is maintained for up to 7 years for your records.
+
+Update your email address in account settings if invoices are being sent to an old or incorrect email. Request reissue of specific invoices through the billing dashboard or contact support with the transaction dates you need.
+
+Promotional Code Not Working
+
+Verify the promotional code hasn't expired by checking the expiration date in the promotion terms. Codes are case-sensitive and must be entered exactly as provided, including any hyphens or capital letters. Remove any extra spaces before or after the code when pasting.
+
+Promotional codes often have eligibility restrictions: new customers only, specific subscription tiers, minimum purchase amounts, or incompatibility with other promotions. Read the promotion details carefully to ensure you meet all requirements. Some codes cannot be combined with existing discounts or applied to accounts with active subscriptions.
+
+One-time use codes are invalidated after first use. If you previously used a code on a different account or purchase, it won't work again. Contact the promotion source for a replacement code if you believe yours was invalidated in error.
+
+Unexpected Subscription Renewal
+
+Subscriptions automatically renew unless cancelled before the renewal date to provide uninterrupted service. Renewal reminder emails are sent 7 days before your billing date. Check your spam folder if you didn't receive renewal reminders - this may indicate email delivery issues requiring address verification.
+
+Free trials convert to paid subscriptions automatically when the trial period ends. Trial period length and end date are displayed during signup and in your account dashboard. Cancel before the trial ends to avoid charges. Some trials require payment method entry at signup but don't charge until trial completion.
+
+Review your subscription renewal settings to enable or disable automatic renewal. Disabling automatic renewal will maintain access through your current period's end date but prevent future charges. You'll need to manually renew if you want to continue service after the current period expires.

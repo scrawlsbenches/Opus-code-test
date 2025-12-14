@@ -1,0 +1,304 @@
+Customer Service Email Response Templates
+
+Order Confirmation Template
+
+Subject: Order Confirmation - Order #[ORDER_NUMBER]
+
+Dear [CUSTOMER_NAME],
+
+Thank you for your order! We're excited to get your items to you as quickly as possible.
+
+Order Number: [ORDER_NUMBER]
+Order Date: [DATE]
+Estimated Delivery: [DELIVERY_DATE_RANGE]
+
+Items Ordered:
+[ITEM_LIST with quantities and prices]
+
+Subtotal: $[SUBTOTAL]
+Shipping: $[SHIPPING]
+Tax: $[TAX]
+Total: $[TOTAL]
+
+Shipping Address:
+[FORMATTED_ADDRESS]
+
+Payment Method: [PAYMENT_TYPE] ending in [LAST_4_DIGITS]
+
+Your order is currently being processed and will ship within 24 hours. You'll receive a shipping confirmation email with tracking information once your package leaves our warehouse.
+
+View your order status anytime by logging into your account at [ACCOUNT_URL].
+
+If you have any questions about your order, please don't hesitate to contact our support team.
+
+Thank you for your business!
+
+[COMPANY_NAME] Customer Service Team
+
+---
+
+Shipping Confirmation Template
+
+Subject: Your Order Has Shipped! - Order #[ORDER_NUMBER]
+
+Dear [CUSTOMER_NAME],
+
+Great news! Your order has shipped and is on its way to you.
+
+Order Number: [ORDER_NUMBER]
+Tracking Number: [TRACKING_NUMBER]
+Carrier: [CARRIER_NAME]
+Estimated Delivery: [DELIVERY_DATE]
+
+Track your package: [TRACKING_URL]
+
+Items Shipped:
+[ITEM_LIST]
+
+Delivery Address:
+[FORMATTED_ADDRESS]
+
+Your package should arrive by [DELIVERY_DATE]. Please note that delivery times are estimates and may vary due to carrier schedules or weather conditions.
+
+If you have any questions or concerns about your shipment, please contact us and reference your order number.
+
+Thank you for choosing [COMPANY_NAME]!
+
+Best regards,
+[COMPANY_NAME] Shipping Department
+
+---
+
+Refund Processed Template
+
+Subject: Refund Confirmation - Order #[ORDER_NUMBER]
+
+Dear [CUSTOMER_NAME],
+
+Your refund has been processed successfully.
+
+Order Number: [ORDER_NUMBER]
+Refund Amount: $[REFUND_AMOUNT]
+Refund Method: [PAYMENT_METHOD] ending in [LAST_4_DIGITS]
+Processing Date: [DATE]
+
+Your refund will appear on your statement within 5-10 business days depending on your financial institution. The refund will show as a credit from [COMPANY_NAME].
+
+Items Refunded:
+[ITEM_LIST with quantities and refund amounts]
+
+If you have any questions about this refund or need further assistance, please don't hesitate to contact us.
+
+We appreciate your business and hope to serve you again in the future.
+
+Sincerely,
+[COMPANY_NAME] Customer Service Team
+
+---
+
+Technical Support Response Template
+
+Subject: Re: [ORIGINAL_SUBJECT] - Ticket #[TICKET_NUMBER]
+
+Dear [CUSTOMER_NAME],
+
+Thank you for contacting our technical support team. I understand you're experiencing [BRIEF_ISSUE_DESCRIPTION], and I'm here to help resolve this for you.
+
+Based on the information you provided, I recommend trying the following steps:
+
+1. [TROUBLESHOOTING_STEP_1]
+   [Detailed explanation of why and how]
+
+2. [TROUBLESHOOTING_STEP_2]
+   [Detailed explanation of why and how]
+
+3. [TROUBLESHOOTING_STEP_3]
+   [Detailed explanation of why and how]
+
+Please try these steps and let me know the results. If the issue persists after completing these steps, we'll escalate to our specialized technical team for further investigation.
+
+For your reference, your support ticket number is [TICKET_NUMBER]. Include this number in any future correspondence about this issue for faster service.
+
+I'm committed to resolving this issue for you. Please reply with the results of these troubleshooting steps, or let me know if you have any questions.
+
+Best regards,
+[AGENT_NAME]
+Technical Support Specialist
+[COMPANY_NAME]
+
+---
+
+Product Not Available Template
+
+Subject: Re: Product Inquiry - [PRODUCT_NAME]
+
+Dear [CUSTOMER_NAME],
+
+Thank you for your interest in [PRODUCT_NAME]. Unfortunately, this item is currently out of stock due to [REASON - high demand/supply chain delays/discontinued].
+
+We have a few options for you:
+
+1. Back-Order: We expect stock to arrive by [EXPECTED_DATE]. We can place a back-order for you now and ship as soon as inventory arrives. You won't be charged until the item ships.
+
+2. Similar Products: We have similar items available that might meet your needs:
+   - [ALTERNATIVE_1]: [BRIEF_DESCRIPTION] - [PRICE] - [IN_STOCK_STATUS]
+   - [ALTERNATIVE_2]: [BRIEF_DESCRIPTION] - [PRICE] - [IN_STOCK_STATUS]
+
+3. Notification: Sign up for back-in-stock notifications at [PRODUCT_URL]. We'll email you immediately when this item becomes available.
+
+If you'd like to proceed with any of these options or have questions about the alternatives, please let me know and I'll be happy to assist.
+
+Thank you for your patience and understanding.
+
+Sincerely,
+[AGENT_NAME]
+[COMPANY_NAME] Sales Team
+
+---
+
+Complaint Acknowledgment Template
+
+Subject: We're Sorry - Your Feedback Is Important - Case #[CASE_NUMBER]
+
+Dear [CUSTOMER_NAME],
+
+Thank you for bringing this matter to our attention. I sincerely apologize for [SPECIFIC_ISSUE] and the frustration this has caused you. Your feedback is valuable and helps us improve our service.
+
+I want to assure you that we take your concerns seriously. Here's what I'm doing to address your situation:
+
+Immediate Action:
+[IMMEDIATE_STEPS_BEING_TAKEN]
+
+Resolution:
+[PROPOSED_SOLUTION with timeline]
+
+Prevention:
+I've shared your feedback with [RELEVANT_DEPARTMENT] to prevent similar issues in the future. Your experience will help us improve our [PROCESS/PRODUCT/SERVICE].
+
+To make this right, I'd like to offer [COMPENSATION/GOODWILL_GESTURE if appropriate]. This will be [HOW_IT_WILL_BE_APPLIED].
+
+I'll personally monitor this case to ensure complete resolution. You can expect [NEXT_STEPS] by [TIMELINE]. I'll follow up with you on [DATE] to confirm everything has been resolved to your satisfaction.
+
+If you have any additional concerns or questions, please don't hesitate to contact me directly at this email address.
+
+Again, I apologize for this experience, and I appreciate the opportunity to make it right.
+
+Best regards,
+[AGENT_NAME]
+[TITLE]
+[COMPANY_NAME]
+Direct: [CONTACT_INFO if appropriate]
+
+---
+
+Password Reset Instructions Template
+
+Subject: Password Reset Request - [COMPANY_NAME] Account
+
+Dear [CUSTOMER_NAME],
+
+We received a request to reset the password for your [COMPANY_NAME] account associated with this email address.
+
+To reset your password, click the link below:
+[RESET_LINK]
+
+This link will expire in 2 hours for security purposes.
+
+If you didn't request a password reset, please ignore this email. Your password will remain unchanged. If you're concerned about your account security, contact our support team immediately.
+
+For your security, remember to:
+- Create a strong password with at least 8 characters
+- Include uppercase and lowercase letters, numbers, and symbols
+- Never share your password with anyone
+- Use a unique password not used on other websites
+
+If you continue to have trouble accessing your account, please contact our support team for assistance.
+
+Best regards,
+[COMPANY_NAME] Security Team
+
+---
+
+Subscription Renewal Reminder Template
+
+Subject: Your [PLAN_NAME] Subscription Renews in 7 Days
+
+Dear [CUSTOMER_NAME],
+
+This is a friendly reminder that your [PLAN_NAME] subscription will automatically renew on [RENEWAL_DATE].
+
+Subscription Details:
+Plan: [PLAN_NAME]
+Renewal Date: [RENEWAL_DATE]
+Amount: $[AMOUNT]
+Payment Method: [PAYMENT_TYPE] ending in [LAST_4_DIGITS]
+
+Your subscription will automatically renew to ensure uninterrupted service. No action is needed if you wish to continue your subscription.
+
+If you'd like to make any changes:
+- Upgrade or downgrade your plan: [PLAN_CHANGE_URL]
+- Update payment method: [PAYMENT_UPDATE_URL]
+- Cancel subscription: [CANCELLATION_URL]
+
+Remember that if you cancel, your service will continue through [CURRENT_PERIOD_END_DATE], but you won't be charged for subsequent periods.
+
+Thank you for being a valued subscriber!
+
+Best regards,
+[COMPANY_NAME] Subscription Team
+
+---
+
+Account Closure Confirmation Template
+
+Subject: Account Closure Confirmation
+
+Dear [CUSTOMER_NAME],
+
+This email confirms that your [COMPANY_NAME] account has been permanently closed as requested on [DATE].
+
+Account Details:
+Username: [USERNAME]
+Email: [EMAIL]
+Closure Date: [CLOSURE_DATE]
+
+Per your request and our privacy policy:
+- Your personal information will be deleted within 30 days
+- Any active subscriptions have been cancelled
+- Remaining account balance of $[BALANCE] [will be refunded/has been forfeited - as applicable]
+- Order history will be retained for [RETENTION_PERIOD] for legal and accounting purposes
+
+Please note that account closure is permanent and cannot be reversed. If you wish to use our services in the future, you'll need to create a new account.
+
+We're sorry to see you go and would appreciate any feedback about your experience with [COMPANY_NAME]. Your insights help us improve our service for future customers.
+
+If this account closure was made in error or without your authorization, please contact our security team immediately at security@ourservice.com.
+
+Thank you for being a customer. We wish you all the best.
+
+Sincerely,
+[COMPANY_NAME] Customer Service Team
+
+---
+
+Positive Feedback Response Template
+
+Subject: Re: [ORIGINAL_SUBJECT] - Thank You!
+
+Dear [CUSTOMER_NAME],
+
+Thank you so much for taking the time to share your positive feedback! Messages like yours make our day and remind us why we love what we do.
+
+I'm thrilled to hear that [SPECIFIC_ASPECT they praised] met your expectations. We work hard to [COMPANY_VALUE related to their feedback], and it's wonderful to know we succeeded in your case.
+
+I've shared your kind words with [TEAM/INDIVIDUAL mentioned], who will be delighted to know their efforts made a difference for you. Your feedback is also being shared with our leadership team as an example of the experience we strive to deliver to all customers.
+
+If there's anything else we can do to enhance your experience with [COMPANY_NAME], please don't hesitate to reach out. We're always here to help.
+
+Thank you again for your business and for taking the time to share your experience. Customers like you make our work truly rewarding!
+
+Warmest regards,
+[AGENT_NAME]
+[COMPANY_NAME] Customer Service Team
+
+P.S. If you'd be willing to share your experience publicly, we'd be grateful for a review on [REVIEW_PLATFORM]. Here's a quick link: [REVIEW_URL]

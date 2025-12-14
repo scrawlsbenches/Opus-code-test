@@ -1,0 +1,25 @@
+Electronics Product FAQ - TechGear Wireless Earbuds
+
+Q: How do I pair my earbuds with my phone?
+A: Remove both earbuds from the charging case - they'll automatically enter pairing mode with a blue flashing LED. Open your phone's Bluetooth settings and select "TechGear Earbuds" from the available devices list. You'll hear a confirmation chime when successfully connected. The earbuds will automatically reconnect to previously paired devices when removed from the case.
+
+Q: What is the battery life?
+A: Each earbud provides up to 8 hours of continuous playback on a single charge. The charging case provides an additional 24 hours, giving you 32 hours total. Charging time is approximately 90 minutes for the earbuds and 2 hours for the case using the included USB-C cable. Quick charge feature provides 2 hours of playback from a 15-minute charge.
+
+Q: Are these earbuds water resistant?
+A: Yes, the earbuds are rated IPX7 for water resistance, meaning they can withstand submersion in up to 1 meter of water for 30 minutes. This makes them suitable for workouts, running in rain, and accidental splashes. The charging case is IPX4 rated for splash resistance only. Do not submerge the case in water.
+
+Q: How do I control music playback and calls?
+A: Single tap on the right earbud plays or pauses music. Double tap skips to the next track. Triple tap returns to the previous track. Single tap on the left earbud answers or ends calls. Press and hold for 2 seconds to activate your phone's voice assistant. Custom controls can be configured through the TechGear mobile app.
+
+Q: Can I use just one earbud at a time?
+A: Yes, either earbud can be used independently in mono mode. Remove one earbud from the case while leaving the other inside. This is useful for staying aware of your surroundings or extending battery life. Audio will automatically switch from stereo to mono. Both earbuds must be used for stereo sound and full bass response.
+
+Q: What Bluetooth version do these use?
+A: The earbuds use Bluetooth 5.2 technology, providing stable connections up to 30 feet from your device in open space. Advanced codec support includes SBC, AAC, and aptX for high-quality audio streaming. Multi-point connectivity allows simultaneous connection to two devices, letting you switch seamlessly between your phone and laptop.
+
+Q: How do I update the firmware?
+A: Download the TechGear mobile app from your device's app store. Place both earbuds in the case and ensure the case has at least 50% battery. Open the app, navigate to Settings, and select "Firmware Update" if an update is available. Keep earbuds in the case during the update process, which typically takes 5-10 minutes. Do not interrupt the update or close the app.
+
+Q: What should I do if one earbud stops working?
+A: First, ensure both earbuds are fully charged. Try resetting by placing both earbuds in the case, then press and hold the case button for 10 seconds until the LED flashes red and blue. Remove earbuds and re-pair with your device. If issues persist, clean the charging contacts with a dry cloth and ensure the earbud speaker mesh is clear of debris.

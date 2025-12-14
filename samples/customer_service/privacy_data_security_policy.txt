@@ -1,0 +1,89 @@
+Privacy and Data Security Policy
+
+Information Collection and Usage
+
+We collect personal information necessary to provide services, process transactions, and enhance user experience. Information collected includes name, email address, phone number, billing address, shipping address, payment details, and account credentials. Order history, browsing behavior, device information, and IP addresses are collected to improve service quality and prevent fraud.
+
+Information is used to fulfill orders, process payments, communicate order status, provide customer support, send marketing communications (with consent), detect fraud, comply with legal obligations, and improve our products and services. We do not sell personal information to third parties. Information is shared only with service providers necessary for business operations under strict confidentiality agreements.
+
+Marketing emails are sent only to customers who opted in during account creation or checkout. Unsubscribe links appear in every marketing email. Transactional emails regarding orders, account security, and service updates are sent regardless of marketing preferences as they're necessary for service provision. You can manage email preferences in account settings.
+
+Data Storage and Protection
+
+Personal information is stored on secure servers with encryption at rest and in transit. Database access is restricted to authorized personnel only with multi-factor authentication required. Regular security audits, penetration testing, and vulnerability assessments ensure ongoing protection. We employ industry-standard security measures including firewalls, intrusion detection, and DDoS protection.
+
+Payment information is not stored on our servers. Credit card details are tokenized by PCI-compliant payment processors. We receive only anonymized payment tokens for transaction processing. Full card numbers are never visible to our staff or stored in our systems. This reduces risk and ensures compliance with payment card industry security standards.
+
+Data backups are performed daily and stored in geographically distributed locations. Backup data receives the same security protections as production data. Disaster recovery procedures enable service restoration within 24-48 hours of catastrophic events. Backup retention follows data protection regulations with automatic deletion after required retention periods.
+
+Account Security Best Practices
+
+Create strong unique passwords with minimum 12 characters including uppercase, lowercase, numbers, and symbols. Never reuse passwords across multiple sites. Password managers securely store and generate strong passwords. We'll never ask for your password via email or phone - any such request is a phishing attempt that should be reported.
+
+Enable two-factor authentication in account security settings for enhanced protection. Two-factor authentication requires both your password and a temporary code from your phone or authenticator app to access your account. This prevents unauthorized access even if your password is compromised. Backup codes should be saved securely for account recovery if your 2FA device is lost.
+
+Monitor your account activity regularly in the Account Activity section showing recent logins, IP addresses, devices, and locations. Unfamiliar activity may indicate unauthorized access requiring immediate password change. Enable login notifications to receive alerts when your account is accessed from new devices or locations.
+
+Log out when using shared or public computers. Browser "remember me" options should only be used on personal devices. Clear browser cache and cookies on shared devices after accessing your account. Public WiFi networks are inherently insecure - avoid accessing sensitive accounts or use VPN protection on public networks.
+
+Data Sharing and Third Parties
+
+We share information with service providers who perform business functions on our behalf: payment processors, shipping carriers, email service providers, cloud hosting providers, customer service platforms, and analytics services. These providers access only information necessary for their specific functions and are contractually obligated to protect data confidentiality and use information solely for agreed purposes.
+
+Shipping carriers receive recipient names, addresses, and phone numbers necessary for delivery. Payment processors receive billing information to process transactions. Email providers receive addresses to send order confirmations and updates. Analytics services receive anonymized usage data to improve service quality. None of these providers may use information for their own marketing without your explicit consent.
+
+We may disclose information when required by law, legal process, litigation, or government requests. We'll notify users of legal demands for information unless prohibited by law or when disclosure might create safety risks. We contest overbroad or inappropriate demands for customer information and publish transparency reports detailing government data requests.
+
+We do not sell, rent, or trade personal information to third parties for their marketing purposes. Aggregated anonymized data may be shared for industry research, trend analysis, or business intelligence without identifying individual users. Any business sale or merger requires successor entities to honor this privacy policy regarding existing customer data.
+
+User Rights and Data Control
+
+Access your personal information anytime through account settings. Download a complete copy of your data in machine-readable format via the Privacy Dashboard. This includes profile information, order history, communications, and usage data. Data portability enables you to transfer information to other services.
+
+Request correction of inaccurate personal information through account settings or by contacting customer support. We'll verify your identity and update records within 30 days. Some information like order histories cannot be altered as they represent factual transaction records, but supplementary corrections or clarifications can be noted.
+
+Delete your account and personal information through account settings or customer support. Account deletion is permanent and cannot be reversed. We retain certain information as required by law for tax, accounting, fraud prevention, or legal compliance purposes - typically 7 years for financial records. After required retention periods, information is permanently deleted from all systems including backups.
+
+Opt out of marketing communications via unsubscribe links in emails or account communication preferences. Marketing opt-out doesn't affect transactional messages necessary for service provision. California residents have additional rights under CCPA including the right to know what information is collected and the right to non-discrimination for exercising privacy rights.
+
+Cookies and Tracking Technologies
+
+We use cookies, web beacons, and similar technologies to enhance user experience, remember preferences, analyze site usage, and deliver relevant content. Essential cookies enable core functionality like shopping cart and account authentication. These cookies are necessary for site operation and cannot be disabled.
+
+Analytics cookies collect aggregated information about site usage, page views, navigation paths, and feature usage. This helps us understand how customers interact with our service and identify improvement opportunities. Marketing cookies track effectiveness of advertising campaigns and may display personalized ads on other websites you visit.
+
+You control cookie preferences through browser settings or our cookie consent manager. Blocking certain cookies may limit site functionality. Browser Do Not Track signals are respected for third-party advertising cookies. First-party operational cookies remain necessary for site functionality regardless of Do Not Track settings.
+
+Third-party cookies from social media plugins, analytics providers, or advertising networks may be present. These third parties have their own privacy policies governing their data collection and use. Review third-party privacy policies to understand their data practices. We contractually limit third-party data usage to agreed purposes.
+
+Children's Privacy
+
+Our services are not directed to children under 13 years old. We do not knowingly collect personal information from children under 13. If we learn we've collected child information without parental consent, we'll delete it promptly. Parents who believe we've collected child information should contact us immediately for deletion.
+
+Age verification during account creation prevents children from registering. Some services may be appropriate for minors aged 13-17 with parental consent. Parental controls enable parents to manage minor children's access and activity. Parents can review, modify, or delete children's information through family account management features.
+
+Educators using our services in classroom settings must obtain appropriate parental consents required by COPPA and FERPA regulations. Educational accounts have enhanced privacy protections and limited data collection. Student data is used solely for educational purposes and is never used for marketing. Educational data is deleted when no longer needed for educational purposes or upon request.
+
+Data Breach Notification
+
+Despite strong security measures, no system is completely invulnerable. In the unlikely event of a data breach affecting personal information, we'll notify affected users within 72 hours of discovering the breach as required by law. Notification includes details about compromised information types, breach circumstances, steps we're taking, and recommended actions for affected users.
+
+Breach notifications are sent via email to registered addresses with additional notice on our website and social media channels. Notifications include information about free credit monitoring services if financial information was compromised. We'll cooperate with law enforcement investigations and regulatory authorities regarding any breach incidents.
+
+Report suspected security vulnerabilities or breaches to security@ourservice.com. We take all reports seriously and investigate promptly. Responsible disclosure of security issues allows us to fix problems before exploitation. We won't take legal action against security researchers who report vulnerabilities responsibly without exploiting or disclosing them publicly before we can remediate.
+
+International Data Transfers
+
+We operate globally with data processing occurring in multiple countries. Personal information may be transferred to and stored in countries different from your residence. These countries may have different data protection laws than your jurisdiction. We ensure appropriate safeguards are in place for international transfers through standard contractual clauses, adequacy decisions, or other legal mechanisms.
+
+European Union and UK users' data transfers outside the EU/UK are protected by Standard Contractual Clauses approved by European authorities. These contracts require recipients to provide equivalent protection to EU/UK data protection standards. Users can request copies of transfer safeguard documents from our privacy team.
+
+Privacy rights vary by jurisdiction. European users have rights under GDPR including data portability, right to be forgotten, and right to object to processing. California residents have rights under CCPA. Other jurisdictions may provide additional rights. Contact our privacy team to exercise jurisdiction-specific privacy rights applicable to your location.
+
+Policy Updates and Changes
+
+This privacy policy may be updated periodically to reflect changing practices, technologies, or legal requirements. Material changes will be prominently announced via email and website notice at least 30 days before taking effect. Policy version dates appear at the top of this document. Continued use of services after policy changes constitutes acceptance of updated terms.
+
+Review privacy policy updates to stay informed about how we protect and use your information. Significant changes require renewed consent for affected practices. You may decline consent and close your account if you disagree with policy changes. Previous policy versions are archived and available upon request.
+
+Contact our privacy team at privacy@ourservice.com with questions, concerns, or requests regarding this privacy policy or our data practices. We'll respond to privacy inquiries within 30 days. You may also contact our Data Protection Officer for EU/UK-related privacy matters at dpo@ourservice.com.

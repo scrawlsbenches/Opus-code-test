@@ -1,0 +1,63 @@
+Connectivity and Network Troubleshooting Guide
+
+Cannot Connect to Service - Basic Diagnostics
+
+Begin by verifying your internet connection is working. Open a web browser and visit several different websites to confirm general internet connectivity. If websites load slowly or not at all, the problem is with your internet connection rather than our service specifically.
+
+Check our status page at status.ourservice.com to see if we're experiencing service disruptions or planned maintenance. Widespread outages are announced on our status page and social media channels. If services are operational, the issue is likely with your local network configuration or internet service provider.
+
+Restart your modem and router by unplugging them for 30 seconds, then reconnecting power. Allow 2-3 minutes for them to fully reboot and establish connections. Restart your computer or device as well. This simple step resolves most intermittent connectivity issues by clearing temporary network state.
+
+Firewall Blocking Connection
+
+Corporate firewalls, security software, or home router settings may block our service's required network ports. Our application requires outbound access on ports 443 (HTTPS), 80 (HTTP), and 8883 (secure messaging). Check your firewall settings to ensure these ports aren't blocked for our application.
+
+Add our application to your firewall's trusted applications list or create specific rules allowing outbound connections to our server domains. Windows Defender Firewall, third-party security suites, and router firewalls all have different configuration interfaces. Consult your security software's documentation for adding exceptions.
+
+Enterprise networks often require proxy configuration or whitelist approval for external services. Contact your IT department to whitelist our service domains and IP ranges listed in our technical documentation. Provide your IT team with our network requirements document available in the support portal.
+
+VPN or Proxy Interference
+
+Virtual private networks and proxy servers can interfere with our service's connection protocols. Temporarily disable your VPN to test if it's causing connectivity issues. If the service works without VPN, configure your VPN to split-tunnel our application's traffic or exclude our domains from VPN routing.
+
+Some VPN services are incompatible with real-time features like video streaming or live chat due to packet inspection or compression. Check your VPN provider's support documentation or try a different VPN server location. Corporate VPNs may require configuration changes that need IT department assistance.
+
+Proxy settings configured in your browser or operating system can prevent our application from reaching our servers. Check Internet Options (Windows) or Network Preferences (Mac) for proxy configuration. Ensure proxy settings allow connections to our service domains or configure the application to bypass proxy servers.
+
+DNS Resolution Failures
+
+Domain Name System problems prevent translating our service URLs into IP addresses. Test DNS resolution by opening Command Prompt (Windows) or Terminal (Mac/Linux) and typing: nslookup api.ourservice.com
+
+If nslookup fails or returns errors, try changing your DNS servers to public alternatives like Google DNS (8.8.8.8, 8.8.4.4) or Cloudflare DNS (1.1.1.1, 1.0.0.1). Configure DNS servers in your network adapter settings or router configuration. Flush your local DNS cache after changing servers using: ipconfig /flushdns (Windows) or sudo killall -HUP mDNSResponder (Mac).
+
+Intermittent Disconnections
+
+Unstable connections that drop frequently may indicate WiFi signal strength issues, internet service provider problems, or network congestion. Run a speed test at speedtest.net during different times of day to identify patterns. Consistent slow speeds or high packet loss indicate ISP issues requiring contact with your internet provider.
+
+Move closer to your WiFi router or use a wired Ethernet connection for more stable connectivity. WiFi interference from neighboring networks, microwave ovens, or physical obstacles degrades signal quality. Use WiFi analyzer tools to find less congested channels and optimize router placement.
+
+Network adapter drivers can cause disconnection issues when outdated or corrupted. Update your network adapter drivers through Device Manager (Windows) or Software Update (Mac). Disable power management features that turn off network adapters to save energy, as this causes unexpected disconnections.
+
+Error: "SSL Certificate Validation Failed"
+
+This security error indicates problems verifying our server's encryption certificate. Ensure your system clock is set correctly - incorrect date and time cause certificate validation to fail. Synchronize your system clock with internet time servers through Date & Time settings.
+
+Outdated operating systems may lack current certificate authority root certificates needed to validate modern SSL certificates. Install the latest operating system updates which include updated certificate stores. Windows users should run Windows Update, macOS users should check Software Update.
+
+Security software or corporate network inspection can interfere with SSL certificate validation. Some antivirus programs perform SSL inspection which can trigger certificate errors. Check your security software settings and add exceptions for our service if needed.
+
+Mobile Data Connection Issues
+
+Mobile devices may restrict background data for our application to save data allowance. Check your device's app settings to ensure background data and unrestricted data usage are enabled for our application. Some devices have data saver modes that need to be disabled or configured with app exceptions.
+
+Cellular carriers sometimes throttle data speeds after exceeding plan limits or during network congestion. Run a speed test on your mobile connection to verify adequate bandwidth. Some features may require WiFi connection if cellular data speeds are insufficient.
+
+Verify the application has necessary permissions to access network connectivity. On iOS, check Settings > Privacy > Local Network. On Android, check App Permissions for network access. Denying these permissions prevents the application from establishing connections.
+
+Connection Works on Some Devices But Not Others
+
+Device-specific connectivity issues suggest firewall settings, security software, or system configuration differences between devices. Compare working and non-working devices to identify differences in security software, VPN usage, or network settings.
+
+Reinstall the application on non-working devices to eliminate corrupted installation files. Clear application cache and data which might contain outdated or invalid connection parameters. On mobile devices, uninstall completely and reinstall from the app store rather than updating.
+
+Check if the working devices are on different network segments or using different internet connections. Enterprise networks may apply different firewall rules to different device types or user accounts. Wireless guest networks often have more restrictive policies than primary networks.
