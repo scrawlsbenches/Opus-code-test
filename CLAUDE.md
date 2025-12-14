@@ -672,6 +672,36 @@ class TestYourFeature(unittest.TestCase):
 - Edge cases specific to your feature
 - Add regression test if fixing a bug
 
+### Intentionally Skipped Tests
+
+Some tests are designed to skip under certain conditions. This is intentional, not a bug:
+
+| Test File | Skip Condition | Reason |
+|-----------|----------------|--------|
+| `tests/unit/test_protobuf_serialization.py` | `protobuf` not installed | Optional dependency for cross-language serialization |
+| `tests/test_evaluate_cluster.py` | `samples/` missing or < 5 files | Integration test requiring sample corpus |
+| `tests/unit/test_suggest_tasks.py` | `task_utils` not available | Optional task management feature |
+
+**Pattern for optional dependencies:**
+```python
+try:
+    from cortical.proto.serialization import to_proto, from_proto
+    PROTOBUF_AVAILABLE = True
+except ImportError:
+    PROTOBUF_AVAILABLE = False
+
+@unittest.skipIf(not PROTOBUF_AVAILABLE, "protobuf package not installed")
+class TestProtobufSerialization(unittest.TestCase):
+    ...
+```
+
+**Pattern for conditional resources:**
+```python
+def setUp(self):
+    if not os.path.exists(self.required_resource):
+        self.skipTest("Required resource not available")
+```
+
 ### CI/CD Best Practices
 
 **CRITICAL: Pytest runs unittest-based tests natively!**

@@ -536,30 +536,65 @@ def test_func():
 class TestIntegration(unittest.TestCase):
     """Integration tests for the metadata generator."""
 
-    def test_cortical_processor_metadata(self):
-        """Test metadata generation for actual cortical/processor.py."""
-        processor_path = os.path.join(
+    def test_cortical_processor_package_metadata(self):
+        """Test metadata generation for cortical/processor/ package modules.
+
+        Note: processor.py was refactored into processor/ package with mixins
+        as part of LEGACY-095. This test now checks the compute.py module
+        which contains the ComputeMixin class and compute_all method.
+        """
+        # Test the compute module which has ComputeMixin and compute_all
+        compute_path = os.path.join(
             os.path.dirname(__file__),
-            '..', 'cortical', 'processor.py'
+            '..', 'cortical', 'processor', 'compute.py'
         )
 
-        if not os.path.exists(processor_path):
-            self.skipTest("processor.py not found")
+        if not os.path.exists(compute_path):
+            self.skipTest("processor/compute.py not found")
 
-        analyzer = ModuleAnalyzer(processor_path)
+        analyzer = ModuleAnalyzer(compute_path)
         metadata = analyzer.generate_metadata()
 
-        # Should find the main class
-        self.assertIn('CorticalTextProcessor', metadata['classes'])
+        # Should find the ComputeMixin class
+        self.assertIn('ComputeMixin', metadata['classes'])
 
-        # Should find key functions
+        # Should find compute_all method (may be listed as function or method)
         func_names = list(metadata['functions'].keys())
-        self.assertTrue(any('process_document' in name for name in func_names))
-        self.assertTrue(any('compute_all' in name for name in func_names))
+        self.assertTrue(
+            any('compute_all' in name for name in func_names),
+            f"compute_all not found in functions: {func_names}"
+        )
 
         # Should have complexity hints for expensive functions
-        compute_all_key = [k for k in func_names if 'compute_all' in k][0]
-        self.assertIn('complexity', metadata['functions'][compute_all_key])
+        compute_all_keys = [k for k in func_names if 'compute_all' in k]
+        if compute_all_keys:
+            self.assertIn('complexity', metadata['functions'][compute_all_keys[0]])
+
+    def test_cortical_processor_documents_metadata(self):
+        """Test metadata generation for processor/documents.py module.
+
+        This module contains DocumentsMixin with process_document method.
+        """
+        documents_path = os.path.join(
+            os.path.dirname(__file__),
+            '..', 'cortical', 'processor', 'documents.py'
+        )
+
+        if not os.path.exists(documents_path):
+            self.skipTest("processor/documents.py not found")
+
+        analyzer = ModuleAnalyzer(documents_path)
+        metadata = analyzer.generate_metadata()
+
+        # Should find the DocumentsMixin class
+        self.assertIn('DocumentsMixin', metadata['classes'])
+
+        # Should find process_document method
+        func_names = list(metadata['functions'].keys())
+        self.assertTrue(
+            any('process_document' in name for name in func_names),
+            f"process_document not found in functions: {func_names}"
+        )
 
 
 if __name__ == '__main__':
