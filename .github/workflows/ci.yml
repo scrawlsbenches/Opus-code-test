@@ -368,3 +368,59 @@ jobs:
       run: |
         echo "=== Running Showcase Demo ==="
         python showcase.py
+
+  # ==========================================================================
+  # Security Scanning (runs in parallel with all other jobs)
+  # Static analysis and dependency scanning for security vulnerabilities
+  # ==========================================================================
+  security-scan:
+    name: "🔐 Security Scan"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit pip-audit detect-secrets
+
+    - name: Run Bandit (SAST)
+      run: |
+        echo "=== Running Bandit Static Analysis ==="
+        # -ll = only show medium and higher severity issues
+        # -r = recursive
+        # Skip B101 (assert) as we use asserts for invariants in non-production code
+        bandit -r cortical/ -ll -s B101 -f txt || true
+        echo "✅ Bandit scan complete"
+
+    - name: Run pip-audit (Dependency Scanning)
+      run: |
+        echo "=== Running pip-audit Dependency Check ==="
+        pip install -e ".[dev]"
+        pip-audit --desc || echo "⚠️ Review dependency vulnerabilities above"
+
+    - name: Run detect-secrets (Secret Scanning)
+      run: |
+        echo "=== Running detect-secrets ==="
+        # Scan for accidentally committed secrets
+        detect-secrets scan --all-files --exclude-files '\.git/.*' --exclude-files '.*\.pkl' --exclude-files '.*\.json' > .secrets-baseline.json || true
+        # Check if any high-entropy secrets were found (excluding test fixtures)
+        python -c "
+import json
+with open('.secrets-baseline.json') as f:
+    data = json.load(f)
+    results = data.get('results', {})
+    real_secrets = {k: v for k, v in results.items() if not k.startswith('tests/')}
+    if real_secrets:
+        print('⚠️ Potential secrets found in:')
+        for file in real_secrets:
+            print(f'  - {file}')
+        print('Please review and ensure no real secrets are committed.')
+    else:
+        print('✅ No secrets detected in source files')
+"

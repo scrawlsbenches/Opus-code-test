@@ -1,0 +1,624 @@
+"""
+Semantic Diff Module
+====================
+
+Provides "What Changed?" functionality for comparing:
+- Two versions of a document
+- Two processor states
+- Before/after states of a corpus
+
+This goes beyond line-by-line diffs to show semantic changes:
+- New/removed concepts
+- Importance shifts (PageRank changes)
+- Relationship changes
+- Cluster membership changes
+"""
+
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple, Set, Any
+from collections import defaultdict
+
+from .layers import CorticalLayer, HierarchicalLayer
+from .minicolumn import Minicolumn
+
+
+@dataclass
+class TermChange:
+    """Represents a change to a term/concept."""
+    term: str
+    change_type: str  # 'added', 'removed', 'modified'
+    old_pagerank: Optional[float] = None
+    new_pagerank: Optional[float] = None
+    old_tfidf: Optional[float] = None
+    new_tfidf: Optional[float] = None
+    old_occurrences: Optional[int] = None
+    new_occurrences: Optional[int] = None
+    old_documents: Optional[Set[str]] = None
+    new_documents: Optional[Set[str]] = None
+
+    @property
+    def pagerank_delta(self) -> Optional[float]:
+        """Change in PageRank importance."""
+        if self.old_pagerank is not None and self.new_pagerank is not None:
+            return self.new_pagerank - self.old_pagerank
+        return None
+
+    @property
+    def tfidf_delta(self) -> Optional[float]:
+        """Change in TF-IDF score."""
+        if self.old_tfidf is not None and self.new_tfidf is not None:
+            return self.new_tfidf - self.old_tfidf
+        return None
+
+    @property
+    def documents_added(self) -> Set[str]:
+        """Documents where this term newly appears."""
+        if self.old_documents is not None and self.new_documents is not None:
+            return self.new_documents - self.old_documents
+        return set()
+
+    @property
+    def documents_removed(self) -> Set[str]:
+        """Documents where this term no longer appears."""
+        if self.old_documents is not None and self.new_documents is not None:
+            return self.old_documents - self.new_documents
+        return set()
+
+
+@dataclass
+class RelationChange:
+    """Represents a change to a semantic relation."""
+    source: str
+    target: str
+    relation_type: str
+    change_type: str  # 'added', 'removed', 'modified'
+    old_weight: Optional[float] = None
+    new_weight: Optional[float] = None
+    old_confidence: Optional[float] = None
+    new_confidence: Optional[float] = None
+
+
+@dataclass
+class ClusterChange:
+    """Represents a change to concept clustering."""
+    cluster_id: Optional[int]
+    change_type: str  # 'created', 'dissolved', 'modified'
+    old_members: Set[str] = field(default_factory=set)
+    new_members: Set[str] = field(default_factory=set)
+    members_added: Set[str] = field(default_factory=set)
+    members_removed: Set[str] = field(default_factory=set)
+
+
+@dataclass
+class SemanticDiff:
+    """
+    Complete semantic diff between two states.
+
+    Captures what changed semantically:
+    - Terms added/removed/modified
+    - Importance shifts
+    - Relationship changes
+    - Cluster reorganization
+    """
+    # Document changes
+    documents_added: List[str] = field(default_factory=list)
+    documents_removed: List[str] = field(default_factory=list)
+    documents_modified: List[str] = field(default_factory=list)
+
+    # Term changes
+    terms_added: List[TermChange] = field(default_factory=list)
+    terms_removed: List[TermChange] = field(default_factory=list)
+    terms_modified: List[TermChange] = field(default_factory=list)
+
+    # Top movers (biggest importance changes)
+    importance_increased: List[TermChange] = field(default_factory=list)
+    importance_decreased: List[TermChange] = field(default_factory=list)
+
+    # Relationship changes
+    relations_added: List[RelationChange] = field(default_factory=list)
+    relations_removed: List[RelationChange] = field(default_factory=list)
+    relations_modified: List[RelationChange] = field(default_factory=list)
+
+    # Cluster changes
+    clusters_created: List[ClusterChange] = field(default_factory=list)
+    clusters_dissolved: List[ClusterChange] = field(default_factory=list)
+    clusters_modified: List[ClusterChange] = field(default_factory=list)
+
+    # Summary statistics
+    total_term_changes: int = 0
+    total_relation_changes: int = 0
+    total_cluster_changes: int = 0
+
+    def summary(self) -> str:
+        """Generate a human-readable summary of changes."""
+        lines = ["# Semantic Diff Summary\n"]
+
+        # Document changes
+        if self.documents_added or self.documents_removed or self.documents_modified:
+            lines.append("## Documents\n")
+            if self.documents_added:
+                lines.append(f"- Added: {len(self.documents_added)} documents")
+                for doc in self.documents_added[:5]:
+                    lines.append(f"  + {doc}")
+                if len(self.documents_added) > 5:
+                    lines.append(f"  ... and {len(self.documents_added) - 5} more")
+            if self.documents_removed:
+                lines.append(f"- Removed: {len(self.documents_removed)} documents")
+                for doc in self.documents_removed[:5]:
+                    lines.append(f"  - {doc}")
+            if self.documents_modified:
+                lines.append(f"- Modified: {len(self.documents_modified)} documents")
+            lines.append("")
+
+        # Term changes
+        if self.terms_added or self.terms_removed:
+            lines.append("## Terms\n")
+            if self.terms_added:
+                lines.append(f"- New terms: {len(self.terms_added)}")
+                for tc in self.terms_added[:10]:
+                    lines.append(f"  + {tc.term}")
+                if len(self.terms_added) > 10:
+                    lines.append(f"  ... and {len(self.terms_added) - 10} more")
+            if self.terms_removed:
+                lines.append(f"- Removed terms: {len(self.terms_removed)}")
+                for tc in self.terms_removed[:10]:
+                    lines.append(f"  - {tc.term}")
+            lines.append("")
+
+        # Importance shifts
+        if self.importance_increased or self.importance_decreased:
+            lines.append("## Importance Shifts (PageRank)\n")
+            if self.importance_increased:
+                lines.append("### Rising Terms")
+                for tc in self.importance_increased[:10]:
+                    delta = tc.pagerank_delta
+                    if delta:
+                        lines.append(f"  + {tc.term}: +{delta:.6f}")
+            if self.importance_decreased:
+                lines.append("### Falling Terms")
+                for tc in self.importance_decreased[:10]:
+                    delta = tc.pagerank_delta
+                    if delta:
+                        lines.append(f"  - {tc.term}: {delta:.6f}")
+            lines.append("")
+
+        # Relation changes
+        if self.relations_added or self.relations_removed:
+            lines.append("## Relations\n")
+            if self.relations_added:
+                lines.append(f"- New relations: {len(self.relations_added)}")
+                for rc in self.relations_added[:5]:
+                    lines.append(f"  + {rc.source} --{rc.relation_type}--> {rc.target}")
+            if self.relations_removed:
+                lines.append(f"- Removed relations: {len(self.relations_removed)}")
+            lines.append("")
+
+        # Cluster changes
+        if self.clusters_created or self.clusters_dissolved or self.clusters_modified:
+            lines.append("## Clusters\n")
+            if self.clusters_created:
+                lines.append(f"- New clusters: {len(self.clusters_created)}")
+            if self.clusters_dissolved:
+                lines.append(f"- Dissolved clusters: {len(self.clusters_dissolved)}")
+            if self.clusters_modified:
+                lines.append(f"- Modified clusters: {len(self.clusters_modified)}")
+            lines.append("")
+
+        # Overall statistics
+        lines.append("## Statistics\n")
+        lines.append(f"- Total term changes: {self.total_term_changes}")
+        lines.append(f"- Total relation changes: {self.total_relation_changes}")
+        lines.append(f"- Total cluster changes: {self.total_cluster_changes}")
+
+        return "\n".join(lines)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return {
+            'documents_added': self.documents_added,
+            'documents_removed': self.documents_removed,
+            'documents_modified': self.documents_modified,
+            'terms_added': [{'term': t.term, 'pagerank': t.new_pagerank} for t in self.terms_added],
+            'terms_removed': [{'term': t.term, 'pagerank': t.old_pagerank} for t in self.terms_removed],
+            'importance_increased': [
+                {'term': t.term, 'delta': t.pagerank_delta} for t in self.importance_increased
+            ],
+            'importance_decreased': [
+                {'term': t.term, 'delta': t.pagerank_delta} for t in self.importance_decreased
+            ],
+            'relations_added': len(self.relations_added),
+            'relations_removed': len(self.relations_removed),
+            'clusters_created': len(self.clusters_created),
+            'clusters_dissolved': len(self.clusters_dissolved),
+            'total_term_changes': self.total_term_changes,
+            'total_relation_changes': self.total_relation_changes,
+            'total_cluster_changes': self.total_cluster_changes,
+        }
+
+
+def compare_processors(
+    old_processor: 'CorticalTextProcessor',
+    new_processor: 'CorticalTextProcessor',
+    top_movers: int = 20,
+    min_pagerank_delta: float = 0.0001
+) -> SemanticDiff:
+    """
+    Compare two processor states to find semantic differences.
+
+    Args:
+        old_processor: The "before" state
+        new_processor: The "after" state
+        top_movers: Number of top importance changes to track
+        min_pagerank_delta: Minimum PageRank change to consider significant
+
+    Returns:
+        SemanticDiff with all detected changes
+    """
+    diff = SemanticDiff()
+
+    # Compare documents
+    old_docs = set(old_processor.documents.keys())
+    new_docs = set(new_processor.documents.keys())
+
+    diff.documents_added = list(new_docs - old_docs)
+    diff.documents_removed = list(old_docs - new_docs)
+
+    # Check for modified documents (same ID, different content)
+    for doc_id in old_docs & new_docs:
+        if old_processor.documents[doc_id] != new_processor.documents[doc_id]:
+            diff.documents_modified.append(doc_id)
+
+    # Compare terms (Layer 0 - TOKENS)
+    old_layer0 = old_processor.layers.get(CorticalLayer.TOKENS)
+    new_layer0 = new_processor.layers.get(CorticalLayer.TOKENS)
+
+    if old_layer0 and new_layer0:
+        old_terms = set(old_layer0.minicolumns.keys())
+        new_terms = set(new_layer0.minicolumns.keys())
+
+        # New terms
+        for term in new_terms - old_terms:
+            col = new_layer0.get_minicolumn(term)
+            if col:
+                diff.terms_added.append(TermChange(
+                    term=term,
+                    change_type='added',
+                    new_pagerank=col.pagerank,
+                    new_tfidf=col.tfidf,
+                    new_occurrences=col.occurrence_count,
+                    new_documents=set(col.document_ids)
+                ))
+
+        # Removed terms
+        for term in old_terms - new_terms:
+            col = old_layer0.get_minicolumn(term)
+            if col:
+                diff.terms_removed.append(TermChange(
+                    term=term,
+                    change_type='removed',
+                    old_pagerank=col.pagerank,
+                    old_tfidf=col.tfidf,
+                    old_occurrences=col.occurrence_count,
+                    old_documents=set(col.document_ids)
+                ))
+
+        # Modified terms - find importance changes
+        movers = []
+        for term in old_terms & new_terms:
+            old_col = old_layer0.get_minicolumn(term)
+            new_col = new_layer0.get_minicolumn(term)
+            if old_col and new_col:
+                delta = new_col.pagerank - old_col.pagerank
+                if abs(delta) >= min_pagerank_delta:
+                    tc = TermChange(
+                        term=term,
+                        change_type='modified',
+                        old_pagerank=old_col.pagerank,
+                        new_pagerank=new_col.pagerank,
+                        old_tfidf=old_col.tfidf,
+                        new_tfidf=new_col.tfidf,
+                        old_occurrences=old_col.occurrence_count,
+                        new_occurrences=new_col.occurrence_count,
+                        old_documents=set(old_col.document_ids),
+                        new_documents=set(new_col.document_ids)
+                    )
+                    movers.append((delta, tc))
+                    diff.terms_modified.append(tc)
+
+        # Sort movers by absolute delta
+        movers.sort(key=lambda x: abs(x[0]), reverse=True)
+
+        for delta, tc in movers[:top_movers]:
+            if delta > 0:
+                diff.importance_increased.append(tc)
+            else:
+                diff.importance_decreased.append(tc)
+
+        # Sort by delta magnitude
+        diff.importance_increased.sort(key=lambda x: x.pagerank_delta or 0, reverse=True)
+        diff.importance_decreased.sort(key=lambda x: x.pagerank_delta or 0)
+
+    # Compare typed connections/relations
+    _compare_relations(old_layer0, new_layer0, diff)
+
+    # Compare clusters (Layer 2 - CONCEPTS)
+    _compare_clusters(
+        old_processor.layers.get(CorticalLayer.CONCEPTS),
+        new_processor.layers.get(CorticalLayer.CONCEPTS),
+        diff
+    )
+
+    # Update statistics
+    diff.total_term_changes = (
+        len(diff.terms_added) + len(diff.terms_removed) + len(diff.terms_modified)
+    )
+    diff.total_relation_changes = (
+        len(diff.relations_added) + len(diff.relations_removed) + len(diff.relations_modified)
+    )
+    diff.total_cluster_changes = (
+        len(diff.clusters_created) + len(diff.clusters_dissolved) + len(diff.clusters_modified)
+    )
+
+    return diff
+
+
+def _compare_relations(
+    old_layer: Optional[HierarchicalLayer],
+    new_layer: Optional[HierarchicalLayer],
+    diff: SemanticDiff
+) -> None:
+    """Compare typed connections between layers."""
+    if not old_layer or not new_layer:
+        return
+
+    # Build relation sets
+    old_relations: Dict[Tuple[str, str, str], Tuple[float, float]] = {}
+    new_relations: Dict[Tuple[str, str, str], Tuple[float, float]] = {}
+
+    for col in old_layer.minicolumns.values():
+        for target_id, edge in col.typed_connections.items():
+            key = (col.content, target_id, edge.relation_type)
+            old_relations[key] = (edge.weight, edge.confidence)
+
+    for col in new_layer.minicolumns.values():
+        for target_id, edge in col.typed_connections.items():
+            key = (col.content, target_id, edge.relation_type)
+            new_relations[key] = (edge.weight, edge.confidence)
+
+    old_keys = set(old_relations.keys())
+    new_keys = set(new_relations.keys())
+
+    # New relations
+    for key in new_keys - old_keys:
+        source, target, rel_type = key
+        weight, confidence = new_relations[key]
+        diff.relations_added.append(RelationChange(
+            source=source,
+            target=target,
+            relation_type=rel_type,
+            change_type='added',
+            new_weight=weight,
+            new_confidence=confidence
+        ))
+
+    # Removed relations
+    for key in old_keys - new_keys:
+        source, target, rel_type = key
+        weight, confidence = old_relations[key]
+        diff.relations_removed.append(RelationChange(
+            source=source,
+            target=target,
+            relation_type=rel_type,
+            change_type='removed',
+            old_weight=weight,
+            old_confidence=confidence
+        ))
+
+
+def _compare_clusters(
+    old_layer: Optional[HierarchicalLayer],
+    new_layer: Optional[HierarchicalLayer],
+    diff: SemanticDiff
+) -> None:
+    """Compare concept clusters between layers."""
+    if not old_layer or not new_layer:
+        return
+
+    # Build cluster membership maps
+    old_clusters: Dict[int, Set[str]] = defaultdict(set)
+    new_clusters: Dict[int, Set[str]] = defaultdict(set)
+
+    for col in old_layer.minicolumns.values():
+        if col.cluster_id is not None:
+            old_clusters[col.cluster_id].add(col.content)
+
+    for col in new_layer.minicolumns.values():
+        if col.cluster_id is not None:
+            new_clusters[col.cluster_id].add(col.content)
+
+    old_ids = set(old_clusters.keys())
+    new_ids = set(new_clusters.keys())
+
+    # New clusters
+    for cluster_id in new_ids - old_ids:
+        diff.clusters_created.append(ClusterChange(
+            cluster_id=cluster_id,
+            change_type='created',
+            new_members=new_clusters[cluster_id]
+        ))
+
+    # Dissolved clusters
+    for cluster_id in old_ids - new_ids:
+        diff.clusters_dissolved.append(ClusterChange(
+            cluster_id=cluster_id,
+            change_type='dissolved',
+            old_members=old_clusters[cluster_id]
+        ))
+
+    # Modified clusters (same ID, different members)
+    for cluster_id in old_ids & new_ids:
+        old_members = old_clusters[cluster_id]
+        new_members = new_clusters[cluster_id]
+        if old_members != new_members:
+            diff.clusters_modified.append(ClusterChange(
+                cluster_id=cluster_id,
+                change_type='modified',
+                old_members=old_members,
+                new_members=new_members,
+                members_added=new_members - old_members,
+                members_removed=old_members - new_members
+            ))
+
+
+def compare_documents(
+    processor: 'CorticalTextProcessor',
+    doc_id_old: str,
+    doc_id_new: str
+) -> Dict[str, Any]:
+    """
+    Compare two documents within the same corpus.
+
+    Returns a simplified diff focused on document-level differences:
+    - Shared terms
+    - Unique terms in each document
+    - Shared bigrams
+    - Term importance differences
+
+    Args:
+        processor: The processor containing both documents
+        doc_id_old: ID of first document
+        doc_id_new: ID of second document
+
+    Returns:
+        Dictionary with comparison results
+    """
+    layer0 = processor.layers.get(CorticalLayer.TOKENS)
+    layer1 = processor.layers.get(CorticalLayer.BIGRAMS)
+
+    if not layer0:
+        return {'error': 'Processor has no token layer'}
+
+    # Find terms in each document
+    terms_old: Set[str] = set()
+    terms_new: Set[str] = set()
+
+    for col in layer0.minicolumns.values():
+        if doc_id_old in col.document_ids:
+            terms_old.add(col.content)
+        if doc_id_new in col.document_ids:
+            terms_new.add(col.content)
+
+    shared_terms = terms_old & terms_new
+    unique_to_old = terms_old - terms_new
+    unique_to_new = terms_new - terms_old
+
+    # Find bigrams in each document
+    bigrams_old: Set[str] = set()
+    bigrams_new: Set[str] = set()
+
+    if layer1:
+        for col in layer1.minicolumns.values():
+            if doc_id_old in col.document_ids:
+                bigrams_old.add(col.content)
+            if doc_id_new in col.document_ids:
+                bigrams_new.add(col.content)
+
+    shared_bigrams = bigrams_old & bigrams_new
+
+    # Calculate Jaccard similarity
+    all_terms = terms_old | terms_new
+    jaccard_similarity = len(shared_terms) / len(all_terms) if all_terms else 0.0
+
+    return {
+        'doc_id_old': doc_id_old,
+        'doc_id_new': doc_id_new,
+        'terms_in_old': len(terms_old),
+        'terms_in_new': len(terms_new),
+        'shared_terms': len(shared_terms),
+        'unique_to_old': len(unique_to_old),
+        'unique_to_new': len(unique_to_new),
+        'jaccard_similarity': jaccard_similarity,
+        'shared_bigrams': len(shared_bigrams),
+        'top_shared_terms': list(shared_terms)[:20],
+        'top_unique_to_old': list(unique_to_old)[:20],
+        'top_unique_to_new': list(unique_to_new)[:20],
+        'top_shared_bigrams': list(shared_bigrams)[:10],
+    }
+
+
+def what_changed(
+    processor: 'CorticalTextProcessor',
+    old_content: str,
+    new_content: str,
+    temp_doc_prefix: str = "_diff_temp_"
+) -> Dict[str, Any]:
+    """
+    Compare two text contents to show what changed semantically.
+
+    This is a convenience function that:
+    1. Temporarily adds both texts as documents
+    2. Computes their differences
+    3. Removes the temporary documents
+
+    Args:
+        processor: The processor to use for analysis
+        old_content: The "before" text
+        new_content: The "after" text
+        temp_doc_prefix: Prefix for temporary document IDs
+
+    Returns:
+        Dictionary with semantic diff results
+    """
+    from .tokenizer import Tokenizer
+
+    tokenizer = processor.tokenizer
+
+    # Tokenize both contents
+    old_token_list = tokenizer.tokenize(old_content)
+    new_token_list = tokenizer.tokenize(new_content)
+
+    old_tokens = set(old_token_list)
+    new_tokens = set(new_token_list)
+
+    old_bigrams = set(tokenizer.extract_ngrams(old_token_list, n=2))
+    new_bigrams = set(tokenizer.extract_ngrams(new_token_list, n=2))
+
+    # Calculate differences
+    tokens_added = new_tokens - old_tokens
+    tokens_removed = old_tokens - new_tokens
+    tokens_unchanged = old_tokens & new_tokens
+
+    bigrams_added = new_bigrams - old_bigrams
+    bigrams_removed = old_bigrams - new_bigrams
+    bigrams_unchanged = old_bigrams & new_bigrams
+
+    # Calculate similarity metrics
+    token_jaccard = (
+        len(tokens_unchanged) / len(old_tokens | new_tokens)
+        if old_tokens | new_tokens else 0.0
+    )
+    bigram_jaccard = (
+        len(bigrams_unchanged) / len(old_bigrams | new_bigrams)
+        if old_bigrams | new_bigrams else 0.0
+    )
+
+    return {
+        'tokens': {
+            'added': sorted(tokens_added)[:50],
+            'removed': sorted(tokens_removed)[:50],
+            'unchanged_count': len(tokens_unchanged),
+            'total_old': len(old_tokens),
+            'total_new': len(new_tokens),
+            'similarity': token_jaccard,
+        },
+        'bigrams': {
+            'added': sorted(bigrams_added)[:30],
+            'removed': sorted(bigrams_removed)[:30],
+            'unchanged_count': len(bigrams_unchanged),
+            'similarity': bigram_jaccard,
+        },
+        'summary': {
+            'content_similarity': (token_jaccard + bigram_jaccard) / 2,
+            'is_significant_change': token_jaccard < 0.8,
+        }
+    }

@@ -363,6 +363,41 @@ For AI agents, see also [docs/claude-usage.md](docs/claude-usage.md) and [CLAUDE
 python -m unittest discover -s tests -v
 ```
 
+## Security Considerations
+
+### Pickle Deserialization Warning
+
+⚠️ **The default `.pkl` format uses Python's `pickle` module, which can execute arbitrary code during deserialization.**
+
+**Risk**: Loading a malicious `.pkl` file could result in remote code execution (RCE). Only load pickle files from sources you trust completely.
+
+**Recommendations**:
+
+1. **For untrusted sources**: Use the JSON state format instead:
+   ```python
+   from cortical.state_storage import StateLoader
+
+   # Save as JSON (safe to share)
+   StateLoader.save(processor, "corpus_state.json")
+
+   # Load from JSON (safe from untrusted sources)
+   processor = StateLoader.load("corpus_state.json")
+   ```
+
+2. **For trusted sources**: Continue using pickle for faster serialization:
+   ```python
+   processor.save("corpus.pkl")  # Fast, but only load files you trust
+   processor = CorticalTextProcessor.load("corpus.pkl")
+   ```
+
+3. **For maximum security**: Never load pickle files from:
+   - Downloaded files from the internet
+   - User uploads
+   - Shared network locations with untrusted access
+   - Email attachments
+
+See [Python's pickle documentation](https://docs.python.org/3/library/pickle.html) for more details on pickle security.
+
 ## License
 
 MIT License

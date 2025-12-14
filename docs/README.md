@@ -85,6 +85,19 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 | [claude-usage.md](claude-usage.md) | Guide for Claude agents using the system |
 | [cli-wrapper-guide.md](cli-wrapper-guide.md) | CLI wrapper for AI assistants |
 
+### Security
+
+| Document | Purpose |
+|----------|---------|
+| [security-knowledge-transfer.md](security-knowledge-transfer.md) | Full security review and findings |
+| [mcp-security.md](mcp-security.md) | MCP server security model and deployment |
+
+### Session Knowledge Transfer
+
+| Document | Purpose |
+|----------|---------|
+| [session-2025-12-14-security-and-features.md](session-2025-12-14-security-and-features.md) | Security hardening, semantic diff feature, CI fixes |
+
 ---
 
 ## Additional Resources
@@ -96,4 +109,4 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 
 ---
 
-*Last updated: 2025-12-12*
+*Last updated: 2025-12-14*

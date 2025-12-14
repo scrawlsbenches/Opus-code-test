@@ -111,3 +111,45 @@ python3 -c "import json; [print(f\"{t['id']}: {t['title']}\") for t in json.load
 2. **Save before commit** - persist tasks to disk
 3. **Consolidate weekly** - merge sessions, resolve duplicates
 4. **Use context field** - add file/method references for quick navigation
+
+## Security Model
+
+### Tool Permissions
+
+This skill uses `allowed-tools: Read, Bash, Write`:
+
+| Tool | Why Needed | Scope |
+|------|------------|-------|
+| **Read** | Read task JSON files, scripts | `tasks/`, `scripts/task_utils.py` |
+| **Bash** | Run Python task utilities | `python scripts/*.py` commands |
+| **Write** | Create/update task JSON files | `tasks/*.json` |
+
+### Why Write is Required
+
+The Write tool is needed because:
+1. **JSON creation**: Task session files are JSON - using Bash with heredocs for JSON is error-prone
+2. **Atomic updates**: Write ensures complete file writes without corruption
+3. **Safe by default**: Write tool requires reading the file first, preventing blind overwrites
+
+### Alternative Considered
+
+Using only Bash (e.g., `echo '{"tasks":...}' > file.json`) was considered but rejected:
+- JSON escaping in shell is error-prone
+- No atomic write guarantees
+- Less readable in transcripts
+- More susceptible to injection if task titles contain special characters
+
+### Practical Security
+
+The skill is scoped by:
+1. **Invocation context**: Only activated when task management is needed
+2. **Documented purpose**: Clear description limits expected operations
+3. **Model judgment**: Claude Code decides what operations to perform
+4. **Task directory convention**: All operations target `tasks/` directory
+
+### Recommendation
+
+If running in an environment with strict security requirements:
+1. Review task operations in the conversation transcript
+2. Use consolidation scripts directly via Bash if preferred
+3. Consider implementing path restrictions in a custom skill wrapper

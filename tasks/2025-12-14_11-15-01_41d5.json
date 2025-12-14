@@ -2,20 +2,20 @@
   "version": 1,
   "session_id": "41d5",
   "started_at": "2025-12-14T11:15:01.281778",
-  "saved_at": "2025-12-14T11:15:01.282011",
+  "saved_at": "2025-12-14T11:35:23.935425",
   "tasks": [
     {
       "id": "T-20251214-111501-41d5-001",
       "title": "SEC-001: Add pickle security warning to README",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "security",
       "description": "Add a security warning to README.md about pickle deserialization risks.\n\nLocation: cortical/persistence.py:156 uses pickle.load() which can execute arbitrary code.\n\nWarning should include:\n- Risk explanation (RCE via malicious pickle files)\n- Recommendation to use JSON format (StateLoader) for untrusted sources\n- Link to Python pickle documentation security warning\n\nEffort: 30 minutes",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-14T11:15:01.281819",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T11:28:39.474962",
+      "completed_at": "2025-12-14T11:28:39.474962",
       "context": {
         "files": [
           "README.md",
@@ -23,26 +23,30 @@
         ],
         "line": 156
       },
-      "retrospective": null
+      "retrospective": {
+        "notes": "Implemented in commit 90b989f"
+      }
     },
     {
       "id": "T-20251214-111501-41d5-002",
       "title": "SEC-002: Add Bandit SAST to CI pipeline",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "security",
       "description": "Add Bandit (Python static analysis security tool) to CI workflow.\n\nAdd to .github/workflows/ci.yml:\n```yaml\nsecurity-scan:\n  name: \"Security Scan\"\n  runs-on: ubuntu-latest\n  steps:\n  - uses: actions/checkout@v4\n  - name: Set up Python\n    uses: actions/setup-python@v5\n    with:\n      python-version: '3.11'\n  - name: Run Bandit\n    run: |\n      pip install bandit\n      bandit -r cortical/ -ll -f txt\n```\n\nEffort: 1 hour",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-14T11:15:01.281828",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T11:28:39.474977",
+      "completed_at": "2025-12-14T11:28:39.474977",
       "context": {
         "files": [
           ".github/workflows/ci.yml"
         ]
       },
-      "retrospective": null
+      "retrospective": {
+        "notes": "Implemented in commit 90b989f"
+      }
     },
     {
       "id": "T-20251214-111501-41d5-003",
@@ -69,98 +73,108 @@
     {
       "id": "T-20251214-111501-41d5-004",
       "title": "SEC-004: Add pip-audit dependency scanning to CI",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "security",
       "description": "Add pip-audit to check for known vulnerabilities in dependencies.\n\nAdd step to security-scan job:\n```yaml\n- name: Check Dependencies\n  run: |\n    pip install pip-audit\n    pip install -e \".[dev]\"\n    pip-audit --desc || echo \"Review required\"\n```\n\nEffort: 1 hour",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-14T11:15:01.281842",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T11:28:39.474979",
+      "completed_at": "2025-12-14T11:28:39.474979",
       "context": {
         "files": [
           ".github/workflows/ci.yml"
         ]
       },
-      "retrospective": null
+      "retrospective": {
+        "notes": "Implemented in commit 90b989f"
+      }
     },
     {
       "id": "T-20251214-111501-41d5-005",
       "title": "SEC-005: Add detect-secrets to CI pipeline",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "security",
       "description": "Add detect-secrets to scan for accidentally committed secrets.\n\nAdd step to security-scan job:\n```yaml\n- name: Scan for Secrets\n  run: |\n    pip install detect-secrets\n    detect-secrets scan --all-files --exclude-files '\\.git/.*'\n```\n\nEffort: 1 hour",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-14T11:15:01.281848",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T11:28:39.474982",
+      "completed_at": "2025-12-14T11:28:39.474982",
       "context": {
         "files": [
           ".github/workflows/ci.yml"
         ]
       },
-      "retrospective": null
+      "retrospective": {
+        "notes": "Implemented in commit 90b989f"
+      }
     },
     {
       "id": "T-20251214-111501-41d5-006",
       "title": "SEC-006: Document MCP server security model",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "security",
       "description": "Create security documentation for the MCP server integration.\n\nDocument:\n- What capabilities the MCP server exposes\n- Input validation performed\n- Trust model (who can call the server)\n- Rate limiting considerations\n- Recommended deployment configurations\n\nCreate: docs/security.md or docs/mcp-security.md\n\nEffort: 2 hours",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-14T11:15:01.281854",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T11:30:12.719118",
+      "completed_at": "2025-12-14T11:30:12.719118",
       "context": {
         "files": [
           "cortical/mcp_server.py",
           "docs/"
         ]
       },
-      "retrospective": null
+      "retrospective": {
+        "notes": "Created docs/mcp-security.md"
+      }
     },
     {
       "id": "T-20251214-111501-41d5-007",
       "title": "SEC-007: Review task-manager skill permissions",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "security",
       "description": "Review and potentially restrict the task-manager skill's Write access.\n\nCurrent: allowed-tools: Read, Bash, Write\nConcern: Write access could be used to modify arbitrary files\n\nOptions:\n1. Remove Write, use Bash for file operations (more auditable)\n2. Document what Write is used for and why it's necessary\n3. Add path restrictions if skill system supports it\n\nEffort: 30 minutes",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-14T11:15:01.281861",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T11:35:23.935232",
+      "completed_at": "2025-12-14T11:35:23.935232",
       "context": {
         "files": [
           ".claude/skills/task-manager/SKILL.md"
         ]
       },
-      "retrospective": null
+      "retrospective": {
+        "notes": "Documented security model in SKILL.md, explained why Write permission is necessary"
+      }
     },
     {
       "id": "T-20251214-111501-41d5-008",
       "title": "SEC-008: Add deprecation warning for pickle format",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "security",
       "description": "Add runtime deprecation warning when using pickle format.\n\nIn persistence.py save/load methods:\n```python\nimport warnings\nif format == 'pickle':\n    warnings.warn(\n        \"Pickle format is deprecated due to security concerns. \"\n        \"Use format='json' or format='protobuf' instead.\",\n        DeprecationWarning,\n        stacklevel=2\n    )\n```\n\nEffort: 2 hours",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-14T11:15:01.281870",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T11:28:39.474983",
+      "completed_at": "2025-12-14T11:28:39.474983",
       "context": {
         "files": [
           "cortical/persistence.py"
         ]
       },
-      "retrospective": null
+      "retrospective": {
+        "notes": "Implemented in commit 90b989f"
+      }
     },
     {
       "id": "T-20251214-111501-41d5-009",

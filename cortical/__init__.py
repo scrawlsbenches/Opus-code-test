@@ -34,6 +34,15 @@ from .results import (
     convert_document_matches,
     convert_passage_matches
 )
+from .diff import (
+    SemanticDiff,
+    TermChange,
+    RelationChange,
+    ClusterChange,
+    compare_processors,
+    compare_documents,
+    what_changed
+)
 
 # MCP Server support (optional import)
 try:
@@ -66,6 +75,14 @@ __all__ = [
     "QueryResult",
     "convert_document_matches",
     "convert_passage_matches",
+    # Semantic diff
+    "SemanticDiff",
+    "TermChange",
+    "RelationChange",
+    "ClusterChange",
+    "compare_processors",
+    "compare_documents",
+    "what_changed",
 ]
 
 # Add MCP exports if available
