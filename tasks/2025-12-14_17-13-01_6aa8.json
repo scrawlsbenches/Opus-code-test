@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "session_id": "6aa8",
+  "started_at": "2025-12-14T17:13:01.505357",
+  "saved_at": "2025-12-14T17:13:01.505814",
+  "tasks": [
+    {
+      "id": "T-20251214-171301-6aa8-001",
+      "title": "Investigate semantic search relevance for domain-specific queries",
+      "status": "pending",
+      "priority": "medium",
+      "category": "arch",
+      "description": "During dog-fooding, searching for 'security test fuzzing' returned staleness tests instead of actual security-related code. The search seems to weight common terms like 'test' too heavily.\n\nInvestigation areas:\n- Query expansion may be pulling in too many generic terms\n- TF-IDF weighting may not properly discount common programming terms\n- Domain-specific boosting could improve relevance for security/testing queries\n\nRelated: The code_concepts.py has programming synonyms but may need security-specific terms.\n\nDiscovered during: Dog-fooding session 2025-12-14",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-14T17:13:01.505725",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    }
+  ]
+}
