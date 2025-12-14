@@ -185,40 +185,44 @@
     {
       "id": "T-20251214-111501-41d5-009",
       "title": "SEC-009: Add security-focused test suite",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "security",
       "description": "Create tests/security/ directory with security-focused tests.\n\nTest cases:\n- Path traversal prevention in file operations\n- Input validation on public API methods\n- Pickle signature verification (if SEC-003 implemented)\n- Large input handling (DoS prevention)\n\nEffort: 4 hours",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-14T11:15:01.281877",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T16:45:00.000000",
+      "completed_at": "2025-12-14T16:45:00.000000",
       "context": {
         "files": [
           "tests/security/"
         ]
       },
-      "retrospective": null
+      "retrospective": {
+        "notes": "Created tests/security/ directory with test_security.py containing 22 tests: TestPathTraversalPrevention (3 tests), TestInputValidation (6 tests), TestLargeInputHandling (5 tests), TestMaliciousInputRejection (3 tests), TestConfigurationSecurity (2 tests), TestSignatureVerificationIntegration (3 tests). All tests pass."
+      }
     },
     {
       "id": "T-20251214-111501-41d5-010",
       "title": "SEC-010: Implement input fuzzing with Hypothesis",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "security",
       "description": "Add property-based testing with Hypothesis for input fuzzing.\n\nTarget methods:\n- process_document() with random content\n- find_documents_for_query() with malformed queries\n- expand_query() with edge case inputs\n\nInstall: pip install hypothesis\nAdd to tests/security/test_fuzzing.py\n\nEffort: 8 hours",
       "depends_on": [],
       "effort": "large",
       "created_at": "2025-12-14T11:15:01.281884",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T16:45:00.000000",
+      "completed_at": "2025-12-14T16:45:00.000000",
       "context": {
         "files": [
           "tests/security/test_fuzzing.py"
         ]
       },
-      "retrospective": null
+      "retrospective": {
+        "notes": "Created test_fuzzing.py with 17 Hypothesis-based fuzz tests covering: document processing, queries, config validation, persistence, tokenization, and layer operations. Fuzzing discovered a bug: CorticalConfig accepted NaN and inf for louvain_resolution. Fixed by adding math.isnan/math.isinf checks in config.py validation."
+      }
     }
   ]
 }

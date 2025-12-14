@@ -25,6 +25,7 @@ Example:
     processor = CorticalTextProcessor(config=config)
 """
 
+import math
 from dataclasses import dataclass, field
 from typing import Dict, Tuple, FrozenSet
 
@@ -177,6 +178,10 @@ class CorticalConfig:
         if not (0 <= self.cluster_strictness <= 1):
             raise ValueError(
                 f"cluster_strictness must be between 0 and 1, got {self.cluster_strictness}"
+            )
+        if math.isnan(self.louvain_resolution) or math.isinf(self.louvain_resolution):
+            raise ValueError(
+                f"louvain_resolution must be a finite number, got {self.louvain_resolution}"
             )
         if self.louvain_resolution <= 0:
             raise ValueError(
