@@ -2852,6 +2852,96 @@ class CorticalTextProcessor:
         results.sort(key=lambda x: x[1], reverse=True)
         return results[:top_n]
 
+    # =========================================================================
+    # Semantic Diff - "What Changed?"
+    # =========================================================================
+
+    def compare_with(
+        self,
+        other: 'CorticalTextProcessor',
+        top_movers: int = 20,
+        min_pagerank_delta: float = 0.0001
+    ) -> 'diff_module.SemanticDiff':
+        """
+        Compare this processor state with another to find semantic differences.
+
+        This produces a "What Changed?" report showing:
+        - Documents added/removed/modified
+        - Terms added/removed
+        - Importance shifts (PageRank changes)
+        - Relationship changes
+        - Cluster reorganization
+
+        Args:
+            other: Another CorticalTextProcessor to compare with
+            top_movers: Number of top importance changes to track
+            min_pagerank_delta: Minimum PageRank change to consider significant
+
+        Returns:
+            SemanticDiff object with all detected changes
+
+        Example:
+            >>> old_processor = CorticalTextProcessor.load("corpus_v1.pkl")
+            >>> new_processor = CorticalTextProcessor.load("corpus_v2.pkl")
+            >>> diff = new_processor.compare_with(old_processor)
+            >>> print(diff.summary())
+        """
+        from . import diff as diff_module
+        return diff_module.compare_processors(
+            old_processor=other,
+            new_processor=self,
+            top_movers=top_movers,
+            min_pagerank_delta=min_pagerank_delta
+        )
+
+    def compare_documents(self, doc_id_1: str, doc_id_2: str) -> Dict:
+        """
+        Compare two documents within this corpus.
+
+        Args:
+            doc_id_1: ID of first document
+            doc_id_2: ID of second document
+
+        Returns:
+            Dict with comparison results including:
+            - shared_terms: Number of terms in common
+            - unique_to_old/new: Terms unique to each document
+            - jaccard_similarity: Overall similarity score
+            - top_shared_terms: List of shared terms
+        """
+        from . import diff as diff_module
+        return diff_module.compare_documents(self, doc_id_1, doc_id_2)
+
+    def what_changed(self, old_content: str, new_content: str) -> Dict:
+        """
+        Compare two text contents to show what changed semantically.
+
+        This is a convenience method for comparing arbitrary text without
+        adding them to the corpus. Useful for:
+        - Comparing code versions
+        - Checking document revisions
+        - Understanding content differences
+
+        Args:
+            old_content: The "before" text
+            new_content: The "after" text
+
+        Returns:
+            Dict with semantic diff results including:
+            - tokens: Added, removed, and unchanged token info
+            - bigrams: Added, removed, and unchanged bigram info
+            - summary: Overall similarity and significance
+
+        Example:
+            >>> diff = processor.what_changed(
+            ...     old_content="def hello(): print('hi')",
+            ...     new_content="def hello(): print('hello world')"
+            ... )
+            >>> print(f"Similarity: {diff['summary']['content_similarity']:.2%}")
+        """
+        from . import diff as diff_module
+        return diff_module.what_changed(self, old_content, new_content)
+
     def save(self, filepath: str, verbose: bool = True) -> None:
         """
         Save processor state to a file.
