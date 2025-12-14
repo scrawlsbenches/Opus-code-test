@@ -1,6 +1,17 @@
 # Task List: Cortical Text Processor
 
-Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).
+> ⚠️ **DEPRECATED**: This file is kept for historical reference only.
+>
+> **Use the new merge-friendly task system instead:**
+> - View tasks: `python scripts/task_utils.py list`
+> - Create tasks: `python scripts/new_task.py "Task title" --priority high`
+> - All tasks now live in `tasks/` directory as JSON files
+> - Legacy tasks migrated to `tasks/legacy_migration.json`
+> - See `docs/merge-friendly-tasks.md` for full documentation
+
+---
+
+*Historical backlog (no longer maintained). Completed tasks archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).*
 
 **Last Updated:** 2025-12-13
 **Pending Tasks:** 10

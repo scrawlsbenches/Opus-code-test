@@ -19,7 +19,7 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 **Understand Before Acting**
 - Read relevant code before proposing changes
 - Trace data flow through the system
-- Check TASK_LIST.md to avoid duplicate work
+- Check `tasks/` directory or run `python scripts/task_utils.py list` to avoid duplicate work
 
 **Deep Analysis Over Trial-and-Error**
 - When debugging, build a complete picture before running fixes
@@ -34,8 +34,8 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 **Dog-Food Everything**
 - Use the system to test itself when possible
 - Real usage reveals issues that unit tests miss
-- Document all findings in TASK_LIST.md
-- **Keep TASK_LIST.md current** - stale tasks waste investigative effort
+- Create tasks using `scripts/new_task.py` or the task-manager skill
+- **Use merge-friendly task system** - see `tasks/` directory and `docs/merge-friendly-tasks.md`
 
 **Honest Assessment**
 - Acknowledge when something isn't working
@@ -504,7 +504,7 @@ Key defaults to know:
 ### Before Writing Code
 
 1. **Read the relevant module** - understand existing patterns
-2. **Check TASK_LIST.md** - see if work is already planned/done
+2. **Check existing tasks** - run `python scripts/task_utils.py list` to see planned/in-progress work
 3. **Run tests first** to establish baseline:
    ```bash
    python -m unittest discover -s tests -v
@@ -524,7 +524,7 @@ Key defaults to know:
    ```
 2. **Question assumptions** - the obvious culprit often isn't the real one
 3. **Build a complete picture** before running fixes
-4. **Document findings** in TASK_LIST.md even if they contradict initial hypotheses
+4. **Document findings** - create tasks with `scripts/new_task.py` even if they contradict hypotheses
 
 ### When Implementing Features
 
@@ -556,31 +556,47 @@ Key defaults to know:
    ```
 4. **Check for regressions** in related functionality
 5. **Dog-food the feature** - test with real usage (see [dogfooding-checklist.md](docs/dogfooding-checklist.md))
-6. **Document all findings** - add issues to TASK_LIST.md (see [code-of-ethics.md](docs/code-of-ethics.md))
+6. **Create follow-up tasks** - use `scripts/new_task.py` for issues discovered
 7. **Verify completion** - use [definition-of-done.md](docs/definition-of-done.md) checklist
-8. **Update TASK_LIST.md** - Mark task complete and move details to archive (see below)
+8. **Mark task complete** - update task status in `tasks/` (see below)
 
-### Task Completion Checklist
+### Task Management (Merge-Friendly System)
 
-**CRITICAL:** Task list staleness caused 2,000+ lines of stale data. Always complete this checklist:
+**IMPORTANT:** This project uses a merge-friendly task system in `tasks/` directory.
+The legacy `TASK_LIST.md` is kept for historical reference only.
 
-1. **Mark task status** in TASK_LIST.md backlog tables (change to ✅ or remove row)
-2. **Update "Recently Completed"** section with one-line summary
-3. **Move detailed task description** to TASK_ARCHIVE.md if substantial
-4. **Update counts** in header (`Pending Tasks:`, `Completed Tasks:`)
-5. **Remove from "In Progress"** section if applicable
-
-**Why this matters:**
-- Stale task lists waste time (agents investigate "pending" tasks that are done)
-- Inaccurate counts mislead planning
-- Bloated files slow navigation and context consumption
-
-**Quick validation:**
+**Creating tasks:**
 ```bash
-# Check for completed tasks still marked pending
-grep -n "status:pending" TASK_LIST.md | head -20
-# Should only show truly pending tasks
+# Quick task creation
+python scripts/new_task.py "Fix the bug" --priority high --category bugfix
+
+# Or use TaskSession in Python
+from scripts.task_utils import TaskSession
+session = TaskSession()
+task = session.create_task(title="...", priority="high", category="arch")
+session.save()
 ```
+
+**Viewing tasks:**
+```bash
+python scripts/task_utils.py list                    # All tasks
+python scripts/task_utils.py list --status pending   # Pending only
+python scripts/consolidate_tasks.py --summary        # Summary view
+```
+
+**Completing tasks:**
+```python
+from scripts.task_utils import TaskSession
+session = TaskSession.load("tasks/your_session.json")
+session.complete_task("T-20251213-143052-a1b2", retrospective="What was learned")
+session.save()
+```
+
+**Why this system:**
+- No merge conflicts (each session writes to unique files)
+- Works with parallel agents
+- Task IDs are timestamp-based and collision-free
+- See `docs/merge-friendly-tasks.md` for full documentation
 
 ---
 
