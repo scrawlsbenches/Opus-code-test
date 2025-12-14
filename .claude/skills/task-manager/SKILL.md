@@ -13,7 +13,7 @@ This skill enables **merge-friendly task management** for parallel agent workflo
 - **Unique task IDs**: `T-YYYYMMDD-HHMMSS-XXXX` format
 - **Session tracking**: All tasks from one session share a suffix
 - **Consolidation**: Merge task files like `git gc`
-- **TASK_LIST.md compatible**: Can generate markdown summaries
+- **Legacy migration**: All historical tasks from TASK_LIST.md migrated to `tasks/legacy_migration.json`
 
 ## When to Use
 
@@ -92,12 +92,18 @@ python scripts/consolidate_tasks.py --update --archive
 }
 ```
 
-## Integration with TASK_LIST.md
+## Legacy TASK_LIST.md (Deprecated)
 
-The new system can coexist with the legacy `TASK_LIST.md`:
-- Legacy tasks keep `#123` format
-- New parallel work uses `T-...` format
-- Both can be referenced and tracked
+**The `tasks/` directory is now the primary task system.** `TASK_LIST.md` is kept for historical reference only.
+
+- **Migrated tasks**: `LEGACY-001` through `LEGACY-238` in `tasks/legacy_migration.json`
+- **New tasks**: Use `T-YYYYMMDD-HHMMSS-XXXX` format
+- **Do NOT add new tasks to TASK_LIST.md** - use this skill or `scripts/new_task.py` instead
+
+To view legacy task history:
+```bash
+python3 -c "import json; [print(f\"{t['id']}: {t['title']}\") for t in json.load(open('tasks/legacy_migration.json'))['tasks'][:20]]"
+```
 
 ## Tips
 
