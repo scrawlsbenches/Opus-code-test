@@ -40,6 +40,8 @@ name: CI - Test Suite
 
 on:
   push:
+    branches:
+      - '**'  # Run on all branch pushes (explicit)
   pull_request:
     branches: [ main ]
   workflow_dispatch:  # Allow manual triggering
@@ -187,6 +189,7 @@ jobs:
           tests/test_ask_codebase.py \
           tests/test_generate_ai_metadata.py \
           tests/test_showcase.py \
+          tests/test_mcp_server.py \
           -v --tb=short
 
         coverage report --include="cortical/*"
@@ -410,17 +413,17 @@ jobs:
         # Scan for accidentally committed secrets
         detect-secrets scan --all-files --exclude-files '\.git/.*' --exclude-files '.*\.pkl' --exclude-files '.*\.json' > .secrets-baseline.json || true
         # Check if any high-entropy secrets were found (excluding test fixtures)
-        python -c "
-import json
-with open('.secrets-baseline.json') as f:
-    data = json.load(f)
-    results = data.get('results', {})
-    real_secrets = {k: v for k, v in results.items() if not k.startswith('tests/')}
-    if real_secrets:
-        print('⚠️ Potential secrets found in:')
-        for file in real_secrets:
-            print(f'  - {file}')
-        print('Please review and ensure no real secrets are committed.')
-    else:
-        print('✅ No secrets detected in source files')
-"
+        python3 << 'PYTHON_SCRIPT'
+        import json
+        with open('.secrets-baseline.json') as f:
+            data = json.load(f)
+            results = data.get('results', {})
+            real_secrets = {k: v for k, v in results.items() if not k.startswith('tests/')}
+            if real_secrets:
+                print('⚠️ Potential secrets found in:')
+                for file in real_secrets:
+                    print(f'  - {file}')
+                print('Please review and ensure no real secrets are committed.')
+            else:
+                print('✅ No secrets detected in source files')
+        PYTHON_SCRIPT
