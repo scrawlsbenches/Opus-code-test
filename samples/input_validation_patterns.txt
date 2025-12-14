@@ -1,0 +1,15 @@
+Input Validation Patterns and Practices
+
+Input validation is the first line of defense against injection attacks, data corruption, and application crashes. All data from external sources should be treated as untrusted and validated before use. Effective validation combines multiple techniques at appropriate layers to catch malicious and malformed input.
+
+Whitelisting validates that input matches expected patterns, rejecting anything else. This positive security model is more robust than blacklisting known-bad patterns because attackers constantly discover new attack vectors. Regular expressions define acceptable formats for emails, phone numbers, and identifiers. Enumeration restricts values to predefined sets.
+
+Type coercion and validation ensure data matches expected types. String inputs parsed as numbers should fail gracefully on non-numeric content. Date parsing should handle format variations while rejecting invalid dates. Boolean parsing should have clear true/false semantics. Type validation prevents type confusion vulnerabilities.
+
+Length and size limits prevent resource exhaustion and buffer overflows. Maximum string lengths bound memory allocation. Array size limits prevent algorithmic complexity attacks. File upload size limits prevent storage exhaustion. Nested structure depth limits prevent stack overflows in recursive processing.
+
+Encoding and escaping neutralize special characters that could be interpreted as code. SQL parameterization separates data from queries, preventing SQL injection. HTML encoding prevents cross-site scripting when displaying user content. Shell escaping prevents command injection. The appropriate encoding depends on the output context.
+
+Validation layers provide defense in depth. Client-side validation improves user experience with immediate feedback but cannot be trusted for security. Server-side validation enforces security rules before processing. Database constraints provide final validation ensuring data integrity. Each layer catches different issues and compensates for potential bypasses of other layers.
+
+Canonicalization converts input to standard form before validation. Path canonicalization resolves directory traversal sequences like "../". URL normalization handles encoding variations. Unicode normalization addresses equivalent character representations. Without canonicalization, validation may miss attacks using alternate representations.

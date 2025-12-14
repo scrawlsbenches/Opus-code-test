@@ -1,0 +1,13 @@
+Dependency Management Best Practices
+
+Modern software relies heavily on third-party libraries, making dependency management critical for both functionality and security. The average application includes hundreds of transitive dependencies, each representing potential vulnerabilities or supply chain risks. Effective dependency management balances using community code efficiently while managing associated risks.
+
+Version pinning ensures reproducible builds by specifying exact dependency versions. Lock files capture the complete dependency tree including transitive dependencies. Semantic versioning conventions help predict compatibility: patch versions fix bugs, minor versions add features, major versions may break compatibility. However, any version update can introduce vulnerabilities or malicious code.
+
+Vulnerability scanning identifies known security issues in dependencies. Tools like pip-audit, npm audit, and Snyk check packages against vulnerability databases. Continuous monitoring alerts when new vulnerabilities affect existing dependencies. Severity scoring helps prioritize remediation efforts. Not all vulnerabilities are exploitable in every context, requiring assessment of actual risk.
+
+Update strategies balance security with stability. Automated updates with testing catch vulnerabilities quickly but risk breaking changes. Scheduled update cycles provide predictable maintenance windows. Security-only updates minimize change while addressing critical issues. Whatever strategy chosen, having a process ensures dependencies don't become dangerously stale.
+
+Supply chain attacks target the dependency ecosystem itself. Typosquatting publishes malicious packages with names similar to popular libraries. Account compromise lets attackers push malicious updates to legitimate packages. Build system attacks inject malware during package creation. Defenses include verifying package signatures, using trusted registries, and reviewing dependency changes carefully.
+
+Minimal dependencies reduce attack surface. Each dependency adds code that must be trusted and maintained. Evaluate whether functionality justifies the dependency or could be implemented directly. Remove unused dependencies regularly. Consider vendoring critical dependencies to control updates and reduce external trust requirements.

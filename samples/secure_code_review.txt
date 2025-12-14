@@ -1,0 +1,13 @@
+Secure Code Review Practices
+
+Secure code review systematically examines source code to identify security vulnerabilities before deployment. It complements automated scanning by catching logic flaws and context-dependent issues that tools miss. Effective code review requires security knowledge, attention to detail, and understanding of the application's threat model.
+
+Authentication and session management deserve careful scrutiny. Review password hashing algorithms, ensuring use of bcrypt, scrypt, or Argon2 rather than MD5 or SHA1. Check session token generation for sufficient randomness. Verify session expiration and invalidation on logout. Look for authentication bypass through parameter manipulation.
+
+Input handling is a common source of vulnerabilities. Trace all user input from entry points through processing. Verify validation occurs before use in dangerous operations. Check for injection vulnerabilities in SQL queries, shell commands, LDAP queries, and XML parsers. Ensure output encoding matches the context (HTML, JavaScript, URL, CSS).
+
+Access control logic often contains subtle flaws. Verify authorization checks occur on every sensitive operation, not just UI elements. Look for insecure direct object references where user-controlled IDs access unauthorized resources. Check that privilege escalation paths are properly restricted.
+
+Cryptographic implementation requires expert review. Verify use of standard algorithms with appropriate key sizes. Check for hardcoded keys, weak random number generation, and improper IV handling. Ensure TLS configuration uses modern protocols and cipher suites. Review certificate validation for proper hostname and chain verification.
+
+Error handling and logging need security attention. Ensure errors don't leak sensitive information like stack traces, database schemas, or internal paths. Verify logging captures security-relevant events without recording sensitive data. Check that error conditions don't create exploitable states.

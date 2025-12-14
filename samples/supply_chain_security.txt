@@ -1,0 +1,13 @@
+Software Supply Chain Security
+
+Software supply chain security addresses risks introduced through third-party code, build systems, and distribution channels. Modern applications depend on hundreds of external packages, each representing a potential attack vector. The SolarWinds and Log4Shell incidents demonstrated how supply chain compromises can have widespread impact.
+
+Dependency management requires vigilance against typosquatting, where attackers publish malicious packages with names similar to popular libraries. Lock files pin exact dependency versions to prevent unexpected updates. Software Bill of Materials (SBOM) documents all components in a software product, enabling rapid response to newly discovered vulnerabilities.
+
+Package integrity verification ensures downloaded code matches what the author published. Cryptographic signatures on packages prove authenticity. Hash verification confirms the package hasn't been modified. Trusted registries and mirrors reduce the risk of compromised distribution channels.
+
+Build system security protects the software creation process. Reproducible builds allow independent verification that source code produces the expected binary. Isolated build environments prevent contamination from compromised developer machines. Build provenance attestations document how software was built and by whom.
+
+Vulnerability scanning identifies known security issues in dependencies. Tools like pip-audit, npm audit, and Snyk check packages against vulnerability databases. Continuous monitoring alerts when new vulnerabilities affect existing dependencies. Automated updates with testing help maintain secure versions.
+
+Zero-trust principles apply to supply chains: verify everything, trust nothing implicitly. Vendor security assessments evaluate third-party security practices. Code review of critical dependencies catches malicious or vulnerable code. Runtime protection monitors for suspicious behavior from dependencies.

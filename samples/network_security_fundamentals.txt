@@ -1,0 +1,13 @@
+Network Security Fundamentals
+
+Network security protects the infrastructure that connects systems and transmits data. Defense in depth applies multiple security layers so that breach of one control doesn't compromise the entire network. Perimeter security, internal segmentation, and endpoint protection work together to detect and prevent attacks.
+
+A firewall controls traffic flow between network segments based on rules. Firewalls filter packets using configured policies. Stateful firewalls track connection state to allow return traffic for established sessions. Next-generation firewalls add application awareness, inspecting packet contents to identify applications regardless of port. Web application firewalls specifically protect HTTP traffic against injection, cross-site scripting, and other web attacks.
+
+Network segmentation isolates sensitive systems from general network traffic. VLANs separate broadcast domains logically. Microsegmentation extends this to individual workloads, limiting lateral movement after initial compromise. Zero trust architecture assumes breach and verifies every access request regardless of network location.
+
+Intrusion detection systems monitor network traffic for suspicious patterns. Signature-based detection matches known attack patterns while anomaly-based detection identifies deviations from normal behavior. Intrusion prevention systems can automatically block detected attacks. Security information and event management aggregates logs for correlation and alerting.
+
+Encryption protects data in transit across networks. TLS secures web traffic, email, and many application protocols. VPNs create encrypted tunnels for remote access or site-to-site connectivity. Certificate management ensures proper authentication of encrypted connections. Perfect forward secrecy prevents decryption of past sessions if keys are later compromised.
+
+DNS security prevents attacks that exploit name resolution. DNSSEC cryptographically validates DNS responses. DNS filtering blocks access to known malicious domains. DNS over HTTPS encrypts queries to prevent eavesdropping. Monitoring DNS traffic reveals command and control communications and data exfiltration attempts.

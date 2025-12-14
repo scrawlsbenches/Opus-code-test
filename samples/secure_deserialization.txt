@@ -1,0 +1,13 @@
+Secure Deserialization Practices
+
+Deserialization vulnerabilities occur when applications reconstruct objects from untrusted data without proper validation. Insecure deserialization can lead to remote code execution, denial of service, and authentication bypass. Many programming languages have built-in serialization that can instantiate arbitrary objects during deserialization.
+
+Python's pickle module is particularly dangerous because it can execute arbitrary code during deserialization. The pickle protocol allows defining __reduce__ methods that specify how to reconstruct objects, which attackers exploit to execute malicious commands. Never unpickle data from untrusted sources.
+
+Safer alternatives exist for most serialization needs. JSON provides a text-based format that only supports primitive types and cannot execute code. Protocol Buffers and MessagePack offer efficient binary formats with strict schemas. These formats separate data from behavior, preventing code execution attacks.
+
+When deserialization of complex objects is necessary, implement defense in depth. Cryptographic signatures verify data hasn't been tampered with. HMAC authentication ensures data comes from trusted sources. Schema validation confirms data matches expected structure before full deserialization.
+
+Allowlists restrict which classes can be deserialized. Java's ObjectInputFilter and similar mechanisms in other languages reject unexpected object types. This prevents attackers from instantiating dangerous classes even if they control the serialized data.
+
+Sandboxing limits the impact of successful attacks. Running deserialization in isolated processes with minimal privileges contains potential damage. Container isolation and seccomp filters restrict what compromised code can do. Monitoring and alerting detect exploitation attempts.

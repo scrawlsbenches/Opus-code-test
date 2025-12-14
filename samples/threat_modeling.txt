@@ -1,0 +1,13 @@
+Threat Modeling Methodology
+
+Threat modeling is a structured approach to identifying security threats, understanding their potential impact, and designing appropriate mitigations. It shifts security left in the development lifecycle, addressing vulnerabilities when they're cheapest to fix. Effective threat modeling requires understanding the system, identifying threats, and prioritizing responses.
+
+STRIDE is a mnemonic for six threat categories: Spoofing identity, Tampering with data, Repudiation of actions, Information disclosure, Denial of service, and Elevation of privilege. Each category maps to security properties: authentication prevents spoofing, integrity prevents tampering, non-repudiation prevents denial, confidentiality prevents disclosure, availability prevents DoS, and authorization prevents privilege escalation.
+
+Data flow diagrams visualize how information moves through systems. They identify trust boundaries where data crosses between different security contexts. External entities, processes, data stores, and data flows are analyzed for potential vulnerabilities. Attack surfaces emerge where untrusted input enters the system.
+
+Attack trees decompose high-level threats into specific attack paths. The root node represents the attacker's goal, while child nodes show ways to achieve it. AND nodes require all children to succeed; OR nodes need only one. Attack trees help identify the most likely and damaging attack scenarios.
+
+Risk assessment combines likelihood and impact to prioritize threats. DREAD (Damage, Reproducibility, Exploitability, Affected users, Discoverability) provides a scoring framework. Not all threats warrant immediate attention; risk-based prioritization focuses resources on the most critical issues.
+
+Mitigations address identified threats through technical controls, process changes, or accepted risk. Defense in depth layers multiple controls so failure of one doesn't compromise security. Threat models should be living documents, updated as systems evolve and new threats emerge.

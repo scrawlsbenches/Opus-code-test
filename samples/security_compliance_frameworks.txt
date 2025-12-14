@@ -1,0 +1,15 @@
+Security Compliance Frameworks
+
+Security compliance frameworks provide structured approaches to managing information security risks. Regulatory requirements like GDPR, HIPAA, and PCI-DSS mandate specific controls for certain data types. Voluntary frameworks like SOC 2, ISO 27001, and NIST CSF demonstrate security commitment to customers and partners.
+
+Risk assessment forms the foundation of compliance programs. Asset inventories identify what needs protection. Threat modeling considers who might attack and how. Vulnerability assessments find weaknesses in defenses. Risk scoring prioritizes remediation based on likelihood and impact. Continuous risk monitoring adapts to evolving threats.
+
+Control frameworks organize security requirements into manageable categories. Administrative controls include policies, procedures, and training. Technical controls implement security through technology: encryption, access controls, and monitoring. Physical controls protect facilities and hardware. Layered controls provide defense in depth.
+
+PCI DSS protects payment card data through twelve requirement categories. Network segmentation isolates cardholder data environments. Encryption protects stored and transmitted card data. Access controls limit who can view payment information. Regular testing validates control effectiveness. Compliance validation occurs through self-assessment or external audit depending on transaction volume.
+
+GDPR governs personal data processing for EU residents. Lawful basis justifies data collection and use. Data subject rights include access, correction, and deletion. Privacy by design embeds protection into systems from the start. Data breach notification requires reporting significant incidents within 72 hours. Penalties for non-compliance can reach 4% of global revenue.
+
+SOC 2 audits evaluate service organization controls against trust service criteria. Security, availability, processing integrity, confidentiality, and privacy form the five categories. Type 1 reports assess control design at a point in time. Type 2 reports evaluate control operation over a period. SOC 2 reports help customers evaluate vendor security posture.
+
+Compliance automation reduces manual effort and improves accuracy. Continuous monitoring tracks control status in real-time. Evidence collection automation supports audit preparation. Policy as code enforces compliance requirements automatically. Compliance dashboards provide visibility into program status. Integration with security tools ensures compliance reflects actual security posture.

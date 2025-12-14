@@ -1,0 +1,15 @@
+Authentication Patterns and Implementation
+
+Authentication verifies that users are who they claim to be, forming the foundation for access control decisions. Modern authentication systems balance security with usability, providing strong identity verification without creating friction that drives users to insecure workarounds.
+
+Password-based authentication remains common despite known weaknesses. Secure password storage uses adaptive hashing algorithms like bcrypt, scrypt, or Argon2 that are intentionally slow to prevent brute force attacks. Salting ensures identical passwords produce different hashes. Password policies should encourage length over complexity since longer passphrases are both more secure and more memorable.
+
+Multi-factor authentication combines multiple verification methods. Something you know (passwords), something you have (tokens, phones), and something you are (biometrics) provide independent factors. TOTP apps generate time-based codes. Hardware security keys provide phishing-resistant authentication. SMS codes are better than passwords alone but vulnerable to SIM swapping.
+
+Session management maintains authentication state across requests. Session tokens must be unpredictable, using cryptographically secure random generation. Secure cookie attributes prevent theft: HttpOnly blocks JavaScript access, Secure requires HTTPS, SameSite prevents cross-site request forgery. Session expiration limits the window for token theft exploitation.
+
+Token-based authentication suits API and microservice architectures. JSON Web Tokens carry signed claims about identity and permissions. Short expiration times limit exposure from token theft. Refresh tokens enable obtaining new access tokens without re-authentication. Token revocation requires maintaining state, often via short expiration plus refresh token rotation.
+
+Federated identity delegates authentication to trusted identity providers. OAuth 2.0 enables authorization without sharing credentials. OpenID Connect adds identity layer atop OAuth. SAML provides enterprise single sign-on. Federation reduces password fatigue while centralizing authentication security improvements.
+
+Account recovery is often the weakest link. Security questions are easily researched. Email-based recovery depends on email account security. SMS recovery is vulnerable to SIM swapping. Recovery codes stored securely provide a fallback when other methods fail. Balance recovery convenience against the risk of unauthorized access.

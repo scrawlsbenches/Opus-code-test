@@ -1,0 +1,13 @@
+API Design and Security
+
+API security protects the interfaces through which applications communicate. As APIs expose application functionality to external consumers, they represent critical attack surfaces requiring careful design. RESTful APIs, GraphQL endpoints, and RPC services all face similar security challenges around authentication, authorization, and input handling.
+
+Authentication verifies the identity of API consumers. API keys provide simple authentication but offer limited security and no user context. OAuth 2.0 enables delegated authorization where users grant limited access without sharing credentials. JSON Web Tokens (JWT) carry signed claims about identity and permissions. Mutual TLS authenticates both client and server using certificates.
+
+Authorization determines what authenticated consumers can access. Role-based access control maps users to roles with defined permissions. Attribute-based access control evaluates policies based on user attributes, resource properties, and context. API gateways centralize authorization enforcement across multiple backend services.
+
+Input validation protects APIs from malicious payloads. Schema validation ensures requests match expected structure. Type checking prevents type confusion attacks. Length limits prevent buffer overflows and denial of service. Content-type validation rejects unexpected data formats. All validation should occur server-side since client-side checks are easily bypassed.
+
+Rate limiting prevents abuse and ensures availability. Token bucket algorithms allow burst traffic while enforcing average limits. Per-user limits prevent individual accounts from monopolizing resources. Graduated responses warn before blocking, giving legitimate users opportunity to reduce load.
+
+Output encoding prevents injection when API responses are rendered. JSON encoding handles special characters safely. XML encoding prevents entity injection. Error responses avoid leaking sensitive information like stack traces, database schemas, or internal network topology. Consistent error formats help consumers handle failures gracefully without revealing implementation details.
