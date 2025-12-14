@@ -46,7 +46,15 @@ def format_passage(passage: str, max_width: int = 80) -> str:
 
 def get_doc_type_label(doc_id: str) -> str:
     """Get a display label for document type."""
-    if doc_id.endswith('.md'):
+    if doc_id.startswith('samples/memories/'):
+        # Check if it's a concept doc
+        filename = doc_id.split('/')[-1]
+        if filename.startswith('concept-'):
+            return 'CON'
+        return 'MEM'
+    elif doc_id.startswith('samples/decisions/'):
+        return 'ADR'
+    elif doc_id.endswith('.md'):
         if doc_id.startswith('docs/'):
             return 'DOCS'
         return 'DOC'

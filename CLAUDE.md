@@ -85,8 +85,8 @@ python scripts/generate_ai_metadata.py
 Instead of reading entire source files, start with `.ai_meta` files:
 
 ```bash
-# Get structured overview of any module
-cat cortical/processor.py.ai_meta
+# Get structured overview of any module (processor is now a package)
+cat cortical/processor/__init__.py.ai_meta
 ```
 
 **What metadata provides:**
@@ -118,7 +118,7 @@ python scripts/search_codebase.py "your query here"
 
 ```bash
 # I need to understand how search works
-cat cortical/query.py.ai_meta | head -100    # Get overview
+cat cortical/query/__init__.py.ai_meta | head -100    # Get overview (query is a package)
 python scripts/search_codebase.py "expand query"  # Find specific code
 # Then read specific line ranges as needed
 ```
@@ -244,7 +244,7 @@ tests/
 | Code concepts | `tests/test_code_concepts.py` |
 | Chunk indexing | `tests/test_chunk_indexing.py` |
 | Incremental updates | `tests/test_incremental_indexing.py` |
-| Intent queries | `tests/test_intent_query.py` |
+| Intent queries | `tests/unit/test_query.py` |
 
 **Running Tests:**
 
@@ -545,7 +545,7 @@ Key defaults to know:
 3. **Write docstrings** - Google style with Args/Returns sections
 4. **Update staleness tracking** if adding new computation:
    ```python
-   # In processor.py, add constant:
+   # In processor/core.py, add constant:
    COMP_YOUR_FEATURE = 'your_feature'
    # Mark stale in _mark_all_stale()
    # Mark fresh after computation
@@ -746,7 +746,7 @@ coverage run -m pytest tests/
        return {'result': ..., 'stats': ...}
    ```
 
-2. Add wrapper method to `CorticalTextProcessor` in `processor.py`:
+2. Add wrapper method to `CorticalTextProcessor` in the `processor/` package (appropriate mixin):
    ```python
    def compute_your_analysis(self, **kwargs) -> Dict[str, Any]:
        """Wrapper with docstring."""
@@ -757,10 +757,10 @@ coverage run -m pytest tests/
 
 ### Adding a New Query Function
 
-1. Add to `query.py` following existing patterns
+1. Add to the `query/` package following existing patterns (e.g., `query/search.py`)
 2. Use `get_expanded_query_terms()` helper for query expansion
 3. Use `layer.get_by_id()` for O(1) lookups, not iteration
-4. Add wrapper to `processor.py`
+4. Add wrapper to the `processor/` package (likely `processor/query_api.py`)
 5. Add tests in `tests/test_processor.py`
 
 ### Modifying Minicolumn Structure
@@ -1161,9 +1161,9 @@ See `docs/text-as-memories.md` for the full guide.
 
 ## File Quick Links
 
-- **Main API**: `cortical/processor.py` - `CorticalTextProcessor` class
+- **Main API**: `cortical/processor/` - `CorticalTextProcessor` class (split into mixins)
 - **Graph algorithms**: `cortical/analysis.py` - PageRank, TF-IDF, clustering
-- **Search**: `cortical/query.py` - query expansion, document retrieval
+- **Search**: `cortical/query/` - query expansion, document retrieval (split into 8 modules)
 - **Data structures**: `cortical/minicolumn.py` - `Minicolumn`, `Edge`
 - **Configuration**: `cortical/config.py` - `CorticalConfig` dataclass
 - **Tests**: `tests/test_processor.py` - most comprehensive test file

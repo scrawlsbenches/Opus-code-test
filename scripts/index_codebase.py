@@ -1329,6 +1329,18 @@ def get_doc_files(base_path: Path) -> list:
         for md_file in docs_dir.glob('*.md'):
             files.append(md_file)
 
+    # Memory documents in samples/memories/
+    memories_dir = base_path / 'samples' / 'memories'
+    if memories_dir.exists():
+        for md_file in memories_dir.glob('*.md'):
+            files.append(md_file)
+
+    # Decision records in samples/decisions/
+    decisions_dir = base_path / 'samples' / 'decisions'
+    if decisions_dir.exists():
+        for md_file in decisions_dir.glob('*.md'):
+            files.append(md_file)
+
     return files
 
 
@@ -1351,10 +1363,18 @@ def get_doc_type(doc_id: str) -> str:
     Determine document type from document ID.
 
     Returns:
-        One of: 'code', 'test', 'docs', 'root_docs'
+        One of: 'code', 'test', 'docs', 'root_docs', 'memory', 'decision', 'concept'
     """
     if doc_id.startswith('tests/'):
         return 'test'
+    elif doc_id.startswith('samples/memories/'):
+        # Check if it's a concept doc
+        filename = doc_id.split('/')[-1]
+        if filename.startswith('concept-'):
+            return 'concept'
+        return 'memory'
+    elif doc_id.startswith('samples/decisions/'):
+        return 'decision'
     elif doc_id.startswith('docs/'):
         return 'docs'
     elif doc_id.endswith('.md'):

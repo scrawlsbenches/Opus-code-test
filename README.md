@@ -2,7 +2,7 @@
 
 ![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
-![Tests](https://img.shields.io/badge/tests-1121%20passing-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-2941%20passing-brightgreen.svg)
 ![Coverage](https://img.shields.io/badge/coverage-%3E89%25-brightgreen.svg)
 ![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-orange.svg)
 
@@ -16,7 +16,7 @@ Your visual cortex doesn't grep through pixels looking for cats. It builds hiera
 
 Feed it documents. It tokenizes them into "minicolumns" (Layer 0), connects co-occurring words through Hebbian learning ("neurons that fire together, wire together"), clusters them into concepts (Layer 2), and links documents by shared meaning (Layer 3). The result: a graph that understands your corpus well enough to expand queries, complete analogies, and tell you where your knowledge has gaps.
 
-No PyTorch. No transformers. No API keys. Just 337 tests, 7000 lines of pure Python, and a data structure that would make a neuroscientist squint approvingly.
+No PyTorch. No transformers. No API keys. Just 2900+ tests, 19,000+ lines of pure Python, and a data structure that would make a neuroscientist squint approvingly.
 
 ---
 
@@ -226,7 +226,7 @@ Tested with 92 sample documents covering topics from neural networks to medieval
 | Token minicolumns | 6,506 |
 | Bigram minicolumns | 20,114 |
 | Lateral connections | 116,332 |
-| Test coverage | 337 tests passing |
+| Test coverage | 2900+ tests passing |
 | Graph algorithms | O(1) ID lookups |
 
 **What the processor discovers:**
@@ -254,7 +254,7 @@ cortical/
 evaluation/
 └── evaluator.py     # Evaluation framework
 
-tests/               # 337 comprehensive tests
+tests/               # 2900+ comprehensive tests
 showcase.py          # Interactive demonstration (run it!)
 samples/             # 92 documents: from quantum computing to cheese affinage
 ```
@@ -297,6 +297,24 @@ See the **AI Agent Onboarding** section in [CLAUDE.md](CLAUDE.md) for:
 - Step-by-step setup guide
 - Navigation tips for efficient exploration
 - Example workflow using metadata
+
+## Text-as-Memories System
+
+Capture and organize institutional knowledge alongside your code:
+
+- **Daily Memories** (`samples/memories/YYYY-MM-DD-*.md`) - Learning entries
+- **Decision Records** (`samples/decisions/adr-*.md`) - Architectural decisions
+- **Concept Documents** - Consolidated knowledge on topics
+
+```bash
+# Create a memory entry
+python scripts/new_memory.py "What I learned about validation"
+
+# Create a decision record
+python scripts/new_memory.py "Use JSON over pickle" --decision
+```
+
+See [docs/text-as-memories.md](docs/text-as-memories.md) for the complete guide.
 
 ## Development History
 
@@ -397,6 +415,17 @@ python -m unittest discover -s tests -v
    - Email attachments
 
 See [Python's pickle documentation](https://docs.python.org/3/library/pickle.html) for more details on pickle security.
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup and workflow
+- Code style and testing requirements
+- Pull request guidelines
+
+Quality resources:
+- [Definition of Done](docs/definition-of-done.md)
+- [Code of Ethics](docs/code-of-ethics.md)
 
 ## License
 
