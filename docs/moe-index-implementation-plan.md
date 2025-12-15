@@ -2,10 +2,12 @@
 
 **Author:** Claude (AI Assistant)
 **Date:** 2025-12-15
+**Updated:** 2025-12-15 (reduced scope: BM25 and GB-BM25 already implemented)
 **Status:** Proposed
 **Prerequisites:**
 - [moe-index-knowledge-transfer.md](moe-index-knowledge-transfer.md)
 - [moe-index-design.md](moe-index-design.md)
+- [knowledge-transfer-bm25-optimization.md](knowledge-transfer-bm25-optimization.md)
 
 ---
 
@@ -13,12 +15,21 @@
 
 This document outlines a **6-phase implementation plan** for the Mixture of Expert (MoE) index architecture. The plan prioritizes incremental value delivery, maintaining backward compatibility, and thorough testing at each phase.
 
-**Timeline:** ~6-8 weeks of focused development (no calendar estimates per project guidelines)
+> **Scope Reduction (2025-12-15):** The recent BM25 and GB-BM25 implementations significantly reduce the work needed:
+> - BM25 scoring already implemented (`analysis.py:_bm25_core()`)
+> - Document length tracking already exists (`processor.doc_lengths`)
+> - GB-BM25 provides a working proto-MoE (`query/search.py:graph_boosted_search()`)
+> - 34.5% performance improvement in `compute_all()` already achieved
+>
+> **Remaining work focuses on:**
+> - Expert abstraction layer and routing
+> - Structural, temporal, and episodic experts (new capabilities)
+> - Cross-pollination framework (generalized from GB-BM25)
 
-**Total Estimated Effort:**
-- New code: ~2,800 lines
-- Test code: ~1,500 lines
-- Documentation: ~500 lines
+**Total Estimated Effort (Revised):**
+- New code: ~2,100 lines (down from ~2,800 - BM25 already done)
+- Test code: ~1,200 lines (down from ~1,500)
+- Documentation: ~300 lines (down from ~500)
 
 ---
 
@@ -126,60 +137,64 @@ tests/
 
 **Goal:** Implement first two experts with basic querying.
 
+> **Scope Reduction:** BM25 is already implemented in `analysis.py:_bm25_core()`. The Lexical Expert wraps existing functionality + adds phrase matching.
+
 ### Tasks
 
-#### 2.1 Lexical Expert Implementation
+#### 2.1 Lexical Expert Implementation (Simplified)
 
-**Deliverables:**
-- [ ] Implement `Posting` dataclass (doc_id, positions, tf)
-- [ ] Implement `DocStats` dataclass
-- [ ] Implement inverted index structure
-- [ ] Implement `add_document()` method
-- [ ] Implement `remove_document()` method
-- [ ] Implement BM25 scoring algorithm
-- [ ] Implement `query()` method
-- [ ] Implement phrase matching (optional)
-- [ ] Implement persistence (`save`/`load`)
+**Already Available (reuse):**
+- [x] BM25 scoring algorithm (`analysis.py:_bm25_core()`)
+- [x] Document length tracking (`processor.doc_lengths`)
+- [x] Fast search infrastructure (`fast_find_documents()`)
+
+**New Deliverables:**
+- [ ] Implement `LexicalExpert` class wrapping existing BM25
+- [ ] Implement `TermPositions` dataclass for phrase queries
+- [ ] Build positional index during document processing
+- [ ] Implement phrase matching using positions
+- [ ] Implement prefix trie for autocomplete (optional)
 
 **Acceptance Criteria:**
-- Lexical expert can index 1000 documents in <5 seconds
-- Simple queries return in <10ms
-- BM25 scores match reference implementation
-- Persistence round-trips correctly
+- Lexical expert delegates to existing BM25 scores
+- Simple queries return in <10ms (using `fast_find_documents`)
+- Phrase queries work correctly
+- No BM25 reimplementation needed
 
 **Test Cases:**
 ```python
 def test_lexical_exact_match():
-    expert = LexicalExpert()
-    expert.add_document("doc1", "neural networks process data")
+    expert = LexicalExpert(processor)  # Wraps processor
     result = expert.query("neural")
     assert "doc1" in result.documents
 
-def test_lexical_bm25_ranking():
-    expert = LexicalExpert()
-    expert.add_document("doc1", "neural neural neural")  # High TF
-    expert.add_document("doc2", "neural networks")
+def test_lexical_uses_existing_bm25():
+    # Verify we're using processor's BM25, not reimplementing
+    expert = LexicalExpert(processor)
     result = expert.query("neural")
-    assert result.documents[0] == "doc1"  # Higher TF wins
+    fast_result = fast_find_documents("neural", processor.layers, processor.tokenizer)
+    assert result.documents == [d for d, _ in fast_result]
 
 def test_lexical_phrase_query():
-    expert = LexicalExpert()
-    expert.add_document("doc1", "machine learning algorithms")
+    expert = LexicalExpert(processor)
     result = expert.query('"machine learning"')  # Phrase
+    # Uses positional index, not just term matching
     assert "doc1" in result.documents
 ```
 
 #### 2.2 Semantic Expert Wrapper
 
+> **Builds on:** `graph_boosted_search()` already combines BM25 + PageRank + Proximity. The Semantic Expert wraps this with the expert interface.
+
 **Deliverables:**
 - [ ] Implement `SemanticExpert` wrapping `CorticalTextProcessor`
-- [ ] Implement delegation for `add_document`
-- [ ] Implement delegation for `query`
+- [ ] Delegate to `graph_boosted_search()` for rich queries
+- [ ] Delegate to `find_documents_for_query()` for standard queries
 - [ ] Implement staleness pass-through
 - [ ] Implement persistence (reuse processor's)
 
 **Acceptance Criteria:**
-- Semantic expert produces same results as raw processor
+- Semantic expert uses existing `graph_boosted_search()`
 - No regression in existing functionality
 - Wrapper adds <5ms overhead
 

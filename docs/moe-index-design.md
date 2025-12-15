@@ -2,9 +2,10 @@
 
 **Author:** Claude (AI Assistant)
 **Date:** 2025-12-15
+**Updated:** 2025-12-15 (integrated with BM25/GB-BM25 implementations)
 **Status:** Design Proposal
-**Version:** 1.0
-**Prerequisites:** [moe-index-knowledge-transfer.md](moe-index-knowledge-transfer.md)
+**Version:** 1.1
+**Prerequisites:** [moe-index-knowledge-transfer.md](moe-index-knowledge-transfer.md), [knowledge-transfer-bm25-optimization.md](knowledge-transfer-bm25-optimization.md)
 
 ---
 
@@ -35,13 +36,23 @@
 4. **Backward compatibility** with existing API
 5. **Zero external dependencies** (per project philosophy)
 
-### 1.2 Non-Goals
+### 1.2 Building on Existing Implementations
+
+> **Important:** This design builds on recent additions to the codebase:
+> - **BM25 scoring** (`cortical/analysis.py`) - Already implemented as default
+> - **GB-BM25** (`cortical/query/search.py:graph_boosted_search()`) - Proto-MoE combining BM25 + PageRank + Proximity
+> - **Document length tracking** (`processor.doc_lengths`, `processor.avg_doc_length`)
+> - **Performance optimizations** - 34.5% faster `compute_all()`
+>
+> The MoE architecture generalizes GB-BM25's signal fusion into separate experts with intelligent routing.
+
+### 1.3 Non-Goals
 
 1. ~~ML-based routing~~ (use rule-based/statistical instead)
 2. ~~Real-time expert retraining~~ (static specialization)
 3. ~~Distributed indexes~~ (single-machine focus for now)
 
-### 1.3 Key Design Decisions
+### 1.4 Key Design Decisions
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
@@ -241,75 +252,74 @@ class ExpertIndex(ABC):
 
 **Purpose:** Fast exact and near-exact matching.
 
+> **Builds on existing:** The codebase already has BM25 implemented in `cortical/analysis.py:_bm25_core()` and document length tracking in `processor.doc_lengths`. The Lexical Expert wraps this with a fast inverted index for O(1) term lookups.
+
 **Data Structures:**
 
 ```python
 # cortical/moe/experts/lexical.py
 
 class LexicalExpert(ExpertIndex):
-    """Fast lexical search using inverted index."""
+    """Fast lexical search using existing BM25 + inverted index."""
 
-    def __init__(self, config: LexicalConfig):
-        # Core index: term → [(doc_id, positions, tf)]
-        self._inverted_index: Dict[str, List[Posting]] = {}
+    def __init__(self, config: LexicalConfig, processor: CorticalTextProcessor):
+        # Reuse processor's BM25 scores (already computed)
+        self._processor = processor
 
-        # Document metadata: doc_id → (length, max_tf)
-        self._doc_stats: Dict[str, DocStats] = {}
-
-        # Collection statistics
-        self._total_docs: int = 0
-        self._avg_doc_length: float = 0.0
+        # Additional inverted index for fast lookups
+        # term → [(doc_id, positions)] - positions enable phrase queries
+        self._term_positions: Dict[str, Dict[str, List[int]]] = {}
 
         # Optional: prefix trie for autocomplete
         self._prefix_trie: Optional[PrefixTrie] = None
 
-        # BM25 parameters
-        self._k1: float = config.bm25_k1  # 1.2
-        self._b: float = config.bm25_b    # 0.75
+        # Reuse processor's document length stats
+        # self._processor.doc_lengths (already tracked)
+        # self._processor.avg_doc_length (already tracked)
+
+        # BM25 parameters from processor config
+        # self._processor.config.bm25_k1 (default 1.2)
+        # self._processor.config.bm25_b (default 0.75)
 
 @dataclass
-class Posting:
-    """Inverted index posting."""
+class TermPositions:
+    """Term positions within a document (for phrase queries)."""
     doc_id: str
-    positions: List[int]  # Word positions for phrase queries
-    term_frequency: int
-
-@dataclass
-class DocStats:
-    """Per-document statistics."""
-    length: int           # Token count
-    max_tf: int          # Maximum term frequency
+    positions: List[int]  # Word positions
 ```
 
-**Scoring Algorithm:** BM25
+**Scoring Algorithm:** Delegates to existing BM25
 
 ```python
-def _bm25_score(self, term: str, doc_id: str) -> float:
-    """Calculate BM25 score for term in document."""
-    posting = self._get_posting(term, doc_id)
-    if not posting:
-        return 0.0
-
-    tf = posting.term_frequency
-    doc_length = self._doc_stats[doc_id].length
-
-    # IDF component
-    df = len(self._inverted_index.get(term, []))
-    idf = math.log((self._total_docs - df + 0.5) / (df + 0.5) + 1)
-
-    # TF component with saturation
-    tf_component = (tf * (self._k1 + 1)) / (
-        tf + self._k1 * (1 - self._b + self._b * doc_length / self._avg_doc_length)
+def query(self, query_text: str, top_n: int = 10, **kwargs) -> ExpertResult:
+    """Fast search using existing BM25 scores."""
+    # Use fast_find_documents which already uses BM25/TF-IDF
+    results = fast_find_documents(
+        query_text,
+        self._processor.layers,
+        self._processor.tokenizer,
+        top_n=top_n,
+        use_code_concepts=False  # Pure lexical, no expansion
     )
-
-    return idf * tf_component
+    return ExpertResult(
+        documents=[doc for doc, _ in results],
+        scores={doc: score for doc, score in results},
+        confidence=0.9  # High confidence for exact matches
+    )
 ```
+
+**Key insight:** We don't need to reimplement BM25—it's already in `analysis.py:_bm25_core()`. The Lexical Expert adds:
+1. Positional index for phrase queries
+2. Prefix trie for autocomplete
+3. No query expansion (pure lexical matching)
 
 **Capabilities:** `{'exact_match', 'phrase_match', 'autocomplete', 'fast'}`
 
 ### 3.3 Semantic Expert
 
 **Purpose:** Meaning-based retrieval using existing system.
+
+> **Builds on existing:** The codebase has `graph_boosted_search()` which combines BM25 + PageRank + Proximity. The Semantic Expert uses this or similar logic, focusing on the PageRank and query expansion signals.
 
 **Implementation:** Wraps `CorticalTextProcessor` with minimal changes.
 

@@ -2,8 +2,9 @@
 
 **Author:** Claude (AI Assistant)
 **Date:** 2025-12-15
+**Updated:** 2025-12-15 (integrated with BM25/GB-BM25 implementations)
 **Status:** Design Proposal
-**Related:** [architecture.md](architecture.md), [algorithms.md](algorithms.md)
+**Related:** [architecture.md](architecture.md), [algorithms.md](algorithms.md), [knowledge-transfer-bm25-optimization.md](knowledge-transfer-bm25-optimization.md)
 
 ---
 
@@ -12,6 +13,8 @@
 This document provides comprehensive background knowledge for implementing a **Mixture of Experts (MoE) architecture** for the Cortical Text Processor's indexing system. The core idea: instead of one general-purpose index, maintain multiple specialized "expert" indexes, each optimized for different query types, with a learned routing mechanism that selects which experts to activate for each query.
 
 **Key insight:** Different query types have fundamentally different optimal representations. A code navigation query needs call graph awareness; a semantic similarity query needs distributional embeddings; an exact lookup needs inverted indexes. One index cannot optimize for all.
+
+> **Important Update (2025-12-15):** The codebase now includes BM25 scoring and Graph-Boosted Search (GB-BM25), which represent early steps toward the MoE architecture. GB-BM25 already combines BM25 + PageRank + Proximity signals—essentially a "fused expert" approach. The full MoE architecture generalizes this into cleanly separated experts with intelligent routing.
 
 ---
 
@@ -164,10 +167,12 @@ Layer 0 (TOKENS)     ← Individual words
 ```
 
 **Current strengths:**
-- Rich semantic relationships (PageRank, TF-IDF, clustering)
+- Rich semantic relationships (PageRank, BM25, clustering)
 - Query expansion through lateral connections
 - Code-aware tokenization
 - Intent parsing
+- **NEW:** BM25 scoring with term saturation and length normalization
+- **NEW:** Graph-Boosted Search (GB-BM25) combining multiple signals
 
 **Current limitations:**
 - Single monolithic index serves all query types
@@ -175,40 +180,91 @@ Layer 0 (TOKENS)     ← Individual words
 - No structural awareness for code queries
 - No temporal dimension
 
-### 3.2 Query Patterns in Current System
+### 3.2 Recent Additions: BM25 and GB-BM25
 
-Analyzing how the current system handles different queries:
+As of December 2025, the system includes two important additions that represent early steps toward MoE:
 
-| Query Type | Current Handling | Limitation |
-|------------|------------------|------------|
-| Exact lookup | Full expansion anyway | Overhead |
-| Semantic search | Query expansion + TF-IDF | Good, but slow |
-| Code navigation | Treats code as text | Misses structure |
-| Definition lookup | Heuristic boosting | Not systematic |
-| Temporal queries | Not supported | Can't ask "what changed?" |
+#### BM25 Scoring (Now Default)
+**Location:** `cortical/analysis.py`
 
-### 3.3 Data Flow Analysis
+BM25 replaces TF-IDF as the default scoring algorithm:
+- **Term saturation** via `k1=1.2`: Diminishing returns for repeated terms
+- **Length normalization** via `b=0.75`: Adjusts for document length
+- **Improved IDF**: Never returns 0 for single-document terms
+
+#### Graph-Boosted Search (GB-BM25)
+**Location:** `cortical/query/search.py:graph_boosted_search()`
+
+GB-BM25 is essentially a **proto-MoE** that fuses multiple signals in a single pass:
 
 ```
-Query → Tokenize → Expand → Score Documents → Rank → Return
+GB-BM25 Score = (1-α-β) × BM25 + α × PageRank + β × Proximity + Coverage
+```
+
+| Signal | Weight | Source | MoE Expert Analog |
+|--------|--------|--------|-------------------|
+| BM25 base | 0.5 | Term frequency | Lexical Expert |
+| PageRank boost | 0.3 | Graph importance | Semantic Expert |
+| Proximity boost | 0.2 | Lateral connections | Cross-pollination |
+| Coverage multiplier | 0.5-1.5 | Term coverage | Fusion quality signal |
+
+**Key insight:** GB-BM25 demonstrates the value of combining signals, but does so in a monolithic function. MoE architecture separates these into distinct experts with intelligent routing.
+
+### 3.3 Query Methods Comparison
+
+| Method | Speed | Signals Used | Best For |
+|--------|-------|--------------|----------|
+| `fast_find_documents()` | 0.06-0.66ms | BM25 only | Speed-critical |
+| `find_documents_for_query()` | 0.13-1.22ms | BM25 + expansion | General search |
+| `graph_boosted_search()` | 74ms | BM25 + PageRank + proximity + coverage | Code search |
+
+### 3.4 Data Flow Analysis
+
+**Traditional path:**
+```
+Query → Tokenize → Expand → Score (BM25) → Rank → Return
                      ↓
               (always same path)
 ```
 
-**The problem:** Every query follows the same path regardless of type. A simple exact-match query goes through full semantic expansion.
+**GB-BM25 path (proto-MoE):**
+```
+Query → Tokenize → Expand → Score (BM25 + PageRank + Proximity) → Coverage → Rank
+                                      ↓
+                              (all signals always combined)
+```
 
-### 3.4 Performance Characteristics
+**Proposed MoE path:**
+```
+Query → Router → Select Experts → Parallel Query → Cross-Pollinate → Fuse → Rank
+                     ↓                    ↓
+            (conditional)        (experts inform each other)
+```
 
-From profiling (`scripts/profile_full_analysis.py`):
+### 3.5 Performance Characteristics
 
-| Phase | Time | Notes |
-|-------|------|-------|
-| Tokenization | ~10ms | Fast |
-| Query expansion | ~50-200ms | Variable, depends on connections |
-| Document scoring | ~100-500ms | Scales with corpus size |
-| Ranking | ~20ms | Fast |
+From benchmarks (`docs/benchmarks.md`):
 
-For simple queries, expansion and scoring dominate—often unnecessarily.
+| Corpus | compute_all() | Standard Search | Fast Search |
+|--------|---------------|-----------------|-------------|
+| Small (25 docs) | 141 ms | 0.13 ms | 0.06 ms |
+| Real (151 files) | 49.4 s | 1.22 ms | 0.66 ms |
+
+**BM25 optimization impact:**
+- `compute_all()` improved by **34.5%** (from 7.5s to 4.9s on 43-file corpus)
+- Primary savings from `compute_bigram_connections` optimization (50% faster)
+
+### 3.6 What MoE Adds Beyond GB-BM25
+
+| Capability | GB-BM25 | Full MoE |
+|------------|---------|----------|
+| Signal combination | Fixed weights | Adaptive per-query |
+| Expert selection | All signals always | Sparse activation (top-K) |
+| Structural queries | Not supported | Structural Expert |
+| Temporal queries | Not supported | Temporal Expert |
+| Session context | Not supported | Episodic Expert |
+| Routing intelligence | None | Feature + intent + feedback |
+| Expert specialization | Implicit | Explicit optimization |
 
 ---
 
