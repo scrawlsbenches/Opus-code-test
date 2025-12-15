@@ -104,13 +104,18 @@ class SchemaValidationError(Exception):
 
 ML_DATA_DIR = Path(".git-ml")
 COMMITS_DIR = ML_DATA_DIR / "commits"           # Full commit data with diffs (large, local only)
-COMMITS_LITE_DIR = ML_DATA_DIR / "commits-lite" # Lightweight metadata only (small, tracked in git)
-SESSIONS_DIR = ML_DATA_DIR / "sessions"
+COMMITS_LITE_DIR = ML_DATA_DIR / "commits-lite" # Legacy: individual JSON files (being phased out)
+SESSIONS_DIR = ML_DATA_DIR / "sessions"         # Full session data (local only)
 CHATS_DIR = ML_DATA_DIR / "chats"
 ACTIONS_DIR = ML_DATA_DIR / "actions"
 SHARED_DIR = ML_DATA_DIR / "shared"  # Aggregated patterns - safe to commit
 GITHUB_DIR = ML_DATA_DIR / "github"  # PR/Issue data - local (contains discussions)
 CURRENT_SESSION_FILE = ML_DATA_DIR / "current_session.json"
+
+# Git-tracked JSONL files (single file, append-only, git-friendly)
+TRACKED_DIR = ML_DATA_DIR / "tracked"           # Directory for git-tracked data
+COMMITS_LITE_FILE = TRACKED_DIR / "commits.jsonl"   # Commit metadata (one per line)
+SESSIONS_LITE_FILE = TRACKED_DIR / "sessions.jsonl" # Session summaries (one per line)
 
 # Training milestones
 MILESTONES = {
@@ -1704,12 +1709,12 @@ def save_commit_data(context: CommitContext, validate: bool = True, link_session
 def save_commit_lite(context: CommitContext):
     """Save lightweight commit metadata (no diff hunks) for git tracking.
 
-    This creates small JSON files (~1-2KB) that can be tracked in git,
-    unlike full commit data which includes large diff hunks.
+    Appends to a single JSONL file (.git-ml/tracked/commits.jsonl) for easy
+    git tracking. Each commit is one line, making diffs clean and merge-friendly.
 
-    Stored in .git-ml/commits-lite/ which is NOT gitignored.
+    Returns the path to the JSONL file.
     """
-    COMMITS_LITE_DIR.mkdir(parents=True, exist_ok=True)
+    TRACKED_DIR.mkdir(parents=True, exist_ok=True)
 
     # Create lightweight data without hunks
     lite_data = {
@@ -1737,16 +1742,63 @@ def save_commit_lite(context: CommitContext):
     if context.session_id:
         lite_data["session_id"] = context.session_id
 
-    # Simple filename: hash_date.json (no random suffix needed, hash is unique)
-    filename = f"{context.hash[:12]}_{context.timestamp[:10]}.json"
-    filepath = COMMITS_LITE_DIR / filename
+    # Check if this commit hash already exists in the file (idempotent)
+    if COMMITS_LITE_FILE.exists():
+        with open(COMMITS_LITE_FILE, 'r') as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        existing = json.loads(line)
+                        if existing.get("hash") == context.hash:
+                            return COMMITS_LITE_FILE  # Already recorded
+                    except json.JSONDecodeError:
+                        continue
 
-    # Don't overwrite if exists (idempotent for backfill)
-    if filepath.exists():
-        return filepath
+    # Append to JSONL file (one JSON object per line)
+    with open(COMMITS_LITE_FILE, 'a') as f:
+        f.write(json.dumps(lite_data, separators=(',', ':')) + '\n')
 
-    atomic_write_json(filepath, lite_data)
-    return filepath
+    return COMMITS_LITE_FILE
+
+
+def save_session_lite(session_summary: Dict[str, Any]):
+    """Save lightweight session summary for git tracking.
+
+    Appends to .git-ml/tracked/sessions.jsonl with essential session data:
+    - session_id, timestamp, duration
+    - files_read, files_edited
+    - queries (list of user queries)
+    - tools_used (count by tool type)
+    - commits_made (list of commit hashes)
+
+    This captures the "why" and "how" that commit data alone doesn't provide.
+    """
+    TRACKED_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Ensure required fields
+    required = ["session_id", "timestamp"]
+    for field in required:
+        if field not in session_summary:
+            raise ValueError(f"Session summary missing required field: {field}")
+
+    # Check if this session already exists (idempotent)
+    session_id = session_summary.get("session_id")
+    if SESSIONS_LITE_FILE.exists():
+        with open(SESSIONS_LITE_FILE, 'r') as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        existing = json.loads(line)
+                        if existing.get("session_id") == session_id:
+                            return SESSIONS_LITE_FILE  # Already recorded
+                    except json.JSONDecodeError:
+                        continue
+
+    # Append to JSONL file
+    with open(SESSIONS_LITE_FILE, 'a') as f:
+        f.write(json.dumps(session_summary, separators=(',', ':')) + '\n')
+
+    return SESSIONS_LITE_FILE
 
 
 def generate_chat_id() -> str:
@@ -2070,6 +2122,18 @@ def export_data(format: str, output_path: Path) -> Dict[str, Any]:
 # STATISTICS AND ESTIMATION
 # ============================================================================
 
+def count_jsonl_lines(filepath: Path) -> int:
+    """Count non-empty lines in a JSONL file."""
+    if not filepath.exists():
+        return 0
+    count = 0
+    with open(filepath, 'r') as f:
+        for line in f:
+            if line.strip():
+                count += 1
+    return count
+
+
 def count_data() -> Dict[str, int]:
     """Count collected data entries."""
     ensure_dirs()
@@ -2077,6 +2141,7 @@ def count_data() -> Dict[str, int]:
     counts = {
         "commits": 0,
         "commits_lite": 0,
+        "sessions_lite": 0,
         "chats": 0,
         "actions": 0,
         "sessions": 0,
@@ -2088,9 +2153,14 @@ def count_data() -> Dict[str, int]:
     if COMMITS_DIR.exists():
         counts["commits"] = len(list(COMMITS_DIR.glob("*.json")))
 
-    # Count commits (lightweight - trackable in git)
+    # Count commits (lightweight - from JSONL)
+    counts["commits_lite"] = count_jsonl_lines(COMMITS_LITE_FILE)
+    # Also count legacy individual files if they exist
     if COMMITS_LITE_DIR.exists():
-        counts["commits_lite"] = len(list(COMMITS_LITE_DIR.glob("*.json")))
+        counts["commits_lite"] += len(list(COMMITS_LITE_DIR.glob("*.json")))
+
+    # Count sessions (lightweight - from JSONL)
+    counts["sessions_lite"] = count_jsonl_lines(SESSIONS_LITE_FILE)
 
     # Count chats
     if CHATS_DIR.exists():
@@ -2169,9 +2239,10 @@ def print_stats():
     print("\n📊 Data Counts:")
     print(f"   Commits (full):  {counts['commits']:,}")
     print(f"   Commits (lite):  {counts.get('commits_lite', 0):,}  ← tracked in git")
+    print(f"   Sessions (lite): {counts.get('sessions_lite', 0):,}  ← tracked in git")
     print(f"   Chats:           {counts['chats']:,}")
     print(f"   Actions:         {counts['actions']:,}")
-    print(f"   Sessions:        {counts['sessions']:,}")
+    print(f"   Sessions (full): {counts['sessions']:,}")
     if counts.get('prs', 0) > 0 or counts.get('issues', 0) > 0:
         print(f"   PRs:             {counts.get('prs', 0):,}")
         print(f"   Issues:          {counts.get('issues', 0):,}")
@@ -3209,8 +3280,18 @@ def main():
             hashes = run_git(["log", f"-{args.num}", "--format=%H"]).split("\n")
         hashes = [h for h in hashes if h]
 
-        # Check existing
+        # Check existing in JSONL file
         existing = set()
+        if COMMITS_LITE_FILE.exists():
+            with open(COMMITS_LITE_FILE, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        try:
+                            data = json.loads(line)
+                            existing.add(data.get("hash", "")[:12])
+                        except json.JSONDecodeError:
+                            continue
+        # Also check legacy directory
         if COMMITS_LITE_DIR.exists():
             for f in COMMITS_LITE_DIR.glob("*.json"):
                 existing.add(f.stem.split("_")[0])  # Extract hash prefix
@@ -3221,7 +3302,7 @@ def main():
         if not new_hashes:
             print("All commits already have lightweight data.")
         else:
-            COMMITS_LITE_DIR.mkdir(parents=True, exist_ok=True)
+            TRACKED_DIR.mkdir(parents=True, exist_ok=True)
             for i, h in enumerate(new_hashes):
                 try:
                     context = collect_commit_data(h)
@@ -3232,6 +3313,78 @@ def main():
                     print(f"  Error on {h[:8]}: {e}")
 
             print(f"Lightweight backfill complete: {len(new_hashes)} commits")
+
+    elif command == "migrate":
+        # Migrate legacy commits-lite/*.json files to tracked/commits.jsonl
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--dry-run", action="store_true",
+                            help="Show what would be migrated without doing it")
+        parser.add_argument("--delete-old", action="store_true",
+                            help="Delete old files after migration")
+        args = parser.parse_args(sys.argv[2:])
+
+        if not COMMITS_LITE_DIR.exists():
+            print("No legacy commits-lite directory found.")
+            sys.exit(0)
+
+        legacy_files = list(COMMITS_LITE_DIR.glob("*.json"))
+        if not legacy_files:
+            print("No legacy files to migrate.")
+            sys.exit(0)
+
+        print(f"Found {len(legacy_files)} legacy files to migrate")
+
+        # Get existing hashes in JSONL
+        existing_hashes = set()
+        if COMMITS_LITE_FILE.exists():
+            with open(COMMITS_LITE_FILE, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        try:
+                            data = json.loads(line)
+                            existing_hashes.add(data.get("hash", ""))
+                        except json.JSONDecodeError:
+                            continue
+
+        migrated = 0
+        skipped = 0
+        for f in legacy_files:
+            try:
+                with open(f, 'r') as fp:
+                    data = json.load(fp)
+                commit_hash = data.get("hash", "")
+                if commit_hash in existing_hashes:
+                    skipped += 1
+                    continue
+                if args.dry_run:
+                    print(f"  Would migrate: {f.name}")
+                    migrated += 1
+                else:
+                    TRACKED_DIR.mkdir(parents=True, exist_ok=True)
+                    with open(COMMITS_LITE_FILE, 'a') as out:
+                        out.write(json.dumps(data, separators=(',', ':')) + '\n')
+                    existing_hashes.add(commit_hash)
+                    migrated += 1
+            except Exception as e:
+                print(f"  Error migrating {f.name}: {e}")
+
+        if args.dry_run:
+            print(f"\nDry run: would migrate {migrated}, skip {skipped} (already in JSONL)")
+        else:
+            print(f"\nMigrated {migrated} commits to {COMMITS_LITE_FILE}")
+            print(f"Skipped {skipped} (already in JSONL)")
+
+            if args.delete_old and migrated > 0:
+                print(f"\nDeleting {len(legacy_files)} legacy files...")
+                for f in legacy_files:
+                    f.unlink()
+                # Try to remove the directory if empty
+                try:
+                    COMMITS_LITE_DIR.rmdir()
+                    print(f"Removed empty directory: {COMMITS_LITE_DIR}")
+                except OSError:
+                    print(f"Note: {COMMITS_LITE_DIR} not empty, keeping it")
 
     elif command == "chat":
         # Log a chat entry
