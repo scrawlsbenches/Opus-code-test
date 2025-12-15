@@ -36,6 +36,12 @@ class GitCommandError(Exception):
     """Raised when a git command fails."""
     pass
 
+
+class SchemaValidationError(Exception):
+    """Raised when data fails schema validation."""
+    pass
+
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -52,6 +58,53 @@ MILESTONES = {
     "commit_messages": {"commits": 2000, "sessions": 500, "chats": 1000},
     "code_suggestions": {"commits": 5000, "sessions": 2000, "chats": 5000},
 }
+
+# Schema validation definitions
+COMMIT_SCHEMA = {
+    "required": ["hash", "message", "author", "timestamp", "branch", "files_changed",
+                 "insertions", "deletions", "hunks", "hour_of_day", "day_of_week"],
+    "types": {
+        "hash": str, "message": str, "author": str, "timestamp": str, "branch": str,
+        "files_changed": list, "insertions": int, "deletions": int, "hunks": list,
+        "hour_of_day": int, "day_of_week": str, "is_merge": bool, "is_initial": bool,
+        "parent_count": int, "session_id": (str, type(None)), "related_chats": list,
+    }
+}
+
+CHAT_SCHEMA = {
+    "required": ["id", "timestamp", "session_id", "query", "response",
+                 "files_referenced", "files_modified", "tools_used"],
+    "types": {
+        "id": str, "timestamp": str, "session_id": str, "query": str, "response": str,
+        "files_referenced": list, "files_modified": list, "tools_used": list,
+        "query_tokens": int, "response_tokens": int,
+    }
+}
+
+ACTION_SCHEMA = {
+    "required": ["id", "timestamp", "session_id", "action_type", "target"],
+    "types": {
+        "id": str, "timestamp": str, "session_id": str,
+        "action_type": str, "target": str, "success": bool,
+    }
+}
+
+
+def validate_schema(data: dict, schema: dict, data_type: str) -> List[str]:
+    """Validate data against a schema. Returns list of errors (empty if valid)."""
+    errors = []
+    for field in schema["required"]:
+        if field not in data:
+            errors.append(f"{data_type}: missing required field '{field}'")
+    for field, expected in schema["types"].items():
+        if field in data and data[field] is not None:
+            if isinstance(expected, tuple):
+                if not isinstance(data[field], expected):
+                    errors.append(f"{data_type}: field '{field}' has wrong type")
+            elif not isinstance(data[field], expected):
+                errors.append(f"{data_type}: field '{field}' has type {type(data[field]).__name__}, expected {expected.__name__}")
+    return errors
+
 
 # ============================================================================
 # DATA SCHEMAS
@@ -381,16 +434,24 @@ def atomic_write_json(filepath: Path, data: dict):
         raise
 
 
-def save_commit_data(context: CommitContext):
-    """Save commit context to disk atomically."""
+def save_commit_data(context: CommitContext, validate: bool = True):
+    """Save commit context to disk atomically with validation."""
     ensure_dirs()
+
+    data = asdict(context)
+
+    # Validate before writing
+    if validate:
+        errors = validate_schema(data, COMMIT_SCHEMA, "commit")
+        if errors:
+            raise SchemaValidationError(f"Commit validation failed: {errors}")
 
     # Use full hash + UUID suffix to prevent collisions
     unique_id = uuid.uuid4().hex[:8]
     filename = f"{context.hash[:8]}_{context.timestamp[:10]}_{unique_id}.json"
     filepath = COMMITS_DIR / filename
 
-    atomic_write_json(filepath, asdict(context))
+    atomic_write_json(filepath, data)
     print(f"Saved commit data to {filepath}")
 
 
@@ -406,9 +467,17 @@ def generate_session_id() -> str:
     return hashlib.sha256(str(datetime.now().timestamp()).encode()).hexdigest()[:8]
 
 
-def save_chat_entry(entry: ChatEntry):
-    """Save a chat entry to disk atomically."""
+def save_chat_entry(entry: ChatEntry, validate: bool = True):
+    """Save a chat entry to disk atomically with validation."""
     ensure_dirs()
+
+    data = asdict(entry)
+
+    # Validate before writing
+    if validate:
+        errors = validate_schema(data, CHAT_SCHEMA, "chat")
+        if errors:
+            raise SchemaValidationError(f"Chat validation failed: {errors}")
 
     # Organize by date
     date_dir = CHATS_DIR / entry.timestamp[:10]
@@ -417,7 +486,7 @@ def save_chat_entry(entry: ChatEntry):
     filename = f"{entry.id}.json"
     filepath = date_dir / filename
 
-    atomic_write_json(filepath, asdict(entry))
+    atomic_write_json(filepath, data)
     print(f"Saved chat entry to {filepath}")
 
 
@@ -450,9 +519,17 @@ def log_chat(
     return entry
 
 
-def save_action(entry: ActionEntry):
-    """Save an action entry to disk atomically."""
+def save_action(entry: ActionEntry, validate: bool = True):
+    """Save an action entry to disk atomically with validation."""
     ensure_dirs()
+
+    data = asdict(entry)
+
+    # Validate before writing
+    if validate:
+        errors = validate_schema(data, ACTION_SCHEMA, "action")
+        if errors:
+            raise SchemaValidationError(f"Action validation failed: {errors}")
 
     date_dir = ACTIONS_DIR / entry.timestamp[:10]
     date_dir.mkdir(exist_ok=True)
@@ -460,7 +537,7 @@ def save_action(entry: ActionEntry):
     filename = f"{entry.id}.json"
     filepath = date_dir / filename
 
-    atomic_write_json(filepath, asdict(entry))
+    atomic_write_json(filepath, data)
 
 
 def log_action(
@@ -815,6 +892,97 @@ def main():
 
     elif command == "install-hooks":
         install_hooks()
+
+    elif command == "validate":
+        # Validate existing data against schemas
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--fix", action="store_true",
+                            help="Attempt to fix invalid entries")
+        parser.add_argument("--verbose", "-v", action="store_true",
+                            help="Show all validation errors")
+        args = parser.parse_args(sys.argv[2:])
+
+        print("\n" + "=" * 60)
+        print("VALIDATING ML DATA AGAINST SCHEMAS")
+        print("=" * 60)
+
+        all_errors = []
+
+        # Validate commits
+        if COMMITS_DIR.exists():
+            print(f"\n📁 Validating commits...")
+            commit_files = list(COMMITS_DIR.glob("*.json"))
+            commit_errors = 0
+            for f in commit_files:
+                try:
+                    with open(f, "r", encoding="utf-8") as fp:
+                        data = json.load(fp)
+                    errors = validate_schema(data, COMMIT_SCHEMA, f"commit:{f.name}")
+                    if errors:
+                        commit_errors += 1
+                        all_errors.extend(errors)
+                        if args.verbose:
+                            for err in errors:
+                                print(f"   ❌ {err}")
+                except json.JSONDecodeError as e:
+                    commit_errors += 1
+                    all_errors.append(f"commit:{f.name}: invalid JSON: {e}")
+                    if args.verbose:
+                        print(f"   ❌ {f.name}: invalid JSON")
+            print(f"   ✓ {len(commit_files) - commit_errors}/{len(commit_files)} valid")
+
+        # Validate chats
+        if CHATS_DIR.exists():
+            print(f"\n📁 Validating chats...")
+            chat_files = list(CHATS_DIR.glob("**/*.json"))
+            chat_errors = 0
+            for f in chat_files:
+                try:
+                    with open(f, "r", encoding="utf-8") as fp:
+                        data = json.load(fp)
+                    errors = validate_schema(data, CHAT_SCHEMA, f"chat:{f.name}")
+                    if errors:
+                        chat_errors += 1
+                        all_errors.extend(errors)
+                        if args.verbose:
+                            for err in errors:
+                                print(f"   ❌ {err}")
+                except json.JSONDecodeError as e:
+                    chat_errors += 1
+                    all_errors.append(f"chat:{f.name}: invalid JSON: {e}")
+            print(f"   ✓ {len(chat_files) - chat_errors}/{len(chat_files)} valid")
+
+        # Validate actions
+        if ACTIONS_DIR.exists():
+            print(f"\n📁 Validating actions...")
+            action_files = list(ACTIONS_DIR.glob("**/*.json"))
+            action_errors = 0
+            for f in action_files:
+                try:
+                    with open(f, "r", encoding="utf-8") as fp:
+                        data = json.load(fp)
+                    errors = validate_schema(data, ACTION_SCHEMA, f"action:{f.name}")
+                    if errors:
+                        action_errors += 1
+                        all_errors.extend(errors)
+                        if args.verbose:
+                            for err in errors:
+                                print(f"   ❌ {err}")
+                except json.JSONDecodeError as e:
+                    action_errors += 1
+                    all_errors.append(f"action:{f.name}: invalid JSON")
+            print(f"   ✓ {len(action_files) - action_errors}/{len(action_files)} valid")
+
+        # Summary
+        print("\n" + "-" * 60)
+        if all_errors:
+            print(f"⚠️  Found {len(all_errors)} validation errors")
+            if not args.verbose:
+                print("   Run with --verbose to see details")
+        else:
+            print("✅ All data validated successfully!")
+        print("=" * 60 + "\n")
 
     else:
         print(f"Unknown command: {command}")
