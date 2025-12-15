@@ -501,16 +501,30 @@ class TestComputationEdgeCases(unittest.TestCase):
             self.fail(f"compute_all on empty corpus raised {type(e).__name__}: {e}")
 
     def test_compute_tfidf_single_document(self):
-        """Test TF-IDF computation with single document."""
-        processor = CorticalTextProcessor()
-        processor.process_document("only_doc", "neural networks machine learning")
-        processor.compute_tfidf(verbose=False)
+        """Test scoring computation with single document."""
+        from cortical.config import CorticalConfig
 
-        # With single document, IDF should be 0 (log(1/1) = 0)
-        layer0 = processor.get_layer(CorticalLayer.TOKENS)
+        # Test with TF-IDF (IDF = log(1/1) = 0 for single doc)
+        config_tfidf = CorticalConfig(scoring_algorithm='tfidf')
+        processor_tfidf = CorticalTextProcessor(config=config_tfidf)
+        processor_tfidf.process_document("only_doc", "neural networks machine learning")
+        processor_tfidf.compute_tfidf(verbose=False)
+
+        layer0 = processor_tfidf.get_layer(CorticalLayer.TOKENS)
         for col in layer0:
-            # TF-IDF should be 0 for single document corpus
+            # TF-IDF should be 0 for single document corpus (IDF = log(1/1) = 0)
             self.assertEqual(col.tfidf, 0.0)
+
+        # Test with BM25 (uses different IDF formula, won't be zero)
+        config_bm25 = CorticalConfig(scoring_algorithm='bm25')
+        processor_bm25 = CorticalTextProcessor(config=config_bm25)
+        processor_bm25.process_document("only_doc", "neural networks machine learning")
+        processor_bm25.compute_tfidf(verbose=False)
+
+        layer0_bm25 = processor_bm25.get_layer(CorticalLayer.TOKENS)
+        for col in layer0_bm25:
+            # BM25 IDF = log((N-df+0.5)/(df+0.5)+1) > 0 even for single doc
+            self.assertGreater(col.tfidf, 0.0)
 
     def test_compute_importance_on_disconnected_graph(self):
         """Test PageRank on graph with no connections."""

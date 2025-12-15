@@ -923,6 +923,144 @@ def compute_tfidf(
                 col.tfidf_per_doc[doc_id] = math.log1p(doc_tf) * idf
 
 
+def _bm25_core(
+    term_stats: Dict[str, Tuple[int, int, Dict[str, int]]],
+    num_docs: int,
+    doc_lengths: Dict[str, int],
+    avg_doc_length: float,
+    k1: float = 1.2,
+    b: float = 0.75
+) -> Dict[str, Tuple[float, Dict[str, float]]]:
+    """
+    Pure BM25 calculation.
+
+    BM25 (Best Match 25) is a ranking function that improves on TF-IDF by:
+    - Term frequency saturation: diminishing returns for repeated terms
+    - Document length normalization: fair comparison across different lengths
+
+    This core function takes primitive types and can be unit tested without
+    needing HierarchicalLayer objects.
+
+    Args:
+        term_stats: Dictionary mapping term to (occurrence_count, doc_frequency, {doc_id: count})
+                   - occurrence_count: total times term appears in corpus
+                   - doc_frequency: number of documents containing term
+                   - doc_counts: per-document occurrence counts
+        num_docs: Total number of documents in corpus
+        doc_lengths: Dictionary mapping doc_id to document length (in tokens)
+        avg_doc_length: Average document length across corpus
+        k1: Term frequency saturation parameter (0.0-3.0, typical 1.2-2.0)
+            - Higher k1 = more weight to term frequency
+            - k1=0 = binary model (presence/absence only)
+        b: Length normalization parameter (0.0-1.0)
+            - b=0 = no length normalization
+            - b=1 = full length normalization
+
+    Returns:
+        Dictionary mapping term to (global_bm25, {doc_id: per_doc_bm25})
+
+    Example:
+        >>> stats = {
+        ...     "rare": (5, 1, {"doc1": 5}),
+        ...     "common": (100, 10, {"doc1": 10, "doc2": 10, ...})
+        ... }
+        >>> doc_lengths = {"doc1": 100, "doc2": 150}
+        >>> results = _bm25_core(stats, num_docs=10, doc_lengths=doc_lengths, avg_doc_length=125)
+        >>> assert results["rare"][0] > results["common"][0]
+    """
+    if num_docs == 0 or avg_doc_length == 0:
+        return {}
+
+    results = {}
+
+    for term, (occurrence_count, doc_frequency, doc_counts) in term_stats.items():
+        if doc_frequency > 0:
+            # IDF component (same as TF-IDF but can use BM25 variant)
+            # Standard BM25 IDF: log((N - df + 0.5) / (df + 0.5))
+            # This can go negative for very common terms, so we use a floor
+            idf = math.log((num_docs - doc_frequency + 0.5) / (doc_frequency + 0.5) + 1)
+
+            # Global BM25 (using total occurrence count and average length)
+            # This is an approximation for global term importance
+            tf_global = occurrence_count / num_docs  # Average TF across docs
+            global_bm25 = idf * ((tf_global * (k1 + 1)) / (tf_global + k1))
+
+            # Per-document BM25
+            per_doc_bm25 = {}
+            for doc_id, tf in doc_counts.items():
+                doc_len = doc_lengths.get(doc_id, avg_doc_length)
+                # Length normalization factor
+                len_norm = 1 - b + b * (doc_len / avg_doc_length)
+                # BM25 score for this document
+                numerator = tf * (k1 + 1)
+                denominator = tf + k1 * len_norm
+                per_doc_bm25[doc_id] = idf * (numerator / denominator)
+
+            results[term] = (global_bm25, per_doc_bm25)
+        else:
+            results[term] = (0.0, {})
+
+    return results
+
+
+def compute_bm25(
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    documents: Dict[str, str],
+    doc_lengths: Dict[str, int],
+    avg_doc_length: float,
+    k1: float = 1.2,
+    b: float = 0.75
+) -> None:
+    """
+    Compute BM25 scores for tokens.
+
+    BM25 (Best Match 25) is a ranking function that addresses TF-IDF limitations:
+    - Term frequency saturation: prevents domination by repeated terms
+    - Document length normalization: fair comparison across different lengths
+
+    This stores scores in the same fields as TF-IDF (tfidf, tfidf_per_doc)
+    for backward compatibility with existing search functions.
+
+    Args:
+        layers: Dictionary of layers (needs TOKENS layer)
+        documents: Dictionary mapping doc_id to content
+        doc_lengths: Dictionary mapping doc_id to token count
+        avg_doc_length: Average document length in tokens
+        k1: Term frequency saturation (0-3, default 1.2)
+        b: Length normalization (0-1, default 0.75)
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+    num_docs = len(documents)
+
+    if num_docs == 0 or avg_doc_length == 0:
+        return
+
+    for col in layer0.minicolumns.values():
+        # Document frequency
+        df = len(col.document_ids)
+
+        if df > 0:
+            # IDF component
+            # BM25 IDF: log((N - df + 0.5) / (df + 0.5) + 1)
+            # The +1 ensures non-negative values for common terms
+            idf = math.log((num_docs - df + 0.5) / (df + 0.5) + 1)
+
+            # Global BM25 (approximation using average TF)
+            avg_tf = col.occurrence_count / num_docs
+            col.tfidf = idf * ((avg_tf * (k1 + 1)) / (avg_tf + k1))
+
+            # Per-document BM25
+            for doc_id in col.document_ids:
+                tf = col.doc_occurrence_counts.get(doc_id, 1)
+                doc_len = doc_lengths.get(doc_id, avg_doc_length)
+                # Length normalization factor
+                len_norm = 1 - b + b * (doc_len / avg_doc_length)
+                # BM25 score
+                numerator = tf * (k1 + 1)
+                denominator = tf + k1 * len_norm
+                col.tfidf_per_doc[doc_id] = idf * (numerator / denominator)
+
+
 def propagate_activation(
     layers: Dict[CorticalLayer, HierarchicalLayer],
     iterations: int = 3,
@@ -1881,77 +2019,52 @@ def compute_bigram_connections(
                         add_connection(b_left, b_right, chain_weight, 'chain')
 
     # 3. Connect bigrams that co-occur in the same documents
-    # Use sparse matrix multiplication for efficient co-occurrence computation
+    # OPTIMIZED: Use inverted index approach instead of O(n²) matrix multiplication
+    # Additional optimization: importance-based filtering and early termination
     skipped_large_docs = 0
+    skipped_low_importance = 0
 
-    # Build document-term matrix using sparse representation
-    # Create mappings: doc_id -> row index, bigram -> col index
-    doc_to_row: Dict[str, int] = {}
-    bigram_to_col: Dict[str, int] = {}
-
-    # Collect all documents first
-    all_docs: Set[str] = set()
+    # Build inverted index: doc_id -> list of bigram minicolumns
+    # Sort by TF-IDF importance within each document for priority processing
+    doc_to_bigrams: Dict[str, List[Minicolumn]] = defaultdict(list)
     for bigram in bigrams:
-        all_docs.update(bigram.document_ids)
+        for doc_id in bigram.document_ids:
+            doc_to_bigrams[doc_id].append(bigram)
 
-    # Assign row indices to documents (excluding large docs)
-    row_idx = 0
-    for doc_id in sorted(all_docs):
-        # Count bigrams in this doc
-        doc_bigram_count = sum(1 for b in bigrams if doc_id in b.document_ids)
-        if doc_bigram_count > max_bigrams_per_doc:
+    # Compute importance threshold (median TF-IDF) for filtering
+    tfidf_values = [b.tfidf for b in bigrams if b.tfidf > 0]
+    importance_threshold = sorted(tfidf_values)[len(tfidf_values) // 4] if tfidf_values else 0
+
+    # Process each document's bigram pairs
+    for doc_id, doc_bigrams in doc_to_bigrams.items():
+        # Skip large documents to avoid O(n²) explosion
+        if len(doc_bigrams) > max_bigrams_per_doc:
             skipped_large_docs += 1
             continue
-        doc_to_row[doc_id] = row_idx
-        row_idx += 1
 
-    # Assign column indices to bigrams
-    for col_idx, bigram in enumerate(bigrams):
-        bigram_to_col[bigram.id] = col_idx
+        # Filter to important bigrams only (reduces pairs quadratically)
+        important_bigrams = [b for b in doc_bigrams if b.tfidf >= importance_threshold]
+        if len(important_bigrams) < 2:
+            continue
 
-    # Build sparse document-term matrix
-    # Rows = documents, Cols = bigrams
-    # Entry [d, b] = 1 if bigram b appears in document d
-    if doc_to_row:  # Only if we have valid documents
-        doc_term_matrix = SparseMatrix(len(doc_to_row), len(bigrams))
+        # Sort by importance for priority connections
+        important_bigrams.sort(key=lambda b: b.tfidf, reverse=True)
 
-        for bigram in bigrams:
-            col_idx = bigram_to_col[bigram.id]
-            for doc_id in bigram.document_ids:
-                if doc_id in doc_to_row:  # Skip large docs
-                    row_idx = doc_to_row[doc_id]
-                    doc_term_matrix.set(row_idx, col_idx, 1.0)
-
-        # Compute bigram-bigram co-occurrence matrix: D^T * D
-        # Result[i, j] = number of shared documents between bigram i and bigram j
-        cooccur_matrix = doc_term_matrix.multiply_transpose()
-
-        # Create inverse mapping: col_idx -> bigram
-        col_to_bigram = {col_idx: bigram for bigram, col_idx in bigram_to_col.items()}
-
-        # Process co-occurrence matrix to create connections
-        for col1, col2, shared_count in cooccur_matrix.get_nonzero():
-            # Skip diagonal (bigram with itself)
-            if col1 == col2:
+        # Connect pairs of important bigrams in this document
+        # Limit to top connections per bigram to avoid explosion
+        for i, b1 in enumerate(important_bigrams):
+            # Early termination if this bigram is at connection limit
+            if connection_counts[b1.id] >= max_connections_per_bigram:
                 continue
-
-            # Skip if below threshold
-            if shared_count < min_shared_docs:
-                continue
-
-            # Get bigrams
-            bigram1_id = col_to_bigram[col1]
-            bigram2_id = col_to_bigram[col2]
-
-            # Find the actual minicolumn objects
-            b1 = layer1.get_by_id(bigram1_id)
-            b2 = layer1.get_by_id(bigram2_id)
-
-            if b1 and b2:
-                # Compute Jaccard similarity
+            for b2 in important_bigrams[i+1:]:
+                if connection_counts[b2.id] >= max_connections_per_bigram:
+                    continue
+                # Fast path: they share at least this document
                 docs1 = b1.document_ids
                 docs2 = b2.document_ids
                 shared_docs = docs1 & docs2
+                if len(shared_docs) < min_shared_docs:
+                    continue
                 jaccard = len(shared_docs) / len(docs1 | docs2)
                 weight = cooccurrence_weight * jaccard
                 add_connection(b1, b2, weight, 'cooccurrence')
