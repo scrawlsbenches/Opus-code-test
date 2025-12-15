@@ -1159,6 +1159,64 @@ See `docs/text-as-memories.md` for the full guide.
 
 ---
 
+## ML Data Collection: Project-Specific Micro-Model
+
+The project automatically collects enriched commit and chat data to train a micro-model that learns THIS project's patterns, coding style, and workflows.
+
+### What Gets Collected
+
+| Data Type | Location | Contents |
+|-----------|----------|----------|
+| **Commits** | `.git-ml/commits/` | Git history with diff hunks, temporal context, CI results |
+| **Chats** | `.git-ml/chats/` | Query/response pairs with files touched and tools used |
+| **Sessions** | `.git-ml/sessions/` | Development sessions linking chats to commits |
+| **Actions** | `.git-ml/actions/` | Individual tool uses and operations |
+
+**Note:** All ML data is stored in `.git-ml/` which is gitignored and regeneratable via backfill.
+
+### Quick Commands
+
+```bash
+# Check collection progress
+python scripts/ml_data_collector.py stats
+
+# Estimate when training becomes viable
+python scripts/ml_data_collector.py estimate
+
+# Validate collected data
+python scripts/ml_data_collector.py validate
+
+# Session management
+python scripts/ml_data_collector.py session status
+python scripts/ml_data_collector.py session start
+python scripts/ml_data_collector.py session end --summary "What was accomplished"
+
+# Record CI results
+python scripts/ml_data_collector.py ci set --commit abc123 --result pass --coverage 89.5
+
+# Backfill historical commits
+python scripts/ml_data_collector.py backfill -n 100
+```
+
+### Disabling Collection
+
+```bash
+# Disable for current session
+export ML_COLLECTION_ENABLED=0
+
+# Stats and validation still work when disabled
+```
+
+### Integration
+
+Data collection is automatic via git hooks:
+- **post-commit**: Captures commit metadata with diff hunks
+- **pre-push**: Reports collection stats
+
+See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
+
+---
+
 ## File Quick Links
 
 - **Main API**: `cortical/processor.py` - `CorticalTextProcessor` class

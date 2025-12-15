@@ -26,10 +26,19 @@ import hashlib
 import re
 import tempfile
 import uuid
+import fcntl
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict, field
+from contextlib import contextmanager
+
+# Setup logging
+logger = logging.getLogger(__name__)
+
+# Environment variable to disable collection
+ML_COLLECTION_ENABLED = os.getenv("ML_COLLECTION_ENABLED", "1") != "0"
 
 
 class GitCommandError(Exception):
@@ -108,6 +117,30 @@ def validate_schema(data: dict, schema: dict, data_type: str) -> List[str]:
 
 
 # ============================================================================
+# FILE LOCKING (for concurrent access safety)
+# ============================================================================
+
+@contextmanager
+def file_lock(filepath: Path, exclusive: bool = True):
+    """Context manager for file locking to prevent race conditions.
+
+    Args:
+        filepath: Path to lock file
+        exclusive: True for write lock, False for read lock
+    """
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    lock_file = filepath.with_suffix(filepath.suffix + '.lock')
+
+    with open(lock_file, 'w') as f:
+        lock_type = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+        try:
+            fcntl.flock(f.fileno(), lock_type)
+            yield
+        finally:
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
+
+# ============================================================================
 # SESSION MANAGEMENT (for commit-chat linking)
 # ============================================================================
 
@@ -120,7 +153,11 @@ def get_current_session() -> Optional[Dict]:
         try:
             with open(CURRENT_SESSION_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except (json.JSONDecodeError, IOError):
+        except json.JSONDecodeError as e:
+            logger.warning(f"Corrupted session file: {e}")
+            return None
+        except IOError as e:
+            logger.error(f"Cannot read session file: {e}")
             return None
     return None
 
@@ -161,21 +198,27 @@ def get_or_create_session() -> str:
 
 
 def add_chat_to_session(chat_id: str):
-    """Record a chat ID in the current session for later commit linking."""
-    session = get_current_session()
-    if not session:
-        # Auto-start session if needed
-        session = {
-            'id': generate_session_id(),
-            'started_at': datetime.now().isoformat(),
-            'chat_ids': [],
-            'action_ids': [],
-        }
+    """Record a chat ID in the current session for later commit linking.
 
-    if chat_id not in session['chat_ids']:
-        session['chat_ids'].append(chat_id)
-        ensure_dirs()
-        atomic_write_json(CURRENT_SESSION_FILE, session)
+    Uses file locking to prevent race conditions with concurrent access.
+    """
+    ensure_dirs()
+
+    # Use file lock to prevent race conditions
+    with file_lock(CURRENT_SESSION_FILE):
+        session = get_current_session()
+        if not session:
+            # Auto-start session if needed
+            session = {
+                'id': generate_session_id(),
+                'started_at': datetime.now().isoformat(),
+                'chat_ids': [],
+                'action_ids': [],
+            }
+
+        if chat_id not in session['chat_ids']:
+            session['chat_ids'].append(chat_id)
+            atomic_write_json(CURRENT_SESSION_FILE, session)
 
 
 def link_commit_to_session_chats(commit_hash: str) -> List[str]:
@@ -1089,6 +1132,14 @@ def main():
         return
 
     command = sys.argv[1]
+
+    # Allow stats/estimate/validate even when collection is disabled
+    read_only_commands = {"stats", "estimate", "validate", "session"}
+
+    # Check if collection is disabled (via ML_COLLECTION_ENABLED=0)
+    if not ML_COLLECTION_ENABLED and command not in read_only_commands:
+        # Silently exit for collection commands when disabled
+        return
 
     if command == "commit":
         # Collect data for current or specified commit
