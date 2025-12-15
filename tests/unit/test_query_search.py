@@ -1112,10 +1112,10 @@ class TestGraphBoostedSearch:
 
     def test_pagerank_boost(self):
         """Documents with high-PageRank terms get boosted."""
-        # High PageRank term
-        important = MockMinicolumn(
-            content="important",
-            id="L0_important",
+        # High PageRank term (use "significant" instead of "important" which is a stop word)
+        significant = MockMinicolumn(
+            content="significant",
+            id="L0_significant",
             layer=MockLayers.TOKENS,
             tfidf=1.0,
             tfidf_per_doc={"doc1": 1.0},
@@ -1136,13 +1136,13 @@ class TestGraphBoostedSearch:
         )
 
         layers = MockLayers.empty()
-        layers[MockLayers.TOKENS] = MockHierarchicalLayer([important, common])
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([significant, common])
         layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
         tokenizer = Tokenizer()
 
-        # Search for both terms
+        # Search for both terms (using "significant" instead of "important")
         results = graph_boosted_search(
-            "important common", layers, tokenizer, top_n=5,
+            "significant common", layers, tokenizer, top_n=5,
             pagerank_weight=0.5  # High PageRank influence
         )
 
