@@ -561,13 +561,13 @@ When disabled, no data is written to `.git-ml/`. You can still use all other fea
 python scripts/ml_data_collector.py redact-test --text "api_key=sk-abc123secret"
 ```
 
-**Data Retention:** Old data is automatically cleaned up:
+**Data Retention:** Old data is kept for 2 years (enough to hit training milestones):
 ```bash
-# Preview what would be deleted (90 days default)
+# Preview what would be deleted (730 days default)
 python scripts/ml_data_collector.py cleanup --dry-run
 
-# Clean up data older than 60 days
-python scripts/ml_data_collector.py cleanup --days 60
+# Manually clean up older data if needed
+python scripts/ml_data_collector.py cleanup --days 365
 ```
 
 **Privacy Guarantees:**

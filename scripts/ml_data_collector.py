@@ -132,7 +132,9 @@ ACTION_SCHEMA = {
 }
 
 # Data retention configuration (days)
-DEFAULT_RETENTION_DAYS = 90
+# 2 years - enough time to hit training milestones at typical dev pace
+# (~66 commits/active day observed, need 5000 for code suggestions)
+DEFAULT_RETENTION_DAYS = 730
 CONSENT_FILE = ML_DATA_DIR / "contribution_consent.json"
 
 # Sensitive data patterns to redact before storage
