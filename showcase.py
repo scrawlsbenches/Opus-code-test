@@ -9,7 +9,8 @@ and ideas across diverse topics.
 Usage:
     python showcase.py                      # Default: compute fresh
     python showcase.py --build-index        # Build and save index only
-    python showcase.py --use-index          # Load from pre-built index (~25x faster)
+    python showcase.py --use-index          # Load from pre-built index (~6x faster)
+    python showcase.py --use-chunks         # Git-friendly incremental JSON storage
     python showcase.py --index-path FILE    # Custom index path
 """
 
@@ -17,12 +18,15 @@ import argparse
 import os
 import sys
 import time
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from cortical import CorticalTextProcessor, CorticalLayer
+from cortical.chunk_index import ChunkWriter, ChunkLoader
 
-# Default index location
+# Default locations
 DEFAULT_INDEX_PATH = "showcase_index.pkl"
+DEFAULT_CHUNKS_DIR = "showcase_chunks"
 
 
 class Timer:
@@ -77,11 +81,15 @@ class CorticalShowcase:
         self,
         samples_dir: str = "samples",
         use_index: bool = False,
-        index_path: Optional[str] = None
+        use_chunks: bool = False,
+        index_path: Optional[str] = None,
+        chunks_dir: Optional[str] = None
     ):
         self.samples_dir = samples_dir
         self.use_index = use_index
+        self.use_chunks = use_chunks
         self.index_path = index_path or DEFAULT_INDEX_PATH
+        self.chunks_dir = chunks_dir or DEFAULT_CHUNKS_DIR
         self.processor = None  # Initialized in ingest_corpus
         self.loaded_files = []
         self.timer = Timer()
@@ -123,7 +131,11 @@ class CorticalShowcase:
         """Ingest the document corpus from disk or load from pre-built index."""
         print_header("DOCUMENT INGESTION", "═")
 
-        # Try to load from index if requested
+        # Try to load from chunks if requested (git-friendly)
+        if self.use_chunks and os.path.exists(self.chunks_dir):
+            return self._load_from_chunks()
+
+        # Try to load from pkl index if requested
         if self.use_index and os.path.exists(self.index_path):
             return self._load_from_index()
 
@@ -167,6 +179,155 @@ class CorticalShowcase:
         print("   (vs ~300s for fresh computation)")
 
         return True
+
+    def _load_from_chunks(self) -> bool:
+        """Load documents from git-friendly JSON chunks and rebuild processor."""
+        print(f"Loading from git-friendly chunks: {self.chunks_dir}/")
+        print("(Incremental JSON storage - diffable, mergeable)\n")
+
+        self.timer.start('chunk_load')
+        try:
+            loader = ChunkLoader(self.chunks_dir)
+            docs = loader.get_documents()
+            if not docs:
+                print("  ⚠  No documents in chunks, computing fresh...")
+                return self._compute_fresh()
+        except Exception as e:
+            print(f"  ❌ Failed to load chunks: {e}")
+            print("  Falling back to fresh computation...\n")
+            return self._compute_fresh()
+
+        # Check for incremental updates needed
+        added, modified, deleted = self._get_chunk_changes(loader)
+        needs_update = added or modified or deleted
+
+        if needs_update:
+            print(f"  Detected changes: +{len(added)} ~{len(modified)} -{len(deleted)}")
+            self._update_chunks(loader, added, modified, deleted)
+            # Reload after update
+            loader = ChunkLoader(self.chunks_dir)
+            docs = loader.get_documents()
+
+        chunk_load_time = self.timer.stop()
+
+        # Initialize processor and load documents
+        print(f"\n  Loading {len(docs)} documents from chunks...")
+        from cortical.tokenizer import Tokenizer
+        tokenizer = Tokenizer(filter_code_noise=True)
+        self.processor = CorticalTextProcessor(tokenizer=tokenizer)
+
+        self.timer.start('document_processing')
+        for doc_id, content in docs.items():
+            self.processor.process_document(doc_id, content)
+            word_count = len(content.split())
+            self.loaded_files.append((doc_id, word_count))
+        doc_time = self.timer.stop()
+
+        # Compute all (still needed, but chunks save the document loading)
+        print("  Computing cortical representations...")
+        self.timer.start('compute_all')
+        self.processor.compute_all(
+            verbose=False,
+            connection_strategy='hybrid',
+            cluster_strictness=0.5,
+            bridge_weight=0.3
+        )
+        compute_time = self.timer.stop()
+
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+        total_conns = sum(
+            layer.total_connections()
+            for layer in self.processor.layers.values()
+        )
+
+        print(f"\n✓ Loaded {len(self.loaded_files)} documents from chunks")
+        print(f"✓ Created {layer0.column_count()} token minicolumns")
+        print(f"✓ Created {layer1.column_count()} bigram minicolumns")
+        print(f"✓ Formed {total_conns:,} total connections")
+        print(f"\n⏱  Chunk load:       {chunk_load_time:.2f}s")
+        print(f"⏱  Document process: {doc_time:.2f}s")
+        print(f"⏱  Compute all:      {compute_time:.2f}s")
+
+        return True
+
+    def _get_chunk_changes(self, loader: ChunkLoader) -> Tuple[List[str], List[str], List[str]]:
+        """Detect files that changed since last chunk update."""
+        if not os.path.exists(self.samples_dir):
+            return [], [], []
+
+        # Get current files and their mtimes
+        current_files = {}
+        for ext in ['.txt', '.py']:
+            for f in os.listdir(self.samples_dir):
+                if f.endswith(ext):
+                    filepath = os.path.join(self.samples_dir, f)
+                    doc_id = f.replace('.txt', '').replace('.py', '')
+                    current_files[doc_id] = os.path.getmtime(filepath)
+
+        # Get existing docs and mtimes from chunks
+        existing_docs = set(loader.get_documents().keys())
+        existing_mtimes = loader.get_mtimes()
+
+        added = []
+        modified = []
+        deleted = []
+
+        for doc_id, mtime in current_files.items():
+            if doc_id not in existing_docs:
+                added.append(doc_id)
+            elif doc_id in existing_mtimes and mtime > existing_mtimes[doc_id]:
+                modified.append(doc_id)
+
+        for doc_id in existing_docs:
+            if doc_id not in current_files:
+                deleted.append(doc_id)
+
+        return added, modified, deleted
+
+    def _update_chunks(
+        self,
+        loader: ChunkLoader,
+        added: List[str],
+        modified: List[str],
+        deleted: List[str]
+    ) -> None:
+        """Write incremental changes to a new chunk file."""
+        writer = ChunkWriter(self.chunks_dir)
+
+        for doc_id in added:
+            filepath = self._find_doc_file(doc_id)
+            if filepath:
+                with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+                mtime = os.path.getmtime(filepath)
+                writer.add_document(doc_id, content, mtime=mtime)
+                print(f"    + {doc_id}")
+
+        for doc_id in modified:
+            filepath = self._find_doc_file(doc_id)
+            if filepath:
+                with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+                mtime = os.path.getmtime(filepath)
+                writer.modify_document(doc_id, content, mtime=mtime)
+                print(f"    ~ {doc_id}")
+
+        for doc_id in deleted:
+            writer.delete_document(doc_id)
+            print(f"    - {doc_id}")
+
+        if writer.has_operations():
+            chunk_path = writer.save()
+            print(f"  Saved chunk: {chunk_path.name}")
+
+    def _find_doc_file(self, doc_id: str) -> Optional[str]:
+        """Find the file path for a document ID."""
+        for ext in ['.txt', '.py']:
+            filepath = os.path.join(self.samples_dir, doc_id + ext)
+            if os.path.exists(filepath):
+                return filepath
+        return None
 
     def _compute_fresh(self) -> bool:
         """Compute processor state from scratch (slow path)."""
@@ -237,7 +398,14 @@ class CorticalShowcase:
 
     def build_index(self) -> bool:
         """Build and save index without running demos."""
-        print_header("BUILDING INDEX", "═")
+        if self.use_chunks:
+            return self._build_chunks()
+        else:
+            return self._build_pkl_index()
+
+    def _build_pkl_index(self) -> bool:
+        """Build pickle-based index (fast load, not git-friendly)."""
+        print_header("BUILDING INDEX (PKL)", "═")
         print(f"Target: {self.index_path}\n")
 
         if not self._compute_fresh():
@@ -251,9 +419,69 @@ class CorticalShowcase:
         size_mb = os.path.getsize(self.index_path) / (1024 * 1024)
         print(f"✓ Index saved ({size_mb:.1f} MB)")
         print(f"⏱  Save time: {save_time:.2f}s")
-        print(f"\n💡 Run with --use-index to skip computation (~25x faster)")
+        print(f"\n💡 Run with --use-index to skip computation (~6x faster)")
 
         return True
+
+    def _build_chunks(self) -> bool:
+        """Build git-friendly chunk-based index."""
+        print_header("BUILDING INDEX (CHUNKS)", "═")
+        print(f"Target: {self.chunks_dir}/\n")
+
+        if not os.path.exists(self.samples_dir):
+            print(f"  ❌ Directory not found: {self.samples_dir}")
+            return False
+
+        # Check for existing chunks
+        chunks_path = Path(self.chunks_dir)
+        existing_chunks = list(chunks_path.glob("*.json")) if chunks_path.exists() else []
+
+        if existing_chunks:
+            # Incremental update
+            print(f"  Found {len(existing_chunks)} existing chunk(s)")
+            loader = ChunkLoader(self.chunks_dir)
+            added, modified, deleted = self._get_chunk_changes(loader)
+
+            if not (added or modified or deleted):
+                print("  ✓ Index is up-to-date, no changes needed")
+                return True
+
+            print(f"  Changes detected: +{len(added)} ~{len(modified)} -{len(deleted)}")
+            self._update_chunks(loader, added, modified, deleted)
+        else:
+            # Initial build - write all documents
+            print("  Building initial chunk index...")
+            self._build_initial_chunks()
+
+        # Show chunk stats
+        chunks_path.mkdir(parents=True, exist_ok=True)
+        chunk_files = list(chunks_path.glob("*.json"))
+        total_size = sum(f.stat().st_size for f in chunk_files)
+        print(f"\n✓ {len(chunk_files)} chunk file(s), {total_size / 1024:.1f} KB total")
+        print(f"\n💡 Run with --use-chunks to load from git-friendly index")
+        print("   Chunks are tracked in git - diffable, mergeable, no conflicts")
+
+        return True
+
+    def _build_initial_chunks(self) -> None:
+        """Build initial chunk with all documents."""
+        writer = ChunkWriter(self.chunks_dir)
+
+        for ext in ['.txt', '.py']:
+            for f in sorted(os.listdir(self.samples_dir)):
+                if f.endswith(ext):
+                    filepath = os.path.join(self.samples_dir, f)
+                    doc_id = f.replace('.txt', '').replace('.py', '')
+                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as file:
+                        content = file.read()
+                    mtime = os.path.getmtime(filepath)
+                    writer.add_document(doc_id, content, mtime=mtime)
+                    word_count = len(content.split())
+                    print(f"  📄 {doc_id:30} ({word_count:3} words)")
+
+        if writer.has_operations():
+            chunk_path = writer.save()
+            print(f"\n  Saved: {chunk_path.name}")
     
     def analyze_hierarchy(self):
         """Show the hierarchical structure."""
@@ -794,13 +1022,17 @@ def parse_args():
         epilog="""
 Examples:
   python showcase.py                      # Compute fresh (slow, ~5 min)
-  python showcase.py --build-index        # Build index only (~5 min)
-  python showcase.py --use-index          # Load index (~12s, 25x faster)
-  python showcase.py --use-index --index-path custom.pkl
+  python showcase.py --build-index        # Build pkl index only (~5 min)
+  python showcase.py --use-index          # Load pkl index (~12s, 6x faster)
+
+Git-Friendly Mode (recommended for teams):
+  python showcase.py --build-index --use-chunks   # Build JSON chunks
+  python showcase.py --use-chunks                 # Load from chunks
 
 Performance:
   Fresh computation: ~300s (compute_all dominates)
-  With pre-built index: ~12s load + ~38s demos = ~50s total
+  With pkl index: ~12s load + ~38s demos = ~50s total (~6x faster)
+  With chunks: documents stored as git-friendly JSON, still needs compute_all
         """
     )
     parser.add_argument(
@@ -811,17 +1043,27 @@ Performance:
     parser.add_argument(
         "--use-index",
         action="store_true",
-        help="Load from pre-built index instead of computing fresh (~25x faster)"
+        help="Load from pre-built pkl index (fast, not git-friendly)"
+    )
+    parser.add_argument(
+        "--use-chunks",
+        action="store_true",
+        help="Use git-friendly JSON chunk storage (diffable, mergeable)"
     )
     parser.add_argument(
         "--build-index",
         action="store_true",
-        help="Build and save index without running demos (for later --use-index)"
+        help="Build and save index without running demos"
     )
     parser.add_argument(
         "--index-path",
         default=DEFAULT_INDEX_PATH,
-        help=f"Path to index file (default: {DEFAULT_INDEX_PATH})"
+        help=f"Path to pkl index file (default: {DEFAULT_INDEX_PATH})"
+    )
+    parser.add_argument(
+        "--chunks-dir",
+        default=DEFAULT_CHUNKS_DIR,
+        help=f"Directory for JSON chunks (default: {DEFAULT_CHUNKS_DIR})"
     )
     return parser.parse_args()
 
@@ -832,7 +1074,9 @@ if __name__ == "__main__":
     showcase = CorticalShowcase(
         samples_dir=args.samples_dir,
         use_index=args.use_index,
-        index_path=args.index_path
+        use_chunks=args.use_chunks,
+        index_path=args.index_path,
+        chunks_dir=args.chunks_dir
     )
 
     if args.build_index:
