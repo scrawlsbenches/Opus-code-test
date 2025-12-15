@@ -62,15 +62,23 @@ def get_shared_processor(force_reload: bool = False) -> CorticalTextProcessor:
     tokenizer = Tokenizer(filter_code_noise=True)
     processor = CorticalTextProcessor(tokenizer=tokenizer)
 
-    # Load all sample files
+    # Load all sample files (including subdirectories)
     loaded_count = 0
-    for filename in sorted(os.listdir(samples_dir)):
-        filepath = os.path.join(samples_dir, filename)
-        if os.path.isfile(filepath):
+    for root, dirs, files in os.walk(samples_dir):
+        # Skip hidden directories and special folders
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
+
+        for filename in sorted(files):
+            # Skip hidden files and non-text files
+            if filename.startswith('.') or filename.endswith('.pyc'):
+                continue
+            filepath = os.path.join(root, filename)
             try:
                 with open(filepath, 'r', encoding='utf-8') as f:
                     content = f.read()
-                doc_id = os.path.splitext(filename)[0]
+                # Create doc_id from relative path (without extension)
+                rel_path = os.path.relpath(filepath, samples_dir)
+                doc_id = os.path.splitext(rel_path)[0].replace(os.sep, '/')
                 processor.process_document(doc_id, content)
                 loaded_count += 1
             except (IOError, UnicodeDecodeError):
