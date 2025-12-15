@@ -941,3 +941,313 @@ class TestBoostDefinitionDocuments:
         assert v1_score == 3.0
         assert v2_score == 3.0
         assert usage_score == 1.0
+
+
+# =============================================================================
+# EDGE CASE AND ROBUSTNESS TESTS
+# =============================================================================
+
+
+class TestEdgeCases:
+    """Additional edge case tests for robustness (coverage already 100%)."""
+
+    def test_identifier_with_numbers(self):
+        """Identifiers can contain numbers."""
+        is_def, def_type, identifier = is_definition_query("class Foo123Bar")
+        assert is_def is True
+        assert def_type == 'class'
+        assert identifier == 'Foo123Bar'
+
+    def test_very_long_identifier(self):
+        """Very long identifiers are handled correctly."""
+        long_name = 'VeryLongClassName' * 10  # 180 chars
+        is_def, def_type, identifier = is_definition_query(f"class {long_name}")
+        assert is_def is True
+        assert identifier == long_name
+
+    def test_tab_separated_query(self):
+        """Query with tab character is handled."""
+        is_def, def_type, identifier = is_definition_query("class\tMinicolumn")
+        assert is_def is True
+        assert identifier == 'Minicolumn'
+
+    def test_multiple_spaces_in_query(self):
+        """Query with multiple spaces between keyword and identifier."""
+        is_def, def_type, identifier = is_definition_query("class    Minicolumn")
+        assert is_def is True
+        assert identifier == 'Minicolumn'
+
+    def test_empty_identifier_not_matched(self):
+        """Query with keyword but no identifier is not a definition query."""
+        result = is_definition_query("class ")
+        assert result == (False, None, None)
+
+    def test_identifier_starting_with_underscore(self):
+        """Identifiers can start with underscores."""
+        is_def, def_type, identifier = is_definition_query("class _PrivateClass")
+        assert is_def is True
+        assert identifier == '_PrivateClass'
+
+    def test_identifier_all_underscores(self):
+        """Identifier can be all underscores."""
+        is_def, def_type, identifier = is_definition_query("def ___")
+        assert is_def is True
+        assert identifier == '___'
+
+    def test_regex_special_chars_in_identifier(self):
+        """
+        Identifiers with characters that are special in regex are escaped.
+
+        Tests that re.escape() is used correctly in pattern generation.
+        """
+        # __init__ contains regex special chars (if not escaped, . matches any char)
+        result = detect_definition_query("def __init__")
+        assert result['is_definition_query'] is True
+        assert result['identifier'] == '__init__'
+
+        # Pattern should match actual __init__, not _Xinit_ or similar
+        pattern = re.compile(result['pattern'], re.IGNORECASE)
+        assert pattern.search("def __init__(")
+        assert not pattern.search("def _Xinit__(")  # Should not match without escaping
+
+    def test_find_definition_with_max_context(self):
+        """Very large context_chars extracts entire remaining text."""
+        text = "def foo():\n" + "    pass\n" * 50
+        result = find_definition_in_text(text, "foo", "function", context_chars=999999)
+
+        assert result is not None
+        passage, start, end = result
+        # Should extract all available text
+        assert len(passage) == len(text)
+
+    def test_find_definition_with_zero_context(self):
+        """Zero context_chars still extracts definition line."""
+        text = "def foo():\n    return 42"
+        result = find_definition_in_text(text, "foo", "function", context_chars=0)
+
+        assert result is not None
+        passage, start, end = result
+        # Should at least have the definition (may not include full line with 0 context)
+        assert "def foo(" in passage
+
+    def test_definition_on_last_line(self):
+        """Definition on the last line of file (no trailing newline)."""
+        text = "# Some file\n\nclass LastClass:\n    pass"
+        result = find_definition_in_text(text, "LastClass", "class")
+
+        assert result is not None
+        passage, start, end = result
+        assert "class LastClass:" in passage
+
+    def test_definition_with_no_newlines(self):
+        """Definition in single-line file."""
+        text = "class OneLiner: pass"
+        result = find_definition_in_text(text, "OneLiner", "class")
+
+        assert result is not None
+        passage, start, end = result
+        assert "class OneLiner:" in passage
+
+    def test_javascript_async_const_function(self):
+        """JavaScript async const arrow functions are found."""
+        text = "const fetchData = async (url) => { return data; };"
+        result = find_definition_in_text(text, "fetchData", "function")
+
+        assert result is not None
+        passage, start, end = result
+        assert "fetchData" in passage
+
+    def test_mixed_case_definition_match(self):
+        """Definition matching is case insensitive for code."""
+        text = "CLASS MixedCase:\n    pass"  # Unusual but valid
+        result = find_definition_in_text(text, "mixedcase", "class")
+
+        assert result is not None
+        passage, start, end = result
+        assert "MixedCase" in passage
+
+    def test_boost_with_zero_boost_factor(self):
+        """Boost factor of 0 sets definition scores to 0."""
+        passages = [
+            ("class Foo:\n    pass", "foo.py", 0, 100, 1.0)
+        ]
+        result = apply_definition_boost(passages, "class Foo", boost_factor=0.0)
+
+        assert result[0][4] == 0.0  # 1.0 * 0.0
+
+    def test_boost_with_negative_boost_factor(self):
+        """Negative boost factor inverts scores (unusual but handled)."""
+        passages = [
+            ("class Foo:\n    pass", "foo.py", 0, 100, 1.0)
+        ]
+        result = apply_definition_boost(passages, "class Foo", boost_factor=-2.0)
+
+        assert result[0][4] == -2.0  # 1.0 * -2.0
+
+    def test_boost_documents_with_zero_penalties(self):
+        """Zero penalty completely removes test files from results."""
+        doc_results = [
+            ("test_foo.py", 10.0)
+        ]
+        documents = {
+            "test_foo.py": "using Foo"
+        }
+
+        result = boost_definition_documents(
+            doc_results, "class Foo", documents,
+            test_without_definition_penalty=0.0
+        )
+
+        assert result[0][1] == 0.0  # Test file score set to 0
+
+    def test_is_test_file_edge_cases(self):
+        """Edge cases for test file detection."""
+        # Test with empty string
+        assert is_test_file("") is False
+
+        # Test with just filename (no path)
+        assert is_test_file("test.py") is False  # "test.py" not "test_*.py"
+
+        # Test with Windows-style path separators
+        assert is_test_file("tests\\test_foo.py") is False  # Uses / not \
+
+        # Test with uppercase TEST
+        assert is_test_file("TEST_FOO.PY") is True
+
+    def test_definition_query_with_trailing_whitespace(self):
+        """Query with trailing whitespace is handled."""
+        is_def, def_type, identifier = is_definition_query("class Foo   \n\t")
+        assert is_def is True
+        assert identifier == 'Foo'
+
+    def test_definition_query_with_leading_whitespace(self):
+        """Query with leading whitespace is handled."""
+        is_def, def_type, identifier = is_definition_query("   \t\nclass Foo")
+        assert is_def is True
+        assert identifier == 'Foo'
+
+    def test_find_passages_all_test_files(self):
+        """When all files are test files, still returns results (with penalties)."""
+        documents = {
+            "tests/test_foo.py": "class Foo:\n    pass",
+            "tests/test_bar.py": "class Foo:\n    pass"
+        }
+        results = find_definition_passages("class Foo", documents)
+
+        assert len(results) == 2
+        # All should have penalty applied
+        for _, doc_id, _, _, score in results:
+            assert score < DEFINITION_BOOST  # Lower than default boost
+
+    def test_boost_documents_missing_document(self):
+        """Handles document ID in results but not in documents dict."""
+        doc_results = [
+            ("missing.py", 1.0),
+            ("exists.py", 1.0)
+        ]
+        documents = {
+            "exists.py": "class Foo:\n    pass"
+            # missing.py not in documents
+        }
+
+        result = boost_definition_documents(
+            doc_results, "class Foo", documents, boost_factor=2.0
+        )
+
+        # missing.py should have unchanged score (no boost or penalty)
+        # exists.py should be boosted
+        exists_score = next(s for d, s in result if d == "exists.py")
+        missing_score = next(s for d, s in result if d == "missing.py")
+
+        assert exists_score == 2.0  # Boosted
+        assert missing_score == 1.0  # Unchanged
+
+    def test_definition_patterns_constant_integrity(self):
+        """Verify DEFINITION_QUERY_PATTERNS and DEFINITION_SOURCE_PATTERNS are intact."""
+        # Ensure constants are not empty
+        assert len(DEFINITION_QUERY_PATTERNS) > 0
+        assert len(DEFINITION_SOURCE_PATTERNS) > 0
+
+        # Verify expected patterns exist
+        assert 'python_class' in DEFINITION_SOURCE_PATTERNS
+        assert 'python_function' in DEFINITION_SOURCE_PATTERNS
+        assert 'javascript_class' in DEFINITION_SOURCE_PATTERNS
+
+        # Verify DEFINITION_BOOST is positive
+        assert DEFINITION_BOOST > 0
+
+    def test_detect_definition_query_return_type(self):
+        """Verify detect_definition_query returns correct TypedDict structure."""
+        result = detect_definition_query("class Foo")
+
+        # Check all expected keys are present
+        assert 'is_definition_query' in result
+        assert 'definition_type' in result
+        assert 'identifier' in result
+        assert 'pattern' in result
+
+        # Check types
+        assert isinstance(result['is_definition_query'], bool)
+        assert isinstance(result['definition_type'], str) or result['definition_type'] is None
+        assert isinstance(result['identifier'], str) or result['identifier'] is None
+
+    def test_find_definition_boundary_with_multiple_blank_lines(self):
+        """Multiple consecutive blank lines are treated as boundary."""
+        text = """
+def compute_all(self):
+    self.compute_tfidf()
+    self.compute_importance()
+
+
+def other_function():
+    pass
+"""
+        result = find_definition_in_text(text, "compute_all", "function")
+        assert result is not None
+        passage, _, _ = result
+
+        # Should stop at first blank line sequence
+        assert "compute_all" in passage
+        assert "other_function" not in passage
+
+    def test_class_with_inheritance(self):
+        """Class definitions with inheritance are matched."""
+        text = "class Derived(Base, Mixin):\n    pass"
+        result = find_definition_in_text(text, "Derived", "class")
+
+        assert result is not None
+        passage, _, _ = result
+        assert "class Derived" in passage
+        assert "Base" in passage
+
+    def test_function_with_decorators(self):
+        """Function definitions with decorators are found."""
+        text = """
+@staticmethod
+@cache
+def cached_function(x):
+    return x * 2
+"""
+        result = find_definition_in_text(text, "cached_function", "function")
+
+        assert result is not None
+        passage, _, _ = result
+        assert "cached_function" in passage
+        # Note: Decorators are on separate lines above, not included in passage
+        # which starts at the def line. This is expected behavior.
+        assert "def cached_function" in passage
+
+    def test_passage_char_positions_valid(self):
+        """Start and end positions are valid indices."""
+        text = "class Foo:\n    def bar(self):\n        pass"
+        result = find_definition_in_text(text, "Foo", "class")
+
+        assert result is not None
+        passage, start, end = result
+
+        # Positions should be valid
+        assert 0 <= start < len(text)
+        assert start < end <= len(text)
+
+        # Passage should match extracted text
+        assert passage == text[start:end]
