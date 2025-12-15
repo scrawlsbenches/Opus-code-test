@@ -316,9 +316,10 @@ def extract_corpus_semantics(
 
     elif n_terms > 1:
         # Fallback: pure Python implementation with optimizations
-        # Pre-filter terms by minimum context keys
+        # Pre-filter terms by minimum context keys AND TF-IDF importance
         key_sets: Dict[str, set] = {}
         magnitudes: Dict[str, float] = {}
+        tfidf_scores: Dict[str, float] = {}
 
         for term in terms:
             vec = context_vectors[term]
@@ -329,9 +330,21 @@ def extract_corpus_semantics(
             key_sets[term] = keys
             mag = math.sqrt(sum(v * v for v in vec.values()))
             magnitudes[term] = mag
+            # Get TF-IDF score for importance ranking
+            col = layer0.get_minicolumn(term)
+            tfidf_scores[term] = col.tfidf if col else 0.0
 
-        # Get filtered terms with enough context
+        # Get filtered terms with enough context, sorted by importance
         filtered_terms = [t for t in terms if t in key_sets and magnitudes.get(t, 0) > 0]
+
+        # OPTIMIZATION: Sort by TF-IDF importance and limit to top terms
+        # This focuses similarity computation on the most important terms
+        filtered_terms.sort(key=lambda t: tfidf_scores.get(t, 0), reverse=True)
+
+        # Limit to top N important terms to avoid O(n²) explosion
+        # sqrt(max_similarity_pairs) gives balanced coverage
+        max_terms = int(math.sqrt(max_similarity_pairs * 2)) if max_similarity_pairs > 0 else len(filtered_terms)
+        filtered_terms = filtered_terms[:max_terms]
 
         # Track pairs checked for early termination
         pairs_checked = 0

@@ -2019,77 +2019,52 @@ def compute_bigram_connections(
                         add_connection(b_left, b_right, chain_weight, 'chain')
 
     # 3. Connect bigrams that co-occur in the same documents
-    # Use sparse matrix multiplication for efficient co-occurrence computation
+    # OPTIMIZED: Use inverted index approach instead of O(n²) matrix multiplication
+    # Additional optimization: importance-based filtering and early termination
     skipped_large_docs = 0
+    skipped_low_importance = 0
 
-    # Build document-term matrix using sparse representation
-    # Create mappings: doc_id -> row index, bigram -> col index
-    doc_to_row: Dict[str, int] = {}
-    bigram_to_col: Dict[str, int] = {}
-
-    # Collect all documents first
-    all_docs: Set[str] = set()
+    # Build inverted index: doc_id -> list of bigram minicolumns
+    # Sort by TF-IDF importance within each document for priority processing
+    doc_to_bigrams: Dict[str, List[Minicolumn]] = defaultdict(list)
     for bigram in bigrams:
-        all_docs.update(bigram.document_ids)
+        for doc_id in bigram.document_ids:
+            doc_to_bigrams[doc_id].append(bigram)
 
-    # Assign row indices to documents (excluding large docs)
-    row_idx = 0
-    for doc_id in sorted(all_docs):
-        # Count bigrams in this doc
-        doc_bigram_count = sum(1 for b in bigrams if doc_id in b.document_ids)
-        if doc_bigram_count > max_bigrams_per_doc:
+    # Compute importance threshold (median TF-IDF) for filtering
+    tfidf_values = [b.tfidf for b in bigrams if b.tfidf > 0]
+    importance_threshold = sorted(tfidf_values)[len(tfidf_values) // 4] if tfidf_values else 0
+
+    # Process each document's bigram pairs
+    for doc_id, doc_bigrams in doc_to_bigrams.items():
+        # Skip large documents to avoid O(n²) explosion
+        if len(doc_bigrams) > max_bigrams_per_doc:
             skipped_large_docs += 1
             continue
-        doc_to_row[doc_id] = row_idx
-        row_idx += 1
 
-    # Assign column indices to bigrams
-    for col_idx, bigram in enumerate(bigrams):
-        bigram_to_col[bigram.id] = col_idx
+        # Filter to important bigrams only (reduces pairs quadratically)
+        important_bigrams = [b for b in doc_bigrams if b.tfidf >= importance_threshold]
+        if len(important_bigrams) < 2:
+            continue
 
-    # Build sparse document-term matrix
-    # Rows = documents, Cols = bigrams
-    # Entry [d, b] = 1 if bigram b appears in document d
-    if doc_to_row:  # Only if we have valid documents
-        doc_term_matrix = SparseMatrix(len(doc_to_row), len(bigrams))
+        # Sort by importance for priority connections
+        important_bigrams.sort(key=lambda b: b.tfidf, reverse=True)
 
-        for bigram in bigrams:
-            col_idx = bigram_to_col[bigram.id]
-            for doc_id in bigram.document_ids:
-                if doc_id in doc_to_row:  # Skip large docs
-                    row_idx = doc_to_row[doc_id]
-                    doc_term_matrix.set(row_idx, col_idx, 1.0)
-
-        # Compute bigram-bigram co-occurrence matrix: D^T * D
-        # Result[i, j] = number of shared documents between bigram i and bigram j
-        cooccur_matrix = doc_term_matrix.multiply_transpose()
-
-        # Create inverse mapping: col_idx -> bigram
-        col_to_bigram = {col_idx: bigram for bigram, col_idx in bigram_to_col.items()}
-
-        # Process co-occurrence matrix to create connections
-        for col1, col2, shared_count in cooccur_matrix.get_nonzero():
-            # Skip diagonal (bigram with itself)
-            if col1 == col2:
+        # Connect pairs of important bigrams in this document
+        # Limit to top connections per bigram to avoid explosion
+        for i, b1 in enumerate(important_bigrams):
+            # Early termination if this bigram is at connection limit
+            if connection_counts[b1.id] >= max_connections_per_bigram:
                 continue
-
-            # Skip if below threshold
-            if shared_count < min_shared_docs:
-                continue
-
-            # Get bigrams
-            bigram1_id = col_to_bigram[col1]
-            bigram2_id = col_to_bigram[col2]
-
-            # Find the actual minicolumn objects
-            b1 = layer1.get_by_id(bigram1_id)
-            b2 = layer1.get_by_id(bigram2_id)
-
-            if b1 and b2:
-                # Compute Jaccard similarity
+            for b2 in important_bigrams[i+1:]:
+                if connection_counts[b2.id] >= max_connections_per_bigram:
+                    continue
+                # Fast path: they share at least this document
                 docs1 = b1.document_ids
                 docs2 = b2.document_ids
                 shared_docs = docs1 & docs2
+                if len(shared_docs) < min_shared_docs:
+                    continue
                 jaccard = len(shared_docs) / len(docs1 | docs2)
                 weight = cooccurrence_weight * jaccard
                 add_connection(b1, b2, weight, 'cooccurrence')
