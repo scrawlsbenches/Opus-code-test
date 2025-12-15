@@ -836,6 +836,66 @@ def find_documents(
 
 ---
 
+## Scoring Algorithms
+
+The processor supports multiple scoring algorithms for term weighting:
+
+### BM25 (Default)
+
+BM25 (Best Match 25) is the default scoring algorithm, optimized for code search:
+
+```python
+from cortical import CorticalTextProcessor
+from cortical.config import CorticalConfig
+
+# BM25 with default parameters (recommended)
+config = CorticalConfig(scoring_algorithm='bm25')
+
+# Tune BM25 parameters if needed
+config = CorticalConfig(
+    scoring_algorithm='bm25',
+    bm25_k1=1.2,  # Term frequency saturation (0.0-3.0, default 1.2)
+    bm25_b=0.75   # Length normalization (0.0-1.0, default 0.75)
+)
+processor = CorticalTextProcessor(config=config)
+```
+
+**Parameters:**
+- `bm25_k1`: Controls term frequency saturation. Higher values give more weight to term frequency.
+- `bm25_b`: Controls document length normalization. Set to 0.0 to disable length normalization.
+
+### TF-IDF (Legacy)
+
+Traditional TF-IDF scoring is still available:
+
+```python
+config = CorticalConfig(scoring_algorithm='tfidf')
+```
+
+### Graph-Boosted Search (GB-BM25)
+
+A hybrid search combining BM25 with graph signals:
+
+```python
+# Standard search (uses BM25 under the hood)
+results = processor.find_documents_for_query("query")
+
+# Graph-boosted search (adds PageRank + proximity signals)
+results = processor.graph_boosted_search(
+    "query",
+    pagerank_weight=0.3,   # Weight for term importance (0-1)
+    proximity_weight=0.2   # Weight for connected terms (0-1)
+)
+```
+
+**GB-BM25 combines:**
+1. BM25 base score (term relevance)
+2. PageRank boost (important terms rank higher)
+3. Proximity boost (connected query terms boost documents)
+4. Coverage boost (documents matching more terms rank higher)
+
+---
+
 ## Performance Considerations
 
 1. **Use `get_by_id()` for ID lookups** - O(1) vs O(n) iteration
@@ -846,6 +906,7 @@ def find_documents(
 6. **Use `fast_find_documents()`** for ~2-3x faster search on large corpora
 7. **Pre-build index** with `build_search_index()` for fastest repeated queries
 8. **Watch for O(n²) patterns** in loops over connections—use limits like `max_bigrams_per_term`
+9. **Use `graph_boosted_search()`** for hybrid scoring with PageRank signals
 
 ---
 
@@ -1016,6 +1077,7 @@ python examples/observability_demo.py
 | Build network | `processor.compute_all()` |
 | Search | `processor.find_documents_for_query(query)` |
 | Fast search | `processor.fast_find_documents(query)` |
+| Hybrid search | `processor.graph_boosted_search(query)` |
 | Code search | `processor.expand_query_for_code(query)` |
 | Intent search | `processor.search_by_intent("where do we...")` |
 | RAG passages | `processor.find_passages_for_query(query)` |

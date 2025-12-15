@@ -1,0 +1,274 @@
+{
+  "version": "1.0",
+  "algorithm": "bm25",
+  "timestamp": "2025-12-15T04:45:14.336647",
+  "system_info": {
+    "python_version": "3.11.14",
+    "platform": "Linux-4.4.0-x86_64-with-glibc2.39",
+    "processor": "x86_64"
+  },
+  "results": [
+    {
+      "name": "compute_scores",
+      "algorithm": "bm25",
+      "timestamp": "2025-12-15T04:45:14.406581",
+      "corpus_size": 25,
+      "vocabulary_size": 64,
+      "metrics": {
+        "corpus_size": 25,
+        "vocabulary_size": 64,
+        "mean_time_ms": 0.3291995999688879,
+        "std_time_ms": 0.020515947884730667,
+        "min_time_ms": 0.31208699999751843,
+        "max_time_ms": 0.3623689999585622,
+        "time_per_doc_ms": 0.013167983998755517,
+        "time_per_term_us": 5.143743749513874
+      }
+    },
+    {
+      "name": "compute_scores",
+      "algorithm": "bm25",
+      "timestamp": "2025-12-15T04:45:14.507138",
+      "corpus_size": 50,
+      "vocabulary_size": 64,
+      "metrics": {
+        "corpus_size": 50,
+        "vocabulary_size": 64,
+        "mean_time_ms": 0.6236895999791159,
+        "std_time_ms": 0.009425228295778567,
+        "min_time_ms": 0.6114489999617945,
+        "max_time_ms": 0.6329369999775736,
+        "time_per_doc_ms": 0.012473791999582318,
+        "time_per_term_us": 9.745149999673686
+      }
+    },
+    {
+      "name": "compute_scores",
+      "algorithm": "bm25",
+      "timestamp": "2025-12-15T04:45:14.693444",
+      "corpus_size": 100,
+      "vocabulary_size": 64,
+      "metrics": {
+        "corpus_size": 100,
+        "vocabulary_size": 64,
+        "mean_time_ms": 1.2571063999757826,
+        "std_time_ms": 0.04260392122155854,
+        "min_time_ms": 1.2077509999244285,
+        "max_time_ms": 1.3081880000527235,
+        "time_per_doc_ms": 0.012571063999757826,
+        "time_per_term_us": 19.642287499621602
+      }
+    },
+    {
+      "name": "compute_scores",
+      "algorithm": "bm25",
+      "timestamp": "2025-12-15T04:45:15.054362",
+      "corpus_size": 200,
+      "vocabulary_size": 64,
+      "metrics": {
+        "corpus_size": 200,
+        "vocabulary_size": 64,
+        "mean_time_ms": 2.7318268000044554,
+        "std_time_ms": 0.38535747660282266,
+        "min_time_ms": 2.4955750000117405,
+        "max_time_ms": 3.4158199999865246,
+        "time_per_doc_ms": 0.013659134000022277,
+        "time_per_term_us": 42.684793750069616
+      }
+    },
+    {
+      "name": "search_latency",
+      "algorithm": "bm25",
+      "timestamp": "2025-12-15T04:45:16.118779",
+      "corpus_size": 100,
+      "vocabulary_size": 64,
+      "metrics": {
+        "corpus_size": 100,
+        "vocabulary_size": 64,
+        "num_queries": 8,
+        "mean_latency_ms": 0.15497148750540646,
+        "median_latency_ms": 0.1494892500033984,
+        "p95_latency_ms": 0.18840760000102819,
+        "max_latency_ms": 0.18840760000102819,
+        "min_latency_ms": 0.14132020000943157,
+        "throughput_qps": 6452.799905951171
+      }
+    },
+    {
+      "name": "search_relevance",
+      "algorithm": "bm25",
+      "timestamp": "2025-12-15T04:45:17.204662",
+      "corpus_size": 100,
+      "vocabulary_size": 64,
+      "metrics": {
+        "corpus_size": 100,
+        "num_queries": 4,
+        "mean_p@1": 0.75,
+        "mean_p@3": 0.75,
+        "mean_p@5": 0.75,
+        "mean_mrr": 0.7777777777777778,
+        "mean_term_recall": 0.8,
+        "per_query": [
+          {
+            "query": "neural network training",
+            "domain": "ml",
+            "p@1": 0.0,
+            "p@3": 0.0,
+            "p@5": 0.0,
+            "mrr": 0.1111111111111111,
+            "term_recall": 0.8
+          },
+          {
+            "query": "database query optimization",
+            "domain": "db",
+            "p@1": 1.0,
+            "p@3": 1.0,
+            "p@5": 1.0,
+            "mrr": 1.0,
+            "term_recall": 0.8
+          },
+          {
+            "query": "process memory management",
+            "domain": "sys",
+            "p@1": 1.0,
+            "p@3": 1.0,
+            "p@5": 1.0,
+            "mrr": 1.0,
+            "term_recall": 0.8
+          },
+          {
+            "query": "api authentication",
+            "domain": "web",
+            "p@1": 1.0,
+            "p@3": 1.0,
+            "p@5": 1.0,
+            "mrr": 1.0,
+            "term_recall": 0.8
+          }
+        ]
+      }
+    },
+    {
+      "name": "memory_footprint",
+      "algorithm": "bm25",
+      "timestamp": "2025-12-15T04:45:17.481222",
+      "corpus_size": 25,
+      "vocabulary_size": 64,
+      "metrics": {
+        "corpus_size": 25,
+        "vocabulary_size": 64,
+        "score_memory_bytes": 53184,
+        "score_memory_kb": 51.9375,
+        "total_tfidf_entries": 995,
+        "bytes_per_entry": 53.451256281407034,
+        "bytes_per_term": 831.0
+      }
+    },
+    {
+      "name": "memory_footprint",
+      "algorithm": "bm25",
+      "timestamp": "2025-12-15T04:45:17.967628",
+      "corpus_size": 50,
+      "vocabulary_size": 64,
+      "metrics": {
+        "corpus_size": 50,
+        "vocabulary_size": 64,
+        "score_memory_bytes": 101568,
+        "score_memory_kb": 99.1875,
+        "total_tfidf_entries": 1988,
+        "bytes_per_entry": 51.09054325955734,
+        "bytes_per_term": 1587.0
+      }
+    },
+    {
+      "name": "memory_footprint",
+      "algorithm": "bm25",
+      "timestamp": "2025-12-15T04:45:18.912447",
+      "corpus_size": 100,
+      "vocabulary_size": 64,
+      "metrics": {
+        "corpus_size": 100,
+        "vocabulary_size": 64,
+        "score_memory_bytes": 198432,
+        "score_memory_kb": 193.78125,
+        "total_tfidf_entries": 4010,
+        "bytes_per_entry": 49.48428927680798,
+        "bytes_per_term": 3100.5
+      }
+    },
+    {
+      "name": "memory_footprint",
+      "algorithm": "bm25",
+      "timestamp": "2025-12-15T04:45:20.819995",
+      "corpus_size": 200,
+      "vocabulary_size": 64,
+      "metrics": {
+        "corpus_size": 200,
+        "vocabulary_size": 64,
+        "score_memory_bytes": 408312,
+        "score_memory_kb": 398.7421875,
+        "total_tfidf_entries": 8043,
+        "bytes_per_entry": 50.76613204028347,
+        "bytes_per_term": 6379.875
+      }
+    },
+    {
+      "name": "scaling_behavior",
+      "algorithm": "bm25",
+      "timestamp": "2025-12-15T04:45:21.684457",
+      "corpus_size": 200,
+      "vocabulary_size": 64,
+      "metrics": {
+        "data_points": [
+          {
+            "n_docs": 10,
+            "vocab_size": 64,
+            "time_ms": 0.14531600004374923
+          },
+          {
+            "n_docs": 25,
+            "vocab_size": 64,
+            "time_ms": 0.309473666637435
+          },
+          {
+            "n_docs": 50,
+            "vocab_size": 64,
+            "time_ms": 0.5840006666251915
+          },
+          {
+            "n_docs": 100,
+            "vocab_size": 64,
+            "time_ms": 1.267608999986199
+          },
+          {
+            "n_docs": 150,
+            "vocab_size": 64,
+            "time_ms": 1.775815666633207
+          },
+          {
+            "n_docs": 200,
+            "vocab_size": 64,
+            "time_ms": 2.5024700000055113
+          }
+        ],
+        "scaling_exponent": 0.9558648590683401,
+        "estimated_complexity": "O(n)"
+      }
+    },
+    {
+      "name": "real_corpus",
+      "algorithm": "bm25",
+      "timestamp": "2025-12-15T04:45:26.225935",
+      "corpus_size": 150,
+      "vocabulary_size": 11862,
+      "metrics": {
+        "corpus_size": 150,
+        "vocabulary_size": 11862,
+        "compute_time_ms": 25.580323666683096,
+        "mean_query_time_ms": 0.37774209999383856,
+        "max_query_time_ms": 0.5424007999863534,
+        "queries_tested": 8
+      }
+    }
+  ]
+}

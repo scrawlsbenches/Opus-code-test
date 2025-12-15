@@ -387,6 +387,56 @@ class QueryMixin:
             use_code_concepts=use_code_concepts
         )
 
+    def graph_boosted_search(
+        self,
+        query_text: str,
+        top_n: int = 5,
+        pagerank_weight: float = 0.3,
+        proximity_weight: float = 0.2,
+        use_expansion: bool = True
+    ) -> List[Tuple[str, float]]:
+        """
+        Graph-Boosted BM25 (GB-BM25): Hybrid scoring combining BM25 with graph signals.
+
+        This algorithm combines multiple signals for improved code search:
+        1. BM25/TF-IDF base score (term relevance)
+        2. PageRank boost (matched term importance)
+        3. Proximity boost (query terms connected in graph)
+        4. Coverage boost (documents with more unique query term matches)
+
+        Args:
+            query_text: Search query
+            top_n: Number of results to return
+            pagerank_weight: Weight for PageRank boost (0-1, default 0.3)
+            proximity_weight: Weight for term proximity boost (0-1, default 0.2)
+            use_expansion: Whether to use query expansion
+
+        Returns:
+            List of (doc_id, score) tuples ranked by combined relevance
+
+        Raises:
+            ValueError: If query_text is empty or parameters are invalid
+        """
+        if not isinstance(query_text, str) or not query_text.strip():
+            raise ValueError("query_text must be a non-empty string")
+        if not isinstance(top_n, int) or top_n < 1:
+            raise ValueError("top_n must be a positive integer")
+        if not 0 <= pagerank_weight <= 1:
+            raise ValueError("pagerank_weight must be between 0 and 1")
+        if not 0 <= proximity_weight <= 1:
+            raise ValueError("proximity_weight must be between 0 and 1")
+
+        return query_module.graph_boosted_search(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n,
+            pagerank_weight=pagerank_weight,
+            proximity_weight=proximity_weight,
+            use_expansion=use_expansion,
+            semantic_relations=self.semantic_relations
+        )
+
     def quick_search(self, query: str, top_n: int = 5) -> List[str]:
         """
         One-call document search with sensible defaults.
