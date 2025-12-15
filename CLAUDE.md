@@ -1105,6 +1105,19 @@ python examples/observability_demo.py
 | Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
 | Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
 | Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
+| Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
+| List orchestration plans | `python scripts/orchestration_utils.py list` |
+| Verify batch | `python scripts/verify_batch.py --quick` |
+| View orchestration metrics | From Python: `OrchestrationMetrics().get_summary()` |
+
+### Orchestration Utilities
+
+For Director orchestration and parallel agent workflows:
+
+- `scripts/orchestration_utils.py` - Director orchestration tracking (plans, batches, metrics)
+- `scripts/verify_batch.py` - Automated batch verification
+
+See `docs/director.md` for comprehensive orchestration documentation.
 
 ---
 
