@@ -5,14 +5,24 @@ Cortical Text Processor Showcase
 This showcase processes a corpus of documents, demonstrating the
 hierarchical analysis of relationships between concepts, documents,
 and ideas across diverse topics.
+
+Usage:
+    python showcase.py                      # Default: compute fresh
+    python showcase.py --build-index        # Build and save index only
+    python showcase.py --use-index          # Load from pre-built index (~25x faster)
+    python showcase.py --index-path FILE    # Custom index path
 """
 
+import argparse
 import os
 import sys
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from cortical import CorticalTextProcessor, CorticalLayer
+
+# Default index location
+DEFAULT_INDEX_PATH = "showcase_index.pkl"
 
 
 class Timer:
@@ -63,13 +73,16 @@ def render_bar(value: float, max_value: float, width: int = 30) -> str:
 class CorticalShowcase:
     """Showcases the cortical text processor with interesting analysis."""
 
-    def __init__(self, samples_dir: str = "samples"):
+    def __init__(
+        self,
+        samples_dir: str = "samples",
+        use_index: bool = False,
+        index_path: Optional[str] = None
+    ):
         self.samples_dir = samples_dir
-        # Use code noise filtering to exclude common Python keywords
-        # that pollute PageRank/TF-IDF in mixed text/code corpora
-        from cortical.tokenizer import Tokenizer
-        tokenizer = Tokenizer(filter_code_noise=True)
-        self.processor = CorticalTextProcessor(tokenizer=tokenizer)
+        self.use_index = use_index
+        self.index_path = index_path or DEFAULT_INDEX_PATH
+        self.processor = None  # Initialized in ingest_corpus
         self.loaded_files = []
         self.timer = Timer()
 
@@ -107,9 +120,56 @@ class CorticalShowcase:
         """)
     
     def ingest_corpus(self) -> bool:
-        """Ingest the document corpus from disk."""
+        """Ingest the document corpus from disk or load from pre-built index."""
         print_header("DOCUMENT INGESTION", "═")
 
+        # Try to load from index if requested
+        if self.use_index and os.path.exists(self.index_path):
+            return self._load_from_index()
+
+        # Otherwise, compute fresh
+        return self._compute_fresh()
+
+    def _load_from_index(self) -> bool:
+        """Load processor state from pre-built index (fast path)."""
+        print(f"Loading pre-built index from: {self.index_path}")
+        print("(Skipping computation - using cached bigram connections)\n")
+
+        self.timer.start('index_load')
+        try:
+            self.processor = CorticalTextProcessor.load(self.index_path, verbose=False)
+            load_time = self.timer.stop()
+        except Exception as e:
+            print(f"  ❌ Failed to load index: {e}")
+            print("  Falling back to fresh computation...\n")
+            return self._compute_fresh()
+
+        # Populate loaded_files from processor state
+        layer3 = self.processor.get_layer(CorticalLayer.DOCUMENTS)
+        for col in layer3.minicolumns.values():
+            doc_content = self.processor.documents.get(col.content, "")
+            word_count = len(doc_content.split())
+            self.loaded_files.append((col.content, word_count))
+
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)
+
+        total_conns = sum(
+            layer.total_connections()
+            for layer in self.processor.layers.values()
+        )
+
+        print(f"✓ Loaded {len(self.loaded_files)} documents from index")
+        print(f"✓ {layer0.column_count()} token minicolumns ready")
+        print(f"✓ {layer1.column_count()} bigram minicolumns ready")
+        print(f"✓ {total_conns:,} connections pre-computed")
+        print(f"\n⏱  Index load time: {load_time:.2f}s")
+        print("   (vs ~300s for fresh computation)")
+
+        return True
+
+    def _compute_fresh(self) -> bool:
+        """Compute processor state from scratch (slow path)."""
         print(f"Loading documents from: {self.samples_dir}")
         print("Processing through cortical hierarchy...")
         print("(Like visual information flowing V1 → V2 → V4 → IT)\n")
@@ -125,6 +185,11 @@ class CorticalShowcase:
 
         if not all_files:
             return False
+
+        # Initialize processor with code noise filtering
+        from cortical.tokenizer import Tokenizer
+        tokenizer = Tokenizer(filter_code_noise=True)
+        self.processor = CorticalTextProcessor(tokenizer=tokenizer)
 
         # Time document loading
         self.timer.start('document_loading')
@@ -167,6 +232,26 @@ class CorticalShowcase:
         print(f"✓ Formed {total_conns:,} total connections")
         print(f"\n⏱  Document loading: {load_time:.2f}s")
         print(f"⏱  Compute all:      {compute_time:.2f}s")
+
+        return True
+
+    def build_index(self) -> bool:
+        """Build and save index without running demos."""
+        print_header("BUILDING INDEX", "═")
+        print(f"Target: {self.index_path}\n")
+
+        if not self._compute_fresh():
+            return False
+
+        print(f"\nSaving index to {self.index_path}...")
+        self.timer.start('save_index')
+        self.processor.save(self.index_path, verbose=False)
+        save_time = self.timer.stop()
+
+        size_mb = os.path.getsize(self.index_path) / (1024 * 1024)
+        print(f"✓ Index saved ({size_mb:.1f} MB)")
+        print(f"⏱  Save time: {save_time:.2f}s")
+        print(f"\n💡 Run with --use-index to skip computation (~25x faster)")
 
         return True
     
@@ -701,6 +786,60 @@ class CorticalShowcase:
         print("═" * 70 + "\n")
 
 
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Cortical Text Processor Showcase - demonstrates hierarchical text analysis",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python showcase.py                      # Compute fresh (slow, ~5 min)
+  python showcase.py --build-index        # Build index only (~5 min)
+  python showcase.py --use-index          # Load index (~12s, 25x faster)
+  python showcase.py --use-index --index-path custom.pkl
+
+Performance:
+  Fresh computation: ~300s (compute_all dominates)
+  With pre-built index: ~12s load + ~38s demos = ~50s total
+        """
+    )
+    parser.add_argument(
+        "--samples-dir",
+        default="samples",
+        help="Directory containing sample documents (default: samples)"
+    )
+    parser.add_argument(
+        "--use-index",
+        action="store_true",
+        help="Load from pre-built index instead of computing fresh (~25x faster)"
+    )
+    parser.add_argument(
+        "--build-index",
+        action="store_true",
+        help="Build and save index without running demos (for later --use-index)"
+    )
+    parser.add_argument(
+        "--index-path",
+        default=DEFAULT_INDEX_PATH,
+        help=f"Path to index file (default: {DEFAULT_INDEX_PATH})"
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    showcase = CorticalShowcase(samples_dir="samples")
-    showcase.run()
+    args = parse_args()
+
+    showcase = CorticalShowcase(
+        samples_dir=args.samples_dir,
+        use_index=args.use_index,
+        index_path=args.index_path
+    )
+
+    if args.build_index:
+        # Build index only, no demos
+        showcase.print_intro()
+        success = showcase.build_index()
+        sys.exit(0 if success else 1)
+    else:
+        # Normal run (with or without index)
+        showcase.run()
