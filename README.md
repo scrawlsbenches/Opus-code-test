@@ -2,8 +2,8 @@
 
 ![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
-![Tests](https://img.shields.io/badge/tests-3150%20passing-brightgreen.svg)
-![Coverage](https://img.shields.io/badge/coverage-%3E89%25-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-3800%2B%20passing-brightgreen.svg)
+![Coverage](https://img.shields.io/badge/coverage-%3E90%25-brightgreen.svg)
 ![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-orange.svg)
 ![Fact Check](https://img.shields.io/badge/fact--check-94%25%20verified-blue.svg)
 
@@ -50,7 +50,7 @@ Your visual cortex doesn't grep through pixels looking for cats. It builds hiera
 
 Feed it documents. It tokenizes them into "minicolumns" (Layer 0), connects co-occurring words through Hebbian learning ("neurons that fire together, wire together"), clusters them into concepts (Layer 2), and links documents by shared meaning (Layer 3). The result: a graph that understands your corpus well enough to expand queries, complete analogies, and tell you where your knowledge has gaps.
 
-No PyTorch. No transformers. No API keys. Just 3100+ tests, 20,000+ lines of pure Python, and a data structure that would make a neuroscientist squint approvingly.
+No PyTorch. No transformers. No API keys. Just 3800+ tests, 20,000+ lines of pure Python, and a data structure that would make a neuroscientist squint approvingly.
 
 ---
 
@@ -397,7 +397,7 @@ cortical/
 ├── observability.py     # Metrics, timing, tracing
 └── code_concepts.py     # Programming synonym expansion
 
-tests/                   # 2900+ tests (smoke, unit, integration, behavioral)
+tests/                   # 3800+ tests (smoke, unit, integration, behavioral)
 ├── smoke/               # Quick sanity checks
 ├── unit/                # Fast isolated tests
 ├── integration/         # Component interaction tests
