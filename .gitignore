@@ -92,3 +92,6 @@ tasks/.current_session.json
 # Generated protobuf code (regenerated at runtime from schema.proto)
 cortical/proto/schema_pb2.py
 cortical/proto/__pycache__/
+
+# ML training data (local, regeneratable with `python scripts/ml_data_collector.py backfill`)
+.git-ml/

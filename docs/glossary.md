@@ -131,7 +131,7 @@ PageRank parameter (default 0.85) representing probability of following a link v
 ### Query Expansion
 Process of adding related terms to a search query based on lateral connections, concept membership, or semantic relations.
 
-**Location:** `query.py:55-176`
+**Location:** `query/expansion.py`
 
 ### Spreading Activation
 Information propagation through connections. Activation starts at query terms and spreads to connected nodes, simulating neural activation patterns.
@@ -241,22 +241,22 @@ System for knowing which computations need rerunning after corpus changes. Preve
 ### Intent Parsing
 Extracting user intent from natural language queries. Maps question words to intent types (where→location, how→implementation).
 
-**Location:** `query.py:179-284`
+**Location:** `query/intent.py`
 
 ### Multi-hop Expansion
 Query expansion through chains of semantic relations. Finds terms 2+ hops away through valid relation paths.
 
-**Location:** `query.py:407-531`
+**Location:** `query/expansion.py`
 
 ### Chunk
 A segment of document text for passage retrieval. Created with configurable size and overlap.
 
-**Location:** `query.py:937-978`
+**Location:** `query/chunking.py`
 
 ### Inverted Index
 Pre-computed mapping from terms to containing documents. Enables fast candidate filtering.
 
-**Location:** `query.py` (fast search functions)
+**Location:** `query/search.py`
 
 ---
 
@@ -307,7 +307,7 @@ Processing multiple queries or documents together to amortize overhead.
 | PageRank | `analysis.py` |
 | TF-IDF | `analysis.py` |
 | Label Propagation | `analysis.py` |
-| Query Expansion | `query.py` |
+| Query Expansion | `query/expansion.py` |
 | Relation Extraction | `semantics.py` |
 | Retrofitting | `semantics.py` |
 | Tokenization | `tokenizer.py` |

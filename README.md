@@ -7,9 +7,42 @@
 ![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-orange.svg)
 ![Fact Check](https://img.shields.io/badge/fact--check-94%25%20verified-blue.svg)
 
-A neocortex-inspired text processing library with **zero external dependencies** for semantic analysis, document retrieval, and knowledge gap detection.
+## What is this?
+
+**Cortical Text Processor** is a zero-dependency Python library for hierarchical text analysis and semantic search. Despite the neocortex-inspired naming, it uses proven information retrieval algorithms—**PageRank**, **TF-IDF**, and **Louvain clustering**—not neural networks.
+
+**Key use cases:**
+- **Semantic search**: Find documents by meaning, not just keywords
+- **Code search**: Search codebases with identifier splitting and programming concept expansion
+- **Document retrieval**: RAG system support with chunk-level passage retrieval
+- **Knowledge analysis**: Detect gaps, outliers, and missing connections in your corpus
+
+**Zero dependencies.** Just copy the `cortical/` folder into your project and go.
+
+## Quick Example
+
+```python
+from cortical import CorticalTextProcessor
+
+# Create processor and add documents
+processor = CorticalTextProcessor()
+processor.process_document("doc1", "Neural networks process information hierarchically.")
+processor.process_document("doc2", "The brain uses layers of neurons for processing.")
+
+# Build the semantic network
+processor.compute_all()
+
+# Search with automatic query expansion
+results = processor.find_documents_for_query("neural processing")
+print(results)  # [('doc1', 0.877), ('doc2', 0.832)]
+
+# Save for later
+processor.save("my_corpus.pkl")
+```
 
 ---
+
+## Why "Cortical"?
 
 > *"What if we built a text search engine the way evolution built a brain?"*
 
@@ -42,6 +75,10 @@ This library provides a biologically-inspired approach to text processing, organ
 - **ConceptNet-Style Relations**: Typed edges (IsA, HasA, PartOf, etc.) with multi-hop inference
 - **Concept Inheritance**: IsA hierarchy propagation for concept properties
 - **Analogy Completion**: Relation matching and vector arithmetic for analogical reasoning
+- **Code Search**: Identifier splitting, programming concept expansion, and intent-based queries
+- **Semantic Fingerprinting**: Compare document similarity with explanations
+- **Fast Search**: Pre-built indexes for 2-3x faster repeated queries
+- **Incremental Updates**: Add documents without full recomputation
 - **Gap Detection**: Find weak spots and isolated documents in your corpus
 - **Query Expansion**: Smart retrieval with synonym handling and semantic relations
 - **RAG System Support**: Chunk-level passage retrieval, document metadata, and multi-stage ranking
