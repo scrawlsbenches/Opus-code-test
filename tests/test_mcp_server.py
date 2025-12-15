@@ -2,6 +2,8 @@
 Tests for the MCP server implementation.
 
 Tests all tools and error handling for the Cortical Text Processor MCP server.
+
+Requires: pip install mcp
 """
 
 import unittest
@@ -9,10 +11,19 @@ import tempfile
 import os
 from pathlib import Path
 
-from cortical.mcp_server import CorticalMCPServer, create_mcp_server
+# Guard MCP import - skip all tests if not available
+try:
+    from cortical.mcp_server import CorticalMCPServer, create_mcp_server
+    MCP_AVAILABLE = True
+except ImportError:
+    MCP_AVAILABLE = False
+    CorticalMCPServer = None
+    create_mcp_server = None
+
 from cortical import CorticalTextProcessor
 
 
+@unittest.skipIf(not MCP_AVAILABLE, "mcp package not installed")
 class TestMCPServerCreation(unittest.TestCase):
     """Test MCP server initialization."""
 
@@ -54,6 +65,7 @@ class TestMCPServerCreation(unittest.TestCase):
         self.assertEqual(len(server.processor.documents), 0)
 
 
+@unittest.skipIf(not MCP_AVAILABLE, "mcp package not installed")
 class TestMCPServerToolsBase(unittest.TestCase):
     """Base class for MCP tool tests."""
 
@@ -357,6 +369,7 @@ class TestAddDocumentTool(TestMCPServerToolsBase):
         self.assertIn("error", result)
 
 
+@unittest.skipIf(not MCP_AVAILABLE, "mcp package not installed")
 class TestMCPServerIntegration(unittest.TestCase):
     """Integration tests for MCP server."""
 
@@ -413,6 +426,7 @@ class TestMCPServerIntegration(unittest.TestCase):
         asyncio.run(workflow())
 
 
+@unittest.skipIf(not MCP_AVAILABLE, "mcp package not installed")
 class TestExceptionHandlers(unittest.TestCase):
     """Test exception handlers in MCP tools to ensure graceful error handling."""
 
@@ -530,6 +544,7 @@ class TestExceptionHandlers(unittest.TestCase):
         asyncio.run(test_exception())
 
 
+@unittest.skipIf(not MCP_AVAILABLE, "mcp package not installed")
 class TestMakeSerializable(unittest.TestCase):
     """Test the make_serializable function branches in corpus_stats."""
 
@@ -604,6 +619,7 @@ class TestMakeSerializable(unittest.TestCase):
         asyncio.run(test_custom_type_handling())
 
 
+@unittest.skipIf(not MCP_AVAILABLE, "mcp package not installed")
 class TestContentTypeValidation(unittest.TestCase):
     """Test content type validation in add_document.
 
@@ -660,6 +676,7 @@ class TestContentTypeValidation(unittest.TestCase):
         self.assertIn("content must be a string", source)
 
 
+@unittest.skipIf(not MCP_AVAILABLE, "mcp package not installed")
 class TestServerRunAndMain(unittest.TestCase):
     """Test run() and main() functions."""
 
