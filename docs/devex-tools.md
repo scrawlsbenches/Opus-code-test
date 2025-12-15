@@ -84,16 +84,16 @@ Overall Health: Good (64/100)
 
 ```bash
 # Find similar to a file
-python scripts/find_similar.py cortical/processor.py
+python scripts/find_similar.py cortical/processor/__init__.py
 
 # More results
-python scripts/find_similar.py cortical/processor.py --top 10
+python scripts/find_similar.py cortical/processor/__init__.py --top 10
 
 # Show full passages
-python scripts/find_similar.py cortical/processor.py --verbose
+python scripts/find_similar.py cortical/processor/__init__.py --verbose
 
 # Explain why they're similar
-python scripts/find_similar.py cortical/processor.py --explain
+python scripts/find_similar.py cortical/processor/__init__.py --explain
 
 # Find similar to text snippet
 python scripts/find_similar.py --text "def compute_pagerank(graph, damping=0.85):"
@@ -146,13 +146,13 @@ python scripts/find_similar.py file.py --min-similarity 0.3
 
 ```bash
 # Analyze a file
-python scripts/explain_code.py cortical/processor.py
+python scripts/explain_code.py cortical/processor/compute.py
 
 # Detailed analysis
-python scripts/explain_code.py cortical/processor.py --verbose
+python scripts/explain_code.py cortical/processor/compute.py --verbose
 
 # Show semantic relations
-python scripts/explain_code.py cortical/processor.py --relations
+python scripts/explain_code.py cortical/processor/compute.py --relations
 
 # Analyze text directly
 python scripts/explain_code.py --text "your code snippet here"
@@ -208,16 +208,16 @@ python scripts/explain_code.py --text "your code snippet here"
 
 ```bash
 # Find related files
-python scripts/suggest_related.py cortical/processor.py
+python scripts/suggest_related.py cortical/processor/__init__.py
 
 # More suggestions
-python scripts/suggest_related.py cortical/processor.py --top 15
+python scripts/suggest_related.py cortical/processor/__init__.py --top 15
 
 # Detailed information
-python scripts/suggest_related.py cortical/processor.py --verbose
+python scripts/suggest_related.py cortical/processor/__init__.py --verbose
 
 # Only import relationships
-python scripts/suggest_related.py cortical/processor.py --imports-only
+python scripts/suggest_related.py cortical/processor/__init__.py --imports-only
 ```
 
 ### Relationship Types
@@ -240,7 +240,7 @@ python scripts/suggest_related.py cortical/processor.py --imports-only
 📦 Imports (4 files):
   [CODE] cortical/analysis.py
   [CODE] cortical/semantics.py
-  [CODE] cortical/query.py
+  [CODE] cortical/query/
 
 📥 Imported By (6 files):
   [TEST] tests/test_processor.py

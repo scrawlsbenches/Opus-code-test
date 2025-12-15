@@ -289,7 +289,7 @@ Search with intent understanding:
 ```python
 # Conceptual query: boost documentation
 results = processor.search_by_intent("what is the 4-layer architecture?")
-# Will prefer: docs/architecture.md over cortical/processor.py
+# Will prefer: docs/architecture.md over cortical/processor/__init__.py
 
 # Implementation query: boost code
 results = processor.search_by_intent("where is PageRank computed?")

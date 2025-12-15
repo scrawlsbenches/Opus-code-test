@@ -31,7 +31,7 @@ Testing is a discovery process. Issues found during dog-fooding are **not distra
 **Example:**
 ```markdown
 - [ ] **Task #X**: Fix passage-level search doc-type boosting
-  - **File**: `/home/user/Opus-code-test/cortical/query.py:find_passages_for_query`
+  - **File**: `/home/user/Opus-code-test/cortical/query/passages.py:find_passages_for_query`
   - **Issue**: Document-level search applies doc-type boosting, but passage-level search does not
   - **Discovered**: Dog-fooding test with code search queries
   - **Priority**: Medium - reduces search quality for mixed-type corpora

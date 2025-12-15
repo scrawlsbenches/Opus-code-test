@@ -86,7 +86,7 @@ Instead of reading entire source files, start with `.ai_meta` files:
 
 ```bash
 # Get structured overview of any module
-cat cortical/processor.py.ai_meta
+cat cortical/processor/__init__.py.ai_meta
 ```
 
 **What metadata provides:**
@@ -118,7 +118,7 @@ python scripts/search_codebase.py "your query here"
 
 ```bash
 # I need to understand how search works
-cat cortical/query.py.ai_meta | head -100    # Get overview
+cat cortical/query/expansion.py.ai_meta | head -100    # Get overview
 python scripts/search_codebase.py "expand query"  # Find specific code
 # Then read specific line ranges as needed
 ```
@@ -131,13 +131,13 @@ python scripts/search_codebase.py "expand query"  # Find specific code
 cortical/
 ├── processor/        # Main orchestrator package - START HERE
 │   │                 # CorticalTextProcessor is the public API (composed from mixins)
-│   ├── __init__.py   # Re-exports CorticalTextProcessor class
-│   ├── core.py       # Initialization, staleness tracking, layer management (~100 lines)
-│   ├── documents.py  # Document processing, add/remove, metadata (~450 lines)
-│   ├── compute.py    # compute_all, PageRank, TF-IDF, clustering (~750 lines)
-│   ├── query_api.py  # Search, expansion, retrieval methods (~550 lines)
-│   ├── introspection.py  # State inspection, fingerprints, summaries (~200 lines)
-│   └── persistence_api.py # Save/load/export methods (~200 lines)
+│   ├── __init__.py   # Re-exports CorticalTextProcessor class (63 lines)
+│   ├── core.py       # Initialization, staleness tracking, layer management (108 lines)
+│   ├── documents.py  # Document processing, add/remove, metadata (454 lines)
+│   ├── compute.py    # compute_all, PageRank, TF-IDF, clustering (1,033 lines)
+│   ├── query_api.py  # Search, expansion, retrieval methods (699 lines)
+│   ├── introspection.py  # State inspection, fingerprints, summaries (217 lines)
+│   └── persistence_api.py # Save/load/export methods (243 lines)
 ├── query/            # Search, retrieval, query expansion (split into 8 modules)
 │   ├── __init__.py   # Re-exports public API
 │   ├── expansion.py  # Query expansion
@@ -545,7 +545,7 @@ Key defaults to know:
 3. **Write docstrings** - Google style with Args/Returns sections
 4. **Update staleness tracking** if adding new computation:
    ```python
-   # In processor.py, add constant:
+   # In processor/core.py, add constant:
    COMP_YOUR_FEATURE = 'your_feature'
    # Mark stale in _mark_all_stale()
    # Mark fresh after computation
@@ -746,8 +746,9 @@ coverage run -m pytest tests/
        return {'result': ..., 'stats': ...}
    ```
 
-2. Add wrapper method to `CorticalTextProcessor` in `processor.py`:
+2. Add wrapper method to appropriate mixin in `processor/` package:
    ```python
+   # In processor/compute.py (ComputeMixin)
    def compute_your_analysis(self, **kwargs) -> Dict[str, Any]:
        """Wrapper with docstring."""
        return compute_your_analysis(self.layers, **kwargs)
@@ -757,10 +758,10 @@ coverage run -m pytest tests/
 
 ### Adding a New Query Function
 
-1. Add to `query.py` following existing patterns
+1. Add to `query/` package following existing patterns
 2. Use `get_expanded_query_terms()` helper for query expansion
 3. Use `layer.get_by_id()` for O(1) lookups, not iteration
-4. Add wrapper to `processor.py`
+4. Add wrapper to `processor/query_api.py` (QueryMixin)
 5. Add tests in `tests/test_processor.py`
 
 ### Modifying Minicolumn Structure
@@ -1260,9 +1261,9 @@ See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
 
 ## File Quick Links
 
-- **Main API**: `cortical/processor.py` - `CorticalTextProcessor` class
+- **Main API**: `cortical/processor/` package - `CorticalTextProcessor` class (mixin-based composition)
 - **Graph algorithms**: `cortical/analysis.py` - PageRank, TF-IDF, clustering
-- **Search**: `cortical/query.py` - query expansion, document retrieval
+- **Search**: `cortical/query/` package - query expansion, document retrieval (8 modules)
 - **Data structures**: `cortical/minicolumn.py` - `Minicolumn`, `Edge`
 - **Configuration**: `cortical/config.py` - `CorticalConfig` dataclass
 - **Tests**: `tests/test_processor.py` - most comprehensive test file
