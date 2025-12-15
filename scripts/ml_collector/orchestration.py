@@ -26,10 +26,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 
-from .config import ML_DATA_DIR
+from .config import ML_DATA_DIR, TRACKED_DIR
 
 
 logger = logging.getLogger(__name__)
+
+
+# Git-tracked JSONL file for orchestration (append-only, git-friendly)
+ORCHESTRATION_LITE_FILE = TRACKED_DIR / "orchestration.jsonl"
 
 
 # Storage directory for extracted orchestration data
@@ -457,10 +461,61 @@ def save_orchestration(
     return filepath
 
 
+def save_orchestration_lite(extraction: ExtractedOrchestration) -> Optional[Path]:
+    """
+    Save orchestration data to git-tracked JSONL file (append-only).
+
+    Creates a lightweight, single-line JSON entry suitable for git tracking.
+    Skips if no orchestration was detected.
+
+    Args:
+        extraction: ExtractedOrchestration object
+
+    Returns:
+        Path to JSONL file, or None if nothing saved
+    """
+    if not extraction.orchestration_detected:
+        return None
+
+    TRACKED_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Create lightweight record (flatten for JSONL)
+    lite_record = {
+        "session_id": extraction.parent_session_id,
+        "extracted_at": extraction.extracted_at,
+        "total_sub_agents": extraction.total_sub_agents,
+        "batch_count": len(extraction.batches),
+        "models_used": extraction.models_used,
+        "total_tools_used": extraction.total_tools_used,
+        "unique_tools": extraction.unique_tools,
+        "total_duration_ms": extraction.total_duration_ms,
+        "success_rate": extraction.success_rate,
+        # Flatten batch info
+        "batches": [
+            {
+                "execution_type": b.execution_type,
+                "agent_count": len(b.agents),
+                "duration_ms": b.duration_ms,
+                "all_succeeded": b.all_succeeded,
+                "agent_ids": [a.agent_id for a in b.agents],
+            }
+            for b in extraction.batches
+        ]
+    }
+
+    # Append to JSONL file
+    with open(ORCHESTRATION_LITE_FILE, 'a') as f:
+        f.write(json.dumps(lite_record) + '\n')
+
+    logger.info(f"Appended orchestration to {ORCHESTRATION_LITE_FILE}")
+    return ORCHESTRATION_LITE_FILE
+
+
 def extract_and_save(
     project_dir: Path,
     output_dir: Optional[Path] = None,
-    parent_session_id: Optional[str] = None
+    parent_session_id: Optional[str] = None,
+    save_lite: bool = True
 ) -> Tuple[ExtractedOrchestration, Optional[Path]]:
     """
     Extract orchestration from directory and save if data found.
@@ -469,6 +524,7 @@ def extract_and_save(
         project_dir: Path to Claude project transcript directory
         output_dir: Output directory for saved data
         parent_session_id: Optional session ID to filter by
+        save_lite: Also save to git-tracked JSONL file (default True)
 
     Returns:
         Tuple of (ExtractedOrchestration, path_to_saved_file or None)
@@ -477,6 +533,9 @@ def extract_and_save(
 
     if extraction.orchestration_detected:
         saved_path = save_orchestration(extraction, output_dir)
+        # Also save lightweight version for git tracking
+        if save_lite:
+            save_orchestration_lite(extraction)
         return extraction, saved_path
 
     return extraction, None

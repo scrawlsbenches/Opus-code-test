@@ -27,11 +27,11 @@ from .commit import (
 )
 from .transcript import parse_transcript_jsonl, process_transcript
 from .orchestration import (
-    extract_orchestration_from_directory, save_orchestration,
+    extract_orchestration_from_directory, save_orchestration, save_orchestration_lite,
     extract_and_save, print_orchestration_summary,
     SubAgentExecution, OrchestrationBatch, ExtractedOrchestration,
     find_agent_transcripts, parse_agent_transcript, detect_batches,
-    ORCHESTRATION_DIR
+    ORCHESTRATION_DIR, ORCHESTRATION_LITE_FILE
 )
 from .export import export_data
 from .stats import count_data, print_stats, estimate_project_size
@@ -61,11 +61,11 @@ __all__ = [
     # Transcript
     'parse_transcript_jsonl', 'process_transcript',
     # Orchestration
-    'extract_orchestration_from_directory', 'save_orchestration',
+    'extract_orchestration_from_directory', 'save_orchestration', 'save_orchestration_lite',
     'extract_and_save', 'print_orchestration_summary',
     'SubAgentExecution', 'OrchestrationBatch', 'ExtractedOrchestration',
     'find_agent_transcripts', 'parse_agent_transcript', 'detect_batches',
-    'ORCHESTRATION_DIR',
+    'ORCHESTRATION_DIR', 'ORCHESTRATION_LITE_FILE',
     # Export
     'export_data',
     # Stats

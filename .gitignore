@@ -95,7 +95,7 @@ cortical/proto/__pycache__/
 
 # ML training data - tiered sharing strategy
 # TRACKED IN GIT (small, shareable):
-#   - .git-ml/tracked/       - JSONL files (commits.jsonl, sessions.jsonl)
+#   - .git-ml/tracked/       - JSONL files (commits.jsonl, sessions.jsonl, orchestration.jsonl)
 #   - .git-ml/shared/        - Aggregated patterns
 #   - .git-ml/commits-lite/  - Legacy individual files (being migrated)
 # LOCAL ONLY (large or sensitive):
@@ -104,6 +104,7 @@ cortical/proto/__pycache__/
 #   - .git-ml/sessions/      - Full session data
 #   - .git-ml/actions/       - Tool usage
 #   - .git-ml/github/        - PR/Issue data (contains discussions)
+#   - .git-ml/orchestration/ - Individual orchestration files (use tracked/orchestration.jsonl)
 .git-ml/commits/
 .git-ml/chats/
 .git-ml/sessions/

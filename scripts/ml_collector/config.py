@@ -27,6 +27,7 @@ CURRENT_SESSION_FILE = ML_DATA_DIR / "current_session.json"
 TRACKED_DIR = ML_DATA_DIR / "tracked"           # Directory for git-tracked data
 COMMITS_LITE_FILE = TRACKED_DIR / "commits.jsonl"   # Commit metadata (one per line)
 SESSIONS_LITE_FILE = TRACKED_DIR / "sessions.jsonl" # Session summaries (one per line)
+ORCHESTRATION_LITE_FILE = TRACKED_DIR / "orchestration.jsonl"  # Sub-agent orchestration data
 
 # Training milestones
 MILESTONES = {
