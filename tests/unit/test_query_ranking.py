@@ -1112,3 +1112,490 @@ class TestMultiStageRank:
         assert stage_scores['doc_score'] > 0
         assert stage_scores['concept_score'] > 0
         assert final_score > 0
+
+
+# =============================================================================
+# ADDITIONAL EDGE CASES AND ROBUSTNESS TESTS
+# =============================================================================
+
+
+class TestGetDocTypeBoostEdgeCases:
+    """Additional edge cases for get_doc_type_boost()."""
+
+    def test_test_in_middle_of_filename(self):
+        """Test file with 'test' in middle of name gets test boost."""
+        result = get_doc_type_boost("src/my_test_utils.py")
+        assert result == DOC_TYPE_BOOSTS['test']
+
+    def test_test_in_uppercase(self):
+        """Test detection is case-insensitive."""
+        result = get_doc_type_boost("src/TestModule.py")
+        assert result == DOC_TYPE_BOOSTS['test']
+
+    def test_docs_folder_with_subdirectory(self):
+        """docs/ folder with subdirectory gets docs boost."""
+        result = get_doc_type_boost("docs/api/reference.md")
+        assert result == DOC_TYPE_BOOSTS['docs']
+
+    def test_markdown_in_subdirectory(self):
+        """Markdown in non-docs subdirectory gets root_docs boost."""
+        result = get_doc_type_boost("examples/tutorial.md")
+        assert result == DOC_TYPE_BOOSTS['root_docs']
+
+    def test_empty_doc_id(self):
+        """Empty doc_id gets default code boost."""
+        result = get_doc_type_boost("")
+        assert result == DOC_TYPE_BOOSTS['code']
+
+    def test_metadata_with_empty_dict(self):
+        """Empty metadata dict falls back to path inference."""
+        result = get_doc_type_boost("tests/test.py", doc_metadata={})
+        assert result == DOC_TYPE_BOOSTS['test']
+
+    def test_custom_boosts_with_missing_type(self):
+        """Custom boosts without the inferred type falls back to 1.0."""
+        custom = {"other_type": 2.0}  # Missing 'code' type
+        result = get_doc_type_boost("src/module.py", custom_boosts=custom)
+        assert result == 1.0
+
+
+class TestIsConceptualQueryEdgeCases:
+    """Additional edge cases for is_conceptual_query()."""
+
+    def test_only_whitespace(self):
+        """Whitespace-only query is not conceptual."""
+        assert is_conceptual_query("   ") is False
+
+    def test_multiple_prefixes(self):
+        """Query with multiple conceptual prefixes gets extra boost."""
+        # "what is" gives +2, "explain" gives +2, = 4 conceptual score
+        result = is_conceptual_query("what is explain")
+        assert result is True
+
+    def test_prefix_in_middle(self):
+        """Conceptual prefix in middle doesn't get bonus."""
+        # Only counts if query starts with prefix
+        result = is_conceptual_query("find what is this")
+        # Should still be conceptual due to "what is" keyword
+        assert result is True
+
+    def test_tie_score(self):
+        """Equal conceptual and implementation scores return False."""
+        # "what" (conceptual) vs "where" (implementation) = 1-1
+        result = is_conceptual_query("what where")
+        assert result is False
+
+
+class TestApplyDocTypeBoostEdgeCases:
+    """Additional edge cases for apply_doc_type_boost()."""
+
+    def test_zero_score_preserved(self):
+        """Zero scores remain zero after boosting."""
+        results = [("docs/guide.md", 0.0)]
+        boosted = apply_doc_type_boost(results)
+        assert boosted[0][1] == 0.0
+
+    def test_negative_score_boosted(self):
+        """Negative scores (if they occur) are boosted correctly."""
+        results = [("docs/guide.md", -5.0)]
+        boosted = apply_doc_type_boost(results)
+        assert boosted[0][1] == -5.0 * DOC_TYPE_BOOSTS['docs']
+
+    def test_very_large_score(self):
+        """Very large scores don't cause overflow."""
+        results = [("docs/guide.md", 1e10)]
+        boosted = apply_doc_type_boost(results)
+        assert boosted[0][1] == 1e10 * DOC_TYPE_BOOSTS['docs']
+
+
+class TestFindRelevantConceptsEdgeCases:
+    """Additional edge cases for find_relevant_concepts()."""
+
+    def test_concept_with_no_documents(self):
+        """Concept with no documents returns empty doc set."""
+        term = MockMinicolumn(content="term", id="L0_term", layer=0)
+        concept = MockMinicolumn(
+            content="concept",
+            id="L2_concept",
+            layer=2,
+            pagerank=0.8,
+            feedforward_sources={"L0_term"},
+            document_ids=set()  # Empty document set
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        layers[MockLayers.CONCEPTS] = MockHierarchicalLayer([concept], level=2)
+
+        result = find_relevant_concepts({"term": 1.0}, layers, top_n=5)
+
+        assert len(result) == 1
+        assert result[0][2] == set()  # Empty document set
+
+    def test_concept_without_term_in_sources(self):
+        """Concepts not containing query terms are not returned."""
+        term = MockMinicolumn(content="term", id="L0_term", layer=0)
+        concept = MockMinicolumn(
+            content="unrelated",
+            id="L2_unrelated",
+            layer=2,
+            pagerank=0.9,
+            feedforward_sources={"L0_other"},  # Doesn't contain L0_term
+            document_ids={"doc1"}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        layers[MockLayers.CONCEPTS] = MockHierarchicalLayer([concept], level=2)
+
+        result = find_relevant_concepts({"term": 1.0}, layers, top_n=5)
+
+        assert result == []  # No concepts match
+
+    def test_zero_pagerank_concept(self):
+        """Concept with zero PageRank gets zero score."""
+        term = MockMinicolumn(content="term", id="L0_term", layer=0)
+        concept = MockMinicolumn(
+            content="concept",
+            id="L2_concept",
+            layer=2,
+            pagerank=0.0,  # Zero PageRank
+            feedforward_sources={"L0_term"}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        layers[MockLayers.CONCEPTS] = MockHierarchicalLayer([concept], level=2)
+
+        result = find_relevant_concepts({"term": 1.0}, layers, top_n=5)
+
+        assert len(result) == 1
+        assert result[0][1] == 0.0  # Zero score
+
+
+class TestMultiStageRankDocumentsEdgeCases:
+    """Additional edge cases for multi_stage_rank_documents()."""
+
+    @patch('cortical.query.ranking.get_expanded_query_terms')
+    def test_zero_concept_boost(self, mock_expand):
+        """concept_boost=0.0 uses only TF-IDF."""
+        mock_expand.return_value = {"term": 1.0}
+
+        term = MockMinicolumn(
+            content="term",
+            id="L0_term",
+            layer=0,
+            tfidf=5.0,
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 5.0}
+        )
+
+        concept = MockMinicolumn(
+            content="concept",
+            id="L2_concept",
+            layer=2,
+            pagerank=1.0,
+            feedforward_sources={"L0_term"},
+            document_ids={"doc1"}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        layers[MockLayers.CONCEPTS] = MockHierarchicalLayer([concept], level=2)
+        tokenizer = Mock()
+
+        result = multi_stage_rank_documents(
+            "query", layers, tokenizer, concept_boost=0.0, top_n=5
+        )
+
+        assert len(result) == 1
+        _, score, stage_scores = result[0]
+        # With concept_boost=0.0, score should equal tfidf_score
+        assert score == stage_scores['tfidf_score']
+
+    @patch('cortical.query.ranking.get_expanded_query_terms')
+    def test_full_concept_boost(self, mock_expand):
+        """concept_boost=1.0 uses only concept score."""
+        mock_expand.return_value = {"term": 1.0}
+
+        term = MockMinicolumn(
+            content="term",
+            id="L0_term",
+            layer=0,
+            tfidf=5.0,
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 5.0}
+        )
+
+        concept = MockMinicolumn(
+            content="concept",
+            id="L2_concept",
+            layer=2,
+            pagerank=1.0,
+            feedforward_sources={"L0_term"},
+            document_ids={"doc1"}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        layers[MockLayers.CONCEPTS] = MockHierarchicalLayer([concept], level=2)
+        tokenizer = Mock()
+
+        result = multi_stage_rank_documents(
+            "query", layers, tokenizer, concept_boost=1.0, top_n=5
+        )
+
+        assert len(result) == 1
+        _, score, stage_scores = result[0]
+        # With concept_boost=1.0, score should equal concept_score
+        assert score == stage_scores['concept_score']
+
+    @patch('cortical.query.ranking.get_expanded_query_terms')
+    def test_doc_only_in_concepts_not_tfidf(self, mock_expand):
+        """Document in concept but not matching TF-IDF terms."""
+        mock_expand.return_value = {"term": 1.0}
+
+        term = MockMinicolumn(
+            content="term",
+            id="L0_term",
+            layer=0,
+            tfidf=1.0,
+            document_ids={"doc1"},  # Only doc1 has the term
+            tfidf_per_doc={"doc1": 1.0}
+        )
+
+        concept = MockMinicolumn(
+            content="concept",
+            id="L2_concept",
+            layer=2,
+            pagerank=1.0,
+            feedforward_sources={"L0_term"},
+            document_ids={"doc1", "doc2"}  # doc2 in concept but not in term
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        layers[MockLayers.CONCEPTS] = MockHierarchicalLayer([concept], level=2)
+        tokenizer = Mock()
+
+        result = multi_stage_rank_documents("query", layers, tokenizer, top_n=10)
+
+        # Should return both documents
+        assert len(result) == 2
+        doc_ids = {r[0] for r in result}
+        assert doc_ids == {"doc1", "doc2"}
+
+
+class TestMultiStageRankEdgeCases:
+    """Additional edge cases for multi_stage_rank()."""
+
+    @patch('cortical.query.passages.score_chunk')
+    @patch('cortical.query.passages.create_chunks')
+    @patch('cortical.query.ranking.get_expanded_query_terms')
+    def test_empty_documents_dict(self, mock_expand, mock_chunks, mock_score):
+        """Empty documents dict returns empty results."""
+        mock_expand.return_value = {"term": 1.0}
+
+        term = MockMinicolumn(
+            content="term",
+            id="L0_term",
+            layer=0,
+            tfidf=1.0,
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 1.0}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        tokenizer = Mock()
+        documents = {}  # Empty
+
+        result = multi_stage_rank("query", layers, tokenizer, documents)
+
+        assert result == []
+        # create_chunks should never be called
+        mock_chunks.assert_not_called()
+
+    @patch('cortical.query.passages.score_chunk')
+    @patch('cortical.query.passages.create_chunks')
+    @patch('cortical.query.ranking.get_expanded_query_terms')
+    def test_zero_chunk_score(self, mock_expand, mock_chunks, mock_score):
+        """Chunk with zero score is still included."""
+        mock_expand.return_value = {"term": 1.0}
+        mock_chunks.return_value = [("irrelevant chunk", 0, 10)]
+        mock_score.return_value = 0.0  # Zero chunk score
+
+        term = MockMinicolumn(
+            content="term",
+            id="L0_term",
+            layer=0,
+            tfidf=1.0,
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 1.0}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        tokenizer = Mock()
+        documents = {"doc1": "text"}
+
+        result = multi_stage_rank("query", layers, tokenizer, documents)
+
+        assert len(result) == 1
+        _, _, _, _, final_score, stage_scores = result[0]
+        assert stage_scores['chunk_score'] == 0.0
+        # Final score should still be > 0 due to doc and concept scores
+        assert final_score >= 0.0
+
+    @patch('cortical.query.passages.score_chunk')
+    @patch('cortical.query.passages.create_chunks')
+    @patch('cortical.query.ranking.get_expanded_query_terms')
+    def test_no_chunks_created(self, mock_expand, mock_chunks, mock_score):
+        """Document with no chunks returns no results."""
+        mock_expand.return_value = {"term": 1.0}
+        mock_chunks.return_value = []  # No chunks
+
+        term = MockMinicolumn(
+            content="term",
+            id="L0_term",
+            layer=0,
+            tfidf=1.0,
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 1.0}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        tokenizer = Mock()
+        documents = {"doc1": ""}  # Empty document
+
+        result = multi_stage_rank("query", layers, tokenizer, documents)
+
+        assert result == []
+
+    @patch('cortical.query.passages.score_chunk')
+    @patch('cortical.query.passages.create_chunks')
+    @patch('cortical.query.ranking.get_expanded_query_terms')
+    def test_multiple_chunks_per_document(self, mock_expand, mock_chunks, mock_score):
+        """Multiple chunks from same document all included."""
+        mock_expand.return_value = {"term": 1.0}
+        mock_chunks.return_value = [
+            ("chunk1", 0, 10),
+            ("chunk2", 10, 20),
+            ("chunk3", 20, 30)
+        ]
+        mock_score.side_effect = [5.0, 3.0, 1.0]  # Different scores
+
+        term = MockMinicolumn(
+            content="term",
+            id="L0_term",
+            layer=0,
+            tfidf=1.0,
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 1.0}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        tokenizer = Mock()
+        documents = {"doc1": "text " * 50}
+
+        result = multi_stage_rank("query", layers, tokenizer, documents, top_n=10)
+
+        # All chunks should be included (up to top_n)
+        assert len(result) == 3
+        # Should be sorted by final score
+        assert result[0][4] >= result[1][4] >= result[2][4]
+
+    @patch('cortical.query.passages.score_chunk')
+    @patch('cortical.query.passages.create_chunks')
+    @patch('cortical.query.ranking.get_expanded_query_terms')
+    def test_normalization_with_zero_max_concept_score(self, mock_expand, mock_chunks, mock_score):
+        """Handles normalization when max concept score is zero."""
+        mock_expand.return_value = {"term": 1.0}
+        mock_chunks.return_value = [("chunk", 0, 10)]
+        mock_score.return_value = 1.0
+
+        # Create term with no concept layer
+        term = MockMinicolumn(
+            content="term",
+            id="L0_term",
+            layer=0,
+            tfidf=1.0,
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 1.0}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        # No concepts layer - concept scores will be 0
+        tokenizer = Mock()
+        documents = {"doc1": "text"}
+
+        result = multi_stage_rank("query", layers, tokenizer, documents)
+
+        assert len(result) == 1
+        # Should not crash with division by zero
+        _, _, _, _, final_score, stage_scores = result[0]
+        assert stage_scores['concept_score'] == 0.0
+        assert final_score > 0  # Should still have score from chunks and TF-IDF
+
+    @patch('cortical.query.passages.score_chunk')
+    @patch('cortical.query.passages.create_chunks')
+    @patch('cortical.query.ranking.get_expanded_query_terms')
+    def test_expanded_term_not_in_layer(self, mock_expand, mock_chunks, mock_score):
+        """Handles expanded query terms that don't exist in layer0."""
+        # Expansion returns terms, but only some exist in layer0
+        mock_expand.return_value = {"term": 1.0, "nonexistent": 0.5}
+        mock_chunks.return_value = [("chunk", 0, 10)]
+        mock_score.return_value = 1.0
+
+        # Only create "term", not "nonexistent"
+        term = MockMinicolumn(
+            content="term",
+            id="L0_term",
+            layer=0,
+            tfidf=1.0,
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 1.0}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        tokenizer = Mock()
+        documents = {"doc1": "text"}
+
+        # Should not crash when "nonexistent" term is not found
+        result = multi_stage_rank("query", layers, tokenizer, documents)
+
+        assert len(result) == 1  # Still returns results from "term"
+
+
+class TestMultiStageRankDocumentsAdditional:
+    """Additional edge cases for multi_stage_rank_documents()."""
+
+    @patch('cortical.query.ranking.get_expanded_query_terms')
+    def test_expanded_term_not_in_layer(self, mock_expand):
+        """Handles expanded query terms that don't exist in layer0."""
+        # Expansion returns terms that don't all exist
+        mock_expand.return_value = {"term": 1.0, "nonexistent": 0.8}
+
+        # Only create "term", not "nonexistent"
+        term = MockMinicolumn(
+            content="term",
+            id="L0_term",
+            layer=0,
+            tfidf=2.0,
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 2.0}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term], level=0)
+        tokenizer = Mock()
+
+        # Should not crash when "nonexistent" term is not found
+        result = multi_stage_rank_documents("query", layers, tokenizer, top_n=5)
+
+        assert len(result) == 1  # Still returns results from "term"
+        assert result[0][0] == "doc1"
