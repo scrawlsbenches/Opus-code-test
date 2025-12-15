@@ -1207,9 +1207,47 @@ export ML_COLLECTION_ENABLED=0
 # Stats and validation still work when disabled
 ```
 
+### Automatic Session Capture
+
+**Zero-friction capture via Claude Code Stop hook:**
+
+The ML data collector automatically captures complete session transcripts when Claude Code sessions end. This eliminates manual logging entirely.
+
+**Setup:**
+```bash
+# Add to ~/.claude/settings.json or project .claude/settings.json:
+{
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "/path/to/Opus-code-test/scripts/ml-session-capture-hook.sh"
+      }
+    ]
+  }
+}
+```
+
+**What gets captured automatically:**
+- Full query/response pairs from the transcript
+- All tool uses (Task, Read, Edit, Bash, Grep, etc.)
+- Files referenced and modified
+- Thinking blocks (if present)
+- Session linkage to commits
+
+**Process transcript manually:**
+```bash
+# Process a specific transcript file
+python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl
+
+# Dry run (show what would be captured without saving)
+python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl --dry-run --verbose
+```
+
 ### Integration
 
-Data collection is automatic via git hooks:
+Data collection is automatic via hooks:
+- **Stop hook**: Captures full session transcripts with all exchanges (recommended)
 - **post-commit**: Captures commit metadata with diff hunks
 - **pre-push**: Reports collection stats
 
