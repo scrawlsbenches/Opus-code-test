@@ -827,9 +827,15 @@ def compare_results(before_path: str, after_path: str):
 # MAIN
 # ============================================================================
 
-def run_all_benchmarks(output_path: Optional[str] = None):
+def run_all_benchmarks(output_path: Optional[str] = None, algorithm: str = None):
     """Run all benchmarks and optionally save results."""
-    suite = BenchmarkSuite(algorithm='tfidf')
+    # Detect algorithm from config if not specified
+    if algorithm is None:
+        from cortical.config import CorticalConfig
+        config = CorticalConfig()
+        algorithm = config.scoring_algorithm
+
+    suite = BenchmarkSuite(algorithm=algorithm)
 
     print("\n" + "=" * 60)
     print("SCORING ALGORITHM BENCHMARK SUITE")
@@ -882,6 +888,8 @@ def main():
                        help='Compare two benchmark result files')
     parser.add_argument('--corpus-sizes', type=int, nargs='+', default=[25, 50, 100, 200],
                        help='Corpus sizes to test')
+    parser.add_argument('--algorithm', choices=['tfidf', 'bm25'],
+                       help='Algorithm to benchmark (default: from config)')
 
     args = parser.parse_args()
 
@@ -889,10 +897,17 @@ def main():
         compare_results(args.compare[0], args.compare[1])
         return
 
+    # Detect algorithm from config if not specified
+    algorithm = args.algorithm
+    if algorithm is None:
+        from cortical.config import CorticalConfig
+        config = CorticalConfig()
+        algorithm = config.scoring_algorithm
+
     if args.benchmark == 'all':
-        run_all_benchmarks(args.output)
+        run_all_benchmarks(args.output, algorithm=algorithm)
     else:
-        suite = BenchmarkSuite(algorithm='tfidf')
+        suite = BenchmarkSuite(algorithm=algorithm)
 
         if args.benchmark == 'compute':
             benchmark_compute(suite, args.corpus_sizes)

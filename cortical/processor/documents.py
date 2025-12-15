@@ -62,6 +62,12 @@ class DocumentsMixin:
         tokens = self.tokenizer.tokenize(content)
         bigrams = self.tokenizer.extract_ngrams(tokens, n=2)
 
+        # Track document length for BM25
+        self.doc_lengths[doc_id] = len(tokens)
+        # Update average document length
+        if self.doc_lengths:
+            self.avg_doc_length = sum(self.doc_lengths.values()) / len(self.doc_lengths)
+
         layer0 = self.layers[CorticalLayer.TOKENS]
         layer1 = self.layers[CorticalLayer.BIGRAMS]
         layer3 = self.layers[CorticalLayer.DOCUMENTS]

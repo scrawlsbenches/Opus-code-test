@@ -49,7 +49,9 @@ class PersistenceMixin:
         metadata = {
             'has_embeddings': bool(self.embeddings),
             'has_relations': bool(self.semantic_relations),
-            'config': self.config.to_dict()
+            'config': self.config.to_dict(),
+            'doc_lengths': self.doc_lengths,
+            'avg_doc_length': self.avg_doc_length
         }
         persistence.save_processor(
             filepath,
@@ -102,6 +104,22 @@ class PersistenceMixin:
         processor.document_metadata = document_metadata
         processor.embeddings = embeddings
         processor.semantic_relations = semantic_relations
+
+        # Restore BM25 document length data if available
+        if metadata:
+            processor.doc_lengths = metadata.get('doc_lengths', {})
+            processor.avg_doc_length = metadata.get('avg_doc_length', 0.0)
+
+        # Recompute doc_lengths if not in metadata (backward compatibility)
+        if not processor.doc_lengths and processor.documents:
+            from ..tokenizer import Tokenizer
+            tokenizer = processor.tokenizer if hasattr(processor, 'tokenizer') else Tokenizer()
+            for doc_id, content in processor.documents.items():
+                tokens = tokenizer.tokenize(content)
+                processor.doc_lengths[doc_id] = len(tokens)
+            if processor.doc_lengths:
+                processor.avg_doc_length = sum(processor.doc_lengths.values()) / len(processor.doc_lengths)
+
         return processor
 
     def save_json(self, state_dir: str, force: bool = False, verbose: bool = True) -> Dict[str, bool]:

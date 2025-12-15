@@ -61,6 +61,9 @@ class CoreMixin:
         self.document_metadata: Dict[str, Dict[str, Any]] = {}
         self.embeddings: Dict[str, list] = {}
         self.semantic_relations: list = []
+        # Document length tracking for BM25
+        self.doc_lengths: Dict[str, int] = {}  # doc_id -> token count
+        self.avg_doc_length: float = 0.0  # Average document length in tokens
         # Track which computations are stale and need recomputation
         self._stale_computations: set = set()
         # LRU cache for query expansion results

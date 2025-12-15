@@ -660,9 +660,64 @@ class ComputeMixin:
 
     @timed("compute_tfidf")
     def compute_tfidf(self, verbose: bool = True) -> None:
-        analysis.compute_tfidf(self.layers, self.documents)
+        """
+        Compute document relevance scores using the configured algorithm.
+
+        Uses the scoring_algorithm from config ('tfidf' or 'bm25').
+        BM25 provides improved relevance through term frequency saturation
+        and document length normalization.
+
+        Args:
+            verbose: Print progress messages
+        """
+        if self.config.scoring_algorithm == 'bm25':
+            analysis.compute_bm25(
+                self.layers,
+                self.documents,
+                self.doc_lengths,
+                self.avg_doc_length,
+                k1=self.config.bm25_k1,
+                b=self.config.bm25_b
+            )
+            if verbose:
+                logger.info(f"Computed BM25 scores (k1={self.config.bm25_k1}, b={self.config.bm25_b})")
+        else:
+            analysis.compute_tfidf(self.layers, self.documents)
+            if verbose:
+                logger.info("Computed TF-IDF scores")
+
+    @timed("compute_bm25")
+    def compute_bm25(
+        self,
+        k1: float = None,
+        b: float = None,
+        verbose: bool = True
+    ) -> None:
+        """
+        Compute BM25 scores for document relevance ranking.
+
+        BM25 (Best Match 25) improves on TF-IDF by:
+        - Term frequency saturation: diminishing returns for repeated terms
+        - Document length normalization: fair comparison across lengths
+
+        Args:
+            k1: Term frequency saturation (0-3). Default from config (1.2)
+            b: Length normalization (0-1). Default from config (0.75)
+            verbose: Print progress messages
+        """
+        k1 = k1 if k1 is not None else self.config.bm25_k1
+        b = b if b is not None else self.config.bm25_b
+
+        analysis.compute_bm25(
+            self.layers,
+            self.documents,
+            self.doc_lengths,
+            self.avg_doc_length,
+            k1=k1,
+            b=b
+        )
         if verbose:
-            logger.info("Computed TF-IDF scores")
+            logger.info(f"Computed BM25 scores (k1={k1}, b={b})")
 
     @timed("compute_document_connections")
     def compute_document_connections(self, min_shared_terms: int = 3, verbose: bool = True) -> None:
