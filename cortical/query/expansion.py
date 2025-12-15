@@ -91,7 +91,8 @@ def expand_query(
     use_variants: bool = True,
     use_code_concepts: bool = False,
     filter_code_stop_words: bool = False,
-    tfidf_weight: float = 0.7
+    tfidf_weight: float = 0.7,
+    max_expansion_weight: float = 2.0
 ) -> Dict[str, float]:
     """
     Expand a query using lateral connections and concept clusters.
@@ -117,6 +118,10 @@ def expand_query(
                       Range [0.0, 1.0]. Default 0.7 favors distinctive terms (TF-IDF).
                       0.0 = use only PageRank (well-connected terms)
                       1.0 = use only TF-IDF (distinctive terms)
+        max_expansion_weight: Maximum weight for expanded terms relative to original
+                              terms. Prevents single expanded terms from dominating
+                              search results. Default 2.0 means expanded terms can
+                              have at most 2x the weight of original terms.
 
     Returns:
         Dict mapping terms to weights (original terms get weight 1.0)
@@ -209,6 +214,16 @@ def expand_query(
         candidate_expansions = {
             term: score for term, score in candidate_expansions.items()
             if term not in CODE_EXPANSION_STOP_WORDS
+        }
+
+    # Cap expansion weights to prevent single terms from dominating
+    # Max weight is relative to the highest weight of original terms
+    if candidate_expansions and max_expansion_weight > 0:
+        max_original_weight = max(expanded.values()) if expanded else 1.0
+        weight_cap = max_original_weight * max_expansion_weight
+        candidate_expansions = {
+            term: min(score, weight_cap)
+            for term, score in candidate_expansions.items()
         }
 
     # Select top expansions

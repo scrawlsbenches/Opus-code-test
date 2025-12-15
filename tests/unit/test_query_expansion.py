@@ -164,7 +164,8 @@ class TestExpandQuery:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
-        result = expand_query("neural", layers, tokenizer, tfidf_weight=0.0)
+        # Disable capping to test weight calculation in isolation
+        result = expand_query("neural", layers, tokenizer, tfidf_weight=0.0, max_expansion_weight=0)
         # Expected: 10.0 * 0.5 * 0.6 = 3.0
         assert result["networks"] == pytest.approx(3.0, rel=0.01)
 
@@ -400,7 +401,8 @@ class TestExpandQuery:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
-        result = expand_query("term1 term2", layers, tokenizer, tfidf_weight=0.0)
+        # Disable capping to test max weight selection in isolation
+        result = expand_query("term1 term2", layers, tokenizer, tfidf_weight=0.0, max_expansion_weight=0)
 
         # Target reachable from both term1 (weight 10) and term2 (weight 5)
         # Should use maximum weight path
@@ -1107,7 +1109,8 @@ class TestExpandQueryTFIDFWeighting:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
-        result = expand_query("neural", layers, tokenizer)
+        # Disable capping to test TF-IDF weighting in isolation
+        result = expand_query("neural", layers, tokenizer, max_expansion_weight=0)
 
         # Expected: 10.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6 = 10.0 * (1.05 + 0.24) * 0.6
         #         = 10.0 * 1.29 * 0.6 = 7.74
@@ -1132,7 +1135,8 @@ class TestExpandQueryTFIDFWeighting:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
-        result = expand_query("neural", layers, tokenizer, tfidf_weight=0.0)
+        # Disable capping to test TF-IDF weighting in isolation
+        result = expand_query("neural", layers, tokenizer, tfidf_weight=0.0, max_expansion_weight=0)
 
         # Expected: 10.0 * 0.8 * 0.6 = 4.8 (PageRank only)
         expected_score = 10.0 * 0.8 * 0.6
@@ -1156,7 +1160,8 @@ class TestExpandQueryTFIDFWeighting:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
-        result = expand_query("neural", layers, tokenizer, tfidf_weight=1.0)
+        # Disable capping to test TF-IDF weighting in isolation
+        result = expand_query("neural", layers, tokenizer, tfidf_weight=1.0, max_expansion_weight=0)
 
         # Expected: 10.0 * 1.5 * 0.6 = 9.0 (TF-IDF only)
         expected_score = 10.0 * 1.5 * 0.6
@@ -1188,14 +1193,15 @@ class TestExpandQueryTFIDFWeighting:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
+        # Disable capping to test TF-IDF weighting in isolation
         # With tfidf_weight=0.0 (PageRank only), "common" should rank higher
-        result_pagerank = expand_query("source", layers, tokenizer, tfidf_weight=0.0)
+        result_pagerank = expand_query("source", layers, tokenizer, tfidf_weight=0.0, max_expansion_weight=0)
         score_common_pr = result_pagerank["common"]
         score_rare_pr = result_pagerank["rare"]
         assert score_common_pr > score_rare_pr, "PageRank should favor 'common'"
 
         # With tfidf_weight=1.0 (TF-IDF only), "rare" should rank higher
-        result_tfidf = expand_query("source", layers, tokenizer, tfidf_weight=1.0)
+        result_tfidf = expand_query("source", layers, tokenizer, tfidf_weight=1.0, max_expansion_weight=0)
         score_common_tfidf = result_tfidf["common"]
         score_rare_tfidf = result_tfidf["rare"]
         assert score_rare_tfidf > score_common_tfidf, "TF-IDF should favor 'rare'"
@@ -1217,7 +1223,8 @@ class TestExpandQueryTFIDFWeighting:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
-        result = expand_query("neural", layers, tokenizer, tfidf_weight=0.5)
+        # Disable capping to test TF-IDF weighting in isolation
+        result = expand_query("neural", layers, tokenizer, tfidf_weight=0.5, max_expansion_weight=0)
 
         # Expected: 10.0 * (1.2 * 0.5 + 0.8 * 0.5) * 0.6 = 10.0 * 1.0 * 0.6 = 6.0
         expected_score = 10.0 * (1.2 * 0.5 + 0.8 * 0.5) * 0.6
@@ -1244,7 +1251,8 @@ class TestExpandQueryTFIDFWeighting:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
-        result = expand_query("source", layers, tokenizer, tfidf_weight=0.8)
+        # Disable capping to test TF-IDF weighting in isolation
+        result = expand_query("source", layers, tokenizer, tfidf_weight=0.8, max_expansion_weight=0)
 
         # Verify all terms are weighted consistently
         # term1: 8.0 * (1.5 * 0.8 + 0.5 * 0.2) * 0.6 = 8.0 * 1.3 * 0.6 = 6.24
@@ -1277,18 +1285,131 @@ class TestExpandQueryTFIDFWeighting:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
+        # Disable capping to test TF-IDF weighting in isolation
         result = expand_query(
             "neural",
             layers,
             tokenizer,
             tfidf_weight=1.0,
-            use_concepts=False
+            use_concepts=False,
+            max_expansion_weight=0
         )
 
         # Should still apply TF-IDF weighting
         expected_score = 10.0 * 1.5 * 0.6
         assert "networks" in result
         assert result["networks"] == pytest.approx(expected_score, rel=0.01)
+
+
+class TestExpandQueryMaxExpansionWeight:
+    """Tests for max_expansion_weight parameter (expansion weight capping)."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_max_expansion_weight_caps_high_scores(self, tokenizer):
+        """max_expansion_weight caps expansion scores to prevent single terms dominating."""
+        # Create a scenario where lateral connection weight is very high
+        col1 = MockMinicolumn(
+            content="management",
+            pagerank=0.5,
+            tfidf=1.0,
+            lateral_connections={"L0_risk": 50.0}  # Very high co-occurrence
+        )
+        col2 = MockMinicolumn(
+            content="risk",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # With default max_expansion_weight=2.0, cap = 1.0 * 2.0 = 2.0
+        result = expand_query("management", layers, tokenizer, max_expansion_weight=2.0)
+
+        # risk score without cap: 50.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6 = 50.0 * 1.29 * 0.6 = 38.7
+        # with cap of 2.0, it should be exactly 2.0
+        assert "risk" in result
+        assert result["risk"] == pytest.approx(2.0, rel=0.01)
+
+    def test_max_expansion_weight_zero_disables_capping(self, tokenizer):
+        """max_expansion_weight=0 disables capping (uses raw scores)."""
+        col1 = MockMinicolumn(
+            content="management",
+            pagerank=0.5,
+            tfidf=1.0,
+            lateral_connections={"L0_risk": 50.0}
+        )
+        col2 = MockMinicolumn(
+            content="risk",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # max_expansion_weight=0 disables capping
+        result = expand_query("management", layers, tokenizer, max_expansion_weight=0)
+
+        # Should get uncapped score: 50.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6 = 38.7
+        expected_score = 50.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6
+        assert "risk" in result
+        assert result["risk"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_max_expansion_weight_does_not_affect_low_scores(self, tokenizer):
+        """Scores below the cap are not affected."""
+        col1 = MockMinicolumn(
+            content="neural",
+            pagerank=0.5,
+            tfidf=1.0,
+            lateral_connections={"L0_networks": 2.0}  # Low co-occurrence
+        )
+        col2 = MockMinicolumn(
+            content="networks",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # With max_expansion_weight=2.0, cap = 1.0 * 2.0 = 2.0
+        result = expand_query("neural", layers, tokenizer, max_expansion_weight=2.0)
+
+        # networks score: 2.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6 = 2.0 * 1.29 * 0.6 = 1.548
+        # This is below cap of 2.0, so should remain unchanged
+        expected_score = 2.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6
+        assert "networks" in result
+        assert result["networks"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_max_expansion_weight_high_value_effectively_disables(self, tokenizer):
+        """Very high max_expansion_weight effectively disables capping."""
+        col1 = MockMinicolumn(
+            content="management",
+            pagerank=0.5,
+            tfidf=1.0,
+            lateral_connections={"L0_risk": 50.0}
+        )
+        col2 = MockMinicolumn(
+            content="risk",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # With very high cap, no expansion should be affected
+        result = expand_query("management", layers, tokenizer, max_expansion_weight=100.0)
+
+        # Should get uncapped score
+        expected_score = 50.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6
+        assert "risk" in result
+        assert result["risk"] == pytest.approx(expected_score, rel=0.01)
 
 
 class TestExpandQueryEdgeCases:
