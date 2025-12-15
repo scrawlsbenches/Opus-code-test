@@ -45,32 +45,40 @@
     {
       "id": "T-20251215-052342-ceac-003",
       "title": "Add tests for query/passages.py to improve coverage from 43% to >80%",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "testing",
-      "description": "",
+      "description": "Added 3 edge case tests achieving 93% coverage",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-15T05:23:42.361308",
-      "updated_at": null,
-      "completed_at": null,
-      "context": {},
-      "retrospective": null
+      "updated_at": "2025-12-15T17:15:00.000000",
+      "completed_at": "2025-12-15T17:15:00.000000",
+      "context": {
+        "final_coverage": "93%",
+        "tests_added": 3,
+        "test_file": "tests/unit/test_query_passages.py"
+      },
+      "retrospective": "Achieved 93% coverage (+50%). Tests cover passage extraction, chunk deduplication, batch operations."
     },
     {
       "id": "T-20251215-052345-ceac-004",
       "title": "Add tests for query/definitions.py to improve coverage from 30% to >80%",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "testing",
-      "description": "",
+      "description": "Added 28 edge case tests achieving 100% coverage",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-15T05:23:45.335215",
-      "updated_at": null,
-      "completed_at": null,
-      "context": {},
-      "retrospective": null
+      "updated_at": "2025-12-15T17:15:00.000000",
+      "completed_at": "2025-12-15T17:15:00.000000",
+      "context": {
+        "final_coverage": "100%",
+        "tests_added": 28,
+        "test_file": "tests/unit/test_query_definitions.py"
+      },
+      "retrospective": "Achieved 100% coverage (+70%). Tests cover pattern matching, boosting logic, test file detection."
     },
     {
       "id": "T-20251215-052354-ceac-005",
@@ -109,17 +117,21 @@
     {
       "id": "T-20251215-052400-ceac-007",
       "title": "Add tests for embeddings.py to improve coverage from 31% to >80%",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "testing",
-      "description": "",
+      "description": "Added 60 tests achieving 99% coverage",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-15T05:24:00.910240",
-      "updated_at": null,
-      "completed_at": null,
-      "context": {},
-      "retrospective": null
+      "updated_at": "2025-12-15T17:15:00.000000",
+      "completed_at": "2025-12-15T17:15:00.000000",
+      "context": {
+        "final_coverage": "99%",
+        "tests_added": 60,
+        "test_file": "tests/unit/test_embeddings_coverage.py"
+      },
+      "retrospective": "Achieved 99% coverage (+68%). Tests cover all embedding methods, edge cases, integration tests."
     },
     {
       "id": "T-20251215-052403-ceac-008",
@@ -218,17 +230,21 @@
     {
       "id": "T-20251215-052434-ceac-014",
       "title": "Add tests for semantics.py to improve coverage from 60% to >80%",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "testing",
-      "description": "",
+      "description": "Added 29 tests achieving 91% coverage",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-15T05:24:34.754429",
-      "updated_at": null,
-      "completed_at": null,
-      "context": {},
-      "retrospective": null
+      "updated_at": "2025-12-15T17:15:00.000000",
+      "completed_at": "2025-12-15T17:15:00.000000",
+      "context": {
+        "final_coverage": "91%",
+        "tests_added": 29,
+        "test_file": "tests/unit/test_semantics_coverage.py"
+      },
+      "retrospective": "Achieved 91% coverage (+31%). Tests cover PMI calculation, retrofitting, pattern extraction."
     },
     {
       "id": "T-20251215-052437-ceac-015",
