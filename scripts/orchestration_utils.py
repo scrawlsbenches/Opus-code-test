@@ -79,16 +79,16 @@ def generate_plan_id() -> str:
     Generate unique orchestration plan ID.
 
     Returns:
-        Plan ID in format OP-YYYYMMDD-HHMMSS-XXXX
+        Plan ID in format OP-YYYYMMDD-HHMMSS-XXXXXXXX
 
     Example:
         >>> generate_plan_id()
-        'OP-20251215-143052-a1b2'
+        'OP-20251215-143052-a1b2c3d4'
     """
     now = datetime.now()
     date_str = now.strftime("%Y%m%d")
     time_str = now.strftime("%H%M%S")
-    suffix = uuid.uuid4().hex[:4]
+    suffix = uuid.uuid4().hex[:8]  # 8 chars = 4 billion possibilities
     return f"OP-{date_str}-{time_str}-{suffix}"
 
 
@@ -97,16 +97,16 @@ def generate_execution_id() -> str:
     Generate unique execution ID.
 
     Returns:
-        Execution ID in format EX-YYYYMMDD-HHMMSS-XXXX
+        Execution ID in format EX-YYYYMMDD-HHMMSS-XXXXXXXX
 
     Example:
         >>> generate_execution_id()
-        'EX-20251215-143100-b2c3'
+        'EX-20251215-143100-b2c3d4e5'
     """
     now = datetime.now()
     date_str = now.strftime("%Y%m%d")
     time_str = now.strftime("%H%M%S")
-    suffix = uuid.uuid4().hex[:4]
+    suffix = uuid.uuid4().hex[:8]  # 8 chars = 4 billion possibilities
     return f"EX-{date_str}-{time_str}-{suffix}"
 
 

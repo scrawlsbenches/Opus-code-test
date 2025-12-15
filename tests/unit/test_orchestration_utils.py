@@ -35,24 +35,24 @@ class TestIDGeneration(unittest.TestCase):
     """Tests for plan and execution ID generation."""
 
     def test_plan_id_format(self):
-        """Plan ID should match OP-YYYYMMDD-HHMMSS-XXXX format."""
+        """Plan ID should match OP-YYYYMMDD-HHMMSS-XXXXXXXX format."""
         plan_id = generate_plan_id()
         self.assertTrue(plan_id.startswith("OP-"), "Plan ID should start with 'OP-'")
         parts = plan_id.split("-")
         self.assertEqual(len(parts), 4, "Plan ID should have 4 parts separated by hyphens")
         self.assertEqual(len(parts[1]), 8, "Date part should be 8 characters (YYYYMMDD)")
         self.assertEqual(len(parts[2]), 6, "Time part should be 6 characters (HHMMSS)")
-        self.assertEqual(len(parts[3]), 4, "Suffix should be 4 characters")
+        self.assertEqual(len(parts[3]), 8, "Suffix should be 8 characters")
 
     def test_execution_id_format(self):
-        """Execution ID should match EX-YYYYMMDD-HHMMSS-XXXX format."""
+        """Execution ID should match EX-YYYYMMDD-HHMMSS-XXXXXXXX format."""
         exec_id = generate_execution_id()
         self.assertTrue(exec_id.startswith("EX-"), "Execution ID should start with 'EX-'")
         parts = exec_id.split("-")
         self.assertEqual(len(parts), 4, "Execution ID should have 4 parts separated by hyphens")
         self.assertEqual(len(parts[1]), 8, "Date part should be 8 characters (YYYYMMDD)")
         self.assertEqual(len(parts[2]), 6, "Time part should be 6 characters (HHMMSS)")
-        self.assertEqual(len(parts[3]), 4, "Suffix should be 4 characters")
+        self.assertEqual(len(parts[3]), 8, "Suffix should be 8 characters")
 
     def test_ids_are_unique(self):
         """Generated IDs should be unique."""
