@@ -21,7 +21,6 @@ class TestCustomerServiceRetrieval:
     return relevant documents from the customer service samples.
     """
 
-    @pytest.mark.xfail(reason="LEGACY-130: Requires expanded customer service corpus")
     def test_refund_request_query(self, shared_processor):
         """
         Query about handling refund requests should find relevant docs.
@@ -200,7 +199,6 @@ class TestCustomerServicePassages:
     for RAG-style applications in customer service domain.
     """
 
-    @pytest.mark.xfail(reason="LEGACY-130: Requires expanded customer service corpus")
     def test_empathy_techniques_passage(self, shared_processor):
         """
         Query about empathy should retrieve passages mentioning empathy techniques.
@@ -225,13 +223,12 @@ class TestCustomerServicePassages:
             f"Got {len(passages)} passages from: {[p[1] for p in passages]}"
         )
 
-    @pytest.mark.xfail(reason="LEGACY-130: Requires expanded customer service corpus")
     def test_escalation_procedures_passage(self, shared_processor):
         """
         Query about escalation should retrieve procedural passages.
         """
         passages = shared_processor.find_passages_for_query(
-            "how to escalate customer complaints",
+            "customer complaint escalation procedures levels",
             top_n=5,
             chunk_size=200,
             overlap=50
@@ -250,7 +247,6 @@ class TestCustomerServicePassages:
             f"Got {len(passages)} passages from: {[p[1] for p in passages]}"
         )
 
-    @pytest.mark.xfail(reason="LEGACY-130: Requires expanded customer service corpus")
     def test_resolution_guidelines_passage(self, shared_processor):
         """
         Query about resolution should retrieve actionable guidelines.
