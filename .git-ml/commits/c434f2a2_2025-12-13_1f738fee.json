@@ -1,0 +1,62 @@
+{
+  "hash": "c434f2a24958eaa60c74dacf58492f62c97f0d43",
+  "message": "Remove 'support' from stop words list",
+  "author": "Claude",
+  "timestamp": "2025-12-13 18:09:34 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/tokenizer.py"
+  ],
+  "insertions": 2,
+  "deletions": 1,
+  "hunks": [
+    {
+      "file": "cortical/tokenizer.py",
+      "function": "class Tokenizer:",
+      "start_line": 197,
+      "lines_added": [
+        "        # Note: 'support' removed - it's a meaningful concept in many domains",
+        "        # (customer support, technical support, infrastructure support, etc.)"
+      ],
+      "lines_removed": [
+        "        'support', 'supports', 'supported', 'supporting',"
+      ],
+      "context_before": [
+        "        # Common verbs",
+        "        'include', 'includes', 'including', 'included',",
+        "        'provide', 'provides', 'provided', 'providing',",
+        "        'require', 'requires', 'required', 'requiring',",
+        "        'enable', 'enables', 'enabled', 'enabling',",
+        "        'allow', 'allows', 'allowed', 'allowing',",
+        "        'create', 'creates', 'created', 'creating',",
+        "        'become', 'becomes', 'became', 'becoming',",
+        "        'remain', 'remains', 'remained', 'remaining',",
+        "        'offer', 'offers', 'offered', 'offering',"
+      ],
+      "context_after": [
+        "        # Quantifiers and determiners",
+        "        'each', 'every', 'any', 'some', 'all', 'both', 'few', 'many', 'several',",
+        "        'such', 'other', 'another', 'same', 'different', 'own', 'certain',",
+        "        'one', 'two', 'three', 'first', 'second', 'third', 'last', 'next',",
+        "        # Common nouns (too generic)",
+        "        'way', 'ways', 'thing', 'things', 'time', 'times', 'year', 'years',",
+        "        'day', 'days', 'place', 'part', 'parts', 'case', 'cases', 'point',",
+        "        'fact', 'kind', 'type', 'form', 'forms', 'level', 'area', 'areas',",
+        "        # Common adjectives (too generic)",
+        "        'new', 'old', 'good', 'bad', 'great', 'small', 'large', 'big', 'long',"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 18,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": -156914,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

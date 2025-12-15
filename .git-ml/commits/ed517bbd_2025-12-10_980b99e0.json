@@ -1,0 +1,75 @@
+{
+  "hash": "ed517bbd93571e51af7f54eb2774b6a7a563d990",
+  "message": "Fix Installation section: remove non-existent PyPI package reference",
+  "author": "Claude",
+  "timestamp": "2025-12-10 11:43:30 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "README.md"
+  ],
+  "insertions": 4,
+  "deletions": 6,
+  "hunks": [
+    {
+      "file": "README.md",
+      "function": "This library provides a biologically-inspired approach to text processing, organ",
+      "start_line": 35,
+      "lines_added": [
+        "Install from source:",
+        "git clone <repository-url>",
+        "Or simply copy the `cortical/` directory into your project—zero dependencies means no pip required.",
+        ""
+      ],
+      "lines_removed": [
+        "```bash",
+        "pip install cortical-text-processor",
+        "```",
+        "",
+        "Or install from source:",
+        "git clone https://github.com/example/cortical-text-processor.git"
+      ],
+      "context_before": [
+        "- **ConceptNet-Style Relations**: Typed edges (IsA, HasA, PartOf, etc.) with multi-hop inference",
+        "- **Concept Inheritance**: IsA hierarchy propagation for concept properties",
+        "- **Analogy Completion**: Relation matching and vector arithmetic for analogical reasoning",
+        "- **Gap Detection**: Find weak spots and isolated documents in your corpus",
+        "- **Query Expansion**: Smart retrieval with synonym handling and semantic relations",
+        "- **RAG System Support**: Chunk-level passage retrieval, document metadata, and multi-stage ranking",
+        "- **Zero Dependencies**: Pure Python, no pip installs required",
+        "",
+        "## Installation",
+        ""
+      ],
+      "context_after": [
+        "",
+        "```bash",
+        "cd cortical-text-processor",
+        "pip install -e .",
+        "```",
+        "",
+        "## Quick Start",
+        "",
+        "```python",
+        "from cortical import CorticalTextProcessor",
+        "",
+        "# Create processor",
+        "processor = CorticalTextProcessor()",
+        "",
+        "# Add documents",
+        "processor.process_document(\"doc1\", \"Neural networks process information hierarchically.\")"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 11,
+  "day_of_week": "Wednesday",
+  "seconds_since_last_commit": -439278,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

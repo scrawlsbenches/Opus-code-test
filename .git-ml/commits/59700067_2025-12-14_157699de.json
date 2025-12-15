@@ -1,0 +1,75 @@
+{
+  "hash": "59700067004c3c69d35f61a982b8e2b70f30c3d0",
+  "message": "fix: Add microseconds to task ID to prevent collisions",
+  "author": "Claude",
+  "timestamp": "2025-12-14 16:54:26 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "scripts/task_utils.py"
+  ],
+  "insertions": 5,
+  "deletions": 4,
+  "hunks": [
+    {
+      "file": "scripts/task_utils.py",
+      "function": "def generate_session_id() -> str:",
+      "start_line": 53,
+      "lines_added": [
+        "        Task ID in format T-YYYYMMDD-HHMMSSffffff-XXXX (with microseconds)",
+        "        'T-20251213-143052123456-a1b2'",
+        "        'T-20251213-143052123456-test'",
+        "    # Include microseconds to avoid collisions in tight loops",
+        "    time_str = now.strftime(\"%H%M%S%f\")"
+      ],
+      "lines_removed": [
+        "        Task ID in format T-YYYYMMDD-HHMMSS-XXXX",
+        "        'T-20251213-143052-a1b2'",
+        "        'T-20251213-143052-test'",
+        "    time_str = now.strftime(\"%H%M%S\")"
+      ],
+      "context_before": [
+        "",
+        "",
+        "def generate_task_id(session_id: Optional[str] = None) -> str:",
+        "    \"\"\"",
+        "    Generate a unique, merge-friendly task ID.",
+        "",
+        "    Args:",
+        "        session_id: Optional session suffix. If None, generates random suffix.",
+        "",
+        "    Returns:"
+      ],
+      "context_after": [
+        "",
+        "    Example:",
+        "        >>> generate_task_id()",
+        "        >>> generate_task_id(\"test\")",
+        "    \"\"\"",
+        "    now = datetime.now()",
+        "    date_str = now.strftime(\"%Y%m%d\")",
+        "    suffix = session_id or generate_session_id()",
+        "    return f\"T-{date_str}-{time_str}-{suffix}\"",
+        "",
+        "",
+        "def generate_short_task_id() -> str:",
+        "    \"\"\"",
+        "    Generate a shorter unique task ID (8 hex chars).",
+        "",
+        "    Returns:",
+        "        Task ID in format T-XXXXXXXX"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 16,
+  "day_of_week": "Sunday",
+  "seconds_since_last_commit": -75022,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

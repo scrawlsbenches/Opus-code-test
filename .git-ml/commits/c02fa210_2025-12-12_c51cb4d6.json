@@ -1,0 +1,59 @@
+{
+  "hash": "c02fa210c5029d2c628571fdc8302293b7f42734",
+  "message": "Add behavioral tests to CLAUDE.md test file locations",
+  "author": "Claude",
+  "timestamp": "2025-12-12 02:16:34 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "CLAUDE.md"
+  ],
+  "insertions": 1,
+  "deletions": 0,
+  "hunks": [
+    {
+      "file": "CLAUDE.md",
+      "function": "cortical/",
+      "start_line": 183,
+      "lines_added": [
+        "| **User workflows** | `tests/test_behavioral.py` (search relevance, performance, quality) |"
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "| Tokenization | `tests/test_tokenizer.py` |",
+        "| Configuration | `tests/test_config.py` |",
+        "| Layers | `tests/test_layers.py` |",
+        "| Embeddings | `tests/test_embeddings.py` |",
+        "| Gap detection | `tests/test_gaps.py` |",
+        "| Fingerprinting | `tests/test_fingerprint.py` |",
+        "| Code concepts | `tests/test_code_concepts.py` |",
+        "| Chunk indexing | `tests/test_chunk_indexing.py` |",
+        "| Incremental updates | `tests/test_incremental_indexing.py` |",
+        "| Intent queries | `tests/test_intent_query.py` |"
+      ],
+      "context_after": [
+        "",
+        "---",
+        "",
+        "## Critical Knowledge",
+        "",
+        "### Performance Lessons Learned (2025-12-11)",
+        "",
+        "**Profile before optimizing.** During dog-fooding, `compute_all()` was hanging. Initial suspicion was Louvain clustering (the most complex algorithm). Profiling revealed the real culprits:",
+        "",
+        "| Phase | Before | After | Fix |"
+      ],
+      "change_type": "add"
+    }
+  ],
+  "hour_of_day": 2,
+  "day_of_week": "Friday",
+  "seconds_since_last_commit": -300494,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

@@ -1,0 +1,76 @@
+{
+  "hash": "274fa60b835231baa68d99f6069fba2869e92d8a",
+  "message": "Add task: Update CI to output pending tasks intelligently",
+  "author": "Claude",
+  "timestamp": "2025-12-13 23:25:54 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "tasks/2025-12-13_22-33-34_2d89.json"
+  ],
+  "insertions": 15,
+  "deletions": 1,
+  "hunks": [
+    {
+      "file": "tasks/2025-12-13_22-33-34_2d89.json",
+      "function": null,
+      "start_line": 1,
+      "lines_added": [
+        "  \"saved_at\": \"2025-12-13T23:25:22.253602\",",
+        "    },",
+        "    {",
+        "      \"id\": \"T-20251213-232522-2d89-002\",",
+        "      \"title\": \"Update CI to output pending tasks intelligently\",",
+        "      \"status\": \"pending\",",
+        "      \"priority\": \"medium\",",
+        "      \"category\": \"automation\",",
+        "      \"description\": \"Add a CI step that shows pending tasks in a smart way: grouped by priority, showing blockers first, with context about what's ready to work on next. Could integrate with the workflow system to show task chains and dependencies.\",",
+        "      \"depends_on\": [],",
+        "      \"effort\": \"medium\",",
+        "      \"created_at\": \"2025-12-13T23:25:22.253447\",",
+        "      \"updated_at\": null,",
+        "      \"completed_at\": null,",
+        "      \"context\": {}"
+      ],
+      "lines_removed": [
+        "  \"saved_at\": \"2025-12-13T22:33:34.431820\","
+      ],
+      "context_before": [
+        "{",
+        "  \"version\": 1,",
+        "  \"session_id\": \"2d89\",",
+        "  \"started_at\": \"2025-12-13T22:33:34.431014\","
+      ],
+      "context_after": [
+        "  \"tasks\": [",
+        "    {",
+        "      \"id\": \"T-20251213-223334-2d89-01\",",
+        "      \"title\": \"Investigate performance bottleneck in search\",",
+        "      \"status\": \"pending\",",
+        "      \"priority\": \"high\",",
+        "      \"category\": \"perf\",",
+        "      \"description\": \"\",",
+        "      \"depends_on\": [],",
+        "      \"effort\": \"medium\",",
+        "      \"created_at\": \"2025-12-13T22:33:34.431621\",",
+        "      \"updated_at\": null,",
+        "      \"completed_at\": null,",
+        "      \"context\": {}",
+        "    }",
+        "  ]",
+        "}"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 23,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": -137934,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

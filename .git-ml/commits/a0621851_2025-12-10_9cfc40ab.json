@@ -1,0 +1,91 @@
+{
+  "hash": "a06218513fccc514b6fdf75105d38192d500b473",
+  "message": "Simplify CI to Python 3.11 only",
+  "author": "Claude",
+  "timestamp": "2025-12-10 11:02:20 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml"
+  ],
+  "insertions": 3,
+  "deletions": 6,
+  "hunks": [
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "name: CI - Coverage Check and Showcase",
+      "start_line": 2,
+      "lines_added": [
+        "    - name: Set up Python 3.11",
+        "        python-version: '3.11'",
+        "        name: coverage-report"
+      ],
+      "lines_removed": [
+        "    strategy:",
+        "      matrix:",
+        "        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']",
+        "    - name: Set up Python ${{ matrix.python-version }}",
+        "        python-version: ${{ matrix.python-version }}",
+        "        name: coverage-report-${{ matrix.python-version }}"
+      ],
+      "context_before": [
+        "",
+        "on:",
+        "  push:",
+        "    branches: [ main, master, 'claude/**' ]",
+        "  pull_request:",
+        "    branches: [ main, master ]",
+        "",
+        "jobs:",
+        "  test-and-showcase:",
+        "    runs-on: ubuntu-latest"
+      ],
+      "context_after": [
+        "",
+        "    steps:",
+        "    - uses: actions/checkout@v4",
+        "",
+        "      uses: actions/setup-python@v5",
+        "      with:",
+        "",
+        "    - name: Install coverage",
+        "      run: |",
+        "        python -m pip install --upgrade pip",
+        "        pip install coverage",
+        "",
+        "    - name: Run tests with coverage",
+        "      run: |",
+        "        coverage run -m unittest discover -s tests -v",
+        "        coverage report -m",
+        "        coverage xml",
+        "",
+        "    - name: Check coverage threshold",
+        "      run: |",
+        "        # Fail if coverage is below 80%",
+        "        coverage report --fail-under=80",
+        "",
+        "    - name: Upload coverage report",
+        "      uses: actions/upload-artifact@v4",
+        "      with:",
+        "        path: coverage.xml",
+        "",
+        "    - name: Run showcase",
+        "      if: success()",
+        "      run: |",
+        "        echo \"=== Running showcase.py ===\"",
+        "        python showcase.py"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 11,
+  "day_of_week": "Wednesday",
+  "seconds_since_last_commit": -441748,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

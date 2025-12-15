@@ -1,0 +1,305 @@
+{
+  "hash": "39e692f539ba398bdaf3f059091a9c701a327801",
+  "message": "Rename snake_case/SCREAMING_SNAKE_CASE to cleaner naming",
+  "author": "Claude",
+  "timestamp": "2025-12-10 14:14:25 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md",
+    "cortical/tokenizer.py",
+    "tests/test_tokenizer.py"
+  ],
+  "insertions": 13,
+  "deletions": 13,
+  "hunks": [
+    {
+      "file": "TASK_LIST.md",
+      "function": "The following tasks enhance the system's ability to understand developer intent",
+      "start_line": 1673,
+      "lines_added": [
+        "1. Added `split_identifier()` function to break camelCase, PascalCase, underscore_style, and CONSTANT_STYLE",
+        "- 8 tests for `split_identifier()` function (camelCase, PascalCase, underscore_style, acronyms)"
+      ],
+      "lines_removed": [
+        "1. Added `split_identifier()` function to break camelCase, PascalCase, snake_case, and SCREAMING_SNAKE_CASE",
+        "- 8 tests for `split_identifier()` function (camelCase, PascalCase, snake_case, acronyms)"
+      ],
+      "context_before": [
+        "### 48. Add Code-Aware Tokenization",
+        "",
+        "**Files:** `cortical/tokenizer.py`, `tests/test_tokenizer.py`",
+        "**Status:** [x] Completed",
+        "**Priority:** High",
+        "",
+        "**Problem:**",
+        "Current tokenizer treats code like prose. It doesn't understand that `getUserCredentials`, `get_user_credentials`, and `fetch user credentials` are semantically equivalent.",
+        "",
+        "**Solution Applied:**"
+      ],
+      "context_after": [
+        "2. Added `PROGRAMMING_KEYWORDS` constant for common code terms (function, class, def, get, set, etc.)",
+        "3. Added `split_identifiers` parameter to `Tokenizer.__init__()` and `tokenize()` method",
+        "4. Tokens include both original identifier and split components when enabled",
+        "5. Split parts don't duplicate already-seen tokens, preserving proper bigram extraction",
+        "",
+        "**Example:**",
+        "```python",
+        "tokenizer = Tokenizer(split_identifiers=True)",
+        "tokens = tokenizer.tokenize(\"getUserCredentials\")",
+        "# ['getusercredentials', 'get', 'user', 'credentials']",
+        "```",
+        "",
+        "**Tests Added:**",
+        "- 8 tests for code-aware tokenization (splitting, stop word filtering, min length, deduplication)",
+        "",
+        "---",
+        "",
+        "### 49. Add Synonym/Concept Mapping for Code Patterns",
+        "",
+        "**Files:** `cortical/semantics.py`, new `cortical/code_concepts.py`",
+        "**Status:** [ ] Not Started",
+        "**Priority:** High",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "cortical/tokenizer.py",
+      "function": "PROGRAMMING_KEYWORDS = frozenset({",
+      "start_line": 30,
+      "lines_added": [
+        "    Handles camelCase, PascalCase, underscore_style, and CONSTANT_STYLE.",
+        "    # Handle underscore_style and CONSTANT_STYLE"
+      ],
+      "lines_removed": [
+        "    Handles camelCase, PascalCase, snake_case, and SCREAMING_SNAKE_CASE.",
+        "    # Handle snake_case and SCREAMING_SNAKE_CASE"
+      ],
+      "context_before": [
+        "    'this', 'constructor', 'module', 'export', 'require', 'package',",
+        "    # Common identifier components that shouldn't be filtered",
+        "    'get', 'set', 'add', 'put', 'has', 'can', 'run', 'max', 'min',",
+        "})",
+        "",
+        "",
+        "def split_identifier(identifier: str) -> List[str]:",
+        "    \"\"\"",
+        "    Split a code identifier into component words.",
+        ""
+      ],
+      "context_after": [
+        "",
+        "    Args:",
+        "        identifier: A code identifier like \"getUserCredentials\" or \"get_user_data\"",
+        "",
+        "    Returns:",
+        "        List of component words in lowercase",
+        "",
+        "    Examples:",
+        "        >>> split_identifier(\"getUserCredentials\")",
+        "        ['get', 'user', 'credentials']",
+        "        >>> split_identifier(\"get_user_data\")",
+        "        ['get', 'user', 'data']",
+        "        >>> split_identifier(\"XMLParser\")",
+        "        ['xml', 'parser']",
+        "        >>> split_identifier(\"parseHTTPResponse\")",
+        "        ['parse', 'http', 'response']",
+        "    \"\"\"",
+        "    if not identifier:",
+        "        return []",
+        "",
+        "    if '_' in identifier:",
+        "        parts = [p for p in identifier.split('_') if p]",
+        "        # Recursively split any camelCase parts",
+        "        result = []",
+        "        for part in parts:",
+        "            if any(c.isupper() for c in part):  # Has any capitals - could be camelCase",
+        "                result.extend(split_identifier(part))",
+        "            else:",
+        "                result.append(part.lower())",
+        "        return [p for p in result if p]"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "cortical/tokenizer.py",
+      "function": "class Tokenizer:",
+      "start_line": 191,
+      "lines_added": [
+        "            split_identifiers: If True, split camelCase/underscore_style and include"
+      ],
+      "lines_removed": [
+        "            split_identifiers: If True, split camelCase/snake_case and include"
+      ],
+      "context_before": [
+        "        stop_words: Optional[Set[str]] = None,",
+        "        min_word_length: int = 3,",
+        "        split_identifiers: bool = False",
+        "    ):",
+        "        \"\"\"",
+        "        Initialize tokenizer.",
+        "",
+        "        Args:",
+        "            stop_words: Set of words to filter out. Uses defaults if None.",
+        "            min_word_length: Minimum word length to keep."
+      ],
+      "context_after": [
+        "                               both original and component tokens.",
+        "        \"\"\"",
+        "        self.stop_words = stop_words if stop_words is not None else self.DEFAULT_STOP_WORDS",
+        "        self.min_word_length = min_word_length",
+        "        self.split_identifiers = split_identifiers",
+        "        ",
+        "        # Simple suffix rules for stemming (Porter-lite)",
+        "        self._suffix_rules = [",
+        "            ('ational', 'ate'), ('tional', 'tion'), ('enci', 'ence'),",
+        "            ('anci', 'ance'), ('izer', 'ize'), ('isation', 'ize'),"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "cortical/tokenizer.py",
+      "function": "class Tokenizer:",
+      "start_line": 241,
+      "lines_added": [
+        "                              camelCase/underscore_style identifiers into components."
+      ],
+      "lines_removed": [
+        "                              camelCase/snake_case identifiers into components."
+      ],
+      "context_before": [
+        "            'small': ['tiny', 'minimal', 'compact'],",
+        "        }",
+        "    ",
+        "    def tokenize(self, text: str, split_identifiers: Optional[bool] = None) -> List[str]:",
+        "        \"\"\"",
+        "        Extract tokens from text.",
+        "",
+        "        Args:",
+        "            text: Input text to tokenize.",
+        "            split_identifiers: Override instance setting. If True, split"
+      ],
+      "context_after": [
+        "",
+        "        Returns:",
+        "            List of filtered, lowercase tokens.",
+        "",
+        "        Examples:",
+        "            >>> t = Tokenizer(split_identifiers=True)",
+        "            >>> t.tokenize(\"getUserCredentials fetches data\")",
+        "            ['getusercredentials', 'get', 'user', 'credentials', 'fetches', 'data']",
+        "        \"\"\"",
+        "        should_split = split_identifiers if split_identifiers is not None else self.split_identifiers"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "tests/test_tokenizer.py",
+      "function": "class TestSplitIdentifier(unittest.TestCase):",
+      "start_line": 99,
+      "lines_added": [
+        "    def test_underscore_style(self):",
+        "        \"\"\"Test splitting underscore_style identifiers.\"\"\"",
+        "    def test_constant_style(self):",
+        "        \"\"\"Test splitting CONSTANT_STYLE identifiers.\"\"\"",
+        "        \"\"\"Test mixed camelCase and underscore_style.\"\"\""
+      ],
+      "lines_removed": [
+        "    def test_snake_case(self):",
+        "        \"\"\"Test splitting snake_case identifiers.\"\"\"",
+        "    def test_screaming_snake_case(self):",
+        "        \"\"\"Test splitting SCREAMING_SNAKE_CASE identifiers.\"\"\"",
+        "        \"\"\"Test mixed camelCase and snake_case.\"\"\""
+      ],
+      "context_before": [
+        "        from cortical.tokenizer import split_identifier",
+        "        self.assertEqual(split_identifier(\"getUserCredentials\"), [\"get\", \"user\", \"credentials\"])",
+        "        self.assertEqual(split_identifier(\"processData\"), [\"process\", \"data\"])",
+        "",
+        "    def test_pascal_case(self):",
+        "        \"\"\"Test splitting PascalCase identifiers.\"\"\"",
+        "        from cortical.tokenizer import split_identifier",
+        "        self.assertEqual(split_identifier(\"UserCredentials\"), [\"user\", \"credentials\"])",
+        "        self.assertEqual(split_identifier(\"DataProcessor\"), [\"data\", \"processor\"])",
+        ""
+      ],
+      "context_after": [
+        "        from cortical.tokenizer import split_identifier",
+        "        self.assertEqual(split_identifier(\"get_user_data\"), [\"get\", \"user\", \"data\"])",
+        "        self.assertEqual(split_identifier(\"process_http_request\"), [\"process\", \"http\", \"request\"])",
+        "",
+        "        from cortical.tokenizer import split_identifier",
+        "        self.assertEqual(split_identifier(\"MAX_RETRY_COUNT\"), [\"max\", \"retry\", \"count\"])",
+        "",
+        "    def test_acronyms(self):",
+        "        \"\"\"Test handling of acronyms in identifiers.\"\"\"",
+        "        from cortical.tokenizer import split_identifier",
+        "        self.assertEqual(split_identifier(\"XMLParser\"), [\"xml\", \"parser\"])",
+        "        self.assertEqual(split_identifier(\"parseHTTPResponse\"), [\"parse\", \"http\", \"response\"])",
+        "        self.assertEqual(split_identifier(\"getURLString\"), [\"get\", \"url\", \"string\"])",
+        "",
+        "    def test_mixed_case_with_underscore(self):",
+        "        from cortical.tokenizer import split_identifier",
+        "        result = split_identifier(\"get_UserData\")",
+        "        self.assertIn(\"get\", result)",
+        "        self.assertIn(\"user\", result)",
+        "        self.assertIn(\"data\", result)",
+        "",
+        "    def test_single_word(self):",
+        "        \"\"\"Test single word identifiers.\"\"\"",
+        "        from cortical.tokenizer import split_identifier",
+        "        self.assertEqual(split_identifier(\"process\"), [\"process\"])"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "tests/test_tokenizer.py",
+      "function": "class TestCodeAwareTokenization(unittest.TestCase):",
+      "start_line": 155,
+      "lines_added": [
+        "    def test_split_identifiers_underscore_style(self):",
+        "        \"\"\"Test splitting underscore_style in tokenization.\"\"\""
+      ],
+      "lines_removed": [
+        "    def test_split_identifiers_snake_case(self):",
+        "        \"\"\"Test splitting snake_case in tokenization.\"\"\""
+      ],
+      "context_before": [
+        "",
+        "    def test_split_identifiers_enabled(self):",
+        "        \"\"\"Test tokenization with identifier splitting enabled.\"\"\"",
+        "        tokenizer = Tokenizer(split_identifiers=True)",
+        "        tokens = tokenizer.tokenize(\"getUserCredentials\")",
+        "        self.assertIn(\"getusercredentials\", tokens)",
+        "        self.assertIn(\"get\", tokens)",
+        "        self.assertIn(\"user\", tokens)",
+        "        self.assertIn(\"credentials\", tokens)",
+        ""
+      ],
+      "context_after": [
+        "        tokenizer = Tokenizer(split_identifiers=True)",
+        "        tokens = tokenizer.tokenize(\"process_user_data\")",
+        "        self.assertIn(\"process_user_data\", tokens)",
+        "        self.assertIn(\"process\", tokens)",
+        "        self.assertIn(\"user\", tokens)",
+        "        self.assertIn(\"data\", tokens)",
+        "",
+        "    def test_split_identifiers_preserves_context(self):",
+        "        \"\"\"Test that split tokens appear alongside regular tokens.\"\"\"",
+        "        tokenizer = Tokenizer(split_identifiers=True)"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 14,
+  "day_of_week": "Wednesday",
+  "seconds_since_last_commit": -430223,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

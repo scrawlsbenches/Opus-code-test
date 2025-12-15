@@ -1,0 +1,179 @@
+{
+  "hash": "81da55a0b10778798ebd3d403bb084859c64746a",
+  "message": "Add task #197: Add task list validation to CI",
+  "author": "Claude",
+  "timestamp": "2025-12-13 13:13:16 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md"
+  ],
+  "insertions": 24,
+  "deletions": 2,
+  "hunks": [
+    {
+      "file": "TASK_LIST.md",
+      "function": null,
+      "start_line": 1,
+      "lines_added": [
+        "**Pending Tasks:** 19"
+      ],
+      "lines_removed": [
+        "**Pending Tasks:** 18"
+      ],
+      "context_before": [
+        "# Task List: Cortical Text Processor",
+        "",
+        "Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).",
+        "",
+        "**Last Updated:** 2025-12-13"
+      ],
+      "context_after": [
+        "**Completed Tasks:** 211 (see archive)",
+        "",
+        "**Unit Test Initiative:** ✅ COMPLETE - 85% coverage from unit tests (1,729 tests)",
+        "- 19 modules at 90%+ coverage",
+        "- See [Coverage Baseline](#unit-test-coverage-baseline) for per-module status",
+        "",
+        "---",
+        "",
+        "## Active Backlog",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "TASK_LIST.md",
+      "function": "Active backlog for the Cortical Text Processor project. Completed tasks are arch",
+      "start_line": 50,
+      "lines_added": [
+        "| 197 | Add task list validation to CI | TaskMgmt | - | Small |"
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "| 101 | Automate staleness tracking | Arch | - | Medium |",
+        "| 106 | Add task dependency graph | TaskMgmt | - | Small |",
+        "| 108 | Create task selection script | TaskMgmt | - | Medium |",
+        "| 117 | Create debugging cookbook | AINav | - | Medium |",
+        "| 118 | Add function complexity annotations | AINav | - | Small |",
+        "| 140 | Analyze customer service cluster quality | Research | 127 | Small |",
+        "| 129 | Test customer service retrieval quality | Testing | - | Small |",
+        "| 130 | Expand customer service sample cluster | Samples | - | Medium |",
+        "| 131 | Investigate cross-domain semantic bridges | Research | - | Medium |",
+        "| 196 | Add runtime warning for spectral embeddings on large graphs | DevEx | - | Small |"
+      ],
+      "context_after": [
+        "",
+        "### ⏸️ Deferred",
+        "",
+        "| # | Task | Reason |",
+        "|---|------|--------|",
+        "| 110 | Add section markers to large files | Superseded by #119 (AI metadata generator) |",
+        "| 111 | Add \"See Also\" cross-references | Superseded by #119 (AI metadata generator) |",
+        "| 112 | Add docstring examples | Superseded by #119 (AI metadata generator) |",
+        "| 7 | Document magic numbers in gaps.py | Low priority, functional as-is |",
+        "| 42 | Add simple query language | Nice-to-have, not blocking |"
+      ],
+      "change_type": "add"
+    },
+    {
+      "file": "TASK_LIST.md",
+      "function": "Spectral embeddings are O(n²) but there's no runtime warning when called with l",
+      "start_line": 185,
+      "lines_added": [
+        "### 197. Add Task List Validation to CI",
+        "",
+        "**Meta:** `status:pending` `priority:low` `category:taskmgmt`",
+        "**Files:** `.github/workflows/ci.yml`, `scripts/validate_task_list.py`",
+        "**Effort:** Small",
+        "",
+        "**Problem:** Task list staleness can accumulate unnoticed between reviews. Manual validation catches issues but isn't enforced.",
+        "",
+        "**Solution:** Add validation step to CI:",
+        "```yaml",
+        "- name: Validate task list",
+        "  run: python scripts/validate_task_list.py",
+        "```",
+        "",
+        "**Acceptance:**",
+        "- [ ] CI runs `validate_task_list.py` on every PR",
+        "- [ ] Fails build if stale tasks detected",
+        "- [ ] Clear error messages guide resolution",
+        "",
+        "---",
+        ""
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "",
+        "**Fix:** Add warning for large graphs:",
+        "```python",
+        "if n > 5000:",
+        "    import warnings",
+        "    warnings.warn(f\"Spectral embeddings with {n} terms will be slow (O(n²))\")",
+        "```",
+        "",
+        "---",
+        ""
+      ],
+      "context_after": [
+        "## Unit Test Coverage Baseline",
+        "",
+        "✅ **Unit test coverage as of 2025-12-13 (1,729 tests, 85% overall):**",
+        "",
+        "| Module | Coverage | Status | Task |",
+        "|--------|----------|--------|------|",
+        "| config.py | 100% | ✅ | #168 |",
+        "| minicolumn.py | 100% | ✅ | #162 |",
+        "| definitions.py | 100% | ✅ | #173 |",
+        "| tokenizer.py | 99% | ✅ | #159 |"
+      ],
+      "change_type": "add"
+    },
+    {
+      "file": "TASK_LIST.md",
+      "function": "if n > 5000:",
+      "start_line": 224,
+      "lines_added": [
+        "| TaskMgmt | 4 | Task management system (#106, 107, 108, 197) |"
+      ],
+      "lines_removed": [
+        "| TaskMgmt | 3 | Task management system (#107, 106, 108) |"
+      ],
+      "context_before": [
+        "",
+        "---",
+        "",
+        "## Category Index",
+        "",
+        "| Category | Pending | Description |",
+        "|----------|---------|-------------|",
+        "| Arch | 5 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |",
+        "| CodeQual | 1 | Code quality improvements (#99) |",
+        "| Testing | 1 | Test coverage (#129) |"
+      ],
+      "context_after": [
+        "| AINav | 2 | AI assistant navigation (#117, 118) |",
+        "| DevEx | 8 | Developer experience, scripts (#73-80, 196) |",
+        "| Research | 2 | Research and analysis (#140, 131) |",
+        "| Samples | 1 | Sample document improvements (#130) |",
+        "| Integration | 1 | MCP Server (#184) |",
+        "| Memory | 1 | Optimization (#192) |",
+        "| API | 1 | Simplified facades (#186) |",
+        "",
+        "*Updated 2025-12-13 - Unit test initiative COMPLETE (85% coverage, 1,729 tests)*"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 13,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": -174692,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

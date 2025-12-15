@@ -1,0 +1,69 @@
+{
+  "hash": "a957c1d77ebde7475f67a19ce7c7a4caf4ffe011",
+  "message": "Use hybrid connection strategy in showcase.py",
+  "author": "Claude",
+  "timestamp": "2025-12-10 01:12:35 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "showcase.py"
+  ],
+  "insertions": 7,
+  "deletions": 2,
+  "hunks": [
+    {
+      "file": "showcase.py",
+      "function": "class CorticalShowcase:",
+      "start_line": 96,
+      "lines_added": [
+        "        # Run all computations with hybrid strategy for better Layer 2 connectivity",
+        "        self.processor.compute_all(",
+        "            verbose=False,",
+        "            connection_strategy='hybrid',",
+        "            cluster_strictness=0.5,",
+        "            bridge_weight=0.3",
+        "        )"
+      ],
+      "lines_removed": [
+        "        # Run all computations",
+        "        self.processor.compute_all(verbose=False)"
+      ],
+      "context_before": [
+        "            filepath = os.path.join(self.samples_dir, filename)",
+        "            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:",
+        "                content = f.read()",
+        "            ",
+        "            doc_id = filename.replace('.txt', '')",
+        "            self.processor.process_document(doc_id, content)",
+        "            word_count = len(content.split())",
+        "            self.loaded_files.append((doc_id, word_count))",
+        "            print(f\"  📄 {doc_id:30} ({word_count:3} words)\")",
+        "        "
+      ],
+      "context_after": [
+        "        print(\"\\nComputing cortical representations...\")",
+        "        ",
+        "        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)",
+        "        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)",
+        "        ",
+        "        print(f\"\\n✓ Processed {len(self.loaded_files)} documents\")",
+        "        print(f\"✓ Created {layer0.column_count()} token minicolumns\")",
+        "        print(f\"✓ Created {layer1.column_count()} bigram minicolumns\")",
+        "        print(f\"✓ Formed {layer0.total_connections()} lateral connections\")",
+        "        ",
+        "        return True"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 1,
+  "day_of_week": "Wednesday",
+  "seconds_since_last_commit": -477133,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

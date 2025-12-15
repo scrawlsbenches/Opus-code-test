@@ -1,0 +1,61 @@
+{
+  "hash": "d11ba351eb36f33eb8d09c31493316c92ff2fed9",
+  "message": "Merge pull request #51 from scrawlsbenches/claude/investigate-duplicate-builds-014S7P2Q8XYJfPRu3jNc5p2i",
+  "author": "scrawlsbenches",
+  "timestamp": "2025-12-12 06:39:55 -0500",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml"
+  ],
+  "insertions": 5,
+  "deletions": 2,
+  "hunks": [
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": null,
+      "start_line": 1,
+      "lines_added": [
+        "    branches: [ main ]",
+        "",
+        "concurrency:",
+        "  group: ${{ github.workflow }}-${{ github.ref }}",
+        "  cancel-in-progress: true"
+      ],
+      "lines_removed": [
+        "    branches: [ main, master, 'claude/**' ]",
+        "    branches: [ main, master ]"
+      ],
+      "context_before": [
+        "name: CI - Coverage Check and Showcase",
+        "",
+        "on:",
+        "  push:"
+      ],
+      "context_after": [
+        "  pull_request:",
+        "",
+        "jobs:",
+        "  test-and-showcase:",
+        "    runs-on: ubuntu-latest",
+        "",
+        "    steps:",
+        "    - uses: actions/checkout@v4",
+        "",
+        "    - name: Set up Python 3.11",
+        "      uses: actions/setup-python@v5"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 11,
+  "day_of_week": "Friday",
+  "seconds_since_last_commit": -266693,
+  "is_merge": true,
+  "is_initial": false,
+  "parent_count": 2,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

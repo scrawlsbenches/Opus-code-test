@@ -1,0 +1,139 @@
+{
+  "hash": "e07639962267ed5fde48bfce22d11174dd2711e3",
+  "message": "Fix README API documentation to match actual codebase",
+  "author": "Claude",
+  "timestamp": "2025-12-10 11:03:05 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "README.md"
+  ],
+  "insertions": 9,
+  "deletions": 9,
+  "hunks": [
+    {
+      "file": "README.md",
+      "function": "processor.process_document(\"doc1\", \"Neural networks process information hierarch",
+      "start_line": 55,
+      "lines_added": [
+        "# Get corpus summary",
+        "summary = processor.get_corpus_summary()",
+        "print(f\"Documents: {summary['documents']}, Connections: {summary['total_connections']}\")",
+        "processor.add_documents_batch([(doc_id, content, metadata), ...])  # Batch processing"
+      ],
+      "lines_removed": [
+        "# Analyze corpus health",
+        "health = processor.compute_corpus_health()",
+        "print(f\"Corpus health: {health['overall_score']:.0%}\")",
+        "processor.process_documents_from_directory(path)"
+      ],
+      "context_before": [
+        "processor.process_document(\"doc2\", \"The brain uses layers of neurons for processing.\")",
+        "processor.process_document(\"doc3\", \"Machine learning enables pattern recognition.\")",
+        "",
+        "# Build the network (runs all computations)",
+        "processor.compute_all()",
+        "",
+        "# Query",
+        "results = processor.find_documents_for_query(\"neural processing\")",
+        "print(results)  # [('doc1', 0.85), ('doc2', 0.72), ...]",
+        ""
+      ],
+      "context_after": [
+        "",
+        "# Save for later",
+        "processor.save(\"my_corpus.pkl\")",
+        "```",
+        "",
+        "## Core API",
+        "",
+        "### Document Processing",
+        "",
+        "```python",
+        "processor.process_document(doc_id, content, metadata=None)",
+        "processor.add_document_incremental(doc_id, content)  # Incremental indexing",
+        "```",
+        "",
+        "### Network Building",
+        "",
+        "```python",
+        "# All-in-one computation with connection strategies",
+        "processor.compute_all(",
+        "    verbose=False,",
+        "    connection_strategy='hybrid',  # 'document_overlap', 'semantic', 'embedding', 'hybrid'",
+        "    cluster_strictness=0.5,        # 0.0-1.0, lower = fewer, larger clusters"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "README.md",
+      "function": "processor.compute_document_connections()  # Link documents",
+      "start_line": 100,
+      "lines_added": [
+        "processor.expand_query_multihop(query, max_hops=2)  # Multi-hop query expansion",
+        "processor.find_documents_batch(queries)  # Process multiple queries",
+        "processor.find_passages_for_query(query, top_n=5)  # Chunk-level RAG retrieval",
+        "processor.get_corpus_summary()      # Corpus statistics",
+        "processor.export_conceptnet_json(filepath)  # ConceptNet-style visualization export"
+      ],
+      "lines_removed": [
+        "processor.infer_relations(term, max_hops=2)  # Multi-hop inference",
+        "processor.batch_query(queries)  # Process multiple queries",
+        "processor.retrieve_passages(query, max_passages=5)  # Chunk-level RAG retrieval",
+        "processor.compute_corpus_health()   # Health score",
+        "processor.export_graph_json()       # ConceptNet-style visualization export"
+      ],
+      "context_before": [
+        "processor.compute_bigram_connections()    # Bigram lateral connections",
+        "```",
+        "",
+        "### Semantics & Embeddings",
+        "",
+        "```python",
+        "processor.extract_corpus_semantics()  # Extract relations",
+        "processor.retrofit_connections()      # Blend with semantics",
+        "processor.compute_graph_embeddings(dimensions=32, method='adjacency')",
+        "processor.retrofit_embeddings()       # Improve embeddings"
+      ],
+      "context_after": [
+        "processor.complete_analogy(a, b, c)   # Analogy completion (a:b :: c:?)",
+        "```",
+        "",
+        "### Query & Retrieval",
+        "",
+        "```python",
+        "processor.expand_query(text, max_expansions=10)  # Expand query",
+        "processor.find_documents_for_query(text, top_n=5)  # Search",
+        "processor.find_related_documents(doc_id)  # Related docs",
+        "```",
+        "",
+        "### Analysis",
+        "",
+        "```python",
+        "processor.analyze_knowledge_gaps()  # Find gaps",
+        "processor.detect_anomalies(threshold=0.1)  # Find outliers",
+        "```",
+        "",
+        "## Connection Strategies",
+        "",
+        "For documents with different topics or minimal overlap, use connection strategies:",
+        "",
+        "```python",
+        "# Hybrid strategy combines all methods for maximum connectivity",
+        "processor.compute_all(",
+        "    connection_strategy='hybrid',"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 11,
+  "day_of_week": "Wednesday",
+  "seconds_since_last_commit": -441703,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

@@ -1,0 +1,156 @@
+{
+  "hash": "8db8c7f7f797cc148fe0945369a92c6447f85ecb",
+  "message": "Fix additional misleading hardcoded values",
+  "author": "Claude",
+  "timestamp": "2025-12-12 10:42:39 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/analysis.py",
+    "cortical/minicolumn.py",
+    "tests/test_layers.py"
+  ],
+  "insertions": 17,
+  "deletions": 6,
+  "hunks": [
+    {
+      "file": "cortical/analysis.py",
+      "function": "def compute_hierarchical_pagerank(",
+      "start_line": 291,
+      "lines_added": [
+        "            compute_pagerank(layer, damping=damping, iterations=layer_iterations, tolerance=tolerance)"
+      ],
+      "lines_removed": [
+        "            compute_pagerank(layer, damping=damping, iterations=layer_iterations, tolerance=1e-6)"
+      ],
+      "context_before": [
+        "    iterations_run = 0",
+        "    converged = False",
+        "",
+        "    for global_iter in range(global_iterations):",
+        "        iterations_run = global_iter + 1",
+        "        max_global_diff = 0.0",
+        "",
+        "        # Step 1: Compute local PageRank for each layer",
+        "        for layer_enum in active_layers:",
+        "            layer = layers[layer_enum]"
+      ],
+      "context_after": [
+        "",
+        "        # Step 2: Propagate up (tokens → bigrams → concepts → documents)",
+        "        for i in range(len(active_layers) - 1):",
+        "            lower_layer_enum = active_layers[i]",
+        "            upper_layer_enum = active_layers[i + 1]",
+        "            lower_layer = layers[lower_layer_enum]",
+        "            upper_layer = layers[upper_layer_enum]",
+        "",
+        "            # Propagate from lower to upper via feedback connections",
+        "            for col in lower_layer.minicolumns.values():"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "cortical/minicolumn.py",
+      "function": "class Minicolumn:",
+      "start_line": 178,
+      "lines_added": [
+        "            # Weighted average of confidence (allows confidence to decrease with weaker evidence)",
+        "            new_confidence = (existing.confidence * existing.weight + confidence * weight) / new_weight"
+      ],
+      "lines_removed": [
+        "            # Use higher confidence",
+        "            new_confidence = max(confidence, existing.confidence)"
+      ],
+      "context_before": [
+        "        Example:",
+        "            col.add_typed_connection(\"L0_network\", 0.8, relation_type='RelatedTo')",
+        "            col.add_typed_connection(\"L0_brain\", 0.5, relation_type='IsA', source='semantic')",
+        "        \"\"\"",
+        "        if target_id in self.typed_connections:",
+        "            # Accumulate weight, keep most informative metadata",
+        "            existing = self.typed_connections[target_id]",
+        "            new_weight = existing.weight + weight",
+        "            # Prefer more specific relation types over 'co_occurrence'",
+        "            new_relation = relation_type if relation_type != 'co_occurrence' else existing.relation_type"
+      ],
+      "context_after": [
+        "            # Prefer semantic/inferred over corpus",
+        "            source_priority = {'inferred': 3, 'semantic': 2, 'corpus': 1}",
+        "            new_source = source if source_priority.get(source, 0) > source_priority.get(existing.source, 0) else existing.source",
+        "            self.typed_connections[target_id] = Edge(",
+        "                target_id=target_id,",
+        "                weight=new_weight,",
+        "                relation_type=new_relation,",
+        "                confidence=new_confidence,",
+        "                source=new_source",
+        "            )"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "tests/test_layers.py",
+      "function": "class TestTypedConnections(unittest.TestCase):",
+      "start_line": 326,
+      "lines_added": [
+        "    def test_typed_connection_confidence_weighted_average(self):",
+        "        \"\"\"Test that confidence uses weighted average (can increase or decrease).\"\"\"",
+        "        # Weighted average: (0.7 * 0.5 + 0.9 * 0.3) / 0.8 = 0.775",
+        "        self.assertAlmostEqual(edge.confidence, 0.775, places=5)",
+        "",
+        "    def test_typed_connection_confidence_can_decrease(self):",
+        "        \"\"\"Test that confidence can decrease with lower-confidence evidence.\"\"\"",
+        "        col = Minicolumn(\"L0_test\", \"test\", 0)",
+        "        col.add_typed_connection(\"L0_other\", 1.0, confidence=0.9)  # High confidence",
+        "        col.add_typed_connection(\"L0_other\", 1.0, confidence=0.3)  # Low confidence evidence",
+        "",
+        "        edge = col.typed_connections[\"L0_other\"]",
+        "        # Weighted average: (0.9 * 1.0 + 0.3 * 1.0) / 2.0 = 0.6",
+        "        self.assertAlmostEqual(edge.confidence, 0.6, places=5)"
+      ],
+      "lines_removed": [
+        "    def test_typed_connection_confidence_max(self):",
+        "        \"\"\"Test that confidence uses max value.\"\"\"",
+        "        self.assertEqual(edge.confidence, 0.9)"
+      ],
+      "context_before": [
+        "",
+        "    def test_typed_connection_source_priority(self):",
+        "        \"\"\"Test that semantic/inferred sources take priority over corpus.\"\"\"",
+        "        col = Minicolumn(\"L0_test\", \"test\", 0)",
+        "        col.add_typed_connection(\"L0_other\", 0.5, source='corpus')",
+        "        col.add_typed_connection(\"L0_other\", 0.3, source='semantic')",
+        "",
+        "        edge = col.typed_connections[\"L0_other\"]",
+        "        self.assertEqual(edge.source, 'semantic')",
+        ""
+      ],
+      "context_after": [
+        "        col = Minicolumn(\"L0_test\", \"test\", 0)",
+        "        col.add_typed_connection(\"L0_other\", 0.5, confidence=0.7)",
+        "        col.add_typed_connection(\"L0_other\", 0.3, confidence=0.9)",
+        "",
+        "        edge = col.typed_connections[\"L0_other\"]",
+        "",
+        "    def test_get_typed_connection(self):",
+        "        \"\"\"Test retrieving a typed connection.\"\"\"",
+        "        col = Minicolumn(\"L0_test\", \"test\", 0)",
+        "        col.add_typed_connection(\"L0_other\", 0.5, relation_type='IsA')",
+        "",
+        "        edge = col.get_typed_connection(\"L0_other\")",
+        "        self.assertIsNotNone(edge)",
+        "        self.assertEqual(edge.relation_type, 'IsA')"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 10,
+  "day_of_week": "Friday",
+  "seconds_since_last_commit": -270129,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

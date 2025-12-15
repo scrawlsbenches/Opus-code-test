@@ -1,0 +1,239 @@
+{
+  "hash": "e5a3768abcb52324cd5b75d040ae2cbf5d119bc1",
+  "message": "Fix tests to expect ValueError for empty query validation",
+  "author": "Claude",
+  "timestamp": "2025-12-13 17:48:22 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "tests/test_ask_codebase.py",
+    "tests/test_coverage_gaps.py",
+    "tests/test_edge_cases.py",
+    "tests/test_search_codebase.py"
+  ],
+  "insertions": 17,
+  "deletions": 19,
+  "hunks": [
+    {
+      "file": "tests/test_ask_codebase.py",
+      "function": "class TestCodebaseQA(unittest.TestCase):",
+      "start_line": 112,
+      "lines_added": [
+        "        \"\"\"Test with empty query raises ValueError.\"\"\"",
+        "        with self.assertRaises(ValueError):",
+        "            self.qa.find_relevant_passages(\"\", top_n=2)"
+      ],
+      "lines_removed": [
+        "        \"\"\"Test with empty query.\"\"\"",
+        "        passages = self.qa.find_relevant_passages(\"\", top_n=2)",
+        "        self.assertIsInstance(passages, list)"
+      ],
+      "context_before": [
+        "",
+        "        # Each passage should be (text, reference, line_num, score)",
+        "        passage = passages[0]",
+        "        self.assertEqual(len(passage), 4)",
+        "        self.assertIsInstance(passage[0], str)  # text",
+        "        self.assertIsInstance(passage[1], str)  # reference",
+        "        self.assertIsInstance(passage[2], int)  # line_num",
+        "        self.assertIsInstance(passage[3], float)  # score",
+        "",
+        "    def test_find_relevant_passages_empty_query(self):"
+      ],
+      "context_after": [
+        "",
+        "    def test_format_answer_with_passages(self):",
+        "        \"\"\"Test answer formatting with passages.\"\"\"",
+        "        passages = self.qa.find_relevant_passages(\"PageRank\", top_n=2)",
+        "        answer = self.qa.format_answer(\"What is PageRank?\", passages)",
+        "",
+        "        self.assertIsInstance(answer, str)",
+        "        self.assertIn(\"PageRank\", answer)",
+        "        self.assertIn(\"Relevant Context\", answer)",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "tests/test_coverage_gaps.py",
+      "function": "class TestQueryEdgeCases(unittest.TestCase):",
+      "start_line": 266,
+      "lines_added": [
+        "        \"\"\"Test expanding empty query raises ValueError.\"\"\"",
+        "        with self.assertRaises(ValueError):",
+        "            processor.expand_query(\"\")"
+      ],
+      "lines_removed": [
+        "        \"\"\"Test expanding empty query.\"\"\"",
+        "        result = processor.expand_query(\"\")",
+        "        self.assertEqual(result, {})"
+      ],
+      "context_before": [
+        "        \"\"\"Test finding documents when no matches.\"\"\"",
+        "        processor = CorticalTextProcessor()",
+        "        processor.process_document(\"doc1\", \"neural networks deep learning\")",
+        "        processor.compute_all(verbose=False)",
+        "",
+        "        results = processor.find_documents_for_query(\"quantum physics\")",
+        "        # May or may not find results depending on expansion",
+        "        self.assertIsInstance(results, list)",
+        "",
+        "    def test_expand_query_empty(self):"
+      ],
+      "context_after": [
+        "        processor = CorticalTextProcessor()",
+        "        processor.process_document(\"doc1\", \"test content\")",
+        "        processor.compute_all(verbose=False)",
+        "",
+        "",
+        "",
+        "class TestAnalysisEdgeCases(unittest.TestCase):",
+        "    \"\"\"Test analysis edge cases.\"\"\"",
+        "",
+        "    def test_pagerank_single_node(self):",
+        "        \"\"\"Test PageRank with single node.\"\"\"",
+        "        from cortical.analysis import compute_pagerank",
+        "",
+        "        layer = HierarchicalLayer(CorticalLayer.TOKENS)"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "tests/test_edge_cases.py",
+      "function": "class TestQueryEdgeCases(unittest.TestCase):",
+      "start_line": 399,
+      "lines_added": [
+        "        \"\"\"Test expand_query with empty string raises ValueError.\"\"\"",
+        "        with self.assertRaises(ValueError):",
+        "            self.processor.expand_query(\"\")"
+      ],
+      "lines_removed": [
+        "        \"\"\"Test expand_query with empty string.\"\"\"",
+        "        result = self.processor.expand_query(\"\")",
+        "        # Should return empty dict or raise ValueError",
+        "        self.assertIsInstance(result, dict)"
+      ],
+      "context_before": [
+        "        \"\"\"Test query with negative top_n.\"\"\"",
+        "        with self.assertRaises(ValueError):",
+        "            self.processor.find_documents_for_query(\"neural\", top_n=-1)",
+        "",
+        "    def test_query_with_zero_top_n(self):",
+        "        \"\"\"Test query with zero top_n.\"\"\"",
+        "        with self.assertRaises(ValueError):",
+        "            self.processor.find_documents_for_query(\"neural\", top_n=0)",
+        "",
+        "    def test_expand_query_empty(self):"
+      ],
+      "context_after": [
+        "",
+        "    def test_expand_query_nonexistent_terms(self):",
+        "        \"\"\"Test expand_query with terms not in corpus.\"\"\"",
+        "        result = self.processor.expand_query(\"supercalifragilistic\")",
+        "        # Should return dict, possibly with just the original term",
+        "        self.assertIsInstance(result, dict)",
+        "",
+        "",
+        "class TestPassageQueryEdgeCases(unittest.TestCase):",
+        "    \"\"\"Test edge cases in passage-based queries.\"\"\""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "tests/test_edge_cases.py",
+      "function": "class TestPassageQueryEdgeCases(unittest.TestCase):",
+      "start_line": 428,
+      "lines_added": [
+        "        \"\"\"Test find_passages_for_query with empty query raises ValueError.",
+        "        Previously this was a bug where empty queries returned empty list.",
+        "        Now properly validates input and raises ValueError.",
+        "        with self.assertRaises(ValueError):",
+        "            self.processor.find_passages_for_query(\"\")"
+      ],
+      "lines_removed": [
+        "        \"\"\"Test find_passages_for_query with empty query.",
+        "        BUG FOUND: find_passages_for_query does not validate empty queries",
+        "        and returns empty list instead of raising ValueError.",
+        "        # Current behavior: returns empty list, doesn't raise ValueError",
+        "        results = self.processor.find_passages_for_query(\"\")",
+        "        self.assertEqual(results, [])"
+      ],
+      "context_before": [
+        "        Neural networks are computational models inspired by biological neural networks.",
+        "        They consist of interconnected nodes or neurons organized in layers.",
+        "        Deep learning uses multi-layer neural networks for complex pattern recognition.",
+        "        Training neural networks involves adjusting weights through backpropagation.",
+        "        Applications include image recognition, natural language processing, and more.",
+        "        \"\"\"",
+        "        self.processor.process_document(\"doc_long\", long_text)",
+        "        self.processor.compute_tfidf(verbose=False)",
+        "",
+        "    def test_find_passages_empty_query(self):"
+      ],
+      "context_after": [
+        "",
+        "        \"\"\"",
+        "",
+        "    def test_find_passages_on_empty_corpus(self):",
+        "        \"\"\"Test find_passages_for_query on empty corpus.\"\"\"",
+        "        empty_processor = CorticalTextProcessor()",
+        "        results = empty_processor.find_passages_for_query(\"neural networks\", top_n=3)",
+        "        # Should return empty list",
+        "        self.assertEqual(results, [])",
+        "",
+        "    def test_find_passages_with_very_large_chunk_size(self):",
+        "        \"\"\"Test find_passages_for_query with chunk_size larger than document.\"\"\""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "tests/test_search_codebase.py",
+      "function": "class TestSearchCodebase(unittest.TestCase):",
+      "start_line": 157,
+      "lines_added": [
+        "        \"\"\"Test search with empty query raises ValueError.\"\"\"",
+        "        with self.assertRaises(ValueError):",
+        "            search_codebase(self.processor, \"\", top_n=3)"
+      ],
+      "lines_removed": [
+        "        \"\"\"Test search with empty query.\"\"\"",
+        "        results = search_codebase(self.processor, \"\", top_n=3)",
+        "        self.assertIsInstance(results, list)"
+      ],
+      "context_before": [
+        "",
+        "    def test_search_prefer_docs(self):",
+        "        \"\"\"Test search with prefer_docs flag.\"\"\"",
+        "        results = search_codebase(",
+        "            self.processor, \"PageRank\", top_n=3, prefer_docs=True",
+        "        )",
+        "",
+        "        self.assertIsInstance(results, list)",
+        "",
+        "    def test_search_empty_query(self):"
+      ],
+      "context_after": [
+        "",
+        "",
+        "class TestFindSimilarCode(unittest.TestCase):",
+        "    \"\"\"Tests for the find_similar_code function.\"\"\"",
+        "",
+        "    @classmethod",
+        "    def setUpClass(cls):",
+        "        \"\"\"Set up processor with test documents.\"\"\"",
+        "        cls.processor = CorticalTextProcessor()"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 17,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": -158186,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

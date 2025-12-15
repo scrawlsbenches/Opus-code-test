@@ -1,0 +1,132 @@
+{
+  "hash": "52b2f381d7792dd58852065901319a02979210f3",
+  "message": "Run showcase.py in parallel with all CI build steps",
+  "author": "Claude",
+  "timestamp": "2025-12-13 15:07:39 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml"
+  ],
+  "insertions": 17,
+  "deletions": 17,
+  "hunks": [
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "name: CI - Test Suite",
+      "start_line": 10,
+      "lines_added": [
+        "#   validate-task-list   smoke-tests      showcase",
+        "#        (< 5s)           (< 30s)         (parallel)",
+        "#          │                 │                │",
+        "#          │                 ├────────────────┼─────────────────┐",
+        "#          │                 │                │                 │",
+        "#          ▼                 ▼                ▼                 ▼",
+        "#    (continues)  ┌────────────────────────┐      ┌──────────────────┐",
+        "#                 │ unit-tests ────┐       │      │ regression-tests │",
+        "#                 │ integration    │ (cov) │      │ behavioral-tests │",
+        "#                 └───────┬────────┴───────┘      │ performance-tests│",
+        "#                         │                       └──────────────────┘",
+        "#                         ▼                           (no coverage)",
+        "#                  coverage-report",
+        "#                (combines coverage",
+        "#                 from unit + integration",
+        "#                 WITHOUT re-running tests)"
+      ],
+      "lines_removed": [
+        "#   validate-task-list (< 5s)   smoke-tests (< 30s)",
+        "#          │                          │",
+        "#          │                          ├──────────────────────────────────┐",
+        "#          │                          │                                  │",
+        "#          ▼                          ▼                                  ▼",
+        "#    (continues)      ┌─────────────────────────────────────┐    ┌──────────────────┐",
+        "#                     │ unit-tests ─────┐                   │    │ regression-tests │",
+        "#                     │ integration-tests │ (with coverage) │    │ behavioral-tests │",
+        "#                     └──────────┬──────┴───────────────────┘    │ performance-tests│",
+        "#                                │                                └──────────────────┘",
+        "#                                ▼                                    (no coverage)",
+        "#                         coverage-report",
+        "#                       (combines coverage",
+        "#                        from unit + integration",
+        "#                        WITHOUT re-running tests)"
+      ],
+      "context_before": [
+        "#",
+        "# ❌ WRONG (runs tests twice):",
+        "#    coverage run -m pytest tests/",
+        "#    coverage run --append -m unittest discover -s tests",
+        "#",
+        "# ✅ CORRECT (pytest handles both):",
+        "#    coverage run -m pytest tests/",
+        "#",
+        "# PARALLEL ARCHITECTURE (optimized for speed):",
+        "#"
+      ],
+      "context_after": [
+        "#",
+        "# Each stage runs specific test files to avoid duplication.",
+        "# coverage-report ONLY combines coverage data - it does NOT run tests again.",
+        "# =============================================================================",
+        "",
+        "on:",
+        "  push:",
+        "  pull_request:",
+        "    branches: [ main ]",
+        "  workflow_dispatch:  # Allow manual triggering"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "jobs:",
+      "start_line": 334,
+      "lines_added": [
+        "  # Showcase (runs in parallel with all other jobs)"
+      ],
+      "lines_removed": [
+        "  # Showcase (main branch or manual trigger, runs in parallel)",
+        "    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'"
+      ],
+      "context_before": [
+        "        coverage report --fail-under=89 --include=\"cortical/*\"",
+        "        echo \"✅ Coverage threshold met\"",
+        "",
+        "    - name: Upload final coverage report",
+        "      uses: actions/upload-artifact@v4",
+        "      with:",
+        "        name: coverage-report",
+        "        path: coverage.xml",
+        "",
+        "  # =========================================================================="
+      ],
+      "context_after": [
+        "  # Runs the full showcase demo - independent of test results",
+        "  # ==========================================================================",
+        "  showcase:",
+        "    name: \"🎭 Showcase Demo\"",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "    - uses: actions/checkout@v4",
+        "",
+        "    - name: Set up Python 3.11",
+        "      uses: actions/setup-python@v5",
+        "      with:",
+        "        python-version: '3.11'",
+        "",
+        "    - name: Run showcase",
+        "      run: |"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 15,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": -167829,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

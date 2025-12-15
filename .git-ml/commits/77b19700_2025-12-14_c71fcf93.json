@@ -1,0 +1,24 @@
+{
+  "hash": "77b197001f3438734d14e62ca1aa7552f513bda3",
+  "message": "chore: Rename CLAUDE.md.potential to CLAUDE.md",
+  "author": "Claude",
+  "timestamp": "2025-12-14 10:55:55 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "CLAUDE.md"
+  ],
+  "insertions": 0,
+  "deletions": 0,
+  "hunks": [],
+  "hour_of_day": 10,
+  "day_of_week": "Sunday",
+  "seconds_since_last_commit": -96533,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

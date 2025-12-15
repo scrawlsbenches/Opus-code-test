@@ -1,0 +1,61 @@
+{
+  "hash": "5529f044fd82d5b2372f767cc1d6c30e983ea07b",
+  "message": "Fix CI: add pytest to coverage-report job",
+  "author": "Claude",
+  "timestamp": "2025-12-13 01:11:52 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml"
+  ],
+  "insertions": 1,
+  "deletions": 1,
+  "hunks": [
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "jobs:",
+      "start_line": 216,
+      "lines_added": [
+        "        pip install coverage pytest"
+      ],
+      "lines_removed": [
+        "        pip install coverage"
+      ],
+      "context_before": [
+        "    - uses: actions/checkout@v4",
+        "",
+        "    - name: Set up Python 3.11",
+        "      uses: actions/setup-python@v5",
+        "      with:",
+        "        python-version: '3.11'",
+        "",
+        "    - name: Install coverage",
+        "      run: |",
+        "        python -m pip install --upgrade pip"
+      ],
+      "context_after": [
+        "",
+        "    - name: Download unit coverage",
+        "      uses: actions/download-artifact@v4",
+        "      with:",
+        "        name: coverage-unit",
+        "        path: .",
+        "",
+        "    - name: Download integration coverage",
+        "      uses: actions/download-artifact@v4",
+        "      with:"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 1,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": -217976,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

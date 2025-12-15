@@ -1,0 +1,119 @@
+{
+  "hash": "890084013ee358112b217087ff0a12df83952482",
+  "message": "Fix showcase to report total connections across all layers",
+  "author": "Claude",
+  "timestamp": "2025-12-11 14:08:05 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "showcase.py"
+  ],
+  "insertions": 16,
+  "deletions": 4,
+  "hunks": [
+    {
+      "file": "showcase.py",
+      "function": "class CorticalShowcase:",
+      "start_line": 144,
+      "lines_added": [
+        "        # Calculate total connections across all layers",
+        "        total_conns = sum(",
+        "            layer.total_connections()",
+        "            for layer in self.processor.layers.values()",
+        "        )",
+        "",
+        "        print(f\"✓ Formed {total_conns:,} total connections\")"
+      ],
+      "lines_removed": [
+        "        print(f\"✓ Formed {layer0.total_connections()} lateral connections\")"
+      ],
+      "context_before": [
+        "            verbose=False,",
+        "            connection_strategy='hybrid',",
+        "            cluster_strictness=0.5,",
+        "            bridge_weight=0.3",
+        "        )",
+        "        compute_time = self.timer.stop()",
+        "",
+        "        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)",
+        "        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)",
+        ""
+      ],
+      "context_after": [
+        "        print(f\"\\n✓ Processed {len(self.loaded_files)} documents\")",
+        "        print(f\"✓ Created {layer0.column_count()} token minicolumns\")",
+        "        print(f\"✓ Created {layer1.column_count()} bigram minicolumns\")",
+        "        print(f\"\\n⏱  Document loading: {load_time:.2f}s\")",
+        "        print(f\"⏱  Compute all:      {compute_time:.2f}s\")",
+        "",
+        "        return True",
+        "    ",
+        "    def analyze_hierarchy(self):",
+        "        \"\"\"Show the hierarchical structure.\"\"\"",
+        "        print_header(\"HIERARCHICAL STRUCTURE\", \"═\")",
+        "        ",
+        "        print(\"The cortical model has 4 layers (like visual cortex V1→IT):\\n\")"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "showcase.py",
+      "function": "class CorticalShowcase:",
+      "start_line": 625,
+      "lines_added": [
+        "",
+        "        # Calculate total connections across all layers",
+        "        total_conns = sum(",
+        "            layer.total_connections()",
+        "            for layer in self.processor.layers.values()",
+        "        )",
+        "",
+        "",
+        "        print(f\"  Total connections:       {total_conns:,}\")"
+      ],
+      "lines_removed": [
+        "        ",
+        "        ",
+        "        print(f\"  Total connections:       {layer0.total_connections():,}\")"
+      ],
+      "context_before": [
+        "                for other, sim in similar:",
+        "                    print(f\"    • {other} (similarity: {sim:.3f})\")",
+        "    ",
+        "    def print_insights(self):",
+        "        \"\"\"Print final insights and summary.\"\"\"",
+        "        print_header(\"INSIGHTS & SUMMARY\", \"═\")",
+        "        ",
+        "        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)",
+        "        layer1 = self.processor.get_layer(CorticalLayer.BIGRAMS)",
+        "        layer3 = self.processor.get_layer(CorticalLayer.DOCUMENTS)"
+      ],
+      "context_after": [
+        "        print(\"📊 CORPUS ANALYSIS SUMMARY\\n\")",
+        "        print(f\"  Documents processed:     {len(self.loaded_files)}\")",
+        "        print(f\"  Unique tokens:           {layer0.column_count()}\")",
+        "        print(f\"  Unique bigrams:          {layer1.column_count()}\")",
+        "        ",
+        "        # Find most central token",
+        "        top_token = max(layer0.minicolumns.values(), key=lambda c: c.pagerank)",
+        "        print(f\"\\n  Most central concept: '{top_token.content}'\")",
+        "        ",
+        "        # Find most connected document",
+        "        if layer3.column_count() > 0:",
+        "            top_doc = max(layer3.minicolumns.values(), key=lambda c: c.connection_count())",
+        "            print(f\"  Most connected document: '{top_doc.content}'\")"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 14,
+  "day_of_week": "Thursday",
+  "seconds_since_last_commit": -344203,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

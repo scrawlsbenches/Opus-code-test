@@ -1,0 +1,167 @@
+{
+  "hash": "ea216a29727f22216244a18a221a3370a644493c",
+  "message": "Raise priority on code search tasks #84-#86",
+  "author": "Claude",
+  "timestamp": "2025-12-11 03:00:41 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md"
+  ],
+  "insertions": 6,
+  "deletions": 6,
+  "hunks": [
+    {
+      "file": "TASK_LIST.md",
+      "function": "raw_tokens = re.findall(r'\\b[a-zA-Z][a-zA-Z0-9_]*\\b', text)",
+      "start_line": 2920,
+      "lines_added": [
+        "**Priority:** High"
+      ],
+      "lines_removed": [
+        "**Priority:** Medium"
+      ],
+      "context_before": [
+        "**Files to Modify:**",
+        "- `cortical/tokenizer.py` - Fix regex pattern",
+        "- `tests/test_tokenizer.py` - Add tests for underscore identifiers",
+        "",
+        "---",
+        "",
+        "### 84. Add Direct Definition Pattern Search for Code Search",
+        "",
+        "**Files:** `cortical/query.py`, `scripts/search_codebase.py`",
+        "**Status:** [ ] Not Started"
+      ],
+      "context_after": [
+        "**Category:** Code Search",
+        "",
+        "**Problem:**",
+        "When searching for \"class Minicolumn\", the passage containing the actual class definition (`class Minicolumn:`) scores low because TF-IDF favors chunks with more query term matches. The definition chunk is mostly docstring text with few matching terms.",
+        "",
+        "**Found via dog-fooding:** Even with document-level boosting, the actual class definition often doesn't appear in top results.",
+        "",
+        "**Solution:**",
+        "1. For definition queries, directly search source files for the definition pattern",
+        "2. Create a synthetic high-scoring passage from the definition location"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "TASK_LIST.md",
+      "function": "def find_definition_passage(doc_text: str, pattern: str, context_chars: int = 50",
+      "start_line": 2952,
+      "lines_added": [
+        "**Priority:** Medium"
+      ],
+      "lines_removed": [
+        "**Priority:** Low"
+      ],
+      "context_before": [
+        "        return doc_text[start:end], start, end",
+        "    return None",
+        "```",
+        "",
+        "---",
+        "",
+        "### 85. Improve Test File vs Source File Ranking",
+        "",
+        "**Files:** `cortical/query.py`, `scripts/search_codebase.py`",
+        "**Status:** [ ] Not Started"
+      ],
+      "context_after": [
+        "**Category:** Code Search",
+        "",
+        "**Problem:**",
+        "Test files often rank higher than source files because they mention class/function names more frequently (in test method names, assertions, etc.). This is counterintuitive for users looking for implementations.",
+        "",
+        "**Found via dog-fooding:** Searching \"class Minicolumn\" returns test_layers.py results before minicolumn.py results.",
+        "",
+        "**Solution Options:**",
+        "1. Add file path-based scoring penalty for test files when query intent is \"implementation\"",
+        "2. Detect test files (tests/, *_test.py, test_*.py) and apply negative boost"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "TASK_LIST.md",
+      "function": "Test files often rank higher than source files because they mention class/functi",
+      "start_line": 2977,
+      "lines_added": [
+        "**Priority:** Medium"
+      ],
+      "lines_removed": [
+        "**Priority:** Low"
+      ],
+      "context_before": [
+        "- Should be configurable (sometimes users want to find tests)",
+        "- Could integrate with existing `get_doc_type_boost()` function",
+        "- Balance: tests are valuable for understanding usage patterns",
+        "",
+        "---",
+        "",
+        "### 86. Add Semantic Chunk Boundaries for Code",
+        "",
+        "**Files:** `cortical/query.py`",
+        "**Status:** [ ] Not Started"
+      ],
+      "context_after": [
+        "**Category:** Code Search",
+        "",
+        "**Problem:**",
+        "Current chunking uses fixed character boundaries which can split code mid-function or mid-class. This creates passages that lack context and score poorly.",
+        "",
+        "**Found via dog-fooding:** The chunk containing `class Minicolumn:` starts mid-way through the previous function's code.",
+        "",
+        "**Solution:**",
+        "1. Detect code structure boundaries (class, def, blank lines)",
+        "2. Adjust chunk boundaries to align with semantic units"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "TASK_LIST.md",
+      "function": "def create_code_aware_chunks(text: str, target_size: int = 500):",
+      "start_line": 3024,
+      "lines_added": [
+        "| 84 | High | Add direct definition pattern search | | Code Search |",
+        "| 85 | Medium | Improve test file vs source file ranking | | Code Search |",
+        "| 86 | Medium | Add semantic chunk boundaries for code | | Code Search |"
+      ],
+      "lines_removed": [
+        "| 84 | Medium | Add direct definition pattern search | | Code Search |",
+        "| 85 | Low | Improve test file vs source file ranking | | Code Search |",
+        "| 86 | Low | Add semantic chunk boundaries for code | | Code Search |"
+      ],
+      "context_before": [
+        "| 74 | Medium | Add \"Explain This Code\" command | | Developer Experience |",
+        "| 75 | Medium | Add \"What Changed?\" semantic diff | | Developer Experience |",
+        "| 76 | Medium | Add \"Suggest Related Files\" feature | | Developer Experience |",
+        "| 77 | High | Add interactive \"Ask the Codebase\" mode | ✓ Done | Developer Experience |",
+        "| 78 | Low | Add code pattern detection | | Developer Experience |",
+        "| 79 | Low | Add corpus health dashboard | | Developer Experience |",
+        "| 80 | Low | Add \"Learning Mode\" for new contributors | | Developer Experience |",
+        "| 81 | High | Fix tokenizer underscore-prefixed identifiers | ✓ Done | Code Search |",
+        "| 82 | High | Add code stop words filter for query expansion | ✓ Done | Code Search |",
+        "| 83 | Medium | Add definition-aware boosting for class/def queries | ✓ Done | Code Search |"
+      ],
+      "context_after": [
+        "",
+        "---",
+        "",
+        "*Added 2025-12-11, completions updated 2025-12-11*"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 3,
+  "day_of_week": "Thursday",
+  "seconds_since_last_commit": -384247,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

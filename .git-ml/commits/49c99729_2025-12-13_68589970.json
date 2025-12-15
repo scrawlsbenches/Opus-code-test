@@ -1,0 +1,107 @@
+{
+  "hash": "49c997294fac77d04b428494f72247a295e36b08",
+  "message": "Fix modularity threshold inconsistency in behavioral tests",
+  "author": "Claude",
+  "timestamp": "2025-12-13 13:35:42 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "tests/test_behavioral.py"
+  ],
+  "insertions": 7,
+  "deletions": 4,
+  "hunks": [
+    {
+      "file": "tests/test_behavioral.py",
+      "function": "class TestQualityBehavior(unittest.TestCase):",
+      "start_line": 244,
+      "lines_added": [
+        "        Threshold: modularity > 0.2 (moderate community structure)",
+        "        Note: Text corpora with many interconnected terms typically",
+        "        achieve modularity 0.2-0.4. Values >0.3 indicate strong structure."
+      ],
+      "lines_removed": [
+        "        Threshold: modularity > 0.3 (standard threshold for good structure)"
+      ],
+      "context_before": [
+        "        )",
+        "",
+        "    def test_clustering_produces_coherent_groups(self):",
+        "        \"\"\"",
+        "        Clusters should have good community structure.",
+        "",
+        "        User expectation: The concept clusters should make sense -",
+        "        related terms should be grouped together, and there shouldn't",
+        "        be one mega-cluster containing everything.",
+        ""
+      ],
+      "context_after": [
+        "        Based on Tasks #123-125 (Louvain clustering and quality metrics).",
+        "        \"\"\"",
+        "        from cortical.analysis import compute_clustering_quality",
+        "",
+        "        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)",
+        "        layer2 = self.processor.get_layer(CorticalLayer.CONCEPTS)",
+        "",
+        "        # Need cluster assignments",
+        "        cluster_assignments = {}",
+        "        for concept_col in layer2:"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "tests/test_behavioral.py",
+      "function": "class TestQualityBehavior(unittest.TestCase):",
+      "start_line": 266,
+      "lines_added": [
+        "            # Modularity > 0.2 indicates moderate community structure",
+        "            # (consistent with tests/behavioral/test_behavioral.py)",
+        "                0.2,",
+        "                \"0.2 threshold for moderate community structure. \""
+      ],
+      "lines_removed": [
+        "            # Modularity > 0.3 indicates good community structure",
+        "                0.3,",
+        "                \"0.3 threshold for good community structure. \""
+      ],
+      "context_before": [
+        "            # Get tokens in this cluster from feedforward connections",
+        "            for token_id in concept_col.feedforward_connections:",
+        "                token_col = layer0.get_by_id(token_id)",
+        "                if token_col:",
+        "                    cluster_assignments[token_col.content] = cluster_id",
+        "",
+        "        if len(cluster_assignments) > 0:",
+        "            # compute_clustering_quality expects layers dict, not single layer",
+        "            quality = compute_clustering_quality(self.processor.layers)",
+        ""
+      ],
+      "context_after": [
+        "            self.assertGreater(",
+        "                quality['modularity'],",
+        "                f\"Clustering modularity {quality['modularity']:.3f} is below \"",
+        "                f\"Quality assessment: {quality['quality_assessment']}\"",
+        "            )",
+        "",
+        "            # Should have multiple clusters (no single mega-cluster)",
+        "            num_clusters = len(set(cluster_assignments.values()))",
+        "            self.assertGreater(",
+        "                num_clusters,",
+        "                5,",
+        "                f\"Only {num_clusters} clusters found. \"",
+        "                \"Expected more diverse clustering for ~100 documents.\""
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 13,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": -173346,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

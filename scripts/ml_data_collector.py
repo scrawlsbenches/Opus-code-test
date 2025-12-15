@@ -36,14 +36,17 @@ Usage:
     # Export data for training
     python scripts/ml_data_collector.py export --format jsonl --output training_data.jsonl
 
-    # Clean up old data (default: 90 days retention)
-    python scripts/ml_data_collector.py cleanup [--days 90] [--dry-run]
+    # Clean up old data (default: 730 days retention)
+    python scripts/ml_data_collector.py cleanup [--days 730] [--dry-run]
 
     # Manage contribution consent
     python scripts/ml_data_collector.py contribute status     # Check consent status
     python scripts/ml_data_collector.py contribute enable     # Opt-in to share data
     python scripts/ml_data_collector.py contribute disable    # Opt-out of sharing
     python scripts/ml_data_collector.py contribute preview    # Preview what would be shared
+
+    # Generate shared patterns (safe to commit)
+    python scripts/ml_data_collector.py generate-patterns     # Creates .git-ml/shared/
 
     # Test redaction patterns
     python scripts/ml_data_collector.py redact-test --text "api_key=secret123"
@@ -91,6 +94,7 @@ COMMITS_DIR = ML_DATA_DIR / "commits"
 SESSIONS_DIR = ML_DATA_DIR / "sessions"
 CHATS_DIR = ML_DATA_DIR / "chats"
 ACTIONS_DIR = ML_DATA_DIR / "actions"
+SHARED_DIR = ML_DATA_DIR / "shared"  # Aggregated patterns - safe to commit
 CURRENT_SESSION_FILE = ML_DATA_DIR / "current_session.json"
 
 # Training milestones
@@ -2438,6 +2442,225 @@ def print_quality_report():
 
 
 # ============================================================================
+# SHARED PATTERN AGGREGATION (safe to commit)
+# ============================================================================
+
+def generate_file_correlations() -> Dict[str, Any]:
+    """Generate file correlation patterns from commit history.
+
+    Identifies which files frequently change together - useful for
+    predicting likely files to edit based on task description.
+
+    Returns:
+        Dict with file pairs and their co-occurrence counts
+    """
+    correlations: Dict[tuple, int] = {}
+    file_counts: Dict[str, int] = {}
+
+    if not COMMITS_DIR.exists():
+        return {'correlations': [], 'file_counts': {}, 'total_commits': 0}
+
+    total_commits = 0
+    for commit_file in COMMITS_DIR.glob("*.json"):
+        try:
+            with open(commit_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            files = data.get('files_changed', [])
+            total_commits += 1
+
+            # Count individual file occurrences
+            for file in files:
+                file_counts[file] = file_counts.get(file, 0) + 1
+
+            # Count file pairs (co-occurrence)
+            for i, f1 in enumerate(files):
+                for f2 in files[i+1:]:
+                    pair = tuple(sorted([f1, f2]))
+                    correlations[pair] = correlations.get(pair, 0) + 1
+
+        except (json.JSONDecodeError, IOError):
+            continue
+
+    # Convert to list and sort by frequency
+    corr_list = [
+        {'files': list(pair), 'count': count, 'pct': round(count / total_commits * 100, 1)}
+        for pair, count in correlations.items()
+        if count >= 2  # Only include pairs that co-occur at least twice
+    ]
+    corr_list.sort(key=lambda x: -x['count'])
+
+    return {
+        'correlations': corr_list[:100],  # Top 100 pairs
+        'file_counts': dict(sorted(file_counts.items(), key=lambda x: -x[1])[:50]),
+        'total_commits': total_commits,
+        'generated_at': datetime.now().isoformat(),
+    }
+
+
+def generate_commit_patterns() -> Dict[str, Any]:
+    """Generate commit message patterns and statistics.
+
+    Analyzes commit message styles, lengths, prefixes (feat/fix/etc),
+    and temporal patterns.
+
+    Returns:
+        Dict with pattern statistics
+    """
+    patterns = {
+        'prefixes': {},  # feat:, fix:, etc.
+        'lengths': [],
+        'hour_distribution': {str(h): 0 for h in range(24)},
+        'day_distribution': {},
+        'total_commits': 0,
+    }
+
+    if not COMMITS_DIR.exists():
+        return patterns
+
+    for commit_file in COMMITS_DIR.glob("*.json"):
+        try:
+            with open(commit_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            message = data.get('message', '')
+            patterns['total_commits'] += 1
+            patterns['lengths'].append(len(message))
+
+            # Extract prefix (feat:, fix:, docs:, etc.)
+            if ':' in message[:20]:
+                prefix = message.split(':')[0].lower().strip()
+                if len(prefix) <= 15:  # Reasonable prefix length
+                    patterns['prefixes'][prefix] = patterns['prefixes'].get(prefix, 0) + 1
+
+            # Temporal patterns
+            hour = data.get('hour_of_day', 0)
+            patterns['hour_distribution'][str(hour)] = patterns['hour_distribution'].get(str(hour), 0) + 1
+
+            day = data.get('day_of_week', 'Unknown')
+            patterns['day_distribution'][day] = patterns['day_distribution'].get(day, 0) + 1
+
+        except (json.JSONDecodeError, IOError):
+            continue
+
+    # Calculate length statistics
+    if patterns['lengths']:
+        lengths = patterns['lengths']
+        patterns['length_stats'] = {
+            'min': min(lengths),
+            'max': max(lengths),
+            'avg': round(sum(lengths) / len(lengths), 1),
+            'median': sorted(lengths)[len(lengths) // 2],
+        }
+    patterns.pop('lengths')  # Don't include raw list
+
+    patterns['generated_at'] = datetime.now().isoformat()
+    return patterns
+
+
+def generate_tool_effectiveness() -> Dict[str, Any]:
+    """Generate tool usage effectiveness patterns.
+
+    Analyzes which tools are used most, success rates, and
+    tool sequences that lead to commits.
+
+    Returns:
+        Dict with tool usage statistics
+    """
+    tool_stats = {
+        'usage_counts': {},
+        'tools_per_session': [],
+        'total_actions': 0,
+        'total_sessions': 0,
+    }
+
+    # Analyze actions
+    if ACTIONS_DIR.exists():
+        for action_file in ACTIONS_DIR.glob("**/*.json"):
+            try:
+                with open(action_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+
+                tool = data.get('action_type', 'unknown')
+                tool_stats['usage_counts'][tool] = tool_stats['usage_counts'].get(tool, 0) + 1
+                tool_stats['total_actions'] += 1
+
+            except (json.JSONDecodeError, IOError):
+                continue
+
+    # Analyze sessions for tool diversity
+    if SESSIONS_DIR.exists():
+        for session_file in SESSIONS_DIR.glob("*.json"):
+            try:
+                with open(session_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+
+                tool_stats['total_sessions'] += 1
+
+            except (json.JSONDecodeError, IOError):
+                continue
+
+    tool_stats['generated_at'] = datetime.now().isoformat()
+    return tool_stats
+
+
+def generate_shared_patterns():
+    """Generate all shared pattern files.
+
+    Creates aggregated, anonymized pattern files in .git-ml/shared/
+    that are safe to commit and share.
+    """
+    SHARED_DIR.mkdir(parents=True, exist_ok=True)
+
+    print("\n" + "=" * 60)
+    print("GENERATING SHARED PATTERNS")
+    print("=" * 60)
+
+    # File correlations
+    print("\n📁 Generating file correlations...")
+    correlations = generate_file_correlations()
+    corr_path = SHARED_DIR / "file_correlations.json"
+    with open(corr_path, 'w', encoding='utf-8') as f:
+        json.dump(correlations, f, indent=2)
+    print(f"   Saved {len(correlations['correlations'])} file pairs to {corr_path}")
+
+    # Commit patterns
+    print("\n📝 Generating commit patterns...")
+    patterns = generate_commit_patterns()
+    patterns_path = SHARED_DIR / "commit_patterns.json"
+    with open(patterns_path, 'w', encoding='utf-8') as f:
+        json.dump(patterns, f, indent=2)
+    print(f"   Analyzed {patterns['total_commits']} commits, saved to {patterns_path}")
+
+    # Tool effectiveness
+    print("\n🔧 Generating tool effectiveness...")
+    tools = generate_tool_effectiveness()
+    tools_path = SHARED_DIR / "tool_effectiveness.json"
+    with open(tools_path, 'w', encoding='utf-8') as f:
+        json.dump(tools, f, indent=2)
+    print(f"   Analyzed {tools['total_actions']} actions, saved to {tools_path}")
+
+    # Summary file
+    summary = {
+        'generated_at': datetime.now().isoformat(),
+        'data_counts': count_data(),
+        'files': [
+            'file_correlations.json',
+            'commit_patterns.json',
+            'tool_effectiveness.json',
+        ],
+        'note': 'These patterns are aggregated and anonymized. Safe to commit.',
+    }
+    summary_path = SHARED_DIR / "summary.json"
+    with open(summary_path, 'w', encoding='utf-8') as f:
+        json.dump(summary, f, indent=2)
+
+    print(f"\n✅ Shared patterns generated in {SHARED_DIR}/")
+    print("   These files are safe to commit and share.")
+    print("=" * 60 + "\n")
+
+
+# ============================================================================
 # GIT HOOKS
 # ============================================================================
 
@@ -3198,6 +3421,10 @@ Your name and email (if provided) will be used for:
                         print(f"      🔒 {c['redactions_applied']} sensitive item(s) redacted")
 
             print(f"\n{'='*60}\n")
+
+    elif command == "generate-patterns":
+        # Generate shared pattern files (safe to commit)
+        generate_shared_patterns()
 
     elif command == "redact-test":
         # Test redaction patterns on sample text

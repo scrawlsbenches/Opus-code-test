@@ -1,0 +1,59 @@
+{
+  "hash": "0aec3d35d6c1eafedbf45fdd326fba649e7d532e",
+  "message": "ci: Add test_mcp_server.py to integration tests for coverage",
+  "author": "Claude",
+  "timestamp": "2025-12-14 16:21:38 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml"
+  ],
+  "insertions": 1,
+  "deletions": 0,
+  "hunks": [
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "jobs:",
+      "start_line": 182,
+      "lines_added": [
+        "          tests/test_mcp_server.py \\"
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "          tests/test_incremental_indexing.py \\",
+        "          tests/test_edge_cases.py \\",
+        "          tests/test_coverage_gaps.py \\",
+        "          tests/test_analyze_louvain_resolution.py \\",
+        "          tests/test_evaluate_cluster.py \\",
+        "          tests/test_cli_wrapper.py \\",
+        "          tests/test_search_codebase.py \\",
+        "          tests/test_ask_codebase.py \\",
+        "          tests/test_generate_ai_metadata.py \\",
+        "          tests/test_showcase.py \\"
+      ],
+      "context_after": [
+        "          -v --tb=short",
+        "",
+        "        coverage report --include=\"cortical/*\"",
+        "",
+        "    - name: Upload integration test coverage data",
+        "      uses: actions/upload-artifact@v4",
+        "      with:",
+        "        name: coverage-integration",
+        "        path: .coverage",
+        "        include-hidden-files: true"
+      ],
+      "change_type": "add"
+    }
+  ],
+  "hour_of_day": 16,
+  "day_of_week": "Sunday",
+  "seconds_since_last_commit": -76990,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

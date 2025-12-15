@@ -1,0 +1,88 @@
+{
+  "hash": "941c299be7f24b7d6cd1bae2b66270679b7b54a7",
+  "message": "Configure testing framework with strict warnings and MCP support",
+  "author": "Claude",
+  "timestamp": "2025-12-14 00:29:17 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/cli_wrapper.py",
+    "pyproject.toml"
+  ],
+  "insertions": 4,
+  "deletions": 3,
+  "hunks": [
+    {
+      "file": "cortical/cli_wrapper.py",
+      "function": "def test_then_commit(",
+      "start_line": 1008,
+      "lines_added": [
+        "# Tell pytest this is not a test function (it's a utility that runs tests)",
+        "test_then_commit.__test__ = False",
+        "",
+        ""
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "        if not add_result.success:",
+        "            return False, results",
+        "",
+        "    # Commit",
+        "    commit_result = run([\"git\", \"commit\", \"-m\", message], git=True)",
+        "    results.append(commit_result)",
+        "",
+        "    return commit_result.success, results",
+        "",
+        ""
+      ],
+      "context_after": [
+        "def commit_and_push(",
+        "    message: str,",
+        "    add_all: bool = True,",
+        "    branch: Optional[str] = None,",
+        ") -> Tuple[bool, List[ExecutionContext]]:",
+        "    \"\"\"",
+        "    Add, commit, and push in one go.",
+        "",
+        "    Example:",
+        "        ok, _ = commit_and_push(\"Fix typo\")"
+      ],
+      "change_type": "add"
+    },
+    {
+      "file": "pyproject.toml",
+      "function": "exclude_lines = [",
+      "start_line": 78,
+      "lines_added": [],
+      "lines_removed": [
+        "# Exclude utility functions that start with test_ but aren't tests",
+        "# The test_then_commit function in cli_wrapper.py is a utility, not a test",
+        "python_functions = [\"test_*\", \"!test_then_commit\"]"
+      ],
+      "context_before": [
+        "    \"pragma: no cover\",",
+        "    \"def __repr__\",",
+        "    \"raise NotImplementedError\",",
+        "    \"if TYPE_CHECKING:\",",
+        "    \"if __name__ == .__main__.:\",",
+        "]",
+        "",
+        "[tool.pytest.ini_options]",
+        "# Treat warnings as errors to catch issues early",
+        "filterwarnings = [\"error\"]"
+      ],
+      "context_after": [],
+      "change_type": "delete"
+    }
+  ],
+  "hour_of_day": 0,
+  "day_of_week": "Sunday",
+  "seconds_since_last_commit": -134131,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

@@ -1,0 +1,24 @@
+{
+  "hash": "df57fe62ee77c25453fcfa433bd9aca118627ebe",
+  "message": "Update corpus_dev.pkl with complete 55-file index",
+  "author": "Claude",
+  "timestamp": "2025-12-11 21:37:25 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "corpus_dev.pkl"
+  ],
+  "insertions": 0,
+  "deletions": 0,
+  "hunks": [],
+  "hour_of_day": 21,
+  "day_of_week": "Thursday",
+  "seconds_since_last_commit": -317243,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

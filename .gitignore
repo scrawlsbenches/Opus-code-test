@@ -93,5 +93,12 @@ tasks/.current_session.json
 cortical/proto/schema_pb2.py
 cortical/proto/__pycache__/
 
-# ML training data (local, regeneratable with `python scripts/ml_data_collector.py backfill`)
-.git-ml/
+# ML training data - tiered sharing strategy
+# Commits: SHARED (derived from git history, not sensitive)
+# Shared patterns: SHARED (aggregated, anonymized)
+# Chats/Sessions/Actions: LOCAL (contain conversations, sensitive)
+.git-ml/chats/
+.git-ml/sessions/
+.git-ml/actions/
+.git-ml/current_session.json
+.git-ml/contribution_consent.json

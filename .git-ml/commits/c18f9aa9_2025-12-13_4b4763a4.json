@@ -1,0 +1,109 @@
+{
+  "hash": "c18f9aa9aa5d338d3ae209c6905769eb47d24fd8",
+  "message": "Fix CI: Remove references to deleted test files",
+  "author": "Claude",
+  "timestamp": "2025-12-13 14:40:21 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml"
+  ],
+  "insertions": 5,
+  "deletions": 6,
+  "hunks": [
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "jobs:",
+      "start_line": 156,
+      "lines_added": [
+        "        # Includes tests/integration/ plus remaining legacy tests that provide unique coverage",
+        "        # Note: 3 legacy tests removed 2025-12-13 (test_behavioral.py, test_intent_query.py,",
+        "        #       test_query_optimization.py) - now covered by unit tests"
+      ],
+      "lines_removed": [
+        "        # Includes tests/integration/ plus remaining legacy tests (not yet migrated)",
+        "        # Note: 16 legacy tests removed 2025-12-13 - now covered by tests/unit/",
+        "          tests/test_query_optimization.py \\",
+        "          tests/test_intent_query.py \\"
+      ],
+      "context_before": [
+        "",
+        "    - name: Install test dependencies",
+        "      run: |",
+        "        python -m pip install --upgrade pip",
+        "        pip install pytest coverage",
+        "",
+        "    - name: Run integration tests with coverage",
+        "      run: |",
+        "        echo \"=== Running Integration Tests ===\"",
+        "        # Run integration tests - single pytest call is faster than multiple unittest discovers"
+      ],
+      "context_after": [
+        "        coverage run --source=cortical -m pytest \\",
+        "          tests/integration/ \\",
+        "          tests/test_incremental_indexing.py \\",
+        "          tests/test_edge_cases.py \\",
+        "          tests/test_coverage_gaps.py \\",
+        "          tests/test_analyze_louvain_resolution.py \\",
+        "          tests/test_evaluate_cluster.py \\",
+        "          tests/test_cli_wrapper.py \\",
+        "          tests/test_search_codebase.py \\",
+        "          tests/test_ask_codebase.py \\",
+        "          tests/test_generate_ai_metadata.py \\",
+        "          tests/test_showcase.py \\",
+        "          -v --tb=short",
+        "",
+        "        coverage report --include=\"cortical/*\""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "jobs:",
+      "start_line": 236,
+      "lines_added": [
+        "        # Note: tests/test_behavioral.py removed 2025-12-13 - superseded by tests/behavioral/",
+        "        python -m pytest tests/behavioral/ -v --tb=short"
+      ],
+      "lines_removed": [
+        "        # Includes tests/behavioral/ plus legacy test_behavioral.py",
+        "        python -m pytest tests/behavioral/ tests/test_behavioral.py -v --tb=short"
+      ],
+      "context_before": [
+        "        python-version: '3.11'",
+        "",
+        "    - name: Install test dependencies",
+        "      run: |",
+        "        python -m pip install --upgrade pip",
+        "        pip install pytest",
+        "",
+        "    - name: Run behavioral tests",
+        "      run: |",
+        "        echo \"=== Running Behavioral Tests ===\""
+      ],
+      "context_after": [
+        "        echo \"✅ Behavioral quality verified\"",
+        "",
+        "  # ==========================================================================",
+        "  # Stage 6: Performance Tests (< 1 min, no coverage)",
+        "  # Timing-based tests to catch performance regressions",
+        "  # Runs in PARALLEL with unit/integration after smoke-tests pass",
+        "  # ==========================================================================",
+        "  performance-tests:",
+        "    name: \"⏱️ Performance Tests\"",
+        "    runs-on: ubuntu-latest"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 14,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": -169467,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

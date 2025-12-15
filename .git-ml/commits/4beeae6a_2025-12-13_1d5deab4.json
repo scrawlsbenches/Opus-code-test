@@ -1,0 +1,67 @@
+{
+  "hash": "4beeae6ac8b6406b8736ba26dfdda0b5a54d4154",
+  "message": "Fix CI coverage to include all test directories",
+  "author": "Claude",
+  "timestamp": "2025-12-13 05:11:03 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml"
+  ],
+  "insertions": 6,
+  "deletions": 2,
+  "hunks": [
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "jobs:",
+      "start_line": 234,
+      "lines_added": [
+        "        # Run pytest-based tests (tests/unit/, tests/smoke/, etc.)",
+        "        coverage run --source=cortical -m pytest tests/ -v --ignore=tests/performance/",
+        "",
+        "        # Append unittest-based legacy tests",
+        "        coverage run --append --source=cortical -m unittest discover -s tests -p \"test_*.py\" -v",
+        ""
+      ],
+      "lines_removed": [
+        "        # Run full test suite for comprehensive coverage",
+        "        coverage run --source=cortical -m unittest discover -s tests -v"
+      ],
+      "context_before": [
+        "",
+        "    - name: Download integration coverage",
+        "      uses: actions/download-artifact@v4",
+        "      with:",
+        "        name: coverage-integration",
+        "        path: .",
+        "",
+        "    - name: Generate combined coverage report",
+        "      run: |",
+        "        echo \"=== Combined Coverage Report ===\""
+      ],
+      "context_after": [
+        "        coverage report -m --include=\"cortical/*\"",
+        "        coverage xml -o coverage.xml",
+        "",
+        "        # Check threshold",
+        "        coverage report --fail-under=89 --include=\"cortical/*\"",
+        "",
+        "    - name: Upload final coverage report",
+        "      uses: actions/upload-artifact@v4",
+        "      with:",
+        "        name: coverage-report"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 5,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": -203625,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

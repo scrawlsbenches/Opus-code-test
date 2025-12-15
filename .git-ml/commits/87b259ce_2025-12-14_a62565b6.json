@@ -1,0 +1,126 @@
+{
+  "hash": "87b259ceca9dbdb7b0c73246762052bf5170c32f",
+  "message": "task: Add documentation improvement tasks",
+  "author": "Claude",
+  "timestamp": "2025-12-14 17:41:30 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "tasks/2025-12-14_17-13-01_6aa8.json"
+  ],
+  "insertions": 46,
+  "deletions": 1,
+  "hunks": [
+    {
+      "file": "tasks/2025-12-14_17-13-01_6aa8.json",
+      "function": null,
+      "start_line": 1,
+      "lines_added": [
+        "  \"saved_at\": \"2025-12-14T17:41:16.926325\","
+      ],
+      "lines_removed": [
+        "  \"saved_at\": \"2025-12-14T17:38:31.813401\","
+      ],
+      "context_before": [
+        "{",
+        "  \"version\": 1,",
+        "  \"session_id\": \"6aa8\",",
+        "  \"started_at\": \"2025-12-14T17:13:01.505357\","
+      ],
+      "context_after": [
+        "  \"tasks\": [",
+        "    {",
+        "      \"id\": \"T-20251214-171301-6aa8-001\",",
+        "      \"title\": \"Investigate semantic search relevance for domain-specific queries\",",
+        "      \"status\": \"pending\",",
+        "      \"priority\": \"medium\",",
+        "      \"category\": \"arch\",",
+        "      \"description\": \"During dog-fooding, searching for 'security test fuzzing' returned staleness tests instead of actual security-related code. The search seems to weight common terms like 'test' too heavily.\\n\\nInvestigation areas:\\n- Query expansion may be pulling in too many generic terms\\n- TF-IDF weighting may not properly discount common programming terms\\n- Domain-specific boosting could improve relevance for security/testing queries\\n\\nRelated: The code_concepts.py has programming synonyms but may need security-specific terms.\\n\\nDiscovered during: Dog-fooding session 2025-12-14\",",
+        "      \"depends_on\": [],",
+        "      \"effort\": \"medium\","
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "tasks/2025-12-14_17-13-01_6aa8.json",
+      "function": null,
+      "start_line": 116,
+      "lines_added": [
+        "    },",
+        "    {",
+        "      \"id\": \"T-20251214-174107-6aa8-009\",",
+        "      \"title\": \"Update README.md with comprehensive project overview\",",
+        "      \"status\": \"pending\",",
+        "      \"priority\": \"high\",",
+        "      \"category\": \"docs\",",
+        "      \"description\": \"The README.md needs to be updated to reflect current project state and be more engaging.\\n\\nCurrent issues:\\n- May be outdated with recent features\\n- Missing text-as-memories system\\n- Missing security features (HMAC signing, Bandit CI)\\n- Missing Claude skills and commands\\n\\nREADME should include:\\n1. Compelling intro with the 'visual cortex for text' metaphor\\n2. Quick start (5-line example)\\n3. Key features table with badges\\n4. Architecture diagram (ASCII or link to docs)\\n5. Installation instructions\\n6. Links to docs/quickstart.md for detailed guide\\n7. Security section (pickle warnings, HMAC signing)\\n8. Claude Code integration (skills, commands)\\n9. Contributing section\\n10. License\\n\\nMake it visually appealing with:\\n- Feature badges\\n- Code examples that actually run\\n- Clear navigation to detailed docs\\n- The 'neurons that fire together' quote\",",
+        "      \"depends_on\": [],",
+        "      \"effort\": \"medium\",",
+        "      \"created_at\": \"2025-12-14T17:41:07.348022\",",
+        "      \"updated_at\": null,",
+        "      \"completed_at\": null,",
+        "      \"context\": {},",
+        "      \"retrospective\": null",
+        "    },",
+        "    {",
+        "      \"id\": \"T-20251214-174112-6aa8-010\",",
+        "      \"title\": \"Audit markdown files for staleness\",",
+        "      \"status\": \"pending\",",
+        "      \"priority\": \"medium\",",
+        "      \"category\": \"docs\",",
+        "      \"description\": \"Review all markdown documentation for outdated content.\\n\\nFiles to audit:\\n- README.md - main project readme\\n- CLAUDE.md - development guide\\n- CONTRIBUTING.md - contribution guide\\n- docs/*.md - all documentation files\\n- samples/**/*.md - sample documents\\n\\nCheck for:\\n1. Outdated code examples (do they still run?)\\n2. Missing new features (text-as-memories, security, skills)\\n3. Broken internal links ([[wiki-style]] and markdown links)\\n4. Incorrect file paths or line numbers\\n5. Deprecated APIs still documented\\n6. Missing new configuration options\\n7. Outdated task references\\n\\nCreate a staleness report:\\n- List files with issues\\n- Categorize by severity (broken vs outdated vs minor)\\n- Link to specific lines needing updates\\n\\nConsider adding a CI check for:\\n- Broken markdown links\\n- Code blocks that don't parse\\n- References to non-existent files\",",
+        "      \"depends_on\": [],",
+        "      \"effort\": \"medium\",",
+        "      \"created_at\": \"2025-12-14T17:41:12.741156\",",
+        "      \"updated_at\": null,",
+        "      \"completed_at\": null,",
+        "      \"context\": {},",
+        "      \"retrospective\": null",
+        "    },",
+        "    {",
+        "      \"id\": \"T-20251214-174116-6aa8-011\",",
+        "      \"title\": \"Add markdown link checker to CI\",",
+        "      \"status\": \"pending\",",
+        "      \"priority\": \"low\",",
+        "      \"category\": \"infra\",",
+        "      \"description\": \"Add automated checking for broken links in markdown files.\\n\\nTools to consider:\\n- markdown-link-check (npm)\\n- mlc (rust-based, fast)\\n- lychee (rust-based, comprehensive)\\n\\nCI integration:\\n```yaml\\nmarkdown-lint:\\n  runs-on: ubuntu-latest\\n  steps:\\n    - uses: actions/checkout@v4\\n    - name: Check markdown links\\n      uses: gaurav-nelson/github-action-markdown-link-check@v1\\n      with:\\n        use-quiet-mode: 'yes'\\n        config-file: '.markdown-link-check.json'\\n```\\n\\nConfig file should:\\n- Ignore external URLs (or check with timeout)\\n- Check internal file references\\n- Check anchor links (#section-name)\\n- Whitelist known-good external domains\\n\\nAlso check:\\n- [[wiki-style]] links resolve to real files\\n- Code file references (cortical/foo.py:123) exist\",",
+        "      \"depends_on\": [],",
+        "      \"effort\": \"medium\",",
+        "      \"created_at\": \"2025-12-14T17:41:16.926225\",",
+        "      \"updated_at\": null,",
+        "      \"completed_at\": null,",
+        "      \"context\": {},",
+        "      \"retrospective\": null"
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "      \"priority\": \"medium\",",
+        "      \"category\": \"arch\",",
+        "      \"description\": \"Apply the same merge-safe pattern from tasks to memories and decisions.\\n\\nCurrent patterns (can conflict):\\n- memories: YYYY-MM-DD-topic.md\\n- decisions: adr-NNN-title.md\\n\\nProposed patterns (merge-safe):\\n- memories: YYYY-MM-DD_HH-MM-SS_XXXX-topic.md\\n- decisions: adr-YYYYMMDD-HHMMSS-XXXX-title.md\\n\\nChanges needed:\\n1. Update memory-manager skill templates\\n2. Update /knowledge-transfer command\\n3. Update docs/text-as-memories.md examples\\n4. Add helper: scripts/new_memory.py with auto-generated safe names\\n5. Add helper: scripts/new_decision.py with auto-generated safe names\\n\\nAlternative: Use topic-hash suffix instead of timestamp\\nExample: 2025-12-14-dogfooding-a1b2.md\\n\\nThe session ID approach mirrors the proven task system design.\",",
+        "      \"depends_on\": [],",
+        "      \"effort\": \"medium\",",
+        "      \"created_at\": \"2025-12-14T17:38:31.813288\",",
+        "      \"updated_at\": null,",
+        "      \"completed_at\": null,",
+        "      \"context\": {},",
+        "      \"retrospective\": null"
+      ],
+      "context_after": [
+        "    }",
+        "  ]",
+        "}"
+      ],
+      "change_type": "add"
+    }
+  ],
+  "hour_of_day": 17,
+  "day_of_week": "Sunday",
+  "seconds_since_last_commit": -72198,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

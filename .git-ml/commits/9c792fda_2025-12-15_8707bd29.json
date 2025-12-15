@@ -1,0 +1,72 @@
+{
+  "hash": "9c792fdaf16aa3df2f82ac24deae03a2f7f8c177",
+  "message": "docs: Add disable and CI sections to ml-logger skill",
+  "author": "Claude",
+  "timestamp": "2025-12-15 09:49:12 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".claude/skills/ml-logger/SKILL.md"
+  ],
+  "insertions": 25,
+  "deletions": 0,
+  "hunks": [
+    {
+      "file": ".claude/skills/ml-logger/SKILL.md",
+      "function": "python .claude/hooks/session_logger.py \\",
+      "start_line": 76,
+      "lines_added": [
+        "",
+        "## Disabling Collection",
+        "",
+        "To temporarily disable ML data collection:",
+        "",
+        "```bash",
+        "export ML_COLLECTION_ENABLED=0",
+        "```",
+        "",
+        "Stats and validation commands still work when disabled. Only collection (commit, chat, action) is blocked.",
+        "",
+        "## CI Integration",
+        "",
+        "Record CI results for commits:",
+        "",
+        "```bash",
+        "# After CI run",
+        "python scripts/ml_data_collector.py ci set \\",
+        "    --commit $(git rev-parse HEAD) \\",
+        "    --result pass \\",
+        "    --coverage 89.5 \\",
+        "    --tests-passed 150",
+        "```",
+        "",
+        "This enables the model to learn which code changes pass/fail CI."
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "",
+        "## Why This Matters",
+        "",
+        "This data trains a micro-model that learns:",
+        "- YOUR project's patterns",
+        "- YOUR coding style",
+        "- YOUR common workflows",
+        "- YOUR file relationships",
+        "",
+        "The model becomes a personalized assistant that understands THIS codebase deeply."
+      ],
+      "context_after": [],
+      "change_type": "add"
+    }
+  ],
+  "hour_of_day": 9,
+  "day_of_week": "Monday",
+  "seconds_since_last_commit": -14136,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

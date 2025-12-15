@@ -1,0 +1,125 @@
+{
+  "hash": "0039ad5b13fb61d6405ef20fe2a9ec0012ad82a6",
+  "message": "Mark Task #136 complete - semantics O(n²) optimization",
+  "author": "Claude",
+  "timestamp": "2025-12-11 22:30:46 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_ARCHIVE.md",
+    "TASK_LIST.md"
+  ],
+  "insertions": 2,
+  "deletions": 2,
+  "hunks": [
+    {
+      "file": "TASK_ARCHIVE.md",
+      "function": "Completed tasks moved from TASK_LIST.md. Search here for historical context and",
+      "start_line": 4,
+      "lines_added": [
+        "| 136 | Optimize semantics O(n²) similarity - add sampling/early-exit | Perf | 2025-12-11 |"
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "",
+        "**Archive Created:** 2025-12-11",
+        "**Tasks Archived:** 75+ completed tasks",
+        "",
+        "---",
+        "",
+        "## Quick Reference: Completed Tasks",
+        "",
+        "| # | Task | Category | Completed |",
+        "|---|------|----------|-----------|"
+      ],
+      "context_after": [
+        "| 1 | Fix Per-Document TF-IDF Calculation Bug | Bug Fix | 2025-12-10 |",
+        "| 2 | Add ID-to-Minicolumn Lookup Optimization | Performance | 2025-12-10 |",
+        "| 3 | Fix Type Annotation Errors | Bug Fix | 2025-12-10 |",
+        "| 4 | Remove Unused Import | Cleanup | 2025-12-10 |",
+        "| 5 | Fix Unconditional Print in Export | Bug Fix | 2025-12-10 |",
+        "| 6 | Add Missing Test Coverage | Testing | 2025-12-10 |",
+        "| 8 | Implement Chunk-Level Retrieval | RAG | 2025-12-10 |",
+        "| 9 | Add Document Metadata Support | RAG | 2025-12-10 |",
+        "| 10 | Activate Layer 2 Concept Clustering | RAG | 2025-12-10 |",
+        "| 11 | Integrate Semantic Relations into Retrieval | RAG | 2025-12-10 |"
+      ],
+      "change_type": "add"
+    },
+    {
+      "file": "TASK_LIST.md",
+      "function": null,
+      "start_line": 1,
+      "lines_added": [
+        "**Pending Tasks:** 40"
+      ],
+      "lines_removed": [
+        "**Pending Tasks:** 41"
+      ],
+      "context_before": [
+        "# Task List: Cortical Text Processor",
+        "",
+        "Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).",
+        "",
+        "**Last Updated:** 2025-12-11"
+      ],
+      "context_after": [
+        "**Completed Tasks:** 88+ (see archive)",
+        "",
+        "---",
+        "",
+        "## Active Backlog",
+        "",
+        "<!-- Machine-parseable format for automation -->",
+        "",
+        "### 🔴 Critical (Do Now)",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "TASK_LIST.md",
+      "function": "Active backlog for the Cortical Text Processor project. Completed tasks are arch",
+      "start_line": 26,
+      "lines_added": [],
+      "lines_removed": [
+        "| 136 | Optimize semantics O(n²) similarity - add sampling/early-exit | Perf | - | Medium |"
+      ],
+      "context_before": [
+        "| # | Task | Category | Depends | Effort |",
+        "|---|------|----------|---------|--------|",
+        "| 94 | Split query.py into focused modules | Arch | - | Large |",
+        "| 97 | Integrate CorticalConfig into processor | Arch | - | Medium |",
+        "| 127 | Create cluster coverage evaluation script | DevEx | 125 | Medium |",
+        "",
+        "### 🟡 Medium (Do This Month)",
+        "",
+        "| # | Task | Category | Depends | Effort |",
+        "|---|------|----------|---------|--------|"
+      ],
+      "context_after": [
+        "| 137 | Cap bigram connections to top-K per bigram | Perf | - | Small |",
+        "| 138 | Use sparse matrix multiplication for bigram connections | Perf | - | Medium |",
+        "| 139 | Batch bigram connection updates to reduce dict overhead | Perf | - | Small |",
+        "| 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |",
+        "| 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |",
+        "| 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |",
+        "| 91 | Create docs/README.md index | Docs | - | Small |",
+        "| 92 | Add badges to README.md | DevEx | - | Small |",
+        "| 93 | Update README with docs references | Docs | 91 | Small |",
+        "| 95 | Split processor.py into modules | Arch | 97 | Large |"
+      ],
+      "change_type": "delete"
+    }
+  ],
+  "hour_of_day": 22,
+  "day_of_week": "Thursday",
+  "seconds_since_last_commit": -314042,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

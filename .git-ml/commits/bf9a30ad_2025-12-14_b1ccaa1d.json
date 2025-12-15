@@ -1,0 +1,241 @@
+{
+  "hash": "bf9a30ade2f1bd34a6618f5b9b43028b86d773cf",
+  "message": "Fix CI workflow to install all dev dependencies",
+  "author": "Claude",
+  "timestamp": "2025-12-14 00:56:18 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml"
+  ],
+  "insertions": 6,
+  "deletions": 6,
+  "hunks": [
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "jobs:",
+      "start_line": 81,
+      "lines_added": [
+        "        pip install -e \".[dev]\""
+      ],
+      "lines_removed": [
+        "        pip install pytest"
+      ],
+      "context_before": [
+        "    - uses: actions/checkout@v4",
+        "",
+        "    - name: Set up Python 3.11",
+        "      uses: actions/setup-python@v5",
+        "      with:",
+        "        python-version: '3.11'",
+        "",
+        "    - name: Install test dependencies",
+        "      run: |",
+        "        python -m pip install --upgrade pip"
+      ],
+      "context_after": [
+        "",
+        "    - name: Run smoke tests",
+        "      run: |",
+        "        echo \"=== Running Smoke Tests ===\"",
+        "        python -m pytest tests/smoke/ -v --tb=short",
+        "        echo \"✅ Smoke tests passed\"",
+        "",
+        "  # ==========================================================================",
+        "  # Stage 2: Unit Tests with Coverage (< 2 min)",
+        "  # Fast, isolated tests for individual components"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "jobs:",
+      "start_line": 109,
+      "lines_added": [
+        "        pip install -e \".[dev]\""
+      ],
+      "lines_removed": [
+        "        pip install pytest coverage"
+      ],
+      "context_before": [
+        "    - uses: actions/checkout@v4",
+        "",
+        "    - name: Set up Python 3.11",
+        "      uses: actions/setup-python@v5",
+        "      with:",
+        "        python-version: '3.11'",
+        "",
+        "    - name: Install test dependencies",
+        "      run: |",
+        "        python -m pip install --upgrade pip"
+      ],
+      "context_after": [
+        "",
+        "    - name: Run unit tests with coverage",
+        "      run: |",
+        "        echo \"=== Running Unit Tests ===\"",
+        "        # Run unit tests - pytest handles both pytest AND unittest style tests",
+        "        # Using a single pytest call is faster than multiple unittest discovers",
+        "        # Note: Legacy tests removed 2025-12-13 - now covered by tests/unit/",
+        "        coverage run --source=cortical -m pytest \\",
+        "          tests/unit/ \\",
+        "          -v --tb=short"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "jobs:",
+      "start_line": 151,
+      "lines_added": [
+        "        pip install -e \".[dev]\""
+      ],
+      "lines_removed": [
+        "        pip install pytest coverage"
+      ],
+      "context_before": [
+        "    - uses: actions/checkout@v4",
+        "",
+        "    - name: Set up Python 3.11",
+        "      uses: actions/setup-python@v5",
+        "      with:",
+        "        python-version: '3.11'",
+        "",
+        "    - name: Install test dependencies",
+        "      run: |",
+        "        python -m pip install --upgrade pip"
+      ],
+      "context_after": [
+        "",
+        "    - name: Run integration tests with coverage",
+        "      run: |",
+        "        echo \"=== Running Integration Tests ===\"",
+        "        # Run integration tests - single pytest call is faster than multiple unittest discovers",
+        "        # Includes tests/integration/ plus remaining legacy tests that provide unique coverage",
+        "        # Note: 3 legacy tests removed 2025-12-13 (test_behavioral.py, test_intent_query.py,",
+        "        #       test_query_optimization.py) - now covered by unit tests",
+        "        coverage run --source=cortical -m pytest \\",
+        "          tests/integration/ \\"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "jobs:",
+      "start_line": 203,
+      "lines_added": [
+        "        pip install -e \".[dev]\""
+      ],
+      "lines_removed": [
+        "        pip install pytest"
+      ],
+      "context_before": [
+        "    - uses: actions/checkout@v4",
+        "",
+        "    - name: Set up Python 3.11",
+        "      uses: actions/setup-python@v5",
+        "      with:",
+        "        python-version: '3.11'",
+        "",
+        "    - name: Install test dependencies",
+        "      run: |",
+        "        python -m pip install --upgrade pip"
+      ],
+      "context_after": [
+        "",
+        "    - name: Run regression tests",
+        "      run: |",
+        "        echo \"=== Running Regression Tests ===\"",
+        "        python -m pytest tests/regression/ -v --tb=short",
+        "        echo \"✅ All regressions still fixed\"",
+        "",
+        "  # ==========================================================================",
+        "  # Stage 5: Behavioral Tests (< 2 min)",
+        "  # Tests for user-facing quality and relevance"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "jobs:",
+      "start_line": 231,
+      "lines_added": [
+        "        pip install -e \".[dev]\""
+      ],
+      "lines_removed": [
+        "        pip install pytest"
+      ],
+      "context_before": [
+        "    - uses: actions/checkout@v4",
+        "",
+        "    - name: Set up Python 3.11",
+        "      uses: actions/setup-python@v5",
+        "      with:",
+        "        python-version: '3.11'",
+        "",
+        "    - name: Install test dependencies",
+        "      run: |",
+        "        python -m pip install --upgrade pip"
+      ],
+      "context_after": [
+        "",
+        "    - name: Run behavioral tests",
+        "      run: |",
+        "        echo \"=== Running Behavioral Tests ===\"",
+        "        # Note: tests/test_behavioral.py removed 2025-12-13 - superseded by tests/behavioral/",
+        "        python -m pytest tests/behavioral/ -v --tb=short",
+        "        echo \"✅ Behavioral quality verified\"",
+        "",
+        "  # ==========================================================================",
+        "  # Stage 6: Performance Tests (< 1 min, no coverage)"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "workflows/ci.yml b/.github/workflows/ci.yml",
+      "function": "jobs:",
+      "start_line": 260,
+      "lines_added": [
+        "        pip install -e \".[dev]\""
+      ],
+      "lines_removed": [
+        "        pip install pytest"
+      ],
+      "context_before": [
+        "    - uses: actions/checkout@v4",
+        "",
+        "    - name: Set up Python 3.11",
+        "      uses: actions/setup-python@v5",
+        "      with:",
+        "        python-version: '3.11'",
+        "",
+        "    - name: Install test dependencies",
+        "      run: |",
+        "        python -m pip install --upgrade pip"
+      ],
+      "context_after": [
+        "",
+        "    - name: Run performance tests",
+        "      run: |",
+        "        echo \"=== Running Performance Tests (no coverage) ===\"",
+        "        python -m pytest tests/performance/ -v --tb=short -s",
+        "        echo \"✅ Performance within thresholds\"",
+        "",
+        "  # ==========================================================================",
+        "  # Stage 7: Full Coverage Report",
+        "  # Combines coverage from unit + integration tests WITHOUT re-running tests"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 0,
+  "day_of_week": "Sunday",
+  "seconds_since_last_commit": -132510,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

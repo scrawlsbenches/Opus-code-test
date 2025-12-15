@@ -1,0 +1,1427 @@
+{
+  "hash": "86cc3bbf9da54bb998eaf8433438a82a36c1fedd",
+  "message": "docs: Update stale query.py and processor.py references",
+  "author": "Claude",
+  "timestamp": "2025-12-15 11:28:31 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "CLAUDE.md",
+    "docs/algorithms.md",
+    "docs/architecture.md",
+    "docs/claude-usage.md",
+    "docs/code-of-ethics.md",
+    "docs/devex-tools.md",
+    "docs/dogfooding.md",
+    "docs/glossary.md",
+    "docs/louvain_resolution_analysis.md",
+    "docs/patterns.md",
+    "docs/quickstart.md"
+  ],
+  "insertions": 95,
+  "deletions": 71,
+  "hunks": [
+    {
+      "file": "CLAUDE.md",
+      "function": "ls cortical/*.ai_meta",
+      "start_line": 79,
+      "lines_added": [
+        "cat cortical/processor/__init__.py.ai_meta"
+      ],
+      "lines_removed": [
+        "cat cortical/processor.py.ai_meta"
+      ],
+      "context_before": [
+        "# If not present, generate it (~1s)",
+        "python scripts/generate_ai_metadata.py",
+        "```",
+        "",
+        "### Step 2: Read Module Metadata First",
+        "",
+        "Instead of reading entire source files, start with `.ai_meta` files:",
+        "",
+        "```bash",
+        "# Get structured overview of any module"
+      ],
+      "context_after": [
+        "```",
+        "",
+        "**What metadata provides:**",
+        "- Module docstring and purpose",
+        "- Function signatures with `see_also` cross-references",
+        "- Class structures with inheritance",
+        "- Logical section groupings (Persistence, Query, Analysis, etc.)",
+        "- Complexity hints for expensive operations",
+        "",
+        "### Step 3: Use the Full Toolchain"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "CLAUDE.md",
+      "function": "python scripts/search_codebase.py \"your query here\"",
+      "start_line": 111,
+      "lines_added": [
+        "cat cortical/query/expansion.py.ai_meta | head -100    # Get overview",
+        "│   ├── __init__.py   # Re-exports CorticalTextProcessor class (63 lines)",
+        "│   ├── core.py       # Initialization, staleness tracking, layer management (108 lines)",
+        "│   ├── documents.py  # Document processing, add/remove, metadata (454 lines)",
+        "│   ├── compute.py    # compute_all, PageRank, TF-IDF, clustering (1,033 lines)",
+        "│   ├── query_api.py  # Search, expansion, retrieval methods (699 lines)",
+        "│   ├── introspection.py  # State inspection, fingerprints, summaries (217 lines)",
+        "│   └── persistence_api.py # Save/load/export methods (243 lines)"
+      ],
+      "lines_removed": [
+        "cat cortical/query.py.ai_meta | head -100    # Get overview",
+        "│   ├── __init__.py   # Re-exports CorticalTextProcessor class",
+        "│   ├── core.py       # Initialization, staleness tracking, layer management (~100 lines)",
+        "│   ├── documents.py  # Document processing, add/remove, metadata (~450 lines)",
+        "│   ├── compute.py    # compute_all, PageRank, TF-IDF, clustering (~750 lines)",
+        "│   ├── query_api.py  # Search, expansion, retrieval methods (~550 lines)",
+        "│   ├── introspection.py  # State inspection, fingerprints, summaries (~200 lines)",
+        "│   └── persistence_api.py # Save/load/export methods (~200 lines)"
+      ],
+      "context_before": [
+        "1. **Read `.ai_meta` before source code** - Get the map before exploring the territory",
+        "2. **Follow `see_also` references** - Functions are cross-linked to related functions",
+        "3. **Check `complexity_hints`** - Know which operations are expensive before calling them",
+        "4. **Use semantic search** - The codebase is indexed for meaning-based retrieval",
+        "5. **Trust the sections** - Functions are grouped by purpose in the metadata",
+        "",
+        "### Example Workflow",
+        "",
+        "```bash",
+        "# I need to understand how search works"
+      ],
+      "context_after": [
+        "python scripts/search_codebase.py \"expand query\"  # Find specific code",
+        "# Then read specific line ranges as needed",
+        "```",
+        "",
+        "---",
+        "",
+        "## Architecture Map",
+        "",
+        "```",
+        "cortical/",
+        "├── processor/        # Main orchestrator package - START HERE",
+        "│   │                 # CorticalTextProcessor is the public API (composed from mixins)",
+        "├── query/            # Search, retrieval, query expansion (split into 8 modules)",
+        "│   ├── __init__.py   # Re-exports public API",
+        "│   ├── expansion.py  # Query expansion",
+        "│   ├── search.py     # Document search",
+        "│   ├── passages.py   # Passage retrieval",
+        "│   ├── chunking.py   # Text chunking",
+        "│   ├── intent.py     # Intent-based queries",
+        "│   ├── definitions.py # Definition search",
+        "│   ├── ranking.py    # Multi-stage ranking",
+        "│   └── analogy.py    # Analogy completion"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "CLAUDE.md",
+      "function": "Key defaults to know:",
+      "start_line": 538,
+      "lines_added": [
+        "   # In processor/core.py, add constant:"
+      ],
+      "lines_removed": [
+        "   # In processor.py, add constant:"
+      ],
+      "context_before": [
+        "3. **Build a complete picture** before running fixes",
+        "4. **Document findings** - create tasks with `scripts/new_task.py` even if they contradict hypotheses",
+        "",
+        "### When Implementing Features",
+        "",
+        "1. **Follow existing patterns** - this codebase is consistent",
+        "2. **Add type hints** - the codebase uses them extensively",
+        "3. **Write docstrings** - Google style with Args/Returns sections",
+        "4. **Update staleness tracking** if adding new computation:",
+        "   ```python"
+      ],
+      "context_after": [
+        "   COMP_YOUR_FEATURE = 'your_feature'",
+        "   # Mark stale in _mark_all_stale()",
+        "   # Mark fresh after computation",
+        "   ```",
+        "",
+        "### After Writing Code",
+        "",
+        "1. **Run the full test suite**:",
+        "   ```bash",
+        "   python -m unittest discover -s tests -v"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "CLAUDE.md",
+      "function": "coverage run -m pytest tests/",
+      "start_line": 739,
+      "lines_added": [
+        "2. Add wrapper method to appropriate mixin in `processor/` package:",
+        "   # In processor/compute.py (ComputeMixin)",
+        "1. Add to `query/` package following existing patterns",
+        "4. Add wrapper to `processor/query_api.py` (QueryMixin)"
+      ],
+      "lines_removed": [
+        "2. Add wrapper method to `CorticalTextProcessor` in `processor.py`:",
+        "1. Add to `query.py` following existing patterns",
+        "4. Add wrapper to `processor.py`"
+      ],
+      "context_before": [
+        "   def compute_your_analysis(",
+        "       layers: Dict[CorticalLayer, HierarchicalLayer],",
+        "       **kwargs",
+        "   ) -> Dict[str, Any]:",
+        "       \"\"\"Your analysis description.\"\"\"",
+        "       layer0 = layers[CorticalLayer.TOKENS]",
+        "       # Implementation",
+        "       return {'result': ..., 'stats': ...}",
+        "   ```",
+        ""
+      ],
+      "context_after": [
+        "   ```python",
+        "   def compute_your_analysis(self, **kwargs) -> Dict[str, Any]:",
+        "       \"\"\"Wrapper with docstring.\"\"\"",
+        "       return compute_your_analysis(self.layers, **kwargs)",
+        "   ```",
+        "",
+        "3. Add tests in `tests/test_analysis.py`",
+        "",
+        "### Adding a New Query Function",
+        "",
+        "2. Use `get_expanded_query_terms()` helper for query expansion",
+        "3. Use `layer.get_by_id()` for O(1) lookups, not iteration",
+        "5. Add tests in `tests/test_processor.py`",
+        "",
+        "### Modifying Minicolumn Structure",
+        "",
+        "1. Update `Minicolumn` class in `minicolumn.py`",
+        "2. Update `to_dict()` and `from_dict()` for persistence",
+        "3. Update `__slots__` if adding new fields",
+        "4. Increment state version in `persistence.py` if breaking change",
+        "5. Add migration logic for backward compatibility",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "CLAUDE.md",
+      "function": "Data collection is automatic via hooks:",
+      "start_line": 1253,
+      "lines_added": [
+        "- **Main API**: `cortical/processor/` package - `CorticalTextProcessor` class (mixin-based composition)",
+        "- **Search**: `cortical/query/` package - query expansion, document retrieval (8 modules)"
+      ],
+      "lines_removed": [
+        "- **Main API**: `cortical/processor.py` - `CorticalTextProcessor` class",
+        "- **Search**: `cortical/query.py` - query expansion, document retrieval"
+      ],
+      "context_before": [
+        "- **Stop hook**: Captures full session transcripts with all exchanges (recommended)",
+        "- **post-commit**: Captures commit metadata with diff hunks",
+        "- **pre-push**: Reports collection stats",
+        "",
+        "See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.",
+        "",
+        "---",
+        "",
+        "## File Quick Links",
+        ""
+      ],
+      "context_after": [
+        "- **Graph algorithms**: `cortical/analysis.py` - PageRank, TF-IDF, clustering",
+        "- **Data structures**: `cortical/minicolumn.py` - `Minicolumn`, `Edge`",
+        "- **Configuration**: `cortical/config.py` - `CorticalConfig` dataclass",
+        "- **Tests**: `tests/test_processor.py` - most comprehensive test file",
+        "- **Demo**: `showcase.py` - interactive demonstration",
+        "",
+        "**Process Documentation:**",
+        "- **Getting Started**: `docs/quickstart.md` - 5-minute tutorial for newcomers",
+        "- **Contributing**: `CONTRIBUTING.md` - how to contribute (fork, test, PR workflow)",
+        "- **Ethics**: `docs/code-of-ethics.md` - documentation, testing, and completion standards",
+        "- **Dog-fooding**: `docs/dogfooding-checklist.md` - checklist for testing with real usage"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/algorithms.md",
+      "function": "This document describes the information retrieval algorithms implemented in the",
+      "start_line": 4,
+      "lines_added": [
+        "| Query Expansion | Semantic search | `query/expansion.py` |"
+      ],
+      "lines_removed": [
+        "| Query Expansion | Semantic search | `query.py:55-176` |"
+      ],
+      "context_before": [
+        "",
+        "## Overview",
+        "",
+        "The system uses standard IR algorithms with a hierarchical, layered architecture:",
+        "",
+        "| Algorithm | Purpose | Primary File |",
+        "|-----------|---------|--------------|",
+        "| PageRank | Importance scoring | `analysis.py:22-95` |",
+        "| TF-IDF | Term weighting | `analysis.py:394-433` |",
+        "| Label Propagation | Concept clustering | `analysis.py:502-636` |"
+      ],
+      "context_after": [
+        "| Relation Extraction | Knowledge building | `semantics.py:109-186` |",
+        "",
+        "---",
+        "",
+        "## PageRank - Importance Scoring",
+        "",
+        "PageRank measures term importance based on network structure. Terms connected to other important terms receive higher scores.",
+        "",
+        "### Standard PageRank",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/algorithms.md",
+      "function": "After clustering, each cluster becomes a concept in Layer 2:",
+      "start_line": 136,
+      "lines_added": [
+        "**Location:** `query/expansion.py`",
+        "**Location:** `query/expansion.py`"
+      ],
+      "lines_removed": [
+        "**Location:** `query.py:55-176`",
+        "**Location:** `query.py:407-531`"
+      ],
+      "context_before": [
+        "- Named after top 3 members by PageRank: `\"neural/networks/learning\"`",
+        "- Connected bidirectionally to member tokens",
+        "- Aggregates member properties (documents, activation, pagerank)",
+        "",
+        "---",
+        "",
+        "## Query Expansion",
+        "",
+        "### Basic Expansion",
+        ""
+      ],
+      "context_after": [
+        "",
+        "Expands query terms to find semantically related words.",
+        "",
+        "**Three Expansion Methods:**",
+        "",
+        "1. **Lateral Connections** - Direct word associations from co-occurrence",
+        "   - Score: `connection_weight × neighbor_pagerank × 0.6`",
+        "",
+        "2. **Concept Clusters** - Words from same semantic category",
+        "   - Score: `concept_pagerank × member_pagerank × 0.4`",
+        "",
+        "3. **Code Concepts** - Programming synonyms (optional)",
+        "   - Example: \"get\" → \"fetch\", \"load\", \"retrieve\"",
+        "   - Score: `0.6`",
+        "",
+        "### Multi-Hop Expansion",
+        "",
+        "",
+        "Finds related terms through transitive relation chains.",
+        "",
+        "**Example Chains:**",
+        "- `\"dog\" → IsA → \"animal\" → HasProperty → \"living\"`",
+        "- `\"car\" → PartOf → \"engine\" → UsedFor → \"transportation\"`",
+        "",
+        "**Chain Validity Scoring:**",
+        "Not all relation chains are equally valid:",
+        "```"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/algorithms.md",
+      "function": "Not all relation chains are equally valid:",
+      "start_line": 178,
+      "lines_added": [
+        "**Location:** `query/intent.py`"
+      ],
+      "lines_removed": [
+        "**Location:** `query.py:179-284`"
+      ],
+      "context_before": [
+        "(Antonym, Antonym): 0.3   - Double negation, unreliable",
+        "```",
+        "",
+        "**Parameters:**",
+        "- `max_hops`: Maximum chain depth (default 2)",
+        "- `decay_factor`: Weight decay per hop (default 0.5)",
+        "- `min_path_score`: Minimum chain validity (default 0.2)",
+        "",
+        "### Intent-Based Query Parsing",
+        ""
+      ],
+      "context_after": [
+        "",
+        "Parses natural language queries to extract intent.",
+        "",
+        "**Intent Types:**",
+        "- `\"where\"` → `location` (find file/function location)",
+        "- `\"how\"` → `implementation` (find implementation details)",
+        "- `\"what\"` → `definition` (find definitions)",
+        "- `\"why\"` → `rationale` (find explanations/comments)",
+        "- `\"when\"` → `lifecycle` (find lifecycle events)",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/architecture.md",
+      "function": "This document describes both the **module architecture** (how code files interac",
+      "start_line": 9,
+      "lines_added": [
+        "5. **Orchestration Layer** - processor/ package coordinates everything (mixin-based composition)",
+        "│  │          processor/ package (Public API)                   │ │",
+        "│  │  - CorticalTextProcessor class (mixin composition)         │ │",
+        "│  │  - CoreMixin, DocumentsMixin, ComputeMixin, etc.           │ │"
+      ],
+      "lines_removed": [
+        "5. **Orchestration Layer** - processor.py coordinates everything",
+        "│  │              processor.py (Public API)                     │ │",
+        "│  │  - CorticalTextProcessor class                             │ │"
+      ],
+      "context_before": [
+        "This section maps the codebase structure, showing which modules depend on which, and how components interact.",
+        "",
+        "## Module Dependency Overview",
+        "",
+        "The codebase is organized into five architectural layers:",
+        "",
+        "1. **Foundation Layer** - Data structures and utilities (no cortical dependencies)",
+        "2. **Algorithm Layer** - Domain logic for analysis, semantics, embeddings",
+        "3. **Query Layer** - Modular search and retrieval functions",
+        "4. **Persistence Layer** - Save/load and git-friendly chunk storage"
+      ],
+      "context_after": [
+        "",
+        "### Complete Module Dependency Graph",
+        "",
+        "```",
+        "┌─────────────────────────────────────────────────────────────────┐",
+        "│                       ORCHESTRATION LAYER                        │",
+        "│                                                                  │",
+        "│  ┌────────────────────────────────────────────────────────────┐ │",
+        "│  │  - Coordinates all components                              │ │",
+        "│  │  - Staleness tracking                                      │ │",
+        "│  └───────┬──────────────────────────────────────────────────┬─┘ │",
+        "└──────────┼──────────────────────────────────────────────────┼───┘",
+        "           │                                                  │",
+        "           ▼                                                  ▼",
+        "┌──────────────────────────────────────────────┐   ┌─────────────────┐",
+        "│          ALGORITHM LAYER                     │   │ PERSISTENCE     │",
+        "│                                              │   │                 │",
+        "│  ┌──────────────┐  ┌──────────────┐         │   │ persistence.py  │"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/architecture.md",
+      "function": "The codebase is organized into five architectural layers:",
+      "start_line": 103,
+      "lines_added": [
+        "**processor/ package** (2,817 lines total)",
+        "- **Pattern**: Mixin-based composition - functionality split across focused modules",
+        "- **Structure**:",
+        "  - `__init__.py` (63 lines) - Re-exports CorticalTextProcessor",
+        "  - `core.py` (108 lines) - CoreMixin: initialization, staleness tracking",
+        "  - `documents.py` (454 lines) - DocumentsMixin: process_document, add/remove",
+        "  - `compute.py` (1,033 lines) - ComputeMixin: compute_all, PageRank, TF-IDF, clustering",
+        "  - `query_api.py` (699 lines) - QueryMixin: find_documents_for_query, expand_query",
+        "  - `introspection.py` (217 lines) - IntrospectionMixin: fingerprints, gaps, summaries",
+        "  - `persistence_api.py` (243 lines) - PersistenceMixin: save, load, export",
+        "  - `process_document()` - Add documents to corpus (DocumentsMixin)",
+        "  - `compute_all()` - Run all analysis phases (ComputeMixin)",
+        "  - `find_documents_for_query()` - Search wrapper (QueryMixin)",
+        "  - `find_passages_for_query()` - RAG wrapper (QueryMixin)",
+        "  - Staleness tracking for incremental updates (CoreMixin)"
+      ],
+      "lines_removed": [
+        "**processor.py** (2,301 lines)",
+        "- **Pattern**: Facade - delegates to specialized modules",
+        "  - `process_document()` - Add documents to corpus",
+        "  - `compute_all()` - Run all analysis phases",
+        "  - `find_documents_for_query()` - Search wrapper",
+        "  - `find_passages_for_query()` - RAG wrapper",
+        "  - Staleness tracking for incremental updates"
+      ],
+      "context_before": [
+        "│  │  │ - Stop words │  │ - Expansion  │                        │ │",
+        "│  │  └──────────────┘  └──────────────┘                        │ │",
+        "│  └─────────────────────────────────────────────────────────────┘ │",
+        "└───────────────────────────────────────────────────────────────────┘",
+        "```",
+        "",
+        "## Component Responsibilities",
+        "",
+        "### Orchestration Layer",
+        ""
+      ],
+      "context_after": [
+        "- **Role**: Main orchestrator and public API",
+        "- **Key Functions**:",
+        "- **Imports**: All other modules (analysis, semantics, embeddings, gaps, fingerprint, query, persistence)",
+        "- **Used By**: External users, scripts",
+        "",
+        "### Algorithm Layer",
+        "",
+        "**analysis.py** (1,123 lines)",
+        "- **Role**: Graph algorithms",
+        "- **Key Functions**:",
+        "  - `compute_pagerank()` - Importance scoring",
+        "  - `compute_tfidf()` - Term weighting"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/architecture.md",
+      "function": "The query layer is split into focused submodules, all re-exported from `query/__",
+      "start_line": 277,
+      "lines_added": [
+        "        │       processor/documents.py       │",
+        "        │    (DocumentsMixin)                │"
+      ],
+      "lines_removed": [
+        "        │       processor.py                 │"
+      ],
+      "context_before": [
+        "                         ▼",
+        "                  ┌─────────────┐",
+        "                  │ tokenizer.py│",
+        "                  │  Tokenize   │",
+        "                  │  + Stem     │",
+        "                  │  + Filter   │",
+        "                  └──────┬──────┘",
+        "                         │",
+        "                         ▼",
+        "        ┌────────────────────────────────────┐"
+      ],
+      "context_after": [
+        "        │    process_document()              │",
+        "        └────────────────┬───────────────────┘",
+        "                         │",
+        "         ┌───────────────┼───────────────┐",
+        "         │               │               │",
+        "         ▼               ▼               ▼",
+        "    ┌────────┐     ┌─────────┐     ┌─────────┐",
+        "    │Layer 0 │     │ Layer 1 │     │ Layer 3 │",
+        "    │ TOKENS │────▶│ BIGRAMS │     │   DOC   │",
+        "    └────────┘     └─────────┘     └─────────┘",
+        "         │"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/architecture.md",
+      "function": "The query layer is split into focused submodules, all re-exported from `query/__",
+      "start_line": 349,
+      "lines_added": [
+        "### Pattern 1: Mixin-Based Composition",
+        "The processor package uses mixin composition to organize functionality:",
+        "# processor/__init__.py assembles the complete class",
+        "class CorticalTextProcessor(",
+        "    CoreMixin,",
+        "    DocumentsMixin,",
+        "    ComputeMixin,",
+        "    QueryMixin,",
+        "    IntrospectionMixin,",
+        "    PersistenceMixin",
+        "):",
+        "    pass",
+        "",
+        "# processor/compute.py (ComputeMixin) delegates to analysis.py",
+        "**Benefits**: Clean separation of concerns, modular testing, each file stays focused (<1100 lines)"
+      ],
+      "lines_removed": [
+        "### Pattern 1: Orchestrator Pattern",
+        "processor.py acts as a facade, delegating to specialized modules:",
+        "# processor.py delegates to analysis.py",
+        "**Benefits**: Clean public API, focused modules, easy testing"
+      ],
+      "context_before": [
+        "         └───────────────┼───────────────┘",
+        "                         │",
+        "                    Ranked Results",
+        "                         │",
+        "                         ▼",
+        "                   Return to User",
+        "```",
+        "",
+        "## Interaction Patterns",
+        ""
+      ],
+      "context_after": [
+        "",
+        "",
+        "```python",
+        "def compute_importance(self):",
+        "    pagerank_scores = analysis.compute_pagerank(",
+        "        self.layers[CorticalLayer.TOKENS],",
+        "        damping=self.config.pagerank_damping",
+        "    )",
+        "    # Update minicolumns with scores",
+        "```",
+        "",
+        "",
+        "### Pattern 2: Layered Processing",
+        "",
+        "All algorithm modules operate on the same layer abstraction:",
+        "",
+        "```python",
+        "# Common pattern across analysis, semantics, embeddings, gaps",
+        "def some_algorithm(",
+        "    layers: Dict[CorticalLayer, HierarchicalLayer],",
+        "    **kwargs"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/architecture.md",
+      "function": "query/__init__.py     ← Re-exports all public symbols",
+      "start_line": 403,
+      "lines_added": [
+        "The processor package (CoreMixin + ComputeMixin) tracks which computations need recomputation:",
+        "# processor/documents.py (DocumentsMixin) marks all stale when documents change",
+        "# processor/compute.py (ComputeMixin) only recomputes stale components"
+      ],
+      "lines_removed": [
+        "processor.py tracks which computations need recomputation:",
+        "# Mark all stale when documents change",
+        "# compute_all() only recomputes stale components"
+      ],
+      "context_before": [
+        "├── chunking.py       ← Text splitting",
+        "├── intent.py         ← Intent parsing",
+        "├── definitions.py    ← Definition-specific",
+        "└── analogy.py        ← Analogy completion",
+        "```",
+        "",
+        "**Benefits**: Files stay under 400 lines, clear boundaries, easy to extend",
+        "",
+        "### Pattern 4: Staleness Tracking",
+        ""
+      ],
+      "context_after": [
+        "",
+        "```python",
+        "def process_document(self, doc_id, content):",
+        "    # ... process ...",
+        "    self._mark_all_stale()",
+        "",
+        "def compute_all(self):",
+        "    if self.is_stale(self.COMP_TFIDF):",
+        "        self.compute_tfidf()",
+        "    if self.is_stale(self.COMP_PAGERANK):",
+        "        self.compute_importance()",
+        "```",
+        "",
+        "**Benefits**: Avoids redundant computation, supports incremental updates",
+        "",
+        "## Mermaid Diagrams"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/architecture.md",
+      "function": "graph TD",
+      "start_line": 456,
+      "lines_added": [
+        "    processor[processor/<br/>CorticalTextProcessor<br/>(mixin composition)]"
+      ],
+      "lines_removed": [
+        "    processor[processor.py<br/>CorticalTextProcessor]"
+      ],
+      "context_before": [
+        "    query_ranking[query/ranking.py<br/>Multi-stage rank]",
+        "    query_chunking[query/chunking.py<br/>Text chunking]",
+        "    query_intent[query/intent.py<br/>Intent parsing]",
+        "    query_analogy[query/analogy.py<br/>Analogies]",
+        "",
+        "    %% Persistence Layer",
+        "    persistence[persistence.py<br/>Save/load]",
+        "    chunk_index[chunk_index.py<br/>Chunk storage]",
+        "",
+        "    %% Orchestration"
+      ],
+      "context_after": [
+        "",
+        "    %% Dependencies",
+        "    layers --> minicolumn",
+        "",
+        "    analysis --> layers",
+        "    analysis --> minicolumn",
+        "    analysis --> constants",
+        "",
+        "    semantics --> layers",
+        "    semantics --> minicolumn"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/architecture.md",
+      "function": "minicolumn.feedback_connections: Dict[str, float]",
+      "start_line": 716,
+      "lines_added": [
+        "**Location:** `processor/documents.py` (DocumentsMixin)"
+      ],
+      "lines_removed": [
+        "**Location:** `processor.py:54-137`"
+      ],
+      "context_before": [
+        "- Token → containing bigrams: `\"neural\" → [\"neural networks\", \"neural processing\"]`",
+        "- Token → containing concepts: `\"neural\" → [\"neural/networks/learning\"]`",
+        "- Token → containing documents: `\"neural\" → [\"doc1\", \"doc2\"]`",
+        "",
+        "---",
+        "",
+        "## Data Flow",
+        "",
+        "### Document Processing",
+        ""
+      ],
+      "context_after": [
+        "",
+        "When a document is processed:",
+        "",
+        "```",
+        "INPUT: \"Neural networks process data.\"",
+        "",
+        "1. TOKENIZATION",
+        "   → [\"neural\", \"networks\", \"process\", \"data\"]",
+        "   → Create Layer 0 minicolumns",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/architecture.md",
+      "function": "INPUT: \"Neural networks process data.\"",
+      "start_line": 748,
+      "lines_added": [
+        "**Location:** `processor/compute.py` (ComputeMixin - `compute_all()`)"
+      ],
+      "lines_removed": [
+        "**Location:** `processor.py:452-596` (`compute_all()`)"
+      ],
+      "context_before": [
+        "",
+        "5. BIGRAM-TOKEN CONNECTIONS",
+        "   → bigram.feedforward_connections[\"L0_neural\"] = 1.0",
+        "   → token.feedback_connections[\"L1_neural networks\"] = 1.0",
+        "```",
+        "",
+        "**Important:** Bigrams use SPACE separators: `\"neural networks\"`, not `\"neural_networks\"`.",
+        "",
+        "### Network Computation",
+        ""
+      ],
+      "context_after": [
+        "",
+        "After processing documents, compute the full network:",
+        "",
+        "```",
+        "1. ACTIVATION PROPAGATION",
+        "   → Spread activation through connections",
+        "   → Simulates information flow",
+        "",
+        "2. PAGERANK",
+        "   → Compute importance for Layer 0 and Layer 1"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/architecture.md",
+      "function": "After processing documents, compute the full network:",
+      "start_line": 789,
+      "lines_added": [
+        "**Location:** `processor/query_api.py` (QueryMixin) + `query/` package"
+      ],
+      "lines_removed": [
+        "**Location:** `query.py`"
+      ],
+      "context_before": [
+        "",
+        "7. CONCEPT CONNECTIONS",
+        "   → Connect Layer 2 concepts by:",
+        "     - Document overlap (Jaccard similarity)",
+        "     - Semantic relations between members",
+        "     - Embedding similarity (optional)",
+        "```",
+        "",
+        "### Query Flow",
+        ""
+      ],
+      "context_after": [
+        "",
+        "When a query is executed:",
+        "",
+        "```",
+        "INPUT: \"neural networks\"",
+        "",
+        "1. TOKENIZE QUERY",
+        "   → [\"neural\", \"networks\"]",
+        "",
+        "2. EXPAND QUERY"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/architecture.md",
+      "function": "INPUT: \"neural networks\"",
+      "start_line": 896,
+      "lines_added": [
+        "Used throughout `analysis.py` and `query/` modules.",
+        "**Location:** `processor/core.py` (CoreMixin)",
+        "**Location:** `processor/core.py` (CoreMixin)",
+        "| process_document() | `processor/documents.py` | DocumentsMixin |",
+        "| compute_all() | `processor/compute.py` | ComputeMixin |"
+      ],
+      "lines_removed": [
+        "Used throughout `analysis.py` and `query.py`.",
+        "**Location:** `processor.py:49`",
+        "**Location:** `processor.py:51-52`",
+        "| process_document() | `processor.py` | 54-137 |",
+        "| compute_all() | `processor.py` | 452-596 |"
+      ],
+      "context_before": [
+        "```python",
+        "# WRONG - O(n):",
+        "for col in layer.minicolumns.values():",
+        "    if col.id == target_id:",
+        "        neighbor = col",
+        "",
+        "# RIGHT - O(1):",
+        "neighbor = layer.get_by_id(target_id)",
+        "```",
+        ""
+      ],
+      "context_after": [
+        "",
+        "### Staleness Tracking",
+        "",
+        "",
+        "```python",
+        "self._stale_computations: set",
+        "```",
+        "",
+        "Tracks which computations need rerunning after corpus changes:",
+        "- `COMP_TFIDF`",
+        "- `COMP_PAGERANK`",
+        "- `COMP_ACTIVATION`",
+        "- `COMP_DOC_CONNECTIONS`",
+        "- `COMP_BIGRAM_CONNECTIONS`",
+        "- `COMP_CONCEPTS`",
+        "",
+        "### Query Caching",
+        "",
+        "",
+        "```python",
+        "self._query_expansion_cache: Dict[str, Dict[str, float]]",
+        "self._query_cache_max_size: int = 100",
+        "```",
+        "",
+        "LRU cache for query expansion results. Cleared after `compute_all()`.",
+        "",
+        "---",
+        "",
+        "## File Reference",
+        "",
+        "| Component | File | Lines |",
+        "|-----------|------|-------|",
+        "| CorticalLayer enum | `layers.py` | 21-56 |",
+        "| HierarchicalLayer | `layers.py` | 59-273 |",
+        "| Minicolumn | `minicolumn.py` | 56-357 |",
+        "| Edge | `minicolumn.py` | 16-53 |",
+        "| Tokenizer | `tokenizer.py` | Full file |",
+        "",
+        "---",
+        "",
+        "## Visual Summary",
+        "",
+        "```",
+        "┌─────────────────────────────────────────────────────────────┐",
+        "│                    Layer 3: DOCUMENTS                        │",
+        "│  ┌─────────┐    ┌─────────┐                                 │"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/claude-usage.md",
+      "function": "You want to see how something is actually implemented, not just read the file di",
+      "start_line": 71,
+      "lines_added": [
+        "If you already know the file path (e.g., `cortical/processor/compute.py`), reading directly is faster than searching."
+      ],
+      "lines_removed": [
+        "If you already know the file path (e.g., `cortical/processor.py`), reading directly is faster than searching."
+      ],
+      "context_before": [
+        "",
+        "**Cost consideration:** Search is fast (~1 second for typical queries), so it's efficient for exploratory research.",
+        "",
+        "---",
+        "",
+        "## When to Use Direct File Reading",
+        "",
+        "Use **direct file reading** (Read tool) when you:",
+        "",
+        "### 1. Know the exact file location"
+      ],
+      "context_after": [
+        "",
+        "### 2. Need the complete file context",
+        "When you need to see the entire file structure, imports, and all methods in a class, reading the file is more efficient than multiple targeted searches.",
+        "",
+        "### 3. Are implementing a pattern you've already found",
+        "After a search tells you the file location, switch to direct reading to implement your changes.",
+        "",
+        "### 4. Need accurate line numbers for edits",
+        "While search provides file:line references, reading the file confirms the exact content at those lines.",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/claude-usage.md",
+      "function": "python scripts/search_codebase.py \"PageRank\" --fast",
+      "start_line": 544,
+      "lines_added": [
+        "git log -p cortical/query/ | grep \"function_name\""
+      ],
+      "lines_removed": [
+        "git log -p cortical/query.py | grep \"function_name\""
+      ],
+      "context_before": [
+        "**Workaround:** Use without `--fast` for specific passages, or read the file directly after getting the filename.",
+        "",
+        "### Limitation 5: Index Doesn't Cover Git History",
+        "",
+        "**Problem:** You can't search for how code looked before changes.",
+        "",
+        "**Reason:** The index is built from current files only.",
+        "",
+        "**Workaround:** Use git history for temporal queries:",
+        "```bash"
+      ],
+      "context_after": [
+        "```",
+        "",
+        "### Limitation 6: Documentation May Be Outdated",
+        "",
+        "**Problem:** Docs in the index reflect what was written, not necessarily what code actually does.",
+        "",
+        "```",
+        "Query: \"how layer computation works\"",
+        "Result: May find outdated documentation",
+        "```"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/code-of-ethics.md",
+      "function": "Testing is a discovery process. Issues found during dog-fooding are **not distra",
+      "start_line": 24,
+      "lines_added": [
+        "  - **File**: `/home/user/Opus-code-test/cortical/query/passages.py:find_passages_for_query`"
+      ],
+      "lines_removed": [
+        "  - **File**: `/home/user/Opus-code-test/cortical/query.py:find_passages_for_query`"
+      ],
+      "context_before": [
+        "",
+        "**Requirements:**",
+        "- Add tasks to `TASK_LIST.md` immediately upon discovery",
+        "- Include severity/priority assessment",
+        "- Reference the test case or usage scenario that revealed it",
+        "- Link to related code locations with absolute paths",
+        "",
+        "**Example:**",
+        "```markdown",
+        "- [ ] **Task #X**: Fix passage-level search doc-type boosting"
+      ],
+      "context_after": [
+        "  - **Issue**: Document-level search applies doc-type boosting, but passage-level search does not",
+        "  - **Discovered**: Dog-fooding test with code search queries",
+        "  - **Priority**: Medium - reduces search quality for mixed-type corpora",
+        "```",
+        "",
+        "### No \"it works well enough\" - if there's a limitation, document it",
+        "",
+        "Undocumented limitations are landmines for future developers. They waste time, create confusion, and erode trust in the codebase.",
+        "",
+        "**Requirements:**"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/devex-tools.md",
+      "function": "Overall Health: Good (64/100)",
+      "start_line": 77,
+      "lines_added": [
+        "python scripts/find_similar.py cortical/processor/__init__.py",
+        "python scripts/find_similar.py cortical/processor/__init__.py --top 10",
+        "python scripts/find_similar.py cortical/processor/__init__.py --verbose",
+        "python scripts/find_similar.py cortical/processor/__init__.py --explain"
+      ],
+      "lines_removed": [
+        "python scripts/find_similar.py cortical/processor.py",
+        "python scripts/find_similar.py cortical/processor.py --top 10",
+        "python scripts/find_similar.py cortical/processor.py --verbose",
+        "python scripts/find_similar.py cortical/processor.py --explain"
+      ],
+      "context_before": [
+        "---",
+        "",
+        "## 2. Find Similar Code",
+        "",
+        "**Purpose:** Locate code blocks similar to a given file or text snippet using semantic fingerprinting.",
+        "",
+        "### Basic Usage",
+        "",
+        "```bash",
+        "# Find similar to a file"
+      ],
+      "context_after": [
+        "",
+        "# More results",
+        "",
+        "# Show full passages",
+        "",
+        "# Explain why they're similar",
+        "",
+        "# Find similar to text snippet",
+        "python scripts/find_similar.py --text \"def compute_pagerank(graph, damping=0.85):\"",
+        "",
+        "# Adjust sensitivity",
+        "python scripts/find_similar.py file.py --min-similarity 0.3",
+        "```",
+        "",
+        "### How It Works",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/devex-tools.md",
+      "function": "python scripts/find_similar.py file.py --min-similarity 0.3",
+      "start_line": 139,
+      "lines_added": [
+        "python scripts/explain_code.py cortical/processor/compute.py",
+        "python scripts/explain_code.py cortical/processor/compute.py --verbose",
+        "python scripts/explain_code.py cortical/processor/compute.py --relations"
+      ],
+      "lines_removed": [
+        "python scripts/explain_code.py cortical/processor.py",
+        "python scripts/explain_code.py cortical/processor.py --verbose",
+        "python scripts/explain_code.py cortical/processor.py --relations"
+      ],
+      "context_before": [
+        "---",
+        "",
+        "## 3. Explain This Code",
+        "",
+        "**Purpose:** Analyze and explain what a code file is about using semantic analysis.",
+        "",
+        "### Basic Usage",
+        "",
+        "```bash",
+        "# Analyze a file"
+      ],
+      "context_after": [
+        "",
+        "# Detailed analysis",
+        "",
+        "# Show semantic relations",
+        "",
+        "# Analyze text directly",
+        "python scripts/explain_code.py --text \"your code snippet here\"",
+        "```",
+        "",
+        "### What It Shows",
+        "",
+        "- **Key Terms:** Most important terms by TF-IDF weight",
+        "- **Primary Concepts:** Programming concepts detected (e.g., iteration, storage, auth)",
+        "- **Concept Clusters:** Which concept clusters this file contributes to"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/devex-tools.md",
+      "function": "python scripts/explain_code.py --text \"your code snippet here\"",
+      "start_line": 201,
+      "lines_added": [
+        "python scripts/suggest_related.py cortical/processor/__init__.py",
+        "python scripts/suggest_related.py cortical/processor/__init__.py --top 15",
+        "python scripts/suggest_related.py cortical/processor/__init__.py --verbose",
+        "python scripts/suggest_related.py cortical/processor/__init__.py --imports-only"
+      ],
+      "lines_removed": [
+        "python scripts/suggest_related.py cortical/processor.py",
+        "python scripts/suggest_related.py cortical/processor.py --top 15",
+        "python scripts/suggest_related.py cortical/processor.py --verbose",
+        "python scripts/suggest_related.py cortical/processor.py --imports-only"
+      ],
+      "context_before": [
+        "---",
+        "",
+        "## 4. Suggest Related Files",
+        "",
+        "**Purpose:** Find files related to a given file through imports, concepts, and semantic similarity.",
+        "",
+        "### Basic Usage",
+        "",
+        "```bash",
+        "# Find related files"
+      ],
+      "context_after": [
+        "",
+        "# More suggestions",
+        "",
+        "# Detailed information",
+        "",
+        "# Only import relationships",
+        "```",
+        "",
+        "### Relationship Types",
+        "",
+        "1. **Imports:** Files this file imports",
+        "2. **Imported By:** Files that import this file",
+        "3. **Shared Concepts:** Files that share concept clusters",
+        "4. **Semantically Similar:** Files with similar semantic fingerprints",
+        "",
+        "### How It Works"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/devex-tools.md",
+      "function": "python scripts/suggest_related.py cortical/processor.py --imports-only",
+      "start_line": 233,
+      "lines_added": [
+        "  [CODE] cortical/query/"
+      ],
+      "lines_removed": [
+        "  [CODE] cortical/query.py"
+      ],
+      "context_before": [
+        "- **Concept Matching:** Finds files in the same concept clusters",
+        "- **Semantic Similarity:** Compares full-file fingerprints",
+        "- **Combined Ranking:** Presents results by relationship type",
+        "",
+        "### Example Output",
+        "",
+        "```",
+        "📦 Imports (4 files):",
+        "  [CODE] cortical/analysis.py",
+        "  [CODE] cortical/semantics.py"
+      ],
+      "context_after": [
+        "",
+        "📥 Imported By (6 files):",
+        "  [TEST] tests/test_processor.py",
+        "  [TEST] tests/unit/test_processor_core.py",
+        "",
+        "💡 Shared Concepts (5 files):",
+        "  [TEST] tests/test_coverage_gaps.py           (score: 8.2)",
+        "  [CODE] cortical/persistence.py               (score: 6.5)",
+        "",
+        "🔍 Semantically Similar (5 files):"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/dogfooding.md",
+      "function": "Incremental indexing is the key to efficient dog-fooding. Instead of rebuilding",
+      "start_line": 151,
+      "lines_added": [
+        "# cortical/query/expansion.py:XX  [0.847]"
+      ],
+      "lines_removed": [
+        "# cortical/query.py:55  [0.847]"
+      ],
+      "context_before": [
+        "",
+        "## Search Capabilities",
+        "",
+        "### Basic Search",
+        "",
+        "```bash",
+        "# Find code related to a concept",
+        "python scripts/search_codebase.py \"query expansion\"",
+        "",
+        "# Output shows file:line references"
+      ],
+      "context_after": [
+        "#   def get_expanded_query_terms(...)",
+        "```",
+        "",
+        "### Query Expansion",
+        "",
+        "The search automatically expands queries with related terms:",
+        "",
+        "```bash",
+        "python scripts/search_codebase.py \"PageRank\" --expand",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/glossary.md",
+      "function": "Community detection algorithm for clustering. Tokens adopt the most common label",
+      "start_line": 124,
+      "lines_added": [
+        "**Location:** `query/expansion.py`"
+      ],
+      "lines_removed": [
+        "**Location:** `query.py:55-176`"
+      ],
+      "context_before": [
+        "**Parameters:**",
+        "- `cluster_strictness`: Higher = more separate clusters",
+        "- `bridge_weight`: Synthetic inter-document connections",
+        "",
+        "### Damping Factor",
+        "PageRank parameter (default 0.85) representing probability of following a link vs. random jump. Lower damping = more randomness in importance distribution.",
+        "",
+        "### Query Expansion",
+        "Process of adding related terms to a search query based on lateral connections, concept membership, or semantic relations.",
+        ""
+      ],
+      "context_after": [
+        "",
+        "### Spreading Activation",
+        "Information propagation through connections. Activation starts at query terms and spreads to connected nodes, simulating neural activation patterns.",
+        "",
+        "---",
+        "",
+        "## Semantic Relations",
+        "",
+        "### IsA",
+        "Hypernym/hyponym relationship. \"A dog IsA animal\" means dog is a type of animal."
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/glossary.md",
+      "function": "System for knowing which computations need rerunning after corpus changes. Preve",
+      "start_line": 234,
+      "lines_added": [
+        "**Location:** `query/intent.py`",
+        "**Location:** `query/expansion.py`",
+        "**Location:** `query/chunking.py`",
+        "**Location:** `query/search.py`"
+      ],
+      "lines_removed": [
+        "**Location:** `query.py:179-284`",
+        "**Location:** `query.py:407-531`",
+        "**Location:** `query.py:937-978`",
+        "**Location:** `query.py` (fast search functions)"
+      ],
+      "context_before": [
+        "",
+        "**Location:** `processor.py:49`",
+        "",
+        "---",
+        "",
+        "## Search Concepts",
+        "",
+        "### Intent Parsing",
+        "Extracting user intent from natural language queries. Maps question words to intent types (where→location, how→implementation).",
+        ""
+      ],
+      "context_after": [
+        "",
+        "### Multi-hop Expansion",
+        "Query expansion through chains of semantic relations. Finds terms 2+ hops away through valid relation paths.",
+        "",
+        "",
+        "### Chunk",
+        "A segment of document text for passage retrieval. Created with configurable size and overlap.",
+        "",
+        "",
+        "### Inverted Index",
+        "Pre-computed mapping from terms to containing documents. Enables fast candidate filtering.",
+        "",
+        "",
+        "---",
+        "",
+        "## Code Concepts",
+        "",
+        "### Programming Concept Groups",
+        "Collections of synonymous programming terms. \"get\", \"fetch\", \"load\", \"retrieve\" are grouped together.",
+        "",
+        "**Location:** `code_concepts.py`",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/glossary.md",
+      "function": "Processing multiple queries or documents together to amortize overhead.",
+      "start_line": 300,
+      "lines_added": [
+        "| Query Expansion | `query/expansion.py` |"
+      ],
+      "lines_removed": [
+        "| Query Expansion | `query.py` |"
+      ],
+      "context_before": [
+        "",
+        "| Term | Primary File |",
+        "|------|--------------|",
+        "| Minicolumn | `minicolumn.py` |",
+        "| Edge | `minicolumn.py` |",
+        "| HierarchicalLayer | `layers.py` |",
+        "| CorticalLayer | `layers.py` |",
+        "| PageRank | `analysis.py` |",
+        "| TF-IDF | `analysis.py` |",
+        "| Label Propagation | `analysis.py` |"
+      ],
+      "context_after": [
+        "| Relation Extraction | `semantics.py` |",
+        "| Retrofitting | `semantics.py` |",
+        "| Tokenization | `tokenizer.py` |",
+        "| Fingerprint | `fingerprint.py` |",
+        "| Code Concepts | `code_concepts.py` |"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/louvain_resolution_analysis.md",
+      "function": "The current default of `resolution=1.0` is well-chosen because:",
+      "start_line": 177,
+      "lines_added": [
+        "The existing default values in `cortical/analysis.py:cluster_by_louvain()` and `cortical/processor/compute.py:build_concept_clusters()` should remain at `resolution=1.0`."
+      ],
+      "lines_removed": [
+        "The existing default values in `cortical/analysis.py:cluster_by_louvain()` and `cortical/processor.py:build_concept_clusters()` should remain at `resolution=1.0`."
+      ],
+      "context_before": [
+        "",
+        "### Document for Advanced Users",
+        "",
+        "Add documentation explaining:",
+        "- Higher resolution (>1.0) → more, smaller clusters",
+        "- Lower resolution (<1.0) → fewer, larger clusters",
+        "- All values 0.5-3.0 produce valid community structure",
+        "",
+        "### No Code Changes Required",
+        ""
+      ],
+      "context_after": [
+        "",
+        "---",
+        "",
+        "## Appendix: Reproducing This Analysis",
+        "",
+        "```bash",
+        "# Run the analysis script",
+        "python scripts/analyze_louvain_resolution.py --verbose",
+        "",
+        "# Test specific resolutions"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/patterns.md",
+      "function": "for query in queries:",
+      "start_line": 282,
+      "lines_added": [
+        "# Will prefer: docs/architecture.md over cortical/processor/__init__.py"
+      ],
+      "lines_removed": [
+        "# Will prefer: docs/architecture.md over cortical/processor.py"
+      ],
+      "context_before": [
+        "",
+        "---",
+        "",
+        "### Pattern 10: Intent-Aware Search",
+        "",
+        "Search with intent understanding:",
+        "",
+        "```python",
+        "# Conceptual query: boost documentation",
+        "results = processor.search_by_intent(\"what is the 4-layer architecture?\")"
+      ],
+      "context_after": [
+        "",
+        "# Implementation query: boost code",
+        "results = processor.search_by_intent(\"where is PageRank computed?\")",
+        "# Will prefer: cortical/analysis.py over docs/algorithms.md",
+        "```",
+        "",
+        "---",
+        "",
+        "## Document Type Boosting",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/quickstart.md",
+      "function": "processor = CorticalTextProcessor.load(\"my_corpus.pkl\")",
+      "start_line": 152,
+      "lines_added": [
+        "   cat cortical/processor/__init__.py.ai_meta  # Structured overview of main API",
+        "**Note:** The processor is now a package (`cortical/processor/`) with mixin-based composition for better organization.",
+        ""
+      ],
+      "lines_removed": [
+        "   cat cortical/processor.py.ai_meta  # Structured overview"
+      ],
+      "context_before": [
+        "- Read [cookbook.md](cookbook.md) for common recipes",
+        "- See [CLAUDE.md](../CLAUDE.md) for the full developer guide",
+        "- Check [architecture.md](architecture.md) for how it works",
+        "",
+        "### For AI Agents",
+        "",
+        "If you're an AI coding assistant exploring this codebase:",
+        "",
+        "1. **Use `.ai_meta` files** for rapid module understanding:",
+        "   ```bash"
+      ],
+      "context_after": [
+        "   ```",
+        "",
+        "2. **Check Claude skills** in `.claude/skills/` for:",
+        "   - `codebase-search` - Semantic search",
+        "   - `corpus-indexer` - Index management",
+        "   - `ai-metadata` - Metadata viewer",
+        "",
+        "3. **See AI Agent Onboarding** in [CLAUDE.md](../CLAUDE.md#ai-agent-onboarding) for detailed guidance",
+        "",
+        "## Common Patterns",
+        "",
+        "### Batch Processing",
+        "",
+        "```python",
+        "documents = [",
+        "    (\"doc1\", \"First document content...\"),",
+        "    (\"doc2\", \"Second document content...\"),",
+        "    (\"doc3\", \"Third document content...\"),",
+        "]"
+      ],
+      "change_type": "modify"
+    }
+  ],
+  "hour_of_day": 11,
+  "day_of_week": "Monday",
+  "seconds_since_last_commit": -8177,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

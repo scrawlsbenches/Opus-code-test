@@ -1,0 +1,197 @@
+{
+  "hash": "e69950322c6e91fb0a8f9ac5a6683a127bca0497",
+  "message": "Task #192: Deduplicate lateral_connections and typed_connections storage",
+  "author": "Claude",
+  "timestamp": "2025-12-13 14:41:28 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md"
+  ],
+  "insertions": 3,
+  "deletions": 23,
+  "hunks": [
+    {
+      "file": "TASK_LIST.md",
+      "function": null,
+      "start_line": 1,
+      "lines_added": [
+        "**Pending Tasks:** 23",
+        "**Completed Tasks:** 215 (see archive)"
+      ],
+      "lines_removed": [
+        "**Pending Tasks:** 24",
+        "**Completed Tasks:** 214 (see archive)",
+        "| 192 | Deduplicate lateral_connections and typed_connections storage | Memory | - | Medium |"
+      ],
+      "context_before": [
+        "# Task List: Cortical Text Processor",
+        "",
+        "Active backlog for the Cortical Text Processor project. Completed tasks are archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).",
+        "",
+        "**Last Updated:** 2025-12-13"
+      ],
+      "context_after": [
+        "",
+        "**Legacy Test Cleanup:** 16 duplicated legacy tests removed, 13 remaining need investigation",
+        "- See Tasks #198-205 for legacy test investigation",
+        "",
+        "**Unit Test Initiative:** ✅ COMPLETE - 85% coverage from unit tests (1,729 tests)",
+        "- 19 modules at 90%+ coverage",
+        "- See [Coverage Baseline](#unit-test-coverage-baseline) for per-module status",
+        "",
+        "---",
+        "",
+        "## Active Backlog",
+        "",
+        "<!-- Machine-parseable format for automation -->",
+        "",
+        "### 🟠 High (Do This Week)",
+        "",
+        "| # | Task | Category | Depends | Effort |",
+        "|---|------|----------|---------|--------|",
+        "| 184 | Implement MCP Server for Claude Desktop integration | Integration | - | Large |",
+        "",
+        "### 🟡 Medium (Do This Month)",
+        "",
+        "| # | Task | Category | Depends | Effort |",
+        "|---|------|----------|---------|--------|",
+        "| 133 | Implement WAL + snapshot persistence (fault-tolerant rebuild) | Arch | 132 | Large |",
+        "| 134 | Implement protobuf serialization for corpus | Arch | 132 | Medium |",
+        "| 135 | Implement chunked parallel processing for full-analysis | Arch | 132 | Large |",
+        "| 95 | Split processor.py into modules | Arch | - | Large |",
+        "| 99 | Add input validation to public methods | CodeQual | - | Medium |"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "TASK_LIST.md",
+      "function": "Active backlog for the Cortical Text Processor project. Completed tasks are arch",
+      "start_line": 95,
+      "lines_added": [
+        "- #192 Deduplicate connections storage - typed_connections is now single source of truth, lateral_connections is cached property (15 tests)"
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "",
+        "<!-- Note: Task #87 was completed 2025-12-13, moved to archive -->",
+        "",
+        "---",
+        "",
+        "## Recently Completed",
+        "",
+        "All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).",
+        "",
+        "**Latest completions (2025-12-13):**"
+      ],
+      "context_after": [
+        "- #197 Task list validation in CI - Added validate-task-list job to workflow",
+        "- #186 Simplified facade methods - quick_search(), rag_retrieve(), explore() (23 tests)",
+        "- #196 Spectral embeddings warning - RuntimeWarning for large graphs (>5000 terms)",
+        "- #193 Unify alpha validation - retrofit_embeddings() now accepts [0,1] consistently",
+        "- #194 Layer validation - Added checks for invalid layer values (0-3) in persistence/layers",
+        "- #195 Stopwords import - semantics.py now uses Tokenizer.DEFAULT_STOP_WORDS",
+        "- #148 Performance test refactor - Moved to small synthetic corpus (25 docs)",
+        "- #149 Performance test fix - Tests now use small_corpus.py fixtures",
+        "- #182 Fluent API - FluentProcessor with method chaining (44 tests)",
+        "- #183 Progress Feedback - ConsoleProgressReporter, callbacks (30 tests)"
+      ],
+      "change_type": "add"
+    },
+    {
+      "file": "TASK_LIST.md",
+      "function": "All completed tasks are now archived in [TASK_ARCHIVE.md](TASK_ARCHIVE.md).",
+      "start_line": 139,
+      "lines_added": [],
+      "lines_removed": [
+        "### 192. Deduplicate lateral_connections and typed_connections storage",
+        "",
+        "**Meta:** `status:pending` `priority:high` `category:memory`",
+        "**Files:** `cortical/minicolumn.py`",
+        "",
+        "**Problem:**",
+        "Every typed connection is duplicated in `lateral_connections` for backward compatibility (`minicolumn.py:209-212`). For large graphs, this doubles memory for edge weights.",
+        "",
+        "**Options:**",
+        "1. Deprecate `lateral_connections` in favor of `typed_connections`",
+        "2. Make `lateral_connections` a property that derives from `typed_connections`",
+        "3. Keep both but document the trade-off",
+        "",
+        "**Context from code review (2025-12-13):**",
+        "- Found in comprehensive code review of core classes",
+        "- Memory concern for large corpora with millions of edges",
+        "",
+        ""
+      ],
+      "context_before": [
+        "- `add_document(doc_id, content)` → index document",
+        "",
+        "**Acceptance:**",
+        "- [ ] Works in Claude Desktop",
+        "- [ ] 5+ core tools implemented",
+        "- [ ] Documentation for installation",
+        "- [ ] Example MCP config file",
+        "",
+        "---",
+        ""
+      ],
+      "context_after": [
+        "## Legacy Test Investigation Tasks",
+        "",
+        "These tasks were created during the test coverage review (2025-12-13). 16 duplicated legacy tests were removed, and 13 remaining tests need investigation to determine if they should be migrated to categorized test directories or kept as-is. Check git history for any previous migration work.",
+        "",
+        "### 198. Investigate test_coverage_gaps.py (91 tests)",
+        "",
+        "**Meta:** `status:pending` `priority:medium` `category:testing`",
+        "**Files:** `tests/test_coverage_gaps.py`",
+        "**Effort:** Medium",
+        ""
+      ],
+      "change_type": "delete"
+    },
+    {
+      "file": "TASK_LIST.md",
+      "function": "These tasks were created during the test coverage review (2025-12-13). 16 duplic",
+      "start_line": 308,
+      "lines_added": [],
+      "lines_removed": [
+        "| Memory | 1 | Optimization (#192) |"
+      ],
+      "context_before": [
+        "|----------|---------|-------------|",
+        "| Arch | 5 | Architecture refactoring (#133, 134, 135, 95, 100, 101) |",
+        "| CodeQual | 1 | Code quality improvements (#99) |",
+        "| Testing | 9 | Test coverage and legacy investigation (#129, 198-205) |",
+        "| TaskMgmt | 3 | Task management system (#106, 107, 108) |",
+        "| AINav | 2 | AI assistant navigation (#117, 118) |",
+        "| DevEx | 7 | Developer experience, scripts (#73-80) |",
+        "| Research | 2 | Research and analysis (#140, 131) |",
+        "| Samples | 1 | Sample document improvements (#130) |",
+        "| Integration | 1 | MCP Server (#184) |"
+      ],
+      "context_after": [
+        "",
+        "*Updated 2025-12-13 - Unit test initiative COMPLETE (85% coverage, 1,729 tests)*",
+        "",
+        "---",
+        "",
+        "## Notes",
+        "",
+        "- **Effort estimates:** Small (<1 hour), Medium (1-4 hours), Large (1+ days)",
+        "- **Dependencies:** Complete dependent tasks first",
+        "- **Quick Context:** Key info to start task without searching"
+      ],
+      "change_type": "delete"
+    }
+  ],
+  "hour_of_day": 14,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": -169400,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

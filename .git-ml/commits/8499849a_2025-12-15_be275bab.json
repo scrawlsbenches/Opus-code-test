@@ -1,0 +1,226 @@
+{
+  "hash": "8499849a8701b769dd82110887526df4ea24bd52",
+  "message": "Update MoE docs to integrate with BM25/GB-BM25 implementations",
+  "author": "Claude",
+  "timestamp": "2025-12-15 13:33:33 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "docs/moe-index-design.md",
+    "docs/moe-index-implementation-plan.md",
+    "docs/moe-index-knowledge-transfer.md"
+  ],
+  "insertions": 13,
+  "deletions": 3,
+  "hunks": [
+    {
+      "file": "docs/moe-index-design.md",
+      "function": null,
+      "start_line": 1,
+      "lines_added": [
+        "**Updated:** 2025-12-15 (integrated with BM25/GB-BM25 implementations, processor package refactoring)"
+      ],
+      "lines_removed": [
+        "**Updated:** 2025-12-15 (integrated with BM25/GB-BM25 implementations)"
+      ],
+      "context_before": [
+        "# Mixture of Expert Indexes: Technical Design Document",
+        "",
+        "**Author:** Claude (AI Assistant)",
+        "**Date:** 2025-12-15"
+      ],
+      "context_after": [
+        "**Status:** Design Proposal",
+        "**Version:** 1.1",
+        "**Prerequisites:** [moe-index-knowledge-transfer.md](moe-index-knowledge-transfer.md), [knowledge-transfer-bm25-optimization.md](knowledge-transfer-bm25-optimization.md)",
+        "",
+        "---",
+        "",
+        "## Table of Contents",
+        "",
+        "1. [Overview](#1-overview)",
+        "2. [System Architecture](#2-system-architecture)"
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/moe-index-design.md",
+      "function": null,
+      "start_line": 36,
+      "lines_added": [
+        "> - **Processor package refactoring** - Mixin-based composition provides architectural template"
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "4. **Backward compatibility** with existing API",
+        "5. **Zero external dependencies** (per project philosophy)",
+        "",
+        "### 1.2 Building on Existing Implementations",
+        "",
+        "> **Important:** This design builds on recent additions to the codebase:",
+        "> - **BM25 scoring** (`cortical/analysis.py`) - Already implemented as default",
+        "> - **GB-BM25** (`cortical/query/search.py:graph_boosted_search()`) - Proto-MoE combining BM25 + PageRank + Proximity",
+        "> - **Document length tracking** (`processor.doc_lengths`, `processor.avg_doc_length`)",
+        "> - **Performance optimizations** - 34.5% faster `compute_all()`"
+      ],
+      "context_after": [
+        ">",
+        "> The MoE architecture generalizes GB-BM25's signal fusion into separate experts with intelligent routing.",
+        "",
+        "### 1.3 Non-Goals",
+        "",
+        "1. ~~ML-based routing~~ (use rule-based/statistical instead)",
+        "2. ~~Real-time expert retraining~~ (static specialization)",
+        "3. ~~Distributed indexes~~ (single-machine focus for now)",
+        "",
+        "### 1.4 Key Design Decisions"
+      ],
+      "change_type": "add"
+    },
+    {
+      "file": "docs/moe-index-implementation-plan.md",
+      "function": null,
+      "start_line": 1,
+      "lines_added": [
+        "**Updated:** 2025-12-15 (reduced scope: BM25 and GB-BM25 already implemented, processor package refactoring)"
+      ],
+      "lines_removed": [
+        "**Updated:** 2025-12-15 (reduced scope: BM25 and GB-BM25 already implemented)"
+      ],
+      "context_before": [
+        "# Mixture of Expert Indexes: Implementation Plan",
+        "",
+        "**Author:** Claude (AI Assistant)",
+        "**Date:** 2025-12-15"
+      ],
+      "context_after": [
+        "**Status:** Proposed",
+        "**Prerequisites:**",
+        "- [moe-index-knowledge-transfer.md](moe-index-knowledge-transfer.md)",
+        "- [moe-index-design.md](moe-index-design.md)",
+        "- [knowledge-transfer-bm25-optimization.md](knowledge-transfer-bm25-optimization.md)",
+        "",
+        "---",
+        "",
+        "## Executive Summary",
+        ""
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/moe-index-implementation-plan.md",
+      "function": "This document outlines a **6-phase implementation plan** for the Mixture of Expe",
+      "start_line": 19,
+      "lines_added": [
+        "> **Architecture Note:** The processor has been refactored from a monolithic `processor.py` (3,234 lines) into a modular `cortical/processor/` package using mixin-based composition (CoreMixin, DocumentsMixin, ComputeMixin, QueryAPIMixin, etc.). This pattern provides a template for the MoE package structure and demonstrates backward-compatible refactoring.",
+        ""
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "> - BM25 scoring already implemented (`analysis.py:_bm25_core()`)",
+        "> - Document length tracking already exists (`processor.doc_lengths`)",
+        "> - GB-BM25 provides a working proto-MoE (`query/search.py:graph_boosted_search()`)",
+        "> - 34.5% performance improvement in `compute_all()` already achieved",
+        ">",
+        "> **Remaining work focuses on:**",
+        "> - Expert abstraction layer and routing",
+        "> - Structural, temporal, and episodic experts (new capabilities)",
+        "> - Cross-pollination framework (generalized from GB-BM25)",
+        ""
+      ],
+      "context_after": [
+        "**Total Estimated Effort (Revised):**",
+        "- New code: ~2,100 lines (down from ~2,800 - BM25 already done)",
+        "- Test code: ~1,200 lines (down from ~1,500)",
+        "- Documentation: ~300 lines (down from ~500)",
+        "",
+        "---",
+        "",
+        "## Phase Overview",
+        "",
+        "```"
+      ],
+      "change_type": "add"
+    },
+    {
+      "file": "docs/moe-index-knowledge-transfer.md",
+      "function": null,
+      "start_line": 1,
+      "lines_added": [
+        "**Updated:** 2025-12-15 (integrated with BM25/GB-BM25, ML data collection, processor package refactoring)"
+      ],
+      "lines_removed": [
+        "**Updated:** 2025-12-15 (integrated with BM25/GB-BM25 implementations)"
+      ],
+      "context_before": [
+        "# Mixture of Expert Indexes: Knowledge Transfer Document",
+        "",
+        "**Author:** Claude (AI Assistant)",
+        "**Date:** 2025-12-15"
+      ],
+      "context_after": [
+        "**Status:** Design Proposal",
+        "**Related:** [architecture.md](architecture.md), [algorithms.md](algorithms.md), [knowledge-transfer-bm25-optimization.md](knowledge-transfer-bm25-optimization.md)",
+        "",
+        "---",
+        "",
+        "## Executive Summary",
+        "",
+        "This document provides comprehensive background knowledge for implementing a **Mixture of Experts (MoE) architecture** for the Cortical Text Processor's indexing system. The core idea: instead of one general-purpose index, maintain multiple specialized \"expert\" indexes, each optimized for different query types, with a learned routing mechanism that selects which experts to activate for each query.",
+        "",
+        "**Key insight:** Different query types have fundamentally different optimal representations. A code navigation query needs call graph awareness; a semantic similarity query needs distributional embeddings; an exact lookup needs inverted indexes. One index cannot optimize for all."
+      ],
+      "change_type": "modify"
+    },
+    {
+      "file": "docs/moe-index-knowledge-transfer.md",
+      "function": "intent_to_experts = {",
+      "start_line": 415,
+      "lines_added": [
+        "> **Integration opportunity:** The codebase now includes ML data collection infrastructure (`scripts/ml_data_collector.py`) that tracks query-response pairs with feedback ratings. This can be leveraged for feedback-adaptive routing:",
+        "> - Use `ml_data_collector.py feedback` to record which experts produced helpful results",
+        "> - Query patterns from collected data can inform routing weights",
+        "> - CI integration tracks which code changes succeed/fail",
+        ">",
+        "> See `.claude/skills/ml-logger/SKILL.md` for collection patterns.",
+        ""
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "",
+        "#### Feedback-Adaptive Gating",
+        "Learn from query success/failure patterns:",
+        "",
+        "```",
+        "success_rate[query_pattern][expert] = successes / total",
+        "",
+        "weight[expert] = success_rate[pattern][expert] / Σ(success_rates)",
+        "```",
+        ""
+      ],
+      "context_after": [
+        "### 4.4 Result Fusion Strategies",
+        "",
+        "#### Weighted Score Combination",
+        "```",
+        "final_score[doc] = Σ(expert_weight × expert_score[doc])",
+        "```",
+        "",
+        "#### Rank Fusion (Reciprocal Rank Fusion)",
+        "```",
+        "RRF_score[doc] = Σ(1 / (k + rank[expert][doc]))"
+      ],
+      "change_type": "add"
+    }
+  ],
+  "hour_of_day": 13,
+  "day_of_week": "Monday",
+  "seconds_since_last_commit": -675,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

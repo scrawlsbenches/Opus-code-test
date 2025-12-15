@@ -1,0 +1,103 @@
+{
+  "hash": "fd135228d6ac31bc5460aac4c1aa8bf3bb2ddb9c",
+  "message": "docs: Add memory tools to CLAUDE.md and 'Native Over External' principle",
+  "author": "Claude",
+  "timestamp": "2025-12-14 22:43:26 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "CLAUDE.md"
+  ],
+  "insertions": 12,
+  "deletions": 0,
+  "hunks": [
+    {
+      "file": "CLAUDE.md",
+      "function": "You are a **senior computational neuroscience engineer** with deep expertise in:",
+      "start_line": 35,
+      "lines_added": [
+        "**Native Over External**",
+        "- Prefer implementing features ourselves over 3rd party APIs/actions",
+        "- External dependencies add maintenance burden and security risk",
+        "- If we can build it in <200 lines, build it ourselves",
+        "- Avoid deprecated or unmaintained external tools",
+        ""
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "- Use the system to test itself when possible",
+        "- Real usage reveals issues that unit tests miss",
+        "- Create tasks using `scripts/new_task.py` or the task-manager skill",
+        "- **Use merge-friendly task system** - see `tasks/` directory and `docs/merge-friendly-tasks.md`",
+        "",
+        "**Honest Assessment**",
+        "- Acknowledge when something isn't working",
+        "- Say \"I don't know\" when uncertain, then investigate",
+        "- Correct course based on evidence, not pride",
+        ""
+      ],
+      "context_after": [
+        "When you see \"neural\" or \"cortical\" in this codebase, remember: these are metaphors for standard IR algorithms, not actual neural implementations.",
+        "",
+        "---",
+        "",
+        "## Project Overview",
+        "",
+        "**Cortical Text Processor** is a zero-dependency Python library for hierarchical text analysis. It organizes text through 4 layers inspired by visual cortex organization:",
+        "",
+        "```",
+        "Layer 0 (TOKENS)    → Individual words        [V1 analogy: edges]"
+      ],
+      "change_type": "add"
+    },
+    {
+      "file": "CLAUDE.md",
+      "function": "python scripts/profile_full_analysis.py",
+      "start_line": 928,
+      "lines_added": [
+        "| Create memory | `python scripts/new_memory.py \"topic\"` |",
+        "| Create decision | `python scripts/new_memory.py \"topic\" --decision` |",
+        "| Session handoff | `python scripts/session_handoff.py` |",
+        "| Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |",
+        "| Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |",
+        "| Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |"
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "| Load state | `processor = CorticalTextProcessor.load(\"corpus.pkl\")` |",
+        "| Run all tests | `python scripts/run_tests.py all` |",
+        "| Run smoke tests | `python scripts/run_tests.py smoke` |",
+        "| Run unit tests | `python scripts/run_tests.py unit` |",
+        "| Run quick tests | `python scripts/run_tests.py quick` (smoke + unit) |",
+        "| Run pre-commit | `python scripts/run_tests.py precommit` (smoke + unit + integration) |",
+        "| Run performance | `python scripts/run_tests.py performance` (no coverage) |",
+        "| Check coverage | `python -m coverage run --source=cortical -m pytest tests/ && python -m coverage report --include=\"cortical/*\"` |",
+        "| Run showcase | `python showcase.py` |",
+        "| Profile analysis | `python scripts/profile_full_analysis.py` |"
+      ],
+      "context_after": [
+        "",
+        "---",
+        "",
+        "## Dog-Fooding: Search the Codebase",
+        "",
+        "The Cortical Text Processor can index and search its own codebase, providing semantic search capabilities during development.",
+        "",
+        "### Quick Start",
+        "",
+        "```bash"
+      ],
+      "change_type": "add"
+    }
+  ],
+  "hour_of_day": 22,
+  "day_of_week": "Sunday",
+  "seconds_since_last_commit": -54082,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": null,
+  "related_chats": [],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}
