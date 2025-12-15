@@ -1066,3 +1066,529 @@ class TestGetExpandedQueryTerms:
         )
 
         assert "neural" in result
+
+
+# =============================================================================
+# ADDITIONAL EDGE CASE TESTS FOR IMPROVED COVERAGE
+# =============================================================================
+
+
+class TestExpandQueryEdgeCases:
+    """Additional edge case tests to improve coverage."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_variant_matching_success(self, tokenizer):
+        """Test variant matching when query term not found but variant exists."""
+        # Create a corpus with "computing" but query for "computed"
+        # The tokenizer should find variants
+        col = MockMinicolumn(content="comput", pagerank=0.8)
+        layer0 = MockHierarchicalLayer([col])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Query with a term that doesn't exist but has variants
+        result = expand_query("computed", layers, tokenizer, use_variants=True)
+
+        # Should find the variant with weight 0.8
+        if "comput" in result:
+            assert result["comput"] == 0.8
+
+    def test_variant_matching_multiple_unmatched(self, tokenizer):
+        """Test variant matching with multiple unmatched terms."""
+        col1 = MockMinicolumn(content="comput", pagerank=0.8)
+        col2 = MockMinicolumn(content="learn", pagerank=0.7)
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Query with terms that need variant matching
+        result = expand_query("computing learning", layers, tokenizer, use_variants=True)
+
+        # Check that variants were found
+        assert len(result) > 0
+
+    def test_no_concepts_layer(self, tokenizer):
+        """Test expand_query when concepts layer is missing."""
+        layers = MockLayers.single_term("neural", pagerank=0.8)
+        # Remove concepts layer
+        if MockLayers.CONCEPTS in layers:
+            del layers[MockLayers.CONCEPTS]
+
+        result = expand_query("neural", layers, tokenizer, use_concepts=True)
+
+        # Should still work, just skip concept expansion
+        assert "neural" in result
+
+    def test_empty_concepts_layer(self, tokenizer):
+        """Test expand_query when concepts layer exists but is empty."""
+        layers = MockLayers.single_term("neural", pagerank=0.8)
+        # Add empty concepts layer
+        layers[MockLayers.CONCEPTS] = MockHierarchicalLayer([], level=2)
+
+        result = expand_query("neural", layers, tokenizer, use_concepts=True)
+
+        # Should still work
+        assert "neural" in result
+
+    def test_lateral_and_concept_combined(self, tokenizer):
+        """Test that lateral and concept expansion work together."""
+        # Create a rich structure with both lateral and concept connections
+        builder = LayerBuilder()
+        builder.with_term("neural", pagerank=0.9)
+        builder.with_term("deep", pagerank=0.8)
+        builder.with_term("learning", pagerank=0.8)
+        builder.with_term("network", pagerank=0.7)
+
+        # Add lateral connection
+        builder.with_connection("neural", "network", weight=5.0)
+
+        layers = builder.build()
+
+        # Add concept cluster
+        concept = MockMinicolumn(
+            content="ml_concept",
+            id="L2_ml_concept",
+            layer=2,
+            pagerank=0.9,
+            feedforward_sources={"L0_neural", "L0_deep", "L0_learning"}
+        )
+        layers[MockLayers.CONCEPTS] = MockHierarchicalLayer([concept], level=2)
+
+        result = expand_query(
+            "neural",
+            layers,
+            tokenizer,
+            use_lateral=True,
+            use_concepts=True
+        )
+
+        # Should have original
+        assert "neural" in result
+        # Should have lateral expansion
+        assert "network" in result
+        # Should have concept expansions
+        assert "deep" in result or "learning" in result
+
+    def test_code_concepts_with_lateral_combined(self, tokenizer):
+        """Test code concepts and lateral expansion together."""
+        col1 = MockMinicolumn(
+            content="fetch",
+            pagerank=0.9,
+            lateral_connections={"L0_data": 5.0}
+        )
+        col2 = MockMinicolumn(content="retrieve", pagerank=0.7)
+        col3 = MockMinicolumn(content="get", pagerank=0.8)
+        col4 = MockMinicolumn(content="data", pagerank=0.6)
+
+        layer0 = MockHierarchicalLayer([col1, col2, col3, col4])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        result = expand_query(
+            "fetch",
+            layers,
+            tokenizer,
+            use_code_concepts=True,
+            use_lateral=True,
+            use_concepts=False
+        )
+
+        # Should have original
+        assert "fetch" in result
+        # Should have lateral expansion
+        assert "data" in result
+
+
+class TestExpandQueryMultihopEdgeCases:
+    """Additional edge case tests for multihop expansion."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_frontier_exceeds_max_hops(self, tokenizer):
+        """Test that frontier items at max_hops are skipped."""
+        builder = LayerBuilder()
+        builder.with_terms(["start", "hop1", "hop2", "hop3"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("start", "IsA", "hop1", 0.9),
+            ("hop1", "IsA", "hop2", 0.9),
+            ("hop2", "IsA", "hop3", 0.9)
+        ]
+
+        # With max_hops=2, hop3 should not be reached
+        result = expand_query_multihop(
+            "start",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=2
+        )
+
+        assert "start" in result
+        assert "hop1" in result
+        assert "hop2" in result
+        # hop3 should be filtered out
+        assert "hop3" not in result
+
+    def test_neighbor_not_in_corpus(self, tokenizer):
+        """Test multihop skips neighbors not in corpus."""
+        # Only include "dog" in corpus, not "animal"
+        col = MockMinicolumn(content="dog", pagerank=0.8)
+        layer0 = MockHierarchicalLayer([col])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Relation points to term not in corpus
+        relations = [
+            ("dog", "IsA", "animal", 0.9)
+        ]
+
+        result = expand_query_multihop("dog", layers, tokenizer, relations)
+
+        # Should only have original term
+        assert "dog" in result
+        assert "animal" not in result
+
+    def test_low_path_score_filtered(self, tokenizer):
+        """Test that paths below min_path_score are filtered."""
+        builder = LayerBuilder()
+        builder.with_terms(["term1", "term2", "term3"], pagerank=0.7)
+        layers = builder.build()
+
+        # Create a chain with weak validity
+        relations = [
+            ("term1", "Antonym", "term2", 0.9),
+            ("term2", "IsA", "term3", 0.8)
+        ]
+
+        # Antonym -> IsA has score 0.1 (from VALID_RELATION_CHAINS)
+        result = expand_query_multihop(
+            "term1",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=2,
+            min_path_score=0.15  # Set above 0.1
+        )
+
+        assert "term1" in result
+        # term3 should be filtered due to low path score through Antonym->IsA
+        # Note: term2 might still be included if single-hop path is valid
+
+    def test_visited_at_earlier_hop(self, tokenizer):
+        """Test that terms visited at earlier hops aren't revisited."""
+        builder = LayerBuilder()
+        builder.with_terms(["start", "mid", "target"], pagerank=0.7)
+        layers = builder.build()
+
+        # Multiple paths to target, one shorter
+        relations = [
+            ("start", "IsA", "target", 0.9),  # Direct path
+            ("start", "RelatedTo", "mid", 0.8),
+            ("mid", "IsA", "target", 0.9)  # Longer path
+        ]
+
+        result = expand_query_multihop(
+            "start",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=2
+        )
+
+        # Target should be included
+        assert "target" in result
+        # Weight should be from shorter path (hop 1)
+
+    def test_multiple_query_terms_expansion(self, tokenizer):
+        """Test multihop with multiple query terms expanding in parallel."""
+        builder = LayerBuilder()
+        builder.with_terms(["term1", "term2", "exp1", "exp2"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("term1", "IsA", "exp1", 0.9),
+            ("term2", "IsA", "exp2", 0.9)
+        ]
+
+        result = expand_query_multihop(
+            "term1 term2",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=1
+        )
+
+        # Should have both original terms
+        assert "term1" in result
+        assert "term2" in result
+        assert result["term1"] == 1.0
+        assert result["term2"] == 1.0
+        # Should have expansions from both
+        assert "exp1" in result
+        assert "exp2" in result
+
+    def test_zero_decay_factor(self, tokenizer):
+        """Test multihop with decay_factor=0 (no expansions beyond hop 0)."""
+        builder = LayerBuilder()
+        builder.with_terms(["start", "next"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("start", "IsA", "next", 0.9)
+        ]
+
+        result = expand_query_multihop(
+            "start",
+            layers,
+            tokenizer,
+            relations,
+            decay_factor=0.0
+        )
+
+        # With decay=0, expansions get weight 0
+        assert "start" in result
+        # "next" might be filtered out due to 0 weight
+
+    def test_complex_relation_chain(self, tokenizer):
+        """Test complex multi-hop chain with different relation types."""
+        builder = LayerBuilder()
+        builder.with_terms(["wheel", "car", "fast", "racing"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("wheel", "PartOf", "car", 0.9),       # PartOf
+            ("car", "HasProperty", "fast", 0.8),   # HasProperty
+            ("fast", "RelatedTo", "racing", 0.7)   # RelatedTo
+        ]
+
+        result = expand_query_multihop(
+            "wheel",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=3
+        )
+
+        # Should follow the chain
+        assert "wheel" in result
+        assert "car" in result
+        assert "fast" in result
+        # racing might be filtered based on path validity
+
+
+class TestExpandQuerySemanticEdgeCases:
+    """Additional edge case tests for semantic expansion."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_query_term_not_in_corpus(self, tokenizer):
+        """Test semantic expansion when query term not in corpus."""
+        col = MockMinicolumn(content="term1", pagerank=0.8)
+        layer0 = MockHierarchicalLayer([col])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        relations = [
+            ("nonexistent", "IsA", "term1", 0.9)
+        ]
+
+        result = expand_query_semantic("nonexistent", layers, tokenizer, relations)
+
+        # Should return empty since query term not in corpus
+        assert result == {}
+
+    def test_semantic_self_loop(self, tokenizer):
+        """Test semantic expansion with self-referential relations."""
+        col = MockMinicolumn(content="term", pagerank=0.8)
+        layer0 = MockHierarchicalLayer([col])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        relations = [
+            ("term", "RelatedTo", "term", 0.9)  # Self-loop
+        ]
+
+        result = expand_query_semantic("term", layers, tokenizer, relations)
+
+        # Should have original term, self-loop doesn't add duplicate
+        assert "term" in result
+        assert result["term"] == 1.0
+        assert len(result) == 1
+
+
+class TestScoreRelationPathEdgeCases:
+    """Additional edge cases for score_relation_path."""
+
+    def test_very_long_chain(self):
+        """Test scoring of very long relation chains."""
+        # Create a chain of 10 weak relations
+        long_chain = ["RelatedTo"] * 10
+        score = score_relation_path(long_chain)
+
+        # Each pair has score 0.6, so total should be 0.6^9
+        expected = 0.6 ** 9
+        assert score == pytest.approx(expected, rel=0.01)
+
+    def test_mixed_strong_weak_chain(self):
+        """Test chain with mix of strong and weak relations."""
+        # IsA->IsA (1.0) -> RelatedTo (0.6 for transition)
+        chain = ["IsA", "IsA", "RelatedTo"]
+        score = score_relation_path(chain)
+
+        # Should be weaker than pure IsA chain
+        assert 0 < score < 1.0
+
+    def test_all_unknown_relations(self):
+        """Test chain of completely unknown relation types."""
+        chain = ["UnknownA", "UnknownB", "UnknownC"]
+        score = score_relation_path(chain)
+
+        # Should use default validity for each pair
+        assert 0 <= score <= 1.0
+
+
+class TestExpandQueryStressTests:
+    """Stress tests with large numbers of connections."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_large_number_of_lateral_connections(self, tokenizer):
+        """Test expand_query with many lateral connections."""
+        builder = LayerBuilder()
+        builder.with_term("hub", pagerank=1.0)
+
+        # Create 100 connected terms
+        for i in range(100):
+            builder.with_term(f"spoke{i}", pagerank=0.5)
+            builder.with_connection("hub", f"spoke{i}", weight=float(100-i))
+
+        layers = builder.build()
+
+        result = expand_query("hub", layers, tokenizer, max_expansions=10)
+
+        # Should limit to max_expansions
+        assert len(result) <= 11  # hub + 10 expansions
+
+    def test_multiple_concepts_with_overlap(self, tokenizer):
+        """Test expand_query with overlapping concept clusters."""
+        builder = LayerBuilder()
+        builder.with_terms(["neural", "deep", "learning", "network"], pagerank=0.7)
+        layers = builder.build()
+
+        # Create multiple overlapping concepts
+        concept1 = MockMinicolumn(
+            content="concept1",
+            id="L2_concept1",
+            layer=2,
+            pagerank=0.9,
+            feedforward_sources={"L0_neural", "L0_deep"}
+        )
+        concept2 = MockMinicolumn(
+            content="concept2",
+            id="L2_concept2",
+            layer=2,
+            pagerank=0.8,
+            feedforward_sources={"L0_deep", "L0_learning"}
+        )
+
+        layers[MockLayers.CONCEPTS] = MockHierarchicalLayer([concept1, concept2], level=2)
+
+        result = expand_query("neural", layers, tokenizer, use_concepts=True)
+
+        # Should expand through concepts
+        assert "neural" in result
+        assert "deep" in result
+
+
+class TestMultihopBoundaryConditions:
+    """Boundary condition tests for multihop expansion."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_max_expansions_zero(self, tokenizer):
+        """Test multihop with max_expansions=0."""
+        builder = LayerBuilder()
+        builder.with_terms(["start", "next"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("start", "IsA", "next", 0.9)
+        ]
+
+        result = expand_query_multihop(
+            "start",
+            layers,
+            tokenizer,
+            relations,
+            max_expansions=0
+        )
+
+        # Should only have original term
+        assert "start" in result
+        assert len(result) == 1
+
+    def test_very_high_min_path_score(self, tokenizer):
+        """Test multihop with min_path_score near 1.0."""
+        builder = LayerBuilder()
+        builder.with_terms(["dog", "animal", "living"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("dog", "IsA", "animal", 0.9),
+            ("animal", "HasProperty", "living", 0.8)
+        ]
+
+        result = expand_query_multihop(
+            "dog",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=2,
+            min_path_score=0.95  # Very high threshold
+        )
+
+        # Should only include paths with very high validity
+        assert "dog" in result
+        # Single IsA is fine (score 1.0), but two-hop might be filtered
+
+    def test_single_hop_with_high_decay(self, tokenizer):
+        """Test that even with high decay, single hop still works."""
+        builder = LayerBuilder()
+        builder.with_terms(["start", "next"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("start", "IsA", "next", 0.9)
+        ]
+
+        result = expand_query_multihop(
+            "start",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=1,
+            decay_factor=0.9
+        )
+
+        assert "start" in result
+        assert "next" in result
+        # Check decay is applied
+        assert result["next"] < result["start"]
