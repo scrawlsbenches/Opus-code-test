@@ -1,3 +1,6 @@
+---
+description: Generate knowledge transfer document from current session
+---
 # Knowledge Transfer Generator
 
 Generate a knowledge transfer document based on the current session context.

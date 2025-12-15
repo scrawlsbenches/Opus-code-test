@@ -1,3 +1,6 @@
+---
+description: Log chat exchanges for ML training data collection
+---
 # Log Chat Exchange for ML Training
 
 Log significant chat exchanges to train a project-specific micro-model.

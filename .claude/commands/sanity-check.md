@@ -1,3 +1,7 @@
+---
+description: Pre-merge sanity check for a branch with tests and verification
+argument-hint: <branch-name>
+---
 # Pre-merge sanity check for branch: $ARGUMENTS
 
 You have NO prior context. This is a fresh thread.
