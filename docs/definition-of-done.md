@@ -6,7 +6,7 @@ This document defines when a task is truly "done" versus merely "code complete".
 
 During feature development, it's easy to focus solely on implementation and overlook critical steps like documentation, verification, and issue tracking. This document provides a checklist to prevent incomplete work from being marked as finished.
 
-**Example**: While implementing passage-level search features, we discovered a gap in passage-level boosting that could have been lost if not explicitly documented and added to TASK_LIST.md.
+**Example**: While implementing passage-level search features, we discovered a gap in passage-level boosting that could have been lost if not explicitly documented and added to the task system.
 
 ---
 
@@ -32,7 +32,7 @@ python -m unittest discover -s tests -v
   - Args section with types and descriptions
   - Returns section with type and description
   - Examples if the function is non-trivial
-- [ ] TASK_LIST.md updated with:
+- [ ] Task status updated with:
   - Task marked as DONE
   - Solution details added
   - Implementation notes if applicable
@@ -43,7 +43,7 @@ python -m unittest discover -s tests -v
 
 **Files to check:**
 - Source code docstrings
-- `/home/user/Opus-code-test/TASK_LIST.md`
+- `/home/user/Opus-code-test/tasks/` directory
 - `/home/user/Opus-code-test/CLAUDE.md`
 - `/home/user/Opus-code-test/docs/PATTERNS.md`
 
@@ -77,24 +77,24 @@ python scripts/search_codebase.py "your feature keywords"
 
 This is the step that is most often skipped but is critical for maintaining project knowledge.
 
-- [ ] All discovered issues added to TASK_LIST.md:
+- [ ] All discovered issues added to tasks/:
   - New tasks created with clear descriptions
-  - Priority assigned (Critical/High/Medium/Low)
-  - Effort estimated (Small/Medium/Large)
+  - Priority assigned (critical/high/medium/low)
+  - Effort estimated (small/medium/large)
   - Dependencies noted
-- [ ] Summary tables updated:
-  - Task counts reflect new additions
-  - Status categories accurate
-  - No orphaned task numbers
+- [ ] Task list kept current:
+  - View all tasks: `python scripts/task_utils.py list`
+  - Create new task: `python scripts/new_task.py "description"`
+  - View summary: `python scripts/consolidate_tasks.py --summary`
 - [ ] Related tasks cross-referenced:
-  - "See Task #X" links added where relevant
-  - Dependencies noted in both directions
+  - Task IDs linked where relevant
+  - Dependencies noted in task descriptions
 - [ ] Future work captured:
   - "Nice to have" features documented
   - Performance optimization opportunities noted
   - Potential extensions recorded
 
-**Example**: When implementing passage search, we found that passage-level boosting was missing. This became Task #66, properly categorized and linked to related search tasks.
+**Example**: When implementing passage search, we found that passage-level boosting was missing. This became a new task, properly categorized and linked to related search tasks.
 
 ### 5. Truly Done
 
@@ -108,7 +108,7 @@ All previous criteria met, plus:
   - Source code changes
   - Test updates
   - Documentation updates
-  - TASK_LIST.md changes
+  - Task files (if applicable)
 - [ ] Changes pushed to remote branch
 - [ ] Ready for review/merge:
   - No "TODO" comments left in code
@@ -138,7 +138,7 @@ Before marking a task as DONE, answer these questions:
 
 ### Documentation
 - [ ] Did I document all findings, even unexpected ones?
-- [ ] Did I update TASK_LIST.md with solution details?
+- [ ] Did I update task status with solution details?
 - [ ] Do all new functions have complete docstrings?
 - [ ] Did I update user-facing documentation (CLAUDE.md)?
 
@@ -146,7 +146,7 @@ Before marking a task as DONE, answer these questions:
 - [ ] Did I create tasks for any issues found during implementation?
 - [ ] Did I create tasks for any limitations discovered?
 - [ ] Did I create tasks for related work that would improve this feature?
-- [ ] Are the summary tables in TASK_LIST.md current?
+- [ ] Is the task list current: `python scripts/task_utils.py list`?
 
 ### Completeness
 - [ ] Is the code committed with a descriptive message?
@@ -205,7 +205,7 @@ Copy this checklist into your task notes or PR description:
 
 ### Documentation Complete
 - [ ] Docstrings added
-- [ ] TASK_LIST.md updated
+- [ ] Task status updated (if applicable)
 - [ ] User docs updated (if applicable)
 
 ### Verification Complete
@@ -250,7 +250,7 @@ Copy this checklist into your task notes or PR description:
          ▼                                │
 ┌─────────────────┐                       │
 │ Issue Tracking  │───────────────────────┘
-│ Complete        │  Add to TASK_LIST.md
+│ Complete        │  Add to tasks/ via CLI
 └────────┬────────┘
          │
          ▼
@@ -270,8 +270,8 @@ Copy this checklist into your task notes or PR description:
 - Code implemented with full type hints
 - Tests added and passing
 - Docstrings complete
-- TASK_LIST.md updated with solution details
-- Discovered prerequisite for Task #65 and documented it
+- Task status updated with solution details
+- Discovered related work and documented it
 - Committed with clear message
 
 ### Could Be Better: Initial Passage Search Implementation

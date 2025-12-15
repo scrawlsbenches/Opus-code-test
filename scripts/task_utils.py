@@ -682,6 +682,134 @@ def _write_consolidated_markdown(
         f.write('\n'.join(lines))
 
 
+# Orchestration integration functions
+def create_orchestration_tasks(
+    plan: 'OrchestrationPlan',
+    session: TaskSession
+) -> List[Task]:
+    """
+    Create tasks from an orchestration plan.
+
+    Creates:
+    - One task per batch in the plan
+    - Sets depends_on based on batch dependencies
+    - Returns list of created tasks
+
+    Args:
+        plan: OrchestrationPlan with batches
+        session: TaskSession to create tasks in
+
+    Returns:
+        List of created Task objects
+    """
+    # Import at function level to avoid circular imports
+    from scripts.orchestration_utils import OrchestrationPlan
+
+    created_tasks = []
+    batch_to_task_map = {}  # Map batch_id -> task_id
+
+    for batch in plan.batches:
+        # Map batch depends_on to task depends_on
+        task_depends_on = []
+        for dep_batch_id in batch.depends_on:
+            if dep_batch_id in batch_to_task_map:
+                task_depends_on.append(batch_to_task_map[dep_batch_id])
+
+        # Create task for this batch
+        task = session.create_task(
+            title=f"{plan.title} - {batch.name}",
+            priority="medium",
+            category="orchestration",
+            description=f"Batch {batch.batch_id}: {batch.name} ({batch.batch_type})\n"
+                       f"{len(batch.agents)} agent(s)",
+            depends_on=task_depends_on,
+            effort="medium",
+            context={
+                'plan_id': plan.plan_id,
+                'batch_id': batch.batch_id,
+                'batch_type': batch.batch_type,
+                'agent_count': len(batch.agents)
+            }
+        )
+
+        # Track mapping for dependency resolution
+        batch_to_task_map[batch.batch_id] = task.id
+        created_tasks.append(task)
+
+    return created_tasks
+
+
+def link_plan_to_task(
+    plan_id: str,
+    task_id: str,
+    tasks_dir: str = DEFAULT_TASKS_DIR
+) -> None:
+    """
+    Link an orchestration plan to an existing task.
+
+    Updates the task's context with plan_id reference.
+
+    Args:
+        plan_id: The orchestration plan ID
+        task_id: The task ID to link
+        tasks_dir: Directory containing task files
+    """
+    # Find the session file containing this task
+    dir_path = Path(tasks_dir)
+    if not dir_path.exists():
+        raise ValueError(f"Tasks directory not found: {tasks_dir}")
+
+    target_session = None
+    session_file = None
+
+    for filepath in sorted(dir_path.glob("*.json")):
+        try:
+            session = TaskSession.load(filepath)
+            if session.get_task(task_id):
+                target_session = session
+                session_file = filepath
+                break
+        except (json.JSONDecodeError, KeyError):
+            continue
+
+    if not target_session:
+        raise ValueError(f"Task not found: {task_id}")
+
+    # Update task context with plan_id
+    task = target_session.get_task(task_id)
+    if task:
+        task.context['plan_id'] = plan_id
+        task.updated_at = datetime.now().isoformat()
+
+        # Save the session
+        target_session.save(tasks_dir)
+
+
+def get_tasks_for_plan(
+    plan_id: str,
+    tasks_dir: str = DEFAULT_TASKS_DIR
+) -> List[Task]:
+    """
+    Find all tasks linked to an orchestration plan.
+
+    Args:
+        plan_id: The orchestration plan ID
+        tasks_dir: Directory containing task files
+
+    Returns:
+        List of Task objects linked to the plan
+    """
+    all_tasks = load_all_tasks(tasks_dir)
+
+    # Filter for tasks with matching plan_id in context
+    linked_tasks = [
+        task for task in all_tasks
+        if isinstance(task.context, dict) and task.context.get('plan_id') == plan_id
+    ]
+
+    return linked_tasks
+
+
 # CLI interface
 if __name__ == "__main__":
     import argparse

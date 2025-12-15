@@ -18,7 +18,7 @@ When facing a large initiative with many independent subtasks (like achieving 90
 Before launching agents, understand the full scope:
 
 ```
-1. Read task definitions (TASK_LIST.md)
+1. Read task definitions: `python scripts/task_utils.py list`
 2. Check existing infrastructure (mocks, fixtures, patterns)
 3. Identify dependencies between tasks
 4. Group into batches by:

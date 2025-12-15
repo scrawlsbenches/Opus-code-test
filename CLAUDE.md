@@ -1105,6 +1105,19 @@ python examples/observability_demo.py
 | Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
 | Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
 | Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
+| Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
+| List orchestration plans | `python scripts/orchestration_utils.py list` |
+| Verify batch | `python scripts/verify_batch.py --quick` |
+| View orchestration metrics | From Python: `OrchestrationMetrics().get_summary()` |
+
+### Orchestration Utilities
+
+For Director orchestration and parallel agent workflows:
+
+- `scripts/orchestration_utils.py` - Director orchestration tracking (plans, batches, metrics)
+- `scripts/verify_batch.py` - Automated batch verification
+
+See `docs/director.md` for comprehensive orchestration documentation.
 
 ---
 
@@ -1465,7 +1478,8 @@ See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
 - **Dog-fooding**: `docs/dogfooding-checklist.md` - checklist for testing with real usage
 - **Definition of Done**: `docs/definition-of-done.md` - when is a task truly complete?
 - **Text-as-Memories**: `docs/text-as-memories.md` - knowledge management guide
-- **Task Archive**: `TASK_ARCHIVE.md` - completed tasks history
+- **Task Management**: `docs/merge-friendly-tasks.md` - merge-friendly task system with collision-free IDs
+- **Merge-Friendly Tasks**: See "Task Management (Merge-Friendly System)" section above for task workflow
 
 ---
 

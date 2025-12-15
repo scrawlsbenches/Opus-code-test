@@ -131,7 +131,7 @@ scripts/              # Utility scripts
 
 ### Before You Start
 
-1. Check [TASK_LIST.md](TASK_LIST.md) for existing planned work
+1. Check existing tasks using `python scripts/task_utils.py list` for planned work
 2. Read [CLAUDE.md](CLAUDE.md) for detailed developer documentation
 3. Look at existing code to understand patterns
 
@@ -158,7 +158,7 @@ Add query expansion for code patterns
 
 1. Ensure all tests pass
 2. Update documentation if needed
-3. Add entry to TASK_LIST.md if relevant
+3. Create a task using `python scripts/new_task.py "your description"` if relevant
 4. Request review from maintainers
 
 ### PR Checklist
@@ -178,7 +178,7 @@ We follow rigorous standards documented in:
 Key principles:
 
 1. **Verify claims** - Test assumptions, check edge cases
-2. **Document findings** - Add issues to TASK_LIST.md
+2. **Document findings** - Create tasks using `python scripts/new_task.py` for discovered issues
 3. **Test thoroughly** - Empty corpus, single doc, multiple docs, edge cases
 4. **Be skeptical** - Question the obvious
 
