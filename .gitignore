@@ -105,11 +105,11 @@ cortical/proto/__pycache__/
 #   - .git-ml/actions/       - Tool usage
 #   - .git-ml/github/        - PR/Issue data (contains discussions)
 #   - .git-ml/orchestration/ - Individual orchestration files (use tracked/orchestration.jsonl)
-.git-ml/commits/
-.git-ml/chats/
-.git-ml/sessions/
-.git-ml/actions/
-.git-ml/github/
+# .git-ml/commits/  # Uncomment to ignore full commit data with diffs
+# .git-ml/chats/  # Uncomment to ignore chat transcripts
+# .git-ml/sessions/  # Uncomment to ignore full session data
+# .git-ml/actions/  # Uncomment to ignore tool usage data
+# .git-ml/github/  # Uncomment to ignore PR/Issue data
 # .git-ml/orchestration/  # Uncomment to ignore individual orchestration JSON files
-.git-ml/current_session.json
-.git-ml/contribution_consent.json
+# .git-ml/current_session.json  # Uncomment to ignore current session file
+# .git-ml/contribution_consent.json  # Uncomment to ignore consent file
