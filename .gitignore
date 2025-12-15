@@ -92,3 +92,22 @@ tasks/.current_session.json
 # Generated protobuf code (regenerated at runtime from schema.proto)
 cortical/proto/schema_pb2.py
 cortical/proto/__pycache__/
+
+# ML training data - tiered sharing strategy
+# TRACKED IN GIT (small, shareable):
+#   - .git-ml/tracked/       - JSONL files (commits.jsonl, sessions.jsonl)
+#   - .git-ml/shared/        - Aggregated patterns
+#   - .git-ml/commits-lite/  - Legacy individual files (being migrated)
+# LOCAL ONLY (large or sensitive):
+#   - .git-ml/commits/       - Full commit data with diffs (too large)
+#   - .git-ml/chats/         - Chat transcripts (sensitive)
+#   - .git-ml/sessions/      - Full session data
+#   - .git-ml/actions/       - Tool usage
+#   - .git-ml/github/        - PR/Issue data (contains discussions)
+.git-ml/commits/
+.git-ml/chats/
+.git-ml/sessions/
+.git-ml/actions/
+.git-ml/github/
+.git-ml/current_session.json
+.git-ml/contribution_consent.json

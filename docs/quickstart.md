@@ -159,7 +159,7 @@ If you're an AI coding assistant exploring this codebase:
 
 1. **Use `.ai_meta` files** for rapid module understanding:
    ```bash
-   cat cortical/processor.py.ai_meta  # Structured overview
+   cat cortical/processor/__init__.py.ai_meta  # Structured overview of main API
    ```
 
 2. **Check Claude skills** in `.claude/skills/` for:
@@ -168,6 +168,8 @@ If you're an AI coding assistant exploring this codebase:
    - `ai-metadata` - Metadata viewer
 
 3. **See AI Agent Onboarding** in [CLAUDE.md](../CLAUDE.md#ai-agent-onboarding) for detailed guidance
+
+**Note:** The processor is now a package (`cortical/processor/`) with mixin-based composition for better organization.
 
 ## Common Patterns
 

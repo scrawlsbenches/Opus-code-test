@@ -1,3 +1,6 @@
+---
+description: Resume as Director Agent to continue orchestrating tasks
+---
 # Director Agent Continuation
 
 Resume as the Director Agent to orchestrate parallel sub-agents for the Cortical Text Processor project.

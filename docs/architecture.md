@@ -16,7 +16,7 @@ The codebase is organized into five architectural layers:
 2. **Algorithm Layer** - Domain logic for analysis, semantics, embeddings
 3. **Query Layer** - Modular search and retrieval functions
 4. **Persistence Layer** - Save/load and git-friendly chunk storage
-5. **Orchestration Layer** - processor.py coordinates everything
+5. **Orchestration Layer** - processor/ package coordinates everything (mixin-based composition)
 
 ### Complete Module Dependency Graph
 
@@ -25,8 +25,9 @@ The codebase is organized into five architectural layers:
 │                       ORCHESTRATION LAYER                        │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐ │
-│  │              processor.py (Public API)                     │ │
-│  │  - CorticalTextProcessor class                             │ │
+│  │          processor/ package (Public API)                   │ │
+│  │  - CorticalTextProcessor class (mixin composition)         │ │
+│  │  - CoreMixin, DocumentsMixin, ComputeMixin, etc.           │ │
 │  │  - Coordinates all components                              │ │
 │  │  - Staleness tracking                                      │ │
 │  └───────┬──────────────────────────────────────────────────┬─┘ │
@@ -110,15 +111,23 @@ The codebase is organized into five architectural layers:
 
 ### Orchestration Layer
 
-**processor.py** (2,301 lines)
+**processor/ package** (2,817 lines total)
 - **Role**: Main orchestrator and public API
-- **Pattern**: Facade - delegates to specialized modules
+- **Pattern**: Mixin-based composition - functionality split across focused modules
+- **Structure**:
+  - `__init__.py` (63 lines) - Re-exports CorticalTextProcessor
+  - `core.py` (108 lines) - CoreMixin: initialization, staleness tracking
+  - `documents.py` (454 lines) - DocumentsMixin: process_document, add/remove
+  - `compute.py` (1,033 lines) - ComputeMixin: compute_all, PageRank, TF-IDF, clustering
+  - `query_api.py` (699 lines) - QueryMixin: find_documents_for_query, expand_query
+  - `introspection.py` (217 lines) - IntrospectionMixin: fingerprints, gaps, summaries
+  - `persistence_api.py` (243 lines) - PersistenceMixin: save, load, export
 - **Key Functions**:
-  - `process_document()` - Add documents to corpus
-  - `compute_all()` - Run all analysis phases
-  - `find_documents_for_query()` - Search wrapper
-  - `find_passages_for_query()` - RAG wrapper
-  - Staleness tracking for incremental updates
+  - `process_document()` - Add documents to corpus (DocumentsMixin)
+  - `compute_all()` - Run all analysis phases (ComputeMixin)
+  - `find_documents_for_query()` - Search wrapper (QueryMixin)
+  - `find_passages_for_query()` - RAG wrapper (QueryMixin)
+  - Staleness tracking for incremental updates (CoreMixin)
 - **Imports**: All other modules (analysis, semantics, embeddings, gaps, fingerprint, query, persistence)
 - **Used By**: External users, scripts
 
@@ -284,8 +293,9 @@ The query layer is split into focused submodules, all re-exported from `query/__
                          │
                          ▼
         ┌────────────────────────────────────┐
-        │       processor.py                 │
+        │       processor/documents.py       │
         │    process_document()              │
+        │    (DocumentsMixin)                │
         └────────────────┬───────────────────┘
                          │
          ┌───────────────┼───────────────┐
@@ -356,12 +366,23 @@ The query layer is split into focused submodules, all re-exported from `query/__
 
 ## Interaction Patterns
 
-### Pattern 1: Orchestrator Pattern
+### Pattern 1: Mixin-Based Composition
 
-processor.py acts as a facade, delegating to specialized modules:
+The processor package uses mixin composition to organize functionality:
 
 ```python
-# processor.py delegates to analysis.py
+# processor/__init__.py assembles the complete class
+class CorticalTextProcessor(
+    CoreMixin,
+    DocumentsMixin,
+    ComputeMixin,
+    QueryMixin,
+    IntrospectionMixin,
+    PersistenceMixin
+):
+    pass
+
+# processor/compute.py (ComputeMixin) delegates to analysis.py
 def compute_importance(self):
     pagerank_scores = analysis.compute_pagerank(
         self.layers[CorticalLayer.TOKENS],
@@ -370,7 +391,7 @@ def compute_importance(self):
     # Update minicolumns with scores
 ```
 
-**Benefits**: Clean public API, focused modules, easy testing
+**Benefits**: Clean separation of concerns, modular testing, each file stays focused (<1100 lines)
 
 ### Pattern 2: Layered Processing
 
@@ -410,15 +431,15 @@ query/__init__.py     ← Re-exports all public symbols
 
 ### Pattern 4: Staleness Tracking
 
-processor.py tracks which computations need recomputation:
+The processor package (CoreMixin + ComputeMixin) tracks which computations need recomputation:
 
 ```python
-# Mark all stale when documents change
+# processor/documents.py (DocumentsMixin) marks all stale when documents change
 def process_document(self, doc_id, content):
     # ... process ...
     self._mark_all_stale()
 
-# compute_all() only recomputes stale components
+# processor/compute.py (ComputeMixin) only recomputes stale components
 def compute_all(self):
     if self.is_stale(self.COMP_TFIDF):
         self.compute_tfidf()
@@ -463,7 +484,7 @@ graph TD
     chunk_index[chunk_index.py<br/>Chunk storage]
 
     %% Orchestration
-    processor[processor.py<br/>CorticalTextProcessor]
+    processor[processor/<br/>CorticalTextProcessor<br/>(mixin composition)]
 
     %% Dependencies
     layers --> minicolumn
@@ -723,7 +744,7 @@ minicolumn.feedback_connections: Dict[str, float]
 
 ### Document Processing
 
-**Location:** `processor.py:54-137`
+**Location:** `processor/documents.py` (DocumentsMixin)
 
 When a document is processed:
 
@@ -755,7 +776,7 @@ INPUT: "Neural networks process data."
 
 ### Network Computation
 
-**Location:** `processor.py:452-596` (`compute_all()`)
+**Location:** `processor/compute.py` (ComputeMixin - `compute_all()`)
 
 After processing documents, compute the full network:
 
@@ -796,7 +817,7 @@ After processing documents, compute the full network:
 
 ### Query Flow
 
-**Location:** `query.py`
+**Location:** `processor/query_api.py` (QueryMixin) + `query/` package
 
 When a query is executed:
 
@@ -903,11 +924,11 @@ for col in layer.minicolumns.values():
 neighbor = layer.get_by_id(target_id)
 ```
 
-Used throughout `analysis.py` and `query.py`.
+Used throughout `analysis.py` and `query/` modules.
 
 ### Staleness Tracking
 
-**Location:** `processor.py:49`
+**Location:** `processor/core.py` (CoreMixin)
 
 ```python
 self._stale_computations: set
@@ -923,7 +944,7 @@ Tracks which computations need rerunning after corpus changes:
 
 ### Query Caching
 
-**Location:** `processor.py:51-52`
+**Location:** `processor/core.py` (CoreMixin)
 
 ```python
 self._query_expansion_cache: Dict[str, Dict[str, float]]
@@ -942,8 +963,8 @@ LRU cache for query expansion results. Cleared after `compute_all()`.
 | HierarchicalLayer | `layers.py` | 59-273 |
 | Minicolumn | `minicolumn.py` | 56-357 |
 | Edge | `minicolumn.py` | 16-53 |
-| process_document() | `processor.py` | 54-137 |
-| compute_all() | `processor.py` | 452-596 |
+| process_document() | `processor/documents.py` | DocumentsMixin |
+| compute_all() | `processor/compute.py` | ComputeMixin |
 | Tokenizer | `tokenizer.py` | Full file |
 
 ---

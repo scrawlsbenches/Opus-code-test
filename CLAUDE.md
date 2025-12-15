@@ -1329,6 +1329,125 @@ See `docs/text-as-memories.md` for the full guide.
 
 ---
 
+## ML Data Collection: Project-Specific Micro-Model
+
+**Fully automatic. Zero configuration required.**
+
+ML data collection starts automatically when you open this project in Claude Code. Every session is tracked, every commit is captured, and transcripts are saved when sessions end.
+
+### Automatic Startup
+
+When a Claude Code session starts in this project:
+1. **Session tracking begins** - A new ML session is created for commit-chat linking
+2. **Git hooks are installed** - post-commit and pre-push hooks are added if missing
+3. **Stats are displayed** - Current collection progress is shown
+
+This is configured in `.claude/settings.local.json` via the `SessionStart` hook.
+
+### What Gets Collected
+
+| Data Type | Location | Contents |
+|-----------|----------|----------|
+| **Commits** | `.git-ml/commits/` | Git history with diff hunks, temporal context, CI results |
+| **Chats** | `.git-ml/chats/` | Query/response pairs with files touched and tools used |
+| **Sessions** | `.git-ml/sessions/` | Development sessions linking chats to commits |
+| **Actions** | `.git-ml/actions/` | Individual tool uses and operations |
+
+**Note:** All ML data is stored in `.git-ml/` which is gitignored and regeneratable via backfill.
+
+### Quick Commands
+
+```bash
+# Check collection progress
+python scripts/ml_data_collector.py stats
+
+# Estimate when training becomes viable
+python scripts/ml_data_collector.py estimate
+
+# Validate collected data
+python scripts/ml_data_collector.py validate
+
+# Session management
+python scripts/ml_data_collector.py session status
+python scripts/ml_data_collector.py session start
+python scripts/ml_data_collector.py session end --summary "What was accomplished"
+
+# Generate session handoff document
+python scripts/ml_data_collector.py handoff
+
+# Record CI results (manual)
+python scripts/ml_data_collector.py ci set --commit abc123 --result pass --coverage 89.5
+
+# CI auto-capture (reads from GitHub Actions environment)
+python scripts/ml_data_collector.py ci-autocapture
+
+# Backfill historical commits
+python scripts/ml_data_collector.py backfill -n 100
+
+# Collect GitHub PR/Issue data (requires gh CLI)
+python scripts/ml_data_collector.py github collect           # Collect recent PRs and issues
+python scripts/ml_data_collector.py github stats             # Show GitHub data counts
+python scripts/ml_data_collector.py github fetch-pr --number 42  # Fetch specific PR
+```
+
+### Disabling Collection
+
+```bash
+# Disable for current session
+export ML_COLLECTION_ENABLED=0
+
+# Stats and validation still work when disabled
+```
+
+### Automatic Session Capture
+
+**Pre-configured. No setup needed.**
+
+The ML data collector automatically captures complete session transcripts when Claude Code sessions end. This is already configured in `.claude/settings.local.json`.
+
+**What gets captured automatically:**
+- Full query/response pairs from the transcript
+- All tool uses (Task, Read, Edit, Bash, Grep, etc.)
+- Files referenced and modified
+- Thinking blocks (if present)
+- Session linkage to commits
+
+**Process transcript manually:**
+```bash
+# Process a specific transcript file
+python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl
+
+# Dry run (show what would be captured without saving)
+python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl --dry-run --verbose
+```
+
+### Integration
+
+Data collection is fully automatic via hooks configured in `.claude/settings.local.json`:
+
+| Hook | Trigger | Action |
+|------|---------|--------|
+| **SessionStart** | Session begins | Starts ML session, installs git hooks, shows stats |
+| **Stop** | Session ends | Captures full transcript with all exchanges |
+| **post-commit** | After commit | Captures commit metadata with diff hunks |
+| **pre-push** | Before push | Reports collection stats |
+| **CI workflow** | GitHub Actions | Auto-captures CI pass/fail results |
+
+**Hook files:**
+- `scripts/ml-session-start-hook.sh` - SessionStart handler
+- `scripts/ml-session-capture-hook.sh` - Stop handler
+
+**CI Integration:**
+The GitHub Actions workflow (`.github/workflows/ci.yml`) includes an `ml-ci-capture` job that automatically records CI results for each commit. This runs after the coverage-report job and captures:
+- Pass/fail status
+- Coverage percentage (when available)
+- Workflow and job metadata
+- Run ID for traceability
+
+See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
+
+---
+
 ## File Quick Links
 
 - **Main API**: `cortical/processor/` - `CorticalTextProcessor` class (split into mixins)
