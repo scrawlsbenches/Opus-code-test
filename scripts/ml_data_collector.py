@@ -63,6 +63,12 @@ Usage:
 
     # Test redaction patterns
     python scripts/ml_data_collector.py redact-test --text "api_key=secret123"
+
+    # Extract director orchestration data (sub-agent patterns)
+    python scripts/ml_data_collector.py orchestration extract       # Extract from current project
+    python scripts/ml_data_collector.py orchestration extract --save  # Extract and save
+    python scripts/ml_data_collector.py orchestration summary       # Show summary only
+    python scripts/ml_data_collector.py orchestration list          # List saved extractions
 """
 
 import json
@@ -3218,8 +3224,8 @@ def main():
 
     command = sys.argv[1]
 
-    # Allow stats/estimate/validate/export/feedback/quality-report even when collection is disabled
-    read_only_commands = {"stats", "estimate", "validate", "session", "export", "feedback", "quality-report"}
+    # Allow stats/estimate/validate/export/feedback/quality-report/orchestration even when collection is disabled
+    read_only_commands = {"stats", "estimate", "validate", "session", "export", "feedback", "quality-report", "orchestration"}
 
     # Check if collection is disabled (via ML_COLLECTION_ENABLED=0)
     if not ML_COLLECTION_ENABLED and command not in read_only_commands:
@@ -4143,6 +4149,77 @@ Your name and email (if provided) will be used for:
         print(f"\nRedacted ({redaction_count} patterns matched):")
         print(redacted[:500] + ('...' if len(redacted) > 500 else ''))
         print(f"{'='*60}\n")
+
+    elif command == "orchestration":
+        # Extract orchestration patterns from sub-agent transcripts
+        import argparse
+        from ml_collector.orchestration import (
+            extract_orchestration_from_directory,
+            extract_and_save,
+            print_orchestration_summary,
+            ORCHESTRATION_DIR
+        )
+
+        parser = argparse.ArgumentParser(description="Extract director orchestration data")
+        parser.add_argument("action", choices=["extract", "summary", "list"],
+                           help="Action to perform")
+        parser.add_argument("--project-dir", "-d", type=Path,
+                           help="Claude project transcript directory")
+        parser.add_argument("--session-id", "-s",
+                           help="Filter by parent session ID")
+        parser.add_argument("--save", action="store_true",
+                           help="Save extracted data to .git-ml/orchestration/")
+        args = parser.parse_args(sys.argv[2:])
+
+        # Default project directory
+        if args.project_dir is None:
+            # Try to find the Claude project directory for this repo
+            # Claude uses path with leading dash: /home/user/foo -> -home-user-foo
+            cwd_safe = os.getcwd().replace('/', '-').replace('\\', '-')
+            project_dir = Path.home() / '.claude' / 'projects' / cwd_safe
+            if not project_dir.exists():
+                print(f"Could not find Claude project directory at {project_dir}")
+                print("Use --project-dir to specify the transcript location")
+                sys.exit(1)
+        else:
+            project_dir = args.project_dir
+
+        if args.action == "extract":
+            if args.save:
+                extraction, saved_path = extract_and_save(
+                    project_dir,
+                    parent_session_id=args.session_id
+                )
+                if saved_path:
+                    print(f"Saved orchestration data to: {saved_path}")
+                print_orchestration_summary(extraction)
+            else:
+                extraction = extract_orchestration_from_directory(
+                    project_dir,
+                    parent_session_id=args.session_id
+                )
+                print_orchestration_summary(extraction)
+
+        elif args.action == "summary":
+            extraction = extract_orchestration_from_directory(
+                project_dir,
+                parent_session_id=args.session_id
+            )
+            print_orchestration_summary(extraction)
+
+        elif args.action == "list":
+            # List saved orchestration files
+            if not ORCHESTRATION_DIR.exists():
+                print("No orchestration data saved yet.")
+                print(f"Directory: {ORCHESTRATION_DIR}")
+            else:
+                files = sorted(ORCHESTRATION_DIR.glob("*.json"))
+                if not files:
+                    print("No orchestration files found.")
+                else:
+                    print(f"Saved orchestration extractions ({len(files)} files):")
+                    for f in files:
+                        print(f"  {f.name}")
 
     else:
         print(f"Unknown command: {command}")

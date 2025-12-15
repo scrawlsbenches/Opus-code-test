@@ -109,5 +109,6 @@ cortical/proto/__pycache__/
 .git-ml/sessions/
 .git-ml/actions/
 .git-ml/github/
+.git-ml/orchestration/
 .git-ml/current_session.json
 .git-ml/contribution_consent.json
