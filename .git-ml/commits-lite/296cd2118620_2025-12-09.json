@@ -1,0 +1,18 @@
+{
+  "hash": "296cd21186207d5e9489b770816c85a492fe86c3",
+  "message": "Fix type annotation and optimize spectral embeddings lookup",
+  "author": "Claude",
+  "timestamp": "2025-12-09 19:46:36 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/embeddings.py"
+  ],
+  "insertions": 7,
+  "deletions": 8,
+  "hour_of_day": 19,
+  "day_of_week": "Tuesday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -499080
+}

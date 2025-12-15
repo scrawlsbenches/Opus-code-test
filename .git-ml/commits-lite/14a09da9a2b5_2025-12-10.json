@@ -1,0 +1,25 @@
+{
+  "hash": "14a09da9a2b5237db3bbaaddbd41d6a8747aa479",
+  "message": "Merge pull request #28 from scrawlsbenches/claude/run-showcase-01JbkiDV4QQv7c1K4oS2K9wa",
+  "author": "scrawlsbenches",
+  "timestamp": "2025-12-10 21:13:51 -0500",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md",
+    "scripts/ask_codebase.py",
+    "scripts/index_codebase.py",
+    "scripts/search_codebase.py",
+    "showcase.py",
+    "tests/test_ask_codebase.py",
+    "tests/test_search_codebase.py",
+    "tests/test_showcase.py"
+  ],
+  "insertions": 1773,
+  "deletions": 37,
+  "hour_of_day": 2,
+  "day_of_week": "Thursday",
+  "is_merge": true,
+  "is_initial": false,
+  "parent_count": 2,
+  "seconds_since_last_commit": -389445
+}

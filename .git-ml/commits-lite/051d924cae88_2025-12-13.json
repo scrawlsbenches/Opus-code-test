@@ -1,0 +1,29 @@
+{
+  "hash": "051d924cae884986a86ebf3de91bd13cdb2a3c01",
+  "message": "Merge pull request #55 from scrawlsbenches/claude/review-core-classes-012xcLZDyNh26Tt6ABrezcSU",
+  "author": "scrawlsbenches",
+  "timestamp": "2025-12-13 06:38:49 -0500",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml",
+    "CLAUDE.md",
+    "TASK_LIST.md",
+    "corpus_dev.pkl",
+    "cortical/layers.py",
+    "cortical/persistence.py",
+    "cortical/semantics.py",
+    "scripts/index_codebase.py",
+    "tests/test_coverage_gaps.py",
+    "tests/test_layers.py",
+    "tests/test_persistence.py",
+    "tests/unit/test_semantics.py"
+  ],
+  "insertions": 343,
+  "deletions": 32,
+  "hour_of_day": 11,
+  "day_of_week": "Saturday",
+  "is_merge": true,
+  "is_initial": false,
+  "parent_count": 2,
+  "seconds_since_last_commit": -182747
+}

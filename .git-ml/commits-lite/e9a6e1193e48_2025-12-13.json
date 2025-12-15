@@ -1,0 +1,18 @@
+{
+  "hash": "e9a6e1193e484670b4ead395c6033c6263361ecd",
+  "message": "CI: Run showcase in parallel (no dependencies)",
+  "author": "Claude",
+  "timestamp": "2025-12-13 01:36:15 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml"
+  ],
+  "insertions": 3,
+  "deletions": 4,
+  "hour_of_day": 1,
+  "day_of_week": "Saturday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -218901
+}

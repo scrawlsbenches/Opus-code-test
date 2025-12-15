@@ -1,0 +1,18 @@
+{
+  "hash": "0da2739ccc82258f1b5a45b90e7cd96f2f5003f8",
+  "message": "fix: Allow pickle deprecation warnings in pytest",
+  "author": "Claude",
+  "timestamp": "2025-12-14 11:40:00 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "pyproject.toml"
+  ],
+  "insertions": 6,
+  "deletions": 1,
+  "hour_of_day": 11,
+  "day_of_week": "Sunday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -96276
+}

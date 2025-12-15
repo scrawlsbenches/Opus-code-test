@@ -1,0 +1,18 @@
+{
+  "hash": "496c58e0f9f83ee904df4c9f2314b4fcb3273087",
+  "message": "docs: Add Director Agent continuation prompt for session handoff",
+  "author": "Claude",
+  "timestamp": "2025-12-14 07:49:54 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".claude/prompts/director-agent-continuation.md"
+  ],
+  "insertions": 89,
+  "deletions": 0,
+  "hour_of_day": 7,
+  "day_of_week": "Sunday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -110082
+}

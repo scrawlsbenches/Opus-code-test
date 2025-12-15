@@ -1,0 +1,20 @@
+{
+  "hash": "091167a86afe4c1066e4219a442c8e11d3e0a734",
+  "message": "docs: Add MCP server security model documentation (SEC-006)",
+  "author": "Claude",
+  "timestamp": "2025-12-14 11:30:23 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "docs/README.md",
+    "docs/mcp-security.md",
+    "tasks/2025-12-14_11-15-01_41d5.json"
+  ],
+  "insertions": 256,
+  "deletions": 25,
+  "hour_of_day": 11,
+  "day_of_week": "Sunday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -96853
+}

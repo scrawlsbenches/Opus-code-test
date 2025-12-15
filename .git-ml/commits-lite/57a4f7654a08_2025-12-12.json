@@ -1,0 +1,18 @@
+{
+  "hash": "57a4f7654a08ffbeca0e3d09a8587d877aa5bf3a",
+  "message": "Optimize test suite: share corpus, skip perf test under coverage",
+  "author": "Claude",
+  "timestamp": "2025-12-12 11:50:58 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "tests/test_behavioral.py"
+  ],
+  "insertions": 31,
+  "deletions": 18,
+  "hour_of_day": 11,
+  "day_of_week": "Friday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -268418
+}

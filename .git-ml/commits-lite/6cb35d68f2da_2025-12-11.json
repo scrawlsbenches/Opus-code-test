@@ -1,0 +1,18 @@
+{
+  "hash": "6cb35d68f2da791d0adc53f74158eda5bd08b904",
+  "message": "Add critical task #122: Investigate Concept Layer & Embeddings regressions",
+  "author": "Claude",
+  "timestamp": "2025-12-11 13:33:40 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md"
+  ],
+  "insertions": 73,
+  "deletions": 2,
+  "hour_of_day": 13,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -348656
+}

@@ -1,0 +1,18 @@
+{
+  "hash": "4a3fb621bc6da66fced3e3f567d2035c6aa523f6",
+  "message": "Remove TestShowcaseCorpusRegression: redundant slow tests",
+  "author": "Claude",
+  "timestamp": "2025-12-12 12:15:45 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "tests/test_analysis.py"
+  ],
+  "insertions": 0,
+  "deletions": 106,
+  "hour_of_day": 12,
+  "day_of_week": "Friday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -266931
+}

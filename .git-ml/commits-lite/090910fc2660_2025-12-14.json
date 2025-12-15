@@ -1,0 +1,26 @@
+{
+  "hash": "090910fc26603aeee5b851fbeafd133a9faae70d",
+  "message": "refactor: Split processor.py into modular processor/ package (LEGACY-095)",
+  "author": "Claude",
+  "timestamp": "2025-12-14 14:26:00 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "CLAUDE.md",
+    "cortical/__init__.py",
+    "cortical/processor/__init__.py",
+    "cortical/processor/compute.py",
+    "cortical/processor/core.py",
+    "cortical/processor/documents.py",
+    "cortical/processor/introspection.py",
+    "cortical/processor/persistence_api.py",
+    "cortical/processor/query_api.py"
+  ],
+  "insertions": 2834,
+  "deletions": 4,
+  "hour_of_day": 14,
+  "day_of_week": "Sunday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -86316
+}

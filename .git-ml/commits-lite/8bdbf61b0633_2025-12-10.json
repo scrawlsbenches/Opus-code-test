@@ -1,0 +1,29 @@
+{
+  "hash": "8bdbf61b0633882589345095420131f77da654b5",
+  "message": "Merge pull request #27 from scrawlsbenches/claude/complete-task-list-015j2QSwWkoXuGQUKJ7gzgoX",
+  "author": "scrawlsbenches",
+  "timestamp": "2025-12-10 20:20:46 -0500",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".claude/skills/corpus-indexer/SKILL.md",
+    "CLAUDE.md",
+    "TASK_LIST.md",
+    "cortical/__init__.py",
+    "cortical/chunk_index.py",
+    "cortical/config.py",
+    "docs/code-of-ethics.md",
+    "docs/definition-of-done.md",
+    "docs/dogfooding-checklist.md",
+    "docs/patterns.md",
+    "tests/test_chunk_indexing.py",
+    "tests/test_config.py"
+  ],
+  "insertions": 2194,
+  "deletions": 55,
+  "hour_of_day": 1,
+  "day_of_week": "Thursday",
+  "is_merge": true,
+  "is_initial": false,
+  "parent_count": 2,
+  "seconds_since_last_commit": -392630
+}

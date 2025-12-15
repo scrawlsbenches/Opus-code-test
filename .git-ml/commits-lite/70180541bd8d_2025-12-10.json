@@ -1,0 +1,21 @@
+{
+  "hash": "70180541bd8d92697b67d061c7f832a400619c42",
+  "message": "Add concept inheritance through IsA hierarchy (Task 27)",
+  "author": "Claude",
+  "timestamp": "2025-12-10 00:17:42 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md",
+    "cortical/processor.py",
+    "cortical/semantics.py",
+    "tests/test_semantics.py"
+  ],
+  "insertions": 858,
+  "deletions": 14,
+  "hour_of_day": 0,
+  "day_of_week": "Wednesday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -482814
+}

@@ -1,0 +1,23 @@
+{
+  "hash": "e57cd8361a0b2135a2035d621c506fafe4f5c592",
+  "message": "Add parameter range validation and move inline imports (Tasks #39, #40)",
+  "author": "Claude",
+  "timestamp": "2025-12-10 14:54:53 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/analysis.py",
+    "cortical/processor.py",
+    "cortical/query.py",
+    "cortical/semantics.py",
+    "tests/test_analysis.py",
+    "tests/test_query.py"
+  ],
+  "insertions": 119,
+  "deletions": 7,
+  "hour_of_day": 14,
+  "day_of_week": "Wednesday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -430183
+}

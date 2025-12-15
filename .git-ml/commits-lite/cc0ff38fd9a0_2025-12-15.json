@@ -1,0 +1,18 @@
+{
+  "hash": "cc0ff38fd9a0f2160e09a1c107452a553a51c977",
+  "message": "feat: Add reusable pre-merge sanity check command",
+  "author": "Claude",
+  "timestamp": "2025-12-15 13:11:40 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".claude/commands/sanity-check.md"
+  ],
+  "insertions": 79,
+  "deletions": 0,
+  "hour_of_day": 13,
+  "day_of_week": "Monday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -4376
+}

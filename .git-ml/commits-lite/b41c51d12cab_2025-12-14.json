@@ -1,0 +1,23 @@
+{
+  "hash": "b41c51d12cabaadf5a63b9c9df6f35275bad9d97",
+  "message": "refactor: Migrate to merge-friendly task system and add security tasks",
+  "author": "Claude",
+  "timestamp": "2025-12-14 11:15:50 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".claude/skills/task-manager/SKILL.md",
+    "CLAUDE.md",
+    "TASK_LIST.md",
+    "scripts/migrate_legacy_tasks.py",
+    "tasks/2025-12-14_11-15-01_41d5.json",
+    "tasks/legacy_migration.json"
+  ],
+  "insertions": 3217,
+  "deletions": 30,
+  "hour_of_day": 11,
+  "day_of_week": "Sunday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -97726
+}

@@ -1,0 +1,18 @@
+{
+  "hash": "f8bbc92f4c145218825221d11697981b6ab1fc29",
+  "message": "docs: Re-add ML Data Collection section after merge",
+  "author": "Claude",
+  "timestamp": "2025-12-15 12:44:01 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "CLAUDE.md"
+  ],
+  "insertions": 99,
+  "deletions": 0,
+  "hour_of_day": 12,
+  "day_of_week": "Monday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -6035
+}

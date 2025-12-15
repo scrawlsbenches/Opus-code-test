@@ -1,0 +1,21 @@
+{
+  "hash": "e40a80c12dc3ae0811a9d897ac9a3bc057ce37ad",
+  "message": "Add ConceptNet-style graph visualization export (Task 29)",
+  "author": "Claude",
+  "timestamp": "2025-12-10 00:24:25 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md",
+    "cortical/persistence.py",
+    "cortical/processor.py",
+    "tests/test_persistence.py"
+  ],
+  "insertions": 573,
+  "deletions": 18,
+  "hour_of_day": 0,
+  "day_of_week": "Wednesday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -482411
+}

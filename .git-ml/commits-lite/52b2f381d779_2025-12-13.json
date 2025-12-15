@@ -1,0 +1,18 @@
+{
+  "hash": "52b2f381d7792dd58852065901319a02979210f3",
+  "message": "Run showcase.py in parallel with all CI build steps",
+  "author": "Claude",
+  "timestamp": "2025-12-13 15:07:39 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml"
+  ],
+  "insertions": 17,
+  "deletions": 17,
+  "hour_of_day": 15,
+  "day_of_week": "Saturday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -170217
+}

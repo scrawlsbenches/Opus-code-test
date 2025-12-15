@@ -1,0 +1,28 @@
+{
+  "hash": "8be5622dd7580c53a671a5f69efe67fc69982eed",
+  "message": "Merge pull request #43 from scrawlsbenches/claude/cortical-processor-dev-continue-01WcQQ6WeK2L3dZ9feAayjhR",
+  "author": "scrawlsbenches",
+  "timestamp": "2025-12-11 19:53:53 -0500",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md",
+    "cortical/query.py",
+    "cortical/query/__init__.py",
+    "cortical/query/analogy.py",
+    "cortical/query/chunking.py",
+    "cortical/query/definitions.py",
+    "cortical/query/expansion.py",
+    "cortical/query/intent.py",
+    "cortical/query/passages.py",
+    "cortical/query/ranking.py",
+    "cortical/query/search.py"
+  ],
+  "insertions": 3092,
+  "deletions": 2777,
+  "hour_of_day": 0,
+  "day_of_week": "Friday",
+  "is_merge": true,
+  "is_initial": false,
+  "parent_count": 2,
+  "seconds_since_last_commit": -307843
+}

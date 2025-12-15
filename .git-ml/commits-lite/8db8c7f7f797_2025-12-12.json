@@ -1,0 +1,20 @@
+{
+  "hash": "8db8c7f7f797cc148fe0945369a92c6447f85ecb",
+  "message": "Fix additional misleading hardcoded values",
+  "author": "Claude",
+  "timestamp": "2025-12-12 10:42:39 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/analysis.py",
+    "cortical/minicolumn.py",
+    "tests/test_layers.py"
+  ],
+  "insertions": 17,
+  "deletions": 6,
+  "hour_of_day": 10,
+  "day_of_week": "Friday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -272517
+}

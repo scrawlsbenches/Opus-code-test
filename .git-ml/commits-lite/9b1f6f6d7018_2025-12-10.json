@@ -1,0 +1,21 @@
+{
+  "hash": "9b1f6f6d7018d525df8f0e5cf2692ef2c6777b39",
+  "message": "Merge pull request #11 from scrawlsbenches/claude/run-showcase-012X3h3UopsvVFG749BKgxtM",
+  "author": "scrawlsbenches",
+  "timestamp": "2025-12-10 00:48:56 -0500",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/analysis.py",
+    "cortical/semantics.py",
+    "showcase.py",
+    "tests/test_processor.py"
+  ],
+  "insertions": 164,
+  "deletions": 55,
+  "hour_of_day": 5,
+  "day_of_week": "Wednesday",
+  "is_merge": true,
+  "is_initial": false,
+  "parent_count": 2,
+  "seconds_since_last_commit": -462940
+}

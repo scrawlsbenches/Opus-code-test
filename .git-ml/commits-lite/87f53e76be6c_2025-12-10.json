@@ -1,0 +1,32 @@
+{
+  "hash": "87f53e76be6c96c985fa66f2f4053421b126db61",
+  "message": "Merge pull request #23 from scrawlsbenches/claude/incremental-codebase-indexing-01FXTSSDbweigs6bjjMVS9VG",
+  "author": "scrawlsbenches",
+  "timestamp": "2025-12-10 18:18:10 -0500",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".claude/skills/corpus-indexer/SKILL.md",
+    ".gitignore",
+    "CLAUDE.md",
+    "TASK_LIST.md",
+    "corpus_chunks/2025-12-10_23-06-01_b408da4e.json",
+    "cortical/chunk_index.py",
+    "cortical/layers.py",
+    "cortical/processor.py",
+    "docs/claude-usage.md",
+    "docs/cookbook.md",
+    "docs/dogfooding.md",
+    "docs/query-guide.md",
+    "scripts/index_codebase.py",
+    "tests/test_chunk_indexing.py",
+    "tests/test_incremental_indexing.py"
+  ],
+  "insertions": 5916,
+  "deletions": 65,
+  "hour_of_day": 23,
+  "day_of_week": "Wednesday",
+  "is_merge": true,
+  "is_initial": false,
+  "parent_count": 2,
+  "seconds_since_last_commit": -399986
+}

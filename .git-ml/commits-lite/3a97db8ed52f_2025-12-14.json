@@ -1,0 +1,19 @@
+{
+  "hash": "3a97db8ed52fd928e82e795d098cd3788ca860a0",
+  "message": "refactor(#134): Add facade around protobuf, move imports to top",
+  "author": "Claude",
+  "timestamp": "2025-12-14 09:35:52 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/persistence.py",
+    "cortical/proto/__init__.py"
+  ],
+  "insertions": 103,
+  "deletions": 42,
+  "hour_of_day": 9,
+  "day_of_week": "Sunday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -103724
+}

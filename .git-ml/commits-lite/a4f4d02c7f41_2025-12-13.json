@@ -1,0 +1,19 @@
+{
+  "hash": "a4f4d02c7f41b2bddc63c8c1d052e16d5f56e28f",
+  "message": "Merge main: test runner fixes and new integration tests",
+  "author": "Claude",
+  "timestamp": "2025-12-13 12:45:20 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "scripts/run_tests.py",
+    "tests/integration/test_integration.py"
+  ],
+  "insertions": 297,
+  "deletions": 18,
+  "hour_of_day": 12,
+  "day_of_week": "Saturday",
+  "is_merge": true,
+  "is_initial": false,
+  "parent_count": 2,
+  "seconds_since_last_commit": -178756
+}

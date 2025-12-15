@@ -1,0 +1,18 @@
+{
+  "hash": "b8dc00cf8f6e6f06f1318bac5af74f7c388fb428",
+  "message": "Add Task #66: Doc-type boosting for passage-level search",
+  "author": "Claude",
+  "timestamp": "2025-12-11 00:50:55 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md"
+  ],
+  "insertions": 71,
+  "deletions": 14,
+  "hour_of_day": 0,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -394421
+}

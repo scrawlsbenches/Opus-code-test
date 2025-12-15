@@ -1,0 +1,23 @@
+{
+  "hash": "b5618046d91bc8ca990d6b857e25e359d910944f",
+  "message": "docs: Add security-focused sample documents",
+  "author": "Claude",
+  "timestamp": "2025-12-14 10:31:57 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "samples/application_security_fundamentals.txt",
+    "samples/secrets_management.txt",
+    "samples/secure_code_review.txt",
+    "samples/secure_deserialization.txt",
+    "samples/supply_chain_security.txt",
+    "samples/threat_modeling.txt"
+  ],
+  "insertions": 78,
+  "deletions": 0,
+  "hour_of_day": 10,
+  "day_of_week": "Sunday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -100359
+}

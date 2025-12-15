@@ -1,0 +1,25 @@
+{
+  "hash": "e078aca341548224f75ba1bcbc64782d87e960b9",
+  "message": "Add development-focused sample documents for intelligent guidance",
+  "author": "Claude",
+  "timestamp": "2025-12-11 15:01:23 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "samples/ai_assisted_development.txt",
+    "samples/code_review_practices.txt",
+    "samples/debugging_strategies.txt",
+    "samples/incremental_development.txt",
+    "samples/refactoring_patterns.txt",
+    "samples/task_decomposition.txt",
+    "samples/technical_debt_management.txt",
+    "samples/test_driven_development.txt"
+  ],
+  "insertions": 666,
+  "deletions": 0,
+  "hour_of_day": 15,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -343393
+}

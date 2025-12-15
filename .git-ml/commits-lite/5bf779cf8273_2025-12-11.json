@@ -1,0 +1,20 @@
+{
+  "hash": "5bf779cf8273cacd7cb1d597f695fd2ab933b004",
+  "message": "Refactor CLI wrappers for quiet-by-default philosophy",
+  "author": "Claude",
+  "timestamp": "2025-12-11 17:14:28 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/cli_wrapper.py",
+    "scripts/cli_wrappers.py",
+    "tests/test_cli_wrapper.py"
+  ],
+  "insertions": 438,
+  "deletions": 291,
+  "hour_of_day": 17,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -335408
+}

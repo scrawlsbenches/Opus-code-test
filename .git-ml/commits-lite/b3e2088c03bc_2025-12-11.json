@@ -1,0 +1,18 @@
+{
+  "hash": "b3e2088c03bcd8cd5d8a017c5f8b3e00d5410b0c",
+  "message": "Add corpus_dev.pkl for analysis (partial index: 20/55 files)",
+  "author": "Claude",
+  "timestamp": "2025-12-11 20:23:31 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "corpus_dev.pkl"
+  ],
+  "insertions": 0,
+  "deletions": 0,
+  "hour_of_day": 20,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -324065
+}

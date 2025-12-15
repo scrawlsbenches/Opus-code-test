@@ -1,0 +1,20 @@
+{
+  "hash": "96780195ee81af8eb670ab9bb65e416eabc2deb0",
+  "message": "Fix tokenizer to capture underscore-prefixed identifiers (task #81)",
+  "author": "Claude",
+  "timestamp": "2025-12-11 02:35:53 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md",
+    "cortical/tokenizer.py",
+    "tests/test_tokenizer.py"
+  ],
+  "insertions": 87,
+  "deletions": 1,
+  "hour_of_day": 2,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -388123
+}

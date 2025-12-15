@@ -1,0 +1,33 @@
+{
+  "hash": "8070e6f5c586ab02fc2b650998de7d8b25759ad7",
+  "message": "Add 16 process/procedure sample docs for improved system workflow coverage",
+  "author": "Claude",
+  "timestamp": "2025-12-12 10:51:09 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "samples/bottleneck_diagnosis_procedures.txt",
+    "samples/codebase_search_procedures.txt",
+    "samples/computation_staleness_management.txt",
+    "samples/concept_cluster_evaluation.txt",
+    "samples/corpus_indexing_procedures.txt",
+    "samples/corpus_maintenance_workflow.txt",
+    "samples/document_relevance_tuning.txt",
+    "samples/incremental_indexing_workflow.txt",
+    "samples/knowledge_gap_analysis_process.txt",
+    "samples/performance_profiling_process.txt",
+    "samples/query_expansion_tuning_guide.txt",
+    "samples/query_optimization_workflow.txt",
+    "samples/rag_pipeline_integration.txt",
+    "samples/search_quality_validation_process.txt",
+    "samples/semantic_relation_extraction_procedures.txt",
+    "samples/system_health_monitoring_workflow.txt"
+  ],
+  "insertions": 1245,
+  "deletions": 0,
+  "hour_of_day": 10,
+  "day_of_week": "Friday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -272007
+}

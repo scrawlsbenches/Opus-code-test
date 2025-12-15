@@ -1,0 +1,18 @@
+{
+  "hash": "69c206b575122046867962c40de9676ca3927ec6",
+  "message": "Fix test_retrofit_embeddings_invalid_alpha_zero to match new validation",
+  "author": "Claude",
+  "timestamp": "2025-12-13 11:21:44 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "tests/test_coverage_gaps.py"
+  ],
+  "insertions": 6,
+  "deletions": 4,
+  "hour_of_day": 11,
+  "day_of_week": "Saturday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -183772
+}

@@ -1,0 +1,25 @@
+{
+  "hash": "6e0d2467fa5767d99d2bcac1963ce26eda80bccf",
+  "message": "Implement tasks #59, #60, #63, #64, #65: Metadata, search ranking, timeout",
+  "author": "Claude",
+  "timestamp": "2025-12-11 00:20:57 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md",
+    "cortical/chunk_index.py",
+    "cortical/processor.py",
+    "cortical/query.py",
+    "scripts/index_codebase.py",
+    "scripts/search_codebase.py",
+    "tests/test_chunk_indexing.py",
+    "tests/test_query.py"
+  ],
+  "insertions": 976,
+  "deletions": 145,
+  "hour_of_day": 0,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -396219
+}

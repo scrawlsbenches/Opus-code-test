@@ -1,0 +1,27 @@
+{
+  "hash": "0a5285829eb61aed04cd70e82f05137ee2204fbf",
+  "message": "feat: Implement BM25 scoring algorithm as default",
+  "author": "Claude",
+  "timestamp": "2025-12-15 04:46:59 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "benchmarks/BASELINE_SUMMARY.md",
+    "benchmarks/after_bm25.json",
+    "cortical/analysis.py",
+    "cortical/config.py",
+    "cortical/processor/compute.py",
+    "cortical/processor/core.py",
+    "cortical/processor/documents.py",
+    "cortical/processor/persistence_api.py",
+    "scripts/benchmark_scoring.py",
+    "tests/test_edge_cases.py"
+  ],
+  "insertions": 711,
+  "deletions": 132,
+  "hour_of_day": 4,
+  "day_of_week": "Monday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -34657
+}

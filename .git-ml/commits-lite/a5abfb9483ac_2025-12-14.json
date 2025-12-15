@@ -1,0 +1,20 @@
+{
+  "hash": "a5abfb9483ac4f09ba2d666ab39dc24ce0f3237a",
+  "message": "docs: Add security model to task-manager skill (SEC-007)",
+  "author": "Claude",
+  "timestamp": "2025-12-14 11:35:27 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".claude/skills/task-manager/SKILL.md",
+    "tasks/2025-12-14_11-15-01_41d5.json",
+    "tasks/legacy_migration.json"
+  ],
+  "insertions": 55,
+  "deletions": 9,
+  "hour_of_day": 11,
+  "day_of_week": "Sunday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -96549
+}

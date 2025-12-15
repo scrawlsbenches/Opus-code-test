@@ -1,0 +1,18 @@
+{
+  "hash": "5849304f9980689673f6c6f4f175eaa59839fd29",
+  "message": "chore: Add ML commit data for previous commit",
+  "author": "Claude",
+  "timestamp": "2025-12-15 14:24:06 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".git-ml/commits/59bc2265_2025-12-15_3679620a.json"
+  ],
+  "insertions": 568009,
+  "deletions": 0,
+  "hour_of_day": 14,
+  "day_of_week": "Monday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -30
+}

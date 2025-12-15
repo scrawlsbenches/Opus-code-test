@@ -1,0 +1,25 @@
+{
+  "hash": "087253a167f76d52ff4d852a6dec4f229e9373c9",
+  "message": "Merge pull request #47 from scrawlsbenches/claude/fix-hardcoded-values-013fphbkXkvegXoqXuLvhiyQ",
+  "author": "scrawlsbenches",
+  "timestamp": "2025-12-12 05:49:44 -0500",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md",
+    "cortical/analysis.py",
+    "cortical/layers.py",
+    "cortical/minicolumn.py",
+    "cortical/query/definitions.py",
+    "cortical/query/expansion.py",
+    "tests/test_layers.py",
+    "tests/test_query.py"
+  ],
+  "insertions": 98,
+  "deletions": 32,
+  "hour_of_day": 10,
+  "day_of_week": "Friday",
+  "is_merge": true,
+  "is_initial": false,
+  "parent_count": 2,
+  "seconds_since_last_commit": -272092
+}

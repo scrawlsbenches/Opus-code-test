@@ -1,0 +1,18 @@
+{
+  "hash": "b4248094e67738be866fe5703c68efc918a6ef8a",
+  "message": "Merge main: test coverage improvements",
+  "author": "Claude",
+  "timestamp": "2025-12-12 00:48:41 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "tests/test_coverage_gaps.py"
+  ],
+  "insertions": 756,
+  "deletions": 0,
+  "hour_of_day": 0,
+  "day_of_week": "Friday",
+  "is_merge": true,
+  "is_initial": false,
+  "parent_count": 2,
+  "seconds_since_last_commit": -308155
+}

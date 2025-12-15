@@ -1,0 +1,18 @@
+{
+  "hash": "5961c38487b4f979ae5eea08d98dd1723bb8b37b",
+  "message": "Run CI on all push events for foolproof branch coverage",
+  "author": "Claude",
+  "timestamp": "2025-12-12 11:26:34 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml"
+  ],
+  "insertions": 0,
+  "deletions": 1,
+  "hour_of_day": 11,
+  "day_of_week": "Friday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -269882
+}

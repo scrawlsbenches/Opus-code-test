@@ -1,0 +1,20 @@
+{
+  "hash": "90b989fa3c07d45a92c2fafecff0e03d1a71b511",
+  "message": "security: Add pickle warnings, deprecation notices, and CI security scanning",
+  "author": "Claude",
+  "timestamp": "2025-12-14 11:27:43 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".github/workflows/ci.yml",
+    "README.md",
+    "cortical/persistence.py"
+  ],
+  "insertions": 109,
+  "deletions": 0,
+  "hour_of_day": 11,
+  "day_of_week": "Sunday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -97013
+}

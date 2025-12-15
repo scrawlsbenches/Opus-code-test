@@ -1,0 +1,19 @@
+{
+  "hash": "aa453d201f98b064ca80f6024f5973b1f2564833",
+  "message": "Reference process docs in CLAUDE.md and corpus-indexer skill",
+  "author": "Claude",
+  "timestamp": "2025-12-11 00:59:53 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".claude/skills/corpus-indexer/SKILL.md",
+    "CLAUDE.md"
+  ],
+  "insertions": 10,
+  "deletions": 0,
+  "hour_of_day": 0,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -393883
+}

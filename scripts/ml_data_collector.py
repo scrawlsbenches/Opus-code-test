@@ -57,6 +57,10 @@ Usage:
     # Auto-capture CI results (called from GitHub Actions)
     python scripts/ml_data_collector.py ci-autocapture        # Read from CI environment vars
 
+    # Backfill lightweight commit data (small files, tracked in git)
+    python scripts/ml_data_collector.py backfill-lite -n 100  # Last 100 commits
+    python scripts/ml_data_collector.py backfill-lite --all   # All history
+
     # Test redaction patterns
     python scripts/ml_data_collector.py redact-test --text "api_key=secret123"
 """
@@ -99,7 +103,8 @@ class SchemaValidationError(Exception):
 # ============================================================================
 
 ML_DATA_DIR = Path(".git-ml")
-COMMITS_DIR = ML_DATA_DIR / "commits"
+COMMITS_DIR = ML_DATA_DIR / "commits"           # Full commit data with diffs (large, local only)
+COMMITS_LITE_DIR = ML_DATA_DIR / "commits-lite" # Lightweight metadata only (small, tracked in git)
 SESSIONS_DIR = ML_DATA_DIR / "sessions"
 CHATS_DIR = ML_DATA_DIR / "chats"
 ACTIONS_DIR = ML_DATA_DIR / "actions"
@@ -1434,7 +1439,7 @@ class ActionEntry:
 
 def ensure_dirs():
     """Create data directories if they don't exist."""
-    for dir_path in [COMMITS_DIR, SESSIONS_DIR, CHATS_DIR, ACTIONS_DIR]:
+    for dir_path in [COMMITS_DIR, COMMITS_LITE_DIR, SESSIONS_DIR, CHATS_DIR, ACTIONS_DIR]:
         dir_path.mkdir(parents=True, exist_ok=True)
 
 
@@ -1694,6 +1699,54 @@ def save_commit_data(context: CommitContext, validate: bool = True, link_session
         linked = link_commit_to_session_chats(context.hash)
         if linked:
             print(f"Linked {len(linked)} chat(s) to commit {context.hash[:8]}")
+
+
+def save_commit_lite(context: CommitContext):
+    """Save lightweight commit metadata (no diff hunks) for git tracking.
+
+    This creates small JSON files (~1-2KB) that can be tracked in git,
+    unlike full commit data which includes large diff hunks.
+
+    Stored in .git-ml/commits-lite/ which is NOT gitignored.
+    """
+    COMMITS_LITE_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Create lightweight data without hunks
+    lite_data = {
+        "hash": context.hash,
+        "message": context.message,
+        "author": context.author,
+        "timestamp": context.timestamp,
+        "branch": context.branch,
+        "files_changed": context.files_changed,
+        "insertions": context.insertions,
+        "deletions": context.deletions,
+        "hour_of_day": context.hour_of_day,
+        "day_of_week": context.day_of_week,
+        "is_merge": context.is_merge,
+        "is_initial": context.is_initial,
+        "parent_count": context.parent_count,
+        # Note: hunks excluded - that's what makes it "lite"
+    }
+
+    # Add optional fields if present
+    if context.seconds_since_last_commit is not None:
+        lite_data["seconds_since_last_commit"] = context.seconds_since_last_commit
+    if context.ci_result:
+        lite_data["ci_result"] = context.ci_result
+    if context.session_id:
+        lite_data["session_id"] = context.session_id
+
+    # Simple filename: hash_date.json (no random suffix needed, hash is unique)
+    filename = f"{context.hash[:12]}_{context.timestamp[:10]}.json"
+    filepath = COMMITS_LITE_DIR / filename
+
+    # Don't overwrite if exists (idempotent for backfill)
+    if filepath.exists():
+        return filepath
+
+    atomic_write_json(filepath, lite_data)
+    return filepath
 
 
 def generate_chat_id() -> str:
@@ -2023,6 +2076,7 @@ def count_data() -> Dict[str, int]:
 
     counts = {
         "commits": 0,
+        "commits_lite": 0,
         "chats": 0,
         "actions": 0,
         "sessions": 0,
@@ -2030,9 +2084,13 @@ def count_data() -> Dict[str, int]:
         "issues": 0,
     }
 
-    # Count commits
+    # Count commits (full)
     if COMMITS_DIR.exists():
         counts["commits"] = len(list(COMMITS_DIR.glob("*.json")))
+
+    # Count commits (lightweight - trackable in git)
+    if COMMITS_LITE_DIR.exists():
+        counts["commits_lite"] = len(list(COMMITS_LITE_DIR.glob("*.json")))
 
     # Count chats
     if CHATS_DIR.exists():
@@ -2109,13 +2167,14 @@ def print_stats():
     print("=" * 60)
 
     print("\n📊 Data Counts:")
-    print(f"   Commits:  {counts['commits']:,}")
-    print(f"   Chats:    {counts['chats']:,}")
-    print(f"   Actions:  {counts['actions']:,}")
-    print(f"   Sessions: {counts['sessions']:,}")
+    print(f"   Commits (full):  {counts['commits']:,}")
+    print(f"   Commits (lite):  {counts.get('commits_lite', 0):,}  ← tracked in git")
+    print(f"   Chats:           {counts['chats']:,}")
+    print(f"   Actions:         {counts['actions']:,}")
+    print(f"   Sessions:        {counts['sessions']:,}")
     if counts.get('prs', 0) > 0 or counts.get('issues', 0) > 0:
-        print(f"   PRs:      {counts.get('prs', 0):,}")
-        print(f"   Issues:   {counts.get('issues', 0):,}")
+        print(f"   PRs:             {counts.get('prs', 0):,}")
+        print(f"   Issues:          {counts.get('issues', 0):,}")
 
     print("\n💾 Data Sizes:")
     for name, size in sizes.items():
@@ -3101,6 +3160,9 @@ def main():
         commit_hash = sys.argv[2] if len(sys.argv) > 2 else None
         context = collect_commit_data(commit_hash)
         save_commit_data(context)
+        # Also save lightweight version (trackable in git)
+        lite_path = save_commit_lite(context)
+        print(f"Saved lightweight commit to {lite_path}")
 
     elif command == "backfill":
         # Backfill historical commits (no session linking for historical data)
@@ -3114,17 +3176,62 @@ def main():
         hashes = [h for h in hashes if h]
         print(f"Backfilling {len(hashes)} commits...")
 
+        lite_count = 0
         for i, h in enumerate(hashes):
             try:
                 context = collect_commit_data(h)
                 # Disable session linking for historical backfill
                 save_commit_data(context, link_session=False)
+                # Also save lightweight version
+                save_commit_lite(context)
+                lite_count += 1
                 if (i + 1) % 10 == 0:
                     print(f"  Progress: {i + 1}/{len(hashes)}")
             except Exception as e:
                 print(f"  Error on {h[:8]}: {e}")
 
-        print(f"Backfill complete: {len(hashes)} commits")
+        print(f"Backfill complete: {len(hashes)} commits ({lite_count} lightweight)")
+
+    elif command == "backfill-lite":
+        # Backfill ONLY lightweight commit data (small, trackable in git)
+        # Faster than full backfill, suitable for ephemeral environments
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-n", "--num", type=int, default=100,
+                            help="Number of commits to backfill")
+        parser.add_argument("--all", action="store_true",
+                            help="Backfill all commits in history")
+        args = parser.parse_args(sys.argv[2:])
+
+        if args.all:
+            hashes = run_git(["log", "--format=%H"]).split("\n")
+        else:
+            hashes = run_git(["log", f"-{args.num}", "--format=%H"]).split("\n")
+        hashes = [h for h in hashes if h]
+
+        # Check existing
+        existing = set()
+        if COMMITS_LITE_DIR.exists():
+            for f in COMMITS_LITE_DIR.glob("*.json"):
+                existing.add(f.stem.split("_")[0])  # Extract hash prefix
+
+        new_hashes = [h for h in hashes if h[:12] not in existing]
+        print(f"Found {len(hashes)} commits, {len(new_hashes)} new (skipping {len(hashes) - len(new_hashes)} existing)")
+
+        if not new_hashes:
+            print("All commits already have lightweight data.")
+        else:
+            COMMITS_LITE_DIR.mkdir(parents=True, exist_ok=True)
+            for i, h in enumerate(new_hashes):
+                try:
+                    context = collect_commit_data(h)
+                    save_commit_lite(context)
+                    if (i + 1) % 50 == 0:
+                        print(f"  Progress: {i + 1}/{len(new_hashes)}")
+                except Exception as e:
+                    print(f"  Error on {h[:8]}: {e}")
+
+            print(f"Lightweight backfill complete: {len(new_hashes)} commits")
 
     elif command == "chat":
         # Log a chat entry

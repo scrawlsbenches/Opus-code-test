@@ -1,0 +1,23 @@
+{
+  "hash": "1c9b1a06631e2e148f01ed65672e6dce36cbfd79",
+  "message": "Implement critical adoption improvements (Tasks 88, 89, 90)",
+  "author": "Claude",
+  "timestamp": "2025-12-11 11:06:18 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "CONTRIBUTING.md",
+    "TASK_LIST.md",
+    "cortical/py.typed",
+    "docs/quickstart.md",
+    "pyproject.toml",
+    "requirements.txt"
+  ],
+  "insertions": 536,
+  "deletions": 118,
+  "hour_of_day": 11,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -357498
+}

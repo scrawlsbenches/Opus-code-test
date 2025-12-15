@@ -1,0 +1,20 @@
+{
+  "hash": "a91728c587c6c1077433d55dc1b78e7684def0f4",
+  "message": "Update MoE docs to integrate with BM25/GB-BM25 implementations",
+  "author": "Claude",
+  "timestamp": "2025-12-15 12:32:37 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "docs/moe-index-design.md",
+    "docs/moe-index-implementation-plan.md",
+    "docs/moe-index-knowledge-transfer.md"
+  ],
+  "insertions": 183,
+  "deletions": 102,
+  "hour_of_day": 12,
+  "day_of_week": "Monday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -6719
+}

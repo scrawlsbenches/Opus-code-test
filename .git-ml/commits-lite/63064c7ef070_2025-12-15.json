@@ -1,0 +1,19 @@
+{
+  "hash": "63064c7ef0706740d884281ce73a493c46e8d5f5",
+  "message": "docs: Add BM25/GB-BM25 documentation and tests",
+  "author": "Claude",
+  "timestamp": "2025-12-15 05:57:58 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "CLAUDE.md",
+    "tests/unit/test_query_search.py"
+  ],
+  "insertions": 191,
+  "deletions": 0,
+  "hour_of_day": 5,
+  "day_of_week": "Monday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -30398
+}

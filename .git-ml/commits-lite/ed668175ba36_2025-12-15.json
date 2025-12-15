@@ -1,0 +1,18 @@
+{
+  "hash": "ed668175ba3640e3214b0be174b554471dd4c573",
+  "message": "feat: Add CI status integration for ML outcome tracking",
+  "author": "Claude",
+  "timestamp": "2025-12-15 05:09:01 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "scripts/ml_data_collector.py"
+  ],
+  "insertions": 180,
+  "deletions": 0,
+  "hour_of_day": 5,
+  "day_of_week": "Monday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -33335
+}

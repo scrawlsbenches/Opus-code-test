@@ -1,0 +1,18 @@
+{
+  "hash": "233dee2728de94cae72ace9ba194a194bf3fb35b",
+  "message": "Add CLI wrapper guide for knowledge transfer",
+  "author": "Claude",
+  "timestamp": "2025-12-11 18:06:48 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "docs/cli-wrapper-guide.md"
+  ],
+  "insertions": 158,
+  "deletions": 0,
+  "hour_of_day": 18,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -332268
+}

@@ -1,0 +1,18 @@
+{
+  "hash": "f495994938f47fb37c9102d80f9e32c92ce57332",
+  "message": "Update CODE_REVIEW.md to reflect processor package refactoring",
+  "author": "Claude",
+  "timestamp": "2025-12-15 03:30:22 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "CODE_REVIEW.md"
+  ],
+  "insertions": 157,
+  "deletions": 195,
+  "hour_of_day": 3,
+  "day_of_week": "Monday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -39254
+}

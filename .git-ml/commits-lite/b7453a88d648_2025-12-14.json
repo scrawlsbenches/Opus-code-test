@@ -1,0 +1,19 @@
+{
+  "hash": "b7453a88d648b7bfdc579662713b4219831243c1",
+  "message": "feat: Add /knowledge-transfer slash command",
+  "author": "Claude",
+  "timestamp": "2025-12-14 17:29:45 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    ".claude/commands/knowledge-transfer.md",
+    "samples/memories/2025-12-14-session-security-and-memories.md"
+  ],
+  "insertions": 215,
+  "deletions": 0,
+  "hour_of_day": 17,
+  "day_of_week": "Sunday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -75291
+}

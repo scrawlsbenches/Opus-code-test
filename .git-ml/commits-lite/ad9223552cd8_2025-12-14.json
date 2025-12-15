@@ -1,0 +1,24 @@
+{
+  "hash": "ad9223552cd866420b2cd3e96de3e93e204667fe",
+  "message": "feat(#134): Add Protocol Buffers serialization for cross-language support",
+  "author": "Claude",
+  "timestamp": "2025-12-14 09:14:41 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/persistence.py",
+    "cortical/proto/__init__.py",
+    "cortical/proto/schema.proto",
+    "cortical/proto/schema_pb2.py",
+    "cortical/proto/serialization.py",
+    "requirements.txt",
+    "tests/unit/test_protobuf_serialization.py"
+  ],
+  "insertions": 1399,
+  "deletions": 40,
+  "hour_of_day": 9,
+  "day_of_week": "Sunday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -104995
+}

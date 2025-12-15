@@ -1,0 +1,19 @@
+{
+  "hash": "9dc7268e2cb1533662eb902c73d6d7609d4eb46b",
+  "message": "fix: Update tests for BM25 default and stop word tokenization",
+  "author": "Claude",
+  "timestamp": "2025-12-15 12:03:55 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "tests/unit/test_processor_core.py",
+    "tests/unit/test_query_search.py"
+  ],
+  "insertions": 23,
+  "deletions": 10,
+  "hour_of_day": 12,
+  "day_of_week": "Monday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -8441
+}

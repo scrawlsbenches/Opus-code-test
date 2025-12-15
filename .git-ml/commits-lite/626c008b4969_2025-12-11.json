@@ -1,0 +1,21 @@
+{
+  "hash": "626c008b49691d797aadbd81e61d83bcf434ef9e",
+  "message": "Add semantic chunk boundaries for code (Task #86)",
+  "author": "Claude",
+  "timestamp": "2025-12-11 03:22:43 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md",
+    "cortical/processor.py",
+    "cortical/query.py",
+    "tests/test_query.py"
+  ],
+  "insertions": 442,
+  "deletions": 31,
+  "hour_of_day": 3,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -385313
+}

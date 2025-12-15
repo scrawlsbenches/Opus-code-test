@@ -1,0 +1,20 @@
+{
+  "hash": "a530bea352768c33631bcb933fbb737c21b1e0f9",
+  "message": "Add CLI wrapper framework for context collection and task triggers",
+  "author": "Claude",
+  "timestamp": "2025-12-11 16:54:12 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/cli_wrapper.py",
+    "scripts/cli_wrappers.py",
+    "tests/test_cli_wrapper.py"
+  ],
+  "insertions": 1734,
+  "deletions": 0,
+  "hour_of_day": 16,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -336624
+}

@@ -1,0 +1,19 @@
+{
+  "hash": "f27d18e0a2a4e586961e0177d85f46385edb97eb",
+  "message": "Integrate semantic relations into retrieval (Task 11)",
+  "author": "Claude",
+  "timestamp": "2025-12-09 19:54:13 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/processor.py",
+    "cortical/query.py"
+  ],
+  "insertions": 78,
+  "deletions": 14,
+  "hour_of_day": 19,
+  "day_of_week": "Tuesday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -498623
+}

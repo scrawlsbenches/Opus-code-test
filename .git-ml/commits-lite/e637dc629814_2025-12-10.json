@@ -1,0 +1,18 @@
+{
+  "hash": "e637dc629814cb36f8cd3566b5db80fcd2432f72",
+  "message": "Use numpy + fix sum() loop for additional 2.5x speedup",
+  "author": "Claude",
+  "timestamp": "2025-12-10 05:40:29 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "cortical/semantics.py"
+  ],
+  "insertions": 78,
+  "deletions": 33,
+  "hour_of_day": 5,
+  "day_of_week": "Wednesday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -463447
+}

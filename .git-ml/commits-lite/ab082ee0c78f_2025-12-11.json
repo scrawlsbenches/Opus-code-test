@@ -1,0 +1,20 @@
+{
+  "hash": "ab082ee0c78f4ce449d8966bb76b92e5e5508ca4",
+  "message": "Add development ethics and process documentation",
+  "author": "Claude",
+  "timestamp": "2025-12-11 00:56:44 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "docs/code-of-ethics.md",
+    "docs/definition-of-done.md",
+    "docs/dogfooding-checklist.md"
+  ],
+  "insertions": 749,
+  "deletions": 0,
+  "hour_of_day": 0,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -394072
+}

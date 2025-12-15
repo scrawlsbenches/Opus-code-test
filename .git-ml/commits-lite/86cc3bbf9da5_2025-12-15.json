@@ -1,0 +1,28 @@
+{
+  "hash": "86cc3bbf9da54bb998eaf8433438a82a36c1fedd",
+  "message": "docs: Update stale query.py and processor.py references",
+  "author": "Claude",
+  "timestamp": "2025-12-15 11:28:31 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "CLAUDE.md",
+    "docs/algorithms.md",
+    "docs/architecture.md",
+    "docs/claude-usage.md",
+    "docs/code-of-ethics.md",
+    "docs/devex-tools.md",
+    "docs/dogfooding.md",
+    "docs/glossary.md",
+    "docs/louvain_resolution_analysis.md",
+    "docs/patterns.md",
+    "docs/quickstart.md"
+  ],
+  "insertions": 95,
+  "deletions": 71,
+  "hour_of_day": 11,
+  "day_of_week": "Monday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -10565
+}

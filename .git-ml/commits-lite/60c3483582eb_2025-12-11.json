@@ -1,0 +1,21 @@
+{
+  "hash": "60c3483582eb848b0289ee1d66f3cc070f2e116a",
+  "message": "Add direct definition pattern search for code search (Task #84)",
+  "author": "Claude",
+  "timestamp": "2025-12-11 03:13:34 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "TASK_LIST.md",
+    "cortical/processor.py",
+    "cortical/query.py",
+    "tests/test_query.py"
+  ],
+  "insertions": 566,
+  "deletions": 24,
+  "hour_of_day": 3,
+  "day_of_week": "Thursday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -385862
+}

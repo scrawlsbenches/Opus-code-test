@@ -1,0 +1,20 @@
+{
+  "hash": "79d3f6f379e2c959d0306aaafd1640ca3c0150dd",
+  "message": "Add Mixture of Expert (MoE) index architecture documentation",
+  "author": "Claude",
+  "timestamp": "2025-12-15 06:06:59 +0000",
+  "branch": "claude/multi-index-design-DvifZ",
+  "files_changed": [
+    "docs/moe-index-design.md",
+    "docs/moe-index-implementation-plan.md",
+    "docs/moe-index-knowledge-transfer.md"
+  ],
+  "insertions": 3155,
+  "deletions": 0,
+  "hour_of_day": 6,
+  "day_of_week": "Monday",
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "seconds_since_last_commit": -29857
+}
