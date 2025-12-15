@@ -17,7 +17,7 @@ name: CI - Test Suite
 #
 # PARALLEL ARCHITECTURE (optimized for speed):
 #
-#   validate-task-list   smoke-tests      showcase
+#   validate-tasks       smoke-tests      showcase
 #        (< 5s)           (< 30s)         (parallel)
 #          │                 │                │
 #          │                 ├────────────────┼─────────────────┐
@@ -52,11 +52,11 @@ concurrency:
 
 jobs:
   # ==========================================================================
-  # Stage 0: Task List Validation (< 5s)
-  # Quick check for stale/inconsistent task list - runs in parallel with smoke
+  # Stage 0: Task Validation (< 5s)
+  # Quick check for valid task files in tasks/ directory - runs in parallel with smoke
   # ==========================================================================
-  validate-task-list:
-    name: "📋 Validate Task List"
+  validate-tasks:
+    name: "📋 Validate Tasks"
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -66,11 +66,11 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Validate TASK_LIST.md
+    - name: Validate tasks/*.json files
       run: |
-        echo "=== Validating Task List ==="
-        python scripts/validate_task_list.py
-        echo "✅ Task list validation passed"
+        echo "=== Validating Task Files ==="
+        python scripts/validate_tasks.py
+        echo "✅ Task validation passed"
 
     - name: Report Pending Tasks
       if: always()

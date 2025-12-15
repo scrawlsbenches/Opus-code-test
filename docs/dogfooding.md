@@ -73,7 +73,7 @@ The indexer processes these files:
 | Tests | `tests/*.py` | Test cases and examples |
 | Documentation | `CLAUDE.md`, `README.md` | Project documentation |
 | Intelligence | `docs/*.md` | Architecture docs |
-| Task tracking | `TASK_LIST.md` | Development tasks |
+| Task tracking | `tasks/*.json` | Development tasks |
 
 ### Index Files Created
 

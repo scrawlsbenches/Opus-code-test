@@ -81,9 +81,11 @@ class SessionContextGenerator:
             return []
 
         sessions = []
+        # Sort by mtime (newest first), with filename as secondary key for stability
+        # when files have the same mtime (can happen in tight loops)
         session_files = sorted(
             self.tasks_dir.glob("*.json"),
-            key=lambda p: p.stat().st_mtime,
+            key=lambda p: (p.stat().st_mtime, p.name),
             reverse=True
         )
 

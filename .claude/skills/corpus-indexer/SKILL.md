@@ -99,7 +99,7 @@ The indexer processes:
 - All Python files in `cortical/` (source code)
 - All Python files in `tests/` (test code)
 - Documentation: `CLAUDE.md`, `README.md`, `CONTRIBUTING.md`, `KNOWLEDGE_TRANSFER.md`
-- Task management: `TASK_LIST.md`, `TASK_ARCHIVE.md`
+- Task management: `tasks/` directory (merge-friendly JSON files)
 - All docs in `docs/` directory (including `quickstart.md`)
 
 ## Output Statistics
