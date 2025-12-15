@@ -1307,10 +1307,23 @@ class TestComputeWrapperMethods(unittest.TestCase):
         # Should call PageRank for tokens and bigrams
         self.assertEqual(mock_pagerank.call_count, 2)
 
-    @patch('cortical.analysis.compute_tfidf')
-    def test_compute_tfidf_calls_analysis(self, mock_tfidf):
-        """compute_tfidf delegates to analysis module."""
+    @patch('cortical.analysis.compute_bm25')
+    def test_compute_tfidf_calls_bm25_by_default(self, mock_bm25):
+        """compute_tfidf delegates to BM25 by default (new default algorithm)."""
         processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+
+        processor.compute_tfidf(verbose=False)
+
+        # BM25 is now the default algorithm
+        mock_bm25.assert_called_once()
+
+    @patch('cortical.analysis.compute_tfidf')
+    def test_compute_tfidf_calls_tfidf_when_configured(self, mock_tfidf):
+        """compute_tfidf delegates to TF-IDF when explicitly configured."""
+        from cortical.config import CorticalConfig
+        config = CorticalConfig(scoring_algorithm='tfidf')
+        processor = CorticalTextProcessor(config=config)
         processor.process_document("doc1", "test content")
 
         processor.compute_tfidf(verbose=False)

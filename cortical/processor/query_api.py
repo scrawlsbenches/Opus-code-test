@@ -8,6 +8,7 @@ import logging
 from typing import Dict, List, Tuple, Optional, Any
 
 from .. import query as query_module
+from ..observability import timed
 
 logger = logging.getLogger(__name__)
 
@@ -111,8 +112,10 @@ class QueryMixin:
         cache_key = f"{query_text}|{max_expansions}|{use_variants}|{use_code_concepts}"
 
         if cache_key in self._query_expansion_cache:
+            self._metrics.record_count("query_cache_hits")
             return self._query_expansion_cache[cache_key].copy()
 
+        self._metrics.record_count("query_cache_misses")
         result = query_module.expand_query(
             query_text,
             self.layers,
@@ -300,12 +303,15 @@ class QueryMixin:
             min_path_score=min_path_score
         )
 
+    @timed("find_documents_for_query", include_args=True)
     def find_documents_for_query(
         self,
         query_text: str,
         top_n: int = 5,
         use_expansion: bool = True,
-        use_semantic: bool = True
+        use_semantic: bool = True,
+        filter_code_stop_words: bool = True,
+        test_file_penalty: float = 0.8
     ) -> List[Tuple[str, float]]:
         """
         Find documents most relevant to a query.
@@ -315,6 +321,10 @@ class QueryMixin:
             top_n: Number of documents to return
             use_expansion: Whether to expand query terms
             use_semantic: Whether to use semantic relations for expansion
+            filter_code_stop_words: Filter ubiquitous code tokens (self, def, return)
+                                    from expansion. Reduces noise in code search. (default True)
+            test_file_penalty: Multiplier for test files to rank them lower (default 0.8).
+                               Set to 1.0 to disable penalty.
 
         Returns:
             List of (doc_id, score) tuples ranked by relevance
@@ -334,7 +344,9 @@ class QueryMixin:
             top_n=top_n,
             use_expansion=use_expansion,
             semantic_relations=self.semantic_relations if use_semantic else None,
-            use_semantic=use_semantic
+            use_semantic=use_semantic,
+            filter_code_stop_words=filter_code_stop_words,
+            test_file_penalty=test_file_penalty
         )
 
     def fast_find_documents(
@@ -373,6 +385,56 @@ class QueryMixin:
             top_n=top_n,
             candidate_multiplier=candidate_multiplier,
             use_code_concepts=use_code_concepts
+        )
+
+    def graph_boosted_search(
+        self,
+        query_text: str,
+        top_n: int = 5,
+        pagerank_weight: float = 0.3,
+        proximity_weight: float = 0.2,
+        use_expansion: bool = True
+    ) -> List[Tuple[str, float]]:
+        """
+        Graph-Boosted BM25 (GB-BM25): Hybrid scoring combining BM25 with graph signals.
+
+        This algorithm combines multiple signals for improved code search:
+        1. BM25/TF-IDF base score (term relevance)
+        2. PageRank boost (matched term importance)
+        3. Proximity boost (query terms connected in graph)
+        4. Coverage boost (documents with more unique query term matches)
+
+        Args:
+            query_text: Search query
+            top_n: Number of results to return
+            pagerank_weight: Weight for PageRank boost (0-1, default 0.3)
+            proximity_weight: Weight for term proximity boost (0-1, default 0.2)
+            use_expansion: Whether to use query expansion
+
+        Returns:
+            List of (doc_id, score) tuples ranked by combined relevance
+
+        Raises:
+            ValueError: If query_text is empty or parameters are invalid
+        """
+        if not isinstance(query_text, str) or not query_text.strip():
+            raise ValueError("query_text must be a non-empty string")
+        if not isinstance(top_n, int) or top_n < 1:
+            raise ValueError("top_n must be a positive integer")
+        if not 0 <= pagerank_weight <= 1:
+            raise ValueError("pagerank_weight must be between 0 and 1")
+        if not 0 <= proximity_weight <= 1:
+            raise ValueError("proximity_weight must be between 0 and 1")
+
+        return query_module.graph_boosted_search(
+            query_text,
+            self.layers,
+            self.tokenizer,
+            top_n=top_n,
+            pagerank_weight=pagerank_weight,
+            proximity_weight=proximity_weight,
+            use_expansion=use_expansion,
+            semantic_relations=self.semantic_relations
         )
 
     def quick_search(self, query: str, top_n: int = 5) -> List[str]:
@@ -519,7 +581,9 @@ class QueryMixin:
         auto_detect_intent: bool = True,
         prefer_docs: bool = False,
         custom_boosts: Optional[Dict[str, float]] = None,
-        use_code_aware_chunks: bool = True
+        use_code_aware_chunks: bool = True,
+        filter_code_stop_words: bool = True,
+        test_file_penalty: float = 0.8
     ) -> List[Tuple[str, str, int, int, float]]:
         """
         Find text passages most relevant to a query (for RAG systems).
@@ -539,6 +603,10 @@ class QueryMixin:
             prefer_docs: Always boost documentation
             custom_boosts: Optional custom boost factors for doc types
             use_code_aware_chunks: Use semantic boundaries for code files
+            filter_code_stop_words: Filter ubiquitous code tokens (self, def, return)
+                                    from expansion. Reduces noise in code search. (default True)
+            test_file_penalty: Multiplier for test files to rank them lower (default 0.8).
+                               Set to 1.0 to disable penalty.
 
         Returns:
             List of (passage_text, doc_id, start_char, end_char, score) tuples
@@ -584,7 +652,9 @@ class QueryMixin:
             auto_detect_intent=auto_detect_intent,
             prefer_docs=prefer_docs,
             custom_boosts=custom_boosts,
-            use_code_aware_chunks=use_code_aware_chunks
+            use_code_aware_chunks=use_code_aware_chunks,
+            filter_code_stop_words=filter_code_stop_words,
+            test_file_penalty=test_file_penalty
         )
 
     def is_definition_query(self, query_text: str) -> Tuple[bool, Optional[str], Optional[str]]:

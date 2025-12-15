@@ -9,6 +9,7 @@ import logging
 from typing import Dict, List, Tuple, Optional, Any
 
 from ..layers import CorticalLayer
+from ..observability import timed
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ class DocumentsMixin:
     document_metadata, _mark_all_stale, _query_expansion_cache).
     """
 
+    @timed("process_document", include_args=True)
     def process_document(
         self,
         doc_id: str,
@@ -59,6 +61,12 @@ class DocumentsMixin:
 
         tokens = self.tokenizer.tokenize(content)
         bigrams = self.tokenizer.extract_ngrams(tokens, n=2)
+
+        # Track document length for BM25
+        self.doc_lengths[doc_id] = len(tokens)
+        # Update average document length
+        if self.doc_lengths:
+            self.avg_doc_length = sum(self.doc_lengths.values()) / len(self.doc_lengths)
 
         layer0 = self.layers[CorticalLayer.TOKENS]
         layer1 = self.layers[CorticalLayer.BIGRAMS]

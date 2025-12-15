@@ -30,7 +30,9 @@ def find_documents_for_query(
     use_expansion: bool = True,
     semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None,
     use_semantic: bool = True,
-    doc_name_boost: float = 2.0
+    doc_name_boost: float = 2.0,
+    filter_code_stop_words: bool = True,
+    test_file_penalty: float = 0.8
 ) -> List[Tuple[str, float]]:
     """
     Find documents most relevant to a query using TF-IDF and optional expansion.
@@ -44,6 +46,10 @@ def find_documents_for_query(
         semantic_relations: Optional list of semantic relations for expansion
         use_semantic: Whether to use semantic relations for expansion (if available)
         doc_name_boost: Multiplier for documents whose name matches query terms (default 2.0)
+        filter_code_stop_words: Filter ubiquitous code tokens (self, def, return)
+                                from expansion candidates. Reduces noise in code search. (default True)
+        test_file_penalty: Multiplier for test files to rank them lower (default 0.8).
+                           Set to 1.0 to disable penalty.
 
     Returns:
         List of (doc_id, score) tuples ranked by relevance
@@ -55,7 +61,8 @@ def find_documents_for_query(
         query_text, layers, tokenizer,
         use_expansion=use_expansion,
         semantic_relations=semantic_relations,
-        use_semantic=use_semantic
+        use_semantic=use_semantic,
+        filter_code_stop_words=filter_code_stop_words
     )
 
     # Score each document
@@ -107,6 +114,16 @@ def find_documents_for_query(
             # Partial matches use proportional boost
             boost = 1 + (doc_name_boost - 1) * match_ratio
             doc_scores[doc_id] *= boost
+
+    # Apply test file penalty to reduce test file ranking
+    if test_file_penalty < 1.0:
+        for doc_id in list(doc_scores.keys()):
+            # Detect test files by path patterns
+            if (doc_id.startswith('tests/') or
+                doc_id.startswith('test_') or
+                '/test_' in doc_id or
+                '/tests/' in doc_id):
+                doc_scores[doc_id] *= test_file_penalty
 
     sorted_docs = sorted(doc_scores.items(), key=lambda x: -x[1])
     return sorted_docs[:top_n]
@@ -403,3 +420,145 @@ def find_related_documents(
             related.append((neighbor.content, weight))
 
     return sorted(related, key=lambda x: -x[1])
+
+
+def graph_boosted_search(
+    query_text: str,
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    tokenizer: Tokenizer,
+    top_n: int = 5,
+    pagerank_weight: float = 0.3,
+    proximity_weight: float = 0.2,
+    use_expansion: bool = True,
+    semantic_relations: Optional[List[Tuple[str, str, str, float]]] = None
+) -> List[Tuple[str, float]]:
+    """
+    Graph-Boosted BM25 (GB-BM25): Hybrid scoring combining BM25 with graph signals.
+
+    This creative algorithm combines multiple signals:
+    1. BM25/TF-IDF base score (term relevance)
+    2. PageRank boost (matched term importance)
+    3. Proximity boost (query terms connected in graph)
+    4. Coverage boost (documents with more unique query term matches)
+
+    This approach is designed for code search where:
+    - Important functions/classes should rank higher (PageRank)
+    - Related concepts should boost each other (graph connections)
+    - Comprehensive matches beat partial matches (coverage)
+
+    Args:
+        query_text: Search query
+        layers: Dictionary of layers
+        tokenizer: Tokenizer instance
+        top_n: Number of results to return
+        pagerank_weight: Weight for PageRank boost (0-1, default 0.3)
+        proximity_weight: Weight for term proximity boost (0-1, default 0.2)
+        use_expansion: Whether to use query expansion
+        semantic_relations: Optional semantic relations for expansion
+
+    Returns:
+        List of (doc_id, score) tuples ranked by combined relevance
+    """
+    layer0 = layers[CorticalLayer.TOKENS]
+    layer3 = layers[CorticalLayer.DOCUMENTS]
+
+    # Get expanded query terms
+    query_terms = get_expanded_query_terms(
+        query_text, layers, tokenizer,
+        use_expansion=use_expansion,
+        semantic_relations=semantic_relations,
+        use_semantic=True
+    )
+
+    if not query_terms:
+        return []
+
+    # Phase 1: Compute base BM25/TF-IDF scores per document
+    doc_scores: Dict[str, float] = defaultdict(float)
+    doc_term_matches: Dict[str, set] = defaultdict(set)  # Track unique term matches
+    doc_pagerank_sum: Dict[str, float] = defaultdict(float)  # Sum of PageRank for matched terms
+
+    for term, term_weight in query_terms.items():
+        col = layer0.get_minicolumn(term)
+        if col:
+            # Get term's PageRank importance
+            term_pagerank = getattr(col, 'pagerank', 0.0) or 0.0
+
+            for doc_id in col.document_ids:
+                # Base BM25/TF-IDF score
+                tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
+                doc_scores[doc_id] += tfidf * term_weight
+
+                # Track term match for coverage
+                doc_term_matches[doc_id].add(term)
+
+                # Accumulate PageRank boost
+                doc_pagerank_sum[doc_id] += term_pagerank * term_weight
+
+    if not doc_scores:
+        return []
+
+    # Phase 2: Compute proximity boost using lateral connections
+    # Boost documents where query terms are connected in the graph
+    proximity_scores: Dict[str, float] = defaultdict(float)
+
+    original_tokens = tokenizer.tokenize(query_text)
+    if len(original_tokens) > 1:
+        # Check if query terms have lateral connections to each other
+        for i, t1 in enumerate(original_tokens):
+            col1 = layer0.get_minicolumn(t1)
+            if not col1:
+                continue
+
+            for t2 in original_tokens[i+1:]:
+                col2 = layer0.get_minicolumn(t2)
+                if not col2:
+                    continue
+
+                # Check for connection between terms
+                conn_weight = col1.lateral_connections.get(col2.id, 0.0)
+                if conn_weight > 0:
+                    # Boost documents containing both terms
+                    shared_docs = col1.document_ids & col2.document_ids
+                    for doc_id in shared_docs:
+                        proximity_scores[doc_id] += conn_weight
+
+    # Phase 3: Combine all signals
+    max_base_score = max(doc_scores.values()) if doc_scores else 1.0
+    max_pagerank = max(doc_pagerank_sum.values()) if doc_pagerank_sum else 1.0
+    max_proximity = max(proximity_scores.values()) if proximity_scores else 1.0
+
+    final_scores: Dict[str, float] = {}
+    num_query_terms = len(set(original_tokens))
+
+    for doc_id, base_score in doc_scores.items():
+        # Normalize base score
+        norm_base = base_score / max_base_score if max_base_score > 0 else 0
+
+        # Normalize PageRank boost
+        pagerank_boost = doc_pagerank_sum.get(doc_id, 0.0)
+        norm_pagerank = pagerank_boost / max_pagerank if max_pagerank > 0 else 0
+
+        # Normalize proximity boost
+        prox_boost = proximity_scores.get(doc_id, 0.0)
+        norm_proximity = prox_boost / max_proximity if max_proximity > 0 else 0
+
+        # Coverage boost: reward documents matching more unique query terms
+        coverage = len(doc_term_matches.get(doc_id, set())) / num_query_terms if num_query_terms > 0 else 0
+
+        # Combine signals with weights
+        # Base score dominates, with boosts from graph signals
+        combined = (
+            (1 - pagerank_weight - proximity_weight) * norm_base +
+            pagerank_weight * norm_pagerank +
+            proximity_weight * norm_proximity
+        )
+
+        # Apply coverage multiplier (0.5 to 1.5 range)
+        coverage_mult = 0.5 + coverage
+
+        # Final score preserves relative magnitude
+        final_scores[doc_id] = combined * coverage_mult * max_base_score
+
+    sorted_docs = sorted(final_scores.items(), key=lambda x: -x[1])
+    return sorted_docs[:top_n]

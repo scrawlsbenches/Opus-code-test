@@ -36,6 +36,7 @@ Usage:
 
 import json
 import os
+import sys
 import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
@@ -88,6 +89,134 @@ def generate_short_task_id() -> str:
         'T-a1b2c3d4'
     """
     return f"T-{uuid.uuid4().hex[:8]}"
+
+
+def slugify(text: str) -> str:
+    """
+    Convert text to URL-friendly slug.
+
+    Args:
+        text: Text to convert to slug
+
+    Returns:
+        Slugified text (lowercase, hyphens, alphanumeric only)
+    """
+    # Simple slugification: lowercase, replace spaces with hyphens
+    slug = text.lower().strip()
+    slug = slug.replace(" ", "-")
+    # Remove non-alphanumeric except hyphens
+    slug = "".join(c for c in slug if c.isalnum() or c == "-")
+    # Remove duplicate hyphens
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    # Truncate to reasonable length
+    return slug[:50]
+
+
+def generate_memory_from_task(task: dict) -> str:
+    """
+    Generate memory entry markdown from a completed task.
+
+    Args:
+        task: Task dictionary with id, title, description, retrospective, etc.
+
+    Returns:
+        Markdown content for the memory entry
+    """
+    now = datetime.now()
+    date_str = now.strftime("%Y-%m-%d")
+
+    # Extract task fields
+    task_id = task.get('id', 'Unknown')
+    title = task.get('title', 'Untitled Task')
+    category = task.get('category', 'general')
+    description = task.get('description', 'No description provided')
+
+    # Extract retrospective notes
+    retrospective = task.get('retrospective', {})
+    if isinstance(retrospective, dict):
+        notes = retrospective.get('notes', 'No retrospective notes provided')
+    else:
+        notes = str(retrospective) if retrospective else 'No retrospective notes provided'
+
+    # Extract related files from context or retrospective
+    related_files = []
+    if 'context' in task and isinstance(task['context'], dict):
+        if 'files' in task['context']:
+            related_files.extend(task['context']['files'])
+    if isinstance(retrospective, dict) and 'files_touched' in retrospective:
+        related_files.extend(retrospective['files_touched'])
+
+    # Remove duplicates and format
+    related_files = list(set(related_files))
+    files_section = "\n".join(f"- `{f}`" for f in related_files) if related_files else "No files recorded"
+
+    # Generate template
+    template = f"""# Task Learning: {title}
+
+**Task ID:** {task_id}
+**Completed:** {date_str}
+**Category:** {category}
+**Tags:** `{category}`, `task-learning`
+
+---
+
+## Task Context
+
+{description}
+
+## What Was Learned
+
+{notes}
+
+## Related Files
+
+{files_section}
+
+---
+
+*Auto-generated from task completion*
+"""
+
+    return template
+
+
+def create_memory_for_task(task: dict, output_dir: str = "samples/memories") -> str:
+    """
+    Create a memory entry file from a completed task.
+
+    Args:
+        task: Task dictionary
+        output_dir: Directory to write memory file to
+
+    Returns:
+        Path to created memory file
+    """
+    # Generate memory content
+    content = generate_memory_from_task(task)
+
+    # Generate merge-safe filename
+    now = datetime.now()
+    date_str = now.strftime("%Y-%m-%d")
+    time_str = now.strftime("%H-%M-%S")
+    session_id = generate_session_id()
+
+    # Use task title for slug
+    title = task.get('title', 'task-completion')
+    slug = slugify(title)
+
+    filename = f"{date_str}_{time_str}_{session_id}-task-{slug}.md"
+
+    # Create directory if needed
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Write file
+    filepath = output_path / filename
+    with open(filepath, 'w') as f:
+        f.write(content)
+
+    return str(filepath)
 
 
 @dataclass
@@ -325,6 +454,52 @@ class TaskSession:
             'tasks_with_retrospective': [t.id for t in completed]
         }
 
+    def complete_task(
+        self,
+        task_id: str,
+        retrospective: Optional[str] = None,
+        create_memory: bool = False
+    ) -> Optional[str]:
+        """
+        Mark a task as completed and optionally create a memory entry.
+
+        Args:
+            task_id: The task ID to complete
+            retrospective: Optional completion notes/learnings
+            create_memory: If True, create a memory entry from the task
+
+        Returns:
+            Path to created memory file if create_memory=True, else None
+
+        Raises:
+            ValueError: If task_id is not found in this session
+        """
+        task = self.get_task(task_id)
+        if not task:
+            raise ValueError(f"Task not found: {task_id}")
+
+        # Mark task as complete
+        task.mark_complete()
+
+        # Capture retrospective if provided
+        if retrospective:
+            duration = self._calculate_duration(task.created_at)
+            task.retrospective = {
+                'notes': retrospective,
+                'duration_minutes': duration,
+                'files_touched': [],
+                'tests_added': 0,
+                'commits': [],
+                'captured_at': datetime.now().isoformat()
+            }
+
+        # Create memory if requested
+        memory_path = None
+        if create_memory and task.retrospective:
+            memory_path = create_memory_for_task(task.to_dict())
+
+        return memory_path
+
     def get_filename(self) -> str:
         """Get the session filename."""
         dt = datetime.fromisoformat(self.started_at)
@@ -530,6 +705,13 @@ if __name__ == "__main__":
     list_parser.add_argument("--dir", default=DEFAULT_TASKS_DIR, help="Tasks directory")
     list_parser.add_argument("--status", help="Filter by status")
 
+    # complete command
+    complete_parser = subparsers.add_parser("complete", help="Complete a task")
+    complete_parser.add_argument("task_id", help="Task ID to complete")
+    complete_parser.add_argument("--retrospective", help="Completion notes/learnings")
+    complete_parser.add_argument("--create-memory", action="store_true", help="Create memory entry")
+    complete_parser.add_argument("--dir", default=DEFAULT_TASKS_DIR, help="Tasks directory")
+
     args = parser.parse_args()
 
     if args.command == "generate":
@@ -552,6 +734,45 @@ if __name__ == "__main__":
 
         for task in tasks:
             print(f"[{task.status}] {task.id}: {task.title}")
+
+    elif args.command == "complete":
+        # Find the session file containing this task
+        dir_path = Path(args.dir)
+        if not dir_path.exists():
+            print(f"Error: Tasks directory not found: {args.dir}")
+            sys.exit(1)
+
+        session_file = None
+        target_session = None
+
+        for filepath in sorted(dir_path.glob("*.json")):
+            try:
+                session = TaskSession.load(filepath)
+                if session.get_task(args.task_id):
+                    session_file = filepath
+                    target_session = session
+                    break
+            except (json.JSONDecodeError, KeyError) as e:
+                print(f"Warning: Could not load {filepath}: {e}")
+                continue
+
+        if not target_session:
+            print(f"Error: Could not find session containing task {args.task_id}")
+            sys.exit(1)
+
+        # Complete the task
+        memory_path = target_session.complete_task(
+            args.task_id,
+            retrospective=args.retrospective,
+            create_memory=args.create_memory
+        )
+
+        # Save the session
+        target_session.save(args.dir)
+
+        print(f"✓ Task {args.task_id} marked as completed")
+        if memory_path:
+            print(f"✓ Memory entry created: {memory_path}")
 
     else:
         parser.print_help()

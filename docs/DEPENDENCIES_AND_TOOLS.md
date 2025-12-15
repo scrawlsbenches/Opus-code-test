@@ -1,0 +1,478 @@
+# Project Dependencies, Tools, APIs & Code Execution Mechanisms
+
+> **Generated:** 2025-12-14
+> **Purpose:** Exhaustive inventory of everything that executes code on behalf of the Cortical Text Processor project
+
+---
+
+## Table of Contents
+
+1. [Runtime Dependencies](#1-runtime-dependencies)
+2. [Development Dependencies](#2-development-dependencies)
+3. [Optional Dependencies](#3-optional-dependencies)
+4. [Build System Tools](#4-build-system-tools)
+5. [CI/CD Automation](#5-cicd-automation)
+6. [Development Scripts](#6-development-scripts)
+7. [Claude Code Integration](#7-claude-code-integration)
+8. [MCP Server (Model Context Protocol)](#8-mcp-server-model-context-protocol)
+9. [Code Execution Mechanisms](#9-code-execution-mechanisms)
+10. [External Services & APIs](#10-external-services--apis)
+11. [Security Tools](#11-security-tools)
+12. [Test Frameworks & Runners](#12-test-frameworks--runners)
+
+---
+
+## 1. Runtime Dependencies
+
+**ZERO RUNTIME DEPENDENCIES** - This is a core design principle.
+
+The library uses **only Python standard library modules**:
+- `collections` (defaultdict, Counter)
+- `dataclasses`
+- `enum`
+- `functools`
+- `hashlib`
+- `json`
+- `logging`
+- `math`
+- `os`
+- `pathlib`
+- `pickle`
+- `random`
+- `re`
+- `string`
+- `time`
+- `typing`
+- `uuid`
+
+**Python Version Requirement:** `>=3.9` (supports 3.9, 3.10, 3.11, 3.12)
+
+---
+
+## 2. Development Dependencies
+
+Defined in `pyproject.toml` under `[project.optional-dependencies].dev`:
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `coverage` | `>=7.0` | Test coverage reporting |
+| `pytest` | `>=7.0` | Test framework (used by `tests/unit/`, `tests/integration/`, etc.) |
+| `mcp` | `>=1.0` | MCP server tests (Model Context Protocol SDK) |
+| `pyyaml` | `>=6.0` | Workflow integration tests (`.claude/workflows/*.yaml`) |
+
+**Installation:**
+```bash
+pip install -e ".[dev]"
+```
+
+---
+
+## 3. Optional Dependencies
+
+Listed in `requirements.txt` as optional:
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `protobuf` | `>=4.0` | Protocol Buffers serialization for cross-language support |
+| `grpcio-tools` | `>=1.0` | Protocol Buffers compiler for schema compilation |
+
+**Schema Location:** `cortical/proto/schema.proto`
+**Generated Code:** `cortical/proto/schema_pb2.py` (gitignored, regenerated at runtime)
+
+---
+
+## 4. Build System Tools
+
+### setuptools (Build Backend)
+- **Config:** `pyproject.toml`
+- **Requires:** `setuptools>=61.0`
+- **Backend:** `setuptools.build_meta`
+
+### Package Structure
+```
+cortical/
+├── __init__.py        # Re-exports public API
+├── processor/         # Main package (split into mixins)
+├── query/             # Search functions (8 modules)
+├── proto/             # Optional protobuf serialization
+└── py.typed           # PEP 561 type marker
+```
+
+---
+
+## 5. CI/CD Automation
+
+### GitHub Actions Workflows
+
+#### `.github/workflows/ci.yml` - Main Test Suite
+**Triggers:** Push to any branch, PRs to main, manual dispatch
+
+| Job | Purpose | Time |
+|-----|---------|------|
+| `validate-task-list` | Validate task list consistency | < 5s |
+| `smoke-tests` | Quick sanity checks | < 30s |
+| `unit-tests` | Fast isolated tests (with coverage) | < 2 min |
+| `integration-tests` | Component interaction tests (with coverage) | < 3 min |
+| `regression-tests` | Bug-specific regression tests | < 1 min |
+| `behavioral-tests` | User workflow quality tests | < 2 min |
+| `performance-tests` | Timing-based tests (no coverage) | < 1 min |
+| `coverage-report` | Combine coverage data | - |
+| `showcase` | Run demo script | - |
+| `security-scan` | Static analysis + dependency audit | - |
+
+**Dependency Graph:**
+```
+validate-task-list    smoke-tests      showcase    security-scan
+      │                    │               │              │
+      │                    ├───────┬───────┼──────────────┤
+      │                    │       │       │              │
+      ▼                    ▼       ▼       ▼              ▼
+(continues)          unit-tests  integration  regression  behavioral
+                          │           │          │           │
+                          └─────┬─────┘          │           │
+                                ▼                │           │
+                         coverage-report        ▼           ▼
+                                           (parallel)   (parallel)
+```
+
+#### `.github/workflows/showcase.yml` - Demo Runner
+**Triggers:** Push to main, manual dispatch
+**Runs:** `python showcase.py`
+
+### GitHub Actions Used
+
+| Action | Version | Purpose |
+|--------|---------|---------|
+| `actions/checkout` | `v4` | Clone repository |
+| `actions/setup-python` | `v5` | Install Python 3.11 |
+| `actions/upload-artifact` | `v4` | Upload coverage data |
+| `actions/download-artifact` | `v4` | Download coverage data |
+
+---
+
+## 6. Development Scripts
+
+Located in `scripts/`:
+
+### Test & Quality
+
+| Script | Purpose | Subprocess Calls |
+|--------|---------|------------------|
+| `run_tests.py` | Test runner with categories | `pytest`, `coverage` |
+| `profile_full_analysis.py` | Performance profiling | None (pure Python) |
+| `validate_task_list.py` | CI task list validation | None |
+| `ci_task_report.py` | CI task reporting | None |
+
+### Codebase Indexing & Search
+
+| Script | Purpose | Subprocess Calls |
+|--------|---------|------------------|
+| `index_codebase.py` | Index codebase for semantic search | None |
+| `search_codebase.py` | Search indexed codebase | None |
+| `generate_ai_metadata.py` | Generate `.ai_meta` files | None |
+| `ask_codebase.py` | Natural language queries | None |
+
+### Task Management
+
+| Script | Purpose | Subprocess Calls |
+|--------|---------|------------------|
+| `task_utils.py` | Task CRUD operations | None |
+| `new_task.py` | Create new tasks | None |
+| `consolidate_tasks.py` | Merge task sessions | None |
+| `select_task.py` | Interactive task selection | None |
+| `suggest_tasks.py` | AI-powered task suggestions | `git` commands |
+| `migrate_legacy_tasks.py` | Migrate from TASK_LIST.md | None |
+| `ci_task_create.py` | Create tasks from CI | None |
+| `task_graph.py` | Visualize task dependencies | None |
+
+### Analysis & Exploration
+
+| Script | Purpose | Subprocess Calls |
+|--------|---------|------------------|
+| `analyze_louvain_resolution.py` | Analyze clustering resolution | None |
+| `analyze_cross_domain_bridges.py` | Find cross-domain connections | None |
+| `evaluate_cluster.py` | Evaluate clustering quality | None |
+| `find_similar.py` | Find similar code | None |
+| `explain_code.py` | Generate code explanations | None |
+| `suggest_related.py` | Suggest related content | None |
+| `corpus_health.py` | Check corpus health | None |
+
+### Context & Session
+
+| Script | Purpose | Subprocess Calls |
+|--------|---------|------------------|
+| `session_context.py` | Session context management | `git` commands |
+| `workflow.py` | Workflow execution | `python` (task scripts) |
+| `cli_wrappers.py` | CLI wrapper utilities | Various (via `run()`) |
+
+---
+
+## 7. Claude Code Integration
+
+### Skills (`.claude/skills/`)
+
+| Skill | Purpose | Allowed Tools |
+|-------|---------|---------------|
+| `task-manager` | Merge-friendly task management | Read, Bash, Write |
+| `corpus-indexer` | Index codebase for search | Bash |
+| `codebase-search` | Semantic code search | Read, Bash, Glob |
+| `ai-metadata` | View module metadata | Read, Bash, Glob |
+| `memory-manager` | Knowledge memory management | Read, Bash, Write |
+
+### Workflows (`.claude/workflows/`)
+
+| Workflow | Purpose | Tasks Created |
+|----------|---------|---------------|
+| `feature.yaml` | Feature implementation | design → implement → tests → docs |
+| `bugfix.yaml` | Bug fixing | investigate → fix → test → document |
+| `refactor.yaml` | Code refactoring | analyze → refactor → verify → cleanup |
+
+### Commands (`.claude/commands/`)
+
+| Command | Purpose |
+|---------|---------|
+| `director.md` | Multi-agent orchestration prompt |
+| `knowledge-transfer.md` | Generate knowledge transfer docs |
+| `project/director-agent-continuation.md` | Agent continuation context |
+
+---
+
+## 8. MCP Server (Model Context Protocol)
+
+### Server Implementation
+**Location:** `cortical/mcp_server.py`
+**Class:** `CorticalMCPServer`
+**Entry Point:** `python -m cortical.mcp_server`
+
+### Configuration
+**Files:**
+- `mcp_config.json` - Production config
+- `mcp_config_example.json` - Example config
+
+### Environment Variables
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `CORTICAL_CORPUS_PATH` | Path to corpus pickle file | None (empty corpus) |
+| `CORTICAL_LOG_LEVEL` | Logging level | `INFO` |
+
+### MCP Tools Exposed
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `search` | Search documents for query | `query`, `top_n` |
+| `passages` | Retrieve RAG-ready passages | `query`, `top_n`, `chunk_size` |
+| `expand_query` | Get query expansion terms | `query`, `max_expansions` |
+| `corpus_stats` | Get corpus statistics | None |
+| `add_document` | Index new document | `doc_id`, `content`, `recompute` |
+
+### Dependencies
+- `mcp` package (`FastMCP` server framework)
+
+---
+
+## 9. Code Execution Mechanisms
+
+### Subprocess Execution
+
+| Location | Commands Executed | Purpose |
+|----------|-------------------|---------|
+| `cortical/cli_wrapper.py` | Any shell command | CLI wrapper framework |
+| `cortical/chunk_index.py` | None | Pure Python |
+| `cortical/proto/serialization.py` | `protoc` (optional) | Compile proto schema |
+| `scripts/run_tests.py` | `pytest`, `coverage` | Test execution |
+| `scripts/session_context.py` | `git` commands | Git context collection |
+| `scripts/suggest_tasks.py` | `git log`, `git diff` | Task suggestions |
+| `evaluation/evaluator.py` | Test commands | Evaluation framework |
+
+### CLI Wrapper Framework (`cortical/cli_wrapper.py`)
+
+The CLI wrapper provides:
+- **Simple execution:** `run("command")` → `subprocess.run()`
+- **Git context:** `run("cmd", git=True)` → Collects git state
+- **Session tracking:** `with Session()` → Track multiple commands
+- **Hooks:** `@wrapper.on_success()` → Post-execution callbacks
+
+```python
+# Simple usage
+from cortical.cli_wrapper import run
+result = run("pytest tests/")
+
+# With session tracking
+with Session() as s:
+    s.run("pytest tests/")
+    s.run("git add -A")
+```
+
+### Git Hooks
+
+**Location:** `.git/hooks/` (sample files only, no active hooks)
+
+Available hook samples:
+- `pre-commit.sample`
+- `commit-msg.sample`
+- `pre-push.sample`
+- `prepare-commit-msg.sample`
+- `post-update.sample`
+
+**No custom hooks are active by default.**
+
+---
+
+## 10. External Services & APIs
+
+### GitHub APIs (via `gh` CLI in CI)
+- Used for: PR creation, issue management
+- Accessed through: GitHub Actions environment
+
+### No External HTTP APIs
+The codebase makes **no external HTTP requests**:
+- No `requests` library
+- No `urllib` usage for external APIs
+- No `aiohttp` or similar
+
+**Verification:**
+```bash
+grep -r "import requests\|import urllib\|import http.client\|import aiohttp" cortical/ scripts/
+# Returns empty - confirmed zero external dependencies
+```
+
+---
+
+## 11. Security Tools
+
+Used in CI (`.github/workflows/ci.yml`):
+
+| Tool | Version | Purpose | Install |
+|------|---------|---------|---------|
+| `bandit` | Latest | SAST (Static Analysis) | `pip install bandit` |
+| `pip-audit` | Latest | Dependency vulnerability scanning | `pip install pip-audit` |
+| `detect-secrets` | Latest | Secret scanning | `pip install detect-secrets` |
+
+### Bandit Configuration
+- Severity: Medium and higher (`-ll`)
+- Skipped: B101 (assert statements)
+
+### Secret Scanning
+- Excludes: `.git/`, `*.pkl`, `*.json`, `tests/`
+
+---
+
+## 12. Test Frameworks & Runners
+
+### Test Organization
+
+```
+tests/
+├── smoke/           # Quick sanity checks (< 30s)
+├── unit/            # Fast isolated tests (< 1 min)
+├── integration/     # Component interaction (< 3 min)
+├── performance/     # Timing tests (< 1 min)
+├── regression/      # Bug-specific tests (< 1 min)
+├── behavioral/      # User workflow tests (< 2 min)
+├── fixtures/        # Shared test data
+└── *.py             # Legacy tests (still run)
+```
+
+### Test Fixtures (`tests/fixtures/`)
+
+| Fixture | Scope | Description |
+|---------|-------|-------------|
+| `small_processor` | session | 25-doc synthetic corpus |
+| `shared_processor` | session | Full samples/ corpus |
+| `fresh_processor` | function | Empty processor |
+| `small_corpus_docs` | function | Raw document dict |
+
+### Running Tests
+
+```bash
+# Quick feedback
+python scripts/run_tests.py smoke        # ~1s
+python scripts/run_tests.py quick        # smoke + unit
+
+# Before commit
+python scripts/run_tests.py precommit    # smoke + unit + integration
+
+# Full suite
+python -m pytest tests/ -v               # All tests
+
+# With coverage
+python -m coverage run -m pytest tests/
+python -m coverage report --include="cortical/*"
+```
+
+### Coverage Configuration (`pyproject.toml`)
+
+```toml
+[tool.coverage.run]
+source = ["cortical"]
+branch = true
+omit = ["*/tests/*", "*/__pycache__/*", "cortical/types.py", "cortical/cli_wrapper.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+```
+
+**Coverage Threshold:** 89% (enforced in CI)
+
+---
+
+## Summary Tables
+
+### All Python Packages
+
+| Category | Package | Required | Purpose |
+|----------|---------|----------|---------|
+| Runtime | (none) | - | Zero dependencies |
+| Dev | coverage | ✓ | Test coverage |
+| Dev | pytest | ✓ | Test framework |
+| Dev | mcp | ✓ | MCP server tests |
+| Dev | pyyaml | ✓ | Workflow parsing |
+| Optional | protobuf | ✗ | Cross-language serialization |
+| Optional | grpcio-tools | ✗ | Proto compilation |
+| Security | bandit | CI only | SAST |
+| Security | pip-audit | CI only | Dependency audit |
+| Security | detect-secrets | CI only | Secret scanning |
+
+### All Code Execution Entry Points
+
+| Entry Point | Type | Executes |
+|-------------|------|----------|
+| `python -m cortical.mcp_server` | MCP Server | Corpus operations |
+| `python scripts/run_tests.py` | Script | pytest/unittest |
+| `python scripts/index_codebase.py` | Script | Indexing (pure Python) |
+| `python scripts/search_codebase.py` | Script | Search (pure Python) |
+| `python scripts/workflow.py` | Script | Task scripts |
+| `cortical.cli_wrapper.run()` | Function | Any shell command |
+| GitHub Actions | CI | pytest, coverage, security tools |
+
+### Files That Use Subprocess
+
+```
+cortical/cli_wrapper.py       # General CLI wrapper
+cortical/proto/serialization.py  # protoc (optional)
+scripts/run_tests.py          # pytest, coverage
+scripts/session_context.py    # git commands
+scripts/suggest_tasks.py      # git commands
+evaluation/evaluator.py       # test commands
+```
+
+---
+
+## Appendix: Environment Variables
+
+| Variable | Used In | Purpose |
+|----------|---------|---------|
+| `CORTICAL_CORPUS_PATH` | mcp_server.py | Corpus file path |
+| `CORTICAL_LOG_LEVEL` | mcp_server.py | Logging level |
+| `GITHUB_STEP_SUMMARY` | CI | GitHub Actions summary |
+
+---
+
+*This document was generated by analyzing the project structure, configuration files, CI workflows, and source code.*
