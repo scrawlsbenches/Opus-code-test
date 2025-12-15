@@ -315,12 +315,44 @@ Before declaring done:
 - [ ] Documentation updated
 - [ ] Changes committed and pushed
 - [ ] Knowledge transfer created (if significant work)
+- [ ] Orchestration data extracted (run: `python scripts/ml_data_collector.py orchestration extract --save`)
 
 ---
 
 ## Execution Tracking
 
 The orchestration system provides tools for tracking batch execution and collecting metrics.
+
+### Automatic ML Data Collection
+
+**IMPORTANT**: Orchestration patterns are automatically extracted from session transcripts for ML training.
+
+When you spawn sub-agents using the Task tool, the system captures:
+- Agent IDs, models, and execution times
+- Tools used by each agent
+- Success/failure status
+- Batch groupings (parallel vs sequential)
+- Parent-child session relationships
+
+This data is stored in `.git-ml/tracked/orchestration.jsonl` and tracked in git for training future models.
+
+**Best Practices for Data Quality**:
+1. **Use Task tool consistently** - All sub-agent work should use the Task tool
+2. **Clear batch boundaries** - Launch parallel agents in the same message for proper batch detection
+3. **Include context in prompts** - Rich prompts produce better training data
+4. **Let agents complete** - Don't interrupt agents mid-execution
+
+**Viewing Collected Data**:
+```bash
+# Extract orchestration from current session
+python scripts/ml_data_collector.py orchestration extract --save
+
+# View summary of collected orchestration patterns
+python scripts/ml_data_collector.py orchestration summary
+
+# List all orchestration sessions
+python scripts/ml_data_collector.py orchestration list
+```
 
 ### Initialize Tracking
 

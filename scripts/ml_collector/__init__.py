@@ -26,6 +26,13 @@ from .commit import (
     update_commit_ci_result, mark_commit_reverted
 )
 from .transcript import parse_transcript_jsonl, process_transcript
+from .orchestration import (
+    extract_orchestration_from_directory, save_orchestration, save_orchestration_lite,
+    extract_and_save, print_orchestration_summary,
+    SubAgentExecution, OrchestrationBatch, ExtractedOrchestration,
+    find_agent_transcripts, parse_agent_transcript, detect_batches,
+    ORCHESTRATION_DIR, ORCHESTRATION_LITE_FILE
+)
 from .export import export_data
 from .stats import count_data, print_stats, estimate_project_size
 from .quality import analyze_data_quality, print_quality_report
@@ -53,6 +60,12 @@ __all__ = [
     'update_commit_ci_result', 'mark_commit_reverted',
     # Transcript
     'parse_transcript_jsonl', 'process_transcript',
+    # Orchestration
+    'extract_orchestration_from_directory', 'save_orchestration', 'save_orchestration_lite',
+    'extract_and_save', 'print_orchestration_summary',
+    'SubAgentExecution', 'OrchestrationBatch', 'ExtractedOrchestration',
+    'find_agent_transcripts', 'parse_agent_transcript', 'detect_batches',
+    'ORCHESTRATION_DIR', 'ORCHESTRATION_LITE_FILE',
     # Export
     'export_data',
     # Stats
