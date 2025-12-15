@@ -94,9 +94,10 @@ cortical/proto/schema_pb2.py
 cortical/proto/__pycache__/
 
 # ML training data - tiered sharing strategy
-# Commits: SHARED (derived from git history, not sensitive)
-# Shared patterns: SHARED (aggregated, anonymized)
-# Chats/Sessions/Actions/GitHub: LOCAL (contain conversations, sensitive)
+# Shared patterns: SHARED (aggregated, anonymized, small)
+# Everything else: LOCAL (too large or contains sensitive data)
+# Note: Commit data files are regeneratable via `backfill` command
+.git-ml/commits/
 .git-ml/chats/
 .git-ml/sessions/
 .git-ml/actions/
