@@ -1331,7 +1331,18 @@ See `docs/text-as-memories.md` for the full guide.
 
 ## ML Data Collection: Project-Specific Micro-Model
 
-The project automatically collects enriched commit and chat data to train a micro-model that learns THIS project's patterns, coding style, and workflows.
+**Fully automatic. Zero configuration required.**
+
+ML data collection starts automatically when you open this project in Claude Code. Every session is tracked, every commit is captured, and transcripts are saved when sessions end.
+
+### Automatic Startup
+
+When a Claude Code session starts in this project:
+1. **Session tracking begins** - A new ML session is created for commit-chat linking
+2. **Git hooks are installed** - post-commit and pre-push hooks are added if missing
+3. **Stats are displayed** - Current collection progress is shown
+
+This is configured in `.claude/settings.local.json` via the `SessionStart` hook.
 
 ### What Gets Collected
 
@@ -1364,11 +1375,19 @@ python scripts/ml_data_collector.py session end --summary "What was accomplished
 # Generate session handoff document
 python scripts/ml_data_collector.py handoff
 
-# Record CI results
+# Record CI results (manual)
 python scripts/ml_data_collector.py ci set --commit abc123 --result pass --coverage 89.5
+
+# CI auto-capture (reads from GitHub Actions environment)
+python scripts/ml_data_collector.py ci-autocapture
 
 # Backfill historical commits
 python scripts/ml_data_collector.py backfill -n 100
+
+# Collect GitHub PR/Issue data (requires gh CLI)
+python scripts/ml_data_collector.py github collect           # Collect recent PRs and issues
+python scripts/ml_data_collector.py github stats             # Show GitHub data counts
+python scripts/ml_data_collector.py github fetch-pr --number 42  # Fetch specific PR
 ```
 
 ### Disabling Collection
@@ -1382,24 +1401,9 @@ export ML_COLLECTION_ENABLED=0
 
 ### Automatic Session Capture
 
-**Zero-friction capture via Claude Code Stop hook:**
+**Pre-configured. No setup needed.**
 
-The ML data collector automatically captures complete session transcripts when Claude Code sessions end. This eliminates manual logging entirely.
-
-**Setup:**
-```bash
-# Add to ~/.claude/settings.json or project .claude/settings.json:
-{
-  "hooks": {
-    "Stop": [
-      {
-        "type": "command",
-        "command": "/path/to/Opus-code-test/scripts/ml-session-capture-hook.sh"
-      }
-    ]
-  }
-}
-```
+The ML data collector automatically captures complete session transcripts when Claude Code sessions end. This is already configured in `.claude/settings.local.json`.
 
 **What gets captured automatically:**
 - Full query/response pairs from the transcript
@@ -1419,10 +1423,26 @@ python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl 
 
 ### Integration
 
-Data collection is automatic via hooks:
-- **Stop hook**: Captures full session transcripts with all exchanges (recommended)
-- **post-commit**: Captures commit metadata with diff hunks
-- **pre-push**: Reports collection stats
+Data collection is fully automatic via hooks configured in `.claude/settings.local.json`:
+
+| Hook | Trigger | Action |
+|------|---------|--------|
+| **SessionStart** | Session begins | Starts ML session, installs git hooks, shows stats |
+| **Stop** | Session ends | Captures full transcript with all exchanges |
+| **post-commit** | After commit | Captures commit metadata with diff hunks |
+| **pre-push** | Before push | Reports collection stats |
+| **CI workflow** | GitHub Actions | Auto-captures CI pass/fail results |
+
+**Hook files:**
+- `scripts/ml-session-start-hook.sh` - SessionStart handler
+- `scripts/ml-session-capture-hook.sh` - Stop handler
+
+**CI Integration:**
+The GitHub Actions workflow (`.github/workflows/ci.yml`) includes an `ml-ci-capture` job that automatically records CI results for each commit. This runs after the coverage-report job and captures:
+- Pass/fail status
+- Coverage percentage (when available)
+- Workflow and job metadata
+- Run ID for traceability
 
 See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
 

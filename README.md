@@ -468,6 +468,135 @@ python scripts/new_memory.py "Use JSON over pickle" --decision
 
 See [docs/text-as-memories.md](docs/text-as-memories.md) for the complete guide.
 
+## ML Data Collection (Optional)
+
+**Help us build a smarter development assistant for this project.**
+
+This project includes optional infrastructure to collect development data—commit patterns, coding sessions, and query/response pairs—to train a **project-specific micro-model**. The goal: an AI assistant that understands *this* codebase's patterns, conventions, and workflows better than any general-purpose model.
+
+### Why This Matters
+
+General-purpose LLMs don't know your codebase. They don't know that `compute_all()` should be called after `process_document()`, or that bigrams use space separators, or that `_id_index` provides O(1) lookups. A project-specific model trained on actual development patterns can:
+
+- **Predict likely files to edit** based on the task description
+- **Generate commit messages** matching your conventions
+- **Suggest code patterns** consistent with the existing codebase
+- **Learn from feedback** to improve over time
+
+### How It Works
+
+```
+.git-ml/                      # Local only (gitignored)
+├── commits/                  # Commit metadata + diff hunks
+├── chats/                    # Query/response pairs
+├── sessions/                 # Development sessions
+└── actions/                  # Tool usage patterns
+```
+
+**All data stays local.** Nothing is transmitted anywhere. When we have enough data across contributors, we'll aggregate anonymized patterns (not raw conversations) to train a model that we publish for everyone to use.
+
+### Training Milestones
+
+| Capability | Data Needed |
+|------------|-------------|
+| File prediction | 500 commits, 100 sessions |
+| Commit messages | 2,000 commits, 500 sessions |
+| Code suggestions | 5,000 commits, 2,000 sessions |
+
+Check your progress:
+```bash
+python scripts/ml_data_collector.py stats
+python scripts/ml_data_collector.py estimate
+```
+
+### Setup (Opt-In)
+
+Data collection is **enabled by default** but requires hook setup to capture sessions:
+
+```bash
+# Add to .claude/settings.json for automatic session capture
+{
+  "hooks": {
+    "Stop": [{
+      "type": "command",
+      "command": "/path/to/project/scripts/ml-session-capture-hook.sh"
+    }]
+  }
+}
+```
+
+Manual collection:
+```bash
+# Record a chat manually
+python scripts/ml_data_collector.py chat --query "..." --response "..."
+
+# Add feedback to improve quality
+python scripts/ml_data_collector.py feedback --chat-id <id> --rating good
+```
+
+### Disable Collection
+
+If you prefer not to participate:
+
+```bash
+# Option 1: Environment variable (per-session or in shell profile)
+export ML_COLLECTION_ENABLED=0
+
+# Option 2: Remove the Stop hook from .claude/settings.json
+```
+
+When disabled, no data is written to `.git-ml/`. You can still use all other features normally.
+
+### Privacy & Security
+
+**Automatic Redaction:** Sensitive data is automatically scrubbed before storage:
+- API keys, tokens, and secrets
+- Passwords and credentials
+- Private keys (RSA, SSH, etc.)
+- Database connection strings
+- GitHub/Slack tokens, JWTs
+
+```bash
+# Test what gets redacted
+python scripts/ml_data_collector.py redact-test --text "api_key=sk-abc123secret"
+```
+
+**Data Retention:** Old data is kept for 2 years (enough to hit training milestones):
+```bash
+# Preview what would be deleted (730 days default)
+python scripts/ml_data_collector.py cleanup --dry-run
+
+# Manually clean up older data if needed
+python scripts/ml_data_collector.py cleanup --days 365
+```
+
+**Privacy Guarantees:**
+- **Local storage only**: Data never leaves your machine automatically
+- **Gitignored**: `.git-ml/` is excluded from version control
+- **Regeneratable**: All commit data can be backfilled from git history
+- **Full control**: Delete `.git-ml/` anytime to remove all collected data
+- **Transparent**: All collection code is in `scripts/ml_data_collector.py`
+
+### Contributing Your Data
+
+When ready to help train the shared model:
+
+```bash
+# Preview what would be shared (with redaction applied)
+python scripts/ml_data_collector.py contribute preview
+
+# Opt-in to contribute (requires explicit consent)
+python scripts/ml_data_collector.py contribute enable --name "Your Name"
+
+# Check your contribution status
+python scripts/ml_data_collector.py contribute status
+
+# Opt-out anytime
+python scripts/ml_data_collector.py contribute disable
+```
+
+See [CLAUDE.md](CLAUDE.md) for detailed documentation on the ML data collection system.
+
 ## Development History
 
 This project evolved through systematic improvements:

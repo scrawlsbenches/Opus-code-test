@@ -5,6 +5,9 @@ ML Data Collector for Project-Specific Language Model Training
 This module collects enriched data from git commits, chat sessions, and developer
 actions to train a micro-model specific to this project.
 
+PRIVACY: Sensitive data (API keys, passwords, tokens) is automatically redacted
+before storage. See REDACTION_PATTERNS for the full list.
+
 Usage:
     # Collect commit data (call from git hook)
     python scripts/ml_data_collector.py commit
@@ -32,6 +35,34 @@ Usage:
 
     # Export data for training
     python scripts/ml_data_collector.py export --format jsonl --output training_data.jsonl
+
+    # Clean up old data (default: 730 days retention)
+    python scripts/ml_data_collector.py cleanup [--days 730] [--dry-run]
+
+    # Manage contribution consent
+    python scripts/ml_data_collector.py contribute status     # Check consent status
+    python scripts/ml_data_collector.py contribute enable     # Opt-in to share data
+    python scripts/ml_data_collector.py contribute disable    # Opt-out of sharing
+    python scripts/ml_data_collector.py contribute preview    # Preview what would be shared
+
+    # Generate shared patterns (safe to commit)
+    python scripts/ml_data_collector.py generate-patterns     # Creates .git-ml/shared/
+
+    # Collect GitHub PR/Issue data (requires gh CLI)
+    python scripts/ml_data_collector.py github collect        # Collect recent PRs and issues
+    python scripts/ml_data_collector.py github stats          # Show GitHub data counts
+    python scripts/ml_data_collector.py github fetch-pr --number 42   # Fetch specific PR
+    python scripts/ml_data_collector.py github fetch-issue --number 10  # Fetch specific issue
+
+    # Auto-capture CI results (called from GitHub Actions)
+    python scripts/ml_data_collector.py ci-autocapture        # Read from CI environment vars
+
+    # Backfill lightweight commit data (small files, tracked in git)
+    python scripts/ml_data_collector.py backfill-lite -n 100  # Last 100 commits
+    python scripts/ml_data_collector.py backfill-lite --all   # All history
+
+    # Test redaction patterns
+    python scripts/ml_data_collector.py redact-test --text "api_key=secret123"
 """
 
 import json
@@ -72,11 +103,19 @@ class SchemaValidationError(Exception):
 # ============================================================================
 
 ML_DATA_DIR = Path(".git-ml")
-COMMITS_DIR = ML_DATA_DIR / "commits"
-SESSIONS_DIR = ML_DATA_DIR / "sessions"
+COMMITS_DIR = ML_DATA_DIR / "commits"           # Full commit data with diffs (large, local only)
+COMMITS_LITE_DIR = ML_DATA_DIR / "commits-lite" # Legacy: individual JSON files (being phased out)
+SESSIONS_DIR = ML_DATA_DIR / "sessions"         # Full session data (local only)
 CHATS_DIR = ML_DATA_DIR / "chats"
 ACTIONS_DIR = ML_DATA_DIR / "actions"
+SHARED_DIR = ML_DATA_DIR / "shared"  # Aggregated patterns - safe to commit
+GITHUB_DIR = ML_DATA_DIR / "github"  # PR/Issue data - local (contains discussions)
 CURRENT_SESSION_FILE = ML_DATA_DIR / "current_session.json"
+
+# Git-tracked JSONL files (single file, append-only, git-friendly)
+TRACKED_DIR = ML_DATA_DIR / "tracked"           # Directory for git-tracked data
+COMMITS_LITE_FILE = TRACKED_DIR / "commits.jsonl"   # Commit metadata (one per line)
+SESSIONS_LITE_FILE = TRACKED_DIR / "sessions.jsonl" # Session summaries (one per line)
 
 # Training milestones
 MILESTONES = {
@@ -116,6 +155,39 @@ ACTION_SCHEMA = {
     }
 }
 
+# Data retention configuration (days)
+# 2 years - enough time to hit training milestones at typical dev pace
+# (~66 commits/active day observed, need 5000 for code suggestions)
+DEFAULT_RETENTION_DAYS = 730
+CONSENT_FILE = ML_DATA_DIR / "contribution_consent.json"
+
+# Sensitive data patterns to redact before storage
+# These patterns are applied to query/response text before saving
+REDACTION_PATTERNS = [
+    # API keys and tokens
+    (r'(?i)(api[_-]?key|apikey|api_secret|secret[_-]?key)\s*[=:]\s*["\']?[\w\-]{20,}["\']?', r'\1=<REDACTED>'),
+    (r'(?i)(token|bearer|authorization)\s*[=:]\s*["\']?[\w\-\.]{20,}["\']?', r'\1=<REDACTED>'),
+    # Passwords and secrets
+    (r'(?i)(password|passwd|pwd|secret)\s*[=:]\s*["\']?[^\s"\']{8,}["\']?', r'\1=<REDACTED>'),
+    # AWS credentials
+    (r'(?i)(aws[_-]?access[_-]?key[_-]?id|aws[_-]?secret[_-]?access[_-]?key)\s*[=:]\s*["\']?[\w\+/]{16,}["\']?', r'\1=<REDACTED>'),
+    (r'AKIA[0-9A-Z]{16}', '<AWS_KEY_REDACTED>'),
+    # Private keys
+    (r'-----BEGIN\s+(RSA\s+)?PRIVATE KEY-----[\s\S]*?-----END\s+(RSA\s+)?PRIVATE KEY-----', '<PRIVATE_KEY_REDACTED>'),
+    (r'-----BEGIN\s+OPENSSH\s+PRIVATE KEY-----[\s\S]*?-----END\s+OPENSSH\s+PRIVATE KEY-----', '<SSH_KEY_REDACTED>'),
+    # Database connection strings
+    (r'(?i)(mongodb|postgresql|mysql|redis)://[^\s"\']+', r'\1://<CONNECTION_REDACTED>'),
+    # Generic credentials in URLs
+    (r'://[^:]+:[^@]+@', '://<CREDENTIALS>@'),
+    # GitHub tokens
+    (r'ghp_[a-zA-Z0-9]{36}', '<GITHUB_TOKEN_REDACTED>'),
+    (r'gho_[a-zA-Z0-9]{36}', '<GITHUB_OAUTH_REDACTED>'),
+    # Slack tokens
+    (r'xox[baprs]-[0-9a-zA-Z\-]+', '<SLACK_TOKEN_REDACTED>'),
+    # JWT tokens (basic pattern)
+    (r'eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*', '<JWT_REDACTED>'),
+]
+
 
 def validate_schema(data: dict, schema: dict, data_type: str) -> List[str]:
     """Validate data against a schema. Returns list of errors (empty if valid)."""
@@ -131,6 +203,316 @@ def validate_schema(data: dict, schema: dict, data_type: str) -> List[str]:
             elif not isinstance(data[field], expected):
                 errors.append(f"{data_type}: field '{field}' has type {type(data[field]).__name__}, expected {expected.__name__}")
     return errors
+
+
+# ============================================================================
+# SENSITIVE DATA REDACTION
+# ============================================================================
+
+def redact_sensitive_data(text: str) -> str:
+    """Redact sensitive data patterns from text before storage.
+
+    Args:
+        text: The text to redact
+
+    Returns:
+        Text with sensitive patterns replaced with redaction markers
+    """
+    if not text:
+        return text
+
+    redacted = text
+    for pattern, replacement in REDACTION_PATTERNS:
+        redacted = re.sub(pattern, replacement, redacted)
+    return redacted
+
+
+def count_redactions(original: str, redacted: str) -> int:
+    """Count how many redactions were made."""
+    if not original or not redacted:
+        return 0
+    # Count occurrences of redaction markers
+    markers = ['<REDACTED>', '<AWS_KEY_REDACTED>', '<PRIVATE_KEY_REDACTED>',
+               '<SSH_KEY_REDACTED>', '<CONNECTION_REDACTED>', '<CREDENTIALS>',
+               '<GITHUB_TOKEN_REDACTED>', '<GITHUB_OAUTH_REDACTED>',
+               '<SLACK_TOKEN_REDACTED>', '<JWT_REDACTED>']
+    return sum(redacted.count(m) for m in markers)
+
+
+# ============================================================================
+# DATA RETENTION & CLEANUP
+# ============================================================================
+
+def cleanup_old_data(
+    retention_days: int = DEFAULT_RETENTION_DAYS,
+    dry_run: bool = False,
+    verbose: bool = False
+) -> Dict[str, Any]:
+    """Remove data older than retention_days.
+
+    Args:
+        retention_days: Days to keep data (default: 90)
+        dry_run: If True, only report what would be deleted
+        verbose: Show detailed output
+
+    Returns:
+        Dict with counts of files removed/would be removed
+    """
+    from datetime import timedelta
+
+    cutoff_date = datetime.now() - timedelta(days=retention_days)
+    cutoff_str = cutoff_date.strftime('%Y-%m-%d')
+
+    results = {
+        'retention_days': retention_days,
+        'cutoff_date': cutoff_str,
+        'dry_run': dry_run,
+        'commits_removed': 0,
+        'chats_removed': 0,
+        'actions_removed': 0,
+        'sessions_removed': 0,
+        'bytes_freed': 0,
+    }
+
+    # Cleanup commits
+    if COMMITS_DIR.exists():
+        for f in COMMITS_DIR.glob("*.json"):
+            try:
+                with open(f, 'r', encoding='utf-8') as fp:
+                    data = json.load(fp)
+                timestamp = data.get('timestamp', '')[:10]  # YYYY-MM-DD
+                if timestamp < cutoff_str:
+                    file_size = f.stat().st_size
+                    if verbose:
+                        print(f"  {'Would remove' if dry_run else 'Removing'}: {f.name} ({timestamp})")
+                    if not dry_run:
+                        f.unlink()
+                    results['commits_removed'] += 1
+                    results['bytes_freed'] += file_size
+            except (json.JSONDecodeError, IOError):
+                continue
+
+    # Cleanup chats (organized by date directories)
+    if CHATS_DIR.exists():
+        for date_dir in CHATS_DIR.iterdir():
+            if date_dir.is_dir():
+                dir_date = date_dir.name  # YYYY-MM-DD
+                if dir_date < cutoff_str:
+                    for f in date_dir.glob("*.json"):
+                        file_size = f.stat().st_size
+                        if verbose:
+                            print(f"  {'Would remove' if dry_run else 'Removing'}: chats/{dir_date}/{f.name}")
+                        if not dry_run:
+                            f.unlink()
+                        results['chats_removed'] += 1
+                        results['bytes_freed'] += file_size
+                    # Remove empty directory
+                    if not dry_run and not any(date_dir.iterdir()):
+                        date_dir.rmdir()
+
+    # Cleanup actions (organized by date directories)
+    if ACTIONS_DIR.exists():
+        for date_dir in ACTIONS_DIR.iterdir():
+            if date_dir.is_dir():
+                dir_date = date_dir.name
+                if dir_date < cutoff_str:
+                    for f in date_dir.glob("*.json"):
+                        file_size = f.stat().st_size
+                        if verbose:
+                            print(f"  {'Would remove' if dry_run else 'Removing'}: actions/{dir_date}/{f.name}")
+                        if not dry_run:
+                            f.unlink()
+                        results['actions_removed'] += 1
+                        results['bytes_freed'] += file_size
+                    if not dry_run and not any(date_dir.iterdir()):
+                        date_dir.rmdir()
+
+    # Cleanup old sessions
+    if SESSIONS_DIR.exists():
+        for f in SESSIONS_DIR.glob("*.json"):
+            try:
+                with open(f, 'r', encoding='utf-8') as fp:
+                    data = json.load(fp)
+                ended_at = data.get('ended_at', data.get('started_at', ''))[:10]
+                if ended_at and ended_at < cutoff_str:
+                    file_size = f.stat().st_size
+                    if verbose:
+                        print(f"  {'Would remove' if dry_run else 'Removing'}: sessions/{f.name}")
+                    if not dry_run:
+                        f.unlink()
+                    results['sessions_removed'] += 1
+                    results['bytes_freed'] += file_size
+            except (json.JSONDecodeError, IOError):
+                continue
+
+    return results
+
+
+# ============================================================================
+# CONTRIBUTION CONSENT MANAGEMENT
+# ============================================================================
+
+def get_contribution_consent() -> Optional[Dict[str, Any]]:
+    """Get the current contribution consent status.
+
+    Returns:
+        Consent data dict or None if no consent recorded
+    """
+    if not CONSENT_FILE.exists():
+        return None
+    try:
+        with open(CONSENT_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return None
+
+
+def set_contribution_consent(
+    consented: bool,
+    contributor_name: Optional[str] = None,
+    contributor_email: Optional[str] = None,
+    notes: Optional[str] = None
+) -> Dict[str, Any]:
+    """Record contribution consent decision.
+
+    Args:
+        consented: Whether user consents to contribute data
+        contributor_name: Optional name for attribution
+        contributor_email: Optional email for contact
+        notes: Optional notes about the consent
+
+    Returns:
+        The consent record
+    """
+    ensure_dirs()
+
+    consent_data = {
+        'consented': consented,
+        'timestamp': datetime.now().isoformat(),
+        'contributor_name': contributor_name,
+        'contributor_email': contributor_email,
+        'notes': notes,
+        'version': '1.0',
+    }
+
+    atomic_write_json(CONSENT_FILE, consent_data)
+    return consent_data
+
+
+def preview_contribution_data(
+    max_samples: int = 5,
+    include_full_text: bool = False
+) -> Dict[str, Any]:
+    """Preview what data would be shared if contributing.
+
+    Args:
+        max_samples: Maximum samples to show per category
+        include_full_text: Whether to include full query/response text
+
+    Returns:
+        Preview of contribution data with statistics
+    """
+    ensure_dirs()
+
+    preview = {
+        'summary': {
+            'total_commits': 0,
+            'total_chats': 0,
+            'total_sessions': 0,
+            'date_range': {'earliest': None, 'latest': None},
+            'unique_files': set(),
+            'unique_tools': set(),
+        },
+        'sample_commits': [],
+        'sample_chats': [],
+        'redaction_stats': {
+            'total_redactions': 0,
+            'chats_with_redactions': 0,
+        }
+    }
+
+    all_timestamps = []
+
+    # Sample commits
+    if COMMITS_DIR.exists():
+        commit_files = sorted(COMMITS_DIR.glob("*.json"), reverse=True)
+        preview['summary']['total_commits'] = len(commit_files)
+
+        for f in commit_files[:max_samples]:
+            try:
+                with open(f, 'r', encoding='utf-8') as fp:
+                    data = json.load(fp)
+                all_timestamps.append(data.get('timestamp', ''))
+                preview['summary']['unique_files'].update(data.get('files_changed', []))
+
+                sample = {
+                    'hash': data.get('hash', '')[:12],
+                    'message': data.get('message', '')[:100] + ('...' if len(data.get('message', '')) > 100 else ''),
+                    'files_count': len(data.get('files_changed', [])),
+                    'timestamp': data.get('timestamp', '')[:10],
+                }
+                preview['sample_commits'].append(sample)
+            except (json.JSONDecodeError, IOError):
+                continue
+
+    # Sample chats
+    if CHATS_DIR.exists():
+        chat_files = sorted(CHATS_DIR.glob("**/*.json"), reverse=True)
+        preview['summary']['total_chats'] = len(chat_files)
+
+        for f in chat_files[:max_samples]:
+            try:
+                with open(f, 'r', encoding='utf-8') as fp:
+                    data = json.load(fp)
+                all_timestamps.append(data.get('timestamp', ''))
+                preview['summary']['unique_tools'].update(data.get('tools_used', []))
+
+                query = data.get('query', '')
+                response = data.get('response', '')
+
+                # Check for redactions
+                redacted_query = redact_sensitive_data(query)
+                redacted_response = redact_sensitive_data(response)
+                redactions = count_redactions(query, redacted_query) + count_redactions(response, redacted_response)
+
+                if redactions > 0:
+                    preview['redaction_stats']['total_redactions'] += redactions
+                    preview['redaction_stats']['chats_with_redactions'] += 1
+
+                sample = {
+                    'id': data.get('id', ''),
+                    'timestamp': data.get('timestamp', '')[:10],
+                    'tools_used': data.get('tools_used', []),
+                    'files_count': len(data.get('files_referenced', [])) + len(data.get('files_modified', [])),
+                    'redactions_applied': redactions,
+                }
+
+                if include_full_text:
+                    sample['query'] = redacted_query[:500] + ('...' if len(redacted_query) > 500 else '')
+                    sample['response_preview'] = redacted_response[:200] + ('...' if len(redacted_response) > 200 else '')
+                else:
+                    sample['query_preview'] = redacted_query[:100] + ('...' if len(redacted_query) > 100 else '')
+
+                preview['sample_chats'].append(sample)
+            except (json.JSONDecodeError, IOError):
+                continue
+
+    # Count sessions
+    if SESSIONS_DIR.exists():
+        preview['summary']['total_sessions'] = len(list(SESSIONS_DIR.glob("*.json")))
+
+    # Calculate date range
+    if all_timestamps:
+        sorted_ts = sorted([t for t in all_timestamps if t])
+        if sorted_ts:
+            preview['summary']['date_range']['earliest'] = sorted_ts[0][:10]
+            preview['summary']['date_range']['latest'] = sorted_ts[-1][:10]
+
+    # Convert sets to counts for JSON serialization
+    preview['summary']['unique_files'] = len(preview['summary']['unique_files'])
+    preview['summary']['unique_tools'] = len(preview['summary']['unique_tools'])
+
+    return preview
 
 
 # ============================================================================
@@ -1062,7 +1444,7 @@ class ActionEntry:
 
 def ensure_dirs():
     """Create data directories if they don't exist."""
-    for dir_path in [COMMITS_DIR, SESSIONS_DIR, CHATS_DIR, ACTIONS_DIR]:
+    for dir_path in [COMMITS_DIR, COMMITS_LITE_DIR, SESSIONS_DIR, CHATS_DIR, ACTIONS_DIR]:
         dir_path.mkdir(parents=True, exist_ok=True)
 
 
@@ -1324,6 +1706,101 @@ def save_commit_data(context: CommitContext, validate: bool = True, link_session
             print(f"Linked {len(linked)} chat(s) to commit {context.hash[:8]}")
 
 
+def save_commit_lite(context: CommitContext):
+    """Save lightweight commit metadata (no diff hunks) for git tracking.
+
+    Appends to a single JSONL file (.git-ml/tracked/commits.jsonl) for easy
+    git tracking. Each commit is one line, making diffs clean and merge-friendly.
+
+    Returns the path to the JSONL file.
+    """
+    TRACKED_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Create lightweight data without hunks
+    lite_data = {
+        "hash": context.hash,
+        "message": context.message,
+        "author": context.author,
+        "timestamp": context.timestamp,
+        "branch": context.branch,
+        "files_changed": context.files_changed,
+        "insertions": context.insertions,
+        "deletions": context.deletions,
+        "hour_of_day": context.hour_of_day,
+        "day_of_week": context.day_of_week,
+        "is_merge": context.is_merge,
+        "is_initial": context.is_initial,
+        "parent_count": context.parent_count,
+        # Note: hunks excluded - that's what makes it "lite"
+    }
+
+    # Add optional fields if present
+    if context.seconds_since_last_commit is not None:
+        lite_data["seconds_since_last_commit"] = context.seconds_since_last_commit
+    if context.ci_result:
+        lite_data["ci_result"] = context.ci_result
+    if context.session_id:
+        lite_data["session_id"] = context.session_id
+
+    # Check if this commit hash already exists in the file (idempotent)
+    if COMMITS_LITE_FILE.exists():
+        with open(COMMITS_LITE_FILE, 'r') as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        existing = json.loads(line)
+                        if existing.get("hash") == context.hash:
+                            return COMMITS_LITE_FILE  # Already recorded
+                    except json.JSONDecodeError:
+                        continue
+
+    # Append to JSONL file (one JSON object per line)
+    with open(COMMITS_LITE_FILE, 'a') as f:
+        f.write(json.dumps(lite_data, separators=(',', ':')) + '\n')
+
+    return COMMITS_LITE_FILE
+
+
+def save_session_lite(session_summary: Dict[str, Any]):
+    """Save lightweight session summary for git tracking.
+
+    Appends to .git-ml/tracked/sessions.jsonl with essential session data:
+    - session_id, timestamp, duration
+    - files_read, files_edited
+    - queries (list of user queries)
+    - tools_used (count by tool type)
+    - commits_made (list of commit hashes)
+
+    This captures the "why" and "how" that commit data alone doesn't provide.
+    """
+    TRACKED_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Ensure required fields
+    required = ["session_id", "timestamp"]
+    for field in required:
+        if field not in session_summary:
+            raise ValueError(f"Session summary missing required field: {field}")
+
+    # Check if this session already exists (idempotent)
+    session_id = session_summary.get("session_id")
+    if SESSIONS_LITE_FILE.exists():
+        with open(SESSIONS_LITE_FILE, 'r') as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        existing = json.loads(line)
+                        if existing.get("session_id") == session_id:
+                            return SESSIONS_LITE_FILE  # Already recorded
+                    except json.JSONDecodeError:
+                        continue
+
+    # Append to JSONL file
+    with open(SESSIONS_LITE_FILE, 'a') as f:
+        f.write(json.dumps(session_summary, separators=(',', ':')) + '\n')
+
+    return SESSIONS_LITE_FILE
+
+
 def generate_chat_id() -> str:
     """Generate unique chat entry ID."""
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -1367,15 +1844,24 @@ def log_chat(
     files_modified: Optional[List[str]] = None,
     tools_used: Optional[List[str]] = None,
     user_feedback: Optional[str] = None,
+    skip_redaction: bool = False,
 ) -> ChatEntry:
     """Log a chat query/response pair.
 
     If no session_id is provided, uses the current session (creating one if needed).
     The chat is automatically registered with the session for commit linking.
+
+    Sensitive data (API keys, passwords, tokens) is automatically redacted before storage
+    unless skip_redaction=True.
     """
     # Use current session or create one
     if session_id is None:
         session_id = get_or_create_session()
+
+    # Redact sensitive data before storage
+    if not skip_redaction:
+        query = redact_sensitive_data(query)
+        response = redact_sensitive_data(response)
 
     entry = ChatEntry(
         id=generate_chat_id(),
@@ -1636,20 +2122,45 @@ def export_data(format: str, output_path: Path) -> Dict[str, Any]:
 # STATISTICS AND ESTIMATION
 # ============================================================================
 
+def count_jsonl_lines(filepath: Path) -> int:
+    """Count non-empty lines in a JSONL file."""
+    if not filepath.exists():
+        return 0
+    count = 0
+    with open(filepath, 'r') as f:
+        for line in f:
+            if line.strip():
+                count += 1
+    return count
+
+
 def count_data() -> Dict[str, int]:
     """Count collected data entries."""
     ensure_dirs()
 
     counts = {
         "commits": 0,
+        "commits_lite": 0,
+        "sessions_lite": 0,
         "chats": 0,
         "actions": 0,
         "sessions": 0,
+        "prs": 0,
+        "issues": 0,
     }
 
-    # Count commits
+    # Count commits (full)
     if COMMITS_DIR.exists():
         counts["commits"] = len(list(COMMITS_DIR.glob("*.json")))
+
+    # Count commits (lightweight - from JSONL)
+    counts["commits_lite"] = count_jsonl_lines(COMMITS_LITE_FILE)
+    # Also count legacy individual files if they exist
+    if COMMITS_LITE_DIR.exists():
+        counts["commits_lite"] += len(list(COMMITS_LITE_DIR.glob("*.json")))
+
+    # Count sessions (lightweight - from JSONL)
+    counts["sessions_lite"] = count_jsonl_lines(SESSIONS_LITE_FILE)
 
     # Count chats
     if CHATS_DIR.exists():
@@ -1662,6 +2173,11 @@ def count_data() -> Dict[str, int]:
     # Count sessions
     if SESSIONS_DIR.exists():
         counts["sessions"] = len(list(SESSIONS_DIR.glob("*.json")))
+
+    # Count GitHub data
+    if GITHUB_DIR.exists():
+        counts["prs"] = len(list(GITHUB_DIR.glob("pr_*.json")))
+        counts["issues"] = len(list(GITHUB_DIR.glob("issue_*.json")))
 
     return counts
 
@@ -1721,10 +2237,15 @@ def print_stats():
     print("=" * 60)
 
     print("\n📊 Data Counts:")
-    print(f"   Commits:  {counts['commits']:,}")
-    print(f"   Chats:    {counts['chats']:,}")
-    print(f"   Actions:  {counts['actions']:,}")
-    print(f"   Sessions: {counts['sessions']:,}")
+    print(f"   Commits (full):  {counts['commits']:,}")
+    print(f"   Commits (lite):  {counts.get('commits_lite', 0):,}  ← tracked in git")
+    print(f"   Sessions (lite): {counts.get('sessions_lite', 0):,}  ← tracked in git")
+    print(f"   Chats:           {counts['chats']:,}")
+    print(f"   Actions:         {counts['actions']:,}")
+    print(f"   Sessions (full): {counts['sessions']:,}")
+    if counts.get('prs', 0) > 0 or counts.get('issues', 0) > 0:
+        print(f"   PRs:             {counts.get('prs', 0):,}")
+        print(f"   Issues:          {counts.get('issues', 0):,}")
 
     print("\n💾 Data Sizes:")
     for name, size in sizes.items():
@@ -2071,6 +2592,562 @@ def print_quality_report():
 
 
 # ============================================================================
+# SHARED PATTERN AGGREGATION (safe to commit)
+# ============================================================================
+
+def generate_file_correlations() -> Dict[str, Any]:
+    """Generate file correlation patterns from commit history.
+
+    Identifies which files frequently change together - useful for
+    predicting likely files to edit based on task description.
+
+    Returns:
+        Dict with file pairs and their co-occurrence counts
+    """
+    correlations: Dict[tuple, int] = {}
+    file_counts: Dict[str, int] = {}
+
+    if not COMMITS_DIR.exists():
+        return {'correlations': [], 'file_counts': {}, 'total_commits': 0}
+
+    total_commits = 0
+    for commit_file in COMMITS_DIR.glob("*.json"):
+        try:
+            with open(commit_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            files = data.get('files_changed', [])
+            total_commits += 1
+
+            # Count individual file occurrences
+            for file in files:
+                file_counts[file] = file_counts.get(file, 0) + 1
+
+            # Count file pairs (co-occurrence)
+            for i, f1 in enumerate(files):
+                for f2 in files[i+1:]:
+                    pair = tuple(sorted([f1, f2]))
+                    correlations[pair] = correlations.get(pair, 0) + 1
+
+        except (json.JSONDecodeError, IOError):
+            continue
+
+    # Convert to list and sort by frequency
+    corr_list = [
+        {'files': list(pair), 'count': count, 'pct': round(count / total_commits * 100, 1)}
+        for pair, count in correlations.items()
+        if count >= 2  # Only include pairs that co-occur at least twice
+    ]
+    corr_list.sort(key=lambda x: -x['count'])
+
+    return {
+        'correlations': corr_list[:100],  # Top 100 pairs
+        'file_counts': dict(sorted(file_counts.items(), key=lambda x: -x[1])[:50]),
+        'total_commits': total_commits,
+        'generated_at': datetime.now().isoformat(),
+    }
+
+
+def generate_commit_patterns() -> Dict[str, Any]:
+    """Generate commit message patterns and statistics.
+
+    Analyzes commit message styles, lengths, prefixes (feat/fix/etc),
+    and temporal patterns.
+
+    Returns:
+        Dict with pattern statistics
+    """
+    patterns = {
+        'prefixes': {},  # feat:, fix:, etc.
+        'lengths': [],
+        'hour_distribution': {str(h): 0 for h in range(24)},
+        'day_distribution': {},
+        'total_commits': 0,
+    }
+
+    if not COMMITS_DIR.exists():
+        return patterns
+
+    for commit_file in COMMITS_DIR.glob("*.json"):
+        try:
+            with open(commit_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            message = data.get('message', '')
+            patterns['total_commits'] += 1
+            patterns['lengths'].append(len(message))
+
+            # Extract prefix (feat:, fix:, docs:, etc.)
+            if ':' in message[:20]:
+                prefix = message.split(':')[0].lower().strip()
+                if len(prefix) <= 15:  # Reasonable prefix length
+                    patterns['prefixes'][prefix] = patterns['prefixes'].get(prefix, 0) + 1
+
+            # Temporal patterns
+            hour = data.get('hour_of_day', 0)
+            patterns['hour_distribution'][str(hour)] = patterns['hour_distribution'].get(str(hour), 0) + 1
+
+            day = data.get('day_of_week', 'Unknown')
+            patterns['day_distribution'][day] = patterns['day_distribution'].get(day, 0) + 1
+
+        except (json.JSONDecodeError, IOError):
+            continue
+
+    # Calculate length statistics
+    if patterns['lengths']:
+        lengths = patterns['lengths']
+        patterns['length_stats'] = {
+            'min': min(lengths),
+            'max': max(lengths),
+            'avg': round(sum(lengths) / len(lengths), 1),
+            'median': sorted(lengths)[len(lengths) // 2],
+        }
+    patterns.pop('lengths')  # Don't include raw list
+
+    patterns['generated_at'] = datetime.now().isoformat()
+    return patterns
+
+
+def generate_tool_effectiveness() -> Dict[str, Any]:
+    """Generate tool usage effectiveness patterns.
+
+    Analyzes which tools are used most, success rates, and
+    tool sequences that lead to commits.
+
+    Returns:
+        Dict with tool usage statistics
+    """
+    tool_stats = {
+        'usage_counts': {},
+        'tools_per_session': [],
+        'total_actions': 0,
+        'total_sessions': 0,
+    }
+
+    # Analyze actions
+    if ACTIONS_DIR.exists():
+        for action_file in ACTIONS_DIR.glob("**/*.json"):
+            try:
+                with open(action_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+
+                tool = data.get('action_type', 'unknown')
+                tool_stats['usage_counts'][tool] = tool_stats['usage_counts'].get(tool, 0) + 1
+                tool_stats['total_actions'] += 1
+
+            except (json.JSONDecodeError, IOError):
+                continue
+
+    # Analyze sessions for tool diversity
+    if SESSIONS_DIR.exists():
+        for session_file in SESSIONS_DIR.glob("*.json"):
+            try:
+                with open(session_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+
+                tool_stats['total_sessions'] += 1
+
+            except (json.JSONDecodeError, IOError):
+                continue
+
+    tool_stats['generated_at'] = datetime.now().isoformat()
+    return tool_stats
+
+
+def generate_shared_patterns():
+    """Generate all shared pattern files.
+
+    Creates aggregated, anonymized pattern files in .git-ml/shared/
+    that are safe to commit and share.
+    """
+    SHARED_DIR.mkdir(parents=True, exist_ok=True)
+
+    print("\n" + "=" * 60)
+    print("GENERATING SHARED PATTERNS")
+    print("=" * 60)
+
+    # File correlations
+    print("\n📁 Generating file correlations...")
+    correlations = generate_file_correlations()
+    corr_path = SHARED_DIR / "file_correlations.json"
+    with open(corr_path, 'w', encoding='utf-8') as f:
+        json.dump(correlations, f, indent=2)
+    print(f"   Saved {len(correlations['correlations'])} file pairs to {corr_path}")
+
+    # Commit patterns
+    print("\n📝 Generating commit patterns...")
+    patterns = generate_commit_patterns()
+    patterns_path = SHARED_DIR / "commit_patterns.json"
+    with open(patterns_path, 'w', encoding='utf-8') as f:
+        json.dump(patterns, f, indent=2)
+    print(f"   Analyzed {patterns['total_commits']} commits, saved to {patterns_path}")
+
+    # Tool effectiveness
+    print("\n🔧 Generating tool effectiveness...")
+    tools = generate_tool_effectiveness()
+    tools_path = SHARED_DIR / "tool_effectiveness.json"
+    with open(tools_path, 'w', encoding='utf-8') as f:
+        json.dump(tools, f, indent=2)
+    print(f"   Analyzed {tools['total_actions']} actions, saved to {tools_path}")
+
+    # Summary file
+    summary = {
+        'generated_at': datetime.now().isoformat(),
+        'data_counts': count_data(),
+        'files': [
+            'file_correlations.json',
+            'commit_patterns.json',
+            'tool_effectiveness.json',
+        ],
+        'note': 'These patterns are aggregated and anonymized. Safe to commit.',
+    }
+    summary_path = SHARED_DIR / "summary.json"
+    with open(summary_path, 'w', encoding='utf-8') as f:
+        json.dump(summary, f, indent=2)
+
+    print(f"\n✅ Shared patterns generated in {SHARED_DIR}/")
+    print("   These files are safe to commit and share.")
+    print("=" * 60 + "\n")
+
+
+# ============================================================================
+# GITHUB DATA COLLECTION (PR/Issue context)
+# ============================================================================
+
+def fetch_pr_data(pr_number: int) -> Optional[Dict]:
+    """Fetch PR data from GitHub using gh CLI.
+
+    Args:
+        pr_number: PR number to fetch.
+
+    Returns:
+        Dict with PR data or None if not found/gh not available.
+    """
+    try:
+        # Use gh CLI to fetch PR data
+        result = subprocess.run(
+            ["gh", "pr", "view", str(pr_number), "--json",
+             "number,title,body,state,author,createdAt,mergedAt,closedAt,"
+             "headRefName,baseRefName,commits,files,comments,reviews"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            return None
+
+        pr_data = json.loads(result.stdout)
+
+        # Add metadata
+        pr_data['fetched_at'] = datetime.now().isoformat()
+        pr_data['type'] = 'pull_request'
+
+        # Redact sensitive content from body and comments
+        if pr_data.get('body'):
+            pr_data['body'] = redact_sensitive_data(pr_data['body'])
+        if pr_data.get('comments'):
+            for comment in pr_data['comments']:
+                if comment.get('body'):
+                    comment['body'] = redact_sensitive_data(comment['body'])
+        if pr_data.get('reviews'):
+            for review in pr_data['reviews']:
+                if review.get('body'):
+                    review['body'] = redact_sensitive_data(review['body'])
+
+        return pr_data
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def fetch_issue_data(issue_number: int) -> Optional[Dict]:
+    """Fetch issue data from GitHub using gh CLI.
+
+    Args:
+        issue_number: Issue number to fetch.
+
+    Returns:
+        Dict with issue data or None if not found/gh not available.
+    """
+    try:
+        result = subprocess.run(
+            ["gh", "issue", "view", str(issue_number), "--json",
+             "number,title,body,state,author,createdAt,closedAt,labels,comments"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            return None
+
+        issue_data = json.loads(result.stdout)
+
+        # Add metadata
+        issue_data['fetched_at'] = datetime.now().isoformat()
+        issue_data['type'] = 'issue'
+
+        # Redact sensitive content
+        if issue_data.get('body'):
+            issue_data['body'] = redact_sensitive_data(issue_data['body'])
+        if issue_data.get('comments'):
+            for comment in issue_data['comments']:
+                if comment.get('body'):
+                    comment['body'] = redact_sensitive_data(comment['body'])
+
+        return issue_data
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def save_github_data(data: Dict, data_type: str) -> Path:
+    """Save GitHub data (PR or issue) to file.
+
+    Args:
+        data: PR or issue data dict.
+        data_type: 'pr' or 'issue'.
+
+    Returns:
+        Path to saved file.
+    """
+    GITHUB_DIR.mkdir(parents=True, exist_ok=True)
+
+    number = data.get('number', 'unknown')
+    filename = f"{data_type}_{number}.json"
+    filepath = GITHUB_DIR / filename
+
+    atomic_write_json(filepath, data)
+    return filepath
+
+
+def collect_recent_prs(limit: int = 20) -> List[Dict]:
+    """Collect recent PRs from the repository.
+
+    Args:
+        limit: Maximum number of PRs to collect.
+
+    Returns:
+        List of collected PR data dicts.
+    """
+    try:
+        # Get list of recent PRs
+        result = subprocess.run(
+            ["gh", "pr", "list", "--limit", str(limit), "--state", "all",
+             "--json", "number"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            return []
+
+        pr_list = json.loads(result.stdout)
+        collected = []
+
+        for pr in pr_list:
+            pr_number = pr['number']
+            # Check if already collected
+            existing = GITHUB_DIR / f"pr_{pr_number}.json"
+            if existing.exists():
+                continue
+
+            pr_data = fetch_pr_data(pr_number)
+            if pr_data:
+                save_github_data(pr_data, 'pr')
+                collected.append(pr_data)
+
+        return collected
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def collect_recent_issues(limit: int = 20) -> List[Dict]:
+    """Collect recent issues from the repository.
+
+    Args:
+        limit: Maximum number of issues to collect.
+
+    Returns:
+        List of collected issue data dicts.
+    """
+    try:
+        result = subprocess.run(
+            ["gh", "issue", "list", "--limit", str(limit), "--state", "all",
+             "--json", "number"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            return []
+
+        issue_list = json.loads(result.stdout)
+        collected = []
+
+        for issue in issue_list:
+            issue_number = issue['number']
+            existing = GITHUB_DIR / f"issue_{issue_number}.json"
+            if existing.exists():
+                continue
+
+            issue_data = fetch_issue_data(issue_number)
+            if issue_data:
+                save_github_data(issue_data, 'issue')
+                collected.append(issue_data)
+
+        return collected
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def link_commit_to_pr(commit_hash: str) -> Optional[int]:
+    """Find the PR that merged a commit, if any.
+
+    Args:
+        commit_hash: The commit hash to look up.
+
+    Returns:
+        PR number if found, None otherwise.
+    """
+    try:
+        # Use gh to find associated PR
+        result = subprocess.run(
+            ["gh", "pr", "list", "--search", commit_hash, "--state", "merged",
+             "--json", "number", "--limit", "1"],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+
+        if result.returncode == 0:
+            prs = json.loads(result.stdout)
+            if prs:
+                return prs[0]['number']
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    return None
+
+
+def get_github_stats() -> Dict[str, int]:
+    """Get counts of collected GitHub data.
+
+    Returns:
+        Dict with 'prs' and 'issues' counts.
+    """
+    if not GITHUB_DIR.exists():
+        return {'prs': 0, 'issues': 0}
+
+    prs = len(list(GITHUB_DIR.glob("pr_*.json")))
+    issues = len(list(GITHUB_DIR.glob("issue_*.json")))
+
+    return {'prs': prs, 'issues': issues}
+
+
+# ============================================================================
+# CI AUTO-CAPTURE (for GitHub Actions integration)
+# ============================================================================
+
+def ci_autocapture() -> bool:
+    """Auto-capture CI results from GitHub Actions environment.
+
+    Reads environment variables set by GitHub Actions and records
+    CI results for the current commit.
+
+    Environment variables used:
+        GITHUB_SHA: Commit hash
+        CI_RESULT: pass/fail/error (set by workflow)
+        CI_TESTS_PASSED: Number of tests passed
+        CI_TESTS_FAILED: Number of tests failed
+        CI_COVERAGE: Coverage percentage
+        CI_DURATION: Duration in seconds
+
+    Returns:
+        True if CI result was recorded, False otherwise.
+    """
+    commit_hash = os.getenv('GITHUB_SHA')
+    if not commit_hash:
+        # Try to get from git if not in Actions
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0:
+                commit_hash = result.stdout.strip()
+        except Exception:
+            pass
+
+    if not commit_hash:
+        print("❌ No commit hash available")
+        return False
+
+    # Get CI result from environment
+    result = os.getenv('CI_RESULT', 'unknown')
+    if result not in ('pass', 'fail', 'error', 'pending', 'unknown'):
+        result = 'unknown'
+
+    # Collect details from environment
+    details = {}
+
+    tests_passed = os.getenv('CI_TESTS_PASSED')
+    if tests_passed:
+        try:
+            details['tests_passed'] = int(tests_passed)
+        except ValueError:
+            pass
+
+    tests_failed = os.getenv('CI_TESTS_FAILED')
+    if tests_failed:
+        try:
+            details['tests_failed'] = int(tests_failed)
+        except ValueError:
+            pass
+
+    coverage = os.getenv('CI_COVERAGE')
+    if coverage:
+        try:
+            details['coverage'] = float(coverage)
+        except ValueError:
+            pass
+
+    duration = os.getenv('CI_DURATION')
+    if duration:
+        try:
+            details['duration_seconds'] = float(duration)
+        except ValueError:
+            pass
+
+    # Get job name and workflow
+    details['workflow'] = os.getenv('GITHUB_WORKFLOW', 'unknown')
+    details['job'] = os.getenv('GITHUB_JOB', 'unknown')
+    details['run_id'] = os.getenv('GITHUB_RUN_ID', '')
+    details['run_number'] = os.getenv('GITHUB_RUN_NUMBER', '')
+
+    # Update the commit
+    success = update_commit_ci_result(commit_hash, result, details if details else None)
+
+    if success:
+        print(f"✅ CI result recorded for {commit_hash[:8]}: {result}")
+        if details.get('coverage'):
+            print(f"   Coverage: {details['coverage']}%")
+        if details.get('tests_passed') is not None:
+            print(f"   Tests: {details.get('tests_passed', 0)} passed, {details.get('tests_failed', 0)} failed")
+    else:
+        # Commit might not be in our data yet - that's OK
+        print(f"⚠️  Commit {commit_hash[:8]} not found in ML data (may not be collected yet)")
+
+    return success
+
+
+# ============================================================================
 # GIT HOOKS
 # ============================================================================
 
@@ -2154,6 +3231,9 @@ def main():
         commit_hash = sys.argv[2] if len(sys.argv) > 2 else None
         context = collect_commit_data(commit_hash)
         save_commit_data(context)
+        # Also save lightweight version (trackable in git)
+        lite_path = save_commit_lite(context)
+        print(f"Saved lightweight commit to {lite_path}")
 
     elif command == "backfill":
         # Backfill historical commits (no session linking for historical data)
@@ -2167,17 +3247,144 @@ def main():
         hashes = [h for h in hashes if h]
         print(f"Backfilling {len(hashes)} commits...")
 
+        lite_count = 0
         for i, h in enumerate(hashes):
             try:
                 context = collect_commit_data(h)
                 # Disable session linking for historical backfill
                 save_commit_data(context, link_session=False)
+                # Also save lightweight version
+                save_commit_lite(context)
+                lite_count += 1
                 if (i + 1) % 10 == 0:
                     print(f"  Progress: {i + 1}/{len(hashes)}")
             except Exception as e:
                 print(f"  Error on {h[:8]}: {e}")
 
-        print(f"Backfill complete: {len(hashes)} commits")
+        print(f"Backfill complete: {len(hashes)} commits ({lite_count} lightweight)")
+
+    elif command == "backfill-lite":
+        # Backfill ONLY lightweight commit data (small, trackable in git)
+        # Faster than full backfill, suitable for ephemeral environments
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-n", "--num", type=int, default=100,
+                            help="Number of commits to backfill")
+        parser.add_argument("--all", action="store_true",
+                            help="Backfill all commits in history")
+        args = parser.parse_args(sys.argv[2:])
+
+        if args.all:
+            hashes = run_git(["log", "--format=%H"]).split("\n")
+        else:
+            hashes = run_git(["log", f"-{args.num}", "--format=%H"]).split("\n")
+        hashes = [h for h in hashes if h]
+
+        # Check existing in JSONL file
+        existing = set()
+        if COMMITS_LITE_FILE.exists():
+            with open(COMMITS_LITE_FILE, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        try:
+                            data = json.loads(line)
+                            existing.add(data.get("hash", "")[:12])
+                        except json.JSONDecodeError:
+                            continue
+        # Also check legacy directory
+        if COMMITS_LITE_DIR.exists():
+            for f in COMMITS_LITE_DIR.glob("*.json"):
+                existing.add(f.stem.split("_")[0])  # Extract hash prefix
+
+        new_hashes = [h for h in hashes if h[:12] not in existing]
+        print(f"Found {len(hashes)} commits, {len(new_hashes)} new (skipping {len(hashes) - len(new_hashes)} existing)")
+
+        if not new_hashes:
+            print("All commits already have lightweight data.")
+        else:
+            TRACKED_DIR.mkdir(parents=True, exist_ok=True)
+            for i, h in enumerate(new_hashes):
+                try:
+                    context = collect_commit_data(h)
+                    save_commit_lite(context)
+                    if (i + 1) % 50 == 0:
+                        print(f"  Progress: {i + 1}/{len(new_hashes)}")
+                except Exception as e:
+                    print(f"  Error on {h[:8]}: {e}")
+
+            print(f"Lightweight backfill complete: {len(new_hashes)} commits")
+
+    elif command == "migrate":
+        # Migrate legacy commits-lite/*.json files to tracked/commits.jsonl
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--dry-run", action="store_true",
+                            help="Show what would be migrated without doing it")
+        parser.add_argument("--delete-old", action="store_true",
+                            help="Delete old files after migration")
+        args = parser.parse_args(sys.argv[2:])
+
+        if not COMMITS_LITE_DIR.exists():
+            print("No legacy commits-lite directory found.")
+            sys.exit(0)
+
+        legacy_files = list(COMMITS_LITE_DIR.glob("*.json"))
+        if not legacy_files:
+            print("No legacy files to migrate.")
+            sys.exit(0)
+
+        print(f"Found {len(legacy_files)} legacy files to migrate")
+
+        # Get existing hashes in JSONL
+        existing_hashes = set()
+        if COMMITS_LITE_FILE.exists():
+            with open(COMMITS_LITE_FILE, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        try:
+                            data = json.loads(line)
+                            existing_hashes.add(data.get("hash", ""))
+                        except json.JSONDecodeError:
+                            continue
+
+        migrated = 0
+        skipped = 0
+        for f in legacy_files:
+            try:
+                with open(f, 'r') as fp:
+                    data = json.load(fp)
+                commit_hash = data.get("hash", "")
+                if commit_hash in existing_hashes:
+                    skipped += 1
+                    continue
+                if args.dry_run:
+                    print(f"  Would migrate: {f.name}")
+                    migrated += 1
+                else:
+                    TRACKED_DIR.mkdir(parents=True, exist_ok=True)
+                    with open(COMMITS_LITE_FILE, 'a') as out:
+                        out.write(json.dumps(data, separators=(',', ':')) + '\n')
+                    existing_hashes.add(commit_hash)
+                    migrated += 1
+            except Exception as e:
+                print(f"  Error migrating {f.name}: {e}")
+
+        if args.dry_run:
+            print(f"\nDry run: would migrate {migrated}, skip {skipped} (already in JSONL)")
+        else:
+            print(f"\nMigrated {migrated} commits to {COMMITS_LITE_FILE}")
+            print(f"Skipped {skipped} (already in JSONL)")
+
+            if args.delete_old and migrated > 0:
+                print(f"\nDeleting {len(legacy_files)} legacy files...")
+                for f in legacy_files:
+                    f.unlink()
+                # Try to remove the directory if empty
+                try:
+                    COMMITS_LITE_DIR.rmdir()
+                    print(f"Removed empty directory: {COMMITS_LITE_DIR}")
+                except OSError:
+                    print(f"Note: {COMMITS_LITE_DIR} not empty, keeping it")
 
     elif command == "chat":
         # Log a chat entry
@@ -2639,6 +3846,303 @@ def main():
             except ValueError as e:
                 print(f"✗ {e}")
                 sys.exit(1)
+
+    elif command == "cleanup":
+        # Remove data older than retention period
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--days", type=int, default=DEFAULT_RETENTION_DAYS,
+                            help=f"Retention period in days (default: {DEFAULT_RETENTION_DAYS})")
+        parser.add_argument("--dry-run", action="store_true",
+                            help="Show what would be deleted without deleting")
+        parser.add_argument("--verbose", "-v", action="store_true",
+                            help="Show each file being removed")
+        args = parser.parse_args(sys.argv[2:])
+
+        print(f"\n{'='*60}")
+        print("DATA CLEANUP")
+        print(f"{'='*60}")
+        print(f"Retention period: {args.days} days")
+        if args.dry_run:
+            print("Mode: DRY RUN (no files will be deleted)")
+        print()
+
+        results = cleanup_old_data(
+            retention_days=args.days,
+            dry_run=args.dry_run,
+            verbose=args.verbose
+        )
+
+        total_removed = (results['commits_removed'] + results['chats_removed'] +
+                        results['actions_removed'] + results['sessions_removed'])
+
+        if total_removed == 0:
+            print("✓ No data older than cutoff date found.")
+        else:
+            action = "Would remove" if args.dry_run else "Removed"
+            print(f"\n{action}:")
+            print(f"   Commits:  {results['commits_removed']}")
+            print(f"   Chats:    {results['chats_removed']}")
+            print(f"   Actions:  {results['actions_removed']}")
+            print(f"   Sessions: {results['sessions_removed']}")
+
+            if results['bytes_freed'] > 1024 * 1024:
+                print(f"   Space:    {results['bytes_freed'] / 1024 / 1024:.2f} MB")
+            elif results['bytes_freed'] > 1024:
+                print(f"   Space:    {results['bytes_freed'] / 1024:.2f} KB")
+            else:
+                print(f"   Space:    {results['bytes_freed']} bytes")
+
+        print(f"{'='*60}\n")
+
+    elif command == "contribute":
+        # Manage contribution consent and preview data
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("action", nargs="?", choices=["status", "enable", "disable", "preview"],
+                            default="status", help="Contribution action")
+        parser.add_argument("--name", help="Your name for attribution")
+        parser.add_argument("--email", help="Contact email")
+        parser.add_argument("--notes", help="Additional notes")
+        parser.add_argument("--samples", type=int, default=5,
+                            help="Number of samples to show in preview")
+        parser.add_argument("--full-text", action="store_true",
+                            help="Show full query/response text in preview")
+        args = parser.parse_args(sys.argv[2:])
+
+        if args.action == "status":
+            consent = get_contribution_consent()
+            print(f"\n{'='*60}")
+            print("CONTRIBUTION STATUS")
+            print(f"{'='*60}")
+
+            if consent is None:
+                print("\n📋 Status: NOT CONFIGURED")
+                print("\n   You haven't decided whether to contribute data yet.")
+                print("   Run 'contribute enable' to opt-in or 'contribute disable' to opt-out.")
+            else:
+                status = "✅ ENABLED" if consent.get('consented') else "❌ DISABLED"
+                print(f"\n📋 Status: {status}")
+                print(f"   Recorded: {consent.get('timestamp', 'unknown')[:10]}")
+                if consent.get('contributor_name'):
+                    print(f"   Name: {consent['contributor_name']}")
+                if consent.get('contributor_email'):
+                    print(f"   Email: {consent['contributor_email']}")
+                if consent.get('notes'):
+                    print(f"   Notes: {consent['notes']}")
+
+            print(f"\n{'='*60}\n")
+
+        elif args.action == "enable":
+            print(f"\n{'='*60}")
+            print("ENABLE DATA CONTRIBUTION")
+            print(f"{'='*60}")
+            print("""
+By enabling contribution, you agree to share your collected data
+(commits, chats, sessions) with the project maintainers for training
+a project-specific micro-model.
+
+WHAT GETS SHARED:
+- Commit messages and file change patterns
+- Query/response pairs (with sensitive data automatically redacted)
+- Tool usage patterns and session metadata
+
+WHAT DOESN'T GET SHARED:
+- Raw file contents
+- Actual code diffs (only patterns)
+- Any data matching redaction patterns (API keys, passwords, etc.)
+
+Your name and email (if provided) will be used for:
+- Attribution in the trained model's credits
+- Contact if we have questions about your contributions
+""")
+
+            # Get confirmation
+            response = input("Do you consent to contributing your data? [y/N] ")
+            if response.lower() != 'y':
+                print("\nContribution not enabled. Your data stays local.")
+                sys.exit(0)
+
+            consent = set_contribution_consent(
+                consented=True,
+                contributor_name=args.name,
+                contributor_email=args.email,
+                notes=args.notes
+            )
+
+            print(f"\n✅ Contribution ENABLED")
+            print(f"   Recorded at: {consent['timestamp'][:19]}")
+            if args.name:
+                print(f"   Name: {args.name}")
+            print("\nYour data will be included in the next collection round.")
+            print("Run 'contribute preview' to see what will be shared.")
+            print(f"{'='*60}\n")
+
+        elif args.action == "disable":
+            consent = set_contribution_consent(
+                consented=False,
+                notes=args.notes or "User opted out"
+            )
+
+            print(f"\n{'='*60}")
+            print("CONTRIBUTION DISABLED")
+            print(f"{'='*60}")
+            print("\n❌ Your data will NOT be shared with the project.")
+            print("   Local collection continues (for your own use).")
+            print("   You can re-enable anytime with 'contribute enable'.")
+            print(f"{'='*60}\n")
+
+        elif args.action == "preview":
+            print(f"\n{'='*60}")
+            print("CONTRIBUTION DATA PREVIEW")
+            print(f"{'='*60}")
+            print("\nThis shows what data would be shared if you contribute:\n")
+
+            preview = preview_contribution_data(
+                max_samples=args.samples,
+                include_full_text=args.full_text
+            )
+
+            summary = preview['summary']
+            print("📊 Summary:")
+            print(f"   Total commits:  {summary['total_commits']}")
+            print(f"   Total chats:    {summary['total_chats']}")
+            print(f"   Total sessions: {summary['total_sessions']}")
+            print(f"   Unique files:   {summary['unique_files']}")
+            print(f"   Unique tools:   {summary['unique_tools']}")
+            if summary['date_range']['earliest']:
+                print(f"   Date range:     {summary['date_range']['earliest']} to {summary['date_range']['latest']}")
+
+            redaction = preview['redaction_stats']
+            if redaction['total_redactions'] > 0:
+                print(f"\n🔒 Redaction Stats:")
+                print(f"   Chats with redactions: {redaction['chats_with_redactions']}")
+                print(f"   Total redactions made: {redaction['total_redactions']}")
+
+            if preview['sample_commits']:
+                print(f"\n📝 Sample Commits (latest {len(preview['sample_commits'])}):")
+                for c in preview['sample_commits']:
+                    print(f"   [{c['timestamp']}] {c['hash']} - {c['message']}")
+                    print(f"            Files: {c['files_count']}")
+
+            if preview['sample_chats']:
+                print(f"\n💬 Sample Chats (latest {len(preview['sample_chats'])}):")
+                for c in preview['sample_chats']:
+                    print(f"   [{c['timestamp']}] {c['id']}")
+                    if 'query' in c:
+                        print(f"      Query: {c['query']}")
+                    elif 'query_preview' in c:
+                        print(f"      Query: {c['query_preview']}")
+                    print(f"      Tools: {', '.join(c['tools_used']) or 'none'}")
+                    if c['redactions_applied'] > 0:
+                        print(f"      🔒 {c['redactions_applied']} sensitive item(s) redacted")
+
+            print(f"\n{'='*60}\n")
+
+    elif command == "generate-patterns":
+        # Generate shared pattern files (safe to commit)
+        generate_shared_patterns()
+
+    elif command == "github":
+        # Collect GitHub PR/Issue data
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("action", choices=["collect", "stats", "fetch-pr", "fetch-issue"],
+                            help="GitHub data action")
+        parser.add_argument("--limit", type=int, default=20,
+                            help="Max items to collect (default: 20)")
+        parser.add_argument("--number", type=int,
+                            help="PR or issue number (for fetch-pr/fetch-issue)")
+        args = parser.parse_args(sys.argv[2:])
+
+        if args.action == "collect":
+            print("\n" + "=" * 60)
+            print("COLLECTING GITHUB DATA")
+            print("=" * 60)
+
+            # Collect PRs
+            print(f"\n🔀 Collecting PRs (limit: {args.limit})...")
+            prs = collect_recent_prs(limit=args.limit)
+            print(f"   Collected {len(prs)} new PRs")
+
+            # Collect Issues
+            print(f"\n📋 Collecting Issues (limit: {args.limit})...")
+            issues = collect_recent_issues(limit=args.limit)
+            print(f"   Collected {len(issues)} new issues")
+
+            # Show totals
+            stats = get_github_stats()
+            print(f"\n📊 Total GitHub data:")
+            print(f"   PRs: {stats['prs']}")
+            print(f"   Issues: {stats['issues']}")
+            print("=" * 60 + "\n")
+
+        elif args.action == "stats":
+            stats = get_github_stats()
+            print(f"\n📊 GitHub Data Statistics:")
+            print(f"   PRs collected: {stats['prs']}")
+            print(f"   Issues collected: {stats['issues']}")
+
+        elif args.action == "fetch-pr":
+            if not args.number:
+                print("Error: --number is required for fetch-pr")
+                sys.exit(1)
+            pr_data = fetch_pr_data(args.number)
+            if pr_data:
+                filepath = save_github_data(pr_data, 'pr')
+                print(f"✓ Fetched PR #{args.number}: {pr_data.get('title', 'untitled')}")
+                print(f"  Saved to: {filepath}")
+            else:
+                print(f"✗ Could not fetch PR #{args.number} (not found or gh not available)")
+                sys.exit(1)
+
+        elif args.action == "fetch-issue":
+            if not args.number:
+                print("Error: --number is required for fetch-issue")
+                sys.exit(1)
+            issue_data = fetch_issue_data(args.number)
+            if issue_data:
+                filepath = save_github_data(issue_data, 'issue')
+                print(f"✓ Fetched Issue #{args.number}: {issue_data.get('title', 'untitled')}")
+                print(f"  Saved to: {filepath}")
+            else:
+                print(f"✗ Could not fetch Issue #{args.number} (not found or gh not available)")
+                sys.exit(1)
+
+    elif command == "ci-autocapture":
+        # Auto-capture CI results from GitHub Actions environment
+        success = ci_autocapture()
+        sys.exit(0 if success else 1)
+
+    elif command == "redact-test":
+        # Test redaction patterns on sample text
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--text", "-t", help="Text to test redaction on")
+        parser.add_argument("--file", "-f", help="File containing text to test")
+        args = parser.parse_args(sys.argv[2:])
+
+        if args.file:
+            with open(args.file, 'r', encoding='utf-8') as f:
+                text = f.read()
+        elif args.text:
+            text = args.text
+        else:
+            print("Provide --text or --file to test redaction patterns")
+            sys.exit(1)
+
+        print(f"\n{'='*60}")
+        print("REDACTION TEST")
+        print(f"{'='*60}")
+        print(f"\nOriginal ({len(text)} chars):")
+        print(text[:500] + ('...' if len(text) > 500 else ''))
+
+        redacted = redact_sensitive_data(text)
+        redaction_count = count_redactions(text, redacted)
+
+        print(f"\nRedacted ({redaction_count} patterns matched):")
+        print(redacted[:500] + ('...' if len(redacted) > 500 else ''))
+        print(f"{'='*60}\n")
 
     else:
         print(f"Unknown command: {command}")
