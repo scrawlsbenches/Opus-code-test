@@ -427,3 +427,28 @@ jobs:
             else:
                 print('✅ No secrets detected in source files')
         PYTHON_SCRIPT
+
+  # ==========================================================================
+  # Markdown Link Checker (runs in parallel with all other jobs)
+  # Uses our own Python script - NO external dependencies/actions
+  # Principle: Prefer native implementations over 3rd party APIs/actions
+  # ==========================================================================
+  markdown-links:
+    name: "🔗 Markdown Links"
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Non-blocking initially
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Check wiki-links in markdown files
+      run: |
+        echo "Checking wiki-links in documentation..."
+        python scripts/resolve_wiki_links.py --check docs/ || true
+        python scripts/resolve_wiki_links.py --check samples/memories/ || true
+        python scripts/resolve_wiki_links.py --check samples/decisions/ || true
+        echo "Link check complete (informational only)"

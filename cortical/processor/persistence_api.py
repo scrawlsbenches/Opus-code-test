@@ -11,6 +11,7 @@ from ..layers import CorticalLayer
 from ..config import CorticalConfig
 from .. import persistence
 from .. import state_storage
+from ..observability import timed
 
 if TYPE_CHECKING:
     from . import CorticalTextProcessor
@@ -26,6 +27,7 @@ class PersistenceMixin:
     embeddings, semantic_relations, config, _stale_computations).
     """
 
+    @timed("save")
     def save(
         self,
         filepath: str,

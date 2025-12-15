@@ -42,6 +42,12 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 - Say "I don't know" when uncertain, then investigate
 - Correct course based on evidence, not pride
 
+**Native Over External**
+- Prefer implementing features ourselves over 3rd party APIs/actions
+- External dependencies add maintenance burden and security risk
+- If we can build it in <20000 lines, build it ourselves
+- Avoid deprecated or unmaintained external tools
+
 When you see "neural" or "cortical" in this codebase, remember: these are metaphors for standard IR algorithms, not actual neural implementations.
 
 ---
@@ -85,8 +91,8 @@ python scripts/generate_ai_metadata.py
 Instead of reading entire source files, start with `.ai_meta` files:
 
 ```bash
-# Get structured overview of any module
-cat cortical/processor.py.ai_meta
+# Get structured overview of any module (processor is now a package)
+cat cortical/processor/__init__.py.ai_meta
 ```
 
 **What metadata provides:**
@@ -118,7 +124,7 @@ python scripts/search_codebase.py "your query here"
 
 ```bash
 # I need to understand how search works
-cat cortical/query.py.ai_meta | head -100    # Get overview
+cat cortical/query/__init__.py.ai_meta | head -100    # Get overview (query is a package)
 python scripts/search_codebase.py "expand query"  # Find specific code
 # Then read specific line ranges as needed
 ```
@@ -156,13 +162,14 @@ cortical/
 ├── minicolumn.py     # Core data structure with typed Edge connections (357 lines)
 ├── config.py         # CorticalConfig dataclass with validation (352 lines)
 ├── fingerprint.py    # Semantic fingerprinting and similarity (315 lines)
+├── observability.py  # Timing, metrics collection, and trace context (374 lines)
 ├── layers.py         # HierarchicalLayer with O(1) ID lookups via _id_index (294 lines)
 ├── code_concepts.py  # Programming concept synonyms for code search (249 lines)
 ├── gaps.py           # Knowledge gap detection and anomaly analysis (245 lines)
 └── embeddings.py     # Graph embeddings (adjacency, spectral, random walk) (209 lines)
 ```
 
-**Total:** ~10,700 lines of core library code
+**Total:** ~11,100 lines of core library code
 
 **For detailed architecture documentation**, see [docs/architecture.md](docs/architecture.md), which includes:
 - Complete module dependency graphs (ASCII + Mermaid)
@@ -193,6 +200,7 @@ cortical/
 | Change gap detection | `gaps.py` - knowledge gap analysis |
 | Add fingerprinting | `fingerprint.py` - semantic fingerprints |
 | Modify chunk storage | `chunk_index.py` - git-friendly indexing |
+| Add observability features | `observability.py` - timing, metrics, traces |
 
 **Key data structures:**
 - `Minicolumn`: Core unit with `lateral_connections`, `typed_connections`, `feedforward_connections`, `feedback_connections`
@@ -244,7 +252,7 @@ tests/
 | Code concepts | `tests/test_code_concepts.py` |
 | Chunk indexing | `tests/test_chunk_indexing.py` |
 | Incremental updates | `tests/test_incremental_indexing.py` |
-| Intent queries | `tests/test_intent_query.py` |
+| Intent queries | `tests/unit/test_query.py` |
 
 **Running Tests:**
 
@@ -545,7 +553,7 @@ Key defaults to know:
 3. **Write docstrings** - Google style with Args/Returns sections
 4. **Update staleness tracking** if adding new computation:
    ```python
-   # In processor.py, add constant:
+   # In processor/core.py, add constant:
    COMP_YOUR_FEATURE = 'your_feature'
    # Mark stale in _mark_all_stale()
    # Mark fresh after computation
@@ -746,7 +754,7 @@ coverage run -m pytest tests/
        return {'result': ..., 'stats': ...}
    ```
 
-2. Add wrapper method to `CorticalTextProcessor` in `processor.py`:
+2. Add wrapper method to `CorticalTextProcessor` in the `processor/` package (appropriate mixin):
    ```python
    def compute_your_analysis(self, **kwargs) -> Dict[str, Any]:
        """Wrapper with docstring."""
@@ -757,10 +765,10 @@ coverage run -m pytest tests/
 
 ### Adding a New Query Function
 
-1. Add to `query.py` following existing patterns
+1. Add to the `query/` package following existing patterns (e.g., `query/search.py`)
 2. Use `get_expanded_query_terms()` helper for query expansion
 3. Use `layer.get_by_id()` for O(1) lookups, not iteration
-4. Add wrapper to `processor.py`
+4. Add wrapper to the `processor/` package (likely `processor/query_api.py`)
 5. Add tests in `tests/test_processor.py`
 
 ### Modifying Minicolumn Structure
@@ -909,6 +917,72 @@ python scripts/profile_full_analysis.py
 # This reveals which phases are slow and helps identify O(n²) bottlenecks
 ```
 
+### Observability and Metrics
+
+The processor includes built-in observability features for tracking performance and operational metrics.
+
+**Enable metrics collection:**
+```python
+# Create processor with metrics enabled
+processor = CorticalTextProcessor(enable_metrics=True)
+
+# Process documents and run queries (all operations are timed)
+processor.process_document("doc1", "Neural networks process data.")
+processor.compute_all()
+processor.find_documents_for_query("neural networks")
+
+# Get metrics summary
+print(processor.get_metrics_summary())
+```
+
+**Access metrics programmatically:**
+```python
+metrics = processor.get_metrics()
+
+# Check specific operation stats
+if "compute_all" in metrics:
+    stats = metrics["compute_all"]
+    print(f"Average: {stats['avg_ms']:.2f}ms")
+    print(f"Count: {stats['count']}")
+    print(f"Min: {stats['min_ms']:.2f}ms")
+    print(f"Max: {stats['max_ms']:.2f}ms")
+
+# Check cache performance
+if "query_cache_hits" in metrics:
+    hits = metrics["query_cache_hits"]["count"]
+    misses = metrics["query_cache_misses"]["count"]
+    hit_rate = hits / (hits + misses) * 100
+    print(f"Cache hit rate: {hit_rate:.1f}%")
+```
+
+**Automatically timed operations:**
+- `compute_all()` and all compute phases (PageRank, TF-IDF, clustering, etc.)
+- `process_document()` with doc_id context
+- `find_documents_for_query()` with query context
+- `save()` operations
+- Query cache hits/misses via `expand_query_cached()`
+
+**Control metrics collection:**
+```python
+# Disable metrics temporarily
+processor.disable_metrics()
+# ... operations not timed ...
+processor.enable_metrics()
+
+# Reset all metrics
+processor.reset_metrics()
+
+# Record custom metrics
+processor.record_metric("api_calls", 10)
+processor.record_metric("documents_processed", 100)
+```
+
+**Demo:**
+```bash
+# Run the observability demo
+python examples/observability_demo.py
+```
+
 ---
 
 ## Quick Reference
@@ -926,6 +1000,11 @@ python scripts/profile_full_analysis.py
 | Compare | `processor.compare_fingerprints(fp1, fp2)` |
 | Save state | `processor.save("corpus.pkl")` |
 | Load state | `processor = CorticalTextProcessor.load("corpus.pkl")` |
+| Enable metrics | `processor = CorticalTextProcessor(enable_metrics=True)` |
+| Get metrics | `processor.get_metrics()` |
+| Metrics summary | `processor.get_metrics_summary()` |
+| Reset metrics | `processor.reset_metrics()` |
+| Record metric | `processor.record_metric("name", count)` |
 | Run all tests | `python scripts/run_tests.py all` |
 | Run smoke tests | `python scripts/run_tests.py smoke` |
 | Run unit tests | `python scripts/run_tests.py unit` |
@@ -935,6 +1014,12 @@ python scripts/profile_full_analysis.py
 | Check coverage | `python -m coverage run --source=cortical -m pytest tests/ && python -m coverage report --include="cortical/*"` |
 | Run showcase | `python showcase.py` |
 | Profile analysis | `python scripts/profile_full_analysis.py` |
+| Create memory | `python scripts/new_memory.py "topic"` |
+| Create decision | `python scripts/new_memory.py "topic" --decision` |
+| Session handoff | `python scripts/session_handoff.py` |
+| Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
+| Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
+| Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
 
 ---
 
@@ -1161,9 +1246,9 @@ See `docs/text-as-memories.md` for the full guide.
 
 ## File Quick Links
 
-- **Main API**: `cortical/processor.py` - `CorticalTextProcessor` class
+- **Main API**: `cortical/processor/` - `CorticalTextProcessor` class (split into mixins)
 - **Graph algorithms**: `cortical/analysis.py` - PageRank, TF-IDF, clustering
-- **Search**: `cortical/query.py` - query expansion, document retrieval
+- **Search**: `cortical/query/` - query expansion, document retrieval (split into 8 modules)
 - **Data structures**: `cortical/minicolumn.py` - `Minicolumn`, `Edge`
 - **Configuration**: `cortical/config.py` - `CorticalConfig` dataclass
 - **Tests**: `tests/test_processor.py` - most comprehensive test file
