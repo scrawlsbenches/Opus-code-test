@@ -51,6 +51,7 @@ COMMITS_DIR = ML_DATA_DIR / "commits"
 SESSIONS_DIR = ML_DATA_DIR / "sessions"
 CHATS_DIR = ML_DATA_DIR / "chats"
 ACTIONS_DIR = ML_DATA_DIR / "actions"
+CURRENT_SESSION_FILE = ML_DATA_DIR / "current_session.json"
 
 # Training milestones
 MILESTONES = {
@@ -104,6 +105,160 @@ def validate_schema(data: dict, schema: dict, data_type: str) -> List[str]:
             elif not isinstance(data[field], expected):
                 errors.append(f"{data_type}: field '{field}' has type {type(data[field]).__name__}, expected {expected.__name__}")
     return errors
+
+
+# ============================================================================
+# SESSION MANAGEMENT (for commit-chat linking)
+# ============================================================================
+
+def get_current_session() -> Optional[Dict]:
+    """Get the current active session info.
+
+    Returns dict with 'id', 'started_at', 'chat_ids' or None if no session.
+    """
+    if CURRENT_SESSION_FILE.exists():
+        try:
+            with open(CURRENT_SESSION_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return None
+    return None
+
+
+def start_session(session_id: Optional[str] = None) -> str:
+    """Start a new session for commit-chat linking.
+
+    Args:
+        session_id: Optional session ID. Generated if not provided.
+
+    Returns:
+        The session ID.
+    """
+    ensure_dirs()
+
+    session_id = session_id or generate_session_id()
+    session_data = {
+        'id': session_id,
+        'started_at': datetime.now().isoformat(),
+        'chat_ids': [],
+        'action_ids': [],
+    }
+
+    atomic_write_json(CURRENT_SESSION_FILE, session_data)
+    return session_id
+
+
+def get_or_create_session() -> str:
+    """Get current session ID or create a new one.
+
+    Returns:
+        The current session ID.
+    """
+    session = get_current_session()
+    if session:
+        return session['id']
+    return start_session()
+
+
+def add_chat_to_session(chat_id: str):
+    """Record a chat ID in the current session for later commit linking."""
+    session = get_current_session()
+    if not session:
+        # Auto-start session if needed
+        session = {
+            'id': generate_session_id(),
+            'started_at': datetime.now().isoformat(),
+            'chat_ids': [],
+            'action_ids': [],
+        }
+
+    if chat_id not in session['chat_ids']:
+        session['chat_ids'].append(chat_id)
+        ensure_dirs()
+        atomic_write_json(CURRENT_SESSION_FILE, session)
+
+
+def link_commit_to_session_chats(commit_hash: str) -> List[str]:
+    """Link a commit to all chats from the current session.
+
+    Updates the chat entries to record that they resulted in this commit.
+    Also updates the commit's related_chats field.
+
+    Args:
+        commit_hash: The commit hash to link.
+
+    Returns:
+        List of chat IDs that were linked.
+    """
+    session = get_current_session()
+    if not session or not session.get('chat_ids'):
+        return []
+
+    linked_chats = []
+
+    # Update each chat entry
+    for chat_id in session['chat_ids']:
+        chat_file = find_chat_file(chat_id)
+        if chat_file and chat_file.exists():
+            try:
+                with open(chat_file, 'r', encoding='utf-8') as f:
+                    chat_data = json.load(f)
+
+                # Mark chat as resulting in commit
+                chat_data['resulted_in_commit'] = True
+                chat_data['related_commit'] = commit_hash
+
+                atomic_write_json(chat_file, chat_data)
+                linked_chats.append(chat_id)
+            except (json.JSONDecodeError, IOError):
+                continue
+
+    return linked_chats
+
+
+def find_chat_file(chat_id: str) -> Optional[Path]:
+    """Find the file path for a chat ID."""
+    if not CHATS_DIR.exists():
+        return None
+
+    # Chat files are organized by date
+    for date_dir in CHATS_DIR.iterdir():
+        if date_dir.is_dir():
+            chat_file = date_dir / f"{chat_id}.json"
+            if chat_file.exists():
+                return chat_file
+
+    return None
+
+
+def end_session(summary: Optional[str] = None) -> Optional[Dict]:
+    """End the current session and archive it.
+
+    Args:
+        summary: Optional summary of what was accomplished.
+
+    Returns:
+        The ended session data or None if no session.
+    """
+    session = get_current_session()
+    if not session:
+        return None
+
+    session['ended_at'] = datetime.now().isoformat()
+    session['summary'] = summary
+
+    # Save to sessions archive
+    ensure_dirs()
+    SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+    archive_file = SESSIONS_DIR / f"{session['started_at'][:10]}_{session['id']}.json"
+    atomic_write_json(archive_file, session)
+
+    # Remove current session file
+    if CURRENT_SESSION_FILE.exists():
+        CURRENT_SESSION_FILE.unlink()
+
+    return session
 
 
 # ============================================================================
@@ -434,9 +589,22 @@ def atomic_write_json(filepath: Path, data: dict):
         raise
 
 
-def save_commit_data(context: CommitContext, validate: bool = True):
-    """Save commit context to disk atomically with validation."""
+def save_commit_data(context: CommitContext, validate: bool = True, link_session: bool = True):
+    """Save commit context to disk atomically with validation.
+
+    Args:
+        context: The commit context to save.
+        validate: Whether to validate against schema.
+        link_session: Whether to link with current session chats.
+    """
     ensure_dirs()
+
+    # Link to current session if available
+    if link_session:
+        session = get_current_session()
+        if session:
+            context.session_id = session['id']
+            context.related_chats = session.get('chat_ids', [])
 
     data = asdict(context)
 
@@ -453,6 +621,12 @@ def save_commit_data(context: CommitContext, validate: bool = True):
 
     atomic_write_json(filepath, data)
     print(f"Saved commit data to {filepath}")
+
+    # Update chat entries to link back to this commit
+    if link_session and context.related_chats:
+        linked = link_commit_to_session_chats(context.hash)
+        if linked:
+            print(f"Linked {len(linked)} chat(s) to commit {context.hash[:8]}")
 
 
 def generate_chat_id() -> str:
@@ -499,12 +673,19 @@ def log_chat(
     tools_used: Optional[List[str]] = None,
     user_feedback: Optional[str] = None,
 ) -> ChatEntry:
-    """Log a chat query/response pair."""
+    """Log a chat query/response pair.
+
+    If no session_id is provided, uses the current session (creating one if needed).
+    The chat is automatically registered with the session for commit linking.
+    """
+    # Use current session or create one
+    if session_id is None:
+        session_id = get_or_create_session()
 
     entry = ChatEntry(
         id=generate_chat_id(),
         timestamp=datetime.now().isoformat(),
-        session_id=session_id or generate_session_id(),
+        session_id=session_id,
         query=query,
         response=response,
         files_referenced=files_referenced or [],
@@ -516,6 +697,10 @@ def log_chat(
     )
 
     save_chat_entry(entry)
+
+    # Register with session for commit linking
+    add_chat_to_session(entry.id)
+
     return entry
 
 
@@ -820,7 +1005,7 @@ def main():
         save_commit_data(context)
 
     elif command == "backfill":
-        # Backfill historical commits
+        # Backfill historical commits (no session linking for historical data)
         import argparse
         parser = argparse.ArgumentParser()
         parser.add_argument("-n", "--num", type=int, default=100,
@@ -834,7 +1019,8 @@ def main():
         for i, h in enumerate(hashes):
             try:
                 context = collect_commit_data(h)
-                save_commit_data(context)
+                # Disable session linking for historical backfill
+                save_commit_data(context, link_session=False)
                 if (i + 1) % 10 == 0:
                     print(f"  Progress: {i + 1}/{len(hashes)}")
             except Exception as e:
@@ -983,6 +1169,48 @@ def main():
         else:
             print("✅ All data validated successfully!")
         print("=" * 60 + "\n")
+
+    elif command == "session":
+        # Session management for commit-chat linking
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("action", choices=["start", "end", "status"],
+                            help="Session action")
+        parser.add_argument("--summary", help="Summary for end action")
+        args = parser.parse_args(sys.argv[2:])
+
+        if args.action == "start":
+            session_id = start_session()
+            print(f"Started session: {session_id}")
+            print("Chats will be linked to commits made in this session.")
+
+        elif args.action == "end":
+            session = end_session(args.summary)
+            if session:
+                print(f"Ended session: {session['id']}")
+                print(f"  Chats logged: {len(session.get('chat_ids', []))}")
+                print(f"  Duration: {session.get('started_at', '?')} → {session.get('ended_at', '?')}")
+            else:
+                print("No active session to end.")
+
+        elif args.action == "status":
+            session = get_current_session()
+            if session:
+                print("\n" + "=" * 50)
+                print("CURRENT SESSION")
+                print("=" * 50)
+                print(f"  ID:         {session['id']}")
+                print(f"  Started:    {session['started_at']}")
+                print(f"  Chats:      {len(session.get('chat_ids', []))}")
+                if session.get('chat_ids'):
+                    print("  Chat IDs:")
+                    for cid in session['chat_ids'][:5]:  # Show first 5
+                        print(f"    - {cid}")
+                    if len(session['chat_ids']) > 5:
+                        print(f"    ... and {len(session['chat_ids']) - 5} more")
+                print("=" * 50 + "\n")
+            else:
+                print("No active session. Use 'session start' to begin.")
 
     else:
         print(f"Unknown command: {command}")
