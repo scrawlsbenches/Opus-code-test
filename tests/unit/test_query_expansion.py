@@ -150,7 +150,7 @@ class TestExpandQuery:
         assert result["network"] > 0
 
     def test_lateral_expansion_weight_calculation(self, tokenizer):
-        """Expanded terms weighted by connection * pagerank * 0.6."""
+        """Expanded terms weighted by connection * pagerank * 0.6 (legacy PageRank-only mode)."""
         col1 = MockMinicolumn(
             content="neural",
             pagerank=1.0,
@@ -164,7 +164,7 @@ class TestExpandQuery:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
-        result = expand_query("neural", layers, tokenizer)
+        result = expand_query("neural", layers, tokenizer, tfidf_weight=0.0)
         # Expected: 10.0 * 0.5 * 0.6 = 3.0
         assert result["networks"] == pytest.approx(3.0, rel=0.01)
 
@@ -400,7 +400,7 @@ class TestExpandQuery:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
-        result = expand_query("term1 term2", layers, tokenizer)
+        result = expand_query("term1 term2", layers, tokenizer, tfidf_weight=0.0)
 
         # Target reachable from both term1 (weight 10) and term2 (weight 5)
         # Should use maximum weight path
@@ -940,9 +940,10 @@ class TestGetExpandedQueryTerms:
         col1 = MockMinicolumn(
             content="term1",
             pagerank=1.0,
+            tfidf=0.0,
             lateral_connections={"L0_target": 10.0}
         )
-        col2 = MockMinicolumn(content="target", pagerank=0.5)
+        col2 = MockMinicolumn(content="target", pagerank=0.5, tfidf=0.0)
         layer0 = MockHierarchicalLayer([col1, col2])
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
@@ -951,6 +952,17 @@ class TestGetExpandedQueryTerms:
             ("term1", "RelatedTo", "target", 0.6)
         ]
 
+        # Use tfidf_weight=0.0 via the expand_query internals
+        # We need to pass this through get_expanded_query_terms, but it doesn't expose tfidf_weight
+        # For now, we'll update the expected value based on default tfidf_weight=0.7
+        # With tfidf=0.0, pagerank=0.5, default tfidf_weight=0.7:
+        # term_score = 0.0 * 0.7 + 0.5 * 0.3 = 0.15
+        # Lateral: 10.0 * 0.15 * 0.6 = 0.9
+        # Semantic: 0.6 * 0.7 * 0.8 (discount) = 0.336
+        # Should use lateral (higher)
+
+        # TODO: Expose tfidf_weight in get_expanded_query_terms for full control
+        # For now, test with the new default behavior
         result = get_expanded_query_terms(
             "term1",
             layers,
@@ -960,10 +972,7 @@ class TestGetExpandedQueryTerms:
             semantic_relations=relations
         )
 
-        # Lateral: 10.0 * 0.5 * 0.6 = 3.0
-        # Semantic: 0.6 * 0.7 * 0.8 (discount) = 0.336
-        # Should use lateral (higher)
-        assert result["target"] == pytest.approx(3.0, rel=0.01)
+        assert result["target"] == pytest.approx(0.9, rel=0.01)
 
     def test_use_semantic_false(self, tokenizer):
         """use_semantic=False skips semantic expansion."""
@@ -1071,6 +1080,215 @@ class TestGetExpandedQueryTerms:
 # =============================================================================
 # ADDITIONAL EDGE CASE TESTS FOR IMPROVED COVERAGE
 # =============================================================================
+
+
+class TestExpandQueryTFIDFWeighting:
+    """Tests for TF-IDF weighting in query expansion (Task T-20251214-233116-3058-001)."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_tfidf_weight_default(self, tokenizer):
+        """Default tfidf_weight=0.7 uses 70% TF-IDF, 30% PageRank."""
+        col1 = MockMinicolumn(
+            content="neural",
+            pagerank=0.5,
+            tfidf=2.0,
+            lateral_connections={"L0_networks": 10.0}
+        )
+        col2 = MockMinicolumn(
+            content="networks",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        result = expand_query("neural", layers, tokenizer)
+
+        # Expected: 10.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6 = 10.0 * (1.05 + 0.24) * 0.6
+        #         = 10.0 * 1.29 * 0.6 = 7.74
+        expected_score = 10.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6
+        assert "networks" in result
+        assert result["networks"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_tfidf_weight_zero_uses_pagerank_only(self, tokenizer):
+        """tfidf_weight=0.0 uses only PageRank (legacy behavior)."""
+        col1 = MockMinicolumn(
+            content="neural",
+            pagerank=0.5,
+            tfidf=2.0,
+            lateral_connections={"L0_networks": 10.0}
+        )
+        col2 = MockMinicolumn(
+            content="networks",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        result = expand_query("neural", layers, tokenizer, tfidf_weight=0.0)
+
+        # Expected: 10.0 * 0.8 * 0.6 = 4.8 (PageRank only)
+        expected_score = 10.0 * 0.8 * 0.6
+        assert "networks" in result
+        assert result["networks"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_tfidf_weight_one_uses_tfidf_only(self, tokenizer):
+        """tfidf_weight=1.0 uses only TF-IDF."""
+        col1 = MockMinicolumn(
+            content="neural",
+            pagerank=0.5,
+            tfidf=2.0,
+            lateral_connections={"L0_networks": 10.0}
+        )
+        col2 = MockMinicolumn(
+            content="networks",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        result = expand_query("neural", layers, tokenizer, tfidf_weight=1.0)
+
+        # Expected: 10.0 * 1.5 * 0.6 = 9.0 (TF-IDF only)
+        expected_score = 10.0 * 1.5 * 0.6
+        assert "networks" in result
+        assert result["networks"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_tfidf_weight_affects_ranking(self, tokenizer):
+        """Different tfidf_weight values change expansion ranking."""
+        # Create scenario where PageRank and TF-IDF favor different terms
+        # term1: high PageRank, low TF-IDF
+        # term2: low PageRank, high TF-IDF
+        col_source = MockMinicolumn(
+            content="source",
+            pagerank=1.0,
+            tfidf=2.0,
+            lateral_connections={"L0_common": 5.0, "L0_rare": 5.0}
+        )
+        col_common = MockMinicolumn(
+            content="common",
+            pagerank=0.9,  # High PageRank (well-connected)
+            tfidf=0.5      # Low TF-IDF (not distinctive)
+        )
+        col_rare = MockMinicolumn(
+            content="rare",
+            pagerank=0.3,  # Low PageRank (not well-connected)
+            tfidf=2.5      # High TF-IDF (very distinctive)
+        )
+        layer0 = MockHierarchicalLayer([col_source, col_common, col_rare])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # With tfidf_weight=0.0 (PageRank only), "common" should rank higher
+        result_pagerank = expand_query("source", layers, tokenizer, tfidf_weight=0.0)
+        score_common_pr = result_pagerank["common"]
+        score_rare_pr = result_pagerank["rare"]
+        assert score_common_pr > score_rare_pr, "PageRank should favor 'common'"
+
+        # With tfidf_weight=1.0 (TF-IDF only), "rare" should rank higher
+        result_tfidf = expand_query("source", layers, tokenizer, tfidf_weight=1.0)
+        score_common_tfidf = result_tfidf["common"]
+        score_rare_tfidf = result_tfidf["rare"]
+        assert score_rare_tfidf > score_common_tfidf, "TF-IDF should favor 'rare'"
+
+    def test_tfidf_weight_half_equal_blend(self, tokenizer):
+        """tfidf_weight=0.5 gives equal weight to TF-IDF and PageRank."""
+        col1 = MockMinicolumn(
+            content="neural",
+            pagerank=0.6,
+            tfidf=2.0,
+            lateral_connections={"L0_networks": 10.0}
+        )
+        col2 = MockMinicolumn(
+            content="networks",
+            pagerank=0.8,
+            tfidf=1.2
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        result = expand_query("neural", layers, tokenizer, tfidf_weight=0.5)
+
+        # Expected: 10.0 * (1.2 * 0.5 + 0.8 * 0.5) * 0.6 = 10.0 * 1.0 * 0.6 = 6.0
+        expected_score = 10.0 * (1.2 * 0.5 + 0.8 * 0.5) * 0.6
+        assert "networks" in result
+        assert result["networks"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_tfidf_weight_multiple_expansions(self, tokenizer):
+        """tfidf_weight affects all lateral expansions consistently."""
+        col_source = MockMinicolumn(
+            content="source",
+            pagerank=1.0,
+            tfidf=2.0,
+            lateral_connections={
+                "L0_term1": 8.0,
+                "L0_term2": 6.0,
+                "L0_term3": 4.0
+            }
+        )
+        col1 = MockMinicolumn(content="term1", pagerank=0.5, tfidf=1.5)
+        col2 = MockMinicolumn(content="term2", pagerank=0.7, tfidf=1.0)
+        col3 = MockMinicolumn(content="term3", pagerank=0.9, tfidf=0.5)
+
+        layer0 = MockHierarchicalLayer([col_source, col1, col2, col3])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        result = expand_query("source", layers, tokenizer, tfidf_weight=0.8)
+
+        # Verify all terms are weighted consistently
+        # term1: 8.0 * (1.5 * 0.8 + 0.5 * 0.2) * 0.6 = 8.0 * 1.3 * 0.6 = 6.24
+        # term2: 6.0 * (1.0 * 0.8 + 0.7 * 0.2) * 0.6 = 6.0 * 0.94 * 0.6 = 3.384
+        # term3: 4.0 * (0.5 * 0.8 + 0.9 * 0.2) * 0.6 = 4.0 * 0.58 * 0.6 = 1.392
+        assert "term1" in result
+        assert "term2" in result
+        assert "term3" in result
+        expected_1 = 8.0 * (1.5 * 0.8 + 0.5 * 0.2) * 0.6
+        expected_2 = 6.0 * (1.0 * 0.8 + 0.7 * 0.2) * 0.6
+        expected_3 = 4.0 * (0.5 * 0.8 + 0.9 * 0.2) * 0.6
+        assert result["term1"] == pytest.approx(expected_1, rel=0.01)
+        assert result["term2"] == pytest.approx(expected_2, rel=0.01)
+        assert result["term3"] == pytest.approx(expected_3, rel=0.01)
+
+    def test_tfidf_weight_with_concepts_disabled(self, tokenizer):
+        """tfidf_weight applies to lateral expansion even with concepts disabled."""
+        col1 = MockMinicolumn(
+            content="neural",
+            pagerank=0.5,
+            tfidf=2.0,
+            lateral_connections={"L0_networks": 10.0}
+        )
+        col2 = MockMinicolumn(
+            content="networks",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        result = expand_query(
+            "neural",
+            layers,
+            tokenizer,
+            tfidf_weight=1.0,
+            use_concepts=False
+        )
+
+        # Should still apply TF-IDF weighting
+        expected_score = 10.0 * 1.5 * 0.6
+        assert "networks" in result
+        assert result["networks"] == pytest.approx(expected_score, rel=0.01)
 
 
 class TestExpandQueryEdgeCases:

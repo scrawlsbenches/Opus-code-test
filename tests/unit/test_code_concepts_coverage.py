@@ -482,3 +482,115 @@ class TestComprehensiveIntegration:
 
         # Verify we checked all groups
         assert len(seen_terms_per_group) == len(groups)
+
+
+# =============================================================================
+# SECURITY CONCEPT GROUP TESTS
+# =============================================================================
+
+
+class TestSecurityConceptGroup:
+    """Tests for the security concept group."""
+
+    def test_security_in_concept_groups(self):
+        """Test that 'security' is in the list of concept groups."""
+        groups = list_concept_groups()
+        assert 'security' in groups
+
+    def test_get_security_group_terms(self):
+        """Test that get_group_terms('security') returns expected security terms."""
+        terms = get_group_terms('security')
+
+        # Verify it's non-empty
+        assert len(terms) > 0
+
+        # Verify specific expected terms are present
+        expected_terms = [
+            'encrypt', 'decrypt', 'cipher', 'hash', 'salt', 'digest',
+            'secure', 'secret', 'key', 'certificate', 'signature',
+            'vulnerability', 'exploit', 'injection', 'xss', 'csrf', 'sanitize',
+            'firewall', 'whitelist', 'blacklist', 'allowlist', 'denylist',
+            'audit', 'scan', 'detect', 'block', 'filter'
+        ]
+
+        for term in expected_terms:
+            assert term in terms, f"Expected term '{term}' not found in security group"
+
+        # Verify all terms are sorted
+        assert terms == sorted(terms)
+
+    def test_get_related_terms_encrypt(self):
+        """Test that get_related_terms('encrypt') returns security-related terms."""
+        related = get_related_terms('encrypt', max_terms=10)
+
+        # Should get other security terms
+        assert len(related) > 0
+
+        # Verify 'encrypt' is not in its own related terms
+        assert 'encrypt' not in related
+
+        # All related terms should be from the security group
+        security_terms = CODE_CONCEPT_GROUPS['security']
+        for term in related:
+            assert term in security_terms
+
+    def test_get_concept_group_for_security_terms(self):
+        """Test that security terms map back to the 'security' group."""
+        security_terms = ['encrypt', 'decrypt', 'hash', 'sanitize', 'firewall']
+
+        for term in security_terms:
+            groups = get_concept_group(term)
+            assert 'security' in groups, f"Term '{term}' should belong to 'security' group"
+
+    def test_expand_security_concepts(self):
+        """Test expansion with security-related terms."""
+        # Use only 'encrypt' which is unique to security group
+        expanded = expand_code_concepts(['encrypt', 'decrypt'], max_expansions_per_term=5)
+
+        # Should have expansions from security group
+        assert len(expanded) > 0
+
+        # Input terms should not be in expansion
+        assert 'encrypt' not in expanded
+        assert 'decrypt' not in expanded
+
+        # Expanded terms should be from security group
+        security_terms = CODE_CONCEPT_GROUPS['security']
+        for term in expanded.keys():
+            assert term in security_terms
+
+    def test_security_group_overlap_with_validation(self):
+        """Test that 'sanitize' appears in both security and validation groups."""
+        # 'sanitize' should be in both security and validation
+        groups = get_concept_group('sanitize')
+        assert 'security' in groups
+        assert 'validation' in groups
+
+        # Get related terms for 'sanitize' - should get terms from both groups
+        related = get_related_terms('sanitize', max_terms=10)
+        assert len(related) > 0
+
+        security_terms = CODE_CONCEPT_GROUPS['security']
+        validation_terms = CODE_CONCEPT_GROUPS['validation']
+
+        # Some related terms should be from security or validation
+        for term in related:
+            assert term in security_terms or term in validation_terms
+
+    def test_security_group_overlap_with_logging(self):
+        """Test that 'audit' appears in both security and logging groups."""
+        # 'audit' should be in both security and logging
+        groups = get_concept_group('audit')
+        assert 'security' in groups
+        assert 'logging' in groups
+
+        # Get related terms for 'audit'
+        related = get_related_terms('audit', max_terms=10)
+        assert len(related) > 0
+
+        security_terms = CODE_CONCEPT_GROUPS['security']
+        logging_terms = CODE_CONCEPT_GROUPS['logging']
+
+        # Related terms should be from security or logging
+        for term in related:
+            assert term in security_terms or term in logging_terms
