@@ -25,6 +25,7 @@ from cortical.query.search import (
     search_with_index,
     query_with_spreading_activation,
     find_related_documents,
+    graph_boosted_search,
 )
 from cortical.tokenizer import Tokenizer
 from tests.unit.mocks import (
@@ -1048,3 +1049,131 @@ class TestFindRelatedDocuments:
         # If this works, get_by_id was used successfully
         assert len(result) == 1
         assert result[0][0] == "doc2"
+
+
+# =============================================================================
+# GRAPH_BOOSTED_SEARCH TESTS
+# =============================================================================
+
+
+class TestGraphBoostedSearch:
+    """Tests for graph_boosted_search hybrid scoring function."""
+
+    def test_basic_search(self):
+        """Basic search returns ranked documents."""
+        # Create tokens with tfidf and pagerank
+        neural = MockMinicolumn(
+            content="neural",
+            id="L0_neural",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 0.8, "doc2": 0.5},
+            document_ids={"doc1", "doc2"},
+            pagerank=0.3,
+            lateral_connections={}
+        )
+        networks = MockMinicolumn(
+            content="networks",
+            id="L0_networks",
+            layer=MockLayers.TOKENS,
+            tfidf=0.9,
+            tfidf_per_doc={"doc1": 0.7, "doc3": 0.4},
+            document_ids={"doc1", "doc3"},
+            pagerank=0.2,
+            lateral_connections={}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([neural, networks])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        results = graph_boosted_search("neural networks", layers, tokenizer, top_n=3)
+
+        assert len(results) > 0
+        # doc1 should rank highest (has both terms)
+        assert results[0][0] == "doc1"
+
+    def test_empty_query(self):
+        """Empty query returns empty results."""
+        layers = MockLayers.single_term("term", tfidf=1.0, doc_ids=["doc1"])
+        tokenizer = Tokenizer()
+
+        results = graph_boosted_search("", layers, tokenizer, top_n=5)
+        assert results == []
+
+    def test_no_matching_terms(self):
+        """Query with no matching terms returns empty results."""
+        layers = MockLayers.single_term("other", tfidf=1.0, doc_ids=["doc1"])
+        tokenizer = Tokenizer()
+
+        results = graph_boosted_search("nonexistent", layers, tokenizer, top_n=5)
+        assert results == []
+
+    def test_pagerank_boost(self):
+        """Documents with high-PageRank terms get boosted."""
+        # High PageRank term
+        important = MockMinicolumn(
+            content="important",
+            id="L0_important",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 1.0},
+            document_ids={"doc1"},
+            pagerank=0.9,  # High importance
+            lateral_connections={}
+        )
+        # Low PageRank term
+        common = MockMinicolumn(
+            content="common",
+            id="L0_common",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc2": 1.0},
+            document_ids={"doc2"},
+            pagerank=0.1,  # Low importance
+            lateral_connections={}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([important, common])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        # Search for both terms
+        results = graph_boosted_search(
+            "important common", layers, tokenizer, top_n=5,
+            pagerank_weight=0.5  # High PageRank influence
+        )
+
+        assert len(results) == 2
+        # doc1 should rank higher due to PageRank boost
+        assert results[0][0] == "doc1"
+
+    def test_respects_top_n(self):
+        """Returns at most top_n results."""
+        terms = []
+        for i in range(10):
+            terms.append(MockMinicolumn(
+                content=f"term{i}",
+                id=f"L0_term{i}",
+                layer=MockLayers.TOKENS,
+                tfidf=1.0,
+                tfidf_per_doc={f"doc{i}": 1.0},
+                document_ids={f"doc{i}"},
+                pagerank=0.1,
+                lateral_connections={}
+            ))
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer(terms)
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        # Query that matches multiple docs
+        results = graph_boosted_search(
+            " ".join(f"term{i}" for i in range(10)),
+            layers, tokenizer, top_n=3
+        )
+
+        assert len(results) <= 3
