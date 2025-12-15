@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "algorithm": "tfidf",
+  "timestamp": "2025-12-15T04:18:12.435168",
+  "system_info": {
+    "python_version": "3.11.14",
+    "platform": "Linux-4.4.0-x86_64-with-glibc2.39",
+    "processor": "x86_64"
+  },
+  "results": [
+    {
+      "name": "real_corpus",
+      "algorithm": "tfidf",
+      "timestamp": "2025-12-15T04:18:16.392542",
+      "corpus_size": 150,
+      "vocabulary_size": 11862,
+      "metrics": {
+        "corpus_size": 150,
+        "vocabulary_size": 11862,
+        "compute_time_ms": 16.29648966665324,
+        "mean_query_time_ms": 0.36824840000662107,
+        "max_query_time_ms": 0.5212204000144993,
+        "queries_tested": 8
+      }
+    }
+  ]
+}
