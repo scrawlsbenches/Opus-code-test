@@ -113,7 +113,7 @@ def count_up(n):
 """
         patterns = detect_patterns_in_text(code)
         assert 'generator' in patterns
-        assert 3 in patterns['generator']  # yield is on line 3
+        assert 4 in patterns['generator']  # yield is on line 4 (after leading newline)
 
     def test_detect_singleton(self):
         """Detect singleton pattern."""
@@ -155,8 +155,8 @@ class FileManager:
 """
         patterns = detect_patterns_in_text(code)
         assert 'context_manager' in patterns
-        assert 2 in patterns['context_manager']  # __enter__
-        assert 5 in patterns['context_manager']  # __exit__
+        assert 3 in patterns['context_manager']  # __enter__ (line 3 after leading newline)
+        assert 6 in patterns['context_manager']  # __exit__ (line 6 after leading newline)
 
     def test_detect_decorator(self):
         """Detect decorator pattern."""
@@ -184,8 +184,8 @@ finally:
 """
         patterns = detect_patterns_in_text(code)
         assert 'error_handling' in patterns
-        assert 1 in patterns['error_handling']  # try
-        assert 3 in patterns['error_handling']  # except
+        assert 2 in patterns['error_handling']  # try (line 2 after leading newline)
+        assert 6 in patterns['error_handling']  # finally (line 6 after leading newline)
 
     def test_detect_custom_exception(self):
         """Detect custom exception pattern."""
