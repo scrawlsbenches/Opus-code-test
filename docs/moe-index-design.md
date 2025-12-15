@@ -2,7 +2,7 @@
 
 **Author:** Claude (AI Assistant)
 **Date:** 2025-12-15
-**Updated:** 2025-12-15 (integrated with BM25/GB-BM25 implementations)
+**Updated:** 2025-12-15 (integrated with BM25/GB-BM25 implementations, processor package refactoring)
 **Status:** Design Proposal
 **Version:** 1.1
 **Prerequisites:** [moe-index-knowledge-transfer.md](moe-index-knowledge-transfer.md), [knowledge-transfer-bm25-optimization.md](knowledge-transfer-bm25-optimization.md)
@@ -43,6 +43,7 @@
 > - **GB-BM25** (`cortical/query/search.py:graph_boosted_search()`) - Proto-MoE combining BM25 + PageRank + Proximity
 > - **Document length tracking** (`processor.doc_lengths`, `processor.avg_doc_length`)
 > - **Performance optimizations** - 34.5% faster `compute_all()`
+> - **Processor package refactoring** - Mixin-based composition provides architectural template
 >
 > The MoE architecture generalizes GB-BM25's signal fusion into separate experts with intelligent routing.
 

@@ -2,7 +2,7 @@
 
 **Author:** Claude (AI Assistant)
 **Date:** 2025-12-15
-**Updated:** 2025-12-15 (integrated with BM25/GB-BM25 implementations)
+**Updated:** 2025-12-15 (integrated with BM25/GB-BM25, ML data collection, processor package refactoring)
 **Status:** Design Proposal
 **Related:** [architecture.md](architecture.md), [algorithms.md](algorithms.md), [knowledge-transfer-bm25-optimization.md](knowledge-transfer-bm25-optimization.md)
 
@@ -421,6 +421,13 @@ success_rate[query_pattern][expert] = successes / total
 
 weight[expert] = success_rate[pattern][expert] / Σ(success_rates)
 ```
+
+> **Integration opportunity:** The codebase now includes ML data collection infrastructure (`scripts/ml_data_collector.py`) that tracks query-response pairs with feedback ratings. This can be leveraged for feedback-adaptive routing:
+> - Use `ml_data_collector.py feedback` to record which experts produced helpful results
+> - Query patterns from collected data can inform routing weights
+> - CI integration tracks which code changes succeed/fail
+>
+> See `.claude/skills/ml-logger/SKILL.md` for collection patterns.
 
 ### 4.4 Result Fusion Strategies
 

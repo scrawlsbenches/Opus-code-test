@@ -2,7 +2,7 @@
 
 **Author:** Claude (AI Assistant)
 **Date:** 2025-12-15
-**Updated:** 2025-12-15 (reduced scope: BM25 and GB-BM25 already implemented)
+**Updated:** 2025-12-15 (reduced scope: BM25 and GB-BM25 already implemented, processor package refactoring)
 **Status:** Proposed
 **Prerequisites:**
 - [moe-index-knowledge-transfer.md](moe-index-knowledge-transfer.md)
@@ -25,6 +25,8 @@ This document outlines a **6-phase implementation plan** for the Mixture of Expe
 > - Expert abstraction layer and routing
 > - Structural, temporal, and episodic experts (new capabilities)
 > - Cross-pollination framework (generalized from GB-BM25)
+
+> **Architecture Note:** The processor has been refactored from a monolithic `processor.py` (3,234 lines) into a modular `cortical/processor/` package using mixin-based composition (CoreMixin, DocumentsMixin, ComputeMixin, QueryAPIMixin, etc.). This pattern provides a template for the MoE package structure and demonstrates backward-compatible refactoring.
 
 **Total Estimated Effort (Revised):**
 - New code: ~2,100 lines (down from ~2,800 - BM25 already done)
