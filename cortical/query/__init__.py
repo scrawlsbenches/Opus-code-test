@@ -66,6 +66,7 @@ from .search import (
     search_with_index,
     query_with_spreading_activation,
     find_related_documents,
+    graph_boosted_search,
 )
 
 # Document type boosting and ranking
@@ -143,6 +144,7 @@ __all__ = [
     'search_with_index',
     'query_with_spreading_activation',
     'find_related_documents',
+    'graph_boosted_search',
     # Ranking
     'DOC_TYPE_BOOSTS',
     'CONCEPTUAL_KEYWORDS',

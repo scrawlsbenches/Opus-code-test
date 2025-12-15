@@ -184,7 +184,7 @@ Add documentation explaining:
 
 ### No Code Changes Required
 
-The existing default values in `cortical/analysis.py:cluster_by_louvain()` and `cortical/processor.py:build_concept_clusters()` should remain at `resolution=1.0`.
+The existing default values in `cortical/analysis.py:cluster_by_louvain()` and `cortical/processor/compute.py:build_concept_clusters()` should remain at `resolution=1.0`.
 
 ---
 

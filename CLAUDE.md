@@ -42,6 +42,12 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 - Say "I don't know" when uncertain, then investigate
 - Correct course based on evidence, not pride
 
+**Native Over External**
+- Prefer implementing features ourselves over 3rd party APIs/actions
+- External dependencies add maintenance burden and security risk
+- If we can build it in <20000 lines, build it ourselves
+- Avoid deprecated or unmaintained external tools
+
 When you see "neural" or "cortical" in this codebase, remember: these are metaphors for standard IR algorithms, not actual neural implementations.
 
 ---
@@ -66,6 +72,29 @@ Layer 3 (DOCUMENTS) → Full documents          [IT analogy: objects]
 
 ---
 
+## Development Environment Setup
+
+**Before running tests with coverage**, install dev dependencies:
+
+```bash
+# Option 1: Install as editable package with dev deps (recommended)
+pip install -e ".[dev]"
+
+# Option 2: Install from requirements.txt
+pip install -r requirements.txt
+```
+
+This installs: `coverage`, `pytest`, `mcp`, `pyyaml`
+
+**Verify installation:**
+```bash
+python -c "import coverage; print('coverage OK')"
+```
+
+> **Note:** The library itself has zero runtime dependencies. Dev dependencies are only needed for testing and coverage reporting.
+
+---
+
 ## AI Agent Onboarding
 
 **New to this codebase?** Follow these steps to get oriented quickly:
@@ -85,8 +114,8 @@ python scripts/generate_ai_metadata.py
 Instead of reading entire source files, start with `.ai_meta` files:
 
 ```bash
-# Get structured overview of any module
-cat cortical/processor.py.ai_meta
+# Get structured overview of any module (processor is now a package)
+cat cortical/processor/__init__.py.ai_meta
 ```
 
 **What metadata provides:**
@@ -118,7 +147,7 @@ python scripts/search_codebase.py "your query here"
 
 ```bash
 # I need to understand how search works
-cat cortical/query.py.ai_meta | head -100    # Get overview
+cat cortical/query/__init__.py.ai_meta | head -100    # Get overview (query is a package)
 python scripts/search_codebase.py "expand query"  # Find specific code
 # Then read specific line ranges as needed
 ```
@@ -156,13 +185,14 @@ cortical/
 ├── minicolumn.py     # Core data structure with typed Edge connections (357 lines)
 ├── config.py         # CorticalConfig dataclass with validation (352 lines)
 ├── fingerprint.py    # Semantic fingerprinting and similarity (315 lines)
+├── observability.py  # Timing, metrics collection, and trace context (374 lines)
 ├── layers.py         # HierarchicalLayer with O(1) ID lookups via _id_index (294 lines)
 ├── code_concepts.py  # Programming concept synonyms for code search (249 lines)
 ├── gaps.py           # Knowledge gap detection and anomaly analysis (245 lines)
 └── embeddings.py     # Graph embeddings (adjacency, spectral, random walk) (209 lines)
 ```
 
-**Total:** ~10,700 lines of core library code
+**Total:** ~11,100 lines of core library code
 
 **For detailed architecture documentation**, see [docs/architecture.md](docs/architecture.md), which includes:
 - Complete module dependency graphs (ASCII + Mermaid)
@@ -193,6 +223,7 @@ cortical/
 | Change gap detection | `gaps.py` - knowledge gap analysis |
 | Add fingerprinting | `fingerprint.py` - semantic fingerprints |
 | Modify chunk storage | `chunk_index.py` - git-friendly indexing |
+| Add observability features | `observability.py` - timing, metrics, traces |
 
 **Key data structures:**
 - `Minicolumn`: Core unit with `lateral_connections`, `typed_connections`, `feedforward_connections`, `feedback_connections`
@@ -244,7 +275,7 @@ tests/
 | Code concepts | `tests/test_code_concepts.py` |
 | Chunk indexing | `tests/test_chunk_indexing.py` |
 | Incremental updates | `tests/test_incremental_indexing.py` |
-| Intent queries | `tests/test_intent_query.py` |
+| Intent queries | `tests/unit/test_query.py` |
 
 **Running Tests:**
 
@@ -545,7 +576,7 @@ Key defaults to know:
 3. **Write docstrings** - Google style with Args/Returns sections
 4. **Update staleness tracking** if adding new computation:
    ```python
-   # In processor.py, add constant:
+   # In processor/core.py, add constant:
    COMP_YOUR_FEATURE = 'your_feature'
    # Mark stale in _mark_all_stale()
    # Mark fresh after computation
@@ -746,7 +777,7 @@ coverage run -m pytest tests/
        return {'result': ..., 'stats': ...}
    ```
 
-2. Add wrapper method to `CorticalTextProcessor` in `processor.py`:
+2. Add wrapper method to `CorticalTextProcessor` in the `processor/` package (appropriate mixin):
    ```python
    def compute_your_analysis(self, **kwargs) -> Dict[str, Any]:
        """Wrapper with docstring."""
@@ -757,10 +788,10 @@ coverage run -m pytest tests/
 
 ### Adding a New Query Function
 
-1. Add to `query.py` following existing patterns
+1. Add to the `query/` package following existing patterns (e.g., `query/search.py`)
 2. Use `get_expanded_query_terms()` helper for query expansion
 3. Use `layer.get_by_id()` for O(1) lookups, not iteration
-4. Add wrapper to `processor.py`
+4. Add wrapper to the `processor/` package (likely `processor/query_api.py`)
 5. Add tests in `tests/test_processor.py`
 
 ### Modifying Minicolumn Structure
@@ -805,6 +836,66 @@ def find_documents(
 
 ---
 
+## Scoring Algorithms
+
+The processor supports multiple scoring algorithms for term weighting:
+
+### BM25 (Default)
+
+BM25 (Best Match 25) is the default scoring algorithm, optimized for code search:
+
+```python
+from cortical import CorticalTextProcessor
+from cortical.config import CorticalConfig
+
+# BM25 with default parameters (recommended)
+config = CorticalConfig(scoring_algorithm='bm25')
+
+# Tune BM25 parameters if needed
+config = CorticalConfig(
+    scoring_algorithm='bm25',
+    bm25_k1=1.2,  # Term frequency saturation (0.0-3.0, default 1.2)
+    bm25_b=0.75   # Length normalization (0.0-1.0, default 0.75)
+)
+processor = CorticalTextProcessor(config=config)
+```
+
+**Parameters:**
+- `bm25_k1`: Controls term frequency saturation. Higher values give more weight to term frequency.
+- `bm25_b`: Controls document length normalization. Set to 0.0 to disable length normalization.
+
+### TF-IDF (Legacy)
+
+Traditional TF-IDF scoring is still available:
+
+```python
+config = CorticalConfig(scoring_algorithm='tfidf')
+```
+
+### Graph-Boosted Search (GB-BM25)
+
+A hybrid search combining BM25 with graph signals:
+
+```python
+# Standard search (uses BM25 under the hood)
+results = processor.find_documents_for_query("query")
+
+# Graph-boosted search (adds PageRank + proximity signals)
+results = processor.graph_boosted_search(
+    "query",
+    pagerank_weight=0.3,   # Weight for term importance (0-1)
+    proximity_weight=0.2   # Weight for connected terms (0-1)
+)
+```
+
+**GB-BM25 combines:**
+1. BM25 base score (term relevance)
+2. PageRank boost (important terms rank higher)
+3. Proximity boost (connected query terms boost documents)
+4. Coverage boost (documents matching more terms rank higher)
+
+---
+
 ## Performance Considerations
 
 1. **Use `get_by_id()` for ID lookups** - O(1) vs O(n) iteration
@@ -815,6 +906,7 @@ def find_documents(
 6. **Use `fast_find_documents()`** for ~2-3x faster search on large corpora
 7. **Pre-build index** with `build_search_index()` for fastest repeated queries
 8. **Watch for O(n²) patterns** in loops over connections—use limits like `max_bigrams_per_term`
+9. **Use `graph_boosted_search()`** for hybrid scoring with PageRank signals
 
 ---
 
@@ -909,6 +1001,72 @@ python scripts/profile_full_analysis.py
 # This reveals which phases are slow and helps identify O(n²) bottlenecks
 ```
 
+### Observability and Metrics
+
+The processor includes built-in observability features for tracking performance and operational metrics.
+
+**Enable metrics collection:**
+```python
+# Create processor with metrics enabled
+processor = CorticalTextProcessor(enable_metrics=True)
+
+# Process documents and run queries (all operations are timed)
+processor.process_document("doc1", "Neural networks process data.")
+processor.compute_all()
+processor.find_documents_for_query("neural networks")
+
+# Get metrics summary
+print(processor.get_metrics_summary())
+```
+
+**Access metrics programmatically:**
+```python
+metrics = processor.get_metrics()
+
+# Check specific operation stats
+if "compute_all" in metrics:
+    stats = metrics["compute_all"]
+    print(f"Average: {stats['avg_ms']:.2f}ms")
+    print(f"Count: {stats['count']}")
+    print(f"Min: {stats['min_ms']:.2f}ms")
+    print(f"Max: {stats['max_ms']:.2f}ms")
+
+# Check cache performance
+if "query_cache_hits" in metrics:
+    hits = metrics["query_cache_hits"]["count"]
+    misses = metrics["query_cache_misses"]["count"]
+    hit_rate = hits / (hits + misses) * 100
+    print(f"Cache hit rate: {hit_rate:.1f}%")
+```
+
+**Automatically timed operations:**
+- `compute_all()` and all compute phases (PageRank, TF-IDF, clustering, etc.)
+- `process_document()` with doc_id context
+- `find_documents_for_query()` with query context
+- `save()` operations
+- Query cache hits/misses via `expand_query_cached()`
+
+**Control metrics collection:**
+```python
+# Disable metrics temporarily
+processor.disable_metrics()
+# ... operations not timed ...
+processor.enable_metrics()
+
+# Reset all metrics
+processor.reset_metrics()
+
+# Record custom metrics
+processor.record_metric("api_calls", 10)
+processor.record_metric("documents_processed", 100)
+```
+
+**Demo:**
+```bash
+# Run the observability demo
+python examples/observability_demo.py
+```
+
 ---
 
 ## Quick Reference
@@ -919,6 +1077,7 @@ python scripts/profile_full_analysis.py
 | Build network | `processor.compute_all()` |
 | Search | `processor.find_documents_for_query(query)` |
 | Fast search | `processor.fast_find_documents(query)` |
+| Hybrid search | `processor.graph_boosted_search(query)` |
 | Code search | `processor.expand_query_for_code(query)` |
 | Intent search | `processor.search_by_intent("where do we...")` |
 | RAG passages | `processor.find_passages_for_query(query)` |
@@ -926,6 +1085,11 @@ python scripts/profile_full_analysis.py
 | Compare | `processor.compare_fingerprints(fp1, fp2)` |
 | Save state | `processor.save("corpus.pkl")` |
 | Load state | `processor = CorticalTextProcessor.load("corpus.pkl")` |
+| Enable metrics | `processor = CorticalTextProcessor(enable_metrics=True)` |
+| Get metrics | `processor.get_metrics()` |
+| Metrics summary | `processor.get_metrics_summary()` |
+| Reset metrics | `processor.reset_metrics()` |
+| Record metric | `processor.record_metric("name", count)` |
 | Run all tests | `python scripts/run_tests.py all` |
 | Run smoke tests | `python scripts/run_tests.py smoke` |
 | Run unit tests | `python scripts/run_tests.py unit` |
@@ -935,6 +1099,12 @@ python scripts/profile_full_analysis.py
 | Check coverage | `python -m coverage run --source=cortical -m pytest tests/ && python -m coverage report --include="cortical/*"` |
 | Run showcase | `python showcase.py` |
 | Profile analysis | `python scripts/profile_full_analysis.py` |
+| Create memory | `python scripts/new_memory.py "topic"` |
+| Create decision | `python scripts/new_memory.py "topic" --decision` |
+| Session handoff | `python scripts/session_handoff.py` |
+| Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
+| Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
+| Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
 
 ---
 
@@ -1159,11 +1329,130 @@ See `docs/text-as-memories.md` for the full guide.
 
 ---
 
+## ML Data Collection: Project-Specific Micro-Model
+
+**Fully automatic. Zero configuration required.**
+
+ML data collection starts automatically when you open this project in Claude Code. Every session is tracked, every commit is captured, and transcripts are saved when sessions end.
+
+### Automatic Startup
+
+When a Claude Code session starts in this project:
+1. **Session tracking begins** - A new ML session is created for commit-chat linking
+2. **Git hooks are installed** - post-commit and pre-push hooks are added if missing
+3. **Stats are displayed** - Current collection progress is shown
+
+This is configured in `.claude/settings.local.json` via the `SessionStart` hook.
+
+### What Gets Collected
+
+| Data Type | Location | Contents |
+|-----------|----------|----------|
+| **Commits** | `.git-ml/commits/` | Git history with diff hunks, temporal context, CI results |
+| **Chats** | `.git-ml/chats/` | Query/response pairs with files touched and tools used |
+| **Sessions** | `.git-ml/sessions/` | Development sessions linking chats to commits |
+| **Actions** | `.git-ml/actions/` | Individual tool uses and operations |
+
+**Note:** All ML data is stored in `.git-ml/` which is gitignored and regeneratable via backfill.
+
+### Quick Commands
+
+```bash
+# Check collection progress
+python scripts/ml_data_collector.py stats
+
+# Estimate when training becomes viable
+python scripts/ml_data_collector.py estimate
+
+# Validate collected data
+python scripts/ml_data_collector.py validate
+
+# Session management
+python scripts/ml_data_collector.py session status
+python scripts/ml_data_collector.py session start
+python scripts/ml_data_collector.py session end --summary "What was accomplished"
+
+# Generate session handoff document
+python scripts/ml_data_collector.py handoff
+
+# Record CI results (manual)
+python scripts/ml_data_collector.py ci set --commit abc123 --result pass --coverage 89.5
+
+# CI auto-capture (reads from GitHub Actions environment)
+python scripts/ml_data_collector.py ci-autocapture
+
+# Backfill historical commits
+python scripts/ml_data_collector.py backfill -n 100
+
+# Collect GitHub PR/Issue data (requires gh CLI)
+python scripts/ml_data_collector.py github collect           # Collect recent PRs and issues
+python scripts/ml_data_collector.py github stats             # Show GitHub data counts
+python scripts/ml_data_collector.py github fetch-pr --number 42  # Fetch specific PR
+```
+
+### Disabling Collection
+
+```bash
+# Disable for current session
+export ML_COLLECTION_ENABLED=0
+
+# Stats and validation still work when disabled
+```
+
+### Automatic Session Capture
+
+**Pre-configured. No setup needed.**
+
+The ML data collector automatically captures complete session transcripts when Claude Code sessions end. This is already configured in `.claude/settings.local.json`.
+
+**What gets captured automatically:**
+- Full query/response pairs from the transcript
+- All tool uses (Task, Read, Edit, Bash, Grep, etc.)
+- Files referenced and modified
+- Thinking blocks (if present)
+- Session linkage to commits
+
+**Process transcript manually:**
+```bash
+# Process a specific transcript file
+python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl
+
+# Dry run (show what would be captured without saving)
+python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl --dry-run --verbose
+```
+
+### Integration
+
+Data collection is fully automatic via hooks configured in `.claude/settings.local.json`:
+
+| Hook | Trigger | Action |
+|------|---------|--------|
+| **SessionStart** | Session begins | Starts ML session, installs git hooks, shows stats |
+| **Stop** | Session ends | Captures full transcript with all exchanges |
+| **post-commit** | After commit | Captures commit metadata with diff hunks |
+| **pre-push** | Before push | Reports collection stats |
+| **CI workflow** | GitHub Actions | Auto-captures CI pass/fail results |
+
+**Hook files:**
+- `scripts/ml-session-start-hook.sh` - SessionStart handler
+- `scripts/ml-session-capture-hook.sh` - Stop handler
+
+**CI Integration:**
+The GitHub Actions workflow (`.github/workflows/ci.yml`) includes an `ml-ci-capture` job that automatically records CI results for each commit. This runs after the coverage-report job and captures:
+- Pass/fail status
+- Coverage percentage (when available)
+- Workflow and job metadata
+- Run ID for traceability
+
+See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
+
+---
+
 ## File Quick Links
 
-- **Main API**: `cortical/processor.py` - `CorticalTextProcessor` class
+- **Main API**: `cortical/processor/` - `CorticalTextProcessor` class (split into mixins)
 - **Graph algorithms**: `cortical/analysis.py` - PageRank, TF-IDF, clustering
-- **Search**: `cortical/query.py` - query expansion, document retrieval
+- **Search**: `cortical/query/` - query expansion, document retrieval (split into 8 modules)
 - **Data structures**: `cortical/minicolumn.py` - `Minicolumn`, `Edge`
 - **Configuration**: `cortical/config.py` - `CorticalConfig` dataclass
 - **Tests**: `tests/test_processor.py` - most comprehensive test file

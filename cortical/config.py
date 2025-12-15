@@ -105,6 +105,11 @@ class CorticalConfig:
     max_query_expansions: int = 10
     semantic_expansion_discount: float = 0.7
 
+    # Scoring algorithm settings
+    scoring_algorithm: str = 'bm25'  # 'tfidf' or 'bm25'
+    bm25_k1: float = 1.2  # Term frequency saturation parameter (0.0-3.0, typical 1.2-2.0)
+    bm25_b: float = 0.75  # Length normalization parameter (0.0-1.0)
+
     # Cross-layer propagation
     cross_layer_damping: float = 0.7
 
@@ -239,6 +244,20 @@ class CorticalConfig:
                 f"cross_layer_damping must be between 0 and 1, got {self.cross_layer_damping}"
             )
 
+        # BM25 validation
+        if self.scoring_algorithm not in ('tfidf', 'bm25'):
+            raise ValueError(
+                f"scoring_algorithm must be 'tfidf' or 'bm25', got {self.scoring_algorithm}"
+            )
+        if not (0 <= self.bm25_k1 <= 3):
+            raise ValueError(
+                f"bm25_k1 must be between 0 and 3, got {self.bm25_k1}"
+            )
+        if not (0 <= self.bm25_b <= 1):
+            raise ValueError(
+                f"bm25_b must be between 0 and 1, got {self.bm25_b}"
+            )
+
     def copy(self) -> 'CorticalConfig':
         """
         Create a copy of this configuration.
@@ -262,6 +281,9 @@ class CorticalConfig:
             chunk_overlap=self.chunk_overlap,
             max_query_expansions=self.max_query_expansions,
             semantic_expansion_discount=self.semantic_expansion_discount,
+            scoring_algorithm=self.scoring_algorithm,
+            bm25_k1=self.bm25_k1,
+            bm25_b=self.bm25_b,
             cross_layer_damping=self.cross_layer_damping,
             bigram_component_weight=self.bigram_component_weight,
             bigram_chain_weight=self.bigram_chain_weight,
@@ -301,6 +323,9 @@ class CorticalConfig:
             'chunk_overlap': self.chunk_overlap,
             'max_query_expansions': self.max_query_expansions,
             'semantic_expansion_discount': self.semantic_expansion_discount,
+            'scoring_algorithm': self.scoring_algorithm,
+            'bm25_k1': self.bm25_k1,
+            'bm25_b': self.bm25_b,
             'cross_layer_damping': self.cross_layer_damping,
             'bigram_component_weight': self.bigram_component_weight,
             'bigram_chain_weight': self.bigram_chain_weight,

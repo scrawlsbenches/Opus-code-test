@@ -158,7 +158,7 @@ Incremental indexing is the key to efficient dog-fooding. Instead of rebuilding 
 python scripts/search_codebase.py "query expansion"
 
 # Output shows file:line references
-# cortical/query.py:55  [0.847]
+# cortical/query/expansion.py:XX  [0.847]
 #   def get_expanded_query_terms(...)
 ```
 

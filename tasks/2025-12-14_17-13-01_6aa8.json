@@ -2,27 +2,34 @@
   "version": 1,
   "session_id": "6aa8",
   "started_at": "2025-12-14T17:13:01.505357",
-  "saved_at": "2025-12-14T17:45:30.067738",
+  "saved_at": "2025-12-14T23:21:24.133461",
   "tasks": [
     {
       "id": "T-20251214-171301-6aa8-001",
       "title": "Investigate semantic search relevance for domain-specific queries",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "arch",
       "description": "During dog-fooding, searching for 'security test fuzzing' returned staleness tests instead of actual security-related code. The search seems to weight common terms like 'test' too heavily.\n\nInvestigation areas:\n- Query expansion may be pulling in too many generic terms\n- TF-IDF weighting may not properly discount common programming terms\n- Domain-specific boosting could improve relevance for security/testing queries\n\nRelated: The code_concepts.py has programming synonyms but may need security-specific terms.\n\nDiscovered during: Dog-fooding session 2025-12-14",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-14T17:13:01.505725",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T23:21:24.133269",
+      "completed_at": "2025-12-14T23:21:24.133269",
       "context": {},
-      "retrospective": null
+      "retrospective": {
+        "notes": "Investigation complete: documented 4 root causes and prioritized fixes in samples/memories/2025-12-14-search-relevance-investigation.md",
+        "duration_minutes": 368,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-14T23:21:24.133323"
+      }
     },
     {
       "id": "T-20251214-172207-6aa8-002",
       "title": "Add memory document templates and CLI",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "feature",
       "description": "Create templates and CLI tooling for the text-as-memories system:\n\n1. Memory entry template (memories/YYYY-MM-DD-topic.md)\n2. Decision record template (decisions/adr-NNN-title.md)\n3. Concept consolidation template (concepts/topic.md)\n\nCLI commands:\n- python scripts/new_memory.py 'What I learned today'\n- python scripts/new_decision.py 'ADR: Choose X over Y'\n\nAuto-populate:\n- Date, tags placeholder, related links section\n- Git author info\n- Link to recent tasks\n\nSee: docs/text-as-memories.md for format reference",
@@ -30,14 +37,14 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:22:07.596921",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T20:56:22.394615",
       "context": {},
-      "retrospective": null
+      "retrospective": "Completed in Director Mode session. See knowledge transfer: samples/memories/2025-12-14_20-55-23_632e-session-knowledge-transfer-director-mode-orchestra.md"
     },
     {
       "id": "T-20251214-172212-6aa8-003",
       "title": "Index memories and decisions in semantic search",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "feature",
       "description": "Extend the codebase indexer to include memory documents:\n\n1. Add samples/memories/ and samples/decisions/ to indexed paths\n2. Add doc-type detection for memory vs decision vs concept docs\n3. Apply appropriate boosting (decisions may be more authoritative)\n4. Support [[wiki-link]] extraction for cross-references\n\nIntegration points:\n- scripts/index_codebase.py: Add memory paths\n- cortical/processor: Add memory-specific metadata\n- scripts/search_codebase.py: Show memory type in results\n\nEnables: Searching across code AND institutional knowledge",
@@ -45,14 +52,14 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:22:12.010789",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T20:56:22.394615",
       "context": {},
-      "retrospective": null
+      "retrospective": "Completed in Director Mode session. See knowledge transfer: samples/memories/2025-12-14_20-55-23_632e-session-knowledge-transfer-director-mode-orchestra.md"
     },
     {
       "id": "T-20251214-172216-6aa8-004",
       "title": "Auto-generate memory entries from completed tasks",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "feature",
       "description": "When a task is marked complete, offer to generate a memory entry:\n\n1. Extract task title, description, retrospective\n2. Create memory document with learnings\n3. Link to related files from task context\n4. Add tags from task category\n\nIntegration:\n- TaskSession.complete_task() could trigger this\n- Optional flag: --create-memory\n- Template pulls from task retrospective field\n\nBenefits:\n- Captures learnings automatically\n- Builds institutional memory from task work\n- Creates searchable knowledge base",
@@ -60,14 +67,14 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:22:16.074170",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T21:37:01.725943",
       "context": {},
-      "retrospective": null
+      "retrospective": "Added generate_memory_from_task() and create_memory_for_task() to task_utils.py"
     },
     {
       "id": "T-20251214-172238-6aa8-005",
       "title": "Add wiki-link cross-reference resolution",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "feature",
       "description": "Parse and resolve [[wiki-style]] links in memory documents:\n\n1. Extract [[link]] patterns from markdown files\n2. Resolve to actual file paths (fuzzy matching)\n3. Build bidirectional link graph\n4. Add 'backlinks' section showing what links TO a document\n\nUse cases:\n- [[concepts/pagerank.md]] resolves to actual path\n- [[2025-12-14]] finds memory entries for that date\n- Search results show connection strength via links\n\nImplementation:\n- Add link extraction to tokenizer or separate module\n- Store links as typed_connections (relation_type='references')\n- Query can traverse link graph for related docs",
@@ -75,29 +82,36 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:22:38.635912",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T21:49:19.784103",
       "context": {},
-      "retrospective": null
+      "retrospective": "Implemented scripts/resolve_wiki_links.py with extract, resolve, backlinks, and directory check functionality"
     },
     {
       "id": "T-20251214-172243-6aa8-006",
       "title": "Memory consolidation suggestions",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "feature",
       "description": "Analyze memories to suggest consolidation opportunities:\n\n1. Find memories with high term overlap (similar topics)\n2. Identify repeated concepts across multiple entries\n3. Suggest creating concept documents from clusters\n4. Track 'memory age' - old unconsolidated memories\n\nAlgorithm:\n- Use existing Louvain clustering on memory documents\n- Memories in same cluster = consolidation candidates\n- High PageRank terms across cluster = concept name\n\nOutput:\n- 'These 5 memories all discuss PageRank, consider creating concepts/pagerank.md'\n- 'Memory from 2025-12-10 has 80% overlap with 2025-12-14, merge?'\n\nCLI: python scripts/suggest_consolidation.py",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-14T17:22:43.647861",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-14T23:20:56.056922",
+      "completed_at": "2025-12-14T23:20:56.056922",
       "context": {},
-      "retrospective": null
+      "retrospective": {
+        "notes": "Implemented scripts/suggest_consolidation.py (605 lines) with clustering, overlap detection, and age tracking",
+        "duration_minutes": 358,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-14T23:20:56.056957"
+      }
     },
     {
       "id": "T-20251214-172247-6aa8-007",
       "title": "Session handoff memory generator",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "feature",
       "description": "Generate memory documents for agent session continuity:\n\nWhen ending a session, create a handoff document containing:\n1. What was accomplished (from completed tasks)\n2. Current state (uncommitted changes, running processes)\n3. Blockers or issues encountered\n4. Suggested next steps\n5. Key context the next session needs\n\nIntegration:\n- Hook into session end (or manual trigger)\n- Pull from task retrospectives\n- Include git status summary\n- Link to relevant code locations\n\nFormat: memories/session-handoff-YYYY-MM-DD-HHMM.md\n\nThis enables smooth continuation across agent sessions\nand builds institutional memory of development flow.",
@@ -105,14 +119,14 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:22:47.634689",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T21:37:01.725943",
       "context": {},
-      "retrospective": null
+      "retrospective": "Implemented scripts/session_handoff.py with full CLI support"
     },
     {
       "id": "T-20251214-173831-6aa8-008",
       "title": "Make memory/decision filenames merge-safe",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "arch",
       "description": "Apply the same merge-safe pattern from tasks to memories and decisions.\n\nCurrent patterns (can conflict):\n- memories: YYYY-MM-DD-topic.md\n- decisions: adr-NNN-title.md\n\nProposed patterns (merge-safe):\n- memories: YYYY-MM-DD_HH-MM-SS_XXXX-topic.md\n- decisions: adr-YYYYMMDD-HHMMSS-XXXX-title.md\n\nChanges needed:\n1. Update memory-manager skill templates\n2. Update /knowledge-transfer command\n3. Update docs/text-as-memories.md examples\n4. Add helper: scripts/new_memory.py with auto-generated safe names\n5. Add helper: scripts/new_decision.py with auto-generated safe names\n\nAlternative: Use topic-hash suffix instead of timestamp\nExample: 2025-12-14-dogfooding-a1b2.md\n\nThe session ID approach mirrors the proven task system design.",
@@ -120,14 +134,14 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:38:31.813288",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T20:56:22.394615",
       "context": {},
-      "retrospective": null
+      "retrospective": "Completed in Director Mode session. See knowledge transfer: samples/memories/2025-12-14_20-55-23_632e-session-knowledge-transfer-director-mode-orchestra.md"
     },
     {
       "id": "T-20251214-174107-6aa8-009",
       "title": "Update README.md with comprehensive project overview",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "docs",
       "description": "The README.md needs to be updated to reflect current project state and be more engaging.\n\nCurrent issues:\n- May be outdated with recent features\n- Missing text-as-memories system\n- Missing security features (HMAC signing, Bandit CI)\n- Missing Claude skills and commands\n\nREADME should include:\n1. Compelling intro with the 'visual cortex for text' metaphor\n2. Quick start (5-line example)\n3. Key features table with badges\n4. Architecture diagram (ASCII or link to docs)\n5. Installation instructions\n6. Links to docs/quickstart.md for detailed guide\n7. Security section (pickle warnings, HMAC signing)\n8. Claude Code integration (skills, commands)\n9. Contributing section\n10. License\n\nMake it visually appealing with:\n- Feature badges\n- Code examples that actually run\n- Clear navigation to detailed docs\n- The 'neurons that fire together' quote",
@@ -135,14 +149,14 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:41:07.348022",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T20:56:22.394615",
       "context": {},
-      "retrospective": null
+      "retrospective": "Completed in Director Mode session. See knowledge transfer: samples/memories/2025-12-14_20-55-23_632e-session-knowledge-transfer-director-mode-orchestra.md"
     },
     {
       "id": "T-20251214-174112-6aa8-010",
       "title": "Audit markdown files for staleness",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "docs",
       "description": "Review all markdown documentation for outdated content.\n\nFiles to audit:\n- README.md - main project readme\n- CLAUDE.md - development guide\n- CONTRIBUTING.md - contribution guide\n- docs/*.md - all documentation files\n- samples/**/*.md - sample documents\n\nCheck for:\n1. Outdated code examples (do they still run?)\n2. Missing new features (text-as-memories, security, skills)\n3. Broken internal links ([[wiki-style]] and markdown links)\n4. Incorrect file paths or line numbers\n5. Deprecated APIs still documented\n6. Missing new configuration options\n7. Outdated task references\n\nCreate a staleness report:\n- List files with issues\n- Categorize by severity (broken vs outdated vs minor)\n- Link to specific lines needing updates\n\nConsider adding a CI check for:\n- Broken markdown links\n- Code blocks that don't parse\n- References to non-existent files",
@@ -150,14 +164,14 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:41:12.741156",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T20:56:22.394615",
       "context": {},
-      "retrospective": null
+      "retrospective": "Completed in Director Mode session. See knowledge transfer: samples/memories/2025-12-14_20-55-23_632e-session-knowledge-transfer-director-mode-orchestra.md"
     },
     {
       "id": "T-20251214-174116-6aa8-011",
       "title": "Add markdown link checker to CI",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "infra",
       "description": "Add automated checking for broken links in markdown files.\n\nTools to consider:\n- markdown-link-check (npm)\n- mlc (rust-based, fast)\n- lychee (rust-based, comprehensive)\n\nCI integration:\n```yaml\nmarkdown-lint:\n  runs-on: ubuntu-latest\n  steps:\n    - uses: actions/checkout@v4\n    - name: Check markdown links\n      uses: gaurav-nelson/github-action-markdown-link-check@v1\n      with:\n        use-quiet-mode: 'yes'\n        config-file: '.markdown-link-check.json'\n```\n\nConfig file should:\n- Ignore external URLs (or check with timeout)\n- Check internal file references\n- Check anchor links (#section-name)\n- Whitelist known-good external domains\n\nAlso check:\n- [[wiki-style]] links resolve to real files\n- Code file references (cortical/foo.py:123) exist",
@@ -165,9 +179,9 @@
       "effort": "medium",
       "created_at": "2025-12-14T17:41:16.926225",
       "updated_at": null,
-      "completed_at": null,
+      "completed_at": "2025-12-14T21:37:01.725943",
       "context": {},
-      "retrospective": null
+      "retrospective": "Added markdown-links job to CI with .markdown-link-check.json config"
     },
     {
       "id": "T-20251214-174530-6aa8-012",

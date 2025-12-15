@@ -5,6 +5,8 @@ Test Runner Script
 
 Convenient script for running different test categories locally.
 
+Automatically installs pytest/coverage if missing (can be disabled).
+
 Usage:
     python scripts/run_tests.py              # Run all tests
     python scripts/run_tests.py smoke        # Run smoke tests only
@@ -18,10 +20,17 @@ Usage:
     python scripts/run_tests.py coverage     # Run with coverage report
 
 Options:
-    -v, --verbose    Show verbose output
-    -q, --quiet      Show minimal output
-    --no-capture     Show print statements (pytest -s)
-    --failfast       Stop on first failure
+    -v, --verbose       Show verbose output
+    -q, --quiet         Show minimal output
+    --no-capture        Show print statements (pytest -s)
+    --failfast, -x      Stop on first failure
+    --no-auto-install   Do not auto-install missing dependencies
+    --check-deps        Only check dependencies, do not run tests
+
+Dependency Handling:
+    By default, this script will attempt to install pytest and coverage
+    if they are not available. Use --no-auto-install to disable this.
+    Use --check-deps to see what's installed without running tests.
 """
 
 import argparse
@@ -29,6 +38,115 @@ import subprocess
 import sys
 import os
 import time
+
+# Test dependencies with their pip package names
+TEST_DEPENDENCIES = {
+    'pytest': 'pytest',
+    'coverage': 'coverage',
+}
+
+# Cache for dependency check results
+_deps_checked = False
+_deps_available = {}
+
+
+def check_dependency(module_name):
+    """Check if a Python module is importable."""
+    try:
+        __import__(module_name)
+        return True
+    except ImportError:
+        return False
+
+
+def install_dependency(package_name, quiet=True):
+    """Attempt to install a package via pip."""
+    cmd = [sys.executable, '-m', 'pip', 'install', package_name]
+    if quiet:
+        cmd.append('-q')
+
+    try:
+        result = subprocess.run(cmd, capture_output=quiet, timeout=120)
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, Exception):
+        return False
+
+
+def ensure_test_dependencies(auto_install=True, verbose=False):
+    """
+    Ensure test dependencies are available.
+
+    Args:
+        auto_install: If True, attempt to install missing dependencies
+        verbose: If True, print status messages
+
+    Returns:
+        dict: {module_name: bool} indicating availability
+
+    This function:
+    1. Checks if pytest/coverage are installed
+    2. If missing and auto_install=True, attempts to install them
+    3. Returns availability status for each dependency
+    4. Caches results to avoid repeated checks
+    """
+    global _deps_checked, _deps_available
+
+    # Return cached results if already checked
+    if _deps_checked:
+        return _deps_available
+
+    missing = []
+
+    for module_name, package_name in TEST_DEPENDENCIES.items():
+        if check_dependency(module_name):
+            _deps_available[module_name] = True
+            if verbose:
+                print(f"  ✓ {module_name} available")
+        else:
+            missing.append((module_name, package_name))
+            _deps_available[module_name] = False
+
+    # Attempt to install missing dependencies
+    if missing and auto_install:
+        if verbose:
+            print(f"\n📦 Installing missing test dependencies...")
+
+        for module_name, package_name in missing:
+            if verbose:
+                print(f"  Installing {package_name}...", end=' ', flush=True)
+
+            if install_dependency(package_name, quiet=not verbose):
+                _deps_available[module_name] = True
+                if verbose:
+                    print("✓")
+            else:
+                if verbose:
+                    print("✗")
+                # Don't print error here - let caller handle it
+
+    _deps_checked = True
+    return _deps_available
+
+
+def get_fallback_command(category):
+    """
+    Get a fallback unittest command when pytest is unavailable.
+
+    Returns a command that will work without pytest.
+    """
+    # Map categories to unittest-compatible test discovery
+    paths = []
+
+    if category in CATEGORIES:
+        paths = list(CATEGORIES[category].get('paths', []))
+        paths.extend(CATEGORIES[category].get('also_run', []))
+    elif category in SUITES:
+        for cat in SUITES[category]:
+            paths.extend(CATEGORIES[cat].get('paths', []))
+            paths.extend(CATEGORIES[cat].get('also_run', []))
+
+    return [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v']
+
 
 # Ensure we're running from repo root
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -107,7 +225,20 @@ def print_header(text, char='='):
 
 def run_pytest(paths, verbose=False, quiet=False, no_capture=False,
                failfast=False, no_coverage=False):
-    """Run pytest with the given paths and options."""
+    """Run pytest with the given paths and options.
+
+    If pytest is not available, falls back to unittest with a warning.
+    """
+    deps = ensure_test_dependencies(auto_install=True, verbose=verbose)
+
+    if not deps.get('pytest', False):
+        print("\n⚠️  pytest not available and could not be installed.")
+        print("   Falling back to unittest (some features may not work).")
+        print("   To install manually: pip install pytest\n")
+        return subprocess.run(
+            [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v']
+        ).returncode
+
     cmd = [sys.executable, '-m', 'pytest']
 
     # Add paths
@@ -194,8 +325,22 @@ def run_category(category, verbose=False, quiet=False, no_capture=False,
 
 
 def run_with_coverage():
-    """Run full test suite with coverage."""
+    """Run full test suite with coverage.
+
+    If coverage is not available, attempts to install it first.
+    Falls back to running tests without coverage if installation fails.
+    """
     print_header("Running Full Test Suite with Coverage")
+
+    deps = ensure_test_dependencies(auto_install=True, verbose=True)
+
+    if not deps.get('coverage', False):
+        print("\n⚠️  coverage not available and could not be installed.")
+        print("   Running tests without coverage.")
+        print("   To install manually: pip install coverage\n")
+        return subprocess.run(
+            [sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v']
+        ).returncode
 
     cmd = [
         sys.executable, '-m', 'coverage', 'run', '--source=cortical',
@@ -237,8 +382,33 @@ def main():
                         help='Show print statements')
     parser.add_argument('--failfast', '-x', action='store_true',
                         help='Stop on first failure')
+    parser.add_argument('--no-auto-install', action='store_true',
+                        help='Do not auto-install missing dependencies')
+    parser.add_argument('--check-deps', action='store_true',
+                        help='Only check dependencies, do not run tests')
 
     args = parser.parse_args()
+
+    # Handle dependency check mode
+    if args.check_deps:
+        print("Checking test dependencies...")
+        deps = ensure_test_dependencies(auto_install=False, verbose=True)
+        missing = [k for k, v in deps.items() if not v]
+        if missing:
+            print(f"\n❌ Missing: {', '.join(missing)}")
+            print(f"   Install with: pip install {' '.join(missing)}")
+            sys.exit(1)
+        else:
+            print("\n✅ All test dependencies available")
+            sys.exit(0)
+
+    # Pre-check dependencies (silently auto-install unless --no-auto-install)
+    if not args.no_auto_install and not args.quiet:
+        deps = ensure_test_dependencies(auto_install=True, verbose=args.verbose)
+        missing = [k for k, v in deps.items() if not v]
+        if missing and not args.quiet:
+            print(f"⚠️  Some dependencies unavailable: {', '.join(missing)}")
+            print("   Tests will run with reduced functionality.\n")
 
     # Handle coverage mode
     if args.category == 'coverage':

@@ -427,3 +427,69 @@ jobs:
             else:
                 print('✅ No secrets detected in source files')
         PYTHON_SCRIPT
+
+  # ==========================================================================
+  # Markdown Link Checker (runs in parallel with all other jobs)
+  # Uses our own Python script - NO external dependencies/actions
+  # Principle: Prefer native implementations over 3rd party APIs/actions
+  # ==========================================================================
+  markdown-links:
+    name: "🔗 Markdown Links"
+    runs-on: ubuntu-latest
+    continue-on-error: true  # Non-blocking initially
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Check wiki-links in markdown files
+      run: |
+        echo "Checking wiki-links in documentation..."
+        python scripts/resolve_wiki_links.py --check docs/ || true
+        python scripts/resolve_wiki_links.py --check samples/memories/ || true
+        python scripts/resolve_wiki_links.py --check samples/decisions/ || true
+        echo "Link check complete (informational only)"
+
+  # ==========================================================================
+  # ML Data Collection: CI Result Auto-Capture
+  # Records test results for model training
+  # ==========================================================================
+  ml-ci-capture:
+    name: "📊 ML CI Capture"
+    runs-on: ubuntu-latest
+    needs: [coverage-report]
+    if: always()  # Run even if tests fail
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for commit lookup
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Capture CI results for ML training
+      env:
+        CI_RESULT: ${{ needs.coverage-report.result == 'success' && 'pass' || 'fail' }}
+        CI_COVERAGE: ${{ needs.coverage-report.outputs.coverage || '' }}
+        GITHUB_SHA: ${{ github.sha }}
+        GITHUB_WORKFLOW: ${{ github.workflow }}
+        GITHUB_JOB: ${{ github.job }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_RUN_NUMBER: ${{ github.run_number }}
+      run: |
+        echo "=== Recording CI Results for ML Training ==="
+        echo "Commit: $GITHUB_SHA"
+        echo "Result: $CI_RESULT"
+
+        # Ensure .git-ml directory exists
+        mkdir -p .git-ml/commits
+
+        # Try to record the result (may fail if commit not in data yet)
+        python scripts/ml_data_collector.py ci-autocapture || echo "Note: Commit may not be in ML data yet"
+
+        echo "=== ML CI Capture Complete ==="
