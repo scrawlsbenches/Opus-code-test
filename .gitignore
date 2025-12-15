@@ -96,9 +96,10 @@ cortical/proto/__pycache__/
 # ML training data - tiered sharing strategy
 # Commits: SHARED (derived from git history, not sensitive)
 # Shared patterns: SHARED (aggregated, anonymized)
-# Chats/Sessions/Actions: LOCAL (contain conversations, sensitive)
+# Chats/Sessions/Actions/GitHub: LOCAL (contain conversations, sensitive)
 .git-ml/chats/
 .git-ml/sessions/
 .git-ml/actions/
+.git-ml/github/
 .git-ml/current_session.json
 .git-ml/contribution_consent.json

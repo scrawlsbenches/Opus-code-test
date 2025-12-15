@@ -48,6 +48,15 @@ Usage:
     # Generate shared patterns (safe to commit)
     python scripts/ml_data_collector.py generate-patterns     # Creates .git-ml/shared/
 
+    # Collect GitHub PR/Issue data (requires gh CLI)
+    python scripts/ml_data_collector.py github collect        # Collect recent PRs and issues
+    python scripts/ml_data_collector.py github stats          # Show GitHub data counts
+    python scripts/ml_data_collector.py github fetch-pr --number 42   # Fetch specific PR
+    python scripts/ml_data_collector.py github fetch-issue --number 10  # Fetch specific issue
+
+    # Auto-capture CI results (called from GitHub Actions)
+    python scripts/ml_data_collector.py ci-autocapture        # Read from CI environment vars
+
     # Test redaction patterns
     python scripts/ml_data_collector.py redact-test --text "api_key=secret123"
 """
@@ -95,6 +104,7 @@ SESSIONS_DIR = ML_DATA_DIR / "sessions"
 CHATS_DIR = ML_DATA_DIR / "chats"
 ACTIONS_DIR = ML_DATA_DIR / "actions"
 SHARED_DIR = ML_DATA_DIR / "shared"  # Aggregated patterns - safe to commit
+GITHUB_DIR = ML_DATA_DIR / "github"  # PR/Issue data - local (contains discussions)
 CURRENT_SESSION_FILE = ML_DATA_DIR / "current_session.json"
 
 # Training milestones
@@ -2016,6 +2026,8 @@ def count_data() -> Dict[str, int]:
         "chats": 0,
         "actions": 0,
         "sessions": 0,
+        "prs": 0,
+        "issues": 0,
     }
 
     # Count commits
@@ -2033,6 +2045,11 @@ def count_data() -> Dict[str, int]:
     # Count sessions
     if SESSIONS_DIR.exists():
         counts["sessions"] = len(list(SESSIONS_DIR.glob("*.json")))
+
+    # Count GitHub data
+    if GITHUB_DIR.exists():
+        counts["prs"] = len(list(GITHUB_DIR.glob("pr_*.json")))
+        counts["issues"] = len(list(GITHUB_DIR.glob("issue_*.json")))
 
     return counts
 
@@ -2096,6 +2113,9 @@ def print_stats():
     print(f"   Chats:    {counts['chats']:,}")
     print(f"   Actions:  {counts['actions']:,}")
     print(f"   Sessions: {counts['sessions']:,}")
+    if counts.get('prs', 0) > 0 or counts.get('issues', 0) > 0:
+        print(f"   PRs:      {counts.get('prs', 0):,}")
+        print(f"   Issues:   {counts.get('issues', 0):,}")
 
     print("\n💾 Data Sizes:")
     for name, size in sizes.items():
@@ -2658,6 +2678,343 @@ def generate_shared_patterns():
     print(f"\n✅ Shared patterns generated in {SHARED_DIR}/")
     print("   These files are safe to commit and share.")
     print("=" * 60 + "\n")
+
+
+# ============================================================================
+# GITHUB DATA COLLECTION (PR/Issue context)
+# ============================================================================
+
+def fetch_pr_data(pr_number: int) -> Optional[Dict]:
+    """Fetch PR data from GitHub using gh CLI.
+
+    Args:
+        pr_number: PR number to fetch.
+
+    Returns:
+        Dict with PR data or None if not found/gh not available.
+    """
+    try:
+        # Use gh CLI to fetch PR data
+        result = subprocess.run(
+            ["gh", "pr", "view", str(pr_number), "--json",
+             "number,title,body,state,author,createdAt,mergedAt,closedAt,"
+             "headRefName,baseRefName,commits,files,comments,reviews"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            return None
+
+        pr_data = json.loads(result.stdout)
+
+        # Add metadata
+        pr_data['fetched_at'] = datetime.now().isoformat()
+        pr_data['type'] = 'pull_request'
+
+        # Redact sensitive content from body and comments
+        if pr_data.get('body'):
+            pr_data['body'] = redact_sensitive_data(pr_data['body'])
+        if pr_data.get('comments'):
+            for comment in pr_data['comments']:
+                if comment.get('body'):
+                    comment['body'] = redact_sensitive_data(comment['body'])
+        if pr_data.get('reviews'):
+            for review in pr_data['reviews']:
+                if review.get('body'):
+                    review['body'] = redact_sensitive_data(review['body'])
+
+        return pr_data
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def fetch_issue_data(issue_number: int) -> Optional[Dict]:
+    """Fetch issue data from GitHub using gh CLI.
+
+    Args:
+        issue_number: Issue number to fetch.
+
+    Returns:
+        Dict with issue data or None if not found/gh not available.
+    """
+    try:
+        result = subprocess.run(
+            ["gh", "issue", "view", str(issue_number), "--json",
+             "number,title,body,state,author,createdAt,closedAt,labels,comments"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            return None
+
+        issue_data = json.loads(result.stdout)
+
+        # Add metadata
+        issue_data['fetched_at'] = datetime.now().isoformat()
+        issue_data['type'] = 'issue'
+
+        # Redact sensitive content
+        if issue_data.get('body'):
+            issue_data['body'] = redact_sensitive_data(issue_data['body'])
+        if issue_data.get('comments'):
+            for comment in issue_data['comments']:
+                if comment.get('body'):
+                    comment['body'] = redact_sensitive_data(comment['body'])
+
+        return issue_data
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def save_github_data(data: Dict, data_type: str) -> Path:
+    """Save GitHub data (PR or issue) to file.
+
+    Args:
+        data: PR or issue data dict.
+        data_type: 'pr' or 'issue'.
+
+    Returns:
+        Path to saved file.
+    """
+    GITHUB_DIR.mkdir(parents=True, exist_ok=True)
+
+    number = data.get('number', 'unknown')
+    filename = f"{data_type}_{number}.json"
+    filepath = GITHUB_DIR / filename
+
+    atomic_write_json(filepath, data)
+    return filepath
+
+
+def collect_recent_prs(limit: int = 20) -> List[Dict]:
+    """Collect recent PRs from the repository.
+
+    Args:
+        limit: Maximum number of PRs to collect.
+
+    Returns:
+        List of collected PR data dicts.
+    """
+    try:
+        # Get list of recent PRs
+        result = subprocess.run(
+            ["gh", "pr", "list", "--limit", str(limit), "--state", "all",
+             "--json", "number"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            return []
+
+        pr_list = json.loads(result.stdout)
+        collected = []
+
+        for pr in pr_list:
+            pr_number = pr['number']
+            # Check if already collected
+            existing = GITHUB_DIR / f"pr_{pr_number}.json"
+            if existing.exists():
+                continue
+
+            pr_data = fetch_pr_data(pr_number)
+            if pr_data:
+                save_github_data(pr_data, 'pr')
+                collected.append(pr_data)
+
+        return collected
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def collect_recent_issues(limit: int = 20) -> List[Dict]:
+    """Collect recent issues from the repository.
+
+    Args:
+        limit: Maximum number of issues to collect.
+
+    Returns:
+        List of collected issue data dicts.
+    """
+    try:
+        result = subprocess.run(
+            ["gh", "issue", "list", "--limit", str(limit), "--state", "all",
+             "--json", "number"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            return []
+
+        issue_list = json.loads(result.stdout)
+        collected = []
+
+        for issue in issue_list:
+            issue_number = issue['number']
+            existing = GITHUB_DIR / f"issue_{issue_number}.json"
+            if existing.exists():
+                continue
+
+            issue_data = fetch_issue_data(issue_number)
+            if issue_data:
+                save_github_data(issue_data, 'issue')
+                collected.append(issue_data)
+
+        return collected
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def link_commit_to_pr(commit_hash: str) -> Optional[int]:
+    """Find the PR that merged a commit, if any.
+
+    Args:
+        commit_hash: The commit hash to look up.
+
+    Returns:
+        PR number if found, None otherwise.
+    """
+    try:
+        # Use gh to find associated PR
+        result = subprocess.run(
+            ["gh", "pr", "list", "--search", commit_hash, "--state", "merged",
+             "--json", "number", "--limit", "1"],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+
+        if result.returncode == 0:
+            prs = json.loads(result.stdout)
+            if prs:
+                return prs[0]['number']
+
+    except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+        pass
+
+    return None
+
+
+def get_github_stats() -> Dict[str, int]:
+    """Get counts of collected GitHub data.
+
+    Returns:
+        Dict with 'prs' and 'issues' counts.
+    """
+    if not GITHUB_DIR.exists():
+        return {'prs': 0, 'issues': 0}
+
+    prs = len(list(GITHUB_DIR.glob("pr_*.json")))
+    issues = len(list(GITHUB_DIR.glob("issue_*.json")))
+
+    return {'prs': prs, 'issues': issues}
+
+
+# ============================================================================
+# CI AUTO-CAPTURE (for GitHub Actions integration)
+# ============================================================================
+
+def ci_autocapture() -> bool:
+    """Auto-capture CI results from GitHub Actions environment.
+
+    Reads environment variables set by GitHub Actions and records
+    CI results for the current commit.
+
+    Environment variables used:
+        GITHUB_SHA: Commit hash
+        CI_RESULT: pass/fail/error (set by workflow)
+        CI_TESTS_PASSED: Number of tests passed
+        CI_TESTS_FAILED: Number of tests failed
+        CI_COVERAGE: Coverage percentage
+        CI_DURATION: Duration in seconds
+
+    Returns:
+        True if CI result was recorded, False otherwise.
+    """
+    commit_hash = os.getenv('GITHUB_SHA')
+    if not commit_hash:
+        # Try to get from git if not in Actions
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode == 0:
+                commit_hash = result.stdout.strip()
+        except Exception:
+            pass
+
+    if not commit_hash:
+        print("❌ No commit hash available")
+        return False
+
+    # Get CI result from environment
+    result = os.getenv('CI_RESULT', 'unknown')
+    if result not in ('pass', 'fail', 'error', 'pending', 'unknown'):
+        result = 'unknown'
+
+    # Collect details from environment
+    details = {}
+
+    tests_passed = os.getenv('CI_TESTS_PASSED')
+    if tests_passed:
+        try:
+            details['tests_passed'] = int(tests_passed)
+        except ValueError:
+            pass
+
+    tests_failed = os.getenv('CI_TESTS_FAILED')
+    if tests_failed:
+        try:
+            details['tests_failed'] = int(tests_failed)
+        except ValueError:
+            pass
+
+    coverage = os.getenv('CI_COVERAGE')
+    if coverage:
+        try:
+            details['coverage'] = float(coverage)
+        except ValueError:
+            pass
+
+    duration = os.getenv('CI_DURATION')
+    if duration:
+        try:
+            details['duration_seconds'] = float(duration)
+        except ValueError:
+            pass
+
+    # Get job name and workflow
+    details['workflow'] = os.getenv('GITHUB_WORKFLOW', 'unknown')
+    details['job'] = os.getenv('GITHUB_JOB', 'unknown')
+    details['run_id'] = os.getenv('GITHUB_RUN_ID', '')
+    details['run_number'] = os.getenv('GITHUB_RUN_NUMBER', '')
+
+    # Update the commit
+    success = update_commit_ci_result(commit_hash, result, details if details else None)
+
+    if success:
+        print(f"✅ CI result recorded for {commit_hash[:8]}: {result}")
+        if details.get('coverage'):
+            print(f"   Coverage: {details['coverage']}%")
+        if details.get('tests_passed') is not None:
+            print(f"   Tests: {details.get('tests_passed', 0)} passed, {details.get('tests_failed', 0)} failed")
+    else:
+        # Commit might not be in our data yet - that's OK
+        print(f"⚠️  Commit {commit_hash[:8]} not found in ML data (may not be collected yet)")
+
+    return success
 
 
 # ============================================================================
@@ -3425,6 +3782,77 @@ Your name and email (if provided) will be used for:
     elif command == "generate-patterns":
         # Generate shared pattern files (safe to commit)
         generate_shared_patterns()
+
+    elif command == "github":
+        # Collect GitHub PR/Issue data
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("action", choices=["collect", "stats", "fetch-pr", "fetch-issue"],
+                            help="GitHub data action")
+        parser.add_argument("--limit", type=int, default=20,
+                            help="Max items to collect (default: 20)")
+        parser.add_argument("--number", type=int,
+                            help="PR or issue number (for fetch-pr/fetch-issue)")
+        args = parser.parse_args(sys.argv[2:])
+
+        if args.action == "collect":
+            print("\n" + "=" * 60)
+            print("COLLECTING GITHUB DATA")
+            print("=" * 60)
+
+            # Collect PRs
+            print(f"\n🔀 Collecting PRs (limit: {args.limit})...")
+            prs = collect_recent_prs(limit=args.limit)
+            print(f"   Collected {len(prs)} new PRs")
+
+            # Collect Issues
+            print(f"\n📋 Collecting Issues (limit: {args.limit})...")
+            issues = collect_recent_issues(limit=args.limit)
+            print(f"   Collected {len(issues)} new issues")
+
+            # Show totals
+            stats = get_github_stats()
+            print(f"\n📊 Total GitHub data:")
+            print(f"   PRs: {stats['prs']}")
+            print(f"   Issues: {stats['issues']}")
+            print("=" * 60 + "\n")
+
+        elif args.action == "stats":
+            stats = get_github_stats()
+            print(f"\n📊 GitHub Data Statistics:")
+            print(f"   PRs collected: {stats['prs']}")
+            print(f"   Issues collected: {stats['issues']}")
+
+        elif args.action == "fetch-pr":
+            if not args.number:
+                print("Error: --number is required for fetch-pr")
+                sys.exit(1)
+            pr_data = fetch_pr_data(args.number)
+            if pr_data:
+                filepath = save_github_data(pr_data, 'pr')
+                print(f"✓ Fetched PR #{args.number}: {pr_data.get('title', 'untitled')}")
+                print(f"  Saved to: {filepath}")
+            else:
+                print(f"✗ Could not fetch PR #{args.number} (not found or gh not available)")
+                sys.exit(1)
+
+        elif args.action == "fetch-issue":
+            if not args.number:
+                print("Error: --number is required for fetch-issue")
+                sys.exit(1)
+            issue_data = fetch_issue_data(args.number)
+            if issue_data:
+                filepath = save_github_data(issue_data, 'issue')
+                print(f"✓ Fetched Issue #{args.number}: {issue_data.get('title', 'untitled')}")
+                print(f"  Saved to: {filepath}")
+            else:
+                print(f"✗ Could not fetch Issue #{args.number} (not found or gh not available)")
+                sys.exit(1)
+
+    elif command == "ci-autocapture":
+        # Auto-capture CI results from GitHub Actions environment
+        success = ci_autocapture()
+        sys.exit(0 if success else 1)
 
     elif command == "redact-test":
         # Test redaction patterns on sample text

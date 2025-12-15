@@ -1375,11 +1375,19 @@ python scripts/ml_data_collector.py session end --summary "What was accomplished
 # Generate session handoff document
 python scripts/ml_data_collector.py handoff
 
-# Record CI results
+# Record CI results (manual)
 python scripts/ml_data_collector.py ci set --commit abc123 --result pass --coverage 89.5
+
+# CI auto-capture (reads from GitHub Actions environment)
+python scripts/ml_data_collector.py ci-autocapture
 
 # Backfill historical commits
 python scripts/ml_data_collector.py backfill -n 100
+
+# Collect GitHub PR/Issue data (requires gh CLI)
+python scripts/ml_data_collector.py github collect           # Collect recent PRs and issues
+python scripts/ml_data_collector.py github stats             # Show GitHub data counts
+python scripts/ml_data_collector.py github fetch-pr --number 42  # Fetch specific PR
 ```
 
 ### Disabling Collection
@@ -1423,10 +1431,18 @@ Data collection is fully automatic via hooks configured in `.claude/settings.loc
 | **Stop** | Session ends | Captures full transcript with all exchanges |
 | **post-commit** | After commit | Captures commit metadata with diff hunks |
 | **pre-push** | Before push | Reports collection stats |
+| **CI workflow** | GitHub Actions | Auto-captures CI pass/fail results |
 
 **Hook files:**
 - `scripts/ml-session-start-hook.sh` - SessionStart handler
 - `scripts/ml-session-capture-hook.sh` - Stop handler
+
+**CI Integration:**
+The GitHub Actions workflow (`.github/workflows/ci.yml`) includes an `ml-ci-capture` job that automatically records CI results for each commit. This runs after the coverage-report job and captures:
+- Pass/fail status
+- Coverage percentage (when available)
+- Workflow and job metadata
+- Run ID for traceability
 
 See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
 
