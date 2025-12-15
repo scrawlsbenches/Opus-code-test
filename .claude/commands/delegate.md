@@ -1,3 +1,7 @@
+---
+description: Delegate a task to a sub-agent with structured context and output format
+argument-hint: <task description>
+---
 # Delegated Task: $ARGUMENTS
 
 You are a delegated agent with NO prior context. Everything you need is in this prompt.

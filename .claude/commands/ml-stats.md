@@ -1,3 +1,6 @@
+---
+description: Show ML data collection statistics and training estimates
+---
 # ML Collection Statistics
 
 Show ML data collection progress and training viability estimates.
