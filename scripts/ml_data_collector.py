@@ -24,10 +24,17 @@ import os
 import subprocess
 import hashlib
 import re
+import tempfile
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict, field
+
+
+class GitCommandError(Exception):
+    """Raised when a git command fails."""
+    pass
 
 # ============================================================================
 # CONFIGURATION
@@ -85,6 +92,11 @@ class CommitContext:
     hour_of_day: int
     day_of_week: str
     seconds_since_last_commit: Optional[int]
+
+    # Commit type detection
+    is_merge: bool = False
+    is_initial: bool = False
+    parent_count: int = 1
 
     # Session context (if available)
     session_id: Optional[str] = None
@@ -151,14 +163,29 @@ def ensure_dirs():
         dir_path.mkdir(parents=True, exist_ok=True)
 
 
-def run_git(args: List[str]) -> str:
-    """Run a git command and return output."""
+def run_git(args: List[str], check: bool = True) -> str:
+    """Run a git command and return output.
+
+    Args:
+        args: Git command arguments (without 'git' prefix)
+        check: If True, raise GitCommandError on non-zero exit
+
+    Returns:
+        Command stdout stripped of whitespace
+
+    Raises:
+        GitCommandError: If check=True and command fails
+    """
     result = subprocess.run(
         ["git"] + args,
         capture_output=True,
         text=True,
         cwd=str(Path.cwd())
     )
+    if check and result.returncode != 0:
+        raise GitCommandError(
+            f"git {args[0]} failed (exit {result.returncode}): {result.stderr.strip()}"
+        )
     return result.stdout.strip()
 
 
@@ -171,9 +198,23 @@ def get_last_commit_time() -> Optional[datetime]:
     return None
 
 
-def parse_diff_hunks(commit_hash: str) -> List[Dict]:
-    """Parse diff hunks from a commit into structured data."""
-    diff_output = run_git(["show", "--format=", "-U3", commit_hash])
+def parse_diff_hunks(commit_hash: str, is_merge: bool = False) -> List[Dict]:
+    """Parse diff hunks from a commit into structured data.
+
+    Args:
+        commit_hash: Git commit hash
+        is_merge: If True, use --first-parent to get meaningful diff
+
+    Returns:
+        List of hunk dictionaries with file, function, lines, etc.
+    """
+    # Use -U10 for more context (better for ML training)
+    # For merge commits, use --first-parent to get the actual changes
+    args = ["show", "--format=", "-U10", commit_hash]
+    if is_merge:
+        args.insert(2, "--first-parent")
+
+    diff_output = run_git(args, check=False)  # Don't fail on empty diffs
 
     hunks = []
     current_file = None
@@ -248,13 +289,31 @@ def collect_commit_data(commit_hash: Optional[str] = None) -> CommitContext:
     message = run_git(["log", "-1", "--format=%s", commit_hash])
     author = run_git(["log", "-1", "--format=%an", commit_hash])
     timestamp = run_git(["log", "-1", "--format=%ci", commit_hash])
-    branch = run_git(["rev-parse", "--abbrev-ref", "HEAD"])
+    branch = run_git(["rev-parse", "--abbrev-ref", "HEAD"], check=False) or "HEAD"
 
-    # Files and stats
-    files_output = run_git(["show", "--name-only", "--format=", commit_hash])
+    # Detect merge/initial commit by counting parents
+    parents_output = run_git(["rev-list", "--parents", "-n1", commit_hash])
+    parents = parents_output.split()
+    parent_count = len(parents) - 1  # First element is the commit itself
+    is_merge = parent_count > 1
+    is_initial = parent_count == 0
+
+    # Files and stats - for merges, use --first-parent for meaningful diff
+    if is_merge:
+        files_output = run_git(
+            ["diff", "--name-only", f"{commit_hash}^1", commit_hash],
+            check=False
+        )
+        stats = run_git(
+            ["diff", "--stat", f"{commit_hash}^1", commit_hash],
+            check=False
+        )
+    else:
+        files_output = run_git(["show", "--name-only", "--format=", commit_hash])
+        stats = run_git(["show", "--stat", "--format=", commit_hash])
+
     files_changed = [f for f in files_output.split("\n") if f]
 
-    stats = run_git(["show", "--stat", "--format=", commit_hash])
     insertions = 0
     deletions = 0
     if stats:
@@ -265,15 +324,20 @@ def collect_commit_data(commit_hash: Optional[str] = None) -> CommitContext:
         if match:
             deletions = int(match.group(1))
 
-    # Temporal context
-    now = datetime.now()
+    # Temporal context - use commit timestamp, not current time for backfill
+    commit_time = run_git(["log", "-1", "--format=%ct", commit_hash])
+    try:
+        commit_dt = datetime.fromtimestamp(int(commit_time))
+    except (ValueError, OSError):
+        commit_dt = datetime.now()
+
     last_commit = get_last_commit_time()
     seconds_since = None
     if last_commit:
-        seconds_since = int((now - last_commit).total_seconds())
+        seconds_since = int((commit_dt - last_commit).total_seconds())
 
-    # Parse diff hunks
-    hunks = parse_diff_hunks(commit_hash)
+    # Parse diff hunks (pass is_merge flag for proper handling)
+    hunks = parse_diff_hunks(commit_hash, is_merge=is_merge)
 
     return CommitContext(
         hash=commit_hash,
@@ -285,22 +349,48 @@ def collect_commit_data(commit_hash: Optional[str] = None) -> CommitContext:
         insertions=insertions,
         deletions=deletions,
         hunks=hunks,
-        hour_of_day=now.hour,
-        day_of_week=now.strftime("%A"),
+        hour_of_day=commit_dt.hour,
+        day_of_week=commit_dt.strftime("%A"),
         seconds_since_last_commit=seconds_since,
+        is_merge=is_merge,
+        is_initial=is_initial,
+        parent_count=parent_count,
     )
 
 
+def atomic_write_json(filepath: Path, data: dict):
+    """Write JSON atomically using temp file + rename.
+
+    This prevents data corruption if the process is interrupted.
+    """
+    # Write to temp file in same directory (for same-filesystem rename)
+    temp_fd, temp_path = tempfile.mkstemp(
+        suffix=".tmp",
+        prefix=filepath.stem + "_",
+        dir=filepath.parent
+    )
+    try:
+        with os.fdopen(temp_fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        # Atomic rename (on POSIX systems)
+        os.replace(temp_path, filepath)
+    except Exception:
+        # Clean up temp file on failure
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+        raise
+
+
 def save_commit_data(context: CommitContext):
-    """Save commit context to disk."""
+    """Save commit context to disk atomically."""
     ensure_dirs()
 
-    filename = f"{context.hash[:8]}_{context.timestamp[:10]}.json"
+    # Use full hash + UUID suffix to prevent collisions
+    unique_id = uuid.uuid4().hex[:8]
+    filename = f"{context.hash[:8]}_{context.timestamp[:10]}_{unique_id}.json"
     filepath = COMMITS_DIR / filename
 
-    with open(filepath, "w") as f:
-        json.dump(asdict(context), f, indent=2)
-
+    atomic_write_json(filepath, asdict(context))
     print(f"Saved commit data to {filepath}")
 
 
@@ -317,7 +407,7 @@ def generate_session_id() -> str:
 
 
 def save_chat_entry(entry: ChatEntry):
-    """Save a chat entry to disk."""
+    """Save a chat entry to disk atomically."""
     ensure_dirs()
 
     # Organize by date
@@ -327,9 +417,7 @@ def save_chat_entry(entry: ChatEntry):
     filename = f"{entry.id}.json"
     filepath = date_dir / filename
 
-    with open(filepath, "w") as f:
-        json.dump(asdict(entry), f, indent=2)
-
+    atomic_write_json(filepath, asdict(entry))
     print(f"Saved chat entry to {filepath}")
 
 
@@ -363,7 +451,7 @@ def log_chat(
 
 
 def save_action(entry: ActionEntry):
-    """Save an action entry to disk."""
+    """Save an action entry to disk atomically."""
     ensure_dirs()
 
     date_dir = ACTIONS_DIR / entry.timestamp[:10]
@@ -372,8 +460,7 @@ def save_action(entry: ActionEntry):
     filename = f"{entry.id}.json"
     filepath = date_dir / filename
 
-    with open(filepath, "w") as f:
-        json.dump(asdict(entry), f, indent=2)
+    atomic_write_json(filepath, asdict(entry))
 
 
 def log_action(
@@ -582,48 +669,58 @@ def estimate_project_size():
 # GIT HOOKS
 # ============================================================================
 
-POST_COMMIT_HOOK = '''#!/bin/bash
+ML_HOOK_MARKER = "# ML-DATA-COLLECTOR-HOOK"
+
+POST_COMMIT_SNIPPET = '''
+# ML-DATA-COLLECTOR-HOOK
 # ML Data Collection - Post-Commit Hook
 # Automatically collects enriched commit data for model training
-
-python scripts/ml_data_collector.py commit
-
-# Don't block the commit if collection fails
-exit 0
+python scripts/ml_data_collector.py commit 2>/dev/null || true
+# END-ML-DATA-COLLECTOR-HOOK
 '''
 
-PRE_PUSH_HOOK = '''#!/bin/bash
+PRE_PUSH_SNIPPET = '''
+# ML-DATA-COLLECTOR-HOOK
 # ML Data Collection - Pre-Push Hook
 # Validates data collection is working before push
-
 if [ -d ".git-ml/commits" ]; then
     count=$(ls -1 .git-ml/commits/*.json 2>/dev/null | wc -l)
     echo "📊 ML Data: $count commits collected"
 fi
-
-exit 0
+# END-ML-DATA-COLLECTOR-HOOK
 '''
 
 
 def install_hooks():
-    """Install git hooks for data collection."""
+    """Install git hooks for data collection, merging with existing hooks."""
     hooks_dir = Path(".git/hooks")
 
-    # Post-commit hook
-    post_commit = hooks_dir / "post-commit"
-    with open(post_commit, "w") as f:
-        f.write(POST_COMMIT_HOOK)
-    post_commit.chmod(0o755)
-    print(f"✓ Installed {post_commit}")
+    for hook_name, snippet in [("post-commit", POST_COMMIT_SNIPPET), ("pre-push", PRE_PUSH_SNIPPET)]:
+        hook_path = hooks_dir / hook_name
 
-    # Pre-push hook
-    pre_push = hooks_dir / "pre-push"
-    with open(pre_push, "w") as f:
-        f.write(PRE_PUSH_HOOK)
-    pre_push.chmod(0o755)
-    print(f"✓ Installed {pre_push}")
+        if hook_path.exists():
+            existing = hook_path.read_text(encoding="utf-8")
 
-    print("\nGit hooks installed! Commit data will be collected automatically.")
+            # Check if our hook is already installed
+            if ML_HOOK_MARKER in existing:
+                print(f"✓ {hook_name}: ML hook already installed")
+                continue
+
+            # Append to existing hook
+            with open(hook_path, "a", encoding="utf-8") as f:
+                f.write(snippet)
+            print(f"✓ {hook_name}: Added ML hook to existing hook")
+
+        else:
+            # Create new hook with shebang
+            with open(hook_path, "w", encoding="utf-8") as f:
+                f.write("#!/bin/bash\n")
+                f.write(snippet)
+                f.write("\nexit 0\n")
+            hook_path.chmod(0o755)
+            print(f"✓ {hook_name}: Created new hook")
+
+    print("\nML hooks installed! Commit data will be collected automatically.")
 
 
 # ============================================================================
