@@ -11,7 +11,7 @@ The system uses standard IR algorithms with a hierarchical, layered architecture
 | PageRank | Importance scoring | `analysis.py:22-95` |
 | TF-IDF | Term weighting | `analysis.py:394-433` |
 | Label Propagation | Concept clustering | `analysis.py:502-636` |
-| Query Expansion | Semantic search | `query.py:55-176` |
+| Query Expansion | Semantic search | `query/expansion.py` |
 | Relation Extraction | Knowledge building | `semantics.py:109-186` |
 
 ---
@@ -143,7 +143,7 @@ After clustering, each cluster becomes a concept in Layer 2:
 
 ### Basic Expansion
 
-**Location:** `query.py:55-176`
+**Location:** `query/expansion.py`
 
 Expands query terms to find semantically related words.
 
@@ -161,7 +161,7 @@ Expands query terms to find semantically related words.
 
 ### Multi-Hop Expansion
 
-**Location:** `query.py:407-531`
+**Location:** `query/expansion.py`
 
 Finds related terms through transitive relation chains.
 
@@ -185,7 +185,7 @@ Not all relation chains are equally valid:
 
 ### Intent-Based Query Parsing
 
-**Location:** `query.py:179-284`
+**Location:** `query/intent.py`
 
 Parses natural language queries to extract intent.
 

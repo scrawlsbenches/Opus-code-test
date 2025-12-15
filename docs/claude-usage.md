@@ -78,7 +78,7 @@ You want to see how something is actually implemented, not just read the file di
 Use **direct file reading** (Read tool) when you:
 
 ### 1. Know the exact file location
-If you already know the file path (e.g., `cortical/processor.py`), reading directly is faster than searching.
+If you already know the file path (e.g., `cortical/processor/compute.py`), reading directly is faster than searching.
 
 ### 2. Need the complete file context
 When you need to see the entire file structure, imports, and all methods in a class, reading the file is more efficient than multiple targeted searches.
@@ -551,7 +551,7 @@ python scripts/search_codebase.py "PageRank" --fast
 
 **Workaround:** Use git history for temporal queries:
 ```bash
-git log -p cortical/query.py | grep "function_name"
+git log -p cortical/query/ | grep "function_name"
 ```
 
 ### Limitation 6: Documentation May Be Outdated
