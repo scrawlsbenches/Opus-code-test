@@ -7,6 +7,8 @@ allowed-tools: Read, Bash, Write
 
 This skill enables **merge-friendly task management** for parallel agent workflows. It uses timestamp+session IDs that can't conflict when multiple agents work simultaneously.
 
+> **IMPORTANT:** The `tasks/` directory with merge-friendly JSON is now the **primary task management system**. The legacy `TASK_LIST.md` is kept for historical reference only. Use this skill or `scripts/new_task.py` for all task creation and management.
+
 ## Key Capabilities
 
 - **Conflict-free task creation**: Each agent writes to its own session file
@@ -105,12 +107,27 @@ To view legacy task history:
 python3 -c "import json; [print(f\"{t['id']}: {t['title']}\") for t in json.load(open('tasks/legacy_migration.json'))['tasks'][:20]]"
 ```
 
+## Integration with Search
+
+Task files in `tasks/` are **automatically indexed** by the corpus-indexer skill. This means:
+- Task titles and descriptions are searchable via `search_codebase.py`
+- Task context (file references) are included in semantic search
+- Task history is preserved and discoverable
+
+To keep search index up-to-date after creating tasks:
+```bash
+python scripts/index_codebase.py --incremental
+```
+
+See the `corpus-indexer` skill for more details.
+
 ## Tips
 
 1. **Create session at workflow start** - all tasks share session suffix
 2. **Save before commit** - persist tasks to disk
 3. **Consolidate weekly** - merge sessions, resolve duplicates
 4. **Use context field** - add file/method references for quick navigation
+5. **Index after task creation** - keeps task directory searchable
 
 ## Security Model
 

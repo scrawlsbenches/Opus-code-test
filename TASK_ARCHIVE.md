@@ -1,6 +1,17 @@
 # Task Archive
 
-Completed tasks moved from TASK_LIST.md. Search here for historical context and implementation details.
+> ⚠️ **DEPRECATED**: This file is kept for historical reference only.
+>
+> **Use the new merge-friendly task system instead:**
+> - View tasks: `python scripts/task_utils.py list`
+> - Create tasks: `python scripts/new_task.py "Task title" --priority high`
+> - All tasks now live in `tasks/` directory as JSON files
+> - Legacy tasks migrated to `tasks/legacy_migration.json`
+> - See `docs/merge-friendly-tasks.md` for full documentation
+
+---
+
+*Historical archive (no longer maintained). Completed tasks from legacy TASK_LIST.md.*
 
 **Archive Created:** 2025-12-11
 **Tasks Archived:** 75+ completed tasks

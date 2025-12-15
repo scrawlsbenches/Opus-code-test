@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 """
-Validate TASK_LIST.md for common issues.
+⚠️  DEPRECATED: This validator is for the legacy TASK_LIST.md file.
+
+Use the new task validator instead:
+    python scripts/validate_tasks.py
+
+The project now uses a merge-friendly task system in tasks/ directory.
+See docs/merge-friendly-tasks.md for documentation.
+
+---
+
+Legacy validator for TASK_LIST.md - kept for historical reference only.
 
 Usage:
     python scripts/validate_task_list.py

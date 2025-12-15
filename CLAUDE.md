@@ -1478,7 +1478,8 @@ See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
 - **Dog-fooding**: `docs/dogfooding-checklist.md` - checklist for testing with real usage
 - **Definition of Done**: `docs/definition-of-done.md` - when is a task truly complete?
 - **Text-as-Memories**: `docs/text-as-memories.md` - knowledge management guide
-- **Task Archive**: `TASK_ARCHIVE.md` - completed tasks history
+- **Task Management**: `docs/merge-friendly-tasks.md` - merge-friendly task system with collision-free IDs
+- **Merge-Friendly Tasks**: See "Task Management (Merge-Friendly System)" section above for task workflow
 
 ---
 
