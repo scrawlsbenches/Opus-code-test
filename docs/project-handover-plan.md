@@ -3,24 +3,24 @@
 **Date:** 2025-12-15
 **Role:** Product Owner Onboarding
 **Status:** Active
-**Last Updated:** 2025-12-15 (post-merge review)
+**Last Updated:** 2025-12-15 (post-BM25 merge)
 
 ---
 
 ## Executive Summary
 
-The Cortical Text Processor is a mature, well-documented Python library for semantic text analysis. With 91% of tasks completed (188/207), comprehensive documentation, and a recent security review, the project is in excellent shape for continued development.
+The Cortical Text Processor is a mature, well-documented Python library for semantic text analysis. With 84% of tasks completed (188/223), comprehensive documentation, a recent security review, and a new BM25 scoring algorithm, the project is in excellent shape for continued development.
 
 ### Key Metrics at Handover
 
 | Metric | Value | Assessment |
 |--------|-------|------------|
-| Tasks Completed | 188/207 (91%) | Excellent progress |
-| Tasks Pending | 12 | Small, focused backlog |
+| Tasks Completed | 188/223 (84%) | Excellent progress |
+| Tasks Pending | 28 | Includes 16 coverage tasks |
 | Tasks Deferred | 7 | Intentionally deprioritized |
 | Core Library LOC | ~20,000 | Well-structured |
-| Test Count | 3,150+ | Comprehensive coverage |
-| Documentation Files | 35+ markdown docs | Extensive |
+| Test Count | 3,150+ | Coverage improvement planned |
+| Documentation Files | 40+ markdown docs | Extensive |
 | Security Issues | 0 critical, 1 medium | Actively mitigated |
 
 ---
@@ -31,10 +31,11 @@ The Cortical Text Processor is a mature, well-documented Python library for sema
 
 **Cortical Text Processor** is a zero-dependency Python library implementing brain-inspired algorithms for text analysis:
 
+- **BM25** for document scoring (NEW - replaced TF-IDF as default)
 - **PageRank** for term importance
-- **TF-IDF** for document relevance
 - **Louvain clustering** for concept discovery
 - **Co-occurrence networks** for semantic connections
+- **Graph-Boosted BM25 (GB-BM25)** for hybrid search (NEW)
 
 ### Target Use Cases
 
@@ -67,14 +68,15 @@ This makes it embeddable in constrained environments and eliminates supply chain
 
 | Feature | Task ID | Status |
 |---------|---------|--------|
+| **BM25 scoring (default)** | NEW | ✅ Complete - `cortical/analysis.py` |
+| **Graph-Boosted BM25** | NEW | ✅ Complete - hybrid search |
+| **Benchmark suite** | NEW | ✅ Complete - `scripts/benchmark_scoring.py` |
+| **34.5% faster compute_all()** | NEW | ✅ Complete - optimizations |
 | **Observability hooks** | LEGACY-189 | ✅ Complete - `cortical/observability.py` |
 | **Interactive REPL** | LEGACY-191 | ✅ Complete - `scripts/repl.py` |
 | **Code pattern detection** | LEGACY-078 | ✅ Complete - `cortical/patterns.py` |
 | **Customer service samples** | LEGACY-130 | ✅ Complete - 8 new docs |
-| **README use cases & roadmap** | T-*-009 | ✅ Complete |
-| **Markdown link checker** | T-*-011 | ✅ Complete - in CI |
 | **Memory system CLI** | T-*-002-007 | ✅ Complete - `scripts/new_memory.py` |
-| **Session handoff tools** | T-*-007 | ✅ Complete - `scripts/session_handoff.py` |
 
 ### Known Risks
 
@@ -88,7 +90,7 @@ This makes it embeddable in constrained environments and eliminates supply chain
 
 ## Part 3: Backlog Analysis
 
-### Current Pending Tasks (12 total)
+### Current Pending Tasks (28 total)
 
 #### Production Readiness (High Priority)
 | ID | Task | Impact |
@@ -105,14 +107,26 @@ This makes it embeddable in constrained environments and eliminates supply chain
 | LEGACY-135 | Chunked parallel processing | Performance at scale |
 | LEGACY-080 | "Learning Mode" for contributors | Onboarding |
 
-#### Enhancements
+#### Code Coverage Improvement (16 NEW tasks)
+| Module | Current | Target |
+|--------|---------|--------|
+| gaps.py | 9% | >80% |
+| query/ranking.py | 25% | >80% |
+| fluent.py | 25% | >80% |
+| query/search.py | 26% | >80% |
+| query/definitions.py | 30% | >80% |
+| diff.py | 30% | >80% |
+| embeddings.py | 31% | >80% |
+| patterns.py | 32% | >80% |
+| query/passages.py | 43% | >80% |
+| query/chunking.py | 43% | >80% |
+
+#### Other Enhancements
 | ID | Task | Impact |
 |----|------|--------|
 | T-20251214-233116-3058-001 | Weight lateral connections by TF-IDF | Better expansion |
 | T-20251214-233143-3058-004 | Security concept group | Code search |
 | T-20251214-174530-6aa8-012 | Director orchestration tracking | Automation |
-| T-20251214-015345-7b60-001 | Add tests | Coverage |
-| T-20251214-015345-7b60-002 | Add docs | Documentation |
 
 ### Deferred Tasks (7 total)
 
@@ -168,8 +182,10 @@ This makes it embeddable in constrained environments and eliminates supply chain
 1. **CLAUDE.md** - Complete development guide, patterns, gotchas
 2. **docs/architecture.md** - Module dependencies, data flow
 3. **docs/quickstart.md** - 5-minute tutorial
-4. **docs/security-knowledge-transfer.md** - Security review findings
-5. **README.md** - Updated use cases and roadmap
+4. **docs/knowledge-transfer-bm25-optimization.md** - BM25 implementation details (NEW)
+5. **docs/benchmarks.md** - Performance numbers and methodology (NEW)
+6. **docs/security-knowledge-transfer.md** - Security review findings
+7. **README.md** - Updated use cases and roadmap
 
 ### Key Commands
 
@@ -209,6 +225,9 @@ python scripts/search_codebase.py "your query"
 
 | Feature | Location | Command |
 |---------|----------|---------|
+| **BM25 Scoring** | `cortical/analysis.py` | Default scoring algorithm |
+| **GB-BM25 Search** | `cortical/query/search.py` | `processor.gb_bm25_search(query)` |
+| **Benchmarks** | `scripts/benchmark_scoring.py` | `python scripts/benchmark_scoring.py` |
 | **Observability** | `cortical/observability.py` | `processor.get_metrics()` |
 | **Pattern Detection** | `cortical/patterns.py` | `processor.detect_patterns(doc_id)` |
 | **REPL Mode** | `scripts/repl.py` | `python scripts/repl.py` |
@@ -252,17 +271,23 @@ python scripts/search_codebase.py "your query"
 
 ## Part 7: What's Different Since Initial Assessment
 
-The project advanced significantly between initial assessment and main merge:
+The project advanced significantly between initial assessment and latest main merge:
 
-| Metric | Initial | After Merge | Change |
-|--------|---------|-------------|--------|
+| Metric | Initial | Current | Change |
+|--------|---------|---------|--------|
 | Tasks Completed | 170 | 188 | +18 |
-| Tasks Pending | 26 | 12 | -14 |
+| Tasks Pending | 26 | 28 | +2 (16 coverage tasks added) |
+| Scoring Algorithm | TF-IDF | BM25 | Major upgrade |
+| compute_all() Speed | baseline | +34.5% faster | Optimized |
 | New Modules | 0 | 2 | +observability, +patterns |
-| New Scripts | 0 | 4 | +repl, +new_memory, +session_handoff, +suggest_consolidation |
-| Customer Service Docs | ~3 | 11 | +8 |
+| New Scripts | 0 | 5 | +repl, +new_memory, +session_handoff, +suggest_consolidation, +benchmark_scoring |
+| Benchmark Data | None | Complete | Real performance numbers |
 
-**Key insight:** The project is more mature than initial metrics suggested. Most "quick wins" identified in initial assessment were already completed on main.
+**Key insights:**
+1. BM25 is now the default scoring algorithm - better term saturation and length normalization
+2. GB-BM25 (Graph-Boosted) provides hybrid search combining BM25 with graph structure
+3. Performance is now measurable with benchmark suite
+4. Coverage improvement is now a tracked priority (16 tasks)
 
 ---
 
@@ -278,5 +303,5 @@ Both are tracked in `tasks/*.json` files. Use `python scripts/task_utils.py` for
 ---
 
 *Document created: 2025-12-15*
-*Last updated: 2025-12-15 (post-merge with main)*
+*Last updated: 2025-12-15 (post-BM25 merge)*
 *Next review: After Month 1 completion*
