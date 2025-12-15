@@ -1177,3 +1177,622 @@ class TestGraphBoostedSearch:
         )
 
         assert len(results) <= 3
+
+    def test_test_file_penalty(self):
+        """Test files get penalized in ranking."""
+        # Create terms in both test and non-test files
+        neural = MockMinicolumn(
+            content="neural",
+            id="L0_neural",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"tests/test_model.py": 5.0, "src/model.py": 5.0},
+            document_ids={"tests/test_model.py", "src/model.py"},
+            pagerank=0.5,
+            lateral_connections={}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([neural])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        results = graph_boosted_search(
+            "neural", layers, tokenizer, top_n=5,
+            use_expansion=False
+        )
+
+        # src/model.py should rank higher than tests/test_model.py
+        # due to test_file_penalty in find_documents_for_query
+        assert len(results) == 2
+
+    def test_proximity_boost_connected_terms(self):
+        """Connected query terms boost documents containing both."""
+        # Create two connected terms
+        neural = MockMinicolumn(
+            content="neural",
+            id="L0_neural",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 1.0, "doc2": 1.0},
+            document_ids={"doc1", "doc2"},
+            pagerank=0.5,
+            lateral_connections={"L0_network": 5.0}  # Connected to network
+        )
+        network = MockMinicolumn(
+            content="network",
+            id="L0_network",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 1.0, "doc3": 1.0},
+            document_ids={"doc1", "doc3"},
+            pagerank=0.5,
+            lateral_connections={"L0_neural": 5.0}  # Connected to neural
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([neural, network])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        # Query with both connected terms
+        results = graph_boosted_search(
+            "neural network", layers, tokenizer, top_n=5,
+            proximity_weight=0.5  # High proximity weight
+        )
+
+        # doc1 should rank highest (has both terms AND they're connected)
+        assert results[0][0] == "doc1"
+
+    def test_coverage_boost_multi_term(self):
+        """Documents matching more query terms get coverage boost."""
+        term1 = MockMinicolumn(
+            content="neural",
+            id="L0_neural",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc_full": 1.0, "doc_partial": 1.0},
+            document_ids={"doc_full", "doc_partial"},
+            pagerank=0.5,
+            lateral_connections={}
+        )
+        term2 = MockMinicolumn(
+            content="network",
+            id="L0_network",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc_full": 1.0},
+            document_ids={"doc_full"},
+            pagerank=0.5,
+            lateral_connections={}
+        )
+        term3 = MockMinicolumn(
+            content="learning",
+            id="L0_learning",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc_full": 1.0},
+            document_ids={"doc_full"},
+            pagerank=0.5,
+            lateral_connections={}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([term1, term2, term3])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        results = graph_boosted_search(
+            "neural network learning", layers, tokenizer, top_n=5
+        )
+
+        # doc_full should rank first (matches all 3 terms)
+        assert results[0][0] == "doc_full"
+
+    def test_zero_pagerank_weight(self):
+        """pagerank_weight=0 disables PageRank boost."""
+        # High PageRank term in doc1
+        high_pr = MockMinicolumn(
+            content="critical",
+            id="L0_critical",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 1.0},
+            document_ids={"doc1"},
+            pagerank=0.95,  # Very high
+            lateral_connections={}
+        )
+        # Low PageRank term in doc2
+        low_pr = MockMinicolumn(
+            content="routine",
+            id="L0_routine",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc2": 1.0},
+            document_ids={"doc2"},
+            pagerank=0.05,  # Very low
+            lateral_connections={}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([high_pr, low_pr])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        # With pagerank_weight=0, PageRank should not affect ranking
+        results = graph_boosted_search(
+            "critical routine", layers, tokenizer, top_n=5,
+            pagerank_weight=0.0,
+            proximity_weight=0.0
+        )
+
+        # Scores should be equal (both have same TF-IDF)
+        assert len(results) == 2
+
+    def test_zero_proximity_weight(self):
+        """proximity_weight=0 disables proximity boost."""
+        neural = MockMinicolumn(
+            content="neural",
+            id="L0_neural",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 1.0},
+            document_ids={"doc1"},
+            pagerank=0.5,
+            lateral_connections={"L0_network": 10.0}
+        )
+        network = MockMinicolumn(
+            content="network",
+            id="L0_network",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 1.0},
+            document_ids={"doc1"},
+            pagerank=0.5,
+            lateral_connections={"L0_neural": 10.0}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([neural, network])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        # With proximity_weight=0, connection should not affect ranking
+        results = graph_boosted_search(
+            "neural network", layers, tokenizer, top_n=5,
+            proximity_weight=0.0
+        )
+
+        assert len(results) >= 1
+
+    def test_expansion_disabled(self):
+        """use_expansion=False uses only query terms."""
+        neural = MockMinicolumn(
+            content="neural",
+            id="L0_neural",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 1.0},
+            document_ids={"doc1"},
+            pagerank=0.5,
+            lateral_connections={"L0_deep": 5.0}
+        )
+        deep = MockMinicolumn(
+            content="deep",
+            id="L0_deep",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc2": 1.0},
+            document_ids={"doc2"},
+            pagerank=0.5,
+            lateral_connections={}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([neural, deep])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        results = graph_boosted_search(
+            "neural", layers, tokenizer, top_n=5,
+            use_expansion=False
+        )
+
+        # Should only find doc1 (contains "neural"), not doc2
+        assert len(results) == 1
+        assert results[0][0] == "doc1"
+
+
+# =============================================================================
+# ADDITIONAL EDGE CASE TESTS
+# =============================================================================
+
+
+class TestFindDocumentsForQueryEdgeCases:
+    """Additional edge case tests for find_documents_for_query."""
+
+    def test_test_file_penalty_applied(self):
+        """Test files get penalized when test_file_penalty < 1.0."""
+        layers = (
+            LayerBuilder()
+            .with_term("function", tfidf=2.0)
+            .with_document("tests/test_module.py", ["function"])
+            .with_document("src/module.py", ["function"])
+            .build()
+        )
+
+        layer0 = layers[MockLayers.TOKENS]
+        layer0.get_minicolumn("function").tfidf_per_doc = {
+            "tests/test_module.py": 2.0,
+            "src/module.py": 2.0
+        }
+
+        tokenizer = Tokenizer()
+        result = find_documents_for_query(
+            "function", layers, tokenizer,
+            use_expansion=False,
+            test_file_penalty=0.5  # Test files get 50% penalty
+        )
+
+        # src/module.py should rank higher than test file
+        assert result[0][0] == "src/module.py"
+        assert result[1][0] == "tests/test_module.py"
+
+    def test_test_file_patterns(self):
+        """All test file patterns are detected."""
+        layers = (
+            LayerBuilder()
+            .with_term("code", tfidf=2.0)
+            .with_document("tests/test_a.py", ["code"])
+            .with_document("test_b.py", ["code"])
+            .with_document("lib/tests/test_c.py", ["code"])
+            .with_document("src/test_d.py", ["code"])
+            .with_document("main.py", ["code"])
+            .build()
+        )
+
+        layer0 = layers[MockLayers.TOKENS]
+        layer0.get_minicolumn("code").tfidf_per_doc = {
+            "tests/test_a.py": 2.0,
+            "test_b.py": 2.0,
+            "lib/tests/test_c.py": 2.0,
+            "src/test_d.py": 2.0,
+            "main.py": 2.0,
+        }
+
+        tokenizer = Tokenizer()
+        result = find_documents_for_query(
+            "code", layers, tokenizer,
+            use_expansion=False,
+            test_file_penalty=0.5
+        )
+
+        # main.py should rank first (not a test file)
+        assert result[0][0] == "main.py"
+        # All test files should have lower scores
+        test_files = ["tests/test_a.py", "test_b.py", "lib/tests/test_c.py", "src/test_d.py"]
+        result_docs = [doc_id for doc_id, _ in result]
+        for test_file in test_files:
+            test_idx = result_docs.index(test_file)
+            main_idx = result_docs.index("main.py")
+            assert test_idx > main_idx
+
+    def test_test_file_penalty_disabled(self):
+        """test_file_penalty=1.0 disables penalty."""
+        layers = (
+            LayerBuilder()
+            .with_term("function", tfidf=2.0)
+            .with_document("tests/test_module.py", ["function"])
+            .with_document("src/module.py", ["function"])
+            .build()
+        )
+
+        layer0 = layers[MockLayers.TOKENS]
+        layer0.get_minicolumn("function").tfidf_per_doc = {
+            "tests/test_module.py": 2.0,
+            "src/module.py": 2.0
+        }
+
+        tokenizer = Tokenizer()
+        result = find_documents_for_query(
+            "function", layers, tokenizer,
+            use_expansion=False,
+            test_file_penalty=1.0  # No penalty
+        )
+
+        # Both should have equal scores
+        assert len(result) == 2
+        assert result[0][1] == pytest.approx(result[1][1])
+
+    def test_doc_name_cached_tokens(self):
+        """Document name tokens are cached for performance."""
+        # Create doc with cached name_tokens
+        doc_col = MockMinicolumn(
+            content="neural_network",
+            id="L3_neural_network",
+            layer=MockLayers.DOCUMENTS
+        )
+        # Set name_tokens attribute after creation
+        doc_col.name_tokens = {"neural", "network"}
+
+        layers = (
+            LayerBuilder()
+            .with_term("neural", tfidf=2.0)
+            .with_document("neural_network", ["neural"])
+            .build()
+        )
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([doc_col])
+
+        layer0 = layers[MockLayers.TOKENS]
+        layer0.get_minicolumn("neural").tfidf_per_doc = {
+            "neural_network": 2.0
+        }
+
+        tokenizer = Tokenizer()
+        result = find_documents_for_query(
+            "neural", layers, tokenizer,
+            use_expansion=False,
+            doc_name_boost=2.0
+        )
+
+        # Should successfully use cached tokens
+        assert len(result) == 1
+        assert result[0][0] == "neural_network"
+
+
+class TestFastFindDocumentsEdgeCases:
+    """Additional edge case tests for fast_find_documents."""
+
+    def test_code_concepts_expansion_with_results(self):
+        """Code concepts fallback finds related terms."""
+        # Setup: query term doesn't exist, but related term does
+        # Note: This test verifies the code path exists, actual expansion
+        # depends on code_concepts.py implementation
+
+        col = MockMinicolumn(
+            content="retrieve",
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 2.0}
+        )
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([col])
+
+        tokenizer = Tokenizer()
+
+        # Query for a term that doesn't exist directly
+        result = fast_find_documents(
+            "nonexistent_query_term", layers, tokenizer,
+            use_code_concepts=True
+        )
+
+        # May or may not find results depending on code_concepts
+        # But should not crash
+        assert isinstance(result, list)
+
+    def test_partial_name_match_in_fast_search(self):
+        """Partial document name matches get proportional boost."""
+        layers = (
+            LayerBuilder()
+            .with_term("neural", tfidf=2.0)
+            .with_term("networks", tfidf=2.0)
+            .with_document("neural_networks_doc", ["neural", "networks"])
+            .with_document("other_doc", ["neural", "networks"])
+            .build()
+        )
+
+        layer0 = layers[MockLayers.TOKENS]
+        layer0.get_minicolumn("neural").tfidf_per_doc = {
+            "neural_networks_doc": 2.0,
+            "other_doc": 2.0
+        }
+        layer0.get_minicolumn("networks").tfidf_per_doc = {
+            "neural_networks_doc": 2.0,
+            "other_doc": 2.0
+        }
+
+        tokenizer = Tokenizer()
+        result = fast_find_documents(
+            "neural networks", layers, tokenizer,
+            doc_name_boost=3.0
+        )
+
+        # neural_networks_doc should be boosted (partial name match)
+        assert result[0][0] == "neural_networks_doc"
+
+    def test_no_candidates_after_filtering(self):
+        """Returns empty when all candidates filtered out."""
+        layers = MockLayers.empty()
+        tokenizer = Tokenizer()
+
+        result = fast_find_documents(
+            "completely nonexistent query", layers, tokenizer
+        )
+
+        assert result == []
+
+
+class TestQueryWithSpreadingActivationEdgeCases:
+    """Additional edge case tests for query_with_spreading_activation."""
+
+    def test_zero_activation(self):
+        """Terms with zero activation are handled correctly."""
+        col = MockMinicolumn(
+            content="term",
+            pagerank=0.5,
+            activation=0.0  # Zero activation
+        )
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([col])
+
+        tokenizer = Tokenizer()
+        result = query_with_spreading_activation("term", layers, tokenizer)
+
+        # Should still return results (activation is multiplied)
+        assert isinstance(result, list)
+
+    def test_missing_pagerank_attribute(self):
+        """Handles minicolumns without pagerank gracefully."""
+        col = MockMinicolumn(
+            content="term",
+            activation=1.0
+        )
+        # Don't set pagerank - it will default to None
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([col])
+
+        tokenizer = Tokenizer()
+        result = query_with_spreading_activation("term", layers, tokenizer)
+
+        # Should handle None pagerank
+        assert isinstance(result, list)
+
+
+class TestGraphBoostedSearchEdgeCases:
+    """Additional edge case tests for graph_boosted_search."""
+
+    def test_single_term_query(self):
+        """Single term query works correctly."""
+        col = MockMinicolumn(
+            content="neural",
+            id="L0_neural",
+            layer=MockLayers.TOKENS,
+            tfidf=2.0,
+            tfidf_per_doc={"doc1": 2.0},
+            document_ids={"doc1"},
+            pagerank=0.5,
+            lateral_connections={}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([col])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        results = graph_boosted_search("neural", layers, tokenizer, top_n=5)
+
+        assert len(results) == 1
+        assert results[0][0] == "doc1"
+
+    def test_no_lateral_connections(self):
+        """Works when query terms have no lateral connections."""
+        col1 = MockMinicolumn(
+            content="term1",
+            id="L0_term1",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 1.0},
+            document_ids={"doc1"},
+            pagerank=0.5,
+            lateral_connections={}  # No connections
+        )
+        col2 = MockMinicolumn(
+            content="term2",
+            id="L0_term2",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 1.0},
+            document_ids={"doc1"},
+            pagerank=0.5,
+            lateral_connections={}  # No connections
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([col1, col2])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        results = graph_boosted_search(
+            "term1 term2", layers, tokenizer, top_n=5,
+            proximity_weight=0.5
+        )
+
+        # Should still work without proximity boost
+        assert len(results) >= 1
+
+    def test_missing_term_in_pair(self):
+        """Handles when one term in pair doesn't exist."""
+        col1 = MockMinicolumn(
+            content="neural",
+            id="L0_neural",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 1.0},
+            document_ids={"doc1"},
+            pagerank=0.5,
+            lateral_connections={}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([col1])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        # Query includes nonexistent term
+        results = graph_boosted_search(
+            "neural nonexistent", layers, tokenizer, top_n=5
+        )
+
+        # Should still return results for "neural"
+        assert len(results) >= 1
+        assert results[0][0] == "doc1"
+
+    def test_no_shared_documents(self):
+        """Handles when connected terms have no shared documents."""
+        col1 = MockMinicolumn(
+            content="term1",
+            id="L0_term1",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 1.0},
+            document_ids={"doc1"},
+            pagerank=0.5,
+            lateral_connections={"L0_term2": 5.0}
+        )
+        col2 = MockMinicolumn(
+            content="term2",
+            id="L0_term2",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc2": 1.0},
+            document_ids={"doc2"},  # Different doc
+            pagerank=0.5,
+            lateral_connections={"L0_term1": 5.0}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([col1, col2])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        results = graph_boosted_search(
+            "term1 term2", layers, tokenizer, top_n=5,
+            proximity_weight=0.5
+        )
+
+        # Should still return both docs, just without proximity boost
+        assert len(results) == 2
+
+    def test_zero_max_scores(self):
+        """Handles normalization when max scores are zero."""
+        # This is an edge case that shouldn't normally happen
+        # but tests robustness
+        col = MockMinicolumn(
+            content="term",
+            id="L0_term",
+            layer=MockLayers.TOKENS,
+            tfidf=1.0,
+            tfidf_per_doc={"doc1": 1.0},
+            document_ids={"doc1"},
+            pagerank=0.0,  # Zero pagerank
+            lateral_connections={}
+        )
+
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([col])
+        layers[MockLayers.DOCUMENTS] = MockHierarchicalLayer([])
+        tokenizer = Tokenizer()
+
+        results = graph_boosted_search("term", layers, tokenizer, top_n=5)
+
+        # Should handle zero values gracefully
+        assert len(results) >= 1

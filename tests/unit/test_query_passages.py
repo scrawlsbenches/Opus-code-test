@@ -1273,3 +1273,103 @@ class MyClass:
                 break
 
         assert changed, "Boosting should change at least one document's score"
+
+    def test_definition_only_with_conceptual_query_boosting(self):
+        """
+        Definition-only results with conceptual query trigger doc-type boosting.
+
+        Task #172: Cover lines 138-144 in passages.py where query_terms is empty
+        but definition_passages exist and should_boost=True.
+        """
+        # Use a query that will find definitions but won't tokenize to anything
+        # (e.g., all stop words or special characters)
+        layers = MockLayers.empty()
+        layers[0] = MockHierarchicalLayer([])  # No terms in layer
+        tokenizer = Tokenizer()
+
+        # Documents with actual class definitions
+        documents = {
+            "docs/guide.md": "class MyClass:\n    '''Documentation class'''\n    pass",
+            "test_file.py": "class MyClass:\n    '''Test class'''\n    pass"
+        }
+
+        # Use conceptual query with definition pattern
+        # The query "class MyClass" will be found by definition search
+        # but won't produce query_terms if we filter code keywords
+        result = find_passages_for_query(
+            "class MyClass", layers, tokenizer, documents,
+            use_definition_search=True, use_expansion=False,
+            filter_code_stop_words=True,  # Filters "class"
+            apply_doc_boost=True, auto_detect_intent=True,
+            doc_metadata={
+                "docs/guide.md": {"doc_type": "documentation"},
+                "test_file.py": {"doc_type": "test"}
+            }
+        )
+
+        # Should return definition results even without query terms
+        assert len(result) > 0
+
+    def test_chunk_overlaps_with_definition_passage_skipped(self):
+        """
+        Chunks that overlap with definition passages are skipped to avoid duplicates.
+
+        Task #172: Cover line 195 in passages.py where chunks overlapping
+        definition passages are skipped.
+        """
+        col = MockMinicolumn(content="function", tfidf=1.0, document_ids={"doc1.py"})
+        layers = MockLayers.empty()
+        layers[0] = MockHierarchicalLayer([col])
+        tokenizer = Tokenizer()
+
+        # Document with a function definition at the start
+        # The definition search will find it, and regular chunking will also create
+        # a chunk at the same position [0, chunk_size]
+        text = "def my_function():\n    '''Function docstring'''\n    pass\n" + ("x = 1\n" * 100)
+        documents = {"doc1.py": text}
+
+        result = find_passages_for_query(
+            "def my_function", layers, tokenizer, documents,
+            chunk_size=100, overlap=0,
+            use_definition_search=True, use_expansion=False
+        )
+
+        # Should have results including the definition
+        assert len(result) > 0
+        # Count how many passages start at position 0
+        # Should only be 1 (the definition), not 2 (definition + duplicate chunk)
+        passages_at_start = sum(1 for _, _, start, _, _ in result if start == 0)
+        # Due to deduplication, should only have one passage at position 0
+        assert passages_at_start == 1
+
+    def test_batch_passages_with_doc_not_in_cache(self):
+        """
+        Batch passage search skips documents not in chunk cache.
+
+        Task #172: Cover line 393 in passages.py where doc_id not in
+        doc_chunks_cache is skipped.
+        """
+        # Mock find_documents_for_query to return doc2 which won't be in cache
+        with patch('cortical.query.passages.find_documents_for_query') as mock_find_docs:
+            # Mock returns both doc1 and doc2, but only doc1 is in documents dict
+            mock_find_docs.return_value = [("doc1", 1.0), ("doc2", 0.8)]
+
+            col = MockMinicolumn(content="test", tfidf=1.0, document_ids={"doc1"})
+            layers = MockLayers.empty()
+            layers[0] = MockHierarchicalLayer([col])
+            tokenizer = Tokenizer()
+
+            # Only provide doc1 in documents - doc2 won't be chunked
+            documents = {"doc1": "test content"}
+
+            result = find_passages_batch(
+                ["test"], layers, tokenizer, documents,
+                use_expansion=False
+            )
+
+            # Should successfully return results for doc1 and skip doc2
+            assert len(result) == 1
+            assert len(result[0]) > 0
+            # All results should be from doc1 (doc2 was skipped)
+            for _, doc_id, _, _, _ in result[0]:
+                assert doc_id == "doc1"

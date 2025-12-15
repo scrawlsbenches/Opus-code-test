@@ -2,45 +2,47 @@
   "version": 1,
   "session_id": "7b60",
   "started_at": "2025-12-14T01:53:45.787991",
-  "saved_at": "2025-12-14T01:53:45.788233",
+  "saved_at": "2025-12-15T15:30:00.000000",
   "tasks": [
     {
       "id": "T-20251214-015345-7b60-001",
       "title": "Add tests",
-      "status": "pending",
+      "status": "deferred",
       "priority": "high",
       "category": "test",
-      "description": "New code added",
+      "description": "CLOSED: Task lacks specificity - 'test.py' is not a real file. Auto-generated without proper context.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-14T01:53:45.788028",
-      "updated_at": null,
+      "updated_at": "2025-12-15T15:30:00.000000",
       "completed_at": null,
       "context": {
         "files": [
           "test.py"
-        ]
+        ],
+        "closure_reason": "invalid_task_definition"
       },
-      "retrospective": null
+      "retrospective": "Closed by Director Agent - task definition too vague to be actionable"
     },
     {
       "id": "T-20251214-015345-7b60-002",
       "title": "Add docs",
-      "status": "pending",
+      "status": "deferred",
       "priority": "low",
       "category": "docs",
-      "description": "Missing docstrings",
+      "description": "CLOSED: Task lacks specificity - 'module.py' is not a real file. Auto-generated without proper context.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-14T01:53:45.788037",
-      "updated_at": null,
+      "updated_at": "2025-12-15T15:30:00.000000",
       "completed_at": null,
       "context": {
         "files": [
           "module.py"
-        ]
+        ],
+        "closure_reason": "invalid_task_definition"
       },
-      "retrospective": null
+      "retrospective": "Closed by Director Agent - task definition too vague to be actionable"
     }
   ]
 }
