@@ -409,6 +409,52 @@ samples/                 # 176 documents: quantum computing to cheese affinage
 scripts/                 # Developer tools (indexing, profiling, tasks)
 ```
 
+## 🎨 Codebase Visualization
+
+Beautiful ASCII art visualizations of your codebase, git history, and code metrics.
+
+### Animated Visualizations
+
+| Matrix Rain | Fire Effect |
+|:-----------:|:-----------:|
+| ![Matrix Rain](assets/matrix_rain.gif) | ![Fire Effect](assets/fire_effect.gif) |
+| *Commit messages falling like code* | *Hot files burn brighter* |
+
+| Starfield | Neural Pulse |
+|:---------:|:------------:|
+| ![Starfield](assets/starfield.gif) | ![Neural Pulse](assets/neural_pulse.gif) |
+| *Commits flying through hyperspace* | *Data flowing through cortical layers* |
+
+### Code Skyline
+
+![Code Skyline](assets/code_skyline.gif)
+
+*File sizes as buildings - taller = more lines of code*
+
+### Run the Visualizations
+
+```bash
+# Static visualizations (brain diagram, skyline, heatmap, etc.)
+python scripts/ascii_codebase_art.py
+
+# Animated terminal experience (requires terminal with color support)
+python scripts/ascii_visualizer_animated.py
+
+# Interactive menu
+python scripts/ascii_visualizer_animated.py
+
+# Jump to specific effect
+python scripts/ascii_visualizer_animated.py --matrix   # Matrix rain
+python scripts/ascii_visualizer_animated.py --fire     # Fire effect
+python scripts/ascii_visualizer_animated.py --stars    # Starfield
+python scripts/ascii_visualizer_animated.py --neural   # Neural pulse
+python scripts/ascii_visualizer_animated.py --dashboard  # Live stats
+
+# Generate new GIFs (requires Pillow)
+pip install Pillow
+python scripts/generate_ascii_gifs.py
+```
+
 ## AI Agent Support
 
 This project includes tools designed specifically for AI coding assistants:
