@@ -83,3 +83,28 @@ This data trains a micro-model that learns:
 - YOUR file relationships
 
 The model becomes a personalized assistant that understands THIS codebase deeply.
+
+## Disabling Collection
+
+To temporarily disable ML data collection:
+
+```bash
+export ML_COLLECTION_ENABLED=0
+```
+
+Stats and validation commands still work when disabled. Only collection (commit, chat, action) is blocked.
+
+## CI Integration
+
+Record CI results for commits:
+
+```bash
+# After CI run
+python scripts/ml_data_collector.py ci set \
+    --commit $(git rev-parse HEAD) \
+    --result pass \
+    --coverage 89.5 \
+    --tests-passed 150
+```
+
+This enables the model to learn which code changes pass/fail CI.
