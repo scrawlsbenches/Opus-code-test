@@ -262,6 +262,98 @@ def end_session(summary: Optional[str] = None) -> Optional[Dict]:
 
 
 # ============================================================================
+# CI STATUS INTEGRATION
+# ============================================================================
+
+def find_commit_file(commit_hash: str) -> Optional[Path]:
+    """Find the data file for a commit by its hash (full or prefix)."""
+    if not COMMITS_DIR.exists():
+        return None
+
+    # Search for files starting with the commit hash prefix
+    for f in COMMITS_DIR.glob(f"{commit_hash[:8]}_*.json"):
+        return f
+
+    # Try full hash search if prefix didn't match
+    for f in COMMITS_DIR.glob("*.json"):
+        try:
+            with open(f, 'r', encoding='utf-8') as fp:
+                data = json.load(fp)
+            if data.get('hash', '').startswith(commit_hash):
+                return f
+        except (json.JSONDecodeError, IOError):
+            continue
+
+    return None
+
+
+def update_commit_ci_result(
+    commit_hash: str,
+    result: str,
+    details: Optional[Dict] = None
+) -> bool:
+    """Update a commit's CI result.
+
+    Args:
+        commit_hash: Full or partial commit hash.
+        result: CI result (e.g., "pass", "fail", "error", "pending").
+        details: Optional dict with additional CI info (test_count, failures, etc.)
+
+    Returns:
+        True if commit was found and updated, False otherwise.
+    """
+    commit_file = find_commit_file(commit_hash)
+    if not commit_file:
+        return False
+
+    try:
+        with open(commit_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        # Update CI fields
+        data['ci_result'] = result
+        if details:
+            data['ci_details'] = details
+        data['ci_updated_at'] = datetime.now().isoformat()
+
+        atomic_write_json(commit_file, data)
+        return True
+
+    except (json.JSONDecodeError, IOError):
+        return False
+
+
+def mark_commit_reverted(commit_hash: str, reverting_commit: Optional[str] = None) -> bool:
+    """Mark a commit as reverted.
+
+    Args:
+        commit_hash: The commit that was reverted.
+        reverting_commit: The commit that performed the revert.
+
+    Returns:
+        True if commit was found and updated.
+    """
+    commit_file = find_commit_file(commit_hash)
+    if not commit_file:
+        return False
+
+    try:
+        with open(commit_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        data['reverted'] = True
+        if reverting_commit:
+            data['reverted_by'] = reverting_commit
+        data['reverted_at'] = datetime.now().isoformat()
+
+        atomic_write_json(commit_file, data)
+        return True
+
+    except (json.JSONDecodeError, IOError):
+        return False
+
+
+# ============================================================================
 # DATA SCHEMAS
 # ============================================================================
 
@@ -1211,6 +1303,94 @@ def main():
                 print("=" * 50 + "\n")
             else:
                 print("No active session. Use 'session start' to begin.")
+
+    elif command == "ci":
+        # CI status integration for recording test results
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("action", choices=["set", "get"],
+                            help="CI action")
+        parser.add_argument("--commit", required=True,
+                            help="Commit hash (full or prefix)")
+        parser.add_argument("--result", choices=["pass", "fail", "error", "pending"],
+                            help="CI result (for set action)")
+        parser.add_argument("--tests-passed", type=int,
+                            help="Number of tests passed")
+        parser.add_argument("--tests-failed", type=int,
+                            help="Number of tests failed")
+        parser.add_argument("--coverage", type=float,
+                            help="Code coverage percentage")
+        parser.add_argument("--duration", type=float,
+                            help="CI duration in seconds")
+        parser.add_argument("--message", help="CI message or failure details")
+        args = parser.parse_args(sys.argv[2:])
+
+        if args.action == "set":
+            if not args.result:
+                print("Error: --result is required for 'set' action")
+                sys.exit(1)
+
+            # Build details dict from optional args
+            details = {}
+            if args.tests_passed is not None:
+                details['tests_passed'] = args.tests_passed
+            if args.tests_failed is not None:
+                details['tests_failed'] = args.tests_failed
+            if args.coverage is not None:
+                details['coverage'] = args.coverage
+            if args.duration is not None:
+                details['duration_seconds'] = args.duration
+            if args.message:
+                details['message'] = args.message
+
+            success = update_commit_ci_result(
+                args.commit,
+                args.result,
+                details if details else None
+            )
+
+            if success:
+                print(f"✓ Updated CI result for {args.commit[:8]}: {args.result}")
+                if details:
+                    for k, v in details.items():
+                        print(f"  {k}: {v}")
+            else:
+                print(f"✗ Commit not found: {args.commit}")
+                sys.exit(1)
+
+        elif args.action == "get":
+            commit_file = find_commit_file(args.commit)
+            if commit_file:
+                with open(commit_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                print(f"\nCI Status for {data['hash'][:12]}:")
+                print(f"  Result: {data.get('ci_result', 'not set')}")
+                if data.get('ci_details'):
+                    print("  Details:")
+                    for k, v in data['ci_details'].items():
+                        print(f"    {k}: {v}")
+                if data.get('ci_updated_at'):
+                    print(f"  Updated: {data['ci_updated_at']}")
+            else:
+                print(f"✗ Commit not found: {args.commit}")
+                sys.exit(1)
+
+    elif command == "revert":
+        # Mark a commit as reverted
+        import argparse
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--commit", required=True,
+                            help="Commit that was reverted")
+        parser.add_argument("--by",
+                            help="Commit that performed the revert")
+        args = parser.parse_args(sys.argv[2:])
+
+        success = mark_commit_reverted(args.commit, args.by)
+        if success:
+            print(f"✓ Marked {args.commit[:8]} as reverted")
+        else:
+            print(f"✗ Commit not found: {args.commit}")
+            sys.exit(1)
 
     else:
         print(f"Unknown command: {command}")
