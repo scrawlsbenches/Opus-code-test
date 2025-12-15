@@ -547,13 +547,53 @@ export ML_COLLECTION_ENABLED=0
 
 When disabled, no data is written to `.git-ml/`. You can still use all other features normally.
 
-### Privacy Considerations
+### Privacy & Security
 
+**Automatic Redaction:** Sensitive data is automatically scrubbed before storage:
+- API keys, tokens, and secrets
+- Passwords and credentials
+- Private keys (RSA, SSH, etc.)
+- Database connection strings
+- GitHub/Slack tokens, JWTs
+
+```bash
+# Test what gets redacted
+python scripts/ml_data_collector.py redact-test --text "api_key=sk-abc123secret"
+```
+
+**Data Retention:** Old data is automatically cleaned up:
+```bash
+# Preview what would be deleted (90 days default)
+python scripts/ml_data_collector.py cleanup --dry-run
+
+# Clean up data older than 60 days
+python scripts/ml_data_collector.py cleanup --days 60
+```
+
+**Privacy Guarantees:**
 - **Local storage only**: Data never leaves your machine automatically
 - **Gitignored**: `.git-ml/` is excluded from version control
 - **Regeneratable**: All commit data can be backfilled from git history
 - **Full control**: Delete `.git-ml/` anytime to remove all collected data
 - **Transparent**: All collection code is in `scripts/ml_data_collector.py`
+
+### Contributing Your Data
+
+When ready to help train the shared model:
+
+```bash
+# Preview what would be shared (with redaction applied)
+python scripts/ml_data_collector.py contribute preview
+
+# Opt-in to contribute (requires explicit consent)
+python scripts/ml_data_collector.py contribute enable --name "Your Name"
+
+# Check your contribution status
+python scripts/ml_data_collector.py contribute status
+
+# Opt-out anytime
+python scripts/ml_data_collector.py contribute disable
+```
 
 See [CLAUDE.md](CLAUDE.md) for detailed documentation on the ML data collection system.
 
