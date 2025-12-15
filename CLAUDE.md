@@ -1329,6 +1329,105 @@ See `docs/text-as-memories.md` for the full guide.
 
 ---
 
+## ML Data Collection: Project-Specific Micro-Model
+
+The project automatically collects enriched commit and chat data to train a micro-model that learns THIS project's patterns, coding style, and workflows.
+
+### What Gets Collected
+
+| Data Type | Location | Contents |
+|-----------|----------|----------|
+| **Commits** | `.git-ml/commits/` | Git history with diff hunks, temporal context, CI results |
+| **Chats** | `.git-ml/chats/` | Query/response pairs with files touched and tools used |
+| **Sessions** | `.git-ml/sessions/` | Development sessions linking chats to commits |
+| **Actions** | `.git-ml/actions/` | Individual tool uses and operations |
+
+**Note:** All ML data is stored in `.git-ml/` which is gitignored and regeneratable via backfill.
+
+### Quick Commands
+
+```bash
+# Check collection progress
+python scripts/ml_data_collector.py stats
+
+# Estimate when training becomes viable
+python scripts/ml_data_collector.py estimate
+
+# Validate collected data
+python scripts/ml_data_collector.py validate
+
+# Session management
+python scripts/ml_data_collector.py session status
+python scripts/ml_data_collector.py session start
+python scripts/ml_data_collector.py session end --summary "What was accomplished"
+
+# Generate session handoff document
+python scripts/ml_data_collector.py handoff
+
+# Record CI results
+python scripts/ml_data_collector.py ci set --commit abc123 --result pass --coverage 89.5
+
+# Backfill historical commits
+python scripts/ml_data_collector.py backfill -n 100
+```
+
+### Disabling Collection
+
+```bash
+# Disable for current session
+export ML_COLLECTION_ENABLED=0
+
+# Stats and validation still work when disabled
+```
+
+### Automatic Session Capture
+
+**Zero-friction capture via Claude Code Stop hook:**
+
+The ML data collector automatically captures complete session transcripts when Claude Code sessions end. This eliminates manual logging entirely.
+
+**Setup:**
+```bash
+# Add to ~/.claude/settings.json or project .claude/settings.json:
+{
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "/path/to/Opus-code-test/scripts/ml-session-capture-hook.sh"
+      }
+    ]
+  }
+}
+```
+
+**What gets captured automatically:**
+- Full query/response pairs from the transcript
+- All tool uses (Task, Read, Edit, Bash, Grep, etc.)
+- Files referenced and modified
+- Thinking blocks (if present)
+- Session linkage to commits
+
+**Process transcript manually:**
+```bash
+# Process a specific transcript file
+python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl
+
+# Dry run (show what would be captured without saving)
+python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl --dry-run --verbose
+```
+
+### Integration
+
+Data collection is automatic via hooks:
+- **Stop hook**: Captures full session transcripts with all exchanges (recommended)
+- **post-commit**: Captures commit metadata with diff hunks
+- **pre-push**: Reports collection stats
+
+See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
+
+---
+
 ## File Quick Links
 
 - **Main API**: `cortical/processor/` - `CorticalTextProcessor` class (split into mixins)
