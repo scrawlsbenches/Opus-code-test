@@ -72,6 +72,29 @@ Layer 3 (DOCUMENTS) → Full documents          [IT analogy: objects]
 
 ---
 
+## Development Environment Setup
+
+**Before running tests with coverage**, install dev dependencies:
+
+```bash
+# Option 1: Install as editable package with dev deps (recommended)
+pip install -e ".[dev]"
+
+# Option 2: Install from requirements.txt
+pip install -r requirements.txt
+```
+
+This installs: `coverage`, `pytest`, `mcp`, `pyyaml`
+
+**Verify installation:**
+```bash
+python -c "import coverage; print('coverage OK')"
+```
+
+> **Note:** The library itself has zero runtime dependencies. Dev dependencies are only needed for testing and coverage reporting.
+
+---
+
 ## AI Agent Onboarding
 
 **New to this codebase?** Follow these steps to get oriented quickly:
