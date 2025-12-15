@@ -21,6 +21,7 @@ from ..progress import (
     SilentProgressReporter,
     MultiPhaseProgress
 )
+from ..observability import timed
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +123,7 @@ class ComputeMixin:
 
         return recomputed
 
+    @timed("compute_all")
     def compute_all(
         self,
         verbose: bool = True,
@@ -546,11 +548,13 @@ class ComputeMixin:
 
         return processor
 
+    @timed("propagate_activation")
     def propagate_activation(self, iterations: int = 3, decay: float = 0.8, verbose: bool = True) -> None:
         analysis.propagate_activation(self.layers, iterations, decay)
         if verbose:
             logger.info(f"Propagated activation ({iterations} iterations)")
 
+    @timed("compute_importance")
     def compute_importance(self, verbose: bool = True) -> None:
         for layer_enum in [CorticalLayer.TOKENS, CorticalLayer.BIGRAMS]:
             analysis.compute_pagerank(self.layers[layer_enum])
@@ -654,16 +658,19 @@ class ComputeMixin:
 
         return result
 
+    @timed("compute_tfidf")
     def compute_tfidf(self, verbose: bool = True) -> None:
         analysis.compute_tfidf(self.layers, self.documents)
         if verbose:
             logger.info("Computed TF-IDF scores")
 
+    @timed("compute_document_connections")
     def compute_document_connections(self, min_shared_terms: int = 3, verbose: bool = True) -> None:
         analysis.compute_document_connections(self.layers, self.documents, min_shared_terms)
         if verbose:
             logger.info("Computed document connections")
 
+    @timed("compute_bigram_connections")
     def compute_bigram_connections(
         self,
         min_shared_docs: int = 1,
@@ -719,6 +726,7 @@ class ComputeMixin:
                         f"cooccur: {stats['cooccurrence_connections']}{skip_msg})")
         return stats
 
+    @timed("build_concept_clusters")
     def build_concept_clusters(
         self,
         min_cluster_size: Optional[int] = None,
