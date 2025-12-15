@@ -41,6 +41,21 @@ python scripts/ml_data_collector.py stats
 python scripts/ml_data_collector.py estimate
 ```
 
+### Generate Session Handoff
+
+Create a markdown summary of the current session for context handoff:
+
+```bash
+python scripts/ml_data_collector.py handoff
+```
+
+This generates a document with:
+- Session summary (ID, duration, exchanges)
+- Key work done (summarized from queries)
+- Files touched (modified and referenced)
+- Related commits from the session
+- Suggested next steps (based on patterns)
+
 ## What Gets Collected
 
 | Data Type | Contents | Use |

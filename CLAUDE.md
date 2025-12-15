@@ -1191,6 +1191,9 @@ python scripts/ml_data_collector.py session status
 python scripts/ml_data_collector.py session start
 python scripts/ml_data_collector.py session end --summary "What was accomplished"
 
+# Generate session handoff document
+python scripts/ml_data_collector.py handoff
+
 # Record CI results
 python scripts/ml_data_collector.py ci set --commit abc123 --result pass --coverage 89.5
 

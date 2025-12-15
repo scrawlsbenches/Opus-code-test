@@ -17,6 +17,9 @@ Usage:
 
     # Estimate when training is viable
     python scripts/ml_data_collector.py estimate
+
+    # Generate session handoff document
+    python scripts/ml_data_collector.py handoff
 """
 
 import json
@@ -302,6 +305,151 @@ def end_session(summary: Optional[str] = None) -> Optional[Dict]:
         CURRENT_SESSION_FILE.unlink()
 
     return session
+
+
+def generate_session_handoff() -> str:
+    """Generate a session handoff document with summary of work done.
+
+    Returns:
+        Markdown-formatted handoff document, or error message if no session.
+    """
+    session = get_current_session()
+    if not session:
+        return "No active session found. Use 'session start' to begin tracking."
+
+    # Parse session info
+    session_id = session['id']
+    started_at = session['started_at']
+    chat_ids = session.get('chat_ids', [])
+
+    # Calculate duration
+    start_time = datetime.fromisoformat(started_at)
+    duration = datetime.now() - start_time
+    hours = int(duration.total_seconds() // 3600)
+    minutes = int((duration.total_seconds() % 3600) // 60)
+    duration_str = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+
+    # Load chat entries to analyze work done
+    chats = []
+    all_files_referenced = set()
+    all_files_modified = set()
+    all_tools_used = set()
+
+    for chat_id in chat_ids:
+        chat_file = find_chat_file(chat_id)
+        if chat_file and chat_file.exists():
+            try:
+                with open(chat_file, 'r', encoding='utf-8') as f:
+                    chat_data = json.load(f)
+                    chats.append(chat_data)
+                    all_files_referenced.update(chat_data.get('files_referenced', []))
+                    all_files_modified.update(chat_data.get('files_modified', []))
+                    all_tools_used.update(chat_data.get('tools_used', []))
+            except (json.JSONDecodeError, IOError):
+                continue
+
+    # Summarize key tasks from queries
+    key_tasks = []
+    for chat in chats[-10:]:  # Last 10 chats
+        query = chat.get('query', '')
+        # Extract first sentence or first 80 chars as task summary
+        task_summary = query.split('.')[0][:80]
+        if task_summary and task_summary not in key_tasks:
+            key_tasks.append(task_summary)
+
+    # Find related commits
+    related_commits = []
+    if COMMITS_DIR.exists():
+        for commit_file in COMMITS_DIR.glob("*.json"):
+            try:
+                with open(commit_file, 'r', encoding='utf-8') as f:
+                    commit_data = json.load(f)
+                    if commit_data.get('session_id') == session_id:
+                        related_commits.append({
+                            'hash': commit_data['hash'][:8],
+                            'message': commit_data['message'],
+                            'timestamp': commit_data['timestamp']
+                        })
+            except (json.JSONDecodeError, IOError):
+                continue
+
+    # Sort commits by timestamp
+    related_commits.sort(key=lambda c: c['timestamp'])
+
+    # Generate suggested next steps based on patterns
+    suggestions = []
+
+    # Check for incomplete work patterns
+    if any('test' in tool.lower() for tool in all_tools_used):
+        if not any('pass' in c['message'].lower() for c in related_commits):
+            suggestions.append("Run and verify tests pass before committing")
+
+    if all_files_modified and not related_commits:
+        suggestions.append("Review modified files and commit changes if ready")
+
+    if 'Edit' in all_tools_used or 'Write' in all_tools_used:
+        suggestions.append("Consider running the test suite to verify changes")
+
+    if len(chats) > 5 and not related_commits:
+        suggestions.append("Session has multiple exchanges but no commits - consider saving work")
+
+    # Check for unresolved errors in recent responses
+    recent_errors = any('error' in chat.get('response', '').lower() or
+                       'failed' in chat.get('response', '').lower()
+                       for chat in chats[-3:])
+    if recent_errors:
+        suggestions.append("Recent responses mention errors - may need debugging or fixes")
+
+    if not suggestions:
+        suggestions.append("Continue with planned work")
+
+    # Build markdown document
+    md = []
+    md.append(f"# Session Handoff: {session_id}")
+    md.append("")
+    md.append("## Summary")
+    md.append(f"- Started: {started_at}")
+    md.append(f"- Duration: {duration_str}")
+    md.append(f"- Exchanges: {len(chats)}")
+    md.append(f"- Tools used: {', '.join(sorted(all_tools_used)) if all_tools_used else 'none'}")
+    md.append("")
+
+    md.append("## Key Work Done")
+    if key_tasks:
+        for task in key_tasks[:5]:  # Top 5 tasks
+            md.append(f"- {task}")
+    else:
+        md.append("- No significant work recorded")
+    md.append("")
+
+    md.append("## Files Touched")
+    if all_files_modified:
+        md.append("### Modified:")
+        for f in sorted(all_files_modified)[:10]:  # Top 10 files
+            md.append(f"- {f}")
+    if all_files_referenced and all_files_referenced - all_files_modified:
+        md.append("### Referenced:")
+        for f in sorted(all_files_referenced - all_files_modified)[:10]:
+            md.append(f"- {f}")
+    if not all_files_modified and not all_files_referenced:
+        md.append("- No files modified or referenced")
+    md.append("")
+
+    md.append("## Related Commits")
+    if related_commits:
+        for commit in related_commits:
+            md.append(f"- `{commit['hash']}`: {commit['message']}")
+    else:
+        md.append("- No commits made in this session")
+    md.append("")
+
+    md.append("## Suggested Next Steps")
+    for suggestion in suggestions:
+        md.append(f"- {suggestion}")
+    md.append("")
+
+    return "\n".join(md)
+
 
 
 # ============================================================================
@@ -1545,6 +1693,11 @@ def main():
         else:
             print("✅ All data validated successfully!")
         print("=" * 60 + "\n")
+
+    elif command == "handoff":
+        # Generate session handoff document
+        handoff_doc = generate_session_handoff()
+        print(handoff_doc)
 
     elif command == "session":
         # Session management for commit-chat linking
