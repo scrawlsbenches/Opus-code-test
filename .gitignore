@@ -107,6 +107,8 @@ cortical/proto/__pycache__/
 #   - .git-ml/orchestration/ - Individual orchestration files (use tracked/orchestration.jsonl)
 # Full commit data with diffs is too large for GitHub
 .git-ml/commits/
+# Trained models are regeneratable (python scripts/ml_file_prediction.py train)
+.git-ml/models/
 # .git-ml/chats/  # Uncomment to ignore chat transcripts
 # .git-ml/sessions/  # Uncomment to ignore full session data
 # .git-ml/actions/  # Uncomment to ignore tool usage data
