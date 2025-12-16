@@ -1300,12 +1300,23 @@ def process_transcript(
     total_tools = set()
     all_files_ref = set()
     all_files_mod = set()
+    queries = []
+    tool_usage_count = {}  # Track tool usage frequency
 
     for ex in exchanges:
         files_ref, files_mod = extract_files_from_tool_inputs(ex.tool_inputs)
         all_files_ref.update(files_ref)
         all_files_mod.update(files_mod)
         total_tools.update(ex.tools_used)
+
+        # Count tool usage
+        for tool in ex.tools_used:
+            tool_usage_count[tool] = tool_usage_count.get(tool, 0) + 1
+
+        # Collect queries for session summary (truncate for readability)
+        query_preview = ex.query[:100].strip()
+        if query_preview and query_preview not in queries:
+            queries.append(query_preview)
 
         if save_exchanges:
             try:
@@ -1327,7 +1338,7 @@ def process_transcript(
             except Exception as e:
                 logger.error(f"Error saving exchange: {e}")
 
-    return {
+    result = {
         'status': 'success',
         'exchanges': len(exchanges),
         'saved': saved_count,
@@ -1336,6 +1347,43 @@ def process_transcript(
         'files_referenced': list(all_files_ref),
         'files_modified': list(all_files_mod),
     }
+
+    # Save lightweight session summary for git tracking
+    if save_exchanges and exchanges:
+        try:
+            # Calculate session duration from first to last exchange
+            first_timestamp = exchanges[0].timestamp
+            last_timestamp = exchanges[-1].timestamp
+
+            duration_seconds = 0
+            if first_timestamp and last_timestamp:
+                try:
+                    start = datetime.fromisoformat(first_timestamp.replace('Z', '+00:00'))
+                    end = datetime.fromisoformat(last_timestamp.replace('Z', '+00:00'))
+                    duration_seconds = int((end - start).total_seconds())
+                except (ValueError, AttributeError):
+                    pass
+
+            # Build session summary
+            session_summary = {
+                'session_id': session_id,
+                'timestamp': first_timestamp or datetime.now().isoformat(),
+                'duration_seconds': duration_seconds,
+                'exchanges': len(exchanges),
+                'queries': queries[:10],  # Limit to first 10 queries
+                'tools_used': tool_usage_count,
+                'files_referenced': list(all_files_ref)[:50],  # Limit for size
+                'files_modified': list(all_files_mod)[:50],  # Limit for size
+            }
+
+            # Save to tracked directory (git-committable)
+            save_session_lite(session_summary)
+
+        except Exception as e:
+            # Don't fail the whole operation if session lite save fails
+            logger.warning(f"Failed to save session lite: {e}")
+
+    return result
 
 
 # ============================================================================

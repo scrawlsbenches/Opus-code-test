@@ -144,6 +144,13 @@ class PersistenceMixin:
 
         stale = self._stale_computations if hasattr(self, '_stale_computations') else set()
 
+        # Save config and BM25 metadata
+        writer.save_config(
+            self.config.to_dict(),
+            self.doc_lengths,
+            self.avg_doc_length
+        )
+
         return writer.save_all(
             layers=self.layers,
             documents=self.documents,
@@ -184,12 +191,23 @@ class PersistenceMixin:
             verbose=verbose
         )
 
+        # Load config and BM25 metadata
+        config_dict, doc_lengths, avg_doc_length = loader.load_config()
+
+        # Use saved config if available and no override provided
+        if config_dict and config is None:
+            config = CorticalConfig.from_dict(config_dict)
+
         processor = cls(config=config)
         processor.layers = layers
         processor.documents = documents
         processor.document_metadata = metadata
         processor.embeddings = embeddings
         processor.semantic_relations = relations
+
+        # Restore BM25 document length data
+        processor.doc_lengths = doc_lengths
+        processor.avg_doc_length = avg_doc_length
 
         if 'stale_computations' in manifest_data:
             processor._stale_computations = manifest_data['stale_computations']

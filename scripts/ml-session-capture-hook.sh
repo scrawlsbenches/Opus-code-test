@@ -64,4 +64,11 @@ python3 "$COLLECTOR" transcript \
     --session-id "$session_id" \
     2>/dev/null || true
 
+# Commit tracked ML data (sessions.jsonl and commits.jsonl)
+# This ensures session data is persisted in git for team/branch sharing
+if [[ -d .git-ml/tracked ]] && [[ -n "$(ls -A .git-ml/tracked 2>/dev/null)" ]]; then
+    git add .git-ml/tracked/ 2>/dev/null || true
+    git commit -m "ml: Capture session data" --no-verify 2>/dev/null || true
+fi
+
 exit 0
