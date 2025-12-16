@@ -555,6 +555,39 @@ python scripts/ml_data_collector.py stats
 python scripts/ml_data_collector.py estimate
 ```
 
+### File Prediction Model
+
+The first model is now available: **predict which files to modify** based on a task description.
+
+```bash
+# Train the model on your commit history
+python scripts/ml_file_prediction.py train
+
+# Predict files for a task
+python scripts/ml_file_prediction.py predict "Add authentication feature"
+# Output:
+#   1. cortical/processor.py          (0.268)
+#   2. tests/test_processor.py        (0.146)
+#   3. cortical/analysis.py           (0.134)
+
+# Evaluate model performance
+python scripts/ml_file_prediction.py evaluate --split 0.2
+
+# View model statistics
+python scripts/ml_file_prediction.py stats
+```
+
+**How it works:**
+- Learns from commit type patterns (feat:, fix:, docs:, etc.)
+- Builds file co-occurrence matrix (files often changed together)
+- Maps keywords to files based on commit messages
+- Uses TF-IDF-style scoring with frequency penalties
+
+**Current metrics** (on 20% holdout with 403 commits):
+- MRR: 0.43 (first correct prediction averages position ~2-3)
+- Recall@10: 0.48 (half of actual files appear in top 10 predictions)
+- Precision@1: 0.31 (31% of top predictions are correct)
+
 ### Setup (Opt-In)
 
 Data collection is **enabled by default** but requires hook setup to capture sessions:

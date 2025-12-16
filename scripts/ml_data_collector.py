@@ -69,6 +69,12 @@ Usage:
     python scripts/ml_data_collector.py orchestration extract --save  # Extract and save
     python scripts/ml_data_collector.py orchestration summary       # Show summary only
     python scripts/ml_data_collector.py orchestration list          # List saved extractions
+
+    # Chunked storage for git-friendly large file storage
+    python scripts/ml_data_collector.py chunked migrate             # Migrate chats/commits to chunks
+    python scripts/ml_data_collector.py chunked compact             # Compact old chunks
+    python scripts/ml_data_collector.py chunked stats               # Show chunked storage stats
+    python scripts/ml_data_collector.py chunked reconstruct -o data.jsonl  # Reconstruct from chunks
 """
 
 import json
@@ -3163,6 +3169,13 @@ POST_COMMIT_SNIPPET = '''
 # ML-DATA-COLLECTOR-HOOK
 # ML Data Collection - Post-Commit Hook
 # Automatically collects enriched commit data for model training
+
+# Skip ML-only commits to prevent infinite loop
+COMMIT_MSG=$(git log -1 --format=%s HEAD 2>/dev/null)
+if [[ "$COMMIT_MSG" == "data: ML tracking data"* ]] || [[ "$COMMIT_MSG" == "data: ML"* ]]; then
+    exit 0
+fi
+
 python scripts/ml_data_collector.py commit 2>/dev/null || true
 # END-ML-DATA-COLLECTOR-HOOK
 '''
@@ -3449,6 +3462,11 @@ def main():
     elif command == "validate":
         # Validate existing data against schemas
         import argparse
+        from ml_collector.config import (
+            COMMITS_DIR, CHATS_DIR, ACTIONS_DIR,
+            COMMIT_SCHEMA, CHAT_SCHEMA, ACTION_SCHEMA,
+            validate_schema
+        )
         parser = argparse.ArgumentParser()
         parser.add_argument("--fix", action="store_true",
                             help="Attempt to fix invalid entries")
@@ -4220,6 +4238,92 @@ Your name and email (if provided) will be used for:
                     print(f"Saved orchestration extractions ({len(files)} files):")
                     for f in files:
                         print(f"  {f.name}")
+
+    elif command == "chunked":
+        # Chunked storage operations for git-friendly large file storage
+        import argparse
+        from ml_collector.chunked_storage import (
+            migrate_to_chunked, compact_chunks, get_chunked_stats,
+            reconstruct_all, CHUNKED_DIR
+        )
+        from ml_collector.config import CHATS_DIR, COMMITS_DIR
+
+        parser = argparse.ArgumentParser(
+            description="Chunked storage for git-friendly large file storage"
+        )
+        parser.add_argument("action", choices=["migrate", "compact", "stats", "reconstruct"],
+                           help="Action to perform")
+        parser.add_argument("--type", "-t", choices=["chat", "commit", "all"],
+                           default="all", help="Record type to process")
+        parser.add_argument("--keep-days", "-k", type=int, default=30,
+                           help="Days to keep separate before compacting (default: 30)")
+        parser.add_argument("--output", "-o", type=Path,
+                           help="Output file for reconstruction")
+        parser.add_argument("--session-id", "-s", default="migration",
+                           help="Session ID for migration")
+        args = parser.parse_args(sys.argv[2:])
+
+        if args.action == "migrate":
+            print("Migrating existing data to chunked storage...")
+            total = 0
+
+            if args.type in ("chat", "all"):
+                count = migrate_to_chunked(CHATS_DIR, "chat", args.session_id)
+                print(f"  Chats migrated: {count}")
+                total += count
+
+            if args.type in ("commit", "all"):
+                count = migrate_to_chunked(COMMITS_DIR, "commit", args.session_id)
+                print(f"  Commits migrated: {count}")
+                total += count
+
+            print(f"\nTotal records migrated: {total}")
+            print(f"Chunked storage: {CHUNKED_DIR}")
+
+        elif args.action == "compact":
+            print(f"Compacting chunks older than {args.keep_days} days...")
+            result = compact_chunks(keep_days=args.keep_days)
+            print(f"  Files before: {result['files_before']}")
+            print(f"  Files after:  {result['files_after']}")
+            if result['bytes_saved'] > 0:
+                print(f"  Bytes saved:  {result['bytes_saved']:,}")
+
+        elif args.action == "stats":
+            stats = get_chunked_stats()
+            print("\n" + "=" * 50)
+            print("CHUNKED STORAGE STATISTICS")
+            print("=" * 50)
+            print(f"\nTotal files:   {stats['total_files']}")
+            print(f"Total records: {stats['total_records']}")
+            if stats['total_bytes'] > 1024:
+                print(f"Total size:    {stats['total_bytes'] / 1024:.1f} KB")
+            else:
+                print(f"Total size:    {stats['total_bytes']} bytes")
+
+            if stats['by_type']:
+                print("\nBy type:")
+                for record_type, type_stats in stats['by_type'].items():
+                    print(f"  {record_type}:")
+                    print(f"    Files:   {type_stats['files']}")
+                    print(f"    Records: {type_stats['records']}")
+                    if type_stats['bytes'] > 1024:
+                        print(f"    Size:    {type_stats['bytes'] / 1024:.1f} KB")
+                    else:
+                        print(f"    Size:    {type_stats['bytes']} bytes")
+            print("=" * 50)
+
+        elif args.action == "reconstruct":
+            record_type = None if args.type == "all" else args.type
+            records = reconstruct_all(record_type)
+            print(f"Reconstructed {len(records)} records")
+
+            if args.output:
+                with open(args.output, 'w', encoding='utf-8') as f:
+                    for record in records:
+                        f.write(json.dumps(record) + '\n')
+                print(f"Written to: {args.output}")
+            else:
+                print("Use --output to save reconstructed data")
 
     else:
         print(f"Unknown command: {command}")
