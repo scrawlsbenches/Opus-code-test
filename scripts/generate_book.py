@@ -123,7 +123,7 @@ class BookBuilder:
 
         return results
 
-    def generate_chapter(self, chapter_name: str, dry_run: bool = False) -> Dict[str, Any]:
+    def generate_chapter(self, chapter_name: str, dry_run: bool = False, force: bool = False) -> Dict[str, Any]:
         """Generate a specific chapter."""
         if chapter_name not in self.generators:
             available = ", ".join(self.generators.keys())
@@ -131,7 +131,12 @@ class BookBuilder:
 
         generator = self.generators[chapter_name]
         print(f"\n{'[DRY RUN] ' if dry_run else ''}Generating: {chapter_name}")
-        return generator.generate(dry_run=dry_run, verbose=self.verbose)
+        # Pass force if the generator supports it (e.g., MarkdownBookGenerator)
+        try:
+            return generator.generate(dry_run=dry_run, verbose=self.verbose, force=force)
+        except TypeError:
+            # Generator doesn't support force parameter
+            return generator.generate(dry_run=dry_run, verbose=self.verbose)
 
 
 # Placeholder generators (to be implemented in Wave 2)
@@ -882,6 +887,11 @@ class SearchIndexGenerator(ChapterGenerator):
 class MarkdownBookGenerator(ChapterGenerator):
     """Generate a single consolidated markdown document from all chapters."""
 
+    def __init__(self, book_dir: Path = BOOK_DIR, include_timestamp: bool = False):
+        super().__init__(book_dir)
+        self.include_timestamp = include_timestamp
+        self._hash_file = book_dir / ".book_source_hash"
+
     @property
     def name(self) -> str:
         return "markdown"
@@ -890,14 +900,77 @@ class MarkdownBookGenerator(ChapterGenerator):
     def output_dir(self) -> str:
         return ""  # Output to book/ root
 
-    def generate(self, dry_run: bool = False, verbose: bool = False) -> Dict[str, Any]:
-        """Generate a single consolidated markdown file from all chapters."""
+    def _compute_source_hash(self) -> str:
+        """Compute hash of all source chapter files for change detection."""
+        import hashlib
+        hasher = hashlib.sha256()
+
+        # Hash all chapter files in sorted order for determinism
+        for section_dir in sorted(self.book_dir.iterdir()):
+            if not section_dir.is_dir():
+                continue
+            if section_dir.name.startswith('.') or section_dir.name in ('assets', 'docs'):
+                continue
+
+            for md_file in sorted(section_dir.glob("*.md")):
+                if md_file.name in ("README.md", "TEMPLATE.md"):
+                    continue
+                try:
+                    hasher.update(str(md_file).encode())
+                    hasher.update(md_file.read_bytes())
+                except Exception:
+                    pass
+
+        return hasher.hexdigest()
+
+    def _read_cached_hash(self) -> Optional[str]:
+        """Read the cached source hash from last generation."""
+        try:
+            if self._hash_file.exists():
+                return self._hash_file.read_text().strip()
+        except Exception:
+            pass
+        return None
+
+    def _write_cached_hash(self, hash_value: str) -> None:
+        """Write source hash for future change detection."""
+        try:
+            self._hash_file.write_text(hash_value)
+        except Exception:
+            pass
+
+    def generate(self, dry_run: bool = False, verbose: bool = False, force: bool = False) -> Dict[str, Any]:
+        """Generate a single consolidated markdown file from all chapters.
+
+        Args:
+            dry_run: If True, show what would be generated without writing
+            verbose: If True, show detailed progress
+            force: If True, regenerate even if sources haven't changed
+        """
         errors = []
         stats = {
             "chapters_included": 0,
             "sections_found": 0,
-            "total_lines": 0
+            "total_lines": 0,
+            "skipped": False,
+            "unchanged": False
         }
+
+        output_path = self.book_dir / "BOOK.md"
+
+        # Check if sources changed since last generation
+        source_hash = self._compute_source_hash()
+        cached_hash = self._read_cached_hash()
+
+        if not force and source_hash == cached_hash and output_path.exists():
+            if verbose:
+                print("  Source files unchanged, skipping generation")
+            stats["skipped"] = True
+            return {
+                "files": [],
+                "stats": stats,
+                "errors": errors
+            }
 
         if verbose:
             print("  Scanning book chapters for consolidation...")
@@ -926,10 +999,26 @@ class MarkdownBookGenerator(ChapterGenerator):
 
         stats["total_lines"] = len(content.split('\n'))
 
+        # Compare with existing file to avoid unnecessary writes
+        if output_path.exists():
+            existing_content = output_path.read_text()
+            if existing_content == content:
+                if verbose:
+                    print("  Content unchanged, skipping write")
+                stats["unchanged"] = True
+                # Update hash cache even if content unchanged
+                if not dry_run:
+                    self._write_cached_hash(source_hash)
+                return {
+                    "files": [],
+                    "stats": stats,
+                    "errors": errors
+                }
+
         # Write the consolidated file
-        output_path = self.book_dir / "BOOK.md"
         if not dry_run:
             output_path.write_text(content)
+            self._write_cached_hash(source_hash)
             self.generated_files.append(output_path)
             if verbose:
                 print(f"  Written: {output_path}")
@@ -1023,13 +1112,15 @@ class MarkdownBookGenerator(ChapterGenerator):
 
     def _generate_header(self) -> str:
         """Generate the book header."""
-        return f"""# The Cortical Chronicles
+        header = """# The Cortical Chronicles
 
 *A Self-Documenting Living Book*
 
-**Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
+"""
+        if self.include_timestamp:
+            header += f"**Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n\n"
 
----
+        header += """---
 
 This document is automatically generated from the Cortical Text Processor codebase.
 It consolidates all book chapters into a single markdown file for offline reading,
@@ -1038,6 +1129,7 @@ PDF generation, or direct viewing on GitHub.
 ---
 
 """
+        return header
 
     def _generate_table_of_contents(self, sections: Dict[str, Dict[str, Any]]) -> str:
         """Generate a table of contents."""
@@ -1093,7 +1185,7 @@ PDF generation, or direct viewing on GitHub.
 
     def _generate_footer(self) -> str:
         """Generate the book footer."""
-        return f"""---
+        footer = """---
 
 ## About This Book
 
@@ -1109,16 +1201,19 @@ python scripts/generate_book.py
 
 # Generate consolidated markdown
 python scripts/generate_book.py --markdown
+
+# Force regeneration (ignore cache)
+python scripts/generate_book.py --markdown --force
 ```
 
 ### Source Code
 
 The source code and generation scripts are available at the project repository.
-
----
-
-*Generated on {datetime.utcnow().strftime('%Y-%m-%d at %H:%M UTC')}*
 """
+        if self.include_timestamp:
+            footer += f"\n---\n\n*Generated on {datetime.utcnow().strftime('%Y-%m-%d at %H:%M UTC')}*\n"
+
+        return footer
 
 
 class CommitNarrativeGenerator(ChapterGenerator):
@@ -1542,6 +1637,7 @@ def main():
 Examples:
     %(prog)s                    Generate full book (individual chapters)
     %(prog)s --markdown         Generate consolidated markdown file (BOOK.md)
+    %(prog)s --markdown --force Force regeneration (ignore cache)
     %(prog)s --chapter foundations  Generate only foundations chapter
     %(prog)s --dry-run          Show what would be generated
     %(prog)s --verbose          Detailed progress output
@@ -1550,6 +1646,8 @@ Examples:
     )
     parser.add_argument("--chapter", "-c", help="Generate specific chapter only")
     parser.add_argument("--markdown", "-m", action="store_true", help="Generate consolidated markdown file (BOOK.md)")
+    parser.add_argument("--force", "-f", action="store_true", help="Force regeneration even if sources unchanged")
+    parser.add_argument("--timestamp", "-t", action="store_true", help="Include generation timestamps in output")
     parser.add_argument("--dry-run", "-n", action="store_true", help="Show what would be generated without writing")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     parser.add_argument("--list", "-l", action="store_true", help="List available generators")
@@ -1565,7 +1663,10 @@ Examples:
     builder.register_generator(ModuleDocGenerator(book_dir=args.output))
     builder.register_generator(CommitNarrativeGenerator(book_dir=args.output))
     builder.register_generator(SearchIndexGenerator(book_dir=args.output))
-    builder.register_generator(MarkdownBookGenerator(book_dir=args.output))
+    builder.register_generator(MarkdownBookGenerator(
+        book_dir=args.output,
+        include_timestamp=getattr(args, 'timestamp', False)
+    ))
 
     # Register placeholder generators (will be replaced with real ones)
     builder.register_generator(PlaceholderGenerator("decisions", "03-decisions"))
@@ -1581,9 +1682,9 @@ Examples:
     # Generate
     if args.markdown:
         # Generate only the consolidated markdown file
-        results = builder.generate_chapter("markdown", dry_run=args.dry_run)
+        results = builder.generate_chapter("markdown", dry_run=args.dry_run, force=args.force)
     elif args.chapter:
-        results = builder.generate_chapter(args.chapter, dry_run=args.dry_run)
+        results = builder.generate_chapter(args.chapter, dry_run=args.dry_run, force=args.force)
     else:
         results = builder.generate_all(dry_run=args.dry_run)
 

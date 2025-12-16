@@ -20,6 +20,9 @@ corpus_dev.pkl
 # AI metadata files (generated, not tracked)
 *.ai_meta
 
+# Book generation cache
+book/.book_source_hash
+
 # Indexer logs
 index.log
 *.log

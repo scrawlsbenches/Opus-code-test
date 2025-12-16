@@ -1532,8 +1532,18 @@ Content here.
         header = generator._generate_header()
 
         assert "# The Cortical Chronicles" in header
-        assert "Generated:" in header
+        # Timestamp should NOT be included by default
+        assert "Generated:" not in header
         assert "---" in header
+
+    def test_generate_header_with_timestamp(self):
+        """Test that header includes timestamp when enabled."""
+        generator = MarkdownBookGenerator(include_timestamp=True)
+
+        header = generator._generate_header()
+
+        assert "# The Cortical Chronicles" in header
+        assert "Generated:" in header
 
     def test_generate_table_of_contents(self):
         """Test table of contents generation."""
@@ -1674,6 +1684,118 @@ Content here.
         assert "About This Book" in footer
         assert "How to Regenerate" in footer
         assert "--markdown" in footer
+        assert "--force" in footer
+        # Timestamp should NOT be included by default
+        assert "Generated on" not in footer
+
+    def test_generate_footer_with_timestamp(self):
+        """Test that footer includes timestamp when enabled."""
+        generator = MarkdownBookGenerator(include_timestamp=True)
+
+        footer = generator._generate_footer()
+
+        assert "Generated on" in footer
+
+    def test_compute_source_hash_deterministic(self, tmp_path):
+        """Test that source hash is deterministic for same content."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Create sample content
+        section_dir = tmp_path / "01-foundations"
+        section_dir.mkdir()
+        (section_dir / "test.md").write_text("# Test\n\nContent.")
+
+        hash1 = generator._compute_source_hash()
+        hash2 = generator._compute_source_hash()
+
+        assert hash1 == hash2
+
+    def test_compute_source_hash_changes_with_content(self, tmp_path):
+        """Test that source hash changes when content changes."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Create initial content
+        section_dir = tmp_path / "01-foundations"
+        section_dir.mkdir()
+        chapter_file = section_dir / "test.md"
+        chapter_file.write_text("# Test\n\nOriginal content.")
+
+        hash1 = generator._compute_source_hash()
+
+        # Modify content
+        chapter_file.write_text("# Test\n\nModified content.")
+
+        hash2 = generator._compute_source_hash()
+
+        assert hash1 != hash2
+
+    def test_generate_skips_when_unchanged(self, tmp_path):
+        """Test that generation is skipped when sources haven't changed."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Create sample content
+        section_dir = tmp_path / "01-foundations"
+        section_dir.mkdir()
+        (section_dir / "test.md").write_text("# Test\n\nContent.")
+
+        # First generation
+        result1 = generator.generate(dry_run=False, verbose=False)
+        assert len(result1["files"]) == 1
+        assert not result1["stats"]["skipped"]
+
+        # Create new generator instance (simulates new run)
+        generator2 = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Second generation should skip
+        result2 = generator2.generate(dry_run=False, verbose=False)
+        assert len(result2["files"]) == 0
+        assert result2["stats"]["skipped"]
+
+    def test_generate_force_ignores_cache(self, tmp_path):
+        """Test that force=True regenerates even when sources unchanged."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Create sample content
+        section_dir = tmp_path / "01-foundations"
+        section_dir.mkdir()
+        (section_dir / "test.md").write_text("# Test\n\nContent.")
+
+        # First generation
+        result1 = generator.generate(dry_run=False, verbose=False)
+        assert len(result1["files"]) == 1
+
+        # Create new generator instance
+        generator2 = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Second generation with force should not skip
+        result2 = generator2.generate(dry_run=False, verbose=False, force=True)
+        # Content is same so it will be "unchanged" but not "skipped"
+        assert result2["stats"]["unchanged"]
+        assert not result2["stats"]["skipped"]
+
+    def test_generate_detects_content_unchanged(self, tmp_path):
+        """Test that identical content results in unchanged status."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Create sample content
+        section_dir = tmp_path / "01-foundations"
+        section_dir.mkdir()
+        (section_dir / "test.md").write_text("# Test\n\nContent.")
+
+        # First generation
+        result1 = generator.generate(dry_run=False, verbose=False)
+
+        # Clear cache to force regeneration
+        hash_file = tmp_path / ".book_source_hash"
+        if hash_file.exists():
+            hash_file.unlink()
+
+        # Create new generator
+        generator2 = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Should detect content unchanged
+        result2 = generator2.generate(dry_run=False, verbose=False)
+        assert result2["stats"]["unchanged"]
 
 
 if __name__ == '__main__':

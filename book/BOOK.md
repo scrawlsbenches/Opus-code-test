@@ -2,8 +2,6 @@
 
 *A Self-Documenting Living Book*
 
-**Generated:** 2025-12-16 19:19 UTC
-
 ---
 
 This document is automatically generated from the Cortical Text Processor codebase.
@@ -5822,12 +5820,11 @@ python scripts/generate_book.py
 
 # Generate consolidated markdown
 python scripts/generate_book.py --markdown
+
+# Force regeneration (ignore cache)
+python scripts/generate_book.py --markdown --force
 ```
 
 ### Source Code
 
 The source code and generation scripts are available at the project repository.
-
----
-
-*Generated on 2025-12-16 at 19:19 UTC*
