@@ -879,6 +879,248 @@ class SearchIndexGenerator(ChapterGenerator):
         return sections
 
 
+class MarkdownBookGenerator(ChapterGenerator):
+    """Generate a single consolidated markdown document from all chapters."""
+
+    @property
+    def name(self) -> str:
+        return "markdown"
+
+    @property
+    def output_dir(self) -> str:
+        return ""  # Output to book/ root
+
+    def generate(self, dry_run: bool = False, verbose: bool = False) -> Dict[str, Any]:
+        """Generate a single consolidated markdown file from all chapters."""
+        errors = []
+        stats = {
+            "chapters_included": 0,
+            "sections_found": 0,
+            "total_lines": 0
+        }
+
+        if verbose:
+            print("  Scanning book chapters for consolidation...")
+
+        # Find all .md files organized by section
+        sections = self._collect_sections()
+        stats["sections_found"] = len(sections)
+
+        if verbose:
+            print(f"  Found {len(sections)} sections")
+
+        # Build the consolidated markdown
+        content = self._generate_header()
+        content += self._generate_table_of_contents(sections)
+
+        # Add each section and its chapters
+        for section_name, section_info in sections.items():
+            if verbose:
+                print(f"  Processing section: {section_name}")
+
+            content += self._generate_section(section_name, section_info)
+            stats["chapters_included"] += len(section_info["chapters"])
+
+        # Add footer
+        content += self._generate_footer()
+
+        stats["total_lines"] = len(content.split('\n'))
+
+        # Write the consolidated file
+        output_path = self.book_dir / "BOOK.md"
+        if not dry_run:
+            output_path.write_text(content)
+            self.generated_files.append(output_path)
+            if verbose:
+                print(f"  Written: {output_path}")
+        else:
+            print(f"  Would write: {output_path}")
+
+        return {
+            "files": [str(f) for f in self.generated_files],
+            "stats": stats,
+            "errors": errors
+        }
+
+    def _collect_sections(self) -> Dict[str, Dict[str, Any]]:
+        """Collect all chapters organized by section."""
+        sections = {}
+
+        # Section order and display names
+        section_config = {
+            "00-preface": {"order": 0, "title": "Preface"},
+            "01-foundations": {"order": 1, "title": "Foundations: Core Algorithms"},
+            "02-architecture": {"order": 2, "title": "Architecture: System Design"},
+            "03-decisions": {"order": 3, "title": "Decisions: ADRs"},
+            "04-evolution": {"order": 4, "title": "Evolution: Project History"},
+            "05-future": {"order": 5, "title": "Future: Roadmap"},
+        }
+
+        # Find all section directories
+        for section_dir in sorted(self.book_dir.iterdir()):
+            if not section_dir.is_dir():
+                continue
+            if section_dir.name.startswith('.') or section_dir.name == 'assets' or section_dir.name == 'docs':
+                continue
+
+            section_name = section_dir.name
+            config = section_config.get(section_name, {"order": 99, "title": section_name.replace('-', ' ').title()})
+
+            chapters = []
+            for md_file in sorted(section_dir.glob("*.md")):
+                if md_file.name in ["README.md", "TEMPLATE.md"]:
+                    continue
+
+                chapter_data = self._parse_chapter_file(md_file)
+                if chapter_data:
+                    chapters.append(chapter_data)
+
+            if chapters:
+                sections[section_name] = {
+                    "order": config["order"],
+                    "title": config["title"],
+                    "chapters": chapters
+                }
+
+        # Sort by order
+        return dict(sorted(sections.items(), key=lambda x: x[1]["order"]))
+
+    def _parse_chapter_file(self, md_file: Path) -> Optional[Dict[str, Any]]:
+        """Parse a chapter markdown file."""
+        try:
+            content = md_file.read_text()
+
+            # Extract title from frontmatter or first heading
+            title = md_file.stem.replace('-', ' ').title()
+
+            # Check for YAML frontmatter
+            if content.startswith('---'):
+                match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
+                if match:
+                    try:
+                        frontmatter = yaml.safe_load(match.group(1))
+                        if frontmatter and 'title' in frontmatter:
+                            title = frontmatter['title']
+                        # Remove frontmatter from content
+                        content = content[match.end():]
+                    except Exception:
+                        pass
+
+            # Also try to get title from first # heading if not in frontmatter
+            first_heading = re.search(r'^#\s+(.+)$', content, re.MULTILINE)
+            if first_heading and title == md_file.stem.replace('-', ' ').title():
+                title = first_heading.group(1).strip()
+
+            return {
+                "file": md_file,
+                "filename": md_file.name,
+                "title": title,
+                "content": content.strip()
+            }
+        except Exception as e:
+            print(f"  Warning: Failed to parse {md_file.name}: {e}")
+            return None
+
+    def _generate_header(self) -> str:
+        """Generate the book header."""
+        return f"""# The Cortical Chronicles
+
+*A Self-Documenting Living Book*
+
+**Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
+
+---
+
+This document is automatically generated from the Cortical Text Processor codebase.
+It consolidates all book chapters into a single markdown file for offline reading,
+PDF generation, or direct viewing on GitHub.
+
+---
+
+"""
+
+    def _generate_table_of_contents(self, sections: Dict[str, Dict[str, Any]]) -> str:
+        """Generate a table of contents."""
+        toc = "## Table of Contents\n\n"
+
+        for section_name, section_info in sections.items():
+            # Section heading
+            section_anchor = self._make_anchor(section_info["title"])
+            toc += f"### [{section_info['title']}](#{section_anchor})\n\n"
+
+            # Chapter links
+            for chapter in section_info["chapters"]:
+                chapter_anchor = self._make_anchor(chapter["title"])
+                toc += f"- [{chapter['title']}](#{chapter_anchor})\n"
+
+            toc += "\n"
+
+        toc += "---\n\n"
+        return toc
+
+    def _make_anchor(self, text: str) -> str:
+        """Convert text to a markdown anchor."""
+        # Lowercase, replace spaces with hyphens, remove special chars
+        anchor = text.lower()
+        anchor = re.sub(r'[^\w\s-]', '', anchor)
+        anchor = re.sub(r'[-\s]+', '-', anchor)
+        return anchor.strip('-')
+
+    def _generate_section(self, section_name: str, section_info: Dict[str, Any]) -> str:
+        """Generate content for a section."""
+        content = f"# {section_info['title']}\n\n"
+
+        for chapter in section_info["chapters"]:
+            content += self._format_chapter(chapter)
+
+        return content
+
+    def _format_chapter(self, chapter: Dict[str, Any]) -> str:
+        """Format a single chapter for inclusion."""
+        content = chapter["content"]
+
+        # Ensure chapter starts with a level-2 heading (##)
+        # If it starts with # (level 1), convert to ##
+        lines = content.split('\n')
+        if lines and lines[0].startswith('# ') and not lines[0].startswith('## '):
+            lines[0] = '#' + lines[0]  # # -> ##
+            content = '\n'.join(lines)
+
+        # Add separator after chapter
+        content += "\n\n---\n\n"
+
+        return content
+
+    def _generate_footer(self) -> str:
+        """Generate the book footer."""
+        return f"""---
+
+## About This Book
+
+**The Cortical Chronicles** is a self-documenting book generated by the Cortical Text Processor.
+It documents its own architecture, algorithms, and evolution through automated extraction
+of code metadata, git history, and architectural decision records.
+
+### How to Regenerate
+
+```bash
+# Generate individual chapters
+python scripts/generate_book.py
+
+# Generate consolidated markdown
+python scripts/generate_book.py --markdown
+```
+
+### Source Code
+
+The source code and generation scripts are available at the project repository.
+
+---
+
+*Generated on {datetime.utcnow().strftime('%Y-%m-%d at %H:%M UTC')}*
+"""
+
+
 class CommitNarrativeGenerator(ChapterGenerator):
     """Generate evolution narrative from git history."""
 
@@ -1298,7 +1540,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    %(prog)s                    Generate full book
+    %(prog)s                    Generate full book (individual chapters)
+    %(prog)s --markdown         Generate consolidated markdown file (BOOK.md)
     %(prog)s --chapter foundations  Generate only foundations chapter
     %(prog)s --dry-run          Show what would be generated
     %(prog)s --verbose          Detailed progress output
@@ -1306,6 +1549,7 @@ Examples:
         """
     )
     parser.add_argument("--chapter", "-c", help="Generate specific chapter only")
+    parser.add_argument("--markdown", "-m", action="store_true", help="Generate consolidated markdown file (BOOK.md)")
     parser.add_argument("--dry-run", "-n", action="store_true", help="Show what would be generated without writing")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     parser.add_argument("--list", "-l", action="store_true", help="List available generators")
@@ -1321,6 +1565,7 @@ Examples:
     builder.register_generator(ModuleDocGenerator(book_dir=args.output))
     builder.register_generator(CommitNarrativeGenerator(book_dir=args.output))
     builder.register_generator(SearchIndexGenerator(book_dir=args.output))
+    builder.register_generator(MarkdownBookGenerator(book_dir=args.output))
 
     # Register placeholder generators (will be replaced with real ones)
     builder.register_generator(PlaceholderGenerator("decisions", "03-decisions"))
@@ -1334,7 +1579,10 @@ Examples:
         return
 
     # Generate
-    if args.chapter:
+    if args.markdown:
+        # Generate only the consolidated markdown file
+        results = builder.generate_chapter("markdown", dry_run=args.dry_run)
+    elif args.chapter:
         results = builder.generate_chapter(args.chapter, dry_run=args.dry_run)
     else:
         results = builder.generate_all(dry_run=args.dry_run)

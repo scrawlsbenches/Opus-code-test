@@ -31,6 +31,7 @@ from scripts.generate_book import (
     ModuleDocGenerator,
     SearchIndexGenerator,
     CommitNarrativeGenerator,
+    MarkdownBookGenerator,
     BOOK_DIR,
 )
 
@@ -1365,6 +1366,314 @@ class TestCommitNarrativeGenerator:
         assert 'adr-001-test-decision' in adrs
         assert 'adr-002-another-decision' in adrs
         assert adrs['adr-001-test-decision']['title'] == 'ADR-001: Test Decision'
+
+
+# =============================================================================
+# MarkdownBookGenerator Tests
+# =============================================================================
+
+class TestMarkdownBookGenerator:
+    """Tests for MarkdownBookGenerator class."""
+
+    def test_name_property(self):
+        """Test that name property returns 'markdown'."""
+        generator = MarkdownBookGenerator()
+        assert generator.name == "markdown"
+
+    def test_output_dir_property(self):
+        """Test that output_dir property returns empty string (root)."""
+        generator = MarkdownBookGenerator()
+        assert generator.output_dir == ""
+
+    def test_make_anchor_basic(self):
+        """Test anchor generation from simple text."""
+        generator = MarkdownBookGenerator()
+
+        assert generator._make_anchor("Hello World") == "hello-world"
+        assert generator._make_anchor("Test Chapter") == "test-chapter"
+
+    def test_make_anchor_special_chars(self):
+        """Test anchor generation with special characters."""
+        generator = MarkdownBookGenerator()
+
+        assert generator._make_anchor("Test: Chapter 1") == "test-chapter-1"
+        assert generator._make_anchor("Hello — World") == "hello-world"
+        assert generator._make_anchor("Test (with parens)") == "test-with-parens"
+
+    def test_make_anchor_multiple_spaces(self):
+        """Test anchor generation with multiple spaces."""
+        generator = MarkdownBookGenerator()
+
+        assert generator._make_anchor("Hello   World") == "hello-world"
+        assert generator._make_anchor("  Leading and trailing  ") == "leading-and-trailing"
+
+    def test_collect_sections_empty_dir(self, tmp_path):
+        """Test collecting sections from empty directory."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        sections = generator._collect_sections()
+
+        assert sections == {}
+
+    def test_collect_sections_with_chapters(self, tmp_path):
+        """Test collecting sections with chapter files."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Create section directory with chapters
+        section_dir = tmp_path / "01-foundations"
+        section_dir.mkdir()
+
+        chapter1 = section_dir / "chapter1.md"
+        chapter1.write_text("# Chapter 1\n\nContent here.")
+
+        chapter2 = section_dir / "chapter2.md"
+        chapter2.write_text("# Chapter 2\n\nMore content.")
+
+        sections = generator._collect_sections()
+
+        assert "01-foundations" in sections
+        assert len(sections["01-foundations"]["chapters"]) == 2
+        assert sections["01-foundations"]["title"] == "Foundations: Core Algorithms"
+
+    def test_collect_sections_ignores_special_dirs(self, tmp_path):
+        """Test that special directories are ignored."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Create special directories that should be ignored
+        (tmp_path / "assets").mkdir()
+        (tmp_path / "assets" / "test.md").write_text("# Test")
+
+        (tmp_path / "docs").mkdir()
+        (tmp_path / "docs" / "test.md").write_text("# Test")
+
+        (tmp_path / ".hidden").mkdir()
+        (tmp_path / ".hidden" / "test.md").write_text("# Test")
+
+        sections = generator._collect_sections()
+
+        assert "assets" not in sections
+        assert "docs" not in sections
+        assert ".hidden" not in sections
+
+    def test_collect_sections_ignores_readme_template(self, tmp_path):
+        """Test that README.md and TEMPLATE.md are skipped."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        section_dir = tmp_path / "01-foundations"
+        section_dir.mkdir()
+
+        # These should be ignored
+        (section_dir / "README.md").write_text("# README")
+        (section_dir / "TEMPLATE.md").write_text("# Template")
+
+        # This should be included
+        (section_dir / "chapter1.md").write_text("# Chapter 1")
+
+        sections = generator._collect_sections()
+
+        assert len(sections["01-foundations"]["chapters"]) == 1
+        assert sections["01-foundations"]["chapters"][0]["filename"] == "chapter1.md"
+
+    def test_parse_chapter_file_basic(self, tmp_path):
+        """Test parsing a basic chapter file."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        chapter_file = tmp_path / "test.md"
+        chapter_file.write_text("# Test Chapter\n\nThis is the content.")
+
+        result = generator._parse_chapter_file(chapter_file)
+
+        assert result is not None
+        assert result["title"] == "Test Chapter"
+        assert result["filename"] == "test.md"
+        assert "content" in result
+        assert "This is the content" in result["content"]
+
+    def test_parse_chapter_file_with_frontmatter(self, tmp_path):
+        """Test parsing a chapter with YAML frontmatter."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        chapter_file = tmp_path / "test.md"
+        chapter_file.write_text("""---
+title: "Custom Title"
+tags:
+  - test
+---
+
+# Heading
+
+Content here.
+""")
+
+        result = generator._parse_chapter_file(chapter_file)
+
+        assert result is not None
+        assert result["title"] == "Custom Title"
+        # Frontmatter should be removed from content
+        assert "---" not in result["content"] or result["content"].count("---") == 0
+
+    def test_parse_chapter_file_fallback_title(self, tmp_path):
+        """Test that title falls back to filename when no heading."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        chapter_file = tmp_path / "my-chapter.md"
+        chapter_file.write_text("No heading here, just content.")
+
+        result = generator._parse_chapter_file(chapter_file)
+
+        assert result is not None
+        # Should fall back to processed filename
+        assert result["title"] == "My Chapter"
+
+    def test_generate_header_contains_required_elements(self):
+        """Test that generated header contains required elements."""
+        generator = MarkdownBookGenerator()
+
+        header = generator._generate_header()
+
+        assert "# The Cortical Chronicles" in header
+        assert "Generated:" in header
+        assert "---" in header
+
+    def test_generate_table_of_contents(self):
+        """Test table of contents generation."""
+        generator = MarkdownBookGenerator()
+
+        sections = {
+            "01-test": {
+                "order": 1,
+                "title": "Test Section",
+                "chapters": [
+                    {"title": "Chapter One", "content": "", "filename": "ch1.md"},
+                    {"title": "Chapter Two", "content": "", "filename": "ch2.md"},
+                ]
+            }
+        }
+
+        toc = generator._generate_table_of_contents(sections)
+
+        assert "## Table of Contents" in toc
+        assert "Test Section" in toc
+        assert "Chapter One" in toc
+        assert "Chapter Two" in toc
+        # Check for anchor links
+        assert "(#" in toc
+
+    def test_format_chapter_converts_heading_level(self):
+        """Test that level-1 headings are converted to level-2."""
+        generator = MarkdownBookGenerator()
+
+        chapter = {
+            "title": "Test",
+            "content": "# Original Heading\n\nContent here.",
+            "filename": "test.md"
+        }
+
+        result = generator._format_chapter(chapter)
+
+        # Should have converted # to ##
+        assert "## Original Heading" in result
+        # Should have separator
+        assert "---" in result
+
+    def test_format_chapter_preserves_level2_heading(self):
+        """Test that level-2 headings are preserved."""
+        generator = MarkdownBookGenerator()
+
+        chapter = {
+            "title": "Test",
+            "content": "## Already Level 2\n\nContent here.",
+            "filename": "test.md"
+        }
+
+        result = generator._format_chapter(chapter)
+
+        # Should preserve ##
+        assert "## Already Level 2" in result
+        # Should NOT have ###
+        assert "### Already Level 2" not in result
+
+    def test_generate_dry_run(self, tmp_path):
+        """Test generate() with dry_run=True."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Create a sample section with chapter
+        section_dir = tmp_path / "01-foundations"
+        section_dir.mkdir()
+        (section_dir / "test.md").write_text("# Test\n\nContent.")
+
+        result = generator.generate(dry_run=True, verbose=False)
+
+        # Check return structure
+        assert "files" in result
+        assert "stats" in result
+        assert "errors" in result
+
+        # No files should be written
+        assert len(result["files"]) == 0
+
+        # Stats should show chapters found
+        assert result["stats"]["chapters_included"] >= 0
+
+        # BOOK.md should not exist
+        assert not (tmp_path / "BOOK.md").exists()
+
+    def test_generate_writes_book_file(self, tmp_path):
+        """Test that generate() creates BOOK.md file."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Create sample content
+        section_dir = tmp_path / "01-foundations"
+        section_dir.mkdir()
+        (section_dir / "test.md").write_text("# Test Chapter\n\nTest content here.")
+
+        result = generator.generate(dry_run=False, verbose=False)
+
+        # BOOK.md should exist
+        book_file = tmp_path / "BOOK.md"
+        assert book_file.exists()
+
+        # Check content
+        content = book_file.read_text()
+        assert "# The Cortical Chronicles" in content
+        assert "Test Chapter" in content
+        assert "Test content here" in content
+
+        # Check stats
+        assert result["stats"]["chapters_included"] == 1
+        assert result["stats"]["sections_found"] == 1
+        assert len(result["files"]) == 1
+
+    def test_generate_preserves_section_order(self, tmp_path):
+        """Test that sections are generated in correct order."""
+        generator = MarkdownBookGenerator(book_dir=tmp_path)
+
+        # Create sections out of order
+        (tmp_path / "02-architecture").mkdir()
+        (tmp_path / "02-architecture" / "arch.md").write_text("# Architecture")
+
+        (tmp_path / "01-foundations").mkdir()
+        (tmp_path / "01-foundations" / "found.md").write_text("# Foundations")
+
+        result = generator.generate(dry_run=False, verbose=False)
+
+        content = (tmp_path / "BOOK.md").read_text()
+
+        # Foundations should appear before Architecture
+        foundations_pos = content.find("Foundations")
+        architecture_pos = content.find("Architecture")
+
+        assert foundations_pos < architecture_pos
+
+    def test_generate_footer_contains_instructions(self):
+        """Test that footer contains regeneration instructions."""
+        generator = MarkdownBookGenerator()
+
+        footer = generator._generate_footer()
+
+        assert "About This Book" in footer
+        assert "How to Regenerate" in footer
+        assert "--markdown" in footer
 
 
 if __name__ == '__main__':
