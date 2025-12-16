@@ -138,13 +138,21 @@ MILESTONES = {
 
 # Schema validation definitions
 COMMIT_SCHEMA = {
+    # Core required fields (present in both full and lite commits)
     "required": ["hash", "message", "author", "timestamp", "branch", "files_changed",
-                 "insertions", "deletions", "hunks", "hour_of_day", "day_of_week"],
+                 "insertions", "deletions", "hour_of_day", "day_of_week"],
     "types": {
         "hash": str, "message": str, "author": str, "timestamp": str, "branch": str,
-        "files_changed": list, "insertions": int, "deletions": int, "hunks": list,
+        "files_changed": list, "insertions": int, "deletions": int,
+        # Optional fields (may be omitted in lite commits)
+        "hunks": list,  # Excluded from lite commits to reduce storage
+        "related_chats": list,  # Only present when commit is linked to session
+        # Commit metadata
         "hour_of_day": int, "day_of_week": str, "is_merge": bool, "is_initial": bool,
-        "parent_count": int, "session_id": (str, type(None)), "related_chats": list,
+        "parent_count": int, "session_id": (str, type(None)),
+        # Optional tracking fields
+        "seconds_since_last_commit": (int, type(None)), "ci_result": (str, type(None)),
+        "reverted": bool, "amended": bool,
     }
 }
 
