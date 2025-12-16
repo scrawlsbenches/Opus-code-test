@@ -26,14 +26,26 @@ try:
         to_proto, from_proto,
         edge_to_proto, edge_from_proto,
         minicolumn_to_proto, minicolumn_from_proto,
-        layer_to_proto, layer_from_proto
+        layer_to_proto, layer_from_proto,
+        _get_proto_classes
     )
     PROTOBUF_AVAILABLE = True
 except ImportError:
     PROTOBUF_AVAILABLE = False
 
+# Check if protoc compiler is actually available (not just the package)
+PROTOC_AVAILABLE = False
+if PROTOBUF_AVAILABLE:
+    try:
+        # This will attempt to compile protos and fail if protoc is missing
+        _get_proto_classes()
+        PROTOC_AVAILABLE = True
+    except (RuntimeError, FileNotFoundError):
+        # protoc not installed - proto compilation fails
+        pass
 
-@unittest.skipIf(not PROTOBUF_AVAILABLE, "protobuf package not installed")
+
+@unittest.skipIf(not PROTOC_AVAILABLE, "protobuf package or protoc compiler not available")
 class TestEdgeSerialization(unittest.TestCase):
     """Test Edge protobuf serialization."""
 
@@ -72,7 +84,7 @@ class TestEdgeSerialization(unittest.TestCase):
         self.assertEqual(restored.source, "corpus")
 
 
-@unittest.skipIf(not PROTOBUF_AVAILABLE, "protobuf package not installed")
+@unittest.skipIf(not PROTOC_AVAILABLE, "protobuf package or protoc compiler not available")
 class TestMinicolumnSerialization(unittest.TestCase):
     """Test Minicolumn protobuf serialization."""
 
@@ -174,7 +186,7 @@ class TestMinicolumnSerialization(unittest.TestCase):
         self.assertEqual(len(restored.typed_connections), 0)
 
 
-@unittest.skipIf(not PROTOBUF_AVAILABLE, "protobuf package not installed")
+@unittest.skipIf(not PROTOC_AVAILABLE, "protobuf package or protoc compiler not available")
 class TestLayerSerialization(unittest.TestCase):
     """Test HierarchicalLayer protobuf serialization."""
 
@@ -215,7 +227,7 @@ class TestLayerSerialization(unittest.TestCase):
         self.assertEqual(len(restored.minicolumns), 0)
 
 
-@unittest.skipIf(not PROTOBUF_AVAILABLE, "protobuf package not installed")
+@unittest.skipIf(not PROTOC_AVAILABLE, "protobuf package or protoc compiler not available")
 class TestProcessorStateSerialization(unittest.TestCase):
     """Test complete processor state protobuf serialization."""
 
@@ -334,7 +346,7 @@ class TestProcessorStateSerialization(unittest.TestCase):
         self.assertEqual(restored_metadata, {})
 
 
-@unittest.skipIf(not PROTOBUF_AVAILABLE, "protobuf package not installed")
+@unittest.skipIf(not PROTOC_AVAILABLE, "protobuf package or protoc compiler not available")
 class TestPersistenceIntegration(unittest.TestCase):
     """Test protobuf integration with persistence module."""
 
@@ -475,7 +487,7 @@ class TestPersistenceIntegration(unittest.TestCase):
                 os.unlink(filepath)
 
 
-@unittest.skipIf(not PROTOBUF_AVAILABLE, "protobuf package not installed")
+@unittest.skipIf(not PROTOC_AVAILABLE, "protobuf package or protoc compiler not available")
 class TestComplexDataStructures(unittest.TestCase):
     """Test protobuf serialization with complex data structures."""
 

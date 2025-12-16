@@ -315,7 +315,8 @@ class TestPrediction(unittest.TestCase):
         file_names = [f for f, _ in predictions]
         self.assertIn("tests/test_auth.py", file_names[:3])
 
-    def test_predict_returns_scores(self):
+    @patch('ml_file_prediction.Path.exists', return_value=True)
+    def test_predict_returns_scores(self, mock_exists):
         """Should return files with scores."""
         # Use a query that matches known keywords
         predictions = predict_files("feat: Add authentication test", self.model, top_n=3)
