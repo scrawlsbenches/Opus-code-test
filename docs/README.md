@@ -8,6 +8,8 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 
 | Document | Description | Audience |
 |----------|-------------|----------|
+| [our-story.md](our-story.md) | How we build search that searches itself | All |
+| [why-transparent-ir.md](why-transparent-ir.md) | Why transparency beats black boxes | All |
 | [quickstart.md](quickstart.md) | 5-minute getting started guide | New users |
 | [architecture.md](architecture.md) | 4-layer hierarchical system design | All |
 | [algorithms.md](algorithms.md) | Core IR algorithms (PageRank, TF-IDF, Louvain) | Developers |
@@ -52,6 +54,13 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 |----------|---------|
 | [quickstart.md](quickstart.md) | 5-minute introduction |
 | [glossary.md](glossary.md) | Key terminology definitions |
+
+### Philosophy & Story
+
+| Document | Purpose |
+|----------|---------|
+| [our-story.md](our-story.md) | How we develop by using the system on itself |
+| [why-transparent-ir.md](why-transparent-ir.md) | Why transparency matters over black-box solutions |
 
 ### Architecture & Algorithms
 
