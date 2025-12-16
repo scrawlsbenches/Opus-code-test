@@ -104,9 +104,9 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 
 - **[CLAUDE.md](../CLAUDE.md)** - Main development guide (in repo root)
 - **[CONTRIBUTING.md](../CONTRIBUTING.md)** - How to contribute
-- **[TASK_LIST.md](../TASK_LIST.md)** - Active task backlog
+- **[merge-friendly-tasks.md](merge-friendly-tasks.md)** - Task management system (see tasks/ directory)
 - **[README.md](../README.md)** - Project overview
 
 ---
 
-*Last updated: 2025-12-14*
+*Last updated: 2025-12-16*

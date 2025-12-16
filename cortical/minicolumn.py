@@ -73,7 +73,7 @@ class Minicolumn:
         document_ids: Which documents contain this content
         lateral_connections: Connections to other columns at same layer (simple weight dict)
         typed_connections: Typed edges with metadata (ConceptNet-style)
-        feedforward_sources: IDs of columns that feed into this one (deprecated, use feedforward_connections)
+        feedforward_sources: IDs of columns that feed into this one (Set for O(1) membership testing; kept in sync with feedforward_connections)
         feedforward_connections: Weighted connections to lower layer columns
         feedback_connections: Weighted connections to higher layer columns
         tfidf: TF-IDF weight for this term
@@ -115,7 +115,7 @@ class Minicolumn:
         self._lateral_cache: Dict[str, float] = {}  # Cached view of typed_connections weights
         self._lateral_cache_valid: bool = True  # Cache starts valid (empty matches empty)
         self.typed_connections: Dict[str, Edge] = {}  # Single source of truth for connections
-        self.feedforward_sources: Set[str] = set()  # Deprecated: use feedforward_connections
+        self.feedforward_sources: Set[str] = set()  # Set for O(1) membership testing
         self.feedforward_connections: Dict[str, float] = {}  # Weighted links to lower layer
         self.feedback_connections: Dict[str, float] = {}  # Weighted links to higher layer
         self.tfidf = 0.0
@@ -387,7 +387,7 @@ class Minicolumn:
         self.feedforward_connections[target_id] = (
             self.feedforward_connections.get(target_id, 0) + weight
         )
-        # Also maintain legacy feedforward_sources for backward compatibility
+        # Also maintain feedforward_sources set for O(1) membership testing
         self.feedforward_sources.add(target_id)
 
     def add_feedback_connection(self, target_id: str, weight: float = 1.0) -> None:

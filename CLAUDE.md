@@ -606,7 +606,6 @@ Key defaults to know:
 ### Task Management (Merge-Friendly System)
 
 **IMPORTANT:** This project uses a merge-friendly task system in `tasks/` directory.
-The legacy `TASK_LIST.md` is kept for historical reference only.
 
 **Creating tasks:**
 ```bash
