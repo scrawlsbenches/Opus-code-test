@@ -37,17 +37,17 @@
     {
       "id": "T-20251215-145630-16f3-003",
       "title": "Design session capture strategy for Claude Code Web",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "arch",
       "description": "BLOCKING: Have 0/100 sessions and 0/200 chats - this is the real bottleneck for ML training. Stop hook is configured (.claude/settings.local.json) but data not persisting in ephemeral environment. Options: 1) Ensure Stop hook commits data before session ends, 2) Manual /ml-log after significant work, 3) Different architecture for ephemeral environments.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-15T14:56:30.898364",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T13:00:00.000000",
+      "completed_at": "2025-12-16T13:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Fixed by adding end_session() call in ml_data_collector.py transcript command. Sessions now archive with summary after transcript processing."
     }
   ]
 }
