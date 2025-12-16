@@ -1,0 +1,235 @@
+name: Generate Cortical Chronicles
+
+# =============================================================================
+# BOOK GENERATION WORKFLOW
+# =============================================================================
+#
+# This workflow automatically generates "The Cortical Chronicles" - a
+# self-documenting book that extracts documentation from:
+# - Algorithm descriptions (docs/VISION.md)
+# - Module metadata (.ai_meta files)
+# - Commit history (git log)
+# - Search indices (generated)
+#
+# TRIGGERS:
+# - Push to main when source files change
+# - Manual dispatch with optional chapter selection
+#
+# OUTPUTS:
+# - book/ directory with markdown chapters
+# - index.json (searchable metadata)
+# - index.html (web interface)
+# - GitHub Pages deployment (optional, main branch only)
+# =============================================================================
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/VISION.md'
+      - 'cortical/**/*.ai_meta'
+      - 'scripts/generate_book.py'
+      - 'book/**'
+      - '.github/workflows/book.yml'
+  workflow_dispatch:
+    inputs:
+      chapter:
+        description: 'Specific chapter to generate (leave empty for all)'
+        required: false
+        type: choice
+        options:
+          - 'all'
+          - 'foundations'
+          - 'architecture'
+          - 'evolution'
+          - 'search'
+          - 'decisions'
+          - 'future'
+        default: 'all'
+      deploy:
+        description: 'Deploy to GitHub Pages'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  # ==========================================================================
+  # Generate Book
+  # ==========================================================================
+  generate:
+    name: "📚 Generate Book"
+    runs-on: ubuntu-latest
+    outputs:
+      chapters_generated: ${{ steps.generate.outputs.chapters }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history for evolution chapter
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-book-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-book-
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        echo "=== Installing Dependencies ==="
+        python -m pip install --upgrade pip
+        pip install pyyaml
+        echo "✅ Dependencies installed"
+
+    - name: Generate AI metadata if missing
+      run: |
+        echo "=== Checking AI Metadata ==="
+        if [ ! -f "cortical/processor/__init__.py.ai_meta" ]; then
+          echo "Generating AI metadata..."
+          pip install -e .
+          python scripts/generate_ai_metadata.py --incremental
+        else
+          echo "AI metadata exists"
+        fi
+
+    - name: Generate book
+      id: generate
+      run: |
+        echo "=== Generating Book ==="
+
+        # Determine what to generate
+        CHAPTER="${{ github.event.inputs.chapter }}"
+        if [ -z "$CHAPTER" ] || [ "$CHAPTER" = "all" ]; then
+          echo "Generating full book..."
+          python scripts/generate_book.py --verbose
+        else
+          echo "Generating chapter: $CHAPTER"
+          python scripts/generate_book.py --chapter "$CHAPTER" --verbose
+        fi
+
+        echo "✅ Book generation complete"
+
+        # Count chapters for output
+        CHAPTER_COUNT=$(find book -name "*.md" -not -name "README.md" -not -name "TEMPLATE.md" | wc -l)
+        echo "chapters=$CHAPTER_COUNT" >> $GITHUB_OUTPUT
+
+    - name: Verify outputs
+      run: |
+        echo "=== Verifying Book Outputs ==="
+
+        # Check required files
+        echo "Checking index.json..."
+        test -f book/index.json || { echo "❌ index.json missing"; exit 1; }
+        echo "✅ index.json exists"
+
+        echo "Checking index.html..."
+        test -f book/index.html || { echo "❌ index.html missing"; exit 1; }
+        echo "✅ index.html exists"
+
+        # Validate JSON syntax
+        echo "Validating JSON files..."
+        python -c "import json; json.load(open('book/index.json'))"
+        python -c "import json; json.load(open('book/search.json'))" 2>/dev/null || echo "Note: search.json not found (expected if search generator not run)"
+        echo "✅ JSON files valid"
+
+        # Count chapters
+        CHAPTERS=$(find book -name "*.md" -not -name "README.md" -not -name "TEMPLATE.md" | wc -l)
+        echo "📖 Generated $CHAPTERS chapter files"
+
+        # Show directory structure
+        echo ""
+        echo "=== Book Structure ==="
+        tree -L 2 book/ -I '*.json' || ls -R book/
+
+        echo ""
+        echo "✅ All verifications passed"
+
+    - name: Check for broken internal links
+      continue-on-error: true  # Non-blocking for now
+      run: |
+        echo "=== Checking Internal Links ==="
+
+        # Simple check for broken [[wiki-links]]
+        python scripts/resolve_wiki_links.py --check book/ || echo "⚠️ Some links may need attention"
+
+    - name: Generate summary
+      run: |
+        echo "=== Book Generation Summary ===" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Chapters Generated:** ${{ steps.generate.outputs.chapters }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Get chapter breakdown
+        echo "### Chapter Breakdown" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Section | Files |" >> $GITHUB_STEP_SUMMARY
+        echo "|---------|-------|" >> $GITHUB_STEP_SUMMARY
+
+        for dir in book/*/; do
+          if [ -d "$dir" ]; then
+            SECTION=$(basename "$dir")
+            COUNT=$(find "$dir" -name "*.md" | wc -l)
+            echo "| $SECTION | $COUNT |" >> $GITHUB_STEP_SUMMARY
+          fi
+        done
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Artifact:** cortical-chronicles" >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload book artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: cortical-chronicles
+        path: book/
+        retention-days: 30
+        if-no-files-found: error
+
+    - name: Upload Pages artifact
+      if: github.ref == 'refs/heads/main' && (github.event.inputs.deploy == 'true' || github.event_name == 'push')
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: book/
+
+  # ==========================================================================
+  # Deploy to GitHub Pages (optional)
+  # ==========================================================================
+  deploy-pages:
+    name: "🚀 Deploy to Pages"
+    runs-on: ubuntu-latest
+    needs: generate
+    if: github.ref == 'refs/heads/main' && (github.event.inputs.deploy == 'true' || github.event_name == 'push')
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+    - name: Deployment summary
+      run: |
+        echo "=== Deployment Complete ===" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📖 **The Cortical Chronicles** is now live!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**URL:** ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Chapters:** ${{ needs.generate.outputs.chapters_generated }}" >> $GITHUB_STEP_SUMMARY
