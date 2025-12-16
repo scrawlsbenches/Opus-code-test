@@ -49,6 +49,8 @@ dev = [
     "pytest>=7.0",
     "mcp>=1.0",  # Required for MCP server tests
     "pyyaml>=6.0",  # Required for workflow integration tests
+    "hypothesis>=6.0",  # Required for fuzz testing (tests/security/test_fuzzing.py)
+    "protobuf>=4.0",  # Required for protobuf serialization tests
 ]
 
 [project.urls]

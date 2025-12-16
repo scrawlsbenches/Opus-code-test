@@ -695,6 +695,38 @@ class TestYourFeature(unittest.TestCase):
 | `fresh_processor` | function | Empty processor for isolated tests |
 | `small_corpus_docs` | function | Raw document dict |
 
+### Test Markers for Optional Dependencies
+
+Tests requiring optional dependencies are excluded by default during development for faster iteration.
+
+**Markers defined in pyproject.toml:**
+
+| Marker | Tests | Dependency |
+|--------|-------|------------|
+| `optional` | All optional tests | (meta-marker) |
+| `mcp` | MCP server tests | `mcp>=1.0` |
+| `protobuf` | Serialization tests | `protobuf>=4.0` |
+| `fuzz` | Property-based tests | `hypothesis>=6.0` |
+| `slow` | Long-running tests | (none) |
+
+**Running tests:**
+
+```bash
+# Development (default) - excludes optional tests
+pytest tests/
+
+# Include optional tests (like CI)
+pytest tests/ -m ""
+
+# Using run_tests.py
+python scripts/run_tests.py unit --include-optional
+
+# Run only fuzzing tests
+pytest tests/ -m "fuzz"
+```
+
+**CI behavior:** All CI stages use `-m ""` to run the complete test suite including optional tests.
+
 **Always test:**
 - Empty corpus case
 - Single document case
