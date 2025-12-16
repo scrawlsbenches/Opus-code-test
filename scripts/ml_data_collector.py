@@ -1348,11 +1348,51 @@ def process_transcript(
     all_files_ref = set()
     all_files_mod = set()
 
+    actions_saved = 0
     for ex in exchanges:
         files_ref, files_mod = extract_files_from_tool_inputs(ex.tool_inputs)
         all_files_ref.update(files_ref)
         all_files_mod.update(files_mod)
         total_tools.update(ex.tools_used)
+
+        # Save individual actions for each tool use
+        if save_exchanges:
+            for i, (tool_name, tool_input) in enumerate(zip(ex.tools_used, ex.tool_inputs)):
+                try:
+                    # Determine action type from tool name
+                    action_type_map = {
+                        'Read': 'read', 'Glob': 'search', 'Grep': 'search',
+                        'Edit': 'edit', 'Write': 'edit', 'MultiEdit': 'edit',
+                        'Bash': 'command', 'Task': 'delegate',
+                        'WebFetch': 'fetch', 'WebSearch': 'search',
+                    }
+                    action_type = action_type_map.get(tool_name, 'other')
+
+                    # Extract target from tool input
+                    target = ''
+                    if isinstance(tool_input, dict):
+                        target = tool_input.get('file_path') or tool_input.get('path') or \
+                                tool_input.get('pattern') or tool_input.get('command') or \
+                                tool_input.get('query') or tool_input.get('url') or ''
+
+                    # Get output if available
+                    tool_output = ex.tool_outputs[i] if i < len(ex.tool_outputs) else {}
+                    success = tool_output.get('success', True) if isinstance(tool_output, dict) else True
+
+                    action = ActionEntry(
+                        id=f"A-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{session_id[:4]}-{actions_saved:03d}",
+                        timestamp=ex.timestamp or datetime.now().isoformat(),
+                        session_id=session_id,
+                        action_type=action_type,
+                        target=str(target)[:500],  # Truncate long targets
+                        context={'tool': tool_name, 'input': tool_input},
+                        success=success,
+                        result_summary=str(tool_output)[:200] if tool_output else None,
+                    )
+                    save_action(action, validate=True)
+                    actions_saved += 1
+                except Exception as e:
+                    logger.debug(f"Error saving action for {tool_name}: {e}")
 
         if save_exchanges:
             try:
@@ -1375,10 +1415,34 @@ def process_transcript(
             except Exception as e:
                 logger.error(f"Error saving exchange: {e}")
 
+    # Archive the session with a summary for ML training
+    if save_exchanges and saved_count > 0:
+        try:
+            # Calculate session duration from first/last exchange timestamps
+            first_ts = exchanges[0].timestamp if exchanges else None
+            last_ts = exchanges[-1].timestamp if exchanges else None
+
+            session_summary = {
+                'session_id': session_id,
+                'timestamp': first_ts or datetime.now().isoformat(),
+                'duration_seconds': None,  # Could calculate if we have timestamps
+                'exchange_count': saved_count,
+                'files_read': list(all_files_ref),
+                'files_edited': list(all_files_mod),
+                'queries': [ex.query[:500] for ex in exchanges[:10]],  # First 10 queries, truncated
+                'tools_used': {tool: sum(1 for ex in exchanges if tool in ex.tools_used)
+                              for tool in total_tools},
+                'commits_made': [],  # Would need to track commits during session
+            }
+            save_session_lite(session_summary)
+        except Exception as e:
+            logger.error(f"Error saving session summary: {e}")
+
     return {
         'status': 'success',
         'exchanges': len(exchanges),
         'saved': saved_count,
+        'actions_saved': actions_saved,
         'session_id': session_id,
         'tools_used': list(total_tools),
         'files_referenced': list(all_files_ref),
@@ -2258,11 +2322,21 @@ def estimate_progress() -> Dict[str, Dict]:
     """Estimate progress toward training milestones."""
     counts = count_data()
 
+    # Map milestone keys to actual count keys
+    # MILESTONES uses "commits" but we want to count "commits_lite" (tracked in git)
+    # MILESTONES uses "sessions" but we want to count "sessions_lite" (tracked in git)
+    count_key_mapping = {
+        "commits": "commits_lite",  # Use lite commits for milestone progress
+        "sessions": "sessions_lite",  # Use lite sessions for milestone progress
+    }
+
     progress = {}
     for milestone, requirements in MILESTONES.items():
         milestone_progress = {}
         for data_type, required in requirements.items():
-            current = counts.get(data_type, 0)
+            # Use mapped key if available, otherwise use data_type directly
+            count_key = count_key_mapping.get(data_type, data_type)
+            current = counts.get(count_key, 0)
             milestone_progress[data_type] = {
                 "current": current,
                 "required": required,
