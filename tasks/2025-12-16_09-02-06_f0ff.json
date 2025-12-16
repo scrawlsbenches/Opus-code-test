@@ -22,7 +22,7 @@
     {
       "id": "T-20251216-090211-f0ff-002",
       "title": "Integrate ML file prediction with .ai_meta data",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "enhancement",
       "description": "Enhance ML file prediction model to use .ai_meta section keywords and import graphs for better accuracy. Could improve MRR from 0.38 to 0.55+.",
@@ -127,7 +127,7 @@
     {
       "id": "T-20251216-090303-f0ff-009",
       "title": "Add test coverage mapping to .ai_meta",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "enhancement",
       "description": "Extend .ai_meta generator to include test coverage per function. Parse pytest coverage reports to map functions to test files that cover them.",

@@ -26,6 +26,12 @@ from typing import Dict, List, Optional, Set, Tuple, Any
 
 from ml_collector.config import TRACKED_DIR, ML_DATA_DIR
 
+try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+
 
 # ============================================================================
 # CONFIGURATION
@@ -33,6 +39,7 @@ from ml_collector.config import TRACKED_DIR, ML_DATA_DIR
 
 MODEL_DIR = ML_DATA_DIR / "models"
 FILE_PREDICTION_MODEL = MODEL_DIR / "file_prediction.json"
+AI_META_CACHE = MODEL_DIR / "ai_meta_cache.json"
 
 # Commit type patterns
 COMMIT_TYPE_PATTERNS = {
@@ -120,6 +127,183 @@ class FilePredictionModel:
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> 'FilePredictionModel':
         return cls(**d)
+
+
+@dataclass
+class AIMetaData:
+    """Parsed AI metadata for a Python file."""
+    filepath: str
+    sections: List[str] = field(default_factory=list)  # Section names like "Persistence", "Query"
+    functions: List[str] = field(default_factory=list)  # Function names
+    imports: List[str] = field(default_factory=list)  # Local imports (other files)
+    see_also: Dict[str, List[str]] = field(default_factory=dict)  # Function -> related functions
+
+
+# ============================================================================
+# AI METADATA LOADING
+# ============================================================================
+
+def load_ai_meta_file(meta_path: Path) -> Optional[AIMetaData]:
+    """Load and parse a single .ai_meta file."""
+    if not YAML_AVAILABLE:
+        return None
+
+    if not meta_path.exists():
+        return None
+
+    try:
+        with open(meta_path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+
+        if not data:
+            return None
+
+        # Extract section names
+        sections = []
+        if 'sections' in data and isinstance(data['sections'], list):
+            for section in data['sections']:
+                if isinstance(section, dict) and 'name' in section:
+                    sections.append(section['name'].lower())
+
+        # Extract function names and see_also references
+        functions = []
+        see_also_map = {}
+        if 'functions' in data and isinstance(data['functions'], dict):
+            for func_name, func_data in data['functions'].items():
+                # Clean function names (remove class prefixes)
+                clean_name = func_name.split('.')[-1]
+                functions.append(clean_name.lower())
+
+                # Extract see_also references
+                if isinstance(func_data, dict) and 'see_also' in func_data:
+                    see_also_map[clean_name.lower()] = [
+                        s.lower() for s in func_data['see_also']
+                    ]
+
+        # Extract local imports (file references)
+        # Note: .ai_meta files list local imports in both 'local' and 'stdlib' sections
+        # We need to check both and filter for cortical module imports
+        imports = []
+        if 'imports' in data and isinstance(data['imports'], dict):
+            # Check local section
+            if 'local' in data['imports'] and isinstance(data['imports']['local'], list):
+                imports.extend([imp.lower() for imp in data['imports']['local']])
+
+            # Check stdlib section for cortical module imports
+            # E.g., "layers.HierarchicalLayer" -> "layers"
+            if 'stdlib' in data['imports'] and isinstance(data['imports']['stdlib'], list):
+                for imp in data['imports']['stdlib']:
+                    # Filter for cortical module imports (without dots after module name)
+                    if '.' in imp and not imp.startswith(('typing.', 'collections.', 'os.', 'sys.')):
+                        module_name = imp.split('.')[0].lower()
+                        if module_name not in ['typing', 'collections', 'os', 'sys', 'json',
+                                                'logging', 'pathlib', 're', 'math', 'hashlib',
+                                                'hmac', 'pickle', 'warnings', 'dataclasses']:
+                            imports.append(module_name)
+
+        # Get the source file path
+        filepath = data.get('file', '')
+        if not filepath and data.get('filename'):
+            # Reconstruct from filename if needed
+            filepath = str(meta_path).replace('.ai_meta', '')
+
+        return AIMetaData(
+            filepath=filepath,
+            sections=sections,
+            functions=functions,
+            imports=imports,
+            see_also=see_also_map
+        )
+
+    except Exception as e:
+        # Gracefully handle parsing errors
+        return None
+
+
+def load_all_ai_meta() -> Dict[str, AIMetaData]:
+    """
+    Load all .ai_meta files from the cortical/ directory.
+
+    Returns:
+        Dict mapping Python file paths to their AIMetaData
+    """
+    meta_map = {}
+
+    if not YAML_AVAILABLE:
+        return meta_map
+
+    # Search for .ai_meta files
+    cortical_dir = Path(__file__).parent.parent / "cortical"
+    if not cortical_dir.exists():
+        return meta_map
+
+    for meta_file in cortical_dir.rglob("*.ai_meta"):
+        meta_data = load_ai_meta_file(meta_file)
+        if meta_data:
+            # Map to the source Python file path
+            py_file = str(meta_file).replace('.ai_meta', '')
+            meta_map[py_file] = meta_data
+
+    return meta_map
+
+
+def cache_ai_meta(meta_map: Dict[str, AIMetaData], cache_path: Path = None) -> None:
+    """Cache loaded AI metadata to avoid re-parsing YAML."""
+    if cache_path is None:
+        cache_path = AI_META_CACHE
+
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Convert to serializable format
+    cache_data = {
+        filepath: asdict(meta_data)
+        for filepath, meta_data in meta_map.items()
+    }
+
+    with open(cache_path, 'w', encoding='utf-8') as f:
+        json.dump(cache_data, f, indent=2)
+
+
+def load_cached_ai_meta(cache_path: Path = None) -> Optional[Dict[str, AIMetaData]]:
+    """Load cached AI metadata."""
+    if cache_path is None:
+        cache_path = AI_META_CACHE
+
+    if not cache_path.exists():
+        return None
+
+    try:
+        with open(cache_path, 'r', encoding='utf-8') as f:
+            cache_data = json.load(f)
+
+        return {
+            filepath: AIMetaData(**meta_dict)
+            for filepath, meta_dict in cache_data.items()
+        }
+    except Exception:
+        return None
+
+
+def build_import_graph(meta_map: Dict[str, AIMetaData]) -> Dict[str, Set[str]]:
+    """
+    Build an import graph from AI metadata.
+
+    Returns:
+        Dict mapping file paths to sets of imported file paths
+    """
+    import_graph = defaultdict(set)
+
+    for filepath, meta_data in meta_map.items():
+        for imported_module in meta_data.imports:
+            # Try to resolve import to a file path
+            # e.g., "persistence" -> "cortical/persistence.py"
+            if '/' not in imported_module and '.' not in imported_module:
+                # Simple module name - try to find it
+                for other_filepath in meta_map.keys():
+                    if imported_module in other_filepath.lower():
+                        import_graph[filepath].add(other_filepath)
+
+    return import_graph
 
 
 # ============================================================================
@@ -346,7 +530,9 @@ def predict_files(
     query: str,
     model: FilePredictionModel,
     top_n: int = 10,
-    seed_files: List[str] = None
+    seed_files: List[str] = None,
+    ai_meta_map: Optional[Dict[str, AIMetaData]] = None,
+    use_ai_meta: bool = True
 ) -> List[Tuple[str, float]]:
     """
     Predict which files are likely to be modified for a given task.
@@ -356,11 +542,21 @@ def predict_files(
         model: Trained file prediction model
         top_n: Number of files to return
         seed_files: Optional known files to use for co-occurrence boosting
+        ai_meta_map: Optional AI metadata map for enhanced predictions
+        use_ai_meta: Whether to use AI metadata (default True)
 
     Returns:
         List of (file_path, score) tuples sorted by relevance
     """
     file_scores: Dict[str, float] = defaultdict(float)
+
+    # Load AI metadata if requested and not provided
+    if use_ai_meta and ai_meta_map is None:
+        ai_meta_map = load_cached_ai_meta()
+        if ai_meta_map is None and YAML_AVAILABLE:
+            ai_meta_map = load_all_ai_meta()
+            if ai_meta_map:
+                cache_ai_meta(ai_meta_map)
 
     # Extract features from query
     commit_type = extract_commit_type(query)
@@ -398,6 +594,44 @@ def predict_files(
                     union = model.file_frequency.get(seed, 1) + model.file_frequency.get(f, 1) - count
                     similarity = count / union if union > 0 else 0
                     file_scores[f] += similarity * 3.0  # Strong weight for co-occurrence
+
+    # Boost based on AI metadata
+    if ai_meta_map:
+        query_words = set(message_to_keywords(query))
+
+        # Build import graph for relationship boosting
+        import_graph = build_import_graph(ai_meta_map)
+
+        for filepath, meta_data in ai_meta_map.items():
+            # Section keyword matching
+            # E.g., "add persistence" -> boost files with "Persistence" section
+            for section in meta_data.sections:
+                if section in query_words or any(word in section for word in query_words):
+                    file_scores[filepath] += 2.0  # Boost for section match
+
+            # Function name matching
+            # E.g., "compute_pagerank" in query -> boost files with that function
+            for func_name in meta_data.functions:
+                if func_name in query_words:
+                    file_scores[filepath] += 1.5  # Boost for function match
+                # Partial match (e.g., "pagerank" matches "compute_pagerank")
+                elif any(word in func_name or func_name in word for word in query_words):
+                    file_scores[filepath] += 0.75  # Partial boost
+
+            # Import relationship boosting
+            # If seed files are provided, boost files they import or that import them
+            if seed_files and filepath in import_graph:
+                for seed in seed_files:
+                    # Normalize seed path for comparison
+                    if any(seed in imported or imported in seed for imported in import_graph[filepath]):
+                        file_scores[filepath] += 1.0  # Boost for import relationship
+
+        # Reverse import boost: if a file imports files in our current candidates, boost it
+        if seed_files:
+            for filepath, imported_files in import_graph.items():
+                for seed in seed_files:
+                    if any(seed in imp or imp in seed for imp in imported_files):
+                        file_scores[filepath] += 0.5  # Weaker boost for reverse imports
 
     # Apply file frequency penalty (avoid always recommending high-frequency files)
     max_freq = max(model.file_frequency.values()) if model.file_frequency else 1
@@ -512,6 +746,8 @@ def main():
                                help='Number of predictions')
     predict_parser.add_argument('--seed', '-s', type=str, nargs='*',
                                help='Seed files for co-occurrence boosting')
+    predict_parser.add_argument('--no-ai-meta', action='store_true',
+                               help='Disable AI metadata enhancement')
 
     # Evaluate command
     eval_parser = subparsers.add_parser('evaluate', help='Evaluate model')
@@ -520,6 +756,11 @@ def main():
 
     # Stats command
     stats_parser = subparsers.add_parser('stats', help='Show model statistics')
+
+    # AI metadata command
+    ai_meta_parser = subparsers.add_parser('ai-meta', help='Show AI metadata statistics')
+    ai_meta_parser.add_argument('--rebuild', action='store_true',
+                               help='Rebuild AI metadata cache from source')
 
     args = parser.parse_args()
 
@@ -546,14 +787,24 @@ def main():
             print("No trained model found. Run 'train' first.")
             return 1
 
+        use_ai_meta = not args.no_ai_meta
+
+        if use_ai_meta and not YAML_AVAILABLE:
+            print("Warning: PyYAML not available. AI metadata enhancement disabled.")
+            print("Install with: pip install pyyaml")
+            use_ai_meta = False
+
         predictions = predict_files(
             args.query,
             model,
             top_n=args.top,
-            seed_files=args.seed
+            seed_files=args.seed,
+            use_ai_meta=use_ai_meta
         )
 
         print(f"\nPredicted files for: '{args.query}'")
+        if use_ai_meta:
+            print("(Using AI metadata enhancement)")
         print("-" * 60)
         for i, (filepath, score) in enumerate(predictions, 1):
             print(f"  {i:2}. {filepath:<45} ({score:.3f})")
@@ -606,6 +857,73 @@ def main():
             for f, count in sorted(model.file_frequency.items(),
                                    key=lambda x: -x[1])[:10]:
                 print(f"    {f}: {count} commits")
+
+    elif args.command == 'ai-meta':
+        if not YAML_AVAILABLE:
+            print("Error: PyYAML not available. AI metadata requires pyyaml.")
+            print("Install with: pip install pyyaml")
+            return 1
+
+        if args.rebuild:
+            print("Rebuilding AI metadata cache from source...")
+            ai_meta_map = load_all_ai_meta()
+            if ai_meta_map:
+                cache_ai_meta(ai_meta_map)
+                print(f"Cached metadata for {len(ai_meta_map)} files")
+            else:
+                print("No .ai_meta files found in cortical/ directory")
+                return 1
+        else:
+            ai_meta_map = load_cached_ai_meta()
+            if ai_meta_map is None:
+                print("No cached AI metadata found. Loading from source...")
+                ai_meta_map = load_all_ai_meta()
+                if ai_meta_map:
+                    cache_ai_meta(ai_meta_map)
+
+        if not ai_meta_map:
+            print("No AI metadata available.")
+            return 1
+
+        print("\n" + "=" * 60)
+        print("AI METADATA STATISTICS")
+        print("=" * 60)
+        print(f"  Files with metadata: {len(ai_meta_map)}")
+
+        # Count sections
+        all_sections = set()
+        for meta in ai_meta_map.values():
+            all_sections.update(meta.sections)
+        print(f"  Unique sections:     {len(all_sections)}")
+
+        # Count functions
+        total_functions = sum(len(meta.functions) for meta in ai_meta_map.values())
+        print(f"  Total functions:     {total_functions}")
+
+        # Count imports
+        total_imports = sum(len(meta.imports) for meta in ai_meta_map.values())
+        print(f"  Total imports:       {total_imports}")
+
+        # Build import graph
+        import_graph = build_import_graph(ai_meta_map)
+        print(f"  Import relationships: {sum(len(v) for v in import_graph.values())}")
+
+        # Section distribution
+        if all_sections:
+            print("\n  Section distribution:")
+            section_counts = defaultdict(int)
+            for meta in ai_meta_map.values():
+                for section in meta.sections:
+                    section_counts[section] += 1
+            for section, count in sorted(section_counts.items(), key=lambda x: -x[1])[:10]:
+                print(f"    {section}: {count} files")
+
+        # Most connected files (by imports)
+        if import_graph:
+            print("\n  Most connected files (by imports):")
+            for filepath, imported in sorted(import_graph.items(),
+                                            key=lambda x: -len(x[1]))[:5]:
+                print(f"    {Path(filepath).name}: imports {len(imported)} files")
 
     else:
         parser.print_help()
