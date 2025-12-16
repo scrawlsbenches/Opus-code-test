@@ -1467,6 +1467,14 @@ python scripts/ml_file_prediction.py stats
 - Maps keywords from commit messages to files
 - Uses TF-IDF-style scoring with frequency penalties
 
+**For comprehensive training guidance**, see [docs/ml-training-best-practices.md](docs/ml-training-best-practices.md) covering:
+- Data quality guidelines and filtering strategies
+- Training workflow and when to retrain
+- Performance optimization and hyperparameter tuning
+- Common pitfalls (overfitting, staleness, data leakage)
+- Evaluation metrics interpretation (MRR, Recall@K, Precision@K)
+- Integration with git hooks and CI/CD
+
 **Prediction with seed files:**
 ```bash
 # If you know some files, boost co-occurring files
@@ -1481,6 +1489,8 @@ python scripts/ml_file_prediction.py predict "Fix related bug" --seed auth.py lo
 | Precision@1 | 0.31 | 31% of top predictions correct |
 
 **Model storage:** `.git-ml/models/file_prediction.json`
+
+**Training requirements:** See [docs/ml-milestone-thresholds.md](docs/ml-milestone-thresholds.md) for detailed explanation of why 500 commits are needed for reliable file prediction.
 
 #### Pre-Commit File Suggestions
 
@@ -1606,6 +1616,7 @@ See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
 - **Definition of Done**: `docs/definition-of-done.md` - when is a task truly complete?
 - **Text-as-Memories**: `docs/text-as-memories.md` - knowledge management guide
 - **Task Management**: `docs/merge-friendly-tasks.md` - merge-friendly task system with collision-free IDs
+- **ML Milestone Thresholds**: `docs/ml-milestone-thresholds.md` - why 500/2000/5000 commits for training
 - **Merge-Friendly Tasks**: See "Task Management (Merge-Friendly System)" section above for task workflow
 
 ---

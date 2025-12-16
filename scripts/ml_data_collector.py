@@ -129,6 +129,11 @@ TRACKED_DIR = ML_DATA_DIR / "tracked"           # Directory for git-tracked data
 COMMITS_LITE_FILE = TRACKED_DIR / "commits.jsonl"   # Commit metadata (one per line)
 SESSIONS_LITE_FILE = TRACKED_DIR / "sessions.jsonl" # Session summaries (one per line)
 
+# CSV export truncation defaults
+CSV_DEFAULT_TRUNCATE_LENGTH = 1000  # Default max length for generic fields
+CSV_DEFAULT_TRUNCATE_QUERY = 500    # Default max length for query/input fields
+CSV_DEFAULT_TRUNCATE_RESPONSE = 2000  # Default max length for response/output fields
+
 # Training milestones
 MILESTONES = {
     "file_prediction": {"commits": 500, "sessions": 100, "chats": 200},
@@ -2089,8 +2094,20 @@ def _export_jsonl(records: List[Dict], output_path: Path):
             f.write(json.dumps(record, ensure_ascii=False) + '\n')
 
 
-def _export_csv(records: List[Dict], output_path: Path):
-    """Export records as CSV."""
+def _export_csv(records: List[Dict], output_path: Path,
+                truncate_input: int = CSV_DEFAULT_TRUNCATE_QUERY,
+                truncate_output: int = CSV_DEFAULT_TRUNCATE_RESPONSE,
+                truncate_files: int = CSV_DEFAULT_TRUNCATE_QUERY):
+    """
+    Export records as CSV with configurable truncation.
+
+    Args:
+        records: List of records to export
+        output_path: Path to output CSV file
+        truncate_input: Max length for input/query fields (0 = no truncation)
+        truncate_output: Max length for output/response fields (0 = no truncation)
+        truncate_files: Max length for files field (0 = no truncation)
+    """
     import csv
 
     with open(output_path, 'w', encoding='utf-8', newline='') as f:
@@ -2102,13 +2119,26 @@ def _export_csv(records: List[Dict], output_path: Path):
 
         for record in records:
             context = record.get('context', {})
+
+            # Apply truncation (0 means no truncation)
+            input_text = record.get('input', '')
+            output_text = record.get('output', '')
+            files_text = '; '.join(context.get('files', []))
+
+            if truncate_input > 0:
+                input_text = input_text[:truncate_input]
+            if truncate_output > 0:
+                output_text = output_text[:truncate_output]
+            if truncate_files > 0:
+                files_text = files_text[:truncate_files]
+
             row = {
                 'type': record.get('type', ''),
                 'timestamp': record.get('timestamp', ''),
-                'input': record.get('input', '')[:1000],  # Truncate for CSV
-                'output': record.get('output', '')[:1000],
+                'input': input_text,
+                'output': output_text,
                 'session_id': context.get('session_id', ''),
-                'files': '; '.join(context.get('files', []))[:500],
+                'files': files_text,
                 'tools_used': '; '.join(context.get('tools_used', [])),
             }
             writer.writerow(row)
@@ -2142,12 +2172,18 @@ def _export_huggingface(records: List[Dict], output_path: Path):
         json.dump(dataset, f, indent=2, ensure_ascii=False)
 
 
-def export_data(format: str, output_path: Path) -> Dict[str, Any]:
+def export_data(format: str, output_path: Path,
+                truncate_input: int = CSV_DEFAULT_TRUNCATE_QUERY,
+                truncate_output: int = CSV_DEFAULT_TRUNCATE_RESPONSE,
+                truncate_files: int = CSV_DEFAULT_TRUNCATE_QUERY) -> Dict[str, Any]:
     """Export collected ML data in training-ready formats.
 
     Args:
         format: Output format (jsonl, csv, huggingface)
         output_path: Path to write the exported data
+        truncate_input: Max length for input fields in CSV (0 = no truncation)
+        truncate_output: Max length for output fields in CSV (0 = no truncation)
+        truncate_files: Max length for files field in CSV (0 = no truncation)
 
     Returns:
         Stats dict with counts and file paths
@@ -2218,7 +2254,10 @@ def export_data(format: str, output_path: Path) -> Dict[str, Any]:
     if format == "jsonl":
         _export_jsonl(all_records, output_path)
     elif format == "csv":
-        _export_csv(all_records, output_path)
+        _export_csv(all_records, output_path,
+                   truncate_input=truncate_input,
+                   truncate_output=truncate_output,
+                   truncate_files=truncate_files)
     elif format == "huggingface":
         _export_huggingface(all_records, output_path)
     else:
@@ -3873,6 +3912,17 @@ def main():
                             help="Output format")
         parser.add_argument("--output", required=True,
                             help="Output file path")
+        parser.add_argument("--truncate-input", type=int,
+                            default=CSV_DEFAULT_TRUNCATE_QUERY,
+                            help=f"Max length for input/query fields in CSV (default: {CSV_DEFAULT_TRUNCATE_QUERY}, 0=no truncation)")
+        parser.add_argument("--truncate-output", type=int,
+                            default=CSV_DEFAULT_TRUNCATE_RESPONSE,
+                            help=f"Max length for output/response fields in CSV (default: {CSV_DEFAULT_TRUNCATE_RESPONSE}, 0=no truncation)")
+        parser.add_argument("--truncate-files", type=int,
+                            default=CSV_DEFAULT_TRUNCATE_QUERY,
+                            help=f"Max length for files field in CSV (default: {CSV_DEFAULT_TRUNCATE_QUERY}, 0=no truncation)")
+        parser.add_argument("--no-truncate", action="store_true",
+                            help="Disable all truncation (overrides other truncate options)")
         args = parser.parse_args(sys.argv[2:])
 
         output_path = Path(args.output)
@@ -3896,10 +3946,27 @@ def main():
         print(f"Format: {args.format}")
         print(f"Output: {output_path}")
         print(f"Data: {counts['commits']} commits, {counts['chats']} chats")
+
+        # Handle --no-truncate flag (overrides individual truncate options)
+        if args.no_truncate:
+            truncate_input = 0
+            truncate_output = 0
+            truncate_files = 0
+            print("Truncation: Disabled")
+        else:
+            truncate_input = args.truncate_input
+            truncate_output = args.truncate_output
+            truncate_files = args.truncate_files
+            if args.format == "csv":
+                print(f"Truncation: input={truncate_input}, output={truncate_output}, files={truncate_files}")
+
         print()
 
         try:
-            stats = export_data(args.format, output_path)
+            stats = export_data(args.format, output_path,
+                              truncate_input=truncate_input,
+                              truncate_output=truncate_output,
+                              truncate_files=truncate_files)
             print(f"✅ Export complete!")
             print(f"   Records: {stats['records']}")
             print(f"   Commits: {stats['commits']}")
