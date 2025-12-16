@@ -3903,6 +3903,18 @@ def main():
             if saved > 0:
                 print(f"📝 ML: Captured {saved} exchange(s) from session")
 
+        # Archive the session after processing transcript (fixes session capture gap)
+        if not args.dry_run and result.get('saved', 0) > 0:
+            try:
+                archived_session = end_session(
+                    summary=f"Transcript: {result.get('saved', 0)} exchanges, "
+                           f"{len(result.get('tools_used', []))} tools"
+                )
+                if archived_session and args.verbose:
+                    print(f"📁 Archived session: {archived_session['id']}")
+            except Exception as e:
+                logger.warning(f"Failed to archive session: {e}")
+
     elif command == "export":
         # Export data for training
         import argparse
