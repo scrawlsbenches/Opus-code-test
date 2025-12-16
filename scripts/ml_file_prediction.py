@@ -405,8 +405,10 @@ def predict_files(
         freq_penalty = 1.0 - (model.file_frequency.get(f, 0) / max_freq) * 0.3
         file_scores[f] *= freq_penalty
 
-    # Sort and return top N
+    # Sort and return top N (filtering out non-existent files)
     sorted_files = sorted(file_scores.items(), key=lambda x: -x[1])
+    # Filter to only existing files - removes deleted/renamed files from predictions
+    sorted_files = [(f, score) for f, score in sorted_files if Path(f).exists()]
     return sorted_files[:top_n]
 
 
