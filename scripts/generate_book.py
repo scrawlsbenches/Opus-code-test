@@ -19,7 +19,7 @@ import argparse
 import json
 import re
 import yaml
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple, Set
 from abc import ABC, abstractmethod
@@ -618,6 +618,267 @@ class ModuleDocGenerator(ChapterGenerator):
         return content
 
 
+class SearchIndexGenerator(ChapterGenerator):
+    """Generate search index from all book chapters."""
+
+    @property
+    def name(self) -> str:
+        return "search"
+
+    @property
+    def output_dir(self) -> str:
+        return ""  # Output to book/ root
+
+    def generate(self, dry_run: bool = False, verbose: bool = False) -> Dict[str, Any]:
+        """Generate search index and full-text search data."""
+        errors = []
+        stats = {
+            "chapters_indexed": 0,
+            "sections_found": 0,
+            "total_keywords": 0
+        }
+
+        if verbose:
+            print("  Scanning book chapters...")
+
+        # Find all .md files except README and TEMPLATE
+        chapters = []
+        for md_file in sorted(self.book_dir.glob("**/*.md")):
+            # Skip root-level meta files
+            if md_file.name in ["README.md", "TEMPLATE.md"]:
+                continue
+            # Skip files in book root
+            if md_file.parent == self.book_dir:
+                continue
+
+            try:
+                chapter_data = self._parse_chapter(md_file)
+                if chapter_data:
+                    chapters.append(chapter_data)
+                    stats["chapters_indexed"] += 1
+            except Exception as e:
+                errors.append(f"Failed to parse {md_file.name}: {e}")
+
+        if verbose:
+            print(f"  Parsed {len(chapters)} chapters")
+
+        # Group by section
+        sections = self._group_by_section(chapters)
+        stats["sections_found"] = len(sections)
+
+        # Generate index.json
+        index_data = {
+            "generated": datetime.utcnow().isoformat() + "Z",
+            "version": "1.0.0",
+            "chapters": chapters,
+            "sections": sections,
+            "stats": {
+                "total_chapters": len(chapters),
+                "total_sections": len(sections)
+            }
+        }
+
+        index_path = self.book_dir / "index.json"
+        if not dry_run:
+            index_path.write_text(json.dumps(index_data, indent=2))
+            self.generated_files.append(index_path)
+        else:
+            print(f"  Would write: {index_path}")
+
+        # Generate search.json
+        search_data = {
+            "generated": datetime.utcnow().isoformat() + "Z",
+            "documents": [
+                {
+                    "id": ch["path"].replace(".md", ""),
+                    "title": ch["title"],
+                    "content": ch.get("full_content", ""),
+                    "keywords": ch.get("keywords", [])
+                }
+                for ch in chapters
+            ]
+        }
+
+        search_path = self.book_dir / "search.json"
+        if not dry_run:
+            search_path.write_text(json.dumps(search_data, indent=2))
+            self.generated_files.append(search_path)
+        else:
+            print(f"  Would write: {search_path}")
+
+        stats["total_keywords"] = sum(len(ch.get("keywords", [])) for ch in chapters)
+
+        return {
+            "files": [str(f) for f in self.generated_files],
+            "stats": stats,
+            "errors": errors
+        }
+
+    def _parse_chapter(self, md_file: Path) -> Optional[Dict[str, Any]]:
+        """Parse a chapter markdown file and extract metadata."""
+        content = md_file.read_text()
+
+        # Extract YAML frontmatter
+        frontmatter = self._extract_frontmatter(content)
+
+        # Get relative path from book dir
+        rel_path = md_file.relative_to(self.book_dir)
+
+        # Extract section from path (e.g., "01-foundations" -> "foundations")
+        section = rel_path.parts[0] if len(rel_path.parts) > 1 else "root"
+        section_clean = section.split("-", 1)[-1] if "-" in section else section
+
+        # Remove frontmatter from content
+        content_without_fm = self._remove_frontmatter(content)
+
+        # Extract excerpt (first 200 chars of actual content, skipping title)
+        excerpt = self._extract_excerpt(content_without_fm)
+
+        # Extract keywords
+        keywords = self._extract_keywords(content_without_fm)
+
+        return {
+            "path": str(rel_path.as_posix()),
+            "title": frontmatter.get("title", md_file.stem),
+            "section": section_clean,
+            "tags": frontmatter.get("tags", []),
+            "source_files": frontmatter.get("source_files", []),
+            "excerpt": excerpt,
+            "keywords": keywords,
+            "full_content": content_without_fm  # For search.json
+        }
+
+    def _extract_frontmatter(self, content: str) -> Dict[str, Any]:
+        """Extract YAML frontmatter from markdown content."""
+        # Match YAML frontmatter between --- delimiters
+        match = re.match(r'^---\s*\n(.*?)\n---\s*\n', content, re.DOTALL)
+        if not match:
+            return {}
+
+        yaml_content = match.group(1)
+
+        # Try yaml.safe_load first
+        try:
+            import yaml
+            return yaml.safe_load(yaml_content) or {}
+        except (ImportError, Exception):
+            pass
+
+        # Fallback: regex parsing
+        frontmatter = {}
+        try:
+            # Parse simple key: value pairs
+            for line in yaml_content.split('\n'):
+                if ':' in line and not line.startswith(' '):
+                    key, value = line.split(':', 1)
+                    key = key.strip()
+                    value = value.strip().strip('"')
+                    frontmatter[key] = value
+                elif line.startswith('  - '):
+                    # List item
+                    value = line.strip()[2:].strip('"')
+                    # Append to last key if it exists
+                    if frontmatter:
+                        last_key = list(frontmatter.keys())[-1]
+                        if not isinstance(frontmatter[last_key], list):
+                            frontmatter[last_key] = [frontmatter[last_key]]
+                        frontmatter[last_key].append(value)
+        except Exception:
+            pass
+
+        return frontmatter
+
+    def _remove_frontmatter(self, content: str) -> str:
+        """Remove YAML frontmatter from content."""
+        match = re.match(r'^---\s*\n.*?\n---\s*\n', content, re.DOTALL)
+        if match:
+            return content[match.end():]
+        return content
+
+    def _extract_excerpt(self, content: str, max_length: int = 200) -> str:
+        """Extract excerpt from content (skip title, get first paragraph)."""
+        lines = content.split('\n')
+
+        # Skip title (first # line) and empty lines
+        text_lines = []
+        skip_title = True
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            if skip_title and line.startswith('#'):
+                skip_title = False
+                continue
+            if line.startswith('---'):
+                break
+            # Skip markdown formatting
+            if not line.startswith('#') and not line.startswith('*') and not line.startswith('-'):
+                text_lines.append(line)
+
+        # Join and truncate
+        text = ' '.join(text_lines)
+        if len(text) > max_length:
+            text = text[:max_length].rsplit(' ', 1)[0] + '...'
+
+        return text
+
+    def _extract_keywords(self, content: str, top_n: int = 10) -> List[str]:
+        """Extract keywords from content using word frequency."""
+        # Common stopwords
+        stopwords = {
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+            'of', 'with', 'by', 'from', 'as', 'is', 'are', 'was', 'were', 'be',
+            'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
+            'would', 'should', 'could', 'may', 'might', 'can', 'this', 'that',
+            'these', 'those', 'it', 'its', 'they', 'them', 'their', 'we', 'our',
+            'you', 'your', 'he', 'him', 'his', 'she', 'her', 'not', 'no', 'yes',
+            'if', 'then', 'so', 'when', 'where', 'what', 'why', 'how', 'which',
+            'who', 'whom', 'than', 'more', 'most', 'all', 'some', 'any', 'each',
+            'every', 'both', 'few', 'many', 'much', 'such', 'only', 'own', 'same',
+            'other', 'another', 'about', 'into', 'through', 'during', 'before',
+            'after', 'above', 'below', 'up', 'down', 'out', 'over', 'under',
+            'again', 'further', 'once', 'here', 'there', 'also', 'just', 'now'
+        }
+
+        # Extract words (including from code blocks)
+        words = re.findall(r'\b[a-z_][a-z0-9_]{2,}\b', content.lower())
+
+        # Count frequencies
+        word_freq = {}
+        for word in words:
+            if word not in stopwords and len(word) > 2:
+                word_freq[word] = word_freq.get(word, 0) + 1
+
+        # Get top N
+        sorted_words = sorted(word_freq.items(), key=lambda x: -x[1])
+        keywords = [word for word, freq in sorted_words[:top_n]]
+
+        return keywords
+
+    def _group_by_section(self, chapters: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """Group chapters by section and generate section metadata."""
+        sections = {}
+        section_descriptions = {
+            "preface": "Introduction to the book and how it works",
+            "foundations": "Core algorithms and IR theory",
+            "architecture": "Module documentation and system design",
+            "decisions": "Architectural decision records",
+            "evolution": "Project history and development narrative",
+            "future": "Future plans and roadmap"
+        }
+
+        for chapter in chapters:
+            section = chapter["section"]
+            if section not in sections:
+                sections[section] = {
+                    "count": 0,
+                    "description": section_descriptions.get(section, "")
+                }
+            sections[section]["count"] += 1
+
+        return sections
+
+
 class CommitNarrativeGenerator(ChapterGenerator):
     """Generate evolution narrative from git history."""
 
@@ -1059,6 +1320,7 @@ Examples:
     builder.register_generator(AlgorithmChapterGenerator(book_dir=args.output))
     builder.register_generator(ModuleDocGenerator(book_dir=args.output))
     builder.register_generator(CommitNarrativeGenerator(book_dir=args.output))
+    builder.register_generator(SearchIndexGenerator(book_dir=args.output))
 
     # Register placeholder generators (will be replaced with real ones)
     builder.register_generator(PlaceholderGenerator("decisions", "03-decisions"))
