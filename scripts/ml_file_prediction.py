@@ -69,9 +69,34 @@ COMMIT_TYPE_PATTERNS = {
     'complete': r'^[Cc]omplete\s+',
 }
 
+# Development-specific stop words (common terms that pollute predictions)
+# These are filtered out during keyword extraction from commit messages
+DEVELOPMENT_STOP_WORDS = {
+    # Action verbs (too generic)
+    'add', 'change', 'clean', 'ensure', 'fix', 'handle', 'implement',
+    'improve', 'make', 'move', 'refactor', 'remove', 'rename', 'support',
+    'update',
+    # Task/workflow terms
+    'bug', 'epic', 'feature', 'issue', 'merge', 'pr', 'review', 'sprint',
+    'story', 'task', 'ticket', 'todo', 'wip',
+    # Generic terms
+    'also', 'code', 'could', 'file', 'just', 'more', 'need', 'new', 'now',
+    'old', 'should', 'some', 'still', 'test', 'use', 'work', 'would',
+}
+
 # File path migrations (old → new structure)
 # Used to map historical commits to current file structure
 FILE_PATH_MIGRATIONS = {
+    'cortical/analysis.py': [
+        'cortical/analysis/__init__.py',
+        'cortical/analysis/pagerank.py',
+        'cortical/analysis/tfidf.py',
+        'cortical/analysis/clustering.py',
+        'cortical/analysis/connections.py',
+        'cortical/analysis/activation.py',
+        'cortical/analysis/quality.py',
+        'cortical/analysis/utils.py',
+    ],
     'cortical/processor.py': [
         'cortical/processor/__init__.py',
         'cortical/processor/core.py',
@@ -114,6 +139,32 @@ MODULE_KEYWORDS = {
     'ranking': ['ranking.py', 'query/ranking.py'],
     'passages': ['passages.py', 'query/passages.py'],
 }
+
+# Module to test file mapping
+# Maps source modules/files to their primary test files
+# Supports both exact file paths and directory prefixes
+MODULE_TO_TEST_MAPPING = {
+    'cortical/processor/': 'tests/test_processor.py',
+    'cortical/analysis.py': 'tests/test_analysis.py',
+    'cortical/query/': 'tests/test_query.py',
+    'cortical/semantics.py': 'tests/test_semantics.py',
+    'cortical/persistence.py': 'tests/test_persistence.py',
+    'cortical/tokenizer.py': 'tests/test_tokenizer.py',
+    'cortical/config.py': 'tests/test_config.py',
+    'cortical/layers.py': 'tests/test_layers.py',
+    'cortical/embeddings.py': 'tests/test_embeddings.py',
+    'cortical/gaps.py': 'tests/test_gaps.py',
+    'cortical/fingerprint.py': 'tests/test_fingerprint.py',
+    'cortical/minicolumn.py': 'tests/test_minicolumn.py',
+    'cortical/chunk_index.py': 'tests/test_chunk_indexing.py',
+    'cortical/observability.py': 'tests/test_observability.py',
+    'cortical/code_concepts.py': 'tests/test_code_concepts.py',
+    'scripts/ml_file_prediction.py': 'tests/unit/test_ml_file_prediction.py',
+    'scripts/ml_data_collector.py': 'tests/unit/test_ml_data_collector.py',
+}
+
+# Reverse mapping: test file -> source module
+TEST_TO_MODULE_MAPPING = {v: k for k, v in MODULE_TO_TEST_MAPPING.items()}
 
 
 # ============================================================================
@@ -465,7 +516,7 @@ def message_to_keywords(message: str) -> List[str]:
     # Normalize
     words = re.findall(r'\b[a-zA-Z_][a-zA-Z0-9_]*\b', message.lower())
 
-    # Filter stop words
+    # Filter stop words (general English stop words)
     stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
                   'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
                   'would', 'could', 'should', 'may', 'might', 'must', 'shall',
@@ -483,9 +534,55 @@ def message_to_keywords(message: str) -> List[str]:
                   'him', 'his', 'himself', 'she', 'her', 'hers', 'herself',
                   'they', 'them', 'their', 'theirs', 'themselves'}
 
-    keywords = [w for w in words if w not in stop_words and len(w) > 2]
+    # Filter both general and development-specific stop words
+    keywords = [w for w in words
+                if w not in stop_words
+                and w not in DEVELOPMENT_STOP_WORDS
+                and len(w) > 2]
 
     return keywords
+
+
+def get_associated_files(filepath: str) -> List[str]:
+    """
+    Get associated test or source files for a given file path.
+
+    If filepath is a source file, returns its test file(s).
+    If filepath is a test file, returns its source file(s).
+    Handles both exact matches and directory prefix matches.
+
+    Args:
+        filepath: Path to match (e.g., 'cortical/processor/core.py' or 'tests/test_processor.py')
+
+    Returns:
+        List of associated file paths (empty if no mapping found)
+    """
+    associated = []
+
+    # Check if this is a test file -> find source files
+    for test_file, source in TEST_TO_MODULE_MAPPING.items():
+        if filepath == test_file:
+            # Exact match - if source is a directory, we can't predict a specific file
+            # but we can boost the directory in general patterns
+            if source.endswith('/'):
+                # Directory mapping - any file in that directory is associated
+                associated.append(source)
+            else:
+                # Exact file mapping
+                associated.append(source)
+
+    # Check if this is a source file -> find test files
+    for source, test_file in MODULE_TO_TEST_MAPPING.items():
+        if source.endswith('/'):
+            # Directory prefix mapping
+            if filepath.startswith(source):
+                associated.append(test_file)
+        else:
+            # Exact file mapping
+            if filepath == source:
+                associated.append(test_file)
+
+    return associated
 
 
 # ============================================================================
@@ -938,6 +1035,24 @@ def predict_files(
                 for seed in seed_files:
                     if any(seed in imp or imp in seed for imp in imported_files):
                         file_scores[filepath] += 0.5  # Weaker boost for reverse imports
+
+    # Boost test files when their source module is predicted, and vice versa
+    # This ensures when a source file is predicted, its test file gets boosted
+    # and when a test file is predicted, the source gets boosted
+    current_files = set(file_scores.keys())
+    for filepath in list(current_files):  # Iterate over copy to allow modifications
+        associated = get_associated_files(filepath)
+        for assoc_file in associated:
+            if assoc_file.endswith('/'):
+                # Directory mapping - boost all files in that directory that exist
+                for candidate_file in current_files:
+                    if candidate_file.startswith(assoc_file):
+                        file_scores[candidate_file] += file_scores[filepath] * 0.4
+            else:
+                # Exact file mapping - boost the associated file
+                if Path(assoc_file).exists():
+                    # Boost with 40% of the source file's score
+                    file_scores[assoc_file] += file_scores[filepath] * 0.4
 
     # Apply file frequency penalty (avoid always recommending high-frequency files)
     max_freq = max(model.file_frequency.values()) if model.file_frequency else 1
