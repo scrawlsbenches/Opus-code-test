@@ -97,7 +97,7 @@
     {
       "id": "T-20251216-090253-f0ff-007",
       "title": "Mark completed task: Remove legacy TASK_LIST.md",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "cleanup",
       "description": "Task T-20251215-203333-4e1b-001 was completed in this session. TASK_LIST.md and TASK_ARCHIVE.md were deleted. Mark as complete with retrospective.",
