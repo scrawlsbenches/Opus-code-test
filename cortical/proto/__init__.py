@@ -22,16 +22,18 @@ Usage:
 from typing import Dict, List, Optional, Any, Tuple
 
 # Check if protobuf is available
+# Note: We check for the google.protobuf package, but don't try to compile
+# protos at import time. Compilation happens lazily when serialization is used.
 PROTOBUF_AVAILABLE = False
 _text_format = None
 _to_proto = None
 _from_proto = None
-_schema_pb2 = None
+_get_proto_class = None
 
 try:
     from google.protobuf import text_format as _text_format
     from .serialization import to_proto as _to_proto, from_proto as _from_proto
-    from . import schema_pb2 as _schema_pb2
+    from .serialization import _get_proto_class
     PROTOBUF_AVAILABLE = True
 except ImportError:
     pass
@@ -95,7 +97,9 @@ def deserialize_state(text: str) -> Tuple:
             "Install with: pip install protobuf"
         )
 
-    proto_state = _schema_pb2.ProcessorState()
+    # Get ProcessorState class lazily to avoid import-time compilation
+    ProcessorStateProto = _get_proto_class('ProcessorState')
+    proto_state = ProcessorStateProto()
     _text_format.Parse(text, proto_state)
     return _from_proto(proto_state)
 

@@ -11,6 +11,11 @@ import tempfile
 import os
 from pathlib import Path
 
+import pytest
+
+# Mark entire module as optional (requires mcp package)
+pytestmark = [pytest.mark.optional, pytest.mark.mcp]
+
 # Guard MCP import - skip all tests if not available
 try:
     from cortical.mcp_server import CorticalMCPServer, create_mcp_server

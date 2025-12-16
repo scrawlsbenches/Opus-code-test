@@ -606,7 +606,6 @@ Key defaults to know:
 ### Task Management (Merge-Friendly System)
 
 **IMPORTANT:** This project uses a merge-friendly task system in `tasks/` directory.
-The legacy `TASK_LIST.md` is kept for historical reference only.
 
 **Creating tasks:**
 ```bash
@@ -695,6 +694,38 @@ class TestYourFeature(unittest.TestCase):
 | `shared_processor` | session | Full samples/ corpus (~125 docs) |
 | `fresh_processor` | function | Empty processor for isolated tests |
 | `small_corpus_docs` | function | Raw document dict |
+
+### Test Markers for Optional Dependencies
+
+Tests requiring optional dependencies are excluded by default during development for faster iteration.
+
+**Markers defined in pyproject.toml:**
+
+| Marker | Tests | Dependency |
+|--------|-------|------------|
+| `optional` | All optional tests | (meta-marker) |
+| `mcp` | MCP server tests | `mcp>=1.0` |
+| `protobuf` | Serialization tests | `protobuf>=4.0` |
+| `fuzz` | Property-based tests | `hypothesis>=6.0` |
+| `slow` | Long-running tests | (none) |
+
+**Running tests:**
+
+```bash
+# Development (default) - excludes optional tests
+pytest tests/
+
+# Include optional tests (like CI)
+pytest tests/ -m ""
+
+# Using run_tests.py
+python scripts/run_tests.py unit --include-optional
+
+# Run only fuzzing tests
+pytest tests/ -m "fuzz"
+```
+
+**CI behavior:** All CI stages use `-m ""` to run the complete test suite including optional tests.
 
 **Always test:**
 - Empty corpus case
@@ -1451,6 +1482,61 @@ python scripts/ml_file_prediction.py predict "Fix related bug" --seed auth.py lo
 
 **Model storage:** `.git-ml/models/file_prediction.json`
 
+#### Pre-Commit File Suggestions
+
+The ML file prediction is integrated into git as a pre-commit hook that suggests potentially missing files:
+
+```bash
+# Automatically installed when you run:
+python scripts/ml_data_collector.py install-hooks
+
+# Creates .git/hooks/prepare-commit-msg
+```
+
+**How it works:**
+1. You run `git commit -m "feat: Add authentication"`
+2. Hook analyzes the commit message
+3. Hook runs ML file prediction
+4. If high-confidence files aren't staged, warns you
+5. You can choose to add them or proceed
+
+**Example output:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 ML File Prediction Suggestion
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Based on your commit message, these files might need changes:
+
+  • tests/test_authentication.py                 (confidence: 0.823)
+  • docs/api.md                                  (confidence: 0.654)
+
+Staged files:
+  ✓ cortical/authentication.py
+
+ℹ️  Tip: Review the suggestions above.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Configuration (via environment variables):**
+- `ML_SUGGEST_ENABLED=0` - Disable suggestions (default: 1)
+- `ML_SUGGEST_THRESHOLD=0.7` - Confidence threshold (default: 0.5)
+- `ML_SUGGEST_BLOCKING=1` - Block commit if missing files (default: 0)
+- `ML_SUGGEST_TOP_N=10` - Number of predictions to check (default: 5)
+
+**When it runs:**
+- ✅ Regular commits (`git commit -m "..."`)
+- ❌ Merge commits, amends, rebases (too noisy)
+- ❌ Empty commits or no staged files
+- ❌ Model not trained (silently skips)
+
+**Testing without committing:**
+```bash
+bash scripts/test-ml-precommit-hook.sh
+```
+
+See [docs/ml-precommit-suggestions.md](docs/ml-precommit-suggestions.md) for detailed documentation.
+
 ### Automatic Session Capture
 
 **Pre-configured. No setup needed.**
@@ -1481,6 +1567,7 @@ Data collection is fully automatic via hooks configured in `.claude/settings.loc
 |------|---------|--------|
 | **SessionStart** | Session begins | Starts ML session, installs git hooks, shows stats |
 | **Stop** | Session ends | Captures full transcript with all exchanges |
+| **prepare-commit-msg** | Before commit | Suggests missing files based on commit message |
 | **post-commit** | After commit | Captures commit metadata with diff hunks |
 | **pre-push** | Before push | Reports collection stats |
 | **CI workflow** | GitHub Actions | Auto-captures CI pass/fail results |
@@ -1488,6 +1575,7 @@ Data collection is fully automatic via hooks configured in `.claude/settings.loc
 **Hook files:**
 - `scripts/ml-session-start-hook.sh` - SessionStart handler
 - `scripts/ml-session-capture-hook.sh` - Stop handler
+- `scripts/ml-precommit-suggest.sh` - prepare-commit-msg handler
 
 **CI Integration:**
 The GitHub Actions workflow (`.github/workflows/ci.yml`) includes an `ml-ci-capture` job that automatically records CI results for each commit. This runs after the coverage-report job and captures:

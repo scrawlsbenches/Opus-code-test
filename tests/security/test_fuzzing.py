@@ -58,11 +58,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from cortical import CorticalTextProcessor, CorticalConfig
 
-# Skip all tests if hypothesis not installed
-pytestmark = pytest.mark.skipif(
-    not HYPOTHESIS_AVAILABLE,
-    reason="hypothesis package not installed"
-)
+# Mark as optional and fuzz tests, skip if hypothesis not installed
+pytestmark = [
+    pytest.mark.optional,
+    pytest.mark.fuzz,
+    pytest.mark.skipif(not HYPOTHESIS_AVAILABLE, reason="hypothesis package not installed")
+]
 
 
 # Custom strategies for generating test data

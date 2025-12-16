@@ -282,36 +282,41 @@ class TestPrediction(unittest.TestCase):
             version="1.0.0"
         )
 
-    def test_predict_by_type(self):
+    @patch('ml_file_prediction.Path.exists', return_value=True)
+    def test_predict_by_type(self, mock_exists):
         """Should predict based on commit type."""
-        predictions = predict_files("feat: Add new feature", self.model, top_n=5)
+        predictions = predict_files("feat: Add new feature", self.model, top_n=5, use_ai_meta=False)
 
         # 'feat' type should boost auth.py and api.py
         file_names = [f for f, _ in predictions]
         self.assertIn("auth.py", file_names[:3])
 
-    def test_predict_by_keyword(self):
+    @patch('ml_file_prediction.Path.exists', return_value=True)
+    def test_predict_by_keyword(self, mock_exists):
         """Should predict based on keywords."""
-        predictions = predict_files("Add authentication system", self.model, top_n=5)
+        predictions = predict_files("Add authentication system", self.model, top_n=5, use_ai_meta=False)
 
         # 'authentication' keyword should boost auth.py
         file_names = [f for f, _ in predictions]
         self.assertIn("auth.py", file_names[:3])
 
-    def test_predict_with_seed_files(self):
+    @patch('ml_file_prediction.Path.exists', return_value=True)
+    def test_predict_with_seed_files(self, mock_exists):
         """Should boost co-occurring files with seeds."""
         predictions = predict_files(
             "Update related files",
             self.model,
             top_n=5,
-            seed_files=["auth.py"]
+            seed_files=["auth.py"],
+            use_ai_meta=False
         )
 
         # Files co-occurring with auth.py should be boosted
         file_names = [f for f, _ in predictions]
         self.assertIn("tests/test_auth.py", file_names[:3])
 
-    def test_predict_returns_scores(self):
+    @patch('ml_file_prediction.Path.exists', return_value=True)
+    def test_predict_returns_scores(self, mock_exists):
         """Should return files with scores."""
         # Use a query that matches known keywords
         predictions = predict_files("feat: Add authentication test", self.model, top_n=3)

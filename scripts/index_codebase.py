@@ -1316,7 +1316,7 @@ def get_python_files(base_path: Path) -> list:
 def get_doc_files(base_path: Path) -> list:
     """Get documentation files from root and docs/ directory."""
     # Root documentation files
-    root_docs = ['CLAUDE.md', 'TASK_LIST.md', 'README.md', 'KNOWLEDGE_TRANSFER.md']
+    root_docs = ['CLAUDE.md', 'README.md', 'KNOWLEDGE_TRANSFER.md']
     files = []
     for doc in root_docs:
         doc_path = base_path / doc
