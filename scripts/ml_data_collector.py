@@ -3462,6 +3462,11 @@ def main():
     elif command == "validate":
         # Validate existing data against schemas
         import argparse
+        from ml_collector.config import (
+            COMMITS_DIR, CHATS_DIR, ACTIONS_DIR,
+            COMMIT_SCHEMA, CHAT_SCHEMA, ACTION_SCHEMA,
+            validate_schema
+        )
         parser = argparse.ArgumentParser()
         parser.add_argument("--fix", action="store_true",
                             help="Attempt to fix invalid entries")
