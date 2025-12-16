@@ -1,0 +1,21 @@
+{
+  "id": "chat-20251216-220131-b3c00d",
+  "timestamp": "2025-12-16T21:51:06.762Z",
+  "session_id": "5dbd2dcd-8f3a-4fec-8376-97206f5c9c39",
+  "query": "Will this work show up in the book?",
+  "response": "Not yet - the corpus was indexed before this code was added. Let me check and update:",
+  "files_referenced": [
+    "scripts/index_codebase.py"
+  ],
+  "files_modified": [],
+  "tools_used": [
+    "Bash"
+  ],
+  "tool_outputs": [],
+  "user_feedback": null,
+  "resulted_in_commit": false,
+  "related_commit": null,
+  "query_tokens": 8,
+  "response_tokens": 17,
+  "duration_seconds": null
+}

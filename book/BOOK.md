@@ -5498,7 +5498,7 @@ Compute statistics across all documents.
 
 ## Overview
 
-**14 bugs** have been identified and resolved. Each fix taught us something about the system.
+**8 bugs** have been identified and resolved. Each fix taught us something about the system.
 
 ## Bug Fix History
 
@@ -5549,37 +5549,7 @@ Compute statistics across all documents.
 
 **Commit:** `19ac02a`  
 **Date:** 2025-12-16  
-**Files Changed:** .claude/settings.local.json  
-
-### Use filename-based sorting for deterministic session ordering
-
-**Commit:** `61d502d`  
-**Date:** 2025-12-15  
-
-### Increase ID suffix length to prevent collisions
-
-**Commit:** `8ac4b6b`  
-**Date:** 2025-12-15  
-
-### Add import guards for optional test dependencies
-
-**Commit:** `91ffb04`  
-**Date:** 2025-12-15  
-
-### Make session file sorting stable for deterministic ordering
-
-**Commit:** `7433b36`  
-**Date:** 2025-12-15  
-
-### Cap query expansion weights to prevent term domination
-
-**Commit:** `fecd6dc`  
-**Date:** 2025-12-15  
-
-### Add YAML frontmatter to slash commands for discovery
-
-**Commit:** `5b52da2`  
-**Date:** 2025-12-15
+**Files Changed:** .claude/settings.local.json
 
 ---
 
@@ -5591,40 +5561,27 @@ Compute statistics across all documents.
 
 ## Overview
 
-The system has evolved through **22 feature additions**. Below is the narrative of how each capability came to be.
-
-## Documentation Capabilities
-
-### Add CI workflow and documentation (Wave 4)
-
-**Commit:** `940fdf2`  
-**Date:** 2025-12-16  
-**Files Modified:** 5  
-
-### Add animated GIF visualizations to README
-
-**Commit:** `b4d7c82`  
-**Date:** 2025-12-15  
-
-## Search Capabilities
-
-### Add search integration and web interface (Wave 3)
-
-**Commit:** `0022466`  
-**Date:** 2025-12-16  
-**Files Modified:** 11  
-
-### Add security concept group and TF-IDF weighted query expansion
-
-**Commit:** `af3a7e0`  
-**Date:** 2025-12-15  
-
-### Add comprehensive test coverage for query and analysis modules
-
-**Commit:** `70a4b1b`  
-**Date:** 2025-12-15  
+The system has evolved through **18 feature additions**. Below is the narrative of how each capability came to be.
 
 ## Other Capabilities
+
+### Add --recover flag and git-sync skill
+
+**Commit:** `f5faba4`  
+**Date:** 2025-12-16  
+**Files Modified:** 4  
+
+### Add smart caching to markdown book generation
+
+**Commit:** `afd3c5b`  
+**Date:** 2025-12-16  
+**Files Modified:** 8  
+
+### Add consolidated markdown book generation
+
+**Commit:** `f8a2ad6`  
+**Date:** 2025-12-16  
+**Files Modified:** 3  
 
 ### Add content generators for Cortical Chronicles (Wave 2)
 
@@ -5644,32 +5601,24 @@ The system has evolved through **22 feature additions**. Below is the narrative 
 **Date:** 2025-12-16  
 **Files Modified:** 8  
 
-### Add orchestration extraction for director sub-agent tracking
-
-**Commit:** `4eaeb37`  
-**Date:** 2025-12-15  
-
-### Add stunning animated ASCII codebase visualizer
-
-**Commit:** `e085a0b`  
-**Date:** 2025-12-15  
-
-### Add ASCII art codebase visualization script
-
-**Commit:** `43aae33`  
-**Date:** 2025-12-15  
-
-### Complete legacy task system migration
-
-**Commit:** `33dc8b2`  
-**Date:** 2025-12-15  
-
-### Add director orchestration execution tracking system
-
-**Commit:** `4976c58`  
-**Date:** 2025-12-15  
-
 ## Ml Capabilities
+
+### Add git-sync-ml.sh for safe ML data synchronization
+
+**Commit:** `bb953e7`  
+**Date:** 2025-12-16  
+**Files Modified:** 65  
+
+### Add ML experiment tracking framework
+
+**Commit:** `6503d84`  
+**Date:** 2025-12-16  
+**Files Modified:** 8  
+
+### Implement top priorities (ML capture, state storage, legacy cleanup)
+
+**Commit:** `4820c64`  
+**Date:** 2025-12-16  
 
 ### Add file existence filter to ML predictions
 
@@ -5695,35 +5644,41 @@ The system has evolved through **22 feature additions**. Below is the narrative 
 **Date:** 2025-12-16  
 **Files Modified:** 9  
 
+## Analysis Capabilities
+
+### Add repo_showcase.py for full repository analysis
+
+**Commit:** `cb04f0c`  
+**Date:** 2025-12-16  
+**Files Modified:** 1  
+
+## Search Capabilities
+
+### Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
+
+**Commit:** `5665839`  
+**Date:** 2025-12-16  
+
+### Add search integration and web interface (Wave 3)
+
+**Commit:** `0022466`  
+**Date:** 2025-12-16  
+**Files Modified:** 11  
+
 ## Data Capabilities
 
-### Add git-tracked JSONL storage for orchestration data
+### Implement WAL + Snapshot persistence system (LEGACY-133)
 
-**Commit:** `fb30e38`  
-**Date:** 2025-12-15  
+**Commit:** `c7e662a`  
+**Date:** 2025-12-16  
 
-### Add lightweight commit data for ephemeral environments
+## Documentation Capabilities
 
-**Commit:** `89d6aa5`  
-**Date:** 2025-12-15  
-**Files Modified:** 475  
+### Add CI workflow and documentation (Wave 4)
 
-## Testing Capabilities
-
-### Add comprehensive test coverage for Wave 4 modules (FINAL)
-
-**Commit:** `73d6da8`  
-**Date:** 2025-12-15  
-
-### Add comprehensive test coverage for Wave 3 modules
-
-**Commit:** `036f830`  
-**Date:** 2025-12-15  
-
-### Add comprehensive test coverage for Wave 2 modules
-
-**Commit:** `5a6bb26`  
-**Date:** 2025-12-15
+**Commit:** `940fdf2`  
+**Date:** 2025-12-16  
+**Files Modified:** 5
 
 ---
 
@@ -5739,24 +5694,24 @@ The codebase has undergone **3 refactorings**. Each improved code quality, maint
 
 ## Refactoring History
 
+### Replace git-sync-ml.sh with simpler skill
+
+**Commit:** `f61897f`  
+**Date:** 2025-12-16  
+**Changes:** +821/-1231 lines  
+**Scope:** 38 files affected  
+
+### Complete legacy task system cleanup
+
+**Commit:** `8dedda6`  
+**Date:** 2025-12-16  
+
 ### Remove unused protobuf serialization (T-013 f0ff)
 
 **Commit:** `d7a98ae`  
 **Date:** 2025-12-16  
 **Changes:** +100/-1460 lines  
-**Scope:** 6 files affected  
-
-### Split large files exceeding 25000 token limit
-
-**Commit:** `21ec5ea`  
-**Date:** 2025-12-15  
-
-### Consolidate ML data to single JSONL files
-
-**Commit:** `205fe34`  
-**Date:** 2025-12-15  
-**Changes:** +658/-12208 lines  
-**Scope:** 486 files affected
+**Scope:** 6 files affected
 
 ---
 
@@ -5783,16 +5738,16 @@ The codebase has undergone **3 refactorings**. Each improved code quality, maint
 
 ### Week of Dec 15
 
-- **2025-12-16**: feat: Add CI workflow and documentation (Wave 4)
-- **2025-12-16**: feat: Add search integration and web interface (Wave 3)
-- **2025-12-16**: feat: Add content generators for Cortical Chronicles (Wave 2)
-- **2025-12-16**: feat: Add Cortical Chronicles book infrastructure (Wave 1)
-- **2025-12-16**: docs: Add deep algorithm analysis and author reflections to VISION.md
-- **2025-12-16**: docs: Add product vision document for legacy feature roadmap
-- **2025-12-16**: refactor: Remove unused protobuf serialization (T-013 f0ff)
-- **2025-12-16**: fix: Archive ML session after transcript processing (T-003 16f3)
-- **2025-12-16**: fix: Update CSV truncation test for new defaults (input=500, output=2000)
-- **2025-12-16**: feat: Batch task distribution implementation via Director orchestration
+- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: docs: Add git-sync skill to CLAUDE.md
+- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: refactor: Replace git-sync-ml.sh with simpler skill
+- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: feat: Add --recover flag and git-sync skill
+- **2025-12-16**: feat: Add git-sync-ml.sh for safe ML data synchronization
+- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: ml: Capture session data
 
 ---
 

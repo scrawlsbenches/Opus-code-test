@@ -1,6 +1,6 @@
 ---
 title: "Semantic Relation Extraction — Knowledge Graph Construction"
-generated: "2025-12-16T17:26:23.301611Z"
+generated: "2025-12-16T22:56:47.744956Z"
 generator: "foundations"
 source_files:
   - "docs/VISION.md"

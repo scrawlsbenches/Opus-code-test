@@ -1,6 +1,6 @@
 ---
 title: "PageRank — Importance Discovery"
-generated: "2025-12-16T17:26:23.298371Z"
+generated: "2025-12-16T22:56:47.742447Z"
 generator: "foundations"
 source_files:
   - "docs/VISION.md"
