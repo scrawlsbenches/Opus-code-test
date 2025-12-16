@@ -5498,7 +5498,7 @@ Compute statistics across all documents.
 
 ## Overview
 
-**14 bugs** have been identified and resolved. Each fix taught us something about the system.
+**13 bugs** have been identified and resolved. Each fix taught us something about the system.
 
 ## Bug Fix History
 
@@ -5574,11 +5574,6 @@ Compute statistics across all documents.
 ### Cap query expansion weights to prevent term domination
 
 **Commit:** `fecd6dc`  
-**Date:** 2025-12-15  
-
-### Add YAML frontmatter to slash commands for discovery
-
-**Commit:** `5b52da2`  
 **Date:** 2025-12-15
 
 ---
@@ -5591,40 +5586,21 @@ Compute statistics across all documents.
 
 ## Overview
 
-The system has evolved through **22 feature additions**. Below is the narrative of how each capability came to be.
-
-## Documentation Capabilities
-
-### Add CI workflow and documentation (Wave 4)
-
-**Commit:** `940fdf2`  
-**Date:** 2025-12-16  
-**Files Modified:** 5  
-
-### Add animated GIF visualizations to README
-
-**Commit:** `b4d7c82`  
-**Date:** 2025-12-15  
-
-## Search Capabilities
-
-### Add search integration and web interface (Wave 3)
-
-**Commit:** `0022466`  
-**Date:** 2025-12-16  
-**Files Modified:** 11  
-
-### Add security concept group and TF-IDF weighted query expansion
-
-**Commit:** `af3a7e0`  
-**Date:** 2025-12-15  
-
-### Add comprehensive test coverage for query and analysis modules
-
-**Commit:** `70a4b1b`  
-**Date:** 2025-12-15  
+The system has evolved through **23 feature additions**. Below is the narrative of how each capability came to be.
 
 ## Other Capabilities
+
+### Add smart caching to markdown book generation
+
+**Commit:** `afd3c5b`  
+**Date:** 2025-12-16  
+**Files Modified:** 8  
+
+### Add consolidated markdown book generation
+
+**Commit:** `f8a2ad6`  
+**Date:** 2025-12-16  
+**Files Modified:** 3  
 
 ### Add content generators for Cortical Chronicles (Wave 2)
 
@@ -5669,7 +5645,42 @@ The system has evolved through **22 feature additions**. Below is the narrative 
 **Commit:** `4976c58`  
 **Date:** 2025-12-15  
 
+## Search Capabilities
+
+### Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
+
+**Commit:** `5665839`  
+**Date:** 2025-12-16  
+
+### Add search integration and web interface (Wave 3)
+
+**Commit:** `0022466`  
+**Date:** 2025-12-16  
+**Files Modified:** 11  
+
+### Add security concept group and TF-IDF weighted query expansion
+
+**Commit:** `af3a7e0`  
+**Date:** 2025-12-15  
+
+## Data Capabilities
+
+### Implement WAL + Snapshot persistence system (LEGACY-133)
+
+**Commit:** `c7e662a`  
+**Date:** 2025-12-16  
+
+### Add git-tracked JSONL storage for orchestration data
+
+**Commit:** `fb30e38`  
+**Date:** 2025-12-15  
+
 ## Ml Capabilities
+
+### Implement top priorities (ML capture, state storage, legacy cleanup)
+
+**Commit:** `4820c64`  
+**Date:** 2025-12-16  
 
 ### Add file existence filter to ML predictions
 
@@ -5695,34 +5706,24 @@ The system has evolved through **22 feature additions**. Below is the narrative 
 **Date:** 2025-12-16  
 **Files Modified:** 9  
 
-## Data Capabilities
+## Documentation Capabilities
 
-### Add git-tracked JSONL storage for orchestration data
+### Add CI workflow and documentation (Wave 4)
 
-**Commit:** `fb30e38`  
+**Commit:** `940fdf2`  
+**Date:** 2025-12-16  
+**Files Modified:** 5  
+
+### Add animated GIF visualizations to README
+
+**Commit:** `b4d7c82`  
 **Date:** 2025-12-15  
-
-### Add lightweight commit data for ephemeral environments
-
-**Commit:** `89d6aa5`  
-**Date:** 2025-12-15  
-**Files Modified:** 475  
 
 ## Testing Capabilities
 
 ### Add comprehensive test coverage for Wave 4 modules (FINAL)
 
 **Commit:** `73d6da8`  
-**Date:** 2025-12-15  
-
-### Add comprehensive test coverage for Wave 3 modules
-
-**Commit:** `036f830`  
-**Date:** 2025-12-15  
-
-### Add comprehensive test coverage for Wave 2 modules
-
-**Commit:** `5a6bb26`  
 **Date:** 2025-12-15
 
 ---
@@ -5739,6 +5740,11 @@ The codebase has undergone **3 refactorings**. Each improved code quality, maint
 
 ## Refactoring History
 
+### Complete legacy task system cleanup
+
+**Commit:** `8dedda6`  
+**Date:** 2025-12-16  
+
 ### Remove unused protobuf serialization (T-013 f0ff)
 
 **Commit:** `d7a98ae`  
@@ -5749,14 +5755,7 @@ The codebase has undergone **3 refactorings**. Each improved code quality, maint
 ### Split large files exceeding 25000 token limit
 
 **Commit:** `21ec5ea`  
-**Date:** 2025-12-15  
-
-### Consolidate ML data to single JSONL files
-
-**Commit:** `205fe34`  
-**Date:** 2025-12-15  
-**Changes:** +658/-12208 lines  
-**Scope:** 486 files affected
+**Date:** 2025-12-15
 
 ---
 
@@ -5783,16 +5782,16 @@ The codebase has undergone **3 refactorings**. Each improved code quality, maint
 
 ### Week of Dec 15
 
+- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: feat: Add smart caching to markdown book generation
+- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: feat: Add consolidated markdown book generation
+- **2025-12-16**: feat: Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
+- **2025-12-16**: feat: Implement WAL + Snapshot persistence system (LEGACY-133)
+- **2025-12-16**: refactor: Complete legacy task system cleanup
+- **2025-12-16**: feat: Implement top priorities (ML capture, state storage, legacy cleanup)
+- **2025-12-16**: test: Add unit tests for Cortical Chronicles generators
 - **2025-12-16**: feat: Add CI workflow and documentation (Wave 4)
-- **2025-12-16**: feat: Add search integration and web interface (Wave 3)
-- **2025-12-16**: feat: Add content generators for Cortical Chronicles (Wave 2)
-- **2025-12-16**: feat: Add Cortical Chronicles book infrastructure (Wave 1)
-- **2025-12-16**: docs: Add deep algorithm analysis and author reflections to VISION.md
-- **2025-12-16**: docs: Add product vision document for legacy feature roadmap
-- **2025-12-16**: refactor: Remove unused protobuf serialization (T-013 f0ff)
-- **2025-12-16**: fix: Archive ML session after transcript processing (T-003 16f3)
-- **2025-12-16**: fix: Update CSV truncation test for new defaults (input=500, output=2000)
-- **2025-12-16**: feat: Batch task distribution implementation via Director orchestration
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: "Project Timeline"
-generated: "2025-12-16T17:26:23.878861Z"
+generated: "2025-12-16T20:01:28.122894Z"
 generator: "evolution"
 source_files:
   - "git log"
@@ -20,14 +20,14 @@ tags:
 
 ### Week of Dec 15
 
+- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: feat: Add smart caching to markdown book generation
+- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: feat: Add consolidated markdown book generation
+- **2025-12-16**: feat: Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
+- **2025-12-16**: feat: Implement WAL + Snapshot persistence system (LEGACY-133)
+- **2025-12-16**: refactor: Complete legacy task system cleanup
+- **2025-12-16**: feat: Implement top priorities (ML capture, state storage, legacy cleanup)
+- **2025-12-16**: test: Add unit tests for Cortical Chronicles generators
 - **2025-12-16**: feat: Add CI workflow and documentation (Wave 4)
-- **2025-12-16**: feat: Add search integration and web interface (Wave 3)
-- **2025-12-16**: feat: Add content generators for Cortical Chronicles (Wave 2)
-- **2025-12-16**: feat: Add Cortical Chronicles book infrastructure (Wave 1)
-- **2025-12-16**: docs: Add deep algorithm analysis and author reflections to VISION.md
-- **2025-12-16**: docs: Add product vision document for legacy feature roadmap
-- **2025-12-16**: refactor: Remove unused protobuf serialization (T-013 f0ff)
-- **2025-12-16**: fix: Archive ML session after transcript processing (T-003 16f3)
-- **2025-12-16**: fix: Update CSV truncation test for new defaults (input=500, output=2000)
-- **2025-12-16**: feat: Batch task distribution implementation via Director orchestration
 

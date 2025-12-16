@@ -1,6 +1,6 @@
 ---
 title: "Feature Evolution"
-generated: "2025-12-16T17:26:23.882662Z"
+generated: "2025-12-16T20:01:28.126643Z"
 generator: "evolution"
 source_files:
   - "git log --grep=feat:"
@@ -18,40 +18,21 @@ tags:
 
 ## Overview
 
-The system has evolved through **22 feature additions**. Below is the narrative of how each capability came to be.
-
-## Documentation Capabilities
-
-### Add CI workflow and documentation (Wave 4)
-
-**Commit:** `940fdf2`  
-**Date:** 2025-12-16  
-**Files Modified:** 5  
-
-### Add animated GIF visualizations to README
-
-**Commit:** `b4d7c82`  
-**Date:** 2025-12-15  
-
-## Search Capabilities
-
-### Add search integration and web interface (Wave 3)
-
-**Commit:** `0022466`  
-**Date:** 2025-12-16  
-**Files Modified:** 11  
-
-### Add security concept group and TF-IDF weighted query expansion
-
-**Commit:** `af3a7e0`  
-**Date:** 2025-12-15  
-
-### Add comprehensive test coverage for query and analysis modules
-
-**Commit:** `70a4b1b`  
-**Date:** 2025-12-15  
+The system has evolved through **23 feature additions**. Below is the narrative of how each capability came to be.
 
 ## Other Capabilities
+
+### Add smart caching to markdown book generation
+
+**Commit:** `afd3c5b`  
+**Date:** 2025-12-16  
+**Files Modified:** 8  
+
+### Add consolidated markdown book generation
+
+**Commit:** `f8a2ad6`  
+**Date:** 2025-12-16  
+**Files Modified:** 3  
 
 ### Add content generators for Cortical Chronicles (Wave 2)
 
@@ -96,7 +77,42 @@ The system has evolved through **22 feature additions**. Below is the narrative 
 **Commit:** `4976c58`  
 **Date:** 2025-12-15  
 
+## Search Capabilities
+
+### Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
+
+**Commit:** `5665839`  
+**Date:** 2025-12-16  
+
+### Add search integration and web interface (Wave 3)
+
+**Commit:** `0022466`  
+**Date:** 2025-12-16  
+**Files Modified:** 11  
+
+### Add security concept group and TF-IDF weighted query expansion
+
+**Commit:** `af3a7e0`  
+**Date:** 2025-12-15  
+
+## Data Capabilities
+
+### Implement WAL + Snapshot persistence system (LEGACY-133)
+
+**Commit:** `c7e662a`  
+**Date:** 2025-12-16  
+
+### Add git-tracked JSONL storage for orchestration data
+
+**Commit:** `fb30e38`  
+**Date:** 2025-12-15  
+
 ## Ml Capabilities
+
+### Implement top priorities (ML capture, state storage, legacy cleanup)
+
+**Commit:** `4820c64`  
+**Date:** 2025-12-16  
 
 ### Add file existence filter to ML predictions
 
@@ -122,33 +138,23 @@ The system has evolved through **22 feature additions**. Below is the narrative 
 **Date:** 2025-12-16  
 **Files Modified:** 9  
 
-## Data Capabilities
+## Documentation Capabilities
 
-### Add git-tracked JSONL storage for orchestration data
+### Add CI workflow and documentation (Wave 4)
 
-**Commit:** `fb30e38`  
+**Commit:** `940fdf2`  
+**Date:** 2025-12-16  
+**Files Modified:** 5  
+
+### Add animated GIF visualizations to README
+
+**Commit:** `b4d7c82`  
 **Date:** 2025-12-15  
-
-### Add lightweight commit data for ephemeral environments
-
-**Commit:** `89d6aa5`  
-**Date:** 2025-12-15  
-**Files Modified:** 475  
 
 ## Testing Capabilities
 
 ### Add comprehensive test coverage for Wave 4 modules (FINAL)
 
 **Commit:** `73d6da8`  
-**Date:** 2025-12-15  
-
-### Add comprehensive test coverage for Wave 3 modules
-
-**Commit:** `036f830`  
-**Date:** 2025-12-15  
-
-### Add comprehensive test coverage for Wave 2 modules
-
-**Commit:** `5a6bb26`  
 **Date:** 2025-12-15  
 
