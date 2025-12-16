@@ -11,8 +11,8 @@
   ],
   "tool_outputs": [],
   "user_feedback": null,
-  "resulted_in_commit": false,
-  "related_commit": null,
+  "resulted_in_commit": true,
+  "related_commit": "91bcd24af1532047749e943d42600b431e7f8332",
   "query_tokens": 2040,
   "response_tokens": 89,
   "duration_seconds": null
