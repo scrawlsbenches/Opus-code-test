@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "session_id": "7ff7",
+  "started_at": "2025-12-16T11:11:38.253282",
+  "saved_at": "2025-12-16T11:11:52.061275",
+  "tasks": [
+    {
+      "id": "T-20251216-111138-7ff7-001",
+      "title": "Add error logging to ML session capture hook instead of silent suppression",
+      "status": "pending",
+      "priority": "low",
+      "category": "maintenance",
+      "description": "The ml-session-capture-hook.sh script at line 65 silently swallows all errors with '2>/dev/null || true'. While intentional to not block session end, this makes debugging difficult. Consider logging errors to ~/.ml-capture.log or similar.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-16T11:11:38.253714",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251216-111143-7ff7-002",
+      "title": "Document ML training milestone thresholds derivation",
+      "status": "pending",
+      "priority": "low",
+      "category": "docs",
+      "description": "The MILESTONES dict in ml_data_collector.py (lines 82-86) contains magic numbers for training thresholds (500 commits, 100 sessions, etc). Add comments explaining how these thresholds were derived or link to research/documentation.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-16T11:11:43.009096",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251216-111146-7ff7-003",
+      "title": "Make CSV export truncation limit configurable",
+      "status": "pending",
+      "priority": "low",
+      "category": "enhancement",
+      "description": "The CSV export in ml_data_collector.py (lines 1507-1510) truncates input/output fields to 1000 characters. This arbitrary limit should be configurable via command-line argument (e.g., --max-field-length) to allow users to adjust based on their needs.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-16T11:11:46.965042",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251216-111152-7ff7-004",
+      "title": "Refactor session_logger.py to import from ml_data_collector instead of duplicating",
+      "status": "pending",
+      "priority": "low",
+      "category": "refactor",
+      "description": "The .claude/hooks/session_logger.py duplicates get_current_session() and start_session() logic from ml_data_collector.py. Refactor to import these functions from the main module to reduce code duplication and ensure consistency.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-16T11:11:52.061126",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    }
+  ]
+}
