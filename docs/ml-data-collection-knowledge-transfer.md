@@ -78,10 +78,12 @@ Key achievements in this session:
 |------|---------|-------|
 | `scripts/ml_data_collector.py` | Main CLI and orchestrator | ~4300 |
 | `scripts/ml_collector/` | Modular package (14 modules) | ~95KB |
-| `scripts/ml_collector/chunked_storage.py` | **NEW:** Git-friendly storage | ~400 |
+| `scripts/ml_collector/chunked_storage.py` | Git-friendly storage | ~400 |
+| `scripts/ml_file_prediction.py` | **NEW:** File prediction model | ~620 |
 | `scripts/ml-session-start-hook.sh` | SessionStart hook | 64 |
 | `scripts/ml-session-capture-hook.sh` | Stop hook (transcript) | 68 |
 | `.git/hooks/post-commit` | Commit data capture | 17 |
+| `tests/unit/test_ml_file_prediction.py` | File prediction tests | ~480 |
 
 ---
 
@@ -206,6 +208,77 @@ python scripts/ml_data_collector.py chunked stats
 
 ---
 
+## File Prediction Model
+
+The first ML model built from collected data: **predict which files to modify** based on a task description.
+
+### Training
+```bash
+# Train on commit history (creates .git-ml/models/file_prediction.json)
+python scripts/ml_file_prediction.py train
+```
+
+### Prediction
+```bash
+# Predict files for a task
+python scripts/ml_file_prediction.py predict "Add authentication feature"
+
+# With seed files for co-occurrence boosting
+python scripts/ml_file_prediction.py predict "Fix related bug" --seed auth.py login.py --top 10
+```
+
+### Evaluation
+```bash
+# Evaluate on 20% holdout set
+python scripts/ml_file_prediction.py evaluate --split 0.2
+
+# View model statistics
+python scripts/ml_file_prediction.py stats
+```
+
+### How It Works
+
+1. **Feature Extraction:**
+   - Commit type patterns (feat:, fix:, docs:, refactor:, etc.)
+   - Task references (Task #42, etc.)
+   - Action verbs (add, fix, update, implement)
+   - Module keywords (test, api, config, etc.)
+
+2. **Model Components:**
+   - **File co-occurrence matrix**: Files changed together in commits
+   - **Type-to-files mapping**: Which files change for each commit type
+   - **Keyword-to-files mapping**: Keywords → associated files
+   - **File frequency**: How often each file is changed
+
+3. **Scoring:**
+   - TF-IDF style scoring for commit type and keyword matches
+   - Jaccard similarity for co-occurrence boosting
+   - Frequency penalty to avoid always suggesting high-frequency files
+
+### Current Metrics (403 commits, 20% test split)
+
+| Metric | Value | Description |
+|--------|-------|-------------|
+| MRR | 0.43 | Mean Reciprocal Rank - first correct ~position 2-3 |
+| Recall@10 | 0.48 | 48% of actual files appear in top 10 |
+| Precision@1 | 0.31 | 31% of top predictions are correct |
+| Recall@5 | 0.38 | 38% of actual files appear in top 5 |
+
+### Model File
+
+Stored at: `.git-ml/models/file_prediction.json`
+
+Contains:
+- `file_cooccurrence`: File → {co-occurring file → count}
+- `type_to_files`: Commit type → {file → count}
+- `keyword_to_files`: Keyword → {file → count}
+- `file_frequency`: File → total change count
+- `total_commits`: Training commit count
+- `trained_at`: ISO timestamp
+- `version`: Model version
+
+---
+
 ## Data Schemas
 
 ### Commit Schema
@@ -323,11 +396,13 @@ unset ML_COLLECTION_ENABLED
 | `tests/unit/test_ml_feedback.py` | 25 | Feedback system |
 | `tests/unit/test_ml_quality.py` | ~25 | Quality analysis |
 | `tests/unit/test_chunked_storage.py` | 25 | Chunked storage |
+| `tests/unit/test_ml_file_prediction.py` | 33 | File prediction model |
 
 Run all ML tests:
 ```bash
 python -m unittest tests.unit.test_ml_export tests.unit.test_ml_feedback \
-    tests.unit.test_ml_quality tests.unit.test_chunked_storage -v
+    tests.unit.test_ml_quality tests.unit.test_chunked_storage \
+    tests.unit.test_ml_file_prediction -v
 ```
 
 ---

@@ -1412,6 +1412,45 @@ export ML_COLLECTION_ENABLED=0
 # Stats and validation still work when disabled
 ```
 
+### File Prediction Model
+
+The first ML model is available: **predict which files to modify** based on a task description.
+
+```bash
+# Train the model on commit history
+python scripts/ml_file_prediction.py train
+
+# Predict files for a task
+python scripts/ml_file_prediction.py predict "Add authentication feature"
+
+# Evaluate model performance (80/20 train/test split)
+python scripts/ml_file_prediction.py evaluate --split 0.2
+
+# View model statistics
+python scripts/ml_file_prediction.py stats
+```
+
+**How it works:**
+- Extracts commit type patterns (feat:, fix:, docs:, refactor:, etc.)
+- Builds file co-occurrence matrix from commit history
+- Maps keywords from commit messages to files
+- Uses TF-IDF-style scoring with frequency penalties
+
+**Prediction with seed files:**
+```bash
+# If you know some files, boost co-occurring files
+python scripts/ml_file_prediction.py predict "Fix related bug" --seed auth.py login.py
+```
+
+**Current metrics** (403 commits, 20% test split):
+| Metric | Value | Description |
+|--------|-------|-------------|
+| MRR | 0.43 | First correct prediction ~position 2-3 |
+| Recall@10 | 0.48 | Half of actual files in top 10 |
+| Precision@1 | 0.31 | 31% of top predictions correct |
+
+**Model storage:** `.git-ml/models/file_prediction.json`
+
 ### Automatic Session Capture
 
 **Pre-configured. No setup needed.**
