@@ -493,3 +493,97 @@ jobs:
         python scripts/ml_data_collector.py ci-autocapture || echo "Note: Commit may not be in ML data yet"
 
         echo "=== ML CI Capture Complete ==="
+
+  # ==========================================================================
+  # ML Data Collection: Stats Report
+  # Shows current progress toward ML training data goals
+  # ==========================================================================
+  ml-stats-report:
+    name: "📈 ML Stats Report"
+    runs-on: ubuntu-latest
+    needs: [ml-ci-capture]
+    if: always()  # Run even if other jobs fail
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for accurate stats
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Generate ML Data Collection Report
+      run: |
+        echo "=== ML Data Collection Progress ==="
+
+        # Run stats report
+        python scripts/ml_data_collector.py stats
+
+        echo ""
+        echo "=== Training Timeline Estimate ==="
+
+        # Run estimate report
+        python scripts/ml_data_collector.py estimate
+
+    - name: Write GitHub Summary
+      run: |
+        echo "## 📊 ML Data Collection Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Capture stats in a format suitable for markdown
+        python3 << 'PYTHON_SCRIPT' >> $GITHUB_STEP_SUMMARY
+        import sys
+        sys.path.insert(0, 'scripts')
+
+        try:
+            from ml_collector.config import (
+                COMMITS_DIR, COMMITS_LITE_FILE, SESSIONS_LITE_FILE,
+                CHATS_DIR, ACTIONS_DIR, SESSIONS_DIR
+            )
+            from pathlib import Path
+
+            # Count data files
+            commits_full = len(list(COMMITS_DIR.glob("*.json"))) if COMMITS_DIR.exists() else 0
+            commits_lite = sum(1 for _ in open(COMMITS_LITE_FILE)) if COMMITS_LITE_FILE.exists() else 0
+            sessions_lite = sum(1 for _ in open(SESSIONS_LITE_FILE)) if SESSIONS_LITE_FILE.exists() else 0
+            chats = sum(1 for d in CHATS_DIR.iterdir() if d.is_dir() for f in d.glob("*.json")) if CHATS_DIR.exists() else 0
+
+            # Calculate progress
+            commit_target = 5000
+            chat_target = 5000
+            commit_pct = min(100, (commits_lite / commit_target) * 100)
+            chat_pct = min(100, (chats / chat_target) * 100)
+
+            print("### Current Progress")
+            print("")
+            print("| Metric | Current | Target | Progress |")
+            print("|--------|---------|--------|----------|")
+            print(f"| Commits (lite) | {commits_lite:,} | {commit_target:,} | {commit_pct:.1f}% |")
+            print(f"| Commits (full) | {commits_full:,} | {commit_target:,} | {(commits_full/commit_target)*100:.1f}% |")
+            print(f"| Chats | {chats:,} | {chat_target:,} | {chat_pct:.1f}% |")
+            print(f"| Sessions (lite) | {sessions_lite:,} | 2,000 | {(sessions_lite/2000)*100:.1f}% |")
+            print("")
+
+            # Estimate time
+            if commits_lite > 0:
+                # Rough estimate based on repo age and commits
+                days_estimate = int((commit_target - commits_lite) / max(1, commits_lite / 30) * 30)
+                print(f"### Timeline Estimate")
+                print(f"")
+                print(f"At current collection rate: **~{days_estimate} days** to reach commit target")
+                print("")
+
+            print("### Training Milestones")
+            print("")
+            file_pred_ready = commits_lite >= 500 and chats >= 200
+            commit_msg_ready = commits_lite >= 2000 and chats >= 1000
+            code_sugg_ready = commits_lite >= 5000 and chats >= 5000
+
+            print(f"- {'✅' if file_pred_ready else '⬜'} **File Prediction** (500 commits, 200 chats)")
+            print(f"- {'✅' if commit_msg_ready else '⬜'} **Commit Messages** (2,000 commits, 1,000 chats)")
+            print(f"- {'✅' if code_sugg_ready else '⬜'} **Code Suggestions** (5,000 commits, 5,000 chats)")
+
+        except Exception as e:
+            print(f"*Could not generate detailed stats: {e}*")
+        PYTHON_SCRIPT
