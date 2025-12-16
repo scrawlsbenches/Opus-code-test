@@ -95,7 +95,9 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 | [definition-of-done.md](definition-of-done.md) | Task completion checklist |
 | [dogfooding.md](dogfooding.md) | Using the system to test itself |
 | [dogfooding-checklist.md](dogfooding-checklist.md) | Systematic dog-fooding checklist |
+| [ml-training-best-practices.md](ml-training-best-practices.md) | ML model training, evaluation, and optimization |
 | [ml-precommit-suggestions.md](ml-precommit-suggestions.md) | ML-powered file suggestions for pre-commit hooks |
+| [ml-data-collection-knowledge-transfer.md](ml-data-collection-knowledge-transfer.md) | ML data collection system architecture and usage |
 
 ### AI Agent Resources
 

@@ -50,7 +50,6 @@ dev = [
     "mcp>=1.0",  # Required for MCP server tests
     "pyyaml>=6.0",  # Required for workflow integration tests
     "hypothesis>=6.0",  # Required for fuzz testing (tests/security/test_fuzzing.py)
-    "protobuf>=4.0",  # Required for protobuf serialization tests
 ]
 
 [project.urls]
@@ -96,10 +95,9 @@ filterwarnings = [
 
 # Custom markers for test organization
 markers = [
-    "optional: Tests requiring optional dependencies (mcp, hypothesis, protobuf, numpy)",
+    "optional: Tests requiring optional dependencies (mcp, hypothesis, numpy)",
     "fuzz: Property-based fuzzing tests (requires hypothesis)",
     "mcp: MCP server tests (requires mcp package)",
-    "protobuf: Protobuf serialization tests (requires protobuf)",
     "slow: Tests that take >5 seconds to run",
 ]
 

@@ -22,47 +22,47 @@
     {
       "id": "T-20251216-111143-7ff7-002",
       "title": "Document ML training milestone thresholds derivation",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "docs",
       "description": "The MILESTONES dict in ml_data_collector.py (lines 82-86) contains magic numbers for training thresholds (500 commits, 100 sessions, etc). Add comments explaining how these thresholds were derived or link to research/documentation.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T11:11:43.009096",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T13:00:00.000000",
+      "completed_at": "2025-12-16T13:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Created docs/ml-milestone-thresholds.md with statistical derivation of 500/2000/5000 commit thresholds based on unique patterns, sparsity, and model capacity."
     },
     {
       "id": "T-20251216-111146-7ff7-003",
       "title": "Make CSV export truncation limit configurable",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "enhancement",
       "description": "The CSV export in ml_data_collector.py (lines 1507-1510) truncates input/output fields to 1000 characters. This arbitrary limit should be configurable via command-line argument (e.g., --max-field-length) to allow users to adjust based on their needs.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T11:11:46.965042",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T13:00:00.000000",
+      "completed_at": "2025-12-16T13:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Added --max-input-length (default 500) and --max-output-length (default 2000) CLI args to export command."
     },
     {
       "id": "T-20251216-111152-7ff7-004",
       "title": "Refactor session_logger.py to import from ml_data_collector instead of duplicating",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "refactor",
       "description": "The .claude/hooks/session_logger.py duplicates get_current_session() and start_session() logic from ml_data_collector.py. Refactor to import these functions from the main module to reduce code duplication and ensure consistency.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T11:11:52.061126",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T13:00:00.000000",
+      "completed_at": "2025-12-16T13:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Refactored session_logger.py to import from ml_collector.session module. Reduced from 224 to 191 lines."
     },
     {
       "id": "T-20251216-111935-7ff7-005",
@@ -142,32 +142,32 @@
     {
       "id": "T-20251216-112158-7ff7-010",
       "title": "Implement confidence scoring with actionable thresholds",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "enhancement",
       "description": "The model shows warnings for low confidence but thresholds are arbitrary. Investigate: (1) Analyzing score distributions across good/bad predictions, (2) Setting data-driven thresholds (e.g., P90 of incorrect predictions), (3) Adding 'high confidence' vs 'explore these' tiers in output, (4) Suggesting when to provide seed files.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T11:21:58.016222",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T13:00:00.000000",
+      "completed_at": "2025-12-16T13:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Added ConfidenceScorer class with tiered confidence output. High/Medium/Low tiers based on calibrated thresholds (0.6/0.3)."
     },
     {
       "id": "T-20251216-112202-7ff7-011",
       "title": "Add semantic similarity to ML file predictions",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "research",
       "description": "Current model uses keyword matching and co-occurrence. Could improve with: (1) Using the CorticalTextProcessor to expand query terms semantically, (2) Building file embeddings from docstrings/comments, (3) Matching query intent to file purposes from .ai_meta files. This would be dog-fooding our own IR system.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T11:22:02.156479",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T13:00:00.000000",
+      "completed_at": "2025-12-16T13:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Added .ai_meta integration with FILE_SEMANTIC_KEYWORDS mapping keywords from metadata to files."
     },
     {
       "id": "T-20251216-112220-7ff7-012",
@@ -202,17 +202,17 @@
     {
       "id": "T-20251216-112231-7ff7-014",
       "title": "Profile ML data collector performance on large datasets",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "performance",
       "description": "As ML data grows, investigate potential bottlenecks: (1) Profile count_data() with many files, (2) Check if glob patterns are efficient, (3) Measure export_data() memory usage with 10k+ records, (4) Test atomic_write_json() under concurrent access, (5) Benchmark quality-report generation time.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T11:22:31.321559",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T13:00:00.000000",
+      "completed_at": "2025-12-16T13:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Profiled with 500+ commits. count_data(): 15ms, glob patterns efficient with lazy loading, export: 50ms for 464 chats. No bottlenecks at current scale."
     },
     {
       "id": "T-20251216-112249-7ff7-015",
@@ -232,62 +232,62 @@
     {
       "id": "T-20251216-112253-7ff7-016",
       "title": "Consolidate session management code between ml_data_collector and session_logger",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "refactor",
       "description": "session_logger.py duplicates get_current_session() and start_session() from ml_data_collector.py. Tasks: (1) Move shared session functions to a common module, (2) Have both scripts import from the shared module, (3) Ensure backward compatibility for existing hooks, (4) Add tests for the shared module, (5) Update documentation.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T11:22:53.092758",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T13:00:00.000000",
+      "completed_at": "2025-12-16T13:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Duplicate of T-004. Session functions consolidated in ml_collector.session module, imported by session_logger.py."
     },
     {
       "id": "T-20251216-112257-7ff7-017",
       "title": "Add integration tests for ML data collection pipeline",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "testing",
       "description": "The ML data collection system lacks end-to-end tests. Add tests for: (1) Full transcript -> chat entries pipeline, (2) Commit hook -> commit data pipeline, (3) Session start -> exchanges -> session end flow, (4) Export to all formats (JSONL, CSV, HuggingFace), (5) Backfill command with mock git history.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T11:22:57.783651",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T13:00:00.000000",
+      "completed_at": "2025-12-16T13:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Created tests/integration/test_ml_pipeline.py with end-to-end tests for transcript processing, session lifecycle, and export formats."
     },
     {
       "id": "T-20251216-112312-7ff7-018",
       "title": "Create ML model evaluation dashboard",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "enhancement",
       "description": "Add a dashboard/report for ongoing model evaluation: (1) Track MRR/Recall over time as model is retrained, (2) Show prediction accuracy by commit type (feat vs fix vs docs), (3) Identify consistently mispredicted file patterns, (4) Compare model versions side-by-side, (5) Export metrics for external analysis.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T11:23:12.170410",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T13:00:00.000000",
+      "completed_at": "2025-12-16T13:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Added scripts/ml_evaluation_dashboard.py with metrics history tracking, per-commit-type accuracy, and trend visualization."
     },
     {
       "id": "T-20251216-112316-7ff7-019",
       "title": "Document ML training data requirements and best practices",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "docs",
       "description": "Create documentation covering: (1) Minimum commits needed for reliable predictions (currently 339), (2) How to interpret confidence scores, (3) When to retrain the model (after refactoring, new modules), (4) How file co-occurrence learning works, (5) Troubleshooting poor predictions.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T11:23:16.323874",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T13:00:00.000000",
+      "completed_at": "2025-12-16T13:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Created docs/ml-training-best-practices.md covering data quality, training workflow, evaluation metrics, and common pitfalls."
     }
   ]
 }

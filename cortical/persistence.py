@@ -22,7 +22,9 @@ from typing import Dict, Optional, Any, Union
 
 from .layers import CorticalLayer, HierarchicalLayer
 from .minicolumn import Minicolumn
-from .proto import PROTOBUF_AVAILABLE, serialize_state, deserialize_state
+
+# Protobuf support removed (unused, see T-013)
+PROTOBUF_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -117,71 +119,54 @@ def save_processor(
         semantic_relations: Extracted semantic relations (optional)
         metadata: Optional processor metadata (version, settings, etc.)
         verbose: Print progress
-        format: Serialization format ('pickle' or 'protobuf'). Default: 'pickle'
+        format: Serialization format. Only 'pickle' is supported.
         signing_key: Optional HMAC key for signing pickle files (SEC-003).
             If provided, creates a .sig file alongside the pickle file.
             The same key must be used to verify when loading.
 
     Raises:
-        ValueError: If format is not 'pickle' or 'protobuf'
-        ImportError: If format='protobuf' but protobuf package is not installed
+        ValueError: If format is not 'pickle'
     """
-    if format not in ['pickle', 'protobuf']:
-        raise ValueError(f"Invalid format '{format}'. Must be 'pickle' or 'protobuf'.")
+    if format != 'pickle':
+        raise ValueError(f"Invalid format '{format}'. Only 'pickle' is supported.")
 
-    if format == 'pickle':
-        # Emit deprecation warning for pickle format due to security concerns
-        warnings.warn(
-            "Pickle format is deprecated due to security concerns (arbitrary code execution). "
-            "Consider using format='protobuf' or the StateLoader JSON format instead. "
-            "See README.md 'Security Considerations' for details.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-        # Original pickle serialization
-        state = {
-            'version': '2.2',
-            'layers': {},
-            'documents': documents,
-            'document_metadata': document_metadata or {},
-            'embeddings': embeddings or {},
-            'semantic_relations': semantic_relations or [],
-            'metadata': metadata or {}
-        }
+    # Emit deprecation warning for pickle format due to security concerns
+    warnings.warn(
+        "Pickle format is deprecated due to security concerns (arbitrary code execution). "
+        "Consider using the StateLoader JSON format instead. "
+        "See README.md 'Security Considerations' for details.",
+        DeprecationWarning,
+        stacklevel=2
+    )
 
-        # Serialize layers
-        for layer_enum, layer in layers.items():
-            state['layers'][layer_enum.value] = layer.to_dict()
+    # Pickle serialization
+    state = {
+        'version': '2.2',
+        'layers': {},
+        'documents': documents,
+        'document_metadata': document_metadata or {},
+        'embeddings': embeddings or {},
+        'semantic_relations': semantic_relations or [],
+        'metadata': metadata or {}
+    }
 
-        # Serialize to bytes
-        pickle_data = pickle.dumps(state, protocol=pickle.HIGHEST_PROTOCOL)
+    # Serialize layers
+    for layer_enum, layer in layers.items():
+        state['layers'][layer_enum.value] = layer.to_dict()
 
-        # Sign if key provided (SEC-003)
-        if signing_key is not None:
-            signature = _compute_signature(pickle_data, signing_key)
-            _save_signature(filepath, signature)
-            if verbose:
-                logger.info(f"  - HMAC signature saved to {_get_signature_path(filepath)}")
+    # Serialize to bytes
+    pickle_data = pickle.dumps(state, protocol=pickle.HIGHEST_PROTOCOL)
 
-        # Write pickle data
-        with open(filepath, 'wb') as f:
-            f.write(pickle_data)
+    # Sign if key provided (SEC-003)
+    if signing_key is not None:
+        signature = _compute_signature(pickle_data, signing_key)
+        _save_signature(filepath, signature)
+        if verbose:
+            logger.info(f"  - HMAC signature saved to {_get_signature_path(filepath)}")
 
-    elif format == 'protobuf':
-        # Protocol Buffers serialization (text format for git-friendliness)
-        if not PROTOBUF_AVAILABLE:
-            raise ImportError(
-                "protobuf package is required for Protocol Buffers serialization. "
-                "Install it with: pip install protobuf"
-            )
-
-        text_output = serialize_state(
-            layers, documents, document_metadata,
-            embeddings, semantic_relations, metadata
-        )
-
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(text_output)
+    # Write pickle data
+    with open(filepath, 'wb') as f:
+        f.write(pickle_data)
 
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())
@@ -208,7 +193,7 @@ def load_processor(
     Args:
         filepath: Path to saved file
         verbose: Print progress
-        format: Serialization format ('pickle' or 'protobuf'). If None, auto-detect.
+        format: Serialization format. Only 'pickle' is supported.
         verify_key: Optional HMAC key for verifying pickle file signatures (SEC-003).
             If provided, the signature file (.sig) must exist and match.
             This protects against tampering of pickle files.
@@ -218,102 +203,67 @@ def load_processor(
 
     Raises:
         ValueError: If layer values are invalid (must be 0-3) or format is invalid
-        ImportError: If format='protobuf' but protobuf package is not installed
         SignatureVerificationError: If verify_key is provided and signature verification fails
         FileNotFoundError: If verify_key is provided but no .sig file exists
     """
-    # Auto-detect format if not specified
+    # Default to pickle format
     if format is None:
-        # Try to detect based on file content
-        with open(filepath, 'rb') as f:
-            # Read first few bytes
-            header = f.read(64)
+        format = 'pickle'
 
-            # Pickle files start with 0x80 (protocol marker)
-            if header[0:1] == b'\x80':
-                format = 'pickle'
-            else:
-                # Protobuf text format starts with readable text like "version:" or "layers {"
-                # Check if it looks like text (ASCII/UTF-8)
-                try:
-                    header_text = header.decode('utf-8')
-                    if 'version' in header_text or 'layers' in header_text:
-                        format = 'protobuf'
-                    else:
-                        # Default to pickle for unknown formats
-                        format = 'pickle'
-                except UnicodeDecodeError:
-                    # Binary content - assume pickle
-                    format = 'pickle'
+    if format != 'pickle':
+        raise ValueError(f"Invalid format '{format}'. Only 'pickle' is supported.")
 
-    if format not in ['pickle', 'protobuf']:
-        raise ValueError(f"Invalid format '{format}'. Must be 'pickle' or 'protobuf'.")
+    # Emit deprecation warning for pickle format due to security concerns
+    warnings.warn(
+        "Pickle format is deprecated due to security concerns (arbitrary code execution). "
+        "Only load pickle files from trusted sources. "
+        "Consider migrating to the StateLoader JSON format. "
+        "See README.md 'Security Considerations' for details.",
+        DeprecationWarning,
+        stacklevel=2
+    )
 
-    if format == 'pickle':
-        # Emit deprecation warning for pickle format due to security concerns
-        warnings.warn(
-            "Pickle format is deprecated due to security concerns (arbitrary code execution). "
-            "Only load pickle files from trusted sources. "
-            "Consider migrating to format='protobuf' or the StateLoader JSON format. "
-            "See README.md 'Security Considerations' for details.",
-            DeprecationWarning,
-            stacklevel=2
-        )
+    # Read pickle data as bytes (for signature verification)
+    with open(filepath, 'rb') as f:
+        pickle_data = f.read()
 
-        # Read pickle data as bytes (for signature verification)
-        with open(filepath, 'rb') as f:
-            pickle_data = f.read()
-
-        # Verify signature if key provided (SEC-003)
-        if verify_key is not None:
-            signature = _load_signature(filepath)
-            if signature is None:
-                raise FileNotFoundError(
-                    f"Signature file not found: {_get_signature_path(filepath)}. "
-                    f"Cannot verify file integrity without signature."
-                )
-            if not _verify_signature(pickle_data, signature, verify_key):
-                raise SignatureVerificationError(
-                    f"Signature verification failed for {filepath}. "
-                    f"The file may have been tampered with or the wrong key was used."
-                )
-            if verbose:
-                logger.info(f"  - HMAC signature verified successfully")
-
-        # Deserialize pickle
-        state = pickle.loads(pickle_data)
-
-        # Reconstruct layers
-        layers = {}
-        for level_value, layer_data in state.get('layers', {}).items():
-            # Validate layer value before creating enum
-            level_int = int(level_value)
-            if level_int not in [0, 1, 2, 3]:
-                raise ValueError(
-                    f"Invalid layer value {level_int} in saved state. "
-                    f"Layer values must be 0-3 (TOKENS=0, BIGRAMS=1, CONCEPTS=2, DOCUMENTS=3)."
-                )
-            layer = HierarchicalLayer.from_dict(layer_data)
-            layers[CorticalLayer(level_int)] = layer
-
-        documents = state.get('documents', {})
-        document_metadata = state.get('document_metadata', {})
-        embeddings = state.get('embeddings', {})
-        semantic_relations = state.get('semantic_relations', [])
-        metadata = state.get('metadata', {})
-
-    elif format == 'protobuf':
-        # Protocol Buffers deserialization (text format)
-        if not PROTOBUF_AVAILABLE:
-            raise ImportError(
-                "protobuf package is required for Protocol Buffers deserialization. "
-                "Install it with: pip install protobuf"
+    # Verify signature if key provided (SEC-003)
+    if verify_key is not None:
+        signature = _load_signature(filepath)
+        if signature is None:
+            raise FileNotFoundError(
+                f"Signature file not found: {_get_signature_path(filepath)}. "
+                f"Cannot verify file integrity without signature."
             )
+        if not _verify_signature(pickle_data, signature, verify_key):
+            raise SignatureVerificationError(
+                f"Signature verification failed for {filepath}. "
+                f"The file may have been tampered with or the wrong key was used."
+            )
+        if verbose:
+            logger.info(f"  - HMAC signature verified successfully")
 
-        with open(filepath, 'r', encoding='utf-8') as f:
-            proto_text = f.read()
+    # Deserialize pickle
+    state = pickle.loads(pickle_data)
 
-        layers, documents, document_metadata, embeddings, semantic_relations, metadata = deserialize_state(proto_text)
+    # Reconstruct layers
+    layers = {}
+    for level_value, layer_data in state.get('layers', {}).items():
+        # Validate layer value before creating enum
+        level_int = int(level_value)
+        if level_int not in [0, 1, 2, 3]:
+            raise ValueError(
+                f"Invalid layer value {level_int} in saved state. "
+                f"Layer values must be 0-3 (TOKENS=0, BIGRAMS=1, CONCEPTS=2, DOCUMENTS=3)."
+            )
+        layer = HierarchicalLayer.from_dict(layer_data)
+        layers[CorticalLayer(level_int)] = layer
+
+    documents = state.get('documents', {})
+    document_metadata = state.get('document_metadata', {})
+    embeddings = state.get('embeddings', {})
+    semantic_relations = state.get('semantic_relations', [])
+    metadata = state.get('metadata', {})
 
     if verbose:
         total_cols = sum(len(layer.minicolumns) for layer in layers.values())
