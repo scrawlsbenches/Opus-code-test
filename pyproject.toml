@@ -91,3 +91,16 @@ filterwarnings = [
     # Allow our intentional pickle deprecation warnings (SEC-008)
     "ignore:Pickle format is deprecated:DeprecationWarning",
 ]
+
+# Custom markers for test organization
+markers = [
+    "optional: Tests requiring optional dependencies (mcp, hypothesis, protobuf, numpy)",
+    "fuzz: Property-based fuzzing tests (requires hypothesis)",
+    "mcp: MCP server tests (requires mcp package)",
+    "protobuf: Protobuf serialization tests (requires protobuf)",
+    "slow: Tests that take >5 seconds to run",
+]
+
+# Default: skip optional and slow tests during development
+# CI overrides with: pytest -m "" (run all) or explicitly includes markers
+addopts = "-m 'not optional and not slow'"

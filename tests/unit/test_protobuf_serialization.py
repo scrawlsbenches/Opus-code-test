@@ -10,6 +10,11 @@ import tempfile
 import os
 from pathlib import Path
 
+import pytest
+
+# Mark entire module as optional (requires protobuf package)
+pytestmark = [pytest.mark.optional, pytest.mark.protobuf]
+
 # Import core modules
 from cortical.layers import CorticalLayer, HierarchicalLayer
 from cortical.minicolumn import Minicolumn, Edge

@@ -15,6 +15,13 @@ name: CI - Test Suite
 # ✅ CORRECT (pytest handles both):
 #    coverage run -m pytest tests/
 #
+# TEST MARKERS (pyproject.toml):
+# Dev runs: `pytest` (excludes optional by default via addopts)
+# CI runs:  `pytest -m ""` (includes ALL tests)
+#
+# Markers: optional, fuzz, mcp, protobuf, slow
+# Tests marked 'optional' require dependencies like hypothesis, mcp, protobuf
+#
 # PARALLEL ARCHITECTURE (optimized for speed):
 #
 #   validate-tasks       smoke-tests      showcase
@@ -103,7 +110,8 @@ jobs:
     - name: Run smoke tests
       run: |
         echo "=== Running Smoke Tests ==="
-        python -m pytest tests/smoke/ -v --tb=short
+        # -m "" overrides pyproject.toml addopts to include optional tests in CI
+        python -m pytest tests/smoke/ -m "" -v --tb=short
         echo "✅ Smoke tests passed"
 
   # ==========================================================================
@@ -134,8 +142,10 @@ jobs:
         # Run unit tests - pytest handles both pytest AND unittest style tests
         # Using a single pytest call is faster than multiple unittest discovers
         # Note: Legacy tests removed 2025-12-13 - now covered by tests/unit/
+        # -m "" overrides pyproject.toml addopts to include optional tests in CI
         coverage run --source=cortical -m pytest \
           tests/unit/ \
+          -m "" \
           -v --tb=short
 
         coverage report --include="cortical/*"
@@ -177,6 +187,7 @@ jobs:
         # Includes tests/integration/ plus remaining legacy tests that provide unique coverage
         # Note: 3 legacy tests removed 2025-12-13 (test_behavioral.py, test_intent_query.py,
         #       test_query_optimization.py) - now covered by unit tests
+        # -m "" overrides pyproject.toml addopts to include optional tests in CI
         coverage run --source=cortical -m pytest \
           tests/integration/ \
           tests/test_incremental_indexing.py \
@@ -190,6 +201,8 @@ jobs:
           tests/test_generate_ai_metadata.py \
           tests/test_showcase.py \
           tests/test_mcp_server.py \
+          tests/security/ \
+          -m "" \
           -v --tb=short
 
         coverage report --include="cortical/*"
@@ -226,7 +239,8 @@ jobs:
     - name: Run regression tests
       run: |
         echo "=== Running Regression Tests ==="
-        python -m pytest tests/regression/ -v --tb=short
+        # -m "" overrides pyproject.toml addopts to include optional tests in CI
+        python -m pytest tests/regression/ -m "" -v --tb=short
         echo "✅ All regressions still fixed"
 
   # ==========================================================================
@@ -255,7 +269,8 @@ jobs:
       run: |
         echo "=== Running Behavioral Tests ==="
         # Note: tests/test_behavioral.py removed 2025-12-13 - superseded by tests/behavioral/
-        python -m pytest tests/behavioral/ -v --tb=short
+        # -m "" overrides pyproject.toml addopts to include optional tests in CI
+        python -m pytest tests/behavioral/ -m "" -v --tb=short
         echo "✅ Behavioral quality verified"
 
   # ==========================================================================
@@ -283,7 +298,8 @@ jobs:
     - name: Run performance tests
       run: |
         echo "=== Running Performance Tests (no coverage) ==="
-        python -m pytest tests/performance/ -v --tb=short -s
+        # -m "" overrides pyproject.toml addopts to include optional tests in CI
+        python -m pytest tests/performance/ -m "" -v --tb=short -s
         echo "✅ Performance within thresholds"
 
   # ==========================================================================
