@@ -1,0 +1,19 @@
+{
+  "id": "A-20251216-174839-be1c-010",
+  "timestamp": "2025-12-16T16:01:47.793Z",
+  "session_id": "be1c9999-f249-4a29-87d1-dacf5c74f6d5",
+  "action_type": "command",
+  "target": "",
+  "context": {
+    "tool": "Bash",
+    "input": {
+      "tool": "Bash",
+      "input": {
+        "command": "git status --short",
+        "description": "Check for uncommitted changes"
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}
