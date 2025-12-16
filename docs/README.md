@@ -16,6 +16,8 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 | [query-guide.md](query-guide.md) | How to formulate effective queries | Users |
 | [cookbook.md](cookbook.md) | Common patterns and recipes | Users |
 | [patterns.md](patterns.md) | Advanced usage (code search, fingerprinting) | Advanced users |
+| [fluent-api.md](fluent-api.md) | FluentProcessor builder pattern API | Developers |
+| [deployment.md](deployment.md) | MCP server deployment and production tuning | DevOps |
 | [glossary.md](glossary.md) | Terminology definitions | All |
 
 ---
@@ -77,6 +79,13 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 | [query-guide.md](query-guide.md) | Query formulation and search tips |
 | [cookbook.md](cookbook.md) | Common patterns and recipes |
 | [patterns.md](patterns.md) | Advanced patterns: code search, fingerprinting, intent queries |
+| [fluent-api.md](fluent-api.md) | FluentProcessor builder pattern API reference |
+
+### Deployment & Operations
+
+| Document | Purpose |
+|----------|---------|
+| [deployment.md](deployment.md) | MCP server deployment, Docker, production tuning |
 
 ### Development Process
 
@@ -86,6 +95,7 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 | [definition-of-done.md](definition-of-done.md) | Task completion checklist |
 | [dogfooding.md](dogfooding.md) | Using the system to test itself |
 | [dogfooding-checklist.md](dogfooding-checklist.md) | Systematic dog-fooding checklist |
+| [ml-precommit-suggestions.md](ml-precommit-suggestions.md) | ML-powered file suggestions for pre-commit hooks |
 
 ### AI Agent Resources
 

@@ -62,6 +62,27 @@ COMMIT_TYPE_PATTERNS = {
     'complete': r'^[Cc]omplete\s+',
 }
 
+# File path migrations (old → new structure)
+# Used to map historical commits to current file structure
+FILE_PATH_MIGRATIONS = {
+    'cortical/processor.py': [
+        'cortical/processor/__init__.py',
+        'cortical/processor/core.py',
+        'cortical/processor/compute.py',
+        'cortical/processor/query_api.py',
+        'cortical/processor/documents.py',
+    ],
+    'cortical/query.py': [
+        'cortical/query/__init__.py',
+        'cortical/query/expansion.py',
+        'cortical/query/search.py',
+        'cortical/query/passages.py',
+        'cortical/query/ranking.py',
+    ],
+    'TASK_LIST.md': [],  # Deleted, no replacement
+    'TASK_ARCHIVE.md': [],  # Deleted, no replacement
+}
+
 # Module keyword to directory mappings
 MODULE_KEYWORDS = {
     'test': ['tests/', 'test_'],
@@ -77,6 +98,14 @@ MODULE_KEYWORDS = {
     'core': ['cortical/', 'minicolumn.py', 'layers.py'],
     'tokenizer': ['tokenizer.py'],
     'fingerprint': ['fingerprint.py'],
+    # Package-specific keywords
+    'query': ['cortical/query/', 'query/expansion.py', 'query/search.py', 'query_api.py'],
+    'expansion': ['expansion.py', 'query/expansion.py'],
+    'search': ['search.py', 'query/search.py', 'find_documents'],
+    'processor': ['cortical/processor/', 'processor/compute.py', 'processor/core.py'],
+    'compute': ['compute.py', 'processor/compute.py', 'compute_all'],
+    'ranking': ['ranking.py', 'query/ranking.py'],
+    'passages': ['passages.py', 'query/passages.py'],
 }
 
 
@@ -390,18 +419,85 @@ def message_to_keywords(message: str) -> List[str]:
 
 
 # ============================================================================
+# FILE PATH UTILITIES
+# ============================================================================
+
+def migrate_file_path(file_path: str) -> List[str]:
+    """
+    Migrate old file paths to current structure.
+
+    Returns a list of current paths that the old path maps to.
+    If no migration needed, returns [file_path].
+    If file was deleted with no replacement, returns [].
+    """
+    if file_path in FILE_PATH_MIGRATIONS:
+        return FILE_PATH_MIGRATIONS[file_path]
+    return [file_path]
+
+
+def filter_existing_files(files: List[str]) -> List[str]:
+    """
+    Filter file list to only include files that currently exist.
+    Also migrates old paths to new structure.
+    """
+    result = []
+    seen = set()
+
+    for f in files:
+        # Try migrating the path first
+        migrated = migrate_file_path(f)
+
+        for path in migrated:
+            if path in seen:
+                continue
+
+            # Check if file exists
+            if Path(path).exists():
+                result.append(path)
+                seen.add(path)
+
+    return result
+
+
+def get_existing_files_set() -> Set[str]:
+    """
+    Get a set of all files that currently exist in the repository.
+    Used for efficient filtering during training.
+    """
+    existing = set()
+
+    # Scan common directories
+    for pattern in ['cortical/**/*.py', 'scripts/*.py', 'tests/**/*.py',
+                    'docs/*.md', '*.md', '.claude/**/*.md', 'tasks/*.json']:
+        for p in Path('.').glob(pattern):
+            existing.add(str(p))
+
+    return existing
+
+
+# ============================================================================
 # DATA LOADING
 # ============================================================================
 
-def load_commit_data() -> List[TrainingExample]:
-    """Load commit data from JSONL file."""
+def load_commit_data(filter_deleted: bool = True) -> List[TrainingExample]:
+    """
+    Load commit data from JSONL file.
+
+    Args:
+        filter_deleted: If True, filter out files that no longer exist
+                       and migrate old paths to new structure.
+    """
     commits_file = TRACKED_DIR / "commits.jsonl"
 
     if not commits_file.exists():
         print(f"No commits file found at {commits_file}")
         return []
 
+    # Pre-compute existing files for efficiency
+    existing_files = get_existing_files_set() if filter_deleted else None
+
     examples = []
+    filtered_count = 0
 
     with open(commits_file, 'r', encoding='utf-8') as f:
         for line in f:
@@ -416,10 +512,28 @@ def load_commit_data() -> List[TrainingExample]:
                 if commit.get('message', '').startswith('data: ML'):
                     continue
 
+                files_changed = commit.get('files_changed', [])
+
+                # Apply file path migrations and filter deleted files
+                if filter_deleted:
+                    migrated_files = []
+                    for f_path in files_changed:
+                        # Migrate old paths to new structure
+                        migrated = migrate_file_path(f_path)
+                        for new_path in migrated:
+                            # Check if file exists (either in our set or on disk)
+                            if new_path in existing_files or Path(new_path).exists():
+                                migrated_files.append(new_path)
+                    original_count = len(files_changed)
+                    files_changed = list(set(migrated_files))  # Dedupe
+                    if original_count > 0 and len(files_changed) == 0:
+                        filtered_count += 1
+                        continue  # Skip commits with no remaining files
+
                 example = TrainingExample(
                     commit_hash=commit.get('hash', ''),
                     message=commit.get('message', ''),
-                    files_changed=commit.get('files_changed', []),
+                    files_changed=files_changed,
                     commit_type=extract_commit_type(commit.get('message', '')),
                     keywords=extract_keywords(commit.get('message', '')),
                     timestamp=commit.get('timestamp', ''),
@@ -433,6 +547,9 @@ def load_commit_data() -> List[TrainingExample]:
 
             except json.JSONDecodeError:
                 continue
+
+    if filter_deleted and filtered_count > 0:
+        print(f"  Filtered {filtered_count} commits with only deleted files")
 
     return examples
 

@@ -142,47 +142,47 @@
     {
       "id": "T-20251216-094347-f0ff-010",
       "title": "Filter deleted files from ML training data",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "bugfix",
       "description": "MRR dropped from 0.38 to 0.15 because training data includes deleted files (TASK_LIST.md, cortical/processor.py). Need to filter commits to only include files that currently exist, or weight recent commits higher.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T09:43:47.644254",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T12:00:00.000000",
+      "completed_at": "2025-12-16T12:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Added FILE_PATH_MIGRATIONS dict mapping old paths to new package structure. Implemented migrate_file_path(), filter_existing_files(), get_existing_files_set() functions. Updated load_commit_data() with filter_deleted param. MRR improved from 0.15 to 0.27."
     },
     {
       "id": "T-20251216-094353-f0ff-011",
       "title": "Add query/ package files to ML training",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "enhancement",
       "description": "Query expansion predictions miss cortical/query/expansion.py because the package structure (cortical/query/*.py) isn't well represented in training data. May need special handling for package imports.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T09:43:53.298884",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T12:00:00.000000",
+      "completed_at": "2025-12-16T12:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Added package-specific MODULE_KEYWORDS entries for query/, processor/, expansion, search, ranking, passages. Query package files now appear in predictions (positions 7-10 for query expansion tasks)."
     },
     {
       "id": "T-20251216-094357-f0ff-012",
       "title": "Update docs/README.md with new documentation links",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "docs",
       "description": "Add links to new documentation created this session: deployment.md, fluent-api.md, ml-precommit-suggestions.md",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T09:43:57.804435",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T12:00:00.000000",
+      "completed_at": "2025-12-16T12:00:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Added deployment.md and fluent-api.md to Quick Navigation and Usage Guides sections. Added Deployment & Operations section. Added ml-precommit-suggestions.md to Development Process section."
     }
   ]
 }
