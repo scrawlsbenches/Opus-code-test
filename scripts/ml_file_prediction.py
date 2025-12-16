@@ -38,8 +38,15 @@ except ImportError:
 # ============================================================================
 
 MODEL_DIR = ML_DATA_DIR / "models"
+MODEL_HISTORY_DIR = MODEL_DIR / "history"
 FILE_PREDICTION_MODEL = MODEL_DIR / "file_prediction.json"
 AI_META_CACHE = MODEL_DIR / "ai_meta_cache.json"
+
+# Warning thresholds
+WARNING_LOW_CONFIDENCE_THRESHOLD = 0.5
+WARNING_STALE_COMMITS_THRESHOLD = 10
+WARNING_MIN_TRAINING_COMMITS = 50
+WARNING_NO_KEYWORD_MATCH_THRESHOLD = 0
 
 # Commit type patterns
 COMMIT_TYPE_PATTERNS = {
@@ -114,6 +121,33 @@ MODULE_KEYWORDS = {
 # ============================================================================
 
 @dataclass
+class PredictionWarning:
+    """A warning about prediction reliability."""
+    level: str  # 'info', 'warning', 'error'
+    code: str   # Machine-readable code
+    message: str  # Human-readable message
+
+    def __str__(self) -> str:
+        icons = {'info': 'ℹ️', 'warning': '⚠️', 'error': '❌'}
+        return f"{icons.get(self.level, '•')} {self.message}"
+
+
+@dataclass
+class PredictionResult:
+    """Result of a file prediction with warnings."""
+    files: List[Tuple[str, float]]
+    warnings: List[PredictionWarning] = field(default_factory=list)
+    query_keywords: List[str] = field(default_factory=list)
+    matched_keywords: List[str] = field(default_factory=list)
+
+    def has_warnings(self) -> bool:
+        return len(self.warnings) > 0
+
+    def get_warnings_by_level(self, level: str) -> List[PredictionWarning]:
+        return [w for w in self.warnings if w.level == level]
+
+
+@dataclass
 class TrainingExample:
     """A single training example from commit history."""
     commit_hash: str
@@ -124,6 +158,17 @@ class TrainingExample:
     timestamp: str
     insertions: int
     deletions: int
+
+
+@dataclass
+class ModelMetrics:
+    """Evaluation metrics for a model version."""
+    mrr: float = 0.0
+    recall_at_1: float = 0.0
+    recall_at_5: float = 0.0
+    recall_at_10: float = 0.0
+    precision_at_1: float = 0.0
+    test_examples: int = 0
 
 
 @dataclass
@@ -148,14 +193,39 @@ class FilePredictionModel:
     trained_at: str = ""
 
     # Model version
-    version: str = "1.0.0"
+    version: str = "1.1.0"
+
+    # Git commit hash at training time (for staleness detection)
+    git_commit_hash: str = ""
+
+    # Metrics from evaluation (if available)
+    metrics: Optional[Dict[str, float]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> 'FilePredictionModel':
+        # Handle backwards compatibility
+        if 'git_commit_hash' not in d:
+            d['git_commit_hash'] = ''
+        if 'metrics' not in d:
+            d['metrics'] = None
         return cls(**d)
+
+    def get_staleness_commits(self) -> int:
+        """Get number of commits since model was trained."""
+        if not self.git_commit_hash:
+            return -1  # Unknown
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['git', 'rev-list', '--count', f'{self.git_commit_hash}..HEAD'],
+                capture_output=True, text=True, check=True
+            )
+            return int(result.stdout.strip())
+        except Exception:
+            return -1
 
 
 @dataclass
@@ -476,6 +546,38 @@ def get_existing_files_set() -> Set[str]:
 
 
 # ============================================================================
+# GIT UTILITIES
+# ============================================================================
+
+def get_current_git_hash() -> str:
+    """Get the current git commit hash."""
+    try:
+        import subprocess
+        result = subprocess.run(
+            ['git', 'rev-parse', 'HEAD'],
+            capture_output=True, text=True, check=True
+        )
+        return result.stdout.strip()[:12]  # Short hash
+    except Exception:
+        return ""
+
+
+def get_commits_since(commit_hash: str) -> int:
+    """Get number of commits since the given hash."""
+    if not commit_hash:
+        return -1
+    try:
+        import subprocess
+        result = subprocess.run(
+            ['git', 'rev-list', '--count', f'{commit_hash}..HEAD'],
+            capture_output=True, text=True, check=True
+        )
+        return int(result.stdout.strip())
+    except Exception:
+        return -1
+
+
+# ============================================================================
 # DATA LOADING
 # ============================================================================
 
@@ -567,7 +669,9 @@ def train_model(examples: List[TrainingExample]) -> FilePredictionModel:
         file_frequency={},
         total_commits=0,
         trained_at=datetime.now().isoformat(),
-        version="1.0.0"
+        version="1.1.0",
+        git_commit_hash=get_current_git_hash(),
+        metrics=None
     )
 
     for example in examples:
@@ -642,6 +746,91 @@ def load_model(path: Path = None) -> Optional[FilePredictionModel]:
 # ============================================================================
 # PREDICTION
 # ============================================================================
+
+def generate_warnings(
+    model: FilePredictionModel,
+    query: str,
+    predictions: List[Tuple[str, float]],
+    query_keywords: List[str],
+    matched_keywords: List[str]
+) -> List[PredictionWarning]:
+    """Generate warnings about prediction reliability."""
+    warnings = []
+
+    # Check model staleness
+    staleness = get_commits_since(model.git_commit_hash)
+    if staleness > WARNING_STALE_COMMITS_THRESHOLD:
+        warnings.append(PredictionWarning(
+            level='warning',
+            code='STALE_MODEL',
+            message=f"Model is {staleness} commits behind HEAD. Consider retraining."
+        ))
+    elif staleness == -1 and model.git_commit_hash:
+        warnings.append(PredictionWarning(
+            level='info',
+            code='STALENESS_UNKNOWN',
+            message="Could not determine model staleness (git hash not found)."
+        ))
+
+    # Check training data size
+    if model.total_commits < WARNING_MIN_TRAINING_COMMITS:
+        warnings.append(PredictionWarning(
+            level='warning',
+            code='LOW_TRAINING_DATA',
+            message=f"Only {model.total_commits} training commits. Predictions may be unreliable."
+        ))
+
+    # Check keyword matching
+    if len(matched_keywords) == 0:
+        warnings.append(PredictionWarning(
+            level='warning',
+            code='NO_KEYWORD_MATCH',
+            message=f"No keywords matched from query. Predictions based on general patterns only."
+        ))
+    elif len(matched_keywords) < len(query_keywords) // 2:
+        warnings.append(PredictionWarning(
+            level='info',
+            code='PARTIAL_KEYWORD_MATCH',
+            message=f"Only {len(matched_keywords)}/{len(query_keywords)} query keywords matched."
+        ))
+
+    # Check prediction confidence
+    if predictions:
+        max_score = predictions[0][1]
+        if max_score < WARNING_LOW_CONFIDENCE_THRESHOLD:
+            warnings.append(PredictionWarning(
+                level='warning',
+                code='LOW_CONFIDENCE',
+                message=f"Top prediction score ({max_score:.2f}) is below threshold. Results may be unreliable."
+            ))
+
+        # Check for many low-scoring predictions (flat distribution)
+        if len(predictions) >= 3:
+            score_range = max_score - predictions[min(2, len(predictions)-1)][1]
+            if score_range < 0.1 and max_score < 1.0:
+                warnings.append(PredictionWarning(
+                    level='info',
+                    code='FLAT_DISTRIBUTION',
+                    message="Prediction scores are similar. Consider providing seed files."
+                ))
+
+        # Check for non-existent predicted files (shouldn't happen with filtering, but good to check)
+        missing_count = sum(1 for f, _ in predictions if not Path(f).exists())
+        if missing_count > 0:
+            warnings.append(PredictionWarning(
+                level='error',
+                code='MISSING_FILES',
+                message=f"{missing_count} predicted files don't exist. Model may need retraining."
+            ))
+    else:
+        warnings.append(PredictionWarning(
+            level='error',
+            code='NO_PREDICTIONS',
+            message="No files predicted. Query may be too generic or model needs more training."
+        ))
+
+    return warnings
+
 
 def predict_files(
     query: str,
@@ -763,6 +952,148 @@ def predict_files(
     return sorted_files[:top_n]
 
 
+def predict_files_with_warnings(
+    query: str,
+    model: FilePredictionModel,
+    top_n: int = 10,
+    seed_files: List[str] = None,
+    ai_meta_map: Optional[Dict[str, AIMetaData]] = None,
+    use_ai_meta: bool = True
+) -> PredictionResult:
+    """
+    Predict files with system warnings about reliability.
+
+    Returns a PredictionResult with files and any applicable warnings.
+    """
+    # Extract query keywords for warning generation
+    query_keywords = list(set(extract_keywords(query) + message_to_keywords(query)))
+
+    # Track which keywords matched
+    matched_keywords = []
+    for kw in query_keywords:
+        if kw in model.keyword_to_files:
+            matched_keywords.append(kw)
+
+    # Get predictions
+    predictions = predict_files(
+        query, model, top_n, seed_files, ai_meta_map, use_ai_meta
+    )
+
+    # Generate warnings
+    warnings = generate_warnings(
+        model, query, predictions, query_keywords, matched_keywords
+    )
+
+    return PredictionResult(
+        files=predictions,
+        warnings=warnings,
+        query_keywords=query_keywords,
+        matched_keywords=matched_keywords
+    )
+
+
+# ============================================================================
+# MODEL VERSIONING
+# ============================================================================
+
+def save_model_version(model: FilePredictionModel, metrics: Dict[str, float] = None) -> str:
+    """
+    Save model to history with timestamp and metrics.
+
+    Returns the path to the saved version.
+    """
+    MODEL_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Update model metrics if provided
+    if metrics:
+        model.metrics = metrics
+
+    # Create versioned filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    git_hash = model.git_commit_hash or "unknown"
+    filename = f"model_{timestamp}_{git_hash}.json"
+    version_path = MODEL_HISTORY_DIR / filename
+
+    with open(version_path, 'w', encoding='utf-8') as f:
+        json.dump(model.to_dict(), f, indent=2)
+
+    return str(version_path)
+
+
+def list_model_versions() -> List[Dict[str, Any]]:
+    """List all saved model versions with metadata."""
+    if not MODEL_HISTORY_DIR.exists():
+        return []
+
+    versions = []
+    for model_file in sorted(MODEL_HISTORY_DIR.glob("model_*.json"), reverse=True):
+        try:
+            with open(model_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            versions.append({
+                'filename': model_file.name,
+                'path': str(model_file),
+                'trained_at': data.get('trained_at', ''),
+                'git_commit_hash': data.get('git_commit_hash', ''),
+                'total_commits': data.get('total_commits', 0),
+                'metrics': data.get('metrics'),
+                'version': data.get('version', '1.0.0')
+            })
+        except Exception:
+            continue
+
+    return versions
+
+
+def load_model_version(version_path: str) -> Optional[FilePredictionModel]:
+    """Load a specific model version from history."""
+    path = Path(version_path)
+    if not path.exists():
+        return None
+
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    return FilePredictionModel.from_dict(data)
+
+
+def compare_model_predictions(
+    query: str,
+    model1: FilePredictionModel,
+    model2: FilePredictionModel,
+    top_n: int = 10
+) -> Dict[str, Any]:
+    """
+    Compare predictions between two models.
+
+    Useful for seeing how predictions change over time.
+    """
+    pred1 = predict_files(query, model1, top_n)
+    pred2 = predict_files(query, model2, top_n)
+
+    files1 = set(f for f, _ in pred1)
+    files2 = set(f for f, _ in pred2)
+
+    return {
+        'query': query,
+        'model1': {
+            'trained_at': model1.trained_at,
+            'git_hash': model1.git_commit_hash,
+            'predictions': pred1
+        },
+        'model2': {
+            'trained_at': model2.trained_at,
+            'git_hash': model2.git_commit_hash,
+            'predictions': pred2
+        },
+        'common_files': list(files1 & files2),
+        'only_in_model1': list(files1 - files2),
+        'only_in_model2': list(files2 - files1),
+        'jaccard_similarity': len(files1 & files2) / len(files1 | files2) if files1 | files2 else 0
+    }
+
+
 # ============================================================================
 # EVALUATION
 # ============================================================================
@@ -855,6 +1186,10 @@ def main():
     train_parser = subparsers.add_parser('train', help='Train the model')
     train_parser.add_argument('--output', '-o', type=str,
                              help='Output model path')
+    train_parser.add_argument('--save-version', '-v', action='store_true',
+                             help='Save versioned copy to history')
+    train_parser.add_argument('--evaluate', '-e', action='store_true',
+                             help='Evaluate after training (20% holdout)')
 
     # Predict command
     predict_parser = subparsers.add_parser('predict', help='Predict files for a task')
@@ -865,6 +1200,10 @@ def main():
                                help='Seed files for co-occurrence boosting')
     predict_parser.add_argument('--no-ai-meta', action='store_true',
                                help='Disable AI metadata enhancement')
+    predict_parser.add_argument('--no-warnings', action='store_true',
+                               help='Suppress system warnings')
+    predict_parser.add_argument('--verbose', action='store_true',
+                               help='Show detailed warning information')
 
     # Evaluate command
     eval_parser = subparsers.add_parser('evaluate', help='Evaluate model')
@@ -879,6 +1218,21 @@ def main():
     ai_meta_parser.add_argument('--rebuild', action='store_true',
                                help='Rebuild AI metadata cache from source')
 
+    # History command
+    history_parser = subparsers.add_parser('history', help='List model version history')
+    history_parser.add_argument('--limit', '-n', type=int, default=10,
+                               help='Number of versions to show')
+
+    # Compare command
+    compare_parser = subparsers.add_parser('compare', help='Compare predictions between model versions')
+    compare_parser.add_argument('query', type=str, help='Query to compare')
+    compare_parser.add_argument('--version1', type=str, required=True,
+                               help='Path to first model version')
+    compare_parser.add_argument('--version2', type=str, default=None,
+                               help='Path to second model (default: current)')
+    compare_parser.add_argument('--top', '-n', type=int, default=10,
+                               help='Number of predictions to compare')
+
     args = parser.parse_args()
 
     if args.command == 'train':
@@ -886,17 +1240,40 @@ def main():
         examples = load_commit_data()
         print(f"Loaded {len(examples)} training examples")
 
-        print("Training model...")
-        model = train_model(examples)
+        # Optionally evaluate with holdout
+        metrics = None
+        if args.evaluate:
+            print("Splitting data for evaluation (80/20)...")
+            train_examples, test_examples = train_test_split(examples, 0.2)
+            print(f"Training on {len(train_examples)} examples...")
+            model = train_model(train_examples)
+            print(f"Evaluating on {len(test_examples)} examples...")
+            metrics = evaluate_model(model, test_examples)
+            model.metrics = metrics
+        else:
+            print("Training model...")
+            model = train_model(examples)
 
         output_path = Path(args.output) if args.output else None
         path = save_model(model, output_path)
 
         print(f"\nModel trained and saved to {path}")
+        print(f"  Git commit: {model.git_commit_hash or 'unknown'}")
         print(f"  Total commits: {model.total_commits}")
         print(f"  Unique files: {len(model.file_frequency)}")
         print(f"  Commit types: {len(model.type_to_files)}")
         print(f"  Keywords: {len(model.keyword_to_files)}")
+
+        if metrics:
+            print(f"\n  Evaluation metrics:")
+            print(f"    MRR: {metrics.get('mrr', 0):.4f}")
+            print(f"    Recall@5: {metrics.get('recall@5', 0):.4f}")
+            print(f"    Recall@10: {metrics.get('recall@10', 0):.4f}")
+
+        # Save versioned copy if requested
+        if args.save_version:
+            version_path = save_model_version(model, metrics)
+            print(f"\n  Saved to history: {version_path}")
 
     elif args.command == 'predict':
         model = load_model()
@@ -911,7 +1288,8 @@ def main():
             print("Install with: pip install pyyaml")
             use_ai_meta = False
 
-        predictions = predict_files(
+        # Use warnings-enabled prediction
+        result = predict_files_with_warnings(
             args.query,
             model,
             top_n=args.top,
@@ -923,8 +1301,19 @@ def main():
         if use_ai_meta:
             print("(Using AI metadata enhancement)")
         print("-" * 60)
-        for i, (filepath, score) in enumerate(predictions, 1):
+        for i, (filepath, score) in enumerate(result.files, 1):
             print(f"  {i:2}. {filepath:<45} ({score:.3f})")
+
+        # Show warnings unless suppressed
+        if not args.no_warnings and result.has_warnings():
+            print("\n" + "-" * 60)
+            print("System Warnings:")
+            for warning in result.warnings:
+                print(f"  {warning}")
+
+            if args.verbose:
+                print(f"\n  Query keywords: {', '.join(result.query_keywords[:10])}")
+                print(f"  Matched keywords: {', '.join(result.matched_keywords[:10])}")
 
     elif args.command == 'evaluate':
         print("Loading commit data...")
@@ -1041,6 +1430,86 @@ def main():
             for filepath, imported in sorted(import_graph.items(),
                                             key=lambda x: -len(x[1]))[:5]:
                 print(f"    {Path(filepath).name}: imports {len(imported)} files")
+
+    elif args.command == 'history':
+        versions = list_model_versions()
+
+        if not versions:
+            print("No model versions found in history.")
+            print(f"Train with --save-version to start tracking: python {__file__} train -v")
+            return 0
+
+        print("\n" + "=" * 60)
+        print("MODEL VERSION HISTORY")
+        print("=" * 60)
+
+        for i, v in enumerate(versions[:args.limit], 1):
+            print(f"\n  [{i}] {v['filename']}")
+            print(f"      Trained: {v['trained_at']}")
+            print(f"      Git: {v['git_commit_hash'] or 'unknown'}")
+            print(f"      Commits: {v['total_commits']}")
+            if v['metrics']:
+                mrr = v['metrics'].get('mrr', 0)
+                r5 = v['metrics'].get('recall@5', 0)
+                print(f"      MRR: {mrr:.4f}, Recall@5: {r5:.4f}")
+
+        print(f"\n  Total versions: {len(versions)}")
+        print(f"  History dir: {MODEL_HISTORY_DIR}")
+
+    elif args.command == 'compare':
+        # Load model 1 (historical version)
+        model1 = load_model_version(args.version1)
+        if not model1:
+            print(f"Could not load model: {args.version1}")
+            return 1
+
+        # Load model 2 (current or specified)
+        if args.version2:
+            model2 = load_model_version(args.version2)
+            if not model2:
+                print(f"Could not load model: {args.version2}")
+                return 1
+        else:
+            model2 = load_model()
+            if not model2:
+                print("No current model found. Run 'train' first.")
+                return 1
+
+        # Compare predictions
+        comparison = compare_model_predictions(
+            args.query, model1, model2, args.top
+        )
+
+        print("\n" + "=" * 60)
+        print("MODEL PREDICTION COMPARISON")
+        print("=" * 60)
+        print(f"Query: '{args.query}'")
+
+        print(f"\nModel 1: {model1.trained_at} ({model1.git_commit_hash or 'unknown'})")
+        for i, (f, score) in enumerate(comparison['model1']['predictions'][:5], 1):
+            marker = "✓" if f in comparison['common_files'] else " "
+            print(f"  {marker} {i}. {Path(f).name:<35} ({score:.3f})")
+
+        print(f"\nModel 2: {model2.trained_at} ({model2.git_commit_hash or 'unknown'})")
+        for i, (f, score) in enumerate(comparison['model2']['predictions'][:5], 1):
+            marker = "✓" if f in comparison['common_files'] else " "
+            print(f"  {marker} {i}. {Path(f).name:<35} ({score:.3f})")
+
+        print(f"\nComparison:")
+        print(f"  Common predictions: {len(comparison['common_files'])}")
+        print(f"  Only in Model 1: {len(comparison['only_in_model1'])}")
+        print(f"  Only in Model 2: {len(comparison['only_in_model2'])}")
+        print(f"  Jaccard similarity: {comparison['jaccard_similarity']:.2%}")
+
+        if comparison['only_in_model1']:
+            print(f"\n  New in Model 2 (not in Model 1):")
+            for f in comparison['only_in_model2'][:3]:
+                print(f"    + {Path(f).name}")
+
+        if comparison['only_in_model2']:
+            print(f"\n  Removed in Model 2 (was in Model 1):")
+            for f in comparison['only_in_model1'][:3]:
+                print(f"    - {Path(f).name}")
 
     else:
         parser.print_help()
