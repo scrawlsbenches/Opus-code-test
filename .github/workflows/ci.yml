@@ -15,9 +15,16 @@ name: CI - Test Suite
 # ✅ CORRECT (pytest handles both):
 #    coverage run -m pytest tests/
 #
+# TEST MARKERS (pyproject.toml):
+# Dev runs: `pytest` (excludes optional by default via addopts)
+# CI runs:  `pytest -m ""` (includes ALL tests)
+#
+# Markers: optional, fuzz, mcp, protobuf, slow
+# Tests marked 'optional' require dependencies like hypothesis, mcp, protobuf
+#
 # PARALLEL ARCHITECTURE (optimized for speed):
 #
-#   validate-task-list   smoke-tests      showcase
+#   validate-tasks       smoke-tests      showcase
 #        (< 5s)           (< 30s)         (parallel)
 #          │                 │                │
 #          │                 ├────────────────┼─────────────────┐
@@ -52,11 +59,11 @@ concurrency:
 
 jobs:
   # ==========================================================================
-  # Stage 0: Task List Validation (< 5s)
-  # Quick check for stale/inconsistent task list - runs in parallel with smoke
+  # Stage 0: Task Validation (< 5s)
+  # Quick check for valid task files in tasks/ directory - runs in parallel with smoke
   # ==========================================================================
-  validate-task-list:
-    name: "📋 Validate Task List"
+  validate-tasks:
+    name: "📋 Validate Tasks"
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -66,11 +73,11 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Validate TASK_LIST.md
+    - name: Validate tasks/*.json files
       run: |
-        echo "=== Validating Task List ==="
-        python scripts/validate_task_list.py
-        echo "✅ Task list validation passed"
+        echo "=== Validating Task Files ==="
+        python scripts/validate_tasks.py
+        echo "✅ Task validation passed"
 
     - name: Report Pending Tasks
       if: always()
@@ -103,7 +110,8 @@ jobs:
     - name: Run smoke tests
       run: |
         echo "=== Running Smoke Tests ==="
-        python -m pytest tests/smoke/ -v --tb=short
+        # -m "" overrides pyproject.toml addopts to include optional tests in CI
+        python -m pytest tests/smoke/ -m "" -v --tb=short
         echo "✅ Smoke tests passed"
 
   # ==========================================================================
@@ -134,8 +142,10 @@ jobs:
         # Run unit tests - pytest handles both pytest AND unittest style tests
         # Using a single pytest call is faster than multiple unittest discovers
         # Note: Legacy tests removed 2025-12-13 - now covered by tests/unit/
+        # -m "" overrides pyproject.toml addopts to include optional tests in CI
         coverage run --source=cortical -m pytest \
           tests/unit/ \
+          -m "" \
           -v --tb=short
 
         coverage report --include="cortical/*"
@@ -177,6 +187,7 @@ jobs:
         # Includes tests/integration/ plus remaining legacy tests that provide unique coverage
         # Note: 3 legacy tests removed 2025-12-13 (test_behavioral.py, test_intent_query.py,
         #       test_query_optimization.py) - now covered by unit tests
+        # -m "" overrides pyproject.toml addopts to include optional tests in CI
         coverage run --source=cortical -m pytest \
           tests/integration/ \
           tests/test_incremental_indexing.py \
@@ -190,6 +201,8 @@ jobs:
           tests/test_generate_ai_metadata.py \
           tests/test_showcase.py \
           tests/test_mcp_server.py \
+          tests/security/ \
+          -m "" \
           -v --tb=short
 
         coverage report --include="cortical/*"
@@ -226,7 +239,8 @@ jobs:
     - name: Run regression tests
       run: |
         echo "=== Running Regression Tests ==="
-        python -m pytest tests/regression/ -v --tb=short
+        # -m "" overrides pyproject.toml addopts to include optional tests in CI
+        python -m pytest tests/regression/ -m "" -v --tb=short
         echo "✅ All regressions still fixed"
 
   # ==========================================================================
@@ -255,7 +269,8 @@ jobs:
       run: |
         echo "=== Running Behavioral Tests ==="
         # Note: tests/test_behavioral.py removed 2025-12-13 - superseded by tests/behavioral/
-        python -m pytest tests/behavioral/ -v --tb=short
+        # -m "" overrides pyproject.toml addopts to include optional tests in CI
+        python -m pytest tests/behavioral/ -m "" -v --tb=short
         echo "✅ Behavioral quality verified"
 
   # ==========================================================================
@@ -283,7 +298,8 @@ jobs:
     - name: Run performance tests
       run: |
         echo "=== Running Performance Tests (no coverage) ==="
-        python -m pytest tests/performance/ -v --tb=short -s
+        # -m "" overrides pyproject.toml addopts to include optional tests in CI
+        python -m pytest tests/performance/ -m "" -v --tb=short -s
         echo "✅ Performance within thresholds"
 
   # ==========================================================================
@@ -452,3 +468,138 @@ jobs:
         python scripts/resolve_wiki_links.py --check samples/memories/ || true
         python scripts/resolve_wiki_links.py --check samples/decisions/ || true
         echo "Link check complete (informational only)"
+
+  # ==========================================================================
+  # ML Data Collection: CI Result Auto-Capture
+  # Records test results for model training
+  # ==========================================================================
+  ml-ci-capture:
+    name: "📊 ML CI Capture"
+    runs-on: ubuntu-latest
+    needs: [coverage-report]
+    if: always()  # Run even if tests fail
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for commit lookup
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Capture CI results for ML training
+      env:
+        CI_RESULT: ${{ needs.coverage-report.result == 'success' && 'pass' || 'fail' }}
+        CI_COVERAGE: ${{ needs.coverage-report.outputs.coverage || '' }}
+        GITHUB_SHA: ${{ github.sha }}
+        GITHUB_WORKFLOW: ${{ github.workflow }}
+        GITHUB_JOB: ${{ github.job }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_RUN_NUMBER: ${{ github.run_number }}
+      run: |
+        echo "=== Recording CI Results for ML Training ==="
+        echo "Commit: $GITHUB_SHA"
+        echo "Result: $CI_RESULT"
+
+        # Ensure .git-ml directory exists
+        mkdir -p .git-ml/commits
+
+        # Try to record the result (may fail if commit not in data yet)
+        python scripts/ml_data_collector.py ci-autocapture || echo "Note: Commit may not be in ML data yet"
+
+        echo "=== ML CI Capture Complete ==="
+
+  # ==========================================================================
+  # ML Data Collection: Stats Report
+  # Shows current progress toward ML training data goals
+  # ==========================================================================
+  ml-stats-report:
+    name: "📈 ML Stats Report"
+    runs-on: ubuntu-latest
+    needs: [ml-ci-capture]
+    if: always()  # Run even if other jobs fail
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for accurate stats
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Generate ML Data Collection Report
+      run: |
+        echo "=== ML Data Collection Progress ==="
+
+        # Run stats report
+        python scripts/ml_data_collector.py stats
+
+        echo ""
+        echo "=== Training Timeline Estimate ==="
+
+        # Run estimate report
+        python scripts/ml_data_collector.py estimate
+
+    - name: Write GitHub Summary
+      run: |
+        echo "## 📊 ML Data Collection Report" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        # Capture stats in a format suitable for markdown
+        python3 << 'PYTHON_SCRIPT' >> $GITHUB_STEP_SUMMARY
+        import sys
+        sys.path.insert(0, 'scripts')
+
+        try:
+            from ml_collector.config import (
+                COMMITS_DIR, COMMITS_LITE_FILE, SESSIONS_LITE_FILE,
+                CHATS_DIR, ACTIONS_DIR, SESSIONS_DIR
+            )
+            from pathlib import Path
+
+            # Count data files
+            commits_full = len(list(COMMITS_DIR.glob("*.json"))) if COMMITS_DIR.exists() else 0
+            commits_lite = sum(1 for _ in open(COMMITS_LITE_FILE)) if COMMITS_LITE_FILE.exists() else 0
+            sessions_lite = sum(1 for _ in open(SESSIONS_LITE_FILE)) if SESSIONS_LITE_FILE.exists() else 0
+            chats = sum(1 for d in CHATS_DIR.iterdir() if d.is_dir() for f in d.glob("*.json")) if CHATS_DIR.exists() else 0
+
+            # Calculate progress
+            commit_target = 5000
+            chat_target = 5000
+            commit_pct = min(100, (commits_lite / commit_target) * 100)
+            chat_pct = min(100, (chats / chat_target) * 100)
+
+            print("### Current Progress")
+            print("")
+            print("| Metric | Current | Target | Progress |")
+            print("|--------|---------|--------|----------|")
+            print(f"| Commits (lite) | {commits_lite:,} | {commit_target:,} | {commit_pct:.1f}% |")
+            print(f"| Commits (full) | {commits_full:,} | {commit_target:,} | {(commits_full/commit_target)*100:.1f}% |")
+            print(f"| Chats | {chats:,} | {chat_target:,} | {chat_pct:.1f}% |")
+            print(f"| Sessions (lite) | {sessions_lite:,} | 2,000 | {(sessions_lite/2000)*100:.1f}% |")
+            print("")
+
+            # Estimate time
+            if commits_lite > 0:
+                # Rough estimate based on repo age and commits
+                days_estimate = int((commit_target - commits_lite) / max(1, commits_lite / 30) * 30)
+                print(f"### Timeline Estimate")
+                print(f"")
+                print(f"At current collection rate: **~{days_estimate} days** to reach commit target")
+                print("")
+
+            print("### Training Milestones")
+            print("")
+            file_pred_ready = commits_lite >= 500 and chats >= 200
+            commit_msg_ready = commits_lite >= 2000 and chats >= 1000
+            code_sugg_ready = commits_lite >= 5000 and chats >= 5000
+
+            print(f"- {'✅' if file_pred_ready else '⬜'} **File Prediction** (500 commits, 200 chats)")
+            print(f"- {'✅' if commit_msg_ready else '⬜'} **Commit Messages** (2,000 commits, 1,000 chats)")
+            print(f"- {'✅' if code_sugg_ready else '⬜'} **Code Suggestions** (5,000 commits, 5,000 chats)")
+
+        except Exception as e:
+            print(f"*Could not generate detailed stats: {e}*")
+        PYTHON_SCRIPT

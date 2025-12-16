@@ -141,7 +141,7 @@ class ComputeMixin:
         Run all computation steps.
 
         Args:
-            verbose: Print progress messages (deprecated, use show_progress)
+            verbose: Print debug messages via Python logging (complementary to show_progress)
             build_concepts: Build concept clusters in Layer 2 (default True)
                            This enables topic-based filtering and hierarchical search.
             pagerank_method: PageRank algorithm to use:

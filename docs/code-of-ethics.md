@@ -18,23 +18,24 @@ Every observation during development carries information. What seems minor today
 - Note what you tried, even if it didn't work
 - Add context about why the behavior matters
 
-### Issues discovered during testing MUST be added to TASK_LIST.md
+### Issues discovered during testing MUST be added to the task system
 
 Testing is a discovery process. Issues found during dog-fooding are **not distractions** - they are the primary signal that our assumptions need refinement.
 
 **Requirements:**
-- Add tasks to `TASK_LIST.md` immediately upon discovery
-- Include severity/priority assessment
+- Add tasks immediately upon discovery: `python scripts/new_task.py "description"`
+- Include severity/priority assessment with `--priority high`
 - Reference the test case or usage scenario that revealed it
 - Link to related code locations with absolute paths
 
 **Example:**
-```markdown
-- [ ] **Task #X**: Fix passage-level search doc-type boosting
-  - **File**: `/home/user/Opus-code-test/cortical/query/passages.py:find_passages_for_query`
-  - **Issue**: Document-level search applies doc-type boosting, but passage-level search does not
-  - **Discovered**: Dog-fooding test with code search queries
-  - **Priority**: Medium - reduces search quality for mixed-type corpora
+```bash
+python scripts/new_task.py "Fix passage-level search doc-type boosting" \
+  --priority medium \
+  --category bugfix
+# Task location: /cortical/query/passages.py:find_passages_for_query
+# Issue: Document-level search applies doc-type boosting, but passage-level search does not
+# Discovered during dog-fooding test with code search queries
 ```
 
 ### No "it works well enough" - if there's a limitation, document it
@@ -43,7 +44,7 @@ Undocumented limitations are landmines for future developers. They waste time, c
 
 **Requirements:**
 - Add limitations to docstrings for affected functions
-- Document known edge cases in `TASK_LIST.md` or module comments
+- Document known edge cases in module comments or create tracking tasks
 - Be specific: "Doesn't support X when Y" not "Has limitations"
 - Include workarounds if available, but track the underlying issue
 
@@ -53,7 +54,7 @@ A workaround is technical debt with interest. Document it as such.
 
 **Requirements:**
 - Add a comment explaining WHY the workaround exists
-- Create a task in `TASK_LIST.md` for the proper fix
+- Create a task with `python scripts/new_task.py` for the proper fix
 - Reference the task ID in the workaround comment
 - Never let a workaround become permanent through neglect
 
@@ -113,7 +114,7 @@ The difference between research code and production code is edge case handling.
 1. Feature implemented and tests pass
 2. Feature exercised with real usage (dog-fooding)
 3. Findings, limitations, and follow-up issues documented
-4. `TASK_LIST.md` updated with completion status and any new tasks
+4. Task status updated with completion details and any new tasks created
 
 ### If testing reveals new issues, create follow-up tasks
 
@@ -125,15 +126,15 @@ Testing expands our understanding. New knowledge creates new work - embrace it.
 - Assess priority realistically (not everything is urgent)
 - Close the parent task only after follow-ups are tracked
 
-### Update summary tables when completing work
+### Keep task tracking current when completing work
 
-Summary tables in `TASK_LIST.md` provide project health metrics. Keep them current.
+Task tracking provides project health metrics. Keep it current.
 
 **Requirements:**
-- Mark tasks complete in both the detailed list AND summary tables
-- Update counts, statistics, and status overviews
-- Note completion date and any relevant metrics
-- Commit task list updates with the feature implementation
+- Mark tasks complete: `python scripts/task_utils.py complete TASK_ID`
+- Include retrospective notes about what was learned
+- View summary: `python scripts/consolidate_tasks.py --summary`
+- Commit task file updates with the feature implementation
 
 ### Leave the codebase better documented than you found it
 
@@ -204,7 +205,7 @@ Violations aren't moral failures - they're opportunities to learn. When you noti
 
 1. Document it immediately
 2. Fix it if time permits
-3. Track it in `TASK_LIST.md` if not
+3. Create a task if not: `python scripts/new_task.py "fix description"`
 4. Improve processes to prevent recurrence
 
 ---
@@ -222,8 +223,8 @@ Violations aren't moral failures - they're opportunities to learn. When you noti
 **What we should have done:**
 1. Add explicit test case for passage-level doc-type boosting
 2. Run dog-fooding test and examine actual score contributions
-3. Document in `find_passages_for_query` docstring: "Note: Currently does not apply doc-type boosting (Task #XX)"
-4. Create task in `TASK_LIST.md` immediately upon discovery
+3. Document in `find_passages_for_query` docstring: "Note: Currently does not apply doc-type boosting"
+4. Create task immediately: `python scripts/new_task.py "Implement doc-type boosting for passage search"`
 5. Mark parent task as complete only after documenting this limitation
 
 **This is the standard.** Match it consistently, and the codebase will remain trustworthy.

@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "session_id": "8400",
+  "started_at": "2025-12-15T21:33:59.359150",
+  "saved_at": "2025-12-15T22:10:34.335809",
+  "tasks": [
+    {
+      "id": "T-20251215-213359-8400-001",
+      "title": "Refactor scripts/ml_data_collector.py into a package structure",
+      "status": "completed",
+      "priority": "high",
+      "category": "arch",
+      "description": "scripts/ml_data_collector.py exceeds 25000 tokens (~37759 tokens, 4153 lines). Split into scripts/ml_collector/ package with:\n- core.py: Configuration, exceptions, base classes\n- data_classes.py: TranscriptExchange, DiffHunk, CommitContext, ChatEntry, ActionEntry\n- commit_collector.py: Git commit collection and parsing\n- chat_collector.py: Chat session logging and retrieval\n- session_manager.py: Session start/end, handoffs\n- github_collector.py: GitHub PR/Issue collection\n- export.py: Training data export and patterns\n- cli.py: CLI argument parsing and main entry point\nThis will reduce each file to ~500-600 lines and stay well under token limits.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-15T21:33:59.359617",
+      "updated_at": "2025-12-15T22:10:25.117368",
+      "completed_at": "2025-12-15T22:10:25.117368",
+      "context": {},
+      "retrospective": {
+        "notes": "Refactored ml_data_collector.py (4153 lines, ~37759 tokens) into scripts/ml_collector/ package with 13 focused modules. Max module size: ~3135 tokens. Full backward compatibility maintained.",
+        "duration_minutes": 36,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-15T22:10:25.117392"
+      }
+    },
+    {
+      "id": "T-20251215-213403-8400-002",
+      "title": "Refactor tests/unit/test_processor_core.py into multiple test files",
+      "status": "completed",
+      "priority": "high",
+      "category": "testing",
+      "description": "tests/unit/test_processor_core.py exceeds 25000 tokens (~34468 tokens, 3534 lines with 27 test classes). Split into:\n- test_processor_init.py: TestProcessorInitialization\n- test_processor_documents.py: TestDocumentManagement, TestIncrementalDocumentAddition, TestBatchDocumentOperations\n- test_processor_metadata.py: TestMetadataManagement\n- test_processor_staleness.py: TestStalenessTracking\n- test_processor_layers.py: TestLayerAccess\n- test_processor_config.py: TestConfiguration, TestBasicValidation\n- test_processor_compute.py: TestRecompute, TestComputeWrapperMethods, TestComputeAllParameters, TestComputeAllVerbose\n- test_processor_query.py: TestQueryExpansion, TestFindDocumentsMethods\n- test_processor_wrappers.py: TestAdditionalWrapperMethods, TestSemanticImportance, TestSimpleWrapperMethods, TestWrapperEdgeCases\n- test_processor_coverage.py: TestVerbosePathCoverage, TestErrorHandling, TestAdditionalCoverage\n- test_processor_search.py: TestQuickSearch, TestRagRetrieve, TestExplore\nEach file will be ~300-500 lines and stay well under token limits.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-15T21:34:03.304650",
+      "updated_at": "2025-12-15T22:10:29.699888",
+      "completed_at": "2025-12-15T22:10:29.699888",
+      "context": {},
+      "retrospective": {
+        "notes": "Split test_processor_core.py (3534 lines, ~34468 tokens) into 11 focused test files. All 314 tests preserved and passing. Max file size: ~6363 tokens.",
+        "duration_minutes": 36,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-15T22:10:29.699913"
+      }
+    },
+    {
+      "id": "T-20251215-213420-8400-003",
+      "title": "Proactively refactor cortical/analysis.py before it exceeds token limit",
+      "status": "completed",
+      "priority": "medium",
+      "category": "arch",
+      "description": "cortical/analysis.py is at ~23722 tokens (2557 lines), approaching 25000 token limit. Split into cortical/analysis/ package with:\n- pagerank.py: PageRank computation\n- tfidf.py: TF-IDF and BM25 scoring\n- clustering.py: Louvain community detection, concept clustering\n- graph_ops.py: Graph construction and utility functions\n- __init__.py: Re-export public API for backward compatibility\nEach module ~500-700 lines. This follows the same pattern as processor/ and query/ packages.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-15T21:34:20.390588",
+      "updated_at": "2025-12-15T22:10:34.335503",
+      "completed_at": "2025-12-15T22:10:34.335503",
+      "context": {},
+      "retrospective": {
+        "notes": "Proactively split analysis.py (2557 lines, ~23722 tokens) into cortical/analysis/ package with 8 modules. Max module size: ~6387 tokens. Full backward compatibility maintained.",
+        "duration_minutes": 36,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-15T22:10:34.335534"
+      }
+    },
+    {
+      "id": "T-20251215-213424-8400-004",
+      "title": "Proactively refactor tests/unit/test_analysis.py before it exceeds token limit",
+      "status": "pending",
+      "priority": "medium",
+      "category": "testing",
+      "description": "tests/unit/test_analysis.py is at ~22760 tokens (2494 lines), approaching 25000 token limit. Split to match the analysis/ package structure:\n- test_pagerank.py: PageRank tests\n- test_tfidf.py: TF-IDF and BM25 tests\n- test_clustering.py: Clustering tests\n- test_graph_ops.py: Graph operation tests\nCoordinate with analysis.py refactoring task.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-15T21:34:24.356513",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251215-213428-8400-005",
+      "title": "Proactively refactor scripts/index_codebase.py before it exceeds token limit",
+      "status": "pending",
+      "priority": "low",
+      "category": "arch",
+      "description": "scripts/index_codebase.py is at ~20662 tokens (2263 lines), approaching 25000 token limit. Consider extracting:\n- Indexing logic into cortical/indexing.py (reusable library code)\n- Keep CLI wrapper in scripts/index_codebase.py\n- Extract git-related helpers if substantial\nLower priority as it's further from the limit.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-15T21:34:28.639179",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    }
+  ]
+}

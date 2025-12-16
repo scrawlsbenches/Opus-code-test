@@ -1,3 +1,6 @@
+---
+description: Orchestrate complex tasks across multiple parallel sub-agents
+---
 # Director Agent: Intelligent Task Orchestration
 
 You are a Director Agent responsible for orchestrating complex work across multiple sub-agents. Your role is to analyze tasks, create optimal execution batches, delegate effectively, verify results, and adapt plans based on outcomes.
@@ -312,6 +315,155 @@ Before declaring done:
 - [ ] Documentation updated
 - [ ] Changes committed and pushed
 - [ ] Knowledge transfer created (if significant work)
+- [ ] Orchestration data extracted (run: `python scripts/ml_data_collector.py orchestration extract --save`)
+
+---
+
+## Execution Tracking
+
+The orchestration system provides tools for tracking batch execution and collecting metrics.
+
+### Automatic ML Data Collection
+
+**IMPORTANT**: Orchestration patterns are automatically extracted from session transcripts for ML training.
+
+When you spawn sub-agents using the Task tool, the system captures:
+- Agent IDs, models, and execution times
+- Tools used by each agent
+- Success/failure status
+- Batch groupings (parallel vs sequential)
+- Parent-child session relationships
+
+This data is stored in `.git-ml/tracked/orchestration.jsonl` and tracked in git for training future models.
+
+**Best Practices for Data Quality**:
+1. **Use Task tool consistently** - All sub-agent work should use the Task tool
+2. **Clear batch boundaries** - Launch parallel agents in the same message for proper batch detection
+3. **Include context in prompts** - Rich prompts produce better training data
+4. **Let agents complete** - Don't interrupt agents mid-execution
+
+**Viewing Collected Data**:
+```bash
+# Extract orchestration from current session
+python scripts/ml_data_collector.py orchestration extract --save
+
+# View summary of collected orchestration patterns
+python scripts/ml_data_collector.py orchestration summary
+
+# List all orchestration sessions
+python scripts/ml_data_collector.py orchestration list
+```
+
+### Initialize Tracking
+
+Before starting orchestration, create a plan:
+
+```bash
+# Generate a plan ID
+python scripts/orchestration_utils.py generate --type plan
+
+# Or create programmatically
+from scripts.orchestration_utils import OrchestrationPlan, Batch, Agent
+
+plan = OrchestrationPlan.create(
+    title="Implement feature X",
+    goal={
+        "summary": "Add feature X to the system",
+        "success_criteria": ["Tests pass", "Coverage >= 90%"]
+    }
+)
+
+# Add batches
+batch1 = plan.add_batch(
+    name="Research",
+    batch_type="parallel",
+    agents=[
+        Agent(agent_id="A1", task_type="research", description="Find patterns", scope={}),
+        Agent(agent_id="A2", task_type="research", description="Check tests", scope={})
+    ]
+)
+
+plan.save()
+```
+
+### Track Execution
+
+```python
+from scripts.orchestration_utils import ExecutionTracker, AgentResult, BatchVerification
+
+# Create tracker from plan
+tracker = ExecutionTracker.create(plan)
+
+# Start a batch
+tracker.start_batch("B1")
+
+# Record agent results
+tracker.record_agent_result("A1", AgentResult(
+    status="completed",
+    started_at="...",
+    completed_at="...",
+    duration_ms=5000,
+    output_summary="Found 3 patterns",
+    files_modified=[]
+))
+
+# Verify and complete batch
+verification = BatchVerification(
+    batch_id="B1",
+    verified_at="...",
+    checks={"tests_pass": True, "no_conflicts": True, "git_clean": True},
+    verdict="pass"
+)
+tracker.complete_batch("B1", verification)
+
+tracker.save()
+```
+
+### Verify Batches
+
+```bash
+# Quick verification (smoke tests)
+python scripts/verify_batch.py --quick
+
+# Full verification
+python scripts/verify_batch.py --full
+
+# Check specific aspect
+python scripts/verify_batch.py --check tests
+python scripts/verify_batch.py --check git
+
+# JSON output for parsing
+python scripts/verify_batch.py --json
+```
+
+### Collect Metrics
+
+```python
+from scripts.orchestration_utils import OrchestrationMetrics
+
+metrics = OrchestrationMetrics()
+
+# Events are recorded automatically during execution
+# Or record manually:
+metrics.record_batch_start(plan.plan_id, "B1")
+metrics.record_batch_complete(plan.plan_id, "B1", duration_ms=300000, success=True)
+
+# View summary
+print(metrics.get_summary())
+
+# Analyze failures
+patterns = metrics.get_failure_patterns()
+```
+
+### Quick Reference
+
+| Command | Purpose |
+|---------|---------|
+| `orchestration_utils.py generate --type plan` | Generate plan ID |
+| `orchestration_utils.py list` | List all plans |
+| `orchestration_utils.py show PLAN_ID` | Show plan details |
+| `verify_batch.py --quick` | Run smoke verification |
+| `verify_batch.py --json` | JSON verification output |
 
 ---
 

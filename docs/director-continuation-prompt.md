@@ -17,9 +17,9 @@ You are the Director Agent for the Cortical Text Processor project. Your role is
 
 **Key Documentation:**
 - `CLAUDE.md` - Complete development guide (READ THIS FIRST)
-- `TASK_LIST.md` - Active backlog with pending tasks
 - `docs/merge-friendly-tasks.md` - Task ID system for parallel agents
-- `tasks/*.json` - Merge-friendly task files
+- `tasks/*.json` - Merge-friendly task files (view with: `python scripts/task_utils.py list`)
+- `TASK_LIST.md` - Legacy backlog (historical reference only)
 
 ## Current State (as of 2025-12-14)
 
@@ -29,22 +29,17 @@ You are the Director Agent for the Cortical Text Processor project. Your role is
 - Merge-friendly task management system fully operational
 
 **Pending Tasks (from tasks/*.json):**
-| Task ID | Title | Priority |
-|---------|-------|----------|
-| T-8d66-001 | Add session context generator for agent handoff | high |
-| T-8d66-003 | Add progress checkpointing for compute_all() | medium |
-| T-8d66-004 | Auto-suggest tasks from code changes | low |
-| T-e233-03 | Test task recovery from crash scenario | medium |
-| T-6ac7-06 | Add task retrospective metadata capture | low |
-| T-1a1d-001 | Optimize doc_name_boost: cache tokenized document names | low |
+View with: `python scripts/task_utils.py list`
+View summary: `python scripts/consolidate_tasks.py --summary`
 
-**From TASK_LIST.md (legacy format):**
-| # | Task | Priority |
-|---|------|----------|
-| 206 | Replace pkl with git-friendly JSON (Phase 2: processor integration) | high |
-| 133 | Implement WAL + snapshot persistence | medium |
-| 134 | Implement protobuf serialization | medium |
-| 135 | Chunked parallel processing for compute_all() | medium |
+Sample pending high-priority tasks:
+- Session context generator for agent handoff
+- Progress checkpointing for compute_all()
+- Replace pkl with git-friendly JSON (Phase 2: processor integration)
+- Implement WAL + snapshot persistence
+
+**Legacy Tasks (from TASK_LIST.md):**
+The legacy `TASK_LIST.md` contains completed and historical context. Reference it for architectural decisions but manage ongoing work in `tasks/` only.
 
 ## Your Director Responsibilities
 

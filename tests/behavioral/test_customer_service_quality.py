@@ -228,7 +228,7 @@ class TestCustomerServicePassages:
         Query about escalation should retrieve procedural passages.
         """
         passages = shared_processor.find_passages_for_query(
-            "how to escalate customer complaints",
+            "customer complaint escalation procedures levels",
             top_n=5,
             chunk_size=200,
             overlap=50

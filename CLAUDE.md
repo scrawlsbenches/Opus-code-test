@@ -606,7 +606,6 @@ Key defaults to know:
 ### Task Management (Merge-Friendly System)
 
 **IMPORTANT:** This project uses a merge-friendly task system in `tasks/` directory.
-The legacy `TASK_LIST.md` is kept for historical reference only.
 
 **Creating tasks:**
 ```bash
@@ -695,6 +694,38 @@ class TestYourFeature(unittest.TestCase):
 | `shared_processor` | session | Full samples/ corpus (~125 docs) |
 | `fresh_processor` | function | Empty processor for isolated tests |
 | `small_corpus_docs` | function | Raw document dict |
+
+### Test Markers for Optional Dependencies
+
+Tests requiring optional dependencies are excluded by default during development for faster iteration.
+
+**Markers defined in pyproject.toml:**
+
+| Marker | Tests | Dependency |
+|--------|-------|------------|
+| `optional` | All optional tests | (meta-marker) |
+| `mcp` | MCP server tests | `mcp>=1.0` |
+| `protobuf` | Serialization tests | `protobuf>=4.0` |
+| `fuzz` | Property-based tests | `hypothesis>=6.0` |
+| `slow` | Long-running tests | (none) |
+
+**Running tests:**
+
+```bash
+# Development (default) - excludes optional tests
+pytest tests/
+
+# Include optional tests (like CI)
+pytest tests/ -m ""
+
+# Using run_tests.py
+python scripts/run_tests.py unit --include-optional
+
+# Run only fuzzing tests
+pytest tests/ -m "fuzz"
+```
+
+**CI behavior:** All CI stages use `-m ""` to run the complete test suite including optional tests.
 
 **Always test:**
 - Empty corpus case
@@ -1105,6 +1136,19 @@ python examples/observability_demo.py
 | Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
 | Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
 | Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
+| Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
+| List orchestration plans | `python scripts/orchestration_utils.py list` |
+| Verify batch | `python scripts/verify_batch.py --quick` |
+| View orchestration metrics | From Python: `OrchestrationMetrics().get_summary()` |
+
+### Orchestration Utilities
+
+For Director orchestration and parallel agent workflows:
+
+- `scripts/orchestration_utils.py` - Director orchestration tracking (plans, batches, metrics)
+- `scripts/verify_batch.py` - Automated batch verification
+
+See `.claude/commands/director.md` for comprehensive orchestration documentation.
 
 ---
 
@@ -1331,7 +1375,18 @@ See `docs/text-as-memories.md` for the full guide.
 
 ## ML Data Collection: Project-Specific Micro-Model
 
-The project automatically collects enriched commit and chat data to train a micro-model that learns THIS project's patterns, coding style, and workflows.
+**Fully automatic. Zero configuration required.**
+
+ML data collection starts automatically when you open this project in Claude Code. Every session is tracked, every commit is captured, and transcripts are saved when sessions end.
+
+### Automatic Startup
+
+When a Claude Code session starts in this project:
+1. **Session tracking begins** - A new ML session is created for commit-chat linking
+2. **Git hooks are installed** - post-commit and pre-push hooks are added if missing
+3. **Stats are displayed** - Current collection progress is shown
+
+This is configured in `.claude/settings.local.json` via the `SessionStart` hook.
 
 ### What Gets Collected
 
@@ -1364,11 +1419,19 @@ python scripts/ml_data_collector.py session end --summary "What was accomplished
 # Generate session handoff document
 python scripts/ml_data_collector.py handoff
 
-# Record CI results
+# Record CI results (manual)
 python scripts/ml_data_collector.py ci set --commit abc123 --result pass --coverage 89.5
+
+# CI auto-capture (reads from GitHub Actions environment)
+python scripts/ml_data_collector.py ci-autocapture
 
 # Backfill historical commits
 python scripts/ml_data_collector.py backfill -n 100
+
+# Collect GitHub PR/Issue data (requires gh CLI)
+python scripts/ml_data_collector.py github collect           # Collect recent PRs and issues
+python scripts/ml_data_collector.py github stats             # Show GitHub data counts
+python scripts/ml_data_collector.py github fetch-pr --number 42  # Fetch specific PR
 ```
 
 ### Disabling Collection
@@ -1380,26 +1443,105 @@ export ML_COLLECTION_ENABLED=0
 # Stats and validation still work when disabled
 ```
 
+### File Prediction Model
+
+The first ML model is available: **predict which files to modify** based on a task description.
+
+```bash
+# Train the model on commit history
+python scripts/ml_file_prediction.py train
+
+# Predict files for a task
+python scripts/ml_file_prediction.py predict "Add authentication feature"
+
+# Evaluate model performance (80/20 train/test split)
+python scripts/ml_file_prediction.py evaluate --split 0.2
+
+# View model statistics
+python scripts/ml_file_prediction.py stats
+```
+
+**How it works:**
+- Extracts commit type patterns (feat:, fix:, docs:, refactor:, etc.)
+- Builds file co-occurrence matrix from commit history
+- Maps keywords from commit messages to files
+- Uses TF-IDF-style scoring with frequency penalties
+
+**Prediction with seed files:**
+```bash
+# If you know some files, boost co-occurring files
+python scripts/ml_file_prediction.py predict "Fix related bug" --seed auth.py login.py
+```
+
+**Current metrics** (403 commits, 20% test split):
+| Metric | Value | Description |
+|--------|-------|-------------|
+| MRR | 0.43 | First correct prediction ~position 2-3 |
+| Recall@10 | 0.48 | Half of actual files in top 10 |
+| Precision@1 | 0.31 | 31% of top predictions correct |
+
+**Model storage:** `.git-ml/models/file_prediction.json`
+
+#### Pre-Commit File Suggestions
+
+The ML file prediction is integrated into git as a pre-commit hook that suggests potentially missing files:
+
+```bash
+# Automatically installed when you run:
+python scripts/ml_data_collector.py install-hooks
+
+# Creates .git/hooks/prepare-commit-msg
+```
+
+**How it works:**
+1. You run `git commit -m "feat: Add authentication"`
+2. Hook analyzes the commit message
+3. Hook runs ML file prediction
+4. If high-confidence files aren't staged, warns you
+5. You can choose to add them or proceed
+
+**Example output:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 ML File Prediction Suggestion
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Based on your commit message, these files might need changes:
+
+  • tests/test_authentication.py                 (confidence: 0.823)
+  • docs/api.md                                  (confidence: 0.654)
+
+Staged files:
+  ✓ cortical/authentication.py
+
+ℹ️  Tip: Review the suggestions above.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Configuration (via environment variables):**
+- `ML_SUGGEST_ENABLED=0` - Disable suggestions (default: 1)
+- `ML_SUGGEST_THRESHOLD=0.7` - Confidence threshold (default: 0.5)
+- `ML_SUGGEST_BLOCKING=1` - Block commit if missing files (default: 0)
+- `ML_SUGGEST_TOP_N=10` - Number of predictions to check (default: 5)
+
+**When it runs:**
+- ✅ Regular commits (`git commit -m "..."`)
+- ❌ Merge commits, amends, rebases (too noisy)
+- ❌ Empty commits or no staged files
+- ❌ Model not trained (silently skips)
+
+**Testing without committing:**
+```bash
+bash scripts/test-ml-precommit-hook.sh
+```
+
+See [docs/ml-precommit-suggestions.md](docs/ml-precommit-suggestions.md) for detailed documentation.
+
 ### Automatic Session Capture
 
-**Zero-friction capture via Claude Code Stop hook:**
+**Pre-configured. No setup needed.**
 
-The ML data collector automatically captures complete session transcripts when Claude Code sessions end. This eliminates manual logging entirely.
-
-**Setup:**
-```bash
-# Add to ~/.claude/settings.json or project .claude/settings.json:
-{
-  "hooks": {
-    "Stop": [
-      {
-        "type": "command",
-        "command": "/path/to/Opus-code-test/scripts/ml-session-capture-hook.sh"
-      }
-    ]
-  }
-}
-```
+The ML data collector automatically captures complete session transcripts when Claude Code sessions end. This is already configured in `.claude/settings.local.json`.
 
 **What gets captured automatically:**
 - Full query/response pairs from the transcript
@@ -1419,10 +1561,28 @@ python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl 
 
 ### Integration
 
-Data collection is automatic via hooks:
-- **Stop hook**: Captures full session transcripts with all exchanges (recommended)
-- **post-commit**: Captures commit metadata with diff hunks
-- **pre-push**: Reports collection stats
+Data collection is fully automatic via hooks configured in `.claude/settings.local.json`:
+
+| Hook | Trigger | Action |
+|------|---------|--------|
+| **SessionStart** | Session begins | Starts ML session, installs git hooks, shows stats |
+| **Stop** | Session ends | Captures full transcript with all exchanges |
+| **prepare-commit-msg** | Before commit | Suggests missing files based on commit message |
+| **post-commit** | After commit | Captures commit metadata with diff hunks |
+| **pre-push** | Before push | Reports collection stats |
+| **CI workflow** | GitHub Actions | Auto-captures CI pass/fail results |
+
+**Hook files:**
+- `scripts/ml-session-start-hook.sh` - SessionStart handler
+- `scripts/ml-session-capture-hook.sh` - Stop handler
+- `scripts/ml-precommit-suggest.sh` - prepare-commit-msg handler
+
+**CI Integration:**
+The GitHub Actions workflow (`.github/workflows/ci.yml`) includes an `ml-ci-capture` job that automatically records CI results for each commit. This runs after the coverage-report job and captures:
+- Pass/fail status
+- Coverage percentage (when available)
+- Workflow and job metadata
+- Run ID for traceability
 
 See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
 
@@ -1445,7 +1605,8 @@ See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
 - **Dog-fooding**: `docs/dogfooding-checklist.md` - checklist for testing with real usage
 - **Definition of Done**: `docs/definition-of-done.md` - when is a task truly complete?
 - **Text-as-Memories**: `docs/text-as-memories.md` - knowledge management guide
-- **Task Archive**: `TASK_ARCHIVE.md` - completed tasks history
+- **Task Management**: `docs/merge-friendly-tasks.md` - merge-friendly task system with collision-free IDs
+- **Merge-Friendly Tasks**: See "Task Management (Merge-Friendly System)" section above for task workflow
 
 ---
 

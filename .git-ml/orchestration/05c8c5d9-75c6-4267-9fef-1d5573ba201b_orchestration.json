@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "extracted_at": "2025-12-15T23:30:46.719951",
+  "parent_session_id": "05c8c5d9-75c6-4267-9fef-1d5573ba201b",
+  "parent_transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/05c8c5d9-75c6-4267-9fef-1d5573ba201b.jsonl",
+  "orchestration_detected": true,
+  "total_sub_agents": 2,
+  "batches": [
+    {
+      "batch_index": 0,
+      "execution_type": "parallel",
+      "agents": [
+        {
+          "agent_id": "c5d518d7",
+          "session_id": "05c8c5d9-75c6-4267-9fef-1d5573ba201b",
+          "model": "claude-haiku-4-5-20251001",
+          "started_at": "2025-12-15T23:12:08.790Z",
+          "completed_at": "2025-12-15T23:12:27.010Z",
+          "duration_ms": 18220,
+          "tools_used": [
+            "Glob",
+            "Bash"
+          ],
+          "tool_count": 3,
+          "thinking_blocks": 2,
+          "has_error": false,
+          "error_summary": null,
+          "output_preview": "## Cortical Directory Analysis Report\n\n### Summary\n\n**Total Python Files:** 50\n\n### Subdirectories Found\n\n1. `/home/user/Opus-code-test/cortical` (root)\n2. `/home/user/Opus-code-test/cortical/analysis`\n3. `/home/user/Opus-code-test/cortical/processor`\n4. `/home/user/Opus-code-test/cortical/proto`\n5. `/home/user/Opus-code-test/cortical/query`\n\n### 3 Largest Python Files (by line count)\n\n1. **cli_wrapper.py** - 1,164 lines\n   - `/home/user/Opus-code-test/cortical/cli_wrapper.py`\n\n2. **processor/co",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-c5d518d7.jsonl"
+        },
+        {
+          "agent_id": "b8b0389d",
+          "session_id": "05c8c5d9-75c6-4267-9fef-1d5573ba201b",
+          "model": "claude-haiku-4-5-20251001",
+          "started_at": "2025-12-15T23:12:08.867Z",
+          "completed_at": "2025-12-15T23:12:31.071Z",
+          "duration_ms": 22204,
+          "tools_used": [
+            "Bash",
+            "Glob"
+          ],
+          "tool_count": 3,
+          "thinking_blocks": 2,
+          "has_error": false,
+          "error_summary": null,
+          "output_preview": "## Test Files Analysis Report\n\nBased on my exploration of the `/home/user/Opus-code-test/tests/` directory, here is the structured report:\n\n### 1. Total Test Files Found\n**85 test_*.py files** across the entire tests/ directory and subdirectories\n\n### 2. Subdirectories Found\n- **behavioral** - User workflow quality tests\n- **fixtures** - Shared test data and fixtures\n- **integration** - Component interaction tests\n- **performance** - Timing regression tests\n- **regression** - Bug-specific regres",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-b8b0389d.jsonl"
+        }
+      ],
+      "started_at": "2025-12-15T23:12:08.790Z",
+      "completed_at": "2025-12-15T23:12:31.071Z",
+      "duration_ms": 22281,
+      "all_succeeded": true
+    }
+  ],
+  "models_used": [
+    "claude-haiku-4-5-20251001"
+  ],
+  "total_tools_used": 6,
+  "unique_tools": [
+    "Bash",
+    "Glob"
+  ],
+  "total_duration_ms": 22281,
+  "success_rate": 100.0
+}

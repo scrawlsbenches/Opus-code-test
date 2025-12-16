@@ -93,5 +93,27 @@ tasks/.current_session.json
 cortical/proto/schema_pb2.py
 cortical/proto/__pycache__/
 
-# ML training data (local, regeneratable with `python scripts/ml_data_collector.py backfill`)
-.git-ml/
+# ML training data - tiered sharing strategy
+# TRACKED IN GIT (small, shareable):
+#   - .git-ml/tracked/       - JSONL files (commits.jsonl, sessions.jsonl, orchestration.jsonl)
+#   - .git-ml/shared/        - Aggregated patterns
+#   - .git-ml/commits-lite/  - Legacy individual files (being migrated)
+# LOCAL ONLY (large or sensitive):
+#   - .git-ml/commits/       - Full commit data with diffs (too large)
+#   - .git-ml/chats/         - Chat transcripts (sensitive)
+#   - .git-ml/sessions/      - Full session data
+#   - .git-ml/actions/       - Tool usage
+#   - .git-ml/github/        - PR/Issue data (contains discussions)
+#   - .git-ml/orchestration/ - Individual orchestration files (use tracked/orchestration.jsonl)
+# Full commit data with diffs is too large for GitHub
+.git-ml/commits/
+# Trained models are regeneratable (python scripts/ml_file_prediction.py train)
+.git-ml/models/
+# .git-ml/chats/  # Uncomment to ignore chat transcripts
+# .git-ml/sessions/  # Uncomment to ignore full session data
+# .git-ml/actions/  # Uncomment to ignore tool usage data
+# .git-ml/github/  # Uncomment to ignore PR/Issue data
+# .git-ml/orchestration/  # Uncomment to ignore individual orchestration JSON files
+# .git-ml/current_session.json  # Uncomment to ignore current session file
+# .git-ml/contribution_consent.json  # Uncomment to ignore consent file
+.git-ml/current_session.json.lock

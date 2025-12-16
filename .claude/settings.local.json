@@ -1,9 +1,25 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/ml-session-start-hook.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
-        "type": "command",
-        "command": "./scripts/ml-session-capture-hook.sh"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/ml-session-capture-hook.sh"
+          }
+        ]
       }
     ]
   }
