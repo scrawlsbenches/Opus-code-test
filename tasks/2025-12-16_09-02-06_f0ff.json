@@ -7,7 +7,7 @@
     {
       "id": "T-20251216-090206-f0ff-001",
       "title": "Generate .ai_meta files for cortical/ modules",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "enhancement",
       "description": "Run scripts/generate_ai_metadata.py to create .ai_meta files. These provide structured navigation data for AI agents. Infrastructure is ready and tested.",
@@ -67,7 +67,7 @@
     {
       "id": "T-20251216-090234-f0ff-005",
       "title": "Add deployment guide documentation",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "docs",
       "description": "Create docs/deployment.md covering: MCP server deployment, production tuning, Docker examples, performance optimization for large corpora.",
@@ -82,7 +82,7 @@
     {
       "id": "T-20251216-090239-f0ff-006",
       "title": "Add fluent.py API reference documentation",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "docs",
       "description": "Create docs/fluent-api.md documenting the FluentProcessor builder pattern API with examples.",
@@ -112,7 +112,7 @@
     {
       "id": "T-20251216-090259-f0ff-008",
       "title": "Update CI workflow for merge-friendly task validation",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "ci",
       "description": "Replace validate-task-list job in .github/workflows/ci.yml to use scripts/validate_tasks.py instead of the legacy task list validator. Depends on legacy removal being complete.",
