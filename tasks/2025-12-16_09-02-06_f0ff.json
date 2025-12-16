@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "f0ff",
   "started_at": "2025-12-16T09:02:06.923093",
-  "saved_at": "2025-12-16T09:43:57.804644",
+  "saved_at": "2025-12-16T10:56:34.833735",
   "tasks": [
     {
       "id": "T-20251216-090206-f0ff-001",
@@ -183,6 +183,21 @@
       "completed_at": "2025-12-16T12:00:00.000000",
       "context": {},
       "retrospective": "Added deployment.md and fluent-api.md to Quick Navigation and Usage Guides sections. Added Deployment & Operations section. Added ml-precommit-suggestions.md to Development Process section."
+    },
+    {
+      "id": "T-20251216-105634-f0ff-013",
+      "title": "Investigate removing unused protobuf serialization",
+      "status": "pending",
+      "priority": "high",
+      "category": "cleanup",
+      "description": "The protobuf serialization feature was added during performance tuning exploration but was never actually used. \n\n**Context:**\n- Added for cross-language corpus sharing (theoretical use case)\n- Library already has working pickle + JSON serialization\n- Requires `protoc` compiler for runtime compilation (or pre-compiled schema_pb2.py)\n- Just caused CI smoke test failures (fixed with lazy loading in commit a93518f)\n- Adds ~600 lines across 3 files for unused functionality\n- Adds protobuf as a dev dependency\n\n**Files involved:**\n- cortical/proto/serialization.py (~520 lines)\n- cortical/proto/schema.proto (~50 lines) \n- cortical/proto/__init__.py (~110 lines)\n- tests/unit/test_protobuf_serialization.py (~300 lines)\n- pyproject.toml (protobuf dev dependency)\n- cortical/persistence.py (import)\n\n**Questions to answer:**\n1. Is cross-language corpus sharing actually needed?\n2. Would JSON export (already exists) suffice for this use case?\n3. Are there any users or integrations depending on protobuf?\n\n**If removing:**\n1. Delete cortical/proto/serialization.py and schema.proto\n2. Simplify cortical/proto/__init__.py to just export PROTOBUF_AVAILABLE = False\n3. Remove protobuf import from persistence.py\n4. Remove protobuf>=4.0 from dev dependencies\n5. Delete tests/unit/test_protobuf_serialization.py\n6. Update CLAUDE.md if protobuf is mentioned\n7. Remove 'protobuf' marker from pyproject.toml\n\n**Alternative: Keep but pre-compile**\nIf keeping, could pre-compile schema_pb2.py and commit it to avoid protoc dependency.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-16T10:56:34.833486",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
     }
   ]
 }
