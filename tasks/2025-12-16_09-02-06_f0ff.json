@@ -37,7 +37,7 @@
     {
       "id": "T-20251216-090216-f0ff-003",
       "title": "Add tool output collection to ML data collector",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "enhancement",
       "description": "Currently we collect tool names and inputs but NOT outputs. Collecting outputs could enable learning command result patterns and predicting success/failure.",
@@ -52,7 +52,7 @@
     {
       "id": "T-20251216-090229-f0ff-004",
       "title": "Add pre-commit hook for ML file prediction suggestions",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "enhancement",
       "description": "Integrate file prediction model into git workflow. Before commit, suggest potentially missing files based on commit message analysis.",

@@ -154,6 +154,7 @@ CHAT_SCHEMA = {
     "types": {
         "id": str, "timestamp": str, "session_id": str, "query": str, "response": str,
         "files_referenced": list, "files_modified": list, "tools_used": list,
+        "tool_outputs": list,  # Optional: tool outputs with success status
         "query_tokens": int, "response_tokens": int,
         "user_feedback": (dict, str, type(None)),  # Can be dict, legacy string, or None
     }
@@ -1084,6 +1085,7 @@ class TranscriptExchange:
     response: str
     tools_used: List[str]
     tool_inputs: List[Dict]
+    tool_outputs: List[Dict]  # Tool results with output, success status
     timestamp: str
     thinking: Optional[str] = None
 
@@ -1107,6 +1109,7 @@ def parse_transcript_jsonl(filepath: Path) -> List[TranscriptExchange]:
     current_response_parts = []
     current_tools = []
     current_tool_inputs = []
+    current_tool_outputs = []
     current_thinking = None
     current_timestamp = None
 
@@ -1134,6 +1137,7 @@ def parse_transcript_jsonl(filepath: Path) -> List[TranscriptExchange]:
                             response=' '.join(current_response_parts),
                             tools_used=current_tools,
                             tool_inputs=current_tool_inputs,
+                            tool_outputs=current_tool_outputs,
                             timestamp=current_timestamp or timestamp,
                             thinking=current_thinking,
                         ))
@@ -1151,6 +1155,7 @@ def parse_transcript_jsonl(filepath: Path) -> List[TranscriptExchange]:
                     current_response_parts = []
                     current_tools = []
                     current_tool_inputs = []
+                    current_tool_outputs = []
                     current_thinking = None
                     current_timestamp = timestamp
 
@@ -1178,6 +1183,27 @@ def parse_transcript_jsonl(filepath: Path) -> List[TranscriptExchange]:
                                     'input': tool_input,
                                 })
 
+                            elif block_type == 'tool_result':
+                                # Capture tool outputs with truncation
+                                output_content = block.get('content', '')
+                                is_error = block.get('is_error', False)
+
+                                # Truncate large outputs (keep first 500 chars)
+                                MAX_OUTPUT_LENGTH = 500
+                                if isinstance(output_content, str):
+                                    truncated_output = output_content[:MAX_OUTPUT_LENGTH]
+                                    if len(output_content) > MAX_OUTPUT_LENGTH:
+                                        truncated_output += '... [truncated]'
+                                else:
+                                    # Handle non-string outputs (convert to string)
+                                    truncated_output = str(output_content)[:MAX_OUTPUT_LENGTH]
+
+                                current_tool_outputs.append({
+                                    'output': truncated_output,
+                                    'success': not is_error,
+                                    'is_error': is_error,
+                                })
+
         # Don't forget the last exchange
         if current_query and current_response_parts:
             exchanges.append(TranscriptExchange(
@@ -1185,6 +1211,7 @@ def parse_transcript_jsonl(filepath: Path) -> List[TranscriptExchange]:
                 response=' '.join(current_response_parts),
                 tools_used=current_tools,
                 tool_inputs=current_tool_inputs,
+                tool_outputs=current_tool_outputs,
                 timestamp=current_timestamp or '',
                 thinking=current_thinking,
             ))
@@ -1330,6 +1357,7 @@ def process_transcript(
                     files_referenced=files_ref,
                     files_modified=files_mod,
                     tools_used=ex.tools_used,
+                    tool_outputs=ex.tool_outputs,  # Include tool outputs
                     query_tokens=len(ex.query.split()),
                     response_tokens=len(ex.response.split()),
                 )
@@ -1420,6 +1448,7 @@ class ChatEntry:
     files_referenced: List[str]
     files_modified: List[str]
     tools_used: List[str]
+    tool_outputs: List[Dict] = field(default_factory=list)  # Tool results with output, success status
 
     # Outcome
     user_feedback: Optional[str] = None  # positive, negative, neutral
@@ -1855,6 +1884,7 @@ def log_chat(
     files_referenced: Optional[List[str]] = None,
     files_modified: Optional[List[str]] = None,
     tools_used: Optional[List[str]] = None,
+    tool_outputs: Optional[List[Dict]] = None,
     user_feedback: Optional[str] = None,
     skip_redaction: bool = False,
 ) -> ChatEntry:
@@ -1884,6 +1914,7 @@ def log_chat(
         files_referenced=files_referenced or [],
         files_modified=files_modified or [],
         tools_used=tools_used or [],
+        tool_outputs=tool_outputs or [],
         user_feedback=user_feedback,
         query_tokens=len(query.split()),  # Rough estimate
         response_tokens=len(response.split()),
@@ -3191,12 +3222,24 @@ fi
 # END-ML-DATA-COLLECTOR-HOOK
 '''
 
+PREPARE_COMMIT_MSG_SNIPPET = '''
+# ML-DATA-COLLECTOR-HOOK
+# ML File Prediction Suggestion Hook
+# Suggests potentially missing files based on commit message
+bash scripts/ml-precommit-suggest.sh "$@"
+# END-ML-DATA-COLLECTOR-HOOK
+'''
+
 
 def install_hooks():
     """Install git hooks for data collection, merging with existing hooks."""
     hooks_dir = Path(".git/hooks")
 
-    for hook_name, snippet in [("post-commit", POST_COMMIT_SNIPPET), ("pre-push", PRE_PUSH_SNIPPET)]:
+    for hook_name, snippet in [
+        ("post-commit", POST_COMMIT_SNIPPET),
+        ("pre-push", PRE_PUSH_SNIPPET),
+        ("prepare-commit-msg", PREPARE_COMMIT_MSG_SNIPPET)
+    ]:
         hook_path = hooks_dir / hook_name
 
         if hook_path.exists():
