@@ -22,10 +22,8 @@ try:
     PROTOBUF_AVAILABLE = True
 except ImportError:
     PROTOBUF_AVAILABLE = False
-    raise ImportError(
-        "protobuf package is required for Protocol Buffers serialization. "
-        "Install it with: pip install protobuf"
-    )
+    # Don't raise here - let the module import succeed
+    # Functions will raise ImportError when actually called
 
 from ..layers import CorticalLayer, HierarchicalLayer
 from ..minicolumn import Minicolumn, Edge
@@ -120,18 +118,38 @@ def _load_proto_definitions():
                 sys.path.pop(0)
 
 
-# Load proto message classes
-(
-    ProcessorStateProto,
-    EdgeProto,
-    MinicolumnProto,
-    HierarchicalLayerProto,
-    FloatListProto,
-    SemanticRelationProto,
-    AnyValueProto,
-    AnyDictProto,
-    AnyListProto
-) = _load_proto_definitions()
+# Proto message classes - lazy loaded on first use to avoid import-time compilation
+_proto_classes = None
+
+
+def _get_proto_classes():
+    """
+    Get proto message classes, loading them lazily on first use.
+
+    This avoids requiring protoc at import time - only needed when serialization
+    is actually used.
+    """
+    global _proto_classes
+    if _proto_classes is None:
+        _proto_classes = _load_proto_definitions()
+    return _proto_classes
+
+
+def _get_proto_class(name: str):
+    """Get a specific proto class by name."""
+    classes = _get_proto_classes()
+    index = {
+        'ProcessorState': 0,
+        'Edge': 1,
+        'Minicolumn': 2,
+        'HierarchicalLayer': 3,
+        'FloatList': 4,
+        'SemanticRelation': 5,
+        'AnyValue': 6,
+        'AnyDict': 7,
+        'AnyList': 8
+    }
+    return classes[index[name]]
 
 
 def _python_value_to_any_value(value: Any) -> Any:
@@ -144,6 +162,10 @@ def _python_value_to_any_value(value: Any) -> Any:
     Returns:
         AnyValue protobuf message
     """
+    AnyValueProto = _get_proto_class('AnyValue')
+    AnyDictProto = _get_proto_class('AnyDict')
+    AnyListProto = _get_proto_class('AnyList')
+
     any_val = AnyValueProto()
 
     if isinstance(value, str):
@@ -212,6 +234,7 @@ def edge_to_proto(edge: Edge) -> Any:
     Returns:
         Edge protobuf message
     """
+    EdgeProto = _get_proto_class('Edge')
     proto = EdgeProto()
     proto.target_id = edge.target_id
     proto.weight = edge.weight
@@ -250,6 +273,7 @@ def minicolumn_to_proto(col: Minicolumn) -> Any:
     Returns:
         Minicolumn protobuf message
     """
+    MinicolumnProto = _get_proto_class('Minicolumn')
     proto = MinicolumnProto()
     proto.id = col.id
     proto.content = col.content
@@ -369,6 +393,7 @@ def layer_to_proto(layer: HierarchicalLayer) -> Any:
     Returns:
         HierarchicalLayer protobuf message
     """
+    HierarchicalLayerProto = _get_proto_class('HierarchicalLayer')
     proto = HierarchicalLayerProto()
     proto.level = layer.level
 
@@ -420,6 +445,11 @@ def to_proto(
     Returns:
         ProcessorState protobuf message
     """
+    ProcessorStateProto = _get_proto_class('ProcessorState')
+    AnyDictProto = _get_proto_class('AnyDict')
+    FloatListProto = _get_proto_class('FloatList')
+    SemanticRelationProto = _get_proto_class('SemanticRelation')
+
     proto = ProcessorStateProto()
     proto.version = '2.2'
 
