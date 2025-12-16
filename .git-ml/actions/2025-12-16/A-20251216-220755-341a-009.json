@@ -1,0 +1,19 @@
+{
+  "id": "A-20251216-220755-341a-009",
+  "timestamp": "2025-12-16T20:36:35.225Z",
+  "session_id": "341a6b5d-b9e1-4ea9-83b5-491a685df53f",
+  "action_type": "command",
+  "target": "",
+  "context": {
+    "tool": "Bash",
+    "input": {
+      "tool": "Bash",
+      "input": {
+        "command": "find /home/user/Opus-code-test/.git-ml -type f 2>/dev/null | head -20",
+        "description": "Check .git-ml structure and contents"
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}
