@@ -14,6 +14,7 @@
 #   --survey    Interactive prompts for all parameters
 #
 # Options:
+#   --recover           Attempt to recover from bad git state before sync
 #   --dry-run           Show what would happen without doing it
 #   --force             Override lock file if present
 #   --no-lock           Don't create lock file
@@ -56,6 +57,7 @@ DO_BACKUP=true
 KEEP_BACKUP=false
 DO_DEDUPE=true
 AUTO_CONFLICTS=true
+DO_RECOVER=false      # Attempt recovery from bad git state
 BRANCH=""             # Empty = current branch
 VERBOSE=false
 
@@ -183,7 +185,7 @@ check_disk_space() {
 }
 
 # =============================================================================
-# GIT STATE CHECKS
+# GIT STATE CHECKS AND RECOVERY
 # =============================================================================
 
 check_git_repo() {
@@ -191,6 +193,165 @@ check_git_repo() {
         log_error "Not a git repository: $REPO_ROOT"
         return 1
     fi
+    return 0
+}
+
+# Attempt to recover from bad git state
+# This handles the edge case where context resumes during a conflict/rebase
+recover_git_state() {
+    log_step "Attempting Git State Recovery"
+
+    local recovered=false
+
+    # Check for rebase in progress
+    if [[ -d "$REPO_ROOT/.git/rebase-merge" ]] || [[ -d "$REPO_ROOT/.git/rebase-apply" ]]; then
+        log_warn "Rebase in progress detected"
+
+        if [[ "$MODE" == "auto" ]]; then
+            log_info "Auto-aborting rebase..."
+            if $DRY_RUN; then
+                log_info "[DRY-RUN] Would run: git rebase --abort"
+            else
+                git -C "$REPO_ROOT" rebase --abort
+                log_success "Rebase aborted"
+            fi
+            recovered=true
+        else
+            local choice
+            choice=$(prompt_choice "Rebase in progress. What to do?" "Abort rebase" \
+                "Abort rebase" "Skip recovery (manual fix needed)")
+            if [[ "$choice" == "Abort rebase" ]]; then
+                git -C "$REPO_ROOT" rebase --abort
+                log_success "Rebase aborted"
+                recovered=true
+            else
+                return 2
+            fi
+        fi
+    fi
+
+    # Check for merge in progress
+    if [[ -f "$REPO_ROOT/.git/MERGE_HEAD" ]]; then
+        log_warn "Merge in progress detected"
+
+        if [[ "$MODE" == "auto" ]]; then
+            log_info "Auto-aborting merge..."
+            if $DRY_RUN; then
+                log_info "[DRY-RUN] Would run: git merge --abort"
+            else
+                git -C "$REPO_ROOT" merge --abort
+                log_success "Merge aborted"
+            fi
+            recovered=true
+        else
+            local choice
+            choice=$(prompt_choice "Merge in progress. What to do?" "Abort merge" \
+                "Abort merge" "Skip recovery (manual fix needed)")
+            if [[ "$choice" == "Abort merge" ]]; then
+                git -C "$REPO_ROOT" merge --abort
+                log_success "Merge aborted"
+                recovered=true
+            else
+                return 2
+            fi
+        fi
+    fi
+
+    # Check for cherry-pick in progress
+    if [[ -f "$REPO_ROOT/.git/CHERRY_PICK_HEAD" ]]; then
+        log_warn "Cherry-pick in progress detected"
+
+        if [[ "$MODE" == "auto" ]]; then
+            log_info "Auto-aborting cherry-pick..."
+            if $DRY_RUN; then
+                log_info "[DRY-RUN] Would run: git cherry-pick --abort"
+            else
+                git -C "$REPO_ROOT" cherry-pick --abort
+                log_success "Cherry-pick aborted"
+            fi
+            recovered=true
+        else
+            local choice
+            choice=$(prompt_choice "Cherry-pick in progress. What to do?" "Abort cherry-pick" \
+                "Abort cherry-pick" "Skip recovery (manual fix needed)")
+            if [[ "$choice" == "Abort cherry-pick" ]]; then
+                git -C "$REPO_ROOT" cherry-pick --abort
+                log_success "Cherry-pick aborted"
+                recovered=true
+            else
+                return 2
+            fi
+        fi
+    fi
+
+    # Check for detached HEAD
+    if ! git -C "$REPO_ROOT" symbolic-ref -q HEAD &>/dev/null; then
+        log_warn "Detached HEAD detected"
+
+        # Try to find the previous branch from reflog
+        local prev_branch
+        prev_branch=$(git -C "$REPO_ROOT" reflog | grep -m1 "checkout: moving from" | sed 's/.*moving from \([^ ]*\) to.*/\1/' || echo "")
+
+        if [[ "$MODE" == "auto" ]]; then
+            if [[ -n "$prev_branch" ]]; then
+                log_info "Auto-recovering to previous branch: $prev_branch"
+                if $DRY_RUN; then
+                    log_info "[DRY-RUN] Would run: git checkout $prev_branch"
+                else
+                    git -C "$REPO_ROOT" checkout "$prev_branch"
+                    log_success "Checked out $prev_branch"
+                fi
+                recovered=true
+            else
+                log_error "Cannot determine previous branch. Manual intervention required."
+                log_info "Recent reflog:"
+                git -C "$REPO_ROOT" reflog -5
+                return 2
+            fi
+        else
+            log_info "Recent reflog:"
+            git -C "$REPO_ROOT" reflog -5
+            echo ""
+
+            if [[ -n "$prev_branch" ]]; then
+                local choice
+                choice=$(prompt_choice "Detached HEAD. What to do?" "Checkout $prev_branch" \
+                    "Checkout $prev_branch" "Enter branch name" "Skip recovery")
+                case "$choice" in
+                    "Checkout $prev_branch")
+                        git -C "$REPO_ROOT" checkout "$prev_branch"
+                        log_success "Checked out $prev_branch"
+                        recovered=true
+                        ;;
+                    "Enter branch name")
+                        read -r -p "Branch name: " branch_name
+                        git -C "$REPO_ROOT" checkout "$branch_name"
+                        log_success "Checked out $branch_name"
+                        recovered=true
+                        ;;
+                    *)
+                        return 2
+                        ;;
+                esac
+            else
+                read -r -p "Enter branch to checkout: " branch_name
+                if [[ -n "$branch_name" ]]; then
+                    git -C "$REPO_ROOT" checkout "$branch_name"
+                    log_success "Checked out $branch_name"
+                    recovered=true
+                else
+                    return 2
+                fi
+            fi
+        fi
+    fi
+
+    if $recovered; then
+        log_success "Git state recovery complete"
+    else
+        log_info "No recovery needed - git state appears clean"
+    fi
+
     return 0
 }
 
@@ -869,6 +1030,10 @@ parse_args() {
                 AUTO_CONFLICTS=false
                 shift
                 ;;
+            --recover)
+                DO_RECOVER=true
+                shift
+                ;;
             --branch)
                 BRANCH="$2"
                 shift 2
@@ -936,6 +1101,12 @@ main() {
     check_disk_space 100 || exit $?
     check_incomplete_sync || exit $?
     acquire_lock || exit $?
+
+    # Attempt recovery if requested (handles rebase/merge conflicts, detached HEAD)
+    if $DO_RECOVER; then
+        recover_git_state || exit $?
+    fi
+
     check_git_state || exit $?
 
     # Create backup
