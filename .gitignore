@@ -114,6 +114,6 @@ cortical/proto/__pycache__/
 # .git-ml/actions/  # Uncomment to ignore tool usage data
 # .git-ml/github/  # Uncomment to ignore PR/Issue data
 # .git-ml/orchestration/  # Uncomment to ignore individual orchestration JSON files
-# .git-ml/current_session.json  # Uncomment to ignore current session file
+.git-ml/current_session.json  # Session-specific data
 # .git-ml/contribution_consent.json  # Uncomment to ignore consent file
 .git-ml/current_session.json.lock
