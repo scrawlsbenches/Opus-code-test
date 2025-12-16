@@ -1,6 +1,6 @@
 ---
 title: "Decisions Chapter"
-generated: "2025-12-16T20:01:28.209042Z"
+generated: "2025-12-16T22:56:47.879530Z"
 generator: "decisions"
 source_files:
   - "(to be implemented)"

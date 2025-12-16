@@ -1,6 +1,6 @@
 ---
 title: "Bug Fixes and Lessons"
-generated: "2025-12-16T20:01:28.127474Z"
+generated: "2025-12-16T22:56:47.795495Z"
 generator: "evolution"
 source_files:
   - "git log --grep=fix:"
@@ -18,7 +18,7 @@ tags:
 
 ## Overview
 
-**13 bugs** have been identified and resolved. Each fix taught us something about the system.
+**8 bugs** have been identified and resolved. Each fix taught us something about the system.
 
 ## Bug Fix History
 
@@ -70,29 +70,4 @@ tags:
 **Commit:** `19ac02a`  
 **Date:** 2025-12-16  
 **Files Changed:** .claude/settings.local.json  
-
-### Use filename-based sorting for deterministic session ordering
-
-**Commit:** `61d502d`  
-**Date:** 2025-12-15  
-
-### Increase ID suffix length to prevent collisions
-
-**Commit:** `8ac4b6b`  
-**Date:** 2025-12-15  
-
-### Add import guards for optional test dependencies
-
-**Commit:** `91ffb04`  
-**Date:** 2025-12-15  
-
-### Make session file sorting stable for deterministic ordering
-
-**Commit:** `7433b36`  
-**Date:** 2025-12-15  
-
-### Cap query expansion weights to prevent term domination
-
-**Commit:** `fecd6dc`  
-**Date:** 2025-12-15  
 

@@ -1,6 +1,6 @@
 ---
 title: "BM25/TF-IDF — Distinctiveness Scoring"
-generated: "2025-12-16T20:01:28.082458Z"
+generated: "2025-12-16T22:56:47.743062Z"
 generator: "foundations"
 source_files:
   - "docs/VISION.md"

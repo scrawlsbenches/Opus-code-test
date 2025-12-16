@@ -5498,7 +5498,7 @@ Compute statistics across all documents.
 
 ## Overview
 
-**13 bugs** have been identified and resolved. Each fix taught us something about the system.
+**8 bugs** have been identified and resolved. Each fix taught us something about the system.
 
 ## Bug Fix History
 
@@ -5549,32 +5549,7 @@ Compute statistics across all documents.
 
 **Commit:** `19ac02a`  
 **Date:** 2025-12-16  
-**Files Changed:** .claude/settings.local.json  
-
-### Use filename-based sorting for deterministic session ordering
-
-**Commit:** `61d502d`  
-**Date:** 2025-12-15  
-
-### Increase ID suffix length to prevent collisions
-
-**Commit:** `8ac4b6b`  
-**Date:** 2025-12-15  
-
-### Add import guards for optional test dependencies
-
-**Commit:** `91ffb04`  
-**Date:** 2025-12-15  
-
-### Make session file sorting stable for deterministic ordering
-
-**Commit:** `7433b36`  
-**Date:** 2025-12-15  
-
-### Cap query expansion weights to prevent term domination
-
-**Commit:** `fecd6dc`  
-**Date:** 2025-12-15
+**Files Changed:** .claude/settings.local.json
 
 ---
 
@@ -5586,9 +5561,15 @@ Compute statistics across all documents.
 
 ## Overview
 
-The system has evolved through **23 feature additions**. Below is the narrative of how each capability came to be.
+The system has evolved through **18 feature additions**. Below is the narrative of how each capability came to be.
 
 ## Other Capabilities
+
+### Add --recover flag and git-sync skill
+
+**Commit:** `f5faba4`  
+**Date:** 2025-12-16  
+**Files Modified:** 4  
 
 ### Add smart caching to markdown book generation
 
@@ -5620,62 +5601,19 @@ The system has evolved through **23 feature additions**. Below is the narrative 
 **Date:** 2025-12-16  
 **Files Modified:** 8  
 
-### Add orchestration extraction for director sub-agent tracking
-
-**Commit:** `4eaeb37`  
-**Date:** 2025-12-15  
-
-### Add stunning animated ASCII codebase visualizer
-
-**Commit:** `e085a0b`  
-**Date:** 2025-12-15  
-
-### Add ASCII art codebase visualization script
-
-**Commit:** `43aae33`  
-**Date:** 2025-12-15  
-
-### Complete legacy task system migration
-
-**Commit:** `33dc8b2`  
-**Date:** 2025-12-15  
-
-### Add director orchestration execution tracking system
-
-**Commit:** `4976c58`  
-**Date:** 2025-12-15  
-
-## Search Capabilities
-
-### Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
-
-**Commit:** `5665839`  
-**Date:** 2025-12-16  
-
-### Add search integration and web interface (Wave 3)
-
-**Commit:** `0022466`  
-**Date:** 2025-12-16  
-**Files Modified:** 11  
-
-### Add security concept group and TF-IDF weighted query expansion
-
-**Commit:** `af3a7e0`  
-**Date:** 2025-12-15  
-
-## Data Capabilities
-
-### Implement WAL + Snapshot persistence system (LEGACY-133)
-
-**Commit:** `c7e662a`  
-**Date:** 2025-12-16  
-
-### Add git-tracked JSONL storage for orchestration data
-
-**Commit:** `fb30e38`  
-**Date:** 2025-12-15  
-
 ## Ml Capabilities
+
+### Add git-sync-ml.sh for safe ML data synchronization
+
+**Commit:** `bb953e7`  
+**Date:** 2025-12-16  
+**Files Modified:** 65  
+
+### Add ML experiment tracking framework
+
+**Commit:** `6503d84`  
+**Date:** 2025-12-16  
+**Files Modified:** 8  
 
 ### Implement top priorities (ML capture, state storage, legacy cleanup)
 
@@ -5706,25 +5644,41 @@ The system has evolved through **23 feature additions**. Below is the narrative 
 **Date:** 2025-12-16  
 **Files Modified:** 9  
 
+## Analysis Capabilities
+
+### Add repo_showcase.py for full repository analysis
+
+**Commit:** `cb04f0c`  
+**Date:** 2025-12-16  
+**Files Modified:** 1  
+
+## Search Capabilities
+
+### Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
+
+**Commit:** `5665839`  
+**Date:** 2025-12-16  
+
+### Add search integration and web interface (Wave 3)
+
+**Commit:** `0022466`  
+**Date:** 2025-12-16  
+**Files Modified:** 11  
+
+## Data Capabilities
+
+### Implement WAL + Snapshot persistence system (LEGACY-133)
+
+**Commit:** `c7e662a`  
+**Date:** 2025-12-16  
+
 ## Documentation Capabilities
 
 ### Add CI workflow and documentation (Wave 4)
 
 **Commit:** `940fdf2`  
 **Date:** 2025-12-16  
-**Files Modified:** 5  
-
-### Add animated GIF visualizations to README
-
-**Commit:** `b4d7c82`  
-**Date:** 2025-12-15  
-
-## Testing Capabilities
-
-### Add comprehensive test coverage for Wave 4 modules (FINAL)
-
-**Commit:** `73d6da8`  
-**Date:** 2025-12-15
+**Files Modified:** 5
 
 ---
 
@@ -5740,6 +5694,13 @@ The codebase has undergone **3 refactorings**. Each improved code quality, maint
 
 ## Refactoring History
 
+### Replace git-sync-ml.sh with simpler skill
+
+**Commit:** `f61897f`  
+**Date:** 2025-12-16  
+**Changes:** +821/-1231 lines  
+**Scope:** 38 files affected  
+
 ### Complete legacy task system cleanup
 
 **Commit:** `8dedda6`  
@@ -5750,12 +5711,7 @@ The codebase has undergone **3 refactorings**. Each improved code quality, maint
 **Commit:** `d7a98ae`  
 **Date:** 2025-12-16  
 **Changes:** +100/-1460 lines  
-**Scope:** 6 files affected  
-
-### Split large files exceeding 25000 token limit
-
-**Commit:** `21ec5ea`  
-**Date:** 2025-12-15
+**Scope:** 6 files affected
 
 ---
 
@@ -5783,15 +5739,15 @@ The codebase has undergone **3 refactorings**. Each improved code quality, maint
 ### Week of Dec 15
 
 - **2025-12-16**: ml: Capture session data
-- **2025-12-16**: feat: Add smart caching to markdown book generation
+- **2025-12-16**: docs: Add git-sync skill to CLAUDE.md
 - **2025-12-16**: ml: Capture session data
-- **2025-12-16**: feat: Add consolidated markdown book generation
-- **2025-12-16**: feat: Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
-- **2025-12-16**: feat: Implement WAL + Snapshot persistence system (LEGACY-133)
-- **2025-12-16**: refactor: Complete legacy task system cleanup
-- **2025-12-16**: feat: Implement top priorities (ML capture, state storage, legacy cleanup)
-- **2025-12-16**: test: Add unit tests for Cortical Chronicles generators
-- **2025-12-16**: feat: Add CI workflow and documentation (Wave 4)
+- **2025-12-16**: refactor: Replace git-sync-ml.sh with simpler skill
+- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: feat: Add --recover flag and git-sync skill
+- **2025-12-16**: feat: Add git-sync-ml.sh for safe ML data synchronization
+- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: ml: Capture session data
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: "Query Expansion — Semantic Bridging"
-generated: "2025-12-16T20:01:28.083666Z"
+generated: "2025-12-16T22:56:47.744084Z"
 generator: "foundations"
 source_files:
   - "docs/VISION.md"

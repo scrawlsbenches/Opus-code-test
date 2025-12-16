@@ -1,5 +1,5 @@
 {
-  "generated": "2025-12-16T20:01:28.164703Z",
+  "generated": "2025-12-16T22:56:47.835526Z",
   "documents": [
     {
       "id": "00-preface/how-this-book-works",
@@ -306,24 +306,24 @@
     {
       "id": "04-evolution/bugfixes",
       "title": "Bug Fixes and Lessons",
-      "content": "# Bug Fixes and Lessons\n\n*What broke, how we fixed it, and what we learned.*\n\n---\n\n## Overview\n\n**13 bugs** have been identified and resolved. Each fix taught us something about the system.\n\n## Bug Fix History\n\n### Archive ML session after transcript processing (T-003 16f3)\n\n**Commit:** `59072c8`  \n**Date:** 2025-12-16  \n**Files Changed:** scripts/ml_data_collector.py  \n\n### Update CSV truncation test for new defaults (input=500, output=2000)\n\n**Commit:** `ca94a01`  \n**Date:** 2025-12-16  \n\n### Fix ML data collection milestone counting and add session/action capture\n\n**Commit:** `273baef`  \n**Date:** 2025-12-16  \n**Files Changed:** .git-ml/chats/2025-12-15/chat-20251216-121720-30c3c1.json, .git-ml/chats/2025-12-16/chat-20251216-121720-01077d.json, .git-ml/chats/2025-12-16/chat-20251216-121720-306450.json, .git-ml/chats/2025-12-16/chat-20251216-121720-5ef95b.json, .git-ml/chats/2025-12-16/chat-20251216-121720-8a1e7b.json  \n*(and 6 more)*  \n\n### Address critical ML data collection and prediction issues\n\n**Commit:** `fead1c1`  \n**Date:** 2025-12-16  \n**Files Changed:** .git-ml/chats/2025-12-15/chat-20251216-115057-b5bb48.json, .git-ml/chats/2025-12-16/chat-20251216-115057-3617f9.json, .git-ml/chats/2025-12-16/chat-20251216-115057-9502fd.json, .git-ml/chats/2025-12-16/chat-20251216-115057-cbbe64.json, .git-ml/chats/2025-12-16/chat-20251216-115057-f65b7a.json  \n*(and 4 more)*  \n\n### Add missing imports in validate command\n\n**Commit:** `172ad8f`  \n**Date:** 2025-12-16  \n**Files Changed:** scripts/ml_data_collector.py  \n\n### Clean up gitignore pattern for .git-ml/commits/\n\n**Commit:** `a65d54f`  \n**Date:** 2025-12-16  \n**Files Changed:** .gitignore  \n\n### Prevent infinite commit loop in ML data collection hooks\n\n**Commit:** `66ad656`  \n**Date:** 2025-12-16  \n**Files Changed:** .git-ml/chats/2025-12-16/chat-20251216-004054-78b531.json, .git-ml/tracked/commits.jsonl, scripts/ml_data_collector.py  \n\n### Correct hook format in settings.local.json\n\n**Commit:** `19ac02a`  \n**Date:** 2025-12-16  \n**Files Changed:** .claude/settings.local.json  \n\n### Use filename-based sorting for deterministic session ordering\n\n**Commit:** `61d502d`  \n**Date:** 2025-12-15  \n\n### Increase ID suffix length to prevent collisions\n\n**Commit:** `8ac4b6b`  \n**Date:** 2025-12-15  \n\n### Add import guards for optional test dependencies\n\n**Commit:** `91ffb04`  \n**Date:** 2025-12-15  \n\n### Make session file sorting stable for deterministic ordering\n\n**Commit:** `7433b36`  \n**Date:** 2025-12-15  \n\n### Cap query expansion weights to prevent term domination\n\n**Commit:** `fecd6dc`  \n**Date:** 2025-12-15  \n\n",
+      "content": "# Bug Fixes and Lessons\n\n*What broke, how we fixed it, and what we learned.*\n\n---\n\n## Overview\n\n**8 bugs** have been identified and resolved. Each fix taught us something about the system.\n\n## Bug Fix History\n\n### Archive ML session after transcript processing (T-003 16f3)\n\n**Commit:** `59072c8`  \n**Date:** 2025-12-16  \n**Files Changed:** scripts/ml_data_collector.py  \n\n### Update CSV truncation test for new defaults (input=500, output=2000)\n\n**Commit:** `ca94a01`  \n**Date:** 2025-12-16  \n\n### Fix ML data collection milestone counting and add session/action capture\n\n**Commit:** `273baef`  \n**Date:** 2025-12-16  \n**Files Changed:** .git-ml/chats/2025-12-15/chat-20251216-121720-30c3c1.json, .git-ml/chats/2025-12-16/chat-20251216-121720-01077d.json, .git-ml/chats/2025-12-16/chat-20251216-121720-306450.json, .git-ml/chats/2025-12-16/chat-20251216-121720-5ef95b.json, .git-ml/chats/2025-12-16/chat-20251216-121720-8a1e7b.json  \n*(and 6 more)*  \n\n### Address critical ML data collection and prediction issues\n\n**Commit:** `fead1c1`  \n**Date:** 2025-12-16  \n**Files Changed:** .git-ml/chats/2025-12-15/chat-20251216-115057-b5bb48.json, .git-ml/chats/2025-12-16/chat-20251216-115057-3617f9.json, .git-ml/chats/2025-12-16/chat-20251216-115057-9502fd.json, .git-ml/chats/2025-12-16/chat-20251216-115057-cbbe64.json, .git-ml/chats/2025-12-16/chat-20251216-115057-f65b7a.json  \n*(and 4 more)*  \n\n### Add missing imports in validate command\n\n**Commit:** `172ad8f`  \n**Date:** 2025-12-16  \n**Files Changed:** scripts/ml_data_collector.py  \n\n### Clean up gitignore pattern for .git-ml/commits/\n\n**Commit:** `a65d54f`  \n**Date:** 2025-12-16  \n**Files Changed:** .gitignore  \n\n### Prevent infinite commit loop in ML data collection hooks\n\n**Commit:** `66ad656`  \n**Date:** 2025-12-16  \n**Files Changed:** .git-ml/chats/2025-12-16/chat-20251216-004054-78b531.json, .git-ml/tracked/commits.jsonl, scripts/ml_data_collector.py  \n\n### Correct hook format in settings.local.json\n\n**Commit:** `19ac02a`  \n**Date:** 2025-12-16  \n**Files Changed:** .claude/settings.local.json  \n\n",
       "keywords": [
-        "commit",
-        "date",
         "git",
         "json",
         "chats",
         "chat",
+        "commit",
+        "date",
         "files",
         "changed",
-        "session",
-        "fix"
+        "fix",
+        "scripts"
       ]
     },
     {
       "id": "04-evolution/features",
       "title": "Feature Evolution",
-      "content": "# Feature Evolution\n\n*How the Cortical Text Processor gained its capabilities.*\n\n---\n\n## Overview\n\nThe system has evolved through **23 feature additions**. Below is the narrative of how each capability came to be.\n\n## Other Capabilities\n\n### Add smart caching to markdown book generation\n\n**Commit:** `afd3c5b`  \n**Date:** 2025-12-16  \n**Files Modified:** 8  \n\n### Add consolidated markdown book generation\n\n**Commit:** `f8a2ad6`  \n**Date:** 2025-12-16  \n**Files Modified:** 3  \n\n### Add content generators for Cortical Chronicles (Wave 2)\n\n**Commit:** `3022110`  \n**Date:** 2025-12-16  \n**Files Modified:** 23  \n\n### Add Cortical Chronicles book infrastructure (Wave 1)\n\n**Commit:** `c730057`  \n**Date:** 2025-12-16  \n**Files Modified:** 13  \n\n### Batch task distribution implementation via Director orchestration\n\n**Commit:** `4f915c3`  \n**Date:** 2025-12-16  \n**Files Modified:** 8  \n\n### Add orchestration extraction for director sub-agent tracking\n\n**Commit:** `4eaeb37`  \n**Date:** 2025-12-15  \n\n### Add stunning animated ASCII codebase visualizer\n\n**Commit:** `e085a0b`  \n**Date:** 2025-12-15  \n\n### Add ASCII art codebase visualization script\n\n**Commit:** `43aae33`  \n**Date:** 2025-12-15  \n\n### Complete legacy task system migration\n\n**Commit:** `33dc8b2`  \n**Date:** 2025-12-15  \n\n### Add director orchestration execution tracking system\n\n**Commit:** `4976c58`  \n**Date:** 2025-12-15  \n\n## Search Capabilities\n\n### Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)\n\n**Commit:** `5665839`  \n**Date:** 2025-12-16  \n\n### Add search integration and web interface (Wave 3)\n\n**Commit:** `0022466`  \n**Date:** 2025-12-16  \n**Files Modified:** 11  \n\n### Add security concept group and TF-IDF weighted query expansion\n\n**Commit:** `af3a7e0`  \n**Date:** 2025-12-15  \n\n## Data Capabilities\n\n### Implement WAL + Snapshot persistence system (LEGACY-133)\n\n**Commit:** `c7e662a`  \n**Date:** 2025-12-16  \n\n### Add git-tracked JSONL storage for orchestration data\n\n**Commit:** `fb30e38`  \n**Date:** 2025-12-15  \n\n## Ml Capabilities\n\n### Implement top priorities (ML capture, state storage, legacy cleanup)\n\n**Commit:** `4820c64`  \n**Date:** 2025-12-16  \n\n### Add file existence filter to ML predictions\n\n**Commit:** `3cab2ba`  \n**Date:** 2025-12-16  \n**Files Modified:** 1  \n\n### Add ML file prediction model\n\n**Commit:** `ac549dd`  \n**Date:** 2025-12-16  \n**Files Modified:** 2  \n\n### Add chunked storage for git-friendly ML data\n\n**Commit:** `0754540`  \n**Date:** 2025-12-16  \n**Files Modified:** 4  \n\n### Add ML stats report to CI pipeline\n\n**Commit:** `3e05a70`  \n**Date:** 2025-12-16  \n**Files Modified:** 9  \n\n## Documentation Capabilities\n\n### Add CI workflow and documentation (Wave 4)\n\n**Commit:** `940fdf2`  \n**Date:** 2025-12-16  \n**Files Modified:** 5  \n\n### Add animated GIF visualizations to README\n\n**Commit:** `b4d7c82`  \n**Date:** 2025-12-15  \n\n## Testing Capabilities\n\n### Add comprehensive test coverage for Wave 4 modules (FINAL)\n\n**Commit:** `73d6da8`  \n**Date:** 2025-12-15  \n\n",
+      "content": "# Feature Evolution\n\n*How the Cortical Text Processor gained its capabilities.*\n\n---\n\n## Overview\n\nThe system has evolved through **18 feature additions**. Below is the narrative of how each capability came to be.\n\n## Other Capabilities\n\n### Add --recover flag and git-sync skill\n\n**Commit:** `f5faba4`  \n**Date:** 2025-12-16  \n**Files Modified:** 4  \n\n### Add smart caching to markdown book generation\n\n**Commit:** `afd3c5b`  \n**Date:** 2025-12-16  \n**Files Modified:** 8  \n\n### Add consolidated markdown book generation\n\n**Commit:** `f8a2ad6`  \n**Date:** 2025-12-16  \n**Files Modified:** 3  \n\n### Add content generators for Cortical Chronicles (Wave 2)\n\n**Commit:** `3022110`  \n**Date:** 2025-12-16  \n**Files Modified:** 23  \n\n### Add Cortical Chronicles book infrastructure (Wave 1)\n\n**Commit:** `c730057`  \n**Date:** 2025-12-16  \n**Files Modified:** 13  \n\n### Batch task distribution implementation via Director orchestration\n\n**Commit:** `4f915c3`  \n**Date:** 2025-12-16  \n**Files Modified:** 8  \n\n## Ml Capabilities\n\n### Add git-sync-ml.sh for safe ML data synchronization\n\n**Commit:** `bb953e7`  \n**Date:** 2025-12-16  \n**Files Modified:** 65  \n\n### Add ML experiment tracking framework\n\n**Commit:** `6503d84`  \n**Date:** 2025-12-16  \n**Files Modified:** 8  \n\n### Implement top priorities (ML capture, state storage, legacy cleanup)\n\n**Commit:** `4820c64`  \n**Date:** 2025-12-16  \n\n### Add file existence filter to ML predictions\n\n**Commit:** `3cab2ba`  \n**Date:** 2025-12-16  \n**Files Modified:** 1  \n\n### Add ML file prediction model\n\n**Commit:** `ac549dd`  \n**Date:** 2025-12-16  \n**Files Modified:** 2  \n\n### Add chunked storage for git-friendly ML data\n\n**Commit:** `0754540`  \n**Date:** 2025-12-16  \n**Files Modified:** 4  \n\n### Add ML stats report to CI pipeline\n\n**Commit:** `3e05a70`  \n**Date:** 2025-12-16  \n**Files Modified:** 9  \n\n## Analysis Capabilities\n\n### Add repo_showcase.py for full repository analysis\n\n**Commit:** `cb04f0c`  \n**Date:** 2025-12-16  \n**Files Modified:** 1  \n\n## Search Capabilities\n\n### Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)\n\n**Commit:** `5665839`  \n**Date:** 2025-12-16  \n\n### Add search integration and web interface (Wave 3)\n\n**Commit:** `0022466`  \n**Date:** 2025-12-16  \n**Files Modified:** 11  \n\n## Data Capabilities\n\n### Implement WAL + Snapshot persistence system (LEGACY-133)\n\n**Commit:** `c7e662a`  \n**Date:** 2025-12-16  \n\n## Documentation Capabilities\n\n### Add CI workflow and documentation (Wave 4)\n\n**Commit:** `940fdf2`  \n**Date:** 2025-12-16  \n**Files Modified:** 5  \n\n",
       "keywords": [
         "commit",
         "date",
@@ -332,26 +332,26 @@
         "modified",
         "capabilities",
         "wave",
-        "system",
-        "orchestration",
-        "legacy"
+        "cortical",
+        "git",
+        "book"
       ]
     },
     {
       "id": "04-evolution/refactors",
       "title": "Refactorings and Architecture Evolution",
-      "content": "# Refactorings and Architecture Evolution\n\n*How the codebase structure improved over time.*\n\n---\n\n## Overview\n\nThe codebase has undergone **3 refactorings**. Each improved code quality, maintainability, or performance.\n\n## Refactoring History\n\n### Complete legacy task system cleanup\n\n**Commit:** `8dedda6`  \n**Date:** 2025-12-16  \n\n### Remove unused protobuf serialization (T-013 f0ff)\n\n**Commit:** `d7a98ae`  \n**Date:** 2025-12-16  \n**Changes:** +100/-1460 lines  \n**Scope:** 6 files affected  \n\n### Split large files exceeding 25000 token limit\n\n**Commit:** `21ec5ea`  \n**Date:** 2025-12-15  \n\n",
+      "content": "# Refactorings and Architecture Evolution\n\n*How the codebase structure improved over time.*\n\n---\n\n## Overview\n\nThe codebase has undergone **3 refactorings**. Each improved code quality, maintainability, or performance.\n\n## Refactoring History\n\n### Replace git-sync-ml.sh with simpler skill\n\n**Commit:** `f61897f`  \n**Date:** 2025-12-16  \n**Changes:** +821/-1231 lines  \n**Scope:** 38 files affected  \n\n### Complete legacy task system cleanup\n\n**Commit:** `8dedda6`  \n**Date:** 2025-12-16  \n\n### Remove unused protobuf serialization (T-013 f0ff)\n\n**Commit:** `d7a98ae`  \n**Date:** 2025-12-16  \n**Changes:** +100/-1460 lines  \n**Scope:** 6 files affected  \n\n",
       "keywords": [
         "commit",
         "date",
         "refactorings",
         "codebase",
         "improved",
+        "changes",
+        "lines",
+        "scope",
         "files",
-        "architecture",
-        "evolution",
-        "structure",
-        "time"
+        "affected"
       ]
     },
     {
@@ -373,18 +373,18 @@
     {
       "id": "04-evolution/timeline",
       "title": "Project Timeline",
-      "content": "# Project Timeline\n\n*A chronological journey through the Cortical Text Processor's development.*\n\n---\n\n## December 2025\n\n### Week of Dec 15\n\n- **2025-12-16**: ml: Capture session data\n- **2025-12-16**: feat: Add smart caching to markdown book generation\n- **2025-12-16**: ml: Capture session data\n- **2025-12-16**: feat: Add consolidated markdown book generation\n- **2025-12-16**: feat: Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)\n- **2025-12-16**: feat: Implement WAL + Snapshot persistence system (LEGACY-133)\n- **2025-12-16**: refactor: Complete legacy task system cleanup\n- **2025-12-16**: feat: Implement top priorities (ML capture, state storage, legacy cleanup)\n- **2025-12-16**: test: Add unit tests for Cortical Chronicles generators\n- **2025-12-16**: feat: Add CI workflow and documentation (Wave 4)\n\n",
+      "content": "# Project Timeline\n\n*A chronological journey through the Cortical Text Processor's development.*\n\n---\n\n## December 2025\n\n### Week of Dec 15\n\n- **2025-12-16**: ml: Capture session data\n- **2025-12-16**: docs: Add git-sync skill to CLAUDE.md\n- **2025-12-16**: ml: Capture session data\n- **2025-12-16**: refactor: Replace git-sync-ml.sh with simpler skill\n- **2025-12-16**: ml: Capture session data\n- **2025-12-16**: feat: Add --recover flag and git-sync skill\n- **2025-12-16**: feat: Add git-sync-ml.sh for safe ML data synchronization\n- **2025-12-16**: ml: Capture session data\n- **2025-12-16**: ml: Capture session data\n- **2025-12-16**: ml: Capture session data\n\n",
       "keywords": [
-        "feat",
-        "add",
-        "legacy",
-        "capture",
-        "cortical",
-        "session",
         "data",
-        "markdown",
-        "book",
-        "generation"
+        "capture",
+        "session",
+        "git",
+        "sync",
+        "add",
+        "skill",
+        "feat",
+        "project",
+        "timeline"
       ]
     },
     {

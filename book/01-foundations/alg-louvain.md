@@ -1,6 +1,6 @@
 ---
 title: "Louvain Community Detection — Concept Discovery"
-generated: "2025-12-16T20:01:28.083109Z"
+generated: "2025-12-16T22:56:47.743614Z"
 generator: "foundations"
 source_files:
   - "docs/VISION.md"
