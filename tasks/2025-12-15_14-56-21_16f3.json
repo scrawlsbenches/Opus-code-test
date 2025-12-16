@@ -7,17 +7,17 @@
     {
       "id": "T-20251215-145621-16f3-001",
       "title": "Investigate ML data collection for ephemeral Claude Code Web environment",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "arch",
       "description": "Current ML collection assumes persistent environment. In Claude Code Web: 1) Post-commit/pre-push hooks create files but don't persist across sessions, 2) Session tracking needs Stop hook integration, 3) Consider tracking ALL .git-ml/ data in git since user has no privacy concerns. Need to design approach that works for ephemeral environments.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-15T14:56:21.505256",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T15:20:00.000000",
+      "completed_at": "2025-12-16T15:20:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Architecture designed: Git-tracked JSONL append-only storage in .git-ml/tracked/. See docs/ml-ephemeral-architecture.md for full design. Key insight: Stop hook already runs, just needs to write to tracked JSONL instead of local files."
     },
     {
       "id": "T-20251215-145626-16f3-002",
