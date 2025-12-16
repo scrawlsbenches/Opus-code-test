@@ -1117,7 +1117,7 @@ For Director orchestration and parallel agent workflows:
 - `scripts/orchestration_utils.py` - Director orchestration tracking (plans, batches, metrics)
 - `scripts/verify_batch.py` - Automated batch verification
 
-See `docs/director.md` for comprehensive orchestration documentation.
+See `.claude/commands/director.md` for comprehensive orchestration documentation.
 
 ---
 
