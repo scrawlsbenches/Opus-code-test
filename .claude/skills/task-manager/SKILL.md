@@ -7,7 +7,7 @@ allowed-tools: Read, Bash, Write
 
 This skill enables **merge-friendly task management** for parallel agent workflows. It uses timestamp+session IDs that can't conflict when multiple agents work simultaneously.
 
-> **IMPORTANT:** The `tasks/` directory with merge-friendly JSON is now the **primary task management system**. The legacy `TASK_LIST.md` is kept for historical reference only. Use this skill or `scripts/new_task.py` for all task creation and management.
+> **IMPORTANT:** The `tasks/` directory with merge-friendly JSON is now the **only task management system**. The legacy `TASK_LIST.md` and `TASK_ARCHIVE.md` have been removed. Use this skill or `scripts/new_task.py` for all task creation and management.
 
 ## Key Capabilities
 
@@ -94,13 +94,12 @@ python scripts/consolidate_tasks.py --update --archive
 }
 ```
 
-## Legacy TASK_LIST.md (Deprecated)
+## Legacy Tasks (Migrated)
 
-**The `tasks/` directory is now the primary task system.** `TASK_LIST.md` is kept for historical reference only.
+The legacy `TASK_LIST.md` and `TASK_ARCHIVE.md` files have been removed. All historical tasks were migrated to `tasks/legacy_migration.json`.
 
 - **Migrated tasks**: `LEGACY-001` through `LEGACY-238` in `tasks/legacy_migration.json`
 - **New tasks**: Use `T-YYYYMMDD-HHMMSS-XXXX` format
-- **Do NOT add new tasks to TASK_LIST.md** - use this skill or `scripts/new_task.py` instead
 
 To view legacy task history:
 ```bash

@@ -36,7 +36,10 @@ python scripts/generate_ai_metadata.py --incremental
 
 ```bash
 # Read metadata for a specific module
-cat cortical/processor.py.ai_meta
+cat cortical/analysis.py.ai_meta
+
+# Or for packages, check the __init__.py metadata
+cat cortical/processor/__init__.py.ai_meta
 
 # Or use Read tool on the .ai_meta file
 ```
@@ -100,10 +103,12 @@ sections:
 
 | Source File | Metadata File |
 |-------------|---------------|
-| `cortical/processor.py` | `cortical/processor.py.ai_meta` |
-| `cortical/query.py` | `cortical/query.py.ai_meta` |
+| `cortical/processor/__init__.py` | `cortical/processor/__init__.py.ai_meta` |
+| `cortical/query/__init__.py` | `cortical/query/__init__.py.ai_meta` |
 | `cortical/analysis.py` | `cortical/analysis.py.ai_meta` |
 | `tests/test_processor.py` | `tests/test_processor.py.ai_meta` |
+
+> **Note:** `processor/` and `query/` are packages with multiple modules. Check `__init__.py.ai_meta` for the public API, or individual module `.ai_meta` files for implementation details.
 
 ## Commands Reference
 
@@ -141,17 +146,17 @@ python scripts/index_codebase.py --incremental && python scripts/generate_ai_met
 4. **Trust the sections** - Functions are grouped by purpose, not just alphabetically
 5. **Regenerate after changes** - Run `--incremental` after modifying code
 
-## Example: Understanding processor.py
+## Example: Understanding the Processor Package
 
 ```bash
-# Step 1: Read the metadata overview
-cat cortical/processor.py.ai_meta | head -50
+# Step 1: Read the package's public API metadata
+cat cortical/processor/__init__.py.ai_meta | head -50
 
 # Step 2: Find functions related to search
-grep -A5 "find_documents" cortical/processor.py.ai_meta
+grep -A5 "find_documents" cortical/processor/query_api.py.ai_meta
 
-# Step 3: Check complexity hints
-grep -A10 "complexity_hints" cortical/processor.py.ai_meta
+# Step 3: Check complexity hints in compute module
+grep -A10 "complexity_hints" cortical/processor/compute.py.ai_meta
 
 # Step 4: Now read specific source code as needed
 ```
