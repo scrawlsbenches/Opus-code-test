@@ -105,7 +105,8 @@ cortical/proto/__pycache__/
 #   - .git-ml/actions/       - Tool usage
 #   - .git-ml/github/        - PR/Issue data (contains discussions)
 #   - .git-ml/orchestration/ - Individual orchestration files (use tracked/orchestration.jsonl)
-.git-ml/commits/  # Ignored - full commit data with diffs is too large
+# Full commit data with diffs is too large for GitHub
+.git-ml/commits/
 # .git-ml/chats/  # Uncomment to ignore chat transcripts
 # .git-ml/sessions/  # Uncomment to ignore full session data
 # .git-ml/actions/  # Uncomment to ignore tool usage data
