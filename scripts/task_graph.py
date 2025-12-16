@@ -2,313 +2,242 @@
 """
 Task Dependency Graph Generator
 
-Parses TASK_LIST.md and generates a visual dependency graph showing which tasks
-depend on others. Useful for understanding task ordering and planning work.
+Parses tasks from the merge-friendly task system (tasks/*.json) and generates
+a visual dependency graph showing which tasks depend on others.
 
 Usage:
     python scripts/task_graph.py                 # ASCII art output
     python scripts/task_graph.py --format ascii  # ASCII art (default)
     python scripts/task_graph.py --format mermaid # Mermaid diagram
     python scripts/task_graph.py --verbose       # Include task names
+    python scripts/task_graph.py --status pending # Only pending tasks
 
 Author: Cortical Text Processor Team
 """
 
-import re
 import argparse
-from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set
 from collections import defaultdict
 
-
-class Task:
-    """Represents a task with its metadata."""
-
-    def __init__(self, task_id: int, name: str, category: str,
-                 depends: List[int], effort: str, priority: str):
-        self.id = task_id
-        self.name = name
-        self.category = category
-        self.depends = depends  # List of task IDs this task depends on
-        self.effort = effort
-        self.priority = priority
-
-    def __repr__(self):
-        deps = f", depends={self.depends}" if self.depends else ""
-        return f"Task({self.id}: {self.name[:30]}...{deps})"
+# Import from the new task system
+from task_utils import load_all_tasks, Task
 
 
-def parse_task_list(file_path: Path) -> Dict[int, Task]:
+def build_dependency_graph(tasks: List[Task]) -> Dict[str, List[str]]:
     """
-    Parse TASK_LIST.md and extract all tasks with their dependencies.
+    Build a dependency graph from tasks.
 
     Args:
-        file_path: Path to TASK_LIST.md
+        tasks: List of Task objects
 
     Returns:
-        Dictionary mapping task ID to Task object
+        Dictionary mapping task ID to list of task IDs it depends on
     """
-    tasks = {}
-    current_priority = None
-
-    with open(file_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-
-    # Find priority sections
-    lines = content.split('\n')
-    i = 0
-
-    while i < len(lines):
-        line = lines[i]
-
-        # Detect priority sections
-        if '### 🟠 High' in line:
-            current_priority = 'High'
-        elif '### 🟡 Medium' in line:
-            current_priority = 'Medium'
-        elif '### 🟢 Low' in line:
-            current_priority = 'Low'
-        elif '### ⏸️ Deferred' in line:
-            current_priority = 'Deferred'
-
-        # Parse table rows (skip header and separator)
-        if line.startswith('|') and not line.startswith('|---|') and not line.startswith('| #'):
-            parts = [p.strip() for p in line.split('|')[1:-1]]  # Remove empty first/last
-
-            if len(parts) >= 4 and parts[0].isdigit():
-                task_id = int(parts[0])
-                name = parts[1]
-                category = parts[2]
-                depends_str = parts[3]
-                effort = parts[4] if len(parts) > 4 else 'Unknown'
-
-                # Parse dependencies
-                depends = []
-                if depends_str and depends_str != '-':
-                    # Handle comma-separated dependencies: "132, 133" or single: "132"
-                    for dep in depends_str.split(','):
-                        dep = dep.strip()
-                        if dep.isdigit():
-                            depends.append(int(dep))
-
-                tasks[task_id] = Task(
-                    task_id=task_id,
-                    name=name,
-                    category=category,
-                    depends=depends,
-                    effort=effort,
-                    priority=current_priority or 'Unknown'
-                )
-
-        i += 1
-
-    return tasks
+    graph = {}
+    for task in tasks:
+        graph[task.id] = task.depends_on if task.depends_on else []
+    return graph
 
 
-def build_dependency_graph(tasks: Dict[int, Task]) -> Tuple[Dict[int, List[int]], Dict[int, List[int]]]:
+def find_roots(graph: Dict[str, List[str]], task_ids: Set[str]) -> List[str]:
+    """Find tasks with no dependencies (roots of the graph)."""
+    roots = []
+    for task_id in task_ids:
+        deps = graph.get(task_id, [])
+        # Filter deps to only include tasks in our set
+        valid_deps = [d for d in deps if d in task_ids]
+        if not valid_deps:
+            roots.append(task_id)
+    return sorted(roots)
+
+
+def topological_sort(graph: Dict[str, List[str]], task_ids: Set[str]) -> List[str]:
     """
-    Build forward and reverse dependency graphs.
+    Perform topological sort on the dependency graph.
+
+    Returns tasks in order where dependencies come before dependents.
+    """
+    visited = set()
+    result = []
+
+    def visit(task_id: str):
+        if task_id in visited or task_id not in task_ids:
+            return
+        visited.add(task_id)
+        for dep in graph.get(task_id, []):
+            if dep in task_ids:
+                visit(dep)
+        result.append(task_id)
+
+    for task_id in sorted(task_ids):
+        visit(task_id)
+
+    return result
+
+
+def generate_ascii_graph(
+    tasks: List[Task],
+    verbose: bool = False
+) -> str:
+    """
+    Generate ASCII art representation of the dependency graph.
 
     Args:
-        tasks: Dictionary of tasks
-
-    Returns:
-        Tuple of (forward_deps, reverse_deps)
-        - forward_deps[task_id] = list of tasks that depend on this task
-        - reverse_deps[task_id] = list of tasks this task depends on
-    """
-    forward_deps = defaultdict(list)  # task_id -> tasks that depend on it
-    reverse_deps = defaultdict(list)  # task_id -> tasks it depends on
-
-    for task_id, task in tasks.items():
-        reverse_deps[task_id] = task.depends
-
-        for dep_id in task.depends:
-            forward_deps[dep_id].append(task_id)
-
-    return dict(forward_deps), dict(reverse_deps)
-
-
-def topological_sort(tasks: Dict[int, Task], reverse_deps: Dict[int, List[int]]) -> List[List[int]]:
-    """
-    Perform topological sort to find task ordering levels.
-
-    Returns:
-        List of levels, where each level is a list of task IDs that can be done in parallel
-    """
-    # Count dependencies for each task
-    in_degree = {task_id: len(deps) for task_id, deps in reverse_deps.items()}
-
-    # Add tasks with no dependencies
-    for task_id in tasks:
-        if task_id not in in_degree:
-            in_degree[task_id] = 0
-
-    levels = []
-    remaining = set(tasks.keys())
-
-    while remaining:
-        # Find all tasks with no remaining dependencies
-        current_level = [tid for tid in remaining if in_degree[tid] == 0]
-
-        if not current_level:
-            # Circular dependency detected
-            break
-
-        levels.append(current_level)
-
-        # Remove this level from remaining
-        for tid in current_level:
-            remaining.remove(tid)
-
-            # Reduce in-degree for tasks that depend on this one
-            for dep_task_id in tasks.keys():
-                if tid in reverse_deps.get(dep_task_id, []):
-                    in_degree[dep_task_id] -= 1
-
-    return levels
-
-
-def generate_ascii_graph(tasks: Dict[int, Task], forward_deps: Dict[int, List[int]],
-                         reverse_deps: Dict[int, List[int]], verbose: bool = False) -> str:
-    """
-    Generate ASCII art dependency graph.
-
-    Args:
-        tasks: Dictionary of tasks
-        forward_deps: Forward dependency mapping
-        reverse_deps: Reverse dependency mapping
-        verbose: Include task names
+        tasks: List of Task objects
+        verbose: Include task names in output
 
     Returns:
         ASCII art string
     """
+    if not tasks:
+        return "No tasks found."
+
+    task_map = {t.id: t for t in tasks}
+    task_ids = set(task_map.keys())
+    graph = build_dependency_graph(tasks)
+
+    # Find which tasks depend on each task (reverse graph)
+    dependents = defaultdict(list)
+    for task_id, deps in graph.items():
+        for dep in deps:
+            if dep in task_ids:
+                dependents[dep].append(task_id)
+
     lines = []
-    lines.append("Task Dependency Graph")
+    lines.append("=" * 60)
+    lines.append("TASK DEPENDENCY GRAPH")
     lines.append("=" * 60)
     lines.append("")
 
-    # Get topological sort
-    levels = topological_sort(tasks, reverse_deps)
+    # Group by priority
+    by_priority = defaultdict(list)
+    for task in tasks:
+        by_priority[task.priority.lower()].append(task)
 
-    if not levels:
-        lines.append("No tasks or circular dependencies detected!")
-        return '\n'.join(lines)
+    for priority in ['high', 'medium', 'low']:
+        priority_tasks = by_priority.get(priority, [])
+        if not priority_tasks:
+            continue
 
-    lines.append(f"Found {len(levels)} dependency levels:")
-    lines.append("")
+        icon = {'high': '🔴', 'medium': '🟡', 'low': '🟢'}.get(priority, '⚪')
+        lines.append(f"\n{icon} {priority.upper()} PRIORITY ({len(priority_tasks)} tasks)")
+        lines.append("-" * 40)
 
-    for level_num, level in enumerate(levels, 1):
-        lines.append(f"Level {level_num} (can be done in parallel):")
-        for task_id in sorted(level):
-            task = tasks[task_id]
-            deps_str = ""
-            if task.depends:
-                deps_str = f" [depends on: {', '.join(map(str, task.depends))}]"
+        for task in sorted(priority_tasks, key=lambda t: t.id):
+            # Build task line
+            status_icon = {
+                'pending': '○',
+                'in_progress': '◐',
+                'completed': '●',
+                'deferred': '◌'
+            }.get(task.status, '?')
 
-            blocked_str = ""
-            if task_id in forward_deps:
-                blocked_by = forward_deps[task_id]
-                blocked_str = f" [blocks: {', '.join(map(str, blocked_by))}]"
-
+            task_line = f"  {status_icon} {task.id}"
             if verbose:
-                lines.append(f"  #{task_id}: {task.name[:50]}{deps_str}{blocked_str}")
-            else:
-                lines.append(f"  #{task_id} ({task.priority}, {task.effort}){deps_str}{blocked_str}")
-        lines.append("")
+                task_line += f": {task.title[:40]}"
 
-    # Show tasks with dependencies
-    lines.append("Dependency Chains:")
-    lines.append("-" * 60)
+            # Show dependencies
+            deps = [d for d in graph.get(task.id, []) if d in task_ids]
+            if deps:
+                task_line += f" ← depends on: {', '.join(deps)}"
 
-    tasks_with_deps = [(tid, t) for tid, t in tasks.items() if t.depends]
-    tasks_with_deps.sort(key=lambda x: x[0])
+            # Show what depends on this
+            children = dependents.get(task.id, [])
+            if children:
+                task_line += f" → blocks: {', '.join(children)}"
 
-    if not tasks_with_deps:
-        lines.append("No dependencies found - all tasks are independent!")
-    else:
-        for task_id, task in tasks_with_deps:
-            dep_chain = " -> ".join(f"#{d}" for d in task.depends)
-            lines.append(f"  {dep_chain} -> #{task_id}")
-            if verbose:
-                lines.append(f"    ({task.name[:60]})")
+            lines.append(task_line)
+
+    # Summary
+    lines.append("")
+    lines.append("=" * 60)
+    lines.append("LEGEND")
+    lines.append("  ○ pending  ◐ in_progress  ● completed  ◌ deferred")
+    lines.append("  ← depends on (must complete first)")
+    lines.append("  → blocks (waiting on this)")
+
+    # Stats
+    pending = sum(1 for t in tasks if t.status == 'pending')
+    in_progress = sum(1 for t in tasks if t.status == 'in_progress')
+    completed = sum(1 for t in tasks if t.status == 'completed')
 
     lines.append("")
-    lines.append(f"Total tasks: {len(tasks)}")
-    lines.append(f"Tasks with dependencies: {len(tasks_with_deps)}")
-    lines.append(f"Independent tasks: {len(tasks) - len(tasks_with_deps)}")
+    lines.append(f"STATS: {pending} pending, {in_progress} in progress, {completed} completed")
 
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
-def generate_mermaid_graph(tasks: Dict[int, Task], forward_deps: Dict[int, List[int]],
-                           reverse_deps: Dict[int, List[int]]) -> str:
+def generate_mermaid_graph(
+    tasks: List[Task],
+    verbose: bool = False
+) -> str:
     """
-    Generate Mermaid diagram code.
+    Generate Mermaid diagram of the dependency graph.
 
     Args:
-        tasks: Dictionary of tasks
-        forward_deps: Forward dependency mapping
-        reverse_deps: Reverse dependency mapping
+        tasks: List of Task objects
+        verbose: Include task names in nodes
 
     Returns:
-        Mermaid diagram code
+        Mermaid diagram string
     """
-    lines = []
-    lines.append("```mermaid")
-    lines.append("graph TD")
+    if not tasks:
+        return "graph TD\n    empty[No tasks found]"
+
+    task_map = {t.id: t for t in tasks}
+    task_ids = set(task_map.keys())
+    graph = build_dependency_graph(tasks)
+
+    lines = ["graph TD"]
+
+    # Define node styles by status
+    lines.append("    %% Status styles")
+    lines.append("    classDef pending fill:#fff,stroke:#333")
+    lines.append("    classDef in_progress fill:#ffd700,stroke:#333")
+    lines.append("    classDef completed fill:#90EE90,stroke:#333")
+    lines.append("    classDef deferred fill:#ddd,stroke:#999")
     lines.append("")
 
-    # Define nodes with styling based on priority
-    for task_id, task in sorted(tasks.items()):
-        label = f"#{task_id}: {task.name[:40]}"
+    # Add nodes
+    for task in tasks:
+        # Sanitize ID for Mermaid (replace special chars)
+        node_id = task.id.replace('-', '_').replace('.', '_')
 
-        # Style based on priority
-        if task.priority == 'High':
-            style = ":::high"
-        elif task.priority == 'Medium':
-            style = ":::medium"
-        elif task.priority == 'Low':
-            style = ":::low"
+        if verbose:
+            label = f"{task.id}<br/>{task.title[:30]}"
         else:
-            style = ""
+            label = task.id
 
-        lines.append(f"    T{task_id}[\"{label}\"]{style}")
+        # Shape by priority
+        if task.priority == 'high':
+            lines.append(f"    {node_id}[/{label}\\]")  # Trapezoid
+        elif task.priority == 'low':
+            lines.append(f"    {node_id}({label})")  # Rounded
+        else:
+            lines.append(f"    {node_id}[{label}]")  # Rectangle
+
+        # Apply status class
+        lines.append(f"    class {node_id} {task.status}")
 
     lines.append("")
 
     # Add edges
-    for task_id, task in sorted(tasks.items()):
-        for dep_id in task.depends:
-            lines.append(f"    T{dep_id} --> T{task_id}")
+    for task in tasks:
+        node_id = task.id.replace('-', '_').replace('.', '_')
+        for dep in graph.get(task.id, []):
+            if dep in task_ids:
+                dep_id = dep.replace('-', '_').replace('.', '_')
+                lines.append(f"    {dep_id} --> {node_id}")
 
-    lines.append("")
-
-    # Add styling classes
-    lines.append("    classDef high fill:#ff9999,stroke:#cc0000,stroke-width:2px")
-    lines.append("    classDef medium fill:#ffcc99,stroke:#ff9900,stroke-width:2px")
-    lines.append("    classDef low fill:#99ff99,stroke:#00cc00,stroke-width:2px")
-
-    lines.append("```")
-    lines.append("")
-    lines.append("<!-- Copy the above code to a Mermaid live editor: https://mermaid.live -->")
-
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate task dependency graph from TASK_LIST.md',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-    python scripts/task_graph.py                    # ASCII art
-    python scripts/task_graph.py --format mermaid   # Mermaid diagram
-    python scripts/task_graph.py --verbose          # Include task names
-        """
+        description="Generate task dependency graph from merge-friendly task system"
     )
     parser.add_argument(
-        '--format',
+        '--format', '-f',
         choices=['ascii', 'mermaid'],
         default='ascii',
         help='Output format (default: ascii)'
@@ -319,41 +248,37 @@ Examples:
         help='Include task names in output'
     )
     parser.add_argument(
-        '--task-list',
-        type=Path,
-        default=Path('TASK_LIST.md'),
-        help='Path to TASK_LIST.md (default: TASK_LIST.md)'
+        '--status', '-s',
+        choices=['pending', 'in_progress', 'completed', 'deferred', 'all'],
+        default='all',
+        help='Filter by status (default: all)'
+    )
+    parser.add_argument(
+        '--priority', '-p',
+        choices=['high', 'medium', 'low', 'all'],
+        default='all',
+        help='Filter by priority (default: all)'
     )
 
     args = parser.parse_args()
 
-    # Parse task list
-    if not args.task_list.exists():
-        print(f"Error: {args.task_list} not found!")
-        print("\nNote: TASK_LIST.md has been replaced with a new task management system.")
-        print("To view tasks, use:")
-        print("  python scripts/task_utils.py list")
-        print("\nFor more information, see docs/merge-friendly-tasks.md")
-        return 1
+    # Load tasks from new system
+    all_tasks = load_all_tasks()
 
-    tasks = parse_task_list(args.task_list)
+    # Filter by status
+    if args.status != 'all':
+        all_tasks = [t for t in all_tasks if t.status == args.status]
 
-    if not tasks:
-        print("No tasks found in TASK_LIST.md!")
-        return 1
+    # Filter by priority
+    if args.priority != 'all':
+        all_tasks = [t for t in all_tasks if t.priority.lower() == args.priority]
 
-    # Build dependency graph
-    forward_deps, reverse_deps = build_dependency_graph(tasks)
-
-    # Generate output
-    if args.format == 'ascii':
-        output = generate_ascii_graph(tasks, forward_deps, reverse_deps, args.verbose)
-    else:  # mermaid
-        output = generate_mermaid_graph(tasks, forward_deps, reverse_deps)
-
-    print(output)
-    return 0
+    # Generate graph
+    if args.format == 'mermaid':
+        print(generate_mermaid_graph(all_tasks, args.verbose))
+    else:
+        print(generate_ascii_graph(all_tasks, args.verbose))
 
 
 if __name__ == '__main__':
-    exit(main())
+    main()

@@ -63,7 +63,7 @@ python -m unittest discover -s tests -v
   - Malformed input
   - Boundary conditions
 - [ ] Limitations documented:
-  - Known issues noted in docstrings or TASK_LIST.md
+  - Known issues noted in docstrings or tasks/ directory
   - Performance characteristics documented
   - Unsupported use cases called out
 
@@ -179,7 +179,7 @@ Before marking a task as DONE, answer these questions:
 
 **Problem**: Issue gets forgotten and resurfaces later without context.
 
-**Solution**: Immediately add discovered issues to TASK_LIST.md, even if they're out of scope.
+**Solution**: Immediately add discovered issues to tasks/ via new_task.py, even if they're out of scope.
 
 ### The "Partial Commit" Trap
 **Symptom**: Committing code changes but forgetting to commit documentation updates.
@@ -215,8 +215,8 @@ Copy this checklist into your task notes or PR description:
 - [ ] Limitations documented
 
 ### Issue Tracking Complete
-- [ ] New issues added to TASK_LIST.md
-- [ ] Summary tables updated
+- [ ] New issues added to tasks/ via new_task.py
+- [ ] Task metadata updated
 - [ ] Dependencies noted
 
 ### Truly Done

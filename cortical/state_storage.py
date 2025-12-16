@@ -74,6 +74,9 @@ class StateManifest:
     stale_computations: List[str] = field(default_factory=list)
     document_count: int = 0
     layer_stats: Dict[str, int] = field(default_factory=dict)
+    config_snapshot: Dict = field(default_factory=dict)
+    bm25_doc_lengths: Dict = field(default_factory=dict)
+    avg_doc_length: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -89,7 +92,10 @@ class StateManifest:
             checksums=data.get('checksums', {}),
             stale_computations=data.get('stale_computations', []),
             document_count=data.get('document_count', 0),
-            layer_stats=data.get('layer_stats', {})
+            layer_stats=data.get('layer_stats', {}),
+            config_snapshot=data.get('config_snapshot', {}),
+            bm25_doc_lengths=data.get('bm25_doc_lengths', {}),
+            avg_doc_length=data.get('avg_doc_length', 0.0)
         )
 
     def update_checksum(self, component: str, content: str) -> bool:
@@ -319,6 +325,28 @@ class StateWriter:
             return False
 
         self._atomic_write(filepath, content)
+        return True
+
+    def save_config(
+        self,
+        config_dict: Dict,
+        doc_lengths: Dict[str, int],
+        avg_doc_length: float
+    ) -> bool:
+        """
+        Save config and BM25 metadata to manifest.
+
+        Args:
+            config_dict: Configuration dictionary from CorticalConfig.to_dict()
+            doc_lengths: Per-document token lengths for BM25
+            avg_doc_length: Average document length across corpus
+
+        Returns:
+            True (always saves to manifest)
+        """
+        self.manifest.config_snapshot = config_dict
+        self.manifest.bm25_doc_lengths = doc_lengths
+        self.manifest.avg_doc_length = avg_doc_length
         return True
 
     def save_manifest(self) -> None:
@@ -555,6 +583,32 @@ class StateLoader:
             data = json.load(f)
 
         return data.get('embeddings', {})
+
+    def load_config(self) -> Tuple[Optional[Dict], Dict[str, int], float]:
+        """
+        Load config and BM25 metadata from manifest.
+
+        Returns:
+            Tuple of (config_dict, doc_lengths, avg_doc_length)
+            - config_dict: Configuration dictionary (None if not present)
+            - doc_lengths: Per-document token lengths for BM25
+            - avg_doc_length: Average document length across corpus
+
+        Note:
+            Returns (None, {}, 0.0) if manifest doesn't exist or fields are missing.
+            This ensures backward compatibility with manifests created before
+            config persistence was added.
+        """
+        try:
+            manifest = self.load_manifest()
+        except FileNotFoundError:
+            return None, {}, 0.0
+
+        return (
+            manifest.config_snapshot if manifest.config_snapshot else None,
+            manifest.bm25_doc_lengths,
+            manifest.avg_doc_length
+        )
 
     def load_all(
         self,
