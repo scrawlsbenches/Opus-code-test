@@ -182,6 +182,307 @@ Users can trace why a document matched:
 
 ---
 
+## Deep Algorithm Analysis
+
+The Cortical Text Processor achieves semantic understanding through a carefully orchestrated ensemble of classical IR algorithms. Each algorithm plays a specific role, and their combination creates emergent intelligence that exceeds any single technique.
+
+### Algorithm 1: PageRank — Importance Discovery
+
+**Purpose:** Identify which terms matter most in the corpus, independent of raw frequency.
+
+**Implementation:** `cortical/analysis/pagerank.py`
+
+**How It Works:**
+```
+importance[term] = (1 - damping) / N + damping × Σ (neighbor_importance × edge_weight / neighbor_outgoing_sum)
+```
+
+The algorithm iteratively propagates importance through the term co-occurrence graph. Terms that are referenced by many important terms become important themselves—a recursive definition that converges to stable values.
+
+**Key Parameters:**
+- `damping = 0.85`: The probability of following a link vs. jumping to a random node
+- `tolerance = 1e-6`: Convergence threshold (stops when no term changes by more than this)
+- `max_iterations = 20`: Upper bound on iterations
+
+**Three Variants:**
+1. **Standard PageRank**: Applied to Layer 0 (tokens) and Layer 1 (bigrams)
+2. **Semantic PageRank**: Adjusts edge weights by relation type (IsA connections count 1.5× more than CoOccurs)
+3. **Hierarchical PageRank**: Propagates importance across all 4 layers with separate cross-layer damping
+
+**Why This Matters for Code Search:**
+- Common utility functions referenced everywhere get high PageRank
+- Core abstractions that everything depends on surface naturally
+- Prevents over-emphasis on boilerplate code that appears frequently but isn't semantically central
+
+**Performance:** O(iterations × edges), typically 100-500ms for 10K tokens with early convergence usually at 5-10 iterations.
+
+---
+
+### Algorithm 2: BM25/TF-IDF — Distinctiveness Scoring
+
+**Purpose:** Score how well a term distinguishes a specific document from the rest of the corpus.
+
+**Implementation:** `cortical/analysis/tfidf.py`
+
+**BM25 Formula (Default):**
+```
+BM25(t, d) = IDF(t) × (tf(t,d) × (k1 + 1)) / (tf(t,d) + k1 × (1 - b + b × |d|/avgdl))
+```
+
+Where:
+- `IDF(t) = log((N - df(t) + 0.5) / (df(t) + 0.5) + 1)` — Inverse document frequency with smoothing
+- `tf(t,d)` — Term frequency in document d
+- `k1 = 1.2` — Term frequency saturation (diminishing returns after ~12 occurrences)
+- `b = 0.75` — Length normalization factor
+
+**Why BM25 Over TF-IDF:**
+- Non-negative IDF even for terms appearing in most documents
+- Length normalization prevents long files from unfairly dominating
+- Term frequency saturation models realistic relevance (saying "API" 100 times doesn't make a doc 100× more relevant than saying it once)
+
+**Dual Storage Strategy:**
+- **Global TF-IDF** (`col.tfidf`): Term importance to entire corpus
+- **Per-Document TF-IDF** (`col.tfidf_per_doc[doc_id]`): Term importance within specific document
+
+This dual approach allows:
+- Fast corpus-wide importance filtering
+- Accurate per-document relevance scoring for search
+
+---
+
+### Algorithm 3: Louvain Community Detection — Concept Discovery
+
+**Purpose:** Discover semantic clusters (concepts) from the term co-occurrence graph.
+
+**Implementation:** `cortical/analysis/clustering.py`
+
+**Two-Phase Algorithm:**
+
+**Phase 1 — Local Optimization:**
+```
+for each node:
+    find neighboring communities
+    calculate modularity gain for moving to each
+    move to best community if gain > 0
+repeat until no nodes move
+```
+
+**Phase 2 — Network Aggregation:**
+```
+collapse each community into a single super-node
+edges between communities become edges between super-nodes
+repeat Phase 1 on the aggregated network
+```
+
+**Modularity Formula:**
+```
+Q = (1/2m) × Σ [A_ij - (k_i × k_j)/(2m)] × δ(c_i, c_j)
+```
+
+The algorithm optimizes Q, which measures how much edge weight falls within communities versus what would be expected by random chance.
+
+**Resolution Parameter:**
+- `resolution = 1.0` (default): Balanced clusters, ~32 concepts
+- `resolution = 0.5`: Coarse clusters, ~38 concepts (max cluster 64% of tokens)
+- `resolution = 2.0`: Fine-grained clusters, ~79 concepts (max cluster 4.2% of tokens)
+
+**Concept Naming:**
+```python
+top_members = sorted(cluster_members, key=lambda m: m.pagerank, reverse=True)[:3]
+concept_name = '/'.join(top_members)  # e.g., "neural/learning/networks"
+```
+
+**Why This Matters:**
+- Enables concept-level search ("find documents about authentication")
+- Reduces dimensionality while preserving semantic structure
+- Creates Layer 2 (Concepts) that bridges raw terms and documents
+
+---
+
+### Algorithm 4: Query Expansion — Semantic Bridging
+
+**Purpose:** Transform literal query terms into semantically enriched term sets.
+
+**Implementation:** `cortical/query/expansion.py`
+
+**Three Expansion Methods:**
+
+1. **Lateral Connection Expansion:**
+   - Follow co-occurrence edges from query terms
+   - Score: `edge_weight × neighbor_score × 0.6`
+   - Takes top 5 neighbors per query term
+
+2. **Concept Cluster Membership:**
+   - Find concepts containing query terms
+   - Add other cluster members as expansions
+   - Score: `concept.pagerank × member.pagerank × 0.4`
+
+3. **Code Concept Synonyms:**
+   - Programming-specific synonym groups (get/fetch/load, create/make/build)
+   - Limited to 3 synonyms per term to prevent drift
+
+**Multi-Hop Inference:**
+```
+Query: "neural"
+  Hop 0: neural (1.0)
+  Hop 1: networks (0.4), learning (0.35)
+  Hop 2: deep (0.098) — via learning with decay
+```
+
+Chain validity is scored by relation type pairs:
+- `(IsA, IsA)`: 1.0 — fully transitive (dog→animal→living_thing)
+- `(RelatedTo, RelatedTo)`: 0.6 — weaker transitivity
+- `(Antonym, Antonym)`: 0.3 — double negation, avoid
+
+---
+
+### Algorithm 5: Graph-Boosted Search (GB-BM25) — Hybrid Ranking
+
+**Purpose:** Combine BM25 relevance with graph structure signals.
+
+**Implementation:** `cortical/query/search.py:425-564`
+
+**Scoring Formula:**
+```
+final_score = (0.5 × normalized_bm25) + (0.3 × normalized_pagerank) + (0.2 × normalized_proximity)
+            × coverage_multiplier (0.5 to 1.5)
+```
+
+**Three Signal Sources:**
+
+1. **BM25 Base Score (50%):**
+   - Standard term frequency × inverse document frequency
+   - Per-document scoring using `col.tfidf_per_doc`
+
+2. **PageRank Boost (30%):**
+   - Sum of matched term PageRanks
+   - Rewards documents containing important terms
+
+3. **Proximity Boost (20%):**
+   - For each pair of original query terms:
+     - Check if they're connected in the co-occurrence graph
+     - If connected, boost documents containing both
+   - Rewards documents where query terms appear together
+
+**Coverage Multiplier:**
+- Documents matching 1/5 query terms: 0.7× multiplier
+- Documents matching all 5 query terms: 1.5× multiplier
+- Prevents documents matching one rare term from outranking documents matching many terms
+
+---
+
+### Algorithm 6: Semantic Relation Extraction — Knowledge Graph Construction
+
+**Purpose:** Extract typed relationships (IsA, PartOf, Causes) from document text.
+
+**Implementation:** `cortical/semantics.py`
+
+**Pattern-Based Extraction:**
+24 regex patterns detect 10+ relation types:
+```python
+r'(\w+)\s+(?:is|are)\s+(?:a|an)\s+(?:type\s+of\s+)?(\w+)' → IsA (0.9 confidence)
+r'(\w+)\s+(?:is|are)\s+(?:a\s+)?part\s+of' → PartOf (0.95 confidence)
+r'(\w+)\s+(?:causes|leads?\s+to)' → Causes (0.9 confidence)
+```
+
+**Semantic Retrofitting:**
+Blends co-occurrence weights with semantic relation knowledge:
+```
+new_weight = α × original_weight + (1-α) × semantic_target_weight
+```
+With α = 0.3, semantic signals dominate (70%) while preserving some corpus statistics (30%).
+
+**Relation Weight Multipliers:**
+| Relation | Weight | Semantics |
+|----------|--------|-----------|
+| SameAs | 2.0 | Strongest synonymy |
+| IsA | 1.5 | Hypernymy |
+| PartOf | 1.3 | Meronymy |
+| RelatedTo | 0.8 | Generic |
+| Antonym | -0.5 | Opposition |
+
+---
+
+### Algorithm Synergy: How They Work Together
+
+The real power emerges from how these algorithms interact:
+
+```
+Document Ingestion:
+  ├─→ Tokenization → Layer 0 (tokens)
+  ├─→ Bigram extraction → Layer 1 (bigrams)
+  ├─→ Co-occurrence counting → lateral connections
+  └─→ Document indexing → Layer 3 (documents)
+
+Compute Phase:
+  ├─→ TF-IDF/BM25 → distinctiveness scores
+  ├─→ PageRank → importance scores (uses lateral connections)
+  ├─→ Louvain clustering → concept clusters (uses importance + connections)
+  └─→ Semantic extraction → typed relations → retrofitted connections
+
+Query Phase:
+  ├─→ Query expansion (uses lateral connections + concepts + PageRank)
+  ├─→ GB-BM25 search (uses TF-IDF + PageRank + proximity)
+  └─→ Multi-stage ranking (uses concepts → documents → passages)
+```
+
+**Key Insight:** Each algorithm feeds into the next. PageRank uses the connection graph. Louvain uses PageRank scores for naming clusters. Query expansion uses both connections and concepts. Search combines all signals. This layered approach creates compound intelligence.
+
+---
+
+## Author's Reflections
+
+### On the Power of Classical Algorithms
+
+The Cortical Text Processor demonstrates that **semantic understanding doesn't require neural networks**. PageRank, TF-IDF, and Louvain are algorithms from the 1990s-2000s, yet their combination produces remarkably intelligent behavior:
+
+- Finding relevant code by understanding concepts, not just keywords
+- Discovering what's *important* vs. what's merely *frequent*
+- Bridging terminology gaps through multi-hop inference
+
+This isn't to dismiss modern ML approaches—they excel at many tasks. But there's profound value in systems that are:
+1. **Explainable**: Every result can be traced through expansion weights, PageRank contributions, and connection paths
+2. **Portable**: Zero dependencies means running anywhere Python runs
+3. **Debuggable**: When results are wrong, you can inspect the graph and fix the model
+
+### On the Graph Metaphor
+
+The "cortical" metaphor is apt not because this system mimics actual neurons, but because it captures a key insight: **understanding emerges from connections**. Individual terms are meaningless; their meaning arises from relationships to other terms.
+
+This is why co-occurrence graphs work so well for semantic search. Words that appear together share context. Context is meaning.
+
+### On Zero Dependencies
+
+The constraint of zero external dependencies forced creative solutions:
+- Pure Python PageRank instead of NumPy matrix operations
+- Regex-based relation extraction instead of NLP libraries
+- Iterative Louvain instead of graph library implementations
+
+These constraints produced a system that's simultaneously simpler (no dependency hell) and more educational (implementations are readable). Every algorithm is visible in the source.
+
+### On What's Missing
+
+The 9 legacy tasks represent genuine gaps:
+- **REST API**: The current system requires Python. HTTP would democratize access.
+- **Async API**: Blocking calls limit web application integration.
+- **Streaming**: Large result sets shouldn't require loading everything into memory.
+- **Interactive REPL**: Exploration should be frictionless.
+
+These aren't nice-to-haves—they're the difference between a library and a platform.
+
+### On Future Directions
+
+The most exciting future isn't in the legacy tasks, but in what becomes possible after them:
+
+1. **Hybrid Search**: Combining graph-based retrieval with LLM reranking
+2. **Active Learning**: Using search feedback to improve the graph
+3. **Cross-Language**: Applying the same algorithms to different programming languages
+4. **Real-Time Updates**: Incremental graph updates as code changes
+
+The foundation is solid. The algorithms are proven. What remains is packaging them for production use.
+
+---
+
 ## Success Metrics
 
 ### For Production Readiness
