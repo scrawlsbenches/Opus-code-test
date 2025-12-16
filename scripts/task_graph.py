@@ -330,6 +330,10 @@ Examples:
     # Parse task list
     if not args.task_list.exists():
         print(f"Error: {args.task_list} not found!")
+        print("\nNote: TASK_LIST.md has been replaced with a new task management system.")
+        print("To view tasks, use:")
+        print("  python scripts/task_utils.py list")
+        print("\nFor more information, see docs/merge-friendly-tasks.md")
         return 1
 
     tasks = parse_task_list(args.task_list)

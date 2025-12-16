@@ -606,7 +606,6 @@ Key defaults to know:
 ### Task Management (Merge-Friendly System)
 
 **IMPORTANT:** This project uses a merge-friendly task system in `tasks/` directory.
-The legacy `TASK_LIST.md` is kept for historical reference only.
 
 **Creating tasks:**
 ```bash
@@ -695,6 +694,38 @@ class TestYourFeature(unittest.TestCase):
 | `shared_processor` | session | Full samples/ corpus (~125 docs) |
 | `fresh_processor` | function | Empty processor for isolated tests |
 | `small_corpus_docs` | function | Raw document dict |
+
+### Test Markers for Optional Dependencies
+
+Tests requiring optional dependencies are excluded by default during development for faster iteration.
+
+**Markers defined in pyproject.toml:**
+
+| Marker | Tests | Dependency |
+|--------|-------|------------|
+| `optional` | All optional tests | (meta-marker) |
+| `mcp` | MCP server tests | `mcp>=1.0` |
+| `protobuf` | Serialization tests | `protobuf>=4.0` |
+| `fuzz` | Property-based tests | `hypothesis>=6.0` |
+| `slow` | Long-running tests | (none) |
+
+**Running tests:**
+
+```bash
+# Development (default) - excludes optional tests
+pytest tests/
+
+# Include optional tests (like CI)
+pytest tests/ -m ""
+
+# Using run_tests.py
+python scripts/run_tests.py unit --include-optional
+
+# Run only fuzzing tests
+pytest tests/ -m "fuzz"
+```
+
+**CI behavior:** All CI stages use `-m ""` to run the complete test suite including optional tests.
 
 **Always test:**
 - Empty corpus case
@@ -1117,7 +1148,7 @@ For Director orchestration and parallel agent workflows:
 - `scripts/orchestration_utils.py` - Director orchestration tracking (plans, batches, metrics)
 - `scripts/verify_batch.py` - Automated batch verification
 
-See `docs/director.md` for comprehensive orchestration documentation.
+See `.claude/commands/director.md` for comprehensive orchestration documentation.
 
 ---
 
@@ -1412,6 +1443,110 @@ export ML_COLLECTION_ENABLED=0
 # Stats and validation still work when disabled
 ```
 
+### File Prediction Model
+
+The first ML model is available: **predict which files to modify** based on a task description.
+
+```bash
+# Train the model on commit history
+python scripts/ml_file_prediction.py train
+
+# Predict files for a task
+python scripts/ml_file_prediction.py predict "Add authentication feature"
+
+# Evaluate model performance (80/20 train/test split)
+python scripts/ml_file_prediction.py evaluate --split 0.2
+
+# View model statistics
+python scripts/ml_file_prediction.py stats
+```
+
+**How it works:**
+- Extracts commit type patterns (feat:, fix:, docs:, refactor:, etc.)
+- Builds file co-occurrence matrix from commit history
+- Maps keywords from commit messages to files
+- Uses TF-IDF-style scoring with frequency penalties
+
+**For comprehensive training guidance**, see [docs/ml-training-best-practices.md](docs/ml-training-best-practices.md) covering:
+- Data quality guidelines and filtering strategies
+- Training workflow and when to retrain
+- Performance optimization and hyperparameter tuning
+- Common pitfalls (overfitting, staleness, data leakage)
+- Evaluation metrics interpretation (MRR, Recall@K, Precision@K)
+- Integration with git hooks and CI/CD
+
+**Prediction with seed files:**
+```bash
+# If you know some files, boost co-occurring files
+python scripts/ml_file_prediction.py predict "Fix related bug" --seed auth.py login.py
+```
+
+**Current metrics** (403 commits, 20% test split):
+| Metric | Value | Description |
+|--------|-------|-------------|
+| MRR | 0.43 | First correct prediction ~position 2-3 |
+| Recall@10 | 0.48 | Half of actual files in top 10 |
+| Precision@1 | 0.31 | 31% of top predictions correct |
+
+**Model storage:** `.git-ml/models/file_prediction.json`
+
+**Training requirements:** See [docs/ml-milestone-thresholds.md](docs/ml-milestone-thresholds.md) for detailed explanation of why 500 commits are needed for reliable file prediction.
+
+#### Pre-Commit File Suggestions
+
+The ML file prediction is integrated into git as a pre-commit hook that suggests potentially missing files:
+
+```bash
+# Automatically installed when you run:
+python scripts/ml_data_collector.py install-hooks
+
+# Creates .git/hooks/prepare-commit-msg
+```
+
+**How it works:**
+1. You run `git commit -m "feat: Add authentication"`
+2. Hook analyzes the commit message
+3. Hook runs ML file prediction
+4. If high-confidence files aren't staged, warns you
+5. You can choose to add them or proceed
+
+**Example output:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 ML File Prediction Suggestion
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Based on your commit message, these files might need changes:
+
+  • tests/test_authentication.py                 (confidence: 0.823)
+  • docs/api.md                                  (confidence: 0.654)
+
+Staged files:
+  ✓ cortical/authentication.py
+
+ℹ️  Tip: Review the suggestions above.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Configuration (via environment variables):**
+- `ML_SUGGEST_ENABLED=0` - Disable suggestions (default: 1)
+- `ML_SUGGEST_THRESHOLD=0.7` - Confidence threshold (default: 0.5)
+- `ML_SUGGEST_BLOCKING=1` - Block commit if missing files (default: 0)
+- `ML_SUGGEST_TOP_N=10` - Number of predictions to check (default: 5)
+
+**When it runs:**
+- ✅ Regular commits (`git commit -m "..."`)
+- ❌ Merge commits, amends, rebases (too noisy)
+- ❌ Empty commits or no staged files
+- ❌ Model not trained (silently skips)
+
+**Testing without committing:**
+```bash
+bash scripts/test-ml-precommit-hook.sh
+```
+
+See [docs/ml-precommit-suggestions.md](docs/ml-precommit-suggestions.md) for detailed documentation.
+
 ### Automatic Session Capture
 
 **Pre-configured. No setup needed.**
@@ -1442,6 +1577,7 @@ Data collection is fully automatic via hooks configured in `.claude/settings.loc
 |------|---------|--------|
 | **SessionStart** | Session begins | Starts ML session, installs git hooks, shows stats |
 | **Stop** | Session ends | Captures full transcript with all exchanges |
+| **prepare-commit-msg** | Before commit | Suggests missing files based on commit message |
 | **post-commit** | After commit | Captures commit metadata with diff hunks |
 | **pre-push** | Before push | Reports collection stats |
 | **CI workflow** | GitHub Actions | Auto-captures CI pass/fail results |
@@ -1449,6 +1585,7 @@ Data collection is fully automatic via hooks configured in `.claude/settings.loc
 **Hook files:**
 - `scripts/ml-session-start-hook.sh` - SessionStart handler
 - `scripts/ml-session-capture-hook.sh` - Stop handler
+- `scripts/ml-precommit-suggest.sh` - prepare-commit-msg handler
 
 **CI Integration:**
 The GitHub Actions workflow (`.github/workflows/ci.yml`) includes an `ml-ci-capture` job that automatically records CI results for each commit. This runs after the coverage-report job and captures:
@@ -1479,6 +1616,7 @@ See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
 - **Definition of Done**: `docs/definition-of-done.md` - when is a task truly complete?
 - **Text-as-Memories**: `docs/text-as-memories.md` - knowledge management guide
 - **Task Management**: `docs/merge-friendly-tasks.md` - merge-friendly task system with collision-free IDs
+- **ML Milestone Thresholds**: `docs/ml-milestone-thresholds.md` - why 500/2000/5000 commits for training
 - **Merge-Friendly Tasks**: See "Task Management (Merge-Friendly System)" section above for task workflow
 
 ---

@@ -314,7 +314,7 @@ class FluentProcessor:
         - Concept clustering (optional)
 
         Args:
-            verbose: Print progress messages (deprecated, use show_progress)
+            verbose: Print debug messages via Python logging (complementary to show_progress)
             build_concepts: Build concept clusters (Layer 2)
             pagerank_method: 'standard', 'semantic', or 'hierarchical'
             connection_strategy: 'document_overlap', 'semantic', 'embedding', or 'hybrid'

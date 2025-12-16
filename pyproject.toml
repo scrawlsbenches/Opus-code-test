@@ -49,6 +49,7 @@ dev = [
     "pytest>=7.0",
     "mcp>=1.0",  # Required for MCP server tests
     "pyyaml>=6.0",  # Required for workflow integration tests
+    "hypothesis>=6.0",  # Required for fuzz testing (tests/security/test_fuzzing.py)
 ]
 
 [project.urls]
@@ -91,3 +92,15 @@ filterwarnings = [
     # Allow our intentional pickle deprecation warnings (SEC-008)
     "ignore:Pickle format is deprecated:DeprecationWarning",
 ]
+
+# Custom markers for test organization
+markers = [
+    "optional: Tests requiring optional dependencies (mcp, hypothesis, numpy)",
+    "fuzz: Property-based fuzzing tests (requires hypothesis)",
+    "mcp: MCP server tests (requires mcp package)",
+    "slow: Tests that take >5 seconds to run",
+]
+
+# Default: skip optional and slow tests during development
+# CI overrides with: pytest -m "" (run all) or explicitly includes markers
+addopts = "-m 'not optional and not slow'"

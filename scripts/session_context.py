@@ -81,11 +81,12 @@ class SessionContextGenerator:
             return []
 
         sessions = []
-        # Sort by mtime (newest first), with filename as secondary key for stability
-        # when files have the same mtime (can happen in tight loops)
+        # Sort by filename (newest first). Filenames include the started_at timestamp
+        # (format: YYYY-MM-DD_HH-MM-SS_session_id.json), making this deterministic.
+        # This is more reliable than mtime which can be non-deterministic in fast loops.
         session_files = sorted(
             self.tasks_dir.glob("*.json"),
-            key=lambda p: (p.stat().st_mtime, p.name),
+            key=lambda p: p.name,
             reverse=True
         )
 

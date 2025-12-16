@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "extracted_at": "2025-12-16T00:00:07.141707",
+  "parent_session_id": "5b92d21c-2b63-415c-9299-b17b45b2e4d6",
+  "parent_transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/5b92d21c-2b63-415c-9299-b17b45b2e4d6.jsonl",
+  "orchestration_detected": true,
+  "total_sub_agents": 4,
+  "batches": [
+    {
+      "batch_index": 0,
+      "execution_type": "parallel",
+      "agents": [
+        {
+          "agent_id": "16615d83",
+          "session_id": "5b92d21c-2b63-415c-9299-b17b45b2e4d6",
+          "model": "claude-haiku-4-5-20251001",
+          "started_at": "2025-12-15T23:46:46.943Z",
+          "completed_at": "2025-12-15T23:48:01.815Z",
+          "duration_ms": 74872,
+          "tools_used": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ],
+          "tool_count": 19,
+          "thinking_blocks": 9,
+          "has_error": true,
+          "error_summary": "Exit code 2\n/bin/bash: eval: line 2: syntax error: unexpected end of file",
+          "output_preview": "Based on my comprehensive analysis of the `scripts/ml_collector/` package, here is the test coverage report:\n\n---\n\n## Test Coverage Analysis: `scripts/ml_collector/` Package\n\n### Test Files Found (4 total)\n1. `/home/user/Opus-code-test/tests/unit/test_ml_export.py` - Export functionality (25 tests)\n2. `/home/user/Opus-code-test/tests/unit/test_ml_feedback.py` - Chat feedback & listing (19 tests)\n3. `/home/user/Opus-code-test/tests/unit/test_ml_quality.py` - Data quality analysis (23 tests)\n4. `/",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-16615d83.jsonl"
+        },
+        {
+          "agent_id": "0e0270da",
+          "session_id": "5b92d21c-2b63-415c-9299-b17b45b2e4d6",
+          "model": "claude-haiku-4-5-20251001",
+          "started_at": "2025-12-15T23:46:46.991Z",
+          "completed_at": "2025-12-15T23:47:54.410Z",
+          "duration_ms": 67419,
+          "tools_used": [
+            "Read",
+            "Glob",
+            "Grep"
+          ],
+          "tool_count": 4,
+          "thinking_blocks": 5,
+          "has_error": false,
+          "error_summary": null,
+          "output_preview": "Based on my analysis of `/home/user/Opus-code-test/scripts/ml_collector/orchestration.py`, I've identified several edge cases and potential failure modes. Here's the structured report:\n\n---\n\n## ORCHESTRATION.PY - FAILURE MODES ANALYSIS\n\n### CRITICAL ISSUES\n\n#### 1. Silent Data Loss: Missing Timestamps\n**Location:** `parse_agent_transcript()` line 206-207  \n**Severity:** CRITICAL\n\n```python\nif not timestamps:\n    return None\n```\n\n**Issue:**\n- If an agent transcript file contains valid JSON data w",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-0e0270da.jsonl"
+        },
+        {
+          "agent_id": "a56d849e",
+          "session_id": "5b92d21c-2b63-415c-9299-b17b45b2e4d6",
+          "model": "claude-haiku-4-5-20251001",
+          "started_at": "2025-12-15T23:46:47.051Z",
+          "completed_at": "2025-12-15T23:49:36.239Z",
+          "duration_ms": 169188,
+          "tools_used": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ],
+          "tool_count": 52,
+          "thinking_blocks": 30,
+          "has_error": true,
+          "error_summary": "File content (43019 tokens) exceeds maximum allowed tokens (25000). Please use offset and limit parameters to read specific portions of the file, or use the GrepTool to search for specific content.",
+          "output_preview": "Now I have complete information. Let me create a comprehensive structured report:\n\n## ORCHESTRATION DATA EXTRACTION INTEGRATION REPORT\n\nBased on my thorough search of the codebase, here is the complete audit of where orchestration data extraction should be called but might not be:\n\n---\n\n### **PLACES WHERE ORCHESTRATION EXTRACTION IS CURRENTLY CALLED**\n\n1. **CLI Command Handler - `orchestration` command**\n   - Location: `/home/user/Opus-code-test/scripts/ml_data_collector.py` lines 4153-4225\n   -",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-a56d849e.jsonl"
+        },
+        {
+          "agent_id": "77970ad5",
+          "session_id": "5b92d21c-2b63-415c-9299-b17b45b2e4d6",
+          "model": "claude-haiku-4-5-20251001",
+          "started_at": "2025-12-15T23:46:47.261Z",
+          "completed_at": "2025-12-15T23:48:47.874Z",
+          "duration_ms": 120613,
+          "tools_used": [
+            "Glob",
+            "Read",
+            "Grep",
+            "Bash"
+          ],
+          "tool_count": 35,
+          "thinking_blocks": 13,
+          "has_error": false,
+          "error_summary": null,
+          "output_preview": "Now let me create a comprehensive summary report of my findings:\n\n## Documentation Completeness Audit: ML Collector Orchestration Feature\n\nBased on my thorough investigation of the codebase, here's a structured report on the documentation status:\n\n---\n\n### 1. **ORCHESTRATION IN CLAUDE.md**\n\n**Status:** Minimal, but present with critical error\n\n**Current Content:**\n- Quick reference table with 2 commands:\n  - `Create orchestration plan | python scripts/orchestration_utils.py generate --type plan`",
+          "transcript_path": "/root/.claude/projects/-home-user-Opus-code-test/agent-77970ad5.jsonl"
+        }
+      ],
+      "started_at": "2025-12-15T23:46:46.943Z",
+      "completed_at": "2025-12-15T23:49:36.239Z",
+      "duration_ms": 169296,
+      "all_succeeded": false
+    }
+  ],
+  "models_used": [
+    "claude-haiku-4-5-20251001"
+  ],
+  "total_tools_used": 110,
+  "unique_tools": [
+    "Bash",
+    "Glob",
+    "Grep",
+    "Read"
+  ],
+  "total_duration_ms": 169296,
+  "success_rate": 50.0
+}

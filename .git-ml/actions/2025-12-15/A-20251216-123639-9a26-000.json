@@ -1,0 +1,19 @@
+{
+  "id": "A-20251216-123639-9a26-000",
+  "timestamp": "2025-12-15T15:05:56.985Z",
+  "session_id": "9a26e7df-18b3-4ac7-933b-3f5fb81a0e10",
+  "action_type": "command",
+  "target": "",
+  "context": {
+    "tool": "Bash",
+    "input": {
+      "tool": "Bash",
+      "input": {
+        "command": "git log --oneline -20 --graph",
+        "description": "View recent git history with merge structure"
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}

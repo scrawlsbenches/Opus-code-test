@@ -63,6 +63,18 @@ Usage:
 
     # Test redaction patterns
     python scripts/ml_data_collector.py redact-test --text "api_key=secret123"
+
+    # Extract director orchestration data (sub-agent patterns)
+    python scripts/ml_data_collector.py orchestration extract       # Extract from current project
+    python scripts/ml_data_collector.py orchestration extract --save  # Extract and save
+    python scripts/ml_data_collector.py orchestration summary       # Show summary only
+    python scripts/ml_data_collector.py orchestration list          # List saved extractions
+
+    # Chunked storage for git-friendly large file storage
+    python scripts/ml_data_collector.py chunked migrate             # Migrate chats/commits to chunks
+    python scripts/ml_data_collector.py chunked compact             # Compact old chunks
+    python scripts/ml_data_collector.py chunked stats               # Show chunked storage stats
+    python scripts/ml_data_collector.py chunked reconstruct -o data.jsonl  # Reconstruct from chunks
 """
 
 import json
@@ -117,6 +129,11 @@ TRACKED_DIR = ML_DATA_DIR / "tracked"           # Directory for git-tracked data
 COMMITS_LITE_FILE = TRACKED_DIR / "commits.jsonl"   # Commit metadata (one per line)
 SESSIONS_LITE_FILE = TRACKED_DIR / "sessions.jsonl" # Session summaries (one per line)
 
+# CSV export truncation defaults
+CSV_DEFAULT_TRUNCATE_LENGTH = 1000  # Default max length for generic fields
+CSV_DEFAULT_TRUNCATE_QUERY = 500    # Default max length for query/input fields
+CSV_DEFAULT_TRUNCATE_RESPONSE = 2000  # Default max length for response/output fields
+
 # Training milestones
 MILESTONES = {
     "file_prediction": {"commits": 500, "sessions": 100, "chats": 200},
@@ -126,13 +143,21 @@ MILESTONES = {
 
 # Schema validation definitions
 COMMIT_SCHEMA = {
+    # Core required fields (present in both full and lite commits)
     "required": ["hash", "message", "author", "timestamp", "branch", "files_changed",
-                 "insertions", "deletions", "hunks", "hour_of_day", "day_of_week"],
+                 "insertions", "deletions", "hour_of_day", "day_of_week"],
     "types": {
         "hash": str, "message": str, "author": str, "timestamp": str, "branch": str,
-        "files_changed": list, "insertions": int, "deletions": int, "hunks": list,
+        "files_changed": list, "insertions": int, "deletions": int,
+        # Optional fields (may be omitted in lite commits)
+        "hunks": list,  # Excluded from lite commits to reduce storage
+        "related_chats": list,  # Only present when commit is linked to session
+        # Commit metadata
         "hour_of_day": int, "day_of_week": str, "is_merge": bool, "is_initial": bool,
-        "parent_count": int, "session_id": (str, type(None)), "related_chats": list,
+        "parent_count": int, "session_id": (str, type(None)),
+        # Optional tracking fields
+        "seconds_since_last_commit": (int, type(None)), "ci_result": (str, type(None)),
+        "reverted": bool, "amended": bool,
     }
 }
 
@@ -142,6 +167,7 @@ CHAT_SCHEMA = {
     "types": {
         "id": str, "timestamp": str, "session_id": str, "query": str, "response": str,
         "files_referenced": list, "files_modified": list, "tools_used": list,
+        "tool_outputs": list,  # Optional: tool outputs with success status
         "query_tokens": int, "response_tokens": int,
         "user_feedback": (dict, str, type(None)),  # Can be dict, legacy string, or None
     }
@@ -1072,6 +1098,7 @@ class TranscriptExchange:
     response: str
     tools_used: List[str]
     tool_inputs: List[Dict]
+    tool_outputs: List[Dict]  # Tool results with output, success status
     timestamp: str
     thinking: Optional[str] = None
 
@@ -1095,6 +1122,7 @@ def parse_transcript_jsonl(filepath: Path) -> List[TranscriptExchange]:
     current_response_parts = []
     current_tools = []
     current_tool_inputs = []
+    current_tool_outputs = []
     current_thinking = None
     current_timestamp = None
 
@@ -1122,6 +1150,7 @@ def parse_transcript_jsonl(filepath: Path) -> List[TranscriptExchange]:
                             response=' '.join(current_response_parts),
                             tools_used=current_tools,
                             tool_inputs=current_tool_inputs,
+                            tool_outputs=current_tool_outputs,
                             timestamp=current_timestamp or timestamp,
                             thinking=current_thinking,
                         ))
@@ -1139,6 +1168,7 @@ def parse_transcript_jsonl(filepath: Path) -> List[TranscriptExchange]:
                     current_response_parts = []
                     current_tools = []
                     current_tool_inputs = []
+                    current_tool_outputs = []
                     current_thinking = None
                     current_timestamp = timestamp
 
@@ -1166,6 +1196,27 @@ def parse_transcript_jsonl(filepath: Path) -> List[TranscriptExchange]:
                                     'input': tool_input,
                                 })
 
+                            elif block_type == 'tool_result':
+                                # Capture tool outputs with truncation
+                                output_content = block.get('content', '')
+                                is_error = block.get('is_error', False)
+
+                                # Truncate large outputs (keep first 500 chars)
+                                MAX_OUTPUT_LENGTH = 500
+                                if isinstance(output_content, str):
+                                    truncated_output = output_content[:MAX_OUTPUT_LENGTH]
+                                    if len(output_content) > MAX_OUTPUT_LENGTH:
+                                        truncated_output += '... [truncated]'
+                                else:
+                                    # Handle non-string outputs (convert to string)
+                                    truncated_output = str(output_content)[:MAX_OUTPUT_LENGTH]
+
+                                current_tool_outputs.append({
+                                    'output': truncated_output,
+                                    'success': not is_error,
+                                    'is_error': is_error,
+                                })
+
         # Don't forget the last exchange
         if current_query and current_response_parts:
             exchanges.append(TranscriptExchange(
@@ -1173,6 +1224,7 @@ def parse_transcript_jsonl(filepath: Path) -> List[TranscriptExchange]:
                 response=' '.join(current_response_parts),
                 tools_used=current_tools,
                 tool_inputs=current_tool_inputs,
+                tool_outputs=current_tool_outputs,
                 timestamp=current_timestamp or '',
                 thinking=current_thinking,
             ))
@@ -1303,6 +1355,7 @@ def process_transcript(
     queries = []
     tool_usage_count = {}  # Track tool usage frequency
 
+    actions_saved = 0
     for ex in exchanges:
         files_ref, files_mod = extract_files_from_tool_inputs(ex.tool_inputs)
         all_files_ref.update(files_ref)
@@ -1318,6 +1371,45 @@ def process_transcript(
         if query_preview and query_preview not in queries:
             queries.append(query_preview)
 
+        # Save individual actions for each tool use
+        if save_exchanges:
+            for i, (tool_name, tool_input) in enumerate(zip(ex.tools_used, ex.tool_inputs)):
+                try:
+                    # Determine action type from tool name
+                    action_type_map = {
+                        'Read': 'read', 'Glob': 'search', 'Grep': 'search',
+                        'Edit': 'edit', 'Write': 'edit', 'MultiEdit': 'edit',
+                        'Bash': 'command', 'Task': 'delegate',
+                        'WebFetch': 'fetch', 'WebSearch': 'search',
+                    }
+                    action_type = action_type_map.get(tool_name, 'other')
+
+                    # Extract target from tool input
+                    target = ''
+                    if isinstance(tool_input, dict):
+                        target = tool_input.get('file_path') or tool_input.get('path') or \
+                                tool_input.get('pattern') or tool_input.get('command') or \
+                                tool_input.get('query') or tool_input.get('url') or ''
+
+                    # Get output if available
+                    tool_output = ex.tool_outputs[i] if i < len(ex.tool_outputs) else {}
+                    success = tool_output.get('success', True) if isinstance(tool_output, dict) else True
+
+                    action = ActionEntry(
+                        id=f"A-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{session_id[:4]}-{actions_saved:03d}",
+                        timestamp=ex.timestamp or datetime.now().isoformat(),
+                        session_id=session_id,
+                        action_type=action_type,
+                        target=str(target)[:500],  # Truncate long targets
+                        context={'tool': tool_name, 'input': tool_input},
+                        success=success,
+                        result_summary=str(tool_output)[:200] if tool_output else None,
+                    )
+                    save_action(action, validate=True)
+                    actions_saved += 1
+                except Exception as e:
+                    logger.debug(f"Error saving action for {tool_name}: {e}")
+
         if save_exchanges:
             try:
                 entry = ChatEntry(
@@ -1329,6 +1421,7 @@ def process_transcript(
                     files_referenced=files_ref,
                     files_modified=files_mod,
                     tools_used=ex.tools_used,
+                    tool_outputs=ex.tool_outputs,  # Include tool outputs
                     query_tokens=len(ex.query.split()),
                     response_tokens=len(ex.response.split()),
                 )
@@ -1337,16 +1430,6 @@ def process_transcript(
                 saved_count += 1
             except Exception as e:
                 logger.error(f"Error saving exchange: {e}")
-
-    result = {
-        'status': 'success',
-        'exchanges': len(exchanges),
-        'saved': saved_count,
-        'session_id': session_id,
-        'tools_used': list(total_tools),
-        'files_referenced': list(all_files_ref),
-        'files_modified': list(all_files_mod),
-    }
 
     # Save lightweight session summary for git tracking
     if save_exchanges and exchanges:
@@ -1383,7 +1466,16 @@ def process_transcript(
             # Don't fail the whole operation if session lite save fails
             logger.warning(f"Failed to save session lite: {e}")
 
-    return result
+    return {
+        'status': 'success',
+        'exchanges': len(exchanges),
+        'saved': saved_count,
+        'actions_saved': actions_saved,
+        'session_id': session_id,
+        'tools_used': list(total_tools),
+        'files_referenced': list(all_files_ref),
+        'files_modified': list(all_files_mod),
+    }
 
 
 # ============================================================================
@@ -1456,6 +1548,7 @@ class ChatEntry:
     files_referenced: List[str]
     files_modified: List[str]
     tools_used: List[str]
+    tool_outputs: List[Dict] = field(default_factory=list)  # Tool results with output, success status
 
     # Outcome
     user_feedback: Optional[str] = None  # positive, negative, neutral
@@ -1891,6 +1984,7 @@ def log_chat(
     files_referenced: Optional[List[str]] = None,
     files_modified: Optional[List[str]] = None,
     tools_used: Optional[List[str]] = None,
+    tool_outputs: Optional[List[Dict]] = None,
     user_feedback: Optional[str] = None,
     skip_redaction: bool = False,
 ) -> ChatEntry:
@@ -1920,6 +2014,7 @@ def log_chat(
         files_referenced=files_referenced or [],
         files_modified=files_modified or [],
         tools_used=tools_used or [],
+        tool_outputs=tool_outputs or [],
         user_feedback=user_feedback,
         query_tokens=len(query.split()),  # Rough estimate
         response_tokens=len(response.split()),
@@ -2022,8 +2117,20 @@ def _export_jsonl(records: List[Dict], output_path: Path):
             f.write(json.dumps(record, ensure_ascii=False) + '\n')
 
 
-def _export_csv(records: List[Dict], output_path: Path):
-    """Export records as CSV."""
+def _export_csv(records: List[Dict], output_path: Path,
+                truncate_input: int = CSV_DEFAULT_TRUNCATE_QUERY,
+                truncate_output: int = CSV_DEFAULT_TRUNCATE_RESPONSE,
+                truncate_files: int = CSV_DEFAULT_TRUNCATE_QUERY):
+    """
+    Export records as CSV with configurable truncation.
+
+    Args:
+        records: List of records to export
+        output_path: Path to output CSV file
+        truncate_input: Max length for input/query fields (0 = no truncation)
+        truncate_output: Max length for output/response fields (0 = no truncation)
+        truncate_files: Max length for files field (0 = no truncation)
+    """
     import csv
 
     with open(output_path, 'w', encoding='utf-8', newline='') as f:
@@ -2035,13 +2142,26 @@ def _export_csv(records: List[Dict], output_path: Path):
 
         for record in records:
             context = record.get('context', {})
+
+            # Apply truncation (0 means no truncation)
+            input_text = record.get('input', '')
+            output_text = record.get('output', '')
+            files_text = '; '.join(context.get('files', []))
+
+            if truncate_input > 0:
+                input_text = input_text[:truncate_input]
+            if truncate_output > 0:
+                output_text = output_text[:truncate_output]
+            if truncate_files > 0:
+                files_text = files_text[:truncate_files]
+
             row = {
                 'type': record.get('type', ''),
                 'timestamp': record.get('timestamp', ''),
-                'input': record.get('input', '')[:1000],  # Truncate for CSV
-                'output': record.get('output', '')[:1000],
+                'input': input_text,
+                'output': output_text,
                 'session_id': context.get('session_id', ''),
-                'files': '; '.join(context.get('files', []))[:500],
+                'files': files_text,
                 'tools_used': '; '.join(context.get('tools_used', [])),
             }
             writer.writerow(row)
@@ -2075,12 +2195,18 @@ def _export_huggingface(records: List[Dict], output_path: Path):
         json.dump(dataset, f, indent=2, ensure_ascii=False)
 
 
-def export_data(format: str, output_path: Path) -> Dict[str, Any]:
+def export_data(format: str, output_path: Path,
+                truncate_input: int = CSV_DEFAULT_TRUNCATE_QUERY,
+                truncate_output: int = CSV_DEFAULT_TRUNCATE_RESPONSE,
+                truncate_files: int = CSV_DEFAULT_TRUNCATE_QUERY) -> Dict[str, Any]:
     """Export collected ML data in training-ready formats.
 
     Args:
         format: Output format (jsonl, csv, huggingface)
         output_path: Path to write the exported data
+        truncate_input: Max length for input fields in CSV (0 = no truncation)
+        truncate_output: Max length for output fields in CSV (0 = no truncation)
+        truncate_files: Max length for files field in CSV (0 = no truncation)
 
     Returns:
         Stats dict with counts and file paths
@@ -2151,7 +2277,10 @@ def export_data(format: str, output_path: Path) -> Dict[str, Any]:
     if format == "jsonl":
         _export_jsonl(all_records, output_path)
     elif format == "csv":
-        _export_csv(all_records, output_path)
+        _export_csv(all_records, output_path,
+                   truncate_input=truncate_input,
+                   truncate_output=truncate_output,
+                   truncate_files=truncate_files)
     elif format == "huggingface":
         _export_huggingface(all_records, output_path)
     else:
@@ -2255,11 +2384,21 @@ def estimate_progress() -> Dict[str, Dict]:
     """Estimate progress toward training milestones."""
     counts = count_data()
 
+    # Map milestone keys to actual count keys
+    # MILESTONES uses "commits" but we want to count "commits_lite" (tracked in git)
+    # MILESTONES uses "sessions" but we want to count "sessions_lite" (tracked in git)
+    count_key_mapping = {
+        "commits": "commits_lite",  # Use lite commits for milestone progress
+        "sessions": "sessions_lite",  # Use lite sessions for milestone progress
+    }
+
     progress = {}
     for milestone, requirements in MILESTONES.items():
         milestone_progress = {}
         for data_type, required in requirements.items():
-            current = counts.get(data_type, 0)
+            # Use mapped key if available, otherwise use data_type directly
+            count_key = count_key_mapping.get(data_type, data_type)
+            current = counts.get(count_key, 0)
             milestone_progress[data_type] = {
                 "current": current,
                 "required": required,
@@ -3205,6 +3344,13 @@ POST_COMMIT_SNIPPET = '''
 # ML-DATA-COLLECTOR-HOOK
 # ML Data Collection - Post-Commit Hook
 # Automatically collects enriched commit data for model training
+
+# Skip ML-only commits to prevent infinite loop
+COMMIT_MSG=$(git log -1 --format=%s HEAD 2>/dev/null)
+if [[ "$COMMIT_MSG" == "data: ML tracking data"* ]] || [[ "$COMMIT_MSG" == "data: ML"* ]]; then
+    exit 0
+fi
+
 python scripts/ml_data_collector.py commit 2>/dev/null || true
 # END-ML-DATA-COLLECTOR-HOOK
 '''
@@ -3220,12 +3366,24 @@ fi
 # END-ML-DATA-COLLECTOR-HOOK
 '''
 
+PREPARE_COMMIT_MSG_SNIPPET = '''
+# ML-DATA-COLLECTOR-HOOK
+# ML File Prediction Suggestion Hook
+# Suggests potentially missing files based on commit message
+bash scripts/ml-precommit-suggest.sh "$@"
+# END-ML-DATA-COLLECTOR-HOOK
+'''
+
 
 def install_hooks():
     """Install git hooks for data collection, merging with existing hooks."""
     hooks_dir = Path(".git/hooks")
 
-    for hook_name, snippet in [("post-commit", POST_COMMIT_SNIPPET), ("pre-push", PRE_PUSH_SNIPPET)]:
+    for hook_name, snippet in [
+        ("post-commit", POST_COMMIT_SNIPPET),
+        ("pre-push", PRE_PUSH_SNIPPET),
+        ("prepare-commit-msg", PREPARE_COMMIT_MSG_SNIPPET)
+    ]:
         hook_path = hooks_dir / hook_name
 
         if hook_path.exists():
@@ -3266,8 +3424,8 @@ def main():
 
     command = sys.argv[1]
 
-    # Allow stats/estimate/validate/export/feedback/quality-report even when collection is disabled
-    read_only_commands = {"stats", "estimate", "validate", "session", "export", "feedback", "quality-report"}
+    # Allow stats/estimate/validate/export/feedback/quality-report/orchestration even when collection is disabled
+    read_only_commands = {"stats", "estimate", "validate", "session", "export", "feedback", "quality-report", "orchestration"}
 
     # Check if collection is disabled (via ML_COLLECTION_ENABLED=0)
     if not ML_COLLECTION_ENABLED and command not in read_only_commands:
@@ -3491,6 +3649,11 @@ def main():
     elif command == "validate":
         # Validate existing data against schemas
         import argparse
+        from ml_collector.config import (
+            COMMITS_DIR, CHATS_DIR, ACTIONS_DIR,
+            COMMIT_SCHEMA, CHAT_SCHEMA, ACTION_SCHEMA,
+            validate_schema
+        )
         parser = argparse.ArgumentParser()
         parser.add_argument("--fix", action="store_true",
                             help="Attempt to fix invalid entries")
@@ -3763,6 +3926,18 @@ def main():
             if saved > 0:
                 print(f"📝 ML: Captured {saved} exchange(s) from session")
 
+        # Archive the session after processing transcript (fixes session capture gap)
+        if not args.dry_run and result.get('saved', 0) > 0:
+            try:
+                archived_session = end_session(
+                    summary=f"Transcript: {result.get('saved', 0)} exchanges, "
+                           f"{len(result.get('tools_used', []))} tools"
+                )
+                if archived_session and args.verbose:
+                    print(f"📁 Archived session: {archived_session['id']}")
+            except Exception as e:
+                logger.warning(f"Failed to archive session: {e}")
+
     elif command == "export":
         # Export data for training
         import argparse
@@ -3772,6 +3947,17 @@ def main():
                             help="Output format")
         parser.add_argument("--output", required=True,
                             help="Output file path")
+        parser.add_argument("--truncate-input", type=int,
+                            default=CSV_DEFAULT_TRUNCATE_QUERY,
+                            help=f"Max length for input/query fields in CSV (default: {CSV_DEFAULT_TRUNCATE_QUERY}, 0=no truncation)")
+        parser.add_argument("--truncate-output", type=int,
+                            default=CSV_DEFAULT_TRUNCATE_RESPONSE,
+                            help=f"Max length for output/response fields in CSV (default: {CSV_DEFAULT_TRUNCATE_RESPONSE}, 0=no truncation)")
+        parser.add_argument("--truncate-files", type=int,
+                            default=CSV_DEFAULT_TRUNCATE_QUERY,
+                            help=f"Max length for files field in CSV (default: {CSV_DEFAULT_TRUNCATE_QUERY}, 0=no truncation)")
+        parser.add_argument("--no-truncate", action="store_true",
+                            help="Disable all truncation (overrides other truncate options)")
         args = parser.parse_args(sys.argv[2:])
 
         output_path = Path(args.output)
@@ -3795,10 +3981,27 @@ def main():
         print(f"Format: {args.format}")
         print(f"Output: {output_path}")
         print(f"Data: {counts['commits']} commits, {counts['chats']} chats")
+
+        # Handle --no-truncate flag (overrides individual truncate options)
+        if args.no_truncate:
+            truncate_input = 0
+            truncate_output = 0
+            truncate_files = 0
+            print("Truncation: Disabled")
+        else:
+            truncate_input = args.truncate_input
+            truncate_output = args.truncate_output
+            truncate_files = args.truncate_files
+            if args.format == "csv":
+                print(f"Truncation: input={truncate_input}, output={truncate_output}, files={truncate_files}")
+
         print()
 
         try:
-            stats = export_data(args.format, output_path)
+            stats = export_data(args.format, output_path,
+                              truncate_input=truncate_input,
+                              truncate_output=truncate_output,
+                              truncate_files=truncate_files)
             print(f"✅ Export complete!")
             print(f"   Records: {stats['records']}")
             print(f"   Commits: {stats['commits']}")
@@ -4191,6 +4394,163 @@ Your name and email (if provided) will be used for:
         print(f"\nRedacted ({redaction_count} patterns matched):")
         print(redacted[:500] + ('...' if len(redacted) > 500 else ''))
         print(f"{'='*60}\n")
+
+    elif command == "orchestration":
+        # Extract orchestration patterns from sub-agent transcripts
+        import argparse
+        from ml_collector.orchestration import (
+            extract_orchestration_from_directory,
+            extract_and_save,
+            print_orchestration_summary,
+            ORCHESTRATION_DIR
+        )
+
+        parser = argparse.ArgumentParser(description="Extract director orchestration data")
+        parser.add_argument("action", choices=["extract", "summary", "list"],
+                           help="Action to perform")
+        parser.add_argument("--project-dir", "-d", type=Path,
+                           help="Claude project transcript directory")
+        parser.add_argument("--session-id", "-s",
+                           help="Filter by parent session ID")
+        parser.add_argument("--save", action="store_true",
+                           help="Save extracted data to .git-ml/orchestration/")
+        args = parser.parse_args(sys.argv[2:])
+
+        # Default project directory
+        if args.project_dir is None:
+            # Try to find the Claude project directory for this repo
+            # Claude uses path with leading dash: /home/user/foo -> -home-user-foo
+            cwd_safe = os.getcwd().replace('/', '-').replace('\\', '-')
+            project_dir = Path.home() / '.claude' / 'projects' / cwd_safe
+            if not project_dir.exists():
+                print(f"Could not find Claude project directory at {project_dir}")
+                print("Use --project-dir to specify the transcript location")
+                sys.exit(1)
+        else:
+            project_dir = args.project_dir
+
+        if args.action == "extract":
+            if args.save:
+                extraction, saved_path = extract_and_save(
+                    project_dir,
+                    parent_session_id=args.session_id
+                )
+                if saved_path:
+                    print(f"Saved orchestration data to: {saved_path}")
+                print_orchestration_summary(extraction)
+            else:
+                extraction = extract_orchestration_from_directory(
+                    project_dir,
+                    parent_session_id=args.session_id
+                )
+                print_orchestration_summary(extraction)
+
+        elif args.action == "summary":
+            extraction = extract_orchestration_from_directory(
+                project_dir,
+                parent_session_id=args.session_id
+            )
+            print_orchestration_summary(extraction)
+
+        elif args.action == "list":
+            # List saved orchestration files
+            if not ORCHESTRATION_DIR.exists():
+                print("No orchestration data saved yet.")
+                print(f"Directory: {ORCHESTRATION_DIR}")
+            else:
+                files = sorted(ORCHESTRATION_DIR.glob("*.json"))
+                if not files:
+                    print("No orchestration files found.")
+                else:
+                    print(f"Saved orchestration extractions ({len(files)} files):")
+                    for f in files:
+                        print(f"  {f.name}")
+
+    elif command == "chunked":
+        # Chunked storage operations for git-friendly large file storage
+        import argparse
+        from ml_collector.chunked_storage import (
+            migrate_to_chunked, compact_chunks, get_chunked_stats,
+            reconstruct_all, CHUNKED_DIR
+        )
+        from ml_collector.config import CHATS_DIR, COMMITS_DIR
+
+        parser = argparse.ArgumentParser(
+            description="Chunked storage for git-friendly large file storage"
+        )
+        parser.add_argument("action", choices=["migrate", "compact", "stats", "reconstruct"],
+                           help="Action to perform")
+        parser.add_argument("--type", "-t", choices=["chat", "commit", "all"],
+                           default="all", help="Record type to process")
+        parser.add_argument("--keep-days", "-k", type=int, default=30,
+                           help="Days to keep separate before compacting (default: 30)")
+        parser.add_argument("--output", "-o", type=Path,
+                           help="Output file for reconstruction")
+        parser.add_argument("--session-id", "-s", default="migration",
+                           help="Session ID for migration")
+        args = parser.parse_args(sys.argv[2:])
+
+        if args.action == "migrate":
+            print("Migrating existing data to chunked storage...")
+            total = 0
+
+            if args.type in ("chat", "all"):
+                count = migrate_to_chunked(CHATS_DIR, "chat", args.session_id)
+                print(f"  Chats migrated: {count}")
+                total += count
+
+            if args.type in ("commit", "all"):
+                count = migrate_to_chunked(COMMITS_DIR, "commit", args.session_id)
+                print(f"  Commits migrated: {count}")
+                total += count
+
+            print(f"\nTotal records migrated: {total}")
+            print(f"Chunked storage: {CHUNKED_DIR}")
+
+        elif args.action == "compact":
+            print(f"Compacting chunks older than {args.keep_days} days...")
+            result = compact_chunks(keep_days=args.keep_days)
+            print(f"  Files before: {result['files_before']}")
+            print(f"  Files after:  {result['files_after']}")
+            if result['bytes_saved'] > 0:
+                print(f"  Bytes saved:  {result['bytes_saved']:,}")
+
+        elif args.action == "stats":
+            stats = get_chunked_stats()
+            print("\n" + "=" * 50)
+            print("CHUNKED STORAGE STATISTICS")
+            print("=" * 50)
+            print(f"\nTotal files:   {stats['total_files']}")
+            print(f"Total records: {stats['total_records']}")
+            if stats['total_bytes'] > 1024:
+                print(f"Total size:    {stats['total_bytes'] / 1024:.1f} KB")
+            else:
+                print(f"Total size:    {stats['total_bytes']} bytes")
+
+            if stats['by_type']:
+                print("\nBy type:")
+                for record_type, type_stats in stats['by_type'].items():
+                    print(f"  {record_type}:")
+                    print(f"    Files:   {type_stats['files']}")
+                    print(f"    Records: {type_stats['records']}")
+                    if type_stats['bytes'] > 1024:
+                        print(f"    Size:    {type_stats['bytes'] / 1024:.1f} KB")
+                    else:
+                        print(f"    Size:    {type_stats['bytes']} bytes")
+            print("=" * 50)
+
+        elif args.action == "reconstruct":
+            record_type = None if args.type == "all" else args.type
+            records = reconstruct_all(record_type)
+            print(f"Reconstructed {len(records)} records")
+
+            if args.output:
+                with open(args.output, 'w', encoding='utf-8') as f:
+                    for record in records:
+                        f.write(json.dumps(record) + '\n')
+                print(f"Written to: {args.output}")
+            else:
+                print("Use --output to save reconstructed data")
 
     else:
         print(f"Unknown command: {command}")

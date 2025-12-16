@@ -58,11 +58,18 @@ fi
 # Process the transcript
 cd "$cwd" 2>/dev/null || exit 0
 
-# Call the transcript processor (suppress errors to not block session end)
+# Error log location
+error_log="$HOME/.claude/ml-capture-errors.log"
+mkdir -p "$(dirname "$error_log")" 2>/dev/null
+
+# Call the transcript processor (log errors but don't block session end)
 python3 "$COLLECTOR" transcript \
     --file "$transcript_path" \
     --session-id "$session_id" \
-    2>/dev/null || true
+    2>>"$error_log" || {
+    echo "[$(date -Iseconds)] ML capture failed for session $session_id (transcript: $transcript_path)" >> "$error_log"
+    true  # Don't block Claude Code shutdown
+}
 
 # Commit tracked ML data (sessions.jsonl and commits.jsonl)
 # This ensures session data is persisted in git for team/branch sharing

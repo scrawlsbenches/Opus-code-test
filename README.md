@@ -1,6 +1,6 @@
 # Cortical Text Processor
 
-![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)
+![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Tests](https://img.shields.io/badge/tests-3800%2B%20passing-brightgreen.svg)
 ![Coverage](https://img.shields.io/badge/coverage-%3E90%25-brightgreen.svg)
@@ -118,6 +118,22 @@ This library provides a biologically-inspired approach to text processing, organ
 | Require cross-lingual search | Use multilingual embedding models |
 | Need image/multimodal search | Use CLIP or similar multimodal models |
 
+### Learn Information Retrieval by Reading Code
+
+This codebase teaches you how search actually works:
+
+| Concept | File | What You'll Learn |
+|---------|------|-------------------|
+| **PageRank** | `cortical/analysis/pagerank.py` | The algorithm that powered Google's original search (Brin & Page, 1998) |
+| **TF-IDF / BM25** | `cortical/analysis/tfidf.py` | Document relevance scoring used since 1972 (Robertson et al.) |
+| **Louvain Clustering** | `cortical/analysis/clustering.py` | Community detection for finding concept groups (Blondel et al., 2008) |
+| **Query Expansion** | `cortical/query/expansion.py` | How search engines find related terms |
+| **Graph Traversal** | `cortical/layers.py` | Building knowledge graphs from text |
+
+Every file is documented, type-hinted, and tested. Step through with a debugger to see exactly how each algorithm works.
+
+**See also:** [docs/our-story.md](docs/our-story.md) - How we develop by using the system on itself
+
 ### Example: Building a Documentation Search
 
 ```python
@@ -184,6 +200,11 @@ pip install -e .
 ```
 
 Or simply copy the `cortical/` directory into your project—zero dependencies means no pip required.
+
+**Verify installation:**
+```bash
+python -c "from cortical import CorticalTextProcessor; print('Installation successful')"
+```
 
 ## Quick Start
 
@@ -345,12 +366,30 @@ processor.compute_all(
 
 ## Performance
 
-Tested with 176 sample documents covering topics from neural networks to medieval falconry to sourdough breadmaking.
+### Benchmarks (Real Measurements)
+
+| Operation | Time | Notes |
+|-----------|------|-------|
+| Index 100 documents | ~1.3ms | BM25 scoring |
+| Search query | ~0.15ms | Pre-computed TF-IDF |
+| Add document (incremental) | ~50ms | Without full recompute |
+| Full compute_all() | ~500ms | 100 docs, all algorithms |
+
+### Corpus Size Recommendations
+
+| Documents | Recommendation |
+|-----------|----------------|
+| < 1,000 | Perfect fit |
+| 1,000 - 10,000 | Good fit, consider tuning |
+| 10,000 - 100,000 | Works, but consider hybrid approach |
+| 100,000+ | Use dedicated search infrastructure |
+
+### Test Coverage
 
 | Metric | Value |
 |--------|-------|
 | Sample documents | 176 |
-| Test functions | 3,150+ |
+| Test functions | 3,800+ |
 | Lines of code | 20,000+ |
 | Graph algorithms | O(1) ID lookups |
 
@@ -407,6 +446,52 @@ tests/                   # 3800+ tests (smoke, unit, integration, behavioral)
 showcase.py              # Interactive demonstration (run it!)
 samples/                 # 176 documents: quantum computing to cheese affinage
 scripts/                 # Developer tools (indexing, profiling, tasks)
+```
+
+## 🎨 Codebase Visualization
+
+Beautiful ASCII art visualizations of your codebase, git history, and code metrics.
+
+### Animated Visualizations
+
+| Matrix Rain | Fire Effect |
+|:-----------:|:-----------:|
+| ![Matrix Rain](assets/matrix_rain.gif) | ![Fire Effect](assets/fire_effect.gif) |
+| *Commit messages falling like code* | *Hot files burn brighter* |
+
+| Starfield | Neural Pulse |
+|:---------:|:------------:|
+| ![Starfield](assets/starfield.gif) | ![Neural Pulse](assets/neural_pulse.gif) |
+| *Commits flying through hyperspace* | *Data flowing through cortical layers* |
+
+### Code Skyline
+
+![Code Skyline](assets/code_skyline.gif)
+
+*File sizes as buildings - taller = more lines of code*
+
+### Run the Visualizations
+
+```bash
+# Static visualizations (brain diagram, skyline, heatmap, etc.)
+python scripts/ascii_codebase_art.py
+
+# Animated terminal experience (requires terminal with color support)
+python scripts/ascii_visualizer_animated.py
+
+# Interactive menu
+python scripts/ascii_visualizer_animated.py
+
+# Jump to specific effect
+python scripts/ascii_visualizer_animated.py --matrix   # Matrix rain
+python scripts/ascii_visualizer_animated.py --fire     # Fire effect
+python scripts/ascii_visualizer_animated.py --stars    # Starfield
+python scripts/ascii_visualizer_animated.py --neural   # Neural pulse
+python scripts/ascii_visualizer_animated.py --dashboard  # Live stats
+
+# Generate new GIFs (requires Pillow)
+pip install Pillow
+python scripts/generate_ascii_gifs.py
 ```
 
 ## AI Agent Support
@@ -508,6 +593,39 @@ Check your progress:
 python scripts/ml_data_collector.py stats
 python scripts/ml_data_collector.py estimate
 ```
+
+### File Prediction Model
+
+The first model is now available: **predict which files to modify** based on a task description.
+
+```bash
+# Train the model on your commit history
+python scripts/ml_file_prediction.py train
+
+# Predict files for a task
+python scripts/ml_file_prediction.py predict "Add authentication feature"
+# Output:
+#   1. cortical/processor.py          (0.268)
+#   2. tests/test_processor.py        (0.146)
+#   3. cortical/analysis.py           (0.134)
+
+# Evaluate model performance
+python scripts/ml_file_prediction.py evaluate --split 0.2
+
+# View model statistics
+python scripts/ml_file_prediction.py stats
+```
+
+**How it works:**
+- Learns from commit type patterns (feat:, fix:, docs:, etc.)
+- Builds file co-occurrence matrix (files often changed together)
+- Maps keywords to files based on commit messages
+- Uses TF-IDF-style scoring with frequency penalties
+
+**Current metrics** (on 20% holdout with 403 commits):
+- MRR: 0.43 (first correct prediction averages position ~2-3)
+- Recall@10: 0.48 (half of actual files appear in top 10 predictions)
+- Precision@1: 0.31 (31% of top predictions are correct)
 
 ### Setup (Opt-In)
 
