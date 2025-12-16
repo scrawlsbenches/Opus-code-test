@@ -1,6 +1,6 @@
 ---
 title: "Configuration"
-generated: "2025-12-16T17:02:01.491004Z"
+generated: "2025-12-16T17:26:23.832604Z"
 generator: "architecture"
 source_files:
   - "/home/user/Opus-code-test/cortical/constants.py"

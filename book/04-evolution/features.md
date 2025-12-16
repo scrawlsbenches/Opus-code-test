@@ -1,6 +1,6 @@
 ---
 title: "Feature Evolution"
-generated: "2025-12-16T17:05:09.337112Z"
+generated: "2025-12-16T17:26:23.882662Z"
 generator: "evolution"
 source_files:
   - "git log --grep=feat:"
@@ -18,9 +18,46 @@ tags:
 
 ## Overview
 
-The system has evolved through **19 feature additions**. Below is the narrative of how each capability came to be.
+The system has evolved through **22 feature additions**. Below is the narrative of how each capability came to be.
+
+## Documentation Capabilities
+
+### Add CI workflow and documentation (Wave 4)
+
+**Commit:** `940fdf2`  
+**Date:** 2025-12-16  
+**Files Modified:** 5  
+
+### Add animated GIF visualizations to README
+
+**Commit:** `b4d7c82`  
+**Date:** 2025-12-15  
+
+## Search Capabilities
+
+### Add search integration and web interface (Wave 3)
+
+**Commit:** `0022466`  
+**Date:** 2025-12-16  
+**Files Modified:** 11  
+
+### Add security concept group and TF-IDF weighted query expansion
+
+**Commit:** `af3a7e0`  
+**Date:** 2025-12-15  
+
+### Add comprehensive test coverage for query and analysis modules
+
+**Commit:** `70a4b1b`  
+**Date:** 2025-12-15  
 
 ## Other Capabilities
+
+### Add content generators for Cortical Chronicles (Wave 2)
+
+**Commit:** `3022110`  
+**Date:** 2025-12-16  
+**Files Modified:** 23  
 
 ### Add Cortical Chronicles book infrastructure (Wave 1)
 
@@ -97,25 +134,6 @@ The system has evolved through **19 feature additions**. Below is the narrative 
 **Commit:** `89d6aa5`  
 **Date:** 2025-12-15  
 **Files Modified:** 475  
-
-## Documentation Capabilities
-
-### Add animated GIF visualizations to README
-
-**Commit:** `b4d7c82`  
-**Date:** 2025-12-15  
-
-## Search Capabilities
-
-### Add security concept group and TF-IDF weighted query expansion
-
-**Commit:** `af3a7e0`  
-**Date:** 2025-12-15  
-
-### Add comprehensive test coverage for query and analysis modules
-
-**Commit:** `70a4b1b`  
-**Date:** 2025-12-15  
 
 ## Testing Capabilities
 

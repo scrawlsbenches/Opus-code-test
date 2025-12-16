@@ -1,6 +1,6 @@
 ---
 title: "Data Structures"
-generated: "2025-12-16T17:02:01.492237Z"
+generated: "2025-12-16T17:26:23.833745Z"
 generator: "architecture"
 source_files:
   - "/home/user/Opus-code-test/cortical/minicolumn.py"

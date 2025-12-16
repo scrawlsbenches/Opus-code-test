@@ -1,6 +1,6 @@
 ---
 title: "Persistence Layer"
-generated: "2025-12-16T17:02:01.490071Z"
+generated: "2025-12-16T17:26:23.831119Z"
 generator: "architecture"
 source_files:
   - "/home/user/Opus-code-test/cortical/persistence.py"

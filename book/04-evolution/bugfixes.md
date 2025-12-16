@@ -1,6 +1,6 @@
 ---
 title: "Bug Fixes and Lessons"
-generated: "2025-12-16T17:05:09.337785Z"
+generated: "2025-12-16T17:26:23.883509Z"
 generator: "evolution"
 source_files:
   - "git log --grep=fix:"
@@ -18,7 +18,7 @@ tags:
 
 ## Overview
 
-**15 bugs** have been identified and resolved. Each fix taught us something about the system.
+**14 bugs** have been identified and resolved. Each fix taught us something about the system.
 
 ## Bug Fix History
 
@@ -100,11 +100,4 @@ tags:
 
 **Commit:** `5b52da2`  
 **Date:** 2025-12-15  
-
-### Stop tracking ML commit data files (too large for GitHub)
-
-**Commit:** `a6f39e0`  
-**Date:** 2025-12-15  
-**Files Changed:** .git-ml/commits/0039ad5b_2025-12-11_24b1b10a.json, .git-ml/commits/00f88d48_2025-12-14_8749d448.json, .git-ml/commits/051d2002_2025-12-13_7896a312.json, .git-ml/commits/051d924c_2025-12-13_bfbb2049.json, .git-ml/commits/059085df_2025-12-10_4adc6156.json  
-*(and 467 more)*  
 

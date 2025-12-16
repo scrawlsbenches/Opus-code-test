@@ -1,6 +1,6 @@
 ---
 title: "Utilities"
-generated: "2025-12-16T17:02:01.489198Z"
+generated: "2025-12-16T17:26:23.830164Z"
 generator: "architecture"
 source_files:
   - "/home/user/Opus-code-test/cortical/patterns.py"

@@ -1,6 +1,6 @@
 ---
 title: "Observability"
-generated: "2025-12-16T17:02:01.491559Z"
+generated: "2025-12-16T17:26:23.833140Z"
 generator: "architecture"
 source_files:
   - "/home/user/Opus-code-test/cortical/results.py"

@@ -1,6 +1,6 @@
 ---
 title: "Core Processor"
-generated: "2025-12-16T17:02:01.493976Z"
+generated: "2025-12-16T17:26:23.835604Z"
 generator: "architecture"
 source_files:
   - "/home/user/Opus-code-test/cortical/processor/persistence_api.py"
