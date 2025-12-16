@@ -1,0 +1,22 @@
+{
+  "id": "A-20251216-143035-11dd-002",
+  "timestamp": "2025-12-16T13:24:44.287Z",
+  "session_id": "11dda39e-0d82-4434-a8a6-14068833c866",
+  "action_type": "search",
+  "target": "",
+  "context": {
+    "tool": "Grep",
+    "input": {
+      "tool": "Grep",
+      "input": {
+        "-A": 20,
+        "-B": 2,
+        "output_mode": "content",
+        "path": "/home/user/Opus-code-test/tests/unit/test_ml_export.py",
+        "pattern": "test_export_csv_truncates_long_fields"
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}

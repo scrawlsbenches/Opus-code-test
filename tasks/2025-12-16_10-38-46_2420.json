@@ -7,47 +7,47 @@
     {
       "id": "T-20251216-103846-2420-001",
       "title": "Ensure test_evaluate_cluster.py doesn't skip in CI",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "ci",
       "description": "Test skips if samples/ directory missing or insufficient docs. Verify CI has proper test fixtures or mark appropriately.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T10:38:46.794804",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T15:10:00.000000",
+      "completed_at": "2025-12-16T15:10:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Working as designed. samples/ directory contains 100+ .txt files in CI. Skip only triggers if samples/ is missing (edge case)."
     },
     {
       "id": "T-20251216-103846-2420-002",
       "title": "Review test_semantics_coverage.py numpy dependency",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "enhancement",
       "description": "Two tests skip if numpy unavailable. Consider adding numpy to dev deps or marking with @pytest.mark.optional.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T10:38:46.794885",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T15:10:00.000000",
+      "completed_at": "2025-12-16T15:10:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Working as designed. numpy is optional for fast-path. Tests use proper @pytest.mark.skipif with HAS_NUMPY check. Already marked as optional in pyproject.toml markers."
     },
     {
       "id": "T-20251216-103846-2420-003",
       "title": "Document runtime skip conditions in test files",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "docs",
       "description": "Tests with skipTest() calls should document why they skip. Consider converting to explicit markers where possible.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-16T10:38:46.794926",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T15:10:00.000000",
+      "completed_at": "2025-12-16T15:10:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Skip conditions reviewed. All skipTest() calls have clear messages explaining why. Documented in test file docstrings. Intentionally skipped tests are marked with @pytest.mark.skip."
     }
   ]
 }

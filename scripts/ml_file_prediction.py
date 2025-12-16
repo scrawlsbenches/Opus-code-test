@@ -48,6 +48,9 @@ WARNING_STALE_COMMITS_THRESHOLD = 10
 WARNING_MIN_TRAINING_COMMITS = 50
 WARNING_NO_KEYWORD_MATCH_THRESHOLD = 0
 
+# Default minimum confidence for predictions
+DEFAULT_MIN_CONFIDENCE = 0.1  # Default minimum confidence threshold for predictions
+
 # Commit type patterns
 COMMIT_TYPE_PATTERNS = {
     'feat': r'^feat(?:\(.+?\))?:\s*',
@@ -198,6 +201,68 @@ class PredictionResult:
         return [w for w in self.warnings if w.level == level]
 
 
+# ============================================================================
+# SEMANTIC SIMILARITY
+# ============================================================================
+
+def compute_semantic_similarity(text1: str, text2: str) -> float:
+    """
+    Compute simple semantic similarity using word overlap and bigrams.
+
+    Uses Jaccard similarity for word sets and bigram overlap, combined
+    with a weighted average. This is a lightweight alternative to
+    embedding-based similarity that requires no external dependencies.
+
+    Args:
+        text1: First text to compare
+        text2: Second text to compare
+
+    Returns:
+        Similarity score between 0.0 and 1.0
+    """
+    # Normalize texts to lowercase words
+    words1 = set(text1.lower().split())
+    words2 = set(text2.lower().split())
+
+    # Remove stop words (common English words that add little semantic value)
+    stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'to', 'of',
+                  'in', 'for', 'on', 'with', 'at', 'by', 'from'}
+    words1 -= stop_words
+    words2 -= stop_words
+
+    if not words1 or not words2:
+        return 0.0
+
+    # Jaccard similarity for words
+    word_intersection = words1 & words2
+    word_union = words1 | words2
+    word_sim = len(word_intersection) / len(word_union)
+
+    # Bigram overlap for multi-word pattern matching
+    def get_bigrams(words):
+        """Extract bigrams from a set of words."""
+        word_list = sorted(words)
+        return set(zip(word_list[:-1], word_list[1:]))
+
+    bigrams1 = get_bigrams(words1)
+    bigrams2 = get_bigrams(words2)
+
+    if bigrams1 and bigrams2:
+        bigram_intersection = bigrams1 & bigrams2
+        bigram_union = bigrams1 | bigrams2
+        bigram_sim = len(bigram_intersection) / len(bigram_union)
+    else:
+        bigram_sim = 0.0
+
+    # Weighted combination: favor word similarity over bigrams
+    # Word similarity is more reliable for short texts
+    return 0.7 * word_sim + 0.3 * bigram_sim
+
+
+# ============================================================================
+# DATA CLASSES
+# ============================================================================
+
 @dataclass
 class TrainingExample:
     """A single training example from commit history."""
@@ -237,6 +302,10 @@ class FilePredictionModel:
     # File frequency (how often each file is changed)
     file_frequency: Dict[str, int] = field(default_factory=dict)
 
+    # File to commit messages mapping (for semantic similarity)
+    # Stores recent commit messages for each file
+    file_to_commits: Dict[str, List[str]] = field(default_factory=dict)
+
     # Total commits seen
     total_commits: int = 0
 
@@ -262,6 +331,8 @@ class FilePredictionModel:
             d['git_commit_hash'] = ''
         if 'metrics' not in d:
             d['metrics'] = None
+        if 'file_to_commits' not in d:
+            d['file_to_commits'] = {}
         return cls(**d)
 
     def get_staleness_commits(self) -> int:
@@ -810,6 +881,16 @@ def train_model(examples: List[TrainingExample]) -> FilePredictionModel:
                 model.keyword_to_files[keyword][f] = \
                     model.keyword_to_files[keyword].get(f, 0) + 1
 
+        # Store commit message for semantic similarity
+        # Keep most recent 10 messages per file to limit model size
+        for f in files:
+            if f not in model.file_to_commits:
+                model.file_to_commits[f] = []
+            model.file_to_commits[f].append(example.message)
+            # Keep only the 10 most recent (FIFO)
+            if len(model.file_to_commits[f]) > 10:
+                model.file_to_commits[f] = model.file_to_commits[f][-10:]
+
     return model
 
 
@@ -935,7 +1016,9 @@ def predict_files(
     top_n: int = 10,
     seed_files: List[str] = None,
     ai_meta_map: Optional[Dict[str, AIMetaData]] = None,
-    use_ai_meta: bool = True
+    use_ai_meta: bool = True,
+    use_semantic: bool = False,
+    min_confidence: float = DEFAULT_MIN_CONFIDENCE
 ) -> List[Tuple[str, float]]:
     """
     Predict which files are likely to be modified for a given task.
@@ -947,6 +1030,8 @@ def predict_files(
         seed_files: Optional known files to use for co-occurrence boosting
         ai_meta_map: Optional AI metadata map for enhanced predictions
         use_ai_meta: Whether to use AI metadata (default True)
+        use_semantic: Whether to use semantic similarity boosting (default False)
+        min_confidence: Minimum confidence threshold for predictions
 
     Returns:
         List of (file_path, score) tuples sorted by relevance
@@ -997,6 +1082,15 @@ def predict_files(
                     union = model.file_frequency.get(seed, 1) + model.file_frequency.get(f, 1) - count
                     similarity = count / union if union > 0 else 0
                     file_scores[f] += similarity * 3.0  # Strong weight for co-occurrence
+
+    # Boost based on semantic similarity with commit messages
+    if use_semantic and model.file_to_commits:
+        for filepath in model.file_to_commits:
+            # Compare query with recent commit messages for this file
+            for commit_msg in model.file_to_commits[filepath][:5]:  # Top 5 recent
+                sim = compute_semantic_similarity(query, commit_msg)
+                if sim > 0.2:  # Only boost if meaningful similarity
+                    file_scores[filepath] += sim * 0.5  # 50% weight
 
     # Boost based on AI metadata
     if ai_meta_map:
@@ -1064,6 +1158,8 @@ def predict_files(
     sorted_files = sorted(file_scores.items(), key=lambda x: -x[1])
     # Filter to only existing files - removes deleted/renamed files from predictions
     sorted_files = [(f, score) for f, score in sorted_files if Path(f).exists()]
+    # Filter by minimum confidence threshold
+    sorted_files = [(f, score) for f, score in sorted_files if score >= min_confidence]
     return sorted_files[:top_n]
 
 
@@ -1073,7 +1169,9 @@ def predict_files_with_warnings(
     top_n: int = 10,
     seed_files: List[str] = None,
     ai_meta_map: Optional[Dict[str, AIMetaData]] = None,
-    use_ai_meta: bool = True
+    use_ai_meta: bool = True,
+    use_semantic: bool = False,
+    min_confidence: float = DEFAULT_MIN_CONFIDENCE
 ) -> PredictionResult:
     """
     Predict files with system warnings about reliability.
@@ -1089,15 +1187,29 @@ def predict_files_with_warnings(
         if kw in model.keyword_to_files:
             matched_keywords.append(kw)
 
-    # Get predictions
-    predictions = predict_files(
-        query, model, top_n, seed_files, ai_meta_map, use_ai_meta
+    # Get predictions (without confidence filtering for warning generation)
+    all_predictions = predict_files(
+        query, model, top_n, seed_files, ai_meta_map, use_ai_meta, use_semantic, min_confidence=0.0
     )
+
+    # Apply confidence filtering
+    predictions = [(f, score) for f, score in all_predictions if score >= min_confidence]
 
     # Generate warnings
     warnings = generate_warnings(
         model, query, predictions, query_keywords, matched_keywords
     )
+
+    # Add warning if all predictions were filtered out by min_confidence
+    if not predictions and all_predictions:
+        highest_score = all_predictions[0][1]
+        highest_file = all_predictions[0][0]
+        warnings.append(PredictionWarning(
+            level='warning',
+            code='ALL_BELOW_THRESHOLD',
+            message=f"All predictions below min_confidence ({min_confidence:.2f}). "
+                    f"Highest was {highest_score:.2f} for {highest_file}"
+        ))
 
     return PredictionResult(
         files=predictions,
@@ -1285,6 +1397,186 @@ def train_test_split(
 
 
 # ============================================================================
+# DASHBOARD
+# ============================================================================
+
+def show_dashboard(as_json: bool = False):
+    """Display comprehensive ML evaluation dashboard."""
+    # Import ML data collector functions
+    try:
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).parent))
+        from ml_collector.stats import count_data, calculate_data_size
+        ml_stats_available = True
+    except ImportError:
+        ml_stats_available = False
+
+    dashboard_data = {}
+
+    # Model Status
+    model = load_model()
+    if model:
+        model_file = FILE_PREDICTION_MODEL
+        staleness = model.get_staleness_commits()
+        model_status = {
+            'trained_date': model.trained_at,
+            'training_data_size': model.total_commits,
+            'model_file_size': model_file.stat().st_size if model_file.exists() else 0,
+            'git_commit_hash': model.git_commit_hash or 'unknown',
+            'version': model.version,
+            'staleness_commits': staleness
+        }
+    else:
+        model_status = {
+            'trained_date': 'Not trained',
+            'training_data_size': 0,
+            'model_file_size': 0,
+            'git_commit_hash': 'unknown',
+            'version': 'N/A',
+            'staleness_commits': -1
+        }
+    dashboard_data['model_status'] = model_status
+
+    # Performance Metrics
+    if model and model.metrics:
+        performance = {
+            'mrr': model.metrics.get('mrr', 0.0),
+            'recall_at_10': model.metrics.get('recall@10', 0.0),
+            'precision_at_1': model.metrics.get('precision@1', 0.0),
+            'test_examples': model.metrics.get('total_examples', 0)
+        }
+    else:
+        performance = {
+            'mrr': 0.0,
+            'recall_at_10': 0.0,
+            'precision_at_1': 0.0,
+            'test_examples': 0
+        }
+    dashboard_data['performance'] = performance
+
+    # Data Health
+    if ml_stats_available:
+        try:
+            counts = count_data()
+            sizes = calculate_data_size()
+            data_health = {
+                'total_commits': counts.get('commits_lite', 0),
+                'total_chats': counts['chats'],
+                'session_count': counts.get('sessions_lite', 0),
+                'data_size': sizes['total']
+            }
+        except Exception:
+            data_health = {
+                'total_commits': 0,
+                'total_chats': 0,
+                'session_count': 0,
+                'data_size': 0
+            }
+    else:
+        data_health = {
+            'total_commits': 0,
+            'total_chats': 0,
+            'session_count': 0,
+            'data_size': 0
+        }
+    dashboard_data['data_health'] = data_health
+
+    # Feature Status
+    cortical_dir = Path(__file__).parent.parent / "cortical"
+    ai_meta_available = YAML_AVAILABLE and (AI_META_CACHE.exists() or
+                                            (cortical_dir.exists() and any(cortical_dir.rglob('*.ai_meta'))))
+    features = {
+        'ai_metadata_integration': 'yes' if ai_meta_available else 'no',
+        'semantic_similarity': 'yes',  # Always available
+        'confidence_threshold': DEFAULT_MIN_CONFIDENCE
+    }
+    dashboard_data['features'] = features
+
+    if as_json:
+        print(json.dumps(dashboard_data, indent=2))
+        return
+
+    # ASCII dashboard output
+    print("╔══════════════════════════════════════════════════════════════╗")
+    print("║              ML FILE PREDICTION DASHBOARD                    ║")
+    print("╠══════════════════════════════════════════════════════════════╣")
+
+    # Model Status section
+    print("║ MODEL STATUS                                                 ║")
+    print("╠══════════════════════════════════════════════════════════════╣")
+
+    # Format trained date (truncate if too long)
+    trained_str = str(model_status['trained_date'])[:41]
+    print(f"║   Trained Date:      {trained_str:<41} ║")
+    print(f"║   Training Commits:  {model_status['training_data_size']:<41} ║")
+
+    # Format model file size
+    size = model_status['model_file_size']
+    if size > 1024 * 1024:
+        size_str = f"{size / 1024 / 1024:.2f} MB"
+    elif size > 1024:
+        size_str = f"{size / 1024:.2f} KB"
+    else:
+        size_str = f"{size} bytes"
+    print(f"║   Model File Size:   {size_str:<41} ║")
+
+    # Staleness indicator
+    staleness = model_status['staleness_commits']
+    if staleness == -1:
+        staleness_str = "Unknown"
+    elif staleness == 0:
+        staleness_str = "Up to date"
+    elif staleness > 10:
+        staleness_str = f"⚠️  {staleness} commits behind"
+    else:
+        staleness_str = f"{staleness} commits behind"
+    print(f"║   Staleness:         {staleness_str:<41} ║")
+
+    # Performance Metrics section
+    print("╠══════════════════════════════════════════════════════════════╣")
+    print("║ PERFORMANCE METRICS                                          ║")
+    print("╠══════════════════════════════════════════════════════════════╣")
+
+    if performance['test_examples'] > 0:
+        print(f"║   MRR:               {performance['mrr']:.4f}                                      ║")
+        print(f"║   Recall@10:         {performance['recall_at_10']:.4f}                                      ║")
+        print(f"║   Precision@1:       {performance['precision_at_1']:.4f}                                      ║")
+        print(f"║   Test Examples:     {performance['test_examples']:<41} ║")
+    else:
+        print("║   No evaluation metrics available.                           ║")
+        print("║   Run: python scripts/ml_file_prediction.py evaluate         ║")
+
+    # Data Health section
+    print("╠══════════════════════════════════════════════════════════════╣")
+    print("║ DATA HEALTH                                                  ║")
+    print("╠══════════════════════════════════════════════════════════════╣")
+    print(f"║   Total Commits:     {data_health['total_commits']:<41} ║")
+    print(f"║   Total Chats:       {data_health['total_chats']:<41} ║")
+    print(f"║   Sessions:          {data_health['session_count']:<41} ║")
+
+    # Format data size
+    data_size = data_health['data_size']
+    if data_size > 1024 * 1024:
+        data_size_str = f"{data_size / 1024 / 1024:.2f} MB"
+    elif data_size > 1024:
+        data_size_str = f"{data_size / 1024:.2f} KB"
+    else:
+        data_size_str = f"{data_size} bytes"
+    print(f"║   Data Size:         {data_size_str:<41} ║")
+
+    # Feature Status section
+    print("╠══════════════════════════════════════════════════════════════╣")
+    print("║ FEATURE STATUS                                               ║")
+    print("╠══════════════════════════════════════════════════════════════╣")
+    print(f"║   AI Metadata:       {features['ai_metadata_integration']:<41} ║")
+    print(f"║   Semantic Sim:      {features['semantic_similarity']:<41} ║")
+    print(f"║   Confidence Thresh: {features['confidence_threshold']:<41} ║")
+
+    print("╚══════════════════════════════════════════════════════════════╝")
+
+
+# ============================================================================
 # CLI
 # ============================================================================
 
@@ -1319,6 +1611,10 @@ def main():
                                help='Suppress system warnings')
     predict_parser.add_argument('--verbose', action='store_true',
                                help='Show detailed warning information')
+    predict_parser.add_argument('--use-semantic', action='store_true',
+                               help='Enable semantic similarity boosting')
+    predict_parser.add_argument('--min-confidence', type=float, default=DEFAULT_MIN_CONFIDENCE,
+                               help=f'Minimum confidence threshold (default: {DEFAULT_MIN_CONFIDENCE})')
 
     # Evaluate command
     eval_parser = subparsers.add_parser('evaluate', help='Evaluate model')
@@ -1347,6 +1643,11 @@ def main():
                                help='Path to second model (default: current)')
     compare_parser.add_argument('--top', '-n', type=int, default=10,
                                help='Number of predictions to compare')
+
+    # Dashboard command
+    dashboard_parser = subparsers.add_parser('dashboard', help='Show ML evaluation dashboard')
+    dashboard_parser.add_argument('--json', action='store_true',
+                                 help='Output as JSON')
 
     args = parser.parse_args()
 
@@ -1397,6 +1698,7 @@ def main():
             return 1
 
         use_ai_meta = not args.no_ai_meta
+        use_semantic = args.use_semantic
 
         if use_ai_meta and not YAML_AVAILABLE:
             print("Warning: PyYAML not available. AI metadata enhancement disabled.")
@@ -1409,12 +1711,19 @@ def main():
             model,
             top_n=args.top,
             seed_files=args.seed,
-            use_ai_meta=use_ai_meta
+            use_ai_meta=use_ai_meta,
+            use_semantic=use_semantic,
+            min_confidence=args.min_confidence
         )
 
         print(f"\nPredicted files for: '{args.query}'")
+        enhancements = []
         if use_ai_meta:
-            print("(Using AI metadata enhancement)")
+            enhancements.append("AI metadata")
+        if use_semantic:
+            enhancements.append("semantic similarity")
+        if enhancements:
+            print(f"(Using {' + '.join(enhancements)} enhancement)")
         print("-" * 60)
         for i, (filepath, score) in enumerate(result.files, 1):
             print(f"  {i:2}. {filepath:<45} ({score:.3f})")
@@ -1625,6 +1934,9 @@ def main():
             print(f"\n  Removed in Model 2 (was in Model 1):")
             for f in comparison['only_in_model1'][:3]:
                 print(f"    - {Path(f).name}")
+
+    elif args.command == 'dashboard':
+        show_dashboard(as_json=args.json if hasattr(args, 'json') else False)
 
     else:
         parser.print_help()

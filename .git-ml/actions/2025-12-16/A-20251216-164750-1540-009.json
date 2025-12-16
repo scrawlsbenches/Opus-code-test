@@ -1,0 +1,19 @@
+{
+  "id": "A-20251216-164750-1540-009",
+  "timestamp": "2025-12-16T15:17:14.098Z",
+  "session_id": "154021db-accf-4f38-8671-8b83bf6d882c",
+  "action_type": "command",
+  "target": "",
+  "context": {
+    "tool": "Bash",
+    "input": {
+      "tool": "Bash",
+      "input": {
+        "command": "python scripts/task_utils.py list 2>/dev/null | head -60",
+        "description": "List all tasks for review"
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}

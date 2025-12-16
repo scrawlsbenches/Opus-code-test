@@ -74,15 +74,15 @@
       "id": "T-20251215-213424-8400-004",
       "title": "Proactively refactor tests/unit/test_analysis.py before it exceeds token limit",
       "status": "pending",
-      "priority": "medium",
+      "priority": "low",
       "category": "testing",
       "description": "tests/unit/test_analysis.py is at ~22760 tokens (2494 lines), approaching 25000 token limit. Split to match the analysis/ package structure:\n- test_pagerank.py: PageRank tests\n- test_tfidf.py: TF-IDF and BM25 tests\n- test_clustering.py: Clustering tests\n- test_graph_ops.py: Graph operation tests\nCoordinate with analysis.py refactoring task.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-15T21:34:24.356513",
-      "updated_at": null,
+      "updated_at": "2025-12-16T15:15:00.000000",
       "completed_at": null,
-      "context": {},
+      "context": {"deferred_reason": "At 91% of token limit (22760/25000). Safe margin exists. Will refactor when growth resumes."},
       "retrospective": null
     },
     {
@@ -95,9 +95,9 @@
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-15T21:34:28.639179",
-      "updated_at": null,
+      "updated_at": "2025-12-16T15:15:00.000000",
       "completed_at": null,
-      "context": {},
+      "context": {"deferred_reason": "At 83% of token limit (20662/25000). Safe margin exists. Lower priority."},
       "retrospective": null
     }
   ]
