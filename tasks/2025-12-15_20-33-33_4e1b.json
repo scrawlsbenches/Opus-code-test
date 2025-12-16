@@ -22,7 +22,7 @@
     {
       "id": "T-20251215-203333-4e1b-002",
       "title": "Update CI to validate merge-friendly tasks instead of TASK_LIST.md",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "infra",
       "description": "Replace validate-task-list CI job with validation for tasks/*.json.\n\nCurrent job (line 58-81 in ci.yml):\n- Runs scripts/validate_task_list.py\n- Reports pending tasks via scripts/ci_task_report.py\n\nNew validation should check:\n- tasks/*.json files are valid JSON\n- Task IDs follow the expected format\n- No duplicate task IDs across sessions\n- Required fields present (id, title, status)\n\nOptions:\n1. Update validate_task_list.py to validate new format\n2. Create new scripts/validate_tasks.py for JSON format\n3. Add validation to existing task_utils.py\n\nAlso update scripts/ci_task_report.py to read from tasks/*.json",
@@ -31,10 +31,10 @@
       ],
       "effort": "small",
       "created_at": "2025-12-15T20:33:33.700229",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-16T09:44:00.000000",
+      "completed_at": "2025-12-16T09:44:00.000000",
       "context": {},
-      "retrospective": null
+      "retrospective": "Verified CI already uses scripts/validate_tasks.py for JSON validation. No changes needed - CI was updated in a previous session."
     }
   ]
 }
