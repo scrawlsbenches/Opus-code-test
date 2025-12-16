@@ -63,6 +63,14 @@ from .utils import (
     _vector_similarity,
 )
 
+from .parallel import (
+    ParallelConfig,
+    parallel_tfidf,
+    parallel_bm25,
+    extract_term_stats,
+    chunk_dict,
+)
+
 # Define __all__ for explicit exports
 __all__ = [
     # PageRank algorithms
@@ -76,6 +84,13 @@ __all__ = [
     'compute_bm25',
     '_tfidf_core',
     '_bm25_core',
+
+    # Parallel processing
+    'ParallelConfig',
+    'parallel_tfidf',
+    'parallel_bm25',
+    'extract_term_stats',
+    'chunk_dict',
 
     # Clustering algorithms
     'cluster_by_louvain',
