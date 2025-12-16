@@ -38,6 +38,12 @@ from .stats import count_data, print_stats, estimate_project_size
 from .quality import analyze_data_quality, print_quality_report
 from .ci import ci_autocapture
 from .hooks import install_hooks
+from .chunked_storage import (
+    store_chunked_chat, store_chunked_commit, store_chunked_record,
+    reconstruct_record, reconstruct_all, compact_chunks,
+    get_chunked_stats, migrate_to_chunked,
+    CHUNKED_DIR
+)
 
 __all__ = [
     # Core
@@ -76,4 +82,8 @@ __all__ = [
     'ci_autocapture',
     # Hooks
     'install_hooks',
+    # Chunked Storage
+    'store_chunked_chat', 'store_chunked_commit', 'store_chunked_record',
+    'reconstruct_record', 'reconstruct_all', 'compact_chunks',
+    'get_chunked_stats', 'migrate_to_chunked', 'CHUNKED_DIR',
 ]
