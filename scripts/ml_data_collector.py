@@ -3163,6 +3163,13 @@ POST_COMMIT_SNIPPET = '''
 # ML-DATA-COLLECTOR-HOOK
 # ML Data Collection - Post-Commit Hook
 # Automatically collects enriched commit data for model training
+
+# Skip ML-only commits to prevent infinite loop
+COMMIT_MSG=$(git log -1 --format=%s HEAD 2>/dev/null)
+if [[ "$COMMIT_MSG" == "data: ML tracking data"* ]] || [[ "$COMMIT_MSG" == "data: ML"* ]]; then
+    exit 0
+fi
+
 python scripts/ml_data_collector.py commit 2>/dev/null || true
 # END-ML-DATA-COLLECTOR-HOOK
 '''
