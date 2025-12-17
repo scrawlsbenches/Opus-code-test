@@ -1,0 +1,23 @@
+Archaeological Excavation Methods and Recording Techniques
+
+Overview
+
+Archaeological excavation is the systematic removal and documentation of soil and cultural materials from archaeological sites. Unlike treasure hunting, scientific excavation is a destructive process that requires meticulous recording, as the context of artifacts—their spatial relationships and stratigraphic positions—is as important as the objects themselves. Modern excavation methodology evolved from the work of pioneers like Mortimer Wheeler and Kathleen Kenyon, who emphasized the importance of stratigraphic observation and systematic recording. Today's excavations combine traditional techniques with digital technologies to capture three-dimensional data and preserve information about archaeological contexts that are destroyed during investigation.
+
+Key Methods and Concepts
+
+Stratigraphy forms the foundation of archaeological excavation. The Law of Superposition states that, in undisturbed contexts, lower layers are older than upper layers. Archaeologists identify and excavate distinct stratigraphic units, which may represent different periods of occupation, construction episodes, or natural deposition events. Each layer's composition, color, texture, and inclusions are carefully documented. The Harris Matrix, developed by Edward Harris, provides a standardized method for recording stratigraphic relationships and creating a relative chronology of deposits.
+
+Grid systems impose spatial order on excavation sites. A site is typically divided into squares or units, commonly measuring one, two, or five meters on each side. Each unit receives alphanumeric coordinates relative to a permanent datum point. This system enables precise recording of artifact locations and facilitates mapping at multiple scales. Some excavations use arbitrary levels within natural strata, excavating in consistent depth increments (such as 10 cm levels) to maintain fine-grained vertical control.
+
+The single context recording method, widely adopted in urban archaeology, treats each stratigraphic unit as a separate entity with its own context sheet. Archaeologists record detailed information about each deposit's physical characteristics, relationships to adjacent contexts, and interpretive significance. This approach creates a database of discrete archaeological events that can be analyzed to understand site formation processes.
+
+Section drawing and planning document excavations graphically. Profile sections show vertical stratigraphic sequences exposed in excavation walls, revealing the chronological relationships between layers. Plans provide overhead views of features, artifacts, and deposits at specific depths or within individual strata. Traditional hand-drawing is increasingly supplemented by photogrammetry and 3D laser scanning, which capture detailed spatial information rapidly and accurately.
+
+Applications
+
+Excavation methods vary according to research questions and site conditions. Urban rescue archaeology often employs open-area excavation, removing large horizontal surfaces to expose building foundations and activity areas. Classical archaeologists frequently use the Wheeler-Kenyon method, leaving standing baulks (unexcavated walls) between units to preserve visible stratigraphic sections. Underwater archaeology adapts terrestrial methods to aquatic environments, using grid frames, airlift systems for sediment removal, and waterproof recording materials.
+
+Specialized excavation techniques address particular archaeological materials. Flotation processing recovers botanical remains and small artifacts by washing sediment samples through nested sieves. Micro-excavation using dental tools and brushes exposes delicate materials like skeletal remains or fragile artifacts. Block lifting encases fragile specimens in protective jackets of plaster or foam for laboratory excavation under controlled conditions.
+
+Contemporary excavations increasingly emphasize non-invasive investigation before excavation. Geophysical survey, aerial photography, and test augering help archaeologists understand subsurface deposits and target excavation strategically. This approach minimizes unnecessary disturbance and preserves portions of sites for future investigation with improved techniques. The principle of preservation in situ—leaving archaeological remains undisturbed whenever possible—reflects growing recognition that excavation should be undertaken only when research benefits or development pressures justify the destruction of irreplaceable cultural heritage.
