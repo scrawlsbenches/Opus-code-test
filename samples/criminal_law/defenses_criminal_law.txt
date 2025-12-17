@@ -1,0 +1,41 @@
+Defenses in Criminal Law: Justifications and Excuses
+
+Overview
+
+Criminal law recognizes various defenses that may negate liability or reduce culpability even when the defendant committed the actus reus with the requisite mens rea. These defenses are traditionally categorized as justifications or excuses. Justification defenses acknowledge that the defendant's conduct was technically prohibited but was socially acceptable or even desirable under the circumstances—society does not condemn the act. Excuse defenses concede that the conduct was wrongful but maintain that the defendant should not be held criminally responsible due to circumstances affecting their capacity or choice—society condemns the act but excuses the actor.
+
+The distinction between justification and excuse has important theoretical and practical implications. Justified conduct is considered the right thing to do; excused conduct is wrong but understandable. This distinction affects accomplice liability, the right to resist, and the moral judgment society places on the defendant's actions. Understanding these defenses is essential for both prosecutors and defense attorneys, as they can completely eliminate criminal liability or significantly reduce charges and sentences.
+
+Key Concepts
+
+Self-defense is the paradigmatic justification defense. A person may use reasonable force to defend against an imminent unlawful attack. The force used must be proportionate to the threat—deadly force is justified only when facing imminent deadly force or serious bodily harm. The requirement of imminence means the threat must be immediate; preemptive strikes against future threats generally do not qualify as self-defense, though some jurisdictions recognize the "battered woman syndrome" as expanding the imminence requirement in domestic violence contexts.
+
+The duty to retreat varies by jurisdiction. Some states impose a duty to retreat before using deadly force if retreat can be accomplished safely. Others follow the "stand your ground" doctrine, allowing persons lawfully present to use force without retreating. However, even in retreat jurisdictions, there is typically no duty to retreat from one's own home—the "castle doctrine."
+
+The initial aggressor generally cannot claim self-defense unless they withdraw from the conflict and communicate that withdrawal to their opponent. Additionally, imperfect self-defense—where the defendant unreasonably but honestly believed force was necessary—may reduce murder to manslaughter in some jurisdictions, even though it does not provide complete exoneration.
+
+Defense of others follows similar principles to self-defense. Traditionally, the defender "stepped into the shoes" of the person defended, acquiring only those defensive rights the protected person possessed. Modern statutes generally allow defense of others based on reasonable appearances, even if the person defended was actually the aggressor.
+
+Defense of property permits reasonable force to protect property, but deadly force generally cannot be used solely to protect property. Some jurisdictions create exceptions for defense of dwelling, particularly during nighttime burglaries, reflecting the castle doctrine's recognition that home invasions threaten both property and personal safety.
+
+The insanity defense is the most controversial excuse defense. It recognizes that persons suffering from severe mental disease or defect may lack the moral capacity for criminal responsibility. Various tests for insanity exist across jurisdictions. The M'Naghten test, originating from an 1843 English case, asks whether the defendant knew the nature and quality of their act or knew it was wrong. The Model Penal Code test asks whether the defendant lacked substantial capacity to appreciate the criminality of their conduct or conform their conduct to the requirements of law.
+
+Following the acquittal of John Hinckley Jr. after his assassination attempt on President Reagan, many jurisdictions narrowed their insanity tests or adopted a "guilty but mentally ill" verdict. Some states have abolished the insanity defense entirely. Even successful insanity defenses typically result in civil commitment to psychiatric facilities, sometimes for periods exceeding what a criminal sentence would have been.
+
+Diminished capacity, distinct from insanity, may negate specific intent required for certain crimes. For example, evidence of mental impairment might show the defendant could not form the premeditation required for first-degree murder, reducing liability to second-degree murder or manslaughter.
+
+Duress excuses criminal conduct when the defendant acted under threat of imminent death or serious bodily harm. The threat must be such that a person of reasonable firmness would have been unable to resist. Duress is generally not available as a defense to homicide—one cannot kill an innocent person to save oneself. The defense requires an immediate threat; general fear or threats of future harm are insufficient.
+
+Necessity, also called the choice of evils defense, justifies conduct that violates the law when necessary to prevent a greater harm. The classic example is destroying property to create a firebreak to stop a spreading fire. Necessity requires that the harm prevented exceed the harm caused, that there be no legal alternative, and that the defendant not have caused the crisis necessitating the criminal conduct. Economic necessity—poverty or homelessness—does not qualify as necessity.
+
+Intoxication defenses vary by jurisdiction and type of intoxication. Voluntary intoxication generally cannot negate mens rea, though some jurisdictions allow it to disprove specific intent. Involuntary intoxication—where the defendant unknowingly ingested an intoxicating substance—is treated more favorably and can provide a complete defense if it produces a condition meeting the jurisdiction's insanity test.
+
+Practical Applications
+
+Defense attorneys must carefully investigate facts supporting potential defenses and understand the technical requirements of each defense in their jurisdiction. Raising certain defenses, such as insanity, may involve strategic risks, as juries are often skeptical and the defendant may have to undergo psychological evaluation.
+
+Prosecutors must anticipate and prepare to rebut defense claims. This may involve expert witnesses, demonstrating the defendant's conduct was inconsistent with the claimed defense, or showing the defendant does not meet the legal requirements for the defense.
+
+Self-defense claims have become increasingly significant with the proliferation of "stand your ground" laws. These cases often turn on contested factual questions about who was the initial aggressor and whether the defendant reasonably perceived an imminent threat.
+
+Judges must provide accurate jury instructions on applicable defenses, as erroneous instructions can result in appellate reversal. The allocation of burdens of proof for affirmative defenses—whether the defendant must prove the defense or merely raise it, requiring the prosecution to disprove it—varies by jurisdiction and defense, creating important procedural questions that can determine case outcomes.
