@@ -113,7 +113,7 @@ class TestProcessorInitialization(unittest.TestCase):
 
         self.assertIsInstance(processor._query_expansion_cache, dict)
         self.assertEqual(len(processor._query_expansion_cache), 0)
-        self.assertEqual(processor._query_cache_max_size, 100)
+        self.assertEqual(processor._query_cache_max_size, 1000)  # Increased from 100 for better cache performance
 
 
 # =============================================================================
