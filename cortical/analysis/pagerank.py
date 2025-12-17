@@ -15,6 +15,59 @@ from ..layers import CorticalLayer, HierarchicalLayer
 from ..constants import RELATION_WEIGHTS
 
 
+def _pagerank_iterate(
+    nodes: List[str],
+    incoming: Dict[str, List[Tuple[str, float]]],
+    outgoing_sum: Dict[str, float],
+    pagerank: Dict[str, float],
+    damping: float,
+    n: int,
+    iterations: int,
+    tolerance: float
+) -> Tuple[Dict[str, float], int]:
+    """
+    Core PageRank iteration loop.
+
+    Extracted for reuse across different PageRank variants.
+
+    Args:
+        nodes: List of node IDs to compute PageRank for
+        incoming: Map of node_id -> list of (source_id, weight) tuples
+        outgoing_sum: Map of node_id -> sum of outgoing edge weights
+        pagerank: Initial PageRank values
+        damping: Damping factor (probability of following links)
+        n: Number of nodes (for teleportation probability)
+        iterations: Maximum iterations
+        tolerance: Convergence threshold
+
+    Returns:
+        Tuple of (final_pagerank_dict, iterations_run)
+    """
+    iterations_run = 0
+
+    for iteration in range(iterations):
+        iterations_run = iteration + 1
+        new_pagerank = {}
+        max_diff = 0.0
+
+        for node in nodes:
+            incoming_sum = 0.0
+            for source_id, weight in incoming.get(node, []):
+                if source_id in pagerank and outgoing_sum.get(source_id, 0) > 0:
+                    incoming_sum += pagerank[source_id] * weight / outgoing_sum[source_id]
+
+            new_rank = (1 - damping) / n + damping * incoming_sum
+            new_pagerank[node] = new_rank
+            max_diff = max(max_diff, abs(new_rank - pagerank.get(node, 0)))
+
+        pagerank = new_pagerank
+
+        if max_diff < tolerance:
+            break
+
+    return pagerank, iterations_run
+
+
 def _pagerank_core(
     graph: Dict[str, List[Tuple[str, float]]],
     damping: float = 0.85,
@@ -66,27 +119,17 @@ def _pagerank_core(
                 incoming[target].append((source, weight))
                 outgoing_sum[source] += weight
 
-    # Iterate until convergence
-    for _ in range(iterations):
-        new_pagerank = {}
-        max_diff = 0.0
-
-        for node in nodes:
-            # Sum of weighted incoming PageRank
-            incoming_sum = 0.0
-            for source, weight in incoming[node]:
-                if source in pagerank and outgoing_sum[source] > 0:
-                    incoming_sum += pagerank[source] * weight / outgoing_sum[source]
-
-            # Apply damping
-            new_rank = (1 - damping) / n + damping * incoming_sum
-            new_pagerank[node] = new_rank
-            max_diff = max(max_diff, abs(new_rank - pagerank.get(node, 0)))
-
-        pagerank = new_pagerank
-
-        if max_diff < tolerance:
-            break
+    # Run PageRank iteration
+    pagerank, _ = _pagerank_iterate(
+        nodes=nodes,
+        incoming=incoming,
+        outgoing_sum=outgoing_sum,
+        pagerank=pagerank,
+        damping=damping,
+        n=n,
+        iterations=iterations,
+        tolerance=tolerance
+    )
 
     return pagerank
 
@@ -139,28 +182,18 @@ def compute_pagerank(
                 incoming[target_id].append((col.id, weight))
                 outgoing_sum[col.id] += weight
 
-    # Iterate until convergence
-    for iteration in range(iterations):
-        new_pagerank = {}
-        max_diff = 0.0
-
-        for col in layer.minicolumns.values():
-            # Sum of weighted incoming PageRank
-            incoming_sum = 0.0
-            for source_id, weight in incoming[col.id]:
-                if source_id in pagerank and outgoing_sum[source_id] > 0:
-                    incoming_sum += pagerank[source_id] * weight / outgoing_sum[source_id]
-
-            # Apply damping
-            new_rank = (1 - damping) / n + damping * incoming_sum
-            new_pagerank[col.id] = new_rank
-
-            max_diff = max(max_diff, abs(new_rank - pagerank.get(col.id, 0)))
-
-        pagerank = new_pagerank
-
-        if max_diff < tolerance:
-            break
+    # Run PageRank iteration
+    nodes = list(pagerank.keys())
+    pagerank, _ = _pagerank_iterate(
+        nodes=nodes,
+        incoming=incoming,
+        outgoing_sum=outgoing_sum,
+        pagerank=pagerank,
+        damping=damping,
+        n=n,
+        iterations=iterations,
+        tolerance=tolerance
+    )
 
     # Update minicolumn pagerank values
     for col in layer.minicolumns.values():
@@ -258,30 +291,18 @@ def compute_semantic_pagerank(
             incoming[target_id].append((col.id, adjusted_weight))
             outgoing_sum[col.id] += adjusted_weight
 
-    # Iterate until convergence
-    iterations_run = 0
-    for iteration in range(iterations):
-        iterations_run = iteration + 1
-        new_pagerank = {}
-        max_diff = 0.0
-
-        for col in layer.minicolumns.values():
-            # Sum of weighted incoming PageRank
-            incoming_sum = 0.0
-            for source_id, weight in incoming[col.id]:
-                if source_id in pagerank and outgoing_sum[source_id] > 0:
-                    incoming_sum += pagerank[source_id] * weight / outgoing_sum[source_id]
-
-            # Apply damping
-            new_rank = (1 - damping) / n + damping * incoming_sum
-            new_pagerank[col.id] = new_rank
-
-            max_diff = max(max_diff, abs(new_rank - pagerank.get(col.id, 0)))
-
-        pagerank = new_pagerank
-
-        if max_diff < tolerance:
-            break
+    # Run PageRank iteration
+    nodes = list(pagerank.keys())
+    pagerank, iterations_run = _pagerank_iterate(
+        nodes=nodes,
+        incoming=incoming,
+        outgoing_sum=outgoing_sum,
+        pagerank=pagerank,
+        damping=damping,
+        n=n,
+        iterations=iterations,
+        tolerance=tolerance
+    )
 
     # Update minicolumn pagerank values
     for col in layer.minicolumns.values():

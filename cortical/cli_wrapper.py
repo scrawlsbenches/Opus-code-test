@@ -493,10 +493,10 @@ class CLIWrapper:
             ctx.success = False
             ctx.metadata['error'] = f"Command not found: {command[0]}"
 
-        except Exception as e:
+        except OSError as e:
             ctx.exit_code = -1
             ctx.success = False
-            ctx.metadata['error'] = str(e)
+            ctx.metadata['error'] = f"{type(e).__name__}: {e}"
 
         # Finalize timing
         ctx.end_time = time.time()

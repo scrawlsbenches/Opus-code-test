@@ -616,8 +616,8 @@ class WALRecovery:
                 try:
                     self._apply_entry(entry, state)
                     result.wal_entries_replayed += 1
-                except Exception as e:
-                    errors.append(f"Error replaying entry: {e}")
+                except (KeyError, ValueError, AttributeError, TypeError) as e:
+                    errors.append(f"Error replaying entry {entry.sequence_number if hasattr(entry, 'sequence_number') else 'unknown'}: {type(e).__name__}: {e}")
 
         result.state = state
         result.documents_recovered = len(state.get('documents', {}))

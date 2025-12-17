@@ -34,10 +34,13 @@ Example usage:
 """
 
 import json
+import logging
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 # Add scripts to path for imports
 scripts_dir = Path(__file__).parent.parent.parent / 'scripts'
@@ -99,7 +102,8 @@ def _load_commits_from_cali() -> List[Dict[str, Any]]:
         commits = list(store.iterate('commit'))
         store.close()
         return commits
-    except Exception:
+    except (IOError, OSError, AttributeError) as e:
+        logger.warning(f"Failed to load commits from CALI store: {e}")
         return []
 
 
