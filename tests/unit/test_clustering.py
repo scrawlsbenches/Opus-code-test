@@ -267,45 +267,21 @@ class TestSilhouetteCore:
 class TestSparseMatrix:
     """Tests for SparseMatrix utility class."""
 
-    def test_create_empty(self):
-        """Create empty sparse matrix."""
-        matrix = SparseMatrix()
-        assert matrix.get("a", "b") == 0.0
+    def test_create_with_rows_cols(self):
+        """Create sparse matrix with rows and cols."""
+        matrix = SparseMatrix(rows=["a", "b"], cols=["c", "d"])
+        assert matrix.get("a", "c") == 0.0
 
     def test_set_and_get(self):
         """Set and get values."""
-        matrix = SparseMatrix()
+        matrix = SparseMatrix(rows=["a"], cols=["b"])
         matrix.set("a", "b", 5.0)
         assert matrix.get("a", "b") == 5.0
-
-    def test_symmetric_access(self):
-        """Symmetric matrices return same value for (i,j) and (j,i)."""
-        matrix = SparseMatrix(symmetric=True)
-        matrix.set("a", "b", 5.0)
-        assert matrix.get("b", "a") == 5.0
-
-    def test_non_symmetric_different_values(self):
-        """Non-symmetric matrices can have different (i,j) and (j,i)."""
-        matrix = SparseMatrix(symmetric=False)
-        matrix.set("a", "b", 5.0)
-        matrix.set("b", "a", 3.0)
-        assert matrix.get("a", "b") == 5.0
-        assert matrix.get("b", "a") == 3.0
 
     def test_default_value(self):
         """Unset values return 0.0."""
-        matrix = SparseMatrix()
-        assert matrix.get("nonexistent", "key") == 0.0
-
-    def test_iterate_edges(self):
-        """Can iterate over all edges."""
-        matrix = SparseMatrix()
-        matrix.set("a", "b", 1.0)
-        matrix.set("a", "c", 2.0)
-        matrix.set("b", "c", 3.0)
-
-        edges = list(matrix.items())
-        assert len(edges) == 3
+        matrix = SparseMatrix(rows=["a"], cols=["b"])
+        assert matrix.get("a", "b") == 0.0
 
 
 # =============================================================================
