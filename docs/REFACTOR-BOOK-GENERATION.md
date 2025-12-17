@@ -2,11 +2,12 @@
 
 **Status:** Proposed
 **Date:** 2025-12-17
-**Target:** `scripts/generate_book.py` (4,716 lines)
+**Updated:** 2025-12-17 (after merge from main)
+**Target:** `scripts/generate_book.py` (4,970 lines)
 
 ## Problem Statement
 
-The `scripts/generate_book.py` file is excessively large at 4,716 lines, containing 14 generator classes plus supporting utilities. This causes:
+The `scripts/generate_book.py` file is excessively large at 4,970 lines, containing 16 generator classes plus supporting utilities. This causes:
 
 - **Maintainability issues** - Hard to navigate and understand
 - **Code duplication** - Multiple classes implement identical methods
@@ -15,25 +16,26 @@ The `scripts/generate_book.py` file is excessively large at 4,716 lines, contain
 
 ## Current Structure Analysis
 
-### Generator Classes (14 total)
+### Generator Classes (16 total)
 
 | Class | Lines | Purpose |
 |-------|-------|---------|
-| `ChapterGenerator` (ABC) | ~54 | Base class |
-| `BookBuilder` | ~50 | Orchestrator |
-| `PlaceholderGenerator` | ~31 | Placeholder |
-| `AlgorithmChapterGenerator` | ~145 | Algorithms from VISION.md |
-| `ModuleDocGenerator` | ~299 | Module docs from .ai_meta |
-| `SearchIndexGenerator` | ~258 | Search index (search.json) |
-| `MarkdownBookGenerator` | ~329 | Combined BOOK.md |
-| `DecisionStoryGenerator` | ~371 | ADR stories |
-| `CaseStudyGenerator` | ~413 | Case studies from sessions |
-| `CommitNarrativeSynthesizer` | ~529 | Commit sequence stories |
-| `CommitNarrativeGenerator` | ~401 | Timeline/features chapters |
-| `LessonExtractor` | ~338 | Lessons from commits |
-| `ConceptEvolutionGenerator` | ~401 | Concept evolution tracking |
-| `ReaderJourneyGenerator` | ~467 | Learning paths |
-| `ExerciseGenerator` | ~396 | Exercises from tests |
+| `ChapterGenerator` (ABC) | ~57 | Base class |
+| `BookBuilder` | ~54 | Orchestrator |
+| `PlaceholderGenerator` | ~34 | Placeholder |
+| `AlgorithmChapterGenerator` | ~148 | Algorithms from VISION.md |
+| `ModuleDocGenerator` | ~301 | Module docs from .ai_meta |
+| `SearchIndexGenerator` | ~261 | Search index (search.json) |
+| `MarkdownBookGenerator` | ~333 | Combined BOOK.md |
+| `DecisionStoryGenerator` | ~374 | ADR stories |
+| `CaseStudyGenerator` | ~416 | Case studies from sessions |
+| `CommitNarrativeSynthesizer` | ~532 | Commit sequence stories |
+| `CommitNarrativeGenerator` | ~404 | Timeline/features chapters |
+| `LessonExtractor` | ~341 | Lessons from commits |
+| `ConceptEvolutionGenerator` | ~404 | Concept evolution tracking |
+| `ReaderJourneyGenerator` | ~470 | Learning paths |
+| `ExerciseGenerator` | ~399 | Exercises from tests |
+| `MLIntelligenceGenerator` | ~254 | **NEW** ML MoE + Attention Marketplace |
 
 ### Duplicated Code Patterns
 
@@ -72,7 +74,8 @@ scripts/book_generation/
     ├── lessons.py           # LessonExtractor (~250 lines)
     ├── concepts.py          # ConceptEvolutionGenerator (~300 lines)
     ├── journey.py           # ReaderJourneyGenerator (~350 lines)
-    └── exercises.py         # ExerciseGenerator (~300 lines)
+    ├── exercises.py         # ExerciseGenerator (~300 lines)
+    └── ml_intelligence.py   # MLIntelligenceGenerator (~200 lines) **NEW**
 
 scripts/generate_book.py     # Thin CLI wrapper (~50 lines)
 ```
@@ -192,6 +195,7 @@ Migrate one generator at a time, in order of dependency:
 9. `ConceptEvolutionGenerator` → `generators/concepts.py`
 10. `ReaderJourneyGenerator` → `generators/journey.py`
 11. `ExerciseGenerator` → `generators/exercises.py`
+12. `MLIntelligenceGenerator` → `generators/ml_intelligence.py` **NEW**
 
 ### Phase 4: Update CLI (Day 3)
 
@@ -209,10 +213,11 @@ Migrate one generator at a time, in order of dependency:
 
 | Metric | Before | After |
 |--------|--------|-------|
-| Main file size | 4,716 lines | ~50 lines (CLI only) |
-| Largest module | 4,716 lines | ~400 lines |
-| Code duplication | ~500 lines | ~50 lines |
-| Files | 1 | 15 |
+| Main file size | 4,970 lines | ~50 lines (CLI only) |
+| Largest module | 4,970 lines | ~400 lines |
+| Code duplication | ~600 lines | ~50 lines |
+| Files | 1 | 17 |
+| Generator count | 16 in 1 file | 1 per file (12 files) |
 | Testability | Poor | Good |
 
 ## Risks and Mitigations
