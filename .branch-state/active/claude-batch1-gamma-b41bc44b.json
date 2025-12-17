@@ -6,6 +6,13 @@
   "last_main_sync": null,
   "sub_agents": [],
   "session_id": null,
-  "checkpoints": [],
-  "last_checkpoint": null
+  "checkpoints": [
+    {
+      "timestamp": "2025-12-17T23:13:05.715072",
+      "message": "Test checkpoint system",
+      "commit": "82e6ed57"
+    }
+  ],
+  "last_checkpoint": "2025-12-17T23:13:05.729239",
+  "updated": "2025-12-17T23:13:05.729250"
 }
