@@ -25,6 +25,161 @@ from typing import Dict, List, Optional, Any, Tuple, Set
 from abc import ABC, abstractmethod
 from collections import defaultdict
 
+# =============================================================================
+# BOOK GENERATION ARCHITECTURE (Knowledge for Future Developers)
+# =============================================================================
+#
+# This script generates "The Cortical Chronicles" - a living book that documents
+# the project from multiple sources in the codebase and git history.
+#
+# GENERATORS AND THEIR DATA SOURCES:
+# -----------------------------------
+# 1. AlgorithmChapterGenerator
+#    - Source: docs/VISION.md (Deep Algorithm Analysis section)
+#    - Output: 01-foundations/alg-*.md
+#    - Quality: High - extracts well-structured algorithm descriptions
+#    - Coverage: 6 core algorithms (PageRank, BM25, Louvain, Query Expansion, etc.)
+#
+# 2. ModuleDocGenerator
+#    - Source: cortical/**/*.ai_meta (YAML metadata files)
+#    - Output: 02-architecture/mod-*.md
+#    - Quality: High - structured module documentation with signatures
+#    - Coverage: Groups modules by category (processor, analysis, query, etc.)
+#
+# 3. DecisionStoryGenerator
+#    - Source: samples/decisions/adr-*.md + .git-ml/tracked/sessions.jsonl
+#    - Output: 03-decisions/decision-*.md
+#    - Quality: High - enriches ADRs with conversation context from ML sessions
+#    - Coverage: Links decisions to actual chat sessions and commits
+#
+# 4. CommitNarrativeGenerator
+#    - Source: git log (last 200 commits)
+#    - Output: 04-evolution/*.md
+#    - Quality: Medium - chronological commit narratives by time period
+#    - Coverage: Groups commits by week/month for evolutionary view
+#
+# 5. CommitNarrativeSynthesizer
+#    - Source: git log + .git-ml/tracked/commits.jsonl
+#    - Output: 04-evolution/synthesized-*.md (case studies from commit sequences)
+#    - Quality: High - reconstructs development stories from related commits
+#    - Coverage: Identifies commit sequences by commit type and temporal proximity
+#
+# 6. CaseStudyGenerator
+#    - Source: .git-ml/chats/ + .git-ml/sessions/ + .git-ml/tracked/sessions.jsonl
+#    - Output: 05-case-studies/synthesized-*.md
+#    - Quality: Medium - narrative case studies from ML session data
+#    - Coverage: Top 10 sessions by exchange count (filters for narrative-worthy)
+#
+# 7. PlaceholderGenerator (for "future" chapter)
+#    - Source: None (placeholder only)
+#    - Output: 05-future/index.md
+#    - Quality: N/A - just a placeholder
+#    - TODO: Replace with FutureChapterGenerator that reads tasks/ directory
+#
+# 8. LessonExtractor
+#    - Source: git commits + ADRs + session retrospectives
+#    - Output: 06-lessons/*.md
+#    - Quality: Medium - extracts learnings from various sources
+#    - Coverage: Grouped by lesson themes
+#
+# 9. ConceptEvolutionGenerator
+#    - Source: git log --all (full history) + concept tracking
+#    - Output: 07-concepts/*.md
+#    - Quality: High - tracks evolution of key concepts over time
+#    - Coverage: 25+ key concepts (pagerank, tfidf, bm25, louvain, etc.)
+#    - Method: Tracks first mention, major milestones, current status
+#
+# 10. ExerciseGenerator
+#     - Source: tests/unit/test_*.py (AST parsing)
+#     - Output: 08-exercises/ex-*.md
+#     - Quality: Medium - converts unit tests to exercises
+#     - Coverage: Grouped by topic (foundations, search, advanced)
+#
+# 11. ReaderJourneyGenerator
+#     - Source: All generated content + concept difficulty levels
+#     - Output: 09-journey/*.md
+#     - Quality: High - creates progressive learning paths
+#     - Coverage: Beginner → Intermediate → Advanced paths
+#
+# 12. SearchIndexGenerator
+#     - Source: All generated book chapters (book/**/*.md)
+#     - Output: book/index.json + book/search.json
+#     - Quality: High - enables full-text search across book
+#     - Coverage: Indexes all chapters with keywords and content
+#
+# 13. MarkdownBookGenerator
+#     - Source: All generated chapters
+#     - Output: book/BOOK.md (single consolidated markdown file)
+#     - Quality: High - complete book in one file with smart caching
+#     - Coverage: Includes all chapters, skips if sources unchanged
+#
+# MISSING GENERATOR (needs implementation):
+# -----------------------------------------
+# FutureChapterGenerator (placeholder currently exists)
+#    - Should read: tasks/*.json (merge-friendly task system)
+#    - Should output: 05-future/*.md (planned features, roadmap)
+#    - Should group tasks by: status, priority, category
+#    - Should generate: roadmap, backlog, milestones
+#
+# DATA FLOW:
+# ----------
+# 1. Docs/Code → Foundations & Architecture chapters
+# 2. Git History → Evolution & Concept chapters
+# 3. ML Sessions → Case Studies & Decisions enrichment
+# 4. Test Files → Exercise chapters
+# 5. All Chapters → Search Index → Web Interface
+# 6. All Chapters → Consolidated BOOK.md
+#
+# USAGE:
+# ------
+#   python scripts/generate_book.py                 # Generate all chapters
+#   python scripts/generate_book.py --markdown      # Generate BOOK.md only
+#   python scripts/generate_book.py --chapter foundations  # Single chapter
+#   python scripts/generate_book.py --dry-run       # Preview without writing
+#   python scripts/generate_book.py --force         # Force regeneration
+#   python scripts/generate_book.py --list          # List all generators
+#
+# QUALITY ASSESSMENT:
+# -------------------
+# High Quality (ready for readers):
+#   - AlgorithmChapterGenerator (clear, well-structured)
+#   - ModuleDocGenerator (comprehensive API docs)
+#   - DecisionStoryGenerator (enriched with context)
+#   - ConceptEvolutionGenerator (shows development arc)
+#   - SearchIndexGenerator (enables discovery)
+#   - MarkdownBookGenerator (consolidation works well)
+#
+# Medium Quality (functional but could improve):
+#   - CommitNarrativeGenerator (chronological but verbose)
+#   - CaseStudyGenerator (narrative quality varies)
+#   - LessonExtractor (needs better lesson categorization)
+#   - ExerciseGenerator (exercises could be more pedagogical)
+#
+# Needs Implementation:
+#   - FutureChapterGenerator (currently just placeholder)
+#
+# RECOMMENDATIONS FOR IMPROVEMENT:
+# ---------------------------------
+# 1. Add FutureChapterGenerator to create roadmap from tasks/
+# 2. Improve CaseStudyGenerator narrative quality with better templates
+# 3. Add cross-references between chapters (e.g., link concepts to algorithms)
+# 4. Add difficulty ratings to exercises
+# 5. Add visual diagrams to algorithm chapters (mermaid charts)
+# 6. Add "further reading" sections linking to external resources
+# 7. Consider adding API reference generator from docstrings
+# 8. Add tutorial generator for common workflows
+#
+# CODEBASE NOTES:
+# ---------------
+# - All generators inherit from ChapterGenerator base class
+# - Generators use CALI (high-performance ML storage) with JSONL fallback
+# - Each generator writes to its own subdirectory in book/
+# - Frontmatter (YAML) enables semantic search and organization
+# - BookBuilder orchestrates all generators and handles dry-run mode
+# - Smart caching prevents unnecessary regeneration (hash-based)
+#
+# =============================================================================
+
 BOOK_DIR = Path(__file__).parent.parent / "book"
 DOCS_DIR = Path(__file__).parent.parent / "docs"
 CORTICAL_DIR = Path(__file__).parent.parent / "cortical"
