@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "6b01",
   "started_at": "2025-12-17T02:51:33.834930",
-  "saved_at": "2025-12-17T20:12:00.918423",
+  "saved_at": "2025-12-17T20:48:56.856732",
   "tasks": [
     {
       "id": "T-20251217-025133-6b01-001",
@@ -112,17 +112,24 @@
     {
       "id": "T-20251217-025222-6b01-008",
       "title": "Consider making JSON the default persistence format over pickle",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "security",
       "description": "Pickle format is deprecated in the codebase due to security concerns (arbitrary code execution risk) with deprecation warnings. Consider making JSON/StateLoader the default format to improve security posture. Currently pickle remains the default despite deprecation.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-17T02:52:22.784767",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-17T20:48:56.856582",
+      "completed_at": "2025-12-17T20:48:56.856582",
       "context": {},
-      "retrospective": null
+      "retrospective": {
+        "notes": "Completed by commit 42106eb - pickle serialization removed entirely. JSON is now the only format.",
+        "duration_minutes": 1077,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-17T20:48:56.856604"
+      }
     },
     {
       "id": "T-20251217-025238-6b01-009",
@@ -247,17 +254,24 @@
     {
       "id": "T-20251217-103523-6b01-017",
       "title": "Phase out pickle persistence in favor of JSON format (SEC-003)",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "security",
       "description": "## PKL SECURITY ISSUES SUMMARY\n\n**Critical Security Vulnerability (RCE):**\nPython's `pickle.load()` can execute arbitrary code during deserialization. If an attacker controls a .pkl file, they achieve Remote Code Execution.\n\n**Current Mitigations (Partial):**\n1. DeprecationWarning in persistence.py (lines 133-140, 216-224)\n2. HMAC signature verification option (SEC-003) - but optional\n3. StateWriter/StateLoader JSON alternative exists (state_storage.py)\n\n**Affected Files:**\n- cortical/persistence.py: pickle.dumps (line 158), pickle.loads (line 247)\n- cortical/processor/persistence_api.py: save() and load() use pkl by default\n- scripts/index_codebase.py: corpus_dev.pkl\n- scripts/search_codebase.py: loads corpus_dev.pkl\n- tests/: Various test files reference .pkl\n\n## PROPOSED MIGRATION PATH\n\n**Phase 1: Deprecation Period (Current State)**\n- pkl works but emits DeprecationWarning \u2705 DONE\n- JSON alternative available via save_json()/load_json() \u2705 DONE\n- migrate_pkl_to_json() function available \u2705 DONE\n\n**Phase 2: Default Switch (This Task)**\n1. Update persistence.py to default to JSON format\n2. Update index_codebase.py to use chunk-based JSON by default\n3. Add --format=pkl flag for backward compatibility\n4. Update documentation to recommend JSON\n\n**Phase 3: Removal (Future)**\n1. Remove pkl support entirely\n2. Remove HMAC verification (no longer needed)\n3. Remove migration functions\n\n## IMPLEMENTATION CHECKLIST\n- [ ] Change save() default to JSON format\n- [ ] Change load() to auto-detect format (JSON vs pkl)\n- [ ] Update scripts/index_codebase.py default\n- [ ] Update scripts/search_codebase.py\n- [ ] Add format auto-detection logic\n- [ ] Update CLAUDE.md to document JSON preference\n- [ ] Add migration guide to docs/",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-17T10:35:23.351953",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-17T20:48:56.856607",
+      "completed_at": "2025-12-17T20:48:56.856607",
       "context": {},
-      "retrospective": null
+      "retrospective": {
+        "notes": "All phases completed. Pickle removed in commit 42106eb. JSON-only persistence now. No more security risk.",
+        "duration_minutes": 614,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-17T20:48:56.856610"
+      }
     },
     {
       "id": "T-20251217-111334-6b01-018",
