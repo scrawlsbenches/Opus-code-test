@@ -5,94 +5,20 @@ Persistence Module
 Save and load functionality for the cortical processor.
 
 Supports:
-- Pickle serialization for full state
+- JSON serialization for full state (git-friendly, secure)
 - JSON export for graph visualization
 - Incremental updates
-- HMAC signature verification for pickle files (SEC-003)
 """
 
-import pickle
 import json
 import os
 import logging
-import warnings
-import hmac
-import hashlib
-from typing import Dict, Optional, Any, Union
+from typing import Dict, Optional, Any
 
 from .layers import CorticalLayer, HierarchicalLayer
 from .minicolumn import Minicolumn
 
-# Protobuf support removed (unused, see T-013)
-PROTOBUF_AVAILABLE = False
-
 logger = logging.getLogger(__name__)
-
-
-class SignatureVerificationError(Exception):
-    """
-    Raised when HMAC signature verification fails.
-
-    This indicates the file has been tampered with or the wrong key was used.
-    """
-    pass
-
-
-def _get_signature_path(filepath: str) -> str:
-    """Get the path to the signature file for a given data file."""
-    return f"{filepath}.sig"
-
-
-def _compute_signature(data: bytes, key: bytes) -> bytes:
-    """
-    Compute HMAC-SHA256 signature for data.
-
-    Args:
-        data: The data to sign
-        key: The secret key for HMAC
-
-    Returns:
-        The HMAC signature (32 bytes)
-    """
-    return hmac.new(key, data, hashlib.sha256).digest()
-
-
-def _save_signature(filepath: str, signature: bytes) -> None:
-    """Save signature to a .sig file."""
-    sig_path = _get_signature_path(filepath)
-    with open(sig_path, 'wb') as f:
-        f.write(signature)
-
-
-def _load_signature(filepath: str) -> Optional[bytes]:
-    """
-    Load signature from a .sig file.
-
-    Returns:
-        The signature bytes, or None if file doesn't exist
-    """
-    sig_path = _get_signature_path(filepath)
-    if not os.path.exists(sig_path):
-        return None
-    with open(sig_path, 'rb') as f:
-        return f.read()
-
-
-def _verify_signature(data: bytes, signature: bytes, key: bytes) -> bool:
-    """
-    Verify HMAC signature using constant-time comparison.
-
-    Args:
-        data: The data that was signed
-        signature: The signature to verify
-        key: The secret key used for signing
-
-    Returns:
-        True if signature is valid, False otherwise
-    """
-    expected = _compute_signature(data, key)
-    # Use constant-time comparison to prevent timing attacks
-    return hmac.compare_digest(signature, expected)
 
 
 def save_processor(
@@ -103,15 +29,13 @@ def save_processor(
     embeddings: Optional[Dict[str, list]] = None,
     semantic_relations: Optional[list] = None,
     metadata: Optional[Dict] = None,
-    verbose: bool = True,
-    format: str = 'pickle',
-    signing_key: Optional[bytes] = None
+    verbose: bool = True
 ) -> None:
     """
-    Save processor state to a file.
+    Save processor state to a JSON directory.
 
     Args:
-        filepath: Path to save file
+        filepath: Path to save directory
         layers: Dictionary of all layers
         documents: Document collection
         document_metadata: Per-document metadata (source, timestamp, etc.)
@@ -119,163 +43,70 @@ def save_processor(
         semantic_relations: Extracted semantic relations (optional)
         metadata: Optional processor metadata (version, settings, etc.)
         verbose: Print progress
-        format: Serialization format. Only 'pickle' is supported.
-        signing_key: Optional HMAC key for signing pickle files (SEC-003).
-            If provided, creates a .sig file alongside the pickle file.
-            The same key must be used to verify when loading.
-
-    Raises:
-        ValueError: If format is not 'pickle'
     """
-    if format != 'pickle':
-        raise ValueError(f"Invalid format '{format}'. Only 'pickle' is supported.")
+    from . import state_storage
+    writer = state_storage.StateWriter(filepath)
 
-    # Emit deprecation warning for pickle format due to security concerns
-    warnings.warn(
-        "Pickle format is deprecated due to security concerns (arbitrary code execution). "
-        "Consider using the StateLoader JSON format instead. "
-        "See README.md 'Security Considerations' for details.",
-        DeprecationWarning,
-        stacklevel=2
+    # Save config metadata
+    if metadata:
+        writer.save_config(
+            metadata.get('config', {}),
+            metadata.get('doc_lengths', {}),
+            metadata.get('avg_doc_length', 0.0)
+        )
+
+    # Get staleness info from metadata if available
+    stale = set(metadata.get('stale_computations', [])) if metadata else set()
+
+    # Save all components
+    writer.save_all(
+        layers=layers,
+        documents=documents,
+        document_metadata=document_metadata or {},
+        embeddings=embeddings or {},
+        semantic_relations=semantic_relations or [],
+        stale_computations=stale,
+        force=False,
+        verbose=verbose
     )
-
-    # Pickle serialization
-    state = {
-        'version': '2.2',
-        'layers': {},
-        'documents': documents,
-        'document_metadata': document_metadata or {},
-        'embeddings': embeddings or {},
-        'semantic_relations': semantic_relations or [],
-        'metadata': metadata or {}
-    }
-
-    # Serialize layers
-    for layer_enum, layer in layers.items():
-        state['layers'][layer_enum.value] = layer.to_dict()
-
-    # Serialize to bytes
-    pickle_data = pickle.dumps(state, protocol=pickle.HIGHEST_PROTOCOL)
-
-    # Sign if key provided (SEC-003)
-    if signing_key is not None:
-        signature = _compute_signature(pickle_data, signing_key)
-        _save_signature(filepath, signature)
-        if verbose:
-            logger.info(f"  - HMAC signature saved to {_get_signature_path(filepath)}")
-
-    # Write pickle data
-    with open(filepath, 'wb') as f:
-        f.write(pickle_data)
-
-    if verbose:
-        total_cols = sum(len(layer.minicolumns) for layer in layers.values())
-        total_conns = sum(layer.total_connections() for layer in layers.values())
-        logger.info(f"✓ Saved processor to {filepath} (format: {format})")
-        logger.info(f"  - {len(documents)} documents")
-        logger.info(f"  - {total_cols} minicolumns")
-        logger.info(f"  - {total_conns} connections")
-        if embeddings:
-            logger.info(f"  - {len(embeddings)} embeddings")
-        if semantic_relations:
-            logger.info(f"  - {len(semantic_relations)} semantic relations")
 
 
 def load_processor(
     filepath: str,
-    verbose: bool = True,
-    format: Optional[str] = None,
-    verify_key: Optional[bytes] = None
+    verbose: bool = True
 ) -> tuple:
     """
-    Load processor state from a file.
+    Load processor state from a JSON directory.
 
     Args:
-        filepath: Path to saved file
+        filepath: Path to saved directory
         verbose: Print progress
-        format: Serialization format. Only 'pickle' is supported.
-        verify_key: Optional HMAC key for verifying pickle file signatures (SEC-003).
-            If provided, the signature file (.sig) must exist and match.
-            This protects against tampering of pickle files.
 
     Returns:
         Tuple of (layers, documents, document_metadata, embeddings, semantic_relations, metadata)
 
     Raises:
-        ValueError: If layer values are invalid (must be 0-3) or format is invalid
-        SignatureVerificationError: If verify_key is provided and signature verification fails
-        FileNotFoundError: If verify_key is provided but no .sig file exists
+        FileNotFoundError: If filepath doesn't exist
+        ValueError: If state format is invalid
     """
-    # Default to pickle format
-    if format is None:
-        format = 'pickle'
+    from . import state_storage
+    loader = state_storage.StateLoader(filepath)
 
-    if format != 'pickle':
-        raise ValueError(f"Invalid format '{format}'. Only 'pickle' is supported.")
-
-    # Emit deprecation warning for pickle format due to security concerns
-    warnings.warn(
-        "Pickle format is deprecated due to security concerns (arbitrary code execution). "
-        "Only load pickle files from trusted sources. "
-        "Consider migrating to the StateLoader JSON format. "
-        "See README.md 'Security Considerations' for details.",
-        DeprecationWarning,
-        stacklevel=2
+    layers, documents, document_metadata, embeddings, semantic_relations, manifest_data = loader.load_all(
+        validate=True,
+        verbose=verbose
     )
 
-    # Read pickle data as bytes (for signature verification)
-    with open(filepath, 'rb') as f:
-        pickle_data = f.read()
+    # Load config and BM25 metadata
+    config_dict, doc_lengths, avg_doc_length = loader.load_config()
 
-    # Verify signature if key provided (SEC-003)
-    if verify_key is not None:
-        signature = _load_signature(filepath)
-        if signature is None:
-            raise FileNotFoundError(
-                f"Signature file not found: {_get_signature_path(filepath)}. "
-                f"Cannot verify file integrity without signature."
-            )
-        if not _verify_signature(pickle_data, signature, verify_key):
-            raise SignatureVerificationError(
-                f"Signature verification failed for {filepath}. "
-                f"The file may have been tampered with or the wrong key was used."
-            )
-        if verbose:
-            logger.info(f"  - HMAC signature verified successfully")
-
-    # Deserialize pickle
-    state = pickle.loads(pickle_data)
-
-    # Reconstruct layers
-    layers = {}
-    for level_value, layer_data in state.get('layers', {}).items():
-        # Validate layer value before creating enum
-        level_int = int(level_value)
-        if level_int not in [0, 1, 2, 3]:
-            raise ValueError(
-                f"Invalid layer value {level_int} in saved state. "
-                f"Layer values must be 0-3 (TOKENS=0, BIGRAMS=1, CONCEPTS=2, DOCUMENTS=3)."
-            )
-        layer = HierarchicalLayer.from_dict(layer_data)
-        layers[CorticalLayer(level_int)] = layer
-
-    documents = state.get('documents', {})
-    document_metadata = state.get('document_metadata', {})
-    embeddings = state.get('embeddings', {})
-    semantic_relations = state.get('semantic_relations', [])
-    metadata = state.get('metadata', {})
-
-    if verbose:
-        total_cols = sum(len(layer.minicolumns) for layer in layers.values())
-        total_conns = sum(layer.total_connections() for layer in layers.values())
-        logger.info(f"✓ Loaded processor from {filepath} (format: {format})")
-        logger.info(f"  - {len(documents)} documents")
-        logger.info(f"  - {total_cols} minicolumns")
-        logger.info(f"  - {total_conns} connections")
-        if embeddings:
-            logger.info(f"  - {len(embeddings)} embeddings")
-        if semantic_relations:
-            logger.info(f"  - {len(semantic_relations)} semantic relations")
+    # Combine metadata
+    metadata = {
+        'config': config_dict,
+        'doc_lengths': doc_lengths,
+        'avg_doc_length': avg_doc_length,
+        'stale_computations': manifest_data.get('stale_computations', [])
+    }
 
     return layers, documents, document_metadata, embeddings, semantic_relations, metadata
 
@@ -307,21 +138,21 @@ def export_graph_json(
     nodes = []
     edges = []
     node_ids = set()
-    
+
     # Determine which layers to export
     if layer_filter is not None:
         layer_list = [layers.get(layer_filter)]
     else:
         layer_list = list(layers.values())
-    
+
     # Collect nodes (sorted by PageRank)
     all_columns = []
     for layer in layer_list:
         if layer:
             all_columns.extend(layer.minicolumns.values())
-    
+
     all_columns.sort(key=lambda c: c.pagerank, reverse=True)
-    
+
     # Take top nodes
     for col in all_columns[:max_nodes]:
         nodes.append({
@@ -334,7 +165,7 @@ def export_graph_json(
             'documents': len(col.document_ids)
         })
         node_ids.add(col.id)
-    
+
     # Collect edges
     for col in all_columns[:max_nodes]:
         for target_id, weight in col.lateral_connections.items():
@@ -344,7 +175,7 @@ def export_graph_json(
                     'target': target_id,
                     'weight': weight
                 })
-    
+
     graph = {
         'nodes': nodes,
         'edges': edges,
@@ -354,7 +185,7 @@ def export_graph_json(
             'layers': [l.value for l in layers.keys() if l is not None]
         }
     }
-    
+
     with open(filepath, 'w') as f:
         json.dump(graph, f, indent=2)
 
@@ -372,7 +203,7 @@ def export_embeddings_json(
 ) -> None:
     """
     Export embeddings as JSON.
-    
+
     Args:
         filepath: Output file path
         embeddings: Dictionary of term -> embedding vector
@@ -384,7 +215,7 @@ def export_embeddings_json(
         'terms': len(embeddings),
         'metadata': metadata or {}
     }
-    
+
     with open(filepath, 'w') as f:
         json.dump(data, f)
 
@@ -395,16 +226,16 @@ def export_embeddings_json(
 def load_embeddings_json(filepath: str) -> Dict[str, list]:
     """
     Load embeddings from JSON.
-    
+
     Args:
         filepath: Input file path
-        
+
     Returns:
         Dictionary of term -> embedding vector
     """
     with open(filepath, 'r') as f:
         data = json.load(f)
-    
+
     return data.get('embeddings', {})
 
 
@@ -414,7 +245,7 @@ def export_semantic_relations_json(
 ) -> None:
     """
     Export semantic relations as JSON.
-    
+
     Args:
         filepath: Output file path
         relations: List of relation dictionaries
@@ -432,16 +263,16 @@ def export_semantic_relations_json(
 def load_semantic_relations_json(filepath: str) -> list:
     """
     Load semantic relations from JSON.
-    
+
     Args:
         filepath: Input file path
-        
+
     Returns:
         List of relation dictionaries
     """
     with open(filepath, 'r') as f:
         data = json.load(f)
-    
+
     return data.get('relations', [])
 
 

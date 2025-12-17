@@ -2,6 +2,7 @@
 Persistence API: save, load, export, and migration methods.
 
 This module contains all methods related to saving and loading processor state.
+All persistence uses JSON format for security and git-friendliness.
 """
 
 import logging
@@ -31,27 +32,25 @@ class PersistenceMixin:
     def save(
         self,
         filepath: str,
-        verbose: bool = True,
-        signing_key: Optional[bytes] = None
+        verbose: bool = True
     ) -> None:
         """
-        Save processor state to a file.
+        Save processor state to a JSON directory.
 
         Saves all computed state including embeddings, semantic relations,
         and configuration, so they don't need to be recomputed when loading.
 
         Args:
-            filepath: Path to save file
+            filepath: Path to save directory
             verbose: Print progress
-            signing_key: Optional HMAC key for signing pickle files (SEC-003).
-                If provided, creates a .sig file alongside the pickle file.
         """
         metadata = {
             'has_embeddings': bool(self.embeddings),
             'has_relations': bool(self.semantic_relations),
             'config': self.config.to_dict(),
             'doc_lengths': self.doc_lengths,
-            'avg_doc_length': self.avg_doc_length
+            'avg_doc_length': self.avg_doc_length,
+            'stale_computations': list(self._stale_computations) if hasattr(self, '_stale_computations') else []
         }
         persistence.save_processor(
             filepath,
@@ -61,33 +60,30 @@ class PersistenceMixin:
             self.embeddings,
             self.semantic_relations,
             metadata,
-            verbose,
-            signing_key=signing_key
+            verbose
         )
 
     @classmethod
     def load(
         cls,
         filepath: str,
-        verbose: bool = True,
-        verify_key: Optional[bytes] = None
+        verbose: bool = True
     ) -> 'CorticalTextProcessor':
         """
-        Load processor state from a file.
+        Load processor state from a JSON directory.
 
         Restores all computed state including embeddings, semantic relations,
         and configuration.
 
         Args:
-            filepath: Path to saved file
+            filepath: Path to saved directory
             verbose: Print progress
-            verify_key: Optional HMAC key for verifying pickle file signatures (SEC-003).
 
         Raises:
-            SignatureVerificationError: If verify_key is provided and verification fails
-            FileNotFoundError: If verify_key is provided but no .sig file exists
+            FileNotFoundError: If directory doesn't exist
+            ValueError: If state format is invalid
         """
-        result = persistence.load_processor(filepath, verbose, verify_key=verify_key)
+        result = persistence.load_processor(filepath, verbose)
         layers, documents, document_metadata, embeddings, semantic_relations, metadata = result
 
         # Restore config if available
@@ -126,7 +122,7 @@ class PersistenceMixin:
         """
         Save processor state to git-friendly JSON format.
 
-        Instead of a single monolithic pickle file, creates a directory with:
+        Instead of a single monolithic file, creates a directory with:
         - manifest.json: Version, checksums, staleness tracking
         - documents.json: Document content and metadata
         - layers/*.json: One file per layer
@@ -213,23 +209,6 @@ class PersistenceMixin:
             processor._stale_computations = manifest_data['stale_computations']
 
         return processor
-
-    def migrate_to_json(self, pkl_path: str, json_dir: str, verbose: bool = True) -> bool:
-        """
-        Migrate existing pickle file to git-friendly JSON format.
-
-        Args:
-            pkl_path: Path to existing .pkl file
-            json_dir: Directory to write JSON state
-            verbose: Print progress messages (default: True)
-
-        Returns:
-            True if migration successful
-
-        Raises:
-            FileNotFoundError: If pkl file doesn't exist
-        """
-        return state_storage.migrate_pkl_to_json(pkl_path, json_dir, verbose=verbose)
 
     def export_graph(
         self,

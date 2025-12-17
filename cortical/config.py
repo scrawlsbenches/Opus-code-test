@@ -27,7 +27,7 @@ Example:
 
 import math
 from dataclasses import dataclass, field
-from typing import Dict, Tuple, FrozenSet
+from typing import Dict, Tuple, FrozenSet, Any
 
 
 @dataclass
@@ -300,7 +300,7 @@ class CorticalConfig:
             relation_weights=dict(self.relation_weights),
         )
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert configuration to a dictionary for serialization.
 

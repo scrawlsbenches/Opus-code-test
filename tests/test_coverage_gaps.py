@@ -153,15 +153,11 @@ class TestPersistenceEdgeCases(unittest.TestCase):
         """Test saving and loading empty corpus."""
         processor = CorticalTextProcessor()
 
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
-
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_path = os.path.join(tmpdir, "corpus_state")
             processor.save(temp_path)
             loaded = CorticalTextProcessor.load(temp_path)
             self.assertEqual(len(loaded.documents), 0)
-        finally:
-            os.unlink(temp_path)
 
     def test_save_with_metadata(self):
         """Test saving with custom metadata."""
@@ -169,18 +165,14 @@ class TestPersistenceEdgeCases(unittest.TestCase):
         processor.process_document("doc1", "test content here")
         processor.compute_all(verbose=False)
 
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
-
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_path = os.path.join(tmpdir, "corpus_state")
             processor.save(temp_path)
-            # Verify file was created
+            # Verify directory was created
             self.assertTrue(os.path.exists(temp_path))
             # Load and verify
             loaded = CorticalTextProcessor.load(temp_path)
             self.assertEqual(len(loaded.documents), 1)
-        finally:
-            os.unlink(temp_path)
 
 
 class TestChunkIndexEdgeCases(unittest.TestCase):
@@ -563,10 +555,8 @@ class TestPersistenceMoreCoverage(unittest.TestCase):
         processor.process_document("doc2", "machine learning algorithms training")
         processor.compute_all(verbose=False)
 
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
-
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_path = os.path.join(tmpdir, "corpus_state")
             processor.save(temp_path)
             loaded = CorticalTextProcessor.load(temp_path)
 
@@ -575,8 +565,6 @@ class TestPersistenceMoreCoverage(unittest.TestCase):
             layer0_orig = processor.layers[CorticalLayer.TOKENS]
             layer0_loaded = loaded.layers[CorticalLayer.TOKENS]
             self.assertEqual(layer0_orig.column_count(), layer0_loaded.column_count())
-        finally:
-            os.unlink(temp_path)
 
 
 class TestInheritanceCoverage(unittest.TestCase):
@@ -1328,17 +1316,13 @@ class TestProcessorConfigRestoration(unittest.TestCase):
         processor.process_document("doc1", "test content")
         processor.compute_all(verbose=False)
 
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
-
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_path = os.path.join(tmpdir, "corpus_state")
             processor.save(temp_path, verbose=False)
             loaded = CorticalTextProcessor.load(temp_path, verbose=False)
 
             self.assertEqual(loaded.config.pagerank_damping, 0.75)
             self.assertEqual(loaded.config.min_cluster_size, 5)
-        finally:
-            os.unlink(temp_path)
 
 
 class TestProcessorRetrofitting(unittest.TestCase):

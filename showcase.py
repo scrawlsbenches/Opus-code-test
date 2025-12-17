@@ -9,6 +9,7 @@ and ideas across diverse topics.
 
 import os
 import sys
+import time
 from typing import Dict, List, Tuple
 
 from cortical import CorticalTextProcessor, CorticalLayer

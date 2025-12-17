@@ -1,0 +1,20 @@
+{
+  "id": "A-20251217-131354-d6de-008",
+  "timestamp": "2025-12-17T13:04:06.672Z",
+  "session_id": "d6dee606-6e42-480c-9003-47f4f7455fcc",
+  "action_type": "read",
+  "target": "",
+  "context": {
+    "tool": "Read",
+    "input": {
+      "tool": "Read",
+      "input": {
+        "file_path": "/home/user/Opus-code-test/tests/unit/test_fluent_coverage.py",
+        "offset": 750,
+        "limit": 50
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}
