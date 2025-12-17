@@ -1,0 +1,31 @@
+Motion Planning and Trajectory Generation
+
+Overview
+
+Motion planning is the computational problem of finding a collision-free path for a robot to move from an initial configuration to a goal configuration while satisfying various constraints. This fundamental challenge in robotics encompasses path planning in both workspace (Cartesian space) and configuration space (joint space), requiring algorithms that can efficiently search high-dimensional spaces while avoiding obstacles and respecting kinematic and dynamic constraints.
+
+The complexity of motion planning increases dramatically with the number of degrees of freedom, a phenomenon known as the curse of dimensionality. A six-degree-of-freedom manipulator must search a six-dimensional configuration space, making exhaustive search approaches computationally infeasible. Modern motion planning algorithms address this challenge through sampling-based methods, optimization techniques, and heuristic search strategies that balance completeness guarantees against computational efficiency.
+
+Key Concepts
+
+Configuration space (C-space) is a fundamental concept where each point represents a complete robot configuration. For a robot with n degrees of freedom, C-space is n-dimensional. Obstacles in workspace are mapped to C-space obstacles, transforming the geometric collision detection problem into a point navigation problem. The C-space free region represents all collision-free configurations, while the goal of motion planning is to find a path through this free space connecting start and goal configurations.
+
+A* search is a classical graph-based planning algorithm that finds optimal paths by combining actual cost from the start (g-cost) with heuristic estimated cost to goal (h-cost). The algorithm maintains a priority queue of nodes to explore, always expanding the node with lowest f-cost (f = g + h). For robotics applications, common heuristics include Euclidean distance, Manhattan distance, or more sophisticated metrics based on kinematic constraints. A* is complete and optimal when the heuristic is admissible (never overestimates true cost), but requires discretization of the configuration space, which can be memory-intensive for high-dimensional problems.
+
+Rapidly-exploring Random Trees (RRT) are sampling-based algorithms particularly effective for high-dimensional configuration spaces. RRT incrementally builds a tree by randomly sampling configurations and extending the tree toward these samples. The algorithm naturally explores the space while maintaining connectivity to the start configuration. RRT-Connect uses bidirectional search, growing trees from both start and goal until they meet, significantly improving efficiency. RRT-star adds optimization by rewiring the tree to reduce path cost, providing asymptotic optimality guarantees.
+
+Probabilistic Roadmap Method (PRM) constructs a graph of collision-free configurations during a learning phase, then uses this roadmap for multiple query planning. The construction phase randomly samples configurations, retaining collision-free samples as nodes, and connecting nearby nodes with local planners to form edges. During the query phase, start and goal configurations are connected to the roadmap, and graph search finds a path. PRM excels in environments where many planning queries will be performed, as the roadmap construction cost is amortized across multiple queries.
+
+Artificial potential fields create virtual forces that attract the robot toward the goal while repelling it from obstacles. The attractive potential increases with distance from the goal, while repulsive potentials increase as obstacles are approached. The gradient of the total potential field defines a velocity vector that guides the robot. While conceptually simple and computationally efficient for real-time applications, potential field methods suffer from local minima where attractive and repulsive forces balance, trapping the robot away from the goal.
+
+Trajectory optimization refines paths into time-parameterized trajectories that satisfy dynamic constraints, optimize performance metrics, and ensure smooth motion. Methods like quadratic programming can minimize jerk (derivative of acceleration) subject to velocity and acceleration limits. Minimum-time trajectory planning adjusts speed along a path to minimize traversal time while respecting dynamic constraints. Spline-based approaches use polynomial curves to ensure continuity of position, velocity, and acceleration, critical for smooth robot motion.
+
+Applications
+
+Autonomous warehouses employ motion planning for coordinating hundreds of mobile robots navigating shared spaces. Multi-agent path planning algorithms ensure collision-free operation while optimizing throughput. Priorities, deadlock avoidance, and dynamic replanning handle the complexity of constantly changing environments as robots move inventory between storage locations and packing stations.
+
+Unmanned aerial vehicles (UAVs) use motion planning for obstacle avoidance during autonomous flight. Three-dimensional path planning must account for no-fly zones, wind conditions, and dynamic constraints like minimum turning radius and climb rate. Real-time replanning adapts to moving obstacles and changing mission objectives, while energy-optimal trajectory planning maximizes flight duration or range.
+
+Autonomous vehicles implement hierarchical motion planning with global route planning, local path planning, and trajectory generation. Global planners use road networks and A* variants for routing, while local planners handle dynamic obstacles using methods like dynamic window approach or elastic bands. Trajectory generators ensure passenger comfort through smooth acceleration profiles while maintaining safety margins.
+
+Robotic surgery planning generates collision-free paths for instrument insertion and manipulation within the constrained surgical workspace. Planning must respect anatomical constraints, minimize tissue damage, and coordinate multiple instruments. Preoperative planning uses patient imaging data, while intraoperative replanning adapts to anatomical motion and unexpected conditions.
