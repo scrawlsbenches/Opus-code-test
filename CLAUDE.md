@@ -1173,13 +1173,12 @@ python scripts/search_codebase.py --interactive
 
 ### Claude Skills
 
-Five skills are available in `.claude/skills/`:
+Four skills are available in `.claude/skills/`:
 
 1. **codebase-search**: Search the indexed codebase for code patterns and implementations
 2. **corpus-indexer**: Re-index the codebase after making changes
 3. **ai-metadata**: View pre-generated module metadata for rapid understanding
 4. **memory-manager**: Create and manage knowledge memories (learnings, decisions, concepts)
-5. **git-sync**: Safe git synchronization - handles conflicts, recovery from bad states, ML data merging
 
 ### Indexer Options
 
