@@ -943,7 +943,8 @@ class MLStore:
 
     def close(self) -> None:
         """Persist all state before closing."""
-        self._bloom.save(self._local_dir / 'bloom.bin')
+        if self._bloom is not None:
+            self._bloom.save(self._local_dir / 'bloom.bin')
         self._save_manifest()
 
     def rebuild_indices(self) -> None:
