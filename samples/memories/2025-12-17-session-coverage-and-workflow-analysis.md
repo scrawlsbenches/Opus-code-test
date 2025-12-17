@@ -95,22 +95,73 @@ Claude sessions are ephemeral but the codebase must be continuous. Knowledge, co
 - Debt accumulates visibly
 - Weekly debt summary auto-generated
 
+#### F. Book Generation as Living Documentation Hub
+
+The existing book generation system (`scripts/generate_book.py`) is the **natural consolidation point** for all framework outputs. Currently has 16 generators - extend with:
+
+**New Generators to Add:**
+
+| Generator | Source | Output |
+|-----------|--------|--------|
+| `CoverageChapterGenerator` | `.coverage-baseline/`, coverage runs | Chapter showing coverage trends, debt, improvements |
+| `DebtRegisterGenerator` | `.dev-safety-net/`, task debt | Chapter tracking technical debt with burndown |
+| `SessionJournalGenerator` | `samples/memories/`, session handoffs | Auto-compiled session history with learnings |
+| `BranchHistoryGenerator` | `.branch-state/merged/` | Record of parallel work and conflict resolutions |
+| `TaskTimelineGenerator` | `tasks/*.json` | Visual timeline of task creation → completion |
+
+**Integration Points:**
+
+```
+SessionEnd hook
+    ↓
+Auto-generate session memory draft
+    ↓
+Book generation picks up memories
+    ↓
+BOOK.md includes session learnings
+    ↓
+Future sessions can search the book
+```
+
+**Why Book Generation is Central:**
+1. Already indexes and searches its own content (dog-fooding)
+2. Generates human-readable output from machine data
+3. Creates permanent, searchable institutional memory
+4. The "living book" becomes the system's long-term memory
+
+**Existing generators to leverage:**
+- `CommitNarrativeGenerator` - already tells the story of changes
+- `DecisionStoryGenerator` - captures ADRs
+- `CaseStudyGenerator` - synthesizes debug stories from ML data
+- `ConceptEvolutionGenerator` - tracks concept cluster changes
+
+**Book generation schedule:**
+- On-demand: `python scripts/generate_book.py`
+- CI: Generate after successful merge to main
+- Weekly: Full regeneration with coverage/debt chapters
+
 ### Implementation Phases
 
 **Phase 1 (Immediate Value):**
 - [ ] SessionStart hook shows health dashboard
 - [ ] Create coverage baseline from current state
 - [ ] Task-consciousness in post-commit
+- [ ] Add `SessionJournalGenerator` to book generation (leverages existing memories)
 
 **Phase 2 (Medium Effort):**
 - [ ] Branch manifest system
 - [ ] Pre-commit coverage warnings
-- [ ] Auto memory draft generation
+- [ ] Auto memory draft generation on SessionEnd
+- [ ] Add `CoverageChapterGenerator` to book generation
+- [ ] Add `TaskTimelineGenerator` to book generation
 
 **Phase 3 (Higher Effort):**
 - [ ] Bidirectional task-code linking
 - [ ] Stale task detection
 - [ ] Weekly debt summaries
+- [ ] Add `DebtRegisterGenerator` to book generation
+- [ ] CI integration: regenerate book on merge to main
+- [ ] Add `BranchHistoryGenerator` for parallel work documentation
 
 ## Decisions Made
 
@@ -131,6 +182,8 @@ Claude sessions are ephemeral but the codebase must be continuous. Knowledge, co
 ### Files to review:
 - `.claude/settings.local.json` - current hooks
 - `scripts/ml-session-start-hook.sh` - where to add health check
+- `scripts/generate_book.py` - book generation system (4,970 lines, 16 generators)
+- `docs/REFACTOR-BOOK-GENERATION.md` - planned refactoring into package
 - `CLAUDE.md` - update coverage target to be realistic
 
 ### Open questions:
@@ -141,9 +194,11 @@ Claude sessions are ephemeral but the codebase must be continuous. Knowledge, co
 ## Connections
 
 - Related: [[2025-12-17-git-merge-forensic-analysis.md]]
+- Related: [[2025-12-17-session-refactor-book-generation-plan.md]]
 - Task file: `tasks/2025-12-17_20-49-13_dbf8.json`
+- Book generation task: T-20251217-111356-6b01-019
 - Coverage docs: Run `python -m coverage report --include="cortical/*"`
 
 ## Tags
 
-`coverage`, `workflow`, `technical-debt`, `continuous-consciousness`, `knowledge-transfer`, `task-hygiene`
+`coverage`, `workflow`, `technical-debt`, `continuous-consciousness`, `knowledge-transfer`, `task-hygiene`, `book-generation`, `living-documentation`
