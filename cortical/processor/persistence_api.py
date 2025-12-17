@@ -32,7 +32,7 @@ class PersistenceMixin:
         self,
         filepath: str,
         verbose: bool = True,
-        format: str = 'json',
+        format: Optional[str] = None,
         signing_key: Optional[bytes] = None
     ) -> None:
         """
@@ -44,7 +44,8 @@ class PersistenceMixin:
         Args:
             filepath: Path to save file (directory for JSON, file for pickle)
             verbose: Print progress
-            format: Serialization format. Default: 'json' (recommended)
+            format: Serialization format. Default: auto-detect from extension.
+                - None (default): Auto-detect from extension (.pkl → pickle, else → json)
                 - 'json': Git-friendly, secure, cross-platform (recommended)
                 - 'pickle': Legacy format, deprecated due to security concerns
             signing_key: Optional HMAC key for signing pickle files (SEC-003).

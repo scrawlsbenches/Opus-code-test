@@ -104,7 +104,7 @@ def save_processor(
     semantic_relations: Optional[list] = None,
     metadata: Optional[Dict] = None,
     verbose: bool = True,
-    format: str = 'json',
+    format: Optional[str] = None,
     signing_key: Optional[bytes] = None
 ) -> None:
     """
@@ -119,7 +119,8 @@ def save_processor(
         semantic_relations: Extracted semantic relations (optional)
         metadata: Optional processor metadata (version, settings, etc.)
         verbose: Print progress
-        format: Serialization format ('json' or 'pickle'). Default: 'json' (recommended).
+        format: Serialization format ('json' or 'pickle'). Default: auto-detect from extension.
+            - None (default): Auto-detect from extension (.pkl → pickle, else → json)
             - 'json': Git-friendly, secure, cross-platform (recommended)
             - 'pickle': Legacy format, deprecated due to security concerns
         signing_key: Optional HMAC key for signing pickle files (SEC-003).
@@ -130,6 +131,13 @@ def save_processor(
     Raises:
         ValueError: If format is not 'json' or 'pickle'
     """
+    # Auto-detect format from file extension if not specified
+    if format is None:
+        if filepath.endswith('.pkl') or filepath.endswith('.pickle'):
+            format = 'pickle'
+        else:
+            format = 'json'
+
     if format not in ('json', 'pickle'):
         raise ValueError(f"Invalid format '{format}'. Must be 'json' or 'pickle'.")
 
