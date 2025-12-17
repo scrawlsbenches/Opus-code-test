@@ -30,13 +30,6 @@ from cortical.persistence import (
     load_embeddings_json,
     export_semantic_relations_json,
     load_semantic_relations_json,
-    # SEC-003: HMAC signature verification
-    SignatureVerificationError,
-    _compute_signature,
-    _save_signature,
-    _load_signature,
-    _verify_signature,
-    _get_signature_path,
 )
 from cortical.layers import CorticalLayer
 
@@ -466,25 +459,22 @@ def create_test_layers():
 
 
 class TestSaveLoadProcessor:
-    """Tests for save_processor and load_processor functions."""
+    """Tests for save_processor and load_processor functions (JSON format)."""
 
     def test_save_load_roundtrip_basic(self):
         """Basic processor state survives save/load roundtrip."""
         layers = create_test_layers()
         documents = {"doc1": "Neural networks process data."}
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
-            filepath = f.name
-        try:
-            save_processor(filepath, layers, documents, verbose=False, format='pickle')
-            loaded_layers, loaded_docs, _, _, _, _ = load_processor(filepath, verbose=False, format='pickle')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
+            save_processor(dirpath, layers, documents, verbose=False)
+            loaded_layers, loaded_docs, _, _, _, _ = load_processor(dirpath, verbose=False)
 
             assert loaded_docs == documents
             assert len(loaded_layers) == len(layers)
             assert CorticalLayer.TOKENS in loaded_layers
             assert loaded_layers[CorticalLayer.TOKENS].column_count() == 2
-        finally:
-            os.unlink(filepath)
 
     def test_save_load_with_metadata(self):
         """Metadata survives save/load roundtrip."""
@@ -493,23 +483,19 @@ class TestSaveLoadProcessor:
         doc_metadata = {"doc1": {"source": "test", "timestamp": 12345}}
         metadata = {"version": "1.0", "config": {"param": "value"}}
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
-            filepath = f.name
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
             save_processor(
-                filepath, layers, documents,
+                dirpath, layers, documents,
                 document_metadata=doc_metadata,
                 metadata=metadata,
-                verbose=False,
-                format='pickle'
+                verbose=False
             )
-            _, _, loaded_doc_meta, _, _, loaded_meta = load_processor(filepath, verbose=False, format='pickle')
+            _, _, loaded_doc_meta, _, _, loaded_meta = load_processor(dirpath, verbose=False)
 
             assert loaded_doc_meta == doc_metadata
-            assert loaded_meta["version"] == "1.0"
-            assert loaded_meta["config"]["param"] == "value"
-        finally:
-            os.unlink(filepath)
+            assert 'config' in loaded_meta
+            assert loaded_meta['config']['param'] == 'value'
 
     def test_save_load_with_embeddings(self):
         """Embeddings survive save/load roundtrip."""
@@ -520,15 +506,12 @@ class TestSaveLoadProcessor:
             "network": [0.4, 0.5, 0.6]
         }
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
-            filepath = f.name
-        try:
-            save_processor(filepath, layers, documents, embeddings=embeddings, verbose=False, format='pickle')
-            _, _, _, loaded_emb, _, _ = load_processor(filepath, verbose=False, format='pickle')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
+            save_processor(dirpath, layers, documents, embeddings=embeddings, verbose=False)
+            _, _, _, loaded_emb, _, _ = load_processor(dirpath, verbose=False)
 
             assert loaded_emb == embeddings
-        finally:
-            os.unlink(filepath)
 
     def test_save_load_with_semantic_relations(self):
         """Semantic relations survive save/load roundtrip."""
@@ -539,20 +522,17 @@ class TestSaveLoadProcessor:
             ("network", "RelatedTo", "neural", 0.8)
         ]
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
-            filepath = f.name
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
             save_processor(
-                filepath, layers, documents,
+                dirpath, layers, documents,
                 semantic_relations=relations,
-                verbose=False,
-                format='pickle'
+                verbose=False
             )
-            _, _, _, _, loaded_rels, _ = load_processor(filepath, verbose=False, format='pickle')
+            _, _, _, _, loaded_rels, _ = load_processor(dirpath, verbose=False)
 
+            # StateLoader converts back to tuples
             assert loaded_rels == relations
-        finally:
-            os.unlink(filepath)
 
     def test_save_load_empty_layers(self):
         """Empty layers can be saved and loaded."""
@@ -564,29 +544,25 @@ class TestSaveLoadProcessor:
         }
         documents = {}
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
-            filepath = f.name
-        try:
-            save_processor(filepath, layers, documents, verbose=False, format='pickle')
-            loaded_layers, loaded_docs, _, _, _, _ = load_processor(filepath, verbose=False, format='pickle')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
+            save_processor(dirpath, layers, documents, verbose=False)
+            loaded_layers, loaded_docs, _, _, _, _ = load_processor(dirpath, verbose=False)
 
             assert loaded_docs == {}
             assert len(loaded_layers) == 4
             for layer in loaded_layers.values():
                 assert layer.column_count() == 0
-        finally:
-            os.unlink(filepath)
 
     def test_save_preserves_minicolumn_connections(self):
         """Minicolumn connections are preserved."""
         layers = create_test_layers()
         documents = {"doc1": "Test."}
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
-            filepath = f.name
-        try:
-            save_processor(filepath, layers, documents, verbose=False, format='pickle')
-            loaded_layers, _, _, _, _, _ = load_processor(filepath, verbose=False, format='pickle')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
+            save_processor(dirpath, layers, documents, verbose=False)
+            loaded_layers, _, _, _, _, _ = load_processor(dirpath, verbose=False)
 
             # Check lateral connections
             col = loaded_layers[CorticalLayer.TOKENS].get_minicolumn("neural")
@@ -602,19 +578,16 @@ class TestSaveLoadProcessor:
             # Check feedforward connections
             bigram = loaded_layers[CorticalLayer.BIGRAMS].get_minicolumn("neural network")
             assert "L0_neural" in bigram.feedforward_connections
-        finally:
-            os.unlink(filepath)
 
     def test_save_preserves_minicolumn_attributes(self):
         """All minicolumn attributes are preserved."""
         layers = create_test_layers()
         documents = {"doc1": "Test."}
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
-            filepath = f.name
-        try:
-            save_processor(filepath, layers, documents, verbose=False, format='pickle')
-            loaded_layers, _, _, _, _, _ = load_processor(filepath, verbose=False, format='pickle')
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
+            save_processor(dirpath, layers, documents, verbose=False)
+            loaded_layers, _, _, _, _, _ = load_processor(dirpath, verbose=False)
 
             col = loaded_layers[CorticalLayer.TOKENS].get_minicolumn("neural")
             assert col.id == "L0_neural"
@@ -625,27 +598,22 @@ class TestSaveLoadProcessor:
             assert col.tfidf == 1.5
             assert col.activation == 0.8
             assert "doc1" in col.document_ids
-        finally:
-            os.unlink(filepath)
 
     def test_save_with_verbose_logging(self):
         """Verbose mode logs statistics."""
         layers = create_test_layers()
         documents = {"doc1": "Test."}
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
-            filepath = f.name
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
             # Should not raise error with verbose=True
-            save_processor(filepath, layers, documents, verbose=True, format='pickle')
-            load_processor(filepath, verbose=True, format='pickle')
-        finally:
-            os.unlink(filepath)
+            save_processor(dirpath, layers, documents, verbose=True)
+            load_processor(dirpath, verbose=True)
 
-    def test_load_nonexistent_file(self):
-        """Loading nonexistent file raises error."""
+    def test_load_nonexistent_directory(self):
+        """Loading nonexistent directory raises error."""
         with pytest.raises(FileNotFoundError):
-            load_processor("/nonexistent/path.pkl")
+            load_processor("/nonexistent/path")
 
     def test_save_verbose_with_embeddings_and_relations(self):
         """Verbose logging includes embeddings and relations counts."""
@@ -654,20 +622,16 @@ class TestSaveLoadProcessor:
         embeddings = {"neural": [0.1, 0.2], "network": [0.3, 0.4]}
         relations = [("a", "IsA", "b", 1.0)]
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
-            filepath = f.name
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
             # Should log embeddings and relations with verbose=True
             save_processor(
-                filepath, layers, documents,
+                dirpath, layers, documents,
                 embeddings=embeddings,
                 semantic_relations=relations,
-                verbose=True,
-                format='pickle'
+                verbose=True
             )
-            load_processor(filepath, verbose=True, format='pickle')
-        finally:
-            os.unlink(filepath)
+            load_processor(dirpath, verbose=True)
 
 
 # =============================================================================
@@ -1239,387 +1203,43 @@ class TestExportConceptnetJson:
 
 
 # =============================================================================
-# SEC-003: HMAC SIGNATURE VERIFICATION TESTS
-# =============================================================================
-
-
-class TestSignatureHelpers:
-    """Tests for HMAC signature helper functions (SEC-003)."""
-
-    def test_get_signature_path(self):
-        """Signature path is filename + .sig extension."""
-        assert _get_signature_path("/path/to/file.pkl") == "/path/to/file.pkl.sig"
-        assert _get_signature_path("data.pkl") == "data.pkl.sig"
-
-    def test_compute_signature_returns_32_bytes(self):
-        """HMAC-SHA256 signature is 32 bytes."""
-        data = b"test data"
-        key = b"secret key"
-        sig = _compute_signature(data, key)
-        assert len(sig) == 32  # SHA256 produces 32 bytes
-
-    def test_compute_signature_deterministic(self):
-        """Same data and key produces same signature."""
-        data = b"test data"
-        key = b"secret key"
-        sig1 = _compute_signature(data, key)
-        sig2 = _compute_signature(data, key)
-        assert sig1 == sig2
-
-    def test_compute_signature_different_with_different_key(self):
-        """Different keys produce different signatures."""
-        data = b"test data"
-        key1 = b"key1"
-        key2 = b"key2"
-        sig1 = _compute_signature(data, key1)
-        sig2 = _compute_signature(data, key2)
-        assert sig1 != sig2
-
-    def test_compute_signature_different_with_different_data(self):
-        """Different data produces different signatures."""
-        data1 = b"data1"
-        data2 = b"data2"
-        key = b"key"
-        sig1 = _compute_signature(data1, key)
-        sig2 = _compute_signature(data2, key)
-        assert sig1 != sig2
-
-    def test_verify_signature_correct(self):
-        """Correct signature verifies successfully."""
-        data = b"test data"
-        key = b"secret key"
-        sig = _compute_signature(data, key)
-        assert _verify_signature(data, sig, key) is True
-
-    def test_verify_signature_wrong_key(self):
-        """Signature fails with wrong key."""
-        data = b"test data"
-        key = b"secret key"
-        wrong_key = b"wrong key"
-        sig = _compute_signature(data, key)
-        assert _verify_signature(data, sig, wrong_key) is False
-
-    def test_verify_signature_tampered_data(self):
-        """Signature fails with tampered data."""
-        data = b"test data"
-        tampered = b"tampered data"
-        key = b"secret key"
-        sig = _compute_signature(data, key)
-        assert _verify_signature(tampered, sig, key) is False
-
-    def test_save_and_load_signature(self):
-        """Signature can be saved and loaded."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-            signature = b"x" * 32
-
-            _save_signature(filepath, signature)
-            loaded = _load_signature(filepath)
-
-            assert loaded == signature
-
-    def test_load_signature_nonexistent_returns_none(self):
-        """Loading nonexistent signature returns None."""
-        result = _load_signature("/nonexistent/file.pkl")
-        assert result is None
-
-
-class TestSignatureVerificationError:
-    """Tests for SignatureVerificationError exception."""
-
-    def test_exception_is_raisable(self):
-        """Exception can be raised and caught."""
-        with pytest.raises(SignatureVerificationError):
-            raise SignatureVerificationError("test error")
-
-    def test_exception_message(self):
-        """Exception preserves message."""
-        try:
-            raise SignatureVerificationError("custom message")
-        except SignatureVerificationError as e:
-            assert "custom message" in str(e)
-
-
-class TestSaveLoadWithSignature:
-    """Tests for save_processor and load_processor with HMAC signatures (SEC-003)."""
-
-    def test_save_creates_signature_file(self):
-        """Saving with signing_key creates .sig file."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-        key = b"my-secret-key"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-            sig_path = filepath + ".sig"
-
-            save_processor(filepath, layers, documents, signing_key=key, verbose=False, format='pickle')
-
-            assert os.path.exists(filepath)
-            assert os.path.exists(sig_path)
-
-    def test_save_without_key_no_signature(self):
-        """Saving without signing_key creates no .sig file."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-            sig_path = filepath + ".sig"
-
-            save_processor(filepath, layers, documents, verbose=False, format='pickle')
-
-            assert os.path.exists(filepath)
-            assert not os.path.exists(sig_path)
-
-    def test_load_with_correct_key_succeeds(self):
-        """Loading with correct verify_key succeeds."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-        key = b"my-secret-key"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-
-            save_processor(filepath, layers, documents, signing_key=key, verbose=False, format='pickle')
-            result = load_processor(filepath, verify_key=key, verbose=False, format='pickle')
-
-            loaded_layers, loaded_docs, _, _, _, _ = result
-            assert loaded_docs == documents
-
-    def test_load_with_wrong_key_fails(self):
-        """Loading with wrong verify_key raises SignatureVerificationError."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-        key = b"correct-key"
-        wrong_key = b"wrong-key"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-
-            save_processor(filepath, layers, documents, signing_key=key, verbose=False, format='pickle')
-
-            with pytest.raises(SignatureVerificationError):
-                load_processor(filepath, verify_key=wrong_key, verbose=False, format='pickle')
-
-    def test_load_tampered_file_fails(self):
-        """Loading tampered file raises SignatureVerificationError."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-        key = b"my-secret-key"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-
-            save_processor(filepath, layers, documents, signing_key=key, verbose=False, format='pickle')
-
-            # Tamper with the file
-            with open(filepath, "r+b") as f:
-                f.seek(100)
-                f.write(b"TAMPERED")
-
-            with pytest.raises(SignatureVerificationError):
-                load_processor(filepath, verify_key=key, verbose=False, format='pickle')
-
-    def test_load_missing_signature_file_fails(self):
-        """Loading with verify_key but missing .sig raises FileNotFoundError."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-        key = b"my-secret-key"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-
-            # Save without signing key (no .sig file)
-            save_processor(filepath, layers, documents, verbose=False, format='pickle')
-
-            # Try to load with verify_key
-            with pytest.raises(FileNotFoundError) as exc_info:
-                load_processor(filepath, verify_key=key, verbose=False, format='pickle')
-            assert ".sig" in str(exc_info.value)
-
-    def test_backward_compatibility_no_key(self):
-        """Loading without verify_key works (backward compatible)."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-
-            # Save without signing
-            save_processor(filepath, layers, documents, verbose=False, format='pickle')
-
-            # Load without verify_key
-            result = load_processor(filepath, verbose=False, format='pickle')
-            loaded_layers, loaded_docs, _, _, _, _ = result
-            assert loaded_docs == documents
-
-    def test_save_signed_load_unsigned_works(self):
-        """Loading signed file without verify_key works (ignores signature)."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-        key = b"my-secret-key"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-
-            # Save with signing key
-            save_processor(filepath, layers, documents, signing_key=key, verbose=False, format='pickle')
-
-            # Load without verify_key (ignores .sig file)
-            result = load_processor(filepath, verbose=False, format='pickle')
-            loaded_layers, loaded_docs, _, _, _, _ = result
-            assert loaded_docs == documents
-
-    def test_signature_is_32_bytes(self):
-        """Signature file contains 32-byte HMAC-SHA256."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-        key = b"my-secret-key"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-            sig_path = filepath + ".sig"
-
-            save_processor(filepath, layers, documents, signing_key=key, verbose=False, format='pickle')
-
-            with open(sig_path, "rb") as f:
-                signature = f.read()
-            assert len(signature) == 32
-
-    def test_different_keys_different_signatures(self):
-        """Different signing keys produce different signatures."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-        key1 = b"key1"
-        key2 = b"key2"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath1 = os.path.join(tmpdir, "test1.pkl")
-            filepath2 = os.path.join(tmpdir, "test2.pkl")
-
-            save_processor(filepath1, layers, documents, signing_key=key1, verbose=False, format='pickle')
-            save_processor(filepath2, layers, documents, signing_key=key2, verbose=False, format='pickle')
-
-            sig1 = _load_signature(filepath1)
-            sig2 = _load_signature(filepath2)
-
-            assert sig1 != sig2
-
-    def test_verbose_logging_with_signature(self):
-        """Verbose mode logs signature operations."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-        key = b"my-secret-key"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-
-            # Should not raise with verbose=True
-            save_processor(filepath, layers, documents, signing_key=key, verbose=True, format='pickle')
-            load_processor(filepath, verify_key=key, verbose=True, format='pickle')
-
-
-# =============================================================================
 # JSON FORMAT TESTS
 # =============================================================================
-
-
-from cortical.persistence import _detect_format
-
-
-class TestFormatDetection:
-    """Tests for _detect_format auto-detection function."""
-
-    def test_detect_directory_as_json(self):
-        """Directory is detected as JSON format."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            detected = _detect_format(tmpdir)
-            assert detected == 'json'
-
-    def test_detect_pickle_file(self):
-        """Pickle file is detected by magic bytes."""
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
-            filepath = f.name
-            # Write pickle magic bytes (protocol 4)
-            f.write(b'\x80\x04test')
-        try:
-            detected = _detect_format(filepath)
-            assert detected == 'pickle'
-        finally:
-            os.unlink(filepath)
-
-    def test_detect_json_file(self):
-        """JSON file is detected by opening brace."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix=".json", delete=False) as f:
-            filepath = f.name
-            f.write('{"test": "data"}')
-        try:
-            detected = _detect_format(filepath)
-            assert detected == 'json'
-        finally:
-            os.unlink(filepath)
-
-    def test_detect_json_with_whitespace(self):
-        """JSON file with leading whitespace is detected."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix=".json", delete=False) as f:
-            filepath = f.name
-            f.write('  \n  {"test": "data"}')
-        try:
-            detected = _detect_format(filepath)
-            assert detected == 'json'
-        finally:
-            os.unlink(filepath)
-
-    def test_detect_nonexistent_file_raises(self):
-        """Non-existent file raises FileNotFoundError."""
-        with pytest.raises(FileNotFoundError):
-            _detect_format("/nonexistent/path.pkl")
-
-    def test_detect_empty_file_raises(self):
-        """Empty file raises ValueError."""
-        with tempfile.NamedTemporaryFile(delete=False) as f:
-            filepath = f.name
-        try:
-            with pytest.raises(ValueError):
-                _detect_format(filepath)
-        finally:
-            os.unlink(filepath)
 
 
 class TestJSONFormatSaveLoad:
     """Tests for JSON format save/load functionality."""
 
-    def test_save_json_format(self):
-        """Saving with format='json' creates directory structure."""
+    def test_save_creates_directory_structure(self):
+        """Saving creates JSON directory structure."""
         layers = create_test_layers()
         documents = {"doc1": "Test."}
 
         with tempfile.TemporaryDirectory() as tmpdir:
             dirpath = os.path.join(tmpdir, "corpus_state")
 
-            save_processor(dirpath, layers, documents, format='json', verbose=False)
+            save_processor(dirpath, layers, documents, verbose=False)
 
             # Should create directory with manifest.json
             assert os.path.isdir(dirpath)
             assert os.path.exists(os.path.join(dirpath, "manifest.json"))
 
-    def test_load_json_format(self):
-        """Loading JSON format restores state."""
+    def test_load_restores_state(self):
+        """Loading restores state from JSON directory."""
         layers = create_test_layers()
         documents = {"doc1": "Test document."}
 
         with tempfile.TemporaryDirectory() as tmpdir:
             dirpath = os.path.join(tmpdir, "corpus_state")
 
-            save_processor(dirpath, layers, documents, format='json', verbose=False)
-            loaded_layers, loaded_docs, _, _, _, _ = load_processor(dirpath, format='json', verbose=False)
+            save_processor(dirpath, layers, documents, verbose=False)
+            loaded_layers, loaded_docs, _, _, _, _ = load_processor(dirpath, verbose=False)
 
             assert loaded_docs == documents
             assert len(loaded_layers) == len(layers)
 
-    def test_json_roundtrip_with_metadata(self):
-        """JSON format preserves metadata."""
+    def test_roundtrip_with_metadata(self):
+        """Metadata survives save/load roundtrip."""
         layers = create_test_layers()
         documents = {"doc1": "Test."}
         doc_metadata = {"doc1": {"source": "test", "timestamp": 12345}}
@@ -1632,93 +1252,22 @@ class TestJSONFormatSaveLoad:
                 dirpath, layers, documents,
                 document_metadata=doc_metadata,
                 metadata=metadata,
-                format='json',
                 verbose=False
             )
-            _, _, loaded_doc_meta, _, _, loaded_meta = load_processor(dirpath, format='json', verbose=False)
+            _, _, loaded_doc_meta, _, _, loaded_meta = load_processor(dirpath, verbose=False)
 
             assert loaded_doc_meta == doc_metadata
             assert 'config' in loaded_meta
             assert loaded_meta['config']['param'] == 'value'
 
-    def test_auto_detect_json_directory(self):
-        """Auto-detection works for JSON directory."""
+    def test_save_creates_json_structure(self):
+        """Saving creates proper JSON directory structure."""
         layers = create_test_layers()
         documents = {"doc1": "Test."}
 
         with tempfile.TemporaryDirectory() as tmpdir:
             dirpath = os.path.join(tmpdir, "corpus_state")
 
-            save_processor(dirpath, layers, documents, format='json', verbose=False)
-            # Load without specifying format - should auto-detect
-            loaded_layers, loaded_docs, _, _, _, _ = load_processor(dirpath, format=None, verbose=False)
-
-            assert loaded_docs == documents
-
-    def test_auto_detect_pickle_file(self):
-        """Auto-detection works for pickle file."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-
-            save_processor(filepath, layers, documents, format='pickle', verbose=False)
-            # Load without specifying format - should auto-detect
-            loaded_layers, loaded_docs, _, _, _, _ = load_processor(filepath, format=None, verbose=False)
-
-            assert loaded_docs == documents
-
-    def test_invalid_format_raises(self):
-        """Invalid format raises ValueError."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.dat")
-
-            with pytest.raises(ValueError, match="Invalid format"):
-                save_processor(filepath, layers, documents, format='invalid', verbose=False)
-
-    def test_json_format_no_deprecation_warning(self):
-        """JSON format does not emit deprecation warning."""
-        import warnings
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            dirpath = os.path.join(tmpdir, "corpus_state")
-
-            # Should not emit DeprecationWarning
-            with warnings.catch_warnings(record=True) as warning_list:
-                warnings.simplefilter("always")
-                save_processor(dirpath, layers, documents, format='json', verbose=False)
-
-            # Filter for DeprecationWarning about pickle
-            pickle_warnings = [w for w in warning_list if issubclass(w.category, DeprecationWarning)]
-            assert len(pickle_warnings) == 0
-
-    def test_pickle_format_emits_deprecation_warning(self):
-        """Pickle format emits deprecation warning."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = os.path.join(tmpdir, "test.pkl")
-
-            # Should emit DeprecationWarning
-            with pytest.warns(DeprecationWarning, match="deprecated"):
-                save_processor(filepath, layers, documents, format='pickle', verbose=False)
-
-    def test_json_default_format(self):
-        """JSON is the default format when not specified."""
-        layers = create_test_layers()
-        documents = {"doc1": "Test."}
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            dirpath = os.path.join(tmpdir, "corpus_state")
-
-            # Don't specify format - should default to JSON
             save_processor(dirpath, layers, documents, verbose=False)
 
             # Should create JSON directory structure

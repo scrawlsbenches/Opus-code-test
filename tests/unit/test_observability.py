@@ -349,18 +349,13 @@ class TestProcessorIntegration(unittest.TestCase):
         processor.process_document("doc1", "Neural networks process data.")
         processor.compute_all(verbose=False)
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pkl') as f:
-            temp_path = f.name
-
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_path = os.path.join(tmpdir, "corpus_state")
             processor.save(temp_path, verbose=False)
 
             metrics = processor.get_metrics()
             self.assertIn("save", metrics)
             self.assertGreater(metrics["save"]["avg_ms"], 0)
-        finally:
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
 
     def test_cache_hit_metrics(self):
         """Test that cache hits/misses are recorded."""

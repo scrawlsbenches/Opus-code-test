@@ -2,6 +2,7 @@
 Persistence API: save, load, export, and migration methods.
 
 This module contains all methods related to saving and loading processor state.
+All persistence uses JSON format for security and git-friendliness.
 """
 
 import logging
@@ -31,26 +32,17 @@ class PersistenceMixin:
     def save(
         self,
         filepath: str,
-        verbose: bool = True,
-        format: Optional[str] = None,
-        signing_key: Optional[bytes] = None
+        verbose: bool = True
     ) -> None:
         """
-        Save processor state to a file.
+        Save processor state to a JSON directory.
 
         Saves all computed state including embeddings, semantic relations,
         and configuration, so they don't need to be recomputed when loading.
 
         Args:
-            filepath: Path to save file (directory for JSON, file for pickle)
+            filepath: Path to save directory
             verbose: Print progress
-            format: Serialization format. Default: auto-detect from extension.
-                - None (default): Auto-detect from extension (.pkl → pickle, else → json)
-                - 'json': Git-friendly, secure, cross-platform (recommended)
-                - 'pickle': Legacy format, deprecated due to security concerns
-            signing_key: Optional HMAC key for signing pickle files (SEC-003).
-                If provided, creates a .sig file alongside the pickle file.
-                Only applies to pickle format.
         """
         metadata = {
             'has_embeddings': bool(self.embeddings),
@@ -68,40 +60,30 @@ class PersistenceMixin:
             self.embeddings,
             self.semantic_relations,
             metadata,
-            verbose,
-            format=format,
-            signing_key=signing_key
+            verbose
         )
 
     @classmethod
     def load(
         cls,
         filepath: str,
-        verbose: bool = True,
-        format: Optional[str] = None,
-        verify_key: Optional[bytes] = None
+        verbose: bool = True
     ) -> 'CorticalTextProcessor':
         """
-        Load processor state from a file.
-
-        Auto-detects format (JSON vs pickle) based on file content if format is None.
+        Load processor state from a JSON directory.
 
         Restores all computed state including embeddings, semantic relations,
         and configuration.
 
         Args:
-            filepath: Path to saved file or directory
+            filepath: Path to saved directory
             verbose: Print progress
-            format: Serialization format ('json' or 'pickle').
-                If None (default), auto-detects based on file content.
-            verify_key: Optional HMAC key for verifying pickle file signatures (SEC-003).
-                Only applies to pickle format.
 
         Raises:
-            SignatureVerificationError: If verify_key is provided and verification fails
-            FileNotFoundError: If file doesn't exist or verify_key is provided but no .sig file exists
+            FileNotFoundError: If directory doesn't exist
+            ValueError: If state format is invalid
         """
-        result = persistence.load_processor(filepath, verbose, format=format, verify_key=verify_key)
+        result = persistence.load_processor(filepath, verbose)
         layers, documents, document_metadata, embeddings, semantic_relations, metadata = result
 
         # Restore config if available
@@ -140,7 +122,7 @@ class PersistenceMixin:
         """
         Save processor state to git-friendly JSON format.
 
-        Instead of a single monolithic pickle file, creates a directory with:
+        Instead of a single monolithic file, creates a directory with:
         - manifest.json: Version, checksums, staleness tracking
         - documents.json: Document content and metadata
         - layers/*.json: One file per layer
@@ -227,23 +209,6 @@ class PersistenceMixin:
             processor._stale_computations = manifest_data['stale_computations']
 
         return processor
-
-    def migrate_to_json(self, pkl_path: str, json_dir: str, verbose: bool = True) -> bool:
-        """
-        Migrate existing pickle file to git-friendly JSON format.
-
-        Args:
-            pkl_path: Path to existing .pkl file
-            json_dir: Directory to write JSON state
-            verbose: Print progress messages (default: True)
-
-        Returns:
-            True if migration successful
-
-        Raises:
-            FileNotFoundError: If pkl file doesn't exist
-        """
-        return state_storage.migrate_pkl_to_json(pkl_path, json_dir, verbose=verbose)
 
     def export_graph(
         self,

@@ -4,6 +4,7 @@ Unit tests for the FluentProcessor API.
 Tests the fluent/chainable interface for CorticalTextProcessor.
 """
 
+import os
 import pytest
 import tempfile
 from pathlib import Path
@@ -78,17 +79,14 @@ class TestFluentProcessorChaining:
 
     def test_save_returns_self(self):
         """Test that save returns self for chaining."""
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = os.path.join(tmpdir, "corpus_state")
 
-        try:
             processor = FluentProcessor()
             processor.add_document("doc1", "test content")
             processor.build(verbose=False)
-            result = processor.save(temp_path)
+            result = processor.save(state_path)
             assert result is processor
-        finally:
-            Path(temp_path).unlink(missing_ok=True)
 
     def test_with_config_returns_self(self):
         """Test that with_config returns self for chaining."""
@@ -380,18 +378,17 @@ class TestFluentProcessorPersistence:
 
     def test_save_and_load(self):
         """Test saving and loading processor."""
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = os.path.join(tmpdir, "corpus_state")
 
-        try:
             # Create and save
             (FluentProcessor()
                 .add_document("doc1", "test content here")
                 .build(verbose=False)
-                .save(temp_path))
+                .save(state_path))
 
             # Load
-            loaded = FluentProcessor.load(temp_path)
+            loaded = FluentProcessor.load(state_path)
             assert loaded.is_built
             assert len(loaded.processor.documents) == 1
             assert "doc1" in loaded.processor.documents
@@ -399,20 +396,14 @@ class TestFluentProcessorPersistence:
             # Can search immediately
             results = loaded.search("test")
             assert isinstance(results, list)
-        finally:
-            Path(temp_path).unlink(missing_ok=True)
 
     def test_load_marks_as_built(self):
         """Test that loading marks processor as built."""
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
-
-        try:
-            FluentProcessor().add_document("doc1", "content").build(verbose=False).save(temp_path)
-            loaded = FluentProcessor.load(temp_path)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = os.path.join(tmpdir, "corpus_state")
+            FluentProcessor().add_document("doc1", "content").build(verbose=False).save(state_path)
+            loaded = FluentProcessor.load(state_path)
             assert loaded.is_built
-        finally:
-            Path(temp_path).unlink(missing_ok=True)
 
 
 class TestFluentProcessorConfiguration:
@@ -454,10 +445,9 @@ class TestFluentProcessorExamples:
 
     def test_chained_operations(self):
         """Test complex chained operations."""
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = os.path.join(tmpdir, "corpus_state")
 
-        try:
             processor = (FluentProcessor()
                 .add_documents({
                     "doc1": "neural networks and deep learning",
@@ -465,7 +455,7 @@ class TestFluentProcessorExamples:
                     "doc3": "artificial intelligence systems"
                 })
                 .build(verbose=False)
-                .save(temp_path))
+                .save(state_path))
 
             # Search on built processor
             results = processor.search("neural", top_n=2)
@@ -474,8 +464,6 @@ class TestFluentProcessorExamples:
             # Expand query
             expanded = processor.expand("learning")
             assert isinstance(expanded, dict)
-        finally:
-            Path(temp_path).unlink(missing_ok=True)
 
     def test_from_files_workflow(self):
         """Test complete workflow with file loading."""

@@ -12,54 +12,52 @@ import pytest
 import os
 import json
 import tempfile
-import pickle
 from cortical import CorticalTextProcessor
 
 
 class TestFileFormatValidation:
     """Test file format detection and validation."""
 
-    def test_load_nonexistent_file(self):
+    def test_load_nonexistent_directory(self):
         """
-        Loading nonexistent file should raise FileNotFoundError.
+        Loading nonexistent directory should raise FileNotFoundError.
 
-        Regression test for T-018: Clear error for missing files.
+        Regression test for T-018: Clear error for missing directories.
         """
         with pytest.raises(FileNotFoundError):
-            CorticalTextProcessor.load("/nonexistent/path/to/file.pkl")
+            CorticalTextProcessor.load("/nonexistent/path/to/dir")
 
-    def test_load_invalid_pickle_file(self):
+    def test_load_invalid_state_directory(self):
         """
-        Loading corrupted pickle file should raise appropriate error.
+        Loading directory without manifest.json should raise appropriate error.
 
-        Regression test for T-018: Graceful handling of corrupted data.
+        Regression test for T-018: Graceful handling of invalid state.
         """
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            # Write invalid pickle data
-            f.write(b"This is not valid pickle data!")
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create directory without required manifest.json
+            state_dir = os.path.join(tmpdir, "invalid_state")
+            os.makedirs(state_dir)
 
-        try:
-            with pytest.raises((pickle.UnpicklingError, EOFError, ValueError)):
-                CorticalTextProcessor.load(temp_path)
-        finally:
-            os.unlink(temp_path)
+            with pytest.raises((FileNotFoundError, ValueError)):
+                CorticalTextProcessor.load(state_dir)
 
-    def test_load_empty_file(self):
+    def test_load_corrupted_manifest(self):
         """
-        Loading empty file should raise appropriate error.
+        Loading directory with corrupted manifest.json should raise error.
 
-        Regression test for T-018: Edge case for zero-byte files.
+        Regression test for T-018: Edge case for corrupted JSON.
         """
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            # Write nothing (empty file)
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_dir = os.path.join(tmpdir, "corrupted_state")
+            os.makedirs(state_dir)
 
-        try:
-            with pytest.raises((EOFError, pickle.UnpicklingError, ValueError)):
-                CorticalTextProcessor.load(temp_path)
-        finally:
-            os.unlink(temp_path)
+            # Write invalid JSON to manifest
+            manifest_path = os.path.join(state_dir, "manifest.json")
+            with open(manifest_path, 'w') as f:
+                f.write("This is not valid JSON!")
+
+            with pytest.raises((json.JSONDecodeError, ValueError)):
+                CorticalTextProcessor.load(state_dir)
 
 
 class TestSaveToReadOnlyLocation:
@@ -72,7 +70,7 @@ class TestSaveToReadOnlyLocation:
         Regression test for T-018: Clear error for permission issues.
         """
         # Try to save to /dev/null directory (or other readonly location)
-        readonly_path = "/dev/null/corpus.pkl"
+        readonly_path = "/dev/null/corpus_state"
 
         with pytest.raises((PermissionError, OSError, IOError)):
             small_processor.save(readonly_path)
@@ -89,10 +87,10 @@ class TestSaveToReadOnlyLocation:
         # Use a path that truly cannot be created (permission denied)
         # /proc is read-only on Linux
         if os.path.exists('/proc'):
-            invalid_path = "/proc/cannot_write_here/corpus.pkl"
+            invalid_path = "/proc/cannot_write_here/corpus_state"
 
             with pytest.raises((PermissionError, OSError)):
-                small_processor.save(invalid_path, format='pickle')
+                small_processor.save(invalid_path)
         else:
             # Skip on systems without /proc
             pytest.skip("No read-only filesystem available for testing")
@@ -107,47 +105,41 @@ class TestSaveLoadRoundTrip:
 
         Regression test for T-018: Edge case with no documents.
         """
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_dir = os.path.join(tmpdir, "corpus_state")
 
-        try:
-            # Save empty processor (specify pickle format)
-            fresh_processor.save(temp_path, verbose=False, format='pickle')
+            # Save empty processor
+            fresh_processor.save(state_dir, verbose=False)
 
             # Load it back
-            loaded = CorticalTextProcessor.load(temp_path, verbose=False)
+            loaded = CorticalTextProcessor.load(state_dir, verbose=False)
 
             # Should have no documents
             assert len(loaded.documents) == 0
             from cortical import CorticalLayer
             assert loaded.get_layer(CorticalLayer.TOKENS).column_count() == 0
-        finally:
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
 
     def test_save_overwrite_existing(self, small_processor):
         """
-        Saving to existing file should overwrite correctly.
+        Saving to existing directory should overwrite correctly.
 
         Regression test for T-018: Overwrite behavior.
         """
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_dir = os.path.join(tmpdir, "corpus_state")
 
-        try:
-            # Save once (specify pickle format)
-            small_processor.save(temp_path, verbose=False, format='pickle')
-            first_size = os.path.getsize(temp_path)
+            # Save once
+            small_processor.save(state_dir, verbose=False)
+
+            # Count files in first save
+            first_files = os.listdir(state_dir)
 
             # Save again (overwrite)
-            small_processor.save(temp_path, verbose=False, format='pickle')
-            second_size = os.path.getsize(temp_path)
+            small_processor.save(state_dir, verbose=False)
 
-            # Sizes should be similar (same data)
-            assert abs(first_size - second_size) < 1000  # Within 1KB
-        finally:
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
+            # Structure should be similar (same data)
+            second_files = os.listdir(state_dir)
+            assert 'manifest.json' in second_files
 
     def test_load_preserves_staleness_state(self):
         """
@@ -155,10 +147,9 @@ class TestSaveLoadRoundTrip:
 
         Regression test for T-018: State preservation across save/load.
         """
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_dir = os.path.join(tmpdir, "corpus_state")
 
-        try:
             # Create processor and compute
             processor = CorticalTextProcessor()
             processor.process_document("doc1", "test content")
@@ -168,18 +159,15 @@ class TestSaveLoadRoundTrip:
             assert not processor.is_stale(processor.COMP_TFIDF)
             assert not processor.is_stale(processor.COMP_PAGERANK)
 
-            # Save (specify pickle format)
-            processor.save(temp_path, verbose=False, format='pickle')
+            # Save
+            processor.save(state_dir, verbose=False)
 
             # Load
-            loaded = CorticalTextProcessor.load(temp_path, verbose=False)
+            loaded = CorticalTextProcessor.load(state_dir, verbose=False)
 
             # Staleness state should be preserved (all fresh)
             assert not loaded.is_stale(loaded.COMP_TFIDF)
             assert not loaded.is_stale(loaded.COMP_PAGERANK)
-        finally:
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
 
 
 class TestJSONExportEdgeCases:
@@ -304,10 +292,9 @@ class TestMetadataEdgeCases:
 
         Regression test for T-018: Metadata persistence.
         """
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_dir = os.path.join(tmpdir, "corpus_state")
 
-        try:
             processor = CorticalTextProcessor()
             processor.process_document("doc1", "test content")
             # Set metadata using **kwargs
@@ -316,16 +303,13 @@ class TestMetadataEdgeCases:
                 numeric=42
             )
 
-            # Save (specify pickle format)
-            processor.save(temp_path, verbose=False, format='pickle')
+            # Save
+            processor.save(state_dir, verbose=False)
 
             # Load
-            loaded = CorticalTextProcessor.load(temp_path, verbose=False)
+            loaded = CorticalTextProcessor.load(state_dir, verbose=False)
 
             # Metadata should be preserved
             metadata = loaded.get_document_metadata("doc1")
             assert metadata['custom_field'] == 'custom_value'
             assert metadata['numeric'] == 42
-        finally:
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)

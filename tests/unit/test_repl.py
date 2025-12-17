@@ -87,26 +87,23 @@ class TestREPLWithCorpus(unittest.TestCase):
         )
         self.processor.compute_all()
 
-        # Create temp file and save
-        self.temp_file = tempfile.NamedTemporaryFile(
-            mode='wb', suffix='.pkl', delete=False
-        )
-        self.temp_file.close()
-        self.processor.save(self.temp_file.name)
+        # Create temp directory and save JSON state
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.corpus_path = os.path.join(self.temp_dir.name, "corpus_state")
+        self.processor.save(self.corpus_path)
 
         # Create REPL with loaded corpus
         with patch('sys.stdout', new=io.StringIO()):
-            self.repl = CorticalREPL(corpus_file=self.temp_file.name)
+            self.repl = CorticalREPL(corpus_file=self.corpus_path)
 
     def tearDown(self):
-        """Clean up temp files."""
-        if os.path.exists(self.temp_file.name):
-            os.unlink(self.temp_file.name)
+        """Clean up temp directory."""
+        self.temp_dir.cleanup()
 
     def test_load_command(self):
         """Test load command loads corpus."""
         with patch('sys.stdout', new=io.StringIO()) as mock_stdout:
-            self.repl.do_load(self.temp_file.name)
+            self.repl.do_load(self.corpus_path)
             output = mock_stdout.getvalue()
             self.assertIn('Loaded', output)
             self.assertIsNotNone(self.repl.processor)
@@ -114,7 +111,7 @@ class TestREPLWithCorpus(unittest.TestCase):
     def test_load_nonexistent_file(self):
         """Test load command with nonexistent file."""
         with patch('sys.stdout', new=io.StringIO()) as mock_stdout:
-            self.repl.do_load('nonexistent.pkl')
+            self.repl.do_load('nonexistent_state')
             output = mock_stdout.getvalue()
             self.assertIn('not found', output.lower())
 
@@ -338,19 +335,16 @@ class TestREPLComputeCommands(unittest.TestCase):
         self.processor = CorticalTextProcessor(enable_metrics=True)
         self.processor.process_document("doc1", "test content")
 
-        self.temp_file = tempfile.NamedTemporaryFile(
-            mode='wb', suffix='.pkl', delete=False
-        )
-        self.temp_file.close()
-        self.processor.save(self.temp_file.name)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.corpus_path = os.path.join(self.temp_dir.name, "corpus_state")
+        self.processor.save(self.corpus_path)
 
         with patch('sys.stdout', new=io.StringIO()):
-            self.repl = CorticalREPL(corpus_file=self.temp_file.name)
+            self.repl = CorticalREPL(corpus_file=self.corpus_path)
 
     def tearDown(self):
-        """Clean up temp files."""
-        if os.path.exists(self.temp_file.name):
-            os.unlink(self.temp_file.name)
+        """Clean up temp directory."""
+        self.temp_dir.cleanup()
 
     def test_compute_all(self):
         """Test compute all command."""
@@ -404,37 +398,32 @@ class TestREPLSaveExport(unittest.TestCase):
         self.processor.process_document("doc1", "test content")
         self.processor.compute_all()
 
-        self.temp_file = tempfile.NamedTemporaryFile(
-            mode='wb', suffix='.pkl', delete=False
-        )
-        self.temp_file.close()
-        self.processor.save(self.temp_file.name)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.corpus_path = os.path.join(self.temp_dir.name, "corpus_state")
+        self.processor.save(self.corpus_path)
 
         with patch('sys.stdout', new=io.StringIO()):
-            self.repl = CorticalREPL(corpus_file=self.temp_file.name)
+            self.repl = CorticalREPL(corpus_file=self.corpus_path)
 
     def tearDown(self):
-        """Clean up temp files."""
-        for f in [self.temp_file.name]:
-            if os.path.exists(f):
-                os.unlink(f)
+        """Clean up temp directory."""
+        self.temp_dir.cleanup()
 
     def test_save_command(self):
         """Test save command saves corpus."""
-        temp_save = tempfile.NamedTemporaryFile(
-            mode='wb', suffix='.pkl', delete=False
-        )
-        temp_save.close()
+        import shutil
+        save_dir = tempfile.mkdtemp()
+        save_path = os.path.join(save_dir, "saved_corpus")
 
         try:
             with patch('sys.stdout', new=io.StringIO()) as mock_stdout:
-                self.repl.do_save(temp_save.name)
+                self.repl.do_save(save_path)
                 output = mock_stdout.getvalue()
                 self.assertIn('Saved', output)
-                self.assertTrue(os.path.exists(temp_save.name))
+                self.assertTrue(os.path.exists(save_path))
         finally:
-            if os.path.exists(temp_save.name):
-                os.unlink(temp_save.name)
+            if os.path.exists(save_dir):
+                shutil.rmtree(save_dir)
 
     def test_save_no_file(self):
         """Test save without filename."""
@@ -483,19 +472,16 @@ class TestREPLUtilityCommands(unittest.TestCase):
         self.processor.process_document("doc1", "test content")
         self.processor.compute_all()
 
-        self.temp_file = tempfile.NamedTemporaryFile(
-            mode='wb', suffix='.pkl', delete=False
-        )
-        self.temp_file.close()
-        self.processor.save(self.temp_file.name)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.corpus_path = os.path.join(self.temp_dir.name, "corpus_state")
+        self.processor.save(self.corpus_path)
 
         with patch('sys.stdout', new=io.StringIO()):
-            self.repl = CorticalREPL(corpus_file=self.temp_file.name)
+            self.repl = CorticalREPL(corpus_file=self.corpus_path)
 
     def tearDown(self):
-        """Clean up temp files."""
-        if os.path.exists(self.temp_file.name):
-            os.unlink(self.temp_file.name)
+        """Clean up temp directory."""
+        self.temp_dir.cleanup()
 
     def test_clear_command(self):
         """Test clear metrics command."""
@@ -521,19 +507,16 @@ class TestREPLCompletion(unittest.TestCase):
         self.processor.process_document("doc1.py", "test")
         self.processor.process_document("doc2.py", "test")
 
-        self.temp_file = tempfile.NamedTemporaryFile(
-            mode='wb', suffix='.pkl', delete=False
-        )
-        self.temp_file.close()
-        self.processor.save(self.temp_file.name)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.corpus_path = os.path.join(self.temp_dir.name, "corpus_state")
+        self.processor.save(self.corpus_path)
 
         with patch('sys.stdout', new=io.StringIO()):
-            self.repl = CorticalREPL(corpus_file=self.temp_file.name)
+            self.repl = CorticalREPL(corpus_file=self.corpus_path)
 
     def tearDown(self):
-        """Clean up temp files."""
-        if os.path.exists(self.temp_file.name):
-            os.unlink(self.temp_file.name)
+        """Clean up temp directory."""
+        self.temp_dir.cleanup()
 
     def test_complete_compute(self):
         """Test completion for compute command."""
