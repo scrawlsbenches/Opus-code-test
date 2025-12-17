@@ -2,21 +2,56 @@
   "version": 1,
   "session_id": "2e92",
   "started_at": "2025-12-17T13:08:19.871753",
-  "saved_at": "2025-12-17T13:08:19.872723",
+  "saved_at": "2025-12-17T20:15:54.380481",
   "tasks": [
     {
       "id": "T-20251217-130819-2e92-001",
       "title": "Rename model: evaluate 'cmax' (Corpeus Maximus) vs alternatives like Cortex, Axon, Synapse",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "arch",
       "description": "",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-17T13:08:19.872512",
+      "updated_at": "2025-12-17T20:16:00.000000",
+      "completed_at": "2025-12-17T20:16:00.000000",
+      "context": {},
+      "retrospective": "Decided on HUBRIS as Wave 1 flagship. Panel workshop + focus group study led to 4-wave strategy: HUBRIS -> ATOM -> OMNISCIENT -> COLOSSUS"
+    },
+    {
+      "id": "T-20251217-201554-2e92-002",
+      "title": "Continue Hubris model integration: add book chapter, update generate_book.py, create README for scripts/hubris/",
+      "status": "pending",
+      "priority": "high",
+      "category": "feature",
+      "description": "Continue the Hubris micro-model integration started in naming session",
+      "depends_on": [],
+      "effort": "large",
+      "created_at": "2025-12-17T20:15:54.380392",
       "updated_at": null,
       "completed_at": null,
-      "context": {},
+      "context": {
+        "completed": [
+          "Named the model HUBRIS (Wave 1 flagship)",
+          "Defined 4-wave strategy: HUBRIS -> ATOM -> OMNISCIENT -> COLOSSUS",
+          "Preserved ml_file_prediction.py as scripts/hubris/ml_file_prediction_v1.py"
+        ],
+        "remaining": [
+          "Create README for scripts/hubris/ documenting wave strategy",
+          "Add book chapter 05-hubris/ (rename 05-future to 06-future)",
+          "Update generate_book.py with HubrisChapterGenerator",
+          "Document Hubris genesis story in book chapter",
+          "Review git history and chat data from model creation timeframe"
+        ],
+        "wave_strategy": {
+          "wave1": "HUBRIS - Single flagship, cult following, early adopters",
+          "wave2": "ATOM - Multiple fundamental building blocks",
+          "wave3": "OMNISCIENT - Knowledge/mastery specialists",
+          "wave4": "COLOSSUS - Enterprise scale"
+        },
+        "narrative": "Audacity -> Foundation -> Wisdom -> Power"
+      },
       "retrospective": null
     }
   ]
