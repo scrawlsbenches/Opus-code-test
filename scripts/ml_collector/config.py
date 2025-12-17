@@ -29,6 +29,10 @@ COMMITS_LITE_FILE = TRACKED_DIR / "commits.jsonl"   # Commit metadata (one per l
 SESSIONS_LITE_FILE = TRACKED_DIR / "sessions.jsonl" # Session summaries (one per line)
 ORCHESTRATION_LITE_FILE = TRACKED_DIR / "orchestration.jsonl"  # Sub-agent orchestration data
 
+# CALI (Content-Addressable Log with Index) - High-performance ML storage
+# Replaces JSONL files with O(1) lookups and git-friendly session-based logs
+CALI_DIR = ML_DATA_DIR / "cali"
+
 # Training milestones
 MILESTONES = {
     "file_prediction": {"commits": 500, "sessions": 100, "chats": 200},
