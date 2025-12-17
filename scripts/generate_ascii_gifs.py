@@ -29,7 +29,11 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import subprocess
 
-from ascii_effects import MatrixDrop, Star
+# Handle imports from both project root and scripts/ directory
+try:
+    from ascii_effects import MatrixDrop, Star
+except ImportError:
+    from scripts.ascii_effects import MatrixDrop, Star
 
 try:
     from PIL import Image, ImageDraw, ImageFont

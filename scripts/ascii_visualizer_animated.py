@@ -38,7 +38,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from ascii_effects import MatrixDrop, Star
+# Handle imports from both project root and scripts/ directory
+try:
+    from ascii_effects import MatrixDrop, Star
+except ImportError:
+    from scripts.ascii_effects import MatrixDrop, Star
 
 # ============================================================================
 # TERMINAL SETUP
