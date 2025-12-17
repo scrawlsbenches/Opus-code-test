@@ -31,6 +31,15 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 - Run the full test suite after every change
 - Write tests for the bug before writing the fix
 
+> **⚠️ CODE COVERAGE REQUIREMENT:** This project strictly maintains >89% test coverage.
+> When you add new code, you MUST also add corresponding unit tests. Coverage is
+> monitored by CI and PRs that decrease coverage will be flagged. Before committing:
+> ```bash
+> python -m coverage run -m pytest tests/ && python -m coverage report --include="cortical/*"
+> ```
+> If coverage drops, add tests for your new code before pushing. The rule is simple:
+> **New code = new tests. No exceptions.**
+
 **Dog-Food Everything**
 - Use the system to test itself when possible
 - Real usage reveals issues that unit tests miss

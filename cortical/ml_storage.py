@@ -62,6 +62,44 @@ Usage:
         process(record)
 """
 
+# =============================================================================
+# ARCHITECTURAL CONTEXT (Knowledge for Future Developers)
+# =============================================================================
+#
+# This module is part of the ML micro-model training pipeline. The data flow is:
+#
+#   Session Start Hook (ml-session-start-hook.sh)
+#         ↓ Creates session in CALI store
+#   Git Hooks (post-commit, pre-push)
+#         ↓ Captures commits with diff hunks
+#   Session Stop Hook (ml-session-capture-hook.sh)
+#         ↓ Processes transcript, extracts chats/actions
+#   CALI Storage (this module)
+#         ↓ Deduplicates, indexes, stores records
+#   ML File Prediction (ml_file_prediction.py)
+#         ↓ Trains on commit patterns
+#   Pre-Commit Hook (ml-precommit-suggest.sh)
+#         → Suggests missing files based on commit message
+#
+# WHY CALI STORAGE:
+# - Previous JSONL approach had O(n) existence checks (slow for 1000+ records)
+# - Content-addressable objects prevent duplicate data across branches
+# - Session-based logs prevent git merge conflicts
+# - Bloom filter provides 35x faster existence checks
+#
+# TRAINING MILESTONES (see docs/ml-milestone-thresholds.md):
+# - 500 commits: File prediction model becomes reliable
+# - 2000 commits: Commit message suggestions
+# - 5000 commits: Full code suggestion capabilities
+#
+# KEY DESIGN DECISIONS:
+# 1. Local indices (.git-ml/cali/local/) are NOT tracked in git - rebuilt on load
+# 2. Objects (.git-ml/cali/objects/) ARE tracked - content-addressed = no conflicts
+# 3. Logs (.git-ml/cali/logs/) ARE tracked - session timestamps = no conflicts
+# 4. Zero external dependencies - pure Python implementation
+#
+# =============================================================================
+
 import hashlib
 import json
 import mmap
