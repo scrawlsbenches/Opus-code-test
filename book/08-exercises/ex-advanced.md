@@ -1,6 +1,6 @@
 ---
 title: "Exercises: Advanced"
-generated: "2025-12-17T00:01:54.166763Z"
+generated: "2025-12-17T00:26:24.308012Z"
 generator: "exercises"
 source_files:
   - "test_semantics.py"

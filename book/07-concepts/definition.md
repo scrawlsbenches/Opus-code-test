@@ -1,6 +1,6 @@
 ---
 title: "Concept Evolution: Definition"
-generated: "2025-12-17T00:01:47.298187Z"
+generated: "2025-12-17T00:26:17.313696Z"
 generator: "concepts"
 source_files:
   - "git log"

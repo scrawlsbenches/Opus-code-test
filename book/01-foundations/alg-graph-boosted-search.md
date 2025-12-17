@@ -1,6 +1,6 @@
 ---
 title: "Graph-Boosted Search (GB-BM25) — Hybrid Ranking"
-generated: "2025-12-17T00:01:46.428572Z"
+generated: "2025-12-17T00:26:16.579560Z"
 generator: "foundations"
 source_files:
   - "docs/VISION.md"

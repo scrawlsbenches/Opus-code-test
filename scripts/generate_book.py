@@ -2065,6 +2065,552 @@ class CaseStudyGenerator(ChapterGenerator):
         return content
 
 
+class CommitNarrativeSynthesizer(ChapterGenerator):
+    """Synthesize case study narratives from commit sequences."""
+
+    def __init__(self, book_dir: Path = BOOK_DIR, repo_root: Optional[Path] = None):
+        super().__init__(book_dir)
+        self.repo_root = repo_root or Path(__file__).parent.parent
+        self.commits_file = self.repo_root / ".git-ml" / "tracked" / "commits.jsonl"
+
+    @property
+    def name(self) -> str:
+        return "synthesized-stories"
+
+    @property
+    def output_dir(self) -> str:
+        return "05-case-studies"  # Same as CaseStudyGenerator
+
+    def generate(self, dry_run: bool = False, verbose: bool = False) -> Dict[str, Any]:
+        """Generate synthesized case studies from commit sequences."""
+        errors = []
+        stats = {
+            'case_studies_generated': 0,
+            'commit_sequences_analyzed': 0,
+            'commits_processed': 0
+        }
+
+        try:
+            # Load commits
+            commits = self._load_commits()
+            stats['commits_processed'] = len(commits)
+
+            if verbose:
+                print(f"  Loaded {len(commits)} commits from history")
+
+            # Find narrative-worthy sequences
+            sequences = self._find_commit_sequences(commits)
+            stats['commit_sequences_analyzed'] = len(sequences)
+
+            if verbose:
+                print(f"  Found {len(sequences)} narrative-worthy commit sequences")
+
+            # Generate directory
+            output_path = self.book_dir / self.output_dir
+            if not dry_run:
+                output_path.mkdir(parents=True, exist_ok=True)
+
+            # Generate case studies from sequences
+            for seq_idx, sequence in enumerate(sequences):
+                if not self._is_narrative_worthy_sequence(sequence):
+                    continue
+
+                story = self._synthesize_story(sequence)
+                title = self._extract_story_title(sequence)
+
+                # Generate filename
+                first_commit = sequence[0]
+                date = first_commit['timestamp'][:10]
+                slug = title.lower().replace(' ', '-')[:30]
+                filename = f"synthesized-{date}-{slug}.md"
+
+                if verbose:
+                    print(f"  Generating: {filename}")
+
+                if not dry_run:
+                    filepath = output_path / filename
+                    with open(filepath, 'w') as f:
+                        f.write(story)
+                    self.generated_files.append(filepath)
+
+                stats['case_studies_generated'] += 1
+
+            # Generate index if we have case studies
+            if stats['case_studies_generated'] > 0:
+                index_content = self._generate_index(sequences)
+                index_file = output_path / "synthesized-index.md"
+
+                if not dry_run:
+                    with open(index_file, 'w') as f:
+                        f.write(index_content)
+                    self.generated_files.append(index_file)
+
+        except Exception as e:
+            errors.append(f"Synthesizer failed: {e}")
+            if verbose:
+                import traceback
+                traceback.print_exc()
+
+        return {
+            'files': self.generated_files,
+            'stats': stats,
+            'errors': errors
+        }
+
+    def _load_commits(self) -> List[Dict[str, Any]]:
+        """Load commits from .git-ml/tracked/commits.jsonl"""
+        commits = []
+
+        if not self.commits_file.exists():
+            return commits
+
+        try:
+            with open(self.commits_file, 'r') as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    try:
+                        commit_data = json.loads(line)
+                        # Extract commit type from message
+                        message = commit_data.get('message', '')
+                        commit_type = self._extract_commit_type(message)
+                        commit_data['type'] = commit_type
+                        commits.append(commit_data)
+                    except json.JSONDecodeError:
+                        continue
+        except Exception as e:
+            print(f"  Warning: Failed to load commits: {e}")
+
+        # Sort by timestamp (oldest first for narrative flow)
+        commits.sort(key=lambda c: c.get('timestamp', ''))
+        return commits
+
+    def _extract_commit_type(self, message: str) -> str:
+        """Extract commit type from conventional commit message."""
+        if ':' in message:
+            prefix = message.split(':', 1)[0].strip().lower()
+            if prefix in ['feat', 'fix', 'docs', 'refactor', 'perf', 'test', 'chore', 'style', 'ci', 'build']:
+                return prefix
+        return 'other'
+
+    def _find_commit_sequences(self, commits: List[Dict]) -> List[List[Dict]]:
+        """Find narrative-worthy commit sequences."""
+        sequences = []
+
+        # Strategy 1: Performance improvements (perf: commits with related follow-ups)
+        perf_sequences = self._find_performance_sequences(commits)
+        sequences.extend(perf_sequences)
+
+        # Strategy 2: Bug fix sequences (fix: commits with related context)
+        bug_sequences = self._find_bug_fix_sequences(commits)
+        sequences.extend(bug_sequences)
+
+        # Strategy 3: Major refactors (refactor: with multiple related changes)
+        refactor_sequences = self._find_refactor_sequences(commits)
+        sequences.extend(refactor_sequences)
+
+        # Strategy 4: Feature additions with iterations
+        feature_sequences = self._find_feature_sequences(commits)
+        sequences.extend(feature_sequences)
+
+        return sequences
+
+    def _find_performance_sequences(self, commits: List[Dict]) -> List[List[Dict]]:
+        """Find performance improvement sequences."""
+        sequences = []
+
+        for i, commit in enumerate(commits):
+            if commit['type'] != 'perf':
+                continue
+
+            sequence = [commit]
+
+            # Look for related commits before (investigation)
+            for j in range(max(0, i - 5), i):
+                prev = commits[j]
+                if self._are_commits_related(commit, prev):
+                    sequence.insert(0, prev)
+
+            # Look for related commits after (follow-ups)
+            for j in range(i + 1, min(len(commits), i + 5)):
+                next_commit = commits[j]
+                if self._are_commits_related(commit, next_commit):
+                    sequence.append(next_commit)
+
+            if len(sequence) >= 2:  # Need at least 2 commits for a story
+                sequences.append(sequence)
+
+        return sequences
+
+    def _find_bug_fix_sequences(self, commits: List[Dict]) -> List[List[Dict]]:
+        """Find bug fix sequences."""
+        sequences = []
+
+        for i, commit in enumerate(commits):
+            if commit['type'] != 'fix':
+                continue
+
+            sequence = [commit]
+
+            # Look for related commits (investigation, test additions)
+            for j in range(max(0, i - 3), i):
+                prev = commits[j]
+                if self._are_commits_related(commit, prev):
+                    sequence.insert(0, prev)
+
+            # Look for follow-up fixes or tests
+            for j in range(i + 1, min(len(commits), i + 3)):
+                next_commit = commits[j]
+                if self._are_commits_related(commit, next_commit):
+                    sequence.append(next_commit)
+
+            if len(sequence) >= 2:
+                sequences.append(sequence)
+
+        return sequences
+
+    def _find_refactor_sequences(self, commits: List[Dict]) -> List[List[Dict]]:
+        """Find refactoring sequences."""
+        sequences = []
+
+        for i, commit in enumerate(commits):
+            if commit['type'] != 'refactor':
+                continue
+
+            # Refactors touching many files are interesting
+            files_changed = len(commit.get('files_changed', []))
+            if files_changed < 3:
+                continue
+
+            sequence = [commit]
+
+            # Look for preparatory commits
+            for j in range(max(0, i - 2), i):
+                prev = commits[j]
+                if self._are_commits_related(commit, prev):
+                    sequence.insert(0, prev)
+
+            # Look for follow-up cleanups
+            for j in range(i + 1, min(len(commits), i + 2)):
+                next_commit = commits[j]
+                if self._are_commits_related(commit, next_commit):
+                    sequence.append(next_commit)
+
+            sequences.append(sequence)  # Even single large refactors are interesting
+
+        return sequences
+
+    def _find_feature_sequences(self, commits: List[Dict]) -> List[List[Dict]]:
+        """Find feature development sequences."""
+        sequences = []
+
+        for i, commit in enumerate(commits):
+            if commit['type'] != 'feat':
+                continue
+
+            sequence = [commit]
+
+            # Look for iterations and improvements
+            for j in range(i + 1, min(len(commits), i + 10)):
+                next_commit = commits[j]
+                if self._are_commits_related(commit, next_commit):
+                    sequence.append(next_commit)
+                else:
+                    break  # Stop if we hit unrelated commit
+
+            if len(sequence) >= 3:  # Features with iterations
+                sequences.append(sequence)
+
+        return sequences
+
+    def _are_commits_related(self, commit1: Dict, commit2: Dict) -> bool:
+        """Check if two commits are related."""
+        # Same day or within 24 hours
+        ts1 = commit1.get('timestamp', '')
+        ts2 = commit2.get('timestamp', '')
+        date1 = ts1[:10]
+        date2 = ts2[:10]
+
+        # Different days -> probably not related
+        if abs(self._days_between(date1, date2)) > 1:
+            return False
+
+        # Overlapping files
+        files1 = set(commit1.get('files_changed', []))
+        files2 = set(commit2.get('files_changed', []))
+
+        if files1 & files2:  # Intersection
+            return True
+
+        # Similar keywords in messages
+        msg1_words = set(commit1.get('message', '').lower().split())
+        msg2_words = set(commit2.get('message', '').lower().split())
+
+        # Remove common words
+        common_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for'}
+        msg1_words -= common_words
+        msg2_words -= common_words
+
+        overlap = len(msg1_words & msg2_words)
+        if overlap >= 2:  # At least 2 shared meaningful words
+            return True
+
+        return False
+
+    def _days_between(self, date1: str, date2: str) -> int:
+        """Calculate days between two date strings (YYYY-MM-DD)."""
+        try:
+            from datetime import datetime
+            d1 = datetime.fromisoformat(date1)
+            d2 = datetime.fromisoformat(date2)
+            return abs((d2 - d1).days)
+        except Exception:
+            return 999  # Return large number on error
+
+    def _is_narrative_worthy_sequence(self, sequence: List[Dict]) -> bool:
+        """Determine if a commit sequence makes a good story."""
+        if len(sequence) < 2:
+            return False
+
+        # At least one commit should have meaningful changes
+        total_changes = sum(
+            c.get('insertions', 0) + c.get('deletions', 0)
+            for c in sequence
+        )
+
+        if total_changes < 10:  # Too small to be interesting
+            return False
+
+        # Should have clear type (not all 'other')
+        types = [c['type'] for c in sequence]
+        if all(t == 'other' for t in types):
+            return False
+
+        return True
+
+    def _synthesize_story(self, commits: List[Dict]) -> str:
+        """Generate a narrative case study from commit sequence."""
+        title = self._extract_story_title(commits)
+
+        # Extract date range
+        first_date = commits[0]['timestamp'][:10]
+        last_date = commits[-1]['timestamp'][:10]
+        date_range = first_date if first_date == last_date else f"{first_date} to {last_date}"
+
+        # Build narrative
+        content = f"# Case Study: {title}\n\n"
+        content += f"*Synthesized from commit history: {date_range}*\n\n"
+
+        # The Problem
+        content += "## The Problem\n\n"
+        content += self._extract_problem(commits)
+        content += "\n\n"
+
+        # The Investigation/Journey
+        content += "## The Journey\n\n"
+        content += self._extract_journey(commits)
+        content += "\n\n"
+
+        # The Solution
+        content += "## The Solution\n\n"
+        content += self._extract_solution(commits)
+        content += "\n\n"
+
+        # The Lesson
+        content += "## The Lesson\n\n"
+        content += self._extract_lesson(commits)
+        content += "\n\n"
+
+        # Technical Details
+        content += "## Technical Details\n\n"
+        content += self._extract_technical_details(commits)
+        content += "\n\n"
+
+        # Commits
+        content += "## Commits in This Story\n\n"
+        for commit in commits:
+            short_hash = commit['hash'][:7]
+            message = commit['message']
+            timestamp = commit['timestamp'][:10]
+            content += f"- `{short_hash}` ({timestamp}): {message}\n"
+
+        content += "\n"
+        content += "---\n\n"
+        content += "*This case study was automatically synthesized from git commit history.*\n"
+
+        return content
+
+    def _extract_story_title(self, commits: List[Dict]) -> str:
+        """Extract a compelling title from commit sequence."""
+        main_commit = commits[len(commits) // 2]  # Middle commit usually has the meat
+
+        message = main_commit['message']
+        commit_type = main_commit['type']
+
+        # Remove type prefix
+        if ':' in message:
+            message = message.split(':', 1)[1].strip()
+
+        # Capitalize first letter
+        message = message[0].upper() + message[1:] if message else "Development Story"
+
+        # Add context based on type
+        if commit_type == 'perf':
+            return f"Performance Optimization - {message}"
+        elif commit_type == 'fix':
+            return f"Bug Fix - {message}"
+        elif commit_type == 'refactor':
+            return f"Refactoring - {message}"
+        elif commit_type == 'feat':
+            return f"Feature Development - {message}"
+        else:
+            return message
+
+    def _extract_problem(self, commits: List[Dict]) -> str:
+        """Extract the problem description from commits."""
+        first_commit = commits[0]
+        message = first_commit['message']
+
+        # Remove type prefix
+        if ':' in message:
+            message = message.split(':', 1)[1].strip()
+
+        commit_type = first_commit['type']
+
+        if commit_type == 'fix':
+            return f"A bug was discovered: {message}. The issue needed investigation and resolution."
+        elif commit_type == 'perf':
+            return f"Performance issues were identified: {message}. Optimization was needed."
+        elif commit_type == 'refactor':
+            files_count = len(first_commit.get('files_changed', []))
+            return f"Code quality improvements were needed. The refactoring affected {files_count} files: {message}."
+        elif commit_type == 'feat':
+            return f"A new feature was required: {message}. This would require careful implementation and testing."
+        else:
+            return f"Development work began: {message}."
+
+    def _extract_journey(self, commits: List[Dict]) -> str:
+        """Extract the investigation/development journey."""
+        if len(commits) <= 2:
+            return "The solution was implemented directly.\n"
+
+        content = "The development progressed through several stages:\n\n"
+
+        for i, commit in enumerate(commits[:-1], 1):  # Exclude last (that's the solution)
+            message = commit['message']
+            if ':' in message:
+                message = message.split(':', 1)[1].strip()
+
+            files_changed = len(commit.get('files_changed', []))
+            insertions = commit.get('insertions', 0)
+            deletions = commit.get('deletions', 0)
+
+            content += f"{i}. **{message}** - Modified {files_changed} files "
+            content += f"(+{insertions}/-{deletions} lines)\n"
+
+        return content
+
+    def _extract_solution(self, commits: List[Dict]) -> str:
+        """Extract the final solution."""
+        last_commit = commits[-1]
+        message = last_commit['message']
+
+        if ':' in message:
+            message = message.split(':', 1)[1].strip()
+
+        files_changed = len(last_commit.get('files_changed', []))
+        insertions = last_commit.get('insertions', 0)
+        deletions = last_commit.get('deletions', 0)
+
+        content = f"{message}\n\n"
+        content += f"The solution involved changes to {files_changed} files, "
+        content += f"adding {insertions} lines and removing {deletions} lines.\n"
+
+        return content
+
+    def _extract_lesson(self, commits: List[Dict]) -> str:
+        """Extract a generalized lesson from the sequence."""
+        types = [c['type'] for c in commits]
+
+        if 'perf' in types:
+            return ("**Performance optimization requires measurement.** Don't optimize based on "
+                   "assumptions. Profile first, then fix the real bottlenecks.")
+        elif 'fix' in types:
+            return ("**Bugs often hide in unexpected places.** Thorough investigation and testing "
+                   "are essential for finding root causes.")
+        elif 'refactor' in types:
+            return ("**Code quality is an ongoing process.** Regular refactoring keeps the codebase "
+                   "maintainable and reduces technical debt.")
+        elif 'feat' in types:
+            return ("**Feature development is iterative.** Breaking work into smaller commits makes "
+                   "it easier to review, test, and debug.")
+        else:
+            return ("**Good development practices matter.** Clear commit messages, incremental changes, "
+                   "and proper testing all contribute to project success.")
+
+    def _extract_technical_details(self, commits: List[Dict]) -> str:
+        """Extract technical details from the commit sequence."""
+        # Collect all files changed
+        all_files = set()
+        for commit in commits:
+            all_files.update(commit.get('files_changed', []))
+
+        # Calculate total changes
+        total_insertions = sum(c.get('insertions', 0) for c in commits)
+        total_deletions = sum(c.get('deletions', 0) for c in commits)
+
+        content = f"**Files Modified:** {len(all_files)}\n\n"
+
+        # Show key files
+        key_files = sorted(list(all_files))[:10]
+        for filepath in key_files:
+            content += f"- `{filepath}`\n"
+
+        if len(all_files) > 10:
+            content += f"\n*...and {len(all_files) - 10} more files*\n"
+
+        content += f"\n**Code Changes:** +{total_insertions}/-{total_deletions} lines\n"
+        content += f"\n**Commits:** {len(commits)}\n"
+
+        return content
+
+    def _generate_index(self, sequences: List[List[Dict]]) -> str:
+        """Generate index page for synthesized case studies."""
+        content = "# Synthesized Case Studies\n\n"
+        content += "*Case studies automatically synthesized from git commit history*\n\n"
+        content += "These stories are reconstructed from related commit sequences, "
+        content += "showing how real development work unfolds over time.\n\n"
+        content += "---\n\n"
+
+        for sequence in sequences:
+            if not self._is_narrative_worthy_sequence(sequence):
+                continue
+
+            title = self._extract_story_title(sequence)
+            first_commit = sequence[0]
+            date = first_commit['timestamp'][:10]
+            slug = title.lower().replace(' ', '-')[:30]
+            filename = f"synthesized-{date}-{slug}.md"
+
+            commit_count = len(sequence)
+            files_count = len(set(
+                f for c in sequence for f in c.get('files_changed', [])
+            ))
+
+            content += f"### [{title}]({filename})\n\n"
+            content += f"**{commit_count} commits** | **{files_count} files**\n\n"
+
+            # Preview first commit message
+            first_msg = first_commit['message']
+            if ':' in first_msg:
+                first_msg = first_msg.split(':', 1)[1].strip()
+            preview = first_msg[:150] + "..." if len(first_msg) > 150 else first_msg
+            content += f"{preview}\n\n"
+            content += "---\n\n"
+
+        return content
+
+
 class CommitNarrativeGenerator(ChapterGenerator):
     """Generate evolution narrative from git history."""
 
@@ -4139,6 +4685,7 @@ Examples:
     builder.register_generator(ConceptEvolutionGenerator(book_dir=args.output))
     builder.register_generator(ExerciseGenerator(book_dir=args.output))
     builder.register_generator(CaseStudyGenerator(book_dir=args.output))
+    builder.register_generator(CommitNarrativeSynthesizer(book_dir=args.output))
     builder.register_generator(ReaderJourneyGenerator(book_dir=args.output))
     builder.register_generator(SearchIndexGenerator(book_dir=args.output))
     builder.register_generator(MarkdownBookGenerator(

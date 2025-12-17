@@ -1,6 +1,6 @@
 ---
 title: "Concept Evolution: Query Expansion"
-generated: "2025-12-17T00:01:47.297404Z"
+generated: "2025-12-17T00:26:17.312937Z"
 generator: "concepts"
 source_files:
   - "git log"

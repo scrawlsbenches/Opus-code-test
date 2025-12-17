@@ -1,6 +1,6 @@
 ---
 title: "Architectural Decision Records"
-generated: "2025-12-17T00:01:46.439111Z"
+generated: "2025-12-17T00:26:16.589907Z"
 generator: "decisions"
 source_files:
   - "samples/decisions/"

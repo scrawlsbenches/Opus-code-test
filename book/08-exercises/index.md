@@ -1,6 +1,6 @@
 ---
 title: "Exercise Index"
-generated: "2025-12-17T00:01:54.168449Z"
+generated: "2025-12-17T00:26:24.309695Z"
 generator: "exercises"
 source_files:
   - "tests/unit/*.py"

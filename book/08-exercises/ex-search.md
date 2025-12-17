@@ -1,6 +1,6 @@
 ---
 title: "Exercises: Search"
-generated: "2025-12-17T00:01:52.527412Z"
+generated: "2025-12-17T00:26:22.688240Z"
 generator: "exercises"
 source_files:
   - "test_query_search.py"

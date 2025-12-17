@@ -1,6 +1,6 @@
 ---
 title: "ADR-001: Add Microseconds to Task ID Generation"
-generated: "2025-12-17T00:01:46.438515Z"
+generated: "2025-12-17T00:26:16.589349Z"
 generator: "decisions"
 source_files:
   - "samples/decisions/adr-microseconds-task-id.md"

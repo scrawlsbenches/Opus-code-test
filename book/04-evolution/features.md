@@ -1,6 +1,6 @@
 ---
 title: "Feature Evolution"
-generated: "2025-12-17T00:01:46.481017Z"
+generated: "2025-12-17T00:26:16.628757Z"
 generator: "evolution"
 source_files:
   - "git log --grep=feat:"
@@ -21,6 +21,12 @@ tags:
 The system has evolved through **22 feature additions**. Below is the narrative of how each capability came to be.
 
 ## Other Capabilities
+
+### Add 6 new intelligent book generators for publisher-ready content
+
+**Commit:** `082aa21`  
+**Date:** 2025-12-17  
+**Files Modified:** 47  
 
 ### Add smart caching to markdown book generation
 
@@ -89,11 +95,6 @@ The system has evolved through **22 feature additions**. Below is the narrative 
 **Commit:** `0022466`  
 **Date:** 2025-12-16  
 **Files Modified:** 11  
-
-### Add security concept group and TF-IDF weighted query expansion
-
-**Commit:** `af3a7e0`  
-**Date:** 2025-12-15  
 
 ## Data Capabilities
 
