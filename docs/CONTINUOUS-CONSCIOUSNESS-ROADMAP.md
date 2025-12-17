@@ -63,7 +63,7 @@ A unified development system where Claude sessions are ephemeral but knowledge i
 
 | Sprint | Tasks | Status |
 |--------|-------|--------|
-| 1.1 | Fix ML recursive commit loop | Pending |
+| 1.1 | Fix ML recursive commit loop | ✅ Done |
 | 1.2 | Update CLAUDE.md coverage policy | ✅ Done |
 | 1.3 | Establish coverage baseline | ✅ Done (61%) |
 | 1.4 | Clean up stale/incorrect tasks | ✅ Done |
@@ -330,10 +330,10 @@ book/
 [x] Fix CLAUDE.md coverage policy
 [x] Create coverage baseline (61%)
 [x] Document the vision
-[ ] Fix ML data recursive commit issue
-    - Modify post-commit hook to buffer
-    - Add SessionEnd flush mechanism
-    - Test with 5 commits, verify single ML commit
+[x] Fix ML data recursive commit issue
+    - Added skip patterns for "ml:", "data: ML", "chore: ML" commits
+    - Updated post-commit hook and hooks.py installation script
+    - Prevents recursive capture when session capture commits ML data
 [ ] Create simple branch manifest
     - JSON file created on session start
     - Updated on file touch
