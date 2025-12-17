@@ -15,11 +15,14 @@ A unified development system where Claude sessions are ephemeral but knowledge i
 │                                                                      │
 │   SESSION START                                                      │
 │   ┌─────────────────────────────────────────────────────────────┐   │
-│   │ Health Dashboard:                                            │   │
-│   │  • Coverage: 61% (3 files regressed since yesterday)        │   │
-│   │  • Tasks: 5 pending on this branch, 2 stale (>7 days)       │   │
-│   │  • Branch: 6 hours since main sync, no conflicts detected   │   │
-│   │  • Model: File prediction ready (523 commits trained)       │   │
+│   │ 1. Run full test suite → validate baseline                  │   │
+│   │    • If tests FAIL → fix first OR postpone new work        │   │
+│   │    • If tests PASS → proceed with confidence               │   │
+│   │ 2. Health Dashboard:                                        │   │
+│   │    • Coverage: 61% (3 files regressed since yesterday)     │   │
+│   │    • Tasks: 5 pending on this branch, 2 stale (>7 days)    │   │
+│   │    • Branch: 6 hours since main sync, no conflicts         │   │
+│   │    • Model: File prediction ready (523 commits trained)    │   │
 │   └─────────────────────────────────────────────────────────────┘   │
 │                              │                                       │
 │                              ▼                                       │
@@ -34,11 +37,17 @@ A unified development system where Claude sessions are ephemeral but knowledge i
 │                              ▼                                       │
 │   SESSION END                                                        │
 │   ┌─────────────────────────────────────────────────────────────┐   │
-│   │  1. Batch commit ML data (single commit, not recursive)     │   │
-│   │  2. Auto-generate session memory draft                       │   │
-│   │  3. Update task statuses from commits                        │   │
-│   │  4. Calculate coverage delta                                 │   │
-│   │  5. Archive branch manifest                                  │   │
+│   │  1. Run full test suite → validate no regressions           │   │
+│   │     • If tests FAIL → fix before proceeding                 │   │
+│   │     • If tests PASS → continue with commit flow             │   │
+│   │  2. Commit all changes                                       │   │
+│   │  3. Pull latest from origin                                  │   │
+│   │  4. Merge origin into feature (preserve origin's changes)   │   │
+│   │  5. Push to remote                                           │   │
+│   │  6. Batch commit ML data (single commit, not recursive)     │   │
+│   │  7. Auto-generate session memory draft                       │   │
+│   │  8. Update task statuses from commits                        │   │
+│   │  9. Archive branch manifest                                  │   │
 │   └─────────────────────────────────────────────────────────────┘   │
 │                              │                                       │
 │                              ▼                                       │
@@ -343,6 +352,15 @@ book/
 
 ### Sprint 2: Capture (Next Week)
 ```
+[ ] Test suite at session start/end (Safety Sandwich)
+    - SessionStart: Run full tests, decide fix-first vs proceed
+    - SessionEnd: Run full tests, block commit if failing
+    - Integrate with stop hook workflow
+[ ] Checkpoint commit system (Crash Protection)
+    - Auto-commit to WIP branch every 15 minutes
+    - "wip: Checkpoint [timestamp]" message pattern
+    - Squash on session end if work continues
+    - Recoverable if session terminates unexpectedly
 [ ] SessionEnd auto-memory generation
     - Parse commits in session
     - Extract significant changes
@@ -437,10 +455,30 @@ How we know this is working:
 
 ## Related Documents
 
+### Core Process
+- `docs/merge-friendly-tasks.md` - Task system with collision-free IDs
+- `docs/definition-of-done.md` - When is a task truly complete?
+- `docs/dogfooding-checklist.md` - Testing with real usage
+- `docs/text-as-memories.md` - Knowledge management guide
+
+### ML Training
+- `docs/ml-milestone-thresholds.md` - Why 500/2000/5000 commits for training
+- `docs/ml-training-best-practices.md` - Training workflow and guidelines
+- `docs/ml-data-collection-knowledge-transfer.md` - Data collection architecture
+- `docs/ml-precommit-suggestions.md` - Pre-commit file prediction hook
+
+### Orchestration
+- `docs/parallel-agent-orchestration.md` - Director/sub-agent patterns
+- `docs/director-orchestration-implementation-plan.md` - Implementation details
+- `docs/director-continuation-prompt.md` - Resuming orchestration
+
+### Book Generation
+- `docs/REFACTOR-BOOK-GENERATION.md` - Book generation refactoring
+- `docs/BOOK-GENERATION-VISION.md` - Long-term vision
+
+### Session Knowledge
 - `samples/memories/2025-12-17-session-coverage-and-workflow-analysis.md`
 - `samples/memories/2025-12-17-git-merge-forensic-analysis.md`
-- `docs/REFACTOR-BOOK-GENERATION.md`
-- `docs/merge-friendly-tasks.md`
 
 ## Tags
 
