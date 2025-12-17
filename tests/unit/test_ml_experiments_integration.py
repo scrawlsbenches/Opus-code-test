@@ -59,7 +59,8 @@ class TestCommitDatasetCreation(unittest.TestCase):
         from cortical.ml_experiments.file_prediction_adapter import load_commits_as_jsonl
 
         output_path = Path(self.temp_dir) / 'normalized.jsonl'
-        result_path = load_commits_as_jsonl(self.commits_file, output_path)
+        # Disable CALI to use the test JSONL file directly
+        result_path = load_commits_as_jsonl(self.commits_file, output_path, use_cali=False)
 
         records = read_jsonl(result_path)
 
@@ -76,7 +77,8 @@ class TestCommitDatasetCreation(unittest.TestCase):
         from cortical.ml_experiments.file_prediction_adapter import load_commits_as_jsonl
 
         output_path = Path(self.temp_dir) / 'normalized.jsonl'
-        result_path = load_commits_as_jsonl(self.commits_file, output_path)
+        # Disable CALI to use the test JSONL file directly
+        result_path = load_commits_as_jsonl(self.commits_file, output_path, use_cali=False)
 
         records = read_jsonl(result_path)
 

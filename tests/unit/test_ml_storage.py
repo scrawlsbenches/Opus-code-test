@@ -287,14 +287,16 @@ class TestMLStore(unittest.TestCase):
         """Test iteration with metadata."""
         store = MLStore(self.store_path)
 
-        store.put("commit", "hash1", {"data": "test"}, timestamp=1000.0)
+        # Use valid timestamp (2025-01-01)
+        test_ts = 1735689600.0
+        store.put("commit", "hash1", {"data": "test"}, timestamp=test_ts)
 
         records = list(store.iterate("commit", include_metadata=True))
         self.assertEqual(len(records), 1)
 
         record_id, timestamp, data = records[0]
         self.assertEqual(record_id, "hash1")
-        self.assertEqual(timestamp, 1000.0)
+        self.assertEqual(timestamp, test_ts)
         self.assertEqual(data, {"data": "test"})
         store.close()
 
@@ -302,13 +304,18 @@ class TestMLStore(unittest.TestCase):
         """Test timestamp range queries."""
         store = MLStore(self.store_path)
 
-        # Add records with different timestamps
-        store.put("commit", "old", {"age": "old"}, timestamp=1000.0)
-        store.put("commit", "mid", {"age": "mid"}, timestamp=2000.0)
-        store.put("commit", "new", {"age": "new"}, timestamp=3000.0)
+        # Use valid timestamps (2025-01-01, 2025-06-01, 2025-12-01)
+        old_ts = 1735689600.0  # 2025-01-01
+        mid_ts = 1748736000.0  # 2025-06-01
+        new_ts = 1764547200.0  # 2025-12-01
 
-        # Query range
-        results = list(store.query_range("commit", start_ts=1500.0, end_ts=2500.0))
+        # Add records with different timestamps
+        store.put("commit", "old", {"age": "old"}, timestamp=old_ts)
+        store.put("commit", "mid", {"age": "mid"}, timestamp=mid_ts)
+        store.put("commit", "new", {"age": "new"}, timestamp=new_ts)
+
+        # Query range (between old and mid)
+        results = list(store.query_range("commit", start_ts=old_ts + 1000, end_ts=mid_ts + 1000))
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["age"], "mid")
         store.close()
@@ -457,13 +464,14 @@ class TestMigration(unittest.TestCase):
 
     def test_migrate_from_jsonl(self):
         """Test JSONL migration."""
-        # Create test JSONL file
+        # Create test JSONL file with valid timestamps (2025-01-01 + offset)
+        base_ts = 1735689600.0  # 2025-01-01
         jsonl_path = Path(self.tmpdir) / "commits.jsonl"
         with open(jsonl_path, 'w') as f:
             for i in range(5):
                 f.write(json.dumps({
                     "hash": f"commit_{i}",
-                    "timestamp": 1000.0 + i,
+                    "timestamp": base_ts + i * 86400,  # Each day apart
                     "message": f"commit {i}"
                 }) + '\n')
 
