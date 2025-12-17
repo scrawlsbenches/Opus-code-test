@@ -408,8 +408,8 @@ Examples:
         """
     )
     parser.add_argument('query', nargs='?', help='Search query')
-    parser.add_argument('--corpus', '-c', default='corpus_dev.pkl',
-                        help='Corpus file path (default: corpus_dev.pkl)')
+    parser.add_argument('--corpus', '-c', default='corpus_dev.json',
+                        help='Corpus file path (default: corpus_dev.json, also supports .pkl)')
     parser.add_argument('--top', '-n', type=int, default=5,
                         help='Number of results (default: 5)')
     parser.add_argument('--verbose', '-v', action='store_true',
@@ -433,13 +433,33 @@ Examples:
     base_path = Path(__file__).parent.parent
     corpus_path = base_path / args.corpus
 
-    # Check if corpus exists
+    # Check if corpus exists - try JSON first, then pkl for backward compatibility
     if not corpus_path.exists():
-        print(f"Error: Corpus file not found: {corpus_path}")
-        print("Run 'python scripts/index_codebase.py' first to create it.")
-        sys.exit(1)
+        # If specified path doesn't exist, try alternate extension
+        if str(corpus_path).endswith('.json'):
+            pkl_path = base_path / str(args.corpus).replace('.json', '.pkl')
+            if pkl_path.exists():
+                corpus_path = pkl_path
+                print(f"Note: Using {pkl_path.name} (consider migrating to JSON format)")
+            else:
+                print(f"Error: Corpus file not found: {corpus_path}")
+                print("Run 'python scripts/index_codebase.py' first to create it.")
+                sys.exit(1)
+        elif str(corpus_path).endswith('.pkl'):
+            json_path = base_path / str(args.corpus).replace('.pkl', '.json')
+            if json_path.exists():
+                corpus_path = json_path
+                print(f"Note: Using {json_path.name} (JSON format)")
+            else:
+                print(f"Error: Corpus file not found: {corpus_path}")
+                print("Run 'python scripts/index_codebase.py' first to create it.")
+                sys.exit(1)
+        else:
+            print(f"Error: Corpus file not found: {corpus_path}")
+            print("Run 'python scripts/index_codebase.py' first to create it.")
+            sys.exit(1)
 
-    # Load corpus
+    # Load corpus (auto-detects format)
     print(f"Loading corpus from {corpus_path}...")
     processor = CorticalTextProcessor.load(str(corpus_path))
     print(f"Loaded {len(processor.documents)} documents\n")

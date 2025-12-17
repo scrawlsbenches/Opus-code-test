@@ -8,6 +8,7 @@ Tests the four DevEx scripts:
 - corpus_health.py
 """
 
+import os
 import unittest
 import sys
 import tempfile
@@ -78,16 +79,17 @@ This module provides graph analysis algorithms including:
         # Compute all analysis
         cls.processor.compute_all()
 
-        # Save to temp file for script testing
-        cls.temp_corpus = tempfile.NamedTemporaryFile(
-            suffix='.pkl', delete=False
-        )
-        cls.processor.save(cls.temp_corpus.name)
+        # Save to temp directory for script testing
+        cls.temp_dir = tempfile.mkdtemp()
+        cls.temp_corpus_path = os.path.join(cls.temp_dir, "corpus_state")
+        cls.processor.save(cls.temp_corpus_path)
 
     @classmethod
     def tearDownClass(cls):
         """Clean up temp corpus."""
-        Path(cls.temp_corpus.name).unlink(missing_ok=True)
+        import shutil
+        if os.path.exists(cls.temp_dir):
+            shutil.rmtree(cls.temp_dir)
 
     def test_find_similar_basic(self):
         """Test basic similarity finding."""

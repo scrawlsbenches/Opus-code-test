@@ -1,7 +1,7 @@
 """
 Unit tests for JSON persistence methods in CorticalTextProcessor.
 
-Tests the save_json(), load_json(), and migrate_to_json() methods.
+Tests the save_json() and load_json() methods.
 """
 
 import json
@@ -23,7 +23,6 @@ class TestProcessorJSONPersistence(unittest.TestCase):
         """Create test processor and temporary directories."""
         self.temp_dir = tempfile.mkdtemp()
         self.json_dir = os.path.join(self.temp_dir, 'test_state')
-        self.pkl_path = os.path.join(self.temp_dir, 'test.pkl')
 
         # Create processor with some test data
         self.processor = CorticalTextProcessor()
@@ -241,57 +240,6 @@ class TestProcessorJSONPersistence(unittest.TestCase):
             self.assertEqual(orig_col.document_ids, loaded_col.document_ids)
             # PageRank and TF-IDF should be close (floating point comparison)
             self.assertAlmostEqual(orig_col.pagerank, loaded_col.pagerank, places=6)
-
-    def test_migrate_to_json_converts_pickle(self):
-        """Test that migrate_to_json successfully converts pickle to JSON."""
-        # Save as pickle first
-        self.processor.save(self.pkl_path, verbose=False)
-
-        # Verify pickle file exists
-        self.assertTrue(os.path.exists(self.pkl_path))
-
-        # Migrate to JSON
-        result = self.processor.migrate_to_json(self.pkl_path, self.json_dir, verbose=False)
-
-        # Verify migration succeeded
-        self.assertTrue(result)
-
-        # Verify JSON directory was created
-        self.assertTrue(os.path.exists(self.json_dir))
-
-        # Verify manifest exists
-        manifest_path = os.path.join(self.json_dir, 'manifest.json')
-        self.assertTrue(os.path.exists(manifest_path))
-
-        # Load from JSON and verify data
-        loaded = CorticalTextProcessor.load_json(self.json_dir, verbose=False)
-        self.assertEqual(len(loaded.documents), 2)
-        self.assertIn("doc1", loaded.documents)
-
-    def test_migrate_to_json_preserves_data(self):
-        """Test that migration from pickle to JSON preserves all data."""
-        # Compute all features
-        self.processor.compute_all(verbose=False)
-        self.processor.compute_graph_embeddings(verbose=False)
-        self.processor.extract_corpus_semantics(verbose=False)
-
-        # Save as pickle
-        self.processor.save(self.pkl_path, verbose=False)
-
-        # Load from pickle to verify original state
-        pkl_loaded = CorticalTextProcessor.load(self.pkl_path, verbose=False)
-
-        # Migrate to JSON
-        self.processor.migrate_to_json(self.pkl_path, self.json_dir, verbose=False)
-
-        # Load from JSON
-        json_loaded = CorticalTextProcessor.load_json(self.json_dir, verbose=False)
-
-        # Verify data matches
-        self.assertEqual(json_loaded.documents, pkl_loaded.documents)
-        self.assertEqual(len(json_loaded.layers), len(pkl_loaded.layers))
-        self.assertEqual(len(json_loaded.embeddings), len(pkl_loaded.embeddings))
-        self.assertEqual(len(json_loaded.semantic_relations), len(pkl_loaded.semantic_relations))
 
     def test_save_json_with_empty_processor(self):
         """Test that save_json works with empty processor."""

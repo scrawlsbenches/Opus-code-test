@@ -1,0 +1,19 @@
+{
+  "id": "A-20251217-104031-e1d5-003",
+  "timestamp": "2025-12-17T10:03:22.208Z",
+  "session_id": "e1d5d10d-f935-4b1b-b0f1-88378c009249",
+  "action_type": "command",
+  "target": "",
+  "context": {
+    "tool": "Bash",
+    "input": {
+      "tool": "Bash",
+      "input": {
+        "command": "git pull origin claude/code-review-analysis-fS2bO",
+        "description": "Pull latest changes"
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}

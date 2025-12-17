@@ -22,13 +22,25 @@ Example:
 
     # Get metrics summary
     print(processor.get_metrics_summary())
+
+Logging Configuration:
+    The observability module uses Python's standard logging. Configure levels as needed:
+
+    # For production (minimal output):
+    logging.getLogger('cortical.observability').setLevel(logging.WARNING)
+
+    # For development (verbose):
+    logging.getLogger('cortical.observability').setLevel(logging.DEBUG)
+
+    # To see timing logs:
+    logging.basicConfig(level=logging.DEBUG)
 """
 
 import time
 import functools
 import logging
-from typing import Dict, Any, Optional, Callable, List
-from collections import defaultdict
+from typing import Dict, Any, Optional, Callable, List, Deque
+from collections import defaultdict, deque
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
@@ -38,30 +50,38 @@ class MetricsCollector:
     """
     Collects and aggregates timing and count metrics for operations.
 
-    Thread-safe for single-threaded use. For multi-threaded applications,
-    wrap method calls with appropriate locking.
+    Note: This class is NOT thread-safe. For multi-threaded applications,
+    wrap method calls with appropriate locking (e.g., threading.Lock).
+    Consider using thread-local MetricsCollector instances for concurrent access.
 
     Attributes:
         enabled: Whether metrics collection is active
         operations: Dict mapping operation names to timing/count data
         traces: Dict mapping trace IDs to operation logs
+        max_timing_history: Maximum timing entries to keep per operation
     """
 
-    def __init__(self, enabled: bool = True):
+    def __init__(self, enabled: bool = True, max_timing_history: int = 1000):
         """
         Initialize metrics collector.
 
         Args:
             enabled: Start with metrics collection enabled
+            max_timing_history: Maximum number of timing measurements to keep per operation.
+                               Set to 0 to disable timing history entirely (saves memory).
+                               Default 1000 keeps last 1000 timings for percentile analysis.
         """
         self.enabled = enabled
-        # operation_name -> {'count': int, 'total_ms': float, 'min_ms': float, 'max_ms': float, 'timings': list}
+        self.max_timing_history = max_timing_history
+        # operation_name -> {'count': int, 'total_ms': float, 'min_ms': float, 'max_ms': float, 'timings': deque}
+        # Need to capture max_timing_history in closure
+        max_history = max_timing_history
         self.operations: Dict[str, Dict[str, Any]] = defaultdict(lambda: {
             'count': 0,
             'total_ms': 0.0,
             'min_ms': float('inf'),
             'max_ms': 0.0,
-            'timings': []
+            'timings': deque(maxlen=max_history if max_history > 0 else 0)
         })
         # trace_id -> list of (operation, duration_ms, context) tuples
         self.traces: Dict[str, List[tuple]] = defaultdict(list)

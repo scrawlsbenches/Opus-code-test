@@ -13,6 +13,45 @@ Usage:
     python scripts/ml_file_prediction.py train
     python scripts/ml_file_prediction.py predict "Add authentication feature"
     python scripts/ml_file_prediction.py evaluate --split 0.2
+
+# =============================================================================
+# HOW THIS MODEL WORKS (Knowledge for Future Developers)
+# =============================================================================
+#
+# TRAINING ALGORITHM:
+# 1. Parse commit messages to extract commit type (feat, fix, docs, etc.)
+# 2. Build file co-occurrence matrix from commits (files changed together)
+# 3. Extract keywords from commit messages and map to files touched
+# 4. Weight by recency and frequency using TF-IDF-style scoring
+#
+# PREDICTION ALGORITHM:
+# 1. Classify input as commit type (feat, fix, docs, etc.)
+# 2. Extract keywords from task description
+# 3. Look up keyword->file associations from training data
+# 4. Boost files that frequently co-occur with matched files (--seed option)
+# 5. Apply frequency penalty to avoid over-suggesting common files
+#
+# WHY THIS WORKS (INTUITION):
+# - Commits touching auth.py often also touch login.py and tests/test_auth.py
+# - "feat: add authentication" commits tend to modify similar file sets
+# - Keywords like "authentication", "login", "user" map to specific modules
+# - The model learns YOUR project's specific patterns, not generic ones
+#
+# METRICS EXPLANATION:
+# - MRR (Mean Reciprocal Rank): Where does the first correct file appear?
+#   MRR=0.5 means first correct file is typically at position 2
+# - Recall@10: What percentage of actual files appear in top 10 predictions?
+#   Recall@10=0.5 means half of files you'll touch are predicted
+# - Precision@1: How often is the top prediction correct?
+#   Precision@1=0.3 means 30% of top predictions are actually modified
+#
+# WHEN TO RETRAIN:
+# - After major refactoring (file paths changed)
+# - Every 50-100 new commits (patterns evolve)
+# - When predictions feel stale or inaccurate
+# - After merging branches with different file structures
+#
+# =============================================================================
 """
 
 import json

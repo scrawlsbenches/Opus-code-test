@@ -6,6 +6,7 @@ other processor mixins depend on.
 """
 
 import logging
+from collections import OrderedDict
 from typing import Dict, Optional, Any
 
 from ..tokenizer import Tokenizer
@@ -67,7 +68,7 @@ class CoreMixin:
         # Track which computations are stale and need recomputation
         self._stale_computations: set = set()
         # LRU cache for query expansion results
-        self._query_expansion_cache: Dict[str, Dict[str, float]] = {}
+        self._query_expansion_cache: OrderedDict[str, Dict[str, float]] = OrderedDict()
         self._query_cache_max_size: int = 100
         # Observability: metrics collection
         self._metrics = MetricsCollector(enabled=enable_metrics)

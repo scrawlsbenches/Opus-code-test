@@ -9,7 +9,7 @@ In the neocortex, minicolumns are vertical structures containing
 that concept for text processing.
 """
 
-from typing import Set, Dict, Optional, List
+from typing import Set, Dict, Optional, List, Any
 from dataclasses import dataclass, field, asdict
 
 
@@ -37,7 +37,7 @@ class Edge:
     confidence: float = 1.0
     source: str = 'corpus'
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return asdict(self)
 
@@ -426,7 +426,7 @@ class Minicolumn:
         )
         return sorted_conns[:n]
     
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert to dictionary for serialization.
 
