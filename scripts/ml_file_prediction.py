@@ -24,13 +24,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, Any
 
-from ml_collector.config import TRACKED_DIR, ML_DATA_DIR
+from ml_collector.config import TRACKED_DIR, ML_DATA_DIR, CALI_DIR
 
 try:
     import yaml
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
+
+# CALI support (high-performance ML storage)
+try:
+    from cortical.ml_storage import MLStore
+    CALI_AVAILABLE = True
+except ImportError:
+    CALI_AVAILABLE = False
 
 
 # ============================================================================
@@ -749,18 +756,60 @@ def get_commits_since(commit_hash: str) -> int:
 # DATA LOADING
 # ============================================================================
 
-def load_commit_data(filter_deleted: bool = True) -> List[TrainingExample]:
+def _load_commits_from_cali() -> List[Dict[str, Any]]:
+    """Load commits from CALI store (O(n) sequential iteration)."""
+    if not CALI_AVAILABLE or not CALI_DIR.exists():
+        return []
+
+    try:
+        store = MLStore(CALI_DIR, rebuild_indices=False)  # Don't need indices for iteration
+        commits = list(store.iterate('commit'))
+        store.close()
+        return commits
+    except Exception as e:
+        print(f"  Warning: CALI read failed, falling back to JSONL: {e}")
+        return []
+
+
+def _load_commits_from_jsonl() -> List[Dict[str, Any]]:
+    """Load commits from legacy JSONL file."""
+    commits_file = TRACKED_DIR / "commits.jsonl"
+
+    if not commits_file.exists():
+        return []
+
+    commits = []
+    with open(commits_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            if not line.strip():
+                continue
+            try:
+                commits.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return commits
+
+
+def load_commit_data(filter_deleted: bool = True, use_cali: bool = True) -> List[TrainingExample]:
     """
-    Load commit data from JSONL file.
+    Load commit data from CALI store or JSONL file.
 
     Args:
         filter_deleted: If True, filter out files that no longer exist
                        and migrate old paths to new structure.
+        use_cali: If True, try CALI first, then fall back to JSONL.
     """
-    commits_file = TRACKED_DIR / "commits.jsonl"
+    # Try CALI first (faster iteration, no index needed)
+    commits = []
+    if use_cali:
+        commits = _load_commits_from_cali()
 
-    if not commits_file.exists():
-        print(f"No commits file found at {commits_file}")
+    # Fall back to JSONL
+    if not commits:
+        commits = _load_commits_from_jsonl()
+
+    if not commits:
+        print(f"No commits found in CALI or {TRACKED_DIR / 'commits.jsonl'}")
         return []
 
     # Pre-compute existing files for efficiency
@@ -769,54 +818,45 @@ def load_commit_data(filter_deleted: bool = True) -> List[TrainingExample]:
     examples = []
     filtered_count = 0
 
-    with open(commits_file, 'r', encoding='utf-8') as f:
-        for line in f:
-            if not line.strip():
-                continue
-            try:
-                commit = json.loads(line)
+    for commit in commits:
+        # Skip merge commits and ML data commits
+        if commit.get('is_merge', False):
+            continue
+        if commit.get('message', '').startswith('data: ML'):
+            continue
 
-                # Skip merge commits and ML data commits
-                if commit.get('is_merge', False):
-                    continue
-                if commit.get('message', '').startswith('data: ML'):
-                    continue
+        files_changed = commit.get('files_changed', [])
 
-                files_changed = commit.get('files_changed', [])
+        # Apply file path migrations and filter deleted files
+        if filter_deleted:
+            migrated_files = []
+            for f_path in files_changed:
+                # Migrate old paths to new structure
+                migrated = migrate_file_path(f_path)
+                for new_path in migrated:
+                    # Check if file exists (either in our set or on disk)
+                    if new_path in existing_files or Path(new_path).exists():
+                        migrated_files.append(new_path)
+            original_count = len(files_changed)
+            files_changed = list(set(migrated_files))  # Dedupe
+            if original_count > 0 and len(files_changed) == 0:
+                filtered_count += 1
+                continue  # Skip commits with no remaining files
 
-                # Apply file path migrations and filter deleted files
-                if filter_deleted:
-                    migrated_files = []
-                    for f_path in files_changed:
-                        # Migrate old paths to new structure
-                        migrated = migrate_file_path(f_path)
-                        for new_path in migrated:
-                            # Check if file exists (either in our set or on disk)
-                            if new_path in existing_files or Path(new_path).exists():
-                                migrated_files.append(new_path)
-                    original_count = len(files_changed)
-                    files_changed = list(set(migrated_files))  # Dedupe
-                    if original_count > 0 and len(files_changed) == 0:
-                        filtered_count += 1
-                        continue  # Skip commits with no remaining files
+        example = TrainingExample(
+            commit_hash=commit.get('hash', ''),
+            message=commit.get('message', ''),
+            files_changed=files_changed,
+            commit_type=extract_commit_type(commit.get('message', '')),
+            keywords=extract_keywords(commit.get('message', '')),
+            timestamp=commit.get('timestamp', ''),
+            insertions=commit.get('insertions', 0),
+            deletions=commit.get('deletions', 0)
+        )
 
-                example = TrainingExample(
-                    commit_hash=commit.get('hash', ''),
-                    message=commit.get('message', ''),
-                    files_changed=files_changed,
-                    commit_type=extract_commit_type(commit.get('message', '')),
-                    keywords=extract_keywords(commit.get('message', '')),
-                    timestamp=commit.get('timestamp', ''),
-                    insertions=commit.get('insertions', 0),
-                    deletions=commit.get('deletions', 0)
-                )
-
-                # Only include commits that changed files
-                if example.files_changed:
-                    examples.append(example)
-
-            except json.JSONDecodeError:
-                continue
+        # Only include commits that changed files
+        if example.files_changed:
+            examples.append(example)
 
     if filter_deleted and filtered_count > 0:
         print(f"  Filtered {filtered_count} commits with only deleted files")

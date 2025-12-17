@@ -28,6 +28,84 @@ from collections import defaultdict
 BOOK_DIR = Path(__file__).parent.parent / "book"
 DOCS_DIR = Path(__file__).parent.parent / "docs"
 CORTICAL_DIR = Path(__file__).parent.parent / "cortical"
+ML_DATA_DIR = Path(__file__).parent.parent / ".git-ml"
+CALI_DIR = ML_DATA_DIR / "cali"
+
+# CALI support (high-performance ML storage)
+try:
+    from cortical.ml_storage import MLStore
+    CALI_AVAILABLE = True
+except ImportError:
+    CALI_AVAILABLE = False
+
+
+def _load_from_cali(record_type: str) -> List[Dict[str, Any]]:
+    """Load records from CALI store."""
+    if not CALI_AVAILABLE or not CALI_DIR.exists():
+        return []
+    try:
+        store = MLStore(CALI_DIR, rebuild_indices=False)
+        records = list(store.iterate(record_type))
+        store.close()
+        return records
+    except Exception:
+        return []
+
+
+def _load_from_jsonl(filepath: Path) -> List[Dict[str, Any]]:
+    """Load records from JSONL file."""
+    if not filepath.exists():
+        return []
+    records = []
+    try:
+        with open(filepath, 'r') as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        records.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+    except Exception:
+        pass
+    return records
+
+
+def load_ml_commits(use_cali: bool = True) -> List[Dict[str, Any]]:
+    """Load commits from CALI or JSONL with fallback."""
+    if use_cali:
+        commits = _load_from_cali('commit')
+        if commits:
+            return commits
+    return _load_from_jsonl(ML_DATA_DIR / "tracked" / "commits.jsonl")
+
+
+def load_ml_sessions(use_cali: bool = True) -> List[Dict[str, Any]]:
+    """Load sessions from CALI or JSONL with fallback."""
+    if use_cali:
+        sessions = _load_from_cali('session')
+        if sessions:
+            return sessions
+    return _load_from_jsonl(ML_DATA_DIR / "tracked" / "sessions.jsonl")
+
+
+def load_ml_chats(use_cali: bool = True) -> List[Dict[str, Any]]:
+    """Load chats from CALI or JSONL with fallback."""
+    if use_cali:
+        chats = _load_from_cali('chat')
+        if chats:
+            return chats
+    # Fall back to individual chat files in .git-ml/chats/
+    chats = []
+    chats_dir = ML_DATA_DIR / "chats"
+    if chats_dir.exists():
+        for chat_file in chats_dir.rglob("*.json"):
+            try:
+                with open(chat_file) as f:
+                    chats.append(json.load(f))
+            except Exception:
+                continue
+    return chats
+
 
 class ChapterGenerator(ABC):
     """Base class for chapter generators."""
@@ -1409,25 +1487,8 @@ class DecisionStoryGenerator(ChapterGenerator):
         return list(keywords)
 
     def _load_sessions(self) -> List[Dict]:
-        """Load chat sessions from .git-ml/tracked/sessions.jsonl"""
-        sessions = []
-
-        if not self.sessions_file.exists():
-            return sessions
-
-        try:
-            with open(self.sessions_file, 'r') as f:
-                for line in f:
-                    if line.strip():
-                        try:
-                            session_data = json.loads(line)
-                            sessions.append(session_data)
-                        except json.JSONDecodeError:
-                            continue
-        except Exception as e:
-            print(f"  Warning: Failed to load sessions: {e}")
-
-        return sessions
+        """Load chat sessions from CALI or .git-ml/tracked/sessions.jsonl"""
+        return load_ml_sessions()
 
     def _find_related_chats(self, adr: Dict, sessions: List[Dict]) -> List[Dict]:
         """Search sessions for discussions about this ADR topic"""
@@ -1456,32 +1517,18 @@ class DecisionStoryGenerator(ChapterGenerator):
         """Find commits related to this ADR"""
         related = []
 
-        if not self.commits_file.exists():
-            return related
-
         # Extract ADR number from slug (adr-xxx -> xxx)
         adr_num = adr['slug'].split('-', 1)[-1] if '-' in adr['slug'] else ''
 
-        try:
-            with open(self.commits_file, 'r') as f:
-                for line in f:
-                    if not line.strip():
-                        continue
-                    try:
-                        commit_data = json.loads(line)
-                        message = commit_data.get('message', '').lower()
+        for commit_data in load_ml_commits():
+            message = commit_data.get('message', '').lower()
 
-                        # Check for ADR reference in commit message
-                        if adr_num and (f'adr-{adr_num}' in message or f'adr {adr_num}' in message):
-                            related.append(commit_data)
-                        # Also check for keyword matches
-                        elif any(kw in message for kw in adr['keywords'][:3]):  # Top 3 keywords
-                            related.append(commit_data)
-
-                    except json.JSONDecodeError:
-                        continue
-        except Exception:
-            pass
+            # Check for ADR reference in commit message
+            if adr_num and (f'adr-{adr_num}' in message or f'adr {adr_num}' in message):
+                related.append(commit_data)
+            # Also check for keyword matches
+            elif any(kw in message for kw in adr['keywords'][:3]):  # Top 3 keywords
+                related.append(commit_data)
 
         return related[:10]  # Limit to 10 most recent
 
@@ -1743,22 +1790,9 @@ class CaseStudyGenerator(ChapterGenerator):
         }
 
     def _load_sessions(self) -> List[Dict]:
-        """Load sessions from both .git-ml/sessions/*.json and tracked/sessions.jsonl"""
-        sessions = []
-
-        # Load from JSONL (aggregated data)
-        if self.sessions_file.exists():
-            try:
-                with open(self.sessions_file, 'r') as f:
-                    for line in f:
-                        if line.strip():
-                            try:
-                                session_data = json.loads(line)
-                                sessions.append(session_data)
-                            except json.JSONDecodeError:
-                                continue
-            except Exception as e:
-                print(f"  Warning: Failed to load sessions.jsonl: {e}")
+        """Load sessions from CALI, JSONL, and individual session files."""
+        # Start with CALI/JSONL sessions
+        sessions = load_ml_sessions()
 
         # Also load individual session files for richer data
         if self.sessions_dir.exists():
@@ -1783,27 +1817,12 @@ class CaseStudyGenerator(ChapterGenerator):
         return sessions
 
     def _load_commits(self) -> Dict[str, Dict]:
-        """Load commits indexed by hash"""
+        """Load commits indexed by hash from CALI or JSONL."""
         commits = {}
-
-        if not self.commits_file.exists():
-            return commits
-
-        try:
-            with open(self.commits_file, 'r') as f:
-                for line in f:
-                    if not line.strip():
-                        continue
-                    try:
-                        commit_data = json.loads(line)
-                        commit_hash = commit_data.get('hash', commit_data.get('commit_hash'))
-                        if commit_hash:
-                            commits[commit_hash] = commit_data
-                    except json.JSONDecodeError:
-                        continue
-        except Exception as e:
-            print(f"  Warning: Failed to load commits: {e}")
-
+        for commit_data in load_ml_commits():
+            commit_hash = commit_data.get('hash', commit_data.get('commit_hash'))
+            if commit_hash:
+                commits[commit_hash] = commit_data
         return commits
 
     def _is_narrative_worthy(self, session: Dict) -> bool:
@@ -2158,28 +2177,14 @@ class CommitNarrativeSynthesizer(ChapterGenerator):
         }
 
     def _load_commits(self) -> List[Dict[str, Any]]:
-        """Load commits from .git-ml/tracked/commits.jsonl"""
+        """Load commits from CALI or .git-ml/tracked/commits.jsonl"""
         commits = []
-
-        if not self.commits_file.exists():
-            return commits
-
-        try:
-            with open(self.commits_file, 'r') as f:
-                for line in f:
-                    if not line.strip():
-                        continue
-                    try:
-                        commit_data = json.loads(line)
-                        # Extract commit type from message
-                        message = commit_data.get('message', '')
-                        commit_type = self._extract_commit_type(message)
-                        commit_data['type'] = commit_type
-                        commits.append(commit_data)
-                    except json.JSONDecodeError:
-                        continue
-        except Exception as e:
-            print(f"  Warning: Failed to load commits: {e}")
+        for commit_data in load_ml_commits():
+            # Extract commit type from message
+            message = commit_data.get('message', '')
+            commit_type = self._extract_commit_type(message)
+            commit_data['type'] = commit_type
+            commits.append(commit_data)
 
         # Sort by timestamp (oldest first for narrative flow)
         commits.sort(key=lambda c: c.get('timestamp', ''))
@@ -2681,20 +2686,11 @@ class CommitNarrativeGenerator(ChapterGenerator):
         return "other"
 
     def _load_ml_commits(self) -> Dict[str, Dict[str, Any]]:
-        """Load ML commit data if available."""
-        if not self.ml_data_file.exists():
-            return {}
-
+        """Load ML commit data from CALI or JSONL."""
         ml_data = {}
-        try:
-            with open(self.ml_data_file) as f:
-                for line in f:
-                    if not line.strip():
-                        continue
-                    data = json.loads(line)
-                    ml_data[data['hash']] = data
-        except Exception as e:
-            print(f"  Warning: Failed to load ML data: {e}")
+        for data in load_ml_commits():
+            if 'hash' in data:
+                ml_data[data['hash']] = data
         return ml_data
 
     def _find_adr_references(self, message: str) -> List[str]:
@@ -3091,20 +3087,11 @@ class LessonExtractor(ChapterGenerator):
         return commits
 
     def _load_ml_commits(self) -> Dict[str, Dict[str, Any]]:
-        """Load ML commit data if available."""
-        if not self.ml_data_file.exists():
-            return {}
-
+        """Load ML commit data from CALI or JSONL."""
         ml_data = {}
-        try:
-            with open(self.ml_data_file) as f:
-                for line in f:
-                    if not line.strip():
-                        continue
-                    data = json.loads(line)
-                    ml_data[data['hash']] = data
-        except Exception as e:
-            print(f"  Warning: Failed to load ML data: {e}")
+        for data in load_ml_commits():
+            if 'hash' in data:
+                ml_data[data['hash']] = data
         return ml_data
 
     def _categorize_lesson(self, commit: Dict[str, Any]) -> Optional[str]:
