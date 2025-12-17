@@ -18,6 +18,16 @@ from cortical.ml_storage import (
     PackedLog,
     MLStore,
     migrate_from_jsonl,
+    # Validation functions and exceptions
+    CALIError,
+    CALIValidationError,
+    CALISerializationError,
+    CALIStorageError,
+    validate_record_type,
+    validate_record_id,
+    validate_content_hash,
+    validate_data,
+    validate_timestamp,
 )
 
 
@@ -486,6 +496,367 @@ class TestMigration(unittest.TestCase):
         # Verify data
         record = store.get("commit", "commit_0")
         self.assertEqual(record["message"], "commit 0")
+        store.close()
+
+
+class TestValidateRecordType(unittest.TestCase):
+    """Test validate_record_type function."""
+
+    def test_valid_record_type(self):
+        """Valid record types pass validation."""
+        self.assertEqual(validate_record_type("commit"), "commit")
+        self.assertEqual(validate_record_type("Chat"), "chat")  # Normalized to lowercase
+        self.assertEqual(validate_record_type("my_type"), "my_type")
+        self.assertEqual(validate_record_type("type-1"), "type-1")
+        self.assertEqual(validate_record_type("a"), "a")
+
+    def test_none_raises(self):
+        """None record_type raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_record_type(None)
+        self.assertIn("cannot be None", str(ctx.exception))
+
+    def test_non_string_raises(self):
+        """Non-string record_type raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_record_type(123)
+        self.assertIn("must be a string", str(ctx.exception))
+
+        with self.assertRaises(CALIValidationError):
+            validate_record_type(['list'])
+
+    def test_empty_raises(self):
+        """Empty record_type raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_record_type("")
+        self.assertIn("cannot be empty", str(ctx.exception))
+
+        with self.assertRaises(CALIValidationError):
+            validate_record_type("   ")  # Whitespace only
+
+    def test_invalid_pattern_raises(self):
+        """Invalid patterns raise CALIValidationError."""
+        # Must start with letter
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_record_type("1invalid")
+        self.assertIn("invalid", str(ctx.exception))
+
+        # No special characters
+        with self.assertRaises(CALIValidationError):
+            validate_record_type("type@name")
+
+        # No spaces
+        with self.assertRaises(CALIValidationError):
+            validate_record_type("my type")
+
+    def test_whitespace_stripped(self):
+        """Whitespace is stripped before validation."""
+        self.assertEqual(validate_record_type("  commit  "), "commit")
+
+
+class TestValidateRecordId(unittest.TestCase):
+    """Test validate_record_id function."""
+
+    def test_valid_record_id(self):
+        """Valid record IDs pass validation."""
+        self.assertEqual(validate_record_id("abc123"), "abc123")
+        self.assertEqual(validate_record_id("my_id"), "my_id")
+        self.assertEqual(validate_record_id("id-with-dashes"), "id-with-dashes")
+        self.assertEqual(validate_record_id("id.with.dots"), "id.with.dots")
+        self.assertEqual(validate_record_id("id:with:colons"), "id:with:colons")
+
+    def test_none_raises(self):
+        """None record_id raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_record_id(None)
+        self.assertIn("cannot be None", str(ctx.exception))
+
+    def test_non_string_raises(self):
+        """Non-string record_id raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_record_id(123)
+        self.assertIn("must be a string", str(ctx.exception))
+
+    def test_empty_raises(self):
+        """Empty record_id raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_record_id("")
+        self.assertIn("cannot be empty", str(ctx.exception))
+
+    def test_invalid_pattern_raises(self):
+        """Invalid patterns raise CALIValidationError."""
+        # No special characters except allowed ones
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_record_id("id@invalid")
+        self.assertIn("invalid", str(ctx.exception))
+
+        # No spaces
+        with self.assertRaises(CALIValidationError):
+            validate_record_id("my id")
+
+    def test_too_long_raises(self):
+        """Record ID over 256 chars raises CALIValidationError."""
+        long_id = "a" * 257
+        with self.assertRaises(CALIValidationError):
+            validate_record_id(long_id)
+
+    def test_max_length_ok(self):
+        """Record ID at exactly 256 chars is valid."""
+        valid_id = "a" * 256
+        self.assertEqual(validate_record_id(valid_id), valid_id)
+
+
+class TestValidateContentHash(unittest.TestCase):
+    """Test validate_content_hash function."""
+
+    def test_valid_hash(self):
+        """Valid SHA-256 hashes pass validation."""
+        valid_hash = "a" * 64
+        self.assertEqual(validate_content_hash(valid_hash), valid_hash)
+
+        # Mixed case normalized to lowercase
+        mixed = "A" * 32 + "b" * 32
+        self.assertEqual(validate_content_hash(mixed), mixed.lower())
+
+        # Real-looking hash
+        real_hash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        self.assertEqual(validate_content_hash(real_hash), real_hash)
+
+    def test_none_raises(self):
+        """None content_hash raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_content_hash(None)
+        self.assertIn("cannot be None", str(ctx.exception))
+
+    def test_non_string_raises(self):
+        """Non-string content_hash raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_content_hash(123)
+        self.assertIn("must be a string", str(ctx.exception))
+
+    def test_wrong_length_raises(self):
+        """Content hash not 64 chars raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_content_hash("abc123")  # Too short
+        self.assertIn("64-character", str(ctx.exception))
+
+        with self.assertRaises(CALIValidationError):
+            validate_content_hash("a" * 65)  # Too long
+
+    def test_non_hex_raises(self):
+        """Non-hex characters raise CALIValidationError."""
+        with self.assertRaises(CALIValidationError):
+            validate_content_hash("g" * 64)  # 'g' is not hex
+
+
+class TestValidateData(unittest.TestCase):
+    """Test validate_data function."""
+
+    def test_valid_data(self):
+        """Valid data passes validation."""
+        data = {"key": "value", "number": 42}
+        self.assertEqual(validate_data(data), data)
+
+    def test_none_raises(self):
+        """None data raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_data(None)
+        self.assertIn("cannot be None", str(ctx.exception))
+
+    def test_non_dict_raises(self):
+        """Non-dict data raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_data("not a dict")
+        self.assertIn("must be a dictionary", str(ctx.exception))
+
+        with self.assertRaises(CALIValidationError):
+            validate_data([1, 2, 3])
+
+    def test_empty_dict_raises(self):
+        """Empty dict raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_data({})
+        self.assertIn("cannot be an empty", str(ctx.exception))
+
+    def test_non_serializable_raises(self):
+        """Non-JSON-serializable data raises CALISerializationError."""
+        with self.assertRaises(CALISerializationError) as ctx:
+            validate_data({"func": lambda x: x})
+        self.assertIn("not JSON serializable", str(ctx.exception))
+
+        # Object that can't be serialized
+        class Custom:
+            pass
+        with self.assertRaises(CALISerializationError):
+            validate_data({"obj": Custom()})
+
+    def test_nested_data_valid(self):
+        """Nested dicts and lists are valid."""
+        data = {
+            "nested": {"deep": {"value": 123}},
+            "list": [1, 2, {"inner": "value"}],
+            "null": None,
+            "bool": True
+        }
+        self.assertEqual(validate_data(data), data)
+
+
+class TestValidateTimestamp(unittest.TestCase):
+    """Test validate_timestamp function."""
+
+    def test_none_returns_current_time(self):
+        """None timestamp returns current time."""
+        before = time.time()
+        result = validate_timestamp(None)
+        after = time.time()
+        self.assertGreaterEqual(result, before)
+        self.assertLessEqual(result, after)
+
+    def test_valid_float(self):
+        """Valid float timestamps pass validation."""
+        valid_ts = 1735689600.0  # 2025-01-01
+        self.assertEqual(validate_timestamp(valid_ts), valid_ts)
+
+    def test_valid_int(self):
+        """Valid int timestamps are converted to float."""
+        valid_ts = 1735689600  # 2025-01-01
+        result = validate_timestamp(valid_ts)
+        self.assertIsInstance(result, float)
+        self.assertEqual(result, float(valid_ts))
+
+    def test_too_old_raises(self):
+        """Timestamp before 2020 raises CALIValidationError."""
+        old_ts = 1000.0  # 1970
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_timestamp(old_ts)
+        self.assertIn("out of valid range", str(ctx.exception))
+
+    def test_too_far_future_raises(self):
+        """Timestamp after 2100 raises CALIValidationError."""
+        future_ts = 5000000000.0  # ~2128
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_timestamp(future_ts)
+        self.assertIn("out of valid range", str(ctx.exception))
+
+    def test_valid_iso_string(self):
+        """Valid ISO format string is converted to timestamp."""
+        iso = "2025-01-01T00:00:00+00:00"
+        result = validate_timestamp(iso)
+        self.assertIsInstance(result, float)
+        self.assertAlmostEqual(result, 1735689600.0, delta=1)
+
+    def test_iso_with_z_suffix(self):
+        """ISO string with Z suffix is handled."""
+        iso = "2025-01-01T00:00:00Z"
+        result = validate_timestamp(iso)
+        self.assertIsInstance(result, float)
+
+    def test_invalid_iso_raises(self):
+        """Invalid ISO format raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_timestamp("not-a-date")
+        self.assertIn("not a valid ISO format", str(ctx.exception))
+
+    def test_invalid_type_raises(self):
+        """Invalid type raises CALIValidationError."""
+        with self.assertRaises(CALIValidationError) as ctx:
+            validate_timestamp([2025, 1, 1])
+        self.assertIn("must be a float or ISO string", str(ctx.exception))
+
+
+class TestExceptionHierarchy(unittest.TestCase):
+    """Test CALI exception hierarchy."""
+
+    def test_exception_inheritance(self):
+        """All CALI exceptions inherit from CALIError."""
+        self.assertTrue(issubclass(CALIValidationError, CALIError))
+        self.assertTrue(issubclass(CALISerializationError, CALIError))
+        self.assertTrue(issubclass(CALIStorageError, CALIError))
+
+    def test_exceptions_are_catchable(self):
+        """CALI exceptions can be caught by base class."""
+        try:
+            raise CALIValidationError("test")
+        except CALIError as e:
+            self.assertIn("test", str(e))
+
+        try:
+            raise CALISerializationError("serialize error")
+        except CALIError as e:
+            self.assertIn("serialize", str(e))
+
+
+class TestMLStoreValidation(unittest.TestCase):
+    """Test MLStore methods with validation."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.store_path = Path(self.tmpdir) / "store"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def test_put_validates_record_type(self):
+        """MLStore.put validates record_type."""
+        store = MLStore(self.store_path)
+        with self.assertRaises(CALIValidationError):
+            store.put(None, "id", {"data": 1})
+        with self.assertRaises(CALIValidationError):
+            store.put("", "id", {"data": 1})
+        store.close()
+
+    def test_put_validates_record_id(self):
+        """MLStore.put validates record_id."""
+        store = MLStore(self.store_path)
+        with self.assertRaises(CALIValidationError):
+            store.put("commit", None, {"data": 1})
+        with self.assertRaises(CALIValidationError):
+            store.put("commit", "", {"data": 1})
+        store.close()
+
+    def test_put_validates_data(self):
+        """MLStore.put validates data."""
+        store = MLStore(self.store_path)
+        with self.assertRaises(CALIValidationError):
+            store.put("commit", "id", None)
+        with self.assertRaises(CALIValidationError):
+            store.put("commit", "id", {})
+        with self.assertRaises(CALIValidationError):
+            store.put("commit", "id", "not a dict")
+        store.close()
+
+    def test_put_validates_timestamp(self):
+        """MLStore.put validates timestamp."""
+        store = MLStore(self.store_path)
+        with self.assertRaises(CALIValidationError):
+            store.put("commit", "id", {"data": 1}, timestamp=1000.0)  # Too old
+        store.close()
+
+    def test_get_validates_inputs(self):
+        """MLStore.get validates inputs."""
+        store = MLStore(self.store_path)
+        with self.assertRaises(CALIValidationError):
+            store.get(None, "id")
+        with self.assertRaises(CALIValidationError):
+            store.get("commit", None)
+        store.close()
+
+    def test_exists_validates_inputs(self):
+        """MLStore.exists validates inputs."""
+        store = MLStore(self.store_path)
+        with self.assertRaises(CALIValidationError):
+            store.exists(None, "id")
+        with self.assertRaises(CALIValidationError):
+            store.exists("commit", None)
+        store.close()
+
+    def test_get_by_hash_validates_input(self):
+        """MLStore.get_by_hash validates content_hash."""
+        store = MLStore(self.store_path)
+        with self.assertRaises(CALIValidationError):
+            store.get_by_hash(None)
+        with self.assertRaises(CALIValidationError):
+            store.get_by_hash("short")
         store.close()
 
 
