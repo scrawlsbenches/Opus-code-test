@@ -356,6 +356,96 @@ class TestMLStore(unittest.TestCase):
         store.close()
 
 
+class TestSessionBasedStorage(unittest.TestCase):
+    """Test git-friendly session-based storage."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.store_path = Path(self.tmpdir) / "store"
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def test_session_logs_have_unique_names(self):
+        """Each session creates uniquely named log files."""
+        store1 = MLStore(self.store_path, session_id='session_a')
+        store1.put('commit', 'c1', {'data': 1})
+        store1.close()
+
+        store2 = MLStore(self.store_path, session_id='session_b')
+        store2.put('commit', 'c2', {'data': 2})
+        store2.close()
+
+        # Check that two separate log files exist
+        log_files = list((self.store_path / 'logs').glob('*_commit.jsonl'))
+        self.assertEqual(len(log_files), 2)
+
+        # Filenames should contain session IDs
+        filenames = [f.name for f in log_files]
+        self.assertTrue(any('session_a' in name for name in filenames))
+        self.assertTrue(any('session_b' in name for name in filenames))
+
+    def test_indices_in_local_dir(self):
+        """Indices are stored in local/ (not git-tracked)."""
+        store = MLStore(self.store_path)
+        store.put('commit', 'c1', {'data': 1})
+        store.close()
+
+        # Indices should be in local/
+        local_dir = self.store_path / 'local'
+        self.assertTrue(local_dir.exists())
+        self.assertTrue((local_dir / 'bloom.bin').exists())
+
+        # Indices should NOT be in base dir
+        self.assertFalse((self.store_path / 'bloom.bin').exists())
+        self.assertFalse((self.store_path / 'indices').exists())
+
+    def test_rebuild_indices_from_logs(self):
+        """Can rebuild indices from session logs (after git pull)."""
+        # Create store and add data
+        store1 = MLStore(self.store_path)
+        store1.put('commit', 'c1', {'data': 1})
+        store1.put('commit', 'c2', {'data': 2})
+        store1.close()
+
+        # Simulate git pull - delete local indices
+        local_dir = self.store_path / 'local'
+        shutil.rmtree(local_dir)
+
+        # Open store again - should rebuild from logs
+        store2 = MLStore(self.store_path)
+
+        # Data should still be accessible
+        self.assertTrue(store2.exists('commit', 'c1'))
+        self.assertTrue(store2.exists('commit', 'c2'))
+        self.assertEqual(store2.get('commit', 'c1'), {'data': 1})
+        store2.close()
+
+    def test_no_merge_conflicts(self):
+        """Session logs don't conflict across sessions."""
+        # Two sessions write to same store
+        store1 = MLStore(self.store_path, session_id='alice')
+        store2 = MLStore(self.store_path, session_id='bob')
+
+        store1.put('commit', 'alice_c1', {'author': 'alice'})
+        store2.put('commit', 'bob_c1', {'author': 'bob'})
+
+        store1.close()
+        store2.close()
+
+        # Both should have separate log files (no conflicts)
+        log_files = list((self.store_path / 'logs').glob('*_commit.jsonl'))
+        self.assertEqual(len(log_files), 2)
+
+        # New session should see all data after index rebuild
+        shutil.rmtree(self.store_path / 'local')  # Simulate fresh clone
+        store3 = MLStore(self.store_path)
+
+        self.assertEqual(store3.get('commit', 'alice_c1'), {'author': 'alice'})
+        self.assertEqual(store3.get('commit', 'bob_c1'), {'author': 'bob'})
+        store3.close()
+
+
 class TestMigration(unittest.TestCase):
     """Test migration from JSON files."""
 

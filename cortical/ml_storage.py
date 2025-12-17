@@ -6,24 +6,33 @@ This module provides a Git-inspired storage system optimized for ML training dat
 - O(1) existence checks via Bloom filter
 - O(1) lookups via hash index
 - O(log n) range queries via timestamp index
-- Append-only log for fast sequential reads during training
+- Session-based logs for merge-friendly git storage (like chunk_index.py)
 - Zero external dependencies
 
-Architecture:
-    .git-ml/
-    ├── objects/                    # Content-addressable storage
-    │   ├── a1/b2c3d4...json       # Objects stored by hash prefix
+Architecture (Git-Friendly):
+    .git-ml/cali/
+    ├── objects/                    # GIT-TRACKED: Content-addressable storage
+    │   ├── a1/b2c3d4...json       # Same content = same file = no conflicts
     │   └── ...
-    ├── indices/                    # Fast lookup indices
-    │   ├── id.idx                  # record_id -> hash
-    │   ├── session.idx             # session_id -> [hashes]
-    │   └── time.idx                # timestamp ranges
-    ├── log.jsonl                   # Append-only log (hash + metadata per line)
-    ├── bloom.bin                   # Bloom filter for existence checks
-    └── manifest.json               # Schema, stats, compaction info
+    ├── logs/                       # GIT-TRACKED: Session-based logs (no conflicts)
+    │   ├── 2025-12-17_10-30-45_abc123_commit.jsonl
+    │   ├── 2025-12-17_10-30-45_abc123_chat.jsonl
+    │   └── 2025-12-17_11-00-00_def456_commit.jsonl
+    ├── local/                      # NOT TRACKED: Rebuilt on load
+    │   ├── indices/                # Hash indices (rebuilt from logs)
+    │   │   ├── commit.idx
+    │   │   └── chat.idx
+    │   └── bloom.bin               # Bloom filter (rebuilt from indices)
+    └── manifest.json               # GIT-TRACKED: Version, stats
+
+Git-Friendliness:
+    - Objects: Content-addressed, same content = same path = NO CONFLICT
+    - Logs: Session-timestamped filenames = NO CONFLICT (like chunk_index.py)
+    - Indices: Local-only, rebuilt on load = NO CONFLICT
+    - Bloom: Local-only, rebuilt on load = NO CONFLICT
 
 Performance vs JSON files:
-    - Existence check: O(n) -> O(1)  [100x faster at 1000 records]
+    - Existence check: O(n) -> O(1)  [35x faster via bloom filter]
     - Add record: O(n) -> O(1)       [No idempotency scan needed]
     - Get by ID: O(n) -> O(1)        [Index lookup]
     - Range query: O(n) -> O(log n)  [Timestamp index]
@@ -32,15 +41,15 @@ Performance vs JSON files:
 Usage:
     from cortical.ml_storage import MLStore
 
-    store = MLStore('.git-ml/store')
+    store = MLStore('.git-ml/cali')
 
     # Add records (automatic deduplication)
-    store.put('commit', {'hash': 'abc123', 'message': 'feat: add auth'})
-    store.put('chat', {'query': 'How do I...', 'response': '...'})
+    store.put('commit', 'abc123', {'hash': 'abc123', 'message': 'feat: add auth'})
+    store.put('chat', 'chat_001', {'query': 'How do I...', 'response': '...'})
 
     # Fast existence check
     if not store.exists('commit', 'abc123'):
-        store.put('commit', data)
+        store.put('commit', 'abc123', data)
 
     # O(1) retrieval
     record = store.get('commit', 'abc123')
@@ -59,6 +68,7 @@ import mmap
 import os
 import struct
 import time
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -66,7 +76,7 @@ from typing import Any, Dict, Generator, Iterator, List, Optional, Set, Tuple, U
 
 
 # Storage format version
-CALI_VERSION = 1
+CALI_VERSION = 2  # v2: Session-based git-friendly storage
 
 # Bloom filter parameters (optimized for ~10K records with 0.1% false positive rate)
 BLOOM_SIZE_BITS = 143776  # ~18KB
@@ -449,6 +459,82 @@ class PackedLog:
                     continue
 
 
+class SessionLog:
+    """
+    Session-based log storage for git-friendly merging.
+
+    Each session writes to its own uniquely-named file:
+        logs/2025-12-17_10-30-45_abc123_commit.jsonl
+
+    Benefits:
+    - No merge conflicts (unique filenames per session)
+    - Append-only within session
+    - Can be compacted later (like chunk_index.py)
+    """
+
+    def __init__(self, logs_dir: Path, record_type: str, session_id: Optional[str] = None):
+        self.logs_dir = logs_dir
+        self.record_type = record_type
+        self.session_id = session_id or uuid.uuid4().hex[:8]
+        self.timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        self._current_file: Optional[Path] = None
+        logs_dir.mkdir(parents=True, exist_ok=True)
+
+    def _get_session_file(self) -> Path:
+        """Get or create the current session's log file."""
+        if self._current_file is None:
+            filename = f"{self.timestamp}_{self.session_id}_{self.record_type}.jsonl"
+            self._current_file = self.logs_dir / filename
+        return self._current_file
+
+    def append(self, record_id: str, timestamp: float, data: Dict[str, Any]) -> None:
+        """Append record to session log."""
+        log_file = self._get_session_file()
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(json.dumps({
+                'id': record_id,
+                'ts': timestamp,
+                'd': data
+            }, separators=(',', ':')) + '\n')
+
+    @classmethod
+    def iterate_all(
+        cls,
+        logs_dir: Path,
+        record_type: str
+    ) -> Generator[Tuple[str, float, Dict[str, Any]], None, None]:
+        """
+        Iterate over all session logs for a record type.
+
+        Reads files in timestamp order (oldest first) for deterministic replay.
+        """
+        if not logs_dir.exists():
+            return
+
+        # Find all log files for this record type
+        pattern = f"*_{record_type}.jsonl"
+        log_files = sorted(logs_dir.glob(pattern))  # Sorted by timestamp prefix
+
+        for log_file in log_files:
+            with open(log_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if not line.strip():
+                        continue
+                    try:
+                        entry = json.loads(line)
+                        yield entry['id'], entry['ts'], entry['d']
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+
+    @classmethod
+    def get_log_files(cls, logs_dir: Path, record_type: str) -> List[Path]:
+        """Get all log files for a record type, sorted by timestamp."""
+        if not logs_dir.exists():
+            return []
+        pattern = f"*_{record_type}.jsonl"
+        return sorted(logs_dir.glob(pattern))
+
+
 class MLStore:
     """
     High-performance ML data store with content-addressable storage.
@@ -458,11 +544,16 @@ class MLStore:
     - O(1) lookups via hash index
     - O(log n) range queries via timestamp index
     - Automatic deduplication via content addressing
-    - Append-only packed log for fast sequential training reads
+    - Session-based logs for git-friendly storage (no merge conflicts)
     - Git-friendly JSONL format
 
+    Git-Friendly Architecture:
+        objects/     - GIT-TRACKED: Content-addressed (same content = same path)
+        logs/        - GIT-TRACKED: Session-timestamped files (unique names)
+        local/       - NOT TRACKED: Indices & bloom rebuilt on load
+
     Usage:
-        store = MLStore('.git-ml/store')
+        store = MLStore('.git-ml/cali')
 
         # Store records
         store.put('commit', 'abc123', {'hash': 'abc123', 'message': 'feat: auth'})
@@ -478,32 +569,115 @@ class MLStore:
         # Range query (O(log n))
         recent = store.query_range('commit', start_ts=time.time() - 86400)
 
-        # Fast iteration for training (sequential packed log)
+        # Fast iteration for training (sequential log reads)
         for record in store.iterate('commit'):
             train(record)
     """
 
-    def __init__(self, base_dir: Union[str, Path], use_packed_log: bool = True):
+    def __init__(
+        self,
+        base_dir: Union[str, Path],
+        session_id: Optional[str] = None,
+        rebuild_indices: bool = True
+    ):
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
-        self.use_packed_log = use_packed_log
+
+        # Session ID for this store instance (unique per session)
+        self.session_id = session_id or uuid.uuid4().hex[:8]
+
+        # Directories
+        self._objects_dir = self.base_dir / 'objects'
+        self._logs_dir = self.base_dir / 'logs'
+        self._local_dir = self.base_dir / 'local'  # NOT git-tracked
 
         # Initialize components
-        self._objects = ObjectStore(self.base_dir / 'objects')
+        self._objects = ObjectStore(self._objects_dir)
+        self._session_logs: Dict[str, SessionLog] = {}
         self._indices: Dict[str, HashIndex] = {}
         self._time_indices: Dict[str, TimestampIndex] = {}
-        self._packed_logs: Dict[str, PackedLog] = {}
         self._bloom: Optional[BloomFilter] = None
+        self._indices_built = False
 
-        # Load or create bloom filter
-        bloom_path = self.base_dir / 'bloom.bin'
-        if bloom_path.exists():
-            self._bloom = BloomFilter.load(bloom_path)
-        else:
-            self._bloom = BloomFilter()
+        # Create local dir (should be gitignored)
+        self._local_dir.mkdir(parents=True, exist_ok=True)
+
+        # Load or rebuild indices from session logs
+        if rebuild_indices:
+            self._ensure_indices_built()
 
         # Load manifest
         self._manifest = self._load_manifest()
+
+    def _ensure_indices_built(self) -> None:
+        """Ensure indices are built from session logs."""
+        if self._indices_built:
+            return
+
+        bloom_path = self._local_dir / 'bloom.bin'
+        indices_dir = self._local_dir / 'indices'
+
+        # Check if we need to rebuild (no bloom or stale)
+        needs_rebuild = not bloom_path.exists()
+
+        if needs_rebuild:
+            self._rebuild_indices_from_logs()
+        else:
+            # Load existing indices
+            self._bloom = BloomFilter.load(bloom_path)
+
+        self._indices_built = True
+
+    def _rebuild_indices_from_logs(self) -> None:
+        """Rebuild all indices by replaying session logs."""
+        indices_dir = self._local_dir / 'indices'
+        indices_dir.mkdir(parents=True, exist_ok=True)
+
+        # Fresh bloom filter
+        self._bloom = BloomFilter()
+
+        # Find all record types by scanning log files
+        record_types = set()
+        if self._logs_dir.exists():
+            for log_file in self._logs_dir.glob('*.jsonl'):
+                # Extract record type from filename: timestamp_session_TYPE.jsonl
+                parts = log_file.stem.rsplit('_', 1)
+                if len(parts) == 2:
+                    record_types.add(parts[1])
+
+        # Rebuild indices for each type
+        for record_type in record_types:
+            idx = HashIndex(indices_dir / f'{record_type}.idx')
+            time_idx = TimestampIndex(indices_dir / f'{record_type}_time.idx')
+
+            # Replay all session logs for this type
+            for record_id, timestamp, data in SessionLog.iterate_all(
+                self._logs_dir, record_type
+            ):
+                # Get content hash from object store
+                content_hash = self._objects.put(data)  # Idempotent
+
+                # Update indices
+                idx.put(record_id, content_hash, timestamp, 0)
+                time_idx.add(timestamp, record_id)
+
+                # Update bloom filter
+                bloom_key = self._bloom_key(record_type, record_id)
+                self._bloom.add(bloom_key)
+
+            self._indices[record_type] = idx
+            self._time_indices[record_type] = time_idx
+
+        # Save bloom filter
+        self._bloom.save(self._local_dir / 'bloom.bin')
+
+    def _get_session_log(self, record_type: str) -> SessionLog:
+        """Get or create session log for record type."""
+        if record_type not in self._session_logs:
+            self._session_logs[record_type] = SessionLog(
+                self._logs_dir, record_type, self.session_id
+            )
+        return self._session_logs[record_type]
 
     def _load_manifest(self) -> Dict[str, Any]:
         """Load storage manifest."""
@@ -526,32 +700,22 @@ class MLStore:
             json.dump(self._manifest, f, indent=2)
 
     def _get_index(self, record_type: str) -> HashIndex:
-        """Get or create hash index for record type."""
+        """Get or create hash index for record type (stored in local/)."""
         if record_type not in self._indices:
-            indices_dir = self.base_dir / 'indices'
+            indices_dir = self._local_dir / 'indices'
             indices_dir.mkdir(exist_ok=True)
             self._indices[record_type] = HashIndex(indices_dir / f'{record_type}.idx')
         return self._indices[record_type]
 
     def _get_time_index(self, record_type: str) -> TimestampIndex:
-        """Get or create timestamp index for record type."""
+        """Get or create timestamp index for record type (stored in local/)."""
         if record_type not in self._time_indices:
-            indices_dir = self.base_dir / 'indices'
+            indices_dir = self._local_dir / 'indices'
             indices_dir.mkdir(exist_ok=True)
             self._time_indices[record_type] = TimestampIndex(
                 indices_dir / f'{record_type}_time.idx'
             )
         return self._time_indices[record_type]
-
-    def _get_packed_log(self, record_type: str) -> PackedLog:
-        """Get or create packed log for record type."""
-        if record_type not in self._packed_logs:
-            logs_dir = self.base_dir / 'logs'
-            logs_dir.mkdir(exist_ok=True)
-            self._packed_logs[record_type] = PackedLog(
-                logs_dir / f'{record_type}.packed.jsonl'
-            )
-        return self._packed_logs[record_type]
 
     def _bloom_key(self, record_type: str, record_id: str) -> str:
         """Generate bloom filter key."""
@@ -588,6 +752,7 @@ class MLStore:
         - Deduplicates (same content = same hash = stored once)
         - Updates bloom filter for O(1) existence checks
         - Updates indices for fast lookups
+        - Appends to session log (git-friendly, no merge conflicts)
 
         Args:
             record_type: Type of record ('commit', 'chat', 'session', etc.)
@@ -601,44 +766,32 @@ class MLStore:
         if timestamp is None:
             timestamp = time.time()
 
-        # Store object (automatic deduplication)
+        # Store object in content-addressed storage (automatic deduplication)
         content_hash = self._objects.put(data)
 
-        # Update bloom filter
+        # Update bloom filter (local)
         bloom_key = self._bloom_key(record_type, record_id)
         self._bloom.add(bloom_key)
 
-        # Update hash index
+        # Update hash index (local)
         idx = self._get_index(record_type)
-        # Get current log offset (for future fast access)
-        log_path = self.base_dir / f'{record_type}.log'
-        offset = log_path.stat().st_size if log_path.exists() else 0
-        idx.put(record_id, content_hash, timestamp, offset)
+        idx.put(record_id, content_hash, timestamp, 0)
 
-        # Update timestamp index
+        # Update timestamp index (local)
         time_idx = self._get_time_index(record_type)
         time_idx.add(timestamp, record_id)
 
-        # Append to hash log (for hash-based access)
-        with open(log_path, 'a', encoding='utf-8') as f:
-            f.write(json.dumps({
-                'id': record_id,
-                'hash': content_hash,
-                'ts': timestamp
-            }) + '\n')
-
-        # Append to packed log (for fast iteration with inline data)
-        if self.use_packed_log:
-            packed_log = self._get_packed_log(record_type)
-            packed_log.append(record_id, timestamp, data)
+        # Append to session log (git-tracked, session-based filename = no conflicts)
+        session_log = self._get_session_log(record_type)
+        session_log.append(record_id, timestamp, data)
 
         # Update manifest counts
         counts = self._manifest.setdefault('record_counts', {})
         counts[record_type] = counts.get(record_type, 0) + 1
 
-        # Periodic bloom filter save
+        # Periodic bloom filter save (to local dir)
         if self._bloom.count % 100 == 0:
-            self._bloom.save(self.base_dir / 'bloom.bin')
+            self._bloom.save(self._local_dir / 'bloom.bin')
 
         return content_hash
 
@@ -701,8 +854,8 @@ class MLStore:
         """
         Efficient sequential iteration over all records of a type.
 
-        Uses packed log (data inline) for fastest iteration - no object lookups.
-        Falls back to hash log + object lookups if packed log unavailable.
+        Reads all session logs in timestamp order for deterministic replay.
+        Data is inline in session logs - no object lookups needed.
 
         Args:
             record_type: Type of records to iterate
@@ -711,36 +864,14 @@ class MLStore:
         Yields:
             Record data dicts (or tuples if include_metadata=True)
         """
-        # Try packed log first (fastest - data is inline)
-        packed_log_path = self.base_dir / 'logs' / f'{record_type}.packed.jsonl'
-        if packed_log_path.exists():
-            packed_log = self._get_packed_log(record_type)
-            for record_id, timestamp, data in packed_log.iterate():
-                if include_metadata:
-                    yield (record_id, timestamp, data)
-                else:
-                    yield data
-            return
-
-        # Fallback to hash log + object lookups (slower)
-        log_path = self.base_dir / f'{record_type}.log'
-        if not log_path.exists():
-            return
-
-        with open(log_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                if not line.strip():
-                    continue
-                try:
-                    entry = json.loads(line)
-                    data = self._objects.get(entry['hash'])
-                    if data:
-                        if include_metadata:
-                            yield (entry['id'], entry['ts'], data)
-                        else:
-                            yield data
-                except (json.JSONDecodeError, KeyError):
-                    continue
+        # Iterate over all session logs (data inline = fast)
+        for record_id, timestamp, data in SessionLog.iterate_all(
+            self._logs_dir, record_type
+        ):
+            if include_metadata:
+                yield (record_id, timestamp, data)
+            else:
+                yield data
 
     def count(self, record_type: str) -> int:
         """Get count of records by type."""
@@ -803,8 +934,8 @@ class MLStore:
                 bloom_key = self._bloom_key(record_type, entry.key)
                 self._bloom.add(bloom_key)
 
-        # Save
-        self._bloom.save(self.base_dir / 'bloom.bin')
+        # Save (bloom to local dir)
+        self._bloom.save(self._local_dir / 'bloom.bin')
         self._manifest['last_compaction'] = datetime.now().isoformat()
         self._save_manifest()
 
@@ -812,8 +943,15 @@ class MLStore:
 
     def close(self) -> None:
         """Persist all state before closing."""
-        self._bloom.save(self.base_dir / 'bloom.bin')
+        self._bloom.save(self._local_dir / 'bloom.bin')
         self._save_manifest()
+
+    def rebuild_indices(self) -> None:
+        """Force rebuild of indices from session logs."""
+        self._indices = {}
+        self._time_indices = {}
+        self._indices_built = False
+        self._rebuild_indices_from_logs()
 
 
 # Convenience functions for migration from JSON files
