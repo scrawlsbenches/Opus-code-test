@@ -1,1 +1,0 @@
-{"action_type":"command","context":{"input":{"input":{"command":"python repo_showcase.py 2>&1","description":"Run full repo showcase","timeout":300000},"tool":"Bash"},"tool":"Bash"},"id":"A-20251216-220755-341a-005","result_summary":null,"session_id":"341a6b5d-b9e1-4ea9-83b5-491a685df53f","success":true,"target":"","timestamp":"2025-12-16T20:12:17.192Z"}
