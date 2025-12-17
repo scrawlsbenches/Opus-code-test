@@ -1120,6 +1120,7 @@ class MarkdownBookGenerator(ChapterGenerator):
             "02-architecture": {"order": 2, "title": "Architecture: System Design"},
             "03-decisions": {"order": 3, "title": "Decisions: ADRs"},
             "04-evolution": {"order": 4, "title": "Evolution: Project History"},
+            "04b-ml-intelligence": {"order": 4.5, "title": "ML Intelligence Exchange"},
             "05-future": {"order": 5, "title": "Future: Roadmap"},
         }
 
@@ -4634,6 +4635,256 @@ class ExerciseGenerator(ChapterGenerator):
         }
 
 
+class MLIntelligenceGenerator(ChapterGenerator):
+    """
+    Generate ML Intelligence Exchange chapter from architecture docs.
+
+    Covers:
+    - Micro-Model Mixture of Experts (MoE) architecture
+    - Attention Marketplace / Intelligence Exchange
+    - Thousand Brains Theory applied to ML models
+    """
+
+    # Source documentation files
+    SOURCE_DOCS = [
+        "docs/moe-thousand-brains-architecture.md",
+        "docs/attention-marketplace-intelligence-exchange.md",
+    ]
+
+    @property
+    def name(self) -> str:
+        return "ml-intelligence"
+
+    @property
+    def output_dir(self) -> str:
+        return "04b-ml-intelligence"
+
+    def generate(self, dry_run: bool = False, verbose: bool = False) -> Dict[str, Any]:
+        """Generate ML Intelligence Exchange chapter."""
+        errors = []
+
+        # Read source docs
+        moe_content = self._read_source_doc(self.SOURCE_DOCS[0])
+        marketplace_content = self._read_source_doc(self.SOURCE_DOCS[1])
+
+        if not moe_content and not marketplace_content:
+            errors.append("No source documentation found")
+            return {"files": [], "stats": {}, "errors": errors}
+
+        # Generate index page
+        self._generate_index(dry_run, verbose)
+
+        # Generate MoE chapter
+        if moe_content:
+            self._generate_moe_chapter(moe_content, dry_run, verbose)
+
+        # Generate Marketplace chapter
+        if marketplace_content:
+            self._generate_marketplace_chapter(marketplace_content, dry_run, verbose)
+
+        # Generate concepts summary
+        self._generate_concepts_summary(dry_run, verbose)
+
+        return {
+            "files": [str(f) for f in self.generated_files],
+            "stats": {
+                "chapters_generated": len(self.generated_files),
+                "moe_doc_found": bool(moe_content),
+                "marketplace_doc_found": bool(marketplace_content),
+            },
+            "errors": errors
+        }
+
+    def _read_source_doc(self, path: str) -> Optional[str]:
+        """Read a source documentation file."""
+        full_path = Path(path)
+        if full_path.exists():
+            return full_path.read_text()
+        return None
+
+    def _generate_index(self, dry_run: bool, verbose: bool) -> None:
+        """Generate the chapter index page."""
+        content = self.generate_frontmatter(
+            title="ML Intelligence Exchange",
+            tags=["ml", "moe", "thousand-brains", "attention-marketplace"],
+            source_files=self.SOURCE_DOCS
+        )
+
+        content += """# ML Intelligence Exchange
+
+This chapter explores advanced machine learning architectures for training
+specialized micro-models and combining them through economic incentives.
+
+## Overview
+
+The Cortical Text Processor's ML data collection enables training **project-specific
+micro-models** that learn from your development patterns. This chapter covers two
+complementary architectures:
+
+### 1. Mixture of Experts (MoE)
+
+Inspired by **Thousand Brains Theory** (Jeff Hawkins), we train multiple specialized
+experts that each model different aspects of coding tasks:
+
+- **FileExpert** - Predict files to modify
+- **TestExpert** - Predict tests to run
+- **ErrorExpert** - Diagnose errors from stack traces
+- **DocExpert** - Identify documentation needs
+
+Each expert votes on predictions, with consensus emerging from parallel processing.
+
+### 2. Attention Marketplace
+
+Inspired by **Andrew Yang's value distribution** and the **YouTube creator economy**,
+we allocate resources to models based on demonstrated value:
+
+- Models earn **Intelligence Credits** for accurate predictions
+- Credits translate to routing priority and training data
+- Poor performers lose resources; good performers thrive
+- Creates aligned incentives for model improvement
+
+## Chapters
+
+1. [Thousand Brains MoE Architecture](moe-architecture.md) - Expert types, routing, voting
+2. [Attention Marketplace](attention-marketplace.md) - Credit system, value attribution
+3. [Key Concepts](concepts.md) - Quick reference for core ideas
+
+## Why This Matters
+
+Traditional ML approaches train a single monolithic model. This architecture:
+
+- **Specializes** - Each expert optimizes for its domain
+- **Scales** - Experts train independently in parallel
+- **Adapts** - Economic incentives drive continuous improvement
+- **Explains** - Know which expert contributed what prediction
+
+"""
+        self.write_chapter("index.md", content, dry_run=dry_run)
+
+    def _generate_moe_chapter(self, source_content: str, dry_run: bool, verbose: bool) -> None:
+        """Generate the MoE architecture chapter."""
+        content = self.generate_frontmatter(
+            title="Thousand Brains MoE Architecture",
+            tags=["moe", "thousand-brains", "experts", "routing", "voting"],
+            source_files=["docs/moe-thousand-brains-architecture.md"]
+        )
+
+        # Extract key sections from source doc
+        content += """# Thousand Brains MoE Architecture
+
+*Auto-generated from project documentation*
+
+"""
+        content += source_content
+
+        self.write_chapter("moe-architecture.md", content, dry_run=dry_run)
+
+    def _generate_marketplace_chapter(self, source_content: str, dry_run: bool, verbose: bool) -> None:
+        """Generate the Attention Marketplace chapter."""
+        content = self.generate_frontmatter(
+            title="Attention Marketplace: Intelligence Exchange",
+            tags=["marketplace", "credits", "economics", "value-attribution"],
+            source_files=["docs/attention-marketplace-intelligence-exchange.md"]
+        )
+
+        content += """# Attention Marketplace: Intelligence Exchange
+
+*Auto-generated from project documentation*
+
+"""
+        content += source_content
+
+        self.write_chapter("attention-marketplace.md", content, dry_run=dry_run)
+
+    def _generate_concepts_summary(self, dry_run: bool, verbose: bool) -> None:
+        """Generate a quick-reference concepts page."""
+        content = self.generate_frontmatter(
+            title="Key Concepts: ML Intelligence",
+            tags=["concepts", "reference", "glossary"],
+            source_files=self.SOURCE_DOCS
+        )
+
+        content += """# Key Concepts: ML Intelligence
+
+Quick reference for core concepts in the ML Intelligence Exchange architecture.
+
+## Thousand Brains Theory Mapping
+
+| Neuroscience Concept | ML Implementation |
+|---------------------|-------------------|
+| Cortical columns | Individual micro-experts |
+| Reference frames | Query context / intent |
+| Voting mechanism | Confidence-weighted aggregation |
+| Hierarchy | Episode → Domain expert consolidation |
+| Lateral connections | Expert co-occurrence patterns |
+| Predictions | Each expert's ranked output |
+| Learning | Session-based episode training |
+
+## Expert Types
+
+| Expert | Purpose | Training Data |
+|--------|---------|---------------|
+| **FileExpert** | Predict files to modify | Commit history |
+| **TestExpert** | Predict tests to run | CI results, file-test associations |
+| **ErrorExpert** | Diagnose errors | Debug sessions, stack traces |
+| **DocExpert** | Identify doc updates | Code-doc co-occurrence |
+| **RefactorExpert** | Predict cascade effects | Large commits, import graph |
+
+## Intelligence Credits
+
+| Transaction Type | Effect | Trigger |
+|-----------------|--------|---------|
+| `seed` | +credits | New expert created |
+| `prediction_cost` | -credits | Expert makes prediction |
+| `value_reward` | +credits | Positive outcome |
+| `value_penalty` | -credits | Wrong prediction |
+| `stake` | lock credits | Confidence signal |
+
+## Value Signals
+
+| Signal | Value | Confidence |
+|--------|-------|------------|
+| User thumbs up | +10 | 0.9 |
+| User thumbs down | -15 | 0.9 |
+| CI pass after change | +20 | 0.6 |
+| CI fail after change | -25 | 0.6 |
+| Commit includes predicted file | +15 | 0.8 |
+| Was sole correct predictor | +25 | 0.7 |
+
+## Key Formulas
+
+### Attribution (Shapley-inspired)
+```
+attribution = (base_share + confidence_bonus + contrarian_bonus) × total_value
+```
+
+### Routing Priority
+```
+priority = relevance × (1 + staked_credits × 0.01) × roi_bonus
+```
+
+### Stake Payout (Calibration)
+```
+if calibration_error < 0.1: payout = stake × 1.2  (premium)
+if calibration_error < 0.2: payout = stake × 1.0  (break even)
+else: payout = stake × (1 - calibration_error × 2)  (loss)
+```
+
+## Implementation Status
+
+- [x] ML data collection infrastructure
+- [x] File prediction model (baseline)
+- [x] Architecture documentation
+- [ ] MicroExpert base class
+- [ ] CreditAccount/Transaction system
+- [ ] Value attribution engine
+- [ ] Expert routing with credits
+- [ ] Staking mechanism
+
+"""
+        self.write_chapter("concepts.md", content, dry_run=dry_run)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Generate the Cortical Chronicles - a self-documenting living book",
@@ -4679,6 +4930,9 @@ Examples:
         book_dir=args.output,
         include_timestamp=getattr(args, 'timestamp', False)
     ))
+
+    # Register ML Intelligence Exchange generator (before future)
+    builder.register_generator(MLIntelligenceGenerator(book_dir=args.output))
 
     # Register placeholder generators (will be replaced with real ones)
     builder.register_generator(PlaceholderGenerator("future", "05-future"))
