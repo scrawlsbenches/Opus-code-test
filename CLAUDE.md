@@ -31,6 +31,15 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 - Run the full test suite after every change
 - Write tests for the bug before writing the fix
 
+> **⚠️ CODE COVERAGE REQUIREMENT:** This project strictly maintains >89% test coverage.
+> When you add new code, you MUST also add corresponding unit tests. Coverage is
+> monitored by CI and PRs that decrease coverage will be flagged. Before committing:
+> ```bash
+> python -m coverage run -m pytest tests/ && python -m coverage report --include="cortical/*"
+> ```
+> If coverage drops, add tests for your new code before pushing. The rule is simple:
+> **New code = new tests. No exceptions.**
+
 **Dog-Food Everything**
 - Use the system to test itself when possible
 - Real usage reveals issues that unit tests miss
@@ -1114,8 +1123,9 @@ python examples/observability_demo.py
 | RAG passages | `processor.find_passages_for_query(query)` |
 | Fingerprint | `processor.get_fingerprint(text)` |
 | Compare | `processor.compare_fingerprints(fp1, fp2)` |
-| Save state | `processor.save("corpus.pkl")` |
-| Load state | `processor = CorticalTextProcessor.load("corpus.pkl")` |
+| Save state (JSON) | `processor.save("corpus_state")` (recommended) |
+| Save state (pkl) | `processor.save("corpus.pkl", format='pickle')` (deprecated) |
+| Load state | `processor = CorticalTextProcessor.load("corpus_state")` (auto-detects format) |
 | Enable metrics | `processor = CorticalTextProcessor(enable_metrics=True)` |
 | Get metrics | `processor.get_metrics()` |
 | Metrics summary | `processor.get_metrics_summary()` |
@@ -1152,6 +1162,63 @@ See `.claude/commands/director.md` for comprehensive orchestration documentation
 
 ---
 
+## Persistence Format Migration
+
+**⚠️ IMPORTANT:** Pickle format is deprecated due to security concerns (Remote Code Execution vulnerability). JSON is now the default and recommended format.
+
+### Why JSON?
+
+- **Secure**: No code execution risk (pickle can execute arbitrary code when loading)
+- **Git-friendly**: Human-readable diffs, no merge conflicts
+- **Cross-platform**: Works across Python versions and platforms
+- **Debuggable**: Can inspect state without loading into Python
+
+### Migration from Pickle to JSON
+
+```bash
+# Migrate existing pickle files to JSON
+python -c "
+from cortical.processor import CorticalTextProcessor
+processor = CorticalTextProcessor.load('corpus_dev.pkl')  # Auto-detects pickle
+processor.save('corpus_dev.json')  # Saves as JSON directory
+"
+```
+
+**Or use the processor API:**
+```python
+from cortical.processor import CorticalTextProcessor
+
+# Load from pickle (auto-detects format)
+processor = CorticalTextProcessor.load('old_corpus.pkl')
+
+# Save as JSON
+processor.save('new_corpus')  # Creates directory with JSON files
+```
+
+### Backward Compatibility
+
+Existing pickle files will continue to work with deprecation warnings:
+
+```python
+# Load automatically detects format
+processor = CorticalTextProcessor.load('corpus.pkl')  # DeprecationWarning
+
+# Explicit format specification
+processor = CorticalTextProcessor.load('corpus.pkl', format='pickle')
+
+# Save with explicit pickle format (not recommended)
+processor.save('corpus.pkl', format='pickle')  # DeprecationWarning
+```
+
+### Format Detection
+
+The `load()` method auto-detects format based on file content (not extension):
+- **Directory** → JSON format (StateLoader)
+- **File starting with `{`** → JSON format
+- **File with pickle magic bytes** → Pickle format
+
+---
+
 ## Dog-Fooding: Search the Codebase
 
 The Cortical Text Processor can index and search its own codebase, providing semantic search capabilities during development.
@@ -1159,7 +1226,7 @@ The Cortical Text Processor can index and search its own codebase, providing sem
 ### Quick Start
 
 ```bash
-# Index the codebase (creates corpus_dev.pkl, ~2s)
+# Index the codebase (creates corpus_dev.json/, ~2s)
 python scripts/index_codebase.py
 
 # Incremental update (only changed files)
@@ -1169,6 +1236,9 @@ python scripts/index_codebase.py --incremental
 python scripts/search_codebase.py "PageRank algorithm"
 python scripts/search_codebase.py "bigram separator" --verbose
 python scripts/search_codebase.py --interactive
+
+# Legacy pickle format (deprecated)
+python scripts/index_codebase.py --output corpus_dev.pkl --format pkl
 ```
 
 ### Claude Skills

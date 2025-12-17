@@ -26,7 +26,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 
-from .config import ML_DATA_DIR, TRACKED_DIR
+from .config import ML_DATA_DIR, TRACKED_DIR, CALI_DIR
+from .persistence import cali_put, cali_exists
 
 
 logger = logging.getLogger(__name__)
@@ -503,9 +504,18 @@ def save_orchestration_lite(extraction: ExtractedOrchestration) -> Optional[Path
         ]
     }
 
+    # CALI: O(1) existence check
+    if cali_exists('orchestration', extraction.parent_session_id):
+        logger.debug(f"CALI: orchestration {extraction.parent_session_id} already exists")
+        return ORCHESTRATION_LITE_FILE
+
     # Append to JSONL file
     with open(ORCHESTRATION_LITE_FILE, 'a') as f:
         f.write(json.dumps(lite_record) + '\n')
+
+    # Also write to CALI for O(1) lookups and git-friendly storage
+    if cali_put('orchestration', extraction.parent_session_id, lite_record):
+        logger.debug(f"CALI: stored orchestration {extraction.parent_session_id}")
 
     logger.info(f"Appended orchestration to {ORCHESTRATION_LITE_FILE}")
     return ORCHESTRATION_LITE_FILE

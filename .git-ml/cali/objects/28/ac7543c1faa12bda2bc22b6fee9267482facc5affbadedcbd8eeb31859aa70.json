@@ -1,0 +1,1 @@
+{"action_type":"command","context":{"input":{"input":{"command":"python scripts/ml_data_collector.py stats 2>/dev/null | head -20","description":"Check ML data status"},"tool":"Bash"},"tool":"Bash"},"id":"A-20251216-145025-0442-003","result_summary":null,"session_id":"04421b9e-a40c-44a6-bd5d-eb8171de25a6","success":true,"target":"","timestamp":"2025-12-16T14:35:37.469Z"}

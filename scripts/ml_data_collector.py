@@ -93,21 +93,17 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict, field
 from contextlib import contextmanager
 
+# Import from ml_collector package (single source of truth for data classes)
+from ml_collector.core import GitCommandError, SchemaValidationError
+from ml_collector.data_classes import (
+    TranscriptExchange, DiffHunk, CommitContext, ChatEntry, ActionEntry
+)
+
 # Setup logging
 logger = logging.getLogger(__name__)
 
 # Environment variable to disable collection
 ML_COLLECTION_ENABLED = os.getenv("ML_COLLECTION_ENABLED", "1") != "0"
-
-
-class GitCommandError(Exception):
-    """Raised when a git command fails."""
-    pass
-
-
-class SchemaValidationError(Exception):
-    """Raised when data fails schema validation."""
-    pass
 
 
 # ============================================================================
@@ -128,6 +124,49 @@ CURRENT_SESSION_FILE = ML_DATA_DIR / "current_session.json"
 TRACKED_DIR = ML_DATA_DIR / "tracked"           # Directory for git-tracked data
 COMMITS_LITE_FILE = TRACKED_DIR / "commits.jsonl"   # Commit metadata (one per line)
 SESSIONS_LITE_FILE = TRACKED_DIR / "sessions.jsonl" # Session summaries (one per line)
+
+# CALI storage (high-performance, git-friendly replacement for JSONL)
+CALI_DIR = ML_DATA_DIR / "cali"
+ML_USE_CALI = os.getenv("ML_USE_CALI", "1") == "1"  # Enable CALI by default
+
+# Lazy-loaded CALI store instance
+_cali_store = None
+
+def get_cali_store():
+    """Get or create the CALI store instance."""
+    global _cali_store
+    if _cali_store is None and ML_USE_CALI:
+        try:
+            from cortical.ml_storage import MLStore
+            session_id = os.getenv("CLAUDE_SESSION_ID", uuid.uuid4().hex[:8])
+            _cali_store = MLStore(CALI_DIR, session_id=session_id)
+            logger.debug(f"CALI store initialized at {CALI_DIR}")
+        except ImportError:
+            logger.warning("CALI storage not available (cortical.ml_storage not found)")
+        except Exception as e:
+            logger.warning(f"Failed to initialize CALI store: {e}")
+    return _cali_store
+
+def cali_put(record_type: str, record_id: str, data: Dict[str, Any]) -> bool:
+    """Write to CALI store if enabled. Returns True if written."""
+    store = get_cali_store()
+    if store:
+        try:
+            store.put(record_type, record_id, data)
+            return True
+        except Exception as e:
+            logger.warning(f"CALI write failed for {record_type}/{record_id}: {e}")
+    return False
+
+def cali_exists(record_type: str, record_id: str) -> bool:
+    """Check if record exists in CALI (O(1) bloom filter check)."""
+    store = get_cali_store()
+    if store:
+        try:
+            return store.exists(record_type, record_id)
+        except Exception as e:
+            logger.warning(f"CALI exists check failed: {e}")
+    return False
 
 # CSV export truncation defaults
 CSV_DEFAULT_TRUNCATE_LENGTH = 1000  # Default max length for generic fields
@@ -1091,16 +1130,7 @@ def mark_commit_reverted(commit_hash: str, reverting_commit: Optional[str] = Non
 # TRANSCRIPT PARSING (for automatic session capture via Stop hook)
 # ============================================================================
 
-@dataclass
-class TranscriptExchange:
-    """A single query/response exchange extracted from a transcript."""
-    query: str
-    response: str
-    tools_used: List[str]
-    tool_inputs: List[Dict]
-    tool_outputs: List[Dict]  # Tool results with output, success status
-    timestamp: str
-    thinking: Optional[str] = None
+# TranscriptExchange is imported from ml_collector.data_classes
 
 
 def parse_transcript_jsonl(filepath: Path) -> List[TranscriptExchange]:
@@ -1352,6 +1382,8 @@ def process_transcript(
     total_tools = set()
     all_files_ref = set()
     all_files_mod = set()
+    queries = []
+    tool_usage_count = {}  # Track tool usage frequency
 
     actions_saved = 0
     for ex in exchanges:
@@ -1359,6 +1391,15 @@ def process_transcript(
         all_files_ref.update(files_ref)
         all_files_mod.update(files_mod)
         total_tools.update(ex.tools_used)
+
+        # Count tool usage
+        for tool in ex.tools_used:
+            tool_usage_count[tool] = tool_usage_count.get(tool, 0) + 1
+
+        # Collect queries for session summary (truncate for readability)
+        query_preview = ex.query[:100].strip()
+        if query_preview and query_preview not in queries:
+            queries.append(query_preview)
 
         # Save individual actions for each tool use
         if save_exchanges:
@@ -1420,28 +1461,40 @@ def process_transcript(
             except Exception as e:
                 logger.error(f"Error saving exchange: {e}")
 
-    # Archive the session with a summary for ML training
-    if save_exchanges and saved_count > 0:
+    # Save lightweight session summary for git tracking
+    if save_exchanges and exchanges:
         try:
-            # Calculate session duration from first/last exchange timestamps
-            first_ts = exchanges[0].timestamp if exchanges else None
-            last_ts = exchanges[-1].timestamp if exchanges else None
+            # Calculate session duration from first to last exchange
+            first_timestamp = exchanges[0].timestamp
+            last_timestamp = exchanges[-1].timestamp
 
+            duration_seconds = 0
+            if first_timestamp and last_timestamp:
+                try:
+                    start = datetime.fromisoformat(first_timestamp.replace('Z', '+00:00'))
+                    end = datetime.fromisoformat(last_timestamp.replace('Z', '+00:00'))
+                    duration_seconds = int((end - start).total_seconds())
+                except (ValueError, AttributeError):
+                    pass
+
+            # Build session summary
             session_summary = {
                 'session_id': session_id,
-                'timestamp': first_ts or datetime.now().isoformat(),
-                'duration_seconds': None,  # Could calculate if we have timestamps
-                'exchange_count': saved_count,
-                'files_read': list(all_files_ref),
-                'files_edited': list(all_files_mod),
-                'queries': [ex.query[:500] for ex in exchanges[:10]],  # First 10 queries, truncated
-                'tools_used': {tool: sum(1 for ex in exchanges if tool in ex.tools_used)
-                              for tool in total_tools},
-                'commits_made': [],  # Would need to track commits during session
+                'timestamp': first_timestamp or datetime.now().isoformat(),
+                'duration_seconds': duration_seconds,
+                'exchanges': len(exchanges),
+                'queries': queries[:10],  # Limit to first 10 queries
+                'tools_used': tool_usage_count,
+                'files_referenced': list(all_files_ref)[:50],  # Limit for size
+                'files_modified': list(all_files_mod)[:50],  # Limit for size
             }
+
+            # Save to tracked directory (git-committable)
             save_session_lite(session_summary)
+
         except Exception as e:
-            logger.error(f"Error saving session summary: {e}")
+            # Don't fail the whole operation if session lite save fails
+            logger.warning(f"Failed to save session lite: {e}")
 
     return {
         'status': 'success',
@@ -1459,101 +1512,8 @@ def process_transcript(
 # DATA SCHEMAS
 # ============================================================================
 
-@dataclass
-class DiffHunk:
-    """A single diff hunk from a commit."""
-    file: str
-    function: Optional[str]  # Function/class containing the change
-    change_type: str  # add, modify, delete, rename
-    start_line: int
-    lines_added: List[str]
-    lines_removed: List[str]
-    context_before: List[str]
-    context_after: List[str]
-
-
-@dataclass
-class CommitContext:
-    """Rich context captured at commit time."""
-    # Git metadata
-    hash: str
-    message: str
-    author: str
-    timestamp: str
-    branch: str
-
-    # Files changed
-    files_changed: List[str]
-    insertions: int
-    deletions: int
-
-    # Diff structure
-    hunks: List[Dict]
-
-    # Temporal context
-    hour_of_day: int
-    day_of_week: str
-    seconds_since_last_commit: Optional[int]
-
-    # Commit type detection
-    is_merge: bool = False
-    is_initial: bool = False
-    parent_count: int = 1
-
-    # Session context (if available)
-    session_id: Optional[str] = None
-    related_chats: List[str] = field(default_factory=list)
-
-    # Outcome tracking (filled in later)
-    ci_result: Optional[str] = None
-    reverted: bool = False
-    amended: bool = False
-
-
-@dataclass
-class ChatEntry:
-    """A query/response pair from a chat session."""
-    id: str
-    timestamp: str
-    session_id: str
-
-    # The conversation
-    query: str
-    response: str
-
-    # Context
-    files_referenced: List[str]
-    files_modified: List[str]
-    tools_used: List[str]
-    tool_outputs: List[Dict] = field(default_factory=list)  # Tool results with output, success status
-
-    # Outcome
-    user_feedback: Optional[str] = None  # positive, negative, neutral
-    resulted_in_commit: bool = False
-    related_commit: Optional[str] = None
-
-    # Metadata
-    query_tokens: int = 0
-    response_tokens: int = 0
-    duration_seconds: Optional[float] = None
-
-
-@dataclass
-class ActionEntry:
-    """A discrete action taken during development."""
-    id: str
-    timestamp: str
-    session_id: str
-
-    action_type: str  # search, read, edit, test, commit, etc.
-    target: str  # file path, query string, etc.
-
-    # Context
-    context: Dict[str, Any] = field(default_factory=dict)
-
-    # Outcome
-    success: bool = True
-    result_summary: Optional[str] = None
+# Data classes (DiffHunk, CommitContext, ChatEntry, ActionEntry) are imported
+# from ml_collector.data_classes - single source of truth
 
 
 # ============================================================================
@@ -1817,6 +1777,10 @@ def save_commit_data(context: CommitContext, validate: bool = True, link_session
     atomic_write_json(filepath, data)
     print(f"Saved commit data to {filepath}")
 
+    # Also write to CALI for O(1) lookups and git-friendly storage
+    if cali_put('commit', context.hash, data):
+        logger.debug(f"CALI: stored commit {context.hash[:8]}")
+
     # Update chat entries to link back to this commit
     if link_session and context.related_chats:
         linked = link_commit_to_session_chats(context.hash)
@@ -1899,8 +1863,14 @@ def save_session_lite(session_summary: Dict[str, Any]):
         if field not in session_summary:
             raise ValueError(f"Session summary missing required field: {field}")
 
-    # Check if this session already exists (idempotent)
     session_id = session_summary.get("session_id")
+
+    # CALI: O(1) existence check (fast path)
+    if cali_exists('session', session_id):
+        logger.debug(f"CALI: session {session_id} already exists")
+        return SESSIONS_LITE_FILE
+
+    # Fallback: Check JSONL file (O(n) scan)
     if SESSIONS_LITE_FILE.exists():
         with open(SESSIONS_LITE_FILE, 'r') as f:
             for line in f:
@@ -1912,9 +1882,13 @@ def save_session_lite(session_summary: Dict[str, Any]):
                     except json.JSONDecodeError:
                         continue
 
-    # Append to JSONL file
+    # Append to JSONL file (legacy format)
     with open(SESSIONS_LITE_FILE, 'a') as f:
         f.write(json.dumps(session_summary, separators=(',', ':')) + '\n')
+
+    # Also write to CALI for O(1) lookups and git-friendly storage
+    if cali_put('session', session_id, session_summary):
+        logger.debug(f"CALI: stored session {session_id}")
 
     return SESSIONS_LITE_FILE
 
@@ -1952,6 +1926,10 @@ def save_chat_entry(entry: ChatEntry, validate: bool = True):
 
     atomic_write_json(filepath, data)
     print(f"Saved chat entry to {filepath}")
+
+    # Also write to CALI for O(1) lookups and git-friendly storage
+    if cali_put('chat', entry.id, data):
+        logger.debug(f"CALI: stored chat {entry.id}")
 
 
 def log_chat(
@@ -2024,6 +2002,10 @@ def save_action(entry: ActionEntry, validate: bool = True):
     filepath = date_dir / filename
 
     atomic_write_json(filepath, data)
+
+    # Also write to CALI for O(1) lookups and git-friendly storage
+    if cali_put('action', entry.id, data):
+        logger.debug(f"CALI: stored action {entry.id}")
 
 
 def log_action(

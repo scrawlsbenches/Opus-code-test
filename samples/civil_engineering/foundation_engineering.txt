@@ -1,0 +1,27 @@
+Foundation Engineering: Soil Mechanics and Subsurface Design
+
+Overview
+
+Foundation engineering bridges the gap between superstructure design and the supporting earth, ensuring safe transfer of building loads to competent soil or rock strata. This specialized field combines principles of soil mechanics, geotechnical investigation, and structural design to create economical and reliable foundation systems. The challenge lies in working with natural materials exhibiting variable properties, complex stress-strain relationships, and time-dependent behavior that differs fundamentally from manufactured construction materials.
+
+Successful foundation design begins with comprehensive site investigation including boring programs, in-situ testing, and laboratory analysis of soil samples. Engineers must characterize soil stratification, identify groundwater conditions, determine bearing capacity, and assess settlement potential. The consequences of inadequate foundation design range from cosmetic cracking to catastrophic structural failure, making thorough geotechnical investigation an essential investment in project safety and economy.
+
+Key Principles
+
+Soil classification systems organize earth materials based on grain size distribution and plasticity characteristics. The Unified Soil Classification System distinguishes coarse-grained soils like gravels (particle size greater than 4.75 mm) and sands (0.075 to 4.75 mm) from fine-grained silts and clays. Plasticity index, calculated as the difference between liquid limit and plastic limit, indicates the clay content and potential for volume change. High plasticity clays pose particular challenges due to shrink-swell behavior and low shear strength when saturated.
+
+Bearing capacity represents the maximum pressure a soil can support without shear failure. Terzaghi's bearing capacity equation provides the theoretical basis: qult = cNc + γDfNq + 0.5γBNγ, where c is cohesion, γ is unit weight, Df is foundation depth, B is foundation width, and N terms are dimensionless bearing capacity factors dependent on the soil friction angle. For a dense sand with friction angle of 35 degrees, bearing capacity factors might be Nc = 46, Nq = 33, and Nγ = 48, yielding allowable bearing pressures of 4000-6000 pounds per square foot with appropriate safety factors.
+
+Settlement analysis predicts vertical displacement under sustained loading. Immediate settlement occurs in granular soils as particles rearrange, calculated using elastic theory with soil modulus values. Consolidation settlement develops in saturated clays as pore water expresses over months or years, governed by Terzaghi's consolidation equation. The magnitude equals Cc/(1+e0) × H × log(σ'f/σ'i), where Cc is the compression index, e0 is initial void ratio, H is layer thickness, and σ' terms represent effective stresses. Total settlement must remain within tolerable limits, typically one inch for building frames and one-half inch for bearing walls.
+
+Effective stress principles govern soil strength and compressibility. Total stress at depth equals the weight of overlying material, but only effective stress (total stress minus pore water pressure) controls soil behavior. The principle σ' = σ - u proves fundamental to understanding slope stability, lateral earth pressure, and consolidation. Increasing pore pressure reduces effective stress and soil strength, explaining failures during rapid drawdown or earthquake liquefaction.
+
+Applications
+
+Shallow foundations including spread footings, strip footings, and mat foundations prove economical when competent soil exists within several feet of the surface. Individual column footings typically range from 4 to 12 feet square, proportioned so that contact pressure q = P/A remains below allowable bearing capacity. Combined footings support multiple columns where space constraints prevent isolated footings. Mat foundations distribute building loads over the entire footprint, suitable for weak soils or heavy structures where individual footings would be excessive.
+
+Deep foundations transfer loads to deeper strata through end bearing, skin friction, or combination mechanisms. Driven piles, installed by impact hammers, include steel H-sections, precast concrete, and timber for capacities ranging from 40 to 200 tons. Drilled shafts, constructed by excavating cylindrical holes and filling with reinforced concrete, achieve diameters of 2 to 12 feet and capacities exceeding 1000 tons. Pile capacity calculations employ static formulas based on soil parameters or dynamic formulas relating penetration resistance to ultimate capacity.
+
+Retaining structures resist lateral earth pressures using cantilever walls, gravity walls, or anchored systems. Active earth pressure for cohesionless backfill equals Pa = 0.5γH²Ka, where H is wall height and Ka is the Rankine active pressure coefficient (1-sinφ)/(1+sinφ). For soil with friction angle of 30 degrees, Ka equals 0.33, producing lateral force of approximately 33 pounds per cubic foot per foot of depth. Stability analysis checks overturning, sliding, and bearing capacity failure modes.
+
+Foundation rehabilitation addresses settlement, undermining, or increased loading in existing structures. Techniques include underpinning with new deep foundations, pressure grouting to densify loose soils, and installation of helical anchors for tension resistance. Monitoring programs using optical surveys or electronic instrumentation track settlement trends and validate remediation effectiveness.

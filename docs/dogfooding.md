@@ -258,7 +258,7 @@ python scripts/search_codebase.py "my new function"
 
 2. **Check the task list**
    ```bash
-   python scripts/search_codebase.py "TASK_LIST feature name"
+   python scripts/task_utils.py list --status pending
    ```
 
 3. **Implement the feature**

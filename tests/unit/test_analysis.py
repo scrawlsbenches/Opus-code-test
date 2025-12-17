@@ -995,8 +995,8 @@ class TestBuildConceptClusters:
         assert col2.id in concept.feedforward_connections
 
 
-class TestClusteringQualityMetrics:
-    """Tests for clustering quality metric functions."""
+class TestClusteringQualityHelpers:
+    """Tests for clustering quality helper functions (_doc_similarity, _vector_similarity, etc.)."""
 
     def test_compute_clustering_quality_empty(self):
         """Empty layers return zero quality."""

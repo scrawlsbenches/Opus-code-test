@@ -1,6 +1,6 @@
 ---
 title: "Bug Fixes and Lessons"
-generated: "2025-12-16T17:26:23.883509Z"
+generated: "2025-12-17T00:26:16.629815Z"
 generator: "evolution"
 source_files:
   - "git log --grep=fix:"
@@ -18,7 +18,7 @@ tags:
 
 ## Overview
 
-**14 bugs** have been identified and resolved. Each fix taught us something about the system.
+**12 bugs** have been identified and resolved. Each fix taught us something about the system.
 
 ## Bug Fix History
 
@@ -89,15 +89,5 @@ tags:
 ### Make session file sorting stable for deterministic ordering
 
 **Commit:** `7433b36`  
-**Date:** 2025-12-15  
-
-### Cap query expansion weights to prevent term domination
-
-**Commit:** `fecd6dc`  
-**Date:** 2025-12-15  
-
-### Add YAML frontmatter to slash commands for discovery
-
-**Commit:** `5b52da2`  
 **Date:** 2025-12-15  
 

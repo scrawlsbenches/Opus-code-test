@@ -15,6 +15,7 @@ class TranscriptExchange:
     response: str
     tools_used: List[str]
     tool_inputs: List[Dict]
+    tool_outputs: List[Dict]  # Tool results with output, success status
     timestamp: str
     thinking: Optional[str] = None
 
@@ -85,6 +86,7 @@ class ChatEntry:
     files_referenced: List[str]
     files_modified: List[str]
     tools_used: List[str]
+    tool_outputs: List[Dict] = field(default_factory=list)  # Tool results with output, success status
 
     # Outcome
     user_feedback: Optional[str] = None  # positive, negative, neutral

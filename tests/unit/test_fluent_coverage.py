@@ -17,6 +17,7 @@ Focus areas:
 - Error handling paths
 """
 
+import os
 import pytest
 import tempfile
 from pathlib import Path
@@ -237,49 +238,40 @@ class TestFluentProcessorLoadEdgeCases:
 
     def test_load_with_string_path(self):
         """Test load works with string path."""
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = os.path.join(tmpdir, "corpus_state")
 
-        try:
             # Create and save
-            FluentProcessor().add_document("doc1", "content").build(verbose=False).save(temp_path)
+            FluentProcessor().add_document("doc1", "content").build(verbose=False).save(state_path)
 
             # Load with string path
-            loaded = FluentProcessor.load(temp_path)
+            loaded = FluentProcessor.load(state_path)
             assert loaded.is_built
-        finally:
-            Path(temp_path).unlink(missing_ok=True)
 
     def test_load_with_pathlib_path(self):
         """Test load works with pathlib.Path."""
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = Path(f.name)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = Path(tmpdir) / "corpus_state"
 
-        try:
-            FluentProcessor().add_document("doc1", "content").build(verbose=False).save(str(temp_path))
+            FluentProcessor().add_document("doc1", "content").build(verbose=False).save(str(state_path))
 
             # Load with Path object
-            loaded = FluentProcessor.load(temp_path)
+            loaded = FluentProcessor.load(state_path)
             assert loaded.is_built
-        finally:
-            temp_path.unlink(missing_ok=True)
 
     def test_load_preserves_document_metadata(self):
         """Test that load preserves document metadata."""
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = os.path.join(tmpdir, "corpus_state")
 
-        try:
             # Save with metadata
             processor = FluentProcessor()
             processor.add_document("doc1", "content", metadata={"key": "value"})
-            processor.build(verbose=False).save(temp_path)
+            processor.build(verbose=False).save(state_path)
 
             # Load and check metadata
-            loaded = FluentProcessor.load(temp_path)
+            loaded = FluentProcessor.load(state_path)
             assert loaded.processor.document_metadata["doc1"]["key"] == "value"
-        finally:
-            Path(temp_path).unlink(missing_ok=True)
 
 
 # =============================================================================
@@ -661,36 +653,30 @@ class TestFluentProcessorSaveLoadChaining:
 
     def test_save_returns_self_allows_further_chaining(self):
         """Test that save returns self and allows further operations."""
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = os.path.join(tmpdir, "corpus_state")
 
-        try:
             processor = (FluentProcessor()
                 .add_document("doc1", "neural networks")
                 .build(verbose=False)
-                .save(temp_path))
+                .save(state_path))
 
             # Can still call methods after save
             results = processor.search("neural")
             assert isinstance(results, list)
-        finally:
-            Path(temp_path).unlink(missing_ok=True)
 
     def test_load_then_search_chain(self):
         """Test loading then immediately searching."""
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            temp_path = f.name
+        with tempfile.TemporaryDirectory() as tmpdir:
+            state_path = os.path.join(tmpdir, "corpus_state")
 
-        try:
             # Save
-            FluentProcessor().add_document("doc1", "neural").build(verbose=False).save(temp_path)
+            FluentProcessor().add_document("doc1", "neural").build(verbose=False).save(state_path)
 
             # Load and search in one expression
-            results = FluentProcessor.load(temp_path).search("neural")
+            results = FluentProcessor.load(state_path).search("neural")
             assert isinstance(results, list)
             assert len(results) > 0
-        finally:
-            Path(temp_path).unlink(missing_ok=True)
 
 
 # =============================================================================
@@ -765,10 +751,9 @@ class TestFluentProcessorComplexWorkflows:
             (Path(tmpdir) / "doc1.txt").write_text("neural networks deep learning")
             (Path(tmpdir) / "doc2.txt").write_text("machine learning algorithms")
 
-            with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as save_file:
-                save_path = save_file.name
+            with tempfile.TemporaryDirectory() as save_tmpdir:
+                save_path = os.path.join(save_tmpdir, "corpus_state")
 
-            try:
                 # Load from directory, configure, build, search, save
                 processor = (FluentProcessor
                     .from_directory(tmpdir)
@@ -787,8 +772,6 @@ class TestFluentProcessorComplexWorkflows:
                 # Search on loaded
                 loaded_results = loaded.search("learning")
                 assert isinstance(loaded_results, list)
-            finally:
-                Path(save_path).unlink(missing_ok=True)
 
     def test_incremental_document_addition_workflow(self):
         """Test adding documents incrementally with rebuilds."""
