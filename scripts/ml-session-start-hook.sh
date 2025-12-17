@@ -63,4 +63,22 @@ echo "$stats" | while read line; do
 done
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# Run test suite at session start
+echo ""
+echo "🧪 Running test suite..."
+test_output=$(python3 -m pytest tests/ -x --tb=no -q 2>&1)
+test_exit=$?
+
+if [[ $test_exit -eq 0 ]]; then
+    echo "✅ All tests passing"
+else
+    echo "⚠️  Tests failing - consider fixing before proceeding"
+    echo ""
+    echo "Failed tests:"
+    echo "$test_output" | grep -E "FAILED|ERROR" | head -5
+    echo ""
+    echo "Run 'python -m pytest tests/ -v' for details"
+fi
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
 exit 0

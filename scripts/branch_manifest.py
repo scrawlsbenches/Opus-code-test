@@ -11,6 +11,22 @@ Usage:
     python scripts/branch_manifest.py status    # Show current branch status
     python scripts/branch_manifest.py conflicts # Check for conflicts with other branches
     python scripts/branch_manifest.py archive   # Archive manifest (on session end)
+    python scripts/branch_manifest.py checkpoint [MESSAGE]  # Create checkpoint commit
+
+Checkpoint System Design:
+    Checkpoints provide automatic work-in-progress commits at regular intervals
+    to ensure no work is lost. They are designed to be:
+
+    - Automatic: Can be triggered periodically (e.g., every 5-10 minutes)
+    - Reversible: Checkpoints can be squashed/reset before final merge
+    - Tracked: All checkpoints are recorded in the manifest for audit trail
+
+    Implementation Notes:
+    - Full automatic checkpoint system requires background process management
+      (e.g., systemd timer, cron, or daemon process)
+    - For now, provides manual checkpoint creation via CLI
+    - Future: Could be integrated with IDE/editor plugins or git hooks
+    - Checkpoints are tagged with 'checkpoint:' prefix for easy identification
 """
 
 import json
@@ -111,6 +127,8 @@ def init_manifest() -> Dict:
         "last_main_sync": get_last_main_sync(),
         "sub_agents": [],
         "session_id": None,
+        "checkpoints": [],  # Track checkpoint commits
+        "last_checkpoint": None,  # Timestamp of last checkpoint
     }
 
     save_manifest(manifest)
@@ -230,6 +248,15 @@ def show_status():
     print(f"Started: {manifest.get('started', 'unknown')}")
     print(f"Last main sync: {manifest.get('last_main_sync', 'unknown')}")
 
+    # Show checkpoint information
+    checkpoints = manifest.get("checkpoints", [])
+    if checkpoints:
+        print(f"\nCheckpoints: {len(checkpoints)}")
+        print(f"Last checkpoint: {manifest.get('last_checkpoint', 'unknown')}")
+        # Show most recent checkpoints
+        for cp in checkpoints[-3:]:
+            print(f"  📍 {cp.get('commit', '???')}: {cp.get('message', 'WIP')}")
+
     touched = manifest.get("files_touched", [])
     claimed = manifest.get("files_claimed", [])
 
@@ -254,6 +281,88 @@ def show_status():
                 print(f"    • {f}")
             if len(files) > 5:
                 print(f"    ... and {len(files) - 5} more")
+
+
+def create_checkpoint(message: Optional[str] = None) -> bool:
+    """
+    Create a checkpoint commit to save work-in-progress.
+
+    Checkpoints are lightweight commits that:
+    - Save all current changes (staged + unstaged)
+    - Are tagged with 'checkpoint:' prefix for easy identification
+    - Can be squashed before final merge
+    - Are tracked in the manifest for audit trail
+
+    Args:
+        message: Optional description of what's being checkpointed
+
+    Returns:
+        True if checkpoint was created, False if no changes to commit
+
+    Design Notes:
+        - This is a manual checkpoint trigger via CLI
+        - Full automatic checkpoint system would require:
+          * Background process (daemon/timer) to trigger periodically
+          * Intelligent detection of "good checkpoint moments" (e.g., after test pass)
+          * Integration with editor/IDE save events
+        - Future enhancements could include:
+          * Configurable checkpoint interval
+          * Smart checkpointing based on file types/activity
+          * Checkpoint cleanup (squashing old checkpoints automatically)
+    """
+    # Check for uncommitted changes
+    try:
+        status = run_git(["status", "--porcelain"], check=False)
+        if not status.strip():
+            print("✓ No changes to checkpoint")
+            return False
+    except RuntimeError:
+        print("Error: Not in a git repository")
+        return False
+
+    # Load manifest
+    manifest = load_manifest()
+    if not manifest:
+        manifest = init_manifest()
+
+    # Add all changes (staged + unstaged)
+    run_git(["add", "-A"], check=False)
+
+    # Create checkpoint commit
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if message:
+        commit_msg = f"checkpoint: {message} ({timestamp})"
+    else:
+        commit_msg = f"checkpoint: WIP at {timestamp}"
+
+    try:
+        commit_sha = run_git(["commit", "-m", commit_msg, "--no-verify"], check=False)
+
+        # Record checkpoint in manifest
+        checkpoints = manifest.get("checkpoints", [])
+        checkpoint_record = {
+            "timestamp": datetime.now().isoformat(),
+            "message": message or "WIP",
+            "commit": run_git(["rev-parse", "HEAD"], check=False).strip()[:8],
+        }
+        checkpoints.append(checkpoint_record)
+
+        manifest["checkpoints"] = checkpoints
+        manifest["last_checkpoint"] = datetime.now().isoformat()
+        manifest["updated"] = datetime.now().isoformat()
+
+        save_manifest(manifest)
+
+        print(f"✓ Created checkpoint: {checkpoint_record['commit']}")
+        if message:
+            print(f"  Message: {message}")
+        print(f"  Total checkpoints: {len(checkpoints)}")
+
+        return True
+
+    except RuntimeError as e:
+        print(f"Error creating checkpoint: {e}")
+        return False
 
 
 def archive_manifest():
@@ -314,6 +423,10 @@ def main():
                     print(f"    • {f}")
         else:
             print("✓ No conflicts with other active branches")
+    elif command == "checkpoint":
+        # Optional message as remaining arguments
+        message = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else None
+        create_checkpoint(message)
     elif command == "archive":
         archive_manifest()
     else:
