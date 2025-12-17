@@ -25,7 +25,7 @@ class TestCustomerServiceRetrieval:
         """
         Query about handling refund requests should find relevant docs.
 
-        Expected: complaint_resolution, customer_support_fundamentals
+        Expected: refund_request_handling, return_refund_policy, or complaint_resolution
         """
         results = shared_processor.find_documents_for_query(
             "how to handle refund requests",
@@ -34,10 +34,11 @@ class TestCustomerServiceRetrieval:
 
         doc_ids = [doc_id for doc_id, _ in results]
 
-        # Should find complaint resolution (mentions compensation)
-        # and customer support fundamentals
+        # Should find refund-related docs, return policy, or customer service docs
+        # Note: actual paths use 'customer_service/' not 'customer_support'
         relevant_found = any(
-            'complaint' in doc_id or 'customer_support' in doc_id or 'retention' in doc_id
+            'refund' in doc_id or 'return' in doc_id or
+            'customer_service' in doc_id or 'complaint' in doc_id
             for doc_id in doc_ids
         )
 
