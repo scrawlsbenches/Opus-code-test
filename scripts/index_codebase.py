@@ -688,9 +688,14 @@ def run_background_analysis(
 
         # Save corpus
         tracker.start_phase("Saving corpus")
-        processor.save(str(output_path))
-        file_size = output_path.stat().st_size / 1024
-        tracker.log(f"  Saved to {output_path.name} ({file_size:.1f} KB)")
+        save_format = 'pickle' if str(output_path).endswith('.pkl') else 'json'
+        processor.save(str(output_path), format=save_format)
+        if save_format == 'json':
+            # For JSON, output_path is a directory
+            tracker.log(f"  Saved to {output_path.name}/ (JSON format)")
+        else:
+            file_size = output_path.stat().st_size / 1024
+            tracker.log(f"  Saved to {output_path.name} ({file_size:.1f} KB)")
         tracker.end_phase("Saving corpus")
 
         # Save manifest
@@ -1949,8 +1954,10 @@ Incremental Full Analysis (resumable, for short-lived processes):
   python scripts/index_codebase.py --full-analysis --batch --status  # Check progress
         """
     )
-    parser.add_argument('--output', '-o', default='corpus_dev.pkl',
-                        help='Output file path (default: corpus_dev.pkl)')
+    parser.add_argument('--output', '-o', default='corpus_dev.json',
+                        help='Output file path (default: corpus_dev.json)')
+    parser.add_argument('--format', choices=['json', 'pkl'], default='json',
+                        help='Output format (default: json). Use pkl for backward compatibility.')
     parser.add_argument('--incremental', '-i', action='store_true',
                         help='Only index changed files (requires existing corpus)')
     parser.add_argument('--force', '-f', action='store_true',
@@ -2231,9 +2238,14 @@ def run_indexer(
 
     # Save corpus
     tracker.start_phase("Saving corpus")
-    processor.save(str(output_path))
-    file_size = output_path.stat().st_size / 1024
-    tracker.log(f"  Saved to {output_path.name} ({file_size:.1f} KB)")
+    save_format = 'pickle' if str(output_path).endswith('.pkl') else 'json'
+    processor.save(str(output_path), format=save_format)
+    if save_format == 'json':
+        # For JSON, output_path is a directory
+        tracker.log(f"  Saved to {output_path.name}/ (JSON format)")
+    else:
+        file_size = output_path.stat().st_size / 1024
+        tracker.log(f"  Saved to {output_path.name} ({file_size:.1f} KB)")
     tracker.end_phase("Saving corpus")
 
     # Build file_mtimes for manifest

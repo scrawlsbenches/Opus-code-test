@@ -476,8 +476,8 @@ class TestSaveLoadProcessor:
         with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
             filepath = f.name
         try:
-            save_processor(filepath, layers, documents, verbose=False)
-            loaded_layers, loaded_docs, _, _, _, _ = load_processor(filepath, verbose=False)
+            save_processor(filepath, layers, documents, verbose=False, format='pickle')
+            loaded_layers, loaded_docs, _, _, _, _ = load_processor(filepath, verbose=False, format='pickle')
 
             assert loaded_docs == documents
             assert len(loaded_layers) == len(layers)
@@ -500,9 +500,10 @@ class TestSaveLoadProcessor:
                 filepath, layers, documents,
                 document_metadata=doc_metadata,
                 metadata=metadata,
-                verbose=False
+                verbose=False,
+                format='pickle'
             )
-            _, _, loaded_doc_meta, _, _, loaded_meta = load_processor(filepath, verbose=False)
+            _, _, loaded_doc_meta, _, _, loaded_meta = load_processor(filepath, verbose=False, format='pickle')
 
             assert loaded_doc_meta == doc_metadata
             assert loaded_meta["version"] == "1.0"
@@ -522,8 +523,8 @@ class TestSaveLoadProcessor:
         with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
             filepath = f.name
         try:
-            save_processor(filepath, layers, documents, embeddings=embeddings, verbose=False)
-            _, _, _, loaded_emb, _, _ = load_processor(filepath, verbose=False)
+            save_processor(filepath, layers, documents, embeddings=embeddings, verbose=False, format='pickle')
+            _, _, _, loaded_emb, _, _ = load_processor(filepath, verbose=False, format='pickle')
 
             assert loaded_emb == embeddings
         finally:
@@ -544,9 +545,10 @@ class TestSaveLoadProcessor:
             save_processor(
                 filepath, layers, documents,
                 semantic_relations=relations,
-                verbose=False
+                verbose=False,
+                format='pickle'
             )
-            _, _, _, _, loaded_rels, _ = load_processor(filepath, verbose=False)
+            _, _, _, _, loaded_rels, _ = load_processor(filepath, verbose=False, format='pickle')
 
             assert loaded_rels == relations
         finally:
@@ -565,8 +567,8 @@ class TestSaveLoadProcessor:
         with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
             filepath = f.name
         try:
-            save_processor(filepath, layers, documents, verbose=False)
-            loaded_layers, loaded_docs, _, _, _, _ = load_processor(filepath, verbose=False)
+            save_processor(filepath, layers, documents, verbose=False, format='pickle')
+            loaded_layers, loaded_docs, _, _, _, _ = load_processor(filepath, verbose=False, format='pickle')
 
             assert loaded_docs == {}
             assert len(loaded_layers) == 4
@@ -583,8 +585,8 @@ class TestSaveLoadProcessor:
         with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
             filepath = f.name
         try:
-            save_processor(filepath, layers, documents, verbose=False)
-            loaded_layers, _, _, _, _, _ = load_processor(filepath, verbose=False)
+            save_processor(filepath, layers, documents, verbose=False, format='pickle')
+            loaded_layers, _, _, _, _, _ = load_processor(filepath, verbose=False, format='pickle')
 
             # Check lateral connections
             col = loaded_layers[CorticalLayer.TOKENS].get_minicolumn("neural")
@@ -611,8 +613,8 @@ class TestSaveLoadProcessor:
         with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
             filepath = f.name
         try:
-            save_processor(filepath, layers, documents, verbose=False)
-            loaded_layers, _, _, _, _, _ = load_processor(filepath, verbose=False)
+            save_processor(filepath, layers, documents, verbose=False, format='pickle')
+            loaded_layers, _, _, _, _, _ = load_processor(filepath, verbose=False, format='pickle')
 
             col = loaded_layers[CorticalLayer.TOKENS].get_minicolumn("neural")
             assert col.id == "L0_neural"
@@ -635,8 +637,8 @@ class TestSaveLoadProcessor:
             filepath = f.name
         try:
             # Should not raise error with verbose=True
-            save_processor(filepath, layers, documents, verbose=True)
-            load_processor(filepath, verbose=True)
+            save_processor(filepath, layers, documents, verbose=True, format='pickle')
+            load_processor(filepath, verbose=True, format='pickle')
         finally:
             os.unlink(filepath)
 
@@ -660,9 +662,10 @@ class TestSaveLoadProcessor:
                 filepath, layers, documents,
                 embeddings=embeddings,
                 semantic_relations=relations,
-                verbose=True
+                verbose=True,
+                format='pickle'
             )
-            load_processor(filepath, verbose=True)
+            load_processor(filepath, verbose=True, format='pickle')
         finally:
             os.unlink(filepath)
 
@@ -1350,7 +1353,7 @@ class TestSaveLoadWithSignature:
             filepath = os.path.join(tmpdir, "test.pkl")
             sig_path = filepath + ".sig"
 
-            save_processor(filepath, layers, documents, signing_key=key, verbose=False)
+            save_processor(filepath, layers, documents, signing_key=key, verbose=False, format='pickle')
 
             assert os.path.exists(filepath)
             assert os.path.exists(sig_path)
@@ -1364,7 +1367,7 @@ class TestSaveLoadWithSignature:
             filepath = os.path.join(tmpdir, "test.pkl")
             sig_path = filepath + ".sig"
 
-            save_processor(filepath, layers, documents, verbose=False)
+            save_processor(filepath, layers, documents, verbose=False, format='pickle')
 
             assert os.path.exists(filepath)
             assert not os.path.exists(sig_path)
@@ -1378,8 +1381,8 @@ class TestSaveLoadWithSignature:
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
 
-            save_processor(filepath, layers, documents, signing_key=key, verbose=False)
-            result = load_processor(filepath, verify_key=key, verbose=False)
+            save_processor(filepath, layers, documents, signing_key=key, verbose=False, format='pickle')
+            result = load_processor(filepath, verify_key=key, verbose=False, format='pickle')
 
             loaded_layers, loaded_docs, _, _, _, _ = result
             assert loaded_docs == documents
@@ -1394,10 +1397,10 @@ class TestSaveLoadWithSignature:
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
 
-            save_processor(filepath, layers, documents, signing_key=key, verbose=False)
+            save_processor(filepath, layers, documents, signing_key=key, verbose=False, format='pickle')
 
             with pytest.raises(SignatureVerificationError):
-                load_processor(filepath, verify_key=wrong_key, verbose=False)
+                load_processor(filepath, verify_key=wrong_key, verbose=False, format='pickle')
 
     def test_load_tampered_file_fails(self):
         """Loading tampered file raises SignatureVerificationError."""
@@ -1408,7 +1411,7 @@ class TestSaveLoadWithSignature:
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = os.path.join(tmpdir, "test.pkl")
 
-            save_processor(filepath, layers, documents, signing_key=key, verbose=False)
+            save_processor(filepath, layers, documents, signing_key=key, verbose=False, format='pickle')
 
             # Tamper with the file
             with open(filepath, "r+b") as f:
@@ -1416,7 +1419,7 @@ class TestSaveLoadWithSignature:
                 f.write(b"TAMPERED")
 
             with pytest.raises(SignatureVerificationError):
-                load_processor(filepath, verify_key=key, verbose=False)
+                load_processor(filepath, verify_key=key, verbose=False, format='pickle')
 
     def test_load_missing_signature_file_fails(self):
         """Loading with verify_key but missing .sig raises FileNotFoundError."""
@@ -1428,11 +1431,11 @@ class TestSaveLoadWithSignature:
             filepath = os.path.join(tmpdir, "test.pkl")
 
             # Save without signing key (no .sig file)
-            save_processor(filepath, layers, documents, verbose=False)
+            save_processor(filepath, layers, documents, verbose=False, format='pickle')
 
             # Try to load with verify_key
             with pytest.raises(FileNotFoundError) as exc_info:
-                load_processor(filepath, verify_key=key, verbose=False)
+                load_processor(filepath, verify_key=key, verbose=False, format='pickle')
             assert ".sig" in str(exc_info.value)
 
     def test_backward_compatibility_no_key(self):
@@ -1444,10 +1447,10 @@ class TestSaveLoadWithSignature:
             filepath = os.path.join(tmpdir, "test.pkl")
 
             # Save without signing
-            save_processor(filepath, layers, documents, verbose=False)
+            save_processor(filepath, layers, documents, verbose=False, format='pickle')
 
             # Load without verify_key
-            result = load_processor(filepath, verbose=False)
+            result = load_processor(filepath, verbose=False, format='pickle')
             loaded_layers, loaded_docs, _, _, _, _ = result
             assert loaded_docs == documents
 
@@ -1461,10 +1464,10 @@ class TestSaveLoadWithSignature:
             filepath = os.path.join(tmpdir, "test.pkl")
 
             # Save with signing key
-            save_processor(filepath, layers, documents, signing_key=key, verbose=False)
+            save_processor(filepath, layers, documents, signing_key=key, verbose=False, format='pickle')
 
             # Load without verify_key (ignores .sig file)
-            result = load_processor(filepath, verbose=False)
+            result = load_processor(filepath, verbose=False, format='pickle')
             loaded_layers, loaded_docs, _, _, _, _ = result
             assert loaded_docs == documents
 
@@ -1478,7 +1481,7 @@ class TestSaveLoadWithSignature:
             filepath = os.path.join(tmpdir, "test.pkl")
             sig_path = filepath + ".sig"
 
-            save_processor(filepath, layers, documents, signing_key=key, verbose=False)
+            save_processor(filepath, layers, documents, signing_key=key, verbose=False, format='pickle')
 
             with open(sig_path, "rb") as f:
                 signature = f.read()
@@ -1495,8 +1498,8 @@ class TestSaveLoadWithSignature:
             filepath1 = os.path.join(tmpdir, "test1.pkl")
             filepath2 = os.path.join(tmpdir, "test2.pkl")
 
-            save_processor(filepath1, layers, documents, signing_key=key1, verbose=False)
-            save_processor(filepath2, layers, documents, signing_key=key2, verbose=False)
+            save_processor(filepath1, layers, documents, signing_key=key1, verbose=False, format='pickle')
+            save_processor(filepath2, layers, documents, signing_key=key2, verbose=False, format='pickle')
 
             sig1 = _load_signature(filepath1)
             sig2 = _load_signature(filepath2)
@@ -1513,5 +1516,211 @@ class TestSaveLoadWithSignature:
             filepath = os.path.join(tmpdir, "test.pkl")
 
             # Should not raise with verbose=True
-            save_processor(filepath, layers, documents, signing_key=key, verbose=True)
-            load_processor(filepath, verify_key=key, verbose=True)
+            save_processor(filepath, layers, documents, signing_key=key, verbose=True, format='pickle')
+            load_processor(filepath, verify_key=key, verbose=True, format='pickle')
+
+
+# =============================================================================
+# JSON FORMAT TESTS
+# =============================================================================
+
+
+from cortical.persistence import _detect_format
+
+
+class TestFormatDetection:
+    """Tests for _detect_format auto-detection function."""
+
+    def test_detect_directory_as_json(self):
+        """Directory is detected as JSON format."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            detected = _detect_format(tmpdir)
+            assert detected == 'json'
+
+    def test_detect_pickle_file(self):
+        """Pickle file is detected by magic bytes."""
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as f:
+            filepath = f.name
+            # Write pickle magic bytes (protocol 4)
+            f.write(b'\x80\x04test')
+        try:
+            detected = _detect_format(filepath)
+            assert detected == 'pickle'
+        finally:
+            os.unlink(filepath)
+
+    def test_detect_json_file(self):
+        """JSON file is detected by opening brace."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix=".json", delete=False) as f:
+            filepath = f.name
+            f.write('{"test": "data"}')
+        try:
+            detected = _detect_format(filepath)
+            assert detected == 'json'
+        finally:
+            os.unlink(filepath)
+
+    def test_detect_json_with_whitespace(self):
+        """JSON file with leading whitespace is detected."""
+        with tempfile.NamedTemporaryFile(mode='w', suffix=".json", delete=False) as f:
+            filepath = f.name
+            f.write('  \n  {"test": "data"}')
+        try:
+            detected = _detect_format(filepath)
+            assert detected == 'json'
+        finally:
+            os.unlink(filepath)
+
+    def test_detect_nonexistent_file_raises(self):
+        """Non-existent file raises FileNotFoundError."""
+        with pytest.raises(FileNotFoundError):
+            _detect_format("/nonexistent/path.pkl")
+
+    def test_detect_empty_file_raises(self):
+        """Empty file raises ValueError."""
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            filepath = f.name
+        try:
+            with pytest.raises(ValueError):
+                _detect_format(filepath)
+        finally:
+            os.unlink(filepath)
+
+
+class TestJSONFormatSaveLoad:
+    """Tests for JSON format save/load functionality."""
+
+    def test_save_json_format(self):
+        """Saving with format='json' creates directory structure."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
+
+            save_processor(dirpath, layers, documents, format='json', verbose=False)
+
+            # Should create directory with manifest.json
+            assert os.path.isdir(dirpath)
+            assert os.path.exists(os.path.join(dirpath, "manifest.json"))
+
+    def test_load_json_format(self):
+        """Loading JSON format restores state."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test document."}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
+
+            save_processor(dirpath, layers, documents, format='json', verbose=False)
+            loaded_layers, loaded_docs, _, _, _, _ = load_processor(dirpath, format='json', verbose=False)
+
+            assert loaded_docs == documents
+            assert len(loaded_layers) == len(layers)
+
+    def test_json_roundtrip_with_metadata(self):
+        """JSON format preserves metadata."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+        doc_metadata = {"doc1": {"source": "test", "timestamp": 12345}}
+        metadata = {"version": "1.0", "config": {"param": "value"}}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
+
+            save_processor(
+                dirpath, layers, documents,
+                document_metadata=doc_metadata,
+                metadata=metadata,
+                format='json',
+                verbose=False
+            )
+            _, _, loaded_doc_meta, _, _, loaded_meta = load_processor(dirpath, format='json', verbose=False)
+
+            assert loaded_doc_meta == doc_metadata
+            assert 'config' in loaded_meta
+            assert loaded_meta['config']['param'] == 'value'
+
+    def test_auto_detect_json_directory(self):
+        """Auto-detection works for JSON directory."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
+
+            save_processor(dirpath, layers, documents, format='json', verbose=False)
+            # Load without specifying format - should auto-detect
+            loaded_layers, loaded_docs, _, _, _, _ = load_processor(dirpath, format=None, verbose=False)
+
+            assert loaded_docs == documents
+
+    def test_auto_detect_pickle_file(self):
+        """Auto-detection works for pickle file."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+
+            save_processor(filepath, layers, documents, format='pickle', verbose=False)
+            # Load without specifying format - should auto-detect
+            loaded_layers, loaded_docs, _, _, _, _ = load_processor(filepath, format=None, verbose=False)
+
+            assert loaded_docs == documents
+
+    def test_invalid_format_raises(self):
+        """Invalid format raises ValueError."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.dat")
+
+            with pytest.raises(ValueError, match="Invalid format"):
+                save_processor(filepath, layers, documents, format='invalid', verbose=False)
+
+    def test_json_format_no_deprecation_warning(self):
+        """JSON format does not emit deprecation warning."""
+        import warnings
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
+
+            # Should not emit DeprecationWarning
+            with warnings.catch_warnings(record=True) as warning_list:
+                warnings.simplefilter("always")
+                save_processor(dirpath, layers, documents, format='json', verbose=False)
+
+            # Filter for DeprecationWarning about pickle
+            pickle_warnings = [w for w in warning_list if issubclass(w.category, DeprecationWarning)]
+            assert len(pickle_warnings) == 0
+
+    def test_pickle_format_emits_deprecation_warning(self):
+        """Pickle format emits deprecation warning."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.pkl")
+
+            # Should emit DeprecationWarning
+            with pytest.warns(DeprecationWarning, match="deprecated"):
+                save_processor(filepath, layers, documents, format='pickle', verbose=False)
+
+    def test_json_default_format(self):
+        """JSON is the default format when not specified."""
+        layers = create_test_layers()
+        documents = {"doc1": "Test."}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dirpath = os.path.join(tmpdir, "corpus_state")
+
+            # Don't specify format - should default to JSON
+            save_processor(dirpath, layers, documents, verbose=False)
+
+            # Should create JSON directory structure
+            assert os.path.isdir(dirpath)
+            assert os.path.exists(os.path.join(dirpath, "manifest.json"))

@@ -104,7 +104,7 @@ def save_processor(
     semantic_relations: Optional[list] = None,
     metadata: Optional[Dict] = None,
     verbose: bool = True,
-    format: str = 'pickle',
+    format: str = 'json',
     signing_key: Optional[bytes] = None
 ) -> None:
     """
@@ -119,21 +119,53 @@ def save_processor(
         semantic_relations: Extracted semantic relations (optional)
         metadata: Optional processor metadata (version, settings, etc.)
         verbose: Print progress
-        format: Serialization format. Only 'pickle' is supported.
+        format: Serialization format ('json' or 'pickle'). Default: 'json' (recommended).
+            - 'json': Git-friendly, secure, cross-platform (recommended)
+            - 'pickle': Legacy format, deprecated due to security concerns
         signing_key: Optional HMAC key for signing pickle files (SEC-003).
             If provided, creates a .sig file alongside the pickle file.
             The same key must be used to verify when loading.
+            Only applies to pickle format.
 
     Raises:
-        ValueError: If format is not 'pickle'
+        ValueError: If format is not 'json' or 'pickle'
     """
-    if format != 'pickle':
-        raise ValueError(f"Invalid format '{format}'. Only 'pickle' is supported.")
+    if format not in ('json', 'pickle'):
+        raise ValueError(f"Invalid format '{format}'. Must be 'json' or 'pickle'.")
 
-    # Emit deprecation warning for pickle format due to security concerns
+    if format == 'json':
+        # JSON format (recommended) - use StateWriter
+        from . import state_storage
+        writer = state_storage.StateWriter(filepath)
+
+        # Save config metadata
+        if metadata:
+            writer.save_config(
+                metadata.get('config', {}),
+                metadata.get('doc_lengths', {}),
+                metadata.get('avg_doc_length', 0.0)
+            )
+
+        # Get staleness info from metadata if available
+        stale = set(metadata.get('stale_computations', [])) if metadata else set()
+
+        # Save all components
+        writer.save_all(
+            layers=layers,
+            documents=documents,
+            document_metadata=document_metadata or {},
+            embeddings=embeddings or {},
+            semantic_relations=semantic_relations or [],
+            stale_computations=stale,
+            force=False,
+            verbose=verbose
+        )
+        return
+
+    # Pickle format (deprecated) - emit warning
     warnings.warn(
         "Pickle format is deprecated due to security concerns (arbitrary code execution). "
-        "Consider using the StateLoader JSON format instead. "
+        "Use format='json' instead (default). "
         "See README.md 'Security Considerations' for details.",
         DeprecationWarning,
         stacklevel=2
@@ -181,6 +213,57 @@ def save_processor(
             logger.info(f"  - {len(semantic_relations)} semantic relations")
 
 
+def _detect_format(filepath: str) -> str:
+    """
+    Auto-detect file format based on file content (not extension).
+
+    Args:
+        filepath: Path to file or directory
+
+    Returns:
+        'json' or 'pickle'
+
+    Raises:
+        FileNotFoundError: If filepath doesn't exist
+        ValueError: If format cannot be determined
+    """
+    path = os.path.abspath(filepath)
+
+    # Check if path exists
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"File not found: {filepath}")
+
+    # If it's a directory, assume JSON format (StateLoader)
+    if os.path.isdir(path):
+        return 'json'
+
+    # Read first few bytes to detect format
+    with open(path, 'rb') as f:
+        header = f.read(10)
+
+    if len(header) == 0:
+        raise ValueError(f"Empty file: {filepath}")
+
+    # Check for pickle magic bytes
+    # Pickle protocol 2-5 start with 0x80 0x02-0x05
+    if header[0:1] == b'\x80' and len(header) > 1 and header[1] in (2, 3, 4, 5):
+        return 'pickle'
+
+    # Check for JSON (starts with '{' or '[')
+    # Try decoding as UTF-8 and check first non-whitespace char
+    try:
+        text_start = header.decode('utf-8').lstrip()
+        if text_start and text_start[0] in ('{', '['):
+            return 'json'
+    except UnicodeDecodeError:
+        # Not valid UTF-8, probably pickle
+        return 'pickle'
+
+    # Default to pickle for backward compatibility
+    logger.warning(f"Could not determine format for {filepath}, assuming pickle")
+    return 'pickle'
+
+
 def load_processor(
     filepath: str,
     verbose: bool = True,
@@ -190,13 +273,20 @@ def load_processor(
     """
     Load processor state from a file.
 
+    Auto-detects format (JSON vs pickle) based on file content if format is None.
+
     Args:
-        filepath: Path to saved file
+        filepath: Path to saved file (file or directory)
         verbose: Print progress
-        format: Serialization format. Only 'pickle' is supported.
+        format: Serialization format ('json' or 'pickle').
+            If None (default), auto-detects based on file content:
+            - Directory -> JSON format (StateLoader)
+            - File starting with '{' -> JSON format
+            - File starting with pickle magic bytes -> pickle format
         verify_key: Optional HMAC key for verifying pickle file signatures (SEC-003).
             If provided, the signature file (.sig) must exist and match.
             This protects against tampering of pickle files.
+            Only applies to pickle format.
 
     Returns:
         Tuple of (layers, documents, document_metadata, embeddings, semantic_relations, metadata)
@@ -204,20 +294,45 @@ def load_processor(
     Raises:
         ValueError: If layer values are invalid (must be 0-3) or format is invalid
         SignatureVerificationError: If verify_key is provided and signature verification fails
-        FileNotFoundError: If verify_key is provided but no .sig file exists
+        FileNotFoundError: If file doesn't exist or verify_key is provided but no .sig file exists
     """
-    # Default to pickle format
+    # Auto-detect format if not specified
     if format is None:
-        format = 'pickle'
+        format = _detect_format(filepath)
+        if verbose:
+            logger.info(f"Auto-detected format: {format}")
 
-    if format != 'pickle':
-        raise ValueError(f"Invalid format '{format}'. Only 'pickle' is supported.")
+    if format not in ('json', 'pickle'):
+        raise ValueError(f"Invalid format '{format}'. Must be 'json' or 'pickle'.")
 
-    # Emit deprecation warning for pickle format due to security concerns
+    if format == 'json':
+        # JSON format - use StateLoader
+        from . import state_storage
+        loader = state_storage.StateLoader(filepath)
+
+        layers, documents, document_metadata, embeddings, semantic_relations, manifest_data = loader.load_all(
+            validate=True,
+            verbose=verbose
+        )
+
+        # Load config and BM25 metadata
+        config_dict, doc_lengths, avg_doc_length = loader.load_config()
+
+        # Combine metadata
+        metadata = {
+            'config': config_dict,
+            'doc_lengths': doc_lengths,
+            'avg_doc_length': avg_doc_length,
+            'stale_computations': manifest_data.get('stale_computations', [])
+        }
+
+        return layers, documents, document_metadata, embeddings, semantic_relations, metadata
+
+    # Pickle format (deprecated) - emit warning
     warnings.warn(
         "Pickle format is deprecated due to security concerns (arbitrary code execution). "
         "Only load pickle files from trusted sources. "
-        "Consider migrating to the StateLoader JSON format. "
+        "Consider migrating to JSON format with format='json'. "
         "See README.md 'Security Considerations' for details.",
         DeprecationWarning,
         stacklevel=2

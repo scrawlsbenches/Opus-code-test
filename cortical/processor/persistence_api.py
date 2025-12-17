@@ -32,6 +32,7 @@ class PersistenceMixin:
         self,
         filepath: str,
         verbose: bool = True,
+        format: str = 'json',
         signing_key: Optional[bytes] = None
     ) -> None:
         """
@@ -41,17 +42,22 @@ class PersistenceMixin:
         and configuration, so they don't need to be recomputed when loading.
 
         Args:
-            filepath: Path to save file
+            filepath: Path to save file (directory for JSON, file for pickle)
             verbose: Print progress
+            format: Serialization format. Default: 'json' (recommended)
+                - 'json': Git-friendly, secure, cross-platform (recommended)
+                - 'pickle': Legacy format, deprecated due to security concerns
             signing_key: Optional HMAC key for signing pickle files (SEC-003).
                 If provided, creates a .sig file alongside the pickle file.
+                Only applies to pickle format.
         """
         metadata = {
             'has_embeddings': bool(self.embeddings),
             'has_relations': bool(self.semantic_relations),
             'config': self.config.to_dict(),
             'doc_lengths': self.doc_lengths,
-            'avg_doc_length': self.avg_doc_length
+            'avg_doc_length': self.avg_doc_length,
+            'stale_computations': list(self._stale_computations) if hasattr(self, '_stale_computations') else []
         }
         persistence.save_processor(
             filepath,
@@ -62,6 +68,7 @@ class PersistenceMixin:
             self.semantic_relations,
             metadata,
             verbose,
+            format=format,
             signing_key=signing_key
         )
 
@@ -70,24 +77,30 @@ class PersistenceMixin:
         cls,
         filepath: str,
         verbose: bool = True,
+        format: Optional[str] = None,
         verify_key: Optional[bytes] = None
     ) -> 'CorticalTextProcessor':
         """
         Load processor state from a file.
 
+        Auto-detects format (JSON vs pickle) based on file content if format is None.
+
         Restores all computed state including embeddings, semantic relations,
         and configuration.
 
         Args:
-            filepath: Path to saved file
+            filepath: Path to saved file or directory
             verbose: Print progress
+            format: Serialization format ('json' or 'pickle').
+                If None (default), auto-detects based on file content.
             verify_key: Optional HMAC key for verifying pickle file signatures (SEC-003).
+                Only applies to pickle format.
 
         Raises:
             SignatureVerificationError: If verify_key is provided and verification fails
-            FileNotFoundError: If verify_key is provided but no .sig file exists
+            FileNotFoundError: If file doesn't exist or verify_key is provided but no .sig file exists
         """
-        result = persistence.load_processor(filepath, verbose, verify_key=verify_key)
+        result = persistence.load_processor(filepath, verbose, format=format, verify_key=verify_key)
         layers, documents, document_metadata, embeddings, semantic_relations, metadata = result
 
         # Restore config if available
