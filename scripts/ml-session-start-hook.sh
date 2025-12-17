@@ -41,6 +41,9 @@ if [[ ! -f ".git/hooks/post-commit" ]] || ! grep -q "ML-DATA-COLLECTOR" ".git/ho
     python3 scripts/ml_data_collector.py install-hooks 2>/dev/null
 fi
 
+# Initialize branch manifest for conflict tracking
+python3 scripts/branch_manifest.py init 2>/dev/null || true
+
 # Start a new session
 session_output=$(python3 scripts/ml_data_collector.py session start 2>/dev/null)
 session_id=$(echo "$session_output" | grep -oP 'Started session: \K.*' || echo "")

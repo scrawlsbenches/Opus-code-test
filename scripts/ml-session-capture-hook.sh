@@ -71,10 +71,17 @@ python3 "$COLLECTOR" transcript \
     true  # Don't block Claude Code shutdown
 }
 
+# Archive branch manifest (records files touched during session)
+python3 scripts/branch_manifest.py archive 2>/dev/null || true
+
 # Commit tracked ML data (sessions.jsonl and commits.jsonl)
 # This ensures session data is persisted in git for team/branch sharing
 if [[ -d .git-ml/tracked ]] && [[ -n "$(ls -A .git-ml/tracked 2>/dev/null)" ]]; then
     git add .git-ml/tracked/ 2>/dev/null || true
+    # Also add branch state if present
+    if [[ -d .branch-state ]]; then
+        git add .branch-state/ 2>/dev/null || true
+    fi
     git commit -m "ml: Capture session data" --no-verify 2>/dev/null || true
 fi
 

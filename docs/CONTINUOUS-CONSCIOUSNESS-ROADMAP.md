@@ -67,7 +67,7 @@ A unified development system where Claude sessions are ephemeral but knowledge i
 | 1.2 | Update CLAUDE.md coverage policy | ✅ Done |
 | 1.3 | Establish coverage baseline | ✅ Done (61%) |
 | 1.4 | Clean up stale/incorrect tasks | ✅ Done |
-| 1.5 | Fix branch state tracking | Pending |
+| 1.5 | Fix branch state tracking | ✅ Done |
 
 ### Epic 2: Automatic Knowledge Capture 📚
 **Goal:** Never lose knowledge again
@@ -334,10 +334,11 @@ book/
     - Added skip patterns for "ml:", "data: ML", "chore: ML" commits
     - Updated post-commit hook and hooks.py installation script
     - Prevents recursive capture when session capture commits ML data
-[ ] Create simple branch manifest
-    - JSON file created on session start
-    - Updated on file touch
-    - Archived on session end
+[x] Create simple branch manifest
+    - scripts/branch_manifest.py created with init/touch/status/conflicts/archive commands
+    - Auto-initialized on session start via ml-session-start-hook.sh
+    - Archived on session end via ml-session-capture-hook.sh
+    - Conflict detection with check_conflicts()
 ```
 
 ### Sprint 2: Capture (Next Week)
