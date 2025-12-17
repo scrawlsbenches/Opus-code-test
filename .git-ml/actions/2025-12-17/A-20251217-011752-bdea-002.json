@@ -1,0 +1,24 @@
+{
+  "id": "A-20251217-011752-bdea-002",
+  "timestamp": "2025-12-17T00:54:33.666Z",
+  "session_id": "bdeafbac-4302-4fb0-a724-7af6a7c674d2",
+  "action_type": "other",
+  "target": "",
+  "context": {
+    "tool": "TodoWrite",
+    "input": {
+      "tool": "TodoWrite",
+      "input": {
+        "todos": [
+          {
+            "content": "Refactor CALI for git-friendly session-based storage",
+            "status": "in_progress",
+            "activeForm": "Refactoring CALI for git-friendly storage"
+          }
+        ]
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}

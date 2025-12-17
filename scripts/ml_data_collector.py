@@ -129,6 +129,49 @@ TRACKED_DIR = ML_DATA_DIR / "tracked"           # Directory for git-tracked data
 COMMITS_LITE_FILE = TRACKED_DIR / "commits.jsonl"   # Commit metadata (one per line)
 SESSIONS_LITE_FILE = TRACKED_DIR / "sessions.jsonl" # Session summaries (one per line)
 
+# CALI storage (high-performance, git-friendly replacement for JSONL)
+CALI_DIR = ML_DATA_DIR / "cali"
+ML_USE_CALI = os.getenv("ML_USE_CALI", "1") == "1"  # Enable CALI by default
+
+# Lazy-loaded CALI store instance
+_cali_store = None
+
+def get_cali_store():
+    """Get or create the CALI store instance."""
+    global _cali_store
+    if _cali_store is None and ML_USE_CALI:
+        try:
+            from cortical.ml_storage import MLStore
+            session_id = os.getenv("CLAUDE_SESSION_ID", uuid.uuid4().hex[:8])
+            _cali_store = MLStore(CALI_DIR, session_id=session_id)
+            logger.debug(f"CALI store initialized at {CALI_DIR}")
+        except ImportError:
+            logger.warning("CALI storage not available (cortical.ml_storage not found)")
+        except Exception as e:
+            logger.warning(f"Failed to initialize CALI store: {e}")
+    return _cali_store
+
+def cali_put(record_type: str, record_id: str, data: Dict[str, Any]) -> bool:
+    """Write to CALI store if enabled. Returns True if written."""
+    store = get_cali_store()
+    if store:
+        try:
+            store.put(record_type, record_id, data)
+            return True
+        except Exception as e:
+            logger.warning(f"CALI write failed for {record_type}/{record_id}: {e}")
+    return False
+
+def cali_exists(record_type: str, record_id: str) -> bool:
+    """Check if record exists in CALI (O(1) bloom filter check)."""
+    store = get_cali_store()
+    if store:
+        try:
+            return store.exists(record_type, record_id)
+        except Exception as e:
+            logger.warning(f"CALI exists check failed: {e}")
+    return False
+
 # CSV export truncation defaults
 CSV_DEFAULT_TRUNCATE_LENGTH = 1000  # Default max length for generic fields
 CSV_DEFAULT_TRUNCATE_QUERY = 500    # Default max length for query/input fields
@@ -1840,6 +1883,10 @@ def save_commit_data(context: CommitContext, validate: bool = True, link_session
     atomic_write_json(filepath, data)
     print(f"Saved commit data to {filepath}")
 
+    # Also write to CALI for O(1) lookups and git-friendly storage
+    if cali_put('commit', context.hash, data):
+        logger.debug(f"CALI: stored commit {context.hash[:8]}")
+
     # Update chat entries to link back to this commit
     if link_session and context.related_chats:
         linked = link_commit_to_session_chats(context.hash)
@@ -1922,8 +1969,14 @@ def save_session_lite(session_summary: Dict[str, Any]):
         if field not in session_summary:
             raise ValueError(f"Session summary missing required field: {field}")
 
-    # Check if this session already exists (idempotent)
     session_id = session_summary.get("session_id")
+
+    # CALI: O(1) existence check (fast path)
+    if cali_exists('session', session_id):
+        logger.debug(f"CALI: session {session_id} already exists")
+        return SESSIONS_LITE_FILE
+
+    # Fallback: Check JSONL file (O(n) scan)
     if SESSIONS_LITE_FILE.exists():
         with open(SESSIONS_LITE_FILE, 'r') as f:
             for line in f:
@@ -1935,9 +1988,13 @@ def save_session_lite(session_summary: Dict[str, Any]):
                     except json.JSONDecodeError:
                         continue
 
-    # Append to JSONL file
+    # Append to JSONL file (legacy format)
     with open(SESSIONS_LITE_FILE, 'a') as f:
         f.write(json.dumps(session_summary, separators=(',', ':')) + '\n')
+
+    # Also write to CALI for O(1) lookups and git-friendly storage
+    if cali_put('session', session_id, session_summary):
+        logger.debug(f"CALI: stored session {session_id}")
 
     return SESSIONS_LITE_FILE
 
@@ -1975,6 +2032,10 @@ def save_chat_entry(entry: ChatEntry, validate: bool = True):
 
     atomic_write_json(filepath, data)
     print(f"Saved chat entry to {filepath}")
+
+    # Also write to CALI for O(1) lookups and git-friendly storage
+    if cali_put('chat', entry.id, data):
+        logger.debug(f"CALI: stored chat {entry.id}")
 
 
 def log_chat(
@@ -2047,6 +2108,10 @@ def save_action(entry: ActionEntry, validate: bool = True):
     filepath = date_dir / filename
 
     atomic_write_json(filepath, data)
+
+    # Also write to CALI for O(1) lookups and git-friendly storage
+    if cali_put('action', entry.id, data):
+        logger.debug(f"CALI: stored action {entry.id}")
 
 
 def log_action(

@@ -56,9 +56,17 @@ from .utils import (
     save_json,
 )
 
+# CALI support (high-performance ML storage)
+try:
+    from cortical.ml_storage import MLStore
+    CALI_AVAILABLE = True
+except ImportError:
+    CALI_AVAILABLE = False
+
 
 # Default paths
 COMMITS_SOURCE = Path('.git-ml/tracked/commits.jsonl')
+CALI_DIR = Path('.git-ml/cali')
 DATASET_CACHE = Path('.git-ml/datasets')
 
 
@@ -81,9 +89,24 @@ class CommitExample:
         }
 
 
+def _load_commits_from_cali() -> List[Dict[str, Any]]:
+    """Load commits from CALI store (O(n) sequential iteration)."""
+    if not CALI_AVAILABLE or not CALI_DIR.exists():
+        return []
+
+    try:
+        store = MLStore(CALI_DIR, rebuild_indices=False)  # Don't need indices for iteration
+        commits = list(store.iterate('commit'))
+        store.close()
+        return commits
+    except Exception:
+        return []
+
+
 def load_commits_as_jsonl(
     source_path: Path = COMMITS_SOURCE,
-    output_path: Optional[Path] = None
+    output_path: Optional[Path] = None,
+    use_cali: bool = True
 ) -> Path:
     """
     Load commits and write as standardized JSONL for dataset creation.
@@ -94,6 +117,7 @@ def load_commits_as_jsonl(
     Args:
         source_path: Path to raw commits.jsonl
         output_path: Where to write normalized output (default: auto-generated)
+        use_cali: If True, try CALI first, then fall back to JSONL.
 
     Returns:
         Path to normalized JSONL file
@@ -102,11 +126,16 @@ def load_commits_as_jsonl(
         ensure_directory(DATASET_CACHE)
         output_path = DATASET_CACHE / 'commits_normalized.jsonl'
 
-    if not source_path.exists():
-        raise FileNotFoundError(f"Commits file not found: {source_path}")
+    # Try CALI first (faster iteration, no index needed)
+    records = []
+    if use_cali:
+        records = _load_commits_from_cali()
 
-    # Read and normalize commits
-    records = read_jsonl(source_path)
+    # Fall back to JSONL
+    if not records:
+        if not source_path.exists():
+            raise FileNotFoundError(f"Commits file not found: {source_path}")
+        records = read_jsonl(source_path)
 
     # Write normalized format
     with open(output_path, 'w') as f:
