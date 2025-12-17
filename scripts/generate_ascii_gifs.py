@@ -29,6 +29,8 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import subprocess
 
+from ascii_effects import MatrixDrop, Star
+
 try:
     from PIL import Image, ImageDraw, ImageFont
     PIL_AVAILABLE = True
@@ -147,13 +149,7 @@ def get_hot_files() -> Dict[str, int]:
 # MATRIX RAIN GENERATOR
 # ============================================================================
 
-@dataclass
-class MatrixDrop:
-    col: int
-    row: float
-    speed: float
-    text: str
-    char_idx: int
+# MatrixDrop imported from ascii_effects
 
 
 class MatrixRainGenerator:
@@ -310,12 +306,7 @@ class FireGenerator:
 # STARFIELD GENERATOR
 # ============================================================================
 
-@dataclass
-class Star:
-    x: float
-    y: float
-    z: float
-    text: str
+# Star imported from ascii_effects
 
 
 class StarfieldGenerator:

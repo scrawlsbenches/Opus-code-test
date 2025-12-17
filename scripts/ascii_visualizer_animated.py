@@ -38,6 +38,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+from ascii_effects import MatrixDrop, Star
+
 # ============================================================================
 # TERMINAL SETUP
 # ============================================================================
@@ -155,14 +157,7 @@ def get_hot_files() -> Dict[str, int]:
 # MATRIX RAIN EFFECT
 # ============================================================================
 
-@dataclass
-class MatrixDrop:
-    col: int
-    row: float
-    speed: float
-    text: str
-    char_idx: int
-    brightness: float
+# MatrixDrop imported from ascii_effects
 
 
 class MatrixRain:
@@ -365,12 +360,7 @@ class FireEffect:
 # STARFIELD / HYPERSPACE
 # ============================================================================
 
-@dataclass
-class Star:
-    x: float
-    y: float
-    z: float
-    text: str
+# Star imported from ascii_effects
 
 
 class Starfield:
