@@ -15,6 +15,8 @@ PDF generation, or direct viewing on GitHub.
 ### [Preface](#preface)
 
 - [How This Book Works](#how-this-book-works)
+- [Project Origin: From Package to Platform](#project-origin-from-package-to-platform)
+- [The Living Book Vision](#the-living-book-vision)
 
 ### [Foundations: Core Algorithms](#foundations-core-algorithms)
 
@@ -40,7 +42,8 @@ PDF generation, or direct viewing on GitHub.
 
 ### [Decisions: ADRs](#decisions-adrs)
 
-- [Decisions Chapter](#decisions-chapter)
+- [ADR-001: Add Microseconds to Task ID Generation](#adr-001-add-microseconds-to-task-id-generation)
+- [Architectural Decision Records](#architectural-decision-records)
 
 ### [Evolution: Project History](#evolution-project-history)
 
@@ -53,6 +56,82 @@ PDF generation, or direct viewing on GitHub.
 ### [Future: Roadmap](#future-roadmap)
 
 - [Future Chapter](#future-chapter)
+
+### [05 Case Studies](#05-case-studies)
+
+- [The Great Performance Hunt](#the-great-performance-hunt)
+- [Case Studies](#case-studies)
+- [Case Study: Add session memory and knowledge transfer](#case-study-add-session-memory-and-knowledge-transfer)
+- [Case Study: Bug Fix - Add test file penalty and code stop word filtering to search](#case-study-bug-fix-add-test-file-penalty-and-code-stop-word-filtering-to-search)
+- [Case Study: Bug Fix - Replace external action with native Python link checker](#case-study-bug-fix-replace-external-action-with-native-python-link-checker)
+- [Case Study: Bug Fix - Update skipped tests for processor/ package refactor](#case-study-bug-fix-update-skipped-tests-for-processor-package-refactor)
+- [Case Study: Bug Fix - Use heredoc for Python in CI to avoid YAML syntax error](#case-study-bug-fix-use-heredoc-for-python-in-ci-to-avoid-yaml-syntax-error)
+- [Case Study: Clean up directory structure and queue search relevance fixes](#case-study-clean-up-directory-structure-and-queue-search-relevance-fixes)
+- [Case Study: Feature Development - Add director agent orchestration prompt](#case-study-feature-development-add-director-agent-orchestration-prompt)
+- [Case Study: Feature Development - Add session handoff, auto-memory, CI link checker, and tests](#case-study-feature-development-add-session-handoff-auto-memory-ci-link-checker-and-tests)
+- [Case Study: Refactoring - Migrate to merge-friendly task system and add security tasks](#case-study-refactoring-migrate-to-merge-friendly-task-system-and-add-security-tasks)
+- [Case Study: Refactoring - Split processor.py into modular processor/ package (LEGACY-095)](#case-study-refactoring-split-processorpy-into-modular-processor-package-legacy-095)
+- [Case Study: Update task ID format test to expect microseconds](#case-study-update-task-id-format-test-to-expect-microseconds)
+- [Case Study: Add ML commit data for previous commit](#case-study-add-ml-commit-data-for-previous-commit)
+- [Case Study: Add ML commit data](#case-study-add-ml-commit-data)
+- [Case Study: Bug Fix - Harden ML data collector with critical fixes](#case-study-bug-fix-harden-ml-data-collector-with-critical-fixes)
+- [Case Study: Bug Fix - Increase ML data retention to 2 years for training milestones](#case-study-bug-fix-increase-ml-data-retention-to-2-years-for-training-milestones)
+- [Case Study: Bug Fix - Stop tracking ML commit data files (too large for GitHub)](#case-study-bug-fix-stop-tracking-ml-commit-data-files-too-large-for-github)
+- [Case Study: Bug Fix - Update tests for BM25 default and stop word tokenization](#case-study-bug-fix-update-tests-for-bm25-default-and-stop-word-tokenization)
+- [Case Study: Feature Development - Add CI status integration for ML outcome tracking](#case-study-feature-development-add-ci-status-integration-for-ml-outcome-tracking)
+- [Case Study: Feature Development - Add comprehensive delegation command template](#case-study-feature-development-add-comprehensive-delegation-command-template)
+- [Case Study: Feature Development - Add export, feedback, and quality-report commands to ML collector](#case-study-feature-development-add-export-feedback-and-quality-report-commands-to-ml-collector)
+- [Case Study: Feature Development - Add lightweight commit data for ephemeral environments](#case-study-feature-development-add-lightweight-commit-data-for-ephemeral-environments)
+- [Case Study: Feature Development - Add schema validation for ML data integrity](#case-study-feature-development-add-schema-validation-for-ml-data-integrity)
+- [Case Study: Refactoring - Consolidate ML data to single JSONL files](#case-study-refactoring-consolidate-ml-data-to-single-jsonl-files)
+- [Case Study: Add unit tests for Cortical Chronicles generators](#case-study-add-unit-tests-for-cortical-chronicles-generators)
+- [Case Study: Bug Fix - Address critical ML data collection and prediction issues](#case-study-bug-fix-address-critical-ml-data-collection-and-prediction-issues)
+- [Case Study: Bug Fix - Archive ML session after transcript processing (T-003 16f3)](#case-study-bug-fix-archive-ml-session-after-transcript-processing-t-003-16f3)
+- [Case Study: Bug Fix - Fix ML data collection milestone counting and add session/action capture](#case-study-bug-fix-fix-ml-data-collection-milestone-counting-and-add-sessionaction-capture)
+- [Case Study: Bug Fix - Prevent infinite commit loop in ML data collection hooks](#case-study-bug-fix-prevent-infinite-commit-loop-in-ml-data-collection-hooks)
+- [Case Study: ML data sync](#case-study-ml-data-sync)
+- [Case Study: ML tracking data](#case-study-ml-tracking-data)
+- [Synthesized Case Studies](#synthesized-case-studies)
+
+### [06 Lessons](#06-lessons)
+
+- [Lessons Learned](#lessons-learned)
+- [Architecture Lessons](#architecture-lessons)
+- [Correctness Lessons](#correctness-lessons)
+- [Performance Lessons](#performance-lessons)
+- [Testing Lessons](#testing-lessons)
+
+### [07 Concepts](#07-concepts)
+
+- [Concept Evolution: Bigram](#concept-evolution-bigram)
+- [Concept Evolution: Bm25](#concept-evolution-bm25)
+- [Concept Evolution: Clustering](#concept-evolution-clustering)
+- [Concept Evolution: Context](#concept-evolution-context)
+- [Concept Evolution: Definition](#concept-evolution-definition)
+- [Concept Evolution: Embeddings](#concept-evolution-embeddings)
+- [Concept Evolution: Graph](#concept-evolution-graph)
+- [Concept Evolution: Incremental](#concept-evolution-incremental)
+- [Concept Evolution Index](#concept-evolution-index)
+- [Concept Evolution: Louvain](#concept-evolution-louvain)
+- [Concept Evolution: Pagerank](#concept-evolution-pagerank)
+- [Concept Evolution: Query Expansion](#concept-evolution-query-expansion)
+- [Concept Evolution: Search](#concept-evolution-search)
+- [Concept Evolution: Semantic](#concept-evolution-semantic)
+- [Concept Evolution: Tokenization](#concept-evolution-tokenization)
+
+### [08 Exercises](#08-exercises)
+
+- [Exercises: Advanced](#exercises-advanced)
+- [Exercises: Foundations](#exercises-foundations)
+- [Exercises: Search](#exercises-search)
+- [Exercise Index](#exercise-index)
+
+### [09 Journey](#09-journey)
+
+- [Your Learning Journey](#your-learning-journey)
+- [Learning Journey: Advanced](#learning-journey-advanced)
+- [Learning Journey: Beginner](#learning-journey-beginner)
+- [Learning Journey: Intermediate](#learning-journey-intermediate)
 
 ---
 
@@ -160,6 +239,400 @@ The search uses the same algorithms described in the book—query expansion, BM2
 This chapter was written manually as the seed for the book. Future chapters are auto-generated from:
 - `scripts/generate_book.py` - The orchestrator
 - `docs/VISION.md:185-430` - Algorithm documentation source
+
+---
+
+*This chapter is part of [The Cortical Chronicles](../README.md),
+a self-documenting book generated by the Cortical Text Processor.*
+
+---
+
+## Project Origin: From Package to Platform
+
+*How a zip file became a self-documenting semantic search engine.*
+
+## The Beginning
+
+On December 9th, 2025, a package arrived. Not through a mail service, but as a GitHub upload: `cortical_package.zip`. Inside this compressed archive were the seeds of what would become a sophisticated information retrieval system—11,100 lines of Python implementing biological metaphors for text analysis.
+
+```
+Commit: 74d8f6b - Extract cortical_package from zip archive
+Date:   2025-12-09 18:12:22 +0000
+```
+
+The extraction was straightforward. The journey ahead was anything but.
+
+## The First Hour: Cleanup and Discovery
+
+Within minutes of extraction, the cleanup began. The package had arrived with traces of its previous life—cached Python bytecode, temporary files, the detritus of development. These were swept away methodically:
+
+```
+f66a1ae - Clean up repository structure         (18:16:54 UTC)
+324d751 - Add Python patterns to .gitignore     (18:19:25 UTC)
+```
+
+But cleanup revealed something more interesting: the code had bugs. Not catastrophic failures, but the kind of edge cases that emerge when sophisticated algorithms meet real-world data.
+
+## The Bug List: A Contract Emerges
+
+At 18:31:03 UTC, barely an hour after extraction, `TASK_LIST.md` appeared:
+
+```
+Commit: d89ceee - Add TASK_LIST.md documenting required bug fixes
+```
+
+This wasn't just a to-do list. It was an acknowledgment: *This code is powerful, but it needs care.* The list documented validation gaps, edge cases in clustering algorithms, missing error handling. Twenty minutes later, the fixes landed:
+
+```
+Commit: 75097e9 - Fix bugs and add comprehensive unit tests
+Time:   18:51:22 UTC
+```
+
+The system could now handle empty inputs, validate parameters, and fail gracefully. But more importantly, it established a pattern: **test first, ship second**.
+
+## The Foundation: CLAUDE.md is Born
+
+Two minutes after the bug fixes, at 18:53:11 UTC, something remarkable happened:
+
+```
+Commit: 9badbcb - Add CLAUDE.md project guide for Claude Code
+```
+
+This wasn't just documentation. It was a *contract between human and AI developers*. CLAUDE.md laid out:
+
+- **Persona**: You are a senior computational neuroscience engineer
+- **Philosophy**: Profile before optimizing, understand before acting
+- **Architecture**: Here's how the layers work, here's where to find things
+- **Rules**: Don't use underscores in bigrams, always use `get_by_id()` for O(1) lookups
+
+It was both a guide and a guardrail. A way to ensure that future modifications—whether by human or AI—would respect the system's design principles.
+
+## The Corpus Grows
+
+The next phase focused on content. Seven sample documents arrived first, then 44 more. The system needed diversity to test its semantic clustering:
+
+```
+b69a296 - Add 7 new sample documents             (19:02:23 UTC)
+892c826 - Add 44 diverse sample documents        (23:05:22 UTC)
+```
+
+From machine learning papers to cooking recipes, from code documentation to philosophical essays—the corpus became a microcosm of human knowledge. The system could now be tested not just with toy examples, but with real semantic complexity.
+
+## The RAG Journey: Tasks 9-30
+
+Then came the transformation. Between December 9th and 10th, 2025, the system evolved from basic text processing to full Retrieval-Augmented Generation capabilities. The commits tell the story:
+
+### Phase 1: The RAG Foundations (Dec 9, ~19:51-19:57 UTC)
+
+```
+2085418 - Add document metadata support (Task 9)
+bf75e5d - Activate Layer 2 concept clustering (Task 10)
+f27d18e - Integrate semantic relations (Task 11)
+8f862b0 - Persist full computed state (Task 12)
+```
+
+In six minutes of commits, the system gained:
+- **Citations**: Documents could now carry metadata for proper attribution
+- **Concepts**: Layer 2 clustering activated by default
+- **Relations**: Semantic understanding woven into retrieval
+- **Persistence**: Full state saving including graph embeddings
+
+### Phase 2: Production Features (Dec 9, ~21:06-21:14 UTC)
+
+```
+38fb4f7 - Add incremental document indexing (Task 15)
+b3c29af - Add multi-stage ranking pipeline (Task 17)
+900cce1 - Add batch query API (Task 18)
+```
+
+The system could now handle live updates, sophisticated ranking, and batch processing. It was becoming production-ready.
+
+### Phase 3: The ConceptNet Vision (Dec 9-10, ~22:37 onwards)
+
+Then the ambition escalated:
+
+```
+c6eefdc - Add ConceptNet-enhanced PageRank task list
+        (Tasks 19-30 planned at 22:37:45 UTC)
+```
+
+Over the next two hours, twelve tasks were completed:
+
+- **Cross-layer connections**: Feedforward and feedback between layers
+- **Lateral connections**: Within bigrams and concepts
+- **Typed edges**: Relation types (IsA, PartOf, UsedFor, etc.)
+- **Multi-hop inference**: Reasoning chains across the graph
+- **Pattern extraction**: Automatic relation discovery from text
+- **Graph export**: ConceptNet-style visualization
+
+By midnight UTC on December 10th, the system had evolved from a package to a *knowledge graph platform*.
+
+## The Numbers That Tell the Story
+
+| Metric | Initial Package | After 24 Hours | Today |
+|--------|----------------|----------------|-------|
+| **Commits** | 1 (extraction) | ~40 | 699 |
+| **Code Lines** | ~8,500 | ~10,000 | ~11,100 |
+| **Tasks Completed** | 0 | 30 | 200+ |
+| **Test Coverage** | Unknown | >80% | >89% |
+| **Sample Documents** | 0 | 51 | 125+ |
+
+## The Self-Documenting Dream
+
+Hundreds of commits later, on December 16th, 2025, something extraordinary happened. The system that had been built to analyze text began to analyze *itself*:
+
+```
+c730057 - Add Cortical Chronicles book infrastructure (Wave 1)
+3022110 - Add content generators (Wave 2)
+0022466 - Add search integration and web interface (Wave 3)
+940fdf2 - Add CI workflow and documentation (Wave 4)
+```
+
+The book you're reading now was generated by the code it describes. The system indexed its own source code, its own documentation, its own commit history—and synthesized this narrative.
+
+## Where We Are Now
+
+Today, the Cortical Text Processor is:
+
+- **~11,100 lines** of core library code
+- **Zero external dependencies** for runtime
+- **699 commits** of careful evolution
+- **89%+ test coverage** maintained rigorously
+- **4-layer architecture** with typed semantic relations
+- **A book that writes itself** from living code
+
+But more than the numbers, it embodies a philosophy:
+
+> *"Profile before optimizing, understand before acting, test before shipping."*
+
+That philosophy started in CLAUDE.md on day one. It continues in every commit, every test, every design decision.
+
+## The Commits That Started It All
+
+| Commit | Date | Milestone |
+|--------|------|-----------|
+| `27a6531` | Nov 25, 2025 | Repository created |
+| `74d8f6b` | Dec 9, 18:12 | Package extraction |
+| `9badbcb` | Dec 9, 18:53 | CLAUDE.md foundation |
+| `2085418` | Dec 9, 19:51 | RAG journey begins (Task 9) |
+| `e40a80c` | Dec 10, 00:24 | ConceptNet integration complete (Task 29) |
+| `c730057` | Dec 16, 2025 | Self-documenting book begins |
+| `082aa21` | Dec 16, 2025 | Six intelligent book generators |
+
+## What This Means
+
+A project's origin story isn't just historical curiosity. It reveals:
+
+1. **Intent**: This was designed to be *understood*, not just used
+2. **Discipline**: Testing and documentation weren't afterthoughts
+3. **Ambition**: From day one, the goal was semantic understanding
+4. **Partnership**: Human and AI working together, guided by CLAUDE.md
+
+The zip file that arrived on December 9th contained code. But the code that emerged in the days and weeks that followed became something more: a platform for knowledge, a canvas for collaboration, and ultimately, its own biographer.
+
+---
+
+*The journey from package to platform took 699 commits. The journey from platform to self-awareness took one more: the commit that added this book.*
+
+---
+
+## The Living Book Vision
+
+> *"Code tells you what. Comments tell you why. A living book tells you the journey."*
+
+## The Idea
+
+What if documentation wrote itself—not as an afterthought, but as a natural byproduct of development?
+
+This isn't science fiction. It's what you're reading right now.
+
+The Cortical Chronicles is a **living book**: it grows with the codebase, captures the stories behind decisions, and transforms raw development artifacts into narrative chapters. Every debugging session becomes a case study. Every bugfix becomes a lesson. Every commit becomes a paragraph in an ongoing story.
+
+## How It Works
+
+### The Data We Already Capture
+
+During development, we're already collecting everything a book needs:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                 THE RAW MATERIALS OF A BOOK                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Developer Questions    → "Why isn't search finding X?"          │
+│  Investigation Traces   → Files read, tools used, paths tried    │
+│  Breakthroughs         → "Aha! The bottleneck is in bigrams!"    │
+│  Solutions             → Commits with diffs and context          │
+│  Decisions             → ADRs with rationale                     │
+│  Outcomes              → CI results, test coverage               │
+│                                                                  │
+│  Together, these form NARRATIVE ARCS:                           │
+│                                                                  │
+│  Problem → Investigation → Discovery → Solution → Lesson         │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### From Data to Story
+
+The generators transform structured data into readable chapters:
+
+| Data Source | Generator | Chapter Type |
+|-------------|-----------|--------------|
+| ML Sessions | CaseStudyGenerator | Problem-solving narratives |
+| Bugfix Commits | LessonExtractor | Distilled wisdom |
+| ADRs + Context | DecisionStoryGenerator | The "why" behind choices |
+| Concept Clusters | ConceptEvolutionGenerator | How ideas grew over time |
+| Test Cases | ExerciseGenerator | Reader engagement |
+| PageRank Scores | ReaderJourneyGenerator | Progressive learning paths |
+
+## What Makes This Different
+
+### Traditional Documentation
+
+```
+process_document(doc_id, text)
+
+Process a document and add it to the corpus.
+
+Parameters:
+  doc_id: Unique document identifier
+  text: Document content
+
+Returns:
+  None
+```
+
+### A Living Book
+
+> **Chapter 5: Processing Your First Document**
+>
+> Before the system can search, it needs to understand. That understanding begins with `process_document()`.
+>
+> Think of it as reading a book for the first time. You don't just see words—you build a mental map: which ideas connect, which concepts are central, which phrases recur.
+>
+> The processor does the same thing, but algorithmically. When you call:
+>
+> ```python
+> processor.process_document("readme", open("README.md").read())
+> ```
+>
+> ...a cascade of analysis begins. Tokens are extracted. Bigrams form. Lateral connections strengthen between co-occurring terms. The document joins a growing graph of semantic relationships.
+>
+> **Try It Yourself:** Process the CLAUDE.md file and examine what concepts emerge. Which terms have the highest PageRank? What does that tell you about the document's focus?
+
+## The Chapter Types
+
+### Case Studies: Learning from Real Problems
+
+Every debugging session is a story waiting to be told:
+
+> **Case Study: The Great Performance Hunt**
+>
+> It started with a timeout. The `compute_all()` function was hanging on just 125 documents.
+>
+> The obvious suspect was Louvain clustering—our most complex algorithm. But we profiled first...
+
+### Lessons: Wisdom Distilled from Experience
+
+600+ commits contain patterns worth preserving:
+
+> **Lesson #23: Profile Before Optimizing**
+>
+> **The Mistake:** Assumed Louvain was slow because it's complex.
+> **The Reality:** 99% of time was in `bigram_connections()`.
+> **The Principle:** The obvious culprit is often innocent. Data beats intuition.
+
+### Concept Evolution: Watching Ideas Grow
+
+Track how key concepts emerged and strengthened:
+
+> **How "Importance" Became a First-Class Concept**
+>
+> Week 1: First mention in `analysis.py`—a simple PageRank score.
+> Week 3: Connected to "relevance", "ranking", "boost".
+> Week 6: Cluster of 15 related terms. Central to search quality.
+
+### Exercises: Active Learning
+
+Test cases become teaching moments:
+
+> **Exercise: Query Expansion**
+>
+> Given the query "neural networks", write code to expand it with related terms.
+>
+> *Hint 1:* Use `processor.expand_query()`
+> *Hint 2:* Consider lateral connections
+> *Solution:* [Reveal]
+
+## The Self-Reference Loop
+
+Here's the beautiful recursion:
+
+1. **We write code** → Creates development artifacts
+2. **ML captures the process** → Structured session data
+3. **Generators synthesize narratives** → Book chapters
+4. **The book explains the system** → Readers understand
+5. **Understanding leads to better code** → Loop continues
+
+The Cortical Text Processor documents itself using its own algorithms. If it can understand and explain itself, it can understand any codebase.
+
+## Why This Matters
+
+### For Developers
+
+- Documentation stays current automatically
+- Lessons are captured, not forgotten
+- Onboarding accelerates via structured learning paths
+
+### For Teams
+
+- Institutional knowledge persists across turnover
+- Decisions are documented with full context
+- Best practices emerge from analyzed patterns
+
+### For Publishers
+
+- Authentic problem-solving narratives
+- Genuine lessons from real development
+- A unique angle: the book that writes itself
+
+## The Vision
+
+Imagine every software project generating its own living book:
+
+- New team members read the story of how the system evolved
+- Debugging sessions become teaching materials
+- Architecture decisions carry their full context
+- The gap between "code" and "understanding" closes
+
+This isn't just documentation. It's **computational autobiography**—a system telling its own story through the act of being built.
+
+---
+
+## What You'll Find in This Book
+
+| Section | Content |
+|---------|---------|
+| **Foundations** | The algorithms that power semantic search |
+| **Architecture** | How the code is organized and why |
+| **Decisions** | The choices that shaped the system |
+| **Evolution** | Timeline of how we got here |
+| **Case Studies** | Problem-solving narratives |
+| **Lessons** | Distilled wisdom from 600+ commits |
+| **Concepts** | How key ideas emerged and grew |
+| **Exercises** | Hands-on learning opportunities |
+| **Journey** | Your personalized learning path |
+
+Each section is generated from the codebase itself—living documentation that grows with the system.
+
+---
+
+## See Also
+
+- [How This Book Works](./how-this-book-works.md) - Technical details of generation
+- [Full Vision Document](../../docs/BOOK-GENERATION-VISION.md) - Complete specification
+- [Product Vision](../../docs/VISION.md) - Overall product direction
 
 ---
 
@@ -5482,9 +5955,213 @@ Compute statistics across all documents.
 
 # Decisions: ADRs
 
-## Decisions
+## ADR-001: Add Microseconds to Task ID Generation
 
-*This chapter will be auto-generated in a future update.*
+**Status:** Accepted  
+**Date:** 2025-12-14  
+**Tags:** `task-management`, `uniqueness`, `concurrency`  
+
+---
+
+## The Question
+
+Task IDs were generated with second-precision timestamps plus a 4-character hex suffix:
+
+```
+T-YYYYMMDD-HHMMSS-XXXX
+Example: T-20251214-163052-a1b2
+```
+
+During CI testing, the `test_unique_task_ids` test was intermittently failing:
+
+```
+AssertionError: 99 != 100
+```
+
+When generating 100 task IDs in a tight loop (same second), collisions occurred because:
+- Same timestamp for all IDs in that second
+- Only 4 hex chars = 65,536 possible suffixes
+- Birthday paradox: P(collision) ≈ 7% for 100 items from 65,536
+
+## The Conversation
+
+*This decision emerged from 12 recorded discussion(s).*
+
+### Discussion 1
+
+**When:** 2025-12-16  
+**Matched Keywords:** task, add  
+
+**Query:**
+
+> Please deeply think about the best way to implement these tasks in batches dispatched inteligently to sub Agents and tracked/verifyed by enabling director mode with a backup plan that covers potential failure points intelligently.
+
+Tasks:
+T-002	Document ML milestone thresholds derivation	Low
+T-003	Make CSV export truncation configurable	Low
+T-004	Refactor session_logger.py duplication	Low
+T-010	Implement confidence scoring thresholds	Medium
+T-011	Add semantic similarity to ML predictions	Low
+T-0
+
+**Files Explored:** `tasks/*.json`, `scripts/task_utils.py`
+
+### Discussion 2
+
+**When:** 2025-12-16  
+**Matched Keywords:** task, add  
+
+**Query:**
+
+> Please deeply think about the best way to implement these tasks in batches dispatched inteligently to sub Agents and tracked/verifyed by enabling director mode with a backup plan that covers potential failure points intelligently.
+
+Tasks:
+T-002	Document ML milestone thresholds derivation	Low
+T-003	Make CSV export truncation configurable	Low
+T-004	Refactor session_logger.py duplication	Low
+T-010	Implement confidence scoring thresholds	Medium
+T-011	Add semantic similarity to ML predictions	Low
+T-0
+
+**Files Explored:** `scripts/task_utils.py`, `tasks/*.json`, `/home/user/Opus-code-test/tests/unit/test_ml_export.py`
+
+### Discussion 3
+
+**When:** 2025-12-16  
+**Matched Keywords:** task, add  
+
+**Query:**
+
+> Please deeply think about the best way to implement these tasks in batches dispatched inteligently to sub Agents and tracked/verifyed by enabling director mode with a backup plan that covers potential failure points intelligently.
+
+Tasks:
+T-002	Document ML milestone thresholds derivation	Low
+T-003	Make CSV export truncation configurable	Low
+T-004	Refactor session_logger.py duplication	Low
+T-010	Implement confidence scoring thresholds	Medium
+T-011	Add semantic similarity to ML predictions	Low
+T-0
+
+**Files Explored:** `tasks/*.json`, `/home/user/Opus-code-test/tests/unit/test_ml_export.py`, `scripts/ml_data_collector.py`, `scripts/task_utils.py`
+
+## Options Considered
+
+### Option 1: Increase Random Suffix Length
+
+```
+T-YYYYMMDD-HHMMSS-XXXXXXXX  (8 hex chars)
+```
+
+**Pros:**
+- Simple change
+- 4 billion possibilities per second
+
+**Cons:**
+- Longer IDs
+- Doesn't leverage timestamp ordering
+
+### Option 2: Add Microseconds to Timestamp
+
+```
+T-YYYYMMDD-HHMMSSffffff-XXXX
+Example: T-20251214-163052123456-a1b2
+```
+
+**Pros:**
+- Timestamps remain sortable
+- 1 million unique timestamps per second
+- Combined with 4 hex suffix = practically unlimited uniqueness
+
+**Cons:**
+- IDs are 6 characters longer
+- Existing code parsing IDs needs update
+
+### Option 3: Use UUID Only
+
+```
+T-a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+
+**Pros:**
+- Guaranteed uniqueness
+- Standard format
+
+**Cons:**
+- Not human-readable
+- Loses temporal ordering
+- Much longer
+
+## The Decision
+
+**Chosen Option:** Option 2 - Add Microseconds to Timestamp
+
+**Rationale:**
+- Preserves temporal ordering (IDs sort chronologically)
+- Microseconds provide 1M unique slots per second
+- Combined with 4 hex chars: virtually collision-proof
+- Minimal change to existing format
+
+## Implementation
+
+```python
+def generate_task_id(session_id: Optional[str] = None) -> str:
+    now = datetime.now()
+    date_str = now.strftime("%Y%m%d")
+    time_str = now.strftime("%H%M%S%f")  # Added %f for microseconds
+    suffix = session_id or generate_session_id()
+    return f"T-{date_str}-{time_str}-{suffix}"
+```
+
+## Consequences
+
+### Positive
+- Tests no longer flaky
+- IDs unique even under heavy concurrent generation
+- Temporal ordering preserved
+
+### Negative
+- IDs 6 characters longer
+- Tests checking ID format needed update
+
+### Neutral
+- Existing IDs continue to work (no migration needed)
+- No performance impact
+
+## In Hindsight
+
+*This decision has been referenced in 2 subsequent commit(s).*
+
+- **2025-12-14** (`53c7985`): test: Update task ID format test to expect microseconds
+- **2025-12-14** (`5970006`): fix: Add microseconds to task ID to prevent collisions
+
+---
+
+*This decision story was enriched with conversation context from 12 chat session(s). Source: [adr-microseconds-task-id.md](../../samples/decisions/adr-microseconds-task-id.md)*
+
+---
+
+## Architectural Decision Records
+
+*Enriched with conversation context and implementation history.*
+
+---
+
+## Overview
+
+**Total Decisions:** 1  
+**Accepted:** 1  
+
+## Decision Catalog
+
+### [ADR-001: Add Microseconds to Task ID Generation](decision-adr-microseconds-task-id.md)
+
+**Status:** Accepted | **Date:** 2025-12-14
+
+Task IDs were generated with second-precision timestamps plus a 4-character hex suffix:...
+
+---
+
+*This chapter is part of [The Cortical Chronicles](../README.md), a self-documenting book generated by the Cortical Text Processor.*
 
 ---
 
@@ -5498,7 +6175,7 @@ Compute statistics across all documents.
 
 ## Overview
 
-**8 bugs** have been identified and resolved. Each fix taught us something about the system.
+**12 bugs** have been identified and resolved. Each fix taught us something about the system.
 
 ## Bug Fix History
 
@@ -5549,7 +6226,27 @@ Compute statistics across all documents.
 
 **Commit:** `19ac02a`  
 **Date:** 2025-12-16  
-**Files Changed:** .claude/settings.local.json
+**Files Changed:** .claude/settings.local.json  
+
+### Use filename-based sorting for deterministic session ordering
+
+**Commit:** `61d502d`  
+**Date:** 2025-12-15  
+
+### Increase ID suffix length to prevent collisions
+
+**Commit:** `8ac4b6b`  
+**Date:** 2025-12-15  
+
+### Add import guards for optional test dependencies
+
+**Commit:** `91ffb04`  
+**Date:** 2025-12-15  
+
+### Make session file sorting stable for deterministic ordering
+
+**Commit:** `7433b36`  
+**Date:** 2025-12-15
 
 ---
 
@@ -5561,15 +6258,15 @@ Compute statistics across all documents.
 
 ## Overview
 
-The system has evolved through **18 feature additions**. Below is the narrative of how each capability came to be.
+The system has evolved through **22 feature additions**. Below is the narrative of how each capability came to be.
 
 ## Other Capabilities
 
-### Add --recover flag and git-sync skill
+### Add 6 new intelligent book generators for publisher-ready content
 
-**Commit:** `f5faba4`  
-**Date:** 2025-12-16  
-**Files Modified:** 4  
+**Commit:** `082aa21`  
+**Date:** 2025-12-17  
+**Files Modified:** 47  
 
 ### Add smart caching to markdown book generation
 
@@ -5601,19 +6298,57 @@ The system has evolved through **18 feature additions**. Below is the narrative 
 **Date:** 2025-12-16  
 **Files Modified:** 8  
 
+### Add orchestration extraction for director sub-agent tracking
+
+**Commit:** `4eaeb37`  
+**Date:** 2025-12-15  
+
+### Add stunning animated ASCII codebase visualizer
+
+**Commit:** `e085a0b`  
+**Date:** 2025-12-15  
+
+### Add ASCII art codebase visualization script
+
+**Commit:** `43aae33`  
+**Date:** 2025-12-15  
+
+### Complete legacy task system migration
+
+**Commit:** `33dc8b2`  
+**Date:** 2025-12-15  
+
+### Add director orchestration execution tracking system
+
+**Commit:** `4976c58`  
+**Date:** 2025-12-15  
+
+## Search Capabilities
+
+### Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
+
+**Commit:** `5665839`  
+**Date:** 2025-12-16  
+
+### Add search integration and web interface (Wave 3)
+
+**Commit:** `0022466`  
+**Date:** 2025-12-16  
+**Files Modified:** 11  
+
+## Data Capabilities
+
+### Implement WAL + Snapshot persistence system (LEGACY-133)
+
+**Commit:** `c7e662a`  
+**Date:** 2025-12-16  
+
+### Add git-tracked JSONL storage for orchestration data
+
+**Commit:** `fb30e38`  
+**Date:** 2025-12-15  
+
 ## Ml Capabilities
-
-### Add git-sync-ml.sh for safe ML data synchronization
-
-**Commit:** `bb953e7`  
-**Date:** 2025-12-16  
-**Files Modified:** 65  
-
-### Add ML experiment tracking framework
-
-**Commit:** `6503d84`  
-**Date:** 2025-12-16  
-**Files Modified:** 8  
 
 ### Implement top priorities (ML capture, state storage, legacy cleanup)
 
@@ -5644,41 +6379,18 @@ The system has evolved through **18 feature additions**. Below is the narrative 
 **Date:** 2025-12-16  
 **Files Modified:** 9  
 
-## Analysis Capabilities
-
-### Add repo_showcase.py for full repository analysis
-
-**Commit:** `cb04f0c`  
-**Date:** 2025-12-16  
-**Files Modified:** 1  
-
-## Search Capabilities
-
-### Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
-
-**Commit:** `5665839`  
-**Date:** 2025-12-16  
-
-### Add search integration and web interface (Wave 3)
-
-**Commit:** `0022466`  
-**Date:** 2025-12-16  
-**Files Modified:** 11  
-
-## Data Capabilities
-
-### Implement WAL + Snapshot persistence system (LEGACY-133)
-
-**Commit:** `c7e662a`  
-**Date:** 2025-12-16  
-
 ## Documentation Capabilities
 
 ### Add CI workflow and documentation (Wave 4)
 
 **Commit:** `940fdf2`  
 **Date:** 2025-12-16  
-**Files Modified:** 5
+**Files Modified:** 5  
+
+### Add animated GIF visualizations to README
+
+**Commit:** `b4d7c82`  
+**Date:** 2025-12-15
 
 ---
 
@@ -5694,13 +6406,6 @@ The codebase has undergone **3 refactorings**. Each improved code quality, maint
 
 ## Refactoring History
 
-### Replace git-sync-ml.sh with simpler skill
-
-**Commit:** `f61897f`  
-**Date:** 2025-12-16  
-**Changes:** +821/-1231 lines  
-**Scope:** 38 files affected  
-
 ### Complete legacy task system cleanup
 
 **Commit:** `8dedda6`  
@@ -5711,7 +6416,12 @@ The codebase has undergone **3 refactorings**. Each improved code quality, maint
 **Commit:** `d7a98ae`  
 **Date:** 2025-12-16  
 **Changes:** +100/-1460 lines  
-**Scope:** 6 files affected
+**Scope:** 6 files affected  
+
+### Split large files exceeding 25000 token limit
+
+**Commit:** `21ec5ea`  
+**Date:** 2025-12-15
 
 ---
 
@@ -5738,16 +6448,16 @@ The codebase has undergone **3 refactorings**. Each improved code quality, maint
 
 ### Week of Dec 15
 
+- **2025-12-17**: ml: Capture session data
+- **2025-12-17**: feat: Add 6 new intelligent book generators for publisher-ready content
 - **2025-12-16**: ml: Capture session data
-- **2025-12-16**: docs: Add git-sync skill to CLAUDE.md
+- **2025-12-16**: docs: Add living book generation vision
 - **2025-12-16**: ml: Capture session data
-- **2025-12-16**: refactor: Replace git-sync-ml.sh with simpler skill
+- **2025-12-16**: feat: Add smart caching to markdown book generation
 - **2025-12-16**: ml: Capture session data
-- **2025-12-16**: feat: Add --recover flag and git-sync skill
-- **2025-12-16**: feat: Add git-sync-ml.sh for safe ML data synchronization
-- **2025-12-16**: ml: Capture session data
-- **2025-12-16**: ml: Capture session data
-- **2025-12-16**: ml: Capture session data
+- **2025-12-16**: feat: Add consolidated markdown book generation
+- **2025-12-16**: feat: Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
+- **2025-12-16**: feat: Implement WAL + Snapshot persistence system (LEGACY-133)
 
 ---
 
@@ -5756,6 +6466,6586 @@ The codebase has undergone **3 refactorings**. Each improved code quality, maint
 ## Future
 
 *This chapter will be auto-generated in a future update.*
+
+---
+
+# 05 Case Studies
+
+## Case Study: The Great Performance Hunt
+
+*A tale of assumptions, profiling, and unexpected bottlenecks.*
+
+## The Problem
+
+It started with a timeout. The `compute_all()` function was hanging on a corpus of just 125 documents—far smaller than our target of 10,000+. Something was fundamentally wrong.
+
+The system would start processing, print "Computing PageRank...", then silence. No errors, no warnings, just an infinite wait. After 30 seconds, the timeout would trigger and the process would die.
+
+This wasn't a minor performance issue. This was a showstopper.
+
+## The Suspect
+
+The obvious culprit was Louvain clustering. Think about it:
+
+- **Most complex algorithm** - O(n log n) community detection with multiple passes
+- **Graph manipulation** - Rewiring communities iteratively until modularity converges
+- **Nested loops** - Pass after pass until stability
+
+Every instinct, every pattern-matching neuron in our brains said: "Start there. It has to be Louvain."
+
+But assumptions are dangerous.
+
+## The Investigation
+
+We started with profiling, not guessing. The `profile_full_analysis.py` script measured every phase of `compute_all()`:
+
+```bash
+python scripts/profile_full_analysis.py
+```
+
+The results were shocking:
+
+| Phase | Before | After | Fix |
+|-------|--------|-------|-----|
+| `bigram_connections` | **20.85s timeout** | 10.79s | `max_bigrams_per_term=100`, `max_bigrams_per_doc=500` |
+| `semantics` | **30.05s timeout** | 5.56s | `max_similarity_pairs=100000`, `min_context_keys=3` |
+| `louvain` | **2.2s** | 2.2s | **Not the bottleneck!** |
+
+Read that last line again: **Louvain was innocent.**
+
+The algorithm everyone suspected—the complex graph clustering with multiple iterative passes—was responsible for just 2.2 seconds of a 50+ second hang.
+
+99% of the execution time was hidden in `bigram_connections()` and `extract_corpus_semantics()`.
+
+## The Discovery
+
+Then we saw it. Looking at the code in `cortical/analysis/connections.py`:
+
+```python
+# Build indexes for efficient lookup
+left_index: Dict[str, List[Minicolumn]] = defaultdict(list)
+right_index: Dict[str, List[Minicolumn]] = defaultdict(list)
+
+for bigram in bigrams:
+    parts = bigram.content.split(' ')
+    if len(parts) == 2:
+        left_index[parts[0]].append(bigram)
+        right_index[parts[1]].append(bigram)
+
+# Connect bigrams sharing components
+for component, bigram_list in left_index.items():
+    # THIS is where it exploded
+    for i, b1 in enumerate(bigram_list):
+        for b2 in bigram_list[i+1:]:
+            # Create connection between b1 and b2
+```
+
+The problem was hiding in plain sight. For every term that appears in bigrams, we were creating connections between **all pairs** of bigrams containing that term.
+
+**Common terms like "self" appeared in hundreds of bigrams.**
+
+If "self" appears in 300 bigrams (self_attention, self_healing, self_referential, etc.), the nested loop creates:
+
+```
+300 × 299 / 2 = 44,850 connections
+```
+
+For a single term.
+
+Now imagine dozens of common terms ("return", "function", "value", "data", "process"). Each creating tens of thousands of pairwise connections.
+
+**O(n²) complexity from common terms was creating millions of pairs.**
+
+The complexity analysis confirmed it:
+
+```python
+# Without limits: O(n_bigrams²) worst case from common terms creating all-to-all connections
+# With limits: O(n_terms * max_bigrams_per_term² + n_docs * max_bigrams_per_doc²)
+# Typical with defaults (100, 500): O(n_terms * 10000 + n_docs * 250000) ≈ O(n_bigrams) linear
+```
+
+Without limits, the algorithm had **quadratic worst-case complexity**. With limits, it became **effectively linear**.
+
+## The Solution
+
+The fix was elegant: **skip overly common terms** to prevent the O(n²) explosion:
+
+```python
+def compute_bigram_connections(
+    layers: Dict[CorticalLayer, HierarchicalLayer],
+    component_weight: float = 0.5,
+    chain_weight: float = 0.7,
+    cooccurrence_weight: float = 0.3,
+    max_bigrams_per_term: int = 100,      # NEW: Prevent O(n²) from common terms
+    max_bigrams_per_doc: int = 500,       # NEW: Prevent O(n²) from large docs
+    max_connections_per_bigram: int = 50  # NEW: Cap per-bigram connections
+) -> Dict[str, Any]:
+    """
+    Compute lateral connections between bigrams.
+
+    Args:
+        max_bigrams_per_term: Skip terms appearing in more than this many bigrams
+            to avoid O(n²) explosion from common terms like "self", "return"
+        max_bigrams_per_doc: Skip documents with more than this many bigrams for
+            co-occurrence connections to avoid O(n²) explosion
+    """
+```
+
+With these limits in place:
+
+```python
+# Left component matches: "neural_networks" ↔ "neural_processing"
+for component, bigram_list in left_index.items():
+    # Skip overly common terms to avoid O(n²) explosion
+    if len(bigram_list) > max_bigrams_per_term:
+        skipped_common_terms += 1
+        continue
+
+    for i, b1 in enumerate(bigram_list):
+        for b2 in bigram_list[i+1:]:
+            # Safe now - bounded by max_bigrams_per_term²
+            create_connection(b1, b2, weight=component_weight)
+```
+
+**Results:**
+- `bigram_connections`: 20.85s timeout → **10.79s** (48% improvement)
+- `semantics`: 30.05s timeout → **5.56s** (81% improvement)
+- Total `compute_all()`: timeout → **~27s** (viable for production)
+
+The same approach was applied to `extract_corpus_semantics()`:
+
+```python
+max_similarity_pairs: int = 100000  # Prevent similarity explosion
+min_context_keys: int = 3           # Require meaningful context overlap
+```
+
+## The Lesson
+
+**Profile before optimizing.** The obvious culprit is often innocent. The real bottleneck hides in unexpected places.
+
+We suspected Louvain—the complex, iterative graph algorithm with nested loops and community rewiring. The actual problem was a simple nested loop over common terms, creating millions of unnecessary connections.
+
+**Key takeaways:**
+
+1. **Measure, don't assume** - Run the profiler before making changes
+2. **Look for O(n²) patterns** - Nested loops over unbounded collections
+3. **Common items are dangerous** - High-frequency terms/documents create all-to-all explosions
+4. **Add limits early** - Prevent worst-case scenarios with sensible bounds
+5. **Track what you skip** - Return stats on skipped items for monitoring
+
+## The Aftermath
+
+This investigation led to several improvements across the codebase:
+
+1. **Profiling became standard practice** - `profile_full_analysis.py` is now run routinely
+2. **O(n²) awareness** - Code reviews specifically check for quadratic patterns
+3. **Limit parameters everywhere** - All connection-building functions have max limits
+4. **Performance tests** - Regression tests verify compute times stay bounded
+5. **Documentation** - CLAUDE.md now includes "Performance Lessons Learned" section
+
+The fix enabled the system to scale from 125 documents (timeout) to **10,000+ documents** (27 seconds).
+
+## Try It Yourself
+
+Run the profiler on your own corpus to identify bottlenecks:
+
+```bash
+python scripts/profile_full_analysis.py
+```
+
+Watch for these warning signs:
+- O(n²) patterns in loops over connections
+- Common terms/documents creating explosions
+- Phases taking >10x longer than expected
+- Nested loops without bounds
+
+Look for code like this:
+
+```python
+# DANGER: O(n²) if items list is unbounded
+for i, item1 in enumerate(items):
+    for item2 in items[i+1:]:
+        # Creates n × (n-1) / 2 operations
+```
+
+And replace with:
+
+```python
+# SAFE: Bounded by max_items_per_group
+for group, items in grouped_items.items():
+    if len(items) > max_items_per_group:
+        continue  # Skip overly common groups
+
+    for i, item1 in enumerate(items):
+        for item2 in items[i+1:]:
+            # Now bounded by max_items_per_group²
+```
+
+---
+
+**Remember:** The algorithm you suspect is often innocent. The real bottleneck is hiding in the code you didn't think to check.
+
+**Profile first. Optimize second. Always.**
+
+---
+
+## Case Studies
+
+*Real problem-solving sessions from the development of the Cortical Text Processor*
+
+No case studies available yet. Case studies are generated from ML session data when sessions demonstrate significant problem-solving narratives.
+
+**What makes a good case study?**
+
+- At least 5 exchanges (substantial investigation)
+- Multiple tools used (shows exploration)
+- Resulted in commits (concrete outcome)
+- Clear problem statement (queries starting with 'fix', 'why', 'how do', etc.)
+
+*These case studies are automatically generated from ML session data collected during development. They demonstrate real problem-solving workflows and serve as both documentation and learning material.*
+
+---
+
+## Case Study: Add session memory and knowledge transfer
+
+*Synthesized from commit history: 2025-12-14*
+
+## The Problem
+
+A new feature was required: Add director agent orchestration prompt. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add director agent orchestration prompt** - Modified 2 files (+425/-1 lines)
+2. **Add memory system CLI and improve documentation** - Modified 5 files (+477/-16 lines)
+3. **Add session memory and knowledge transfer** - Modified 3 files (+254/-16 lines)
+4. **Add session handoff, auto-memory, CI link checker, and tests** - Modified 6 files (+1375/-10 lines)
+
+
+## The Solution
+
+Merge pull request #81 from scrawlsbenches/claude/implement-director-mode-NKbiu
+
+The solution involved changes to 47 files, adding 14229 lines and removing 173 lines.
+
+
+## The Lesson
+
+**Feature development is iterative.** Breaking work into smaller commits makes it easier to review, test, and debug.
+
+## Technical Details
+
+**Files Modified:** 49
+
+- `.claude/commands/director.md`
+- `.github/workflows/ci.yml`
+- `.markdown-link-check.json`
+- `CLAUDE.md`
+- `README.md`
+- `cortical/observability.py`
+- `cortical/patterns.py`
+- `cortical/processor/compute.py`
+- `cortical/processor/core.py`
+- `cortical/processor/documents.py`
+
+*...and 39 more files*
+
+**Code Changes:** +16760/-216 lines
+
+**Commits:** 5
+
+
+## Commits in This Story
+
+- `4ab60f2` (2025-12-14): feat: Add director agent orchestration prompt
+- `d647b53` (2025-12-14): feat: Add memory system CLI and improve documentation
+- `2160f3d` (2025-12-14): memory: Add session memory and knowledge transfer
+- `6684152` (2025-12-14): feat: Add session handoff, auto-memory, CI link checker, and tests
+- `2a11bf3` (2025-12-14): Merge pull request #81 from scrawlsbenches/claude/implement-director-mode-NKbiu
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Bug Fix - Add test file penalty and code stop word filtering to search
+
+*Synthesized from commit history: 2025-12-14*
+
+## The Problem
+
+A new feature was required: Director mode batch execution - 6 tasks completed in parallel. This would require careful implementation and testing.
+
+## The Journey
+
+The solution was implemented directly.
+
+
+## The Solution
+
+Add test file penalty and code stop word filtering to search
+
+The solution involved changes to 3 files, adding 51 lines and removing 9 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 33
+
+- `CLAUDE.md`
+- `IMPLEMENTATION_SUMMARY.md`
+- `PATTERN_DETECTION_GUIDE.md`
+- `cortical/observability.py`
+- `cortical/patterns.py`
+- `cortical/processor/compute.py`
+- `cortical/processor/core.py`
+- `cortical/processor/documents.py`
+- `cortical/processor/introspection.py`
+- `cortical/processor/persistence_api.py`
+
+*...and 23 more files*
+
+**Code Changes:** +9432/-117 lines
+
+**Commits:** 2
+
+
+## Commits in This Story
+
+- `a9478fd` (2025-12-14): feat: Director mode batch execution - 6 tasks completed in parallel
+- `1fafc8b` (2025-12-14): fix: Add test file penalty and code stop word filtering to search
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Bug Fix - Replace external action with native Python link checker
+
+*Synthesized from commit history: 2025-12-14*
+
+## The Problem
+
+Development work began: Merge pull request #81 from scrawlsbenches/claude/implement-director-mode-NKbiu.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Merge pull request #81 from scrawlsbenches/claude/implement-director-mode-NKbiu** - Modified 47 files (+14229/-173 lines)
+2. **Add session handoff, auto-memory, CI link checker, and tests** - Modified 6 files (+1375/-10 lines)
+3. **Replace external action with native Python link checker** - Modified 5 files (+172/-34 lines)
+
+
+## The Solution
+
+Adjust Native Over External threshold to 20000 lines
+
+The solution involved changes to 1 files, adding 1 lines and removing 1 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 48
+
+- `.github/workflows/ci.yml`
+- `.markdown-link-check.json`
+- `CLAUDE.md`
+- `README.md`
+- `cortical/observability.py`
+- `cortical/patterns.py`
+- `cortical/processor/compute.py`
+- `cortical/processor/core.py`
+- `cortical/processor/documents.py`
+- `cortical/processor/introspection.py`
+
+*...and 38 more files*
+
+**Code Changes:** +15777/-218 lines
+
+**Commits:** 4
+
+
+## Commits in This Story
+
+- `2a11bf3` (2025-12-14): Merge pull request #81 from scrawlsbenches/claude/implement-director-mode-NKbiu
+- `6684152` (2025-12-14): feat: Add session handoff, auto-memory, CI link checker, and tests
+- `901a181` (2025-12-14): fix: Replace external action with native Python link checker
+- `00f88d4` (2025-12-14): docs: Adjust Native Over External threshold to 20000 lines
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Bug Fix - Update skipped tests for processor/ package refactor
+
+*Synthesized from commit history: 2025-12-14*
+
+## The Problem
+
+Code quality improvements were needed. The refactoring affected 9 files: Split processor.py into modular processor/ package (LEGACY-095).
+
+## The Journey
+
+The solution was implemented directly.
+
+
+## The Solution
+
+Update skipped tests for processor/ package refactor
+
+The solution involved changes to 2 files, adding 79 lines and removing 14 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 10
+
+- `CLAUDE.md`
+- `cortical/__init__.py`
+- `cortical/processor/__init__.py`
+- `cortical/processor/compute.py`
+- `cortical/processor/core.py`
+- `cortical/processor/documents.py`
+- `cortical/processor/introspection.py`
+- `cortical/processor/persistence_api.py`
+- `cortical/processor/query_api.py`
+- `tests/test_generate_ai_metadata.py`
+
+**Code Changes:** +2913/-18 lines
+
+**Commits:** 2
+
+
+## Commits in This Story
+
+- `090910f` (2025-12-14): refactor: Split processor.py into modular processor/ package (LEGACY-095)
+- `d6718db` (2025-12-14): fix: Update skipped tests for processor/ package refactor
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Bug Fix - Use heredoc for Python in CI to avoid YAML syntax error
+
+*Synthesized from commit history: 2025-12-14*
+
+## The Problem
+
+Development work began: Make push trigger explicit for all branches.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Make push trigger explicit for all branches** - Modified 1 files (+2/-0 lines)
+2. **Use heredoc for Python in CI to avoid YAML syntax error** - Modified 1 files (+14/-14 lines)
+
+
+## The Solution
+
+Add test_mcp_server.py to integration tests for coverage
+
+The solution involved changes to 1 files, adding 1 lines and removing 0 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 1
+
+- `.github/workflows/ci.yml`
+
+**Code Changes:** +17/-14 lines
+
+**Commits:** 3
+
+
+## Commits in This Story
+
+- `dfedf5e` (2025-12-14): ci: Make push trigger explicit for all branches
+- `ef84437` (2025-12-14): fix: Use heredoc for Python in CI to avoid YAML syntax error
+- `0aec3d3` (2025-12-14): ci: Add test_mcp_server.py to integration tests for coverage
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Clean up directory structure and queue search relevance fixes
+
+*Synthesized from commit history: 2025-12-14*
+
+## The Problem
+
+A new feature was required: Director mode batch execution - 6 tasks completed in parallel. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Director mode batch execution - 6 tasks completed in parallel** - Modified 31 files (+9381/-108 lines)
+2. **Update task status - mark 6 tasks completed from director mode batch** - Modified 2 files (+2747/-9 lines)
+3. **Clean up directory structure and queue search relevance fixes** - Modified 5 files (+68/-293 lines)
+4. **Add test file penalty and code stop word filtering to search** - Modified 3 files (+51/-9 lines)
+
+
+## The Solution
+
+Mark search relevance tasks T-002, T-003 as completed
+
+The solution involved changes to 1 files, adding 23 lines and removing 9 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 39
+
+- `CLAUDE.md`
+- `IMPLEMENTATION_SUMMARY.md`
+- `PATTERN_DETECTION_GUIDE.md`
+- `cortical/observability.py`
+- `cortical/patterns.py`
+- `cortical/processor/compute.py`
+- `cortical/processor/core.py`
+- `cortical/processor/documents.py`
+- `cortical/processor/introspection.py`
+- `cortical/processor/persistence_api.py`
+
+*...and 29 more files*
+
+**Code Changes:** +12270/-428 lines
+
+**Commits:** 5
+
+
+## Commits in This Story
+
+- `a9478fd` (2025-12-14): feat: Director mode batch execution - 6 tasks completed in parallel
+- `afc7a2d` (2025-12-14): chore: Update task status - mark 6 tasks completed from director mode batch
+- `cd8b9f5` (2025-12-14): chore: Clean up directory structure and queue search relevance fixes
+- `1fafc8b` (2025-12-14): fix: Add test file penalty and code stop word filtering to search
+- `461cb9a` (2025-12-14): chore: Mark search relevance tasks T-002, T-003 as completed
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Feature Development - Add director agent orchestration prompt
+
+*Synthesized from commit history: 2025-12-14*
+
+## The Problem
+
+A new feature was required: Add future tasks for text-as-memories integration. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add future tasks for text-as-memories integration** - Modified 1 files (+91/-1 lines)
+2. **Add memory-manager skill and CLAUDE.md documentation** - Modified 2 files (+241/-1 lines)
+3. **Add /knowledge-transfer slash command** - Modified 2 files (+215/-0 lines)
+4. **Add merge-safety task for memory/decision filenames** - Modified 1 files (+16/-1 lines)
+5. **Add documentation improvement tasks** - Modified 1 files (+46/-1 lines)
+6. **Add director agent orchestration prompt** - Modified 2 files (+425/-1 lines)
+7. **Add memory system CLI and improve documentation** - Modified 5 files (+477/-16 lines)
+8. **Add session memory and knowledge transfer** - Modified 3 files (+254/-16 lines)
+9. **Add session handoff, auto-memory, CI link checker, and tests** - Modified 6 files (+1375/-10 lines)
+
+
+## The Solution
+
+Merge pull request #81 from scrawlsbenches/claude/implement-director-mode-NKbiu
+
+The solution involved changes to 47 files, adding 14229 lines and removing 173 lines.
+
+
+## The Lesson
+
+**Feature development is iterative.** Breaking work into smaller commits makes it easier to review, test, and debug.
+
+## Technical Details
+
+**Files Modified:** 52
+
+- `.claude/commands/director.md`
+- `.claude/commands/knowledge-transfer.md`
+- `.claude/skills/memory-manager/SKILL.md`
+- `.github/workflows/ci.yml`
+- `.markdown-link-check.json`
+- `CLAUDE.md`
+- `README.md`
+- `cortical/observability.py`
+- `cortical/patterns.py`
+- `cortical/processor/compute.py`
+
+*...and 42 more files*
+
+**Code Changes:** +17369/-220 lines
+
+**Commits:** 10
+
+
+## Commits in This Story
+
+- `966b992` (2025-12-14): feat: Add future tasks for text-as-memories integration
+- `6d2c934` (2025-12-14): feat: Add memory-manager skill and CLAUDE.md documentation
+- `b7453a8` (2025-12-14): feat: Add /knowledge-transfer slash command
+- `ec81905` (2025-12-14): task: Add merge-safety task for memory/decision filenames
+- `87b259c` (2025-12-14): task: Add documentation improvement tasks
+- `4ab60f2` (2025-12-14): feat: Add director agent orchestration prompt
+- `d647b53` (2025-12-14): feat: Add memory system CLI and improve documentation
+- `2160f3d` (2025-12-14): memory: Add session memory and knowledge transfer
+- `6684152` (2025-12-14): feat: Add session handoff, auto-memory, CI link checker, and tests
+- `2a11bf3` (2025-12-14): Merge pull request #81 from scrawlsbenches/claude/implement-director-mode-NKbiu
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Feature Development - Add session handoff, auto-memory, CI link checker, and tests
+
+*Synthesized from commit history: 2025-12-14*
+
+## The Problem
+
+A new feature was required: Add memory system CLI and improve documentation. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add memory system CLI and improve documentation** - Modified 5 files (+477/-16 lines)
+2. **Add session memory and knowledge transfer** - Modified 3 files (+254/-16 lines)
+3. **Add session handoff, auto-memory, CI link checker, and tests** - Modified 6 files (+1375/-10 lines)
+
+
+## The Solution
+
+Merge pull request #81 from scrawlsbenches/claude/implement-director-mode-NKbiu
+
+The solution involved changes to 47 files, adding 14229 lines and removing 173 lines.
+
+
+## The Lesson
+
+**Feature development is iterative.** Breaking work into smaller commits makes it easier to review, test, and debug.
+
+## Technical Details
+
+**Files Modified:** 48
+
+- `.github/workflows/ci.yml`
+- `.markdown-link-check.json`
+- `CLAUDE.md`
+- `README.md`
+- `cortical/observability.py`
+- `cortical/patterns.py`
+- `cortical/processor/compute.py`
+- `cortical/processor/core.py`
+- `cortical/processor/documents.py`
+- `cortical/processor/introspection.py`
+
+*...and 38 more files*
+
+**Code Changes:** +16335/-215 lines
+
+**Commits:** 4
+
+
+## Commits in This Story
+
+- `d647b53` (2025-12-14): feat: Add memory system CLI and improve documentation
+- `2160f3d` (2025-12-14): memory: Add session memory and knowledge transfer
+- `6684152` (2025-12-14): feat: Add session handoff, auto-memory, CI link checker, and tests
+- `2a11bf3` (2025-12-14): Merge pull request #81 from scrawlsbenches/claude/implement-director-mode-NKbiu
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Refactoring - Migrate to merge-friendly task system and add security tasks
+
+*Synthesized from commit history: 2025-12-14*
+
+## The Problem
+
+Development work began: Rename CLAUDE.md.potential to CLAUDE.md.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Rename CLAUDE.md.potential to CLAUDE.md** - Modified 1 files (+0/-0 lines)
+2. **Add comprehensive security knowledge transfer document** - Modified 1 files (+478/-0 lines)
+3. **Migrate to merge-friendly task system and add security tasks** - Modified 6 files (+3217/-30 lines)
+
+
+## The Solution
+
+Add pickle warnings, deprecation notices, and CI security scanning
+
+The solution involved changes to 3 files, adding 109 lines and removing 0 lines.
+
+
+## The Lesson
+
+**Code quality is an ongoing process.** Regular refactoring keeps the codebase maintainable and reduces technical debt.
+
+## Technical Details
+
+**Files Modified:** 10
+
+- `.claude/skills/task-manager/SKILL.md`
+- `.github/workflows/ci.yml`
+- `CLAUDE.md`
+- `README.md`
+- `TASK_LIST.md`
+- `cortical/persistence.py`
+- `docs/security-knowledge-transfer.md`
+- `scripts/migrate_legacy_tasks.py`
+- `tasks/2025-12-14_11-15-01_41d5.json`
+- `tasks/legacy_migration.json`
+
+**Code Changes:** +3804/-30 lines
+
+**Commits:** 4
+
+
+## Commits in This Story
+
+- `77b1970` (2025-12-14): chore: Rename CLAUDE.md.potential to CLAUDE.md
+- `46a0116` (2025-12-14): docs: Add comprehensive security knowledge transfer document
+- `b41c51d` (2025-12-14): refactor: Migrate to merge-friendly task system and add security tasks
+- `90b989f` (2025-12-14): security: Add pickle warnings, deprecation notices, and CI security scanning
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Refactoring - Split processor.py into modular processor/ package (LEGACY-095)
+
+*Synthesized from commit history: 2025-12-14*
+
+## The Problem
+
+A new feature was required: Add HMAC signature verification for pickle files (SEC-003). This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add HMAC signature verification for pickle files (SEC-003)** - Modified 7 files (+1872/-16 lines)
+2. **Merge pull request #80 from scrawlsbenches/claude/resume-dog-fooding-9RPIV** - Modified 18 files (+2582/-15 lines)
+3. **Split processor.py into modular processor/ package (LEGACY-095)** - Modified 9 files (+2834/-4 lines)
+
+
+## The Solution
+
+Remove dead processor.py and add mixin boundary tests (LEGACY-095)
+
+The solution involved changes to 2 files, adding 530 lines and removing 3234 lines.
+
+
+## The Lesson
+
+**Code quality is an ongoing process.** Regular refactoring keeps the codebase maintainable and reduces technical debt.
+
+## Technical Details
+
+**Files Modified:** 32
+
+- `.claude/commands/director.md`
+- `.claude/commands/knowledge-transfer.md`
+- `.claude/skills/memory-manager/SKILL.md`
+- `.gitignore`
+- `CLAUDE.md`
+- `cortical/__init__.py`
+- `cortical/config.py`
+- `cortical/persistence.py`
+- `cortical/processor.py`
+- `cortical/processor/__init__.py`
+
+*...and 22 more files*
+
+**Code Changes:** +7818/-3269 lines
+
+**Commits:** 4
+
+
+## Commits in This Story
+
+- `6f3a1cc` (2025-12-14): feat: Add HMAC signature verification for pickle files (SEC-003)
+- `3a2d7af` (2025-12-14): Merge pull request #80 from scrawlsbenches/claude/resume-dog-fooding-9RPIV
+- `090910f` (2025-12-14): refactor: Split processor.py into modular processor/ package (LEGACY-095)
+- `890dda8` (2025-12-14): chore: Remove dead processor.py and add mixin boundary tests (LEGACY-095)
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Update task ID format test to expect microseconds
+
+*Synthesized from commit history: 2025-12-14*
+
+## The Problem
+
+A bug was discovered: Add microseconds to task ID to prevent collisions. The issue needed investigation and resolution.
+
+## The Journey
+
+The solution was implemented directly.
+
+
+## The Solution
+
+Update task ID format test to expect microseconds
+
+The solution involved changes to 1 files, adding 2 lines and removing 2 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 2
+
+- `scripts/task_utils.py`
+- `tests/unit/test_task_utils.py`
+
+**Code Changes:** +7/-6 lines
+
+**Commits:** 2
+
+
+## Commits in This Story
+
+- `5970006` (2025-12-14): fix: Add microseconds to task ID to prevent collisions
+- `53c7985` (2025-12-14): test: Update task ID format test to expect microseconds
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Add ML commit data for previous commit
+
+*Synthesized from commit history: 2025-12-15*
+
+## The Problem
+
+A new feature was required: Add CI auto-capture and GitHub PR/Issue data collection. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add CI auto-capture and GitHub PR/Issue data collection** - Modified 5 files (+567624/-2 lines)
+2. **Add ML commit data for previous commit** - Modified 1 files (+568009/-0 lines)
+3. **Add ML commit data** - Modified 1 files (+568045/-0 lines)
+4. **Stop tracking ML commit data files (too large for GitHub)** - Modified 472 files (+4/-2263268 lines)
+5. **Add lightweight commit data for ephemeral environments** - Modified 475 files (+11659/-13 lines)
+6. **Add ML commit data for previous commit** - Modified 1 files (+492/-0 lines)
+7. **Add ML commit data for previous commit** - Modified 1 files (+18/-0 lines)
+8. **Add ML commit data** - Modified 1 files (+18/-0 lines)
+9. **Add ML commit data** - Modified 1 files (+18/-0 lines)
+
+
+## The Solution
+
+Add ML commit data
+
+The solution involved changes to 1 files, adding 18 lines and removing 0 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 953
+
+- `.git-ml/commits-lite/0039ad5b13fb_2025-12-11.json`
+- `.git-ml/commits-lite/00f88d48ab42_2025-12-14.json`
+- `.git-ml/commits-lite/051d20028ddd_2025-12-13.json`
+- `.git-ml/commits-lite/051d924cae88_2025-12-13.json`
+- `.git-ml/commits-lite/059085dfe407_2025-12-10.json`
+- `.git-ml/commits-lite/0598bade86fa_2025-12-11.json`
+- `.git-ml/commits-lite/061a157b98f1_2025-12-13.json`
+- `.git-ml/commits-lite/063c542400da_2025-12-10.json`
+- `.git-ml/commits-lite/0656744909c4_2025-12-12.json`
+- `.git-ml/commits-lite/06897859b4fa_2025-12-11.json`
+
+*...and 943 more files*
+
+**Code Changes:** +1715905/-2263283 lines
+
+**Commits:** 10
+
+
+## Commits in This Story
+
+- `59bc226` (2025-12-15): feat: Add CI auto-capture and GitHub PR/Issue data collection
+- `5849304` (2025-12-15): chore: Add ML commit data for previous commit
+- `c4d25ae` (2025-12-15): chore: Add ML commit data
+- `a6f39e0` (2025-12-15): fix: Stop tracking ML commit data files (too large for GitHub)
+- `89d6aa5` (2025-12-15): feat: Add lightweight commit data for ephemeral environments
+- `84ddf26` (2025-12-15): chore: Add ML commit data for previous commit
+- `af67a1e` (2025-12-15): chore: Add ML commit data for previous commit
+- `a3471f5` (2025-12-15): chore: Add ML commit data
+- `6368f87` (2025-12-15): chore: Add ML commit data
+- `5fbd60d` (2025-12-15): chore: Add ML commit data
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Add ML commit data
+
+*Synthesized from commit history: 2025-12-15*
+
+## The Problem
+
+A new feature was required: Add lightweight commit data for ephemeral environments. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add lightweight commit data for ephemeral environments** - Modified 475 files (+11659/-13 lines)
+2. **Add ML commit data for previous commit** - Modified 1 files (+492/-0 lines)
+3. **Add ML commit data for previous commit** - Modified 1 files (+18/-0 lines)
+4. **Add ML commit data** - Modified 1 files (+18/-0 lines)
+5. **Add ML commit data** - Modified 1 files (+18/-0 lines)
+6. **Add ML commit data** - Modified 1 files (+18/-0 lines)
+7. **Add ML commit data** - Modified 1 files (+18/-0 lines)
+8. **Add ML commit data** - Modified 1 files (+18/-0 lines)
+9. **Add ML commit data** - Modified 1 files (+18/-0 lines)
+
+
+## The Solution
+
+Add ML commit data
+
+The solution involved changes to 1 files, adding 18 lines and removing 0 lines.
+
+
+## The Lesson
+
+**Feature development is iterative.** Breaking work into smaller commits makes it easier to review, test, and debug.
+
+## Technical Details
+
+**Files Modified:** 484
+
+- `.git-ml/commits-lite/0039ad5b13fb_2025-12-11.json`
+- `.git-ml/commits-lite/00f88d48ab42_2025-12-14.json`
+- `.git-ml/commits-lite/051d20028ddd_2025-12-13.json`
+- `.git-ml/commits-lite/051d924cae88_2025-12-13.json`
+- `.git-ml/commits-lite/059085dfe407_2025-12-10.json`
+- `.git-ml/commits-lite/0598bade86fa_2025-12-11.json`
+- `.git-ml/commits-lite/061a157b98f1_2025-12-13.json`
+- `.git-ml/commits-lite/063c542400da_2025-12-10.json`
+- `.git-ml/commits-lite/0656744909c4_2025-12-12.json`
+- `.git-ml/commits-lite/06897859b4fa_2025-12-11.json`
+
+*...and 474 more files*
+
+**Code Changes:** +12295/-13 lines
+
+**Commits:** 10
+
+
+## Commits in This Story
+
+- `89d6aa5` (2025-12-15): feat: Add lightweight commit data for ephemeral environments
+- `84ddf26` (2025-12-15): chore: Add ML commit data for previous commit
+- `af67a1e` (2025-12-15): chore: Add ML commit data for previous commit
+- `a3471f5` (2025-12-15): chore: Add ML commit data
+- `6368f87` (2025-12-15): chore: Add ML commit data
+- `5fbd60d` (2025-12-15): chore: Add ML commit data
+- `c85a5a5` (2025-12-15): chore: Add ML commit data
+- `7ace489` (2025-12-15): chore: Add ML commit data
+- `4ba9a0b` (2025-12-15): chore: Add ML commit data
+- `eadbbc8` (2025-12-15): chore: Add ML commit data
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Bug Fix - Harden ML data collector with critical fixes
+
+*Synthesized from commit history: 2025-12-15*
+
+## The Problem
+
+A new feature was required: Add ML data collection infrastructure for project-specific micro-model. This would require careful implementation and testing.
+
+## The Journey
+
+The solution was implemented directly.
+
+
+## The Solution
+
+Harden ML data collector with critical fixes
+
+The solution involved changes to 1 files, adding 151 lines and removing 54 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 4
+
+- `.claude/hooks/session_logger.py`
+- `.claude/skills/ml-logger/SKILL.md`
+- `.gitignore`
+- `scripts/ml_data_collector.py`
+
+**Code Changes:** +1190/-54 lines
+
+**Commits:** 2
+
+
+## Commits in This Story
+
+- `1568f3c` (2025-12-15): feat: Add ML data collection infrastructure for project-specific micro-model
+- `4438d60` (2025-12-15): fix: Harden ML data collector with critical fixes
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Bug Fix - Increase ML data retention to 2 years for training milestones
+
+*Synthesized from commit history: 2025-12-15*
+
+## The Problem
+
+A new feature was required: Add privacy features to ML data collection. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add privacy features to ML data collection** - Modified 2 files (+628/-1 lines)
+2. **Add ML data collection section to README** - Modified 1 files (+89/-0 lines)
+3. **Increase ML data retention to 2 years for training milestones** - Modified 2 files (+7/-5 lines)
+4. **Add automatic ML data collection on session startup** - Modified 3 files (+95/-22 lines)
+
+
+## The Solution
+
+Share ML commit data and aggregated patterns in git
+
+The solution involved changes to 474 files, adding 561272 lines and removing 4 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 478
+
+- `.claude/settings.local.json`
+- `.git-ml/commits/0039ad5b_2025-12-11_24b1b10a.json`
+- `.git-ml/commits/00f88d48_2025-12-14_8749d448.json`
+- `.git-ml/commits/051d2002_2025-12-13_7896a312.json`
+- `.git-ml/commits/051d924c_2025-12-13_bfbb2049.json`
+- `.git-ml/commits/059085df_2025-12-10_4adc6156.json`
+- `.git-ml/commits/0598bade_2025-12-11_ab9a0c3b.json`
+- `.git-ml/commits/061a157b_2025-12-13_af26e95e.json`
+- `.git-ml/commits/063c5424_2025-12-10_c2422fa6.json`
+- `.git-ml/commits/06567449_2025-12-12_95eabdde.json`
+
+*...and 468 more files*
+
+**Code Changes:** +562091/-32 lines
+
+**Commits:** 5
+
+
+## Commits in This Story
+
+- `e188508` (2025-12-15): feat: Add privacy features to ML data collection
+- `df75750` (2025-12-15): docs: Add ML data collection section to README
+- `95e9f06` (2025-12-15): fix: Increase ML data retention to 2 years for training milestones
+- `b805e13` (2025-12-15): feat: Add automatic ML data collection on session startup
+- `6570973` (2025-12-15): feat: Share ML commit data and aggregated patterns in git
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Bug Fix - Stop tracking ML commit data files (too large for GitHub)
+
+*Synthesized from commit history: 2025-12-15*
+
+## The Problem
+
+A new feature was required: Add automatic ML data collection on session startup. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add automatic ML data collection on session startup** - Modified 3 files (+95/-22 lines)
+2. **Share ML commit data and aggregated patterns in git** - Modified 474 files (+561272/-4 lines)
+3. **Add CI auto-capture and GitHub PR/Issue data collection** - Modified 5 files (+567624/-2 lines)
+4. **Add ML commit data for previous commit** - Modified 1 files (+568009/-0 lines)
+5. **Add ML commit data** - Modified 1 files (+568045/-0 lines)
+6. **Stop tracking ML commit data files (too large for GitHub)** - Modified 472 files (+4/-2263268 lines)
+7. **Add lightweight commit data for ephemeral environments** - Modified 475 files (+11659/-13 lines)
+8. **Add ML commit data for previous commit** - Modified 1 files (+492/-0 lines)
+9. **Add ML commit data for previous commit** - Modified 1 files (+18/-0 lines)
+
+
+## The Solution
+
+Add ML commit data
+
+The solution involved changes to 1 files, adding 18 lines and removing 0 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 957
+
+- `.claude/settings.local.json`
+- `.git-ml/commits-lite/0039ad5b13fb_2025-12-11.json`
+- `.git-ml/commits-lite/00f88d48ab42_2025-12-14.json`
+- `.git-ml/commits-lite/051d20028ddd_2025-12-13.json`
+- `.git-ml/commits-lite/051d924cae88_2025-12-13.json`
+- `.git-ml/commits-lite/059085dfe407_2025-12-10.json`
+- `.git-ml/commits-lite/0598bade86fa_2025-12-11.json`
+- `.git-ml/commits-lite/061a157b98f1_2025-12-13.json`
+- `.git-ml/commits-lite/063c542400da_2025-12-10.json`
+- `.git-ml/commits-lite/0656744909c4_2025-12-12.json`
+
+*...and 947 more files*
+
+**Code Changes:** +2277236/-2263309 lines
+
+**Commits:** 10
+
+
+## Commits in This Story
+
+- `b805e13` (2025-12-15): feat: Add automatic ML data collection on session startup
+- `6570973` (2025-12-15): feat: Share ML commit data and aggregated patterns in git
+- `59bc226` (2025-12-15): feat: Add CI auto-capture and GitHub PR/Issue data collection
+- `5849304` (2025-12-15): chore: Add ML commit data for previous commit
+- `c4d25ae` (2025-12-15): chore: Add ML commit data
+- `a6f39e0` (2025-12-15): fix: Stop tracking ML commit data files (too large for GitHub)
+- `89d6aa5` (2025-12-15): feat: Add lightweight commit data for ephemeral environments
+- `84ddf26` (2025-12-15): chore: Add ML commit data for previous commit
+- `af67a1e` (2025-12-15): chore: Add ML commit data for previous commit
+- `a3471f5` (2025-12-15): chore: Add ML commit data
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Bug Fix - Update tests for BM25 default and stop word tokenization
+
+*Synthesized from commit history: 2025-12-15*
+
+## The Problem
+
+Development work began: Add Stop hook config and update task tracking.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add Stop hook config and update task tracking** - Modified 3 files (+148/-10 lines)
+2. **Update tests for BM25 default and stop word tokenization** - Modified 2 files (+23/-10 lines)
+
+
+## The Solution
+
+Merge remote-tracking branch 'origin/main' into claude/multi-index-design-DvifZ
+
+The solution involved changes to 22 files, adding 3516 lines and removing 75 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 25
+
+- `.claude/settings.local.json`
+- `CLAUDE.md`
+- `benchmarks/BASELINE_SUMMARY.md`
+- `benchmarks/after_bm25.json`
+- `benchmarks/baseline_tfidf.json`
+- `benchmarks/baseline_tfidf_real.json`
+- `cortical/analysis.py`
+- `cortical/config.py`
+- `cortical/processor/compute.py`
+- `cortical/processor/core.py`
+
+*...and 15 more files*
+
+**Code Changes:** +3687/-95 lines
+
+**Commits:** 3
+
+
+## Commits in This Story
+
+- `293a467` (2025-12-15): chore: Add Stop hook config and update task tracking
+- `9dc7268` (2025-12-15): fix: Update tests for BM25 default and stop word tokenization
+- `ed36d6e` (2025-12-15): Merge remote-tracking branch 'origin/main' into claude/multi-index-design-DvifZ
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Feature Development - Add CI status integration for ML outcome tracking
+
+*Synthesized from commit history: 2025-12-15*
+
+## The Problem
+
+A new feature was required: Add commit-chat session linking for ML training. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add commit-chat session linking for ML training** - Modified 1 files (+234/-6 lines)
+2. **Add CI status integration for ML outcome tracking** - Modified 1 files (+180/-0 lines)
+
+
+## The Solution
+
+Address audit findings and add documentation
+
+The solution involved changes to 4 files, adding 201 lines and removing 15 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 4
+
+- `.claude/commands/ml-log.md`
+- `.claude/commands/ml-stats.md`
+- `CLAUDE.md`
+- `scripts/ml_data_collector.py`
+
+**Code Changes:** +615/-21 lines
+
+**Commits:** 3
+
+
+## Commits in This Story
+
+- `1b7f6d5` (2025-12-15): feat: Add commit-chat session linking for ML training
+- `ed66817` (2025-12-15): feat: Add CI status integration for ML outcome tracking
+- `36be3a1` (2025-12-15): fix: Address audit findings and add documentation
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Feature Development - Add comprehensive delegation command template
+
+*Synthesized from commit history: 2025-12-15*
+
+## The Problem
+
+A new feature was required: Add reusable pre-merge sanity check command. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add reusable pre-merge sanity check command** - Modified 1 files (+79/-0 lines)
+2. **Add comprehensive delegation command template** - Modified 1 files (+165/-0 lines)
+
+
+## The Solution
+
+Merge remote-tracking branch 'origin/main' into claude/multi-index-design-DvifZ
+
+The solution involved changes to 28 files, adding 6031 lines and removing 63 lines.
+
+
+## The Lesson
+
+**Feature development is iterative.** Breaking work into smaller commits makes it easier to review, test, and debug.
+
+## Technical Details
+
+**Files Modified:** 28
+
+- `.claude/commands/delegate.md`
+- `.claude/commands/ml-log.md`
+- `.claude/commands/ml-stats.md`
+- `.claude/commands/sanity-check.md`
+- `.claude/hooks/session_logger.py`
+- `.claude/settings.local.json`
+- `.claude/skills/ml-logger/SKILL.md`
+- `.gitignore`
+- `CLAUDE.md`
+- `README.md`
+
+*...and 18 more files*
+
+**Code Changes:** +6275/-63 lines
+
+**Commits:** 3
+
+
+## Commits in This Story
+
+- `cc0ff38` (2025-12-15): feat: Add reusable pre-merge sanity check command
+- `aac63a7` (2025-12-15): feat: Add comprehensive delegation command template
+- `f371d95` (2025-12-15): Merge remote-tracking branch 'origin/main' into claude/multi-index-design-DvifZ
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Feature Development - Add export, feedback, and quality-report commands to ML collector
+
+*Synthesized from commit history: 2025-12-15*
+
+## The Problem
+
+A new feature was required: Add session handoff generator for context preservation. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add session handoff generator for context preservation** - Modified 4 files (+442/-0 lines)
+2. **Add export, feedback, and quality-report commands to ML collector** - Modified 1 files (+769/-7 lines)
+
+
+## The Solution
+
+Update stale query.py and processor.py references
+
+The solution involved changes to 11 files, adding 95 lines and removing 71 lines.
+
+
+## The Lesson
+
+**Feature development is iterative.** Breaking work into smaller commits makes it easier to review, test, and debug.
+
+## Technical Details
+
+**Files Modified:** 14
+
+- `.claude/skills/ml-logger/SKILL.md`
+- `CLAUDE.md`
+- `docs/algorithms.md`
+- `docs/architecture.md`
+- `docs/claude-usage.md`
+- `docs/code-of-ethics.md`
+- `docs/devex-tools.md`
+- `docs/dogfooding.md`
+- `docs/glossary.md`
+- `docs/louvain_resolution_analysis.md`
+
+*...and 4 more files*
+
+**Code Changes:** +1306/-78 lines
+
+**Commits:** 3
+
+
+## Commits in This Story
+
+- `9bd4067` (2025-12-15): feat: Add session handoff generator for context preservation
+- `a75761b` (2025-12-15): feat: Add export, feedback, and quality-report commands to ML collector
+- `86cc3bb` (2025-12-15): docs: Update stale query.py and processor.py references
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Feature Development - Add lightweight commit data for ephemeral environments
+
+*Synthesized from commit history: 2025-12-15*
+
+## The Problem
+
+A new feature was required: Share ML commit data and aggregated patterns in git. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Share ML commit data and aggregated patterns in git** - Modified 474 files (+561272/-4 lines)
+2. **Add CI auto-capture and GitHub PR/Issue data collection** - Modified 5 files (+567624/-2 lines)
+3. **Add ML commit data for previous commit** - Modified 1 files (+568009/-0 lines)
+4. **Add ML commit data** - Modified 1 files (+568045/-0 lines)
+5. **Stop tracking ML commit data files (too large for GitHub)** - Modified 472 files (+4/-2263268 lines)
+6. **Add lightweight commit data for ephemeral environments** - Modified 475 files (+11659/-13 lines)
+7. **Add ML commit data for previous commit** - Modified 1 files (+492/-0 lines)
+8. **Add ML commit data for previous commit** - Modified 1 files (+18/-0 lines)
+9. **Add ML commit data** - Modified 1 files (+18/-0 lines)
+
+
+## The Solution
+
+Add ML commit data
+
+The solution involved changes to 1 files, adding 18 lines and removing 0 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 956
+
+- `.git-ml/commits-lite/0039ad5b13fb_2025-12-11.json`
+- `.git-ml/commits-lite/00f88d48ab42_2025-12-14.json`
+- `.git-ml/commits-lite/051d20028ddd_2025-12-13.json`
+- `.git-ml/commits-lite/051d924cae88_2025-12-13.json`
+- `.git-ml/commits-lite/059085dfe407_2025-12-10.json`
+- `.git-ml/commits-lite/0598bade86fa_2025-12-11.json`
+- `.git-ml/commits-lite/061a157b98f1_2025-12-13.json`
+- `.git-ml/commits-lite/063c542400da_2025-12-10.json`
+- `.git-ml/commits-lite/0656744909c4_2025-12-12.json`
+- `.git-ml/commits-lite/06897859b4fa_2025-12-11.json`
+
+*...and 946 more files*
+
+**Code Changes:** +2277159/-2263287 lines
+
+**Commits:** 10
+
+
+## Commits in This Story
+
+- `6570973` (2025-12-15): feat: Share ML commit data and aggregated patterns in git
+- `59bc226` (2025-12-15): feat: Add CI auto-capture and GitHub PR/Issue data collection
+- `5849304` (2025-12-15): chore: Add ML commit data for previous commit
+- `c4d25ae` (2025-12-15): chore: Add ML commit data
+- `a6f39e0` (2025-12-15): fix: Stop tracking ML commit data files (too large for GitHub)
+- `89d6aa5` (2025-12-15): feat: Add lightweight commit data for ephemeral environments
+- `84ddf26` (2025-12-15): chore: Add ML commit data for previous commit
+- `af67a1e` (2025-12-15): chore: Add ML commit data for previous commit
+- `a3471f5` (2025-12-15): chore: Add ML commit data
+- `6368f87` (2025-12-15): chore: Add ML commit data
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Feature Development - Add schema validation for ML data integrity
+
+*Synthesized from commit history: 2025-12-15*
+
+## The Problem
+
+A new feature was required: Add CI status integration for ML outcome tracking. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add CI status integration for ML outcome tracking** - Modified 1 files (+180/-0 lines)
+2. **Add commit-chat session linking for ML training** - Modified 1 files (+234/-6 lines)
+3. **Add schema validation for ML data integrity** - Modified 1 files (+177/-9 lines)
+4. **Address audit findings and add documentation** - Modified 4 files (+201/-15 lines)
+
+
+## The Solution
+
+Add Development Environment Setup section to CLAUDE.md
+
+The solution involved changes to 1 files, adding 23 lines and removing 0 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 4
+
+- `.claude/commands/ml-log.md`
+- `.claude/commands/ml-stats.md`
+- `CLAUDE.md`
+- `scripts/ml_data_collector.py`
+
+**Code Changes:** +815/-30 lines
+
+**Commits:** 5
+
+
+## Commits in This Story
+
+- `ed66817` (2025-12-15): feat: Add CI status integration for ML outcome tracking
+- `1b7f6d5` (2025-12-15): feat: Add commit-chat session linking for ML training
+- `1d9f520` (2025-12-15): feat: Add schema validation for ML data integrity
+- `36be3a1` (2025-12-15): fix: Address audit findings and add documentation
+- `bdea0a5` (2025-12-15): Add Development Environment Setup section to CLAUDE.md
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Refactoring - Consolidate ML data to single JSONL files
+
+*Synthesized from commit history: 2025-12-15*
+
+## The Problem
+
+Development work began: Add ML commit data.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add ML commit data** - Modified 1 files (+18/-0 lines)
+2. **Add ML commit data** - Modified 1 files (+18/-0 lines)
+3. **Consolidate ML data to single JSONL files** - Modified 486 files (+658/-12208 lines)
+
+
+## The Solution
+
+Merge pull request #95 from scrawlsbenches/claude/check-director-data-collection-WzK3q
+
+The solution involved changes to 8 files, adding 776 lines and removing 10 lines.
+
+
+## The Lesson
+
+**Code quality is an ongoing process.** Regular refactoring keeps the codebase maintainable and reduces technical debt.
+
+## Technical Details
+
+**Files Modified:** 492
+
+- `.claude/commands/director.md`
+- `.git-ml/commits-lite/0039ad5b13fb_2025-12-11.json`
+- `.git-ml/commits-lite/00f88d48ab42_2025-12-14.json`
+- `.git-ml/commits-lite/051d20028ddd_2025-12-13.json`
+- `.git-ml/commits-lite/051d924cae88_2025-12-13.json`
+- `.git-ml/commits-lite/059085dfe407_2025-12-10.json`
+- `.git-ml/commits-lite/0598bade86fa_2025-12-11.json`
+- `.git-ml/commits-lite/061a157b98f1_2025-12-13.json`
+- `.git-ml/commits-lite/063c542400da_2025-12-10.json`
+- `.git-ml/commits-lite/0656744909c4_2025-12-12.json`
+
+*...and 482 more files*
+
+**Code Changes:** +1470/-12218 lines
+
+**Commits:** 4
+
+
+## Commits in This Story
+
+- `eadbbc8` (2025-12-15): chore: Add ML commit data
+- `4ba9a0b` (2025-12-15): chore: Add ML commit data
+- `205fe34` (2025-12-15): refactor: Consolidate ML data to single JSONL files
+- `8e919a3` (2025-12-15): Merge pull request #95 from scrawlsbenches/claude/check-director-data-collection-WzK3q
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Add unit tests for Cortical Chronicles generators
+
+*Synthesized from commit history: 2025-12-16*
+
+## The Problem
+
+A new feature was required: Add search integration and web interface (Wave 3). This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add search integration and web interface (Wave 3)** - Modified 11 files (+2959/-1 lines)
+2. **Add CI workflow and documentation (Wave 4)** - Modified 5 files (+1724/-1 lines)
+3. **Wave 5 integration testing verification** - Modified 25 files (+227/-88 lines)
+4. **ML data sync** - Modified 43 files (+904/-6 lines)
+5. **ML data sync** - Modified 44 files (+923/-0 lines)
+6. **Add unit tests for Cortical Chronicles generators** - Modified 2 files (+1372/-0 lines)
+7. **ML data sync** - Modified 43 files (+922/-0 lines)
+8. **ML data sync** - Modified 45 files (+941/-0 lines)
+9. **ML data sync** - Modified 46 files (+981/-0 lines)
+
+
+## The Solution
+
+Add consolidated markdown book generation
+
+The solution involved changes to 3 files, adding 6392 lines and removing 2 lines.
+
+
+## The Lesson
+
+**Feature development is iterative.** Breaking work into smaller commits makes it easier to review, test, and debug.
+
+## Technical Details
+
+**Files Modified:** 254
+
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-000.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-001.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-002.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-003.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-004.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-005.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-006.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-007.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-008.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-009.json`
+
+*...and 244 more files*
+
+**Code Changes:** +17345/-98 lines
+
+**Commits:** 10
+
+
+## Commits in This Story
+
+- `0022466` (2025-12-16): feat: Add search integration and web interface (Wave 3)
+- `940fdf2` (2025-12-16): feat: Add CI workflow and documentation (Wave 4)
+- `1504899` (2025-12-16): chore: Wave 5 integration testing verification
+- `590f46f` (2025-12-16): chore: ML data sync
+- `be019d3` (2025-12-16): chore: ML data sync
+- `a09bd89` (2025-12-16): test: Add unit tests for Cortical Chronicles generators
+- `a16f142` (2025-12-16): chore: ML data sync
+- `d8ba759` (2025-12-16): chore: ML data sync
+- `18ffbcd` (2025-12-16): chore: ML data sync
+- `f8a2ad6` (2025-12-16): feat: Add consolidated markdown book generation
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Bug Fix - Address critical ML data collection and prediction issues
+
+*Synthesized from commit history: 2025-12-16*
+
+## The Problem
+
+Development work began: Add ML chat data from investigation sessions.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add ML chat data from investigation sessions** - Modified 6 files (+98/-27 lines)
+2. **Mock file existence in ML prediction tests** - Modified 2 files (+21/-8 lines)
+3. **Address critical ML data collection and prediction issues** - Modified 9 files (+148/-17 lines)
+
+
+## The Solution
+
+Update ML chat data from orchestration session
+
+The solution involved changes to 14 files, adding 146 lines and removing 6 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 19
+
+- `.git-ml/chats/2025-12-15/chat-20251216-115057-b5bb48.json`
+- `.git-ml/chats/2025-12-15/chat-20251216-120351-efac30.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-115057-3617f9.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-115057-9502fd.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-115057-cbbe64.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-115057-f65b7a.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-120351-1b48d7.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-120351-86411f.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-120351-c08c4a.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-120351-c1c3b1.json`
+
+*...and 9 more files*
+
+**Code Changes:** +413/-58 lines
+
+**Commits:** 4
+
+
+## Commits in This Story
+
+- `c08cc75` (2025-12-16): chore: Add ML chat data from investigation sessions
+- `ec8db7a` (2025-12-16): fix(tests): Mock file existence in ML prediction tests
+- `fead1c1` (2025-12-16): fix: Address critical ML data collection and prediction issues
+- `a304a1d` (2025-12-16): chore: Update ML chat data from orchestration session
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Bug Fix - Archive ML session after transcript processing (T-003 16f3)
+
+*Synthesized from commit history: 2025-12-16*
+
+## The Problem
+
+Development work began: ML data from director review session.
+
+## The Journey
+
+The solution was implemented directly.
+
+
+## The Solution
+
+Archive ML session after transcript processing (T-003 16f3)
+
+The solution involved changes to 1 files, adding 12 lines and removing 0 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 13
+
+- `.git-ml/actions/2025-12-16/A-20251216-132552-2869-000.json`
+- `.git-ml/actions/2025-12-16/A-20251216-132552-2869-001.json`
+- `.git-ml/actions/2025-12-16/A-20251216-132552-2869-002.json`
+- `.git-ml/actions/2025-12-16/A-20251216-132827-2869-000.json`
+- `.git-ml/actions/2025-12-16/A-20251216-132827-2869-001.json`
+- `.git-ml/actions/2025-12-16/A-20251216-132827-2869-002.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-132552-3c1c3c.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-132552-8b8c20.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-132827-0135aa.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-132827-5d9c33.json`
+
+*...and 3 more files*
+
+**Code Changes:** +241/-1 lines
+
+**Commits:** 2
+
+
+## Commits in This Story
+
+- `10036d1` (2025-12-16): chore: ML data from director review session
+- `59072c8` (2025-12-16): fix: Archive ML session after transcript processing (T-003 16f3)
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Bug Fix - Fix ML data collection milestone counting and add session/action capture
+
+*Synthesized from commit history: 2025-12-16*
+
+## The Problem
+
+Development work began: Update ML chat data from investigation session.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Update ML chat data from investigation session** - Modified 22 files (+182/-33 lines)
+2. **Update ML chat data from orchestration session** - Modified 14 files (+146/-6 lines)
+3. **Fix ML data collection milestone counting and add session/action capture** - Modified 11 files (+95/-29 lines)
+4. **ML data from session with new action/session collection** - Modified 18 files (+319/-1 lines)
+
+
+## The Solution
+
+Batch task distribution implementation via Director orchestration
+
+The solution involved changes to 8 files, adding 3185 lines and removing 89 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 46
+
+- `.claude/hooks/session_logger.py`
+- `.git-ml/actions/2025-12-15/A-20251216-122826-0299-000.json`
+- `.git-ml/actions/2025-12-16/A-20251216-122826-0299-001.json`
+- `.git-ml/actions/2025-12-16/A-20251216-122826-0299-002.json`
+- `.git-ml/actions/2025-12-16/A-20251216-122826-0299-003.json`
+- `.git-ml/actions/2025-12-16/A-20251216-122826-0299-004.json`
+- `.git-ml/actions/2025-12-16/A-20251216-122826-0299-005.json`
+- `.git-ml/chats/2025-12-15/chat-20251216-115057-b5bb48.json`
+- `.git-ml/chats/2025-12-15/chat-20251216-120351-efac30.json`
+- `.git-ml/chats/2025-12-15/chat-20251216-121720-30c3c1.json`
+
+*...and 36 more files*
+
+**Code Changes:** +3927/-158 lines
+
+**Commits:** 5
+
+
+## Commits in This Story
+
+- `ba3a05b` (2025-12-16): chore: Update ML chat data from investigation session
+- `a304a1d` (2025-12-16): chore: Update ML chat data from orchestration session
+- `273baef` (2025-12-16): fix: Fix ML data collection milestone counting and add session/action capture
+- `de8ca40` (2025-12-16): chore: ML data from session with new action/session collection
+- `4f915c3` (2025-12-16): feat: Batch task distribution implementation via Director orchestration
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: Bug Fix - Prevent infinite commit loop in ML data collection hooks
+
+*Synthesized from commit history: 2025-12-16*
+
+## The Problem
+
+Development work began: ML tracking data.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **ML tracking data** - Modified 2 files (+2/-1 lines)
+2. **ML tracking data** - Modified 2 files (+2/-1 lines)
+3. **ML tracking data** - Modified 2 files (+2/-1 lines)
+4. **Prevent infinite commit loop in ML data collection hooks** - Modified 3 files (+9/-1 lines)
+5. **ML tracking data** - Modified 2 files (+2/-1 lines)
+
+
+## The Solution
+
+ML tracking data
+
+The solution involved changes to 4 files, adding 62 lines and removing 1 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 7
+
+- `.git-ml/chats/2025-12-16/chat-20251216-004054-78b531.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-004643-110372.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-004643-4911e7.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-004643-99bc2f.json`
+- `.git-ml/current_session.json`
+- `.git-ml/tracked/commits.jsonl`
+- `scripts/ml_data_collector.py`
+
+**Code Changes:** +79/-6 lines
+
+**Commits:** 6
+
+
+## Commits in This Story
+
+- `9abdc28` (2025-12-16): data: ML tracking data
+- `f4c0e9f` (2025-12-16): data: ML tracking data
+- `49801a4` (2025-12-16): data: ML tracking data
+- `66ad656` (2025-12-16): fix: Prevent infinite commit loop in ML data collection hooks
+- `c8fc6b4` (2025-12-16): data: ML tracking data
+- `b66610a` (2025-12-16): data: ML tracking data
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: ML data sync
+
+*Synthesized from commit history: 2025-12-16*
+
+## The Problem
+
+A new feature was required: Add CI workflow and documentation (Wave 4). This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add CI workflow and documentation (Wave 4)** - Modified 5 files (+1724/-1 lines)
+2. **Wave 5 integration testing verification** - Modified 25 files (+227/-88 lines)
+3. **ML data sync** - Modified 43 files (+904/-6 lines)
+4. **ML data sync** - Modified 44 files (+923/-0 lines)
+5. **Add unit tests for Cortical Chronicles generators** - Modified 2 files (+1372/-0 lines)
+6. **ML data sync** - Modified 43 files (+922/-0 lines)
+7. **ML data sync** - Modified 45 files (+941/-0 lines)
+8. **ML data sync** - Modified 46 files (+981/-0 lines)
+9. **Add consolidated markdown book generation** - Modified 3 files (+6392/-2 lines)
+
+
+## The Solution
+
+Capture session data
+
+The solution involved changes to 2 files, adding 2 lines and removing 0 lines.
+
+
+## The Lesson
+
+**Feature development is iterative.** Breaking work into smaller commits makes it easier to review, test, and debug.
+
+## Technical Details
+
+**Files Modified:** 247
+
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-000.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-001.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-002.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-003.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-004.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-005.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-006.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-007.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-008.json`
+- `.git-ml/actions/2025-12-16/A-20251216-172758-1540-009.json`
+
+*...and 237 more files*
+
+**Code Changes:** +14388/-97 lines
+
+**Commits:** 10
+
+
+## Commits in This Story
+
+- `940fdf2` (2025-12-16): feat: Add CI workflow and documentation (Wave 4)
+- `1504899` (2025-12-16): chore: Wave 5 integration testing verification
+- `590f46f` (2025-12-16): chore: ML data sync
+- `be019d3` (2025-12-16): chore: ML data sync
+- `a09bd89` (2025-12-16): test: Add unit tests for Cortical Chronicles generators
+- `a16f142` (2025-12-16): chore: ML data sync
+- `d8ba759` (2025-12-16): chore: ML data sync
+- `18ffbcd` (2025-12-16): chore: ML data sync
+- `f8a2ad6` (2025-12-16): feat: Add consolidated markdown book generation
+- `0b34b17` (2025-12-16): ml: Capture session data
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Case Study: ML tracking data
+
+*Synthesized from commit history: 2025-12-16*
+
+## The Problem
+
+A new feature was required: Add chunked storage for git-friendly ML data. This would require careful implementation and testing.
+
+## The Journey
+
+The development progressed through several stages:
+
+1. **Add chunked storage for git-friendly ML data** - Modified 4 files (+1068/-0 lines)
+2. **ML tracking data** - Modified 7 files (+95/-8 lines)
+3. **Add ML data collection knowledge transfer document** - Modified 1 files (+340/-0 lines)
+4. **ML tracking data** - Modified 7 files (+98/-2 lines)
+5. **ML tracking data** - Modified 12 files (+216/-3 lines)
+6. **Add missing imports in validate command** - Modified 1 files (+5/-0 lines)
+
+
+## The Solution
+
+Add ML file prediction model
+
+The solution involved changes to 2 files, adding 1098 lines and removing 0 lines.
+
+
+## The Lesson
+
+**Bugs often hide in unexpected places.** Thorough investigation and testing are essential for finding root causes.
+
+## Technical Details
+
+**Files Modified:** 30
+
+- `.git-ml/chats/2025-12-16/chat-20251216-005017-2e0bba.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-005017-51f512.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-005017-9b8abf.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-005017-d826a3.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-010357-15ba9d.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-010357-279b0c.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-010357-a70b9d.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-010357-a99a7b.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-010357-f3ffe9.json`
+- `.git-ml/chats/2025-12-16/chat-20251216-012424-3b0705.json`
+
+*...and 20 more files*
+
+**Code Changes:** +2920/-13 lines
+
+**Commits:** 7
+
+
+## Commits in This Story
+
+- `0754540` (2025-12-16): feat: Add chunked storage for git-friendly ML data
+- `cd7c692` (2025-12-16): data: ML tracking data
+- `5d3bf6d` (2025-12-16): docs: Add ML data collection knowledge transfer document
+- `5664b51` (2025-12-16): data: ML tracking data
+- `07ff40c` (2025-12-16): data: ML tracking data
+- `172ad8f` (2025-12-16): fix: Add missing imports in validate command
+- `ac549dd` (2025-12-16): feat: Add ML file prediction model
+
+---
+
+*This case study was automatically synthesized from git commit history.*
+
+---
+
+## Synthesized Case Studies
+
+*Case studies automatically synthesized from git commit history*
+
+These stories are reconstructed from related commit sequences, showing how real development work unfolds over time.
+
+---
+
+### [Bug Fix - Update skipped tests for processor/ package refactor](synthesized-2025-12-14-bug-fix---update-skipped-tests.md)
+
+**2 commits** | **10 files**
+
+Split processor.py into modular processor/ package (LEGACY-095)
+
+---
+
+### [Bug Fix - Use heredoc for Python in CI to avoid YAML syntax error](synthesized-2025-12-14-bug-fix---use-heredoc-for-pyth.md)
+
+**3 commits** | **1 files**
+
+Make push trigger explicit for all branches
+
+---
+
+### [Update task ID format test to expect microseconds](synthesized-2025-12-14-update-task-id-format-test-to-.md)
+
+**2 commits** | **2 files**
+
+Add microseconds to task ID to prevent collisions
+
+---
+
+### [Bug Fix - Replace external action with native Python link checker](synthesized-2025-12-14-bug-fix---replace-external-act.md)
+
+**4 commits** | **48 files**
+
+Merge pull request #81 from scrawlsbenches/claude/implement-director-mode-NKbiu
+
+---
+
+### [Bug Fix - Add test file penalty and code stop word filtering to search](synthesized-2025-12-14-bug-fix---add-test-file-penalt.md)
+
+**2 commits** | **33 files**
+
+Director mode batch execution - 6 tasks completed in parallel
+
+---
+
+### [Bug Fix - Harden ML data collector with critical fixes](synthesized-2025-12-15-bug-fix---harden-ml-data-colle.md)
+
+**2 commits** | **4 files**
+
+Add ML data collection infrastructure for project-specific micro-model
+
+---
+
+### [Feature Development - Add schema validation for ML data integrity](synthesized-2025-12-15-feature-development---add-sche.md)
+
+**5 commits** | **4 files**
+
+Add CI status integration for ML outcome tracking
+
+---
+
+### [Bug Fix - Update tests for BM25 default and stop word tokenization](synthesized-2025-12-15-bug-fix---update-tests-for-bm2.md)
+
+**3 commits** | **25 files**
+
+Add Stop hook config and update task tracking
+
+---
+
+### [Bug Fix - Increase ML data retention to 2 years for training milestones](synthesized-2025-12-15-bug-fix---increase-ml-data-ret.md)
+
+**5 commits** | **478 files**
+
+Add privacy features to ML data collection
+
+---
+
+### [Bug Fix - Stop tracking ML commit data files (too large for GitHub)](synthesized-2025-12-15-bug-fix---stop-tracking-ml-com.md)
+
+**6 commits** | **949 files**
+
+Add ML commit data
+
+---
+
+### [Bug Fix - Prevent infinite commit loop in ML data collection hooks](synthesized-2025-12-16-bug-fix---prevent-infinite-com.md)
+
+**6 commits** | **7 files**
+
+ML tracking data
+
+---
+
+### [Bug Fix - Address critical ML data collection and prediction issues](synthesized-2025-12-16-bug-fix---address-critical-ml-.md)
+
+**4 commits** | **19 files**
+
+Add ML chat data from investigation sessions
+
+---
+
+### [Bug Fix - Fix ML data collection milestone counting and add session/action capture](synthesized-2025-12-16-bug-fix---fix-ml-data-collecti.md)
+
+**5 commits** | **46 files**
+
+Update ML chat data from investigation session
+
+---
+
+### [Bug Fix - Archive ML session after transcript processing (T-003 16f3)](synthesized-2025-12-16-bug-fix---archive-ml-session-a.md)
+
+**2 commits** | **13 files**
+
+ML data from director review session
+
+---
+
+### [Refactoring - Migrate to merge-friendly task system and add security tasks](synthesized-2025-12-14-refactoring---migrate-to-merge.md)
+
+**4 commits** | **10 files**
+
+Rename CLAUDE.md.potential to CLAUDE.md
+
+---
+
+### [Refactoring - Split processor.py into modular processor/ package (LEGACY-095)](synthesized-2025-12-14-refactoring---split-processor..md)
+
+**4 commits** | **32 files**
+
+Merge pull request #80 from scrawlsbenches/claude/resume-dog-fooding-9RPIV
+
+---
+
+### [Refactoring - Consolidate ML data to single JSONL files](synthesized-2025-12-15-refactoring---consolidate-ml-d.md)
+
+**4 commits** | **492 files**
+
+Add ML commit data
+
+---
+
+### [Refactoring - Split processor.py into modular processor/ package (LEGACY-095)](synthesized-2025-12-14-refactoring---split-processor..md)
+
+**4 commits** | **32 files**
+
+Add HMAC signature verification for pickle files (SEC-003)
+
+---
+
+### [Feature Development - Add director agent orchestration prompt](synthesized-2025-12-14-feature-development---add-dire.md)
+
+**10 commits** | **52 files**
+
+Add future tasks for text-as-memories integration
+
+---
+
+### [Add session memory and knowledge transfer](synthesized-2025-12-14-add-session-memory-and-knowled.md)
+
+**5 commits** | **49 files**
+
+Add director agent orchestration prompt
+
+---
+
+### [Feature Development - Add session handoff, auto-memory, CI link checker, and tests](synthesized-2025-12-14-feature-development---add-sess.md)
+
+**4 commits** | **48 files**
+
+Add memory system CLI and improve documentation
+
+---
+
+### [Clean up directory structure and queue search relevance fixes](synthesized-2025-12-14-clean-up-directory-structure-a.md)
+
+**5 commits** | **39 files**
+
+Director mode batch execution - 6 tasks completed in parallel
+
+---
+
+### [Feature Development - Add CI status integration for ML outcome tracking](synthesized-2025-12-15-feature-development---add-ci-s.md)
+
+**4 commits** | **4 files**
+
+Add schema validation for ML data integrity
+
+---
+
+### [Feature Development - Add CI status integration for ML outcome tracking](synthesized-2025-12-15-feature-development---add-ci-s.md)
+
+**3 commits** | **4 files**
+
+Add commit-chat session linking for ML training
+
+---
+
+### [Feature Development - Add export, feedback, and quality-report commands to ML collector](synthesized-2025-12-15-feature-development---add-expo.md)
+
+**3 commits** | **14 files**
+
+Add session handoff generator for context preservation
+
+---
+
+### [Feature Development - Add comprehensive delegation command template](synthesized-2025-12-15-feature-development---add-comp.md)
+
+**3 commits** | **28 files**
+
+Add reusable pre-merge sanity check command
+
+---
+
+### [Add ML commit data for previous commit](synthesized-2025-12-15-add-ml-commit-data-for-previou.md)
+
+**10 commits** | **956 files**
+
+Add privacy features to ML data collection
+
+---
+
+### [Bug Fix - Stop tracking ML commit data files (too large for GitHub)](synthesized-2025-12-15-bug-fix---stop-tracking-ml-com.md)
+
+**10 commits** | **957 files**
+
+Add automatic ML data collection on session startup
+
+---
+
+### [Feature Development - Add lightweight commit data for ephemeral environments](synthesized-2025-12-15-feature-development---add-ligh.md)
+
+**10 commits** | **956 files**
+
+Share ML commit data and aggregated patterns in git
+
+---
+
+### [Add ML commit data for previous commit](synthesized-2025-12-15-add-ml-commit-data-for-previou.md)
+
+**10 commits** | **953 files**
+
+Add CI auto-capture and GitHub PR/Issue data collection
+
+---
+
+### [Add ML commit data](synthesized-2025-12-15-add-ml-commit-data.md)
+
+**10 commits** | **484 files**
+
+Add lightweight commit data for ephemeral environments
+
+---
+
+### [ML tracking data](synthesized-2025-12-16-ml-tracking-data.md)
+
+**10 commits** | **34 files**
+
+Add ML stats report to CI pipeline
+
+---
+
+### [ML tracking data](synthesized-2025-12-16-ml-tracking-data.md)
+
+**7 commits** | **30 files**
+
+Add chunked storage for git-friendly ML data
+
+---
+
+### [ML data sync](synthesized-2025-12-16-ml-data-sync.md)
+
+**10 commits** | **218 files**
+
+Add Cortical Chronicles book infrastructure (Wave 1)
+
+---
+
+### [ML data sync](synthesized-2025-12-16-ml-data-sync.md)
+
+**10 commits** | **254 files**
+
+Add content generators for Cortical Chronicles (Wave 2)
+
+---
+
+### [Add unit tests for Cortical Chronicles generators](synthesized-2025-12-16-add-unit-tests-for-cortical-ch.md)
+
+**10 commits** | **254 files**
+
+Add search integration and web interface (Wave 3)
+
+---
+
+### [ML data sync](synthesized-2025-12-16-ml-data-sync.md)
+
+**10 commits** | **247 files**
+
+Add CI workflow and documentation (Wave 4)
+
+---
+
+---
+
+# 06 Lessons
+
+## Lessons Learned
+
+*What the Cortical Text Processor taught us about building IR systems.*
+
+---
+
+## Overview
+
+Through **51 lessons** extracted from development history, we've learned how to build better search systems. Each bug fixed, each optimization made, and each refactoring completed taught us something valuable.
+
+## Statistics
+
+- **Total Commits Analyzed**: 300
+- **Lessons Extracted**: 51
+
+### By Category
+
+- **Performance**: 1 lessons
+- **Correctness**: 24 lessons
+- **Architecture**: 10 lessons
+- **Testing**: 16 lessons
+
+## Lesson Categories
+
+### [Performance Lessons](lessons-performance.md)
+
+How we learned to optimize search and graph algorithms
+
+**1 lessons** from development history.
+
+### [Correctness Lessons](lessons-correctness.md)
+
+Bugs we fixed and edge cases we discovered
+
+**24 lessons** from development history.
+
+### [Architecture Lessons](lessons-architecture.md)
+
+How we evolved the codebase structure
+
+**10 lessons** from development history.
+
+### [Testing Lessons](lessons-testing.md)
+
+What we learned about verifying correctness
+
+**16 lessons** from development history.
+
+---
+
+*This chapter is part of [The Cortical Chronicles](../README.md), a self-documenting book generated by the Cortical Text Processor.*
+
+---
+
+## Architecture Lessons
+
+*How we evolved the code structure over time.*
+
+---
+
+## Overview
+
+This chapter captures **10 lessons** from architecture work. Each entry shows the problem, the solution, and the principle we extracted.
+
+### Complete legacy task system cleanup
+
+**Commit:** `8dedda6`  
+**Date:** 2025-12-16  
+**Files Changed:** 4  
+  - `docs/archive/migrate_legacy_tasks.py`
+  - `scripts/select_task.py`
+  - `scripts/task_graph.py`
+  - *(and 1 more)*
+
+**The Lesson:** Maintain clear structure. The lesson? Complete legacy task system cleanup
+
+### Feat: Add Cortical Chronicles book infrastructure (Wave 1)
+
+**Commit:** `c730057`  
+**Date:** 2025-12-16  
+**Files Changed:** 13  
+  - `.git-ml/current_session.json`
+  - `.git-ml/tracked/commits.jsonl`
+  - `book/00-preface/.gitkeep`
+  - *(and 10 more)*
+**Changes:** +434/-0 lines  
+
+**The Lesson:** Maintain clear structure. The lesson? feat: Add Cortical Chronicles book infrastructure (Wave 1)
+
+### Remove unused protobuf serialization (T-013 f0ff)
+
+**Commit:** `d7a98ae`  
+**Date:** 2025-12-16  
+**Files Changed:** 6  
+  - `cortical/persistence.py`
+  - `cortical/proto/__init__.py`
+  - `cortical/proto/schema.proto`
+  - *(and 3 more)*
+**Changes:** +100/-1460 lines  
+
+**The Lesson:** Maintain clear structure. The lesson? Remove unused protobuf serialization (T-013 f0ff)
+
+### Data: Add orchestration extraction data from quality audit session
+
+**Commit:** `c85c668`  
+**Date:** 2025-12-16  
+**Files Changed:** 1  
+  - `.git-ml/tracked/orchestration.jsonl`
+**Changes:** +1/-0 lines  
+
+**The Lesson:** Keep modules focused. The lesson? data: Add orchestration extraction data from quality audit session
+
+### Data: Add orchestration extraction data for ML training
+
+**Commit:** `bb75148`  
+**Date:** 2025-12-15  
+**Files Changed:** 1  
+  - `.git-ml/orchestration/05c8c5d9-75c6-4267-9fef-1d5573ba201b_orchestration.json`
+**Changes:** +66/-0 lines  
+
+**The Lesson:** Keep modules focused. The lesson? data: Add orchestration extraction data for ML training
+
+### Feat: Add orchestration extraction for director sub-agent tracking
+
+**Commit:** `4eaeb37`  
+**Date:** 2025-12-15  
+**Files Changed:** 4  
+  - `.gitignore`
+  - `scripts/ml_collector/__init__.py`
+  - `scripts/ml_collector/orchestration.py`
+  - *(and 1 more)*
+
+**The Lesson:** Keep modules focused. The lesson? feat: Add orchestration extraction for director sub-agent tracking
+
+### Split large files exceeding 25000 token limit
+
+**Commit:** `21ec5ea`  
+**Date:** 2025-12-15  
+**Files Changed:** 36  
+  - `.refactor-backup/BACKUP_PLAN.md`
+  - `.refactor-backup/analysis.py`
+  - `.refactor-backup/ml_data_collector.py`
+  - *(and 33 more)*
+
+**The Lesson:** Keep modules focused. The lesson? Split large files exceeding 25000 token limit
+
+### Consolidate ML data to single JSONL files
+
+**Commit:** `205fe34`  
+**Date:** 2025-12-15  
+**Files Changed:** 486  
+  - `.git-ml/commits-lite/0039ad5b13fb_2025-12-11.json`
+  - `.git-ml/commits-lite/00f88d48ab42_2025-12-14.json`
+  - `.git-ml/commits-lite/051d20028ddd_2025-12-13.json`
+  - *(and 483 more)*
+**Changes:** +658/-12208 lines  
+
+**The Lesson:** Maintain clear structure. The lesson? Consolidate ML data to single JSONL files
+
+### Feat: Add ML data collection infrastructure for project-specific micro-model
+
+**Commit:** `1568f3c`  
+**Date:** 2025-12-15  
+**Files Changed:** 4  
+  - `.claude/hooks/session_logger.py`
+  - `.claude/skills/ml-logger/SKILL.md`
+  - `.gitignore`
+  - *(and 1 more)*
+**Changes:** +1039/-0 lines  
+
+**The Lesson:** Maintain clear structure. The lesson? feat: Add ML data collection infrastructure for project-specific micro-model
+
+### Clean up directory structure and queue search relevance fixes
+
+**Commit:** `cd8b9f5`  
+**Date:** 2025-12-14  
+**Files Changed:** 5  
+  - `IMPLEMENTATION_SUMMARY.md`
+  - `docs/PATTERN_DETECTION_GUIDE.md`
+  - `examples/demo_pattern_detection.py`
+  - *(and 2 more)*
+**Changes:** +68/-293 lines  
+
+**The Lesson:** Maintain clear structure. The lesson? Clean up directory structure and queue search relevance fixes
+
+---
+
+*This chapter is part of [The Cortical Chronicles](../README.md), a self-documenting book generated by the Cortical Text Processor.*
+
+---
+
+## Correctness Lessons
+
+*Bugs we encountered and how we fixed them.*
+
+---
+
+## Overview
+
+This chapter captures **24 lessons** from correctness work. Each entry shows the problem, the solution, and the principle we extracted.
+
+### Archive ML session after transcript processing (T-003 16f3)
+
+**Commit:** `59072c8`  
+**Date:** 2025-12-16  
+**Files Changed:** 1  
+  - `scripts/ml_data_collector.py`
+**Changes:** +12/-0 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Archive ML session after transcript processing (T-003 16f3)
+
+### Update CSV truncation test for new defaults (input=500, output=2000)
+
+**Commit:** `ca94a01`  
+**Date:** 2025-12-16  
+**Files Changed:** 4  
+  - `.git-ml/chats/2025-12-16/chat-20251216-125311-0ce6d9.json`
+  - `.git-ml/chats/2025-12-16/chat-20251216-132048-ba08bf.json`
+  - `.git-ml/tracked/commits.jsonl`
+  - *(and 1 more)*
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Update CSV truncation test for new defaults (input=500, output=2000)
+
+### Fix ML data collection milestone counting and add session/action capture
+
+**Commit:** `273baef`  
+**Date:** 2025-12-16  
+**Files Changed:** 11  
+  - `.git-ml/chats/2025-12-15/chat-20251216-121720-30c3c1.json`
+  - `.git-ml/chats/2025-12-16/chat-20251216-121720-01077d.json`
+  - `.git-ml/chats/2025-12-16/chat-20251216-121720-306450.json`
+  - *(and 8 more)*
+**Changes:** +95/-29 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Fix ML data collection milestone counting and add session/action capture
+
+### Address critical ML data collection and prediction issues
+
+**Commit:** `fead1c1`  
+**Date:** 2025-12-16  
+**Files Changed:** 9  
+  - `.git-ml/chats/2025-12-15/chat-20251216-115057-b5bb48.json`
+  - `.git-ml/chats/2025-12-16/chat-20251216-115057-3617f9.json`
+  - `.git-ml/chats/2025-12-16/chat-20251216-115057-9502fd.json`
+  - *(and 6 more)*
+**Changes:** +148/-17 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Address critical ML data collection and prediction issues
+
+### Fix(proto): Make protobuf loading lazy to fix CI smoke test failures
+
+**Commit:** `a93518f`  
+**Date:** 2025-12-16  
+**Files Changed:** 2  
+  - `cortical/proto/__init__.py`
+  - `cortical/proto/serialization.py`
+**Changes:** +53/-19 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: fix(proto): Make protobuf loading lazy to fix CI smoke test failures
+
+### Add missing imports in validate command
+
+**Commit:** `172ad8f`  
+**Date:** 2025-12-16  
+**Files Changed:** 1  
+  - `scripts/ml_data_collector.py`
+**Changes:** +5/-0 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Add missing imports in validate command
+
+### Clean up gitignore pattern for .git-ml/commits/
+
+**Commit:** `a65d54f`  
+**Date:** 2025-12-16  
+**Files Changed:** 1  
+  - `.gitignore`
+**Changes:** +2/-1 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Clean up gitignore pattern for .git-ml/commits/
+
+### Prevent infinite commit loop in ML data collection hooks
+
+**Commit:** `66ad656`  
+**Date:** 2025-12-16  
+**Files Changed:** 3  
+  - `.git-ml/chats/2025-12-16/chat-20251216-004054-78b531.json`
+  - `.git-ml/tracked/commits.jsonl`
+  - `scripts/ml_data_collector.py`
+**Changes:** +9/-1 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Prevent infinite commit loop in ML data collection hooks
+
+### Correct hook format in settings.local.json
+
+**Commit:** `19ac02a`  
+**Date:** 2025-12-16  
+**Files Changed:** 1  
+  - `.claude/settings.local.json`
+**Changes:** +14/-4 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Correct hook format in settings.local.json
+
+### Use filename-based sorting for deterministic session ordering
+
+**Commit:** `61d502d`  
+**Date:** 2025-12-15  
+**Files Changed:** 2  
+  - `scripts/session_context.py`
+  - `tests/unit/test_session_context.py`
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Use filename-based sorting for deterministic session ordering
+
+### Increase ID suffix length to prevent collisions
+
+**Commit:** `8ac4b6b`  
+**Date:** 2025-12-15  
+**Files Changed:** 2  
+  - `scripts/orchestration_utils.py`
+  - `tests/unit/test_orchestration_utils.py`
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Increase ID suffix length to prevent collisions
+
+### Add import guards for optional test dependencies
+
+**Commit:** `91ffb04`  
+**Date:** 2025-12-15  
+**Files Changed:** 2  
+  - `tests/security/test_fuzzing.py`
+  - `tests/test_mcp_server.py`
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Add import guards for optional test dependencies
+
+### Make session file sorting stable for deterministic ordering
+
+**Commit:** `7433b36`  
+**Date:** 2025-12-15  
+**Files Changed:** 1  
+  - `scripts/session_context.py`
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Make session file sorting stable for deterministic ordering
+
+### Feat(LEGACY-130): Expand customer service corpus and fix xfailed tests
+
+**Commit:** `7f9664d`  
+**Date:** 2025-12-15  
+**Files Changed:** 6  
+  - `samples/customer_service/complaint_escalation_procedures.txt`
+  - `samples/customer_service/empathy_and_active_listening.txt`
+  - `samples/customer_service/refund_request_handling.txt`
+  - *(and 3 more)*
+
+**The Lesson:** Verify assumptions with tests. The wisdom: feat(LEGACY-130): Expand customer service corpus and fix xfailed tests
+
+### Cap query expansion weights to prevent term domination
+
+**Commit:** `fecd6dc`  
+**Date:** 2025-12-15  
+**Files Changed:** 3  
+  - `cortical/query/expansion.py`
+  - `tests/behavioral/test_customer_service_quality.py`
+  - `tests/unit/test_query_expansion.py`
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Cap query expansion weights to prevent term domination
+
+### Add YAML frontmatter to slash commands for discovery
+
+**Commit:** `5b52da2`  
+**Date:** 2025-12-15  
+**Files Changed:** 7  
+  - `.claude/commands/delegate.md`
+  - `.claude/commands/director.md`
+  - `.claude/commands/knowledge-transfer.md`
+  - *(and 4 more)*
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Add YAML frontmatter to slash commands for discovery
+
+### Stop tracking ML commit data files (too large for GitHub)
+
+**Commit:** `a6f39e0`  
+**Date:** 2025-12-15  
+**Files Changed:** 472  
+  - `.git-ml/commits/0039ad5b_2025-12-11_24b1b10a.json`
+  - `.git-ml/commits/00f88d48_2025-12-14_8749d448.json`
+  - `.git-ml/commits/051d2002_2025-12-13_7896a312.json`
+  - *(and 469 more)*
+**Changes:** +4/-2263268 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Stop tracking ML commit data files (too large for GitHub)
+
+### Increase ML data retention to 2 years for training milestones
+
+**Commit:** `95e9f06`  
+**Date:** 2025-12-15  
+**Files Changed:** 2  
+  - `README.md`
+  - `scripts/ml_data_collector.py`
+**Changes:** +7/-5 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Increase ML data retention to 2 years for training milestones
+
+### Update tests for BM25 default and stop word tokenization
+
+**Commit:** `9dc7268`  
+**Date:** 2025-12-15  
+**Files Changed:** 2  
+  - `tests/unit/test_processor_core.py`
+  - `tests/unit/test_query_search.py`
+**Changes:** +23/-10 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Update tests for BM25 default and stop word tokenization
+
+### Address audit findings and add documentation
+
+**Commit:** `36be3a1`  
+**Date:** 2025-12-15  
+**Files Changed:** 4  
+  - `.claude/commands/ml-log.md`
+  - `.claude/commands/ml-stats.md`
+  - `CLAUDE.md`
+  - *(and 1 more)*
+**Changes:** +201/-15 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Address audit findings and add documentation
+
+### Harden ML data collector with critical fixes
+
+**Commit:** `4438d60`  
+**Date:** 2025-12-15  
+**Files Changed:** 1  
+  - `scripts/ml_data_collector.py`
+**Changes:** +151/-54 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Harden ML data collector with critical fixes
+
+### Correct line number assertions in pattern detection tests
+
+**Commit:** `1b9901d`  
+**Date:** 2025-12-15  
+**Files Changed:** 1  
+  - `tests/unit/test_patterns.py`
+**Changes:** +5/-5 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Correct line number assertions in pattern detection tests
+
+### Add test file penalty and code stop word filtering to search
+
+**Commit:** `1fafc8b`  
+**Date:** 2025-12-14  
+**Files Changed:** 3  
+  - `cortical/processor/query_api.py`
+  - `cortical/query/passages.py`
+  - `cortical/query/search.py`
+**Changes:** +51/-9 lines  
+
+**The Lesson:** Verify assumptions with tests. The wisdom: Add test file penalty and code stop word filtering to search
+
+### Replace external action with native Python link checker
+
+**Commit:** `901a181`  
+**Date:** 2025-12-14  
+**Files Changed:** 5  
+  - `.github/workflows/ci.yml`
+  - `.markdown-link-check.json`
+  - `scripts/resolve_wiki_links.py`
+  - *(and 2 more)*
+**Changes:** +172/-34 lines  
+
+**The Lesson:** Validate inputs early. The lesson? Replace external action with native Python link checker
+
+---
+
+*This chapter is part of [The Cortical Chronicles](../README.md), a self-documenting book generated by the Cortical Text Processor.*
+
+---
+
+## Performance Lessons
+
+*What we learned about making the system fast and efficient.*
+
+---
+
+## Overview
+
+This chapter captures **1 lessons** from performance work. Each entry shows the problem, the solution, and the principle we extracted.
+
+### Feat: Optimize compute_all and add Graph-Boosted search (GB-BM25)
+
+**Commit:** `fcce0c2`  
+**Date:** 2025-12-15  
+**Files Changed:** 5  
+  - `cortical/analysis.py`
+  - `cortical/processor/query_api.py`
+  - `cortical/query/__init__.py`
+  - *(and 2 more)*
+**Changes:** +244/-62 lines  
+
+**The Lesson:** Optimize based on evidence. The lesson? feat: Optimize compute_all and add Graph-Boosted search (GB-BM25)
+
+---
+
+*This chapter is part of [The Cortical Chronicles](../README.md), a self-documenting book generated by the Cortical Text Processor.*
+
+---
+
+## Testing Lessons
+
+*Insights from writing and maintaining tests.*
+
+---
+
+## Overview
+
+This chapter captures **16 lessons** from testing work. Each entry shows the problem, the solution, and the principle we extracted.
+
+### Add unit tests for Cortical Chronicles generators
+
+**Commit:** `a09bd89`  
+**Date:** 2025-12-16  
+**Files Changed:** 2  
+  - `.git-ml/tracked/commits.jsonl`
+  - `tests/unit/test_generate_book.py`
+**Changes:** +1372/-0 lines  
+
+**The Lesson:** Test what you build. The lesson? Add unit tests for Cortical Chronicles generators
+
+### Fix(tests): Mock file existence in ML prediction tests
+
+**Commit:** `ec8db7a`  
+**Date:** 2025-12-16  
+**Files Changed:** 2  
+  - `tests/unit/test_ml_file_prediction.py`
+  - `tests/unit/test_protobuf_serialization.py`
+**Changes:** +21/-8 lines  
+
+**The Lesson:** Mock external dependencies. The wisdom: fix(tests): Mock file existence in ML prediction tests
+
+### Fix(tests): Mock file existence in ML prediction tests
+
+**Commit:** `4f7e195`  
+**Date:** 2025-12-16  
+**Files Changed:** 1  
+  - `tests/unit/test_ml_file_prediction.py`
+**Changes:** +10/-6 lines  
+
+**The Lesson:** Mock external dependencies. The wisdom: fix(tests): Mock file existence in ML prediction tests
+
+### Add comprehensive test suite for orchestration.py (33 tests)
+
+**Commit:** `d999c84`  
+**Date:** 2025-12-15  
+**Files Changed:** 2  
+  - `CLAUDE.md`
+  - `tests/unit/test_ml_orchestration.py`
+**Changes:** +801/-1 lines  
+
+**The Lesson:** Test what you build. The lesson? Add comprehensive test suite for orchestration.py (33 tests)
+
+### Update README test count (3800+) and coverage badge (>90%)
+
+**Commit:** `4ec93d5`  
+**Date:** 2025-12-15  
+**Files Changed:** 1  
+  - `README.md`
+
+**The Lesson:** Measure coverage to find gaps. The lesson? Update README test count (3800+) and coverage badge (>90%)
+
+### Update task status for Wave 4 completed coverage tests (ALL COMPLETE)
+
+**Commit:** `3b9a071`  
+**Date:** 2025-12-15  
+**Files Changed:** 1  
+  - `tasks/2025-12-15_05-23-36_ceac.json`
+
+**The Lesson:** Measure coverage to find gaps. The lesson? Update task status for Wave 4 completed coverage tests (ALL COMPLETE)
+
+### Feat: Add comprehensive test coverage for Wave 4 modules (FINAL)
+
+**Commit:** `73d6da8`  
+**Date:** 2025-12-15  
+**Files Changed:** 4  
+  - `tests/unit/test_code_concepts_coverage.py`
+  - `tests/unit/test_diff_coverage.py`
+  - `tests/unit/test_fluent_coverage.py`
+  - *(and 1 more)*
+
+**The Lesson:** Measure coverage to find gaps. The lesson? feat: Add comprehensive test coverage for Wave 4 modules (FINAL)
+
+### Update task status for Wave 3 completed coverage tests
+
+**Commit:** `0b2eaf2`  
+**Date:** 2025-12-15  
+**Files Changed:** 1  
+  - `tasks/2025-12-15_05-23-36_ceac.json`
+
+**The Lesson:** Measure coverage to find gaps. The lesson? Update task status for Wave 3 completed coverage tests
+
+### Feat: Add comprehensive test coverage for Wave 3 modules
+
+**Commit:** `036f830`  
+**Date:** 2025-12-15  
+**Files Changed:** 4  
+  - `tests/unit/test_config_coverage.py`
+  - `tests/unit/test_fingerprint_coverage.py`
+  - `tests/unit/test_query_chunking.py`
+  - *(and 1 more)*
+
+**The Lesson:** Measure coverage to find gaps. The lesson? feat: Add comprehensive test coverage for Wave 3 modules
+
+### Update task status for Wave 2 completed coverage tests
+
+**Commit:** `66f7df2`  
+**Date:** 2025-12-15  
+**Files Changed:** 1  
+  - `tasks/2025-12-15_05-23-36_ceac.json`
+
+**The Lesson:** Measure coverage to find gaps. The lesson? Update task status for Wave 2 completed coverage tests
+
+### Feat: Add comprehensive test coverage for Wave 2 modules
+
+**Commit:** `5a6bb26`  
+**Date:** 2025-12-15  
+**Files Changed:** 4  
+  - `tests/unit/test_embeddings_coverage.py`
+  - `tests/unit/test_query_definitions.py`
+  - `tests/unit/test_query_passages.py`
+  - *(and 1 more)*
+
+**The Lesson:** Measure coverage to find gaps. The lesson? feat: Add comprehensive test coverage for Wave 2 modules
+
+### Update task status for completed coverage tests
+
+**Commit:** `cc147fd`  
+**Date:** 2025-12-15  
+**Files Changed:** 1  
+  - `tasks/2025-12-15_05-23-36_ceac.json`
+
+**The Lesson:** Measure coverage to find gaps. The lesson? Update task status for completed coverage tests
+
+### Feat: Add comprehensive test coverage for query and analysis modules
+
+**Commit:** `70a4b1b`  
+**Date:** 2025-12-15  
+**Files Changed:** 7  
+  - `requirements.txt`
+  - `tasks/2025-12-14_01-53-45_7b60.json`
+  - `tasks/2025-12-14_11-11-44_legacy-migration.json`
+  - *(and 4 more)*
+
+**The Lesson:** Measure coverage to find gaps. The lesson? feat: Add comprehensive test coverage for query and analysis modules
+
+### Add unit tests for ML collector export, feedback, quality commands
+
+**Commit:** `1899ed8`  
+**Date:** 2025-12-15  
+**Files Changed:** 3  
+  - `tests/unit/test_ml_export.py`
+  - `tests/unit/test_ml_feedback.py`
+  - `tests/unit/test_ml_quality.py`
+**Changes:** +1842/-0 lines  
+
+**The Lesson:** Test what you build. The lesson? Add unit tests for ML collector export, feedback, quality commands
+
+### Add 16 code coverage improvement tasks
+
+**Commit:** `d0732b4`  
+**Date:** 2025-12-15  
+**Files Changed:** 1  
+  - `tasks/2025-12-15_05-23-36_ceac.json`
+**Changes:** +248/-0 lines  
+
+**The Lesson:** Measure coverage to find gaps. The lesson? Add 16 code coverage improvement tasks
+
+### Merge pull request #85 from scrawlsbenches/claude/fix-coverage-module-82miT
+
+**Commit:** `d09bbce`  
+**Date:** 2025-12-15  
+**Changes:** +23/-0 lines  
+
+**The Lesson:** Measure coverage to find gaps. The lesson? Merge pull request #85 from scrawlsbenches/claude/fix-coverage-module-82miT
+
+---
+
+*This chapter is part of [The Cortical Chronicles](../README.md), a self-documenting book generated by the Cortical Text Processor.*
+
+---
+
+# 07 Concepts
+
+## Concept Evolution: Bigram
+
+*Tracking the emergence and growth of 'bigram' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-09
+
+The concept of 'bigram' first emerged in commit `50450d1`:
+
+> Add bigram lateral connections (Task 21) and code review concerns
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **7 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**7 commits** mentioning this concept.
+
+- `50450d1`: Add bigram lateral connections (Task 21) and code review concerns
+- `18f45ef`: Optimize semantic extraction and bigram connections (2x speedup)
+- `0f578c3`: Add expert code review: identify critical bigram bug and verify fixes
+- *(and 4 more)*
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **7 commits**.
+
+## Related Concepts
+
+The 'bigram' concept frequently appears alongside:
+
+- **Lateral Connections** (1 co-occurrences)
+- **Semantic** (1 co-occurrences)
+
+## The Concept Today
+
+Most recent mention was on 2025-12-11:
+
+> Add tests for bigram connection parameters and improve coverage to 90%
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `50450d1`
+
+**Date:** 2025-12-09
+
+**Message:** Add bigram lateral connections (Task 21) and code review concerns
+
+### Midpoint: `17e8147`
+
+**Date:** 2025-12-10
+
+**Message:** Add code review findings: critical bigram separator bugs
+
+### Latest: `1b9438e`
+
+**Date:** 2025-12-11
+
+**Message:** Add tests for bigram connection parameters and improve coverage to 90%
+
+---
+
+## Concept Evolution: Bm25
+
+*Tracking the emergence and growth of 'bm25' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-15
+
+The concept of 'bm25' first emerged in commit `0a52858`:
+
+> feat: Implement BM25 scoring algorithm as default
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **9 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**9 commits** mentioning this concept.
+
+- `0a52858`: feat: Implement BM25 scoring algorithm as default
+- `fcce0c2`: feat: Optimize compute_all and add Graph-Boosted search (GB-BM25)
+- `63064c7`: docs: Add BM25/GB-BM25 documentation and tests
+- *(and 6 more)*
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W50** with **9 commits**.
+
+## Related Concepts
+
+The 'bm25' concept frequently appears alongside:
+
+- **Search** (2 co-occurrences)
+- **Graph** (1 co-occurrences)
+- **Tokenization** (1 co-occurrences)
+
+## The Concept Today
+
+Most recent mention was on 2025-12-16:
+
+> feat: Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `0a52858`
+
+**Date:** 2025-12-15
+
+**Message:** feat: Implement BM25 scoring algorithm as default
+
+### Midpoint: `9dc7268`
+
+**Date:** 2025-12-15
+
+**Message:** fix: Update tests for BM25 default and stop word tokenization
+
+### Latest: `5665839`
+
+**Date:** 2025-12-16
+
+**Message:** feat: Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
+
+---
+
+## Concept Evolution: Clustering
+
+*Tracking the emergence and growth of 'clustering' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-09
+
+The concept of 'clustering' first emerged in commit `bf75e5d`:
+
+> Activate Layer 2 concept clustering by default (Task 10)
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **7 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**7 commits** mentioning this concept.
+
+- `bf75e5d`: Activate Layer 2 concept clustering by default (Task 10)
+- `e7933b6`: Implement Task 4: Improve clustering to reduce topic isolation
+- `0d24482`: Fix tests to not skip - provide sufficient data for concept clustering
+- *(and 4 more)*
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **7 commits**.
+
+## The Concept Today
+
+Most recent mention was on 2025-12-12:
+
+> Task #143: Investigate negative silhouette score in clustering
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `bf75e5d`
+
+**Date:** 2025-12-09
+
+**Message:** Activate Layer 2 concept clustering by default (Task 10)
+
+### Midpoint: `bda9504`
+
+**Date:** 2025-12-11
+
+**Message:** Add critical clustering tasks #123-125 and regression tests (Task #124)
+
+### Latest: `2753132`
+
+**Date:** 2025-12-12
+
+**Message:** Task #143: Investigate negative silhouette score in clustering
+
+---
+
+## Concept Evolution: Context
+
+*Tracking the emergence and growth of 'context' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-11
+
+The concept of 'context' first emerged in commit `a530bea`:
+
+> Add CLI wrapper framework for context collection and task triggers
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **3 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**3 commits** mentioning this concept.
+
+- `a530bea`: Add CLI wrapper framework for context collection and task triggers
+- `4e10104`: Merge pull request #37 from scrawlsbenches/claude/cli-wrapper-context-01JScUxQPSb4rGC2XhtXPSYB
+- `9bd4067`: feat: Add session handoff generator for context preservation
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **2 commits**.
+
+## The Concept Today
+
+Most recent mention was on 2025-12-15:
+
+> feat: Add session handoff generator for context preservation
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `a530bea`
+
+**Date:** 2025-12-11
+
+**Message:** Add CLI wrapper framework for context collection and task triggers
+
+### Midpoint: `4e10104`
+
+**Date:** 2025-12-11
+
+**Message:** Merge pull request #37 from scrawlsbenches/claude/cli-wrapper-context-01JScUxQPSb4rGC2XhtXPSYB
+
+### Latest: `9bd4067`
+
+**Date:** 2025-12-15
+
+**Message:** feat: Add session handoff generator for context preservation
+
+---
+
+## Concept Evolution: Definition
+
+*Tracking the emergence and growth of 'definition' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-11
+
+The concept of 'definition' first emerged in commit `60c3483`:
+
+> Add direct definition pattern search for code search (Task #84)
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **4 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**4 commits** mentioning this concept.
+
+- `60c3483`: Add direct definition pattern search for code search (Task #84)
+- `66a4078`: Merge main, add task #128 for definition boost search quality issue
+- `d85cc90`: Fix definition boost to deprioritize test files over real implementations (Task #128)
+- *(and 1 more)*
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **4 commits**.
+
+## Related Concepts
+
+The 'definition' concept frequently appears alongside:
+
+- **Search** (2 co-occurrences)
+
+## The Concept Today
+
+Most recent mention was on 2025-12-11:
+
+> Mark Tasks #128, #132, #136 complete - definition boost and O(n²) fixes
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `60c3483`
+
+**Date:** 2025-12-11
+
+**Message:** Add direct definition pattern search for code search (Task #84)
+
+### Midpoint: `d85cc90`
+
+**Date:** 2025-12-11
+
+**Message:** Fix definition boost to deprioritize test files over real implementations (Task #128)
+
+### Latest: `0689785`
+
+**Date:** 2025-12-11
+
+**Message:** Mark Tasks #128, #132, #136 complete - definition boost and O(n²) fixes
+
+---
+
+## Concept Evolution: Embeddings
+
+*Tracking the emergence and growth of 'embeddings' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-09
+
+The concept of 'embeddings' first emerged in commit `8f862b0`:
+
+> Persist full computed state including embeddings (Task 12)
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **5 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**5 commits** mentioning this concept.
+
+- `8f862b0`: Persist full computed state including embeddings (Task 12)
+- `6cb35d6`: Add critical task #122: Investigate Concept Layer & Embeddings regressions
+- `919e8a7`: Fix cluster_strictness inversion and improve embeddings (Task #122)
+- *(and 2 more)*
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **5 commits**.
+
+## The Concept Today
+
+Most recent mention was on 2025-12-13:
+
+> Fix test_retrofit_embeddings_invalid_alpha_zero to match new validation
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `8f862b0`
+
+**Date:** 2025-12-09
+
+**Message:** Persist full computed state including embeddings (Task 12)
+
+### Midpoint: `919e8a7`
+
+**Date:** 2025-12-11
+
+**Message:** Fix cluster_strictness inversion and improve embeddings (Task #122)
+
+### Latest: `69c206b`
+
+**Date:** 2025-12-13
+
+**Message:** Fix test_retrofit_embeddings_invalid_alpha_zero to match new validation
+
+---
+
+## Concept Evolution: Graph
+
+*Tracking the emergence and growth of 'graph' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-10
+
+The concept of 'graph' first emerged in commit `e40a80c`:
+
+> Add ConceptNet-style graph visualization export (Task 29)
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **3 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**3 commits** mentioning this concept.
+
+- `e40a80c`: Add ConceptNet-style graph visualization export (Task 29)
+- `e5dd3d5`: Task #145: Improve graph embedding quality for common terms
+- `fcce0c2`: feat: Optimize compute_all and add Graph-Boosted search (GB-BM25)
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **2 commits**.
+
+## Related Concepts
+
+The 'graph' concept frequently appears alongside:
+
+- **Bm25** (1 co-occurrences)
+- **Search** (1 co-occurrences)
+
+## The Concept Today
+
+Most recent mention was on 2025-12-15:
+
+> feat: Optimize compute_all and add Graph-Boosted search (GB-BM25)
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `e40a80c`
+
+**Date:** 2025-12-10
+
+**Message:** Add ConceptNet-style graph visualization export (Task 29)
+
+### Midpoint: `e5dd3d5`
+
+**Date:** 2025-12-12
+
+**Message:** Task #145: Improve graph embedding quality for common terms
+
+### Latest: `fcce0c2`
+
+**Date:** 2025-12-15
+
+**Message:** feat: Optimize compute_all and add Graph-Boosted search (GB-BM25)
+
+---
+
+## Concept Evolution: Incremental
+
+*Tracking the emergence and growth of 'incremental' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-09
+
+The concept of 'incremental' first emerged in commit `38fb4f7`:
+
+> Add incremental document indexing (Task 15)
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **5 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**5 commits** mentioning this concept.
+
+- `38fb4f7`: Add incremental document indexing (Task 15)
+- `3682739`: Add incremental codebase indexing with progress tracking
+- `b360793`: Update documentation for incremental indexing features
+- *(and 2 more)*
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **5 commits**.
+
+## The Concept Today
+
+Most recent mention was on 2025-12-11:
+
+> Add incremental batch mode for full analysis
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `38fb4f7`
+
+**Date:** 2025-12-09
+
+**Message:** Add incremental document indexing (Task 15)
+
+### Midpoint: `b360793`
+
+**Date:** 2025-12-10
+
+**Message:** Update documentation for incremental indexing features
+
+### Latest: `256e842`
+
+**Date:** 2025-12-11
+
+**Message:** Add incremental batch mode for full analysis
+
+---
+
+## Concept Evolution Index
+
+*A guide to how key concepts emerged and grew in the Cortical Text Processor.*
+
+---
+
+## Overview
+
+This section tracks the evolution of **14 core concepts** through the project's commit history. Each concept chapter shows:
+
+- When the concept first appeared
+- How it grew over time
+- Related concepts and connections
+- Current state and importance
+
+## Concepts by Importance
+
+### [Search](search.md)
+
+**Mentions:** 26 commits
+
+**First seen:** 2025-12-10
+
+**Related to:** Passage, Definition, Louvain
+
+*A core component of the system architecture.*
+
+### [Semantic](semantic.md)
+
+**Mentions:** 9 commits
+
+**First seen:** 2025-12-09
+
+**Related to:** Retrieval, Bigram, Fingerprint
+
+*An emerging concept in recent development.*
+
+### [Bm25](bm25.md)
+
+**Mentions:** 9 commits
+
+**First seen:** 2025-12-15
+
+**Related to:** Search, Graph, Tokenization
+
+*An emerging concept in recent development.*
+
+### [Clustering](clustering.md)
+
+**Mentions:** 7 commits
+
+**First seen:** 2025-12-09
+
+*An emerging concept in recent development.*
+
+### [Bigram](bigram.md)
+
+**Mentions:** 7 commits
+
+**First seen:** 2025-12-09
+
+**Related to:** Lateral Connections, Semantic
+
+*An emerging concept in recent development.*
+
+### [Louvain](louvain.md)
+
+**Mentions:** 7 commits
+
+**First seen:** 2025-12-11
+
+**Related to:** Search
+
+*An emerging concept in recent development.*
+
+### [Embeddings](embeddings.md)
+
+**Mentions:** 5 commits
+
+**First seen:** 2025-12-09
+
+*An emerging concept in recent development.*
+
+### [Incremental](incremental.md)
+
+**Mentions:** 5 commits
+
+**First seen:** 2025-12-09
+
+*An emerging concept in recent development.*
+
+### [Pagerank](pagerank.md)
+
+**Mentions:** 4 commits
+
+**First seen:** 2025-12-09
+
+*An emerging concept in recent development.*
+
+### [Query Expansion](query-expansion.md)
+
+**Mentions:** 4 commits
+
+**First seen:** 2025-12-10
+
+*An emerging concept in recent development.*
+
+### [Definition](definition.md)
+
+**Mentions:** 4 commits
+
+**First seen:** 2025-12-11
+
+**Related to:** Search
+
+*An emerging concept in recent development.*
+
+### [Graph](graph.md)
+
+**Mentions:** 3 commits
+
+**First seen:** 2025-12-10
+
+**Related to:** Bm25, Search
+
+*An emerging concept in recent development.*
+
+### [Tokenization](tokenization.md)
+
+**Mentions:** 3 commits
+
+**First seen:** 2025-12-10
+
+**Related to:** Bm25
+
+*An emerging concept in recent development.*
+
+### [Context](context.md)
+
+**Mentions:** 3 commits
+
+**First seen:** 2025-12-11
+
+*An emerging concept in recent development.*
+
+---
+
+*Each concept chapter provides detailed evolution timeline and key commits.*
+
+---
+
+## Concept Evolution: Louvain
+
+*Tracking the emergence and growth of 'louvain' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-11
+
+The concept of 'louvain' first emerged in commit `62c7fdf`:
+
+> Implement Louvain community detection (Task #123)
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **7 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**7 commits** mentioning this concept.
+
+- `62c7fdf`: Implement Louvain community detection (Task #123)
+- `b2b7f92`: Add Task #126: Investigate optimal Louvain resolution
+- `e85c299`: Merge pull request #34 from scrawlsbenches/claude/louvain-community-detection-01FsvWk3GKjFLpEiPwQT4sBc
+- *(and 4 more)*
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **7 commits**.
+
+## Related Concepts
+
+The 'louvain' concept frequently appears alongside:
+
+- **Search** (2 co-occurrences)
+
+## The Concept Today
+
+Most recent mention was on 2025-12-13:
+
+> Add louvain_resolution parameter to CorticalConfig
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `62c7fdf`
+
+**Date:** 2025-12-11
+
+**Message:** Implement Louvain community detection (Task #123)
+
+### Midpoint: `dda7d0c`
+
+**Date:** 2025-12-11
+
+**Message:** Complete Task #126: Louvain resolution parameter research
+
+### Latest: `a47bb61`
+
+**Date:** 2025-12-13
+
+**Message:** Add louvain_resolution parameter to CorticalConfig
+
+---
+
+## Concept Evolution: Pagerank
+
+*Tracking the emergence and growth of 'pagerank' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-09
+
+The concept of 'pagerank' first emerged in commit `c6eefdc`:
+
+> Add ConceptNet-enhanced PageRank task list (Tasks 19-30)
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **4 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**4 commits** mentioning this concept.
+
+- `c6eefdc`: Add ConceptNet-enhanced PageRank task list (Tasks 19-30)
+- `f6b8389`: Add relation-weighted PageRank (Task 22)
+- `cc57677`: Add cross-layer PageRank propagation (Task 23)
+- *(and 1 more)*
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **4 commits**.
+
+## The Concept Today
+
+Most recent mention was on 2025-12-10:
+
+> Add overlapping PageRank, ConceptNet, and Neocortex samples
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `c6eefdc`
+
+**Date:** 2025-12-09
+
+**Message:** Add ConceptNet-enhanced PageRank task list (Tasks 19-30)
+
+### Midpoint: `cc57677`
+
+**Date:** 2025-12-10
+
+**Message:** Add cross-layer PageRank propagation (Task 23)
+
+### Latest: `1e4d35d`
+
+**Date:** 2025-12-10
+
+**Message:** Add overlapping PageRank, ConceptNet, and Neocortex samples
+
+---
+
+## Concept Evolution: Query Expansion
+
+*Tracking the emergence and growth of 'query expansion' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-10
+
+The concept of 'query expansion' first emerged in commit `16c13a0`:
+
+> Document magic numbers and extract query expansion helper
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **4 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**4 commits** mentioning this concept.
+
+- `16c13a0`: Document magic numbers and extract query expansion helper
+- `a819131`: Add LRU cache for query expansion results (Task #45)
+- `af3a7e0`: feat: Add security concept group and TF-IDF weighted query expansion
+- *(and 1 more)*
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **2 commits**.
+
+## The Concept Today
+
+Most recent mention was on 2025-12-15:
+
+> fix: Cap query expansion weights to prevent term domination
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `16c13a0`
+
+**Date:** 2025-12-10
+
+**Message:** Document magic numbers and extract query expansion helper
+
+### Midpoint: `af3a7e0`
+
+**Date:** 2025-12-15
+
+**Message:** feat: Add security concept group and TF-IDF weighted query expansion
+
+### Latest: `fecd6dc`
+
+**Date:** 2025-12-15
+
+**Message:** fix: Cap query expansion weights to prevent term domination
+
+---
+
+## Concept Evolution: Search
+
+*Tracking the emergence and growth of 'search' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-10
+
+The concept of 'search' first emerged in commit `dc6db89`:
+
+> Implement dog-fooding: search codebase with its own IR system (Task #47)
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **26 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**26 commits** mentioning this concept.
+
+- `dc6db89`: Implement dog-fooding: search codebase with its own IR system (Task #47)
+- `975fc91`: Add intent-based code search enhancement tasks (#48-52)
+- `2ad03ed`: Add query optimization for faster code search (Task #52)
+- *(and 23 more)*
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **20 commits**.
+
+## Related Concepts
+
+The 'search' concept frequently appears alongside:
+
+- **Passage** (2 co-occurrences)
+- **Definition** (2 co-occurrences)
+- **Louvain** (2 co-occurrences)
+- **Bm25** (2 co-occurrences)
+- **Intent** (1 co-occurrences)
+
+## The Concept Today
+
+Most recent mention was on 2025-12-16:
+
+> feat: Add search integration and web interface (Wave 3)
+
+This concept has evolved from its initial appearance to become a **core component** of the system.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `dc6db89`
+
+**Date:** 2025-12-10
+
+**Message:** Implement dog-fooding: search codebase with its own IR system (Task #47)
+
+### Midpoint: `0f75675`
+
+**Date:** 2025-12-11
+
+**Message:** Add Python code samples and update showcase for code search features
+
+### Latest: `0022466`
+
+**Date:** 2025-12-16
+
+**Message:** feat: Add search integration and web interface (Wave 3)
+
+---
+
+## Concept Evolution: Semantic
+
+*Tracking the emergence and growth of 'semantic' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-09
+
+The concept of 'semantic' first emerged in commit `f27d18e`:
+
+> Integrate semantic relations into retrieval (Task 11)
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **9 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**9 commits** mentioning this concept.
+
+- `f27d18e`: Integrate semantic relations into retrieval (Task 11)
+- `4e113e7`: Add multi-hop semantic inference (Tasks 25-26)
+- `18f45ef`: Optimize semantic extraction and bigram connections (2x speedup)
+- *(and 6 more)*
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **7 commits**.
+
+## Related Concepts
+
+The 'semantic' concept frequently appears alongside:
+
+- **Retrieval** (1 co-occurrences)
+- **Bigram** (1 co-occurrences)
+- **Fingerprint** (1 co-occurrences)
+- **Similarity** (1 co-occurrences)
+
+## The Concept Today
+
+Most recent mention was on 2025-12-14:
+
+> feat: Add "What Changed?" semantic diff (LEGACY-075)
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `f27d18e`
+
+**Date:** 2025-12-09
+
+**Message:** Integrate semantic relations into retrieval (Task 11)
+
+### Midpoint: `626c008`
+
+**Date:** 2025-12-11
+
+**Message:** Add semantic chunk boundaries for code (Task #86)
+
+### Latest: `a31d1c7`
+
+**Date:** 2025-12-14
+
+**Message:** feat: Add "What Changed?" semantic diff (LEGACY-075)
+
+---
+
+## Concept Evolution: Tokenization
+
+*Tracking the emergence and growth of 'tokenization' through commit history.*
+
+---
+
+## Birth
+
+**First Appearance:** 2025-12-10
+
+The concept of 'tokenization' first emerged in commit `d2b42d9`:
+
+> Fix polysemy section: clarify tokenization vs actual polysemy
+
+*By Claude*
+
+## Growth Timeline
+
+The concept has been mentioned in **3 commits** across **1 months** of development.
+
+### December 2025: Emergence
+
+**3 commits** mentioning this concept.
+
+- `d2b42d9`: Fix polysemy section: clarify tokenization vs actual polysemy
+- `2571bb8`: Add code-aware tokenization with identifier splitting (Task #48)
+- `9dc7268`: fix: Update tests for BM25 default and stop word tokenization
+
+## Peak Activity
+
+The concept saw its most intensive development during week **2025-W49** with **2 commits**.
+
+## Related Concepts
+
+The 'tokenization' concept frequently appears alongside:
+
+- **Bm25** (1 co-occurrences)
+
+## The Concept Today
+
+Most recent mention was on 2025-12-15:
+
+> fix: Update tests for BM25 default and stop word tokenization
+
+This concept has evolved from its initial appearance to become an **emerging aspect** of the design.
+
+## Key Commits
+
+Notable commits that shaped this concept:
+
+### First: `d2b42d9`
+
+**Date:** 2025-12-10
+
+**Message:** Fix polysemy section: clarify tokenization vs actual polysemy
+
+### Midpoint: `2571bb8`
+
+**Date:** 2025-12-10
+
+**Message:** Add code-aware tokenization with identifier splitting (Task #48)
+
+### Latest: `9dc7268`
+
+**Date:** 2025-12-15
+
+**Message:** fix: Update tests for BM25 default and stop word tokenization
+
+---
+
+# 08 Exercises
+
+## Advanced Exercises
+
+*Hands-on coding exercises to master advanced concepts.*
+
+**Difficulty Level:** Advanced
+
+---
+
+## Introduction
+
+Challenge yourself with advanced features:
+
+- Semantic relation extraction
+- Fingerprint-based similarity
+- Graph embeddings
+- Knowledge gap detection
+
+## Exercise: Empty Documents
+
+**Concept:** Empty documents return no relations
+
+**Difficulty:** Advanced
+
+**Time:** ~20 minutes
+
+**Source:** `test_semantics.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Empty documents return no relations.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_documents(self):
+        """Empty documents return no relations."""
+        result = extract_pattern_relations({}, {"term1", "term2"})
+        assert result == []
+```
+
+</details>
+
+---
+
+## Exercise: Empty Valid Terms
+
+**Concept:** No valid terms means no relations extracted
+
+**Difficulty:** Advanced
+
+**Time:** ~20 minutes
+
+**Source:** `test_semantics.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+No valid terms means no relations extracted.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_valid_terms(self):
+        """No valid terms means no relations extracted."""
+        docs = {"doc1": "A dog is an animal."}
+        result = extract_pattern_relations(docs, set())
+        assert result == []
+```
+
+</details>
+
+---
+
+## Exercise: Empty Relations
+
+**Concept:** Empty relations list
+
+**Difficulty:** Advanced
+
+**Time:** ~20 minutes
+
+**Source:** `test_semantics.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Empty relations list.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_relations(self):
+        """Empty relations list."""
+        result = get_pattern_statistics([])
+        assert result["total_relations"] == 0
+        assert result["relation_type_counts"] == {}
+```
+
+</details>
+
+---
+
+## Exercise: Single Relation
+
+**Concept:** Single relation statistics
+
+**Difficulty:** Advanced
+
+**Time:** ~20 minutes
+
+**Source:** `test_semantics.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Single relation statistics.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Focus on the simplest case with just one element.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_single_relation(self):
+        """Single relation statistics."""
+        relations = [("dog", "IsA", "animal", 0.9)]
+        result = get_pattern_statistics(relations)
+        assert result["total_relations"] == 1
+        assert result["relation_type_counts"]["IsA"] == 1
+```
+
+</details>
+
+---
+
+## Exercise: Empty Relations
+
+**Concept:** Empty relations produce empty hierarchy
+
+**Difficulty:** Advanced
+
+**Time:** ~20 minutes
+
+**Source:** `test_semantics.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Empty relations produce empty hierarchy.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_relations(self):
+        """Empty relations produce empty hierarchy."""
+        parents, children = build_isa_hierarchy([])
+        assert parents == {}
+        assert children == {}
+```
+
+</details>
+
+---
+
+## Exercise: Single Isa
+
+**Concept:** Single IsA relation creates parent-child
+
+**Difficulty:** Advanced
+
+**Time:** ~20 minutes
+
+**Source:** `test_semantics.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Single IsA relation creates parent-child.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Focus on the simplest case with just one element.
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_single_isa(self):
+        """Single IsA relation creates parent-child."""
+        relations = [("dog", "IsA", "animal", 0.9)]
+        parents, children = build_isa_hierarchy(relations)
+        assert "dog" in parents
+        assert "animal" in parents["dog"]
+        assert "animal" in children
+        assert "dog" in children["animal"]
+```
+
+</details>
+
+---
+
+## Exercise: Hierarchy Chain
+
+**Concept:** Chain: poodle IsA dog IsA animal
+
+**Difficulty:** Advanced
+
+**Time:** ~20 minutes
+
+**Source:** `test_semantics.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Chain: poodle IsA dog IsA animal.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Think about how elements connect in sequence.
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_hierarchy_chain(self):
+        """Chain: poodle IsA dog IsA animal."""
+        relations = [
+            ("poodle", "IsA", "dog", 0.9),
+            ("dog", "IsA", "animal", 0.9)
+        ]
+        parents, children = build_isa_hierarchy(relations)
+        assert "poodle" in parents
+        assert "dog" in parents["poodle"]
+        assert "dog" in parents
+        assert "animal" in parents["dog"]
+```
+
+</details>
+
+---
+
+## Exercise: Empty Hierarchy
+
+**Concept:** Empty hierarchy returns empty ancestors
+
+**Difficulty:** Advanced
+
+**Time:** ~20 minutes
+
+**Source:** `test_semantics.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Empty hierarchy returns empty ancestors.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_hierarchy(self):
+        """Empty hierarchy returns empty ancestors."""
+        result = get_ancestors("dog", {})
+        assert result == {}
+```
+
+</details>
+
+---
+
+## Exercise: Empty Hierarchy
+
+**Concept:** Empty children dict returns empty descendants
+
+**Difficulty:** Advanced
+
+**Time:** ~20 minutes
+
+**Source:** `test_semantics.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Empty children dict returns empty descendants.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_hierarchy(self):
+        """Empty children dict returns empty descendants."""
+        result = get_descendants("animal", {})
+        assert result == {}
+```
+
+</details>
+
+---
+
+## Exercise: Empty Corpus
+
+**Concept:** Empty corpus returns no relations
+
+**Difficulty:** Advanced
+
+**Time:** ~20 minutes
+
+**Source:** `test_semantics.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+from cortical.tokenizer import Tokenizer
+```
+
+### Your Task
+
+Empty corpus returns no relations.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_corpus(self):
+        """Empty corpus returns no relations."""
+        layers = {CorticalLayer.TOKENS: HierarchicalLayer(CorticalLayer.TOKENS)}
+        tokenizer = Tokenizer()
+        result = extract_corpus_semantics(layers, {}, tokenizer)
+        assert result == []
+```
+
+</details>
+
+---
+
+---
+
+*Completed 10 exercises? Check out the other topics for more challenges!*
+
+---
+
+## Foundations Exercises
+
+*Hands-on coding exercises to master foundations concepts.*
+
+**Difficulty Level:** Beginner
+
+---
+
+## Introduction
+
+These exercises cover the fundamental algorithms and data structures of the Cortical Text Processor:
+
+- PageRank for term importance
+- TF-IDF for relevance scoring
+- Graph structures and connections
+- Tokenization and text processing
+
+## Exercise: Empty Graph
+
+**Concept:** Empty graph returns empty dict
+
+**Difficulty:** Beginner
+
+**Time:** ~10 minutes
+
+**Source:** `test_analysis.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Empty graph returns empty dict.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+PageRank is computed with `compute_pagerank()` or `compute_importance()`
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_graph(self):
+        """Empty graph returns empty dict."""
+        result = _pagerank_core({})
+        assert result == {}
+```
+
+</details>
+
+---
+
+## Exercise: Single Node No Edges
+
+**Concept:** Single node with no edges gets base rank from damping
+
+**Difficulty:** Beginner
+
+**Time:** ~20 minutes
+
+**Source:** `test_analysis.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Single node with no edges gets base rank from damping.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Focus on the simplest case with just one element.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+PageRank is computed with `compute_pagerank()` or `compute_importance()`
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_single_node_no_edges(self):
+        """Single node with no edges gets base rank from damping."""
+        graph = {"a": []}
+        result = _pagerank_core(graph, damping=0.85)
+        assert "a" in result
+        # With no incoming edges, rank = (1-d)/n = 0.15/1 = 0.15
+        assert result["a"] == pytest.approx(0.15)
+```
+
+</details>
+
+---
+
+## Exercise: Single Node Self Loop
+
+**Concept:** Single node with self-loop still gets rank 1.0
+
+**Difficulty:** Beginner
+
+**Time:** ~20 minutes
+
+**Source:** `test_analysis.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Single node with self-loop still gets rank 1.0.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Focus on the simplest case with just one element.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+PageRank is computed with `compute_pagerank()` or `compute_importance()`
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_single_node_self_loop(self):
+        """Single node with self-loop still gets rank 1.0."""
+        graph = {"a": [("a", 1.0)]}
+        result = _pagerank_core(graph)
+        assert result["a"] == pytest.approx(1.0)
+```
+
+</details>
+
+---
+
+## Exercise: Three Node Chain
+
+**Concept:** Chain: a -> b -> c. C should have highest rank
+
+**Difficulty:** Beginner
+
+**Time:** ~20 minutes
+
+**Source:** `test_analysis.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Chain: a -> b -> c. C should have highest rank.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Think about how elements connect in sequence.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+PageRank is computed with `compute_pagerank()` or `compute_importance()`
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_three_node_chain(self):
+        """Chain: a -> b -> c. C should have highest rank."""
+        graph = {
+            "a": [("b", 1.0)],
+            "b": [("c", 1.0)],
+            "c": []
+        }
+        result = _pagerank_core(graph)
+        # c receives transitively, b receives from a
+        assert result["c"] >= result["b"]
+        assert result["b"] >= result["a"]
+```
+
+</details>
+
+---
+
+## Exercise: Cycle
+
+**Concept:** Cycle: a -> b -> c -> a. All should have equal rank
+
+**Difficulty:** Beginner
+
+**Time:** ~20 minutes
+
+**Source:** `test_analysis.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Cycle: a -> b -> c -> a. All should have equal rank.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Think about how elements connect in sequence.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+PageRank is computed with `compute_pagerank()` or `compute_importance()`
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_cycle(self):
+        """Cycle: a -> b -> c -> a. All should have equal rank."""
+        graph = {
+            "a": [("b", 1.0)],
+            "b": [("c", 1.0)],
+            "c": [("a", 1.0)]
+        }
+        result = _pagerank_core(graph)
+        # All nodes in cycle should have equal rank
+        assert result["a"] == pytest.approx(result["b"], rel=0.01)
+        assert result["b"] == pytest.approx(result["c"], rel=0.01)
+```
+
+</details>
+
+---
+
+## Exercise: Empty Corpus
+
+**Concept:** Empty corpus returns empty dict
+
+**Difficulty:** Beginner
+
+**Time:** ~10 minutes
+
+**Source:** `test_analysis.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Empty corpus returns empty dict.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_corpus(self):
+        """Empty corpus returns empty dict."""
+        result = _tfidf_core({}, num_docs=0)
+        assert result == {}
+```
+
+</details>
+
+---
+
+## Exercise: Single Term Single Doc
+
+**Concept:** Single term in single doc has IDF of 0
+
+**Difficulty:** Beginner
+
+**Time:** ~20 minutes
+
+**Source:** `test_analysis.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Single term in single doc has IDF of 0.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Focus on the simplest case with just one element.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_single_term_single_doc(self):
+        """Single term in single doc has IDF of 0."""
+        stats = {
+            "term": (5, 1, {"doc1": 5})
+        }
+        result = _tfidf_core(stats, num_docs=1)
+        # IDF = log(1/1) = 0, so TF-IDF = 0
+        assert result["term"][0] == pytest.approx(0.0)
+```
+
+</details>
+
+---
+
+## Exercise: Empty Graph
+
+**Concept:** Empty graph returns empty dict
+
+**Difficulty:** Beginner
+
+**Time:** ~10 minutes
+
+**Source:** `test_analysis.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Empty graph returns empty dict.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_graph(self):
+        """Empty graph returns empty dict."""
+        result = _louvain_core({})
+        assert result == {}
+```
+
+</details>
+
+---
+
+## Exercise: Single Node
+
+**Concept:** Single node is its own community
+
+**Difficulty:** Beginner
+
+**Time:** ~10 minutes
+
+**Source:** `test_analysis.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Single node is its own community.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Focus on the simplest case with just one element.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_single_node(self):
+        """Single node is its own community."""
+        result = _louvain_core({"a": {}})
+        assert "a" in result
+        assert result["a"] == 0
+```
+
+</details>
+
+---
+
+## Exercise: Empty Graph
+
+**Concept:** Empty graph has zero modularity
+
+**Difficulty:** Beginner
+
+**Time:** ~10 minutes
+
+**Source:** `test_analysis.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Empty graph has zero modularity.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_graph(self):
+        """Empty graph has zero modularity."""
+        result = _modularity_core({}, {})
+        assert result == 0.0
+```
+
+</details>
+
+---
+
+---
+
+*Completed 10 exercises? Check out the other topics for more challenges!*
+
+---
+
+## Search Exercises
+
+*Hands-on coding exercises to master search concepts.*
+
+**Difficulty Level:** Intermediate
+
+---
+
+## Introduction
+
+Master the search and retrieval capabilities:
+
+- Query expansion techniques
+- Document ranking algorithms
+- Passage retrieval
+- Definition extraction
+
+## Exercise: Empty Query
+
+**Concept:** Empty query returns empty results
+
+**Difficulty:** Intermediate
+
+**Time:** ~20 minutes
+
+**Source:** `test_query_search.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+from cortical.tokenizer import Tokenizer
+```
+
+### Your Task
+
+Empty query returns empty results.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+You may need to create mock layers or minicolumns for testing
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_query(self):
+        """Empty query returns empty results."""
+        layers = MockLayers.single_term("term", tfidf=1.0, doc_ids=["doc1"])
+        tokenizer = Tokenizer()
+
+        # Tokenizer will return empty list for empty string
+        result = find_documents_for_query("", layers, tokenizer)
+        assert result == []
+```
+
+</details>
+
+---
+
+## Exercise: Single Term Single Doc
+
+**Concept:** Single term matching single document
+
+**Difficulty:** Intermediate
+
+**Time:** ~20 minutes
+
+**Source:** `test_query_search.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+from cortical.tokenizer import Tokenizer
+```
+
+### Your Task
+
+Single term matching single document.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Focus on the simplest case with just one element.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+You may need to create mock layers or minicolumns for testing
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_single_term_single_doc(self):
+        """Single term matching single document."""
+        # Create layer with term in doc1
+        col = MockMinicolumn(
+            content="neural",
+            tfidf=2.5,
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 2.5}
+        )
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([col])
+
+        tokenizer = Tokenizer()
+        result = find_documents_for_query(
+            "neural", layers, tokenizer, use_expansion=False
+        )
+
+        assert len(result) == 1
+        assert result[0][0] == "doc1"
+        assert result[0][1] > 0
+```
+
+</details>
+
+---
+
+## Exercise: Single Term Multiple Docs
+
+**Concept:** Single term in multiple documents ranked by TF-IDF
+
+**Difficulty:** Intermediate
+
+**Time:** ~20 minutes
+
+**Source:** `test_query_search.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+from cortical.tokenizer import Tokenizer
+```
+
+### Your Task
+
+Single term in multiple documents ranked by TF-IDF.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Focus on the simplest case with just one element.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+You may need to create mock layers or minicolumns for testing
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_single_term_multiple_docs(self):
+        """Single term in multiple documents ranked by TF-IDF."""
+        col = MockMinicolumn(
+            content="algorithm",
+            tfidf=3.0,
+            document_ids={"doc1", "doc2", "doc3"},
+            tfidf_per_doc={"doc1": 5.0, "doc2": 3.0, "doc3": 1.0}
+        )
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([col])
+
+        tokenizer = Tokenizer()
+        result = find_documents_for_query(
+            "algorithm", layers, tokenizer, use_expansion=False
+        )
+
+        assert len(result) == 3
+        # Should be sorted by TF-IDF score
+        assert result[0][0] == "doc1"  # Highest score
+        assert result[1][0] == "doc2"
+        assert result[2][0] == "doc3"  # Lowest score
+        assert result[0][1] > result[1][1] > result[2][1]
+```
+
+</details>
+
+---
+
+## Exercise: Query Expansion Disabled
+
+**Concept:** use_expansion=False uses only query terms
+
+**Difficulty:** Intermediate
+
+**Time:** ~20 minutes
+
+**Source:** `test_query_search.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+from cortical.tokenizer import Tokenizer
+```
+
+### Your Task
+
+use_expansion=False uses only query terms.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Break down the problem into smaller steps.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+PageRank is computed with `compute_pagerank()` or `compute_importance()`
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_query_expansion_disabled(self):
+        """use_expansion=False uses only query terms."""
+        # Create connected terms
+        layers = (
+            LayerBuilder()
+            .with_term("neural", tfidf=2.0, pagerank=0.8)
+            .with_term("network", tfidf=2.0, pagerank=0.6)
+            .with_connection("neural", "network", weight=5.0)
+            .with_document("doc1", ["neural"])
+            .with_document("doc2", ["network"])
+            .build()
+        )
+
+        layer0 = layers[MockLayers.TOKENS]
+        layer0.get_minicolumn("neural").tfidf_per_doc = {"doc1": 2.0}
+        layer0.get_minicolumn("network").tfidf_per_doc = {"doc2": 2.0}
+
+        tokenizer = Tokenizer()
+        result = find_documents_for_query(
+            "neural", layers, tokenizer,
+            use_expansion=False
+        )
+
+        # Should only find doc1 (contains "neural")
+        assert len(result) == 1
+        assert result[0][0] == "doc1"
+```
+
+</details>
+
+---
+
+## Exercise: Empty Corpus
+
+**Concept:** Empty corpus returns empty results
+
+**Difficulty:** Intermediate
+
+**Time:** ~20 minutes
+
+**Source:** `test_query_search.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+from cortical.tokenizer import Tokenizer
+```
+
+### Your Task
+
+Empty corpus returns empty results.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+You may need to create mock layers or minicolumns for testing
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_corpus(self):
+        """Empty corpus returns empty results."""
+        layers = MockLayers.empty()
+        tokenizer = Tokenizer()
+
+        result = find_documents_for_query("query", layers, tokenizer)
+
+        assert result == []
+```
+
+</details>
+
+---
+
+## Exercise: Single Term Match
+
+**Concept:** Fast search finds document with matching term
+
+**Difficulty:** Intermediate
+
+**Time:** ~20 minutes
+
+**Source:** `test_query_search.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+from cortical.tokenizer import Tokenizer
+```
+
+### Your Task
+
+Fast search finds document with matching term.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Focus on the simplest case with just one element.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+You may need to create mock layers or minicolumns for testing
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_single_term_match(self):
+        """Fast search finds document with matching term."""
+        col = MockMinicolumn(
+            content="algorithm",
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 3.0}
+        )
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([col])
+
+        tokenizer = Tokenizer()
+        result = fast_find_documents("algorithm", layers, tokenizer)
+
+        assert len(result) == 1
+        assert result[0][0] == "doc1"
+```
+
+</details>
+
+---
+
+## Exercise: Empty Query
+
+**Concept:** Empty query returns empty results
+
+**Difficulty:** Intermediate
+
+**Time:** ~20 minutes
+
+**Source:** `test_query_search.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+from cortical.tokenizer import Tokenizer
+```
+
+### Your Task
+
+Empty query returns empty results.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+You may need to create mock layers or minicolumns for testing
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_query(self):
+        """Empty query returns empty results."""
+        layers = MockLayers.single_term("term", doc_ids=["doc1"])
+        tokenizer = Tokenizer()
+
+        result = fast_find_documents("", layers, tokenizer)
+
+        assert result == []
+```
+
+</details>
+
+---
+
+## Exercise: No Candidates Returns Empty
+
+**Concept:** No matching candidates returns empty
+
+**Difficulty:** Intermediate
+
+**Time:** ~20 minutes
+
+**Source:** `test_query_search.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+from cortical.tokenizer import Tokenizer
+```
+
+### Your Task
+
+No matching candidates returns empty.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+You may need to create mock layers or minicolumns for testing
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_no_candidates_returns_empty(self):
+        """No matching candidates returns empty."""
+        layers = MockLayers.single_term("existing", doc_ids=["doc1"])
+        tokenizer = Tokenizer()
+
+        result = fast_find_documents("nonexistent", layers, tokenizer)
+
+        assert result == []
+```
+
+</details>
+
+---
+
+## Exercise: Empty Layer
+
+**Concept:** Empty layer returns empty index
+
+**Difficulty:** Intermediate
+
+**Time:** ~10 minutes
+
+**Source:** `test_query_search.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Empty layer returns empty index.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Start by considering the edge case of empty input.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+You may need to create mock layers or minicolumns for testing
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_empty_layer(self):
+        """Empty layer returns empty index."""
+        layers = MockLayers.empty()
+        result = build_document_index(layers)
+        assert result == {}
+```
+
+</details>
+
+---
+
+## Exercise: Single Term Single Doc
+
+**Concept:** Single term in single document
+
+**Difficulty:** Intermediate
+
+**Time:** ~20 minutes
+
+**Source:** `test_query_search.py`
+
+### Setup
+
+```python
+from cortical import CorticalTextProcessor
+```
+
+### Your Task
+
+Single term in single document.
+
+### Hints
+
+<details>
+<summary>Hint 1</summary>
+
+Focus on the simplest case with just one element.
+
+</details>
+
+<details>
+<summary>Hint 2</summary>
+
+You may need to create mock layers or minicolumns for testing
+
+</details>
+
+<details>
+<summary>Hint 3</summary>
+
+Check the expected value and comparison in the assertion
+
+</details>
+
+### Solution
+
+<details>
+<summary>Click to reveal</summary>
+
+```python
+def test_single_term_single_doc(self):
+        """Single term in single document."""
+        col = MockMinicolumn(
+            content="term",
+            document_ids={"doc1"},
+            tfidf_per_doc={"doc1": 2.5}
+        )
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = MockHierarchicalLayer([col])
+
+        result = build_document_index(layers)
+
+        assert "term" in result
+        assert result["term"] == {"doc1": 2.5}
+```
+
+</details>
+
+---
+
+---
+
+*Completed 10 exercises? Check out the other topics for more challenges!*
+
+---
+
+## Exercises
+
+*Hands-on coding exercises derived from the test suite.*
+
+---
+
+## Overview
+
+Learn by doing! These exercises are extracted from the Cortical Text Processor's test suite and transformed into learning challenges.
+
+Each exercise includes:
+
+- **Clear task description** - What you need to implement
+- **Progressive hints** - Guidance without spoilers
+- **Complete solution** - Reference implementation from tests
+- **Verification** - How to check your answer
+
+## Exercise Topics
+
+### [Foundations](ex-foundations.md)
+
+**Difficulty:** Beginner
+
+**Exercises:** 10
+
+Core algorithms and data structures. Start here if you're new!
+
+### [Search](ex-search.md)
+
+**Difficulty:** Intermediate
+
+**Exercises:** 10
+
+Search, ranking, and retrieval techniques. Build on foundations.
+
+### [Advanced](ex-advanced.md)
+
+**Difficulty:** Advanced
+
+**Exercises:** 10
+
+Advanced features and complex algorithms. For experienced users.
+
+## Learning Path
+
+**Recommended progression:**
+
+1. Start with **Foundations** exercises
+2. Move to **Search** once comfortable
+3. Challenge yourself with **Advanced** topics
+
+## Tips for Success
+
+- **Read the test carefully** - The docstring explains what's being tested
+- **Use hints progressively** - Try solving first, then reveal hints as needed
+- **Run the solution** - Verify your understanding by executing the code
+- **Experiment** - Modify parameters and see how behavior changes
+
+---
+
+*Total exercises: 30*
+
+---
+
+# 09 Journey
+
+## Your Learning Journey
+
+*A progressive path through the Cortical Text Processor, designed for learners at all levels.*
+
+---
+
+## Overview
+
+This learning journey is organized into three progressive stages, each building on the previous one. The concepts are ordered based on:
+
+- **Dependencies:** What you need to know first
+- **Complexity:** From simple to sophisticated
+- **Historical emergence:** When concepts first appeared in development
+
+## Learning Paths
+
+### [Beginner Path](journey-beginner.md)
+
+**Concepts:** 3  
+**Time:** ~45 minutes  
+**Preview:** Tokenization, Stop Words, Tf-Idf
+
+### [Intermediate Path](journey-intermediate.md)
+
+**Concepts:** 6  
+**Time:** ~150 minutes  
+**Preview:** Pagerank, Lateral Connections, Query Expansion, and 3 more
+
+### [Advanced Path](journey-advanced.md)
+
+**Concepts:** 3  
+**Time:** ~105 minutes  
+**Preview:** Concept Clustering, Semantic Relations, Louvain
+
+---
+
+# Suggested Study Schedule
+
+*A practical 4-week plan to master the Cortical Text Processor.*
+
+---
+
+## Week 1: Foundations
+
+**Goal:** Understand the core building blocks
+
+**Concepts:**
+- Tokenization (~15 min)
+- Stop Words (~15 min)
+- Tf-Idf (~15 min)
+
+**Total Time:** ~45 minutes
+
+**Activities:**
+- Read foundation chapters
+- Run `showcase.py` to see concepts in action
+- Experiment with basic tokenization and TF-IDF
+
+## Week 2: Building Complexity
+
+**Goal:** Add graph-based features to your mental model
+
+**Concepts:**
+- Pagerank (~25 min)
+- Lateral Connections (~25 min)
+- Query Expansion (~25 min)
+
+**Total Time:** ~75 minutes
+
+**Activities:**
+- Study PageRank and BM25 implementations
+- Index a sample corpus with `scripts/index_codebase.py`
+- Explore query expansion behavior
+
+## Week 3: Advanced Structures
+
+**Goal:** Understand hierarchical organization and persistence
+
+**Concepts:**
+- Incremental Indexing (~25 min)
+- Bm25 (~25 min)
+- Persistence (~25 min)
+
+**Total Time:** ~75 minutes
+
+**Activities:**
+- Review minicolumn and layer architecture
+- Practice save/load operations
+- Test incremental indexing
+
+## Week 4: Mastery
+
+**Goal:** Master sophisticated algorithms and optimization
+
+**Concepts:**
+- Concept Clustering (~35 min)
+- Semantic Relations (~35 min)
+- Louvain (~35 min)
+
+**Total Time:** ~105 minutes
+
+**Activities:**
+- Study Louvain clustering implementation
+- Experiment with semantic relations extraction
+- Profile performance with `scripts/profile_full_analysis.py`
+- Implement a custom feature using the library
+
+## Tips for Success
+
+1. **Follow the order** - Prerequisites build on each other
+2. **Code along** - Run examples from `showcase.py` and scripts
+3. **Read tests** - `tests/` directory shows real usage patterns
+4. **Ask questions** - Use the semantic search: `python scripts/search_codebase.py "your question"`
+5. **Build something** - Best way to learn is to apply the concepts
+
+---
+
+## Mastery Path (Advanced)
+
+*Deep dives into sophisticated algorithms. For those ready to master the full system.*
+
+---
+
+**Concepts:** 3
+
+**Estimated Time:** ~105 minutes
+
+---
+
+## 1. Concept Clustering
+
+**First Introduced:** 2025-12-09
+
+**Mentions in History:** 2 commits
+
+**Reading Time:** ~35 min
+
+**Prerequisites:** None (foundational concept)
+
+**Where to Learn:**
+- Foundations: `book/01-foundations/`
+- Modules: `book/02-modules/`
+- Evolution: `book/07-concepts/concept-clustering.md`
+
+**Key Takeaway:**
+Understand the role of concept clustering in the information retrieval pipeline.
+---
+
+## 2. Semantic Relations
+
+**First Introduced:** 2025-12-09
+
+**Mentions in History:** 1 commits
+
+**Reading Time:** ~35 min
+
+**Prerequisites:**
+- Query Expansion
+
+**Where to Learn:**
+- Foundations: `book/01-foundations/`
+- Modules: `book/02-modules/`
+- Evolution: `book/07-concepts/semantic-relations.md`
+
+**Key Takeaway:**
+Dive into pattern-based extraction of typed relationships.
+---
+
+## 3. Louvain
+
+**First Introduced:** 2025-12-11
+
+**Mentions in History:** 7 commits
+
+**Reading Time:** ~35 min
+
+**Prerequisites:** None (foundational concept)
+
+**Where to Learn:**
+- Foundations: `book/01-foundations/`
+- Modules: `book/02-modules/`
+- Evolution: `book/07-concepts/louvain.md`
+
+**Key Takeaway:**
+Explore community detection for automatic concept clustering.
+---
+
+---
+
+## Start Here (Foundational)
+
+*Core concepts that unlock everything else. Start here if you're new to information retrieval.*
+
+---
+
+**Concepts:** 3
+
+**Estimated Time:** ~45 minutes
+
+---
+
+## 1. Tokenization
+
+**First Introduced:** 2025-12-10
+
+**Mentions in History:** 3 commits
+
+**Reading Time:** ~15 min
+
+**Prerequisites:** None (foundational concept)
+
+**Related Concepts:**
+- Bm25
+
+**Where to Learn:**
+- Foundations: `book/01-foundations/`
+- Modules: `book/02-modules/`
+- Evolution: `book/07-concepts/tokenization.md`
+
+**Key Takeaway:**
+Learn how text is broken into processable units - the foundation of all text analysis.
+---
+
+## 2. Stop Words
+
+**First Introduced:** 2025-12-13
+
+**Mentions in History:** 1 commits
+
+**Reading Time:** ~15 min
+
+**Prerequisites:** None (foundational concept)
+
+**Where to Learn:**
+- Foundations: `book/01-foundations/`
+- Modules: `book/02-modules/`
+- Evolution: `book/07-concepts/stop-words.md`
+
+**Key Takeaway:**
+See why common words are filtered to focus on meaningful content.
+---
+
+## 3. Tf-Idf
+
+**First Introduced:** 2025-12-15
+
+**Mentions in History:** 2 commits
+
+**Reading Time:** ~15 min
+
+**Prerequisites:** None (foundational concept)
+
+**Related Concepts:**
+- Bm25
+- Query Expansion
+
+**Where to Learn:**
+- Foundations: `book/01-foundations/`
+- Modules: `book/02-modules/`
+- Evolution: `book/07-concepts/tf-idf.md`
+
+**Key Takeaway:**
+Master the classic algorithm for term importance - weighing frequency against distinctiveness.
+---
+
+---
+
+## Going Deeper (Intermediate)
+
+*Build on the foundations. These concepts add power and flexibility to your understanding.*
+
+---
+
+**Concepts:** 6
+
+**Estimated Time:** ~150 minutes
+
+---
+
+## 1. Pagerank
+
+**First Introduced:** 2025-12-09
+
+**Mentions in History:** 4 commits
+
+**Reading Time:** ~25 min
+
+**Prerequisites:** None (foundational concept)
+
+**Where to Learn:**
+- Foundations: `book/01-foundations/`
+- Modules: `book/02-modules/`
+- Evolution: `book/07-concepts/pagerank.md`
+
+**Key Takeaway:**
+Learn how graph algorithms measure importance through connections.
+---
+
+## 2. Lateral Connections
+
+**First Introduced:** 2025-12-09
+
+**Mentions in History:** 2 commits
+
+**Reading Time:** ~25 min
+
+**Prerequisites:** None (foundational concept)
+
+**Where to Learn:**
+- Foundations: `book/01-foundations/`
+- Modules: `book/02-modules/`
+- Evolution: `book/07-concepts/lateral-connections.md`
+
+**Key Takeaway:**
+Grasp the Hebbian-inspired network of term relationships.
+---
+
+## 3. Query Expansion
+
+**First Introduced:** 2025-12-10
+
+**Mentions in History:** 4 commits
+
+**Reading Time:** ~25 min
+
+**Prerequisites:**
+- Tf-Idf
+
+**Related Concepts:**
+- Tf-Idf
+
+**Where to Learn:**
+- Foundations: `book/01-foundations/`
+- Modules: `book/02-modules/`
+- Evolution: `book/07-concepts/query-expansion.md`
+
+**Key Takeaway:**
+See how searches become smarter by exploring related terms.
+---
+
+## 4. Incremental Indexing
+
+**First Introduced:** 2025-12-10
+
+**Mentions in History:** 1 commits
+
+**Reading Time:** ~25 min
+
+**Prerequisites:** None (foundational concept)
+
+**Where to Learn:**
+- Foundations: `book/01-foundations/`
+- Modules: `book/02-modules/`
+- Evolution: `book/07-concepts/incremental-indexing.md`
+
+**Key Takeaway:**
+Understand the role of incremental indexing in the information retrieval pipeline.
+---
+
+## 5. Bm25
+
+**First Introduced:** 2025-12-15
+
+**Mentions in History:** 9 commits
+
+**Reading Time:** ~25 min
+
+**Prerequisites:**
+- Tokenization
+- Tf-Idf
+
+**Related Concepts:**
+- Tf-Idf
+- Tokenization
+
+**Where to Learn:**
+- Foundations: `book/01-foundations/`
+- Modules: `book/02-modules/`
+- Evolution: `book/07-concepts/bm25.md`
+
+**Key Takeaway:**
+Understand the modern scoring function that improves on TF-IDF with saturation.
+---
+
+## 6. Persistence
+
+**First Introduced:** 2025-12-16
+
+**Mentions in History:** 1 commits
+
+**Reading Time:** ~25 min
+
+**Prerequisites:** None (foundational concept)
+
+**Where to Learn:**
+- Foundations: `book/01-foundations/`
+- Modules: `book/02-modules/`
+- Evolution: `book/07-concepts/persistence.md`
+
+**Key Takeaway:**
+Understand the role of persistence in the information retrieval pipeline.
+---
 
 ---
 
