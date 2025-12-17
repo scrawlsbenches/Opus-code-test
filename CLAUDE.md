@@ -27,18 +27,26 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 - Document findings even when they contradict initial hypotheses
 
 **Test-Driven Confidence**
-- Maintain >89% code coverage before optimizations
+- Don't regress coverage on files you modify
 - Run the full test suite after every change
 - Write tests for the bug before writing the fix
 
-> **⚠️ CODE COVERAGE REQUIREMENT:** This project strictly maintains >89% test coverage.
-> When you add new code, you MUST also add corresponding unit tests. Coverage is
-> monitored by CI and PRs that decrease coverage will be flagged. Before committing:
+> **⚠️ CODE COVERAGE POLICY:**
+> - **Current baseline:** 61% (as of 2025-12-17)
+> - **Target:** Improve incrementally, never regress on modified files
+> - **Reality:** Some modules have low coverage (see debt list below)
+>
+> When you add new code, add corresponding unit tests. Before committing:
 > ```bash
 > python -m coverage run -m pytest tests/ && python -m coverage report --include="cortical/*"
 > ```
-> If coverage drops, add tests for your new code before pushing. The rule is simple:
-> **New code = new tests. No exceptions.**
+>
+> **Known coverage debt (acknowledged, not blocking):**
+> - `cortical/query/analogy.py` (3%), `cortical/mcp_server.py` (4%), `cortical/gaps.py` (9%)
+> - `cortical/cli_wrapper.py` (0% - CLI entry point), `cortical/types.py` (0% - type aliases)
+> - Full list: `samples/memories/2025-12-17-session-coverage-and-workflow-analysis.md`
+>
+> **Rule:** New code in well-covered modules needs tests. New code in debt modules: use judgment.
 
 **Dog-Food Everything**
 - Use the system to test itself when possible
