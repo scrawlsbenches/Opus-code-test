@@ -85,6 +85,230 @@ BLOOM_HASH_COUNT = 10
 # Index file magic bytes
 INDEX_MAGIC = b'CALI'
 
+# Valid record type pattern (alphanumeric, underscore, hyphen)
+import re
+VALID_RECORD_TYPE_PATTERN = re.compile(r'^[a-zA-Z][a-zA-Z0-9_-]{0,63}$')
+VALID_RECORD_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_\-:.]{1,256}$')
+VALID_CONTENT_HASH_PATTERN = re.compile(r'^[a-fA-F0-9]{64}$')
+
+
+# ============================================================================
+# EXCEPTIONS
+# ============================================================================
+
+class CALIError(Exception):
+    """Base exception for CALI storage errors."""
+    pass
+
+
+class CALIValidationError(CALIError):
+    """Raised when input validation fails."""
+    pass
+
+
+class CALISerializationError(CALIError):
+    """Raised when data cannot be serialized to JSON."""
+    pass
+
+
+class CALIStorageError(CALIError):
+    """Raised when storage operations fail."""
+    pass
+
+
+# ============================================================================
+# VALIDATION FUNCTIONS
+# ============================================================================
+
+def validate_record_type(record_type: Any) -> str:
+    """
+    Validate and normalize record type.
+
+    Args:
+        record_type: The record type to validate
+
+    Returns:
+        Normalized record type string
+
+    Raises:
+        CALIValidationError: If record type is invalid
+    """
+    if record_type is None:
+        raise CALIValidationError("record_type cannot be None")
+
+    if not isinstance(record_type, str):
+        raise CALIValidationError(
+            f"record_type must be a string, got {type(record_type).__name__}"
+        )
+
+    record_type = record_type.strip()
+
+    if not record_type:
+        raise CALIValidationError("record_type cannot be empty")
+
+    if not VALID_RECORD_TYPE_PATTERN.match(record_type):
+        raise CALIValidationError(
+            f"record_type '{record_type}' is invalid. Must start with a letter "
+            "and contain only alphanumeric characters, underscores, or hyphens "
+            "(max 64 chars)"
+        )
+
+    return record_type.lower()
+
+
+def validate_record_id(record_id: Any) -> str:
+    """
+    Validate and normalize record ID.
+
+    Args:
+        record_id: The record ID to validate
+
+    Returns:
+        Normalized record ID string
+
+    Raises:
+        CALIValidationError: If record ID is invalid
+    """
+    if record_id is None:
+        raise CALIValidationError("record_id cannot be None")
+
+    if not isinstance(record_id, str):
+        raise CALIValidationError(
+            f"record_id must be a string, got {type(record_id).__name__}"
+        )
+
+    record_id = record_id.strip()
+
+    if not record_id:
+        raise CALIValidationError("record_id cannot be empty")
+
+    if not VALID_RECORD_ID_PATTERN.match(record_id):
+        raise CALIValidationError(
+            f"record_id '{record_id[:50]}...' is invalid. Must contain only "
+            "alphanumeric characters, underscores, hyphens, colons, or periods "
+            "(max 256 chars)"
+        )
+
+    return record_id
+
+
+def validate_content_hash(content_hash: Any) -> str:
+    """
+    Validate content hash format (SHA-256 hex string).
+
+    Args:
+        content_hash: The content hash to validate
+
+    Returns:
+        Normalized content hash string (lowercase)
+
+    Raises:
+        CALIValidationError: If content hash is invalid
+    """
+    if content_hash is None:
+        raise CALIValidationError("content_hash cannot be None")
+
+    if not isinstance(content_hash, str):
+        raise CALIValidationError(
+            f"content_hash must be a string, got {type(content_hash).__name__}"
+        )
+
+    content_hash = content_hash.strip().lower()
+
+    if not VALID_CONTENT_HASH_PATTERN.match(content_hash):
+        raise CALIValidationError(
+            f"content_hash '{content_hash[:20]}...' is invalid. "
+            "Must be a 64-character hexadecimal string (SHA-256)"
+        )
+
+    return content_hash
+
+
+def validate_data(data: Any) -> Dict[str, Any]:
+    """
+    Validate that data is a serializable dictionary.
+
+    Args:
+        data: The data to validate
+
+    Returns:
+        The validated data dictionary
+
+    Raises:
+        CALIValidationError: If data is not a dict
+        CALISerializationError: If data cannot be serialized to JSON
+    """
+    if data is None:
+        raise CALIValidationError("data cannot be None")
+
+    if not isinstance(data, dict):
+        raise CALIValidationError(
+            f"data must be a dictionary, got {type(data).__name__}"
+        )
+
+    if len(data) == 0:
+        raise CALIValidationError("data cannot be an empty dictionary")
+
+    # Verify JSON serializable
+    try:
+        json.dumps(data, sort_keys=True)
+    except (TypeError, ValueError, OverflowError) as e:
+        raise CALISerializationError(
+            f"data is not JSON serializable: {e}"
+        )
+
+    # Check for reasonable size (10MB limit)
+    try:
+        serialized = json.dumps(data, separators=(',', ':'))
+        if len(serialized) > 10 * 1024 * 1024:  # 10MB
+            raise CALIValidationError(
+                f"data is too large ({len(serialized) / 1024 / 1024:.1f}MB). "
+                "Maximum size is 10MB"
+            )
+    except (TypeError, ValueError):
+        pass  # Already caught above
+
+    return data
+
+
+def validate_timestamp(timestamp: Any) -> float:
+    """
+    Validate and normalize timestamp.
+
+    Args:
+        timestamp: Unix timestamp (float) or ISO string
+
+    Returns:
+        Unix timestamp as float
+
+    Raises:
+        CALIValidationError: If timestamp is invalid
+    """
+    if timestamp is None:
+        return time.time()
+
+    if isinstance(timestamp, (int, float)):
+        ts = float(timestamp)
+        # Sanity check: between 2020 and 2100
+        if ts < 1577836800 or ts > 4102444800:
+            raise CALIValidationError(
+                f"timestamp {ts} is out of valid range (2020-2100)"
+            )
+        return ts
+
+    if isinstance(timestamp, str):
+        try:
+            dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+            return dt.timestamp()
+        except ValueError as e:
+            raise CALIValidationError(
+                f"timestamp '{timestamp}' is not a valid ISO format: {e}"
+            )
+
+    raise CALIValidationError(
+        f"timestamp must be a float or ISO string, got {type(timestamp).__name__}"
+    )
+
 
 class BloomFilter:
     """
@@ -727,7 +951,14 @@ class MLStore:
 
         Returns False if definitely not present, True if likely present.
         For guaranteed accuracy, verifies bloom positives against index.
+
+        Raises:
+            CALIValidationError: If inputs are invalid
         """
+        # Validate inputs
+        record_type = validate_record_type(record_type)
+        record_id = validate_record_id(record_id)
+
         bloom_key = self._bloom_key(record_type, record_id)
 
         # Fast path: bloom filter says no -> definitely not present
@@ -762,9 +993,16 @@ class MLStore:
 
         Returns:
             Content hash of stored object
+
+        Raises:
+            CALIValidationError: If inputs are invalid
+            CALISerializationError: If data cannot be serialized
         """
-        if timestamp is None:
-            timestamp = time.time()
+        # Validate all inputs
+        record_type = validate_record_type(record_type)
+        record_id = validate_record_id(record_id)
+        data = validate_data(data)
+        timestamp = validate_timestamp(timestamp)
 
         # Store object in content-addressed storage (automatic deduplication)
         content_hash = self._objects.put(data)
@@ -800,7 +1038,14 @@ class MLStore:
         O(1) retrieval by ID.
 
         Returns None if record doesn't exist.
+
+        Raises:
+            CALIValidationError: If inputs are invalid
         """
+        # Validate inputs
+        record_type = validate_record_type(record_type)
+        record_id = validate_record_id(record_id)
+
         idx = self._get_index(record_type)
         entry = idx.get(record_id)
         if entry is None:
@@ -809,7 +1054,13 @@ class MLStore:
         return self._objects.get(entry.content_hash)
 
     def get_by_hash(self, content_hash: str) -> Optional[Dict[str, Any]]:
-        """Direct retrieval by content hash."""
+        """
+        Direct retrieval by content hash.
+
+        Raises:
+            CALIValidationError: If content_hash is invalid
+        """
+        content_hash = validate_content_hash(content_hash)
         return self._objects.get(content_hash)
 
     def query_range(
@@ -828,12 +1079,24 @@ class MLStore:
 
         Yields:
             Records in timestamp order
+
+        Raises:
+            CALIValidationError: If inputs are invalid
         """
-        # Convert ISO strings to timestamps
-        if isinstance(start_ts, str):
-            start_ts = datetime.fromisoformat(start_ts).timestamp()
-        if isinstance(end_ts, str):
-            end_ts = datetime.fromisoformat(end_ts).timestamp()
+        # Validate record type
+        record_type = validate_record_type(record_type)
+
+        # Convert and validate timestamps
+        if start_ts is not None:
+            start_ts = validate_timestamp(start_ts)
+        if end_ts is not None:
+            end_ts = validate_timestamp(end_ts)
+
+        # Validate range order
+        if start_ts is not None and end_ts is not None and start_ts > end_ts:
+            raise CALIValidationError(
+                f"start_ts ({start_ts}) must be <= end_ts ({end_ts})"
+            )
 
         time_idx = self._get_time_index(record_type)
         record_ids = time_idx.query_range(start_ts, end_ts)
@@ -863,7 +1126,13 @@ class MLStore:
 
         Yields:
             Record data dicts (or tuples if include_metadata=True)
+
+        Raises:
+            CALIValidationError: If record_type is invalid
         """
+        # Validate record type
+        record_type = validate_record_type(record_type)
+
         # Iterate over all session logs (data inline = fast)
         for record_id, timestamp, data in SessionLog.iterate_all(
             self._logs_dir, record_type

@@ -37,8 +37,25 @@ logger = logging.getLogger(__name__)
 # Environment variable to enable/disable CALI (default: enabled)
 ML_USE_CALI = os.getenv("ML_USE_CALI", "1") == "1"
 
-# Lazy-loaded CALI store instance
+# Lazy-loaded CALI store instance and exception types
 _cali_store = None
+_cali_validation_error = None
+_cali_serialization_error = None
+
+
+def _get_cali_exceptions():
+    """Get CALI exception types for proper error handling."""
+    global _cali_validation_error, _cali_serialization_error
+    if _cali_validation_error is None:
+        try:
+            from cortical.ml_storage import CALIValidationError, CALISerializationError
+            _cali_validation_error = CALIValidationError
+            _cali_serialization_error = CALISerializationError
+        except ImportError:
+            # Fallback to base Exception if not available
+            _cali_validation_error = ValueError
+            _cali_serialization_error = TypeError
+    return _cali_validation_error, _cali_serialization_error
 
 
 def get_cali_store():
@@ -58,23 +75,79 @@ def get_cali_store():
 
 
 def cali_put(record_type: str, record_id: str, data: Dict[str, Any]) -> bool:
-    """Write to CALI store if enabled. Returns True if written."""
+    """
+    Write to CALI store if enabled. Returns True if written.
+
+    Args:
+        record_type: Type of record (e.g., 'commit', 'chat', 'session')
+        record_id: Unique identifier for the record
+        data: Dictionary data to store (must be JSON serializable)
+
+    Returns:
+        True if successfully written, False if CALI is disabled or unavailable
+
+    Raises:
+        ValueError: If record_type, record_id, or data is invalid
+        TypeError: If data cannot be serialized to JSON
+    """
+    # Pre-validate inputs before calling CALI
+    if not record_type or not isinstance(record_type, str):
+        raise ValueError(f"record_type must be a non-empty string, got: {type(record_type)}")
+    if not record_id or not isinstance(record_id, str):
+        raise ValueError(f"record_id must be a non-empty string, got: {type(record_id)}")
+    if data is None:
+        raise ValueError("data cannot be None")
+    if not isinstance(data, dict):
+        raise TypeError(f"data must be a dictionary, got: {type(data)}")
+    if len(data) == 0:
+        raise ValueError("data cannot be an empty dictionary")
+
     store = get_cali_store()
     if store:
+        CALIValidationError, CALISerializationError = _get_cali_exceptions()
         try:
             store.put(record_type, record_id, data)
             return True
+        except CALIValidationError as e:
+            # Re-raise validation errors - caller should fix their data
+            raise ValueError(f"CALI validation failed: {e}") from e
+        except CALISerializationError as e:
+            # Re-raise serialization errors - caller should fix their data
+            raise TypeError(f"CALI serialization failed: {e}") from e
         except Exception as e:
+            # Log other errors but don't fail (graceful degradation)
             logger.warning(f"CALI write failed for {record_type}/{record_id}: {e}")
     return False
 
 
 def cali_exists(record_type: str, record_id: str) -> bool:
-    """Check if record exists in CALI (O(1) bloom filter check)."""
+    """
+    Check if record exists in CALI (O(1) bloom filter check).
+
+    Args:
+        record_type: Type of record (e.g., 'commit', 'chat', 'session')
+        record_id: Unique identifier for the record
+
+    Returns:
+        True if record exists, False if not or if CALI is disabled
+
+    Raises:
+        ValueError: If record_type or record_id is invalid
+    """
+    # Pre-validate inputs
+    if not record_type or not isinstance(record_type, str):
+        raise ValueError(f"record_type must be a non-empty string, got: {type(record_type)}")
+    if not record_id or not isinstance(record_id, str):
+        raise ValueError(f"record_id must be a non-empty string, got: {type(record_id)}")
+
     store = get_cali_store()
     if store:
+        CALIValidationError, _ = _get_cali_exceptions()
         try:
             return store.exists(record_type, record_id)
+        except CALIValidationError as e:
+            # Re-raise validation errors
+            raise ValueError(f"CALI validation failed: {e}") from e
         except Exception as e:
             logger.warning(f"CALI exists check failed: {e}")
     return False
