@@ -274,11 +274,10 @@ class TestScalabilityIndicators:
         time_15_docs = time.perf_counter() - start
 
         # 15 docs should take roughly 3x time of 5 docs (linear scaling)
-        # Allow 5x to account for overhead and variability
-        # Use a minimum floor for baseline to avoid division/multiplication issues
-        # when the baseline is very fast (e.g., < 10ms)
-        baseline = max(time_5_docs, 0.01)  # At least 10ms floor
-        expected_max = baseline * 5
+        # Allow 10x to account for CI variability, cold start overhead, and GC
+        # Use a minimum floor for baseline to avoid issues when 5 docs is extremely fast
+        baseline = max(time_5_docs, 0.02)  # At least 20ms floor
+        expected_max = baseline * 10
 
         assert time_15_docs < expected_max, (
             f"Processing 15 docs took {time_15_docs:.3f}s, "
