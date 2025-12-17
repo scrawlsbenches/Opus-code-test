@@ -1,6 +1,6 @@
 ---
 title: "Feature Evolution"
-generated: "2025-12-16T22:56:47.794856Z"
+generated: "2025-12-17T00:26:16.628757Z"
 generator: "evolution"
 source_files:
   - "git log --grep=feat:"
@@ -18,15 +18,15 @@ tags:
 
 ## Overview
 
-The system has evolved through **18 feature additions**. Below is the narrative of how each capability came to be.
+The system has evolved through **22 feature additions**. Below is the narrative of how each capability came to be.
 
 ## Other Capabilities
 
-### Add --recover flag and git-sync skill
+### Add 6 new intelligent book generators for publisher-ready content
 
-**Commit:** `f5faba4`  
-**Date:** 2025-12-16  
-**Files Modified:** 4  
+**Commit:** `082aa21`  
+**Date:** 2025-12-17  
+**Files Modified:** 47  
 
 ### Add smart caching to markdown book generation
 
@@ -58,19 +58,57 @@ The system has evolved through **18 feature additions**. Below is the narrative 
 **Date:** 2025-12-16  
 **Files Modified:** 8  
 
+### Add orchestration extraction for director sub-agent tracking
+
+**Commit:** `4eaeb37`  
+**Date:** 2025-12-15  
+
+### Add stunning animated ASCII codebase visualizer
+
+**Commit:** `e085a0b`  
+**Date:** 2025-12-15  
+
+### Add ASCII art codebase visualization script
+
+**Commit:** `43aae33`  
+**Date:** 2025-12-15  
+
+### Complete legacy task system migration
+
+**Commit:** `33dc8b2`  
+**Date:** 2025-12-15  
+
+### Add director orchestration execution tracking system
+
+**Commit:** `4976c58`  
+**Date:** 2025-12-15  
+
+## Search Capabilities
+
+### Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
+
+**Commit:** `5665839`  
+**Date:** 2025-12-16  
+
+### Add search integration and web interface (Wave 3)
+
+**Commit:** `0022466`  
+**Date:** 2025-12-16  
+**Files Modified:** 11  
+
+## Data Capabilities
+
+### Implement WAL + Snapshot persistence system (LEGACY-133)
+
+**Commit:** `c7e662a`  
+**Date:** 2025-12-16  
+
+### Add git-tracked JSONL storage for orchestration data
+
+**Commit:** `fb30e38`  
+**Date:** 2025-12-15  
+
 ## Ml Capabilities
-
-### Add git-sync-ml.sh for safe ML data synchronization
-
-**Commit:** `bb953e7`  
-**Date:** 2025-12-16  
-**Files Modified:** 65  
-
-### Add ML experiment tracking framework
-
-**Commit:** `6503d84`  
-**Date:** 2025-12-16  
-**Files Modified:** 8  
 
 ### Implement top priorities (ML capture, state storage, legacy cleanup)
 
@@ -101,34 +139,6 @@ The system has evolved through **18 feature additions**. Below is the narrative 
 **Date:** 2025-12-16  
 **Files Modified:** 9  
 
-## Analysis Capabilities
-
-### Add repo_showcase.py for full repository analysis
-
-**Commit:** `cb04f0c`  
-**Date:** 2025-12-16  
-**Files Modified:** 1  
-
-## Search Capabilities
-
-### Add chunked parallel processing for TF-IDF/BM25 (LEGACY-135)
-
-**Commit:** `5665839`  
-**Date:** 2025-12-16  
-
-### Add search integration and web interface (Wave 3)
-
-**Commit:** `0022466`  
-**Date:** 2025-12-16  
-**Files Modified:** 11  
-
-## Data Capabilities
-
-### Implement WAL + Snapshot persistence system (LEGACY-133)
-
-**Commit:** `c7e662a`  
-**Date:** 2025-12-16  
-
 ## Documentation Capabilities
 
 ### Add CI workflow and documentation (Wave 4)
@@ -136,4 +146,9 @@ The system has evolved through **18 feature additions**. Below is the narrative 
 **Commit:** `940fdf2`  
 **Date:** 2025-12-16  
 **Files Modified:** 5  
+
+### Add animated GIF visualizations to README
+
+**Commit:** `b4d7c82`  
+**Date:** 2025-12-15  
 
