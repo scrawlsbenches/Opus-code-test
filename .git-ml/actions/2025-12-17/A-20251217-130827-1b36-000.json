@@ -1,0 +1,19 @@
+{
+  "id": "A-20251217-130827-1b36-000",
+  "timestamp": "2025-12-17T13:07:43.949Z",
+  "session_id": "1b36facb-3402-4743-9bfc-af47db6f13cf",
+  "action_type": "search",
+  "target": "",
+  "context": {
+    "tool": "Grep",
+    "input": {
+      "tool": "Grep",
+      "input": {
+        "pattern": "cmax|corpeus|maximus",
+        "-i": true
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}
