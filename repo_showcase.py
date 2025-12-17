@@ -18,35 +18,11 @@ Usage:
 import argparse
 import os
 import sys
-import time
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
 from cortical import CorticalTextProcessor, CorticalLayer
-
-
-class Timer:
-    """Simple timer for measuring operation durations."""
-
-    def __init__(self):
-        self.times: Dict[str, float] = {}
-        self._start: float = 0
-        self._current: str = ""
-
-    def start(self, name: str):
-        """Start timing an operation."""
-        self._start = time.perf_counter()
-        self._current = name
-
-    def stop(self) -> float:
-        """Stop timing and record the duration."""
-        elapsed = time.perf_counter() - self._start
-        self.times[self._current] = elapsed
-        return elapsed
-
-    def get(self, name: str) -> float:
-        """Get recorded time for an operation."""
-        return self.times.get(name, 0)
+from scripts.demo_utils import Timer
 
 
 def print_header(title: str, char: str = "="):
