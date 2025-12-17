@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "6b01",
   "started_at": "2025-12-17T02:51:33.834930",
-  "saved_at": "2025-12-17T11:13:56.053243",
+  "saved_at": "2025-12-17T20:12:00.918423",
   "tasks": [
     {
       "id": "T-20251217-025133-6b01-001",
@@ -284,6 +284,21 @@
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-17T11:13:56.053152",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251217-201200-6b01-020",
+      "title": "Pickle removal complete - verify CI passes and consider follow-up cleanup",
+      "status": "pending",
+      "priority": "low",
+      "category": "maintenance",
+      "description": "## Session Summary (2025-12-17)\n\nPickle serialization has been completely removed from the codebase (T-017).\n\n### Completed Work:\n1. Removed pickle serialization code from `cortical/persistence.py`\n2. Removed format/signing_key parameters from `cortical/processor/persistence_api.py`\n3. Removed SignatureVerificationError from `cortical/__init__.py` exports\n4. Updated 14 test files to use JSON directories instead of .pkl files:\n   - tests/unit/test_persistence.py\n   - tests/unit/test_repl.py\n   - tests/unit/test_fluent.py\n   - tests/unit/test_fluent_coverage.py\n   - tests/unit/test_observability.py\n   - tests/unit/test_processor_json_persistence.py\n   - tests/unit/test_devex_scripts.py\n   - tests/integration/test_integration.py\n   - tests/regression/test_persistence_edges.py\n   - tests/security/test_security.py\n   - tests/test_coverage_gaps.py\n5. Removed obsolete migrate_to_json tests\n\n### Test Results:\n- All 4613 tests pass\n- 2 skipped, 55 deselected\n\n### Commits:\n- `42106ebf` - sec: Remove pickle serialization entirely (T-017)\n- `b23d8fb7` - data: ML session data\n\n### Branch:\n`claude/code-review-analysis-fS2bO`\n\n### Follow-up Considerations:\n1. Verify CI pipeline passes with these changes\n2. Consider updating CLAUDE.md to remove any remaining pickle references\n3. T-018 edge case tests are already in place in tests/regression/\n4. May want to add deprecation notice to docs if external users depended on pickle format",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-17T20:12:00.918328",
       "updated_at": null,
       "completed_at": null,
       "context": {},
