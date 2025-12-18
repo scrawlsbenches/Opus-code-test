@@ -26,6 +26,10 @@ from micro_expert import (
 from expert_router import ExpertRouter, RoutingDecision
 from voting_aggregator import VotingAggregator, AggregationConfig
 from experts.file_expert import FileExpert
+from credit_account import CreditAccount, CreditTransaction, CreditLedger
+from value_signal import (
+    ValueSignal, SignalType, ValueAttributor, SignalBuffer
+)
 
 
 # Test implementation of MicroExpert for testing abstract base class
@@ -1268,6 +1272,490 @@ TypeError: 'NoneType' object is not subscriptable
             self.assertEqual(loaded.expert_id, expert.expert_id)
             self.assertEqual(loaded.trained_on_commits, 10)
             self.assertIn('TypeError', loaded.model_data['error_to_files'])
+
+
+class TestValueAttribution(unittest.TestCase):
+    """Test ValueSignal and attribution system."""
+
+    def test_value_signal_creation(self):
+        """Test creating a value signal."""
+        signal = ValueSignal(
+            signal_type=SignalType.POSITIVE.value,
+            magnitude=0.8,
+            timestamp=1234567890.0,
+            source='test_result',
+            expert_id='expert_1',
+            prediction_id='pred_1',
+            context={'test': 'data'}
+        )
+
+        self.assertEqual(signal.signal_type, 'positive')
+        self.assertEqual(signal.magnitude, 0.8)
+        self.assertEqual(signal.source, 'test_result')
+        self.assertEqual(signal.expert_id, 'expert_1')
+        self.assertEqual(signal.prediction_id, 'pred_1')
+        self.assertEqual(signal.context['test'], 'data')
+
+    def test_signal_types(self):
+        """Test all signal types."""
+        # Positive signal
+        pos_signal = ValueSignal(
+            signal_type=SignalType.POSITIVE.value,
+            magnitude=0.5,
+            timestamp=0.0,
+            source='test',
+            expert_id='e1',
+            prediction_id='p1'
+        )
+        self.assertEqual(pos_signal.signal_type, 'positive')
+
+        # Negative signal
+        neg_signal = ValueSignal(
+            signal_type=SignalType.NEGATIVE.value,
+            magnitude=0.5,
+            timestamp=0.0,
+            source='test',
+            expert_id='e1',
+            prediction_id='p1'
+        )
+        self.assertEqual(neg_signal.signal_type, 'negative')
+
+        # Neutral signal
+        neutral_signal = ValueSignal(
+            signal_type=SignalType.NEUTRAL.value,
+            magnitude=0.5,
+            timestamp=0.0,
+            source='test',
+            expert_id='e1',
+            prediction_id='p1'
+        )
+        self.assertEqual(neutral_signal.signal_type, 'neutral')
+
+    def test_signal_validation(self):
+        """Test signal validation."""
+        # Invalid magnitude (too high)
+        with self.assertRaises(ValueError):
+            ValueSignal(
+                signal_type='positive',
+                magnitude=1.5,
+                timestamp=0.0,
+                source='test',
+                expert_id='e1',
+                prediction_id='p1'
+            )
+
+        # Invalid magnitude (negative)
+        with self.assertRaises(ValueError):
+            ValueSignal(
+                signal_type='positive',
+                magnitude=-0.5,
+                timestamp=0.0,
+                source='test',
+                expert_id='e1',
+                prediction_id='p1'
+            )
+
+        # Invalid signal type
+        with self.assertRaises(ValueError):
+            ValueSignal(
+                signal_type='invalid',
+                magnitude=0.5,
+                timestamp=0.0,
+                source='test',
+                expert_id='e1',
+                prediction_id='p1'
+            )
+
+    def test_signal_immutable(self):
+        """Test that signals are immutable."""
+        signal = ValueSignal(
+            signal_type='positive',
+            magnitude=0.5,
+            timestamp=0.0,
+            source='test',
+            expert_id='e1',
+            prediction_id='p1'
+        )
+
+        # Should not be able to modify
+        with self.assertRaises(AttributeError):
+            signal.magnitude = 0.8
+
+    def test_signal_serialization(self):
+        """Test signal to_dict and from_dict."""
+        signal = ValueSignal(
+            signal_type='positive',
+            magnitude=0.7,
+            timestamp=1234567890.0,
+            source='commit_result',
+            expert_id='expert_2',
+            prediction_id='pred_2',
+            context={'accuracy': 0.85}
+        )
+
+        # Convert to dict
+        data = signal.to_dict()
+        self.assertEqual(data['signal_type'], 'positive')
+        self.assertEqual(data['magnitude'], 0.7)
+        self.assertEqual(data['context']['accuracy'], 0.85)
+
+        # Load from dict
+        loaded = ValueSignal.from_dict(data)
+        self.assertEqual(loaded.signal_type, signal.signal_type)
+        self.assertEqual(loaded.magnitude, signal.magnitude)
+        self.assertEqual(loaded.expert_id, signal.expert_id)
+        self.assertEqual(loaded.context, signal.context)
+
+    def test_attributor_positive_signal(self):
+        """Test attributor with positive signal."""
+        attributor = ValueAttributor(
+            positive_multiplier=10.0,
+            use_confidence_scaling=False
+        )
+
+        signal = ValueSignal(
+            signal_type=SignalType.POSITIVE.value,
+            magnitude=0.8,
+            timestamp=0.0,
+            source='test',
+            expert_id='expert_1',
+            prediction_id='pred_1'
+        )
+
+        amount = attributor.calculate_credit_amount(signal)
+        # 0.8 * 10.0 = 8.0
+        self.assertAlmostEqual(amount, 8.0)
+
+    def test_attributor_negative_signal(self):
+        """Test attributor with negative signal."""
+        attributor = ValueAttributor(
+            negative_multiplier=5.0,
+            use_confidence_scaling=False
+        )
+
+        signal = ValueSignal(
+            signal_type=SignalType.NEGATIVE.value,
+            magnitude=0.6,
+            timestamp=0.0,
+            source='test',
+            expert_id='expert_1',
+            prediction_id='pred_1'
+        )
+
+        amount = attributor.calculate_credit_amount(signal)
+        # -0.6 * 5.0 = -3.0
+        self.assertAlmostEqual(amount, -3.0)
+
+    def test_attributor_neutral_signal(self):
+        """Test attributor with neutral signal."""
+        attributor = ValueAttributor()
+
+        signal = ValueSignal(
+            signal_type=SignalType.NEUTRAL.value,
+            magnitude=0.5,
+            timestamp=0.0,
+            source='test',
+            expert_id='expert_1',
+            prediction_id='pred_1'
+        )
+
+        amount = attributor.calculate_credit_amount(signal)
+        self.assertAlmostEqual(amount, 0.0)
+
+    def test_attributor_confidence_scaling(self):
+        """Test confidence scaling in attribution."""
+        attributor = ValueAttributor(
+            positive_multiplier=10.0,
+            use_confidence_scaling=True
+        )
+
+        signal = ValueSignal(
+            signal_type=SignalType.POSITIVE.value,
+            magnitude=0.8,
+            timestamp=0.0,
+            source='test',
+            expert_id='expert_1',
+            prediction_id='pred_1',
+            context={'confidence': 0.5}
+        )
+
+        amount = attributor.calculate_credit_amount(signal)
+        # 0.8 * 10.0 * 0.5 = 4.0
+        self.assertAlmostEqual(amount, 4.0)
+
+    def test_attributor_from_test_result(self):
+        """Test creating signal from test result."""
+        attributor = ValueAttributor()
+
+        # Test passed
+        signal = attributor.attribute_from_test_result(
+            expert_id='expert_1',
+            prediction_id='pred_1',
+            test_passed=True,
+            confidence=0.9
+        )
+
+        self.assertEqual(signal.signal_type, SignalType.POSITIVE.value)
+        self.assertEqual(signal.magnitude, 0.9)
+        self.assertEqual(signal.source, 'test_result')
+        self.assertTrue(signal.context['test_passed'])
+
+        # Test failed
+        signal_fail = attributor.attribute_from_test_result(
+            expert_id='expert_1',
+            prediction_id='pred_2',
+            test_passed=False,
+            confidence=0.7
+        )
+
+        self.assertEqual(signal_fail.signal_type, SignalType.NEGATIVE.value)
+        self.assertFalse(signal_fail.context['test_passed'])
+
+    def test_attributor_from_commit_result(self):
+        """Test creating signal from commit result."""
+        attributor = ValueAttributor()
+
+        # High accuracy (>50%)
+        signal = attributor.attribute_from_commit_result(
+            expert_id='expert_1',
+            prediction_id='pred_1',
+            files_correct=['a.py', 'b.py', 'c.py'],
+            files_total=['a.py', 'b.py', 'c.py', 'd.py']
+        )
+
+        self.assertEqual(signal.signal_type, SignalType.POSITIVE.value)
+        self.assertAlmostEqual(signal.magnitude, 0.75)  # 3/4
+        self.assertEqual(signal.source, 'commit_result')
+        self.assertEqual(signal.context['accuracy'], 0.75)
+
+        # Low accuracy (<50%)
+        signal_low = attributor.attribute_from_commit_result(
+            expert_id='expert_1',
+            prediction_id='pred_2',
+            files_correct=['a.py'],
+            files_total=['a.py', 'b.py', 'c.py', 'd.py']
+        )
+
+        self.assertEqual(signal_low.signal_type, SignalType.NEGATIVE.value)
+        self.assertAlmostEqual(signal_low.magnitude, 0.25)  # 1/4
+
+        # Exactly 50% (neutral)
+        signal_neutral = attributor.attribute_from_commit_result(
+            expert_id='expert_1',
+            prediction_id='pred_3',
+            files_correct=['a.py', 'b.py'],
+            files_total=['a.py', 'b.py', 'c.py', 'd.py']
+        )
+
+        self.assertEqual(signal_neutral.signal_type, SignalType.NEUTRAL.value)
+
+    def test_attributor_from_user_feedback(self):
+        """Test creating signal from user feedback."""
+        attributor = ValueAttributor()
+
+        # Helpful feedback
+        signal = attributor.attribute_from_user_feedback(
+            expert_id='expert_1',
+            prediction_id='pred_1',
+            helpful=True,
+            importance=0.8
+        )
+
+        self.assertEqual(signal.signal_type, SignalType.POSITIVE.value)
+        self.assertEqual(signal.magnitude, 0.8)
+        self.assertEqual(signal.source, 'user_feedback')
+        self.assertTrue(signal.context['helpful'])
+
+        # Not helpful
+        signal_neg = attributor.attribute_from_user_feedback(
+            expert_id='expert_1',
+            prediction_id='pred_2',
+            helpful=False,
+            importance=0.6
+        )
+
+        self.assertEqual(signal_neg.signal_type, SignalType.NEGATIVE.value)
+        self.assertFalse(signal_neg.context['helpful'])
+
+    def test_process_signal_with_ledger(self):
+        """Test processing signal with credit ledger."""
+        attributor = ValueAttributor(positive_multiplier=10.0)
+        ledger = CreditLedger()
+
+        # Add initial credit
+        account = ledger.get_or_create_account('expert_1')
+
+        # Positive signal
+        signal = ValueSignal(
+            signal_type=SignalType.POSITIVE.value,
+            magnitude=0.5,
+            timestamp=0.0,
+            source='test_result',
+            expert_id='expert_1',
+            prediction_id='pred_1',
+            context={'confidence': 1.0}
+        )
+
+        amount = attributor.process_signal(signal, ledger)
+
+        # Should have credited 5.0 (0.5 * 10.0)
+        self.assertAlmostEqual(amount, 5.0)
+        account = ledger.get_or_create_account('expert_1')
+        self.assertGreater(account.balance, 0.0)
+
+    def test_signal_buffer_add_flush(self):
+        """Test signal buffer add and flush."""
+        buffer = SignalBuffer()
+        ledger = CreditLedger()
+
+        # Add signals
+        signal1 = ValueSignal(
+            signal_type='positive',
+            magnitude=0.5,
+            timestamp=0.0,
+            source='test',
+            expert_id='expert_1',
+            prediction_id='pred_1'
+        )
+        signal2 = ValueSignal(
+            signal_type='positive',
+            magnitude=0.7,
+            timestamp=0.0,
+            source='test',
+            expert_id='expert_2',
+            prediction_id='pred_2'
+        )
+
+        buffer.add(signal1)
+        buffer.add(signal2)
+
+        self.assertEqual(buffer.get_pending_count(), 2)
+
+        # Flush
+        totals = buffer.flush(ledger)
+
+        # Buffer should be empty
+        self.assertEqual(buffer.get_pending_count(), 0)
+
+        # Should have processed both signals
+        self.assertIn('expert_1', totals)
+        self.assertIn('expert_2', totals)
+
+    def test_signal_buffer_clear(self):
+        """Test clearing buffer without processing."""
+        buffer = SignalBuffer()
+
+        signal = ValueSignal(
+            signal_type='positive',
+            magnitude=0.5,
+            timestamp=0.0,
+            source='test',
+            expert_id='expert_1',
+            prediction_id='pred_1'
+        )
+
+        buffer.add(signal)
+        self.assertEqual(buffer.get_pending_count(), 1)
+
+        buffer.clear()
+        self.assertEqual(buffer.get_pending_count(), 0)
+
+    def test_signal_buffer_peek(self):
+        """Test peeking at buffer without removing."""
+        buffer = SignalBuffer()
+
+        signal = ValueSignal(
+            signal_type='positive',
+            magnitude=0.5,
+            timestamp=0.0,
+            source='test',
+            expert_id='expert_1',
+            prediction_id='pred_1'
+        )
+
+        buffer.add(signal)
+
+        # Peek should return signals without removing
+        signals = buffer.peek()
+        self.assertEqual(len(signals), 1)
+        self.assertEqual(buffer.get_pending_count(), 1)
+
+    def test_attribution_with_confidence_scaling(self):
+        """Test full attribution flow with confidence scaling."""
+        attributor = ValueAttributor(
+            positive_multiplier=10.0,
+            use_confidence_scaling=True
+        )
+        ledger = CreditLedger()
+        buffer = SignalBuffer()
+
+        # Create test result signal with high confidence
+        signal1 = attributor.attribute_from_test_result(
+            expert_id='expert_1',
+            prediction_id='pred_1',
+            test_passed=True,
+            confidence=0.9
+        )
+
+        # Create commit result signal with medium confidence
+        signal2 = attributor.attribute_from_commit_result(
+            expert_id='expert_1',
+            prediction_id='pred_2',
+            files_correct=['a.py', 'b.py'],
+            files_total=['a.py', 'b.py'],
+            confidence=0.6
+        )
+
+        buffer.add(signal1)
+        buffer.add(signal2)
+
+        # Flush all signals
+        totals = buffer.flush(ledger, attributor)
+
+        # Expert should have received credit
+        self.assertIn('expert_1', totals)
+        self.assertGreater(totals['expert_1'], 0.0)
+
+        # Check ledger balance
+        account = ledger.get_or_create_account('expert_1')
+        self.assertGreater(account.balance, 0.0)
+
+    def test_time_decay_attribution(self):
+        """Test time decay in attribution."""
+        attributor = ValueAttributor(
+            positive_multiplier=10.0,
+            use_time_decay=True,
+            decay_halflife_seconds=100.0,
+            use_confidence_scaling=False
+        )
+
+        # Recent prediction (no decay)
+        signal_recent = ValueSignal(
+            signal_type=SignalType.POSITIVE.value,
+            magnitude=1.0,
+            timestamp=100.0,
+            source='test',
+            expert_id='expert_1',
+            prediction_id='pred_1',
+            context={'prediction_time': 100.0}
+        )
+
+        amount_recent = attributor.calculate_credit_amount(signal_recent)
+        self.assertAlmostEqual(amount_recent, 10.0)
+
+        # Old prediction (half-life elapsed, should be ~5.0)
+        signal_old = ValueSignal(
+            signal_type=SignalType.POSITIVE.value,
+            magnitude=1.0,
+            timestamp=200.0,
+            source='test',
+            expert_id='expert_1',
+            prediction_id='pred_2',
+            context={'prediction_time': 100.0}
+        )
+
+        amount_old = attributor.calculate_credit_amount(signal_old)
+        self.assertAlmostEqual(amount_old, 5.0, places=1)
 
 
 if __name__ == '__main__':
