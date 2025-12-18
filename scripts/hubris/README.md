@@ -511,11 +511,19 @@ Or comment out the HUBRIS-FEEDBACK-HOOK sections in `.git/hooks/prepare-commit-m
 # Train all experts on latest data
 python scripts/hubris_cli.py train
 
+# Train with CI results for TestExpert failure patterns
+python scripts/hubris_cli.py train --commits 500 --include-ci
+
 # Get prediction for a task
 python scripts/hubris_cli.py predict "Add authentication feature"
 
 # Get prediction with seed files
 python scripts/hubris_cli.py predict "Fix search bug" --seed cortical/query/search.py
+
+# Suggest tests to run for code changes (Sprint 6)
+python scripts/hubris_cli.py suggest-tests --files cortical/query/search.py
+python scripts/hubris_cli.py suggest-tests --staged    # Use git staged files
+python scripts/hubris_cli.py suggest-tests --modified  # Use git modified files
 
 # View expert statistics
 python scripts/hubris_cli.py stats
@@ -526,8 +534,11 @@ python scripts/hubris_cli.py leaderboard
 # Evaluate expert accuracy on recent commits
 python scripts/hubris_cli.py evaluate --commits 20
 
-# View calibration analysis
+# View calibration analysis (file predictions)
 python scripts/hubris_cli.py calibration
+
+# View test selection calibration (Sprint 6)
+python scripts/hubris_cli.py calibration --tests
 
 # View calibration curve visualization
 python scripts/hubris_cli.py calibration --curve

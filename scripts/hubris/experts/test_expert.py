@@ -300,7 +300,8 @@ class TestExpert(MicroExpert):
         test_cochange: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
         for commit in commits:
-            files = commit.get('files', [])
+            # Support both 'files' and 'files_changed' field names
+            files = commit.get('files', []) or commit.get('files_changed', [])
             test_results = commit.get('test_results', {})
 
             # Separate source and test files
