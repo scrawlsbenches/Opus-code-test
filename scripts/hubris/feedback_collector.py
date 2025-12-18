@@ -68,6 +68,90 @@ class Prediction:
         return cls(**data)
 
 
+@dataclass
+class ResolvedPrediction(Prediction):
+    """
+    Prediction with outcome data for calibration tracking.
+
+    Extends Prediction with fields populated after evaluation:
+    - actual_files: What files were actually modified
+    - accuracy: Fraction of predicted files that were correct
+    - outcome_timestamp: When the outcome was evaluated
+    - commit_hash: Git commit that resolved this prediction
+
+    These fields enable calibration analysis: comparing predicted
+    confidence against actual accuracy to detect over/under-confidence.
+    """
+    actual_files: List[str] = None
+    accuracy: float = 0.0
+    outcome_timestamp: float = 0.0
+    commit_hash: str = ""
+
+    def __post_init__(self):
+        """Initialize mutable default."""
+        if self.actual_files is None:
+            self.actual_files = []
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to JSON-serializable dict including outcome fields."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ResolvedPrediction':
+        """Load from dict, handling both old and new formats."""
+        # Handle old format without outcome fields
+        if 'actual_files' not in data:
+            data['actual_files'] = []
+        if 'accuracy' not in data:
+            data['accuracy'] = 0.0
+        if 'outcome_timestamp' not in data:
+            data['outcome_timestamp'] = 0.0
+        if 'commit_hash' not in data:
+            data['commit_hash'] = ""
+        return cls(**data)
+
+    @classmethod
+    def from_prediction(
+        cls,
+        prediction: Prediction,
+        actual_files: List[str],
+        commit_hash: str
+    ) -> 'ResolvedPrediction':
+        """
+        Create ResolvedPrediction from Prediction with outcome data.
+
+        Args:
+            prediction: Original prediction
+            actual_files: Files actually modified in commit
+            commit_hash: Git commit hash
+
+        Returns:
+            ResolvedPrediction with accuracy calculated
+        """
+        predicted_set = set(prediction.predicted_files)
+        actual_set = set(actual_files)
+
+        # Calculate accuracy: intersection / predicted
+        if predicted_set:
+            correct = len(predicted_set & actual_set)
+            accuracy = correct / len(predicted_set)
+        else:
+            accuracy = 0.0
+
+        return cls(
+            prediction_id=prediction.prediction_id,
+            expert_id=prediction.expert_id,
+            predicted_files=prediction.predicted_files,
+            confidence=prediction.confidence,
+            timestamp=prediction.timestamp,
+            context=prediction.context,
+            actual_files=actual_files,
+            accuracy=accuracy,
+            outcome_timestamp=time.time(),
+            commit_hash=commit_hash
+        )
+
+
 class PredictionRecorder:
     """
     Records expert predictions for later evaluation.
@@ -180,15 +264,27 @@ class PredictionRecorder:
                 return pred
         return None
 
-    def resolve_prediction(self, prediction_id: str) -> bool:
+    def resolve_prediction(
+        self,
+        prediction_id: str,
+        actual_files: Optional[List[str]] = None,
+        commit_hash: str = ""
+    ) -> bool:
         """
-        Move prediction from pending to resolved.
+        Move prediction from pending to resolved with outcome data.
 
         Args:
             prediction_id: Prediction ID to resolve
+            actual_files: Files actually modified (for calibration tracking)
+            commit_hash: Git commit hash that resolved this prediction
 
         Returns:
             True if prediction was found and resolved, False otherwise
+
+        Note:
+            If actual_files is provided, creates a ResolvedPrediction with
+            calibration data (accuracy, outcome_timestamp). Otherwise,
+            stores basic prediction for backward compatibility.
         """
         if not self.pending_path.exists():
             return False
@@ -214,8 +310,17 @@ class PredictionRecorder:
         # Atomic rewrite of pending file (without the resolved prediction)
         self._write_jsonl(self.pending_path, [p.to_dict() for p in pending])
 
-        # Append to resolved file
-        self._append_jsonl(self.resolved_path, resolved_pred.to_dict())
+        # Create ResolvedPrediction with outcome data if available
+        if actual_files is not None:
+            resolved_with_outcome = ResolvedPrediction.from_prediction(
+                resolved_pred,
+                actual_files=actual_files,
+                commit_hash=commit_hash
+            )
+            self._append_jsonl(self.resolved_path, resolved_with_outcome.to_dict())
+        else:
+            # Backward compatibility: store without outcome data
+            self._append_jsonl(self.resolved_path, resolved_pred.to_dict())
 
         return True
 
@@ -372,8 +477,12 @@ class FeedbackProcessor:
                 prediction.expert_id, 0.0
             ) + amount
 
-            # Move prediction to resolved
-            self.recorder.resolve_prediction(prediction.prediction_id)
+            # Move prediction to resolved with outcome data for calibration
+            self.recorder.resolve_prediction(
+                prediction.prediction_id,
+                actual_files=actual_files,
+                commit_hash=commit_hash
+            )
 
         return credit_updates
 
