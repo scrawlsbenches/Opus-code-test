@@ -35,11 +35,13 @@ name: CI - Test Suite
 #                 │ integration    │ (cov) │      │ behavioral-tests │
 #                 └───────┬────────┴───────┘      │ performance-tests│
 #                         │                       │ project-tests    │ ← NEW (can fail)
-#                         ▼                       └──────────────────┘
-#                  coverage-report                    (no coverage)
-#                (combines coverage
-#                 from unit + integration
-#                 WITHOUT re-running tests)
+#                         ├───────────────┐       └──────────────────┘
+#                         │               │           (no coverage)
+#                         ▼               ▼
+#                  coverage-report  ml-test-calibration ← NEW (TestExpert)
+#                (combines coverage   (processes test results
+#                 from unit + integration  for ML calibration,
+#                 WITHOUT re-running tests) non-blocking)
 #
 # PROJECT TESTS (cortical/projects/):
 # - Run independently of core tests
@@ -148,10 +150,12 @@ jobs:
         # Using a single pytest call is faster than multiple unittest discovers
         # Note: Legacy tests removed 2025-12-13 - now covered by tests/unit/
         # -m "" overrides pyproject.toml addopts to include optional tests in CI
+        # --junit-xml generates machine-readable results for TestExpert calibration
         coverage run --source=cortical -m pytest \
           tests/unit/ \
           -m "" \
-          -v --tb=short
+          -v --tb=short \
+          --junit-xml=pytest-unit-results.xml
 
         coverage report --include="cortical/*"
 
@@ -162,6 +166,13 @@ jobs:
         path: .coverage
         # Rename to avoid collision when combining
         include-hidden-files: true
+
+    - name: Upload unit test results for ML calibration
+      if: always()  # Upload even if tests fail
+      uses: actions/upload-artifact@v4
+      with:
+        name: pytest-unit-results
+        path: pytest-unit-results.xml
 
   # ==========================================================================
   # Stage 3: Integration Tests (< 3 min)
@@ -194,6 +205,7 @@ jobs:
         #       test_query_optimization.py) - now covered by unit tests
         # -m "" overrides pyproject.toml addopts to include optional tests in CI
         # Note: MCP tests moved to project-tests job (runs separately, can fail independently)
+        # --junit-xml generates machine-readable results for TestExpert calibration
         coverage run --source=cortical -m pytest \
           tests/integration/ \
           tests/test_incremental_indexing.py \
@@ -208,7 +220,8 @@ jobs:
           tests/test_showcase.py \
           tests/security/ \
           -m "" \
-          -v --tb=short
+          -v --tb=short \
+          --junit-xml=pytest-integration-results.xml
 
         coverage report --include="cortical/*"
 
@@ -218,6 +231,13 @@ jobs:
         name: coverage-integration
         path: .coverage
         include-hidden-files: true
+
+    - name: Upload integration test results for ML calibration
+      if: always()  # Upload even if tests fail
+      uses: actions/upload-artifact@v4
+      with:
+        name: pytest-integration-results
+        path: pytest-integration-results.xml
 
   # ==========================================================================
   # Stage 4: Regression Tests (< 1 min)
@@ -514,6 +534,94 @@ jobs:
         python scripts/resolve_wiki_links.py --check samples/memories/ || true
         python scripts/resolve_wiki_links.py --check samples/decisions/ || true
         echo "Link check complete (informational only)"
+
+  # ==========================================================================
+  # ML TestExpert Calibration: Post-Test Feedback
+  # Processes test results to calibrate TestExpert confidence predictions
+  # ==========================================================================
+  ml-test-calibration:
+    name: "🎓 ML TestExpert Calibration"
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+    if: always()  # Run even if tests fail (failures are valuable calibration data)
+    continue-on-error: true  # Non-blocking - don't fail CI if calibration fails
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Download unit test results
+      uses: actions/download-artifact@v4
+      with:
+        name: pytest-unit-results
+        path: test-results
+      continue-on-error: true  # May not exist if unit tests didn't run
+
+    - name: Download integration test results
+      uses: actions/download-artifact@v4
+      with:
+        name: pytest-integration-results
+        path: test-results
+      continue-on-error: true  # May not exist if integration tests didn't run
+
+    - name: Process test results for TestExpert calibration
+      run: |
+        echo "=== Processing Test Results for TestExpert Calibration ==="
+
+        # Check if the test_feedback.py script exists
+        if [[ ! -f "scripts/hubris/test_feedback.py" ]]; then
+          echo "ℹ️  TestExpert not available (scripts/hubris/test_feedback.py not found)"
+          echo "   Skipping calibration data collection"
+          exit 0
+        fi
+
+        # Check if ML collection is enabled (default: yes)
+        if [[ "${ML_COLLECTION_ENABLED:-1}" == "0" ]]; then
+          echo "ℹ️  ML collection disabled via ML_COLLECTION_ENABLED=0"
+          exit 0
+        fi
+
+        # Process each XML file
+        shopt -s nullglob  # Don't error if no matches
+        for xml_file in test-results/*.xml; do
+          if [[ -f "$xml_file" ]]; then
+            echo ""
+            echo "Processing: $xml_file"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+            # Copy to project root with a name the hook will find
+            # The hook looks for pytest-results.xml, test-results.xml, etc.
+            cp "$xml_file" pytest-results.xml
+
+            # Set env var to explicitly point to the file
+            export PYTEST_OUTPUT_FILE=pytest-results.xml
+
+            # Run the post-test hook script (handles both text and XML)
+            bash scripts/ml-post-test-hook.sh || {
+              echo "⚠️  Post-test hook failed for $xml_file (non-blocking)"
+            }
+
+            # Clean up for next iteration
+            rm -f pytest-results.xml
+          fi
+        done
+
+        echo ""
+        echo "✅ TestExpert calibration processing complete"
+
+    - name: Report calibration status
+      if: always()
+      run: |
+        echo "=== TestExpert Calibration Status ==="
+        if [[ -d ".git-ml/test_feedback" ]]; then
+          echo "📊 Calibration data saved to .git-ml/test_feedback/"
+          ls -lh .git-ml/test_feedback/ | tail -5 || true
+        else
+          echo "ℹ️  No calibration data generated (TestExpert may not be configured)"
+        fi
 
   # ==========================================================================
   # ML Data Collection: CI Result Auto-Capture
