@@ -445,8 +445,8 @@ class TestCreateDecisionTemplate(unittest.TestCase):
         mock_now.strftime.return_value = "2025-12-14"
         mock_datetime.now.return_value = mock_now
 
-        # Simulate exception
-        mock_decisions_dir.glob.side_effect = Exception("Permission denied")
+        # Simulate permission error (realistic filesystem exception)
+        mock_decisions_dir.glob.side_effect = PermissionError("Permission denied")
 
         # Should default to ADR-001
         template = create_decision_template("test")
