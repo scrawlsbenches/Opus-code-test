@@ -2478,5 +2478,328 @@ class TestStaking(unittest.TestCase):
         self.assertIsNotNone(pool)
 
 
+class TestCreditRouter(unittest.TestCase):
+    """Test CreditRouter for credit-weighted routing."""
+
+    def test_create_router(self):
+        """Test creating CreditRouter."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+        router = CreditRouter(ledger)
+
+        self.assertEqual(router.min_weight, 0.1)
+        self.assertEqual(router.temperature, 1.0)
+        self.assertIs(router.ledger, ledger)
+
+    def test_router_validation(self):
+        """Test router parameter validation."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+
+        # Invalid min_weight
+        with self.assertRaises(ValueError):
+            CreditRouter(ledger, min_weight=-0.1)
+
+        with self.assertRaises(ValueError):
+            CreditRouter(ledger, min_weight=1.5)
+
+        # Invalid temperature
+        with self.assertRaises(ValueError):
+            CreditRouter(ledger, temperature=0.0)
+
+        with self.assertRaises(ValueError):
+            CreditRouter(ledger, temperature=-1.0)
+
+    def test_compute_weights_equal_balance(self):
+        """Test weight computation with equal balances."""
+        from scripts.hubris.credit_router import CreditRouter, ExpertWeight
+
+        ledger = CreditLedger()
+        # All start with 100.0 balance
+        ledger.get_or_create_account('expert_1')
+        ledger.get_or_create_account('expert_2')
+        ledger.get_or_create_account('expert_3')
+
+        router = CreditRouter(ledger)
+        weights = router.compute_weights(['expert_1', 'expert_2', 'expert_3'])
+
+        # All should have equal normalized weights (1/3 each)
+        self.assertEqual(len(weights), 3)
+        for exp_id in ['expert_1', 'expert_2', 'expert_3']:
+            self.assertAlmostEqual(weights[exp_id].normalized_weight, 1/3, places=5)
+            self.assertIsInstance(weights[exp_id], ExpertWeight)
+
+    def test_compute_weights_varied_balance(self):
+        """Test weight computation with varied balances."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+        acc1 = ledger.get_or_create_account('expert_1')
+        acc2 = ledger.get_or_create_account('expert_2')
+        acc3 = ledger.get_or_create_account('expert_3')
+
+        # Vary balances significantly
+        acc1.credit(300.0, 'test')  # 400.0
+        # acc2 stays at 100.0
+        acc3.debit(50.0, 'test')    # 50.0
+
+        router = CreditRouter(ledger)
+        weights = router.compute_weights(['expert_1', 'expert_2', 'expert_3'])
+
+        # expert_1 should have highest weight
+        self.assertGreater(
+            weights['expert_1'].normalized_weight,
+            weights['expert_2'].normalized_weight
+        )
+        # expert_2 should have higher or equal weight to expert_3
+        # (min_weight floor may make them equal)
+        self.assertGreaterEqual(
+            weights['expert_2'].normalized_weight,
+            weights['expert_3'].normalized_weight
+        )
+
+        # Weights should sum to 1.0
+        total = sum(w.normalized_weight for w in weights.values())
+        self.assertAlmostEqual(total, 1.0, places=5)
+
+    def test_min_weight_floor(self):
+        """Test that min_weight floor is enforced."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+        acc1 = ledger.get_or_create_account('expert_1')
+        acc2 = ledger.get_or_create_account('expert_2')
+
+        # Give expert_1 very high balance
+        acc1.credit(900.0, 'test')  # 1000.0
+        # expert_2 stays at 100.0
+
+        router = CreditRouter(ledger, min_weight=0.1)
+        weights = router.compute_weights(['expert_1', 'expert_2'])
+
+        # expert_2 should have at least min_weight (before renormalization)
+        # After renormalization, all weights should be >= min_weight if possible
+        self.assertGreaterEqual(weights['expert_2'].normalized_weight, 0.05)
+
+        # Weights still sum to 1.0
+        total = sum(w.normalized_weight for w in weights.values())
+        self.assertAlmostEqual(total, 1.0, places=5)
+
+    def test_temperature_effect(self):
+        """Test that temperature affects weight distribution."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+        acc1 = ledger.get_or_create_account('expert_1')
+        acc2 = ledger.get_or_create_account('expert_2')
+
+        # Different balances
+        acc1.credit(100.0, 'test')  # 200.0
+        # acc2 stays at 100.0
+
+        # Low temperature (sharper distribution)
+        router_cold = CreditRouter(ledger, temperature=0.1)
+        weights_cold = router_cold.compute_weights(['expert_1', 'expert_2'])
+
+        # High temperature (smoother distribution)
+        router_hot = CreditRouter(ledger, temperature=10.0)
+        weights_hot = router_hot.compute_weights(['expert_1', 'expert_2'])
+
+        # With low temp, expert_1 should have much higher relative weight
+        ratio_cold = (
+            weights_cold['expert_1'].normalized_weight /
+            weights_cold['expert_2'].normalized_weight
+        )
+
+        ratio_hot = (
+            weights_hot['expert_1'].normalized_weight /
+            weights_hot['expert_2'].normalized_weight
+        )
+
+        # Cold should have sharper difference
+        self.assertGreater(ratio_cold, ratio_hot)
+
+    def test_aggregate_predictions(self):
+        """Test aggregating predictions with credit weighting."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+        acc1 = ledger.get_or_create_account('expert_1')
+        acc2 = ledger.get_or_create_account('expert_2')
+
+        # Give expert_1 higher balance
+        acc1.credit(100.0, 'test')  # 200.0
+        # expert_2 stays at 100.0
+
+        router = CreditRouter(ledger)
+
+        # Create predictions
+        pred1 = ExpertPrediction(
+            expert_id='expert_1',
+            expert_type='file',
+            items=[('file1.py', 0.9), ('file2.py', 0.5)]
+        )
+        pred2 = ExpertPrediction(
+            expert_id='expert_2',
+            expert_type='file',
+            items=[('file2.py', 0.8), ('file3.py', 0.6)]
+        )
+
+        predictions = {'expert_1': pred1, 'expert_2': pred2}
+        result = router.aggregate_predictions(predictions)
+
+        # Should return AggregatedPrediction
+        self.assertIsInstance(result, AggregatedPrediction)
+
+        # Should have items
+        self.assertGreater(len(result.items), 0)
+
+        # Contributing experts
+        self.assertIn('expert_1', result.contributing_experts)
+        self.assertIn('expert_2', result.contributing_experts)
+
+        # file1.py should rank high (expert_1 has high weight and confidence)
+        top_file = result.items[0][0]
+        # file1.py or file2.py should be top (both strong signals)
+        self.assertIn(top_file, ['file1.py', 'file2.py'])
+
+    def test_aggregate_predictions_empty(self):
+        """Test aggregation with no predictions."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+        router = CreditRouter(ledger)
+
+        result = router.aggregate_predictions({})
+
+        self.assertEqual(len(result.items), 0)
+        self.assertEqual(len(result.contributing_experts), 0)
+        self.assertEqual(result.confidence, 0.0)
+
+    def test_select_expert(self):
+        """Test expert selection by credit."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+        acc1 = ledger.get_or_create_account('expert_1')
+        acc2 = ledger.get_or_create_account('expert_2')
+        acc3 = ledger.get_or_create_account('expert_3')
+
+        # Give expert_2 highest balance
+        acc2.credit(200.0, 'test')  # 300.0
+        # Others stay at 100.0
+
+        router = CreditRouter(ledger)
+        selected = router.select_expert(
+            context={'query': 'test'},
+            available=['expert_1', 'expert_2', 'expert_3']
+        )
+
+        # Should select expert_2 (highest weight)
+        self.assertEqual(selected, 'expert_2')
+
+        # Should record in history
+        self.assertEqual(len(router.routing_history), 1)
+        self.assertEqual(router.routing_history[0]['selected'], 'expert_2')
+
+    def test_select_expert_no_available(self):
+        """Test expert selection with no available experts."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+        router = CreditRouter(ledger)
+
+        with self.assertRaises(ValueError):
+            router.select_expert(context={}, available=[])
+
+    def test_confidence_boost_high_credit(self):
+        """Test confidence boost for high-credit experts."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+        acc1 = ledger.get_or_create_account('expert_1')
+        acc2 = ledger.get_or_create_account('expert_2')
+
+        # Give expert_1 very high balance (> 150)
+        acc1.credit(200.0, 'test')  # 300.0
+        # expert_2 stays at 100.0
+
+        router = CreditRouter(ledger)
+        weights = router.compute_weights(['expert_1', 'expert_2'])
+
+        # expert_1 should have confidence boost > 1.0
+        self.assertGreater(weights['expert_1'].confidence_boost, 1.0)
+
+        # expert_2 should have boost = 1.0 (not enough credit)
+        self.assertEqual(weights['expert_2'].confidence_boost, 1.0)
+
+    def test_confidence_boost_in_aggregation(self):
+        """Test that confidence boost affects aggregation."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+        acc1 = ledger.get_or_create_account('expert_1')
+
+        # Give expert_1 high balance (> 150)
+        acc1.credit(150.0, 'test')  # 250.0
+
+        router = CreditRouter(ledger)
+
+        # Single prediction with boost
+        pred1 = ExpertPrediction(
+            expert_id='expert_1',
+            expert_type='file',
+            items=[('file1.py', 0.5)]
+        )
+
+        result = router.aggregate_predictions({'expert_1': pred1})
+
+        # Check metadata contains boost info
+        self.assertIn('boosts', result.metadata)
+        self.assertGreater(result.metadata['boosts']['expert_1'], 1.0)
+
+    def test_routing_stats(self):
+        """Test routing statistics tracking."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+        ledger.get_or_create_account('expert_1')
+        ledger.get_or_create_account('expert_2')
+
+        router = CreditRouter(ledger)
+
+        # Make several routing decisions
+        router.select_expert({'query': 'test1'}, ['expert_1', 'expert_2'])
+        router.select_expert({'query': 'test2'}, ['expert_1', 'expert_2'])
+        router.select_expert({'query': 'test3'}, ['expert_1', 'expert_2'])
+
+        stats = router.get_routing_stats()
+
+        # Should have stats
+        self.assertEqual(stats['total_routings'], 3)
+        self.assertIn('expert_usage', stats)
+        self.assertIn('average_weights', stats)
+        self.assertIn('recent_decisions', stats)
+
+        # Recent decisions should be limited to last 10
+        self.assertLessEqual(len(stats['recent_decisions']), 10)
+
+    def test_routing_stats_empty(self):
+        """Test routing stats with no history."""
+        from scripts.hubris.credit_router import CreditRouter
+
+        ledger = CreditLedger()
+        router = CreditRouter(ledger)
+
+        stats = router.get_routing_stats()
+
+        self.assertEqual(stats['total_routings'], 0)
+        self.assertEqual(stats['expert_usage'], {})
+        self.assertEqual(stats['average_weights'], {})
+        self.assertEqual(stats['recent_decisions'], [])
+
+
 if __name__ == '__main__':
     unittest.main()
