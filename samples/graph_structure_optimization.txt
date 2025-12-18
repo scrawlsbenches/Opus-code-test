@@ -1,0 +1,104 @@
+Graph Structure Optimization for Knowledge Networks
+
+Knowledge graphs encode relationships between concepts through nodes and edges. The structure of these graphs significantly impacts both construction performance and query effectiveness. Optimizing graph structure requires understanding the interplay between density, connectivity, and information content.
+
+Hierarchical Layer Architecture
+
+Effective knowledge graphs use hierarchical layers with different granularities:
+
+Layer 0 (Tokens): Individual terms, fine-grained features
+Layer 1 (Bigrams): Term pairs, local patterns
+Layer 2 (Concepts): Semantic clusters, abstract categories
+Layer 3 (Documents): Full content units, retrieval targets
+
+Each layer has different optimal density:
+- Token layer: Sparse connections to nearest semantic neighbors
+- Bigram layer: Medium density capturing co-occurrence patterns
+- Concept layer: Dense within-cluster, sparse between-cluster
+- Document layer: Sparse based on content overlap
+
+Connection Types and Their Roles
+
+Lateral connections link nodes within a layer (association):
+- Built from co-occurrence statistics
+- Enable spreading activation for query expansion
+- Denser connections improve recall but hurt precision
+
+Feedforward connections link lower to higher layers (abstraction):
+- Token to bigram: composition
+- Bigram to concept: clustering membership
+- Concept to document: topic assignment
+
+Feedback connections link higher to lower layers (context):
+- Enable top-down disambiguation
+- Provide relevance signals for ranking
+
+Index Structures for Efficient Lookup
+
+Graph nodes need O(1) access by identifier:
+
+    class Layer:
+        def __init__(self):
+            self.minicolumns = {}  # content -> node
+            self._id_index = {}    # id -> node
+
+Always use indexed lookup, never iterate:
+
+    # Good: O(1) lookup
+    node = layer.get_by_id(node_id)
+
+    # Bad: O(n) scan
+    for node in layer.minicolumns.values():
+        if node.id == node_id:
+            return node
+
+Edge Representation Strategies
+
+Simple edges store only weight:
+    connections = {target_id: weight}
+
+Typed edges store additional metadata:
+    Edge(target_id, weight, relation_type, confidence, source)
+
+Typed edges enable richer queries but increase memory and serialization costs. Use typed edges for semantic relations, simple edges for statistical co-occurrence.
+
+Graph Sparsification Techniques
+
+Dense graphs are expensive to store, query, and update. Sparsification removes low-value edges:
+
+Weight thresholding: Remove edges below minimum weight
+K-nearest: Keep only top-k edges per node
+Significance testing: Remove statistically insignificant edges
+Spectral sparsification: Preserve graph properties with fewer edges
+
+Monitor clustering coefficient and connectivity after sparsification to ensure graph utility is preserved.
+
+Memory Layout Optimization
+
+For large graphs, memory layout affects cache performance:
+- Store frequently accessed fields contiguously
+- Use __slots__ to reduce per-object overhead
+- Consider array-of-structs vs struct-of-arrays tradeoffs
+- Pool small objects to reduce allocation overhead
+
+Incremental Update Strategies
+
+Static graph construction is simpler but incremental updates enable:
+- Adding documents without full rebuild
+- Updating connection strengths over time
+- Removing outdated content
+
+Design data structures to support efficient incremental operations:
+- Append-only edge lists with periodic compaction
+- Delta encoding for weight updates
+- Lazy deletion with garbage collection
+
+Quality Metrics for Graph Structure
+
+Evaluate graph structure quality:
+- Modularity: How well-defined are clusters?
+- Connectivity: Can all nodes reach each other?
+- Diameter: How many hops between distant nodes?
+- Degree distribution: Is the graph scale-free or random?
+
+These metrics guide parameter tuning and identify structural problems.
