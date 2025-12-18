@@ -1,0 +1,41 @@
+Landscape Archaeology: Sites in Spatial and Environmental Context
+
+Overview
+
+Landscape archaeology examines the spatial relationships between archaeological sites and the natural and cultural environments that shaped human settlement and activity. Rather than treating sites as isolated entities, landscape approaches situate past human behavior within broader geographical contexts. This perspective recognizes that people lived not just in sites but across landscapes—moving, modifying, and perceiving their environments in culturally specific ways.
+
+The landscape approach emerged from dissatisfaction with site-focused archaeology that ignored surrounding areas. Settlement pattern studies in the 1950s and 1960s mapped site distributions; subsequent theoretical developments drew on geography, ecology, and phenomenology to conceptualize landscapes as both physical territories and meaningful places. Contemporary landscape archaeology integrates environmental reconstruction, spatial analysis, and interpretation of landscape as experienced and symbolized.
+
+Key Concepts
+
+The archaeological landscape encompasses all traces of past human activity across a region, including sites of varying size and visibility, artifact scatters, modified terrain, relict field systems, roads, and extractive areas. This perspective challenges the site/non-site dichotomy, recognizing that activity distributed continuously across landscapes.
+
+Environmental context situates past activity within reconstructed ecological conditions. Vegetation, climate, hydrology, and geomorphology shaped resource availability and constrained settlement options. Paleoenvironmental reconstruction—through pollen analysis, sediment studies, and faunal remains—provides the ecological backdrop against which human decisions are understood.
+
+Settlement patterns describe how sites distributed across space and time. Site hierarchy—size and functional differences among contemporary sites—indicates social organization. Spacing, clustering, and territorial analysis reveal relationships among communities. Changes in settlement patterns track demographic shifts, political transformations, and ecological adaptations.
+
+Off-site archaeology examines areas between sites. Artifact scatters, agricultural features, and modified soils extend far beyond site boundaries. Field survey that samples entire regions rather than targeting sites reveals this distributed evidence. Off-site data are essential for understanding land use and subsistence systems.
+
+Taskscape refers to the landscape as constituted through regular activities. Paths connecting resources, fields worked seasonally, and gathering places emerge through routine practice. The taskscape concept emphasizes how landscapes are produced through dwelling rather than simply occupied.
+
+Phenomenological approaches attend to how landscapes were experienced through bodily engagement. Visibility, viewsheds, and visual connections between monuments structured perception. Movement through terrain shaped encounter and understanding. These approaches, while subjective and difficult to test, address dimensions of past experience beyond functional reconstruction.
+
+Methods
+
+Regional survey systematically covers terrain to locate archaeological material. Intensive survey examines transects or sample units at close intervals; extensive survey samples larger areas less intensively. Survey design balances coverage with intensity given research questions and resources. Survey data enable quantitative analysis of settlement patterns and land use.
+
+Remote sensing detects archaeological features from above the ground surface. Aerial photography reveals crop marks where buried features affect vegetation. Satellite imagery extends coverage and provides multispectral data. LiDAR (Light Detection and Ranging) penetrates forest canopy to map subtle terrain features. These technologies transform how we document landscapes.
+
+GIS (Geographic Information Systems) manages, analyzes, and displays spatial data. Site locations, environmental variables, and survey data are integrated in GIS databases. Spatial analysis examines site distributions relative to resources, visibility, and terrain. Predictive modeling identifies high-probability areas for site location.
+
+Geoarchaeological analysis investigates landscape formation and change. Sediment sequences record erosion, deposition, and soil development. Geomorphological mapping identifies landforms and their ages. Understanding post-depositional processes is essential for interpreting site preservation and visibility.
+
+Applications
+
+Subsistence and settlement studies integrate site data with environmental reconstruction. Where did people live, and why there? How did settlement relate to agricultural fields, pasture, water, and raw materials? Changes in settlement over time track responses to climate change, population growth, and social transformation.
+
+Political landscape studies examine how space was organized and controlled. Territorial boundaries, monumental constructions, and visual domination of landscape served political purposes. The built environment materialized and reinforced social hierarchies. Ancient roads and communication networks reveal integration across space.
+
+Sacred landscapes identify places of ritual significance in their spatial contexts. Monuments aligned to celestial events or natural features created cosmological landscapes. Pilgrimage routes connected sacred sites. The distribution and intervisibility of ceremonial centers structured religious experience.
+
+Cultural heritage management at landscape scales addresses cumulative effects of development and climate change. Heritage protection increasingly encompasses cultural landscapes rather than individual sites. Management requires understanding how distributed evidence across landscapes constitutes coherent heritage resources.

@@ -1,0 +1,41 @@
+Ceramic Analysis in Archaeology: Methods and Interpretations
+
+Overview
+
+Ceramics—objects made from clay and hardened by heat—constitute the most abundant artifact type at many archaeological sites. Their durability ensures survival over millennia, while their sensitivity to cultural change makes them ideal markers of time, trade, and social organization. Ceramic analysis encompasses the study of how pots were made, used, decorated, and exchanged, providing windows into ancient technology, economy, and cultural identity.
+
+The systematic study of archaeological ceramics developed in the nineteenth century as a chronological tool, with pottery styles serving as temporal markers. Contemporary ceramic analysis extends far beyond chronology to address questions of production organization, exchange networks, cooking practices, storage systems, and the symbolic dimensions of material culture. Advances in scientific analysis have opened new avenues for investigating paste recipes, firing conditions, and vessel use.
+
+Key Methods
+
+Typological analysis classifies sherds according to observable attributes—form, decoration, surface treatment, and paste characteristics. Typologies organize ceramic variability into analytically useful categories, often hierarchically arranged into wares, types, and varieties. Type names become chronological and cultural markers: Lapita pottery, Terra Sigillata, Mimbres black-on-white. Good typologies balance analytical utility with sensitivity to meaningful variation.
+
+Attribute analysis records specific ceramic characteristics independently rather than assigning sherds to types. Rim form, vessel diameter, wall thickness, temper type, firing atmosphere, and decorative elements are recorded systematically. This approach enables statistical analysis of attribute variation and avoids imposing typological categories that may obscure significant patterns.
+
+Petrographic analysis examines thin sections of ceramic fabric under polarized light microscopy. Mineral inclusions—both naturally occurring and deliberately added as temper—are identified and characterized. Comparison with local clay and temper sources can identify non-local ceramics indicating exchange. Petrography reveals technological choices about clay selection and preparation.
+
+Chemical characterization techniques identify the elemental composition of ceramic pastes. Neutron activation analysis (NAA), inductively coupled plasma mass spectrometry (ICP-MS), and X-ray fluorescence (XRF) can determine provenance by matching ceramic chemistry to clay source signatures. Large databases of chemical compositional groups enable trade and exchange studies across regions.
+
+Residue analysis investigates organic materials absorbed into ceramic pores or adhering to surfaces. Lipid analysis using gas chromatography-mass spectrometry (GC-MS) identifies fats, oils, and waxes indicating foods cooked or stored in vessels. Protein residue analysis and DNA analysis extend these investigations. Such studies reveal vessel function and ancient foodways otherwise invisible.
+
+Use-wear analysis examines wear patterns on ceramic surfaces. Attrition on interior bases indicates stirring or grinding. Carbon deposits suggest cooking practices. Repair holes indicate valued vessels. Systematic use-wear recording links formal vessel types to actual functions.
+
+Interpretive Frameworks
+
+Chaîne opératoire analysis reconstructs the complete sequence of technical operations from raw material procurement through manufacture, use, and discard. This approach emphasizes technological choice—potters make decisions at each production stage that reflect learned traditions, available resources, and cultural values. Chaîne opératoire bridges behavioral and symbolic dimensions of technology.
+
+Ceramic ecology examines relationships between pottery production and environmental context. Clay resources, fuel availability, seasonal labor scheduling, and market access shape production organization. Ethnoarchaeological studies document how contemporary potters adapt to environmental constraints, providing analogies for archaeological interpretation.
+
+Style and identity studies investigate how decorative choices communicate social information. Ceramic decoration can mark ethnic identity, household affiliation, or individual artisans. Debates about whether style reflects passive learning, active boundary maintenance, or complex processes of identity negotiation remain central to archaeological theory.
+
+Production organization encompasses how pottery was made, by whom, and in what social contexts. Household production, workshop specialization, and attached specialist production represent points on a continuum. Scale and intensity of production, standardization of products, and distribution patterns inform interpretations of economic and political organization.
+
+Applications
+
+Chronology building remains a core ceramic application. Pottery styles change over time in recognizable ways. Ceramic sequences, established through stratigraphy and increasingly refined by radiocarbon dating, provide temporal frameworks essential for archaeological interpretation. Seriation—ordering assemblages by ceramic similarity—established relative chronologies before radiometric dating.
+
+Trade and exchange studies trace ceramic movement across landscapes. Non-local ceramics at sites indicate connections—whether through direct procurement, down-the-line exchange, or organized trade. Characterization studies distinguishing local from imported ceramics reveal network structures and changing patterns of interaction.
+
+Technological evolution studies document how ceramic technology changed over time, including innovations in forming techniques, firing technology, and decorative methods. The invention of the potter's wheel, development of glazing, and adoption of kilns mark significant technological transitions with social implications.
+
+Foodways reconstruction combines ceramic form, residue analysis, and contextual evidence to investigate ancient diet, cooking practices, and commensality. Serving vessels, cooking pots, and storage jars played different roles in food systems. Changes in ceramic assemblages can reflect dietary transitions or new culinary practices.

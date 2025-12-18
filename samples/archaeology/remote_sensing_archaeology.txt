@@ -1,0 +1,43 @@
+Remote Sensing in Archaeology: Detecting Sites from Above
+
+Overview
+
+Remote sensing applies technologies that detect and record information about the Earth's surface from a distance to archaeological investigation. Aerial photography, satellite imagery, and various sensing technologies reveal archaeological features invisible at ground level. These methods enable rapid coverage of large areas, detection of buried or subtle features, and non-invasive site investigation. Remote sensing has transformed how archaeologists discover, document, and analyze past landscapes.
+
+Archaeological applications of remote sensing began with military aerial photography in World War I, which inadvertently revealed ancient sites. Dedicated archaeological aerial survey developed in the mid-twentieth century. Satellite imagery, LiDAR, and multispectral technologies have since expanded capabilities dramatically. Contemporary research integrates multiple remote sensing approaches with ground-based investigation.
+
+Key Technologies
+
+Aerial photography captures visible light imagery from aircraft. Vertical photographs enable mapping and photogrammetric measurement. Oblique photographs optimize visibility of subtle surface features. Crop marks—differential plant growth over buried features—and soil marks—color variations in plowed fields—reveal subsurface archaeology. Historical aerial photograph archives contain images predating modern development.
+
+Satellite imagery provides broad coverage at various resolutions. Commercial satellites now offer sub-meter resolution approaching aerial photography. Repeated coverage enables monitoring change over time. Declassified spy satellite imagery (Corona, KH-7) provides historical perspectives from the 1960s onward. Google Earth and similar platforms democratize access to satellite views.
+
+Multispectral and hyperspectral imaging captures reflectance across multiple wavelength bands beyond visible light. Different materials reflect infrared and other wavelengths distinctively. Vegetation stress, soil composition, and moisture variations may indicate buried features. Analysis of spectral signatures can detect archaeological remains invisible in natural color imagery.
+
+Thermal imaging detects temperature differences indicating buried structures. Walls, ditches, and voids retain heat differently than surrounding soil. Thermal contrast is greatest at temperature transition times—dawn and dusk. Airborne thermal sensors map large areas rapidly.
+
+LiDAR (Light Detection and Ranging) uses laser pulses to measure terrain elevation precisely. Millions of measurements produce detailed terrain models. Crucially, LiDAR penetrates forest canopy, revealing ground surface in vegetated areas. Low-relief archaeological features—earthworks, terracing, abandoned roads—appear clearly in LiDAR derivatives. This technology has revolutionized survey in forested regions.
+
+Ground-based remote sensing includes geophysical techniques. Magnetometry detects magnetic anomalies from hearths, kilns, and ferrous objects. Ground-penetrating radar (GPR) images subsurface stratigraphy. Electrical resistivity maps variations in soil conductivity. These methods probe beneath surfaces without excavation.
+
+Detection Principles
+
+Crop marks form when buried features affect plant growth. Ditches filled with organic soil retain moisture, supporting taller, greener crops above. Wall foundations drain water and stunt growth. These differences appear most clearly in ripening grain crops under drought stress. Timing of photography relative to crop growth and weather is critical.
+
+Soil marks appear in freshly plowed fields. Disturbed soil from filled features contrasts with surrounding matrix. Stone, tile, and rubite scatter indicate building locations. Soil marks are visible only briefly after plowing before weathering homogenizes surfaces.
+
+Shadow marks enhance visibility of low-relief features. Low sun angles cast shadows from slight surface variations. Features like ridge-and-furrow cultivation, burial mounds, and foundation remnants appear enhanced. Morning and evening photography maximizes shadow enhancement.
+
+Moisture marks reflect differential water retention. Damp areas appear differently in thermal and visible imagery. Subsurface features affecting drainage create moisture patterns. Seasonal variation in water table affects visibility of moisture marks.
+
+Applications
+
+Site discovery locates previously unknown sites across landscapes. Systematic scanning of imagery identifies anomalies warranting investigation. Discovery in inaccessible areas—conflict zones, private land, remote regions—extends archaeological knowledge. LiDAR surveys have revealed extensive ancient settlement under forest cover in Central America, Southeast Asia, and elsewhere.
+
+Landscape documentation records spatial extent and patterning of archaeological remains. Entire field systems, road networks, and settlement complexes are mapped. Repeat coverage documents change—erosion, development impacts, looting damage. Remote sensing complements ground survey with synoptic perspective.
+
+Site characterization examines internal structure of known sites. Geophysical survey maps buried features without excavation. Aerial perspective reveals site organization. Targeting excavation based on remote sensing maximizes information from limited investigation.
+
+Heritage monitoring tracks condition of archaeological resources. Change detection identifies erosion, looting pits, and development encroachment. Climate change monitoring tracks threats to coastal and frozen sites. Remote sensing enables management oversight of distributed resources.
+
+Integration with field investigation validates remote sensing interpretations through excavation. Ground-truthing confirms what imagery appears to show. Combining remote sensing with pedestrian survey, coring, and excavation produces comprehensive site understanding. No technology replaces the need to examine archaeological deposits directly.

@@ -1,0 +1,57 @@
+Archaeological Survey Methods: Finding and Documenting Sites
+
+Overview
+
+Archaeological survey systematically examines land areas to discover and document archaeological sites. Survey precedes and complements excavation, providing regional contexts within which individual sites are understood. Methods range from walking fields to remote sensing, from opportunistic reconnaissance to statistically designed sampling. Survey data enable research into settlement patterns, land use, population dynamics, and human-environment relationships.
+
+Survey developed from antiquarian interest in locating sites to rigorous method in the mid-twentieth century. The shift from excavation-focused to landscape-oriented archaeology elevated survey's importance. Contemporary practice integrates pedestrian survey with remote sensing, GIS analysis, and strategic sampling to balance coverage with intensity.
+
+Survey Design
+
+Research questions guide survey design. What does the project aim to discover or document? Settlement patterns require different approaches than locating extraction sites or linear features. Scale, resources, and terrain influence design choices. Explicit research objectives enable evaluating whether methods achieve intended goals.
+
+Probability sampling ensures that survey results represent the broader region. Random, systematic, or stratified sampling selects areas for examination. Sample fractions indicate coverage intensity. Statistical inference extends findings beyond examined areas. Sampling theory from statistics grounds these methods.
+
+Full coverage survey examines entire project areas, trading breadth for intensity. This approach suits smaller areas, locates rare sites missed by sampling, and documents complete patterns. Trade-offs between coverage and intensity depend on research goals and resources.
+
+Survey intensity affects what is found. Intensive survey with closely spaced observers catches small sites and sparse scatters; extensive survey with wider spacing efficiently covers large areas but may miss low-density remains. Field-walking intervals, observation time, and documentation thoroughness define intensity.
+
+Field Methods
+
+Pedestrian survey walks observers across terrain examining ground surface for artifacts and features. Parallel transects at fixed intervals ensure systematic coverage. Surface visibility affects detection—recently plowed fields show more than vegetated surfaces. Weather, light conditions, and observer fatigue influence results.
+
+Artifact collection strategies range from total collection to sample collection to in-field documentation without collection. Total collection enables detailed analysis but generates large collections requiring curation. Sampling reduces collections while maintaining analytical capacity. Point-proveniencing versus collection by spatial units affects precision.
+
+Feature and site documentation records location, extent, content, and condition of discoveries. GPS provides precise coordinates. Photography and sketch maps supplement verbal description. Preliminary chronological and functional assessments inform later analysis.
+
+Surface visibility assessment notes conditions affecting detection. Vegetation cover, plowing, erosion, and modern disturbance influence what can be seen. Recording visibility enables evaluating survey reliability and explaining gaps in site distributions.
+
+Non-Pedestrian Methods
+
+Remote sensing detects sites without ground inspection. Aerial photography reveals cropmarks and soilmarks. Satellite imagery extends coverage. LiDAR maps topography including subtle archaeological features under forest canopy. Remote sensing efficiently covers large areas and detects features invisible from the ground.
+
+Geophysical survey maps subsurface anomalies. Magnetometry, resistivity, and ground-penetrating radar reveal buried features without excavation. These methods characterize known sites and locate targets for excavation. Geophysical survey typically follows initial discovery rather than serving as primary detection.
+
+Subsurface testing through coring, augering, or test pits samples below surface. These methods detect deeply buried sites invisible to surface survey. Systematic coring programs in alluvial and coastal settings locate stratified deposits. Testing verifies and characterizes surface scatters.
+
+Informant interviews document local knowledge about archaeological sites. Residents often know locations of artifacts and features. Oral histories may preserve information about site destruction or collecting. Interviews complement systematic survey.
+
+Data Management and Analysis
+
+Recording systems structure data collection. Standardized forms ensure consistent information. Digital recording on tablets enables in-field data entry. Database design determines what questions can later be asked.
+
+GIS integration maps survey data spatially. Site locations, survey coverage, and environmental variables are layered in geographic information systems. Spatial analysis examines patterns. Maps communicate findings.
+
+Site definition addresses what constitutes a site. Continuous distributions versus discrete concentrations, background densities versus elevated densities, arbitrary boundaries versus natural breaks—decisions about site definition affect results. Explicit criteria enable consistent application.
+
+Bias assessment identifies factors affecting survey results. Visibility conditions, survey intensity, preservation factors, and site characteristics influence detection. Understanding biases prevents misinterpreting patterns. Correction factors may adjust for known biases.
+
+Interpretation
+
+Settlement patterns emerge from survey data. Site distributions, size hierarchies, and environmental associations reveal how past populations organized across landscapes. Changes through time indicate demographic and social transformations.
+
+Land use reconstruction integrates site data with environmental evidence. Agricultural systems, resource extraction, and transportation networks appear in site distributions. Off-site artifact scatters may indicate activities beyond habitation.
+
+Preservation and visibility analysis explains patterns. Some patterns result from preservation or detection factors rather than ancient behavior. Erosion, deposition, and modern land use affect what remains. Interpretation must account for these filters.
+
+Regional syntheses draw on multiple surveys. Comparing surveys across regions reveals broader patterns. Standardized methods enable comparison; methodological differences complicate synthesis. Meta-analysis of survey data produces regional and continental-scale understanding.
