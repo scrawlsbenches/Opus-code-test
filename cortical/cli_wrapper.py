@@ -603,6 +603,8 @@ class TaskCompletionManager:
                 try:
                     callback(context)
                 except Exception as e:
+                    # Catch all exceptions from user callbacks to prevent crashes.
+                    # Previously only caught specific types, but user code can raise any exception.
                     context.metadata.setdefault('completion_errors', []).append(str(e))
 
         # Trigger global completion callbacks
@@ -610,6 +612,8 @@ class TaskCompletionManager:
             try:
                 callback(context)
             except Exception as e:
+                # Catch all exceptions from user callbacks to prevent crashes.
+                # Previously only caught specific types, but user code can raise any exception.
                 context.metadata.setdefault('completion_errors', []).append(str(e))
 
     def get_session_summary(self) -> Dict[str, Any]:

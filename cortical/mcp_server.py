@@ -121,7 +121,9 @@ class CorticalMCPServer:
                     ],
                     "count": len(results)
                 }
-            except (ValueError, KeyError, AttributeError, TypeError) as e:
+            except Exception as e:
+                # Catch all exceptions to return graceful error responses.
+                # Processor can raise various exception types depending on internal state.
                 logger.error(f"Error in search: {e}", exc_info=True)
                 return {
                     "error": str(e),
@@ -180,7 +182,9 @@ class CorticalMCPServer:
                     ],
                     "count": len(results)
                 }
-            except (ValueError, KeyError, AttributeError, TypeError, IndexError) as e:
+            except Exception as e:
+                # Catch all exceptions to return graceful error responses.
+                # Processor can raise various exception types depending on internal state.
                 logger.error(f"Error in passages: {e}", exc_info=True)
                 return {
                     "error": str(e),
@@ -227,7 +231,9 @@ class CorticalMCPServer:
                     "expansions": result,
                     "count": len(result)
                 }
-            except (ValueError, KeyError, AttributeError, TypeError) as e:
+            except Exception as e:
+                # Catch all exceptions to return graceful error responses.
+                # Processor can raise various exception types depending on internal state.
                 logger.error(f"Error in expand_query: {e}", exc_info=True)
                 return {
                     "error": str(e),
@@ -258,7 +264,9 @@ class CorticalMCPServer:
                         return str(obj)
 
                 return make_serializable(stats)
-            except (ValueError, KeyError, AttributeError, TypeError, RecursionError) as e:
+            except Exception as e:
+                # Catch all exceptions to return graceful error responses.
+                # Processor can raise various exception types depending on internal state.
                 logger.error(f"Error in corpus_stats: {e}", exc_info=True)
                 return {
                     "error": str(e)
@@ -311,7 +319,9 @@ class CorticalMCPServer:
                     "stats": stats,
                     "doc_id": doc_id
                 }
-            except (ValueError, KeyError, AttributeError, TypeError, OSError) as e:
+            except Exception as e:
+                # Catch all exceptions to return graceful error responses.
+                # Processor can raise various exception types depending on internal state.
                 logger.error(f"Error in add_document: {e}", exc_info=True)
                 return {
                     "error": str(e),
