@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "16f3",
   "started_at": "2025-12-15T14:56:21.504769",
-  "saved_at": "2025-12-15T14:56:30.898474",
+  "saved_at": "2025-12-17T23:40:46.543768",
   "tasks": [
     {
       "id": "T-20251215-145621-16f3-001",
@@ -22,17 +22,17 @@
     {
       "id": "T-20251215-145626-16f3-002",
       "title": "Re-enable and fix git hooks for ML data collection",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "bugfix",
       "description": "LOW PRIORITY: Already have 484/500 commits for first milestone. Git hooks only affect commit collection which is 97% complete. Hooks disabled due to circular commit issues. Can re-enable after session capture is solved (task #003).",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-15T14:56:26.219434",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-17T23:40:46.543768",
+      "completed_at": "2025-12-17T23:40:46.543768",
       "context": {},
-      "retrospective": null
+      "retrospective": "Git hooks verified working - post-commit captures commit data, hooks are installed via ml_data_collector.py install-hooks."
     },
     {
       "id": "T-20251215-145630-16f3-003",

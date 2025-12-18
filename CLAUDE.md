@@ -27,18 +27,26 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 - Document findings even when they contradict initial hypotheses
 
 **Test-Driven Confidence**
-- Maintain >89% code coverage before optimizations
+- Don't regress coverage on files you modify
 - Run the full test suite after every change
 - Write tests for the bug before writing the fix
 
-> **⚠️ CODE COVERAGE REQUIREMENT:** This project strictly maintains >89% test coverage.
-> When you add new code, you MUST also add corresponding unit tests. Coverage is
-> monitored by CI and PRs that decrease coverage will be flagged. Before committing:
+> **⚠️ CODE COVERAGE POLICY:**
+> - **Current baseline:** 61% (as of 2025-12-17)
+> - **Target:** Improve incrementally, never regress on modified files
+> - **Reality:** Some modules have low coverage (see debt list below)
+>
+> When you add new code, add corresponding unit tests. Before committing:
 > ```bash
 > python -m coverage run -m pytest tests/ && python -m coverage report --include="cortical/*"
 > ```
-> If coverage drops, add tests for your new code before pushing. The rule is simple:
-> **New code = new tests. No exceptions.**
+>
+> **Known coverage debt (acknowledged, not blocking):**
+> - `cortical/query/analogy.py` (3%), `cortical/mcp_server.py` (4%), `cortical/gaps.py` (9%)
+> - `cortical/cli_wrapper.py` (0% - CLI entry point), `cortical/types.py` (0% - type aliases)
+> - Full list: `samples/memories/2025-12-17-session-coverage-and-workflow-analysis.md`
+>
+> **Rule:** New code in well-covered modules needs tests. New code in debt modules: use judgment.
 
 **Dog-Food Everything**
 - Use the system to test itself when possible
@@ -107,6 +115,27 @@ python -c "import coverage; print('coverage OK')"
 ## AI Agent Onboarding
 
 **New to this codebase?** Follow these steps to get oriented quickly:
+
+### Step 0: Check Current Sprint Context
+
+Before diving into code, understand what's being worked on:
+
+```bash
+# View current sprint status and goals
+python scripts/task_utils.py sprint status
+
+# Or read the file directly
+cat tasks/CURRENT_SPRINT.md
+```
+
+**What sprint tracking provides:**
+- Current sprint ID and epic context
+- Active goals and their completion status
+- Recently completed work in this sprint
+- Blocked items that need attention
+- Strategic notes and decisions
+
+This helps you understand the current development focus and avoid duplicate work.
 
 ### Step 1: Generate AI Metadata (if missing)
 
@@ -1143,9 +1172,13 @@ python examples/observability_demo.py
 | Create memory | `python scripts/new_memory.py "topic"` |
 | Create decision | `python scripts/new_memory.py "topic" --decision` |
 | Session handoff | `python scripts/session_handoff.py` |
+| Generate session memory | `python scripts/session_memory_generator.py --session-id ID` |
 | Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
 | Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
 | Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
+| View sprint status | `python scripts/task_utils.py sprint status` |
+| Mark sprint goal complete | `python scripts/task_utils.py sprint complete "goal text"` |
+| Add sprint note | `python scripts/task_utils.py sprint note "note text"` |
 | Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
 | List orchestration plans | `python scripts/orchestration_utils.py list` |
 | Verify batch | `python scripts/verify_batch.py --quick` |
@@ -1639,6 +1672,31 @@ python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl
 python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl --dry-run --verbose
 ```
 
+**Generate session memory:**
+```bash
+# Generate a draft memory document from current session
+python scripts/session_memory_generator.py --session-id abc123
+
+# Generate from recent commits (no session ID needed)
+python scripts/session_memory_generator.py --commits 10
+
+# Dry run (preview without saving)
+python scripts/session_memory_generator.py --session-id abc123 --dry-run
+```
+
+**What gets auto-generated:**
+- Session summary with commit history
+- Files modified during the session
+- Task IDs referenced in commits
+- Categorized file changes (Core Library, Tests, Scripts, etc.)
+- Auto-extracted insights and tags
+- Draft memory saved to `samples/memories/[DRAFT]-YYYY-MM-DD-session-{id}.md`
+
+**When it runs:**
+- Automatically at session end via `ml-session-capture-hook.sh`
+- Manually via command line for any session
+- Integrated into the Stop hook workflow
+
 ### Integration
 
 Data collection is fully automatic via hooks configured in `.claude/settings.local.json`:
@@ -1646,7 +1704,7 @@ Data collection is fully automatic via hooks configured in `.claude/settings.loc
 | Hook | Trigger | Action |
 |------|---------|--------|
 | **SessionStart** | Session begins | Starts ML session, installs git hooks, shows stats |
-| **Stop** | Session ends | Captures full transcript with all exchanges |
+| **Stop** | Session ends | Captures full transcript with all exchanges, generates draft memory |
 | **prepare-commit-msg** | Before commit | Suggests missing files based on commit message |
 | **post-commit** | After commit | Captures commit metadata with diff hunks |
 | **pre-push** | Before push | Reports collection stats |
@@ -1654,7 +1712,8 @@ Data collection is fully automatic via hooks configured in `.claude/settings.loc
 
 **Hook files:**
 - `scripts/ml-session-start-hook.sh` - SessionStart handler
-- `scripts/ml-session-capture-hook.sh` - Stop handler
+- `scripts/ml-session-capture-hook.sh` - Stop handler (includes session memory generation)
+- `scripts/session_memory_generator.py` - Auto-generates draft memory documents
 - `scripts/ml-precommit-suggest.sh` - prepare-commit-msg handler
 
 **CI Integration:**

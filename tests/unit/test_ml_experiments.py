@@ -1529,5 +1529,380 @@ class TestDatasetManagerAdvanced:
         assert any("invalid indices" in err for err in results['errors'])
 
 
+# =============================================================================
+# METRICS.PY TESTS - METRICS MANAGER
+# =============================================================================
+
+
+class TestMetricEntry:
+    """Tests for MetricEntry dataclass."""
+
+    def test_metric_entry_creation(self):
+        """Test MetricEntry creation."""
+        entry = MetricEntry(
+            timestamp="2025-12-16T10:00:00Z",
+            experiment_id="exp-20251216-abc1",
+            split="val",
+            metric_name="mrr",
+            value=0.46,
+            metadata={"model": "v1"}
+        )
+
+        assert entry.timestamp == "2025-12-16T10:00:00Z"
+        assert entry.experiment_id == "exp-20251216-abc1"
+        assert entry.split == "val"
+        assert entry.metric_name == "mrr"
+        assert entry.value == 0.46
+        assert entry.metadata == {"model": "v1"}
+
+    def test_metric_entry_to_dict(self):
+        """Test MetricEntry to_dict conversion."""
+        entry = MetricEntry(
+            timestamp="2025-12-16T10:00:00Z",
+            experiment_id="exp-001",
+            split="test",
+            metric_name="recall@10",
+            value=0.52
+        )
+
+        entry_dict = entry.to_dict()
+
+        assert entry_dict["timestamp"] == "2025-12-16T10:00:00Z"
+        assert entry_dict["experiment_id"] == "exp-001"
+        assert entry_dict["metric_name"] == "recall@10"
+        assert entry_dict["value"] == 0.52
+        assert entry_dict["metadata"] == {}  # Should default to empty dict
+
+    def test_metric_entry_from_dict(self):
+        """Test MetricEntry from_dict conversion."""
+        data = {
+            "timestamp": "2025-12-16T10:00:00Z",
+            "experiment_id": "exp-002",
+            "split": "val",
+            "metric_name": "precision@1",
+            "value": 0.37,
+            "metadata": {"note": "test"}
+        }
+
+        entry = MetricEntry.from_dict(data)
+
+        assert entry.experiment_id == "exp-002"
+        assert entry.metric_name == "precision@1"
+        assert entry.value == 0.37
+
+
+class TestMetricsManager:
+    """Tests for MetricsManager class."""
+
+    def setup_method(self):
+        """Create temporary directory for each test."""
+        self.temp_dir = tempfile.mkdtemp()
+
+        # Monkey-patch METRICS_DIR to use temp directory
+        import cortical.ml_experiments.metrics as metrics_module
+        self.old_metrics_dir = metrics_module.METRICS_DIR
+        self.old_metrics_ledger = metrics_module.METRICS_LEDGER
+
+        metrics_module.METRICS_DIR = Path(self.temp_dir) / 'metrics'
+        metrics_module.METRICS_LEDGER = metrics_module.METRICS_DIR / 'metrics.jsonl'
+
+    def teardown_method(self):
+        """Clean up temporary directory."""
+        import shutil
+        import cortical.ml_experiments.metrics as metrics_module
+
+        # Restore original paths
+        metrics_module.METRICS_DIR = self.old_metrics_dir
+        metrics_module.METRICS_LEDGER = self.old_metrics_ledger
+
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_record_metrics_basic(self):
+        """Test recording metrics."""
+        entry_ids = MetricsManager.record_metrics(
+            experiment_id="exp-001",
+            split="val",
+            metrics={"mrr": 0.46, "recall@10": 0.52}
+        )
+
+        assert len(entry_ids) == 2
+        assert all("mrr" in eid or "recall@10" in eid for eid in entry_ids)
+
+    def test_record_metrics_with_metadata(self):
+        """Test recording metrics with metadata."""
+        MetricsManager.record_metrics(
+            experiment_id="exp-002",
+            split="test",
+            metrics={"accuracy": 0.85},
+            metadata={"model_version": "1.0"}
+        )
+
+        # Verify by reading back
+        history = MetricsManager.get_metric_history("accuracy", split="test")
+        assert len(history) == 1
+
+    def test_get_metric_history_basic(self):
+        """Test getting metric history."""
+        # Record some metrics
+        MetricsManager.record_metrics("exp-001", "val", {"mrr": 0.40})
+        MetricsManager.record_metrics("exp-002", "val", {"mrr": 0.45})
+        MetricsManager.record_metrics("exp-003", "val", {"mrr": 0.50})
+
+        history = MetricsManager.get_metric_history("mrr", split="val")
+
+        assert len(history) == 3
+        # History should be sorted by timestamp
+        values = [h[2] for h in history]
+        assert values == [0.40, 0.45, 0.50]
+
+    def test_get_metric_history_filtered_by_split(self):
+        """Test metric history filtering by split."""
+        MetricsManager.record_metrics("exp-001", "val", {"mrr": 0.40})
+        MetricsManager.record_metrics("exp-002", "test", {"mrr": 0.45})
+        MetricsManager.record_metrics("exp-003", "val", {"mrr": 0.50})
+
+        history = MetricsManager.get_metric_history("mrr", split="val")
+
+        assert len(history) == 2
+        assert all(h[2] in [0.40, 0.50] for h in history)
+
+    def test_get_metric_history_filtered_by_experiment(self):
+        """Test metric history filtering by experiment IDs."""
+        MetricsManager.record_metrics("exp-001", "val", {"mrr": 0.40})
+        MetricsManager.record_metrics("exp-002", "val", {"mrr": 0.45})
+        MetricsManager.record_metrics("exp-003", "val", {"mrr": 0.50})
+
+        history = MetricsManager.get_metric_history(
+            "mrr",
+            split="val",
+            experiment_ids=["exp-001", "exp-003"]
+        )
+
+        assert len(history) == 2
+        exp_ids = [h[1] for h in history]
+        assert "exp-001" in exp_ids
+        assert "exp-003" in exp_ids
+
+    def test_get_metric_history_with_limit(self):
+        """Test metric history with limit."""
+        for i in range(10):
+            MetricsManager.record_metrics(f"exp-{i:03d}", "val", {"mrr": 0.40 + i * 0.01})
+
+        history = MetricsManager.get_metric_history("mrr", split="val", limit=5)
+
+        assert len(history) == 5
+        # Should return the last 5 entries
+        assert history[-1][2] == 0.49  # Last entry
+
+    def test_get_experiment_metrics(self):
+        """Test getting all metrics for an experiment."""
+        MetricsManager.record_metrics(
+            "exp-001",
+            "val",
+            {"mrr": 0.46, "recall@10": 0.52, "precision@1": 0.37}
+        )
+
+        metrics = MetricsManager.get_experiment_metrics("exp-001")
+
+        assert len(metrics) == 3
+        assert metrics["mrr"] == 0.46
+        assert metrics["recall@10"] == 0.52
+        assert metrics["precision@1"] == 0.37
+
+    def test_get_experiment_metrics_filtered_by_split(self):
+        """Test getting experiment metrics filtered by split."""
+        MetricsManager.record_metrics("exp-001", "val", {"mrr": 0.46})
+        MetricsManager.record_metrics("exp-001", "test", {"mrr": 0.42})
+
+        val_metrics = MetricsManager.get_experiment_metrics("exp-001", split="val")
+        test_metrics = MetricsManager.get_experiment_metrics("exp-001", split="test")
+
+        assert val_metrics["mrr"] == 0.46
+        assert test_metrics["mrr"] == 0.42
+
+    def test_compare_experiments(self):
+        """Test comparing metrics across experiments."""
+        MetricsManager.record_metrics("exp-001", "val", {"mrr": 0.40, "recall@10": 0.45})
+        MetricsManager.record_metrics("exp-002", "val", {"mrr": 0.46, "recall@10": 0.52})
+
+        comparison = MetricsManager.compare_experiments(
+            ["exp-001", "exp-002"],
+            split="val"
+        )
+
+        assert "exp-001" in comparison
+        assert "exp-002" in comparison
+        assert comparison["exp-001"]["mrr"] == 0.40
+        assert comparison["exp-002"]["mrr"] == 0.46
+
+    def test_compare_experiments_specific_metrics(self):
+        """Test comparing specific metrics only."""
+        MetricsManager.record_metrics(
+            "exp-001", "val",
+            {"mrr": 0.40, "recall@10": 0.45, "precision@1": 0.30}
+        )
+        MetricsManager.record_metrics(
+            "exp-002", "val",
+            {"mrr": 0.46, "recall@10": 0.52, "precision@1": 0.35}
+        )
+
+        comparison = MetricsManager.compare_experiments(
+            ["exp-001", "exp-002"],
+            metrics=["mrr", "recall@10"],
+            split="val"
+        )
+
+        assert "mrr" in comparison["exp-001"]
+        assert "recall@10" in comparison["exp-001"]
+        assert "precision@1" not in comparison["exp-001"]
+
+    def test_get_best_value_higher_is_better(self):
+        """Test finding best value when higher is better."""
+        MetricsManager.record_metrics("exp-001", "val", {"mrr": 0.40})
+        MetricsManager.record_metrics("exp-002", "val", {"mrr": 0.52})
+        MetricsManager.record_metrics("exp-003", "val", {"mrr": 0.46})
+
+        best = MetricsManager.get_best_value("mrr", split="val", higher_is_better=True)
+
+        assert best is not None
+        assert best[0] == "exp-002"
+        assert best[1] == 0.52
+
+    def test_get_best_value_lower_is_better(self):
+        """Test finding best value when lower is better."""
+        MetricsManager.record_metrics("exp-001", "val", {"loss": 0.50})
+        MetricsManager.record_metrics("exp-002", "val", {"loss": 0.30})
+        MetricsManager.record_metrics("exp-003", "val", {"loss": 0.40})
+
+        best = MetricsManager.get_best_value("loss", split="val", higher_is_better=False)
+
+        assert best is not None
+        assert best[0] == "exp-002"
+        assert best[1] == 0.30
+
+    def test_get_best_value_no_records(self):
+        """Test getting best value with no records."""
+        best = MetricsManager.get_best_value("nonexistent", split="val")
+
+        assert best is None
+
+    def test_get_metric_stats(self):
+        """Test getting statistics for a metric."""
+        MetricsManager.record_metrics("exp-001", "val", {"mrr": 0.40})
+        MetricsManager.record_metrics("exp-002", "val", {"mrr": 0.50})
+        MetricsManager.record_metrics("exp-003", "val", {"mrr": 0.60})
+
+        stats = MetricsManager.get_metric_stats("mrr", split="val")
+
+        assert stats["count"] == 3
+        assert stats["min"] == 0.40
+        assert stats["max"] == 0.60
+        assert stats["mean"] == 0.50
+        assert stats["std"] > 0
+
+    def test_get_metric_stats_no_records(self):
+        """Test getting statistics with no records."""
+        stats = MetricsManager.get_metric_stats("nonexistent", split="val")
+
+        assert stats["count"] == 0
+        assert stats["min"] == 0
+        assert stats["max"] == 0
+        assert stats["mean"] == 0
+
+    def test_detect_regression_no_regression(self):
+        """Test regression detection when no regression."""
+        MetricsManager.record_metrics("exp-001", "val", {"mrr": 0.50})
+
+        result = MetricsManager.detect_regression(
+            "mrr",
+            current_value=0.48,  # Only 4% drop
+            split="val",
+            threshold_pct=5.0
+        )
+
+        assert result is None
+
+    def test_detect_regression_with_regression(self):
+        """Test regression detection when regression exists."""
+        MetricsManager.record_metrics("exp-001", "val", {"mrr": 0.50})
+
+        result = MetricsManager.detect_regression(
+            "mrr",
+            current_value=0.40,  # 20% drop
+            split="val",
+            threshold_pct=5.0
+        )
+
+        assert result is not None
+        assert result["metric"] == "mrr"
+        assert result["current_value"] == 0.40
+        assert result["best_value"] == 0.50
+        assert result["pct_change"] < -5.0
+
+    def test_detect_regression_lower_is_better(self):
+        """Test regression detection for metrics where lower is better."""
+        MetricsManager.record_metrics("exp-001", "val", {"loss": 0.30})
+
+        result = MetricsManager.detect_regression(
+            "loss",
+            current_value=0.40,  # 33% increase (bad for loss)
+            split="val",
+            threshold_pct=5.0,
+            higher_is_better=False
+        )
+
+        assert result is not None
+        assert result["current_value"] == 0.40
+
+    def test_detect_regression_no_baseline(self):
+        """Test regression detection with no baseline records."""
+        result = MetricsManager.detect_regression(
+            "nonexistent",
+            current_value=0.50,
+            split="val"
+        )
+
+        assert result is None
+
+    def test_format_comparison_table_basic(self):
+        """Test formatting comparison as ASCII table."""
+        comparison = {
+            "exp-001": {"mrr": 0.40, "recall@10": 0.45},
+            "exp-002": {"mrr": 0.46, "recall@10": 0.52}
+        }
+
+        table = MetricsManager.format_comparison_table(comparison)
+
+        assert "Metric" in table
+        assert "mrr" in table or "recall" in table
+        assert "0.40" in table or "0.4000" in table
+
+    def test_format_comparison_table_with_order(self):
+        """Test formatting comparison with metric ordering."""
+        comparison = {
+            "exp-001": {"recall@10": 0.45, "mrr": 0.40, "precision@1": 0.30}
+        }
+
+        table = MetricsManager.format_comparison_table(
+            comparison,
+            metric_order=["mrr", "recall@10", "precision@1"]
+        )
+
+        # Check that table is formatted
+        lines = table.split("\n")
+        assert len(lines) >= 3  # Header, separator, at least one row
+
+    def test_format_comparison_table_empty(self):
+        """Test formatting empty comparison."""
+        table = MetricsManager.format_comparison_table({})
+
+        assert "No experiments to compare" in table
+
+
+# Import MetricEntry and MetricsManager for tests
+from cortical.ml_experiments.metrics import MetricEntry, MetricsManager
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

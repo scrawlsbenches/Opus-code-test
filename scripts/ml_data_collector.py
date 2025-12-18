@@ -75,6 +75,11 @@ Usage:
     python scripts/ml_data_collector.py chunked compact             # Compact old chunks
     python scripts/ml_data_collector.py chunked stats               # Show chunked storage stats
     python scripts/ml_data_collector.py chunked reconstruct -o data.jsonl  # Reconstruct from chunks
+
+    # Link commits to tasks (auto-update task status)
+    python scripts/ml_data_collector.py link-tasks                  # Link current commit to tasks
+    python scripts/ml_data_collector.py link-tasks --analyze 20     # Analyze recent commits
+    python scripts/ml_data_collector.py link-tasks --commit HASH --message "..." # Link specific commit
 """
 
 import json
@@ -4510,6 +4515,60 @@ Your name and email (if provided) will be used for:
                 print(f"Written to: {args.output}")
             else:
                 print("Use --output to save reconstructed data")
+
+    elif command == "link-tasks":
+        # Link commits to tasks (auto-update task status)
+        import argparse
+        from ml_collector.task_linker import (
+            link_commit_to_tasks, analyze_recent_commits
+        )
+
+        parser = argparse.ArgumentParser(
+            description="Link commits to tasks and auto-update task status"
+        )
+        parser.add_argument("--analyze", type=int, metavar='N',
+                           help="Analyze last N commits (dry run)")
+        parser.add_argument("--commit", metavar='HASH',
+                           help="Link specific commit to tasks")
+        parser.add_argument("--message", metavar='MSG',
+                           help="Commit message (required with --commit)")
+        parser.add_argument("--tasks-dir", default='tasks',
+                           help="Tasks directory (default: tasks)")
+        parser.add_argument("--verbose", action='store_true',
+                           help="Verbose output")
+        args = parser.parse_args(sys.argv[2:])
+
+        if args.analyze:
+            analyze_recent_commits(args.analyze, args.tasks_dir, verbose=True)
+        elif args.commit:
+            if not args.message:
+                print("Error: --message required with --commit")
+                sys.exit(1)
+            result = link_commit_to_tasks(
+                args.commit, args.message, args.tasks_dir, args.verbose
+            )
+            print(f"Linked commit {args.commit[:8]} to {len(result['updated'])} tasks")
+            if result['completed']:
+                print(f"  Completed: {', '.join(result['completed'])}")
+            if result['referenced']:
+                print(f"  Referenced: {', '.join(result['referenced'])}")
+            if result['failed']:
+                print(f"  Failed: {', '.join(result['failed'])}")
+        else:
+            # Link current commit (HEAD)
+            commit_hash = run_git(["rev-parse", "HEAD"]).strip()
+            commit_message = run_git(["log", "-1", "--format=%B", "HEAD"])
+            result = link_commit_to_tasks(
+                commit_hash, commit_message, args.tasks_dir, args.verbose
+            )
+            if result['updated']:
+                print(f"Linked HEAD ({commit_hash[:8]}) to {len(result['updated'])} tasks")
+                if result['completed']:
+                    print(f"  Completed: {', '.join(result['completed'])}")
+                if result['referenced']:
+                    print(f"  Referenced: {', '.join(result['referenced'])}")
+            else:
+                print("No task references found in current commit")
 
     else:
         print(f"Unknown command: {command}")

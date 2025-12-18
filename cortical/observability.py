@@ -50,9 +50,52 @@ class MetricsCollector:
     """
     Collects and aggregates timing and count metrics for operations.
 
-    Note: This class is NOT thread-safe. For multi-threaded applications,
-    wrap method calls with appropriate locking (e.g., threading.Lock).
-    Consider using thread-local MetricsCollector instances for concurrent access.
+    Thread Safety:
+        This class is NOT thread-safe. All methods access shared mutable state
+        (self.operations, self.traces, self._current_trace_id) without synchronization.
+
+        Thread-Safe Methods: NONE - all methods are non-thread-safe
+
+        For multi-threaded applications, choose one of these approaches:
+
+        1. External Locking (Recommended for shared collector):
+            ```python
+            import threading
+
+            collector = MetricsCollector()
+            lock = threading.Lock()
+
+            # Wrap all calls with lock
+            with lock:
+                collector.record_timing("operation", duration_ms)
+
+            with lock:
+                stats = collector.get_all_stats()
+            ```
+
+        2. Thread-Local Collectors (Recommended for independent metrics):
+            ```python
+            import threading
+
+            thread_local = threading.local()
+
+            def get_collector():
+                if not hasattr(thread_local, 'collector'):
+                    thread_local.collector = MetricsCollector()
+                return thread_local.collector
+
+            # Each thread gets its own collector
+            get_collector().record_timing("operation", duration_ms)
+            ```
+
+        3. Queue-Based Collection (For high-concurrency):
+            Use a thread-safe queue to send metrics to a dedicated collector thread.
+
+        WARNING: Concurrent access without locking will cause:
+        - Race conditions in record_timing() and record_count()
+        - Inconsistent reads in get_operation_stats() and get_all_stats()
+        - Data corruption in operations dict and traces dict
+        - Lost updates when multiple threads modify the same operation
 
     Attributes:
         enabled: Whether metrics collection is active

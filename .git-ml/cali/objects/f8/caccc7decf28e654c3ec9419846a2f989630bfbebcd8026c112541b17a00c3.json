@@ -1,1 +1,0 @@
-{"action_type":"search","context":{"input":{"input":{"pattern":"tasks/*.json"},"tool":"Glob"},"tool":"Glob"},"id":"A-20251216-160222-f974-001","result_summary":null,"session_id":"f9743c8f-4ec7-418b-bae9-8cd0d12455e8","success":true,"target":"","timestamp":"2025-12-16T12:44:17.789Z"}

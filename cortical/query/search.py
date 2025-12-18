@@ -456,7 +456,16 @@ def graph_boosted_search(
 
     Returns:
         List of (doc_id, score) tuples ranked by combined relevance
+
+    Raises:
+        ValueError: If pagerank_weight or proximity_weight not in [0.0, 1.0]
     """
+    # Validate weight parameters
+    if not (0.0 <= pagerank_weight <= 1.0):
+        raise ValueError(f"pagerank_weight must be in [0.0, 1.0], got {pagerank_weight}")
+    if not (0.0 <= proximity_weight <= 1.0):
+        raise ValueError(f"proximity_weight must be in [0.0, 1.0], got {proximity_weight}")
+
     layer0 = layers[CorticalLayer.TOKENS]
     layer3 = layers[CorticalLayer.DOCUMENTS]
 

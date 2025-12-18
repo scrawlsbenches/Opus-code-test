@@ -774,6 +774,52 @@ Detailed documentation is available in the `docs/` directory:
 
 For AI agents, see also [docs/claude-usage.md](docs/claude-usage.md) and [CLAUDE.md](CLAUDE.md).
 
+## Research
+
+### Hubris MoE: A Credit-Based Mixture of Experts for Development Prediction
+
+We developed **Hubris MoE**, a novel Mixture of Experts system that predicts which files to modify, which tests to run, and how to diagnose errors—all trained on your project's git history.
+
+**Key innovations:**
+- **Credit-based routing**: Experts earn/lose credits based on prediction accuracy, not static weights
+- **Calibration tracking**: ECE, MCE, and Brier Score metrics ensure predictions are well-calibrated
+- **Cold-start handling**: Graceful degradation with ML fallback when experts haven't learned yet
+- **Git integration**: Automatic training from commit history with CI result feedback
+
+**Architecture:**
+```
+Task Description
+       │
+       ▼
+┌──────────────────┐
+│  Expert Router   │──▶ Routes to high-credit experts
+└──────────────────┘
+       │
+       ▼
+┌──────────────────┐
+│ FileExpert       │──▶ Predicts files to modify
+│ TestExpert       │──▶ Predicts tests to run
+│ ErrorExpert      │──▶ Diagnoses errors
+│ EpisodeExpert    │──▶ Learns workflow patterns
+└──────────────────┘
+       │
+       ▼
+   Aggregated Prediction
+       │
+       ▼
+   Value Signal (from outcomes)
+       │
+       ▼
+   Credit Update (learn from results)
+```
+
+**Current results** (Sprint 5 complete, 400+ commits):
+- File prediction MRR: 0.43
+- Cold-start detection working
+- Calibration tracking operational
+
+See the full research paper: [docs/research/hubris-moe-research-paper.md](docs/research/hubris-moe-research-paper.md)
+
 ## Running Tests
 
 ```bash

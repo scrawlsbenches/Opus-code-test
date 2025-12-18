@@ -178,7 +178,8 @@ class StateWriter:
             with open(temp_path, 'w', encoding='utf-8') as f:
                 f.write(content)
             temp_path.replace(filepath)
-        except Exception:
+        except OSError:
+            # OSError covers IOError, FileNotFoundError, PermissionError
             if temp_path.exists():
                 temp_path.unlink()
             raise

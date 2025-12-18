@@ -112,12 +112,21 @@ cortical/proto/__pycache__/
 .git-ml/commits/
 # Trained models are regeneratable (python scripts/ml_file_prediction.py train)
 .git-ml/models/
-# .git-ml/chats/  # Uncomment to ignore chat transcripts
-# .git-ml/sessions/  # Uncomment to ignore full session data
-# .git-ml/actions/  # Uncomment to ignore tool usage data
+.git-ml/chats/
+.git-ml/sessions/
+.git-ml/actions/
 # .git-ml/github/  # Uncomment to ignore PR/Issue data
 # .git-ml/orchestration/  # Uncomment to ignore individual orchestration JSON files
 .git-ml/current_session.json  # Session-specific data
 # .git-ml/contribution_consent.json  # Uncomment to ignore consent file
 .git-ml/current_session.json.lock
-.git-ml/cali/local/  # CALI local indices (rebuilt from logs on load)
+.git-ml/.last_activity  # Session continuity tracking (local only)
+.git-ml/cali/  # CALI storage (local indices, objects, manifest - all regeneratable)
+.git-ml/predictions/  # Hubris prediction state (local, regeneratable)
+
+# Clean ignores for local ML data
+.git-ml/.last_activity
+.git-ml/cali/
+.git-ml/predictions/
+samples/memories/\[DRAFT\]-*
+.git-ml/current_session.json

@@ -71,10 +71,46 @@ python3 "$COLLECTOR" transcript \
     true  # Don't block Claude Code shutdown
 }
 
+# Archive branch manifest (records files touched during session)
+python3 scripts/branch_manifest.py archive 2>/dev/null || true
+
+# Generate draft memory from session activity (Sprint 2.3)
+if [[ -f scripts/session_memory_generator.py ]]; then
+    echo "📝 Generating session memory draft..."
+    python3 scripts/session_memory_generator.py \
+        --session-id "$session_id" \
+        --output samples/memories \
+        2>/dev/null || {
+        echo "[$(date -Iseconds)] Memory generation failed for session $session_id" >> "$error_log"
+        true  # Don't block session end
+    }
+fi
+
+# Run test suite before committing session data
+echo "🧪 Running test suite before session end..."
+test_output=$(python3 -m pytest tests/ -x --tb=no -q 2>&1)
+test_exit=$?
+
+if [[ $test_exit -eq 0 ]]; then
+    echo "✅ All tests passing"
+else
+    echo "⚠️  WARNING: Tests failing at session end"
+    echo ""
+    echo "Failed tests:"
+    echo "$test_output" | grep -E "FAILED|ERROR" | head -5
+    echo ""
+    echo "You may want to fix these before merging."
+    echo "Proceeding with session capture anyway..."
+fi
+
 # Commit tracked ML data (sessions.jsonl and commits.jsonl)
 # This ensures session data is persisted in git for team/branch sharing
 if [[ -d .git-ml/tracked ]] && [[ -n "$(ls -A .git-ml/tracked 2>/dev/null)" ]]; then
     git add .git-ml/tracked/ 2>/dev/null || true
+    # Also add branch state if present
+    if [[ -d .branch-state ]]; then
+        git add .branch-state/ 2>/dev/null || true
+    fi
     git commit -m "ml: Capture session data" --no-verify 2>/dev/null || true
 fi
 

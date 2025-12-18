@@ -25,7 +25,7 @@ class TestCustomerServiceRetrieval:
         """
         Query about handling refund requests should find relevant docs.
 
-        Expected: complaint_resolution, customer_support_fundamentals
+        Expected: refund_request_handling, return_refund_policy, or complaint_resolution
         """
         results = shared_processor.find_documents_for_query(
             "how to handle refund requests",
@@ -34,10 +34,11 @@ class TestCustomerServiceRetrieval:
 
         doc_ids = [doc_id for doc_id, _ in results]
 
-        # Should find complaint resolution (mentions compensation)
-        # and customer support fundamentals
+        # Should find refund-related docs, return policy, or customer service docs
+        # Note: actual paths use 'customer_service/' not 'customer_support'
         relevant_found = any(
-            'complaint' in doc_id or 'customer_support' in doc_id or 'retention' in doc_id
+            'refund' in doc_id or 'return' in doc_id or
+            'customer_service' in doc_id or 'complaint' in doc_id
             for doc_id in doc_ids
         )
 
@@ -264,11 +265,13 @@ class TestCustomerServicePassages:
         )
 
         # Check if passages are from customer service domain
+        # Accept any doc from customer_service/ directory or specific known docs
         cs_docs = {'complaint_resolution', 'customer_support_fundamentals',
                    'ticket_escalation_procedures', 'customer_retention_strategies'}
         found_cs_doc = False
         for _, doc_id, _, _, _ in passages:
-            if any(cs_doc in doc_id for cs_doc in cs_docs):
+            # Accept customer_service/* prefix or specific doc name matches
+            if doc_id.startswith('customer_service/') or any(cs_doc in doc_id for cs_doc in cs_docs):
                 found_cs_doc = True
                 break
 
@@ -298,10 +301,11 @@ class TestCustomerServiceCrossDomain:
         doc_ids = [doc_id for doc_id, _ in results]
 
         # Count customer service vs other domain docs
-        cs_keywords = ['customer', 'support', 'complaint', 'ticket', 'call', 'retention', 'satisfaction']
+        # Accept customer_service/* prefix or keyword matches
+        cs_keywords = ['customer', 'support', 'complaint', 'ticket', 'call', 'retention', 'satisfaction', 'escalation', 'resolution']
         cs_docs = sum(
             1 for doc_id in doc_ids[:5]  # Check top 5
-            if any(kw in doc_id.lower() for kw in cs_keywords)
+            if doc_id.startswith('customer_service/') or any(kw in doc_id.lower() for kw in cs_keywords)
         )
 
         # At least 2 of top 5 should be customer service related
@@ -322,10 +326,11 @@ class TestCustomerServiceCrossDomain:
         doc_ids = [doc_id for doc_id, _ in results]
 
         # Customer service docs should not dominate technical query results
-        cs_keywords = ['customer', 'support', 'complaint', 'ticket', 'call']
+        # Use same comprehensive keywords for consistency
+        cs_keywords = ['customer', 'support', 'complaint', 'ticket', 'call', 'retention', 'satisfaction', 'escalation', 'resolution']
         cs_docs_in_top5 = sum(
             1 for doc_id in doc_ids[:5]
-            if any(kw in doc_id.lower() for kw in cs_keywords)
+            if doc_id.startswith('customer_service/') or any(kw in doc_id.lower() for kw in cs_keywords)
         )
 
         # At most 1 of top 5 should be customer service

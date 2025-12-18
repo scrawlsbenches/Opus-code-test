@@ -11,6 +11,17 @@
         ]
       }
     ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/ml-precompact-push-hook.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",

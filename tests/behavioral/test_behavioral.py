@@ -69,8 +69,8 @@ class TestSearchRelevance:
         )
         found_docs = {doc_id for doc_id, _ in results}
 
-        # Should find ML-related documents
-        ml_related = {'ml_basics', 'deep_learning', 'ml_optimization', 'ml_evaluation'}
+        # Should find ML-related documents (all ML docs in small corpus)
+        ml_related = {'ml_basics', 'deep_learning', 'ml_optimization', 'ml_evaluation', 'ml_applications'}
         found_ml = found_docs & ml_related
 
         assert len(found_ml) >= 2, (
