@@ -557,5 +557,167 @@ class TestFileExpert(unittest.TestCase):
             self.assertIn('a.py', loaded.model_data['file_cooccurrence'])
 
 
+class TestTestExpert(unittest.TestCase):
+    """Test TestExpert."""
+
+    def test_create_test_expert(self):
+        """Test creating TestExpert."""
+        from scripts.hubris.experts.test_expert import TestExpert
+
+        expert = TestExpert()
+
+        self.assertEqual(expert.expert_type, 'test')
+        self.assertIn('source_to_tests', expert.model_data)
+        self.assertIn('test_failure_patterns', expert.model_data)
+
+    def test_predict_by_convention(self):
+        """Test prediction based on naming conventions."""
+        from scripts.hubris.experts.test_expert import TestExpert
+
+        expert = TestExpert(
+            model_data={
+                'source_to_tests': {
+                    'cortical/query/search.py': {'tests/test_query.py': 10}
+                },
+                'test_to_sources': {},
+                'test_failure_patterns': {},
+                'module_to_tests': {},
+                'test_cochange': {},
+                'total_commits': 100
+            }
+        )
+
+        pred = expert.predict({
+            'changed_files': ['cortical/query/search.py']
+        })
+
+        # Should find tests for the changed file
+        self.assertGreater(len(pred.items), 0)
+        test_files = [t for t, _ in pred.items]
+        self.assertIn('tests/test_query.py', test_files)
+
+    def test_predict_with_query(self):
+        """Test prediction with query text."""
+        from scripts.hubris.experts.test_expert import TestExpert
+
+        expert = TestExpert(
+            model_data={
+                'source_to_tests': {
+                    'cortical/analysis.py': {'tests/test_analysis.py': 5}
+                },
+                'test_to_sources': {},
+                'test_failure_patterns': {},
+                'module_to_tests': {},
+                'test_cochange': {},
+                'total_commits': 50
+            }
+        )
+
+        pred = expert.predict({
+            'changed_files': ['cortical/analysis.py'],
+            'query': 'pagerank analysis'
+        })
+
+        self.assertEqual(pred.expert_type, 'test')
+        self.assertIn('scoring_signals', pred.metadata)
+
+    def test_train_expert(self):
+        """Test training TestExpert on commits."""
+        from scripts.hubris.experts.test_expert import TestExpert
+
+        expert = TestExpert()
+
+        commits = [
+            {
+                'files': ['cortical/query/search.py', 'tests/test_query.py'],
+                'message': 'feat: Add search feature'
+            },
+            {
+                'files': ['cortical/analysis.py', 'tests/test_analysis.py'],
+                'message': 'fix: PageRank bug'
+            },
+            {
+                'files': ['cortical/query/search.py', 'tests/test_query.py', 'tests/integration/test_search.py'],
+                'message': 'test: Add integration tests'
+            }
+        ]
+
+        expert.train(commits)
+
+        # Should have learned mappings
+        self.assertEqual(expert.model_data['total_commits'], 3)
+        self.assertIn('cortical/query/search.py', expert.model_data['source_to_tests'])
+
+    def test_is_test_file(self):
+        """Test test file detection."""
+        from scripts.hubris.experts.test_expert import TestExpert
+
+        expert = TestExpert()
+
+        self.assertTrue(expert._is_test_file('tests/test_foo.py'))
+        self.assertTrue(expert._is_test_file('test_bar.py'))
+        self.assertTrue(expert._is_test_file('foo_test.py'))
+        self.assertFalse(expert._is_test_file('cortical/query.py'))
+        self.assertFalse(expert._is_test_file('scripts/run.py'))
+
+    def test_coverage_estimate(self):
+        """Test coverage estimation."""
+        from scripts.hubris.experts.test_expert import TestExpert
+
+        expert = TestExpert(
+            model_data={
+                'source_to_tests': {
+                    'a.py': {'test_a.py': 5},
+                    'b.py': {'test_b.py': 3}
+                },
+                'test_to_sources': {},
+                'test_failure_patterns': {},
+                'module_to_tests': {},
+                'test_cochange': {},
+                'total_commits': 10
+            }
+        )
+
+        # All files covered
+        coverage = expert.get_coverage_estimate(['a.py', 'b.py'])
+        self.assertEqual(coverage, 1.0)
+
+        # Half covered
+        coverage = expert.get_coverage_estimate(['a.py', 'c.py'])
+        self.assertEqual(coverage, 0.5)
+
+        # None covered
+        coverage = expert.get_coverage_estimate(['c.py', 'd.py'])
+        self.assertEqual(coverage, 0.0)
+
+    def test_save_load_roundtrip(self):
+        """Test saving and loading TestExpert."""
+        from scripts.hubris.experts.test_expert import TestExpert
+
+        expert = TestExpert(
+            expert_id='test_expert_v1',
+            version='1.0.0',
+            trained_on_commits=25,
+            model_data={
+                'source_to_tests': {'x.py': {'test_x.py': 3}},
+                'test_to_sources': {'test_x.py': ['x.py']},
+                'test_failure_patterns': {},
+                'module_to_tests': {},
+                'test_cochange': {},
+                'total_commits': 25
+            }
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / 'test_expert.json'
+            expert.save(path)
+
+            loaded = TestExpert.load(path)
+
+            self.assertEqual(loaded.expert_id, expert.expert_id)
+            self.assertEqual(loaded.trained_on_commits, 25)
+            self.assertIn('x.py', loaded.model_data['source_to_tests'])
+
+
 if __name__ == '__main__':
     unittest.main()

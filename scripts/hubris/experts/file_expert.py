@@ -53,6 +53,8 @@ class FileExpert(MicroExpert):
             version: Expert version (default: "1.1.0")
             **kwargs: Additional arguments passed to MicroExpert base class
         """
+        # Remove expert_type from kwargs if present (avoids conflict when loading)
+        kwargs.pop('expert_type', None)
         super().__init__(
             expert_id=expert_id,
             expert_type="file",
