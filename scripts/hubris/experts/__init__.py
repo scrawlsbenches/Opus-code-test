@@ -1,0 +1,10 @@
+"""
+Expert implementations for the MoE system.
+
+Each expert is a specialized micro-model trained on specific aspects
+of coding tasks.
+"""
+
+from .file_expert import FileExpert
+
+__all__ = ['FileExpert']
