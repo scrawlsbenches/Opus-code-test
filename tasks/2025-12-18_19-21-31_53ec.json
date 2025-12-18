@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "53ec",
   "started_at": "2025-12-18T19:21:31.440992",
-  "saved_at": "2025-12-18T20:49:18.586703",
+  "saved_at": "2025-12-18T20:55:00.000000",
   "tasks": [
     {
       "id": "T-20251218-192131-53ec-001",
@@ -10,7 +10,7 @@
       "status": "completed",
       "priority": "medium",
       "category": "feature",
-      "description": "Create CommandExpert class following MicroExpert pattern. Template-based predictions (no ML). Parse .git-ml/actions/ for python -c patterns. Build keyword\u2192command mappings. ~3-5 days effort.",
+      "description": "Create CommandExpert class following MicroExpert pattern. Template-based predictions (no ML). Parse .git-ml/actions/ for python -c patterns. Build keyword→command mappings.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-18T19:21:31.441407",
@@ -24,73 +24,108 @@
         ],
         "sprint": "9-10",
         "data_audit": {
-          "total_bash_actions": 445,
-          "python_c_commands": 13,
-          "percent": "3%",
-          "unique_patterns": 3,
-          "recommendation": "template-first approach"
+          "total_bash_actions": 454,
+          "python_c_commands": 6,
+          "unique_commands": 40,
+          "sessions": 71
         }
       },
-      "retrospective": null
+      "retrospective": "Implemented CommandExpert with train/evaluate/predict CLI. Model works but limited by sparse data (40 unique commands). Created estimation script to track data collection progress. 20 unit tests added and passing."
     },
     {
       "id": "T-20251218-192131-53ec-002",
       "title": "Phase 2: Context-aware patterns and calibration",
-      "status": "pending",
+      "status": "blocked",
       "priority": "low",
       "category": "feature",
-      "description": "Wire feedback loop for command success/failure. Learn context\u2192command patterns. Add confidence calibration. Target: >65% accuracy, ECE <0.15. ~3-4 days effort.",
+      "description": "Wire feedback loop for command success/failure. Learn context→command patterns. Add confidence calibration. Target: >65% accuracy, ECE <0.15.",
       "depends_on": [
-        "T-20251218-192131-53ec-001"
+        "T-20251218-192131-53ec-001",
+        "T-20251218-204918-53ec-002"
       ],
       "effort": "medium",
       "created_at": "2025-12-18T19:30:00.000000",
-      "updated_at": null,
+      "updated_at": "2025-12-18T20:55:00.000000",
       "completed_at": null,
       "context": {
         "files": [
           "scripts/hubris/experts/command_expert.py",
           "scripts/hubris/feedback_collector.py"
-        ]
+        ],
+        "blocked_reason": "Waiting for sufficient data collection (need 100+ unique commands, currently 41)"
       },
       "retrospective": null
     },
     {
       "id": "T-20251218-192131-53ec-003",
       "title": "Phase 3: CLI suggest-command integration",
-      "status": "pending",
+      "status": "blocked",
       "priority": "low",
       "category": "feature",
-      "description": "Add suggest-command to hubris_cli.py. User-facing command suggestions with explanations. Track adoption rate. ~4-5 days effort.",
+      "description": "Add suggest-command to hubris_cli.py. User-facing command suggestions with explanations. Track adoption rate.",
       "depends_on": [
         "T-20251218-192131-53ec-002"
       ],
       "effort": "medium",
       "created_at": "2025-12-18T19:30:00.000000",
-      "updated_at": null,
+      "updated_at": "2025-12-18T20:55:00.000000",
       "completed_at": null,
       "context": {
         "files": [
           "scripts/hubris_cli.py",
           "scripts/suggest_command.py"
-        ]
+        ],
+        "blocked_reason": "Depends on Phase 2 completion"
       },
       "retrospective": null
     },
     {
       "id": "T-20251218-204918-53ec-002",
       "title": "CommandExpert data collection milestone",
-      "status": "pending",
+      "status": "in_progress",
       "priority": "low",
-      "category": "feature",
-      "description": "Track data collection for CommandExpert to become useful.\n\nCurrent state (2025-12-18):\n- 41 unique commands (target: 500)\n- 1 python -c pattern (target: 50)\n- Collection rate: ~14 unique/day\n\nEstimated ready: ~50 days (2026-02-07)\n\nCheck progress: python scripts/hubris/estimate_command_data.py\n\nMilestones:\n- [ ] 100 unique commands (basic pattern matching)\n- [ ] 500 unique commands (useful predictions)\n- [ ] 10 python -c patterns (python -c feature viable)\n- [ ] 50 python -c patterns (python -c feature useful)",
+      "category": "tracking",
+      "description": "Track data collection for CommandExpert to become useful. This is a long-running tracking task.",
       "depends_on": [],
-      "effort": "medium",
+      "effort": "ongoing",
       "created_at": "2025-12-18T20:49:18.586603",
-      "updated_at": null,
+      "updated_at": "2025-12-18T20:55:00.000000",
       "completed_at": null,
-      "context": {},
+      "context": {
+        "files": [
+          "scripts/hubris/estimate_command_data.py"
+        ],
+        "check_progress_cmd": "python scripts/hubris/estimate_command_data.py",
+        "baseline_2025_12_18": {
+          "unique_commands": 41,
+          "python_c_patterns": 1,
+          "collection_rate_per_day": 14,
+          "estimated_ready_date": "2026-02-07"
+        },
+        "milestones": [
+          {"target": 100, "metric": "unique_commands", "status": "pending", "label": "Basic pattern matching"},
+          {"target": 500, "metric": "unique_commands", "status": "pending", "label": "Useful predictions"},
+          {"target": 10, "metric": "python_c_patterns", "status": "pending", "label": "Python -c viable"},
+          {"target": 50, "metric": "python_c_patterns", "status": "pending", "label": "Python -c useful"}
+        ]
+      },
       "retrospective": null
     }
-  ]
+  ],
+  "metadata": {
+    "epic": "Hubris MoE System (efba)",
+    "phase": "Phase 5: Expert Expansion",
+    "feature": "CommandExpert - Shell command prediction from tool call history",
+    "long_term_vision": "CommandExpert contributes to unified 'what should I do next?' suggestion system alongside FileExpert, TestExpert, EpisodeExpert",
+    "key_files": [
+      "scripts/hubris/experts/command_expert.py",
+      "scripts/hubris/train_command_expert.py",
+      "scripts/hubris/estimate_command_data.py",
+      "tests/unit/test_command_expert.py"
+    ],
+    "related_docs": [
+      "scripts/hubris/README.md",
+      "docs/ml-milestone-thresholds.md"
+    ]
+  }
 }
