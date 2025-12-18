@@ -8,5 +8,6 @@ of coding tasks.
 from .file_expert import FileExpert
 from .test_expert import TestExpert
 from .error_expert import ErrorDiagnosisExpert
+from .episode_expert import EpisodeExpert
 
-__all__ = ['FileExpert', 'TestExpert', 'ErrorDiagnosisExpert']
+__all__ = ['FileExpert', 'TestExpert', 'ErrorDiagnosisExpert', 'EpisodeExpert']

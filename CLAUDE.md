@@ -1151,6 +1151,7 @@ python examples/observability_demo.py
 | Create memory | `python scripts/new_memory.py "topic"` |
 | Create decision | `python scripts/new_memory.py "topic" --decision` |
 | Session handoff | `python scripts/session_handoff.py` |
+| Generate session memory | `python scripts/session_memory_generator.py --session-id ID` |
 | Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
 | Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
 | Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
@@ -1647,6 +1648,31 @@ python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl
 python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl --dry-run --verbose
 ```
 
+**Generate session memory:**
+```bash
+# Generate a draft memory document from current session
+python scripts/session_memory_generator.py --session-id abc123
+
+# Generate from recent commits (no session ID needed)
+python scripts/session_memory_generator.py --commits 10
+
+# Dry run (preview without saving)
+python scripts/session_memory_generator.py --session-id abc123 --dry-run
+```
+
+**What gets auto-generated:**
+- Session summary with commit history
+- Files modified during the session
+- Task IDs referenced in commits
+- Categorized file changes (Core Library, Tests, Scripts, etc.)
+- Auto-extracted insights and tags
+- Draft memory saved to `samples/memories/[DRAFT]-YYYY-MM-DD-session-{id}.md`
+
+**When it runs:**
+- Automatically at session end via `ml-session-capture-hook.sh`
+- Manually via command line for any session
+- Integrated into the Stop hook workflow
+
 ### Integration
 
 Data collection is fully automatic via hooks configured in `.claude/settings.local.json`:
@@ -1654,7 +1680,7 @@ Data collection is fully automatic via hooks configured in `.claude/settings.loc
 | Hook | Trigger | Action |
 |------|---------|--------|
 | **SessionStart** | Session begins | Starts ML session, installs git hooks, shows stats |
-| **Stop** | Session ends | Captures full transcript with all exchanges |
+| **Stop** | Session ends | Captures full transcript with all exchanges, generates draft memory |
 | **prepare-commit-msg** | Before commit | Suggests missing files based on commit message |
 | **post-commit** | After commit | Captures commit metadata with diff hunks |
 | **pre-push** | Before push | Reports collection stats |
@@ -1662,7 +1688,8 @@ Data collection is fully automatic via hooks configured in `.claude/settings.loc
 
 **Hook files:**
 - `scripts/ml-session-start-hook.sh` - SessionStart handler
-- `scripts/ml-session-capture-hook.sh` - Stop handler
+- `scripts/ml-session-capture-hook.sh` - Stop handler (includes session memory generation)
+- `scripts/session_memory_generator.py` - Auto-generates draft memory documents
 - `scripts/ml-precommit-suggest.sh` - prepare-commit-msg handler
 
 **CI Integration:**

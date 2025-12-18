@@ -719,6 +719,241 @@ class TestTestExpert(unittest.TestCase):
             self.assertIn('x.py', loaded.model_data['source_to_tests'])
 
 
+class TestEpisodeExpert(unittest.TestCase):
+    """Test EpisodeExpert."""
+
+    def test_create_episode_expert(self):
+        """Test creating EpisodeExpert."""
+        from scripts.hubris.experts.episode_expert import EpisodeExpert
+
+        expert = EpisodeExpert()
+
+        self.assertEqual(expert.expert_type, 'episode')
+        self.assertIn('action_sequences', expert.model_data)
+        self.assertIn('context_to_actions', expert.model_data)
+        self.assertIn('success_patterns', expert.model_data)
+
+    def test_extract_keywords(self):
+        """Test keyword extraction from context."""
+        from scripts.hubris.experts.episode_expert import EpisodeExpert
+
+        expert = EpisodeExpert()
+
+        keywords = expert._extract_keywords("Fix the authentication bug in the login module")
+        self.assertIn('fix', keywords)
+        self.assertIn('authentication', keywords)
+        self.assertIn('bug', keywords)
+        self.assertIn('login', keywords)
+        self.assertIn('module', keywords)
+        # Stop words should be filtered
+        self.assertNotIn('the', keywords)
+        self.assertNotIn('in', keywords)
+
+    def test_train_episodes(self):
+        """Test training on episodes."""
+        from scripts.hubris.experts.episode_expert import EpisodeExpert
+
+        expert = EpisodeExpert()
+
+        episodes = [
+            {
+                'context': 'Fix bug in auth',
+                'actions': ['Read', 'Grep', 'Edit', 'Bash'],
+                'outcome': 'success',
+                'files': ['auth.py']
+            },
+            {
+                'context': 'Add new feature',
+                'actions': ['Write', 'Edit', 'Bash'],
+                'outcome': 'success',
+                'files': ['feature.py']
+            }
+        ]
+
+        expert.train(episodes)
+
+        # Check training results
+        self.assertEqual(expert.model_data['total_episodes'], 2)
+        self.assertGreater(len(expert.model_data['action_sequences']), 0)
+        self.assertGreater(len(expert.model_data['success_patterns']), 0)
+
+    def test_predict_by_sequence(self):
+        """Test prediction based on action sequences."""
+        from scripts.hubris.experts.episode_expert import EpisodeExpert
+
+        expert = EpisodeExpert(
+            model_data={
+                'action_sequences': {
+                    'Read': {'Grep': 10, 'Edit': 5},
+                    'Grep': {'Edit': 8}
+                },
+                'context_to_actions': {},
+                'success_patterns': [],
+                'failure_patterns': [],
+                'action_frequency': {},
+                'total_episodes': 10
+            }
+        )
+
+        # Predict after Read action
+        pred = expert.predict({
+            'last_actions': ['Read'],
+            'top_n': 5
+        })
+
+        # Should suggest Grep and Edit
+        actions = [action for action, _ in pred.items]
+        self.assertIn('Grep', actions)
+
+    def test_predict_by_context(self):
+        """Test prediction based on context keywords."""
+        from scripts.hubris.experts.episode_expert import EpisodeExpert
+
+        expert = EpisodeExpert(
+            model_data={
+                'action_sequences': {},
+                'context_to_actions': {
+                    'auth': {'Read': 5, 'Edit': 3},
+                    'bug': {'Grep': 4, 'Edit': 6}
+                },
+                'success_patterns': [],
+                'failure_patterns': [],
+                'action_frequency': {},
+                'total_episodes': 10
+            }
+        )
+
+        pred = expert.predict({
+            'query': 'Fix authentication bug',
+            'top_n': 5
+        })
+
+        # Should suggest Edit (appears in both auth and bug contexts)
+        actions = [action for action, _ in pred.items]
+        self.assertIn('Edit', actions)
+
+    def test_extract_episodes_from_transcript(self):
+        """Test extracting episodes from transcript exchanges."""
+        from scripts.hubris.experts.episode_expert import EpisodeExpert
+
+        # Mock transcript exchanges
+        exchanges = [
+            {
+                'query': 'Fix the bug',
+                'tools_used': ['Read', 'Edit', 'Bash'],
+                'timestamp': '2025-12-17T10:00:00',
+                'tool_inputs': [
+                    {'tool': 'Read', 'input': {'file_path': 'test.py'}},
+                    {'tool': 'Edit', 'input': {'file_path': 'test.py'}}
+                ]
+            },
+            {
+                'query': 'Add feature',
+                'tools_used': ['Write', 'Bash'],
+                'timestamp': '2025-12-17T11:00:00',
+                'tool_inputs': []
+            }
+        ]
+
+        episodes = EpisodeExpert.extract_episodes(exchanges)
+
+        self.assertEqual(len(episodes), 2)
+        self.assertEqual(episodes[0]['context'], 'Fix the bug')
+        self.assertEqual(episodes[0]['actions'], ['Read', 'Edit', 'Bash'])
+        self.assertIn('test.py', episodes[0]['files'])
+
+    def test_get_action_stats(self):
+        """Test getting action statistics."""
+        from scripts.hubris.experts.episode_expert import EpisodeExpert
+
+        expert = EpisodeExpert(
+            model_data={
+                'action_sequences': {
+                    'Read': {'Edit': 10, 'Grep': 5}
+                },
+                'context_to_actions': {},
+                'success_patterns': [{'context': 'test'}],
+                'failure_patterns': [],
+                'action_frequency': {'Read': 20, 'Edit': 15},
+                'total_episodes': 25
+            }
+        )
+
+        stats = expert.get_action_stats()
+
+        self.assertEqual(stats['total_episodes'], 25)
+        self.assertEqual(stats['unique_actions'], 2)
+        self.assertEqual(stats['success_patterns'], 1)
+        self.assertGreater(len(stats['top_sequences']), 0)
+
+    def test_predict_with_multiple_signals(self):
+        """Test prediction combining multiple signals."""
+        from scripts.hubris.experts.episode_expert import EpisodeExpert
+
+        expert = EpisodeExpert(
+            model_data={
+                'action_sequences': {
+                    'Read': {'Edit': 5}
+                },
+                'context_to_actions': {
+                    'bug': {'Grep': 3, 'Edit': 2}
+                },
+                'success_patterns': [
+                    {
+                        'context': 'Fix authentication bug',
+                        'actions': ['Read', 'Edit', 'Bash'],
+                        'files': [],
+                        'timestamp': ''
+                    }
+                ],
+                'failure_patterns': [],
+                'action_frequency': {'Read': 10, 'Edit': 8, 'Grep': 5},
+                'total_episodes': 15
+            }
+        )
+
+        pred = expert.predict({
+            'query': 'Fix authentication bug',
+            'last_actions': ['Read'],
+            'files_touched': ['auth.py'],
+            'top_n': 5
+        })
+
+        # Should have multiple predictions
+        self.assertGreater(len(pred.items), 0)
+        # Edit should rank high (sequence + context + success pattern)
+        actions = [action for action, _ in pred.items]
+        self.assertIn('Edit', actions)
+
+    def test_save_load_roundtrip(self):
+        """Test saving and loading EpisodeExpert."""
+        from scripts.hubris.experts.episode_expert import EpisodeExpert
+
+        expert = EpisodeExpert(
+            expert_id='episode_test',
+            version='1.0.0',
+            trained_on_sessions=10,
+            model_data={
+                'action_sequences': {'Read': {'Edit': 5}},
+                'context_to_actions': {'bug': {'Edit': 3}},
+                'success_patterns': [],
+                'failure_patterns': [],
+                'action_frequency': {'Read': 10},
+                'total_episodes': 10
+            }
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / 'episode_expert.json'
+            expert.save(path)
+
+            loaded = EpisodeExpert.load(path)
+
+            self.assertEqual(loaded.expert_id, expert.expert_id)
+            self.assertEqual(loaded.trained_on_sessions, 10)
+            self.assertIn('Read', loaded.model_data['action_sequences'])
+
+
 class TestErrorDiagnosisExpert(unittest.TestCase):
     """Test ErrorDiagnosisExpert."""
 

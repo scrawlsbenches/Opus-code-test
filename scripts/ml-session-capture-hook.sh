@@ -74,6 +74,18 @@ python3 "$COLLECTOR" transcript \
 # Archive branch manifest (records files touched during session)
 python3 scripts/branch_manifest.py archive 2>/dev/null || true
 
+# Generate draft memory from session activity (Sprint 2.3)
+if [[ -f scripts/session_memory_generator.py ]]; then
+    echo "📝 Generating session memory draft..."
+    python3 scripts/session_memory_generator.py \
+        --session-id "$session_id" \
+        --output samples/memories \
+        2>/dev/null || {
+        echo "[$(date -Iseconds)] Memory generation failed for session $session_id" >> "$error_log"
+        true  # Don't block session end
+    }
+fi
+
 # Run test suite before committing session data
 echo "🧪 Running test suite before session end..."
 test_output=$(python3 -m pytest tests/ -x --tb=no -q 2>&1)
