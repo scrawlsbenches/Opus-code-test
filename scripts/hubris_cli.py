@@ -8,6 +8,7 @@ Commands:
     stats       - Show expert statistics
     leaderboard - Show expert credit leaderboard
     evaluate    - Evaluate expert accuracy on recent commits
+    calibration - Show calibration analysis for predictions
 
 Examples:
     python scripts/hubris_cli.py train --commits 100
@@ -15,6 +16,7 @@ Examples:
     python scripts/hubris_cli.py stats --expert file_expert
     python scripts/hubris_cli.py leaderboard
     python scripts/hubris_cli.py evaluate --commits 20
+    python scripts/hubris_cli.py calibration --curve
 """
 
 import argparse
@@ -31,6 +33,7 @@ sys.path.insert(0, str(HUBRIS_DIR))
 from expert_consolidator import ExpertConsolidator, load_experts
 from credit_account import CreditLedger
 from credit_router import CreditRouter
+from calibration_tracker import CalibrationTracker
 
 # ANSI color codes for pretty output
 class Colors:
@@ -617,6 +620,111 @@ def cmd_evaluate(args) -> int:
 
     return 0
 
+
+def cmd_calibration(args) -> int:
+    """Show calibration analysis for expert predictions."""
+    print(color("=" * 60, Colors.BOLD))
+    print(color("HUBRIS MoE CALIBRATION ANALYSIS", Colors.BOLD))
+    print(color("=" * 60, Colors.BOLD))
+
+    tracker = CalibrationTracker()
+    loaded = tracker.load_from_resolved()
+
+    if loaded == 0:
+        print(color("\nNo calibration data available yet.", Colors.YELLOW))
+        print("Calibration data is collected after predictions resolve via commits.")
+        print("\nTo generate calibration data:")
+        print("  1. Make predictions: hubris predict \"your task\"")
+        print("  2. Make commits: git commit -m \"...\"")
+        print("  3. Re-run this command")
+        return 0
+
+    print(f"\nLoaded {loaded} resolved predictions.")
+
+    # Output format
+    if args.json:
+        import json
+        print(json.dumps(tracker.get_summary(), indent=2))
+        return 0
+
+    if args.curve:
+        # Show calibration curve
+        curve = tracker.get_calibration_curve(args.expert)
+        print(color("\nCalibration Curve:", Colors.BOLD))
+        print(color("(bin_center, actual_accuracy, sample_count)", Colors.DIM))
+        print()
+        for conf, acc, count in curve:
+            bar_len = int(acc * 30)
+            bar = color("█" * bar_len, Colors.GREEN) + color("░" * (30 - bar_len), Colors.DIM)
+            deviation = acc - conf
+            dev_str = f"+{deviation:.2f}" if deviation > 0 else f"{deviation:.2f}"
+            print(f"  {conf:.1f} │{bar}│ {acc:.3f} [{count:3d}] ({dev_str})")
+        return 0
+
+    # Default: show report
+    metrics = tracker.get_metrics(args.expert)
+
+    if not metrics:
+        print(color("\nInsufficient data for metrics.", Colors.YELLOW))
+        return 0
+
+    # Header
+    target = f"Expert: {args.expert}" if args.expert else "All Experts"
+    print(f"\n{color(target, Colors.BOLD)}")
+    print("-" * 60)
+
+    # Metrics
+    print(f"\n{color('Calibration Metrics:', Colors.BOLD)}")
+
+    # ECE with interpretation
+    ece_status = _get_ece_status(metrics.ece)
+    print(f"  ECE (Expected Calibration Error): {metrics.ece:.3f} {ece_status}")
+    print(f"  MCE (Max Calibration Error):      {metrics.mce:.3f}")
+    print(f"  Brier Score:                      {metrics.brier_score:.3f}")
+
+    print(f"\n{color('Confidence vs Accuracy:', Colors.BOLD)}")
+    print(f"  Average Confidence: {metrics.confidence_mean:.3f}")
+    print(f"  Average Accuracy:   {metrics.accuracy_mean:.3f}")
+
+    # Trend with emoji
+    trend_emoji = {"overconfident": "📈", "underconfident": "📉", "well_calibrated": "✓"}
+    trend_color = {"overconfident": Colors.YELLOW, "underconfident": Colors.CYAN, "well_calibrated": Colors.GREEN}
+    emoji = trend_emoji.get(metrics.trend, "")
+    t_color = trend_color.get(metrics.trend, "")
+    print(f"  Trend: {color(f'{emoji} {metrics.trend}', t_color)}")
+
+    print(f"\n{color('Sample Size:', Colors.BOLD)} {metrics.sample_count} predictions")
+
+    # Recommendations
+    print(color("\nRecommendations:", Colors.BOLD))
+    if metrics.trend == 'overconfident' and metrics.ece > 0.10:
+        print(color("  ⚠️  System is overconfident - predictions claim higher accuracy than achieved", Colors.YELLOW))
+        print("     Consider: reducing base confidence or retraining with more data")
+    elif metrics.trend == 'underconfident' and metrics.ece > 0.10:
+        print(color("  ℹ️  System is underconfident - predictions are more accurate than claimed", Colors.CYAN))
+        print("     Consider: boosting confidence scores")
+    elif metrics.ece < 0.10:
+        print(color("  ✓ Calibration is good (ECE < 0.10)", Colors.GREEN))
+    else:
+        print(color("  ⚠️  Calibration needs improvement (ECE >= 0.10)", Colors.YELLOW))
+
+    return 0
+
+
+def _get_ece_status(ece: float) -> str:
+    """Get colored status string for ECE value."""
+    if ece < 0.05:
+        return color("[excellent]", Colors.GREEN)
+    elif ece < 0.10:
+        return color("[good]", Colors.GREEN)
+    elif ece < 0.15:
+        return color("[acceptable]", Colors.YELLOW)
+    elif ece < 0.20:
+        return color("[needs attention]", Colors.YELLOW)
+    else:
+        return color("[poor]", Colors.RED)
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -629,6 +737,7 @@ Examples:
   %(prog)s stats --expert file
   %(prog)s leaderboard
   %(prog)s evaluate --commits 20
+  %(prog)s calibration --curve
         """
     )
 
@@ -667,6 +776,15 @@ Examples:
     evaluate_parser.add_argument('--commits', '-n', type=int, default=20,
                                 help='Number of recent commits to evaluate on (default: 20)')
 
+    # Calibration command
+    calibration_parser = subparsers.add_parser('calibration', help='Show calibration analysis for predictions')
+    calibration_parser.add_argument('--expert', '-e', type=str,
+                                   help='Show calibration for specific expert')
+    calibration_parser.add_argument('--json', action='store_true',
+                                   help='Output as JSON')
+    calibration_parser.add_argument('--curve', action='store_true',
+                                   help='Show calibration curve visualization')
+
     args = parser.parse_args()
 
     if not args.command:
@@ -688,6 +806,8 @@ Examples:
         return cmd_leaderboard(args)
     elif args.command == 'evaluate':
         return cmd_evaluate(args)
+    elif args.command == 'calibration':
+        return cmd_calibration(args)
     else:
         parser.print_help()
         return 1
