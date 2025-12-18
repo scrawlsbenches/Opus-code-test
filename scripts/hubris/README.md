@@ -18,6 +18,7 @@ Hubris is a Mixture of Experts system designed to assist Claude Code with predic
   - [Calibration Analysis](#calibration-analysis)
 - [Extending](#extending)
 - [Expert Details](#expert-details)
+- [Model Status](#model-status)
 
 ---
 
@@ -1031,6 +1032,75 @@ expert.save(path)
 # Predictions automatically use calibrated confidence
 pred = expert.predict(context)
 ```
+
+---
+
+## Model Status
+
+Current training state and readiness for each expert.
+
+### Training Thresholds
+
+| Expert | Min Commits | Min Sessions | Reliable At | Current |
+|--------|-------------|--------------|-------------|---------|
+| **FileExpert** | 100 | - | 500 commits | 0 commits |
+| **TestExpert** | 50 | - | 200 commits | 11 commits |
+| **ErrorDiagnosisExpert** | - | 20 | 100 errors | 0 errors |
+| **EpisodeExpert** | - | 50 | 200 sessions | 0 sessions |
+| **RefactorExpert** | 50 | - | 200 commits | 3 commits |
+
+**Status Legend:**
+- 🔴 **Cold Start** (< min threshold): Heuristics only, no learned patterns
+- 🟡 **Learning** (min → reliable): Patterns emerging, validate predictions
+- 🟢 **Reliable** (≥ reliable threshold): Meaningful metrics, trustworthy predictions
+
+### Current Expert Status
+
+| Expert | Status | Training Data | Notes |
+|--------|--------|---------------|-------|
+| FileExpert | 🔴 Cold Start | 0 commits | Uses v1 ML model as fallback |
+| TestExpert | 🔴 Cold Start | 11 commits | Naming conventions work without training |
+| ErrorDiagnosisExpert | 🔴 Cold Start | 0 errors | Built-in patterns active |
+| EpisodeExpert | 🔴 Cold Start | 0 sessions | Needs transcript collection |
+| RefactorExpert | 🔴 Cold Start | 3 commits | Heuristics fully functional |
+
+### Evaluation Milestones
+
+When experts reach sufficient training data, run evaluations:
+
+```bash
+# Check current training state
+python scripts/hubris_cli.py stats
+
+# Evaluate with holdout (when ready)
+python scripts/hubris_cli.py evaluate --commits 50 --holdout 0.2
+
+# View calibration (requires resolved predictions)
+python scripts/hubris_cli.py calibration
+```
+
+**Metrics to track once reliable:**
+- MRR (Mean Reciprocal Rank) - Target: > 0.4
+- Recall@5 - Target: > 0.5
+- Precision@1 - Target: > 0.3
+- ECE (Expected Calibration Error) - Target: < 0.1
+
+### RefactorExpert Specifics
+
+RefactorExpert is unique because it works well in cold-start mode via heuristics:
+
+| Mode | Works Without Training | Accuracy |
+|------|------------------------|----------|
+| Heuristics (file size, nesting) | ✅ Yes | High for obvious cases |
+| Historical patterns | ❌ Needs 50+ refactor commits | Medium |
+| Co-refactoring signals | ❌ Needs 50+ refactor commits | High |
+| Query keyword matching | ❌ Needs training | Low |
+
+**Current signals detected:**
+- 📦 Extract: 121 files (large files/many functions)
+- ✨ Simplify: 44 files (deep nesting)
+
+*Last updated: 2025-12-18*
 
 ---
 
