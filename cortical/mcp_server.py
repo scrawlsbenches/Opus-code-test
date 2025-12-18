@@ -121,7 +121,7 @@ class CorticalMCPServer:
                     ],
                     "count": len(results)
                 }
-            except Exception as e:
+            except (ValueError, KeyError, AttributeError, TypeError) as e:
                 logger.error(f"Error in search: {e}", exc_info=True)
                 return {
                     "error": str(e),
@@ -180,7 +180,7 @@ class CorticalMCPServer:
                     ],
                     "count": len(results)
                 }
-            except Exception as e:
+            except (ValueError, KeyError, AttributeError, TypeError, IndexError) as e:
                 logger.error(f"Error in passages: {e}", exc_info=True)
                 return {
                     "error": str(e),
@@ -227,7 +227,7 @@ class CorticalMCPServer:
                     "expansions": result,
                     "count": len(result)
                 }
-            except Exception as e:
+            except (ValueError, KeyError, AttributeError, TypeError) as e:
                 logger.error(f"Error in expand_query: {e}", exc_info=True)
                 return {
                     "error": str(e),
@@ -258,7 +258,7 @@ class CorticalMCPServer:
                         return str(obj)
 
                 return make_serializable(stats)
-            except Exception as e:
+            except (ValueError, KeyError, AttributeError, TypeError, RecursionError) as e:
                 logger.error(f"Error in corpus_stats: {e}", exc_info=True)
                 return {
                     "error": str(e)
@@ -311,7 +311,7 @@ class CorticalMCPServer:
                     "stats": stats,
                     "doc_id": doc_id
                 }
-            except Exception as e:
+            except (ValueError, KeyError, AttributeError, TypeError, OSError) as e:
                 logger.error(f"Error in add_document: {e}", exc_info=True)
                 return {
                     "error": str(e),
