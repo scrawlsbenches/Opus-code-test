@@ -116,6 +116,27 @@ python -c "import coverage; print('coverage OK')"
 
 **New to this codebase?** Follow these steps to get oriented quickly:
 
+### Step 0: Check Current Sprint Context
+
+Before diving into code, understand what's being worked on:
+
+```bash
+# View current sprint status and goals
+python scripts/task_utils.py sprint status
+
+# Or read the file directly
+cat tasks/CURRENT_SPRINT.md
+```
+
+**What sprint tracking provides:**
+- Current sprint ID and epic context
+- Active goals and their completion status
+- Recently completed work in this sprint
+- Blocked items that need attention
+- Strategic notes and decisions
+
+This helps you understand the current development focus and avoid duplicate work.
+
 ### Step 1: Generate AI Metadata (if missing)
 
 ```bash
@@ -1155,6 +1176,9 @@ python examples/observability_demo.py
 | Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
 | Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
 | Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
+| View sprint status | `python scripts/task_utils.py sprint status` |
+| Mark sprint goal complete | `python scripts/task_utils.py sprint complete "goal text"` |
+| Add sprint note | `python scripts/task_utils.py sprint note "note text"` |
 | Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
 | List orchestration plans | `python scripts/orchestration_utils.py list` |
 | Verify batch | `python scripts/verify_batch.py --quick` |
