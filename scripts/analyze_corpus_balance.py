@@ -45,7 +45,7 @@ TAXONOMY = {
     "mechanical_engineering": ["mechanical", "machine", "gear", "bearing", "shaft", "torque", "mechanism"],
     "electrical_engineering": ["electrical", "circuit", "voltage", "current", "resistor", "capacitor", "inductor"],
     "civil_engineering": ["civil engineering", "bridge", "foundation", "concrete", "structural", "load bearing"],
-    "chemical_engineering": ["chemical engineering", "reactor", "distillation", "separation", "process engineering"],
+    "chemical_engineering": ["chemical engineering", "reactor", "distillation", "separation", "process engineering", "heat exchanger", "mass transfer", "reaction kinetics", "arrhenius", "activation energy", "reaction rate", "chemical reactor"],
     "aerospace_engineering": ["aerospace", "aircraft", "flight", "aerodynamic", "propulsion", "wing", "fuselage"],
     "robotics": ["robot", "actuator", "sensor", "autonomous", "manipulator", "kinematics", "end effector"],
     "manufacturing": ["manufacturing", "cnc", "machining", "assembly", "production", "fabrication", "tooling"],
@@ -53,7 +53,8 @@ TAXONOMY = {
     "industrial_design": ["industrial design", "ergonomic", "user centered", "prototype", "form factor"],
     "systems_engineering": ["systems engineering", "requirement", "integration", "verification", "validation"],
     "environmental_engineering": ["environmental engineering", "pollution", "waste", "remediation", "sustainability"],
-    "biomedical_engineering": ["biomedical", "prosthetic", "implant", "medical device", "bioinstrumentation"],
+    "biomedical_engineering": ["biomedical", "prosthetic", "implant", "medical device", "bioinstrumentation", "biomaterial", "tissue engineering", "medical imaging", "mri", "ct scan", "ultrasound imaging", "scaffold", "biocompatible"],
+    "hvac_engineering": ["hvac", "heat pump", "chiller", "cooling system", "heating system", "refrigeration", "air conditioning", "thermal", "btu", "seer", "condenser", "evaporator", "compressor", "ductwork", "ventilation"],
 
     # Computing & Technology
     "algorithms": ["algorithm", "complexity", "data structure", "sorting", "searching", "graph algorithm", "dynamic programming"],
@@ -119,7 +120,7 @@ TAXONOMY = {
     "film_cinema": ["film", "cinema", "director", "screenplay", "cinematography", "editing"],
     "theater_drama": ["theater", "drama", "stage", "performance", "actor", "playwright"],
     "architecture": ["architecture", "building", "facade", "floor plan", "structural", "design"],
-    "photography": ["photography", "exposure", "aperture", "shutter", "lens", "focal length"],
+    "photography": ["photography", "exposure", "aperture", "shutter", "lens", "focal length", "rule of thirds", "leading lines", "framing", "depth of field", "iso", "camera", "photographic"],
     "graphic_design": ["graphic design", "typography", "layout", "visual identity", "branding"],
     "creative_writing": ["creative writing", "fiction", "character", "plot", "dialogue", "narrative"],
 
@@ -140,7 +141,7 @@ TAXONOMY = {
     "outdoor_recreation": ["hiking", "camping", "climbing", "kayaking", "fishing", "outdoor"],
     "board_games": ["board game", "chess", "strategy game", "puzzle", "game theory", "competition"],
     "fitness_training": ["fitness", "workout", "exercise", "strength training", "cardio", "gym"],
-    "extreme_sports": ["extreme sport", "skateboarding", "surfing", "snowboarding", "bmx", "parkour"],
+    "extreme_sports": ["extreme sport", "skateboarding", "surfing", "snowboarding", "bmx", "parkour", "skydiving", "mountain biking", "rock climbing", "downhill", "freefall", "parachute"],
     "esports": ["esports", "competitive gaming", "streaming", "tournament", "pro gaming"],
 }
 
