@@ -2801,5 +2801,203 @@ class TestCreditRouter(unittest.TestCase):
         self.assertEqual(stats['recent_decisions'], [])
 
 
+class TestFeedbackCollector(unittest.TestCase):
+    """Test feedback collection and expert credit updates."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        # Use temporary directory for predictions
+        self.temp_dir = tempfile.mkdtemp()
+        self.predictions_dir = Path(self.temp_dir) / 'predictions'
+
+    def tearDown(self):
+        """Clean up temporary files."""
+        import shutil
+        if Path(self.temp_dir).exists():
+            shutil.rmtree(self.temp_dir)
+
+    def test_prediction_recorder_basic(self):
+        """Test recording and retrieving predictions."""
+        from scripts.hubris.feedback_collector import PredictionRecorder
+
+        recorder = PredictionRecorder(self.predictions_dir)
+
+        # Record a prediction
+        pred = recorder.record_prediction(
+            prediction_id='test_pred_1',
+            expert_id='file_expert',
+            predicted_files=['file1.py', 'file2.py'],
+            confidence=0.8,
+            context={'task': 'Add feature'}
+        )
+
+        self.assertEqual(pred.prediction_id, 'test_pred_1')
+        self.assertEqual(pred.expert_id, 'file_expert')
+        self.assertEqual(len(pred.predicted_files), 2)
+        self.assertEqual(pred.confidence, 0.8)
+
+        # Retrieve pending predictions
+        pending = recorder.get_pending_predictions()
+        self.assertEqual(len(pending), 1)
+        self.assertEqual(pending[0].prediction_id, 'test_pred_1')
+
+        # Filter by expert_id
+        expert_preds = recorder.get_pending_predictions(expert_id='file_expert')
+        self.assertEqual(len(expert_preds), 1)
+
+        other_preds = recorder.get_pending_predictions(expert_id='other_expert')
+        self.assertEqual(len(other_preds), 0)
+
+    def test_feedback_processor_commit_outcome(self):
+        """Test processing commit outcomes."""
+        from scripts.hubris.feedback_collector import (
+            PredictionRecorder, FeedbackProcessor
+        )
+
+        recorder = PredictionRecorder(self.predictions_dir)
+        ledger = CreditLedger()
+        attributor = ValueAttributor()
+        processor = FeedbackProcessor(ledger, attributor, recorder)
+
+        # Record a prediction
+        recorder.record_prediction(
+            prediction_id='pred_1',
+            expert_id='file_expert',
+            predicted_files=['file1.py', 'file2.py', 'file3.py'],
+            confidence=0.8,
+            context={}
+        )
+
+        # Process commit outcome (2 out of 3 files correct)
+        actual_files = ['file1.py', 'file2.py']
+        credit_updates = processor.process_commit_outcome(
+            commit_hash='abc123',
+            actual_files=actual_files,
+            prediction_id='pred_1'
+        )
+
+        # Should have credit update for file_expert
+        self.assertIn('file_expert', credit_updates)
+
+        # Accuracy is 2/3 = 0.67, which is > 0.5, so positive signal
+        # With confidence 0.8, magnitude 0.67, should get positive credit
+        self.assertGreater(credit_updates['file_expert'], 0)
+
+        # Prediction should be resolved
+        pending = recorder.get_pending_predictions()
+        self.assertEqual(len(pending), 0)
+
+    def test_feedback_processor_updates_credits(self):
+        """Test that feedback processor updates credit ledger."""
+        from scripts.hubris.feedback_collector import (
+            PredictionRecorder, FeedbackProcessor
+        )
+
+        recorder = PredictionRecorder(self.predictions_dir)
+        ledger = CreditLedger()
+        attributor = ValueAttributor()
+        processor = FeedbackProcessor(ledger, attributor, recorder)
+
+        # Record prediction
+        recorder.record_prediction(
+            prediction_id='pred_1',
+            expert_id='test_expert',
+            predicted_files=['file1.py'],
+            confidence=0.9,
+            context={}
+        )
+
+        # Get initial balance
+        account = ledger.get_or_create_account('test_expert')
+        initial_balance = account.balance
+
+        # Process successful commit (100% accuracy)
+        processor.process_commit_outcome(
+            commit_hash='xyz789',
+            actual_files=['file1.py'],
+            prediction_id='pred_1'
+        )
+
+        # Balance should have increased
+        self.assertGreater(account.balance, initial_balance)
+
+        # Should have a transaction
+        self.assertGreater(len(account.transactions), 0)
+
+        # Transaction should be from commit_result
+        latest_tx = account.transactions[-1]
+        self.assertEqual(latest_tx.reason, 'commit_result')
+
+    def test_on_pre_commit_records_prediction(self):
+        """Test on_pre_commit hook function."""
+        from scripts.hubris.feedback_collector import (
+            PredictionRecorder, on_pre_commit
+        )
+
+        recorder = PredictionRecorder(self.predictions_dir)
+
+        # Call pre-commit hook
+        prediction_id = on_pre_commit(
+            task_description='Add authentication',
+            expert_id='file_expert',
+            predicted_files=['auth.py', 'test_auth.py'],
+            confidence=0.75,
+            recorder=recorder
+        )
+
+        # Should return a prediction ID
+        self.assertIsNotNone(prediction_id)
+        self.assertTrue(prediction_id.startswith('pred_'))
+
+        # Prediction should be in pending
+        pending = recorder.get_pending_predictions()
+        self.assertEqual(len(pending), 1)
+        self.assertEqual(pending[0].prediction_id, prediction_id)
+        self.assertEqual(pending[0].expert_id, 'file_expert')
+
+    def test_on_post_commit_resolves_prediction(self):
+        """Test on_post_commit hook function."""
+        from scripts.hubris.feedback_collector import (
+            PredictionRecorder, on_pre_commit, on_post_commit
+        )
+
+        recorder = PredictionRecorder(self.predictions_dir)
+        ledger = CreditLedger()
+
+        # Record prediction via pre-commit hook
+        prediction_id = on_pre_commit(
+            task_description='Fix bug',
+            expert_id='file_expert',
+            predicted_files=['bugfix.py', 'test_bugfix.py'],
+            confidence=0.8,
+            recorder=recorder
+        )
+
+        # Verify prediction is pending
+        pending_before = recorder.get_pending_predictions()
+        self.assertEqual(len(pending_before), 1)
+
+        # Call post-commit hook
+        actual_files = ['bugfix.py', 'test_bugfix.py', 'docs.md']
+        credit_updates = on_post_commit(
+            commit_hash='def456',
+            actual_files=actual_files,
+            prediction_id=prediction_id,
+            ledger=ledger,
+            recorder=recorder
+        )
+
+        # Should have credit update
+        self.assertIn('file_expert', credit_updates)
+
+        # Prediction should be resolved
+        pending_after = recorder.get_pending_predictions()
+        self.assertEqual(len(pending_after), 0)
+
+        # Ledger should have been updated
+        account = ledger.get_or_create_account('file_expert')
+        self.assertGreater(len(account.transactions), 0)
+
+
 if __name__ == '__main__':
     unittest.main()
