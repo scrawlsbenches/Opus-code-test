@@ -1,0 +1,69 @@
+# Memory Entry: 2025-12-18 Session - update session state
+
+**Session ID:** `879fbdbb-193a-406a-8c89-c59eb33aefc8`
+**Tags:** `bugfix`, `config`, `docs`, `documentation`, `feature`, `python`, `scripts`, `session`, `testing`
+
+## What Happened
+
+This session included 10 commits:
+
+- **[6dbad28]** feat(memory): Integrate session memory auto-generation into Stop hook
+- **[868059e]** ml: Update session state
+- **[358ad46]** ml: Update current session state
+- **[493c44f]** ml: Update commit tracking data
+- **[09ced70]** feat(hooks): Add PreCompact hook for auto-push before compaction
+  - Tasks: T-20251218-012847-dbf8-007, T-20251218-012842-dbf8-006
+- **[32ad45d]** fix(test): Use PermissionError in glob exception test
+- **[463b603]** ml: Update tracking data
+- **[89c8be0]** task: Add compaction recovery and README update tasks
+- **[6cfcc3f]** ml: Update session data and branch state
+- **[d8c7457]** feat(dashboard): Add origin sync indicator to session start
+  - Tasks: T-20251218-001800-dbf8-005
+
+## Key Insights
+
+- 5 ml commits made
+- 18 files modified
+- 3 tasks referenced in commits
+
+## Files Modified
+
+### Configuration
+
+- `.../[DRAFT]-2025-12-18-session-b933e253.md`
+- `...laude-analyze-git-merge-issues-t8olE_20251218-011810.json`
+- `...laude-analyze-git-merge-issues-t8olE_20251218-012916.json`
+- `.claude/settings.local.json`
+- `.git-ml/current_session.json`
+- `.git-ml/tracked/commits.jsonl`
+- `.git-ml/tracked/sessions.jsonl`
+
+### Other
+
+- `CLAUDE.md`
+- `CONTRIBUTING.md`
+- `tasks/2025-12-17_20-49-13_dbf8.json`
+
+### Scripts
+
+- `scripts/hubris/experts/__init__.py`
+- `scripts/hubris/experts/episode_expert.py`
+- `scripts/ml-precompact-push-hook.sh`
+- `scripts/ml-session-capture-hook.sh`
+- `scripts/ml-session-start-hook.sh`
+- `scripts/new_memory.py`
+
+### Tests
+
+- `tests/unit/test_moe_foundation.py`
+- `tests/unit/test_new_memory.py`
+
+## Tasks Updated
+
+- T-20251218-001800-dbf8-005
+- T-20251218-012842-dbf8-006
+- T-20251218-012847-dbf8-007
+
+## Related Documents
+
+- [[CLAUDE.md]]
