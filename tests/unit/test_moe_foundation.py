@@ -954,6 +954,155 @@ class TestEpisodeExpert(unittest.TestCase):
             self.assertIn('Read', loaded.model_data['action_sequences'])
 
 
+class TestExpertConsolidator(unittest.TestCase):
+    """Test ExpertConsolidator."""
+
+    def test_create_consolidator(self):
+        """Test creating consolidator."""
+        from scripts.hubris.expert_consolidator import ExpertConsolidator
+
+        consolidator = ExpertConsolidator()
+
+        self.assertIsNotNone(consolidator)
+        self.assertEqual(len(consolidator.experts), 0)
+        self.assertIsNotNone(consolidator.aggregator)
+
+    def test_create_all_experts(self):
+        """Test creating fresh instances of all experts."""
+        from scripts.hubris.expert_consolidator import ExpertConsolidator
+
+        consolidator = ExpertConsolidator()
+        consolidator.create_all_experts()
+
+        # Should have all 4 expert types
+        self.assertEqual(len(consolidator.experts), 4)
+        self.assertIn('file', consolidator.experts)
+        self.assertIn('test', consolidator.experts)
+        self.assertIn('error', consolidator.experts)
+        self.assertIn('episode', consolidator.experts)
+
+    def test_consolidate_training(self):
+        """Test training all experts with appropriate data."""
+        from scripts.hubris.expert_consolidator import ExpertConsolidator
+
+        consolidator = ExpertConsolidator()
+        consolidator.create_all_experts()
+
+        # Mock data
+        commits = [
+            {
+                'files': ['a.py', 'tests/test_a.py'],
+                'message': 'feat: Add feature'
+            }
+        ]
+
+        transcripts = [
+            {
+                'query': 'Fix bug',
+                'tools_used': ['Read', 'Edit'],
+                'timestamp': '2025-12-17T10:00:00',
+                'tool_inputs': []
+            }
+        ]
+
+        errors = [
+            {
+                'error_type': 'TypeError',
+                'error_message': 'test error',
+                'files_modified': ['a.py'],
+                'resolution': 'Fixed'
+            }
+        ]
+
+        # Train
+        results = consolidator.consolidate_training(
+            commits=commits,
+            transcripts=transcripts,
+            errors=errors
+        )
+
+        # Check that some experts were trained
+        self.assertIn('test', results)
+        self.assertIn('episode', results)
+        self.assertIn('error', results)
+
+    def test_save_load_all_experts(self):
+        """Test saving and loading all experts atomically."""
+        from scripts.hubris.expert_consolidator import ExpertConsolidator
+
+        consolidator = ExpertConsolidator()
+        consolidator.create_all_experts()
+
+        # Train with minimal data
+        consolidator.consolidate_training(
+            commits=[{'files': ['a.py'], 'message': 'test'}],
+            errors=[{'error_type': 'Test', 'error_message': 'test', 'files_modified': []}]
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_dir = Path(tmpdir) / 'models'
+
+            # Save all
+            consolidator.save_all_experts(model_dir)
+
+            # Verify files exist
+            self.assertTrue((model_dir / 'test_expert.json').exists())
+            self.assertTrue((model_dir / 'error_expert.json').exists())
+
+            # Load all
+            consolidator2 = ExpertConsolidator(model_dir)
+
+            # Should have loaded experts
+            self.assertGreater(len(consolidator2.experts), 0)
+            self.assertTrue(consolidator2.has_expert('test'))
+            self.assertTrue(consolidator2.has_expert('error'))
+
+    def test_get_ensemble_prediction(self):
+        """Test getting ensemble prediction from multiple experts."""
+        from scripts.hubris.expert_consolidator import ExpertConsolidator
+
+        consolidator = ExpertConsolidator()
+        consolidator.create_all_experts()
+
+        # Train test expert with some data
+        consolidator.consolidate_training(
+            commits=[
+                {
+                    'files': ['cortical/query/search.py', 'tests/test_query.py'],
+                    'message': 'feat: search'
+                }
+            ]
+        )
+
+        # Get ensemble prediction
+        context = {
+            'changed_files': ['cortical/query/search.py'],
+            'query': 'update search'
+        }
+
+        pred = consolidator.get_ensemble_prediction(context, expert_types=['test'])
+
+        # Should return an AggregatedPrediction
+        self.assertIsNotNone(pred)
+        # Note: contributing_experts contains expert_id, not expert_type
+        self.assertEqual(len(pred.contributing_experts), 1)
+
+    def test_get_training_stats(self):
+        """Test getting training statistics."""
+        from scripts.hubris.expert_consolidator import ExpertConsolidator
+
+        consolidator = ExpertConsolidator()
+        consolidator.create_all_experts()
+
+        stats = consolidator.get_training_stats()
+
+        # Should have stats for all experts
+        self.assertEqual(len(stats), 4)
+        self.assertIn('file', stats)
+        self.assertIn('version', stats['file'])
+        self.assertIn('created_at', stats['file'])
+
+
 class TestErrorDiagnosisExpert(unittest.TestCase):
     """Test ErrorDiagnosisExpert."""
 
