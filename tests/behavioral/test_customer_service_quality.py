@@ -301,10 +301,11 @@ class TestCustomerServiceCrossDomain:
         doc_ids = [doc_id for doc_id, _ in results]
 
         # Count customer service vs other domain docs
-        cs_keywords = ['customer', 'support', 'complaint', 'ticket', 'call', 'retention', 'satisfaction']
+        # Accept customer_service/* prefix or keyword matches
+        cs_keywords = ['customer', 'support', 'complaint', 'ticket', 'call', 'retention', 'satisfaction', 'escalation', 'resolution']
         cs_docs = sum(
             1 for doc_id in doc_ids[:5]  # Check top 5
-            if any(kw in doc_id.lower() for kw in cs_keywords)
+            if doc_id.startswith('customer_service/') or any(kw in doc_id.lower() for kw in cs_keywords)
         )
 
         # At least 2 of top 5 should be customer service related
@@ -325,10 +326,11 @@ class TestCustomerServiceCrossDomain:
         doc_ids = [doc_id for doc_id, _ in results]
 
         # Customer service docs should not dominate technical query results
-        cs_keywords = ['customer', 'support', 'complaint', 'ticket', 'call']
+        # Use same comprehensive keywords for consistency
+        cs_keywords = ['customer', 'support', 'complaint', 'ticket', 'call', 'retention', 'satisfaction', 'escalation', 'resolution']
         cs_docs_in_top5 = sum(
             1 for doc_id in doc_ids[:5]
-            if any(kw in doc_id.lower() for kw in cs_keywords)
+            if doc_id.startswith('customer_service/') or any(kw in doc_id.lower() for kw in cs_keywords)
         )
 
         # At most 1 of top 5 should be customer service
