@@ -108,6 +108,11 @@ filterwarnings = [
     "error",
     # Allow our intentional pickle deprecation warnings (SEC-008)
     "ignore:Pickle format is deprecated:DeprecationWarning",
+    # Hubris TestExpert and related classes have __init__ but aren't test classes
+    "ignore:cannot collect test class.*TestExpert.*:pytest.PytestCollectionWarning",
+    "ignore:cannot collect test class.*TestPrediction.*:pytest.PytestCollectionWarning",
+    "ignore:cannot collect test class.*TestOutcome.*:pytest.PytestCollectionWarning",
+    "ignore:cannot collect test class.*TestCalibration.*:pytest.PytestCollectionWarning",
 ]
 
 # Custom markers for test organization

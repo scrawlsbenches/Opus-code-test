@@ -3,12 +3,13 @@
 Hubris MoE CLI - Command-line interface for the Mixture of Experts system
 
 Commands:
-    train       - Train all experts from collected data
-    predict     - Get predictions for a task
-    stats       - Show expert statistics
-    leaderboard - Show expert credit leaderboard
-    evaluate    - Evaluate expert accuracy on recent commits
-    calibration - Show calibration analysis for predictions
+    train         - Train all experts from collected data
+    predict       - Get predictions for a task
+    stats         - Show expert statistics
+    leaderboard   - Show expert credit leaderboard
+    evaluate      - Evaluate expert accuracy on recent commits
+    calibration   - Show calibration analysis for predictions
+    suggest-tests - Suggest tests to run for code changes
 
 Examples:
     python scripts/hubris_cli.py train --commits 100
@@ -17,6 +18,8 @@ Examples:
     python scripts/hubris_cli.py leaderboard
     python scripts/hubris_cli.py evaluate --commits 20
     python scripts/hubris_cli.py calibration --curve
+    python scripts/hubris_cli.py suggest-tests --staged
+    python scripts/hubris_cli.py suggest-tests --files cortical/query/search.py
 """
 
 import argparse
@@ -34,6 +37,7 @@ from expert_consolidator import ExpertConsolidator, load_experts
 from credit_account import CreditLedger
 from credit_router import CreditRouter
 from calibration_tracker import CalibrationTracker
+from test_calibration_tracker import TestCalibrationTracker
 
 # ANSI color codes for pretty output
 class Colors:
@@ -59,33 +63,121 @@ LEDGER_PATH = MODEL_DIR / 'credit_ledger.json'
 COMMITS_DIR = ML_DATA_DIR / 'commits'
 CHATS_DIR = ML_DATA_DIR / 'chats'
 
-def load_commit_data(limit: Optional[int] = None) -> List[Dict[str, Any]]:
+def _is_test_file(file_path: str) -> bool:
+    """Check if a file is a test file."""
+    path_lower = file_path.lower()
+    return (
+        'test' in path_lower or
+        path_lower.startswith('tests/') or
+        path_lower.endswith('_test.py')
+    )
+
+
+def transform_commit_for_test_expert(commit: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Load commit data from .git-ml/commits/.
+    Transform commit data to include test_results from CI status.
+
+    Uses heuristic approach when CI fails:
+    - Changed test files are likely the ones that failed
+    - If no test files changed, we can't determine which tests failed
+
+    Args:
+        commit: Raw commit data with optional ci_result field
+
+    Returns:
+        Commit dict with test_results field added if CI data available
+    """
+    # Skip if already has test_results
+    if 'test_results' in commit:
+        return commit
+
+    # Check for CI status
+    ci_result = commit.get('ci_result')
+    if not ci_result:
+        return commit
+
+    # Get changed files
+    files = commit.get('files', []) or commit.get('files_changed', [])
+    if not files:
+        return commit
+
+    # Identify test files
+    test_files = [f for f in files if _is_test_file(f)]
+
+    # Build test_results based on CI outcome
+    test_results = {}
+
+    if ci_result == 'fail' and test_files:
+        # Heuristic: If CI failed and test files changed, those tests likely failed
+        test_results['failed'] = test_files
+        test_results['passed'] = []
+        test_results['source'] = 'ci_heuristic'
+    elif ci_result == 'pass' and test_files:
+        # CI passed - all changed tests passed
+        test_results['failed'] = []
+        test_results['passed'] = test_files
+        test_results['source'] = 'ci_heuristic'
+
+    # Only add if we have meaningful data
+    if test_results:
+        commit = commit.copy()
+        commit['test_results'] = test_results
+
+    return commit
+
+
+def load_commit_data(limit: Optional[int] = None, include_ci: bool = False) -> List[Dict[str, Any]]:
+    """
+    Load commit data from .git-ml/commits/ or .git-ml/tracked/commits.jsonl.
 
     Args:
         limit: Maximum number of commits to load (most recent first)
+        include_ci: Transform CI results into test_results format for TestExpert
 
     Returns:
         List of commit dictionaries
     """
-    if not COMMITS_DIR.exists():
-        print(color(f"Warning: {COMMITS_DIR} not found", Colors.YELLOW))
+    commits = []
+
+    # Try JSONL format first (new format in .git-ml/tracked/)
+    tracked_commits_file = ML_DATA_DIR / 'tracked' / 'commits.jsonl'
+    if tracked_commits_file.exists():
+        try:
+            with open(tracked_commits_file) as f:
+                for line in f:
+                    if line.strip():
+                        commit = json.loads(line)
+                        # Transform CI data to test_results if requested
+                        if include_ci:
+                            commit = transform_commit_for_test_expert(commit)
+                        commits.append(commit)
+        except Exception as e:
+            print(color(f"Warning: Failed to load {tracked_commits_file}: {e}", Colors.YELLOW))
+
+    # Fall back to individual JSON files (legacy format)
+    if not commits and COMMITS_DIR.exists():
+        commit_files = sorted(COMMITS_DIR.glob('*.json'), reverse=True)
+
+        if limit:
+            commit_files = commit_files[:limit]
+
+        for commit_file in commit_files:
+            try:
+                with open(commit_file) as f:
+                    commit = json.load(f)
+                    if include_ci:
+                        commit = transform_commit_for_test_expert(commit)
+                    commits.append(commit)
+            except Exception as e:
+                print(color(f"Warning: Failed to load {commit_file}: {e}", Colors.YELLOW))
+
+    if not commits:
+        print(color(f"Warning: No commit data found in {tracked_commits_file} or {COMMITS_DIR}", Colors.YELLOW))
         return []
 
-    commits = []
-    commit_files = sorted(COMMITS_DIR.glob('*.json'), reverse=True)
-
-    if limit:
-        commit_files = commit_files[:limit]
-
-    for commit_file in commit_files:
-        try:
-            with open(commit_file) as f:
-                commit = json.load(f)
-                commits.append(commit)
-        except Exception as e:
-            print(color(f"Warning: Failed to load {commit_file}: {e}", Colors.YELLOW))
+    # Apply limit after loading
+    if limit and len(commits) > limit:
+        commits = commits[:limit]
 
     return commits
 
@@ -133,10 +225,17 @@ def cmd_train(args) -> int:
 
     # Load data
     print("\nLoading training data...")
-    commits = load_commit_data(limit=args.commits)
+    include_ci = getattr(args, 'include_ci', False)
+    commits = load_commit_data(limit=args.commits, include_ci=include_ci)
     transcripts = load_transcript_data() if args.transcripts else None
 
     print(f"  Commits: {len(commits)}")
+    if include_ci:
+        # Count commits with CI data
+        ci_commits = sum(1 for c in commits if 'ci_result' in c)
+        test_results = sum(1 for c in commits if 'test_results' in c)
+        print(f"  CI data: {ci_commits} commits")
+        print(f"  Test results: {test_results} commits (for TestExpert)")
     if transcripts:
         print(f"  Transcripts: {len(transcripts)}")
 
@@ -623,6 +722,11 @@ def cmd_evaluate(args) -> int:
 
 def cmd_calibration(args) -> int:
     """Show calibration analysis for expert predictions."""
+    # Route to test calibration if --tests flag is set
+    if args.tests:
+        return cmd_calibration_tests(args)
+
+    # Default: file prediction calibration
     print(color("=" * 60, Colors.BOLD))
     print(color("HUBRIS MoE CALIBRATION ANALYSIS", Colors.BOLD))
     print(color("=" * 60, Colors.BOLD))
@@ -711,6 +815,123 @@ def cmd_calibration(args) -> int:
     return 0
 
 
+def cmd_calibration_tests(args) -> int:
+    """Show test selection calibration analysis."""
+    print(color("=" * 70, Colors.BOLD))
+    print(color("TEST SELECTION CALIBRATION ANALYSIS", Colors.BOLD))
+    print(color("=" * 70, Colors.BOLD))
+
+    tracker = TestCalibrationTracker()
+    loaded = tracker.load_all()
+
+    if loaded == 0:
+        print(color("\nNo test calibration data available yet.", Colors.YELLOW))
+        print("Test calibration tracks how well TestExpert predicts which tests to run.")
+        print("\nTo generate test calibration data:")
+        print("  1. Record test predictions via TestCalibrationTracker.record_prediction()")
+        print("  2. Run tests and record outcomes via TestCalibrationTracker.record_outcome()")
+        print("  3. Re-run this command")
+        return 0
+
+    print(f"\nLoaded {loaded} calibration records.")
+
+    # Output format
+    if args.json:
+        import json
+        print(json.dumps(tracker.get_summary(), indent=2))
+        return 0
+
+    # Get metrics
+    metrics = tracker.get_metrics()
+
+    if not metrics:
+        print(color("\nInsufficient data for metrics.", Colors.YELLOW))
+        return 0
+
+    # Show report
+    summary = tracker.get_summary()
+
+    print(f"\nPredictions recorded:  {summary['predictions_recorded']}")
+    print(f"Outcomes recorded:     {summary['outcomes_recorded']}")
+    print(f"Calibration records:   {summary['calibration_records']}")
+    print()
+
+    # Metrics with color coding
+    print(color("TEST SELECTION METRICS:", Colors.BOLD))
+    print()
+
+    # Precision@5
+    p5 = metrics.precision_at_5_mean
+    p5_color = Colors.GREEN if p5 >= 0.7 else Colors.YELLOW if p5 >= 0.5 else Colors.RED
+    print(f"  Precision@5:      {color(f'{p5:.3f}', p5_color)}  (of top 5 suggestions, how many relevant?)")
+
+    # Recall
+    recall = metrics.recall_mean
+    recall_color = Colors.GREEN if recall >= 0.8 else Colors.YELLOW if recall >= 0.6 else Colors.RED
+    print(f"  Recall:           {color(f'{recall:.3f}', recall_color)}  (of failures, what % did we catch?)")
+
+    # Hit rate
+    hit_rate = metrics.hit_rate
+    hit_color = Colors.GREEN if hit_rate >= 0.85 else Colors.YELLOW if hit_rate >= 0.7 else Colors.RED
+    print(f"  Hit Rate:         {color(f'{hit_rate:.3f}', hit_color)}  (% predictions catching at least one failure)")
+
+    # MRR
+    mrr = metrics.mrr
+    mrr_color = Colors.GREEN if mrr >= 0.5 else Colors.YELLOW if mrr >= 0.3 else Colors.RED
+    print(f"  MRR:              {color(f'{mrr:.3f}', mrr_color)}  (rank of first failure in suggestions)")
+
+    # False alarm rate
+    far = metrics.false_alarm_rate
+    far_color = Colors.GREEN if far <= 0.3 else Colors.YELLOW if far <= 0.5 else Colors.RED
+    print(f"  False Alarm Rate: {color(f'{far:.3f}', far_color)}  (suggested tests that didn't fail)")
+
+    # Coverage
+    coverage = metrics.coverage
+    cov_color = Colors.GREEN if coverage >= 0.9 else Colors.YELLOW if coverage >= 0.7 else Colors.RED
+    print(f"  Coverage:         {color(f'{coverage:.3f}', cov_color)}  (% of all failures caught)")
+
+    print()
+
+    # Status
+    status = metrics.get_status()
+    status_emoji = {
+        'excellent': '🌟',
+        'good': '✓',
+        'acceptable': '⚠️',
+        'needs_attention': '⚠️',
+        'poor': '❌'
+    }
+    status_colors = {
+        'excellent': Colors.GREEN,
+        'good': Colors.GREEN,
+        'acceptable': Colors.YELLOW,
+        'needs_attention': Colors.YELLOW,
+        'poor': Colors.RED
+    }
+    emoji = status_emoji.get(status, '')
+    s_color = status_colors.get(status, '')
+    print(f"{color('Status:', Colors.BOLD)} {color(f'{emoji} {status.upper()}', s_color)}")
+    print()
+
+    # Recommendations
+    if summary['recommendations']:
+        print(color("RECOMMENDATIONS:", Colors.BOLD))
+        for rec in summary['recommendations']:
+            print(f"  {rec}")
+        print()
+
+    # Interpretation guide
+    print(color("METRIC INTERPRETATION:", Colors.BOLD))
+    print("  Good thresholds:")
+    print("    • Precision@5 ≥ 0.7  (most suggestions are useful)")
+    print("    • Recall ≥ 0.8       (catch most failures)")
+    print("    • Hit Rate ≥ 0.85    (rarely miss failures entirely)")
+    print("    • MRR ≥ 0.5          (failures ranked in top 2 on average)")
+    print("    • Coverage ≥ 0.9     (catch 90%+ of all failures)")
+
+    return 0
+
+
 def _get_ece_status(ece: float) -> str:
     """Get colored status string for ECE value."""
     if ece < 0.05:
@@ -723,6 +944,139 @@ def _get_ece_status(ece: float) -> str:
         return color("[needs attention]", Colors.YELLOW)
     else:
         return color("[poor]", Colors.RED)
+
+
+def cmd_suggest_tests(args) -> int:
+    """Suggest tests to run for code changes."""
+    import subprocess
+
+    # Get changed files from args or git
+    changed_files = []
+
+    if args.files:
+        changed_files = args.files
+    elif args.staged:
+        try:
+            result = subprocess.run(
+                ['git', 'diff', '--cached', '--name-only'],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            changed_files = [f.strip() for f in result.stdout.split('\n') if f.strip()]
+        except subprocess.CalledProcessError as e:
+            print(color(f"Error: Failed to get staged files: {e}", Colors.RED))
+            return 1
+    elif args.modified:
+        try:
+            result = subprocess.run(
+                ['git', 'diff', '--name-only'],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            changed_files = [f.strip() for f in result.stdout.split('\n') if f.strip()]
+        except subprocess.CalledProcessError as e:
+            print(color(f"Error: Failed to get modified files: {e}", Colors.RED))
+            return 1
+    else:
+        print(color("Error: Must specify --files, --staged, or --modified", Colors.RED))
+        return 1
+
+    if not changed_files:
+        print(color("No files to analyze.", Colors.YELLOW))
+        return 0
+
+    # Load TestExpert
+    test_expert_path = MODEL_DIR / 'test_expert.json'
+    if not test_expert_path.exists():
+        print(color("Error: TestExpert model not found. Run 'train' first.", Colors.RED))
+        print(f"Expected: {test_expert_path}")
+        return 1
+
+    try:
+        sys.path.insert(0, str(HUBRIS_DIR / 'experts'))
+        from test_expert import TestExpert
+        expert = TestExpert.load(test_expert_path)
+    except Exception as e:
+        print(color(f"Error: Failed to load TestExpert: {e}", Colors.RED))
+        return 1
+
+    # Print EXPERIMENTAL banner
+    print()
+    print_experimental_banner()
+
+    # Display changed files
+    print(color(f"\n🧪 Suggested Tests for Changed Files:", Colors.BOLD))
+    print()
+
+    # Filter out test files from changed files
+    source_files = [f for f in changed_files if not f.startswith('tests/')]
+    test_files = [f for f in changed_files if f.startswith('tests/')]
+
+    print(color(f"Changed files ({len(changed_files)}):", Colors.BOLD))
+    for f in source_files:
+        print(f"  {color('•', Colors.CYAN)} {f}")
+    if test_files:
+        print(color(f"\nTest files already modified ({len(test_files)}):", Colors.DIM))
+        for f in test_files:
+            print(f"  {color('•', Colors.DIM)} {f}")
+
+    # Get predictions
+    context = {
+        'changed_files': changed_files,
+        'top_n': args.top
+    }
+
+    try:
+        prediction = expert.predict(context)
+    except Exception as e:
+        print(color(f"\nError: Prediction failed: {e}", Colors.RED))
+        return 1
+
+    if not prediction.items:
+        print(color("\nNo test suggestions available.", Colors.YELLOW))
+        print("This may mean:")
+        print("  • These files are new and haven't been tested yet")
+        print("  • The expert needs more training data")
+        return 0
+
+    # Display suggestions
+    print(color(f"\nSuggested tests (by confidence):", Colors.BOLD))
+    for i, (test_file, confidence) in enumerate(prediction.items, 1):
+        # Get scoring signals
+        signals = prediction.metadata.get('scoring_signals', [])
+        signals_str = ', '.join(signals) if signals else 'ensemble'
+
+        # Color code by confidence
+        if confidence > 0.8:
+            conf_str = color(f"{confidence:.3f}", Colors.GREEN)
+        elif confidence > 0.5:
+            conf_str = color(f"{confidence:.3f}", Colors.CYAN)
+        else:
+            conf_str = color(f"{confidence:.3f}", Colors.YELLOW)
+
+        print(f"  {i:2}. {test_file:55} {conf_str}  [{color(signals_str, Colors.DIM)}]")
+
+    # Show coverage estimate
+    coverage = expert.get_coverage_estimate(source_files if source_files else changed_files)
+    coverage_pct = coverage * 100
+
+    print()
+    if coverage > 0.8:
+        cov_str = color(f"{coverage_pct:.0f}%", Colors.GREEN)
+        status = color("✓ Good coverage", Colors.GREEN)
+    elif coverage > 0.5:
+        cov_str = color(f"{coverage_pct:.0f}%", Colors.YELLOW)
+        status = color("⚠ Partial coverage", Colors.YELLOW)
+    else:
+        cov_str = color(f"{coverage_pct:.0f}%", Colors.RED)
+        status = color("⚠ Low coverage", Colors.RED)
+
+    print(f"{color('Coverage estimate:', Colors.BOLD)} {cov_str} of changed files have test mappings")
+    print(f"Status: {status}")
+
+    return 0
 
 
 def main():
@@ -738,6 +1092,8 @@ Examples:
   %(prog)s leaderboard
   %(prog)s evaluate --commits 20
   %(prog)s calibration --curve
+  %(prog)s suggest-tests --staged
+  %(prog)s suggest-tests --files cortical/query/search.py cortical/analysis.py
         """
     )
 
@@ -751,6 +1107,8 @@ Examples:
                              help='Include transcript data for EpisodeExpert')
     train_parser.add_argument('--errors', action='store_true',
                              help='Include error data for ErrorDiagnosisExpert')
+    train_parser.add_argument('--include-ci', action='store_true',
+                             help='Transform CI results into test_results for TestExpert training')
 
     # Predict command
     predict_parser = subparsers.add_parser('predict', help='Get predictions for a task')
@@ -784,6 +1142,19 @@ Examples:
                                    help='Output as JSON')
     calibration_parser.add_argument('--curve', action='store_true',
                                    help='Show calibration curve visualization')
+    calibration_parser.add_argument('--tests', action='store_true',
+                                   help='Show test selection calibration instead of file prediction calibration')
+
+    # Suggest-tests command
+    suggest_tests_parser = subparsers.add_parser('suggest-tests', help='Suggest tests to run for code changes')
+    suggest_tests_parser.add_argument('--files', '-f', nargs='+',
+                                     help='Files being changed')
+    suggest_tests_parser.add_argument('--staged', action='store_true',
+                                     help='Use git staged files')
+    suggest_tests_parser.add_argument('--modified', action='store_true',
+                                     help='Use git modified files')
+    suggest_tests_parser.add_argument('--top', '-n', type=int, default=10,
+                                     help='Number of suggestions to show (default: 10)')
 
     args = parser.parse_args()
 
@@ -808,6 +1179,8 @@ Examples:
         return cmd_evaluate(args)
     elif args.command == 'calibration':
         return cmd_calibration(args)
+    elif args.command == 'suggest-tests':
+        return cmd_suggest_tests(args)
     else:
         parser.print_help()
         return 1
