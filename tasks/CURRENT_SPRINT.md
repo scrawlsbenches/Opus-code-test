@@ -6,15 +6,16 @@
 **Status:** In Progress
 
 ## Goals
-- [ ] Fix cold-start UX - clearer message when experts untrained (T-dbf8-014)
+- [x] Fix cold-start UX - clearer message when experts untrained (T-dbf8-014)
 - [ ] Complete Hubris documentation - book chapter + README (T-2e92-002)
-- [ ] Add calibration status to CLI dashboard
+- [x] Add calibration status to CLI dashboard
 
 ## In Progress
-(None yet)
+- Complete Hubris documentation
 
 ## Completed This Sprint
-(None yet)
+- ✅ Cold-start UX fix with ML fallback (ce81d6d)
+- ✅ Calibration command for CLI (8ac951c)
 
 ## Blocked
 (None currently)

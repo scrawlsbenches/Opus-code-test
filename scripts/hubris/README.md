@@ -12,7 +12,10 @@ Hubris is a Mixture of Experts system designed to assist Claude Code with predic
 - [Quick Start](#quick-start)
 - [Credit System](#credit-system)
 - [Training](#training)
+- [Live Feedback Loop](#live-feedback-loop-git-hooks)
 - [CLI Usage](#cli-usage)
+  - [Cold-Start Mode](#cold-start-mode)
+  - [Calibration Analysis](#calibration-analysis)
 - [Extending](#extending)
 - [Expert Details](#expert-details)
 
@@ -520,15 +523,76 @@ python scripts/hubris_cli.py stats
 # View credit leaderboard
 python scripts/hubris_cli.py leaderboard
 
-# Diagnose an error
-python scripts/hubris_cli.py diagnose --error "TypeError: 'NoneType' object is not subscriptable"
+# Evaluate expert accuracy on recent commits
+python scripts/hubris_cli.py evaluate --commits 20
 
-# Suggest tests for changed files
-python scripts/hubris_cli.py suggest-tests --files cortical/query/search.py cortical/analysis.py
+# View calibration analysis
+python scripts/hubris_cli.py calibration
 
-# View routing decisions
-python scripts/hubris_cli.py route "Debug authentication error"
+# View calibration curve visualization
+python scripts/hubris_cli.py calibration --curve
+
+# Export calibration data as JSON
+python scripts/hubris_cli.py calibration --json
 ```
+
+### Cold-Start Mode
+
+When experts haven't learned yet (all have default balance of 100 credits), the system enters **cold-start mode**:
+
+- A cyan banner indicates experts have not learned
+- Predictions will show low confidence
+- The ML file prediction model is automatically offered as fallback
+- As commits are made, experts learn and exit cold-start mode
+
+```
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  ❄️  COLD START MODE - Experts Have Not Learned Yet                 ┃
+┃                                                                      ┃
+┃  All experts have equal weight (no feedback received yet).          ┃
+┃  Predictions will improve after making commits.                     ┃
+┃                                                                      ┃
+┃  💡 Try: python scripts/ml_file_prediction.py predict "your task"   ┃
+┃     The ML model is trained on commit history and may work better.  ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+```
+
+### Calibration Analysis
+
+The `calibration` command analyzes prediction accuracy vs confidence:
+
+```bash
+$ python scripts/hubris_cli.py calibration
+
+HUBRIS MoE CALIBRATION ANALYSIS
+============================================================
+
+Loaded 42 resolved predictions.
+
+All Experts
+------------------------------------------------------------
+
+Calibration Metrics:
+  ECE (Expected Calibration Error): 0.082 [good]
+  MCE (Max Calibration Error):      0.150
+  Brier Score:                      0.120
+
+Confidence vs Accuracy:
+  Average Confidence: 0.650
+  Average Accuracy:   0.720
+  Trend: 📉 underconfident
+
+Sample Size: 42 predictions
+
+Recommendations:
+  ✓ Calibration is good (ECE < 0.10)
+```
+
+**Metrics explained:**
+- **ECE**: Average gap between confidence and accuracy (lower is better)
+- **MCE**: Worst calibration gap in any bin
+- **Brier Score**: Mean squared error of predictions (lower is better)
+- **Trend**: Whether system over/underestimates accuracy
 
 ---
 
