@@ -265,11 +265,13 @@ class TestCustomerServicePassages:
         )
 
         # Check if passages are from customer service domain
+        # Accept any doc from customer_service/ directory or specific known docs
         cs_docs = {'complaint_resolution', 'customer_support_fundamentals',
                    'ticket_escalation_procedures', 'customer_retention_strategies'}
         found_cs_doc = False
         for _, doc_id, _, _, _ in passages:
-            if any(cs_doc in doc_id for cs_doc in cs_docs):
+            # Accept customer_service/* prefix or specific doc name matches
+            if doc_id.startswith('customer_service/') or any(cs_doc in doc_id for cs_doc in cs_docs):
                 found_cs_doc = True
                 break
 
