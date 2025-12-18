@@ -69,6 +69,7 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 | Document | Purpose |
 |----------|---------|
 | [architecture.md](architecture.md) | 4-layer system design (Tokens → Bigrams → Concepts → Documents) |
+| [projects-architecture.md](projects-architecture.md) | Projects pattern for optional features and dependencies |
 | [algorithms.md](algorithms.md) | PageRank, TF-IDF, Louvain clustering, co-occurrence |
 | [louvain_resolution_analysis.md](louvain_resolution_analysis.md) | Research on clustering resolution parameter |
 
