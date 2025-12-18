@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "session_id": "53ec",
+  "started_at": "2025-12-18T19:21:31.440992",
+  "saved_at": "2025-12-18T19:30:00.000000",
+  "tasks": [
+    {
+      "id": "T-20251218-192131-53ec-001",
+      "title": "Phase 1: Template-based CommandExpert",
+      "status": "pending",
+      "priority": "medium",
+      "category": "feature",
+      "description": "Create CommandExpert class following MicroExpert pattern. Template-based predictions (no ML). Parse .git-ml/actions/ for python -c patterns. Build keyword→command mappings. ~3-5 days effort.",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-18T19:21:31.441407",
+      "updated_at": "2025-12-18T19:30:00.000000",
+      "completed_at": null,
+      "context": {
+        "files": [
+          "scripts/hubris/experts/command_expert.py",
+          "scripts/hubris/expert_consolidator.py"
+        ],
+        "sprint": "9-10",
+        "data_audit": {
+          "total_bash_actions": 445,
+          "python_c_commands": 13,
+          "percent": "3%",
+          "unique_patterns": 3,
+          "recommendation": "template-first approach"
+        }
+      },
+      "retrospective": null
+    },
+    {
+      "id": "T-20251218-192131-53ec-002",
+      "title": "Phase 2: Context-aware patterns and calibration",
+      "status": "pending",
+      "priority": "low",
+      "category": "feature",
+      "description": "Wire feedback loop for command success/failure. Learn context→command patterns. Add confidence calibration. Target: >65% accuracy, ECE <0.15. ~3-4 days effort.",
+      "depends_on": ["T-20251218-192131-53ec-001"],
+      "effort": "medium",
+      "created_at": "2025-12-18T19:30:00.000000",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {
+        "files": [
+          "scripts/hubris/experts/command_expert.py",
+          "scripts/hubris/feedback_collector.py"
+        ]
+      },
+      "retrospective": null
+    },
+    {
+      "id": "T-20251218-192131-53ec-003",
+      "title": "Phase 3: CLI suggest-command integration",
+      "status": "pending",
+      "priority": "low",
+      "category": "feature",
+      "description": "Add suggest-command to hubris_cli.py. User-facing command suggestions with explanations. Track adoption rate. ~4-5 days effort.",
+      "depends_on": ["T-20251218-192131-53ec-002"],
+      "effort": "medium",
+      "created_at": "2025-12-18T19:30:00.000000",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {
+        "files": [
+          "scripts/hubris_cli.py",
+          "scripts/suggest_command.py"
+        ]
+      },
+      "retrospective": null
+    }
+  ],
+  "metadata": {
+    "epic": "Hubris MoE System (efba)",
+    "phase": "Phase 5: Expert Expansion",
+    "total_effort": "10-14 days (~2 weeks)",
+    "long_term_vision": "CommandExpert contributes to unified 'what should I do next?' suggestion system alongside FileExpert, TestExpert, EpisodeExpert"
+  }
+}
