@@ -1,0 +1,262 @@
+# Image Segmentation: Techniques and Applications
+
+## Introduction
+
+Image segmentation partitions an image into meaningful regions corresponding to objects, parts, or other significant areas. It transforms raw pixel data into structured representations suitable for higher-level analysis.
+
+## Classical Segmentation Methods
+
+### Thresholding
+
+**Global Thresholding:**
+Otsu's method automatically selects threshold by maximizing between-class variance:
+
+σ²_B = ω₀ω₁(μ₀ - μ₁)²
+
+Where ω₀, ω₁ are class probabilities and μ₀, μ₁ are class means.
+
+**Adaptive Thresholding:**
+Local thresholds computed within neighborhoods, handling illumination variation.
+
+**Multi-level Thresholding:**
+Multiple thresholds for images with several intensity populations.
+
+### Edge-Based Methods
+
+**Gradient Operators:**
+- Sobel: 3×3 kernel approximating derivative
+- Prewitt: Similar to Sobel, different weights
+- Canny: Multi-stage, hysteresis thresholding
+
+**Canny Algorithm Steps:**
+1. Gaussian smoothing
+2. Gradient magnitude and direction
+3. Non-maximum suppression
+4. Double threshold
+5. Hysteresis edge tracking
+
+**Limitations:**
+- Edges don't always form closed boundaries
+- Noise sensitivity
+- Parameter tuning required
+
+### Region-Based Methods
+
+**Region Growing:**
+1. Select seed point(s)
+2. Add neighboring pixels meeting similarity criterion
+3. Iterate until no more pixels qualify
+
+**Split and Merge:**
+1. Start with entire image as one region
+2. Split non-homogeneous regions (quadtree)
+3. Merge adjacent similar regions
+4. Continue until convergence
+
+**Watershed Algorithm:**
+- Treats gradient image as topographic surface
+- "Floods" from markers, building dams at meeting points
+- Over-segmentation common, requires marker selection
+
+### Clustering Methods
+
+**K-Means:**
+1. Initialize K cluster centers
+2. Assign pixels to nearest center (intensity or color)
+3. Update centers as cluster means
+4. Iterate until convergence
+
+**Mean Shift:**
+- Kernel density estimation
+- Iteratively shifts to local density maxima
+- Adaptive number of clusters
+- Computationally expensive
+
+**Superpixels:**
+- SLIC (Simple Linear Iterative Clustering)
+- Oversegmentation into perceptually uniform regions
+- Preserves boundaries
+- Reduces complexity for subsequent processing
+
+## Energy-Based Methods
+
+### Active Contours (Snakes)
+
+Energy functional:
+E = ∫[E_internal(v) + E_external(v)]ds
+
+**Internal Energy:**
+- Elasticity: Controls stretching
+- Bending: Controls curvature
+
+**External Energy:**
+- Image gradients (attracts to edges)
+- Balloon force (expansion/contraction)
+
+**Limitations:**
+- Sensitive to initialization
+- Difficulty with concavities
+- Topology changes problematic
+
+### Graph Cuts
+
+**Energy Formulation:**
+E(L) = Σ D_p(L_p) + λ Σ V_{p,q}(L_p, L_q)
+
+- Data term D: Likelihood of pixel p having label L
+- Smoothness term V: Penalty for neighboring pixels with different labels
+
+**Min-Cut/Max-Flow:**
+- Efficient optimization via graph algorithms
+- Global minimum for binary labels
+- Extensions for multi-label (α-expansion, α-β swap)
+
+### Conditional Random Fields (CRF)
+
+**Unary Potentials:**
+- Per-pixel classification scores (e.g., from CNN)
+
+**Pairwise Potentials:**
+- Encourage similar pixels to have same label
+- Contrast-sensitive smoothness
+
+**Dense CRF:**
+- Fully connected graph
+- Efficient mean-field inference
+- Post-processing for CNN outputs
+
+## Deep Learning Approaches
+
+### Fully Convolutional Networks (FCN)
+
+Key innovations:
+- Replace FC layers with convolutions
+- Upsample via transposed convolution
+- Skip connections for multi-scale features
+
+**Architecture:**
+Encoder (VGG, ResNet) → Decoder (upsampling) → Pixel-wise prediction
+
+### U-Net
+
+**Characteristics:**
+- Symmetric encoder-decoder
+- Skip connections at each level
+- Concatenation of feature maps
+- Originally for biomedical images
+- Works well with limited data
+
+**Architecture:**
+```
+Encoder: [Conv-Conv-Pool] × 4
+Bottleneck: Conv-Conv
+Decoder: [UpConv-Concat-Conv-Conv] × 4
+Output: 1×1 Conv (class channels)
+```
+
+### DeepLab Series
+
+**DeepLab V1-V2:**
+- Atrous (dilated) convolution for multi-scale
+- CRF post-processing
+
+**DeepLab V3:**
+- Atrous Spatial Pyramid Pooling (ASPP)
+- Multiple dilation rates capture multi-scale context
+- Batch normalization
+
+**DeepLab V3+:**
+- Encoder-decoder structure
+- Xception backbone
+- State-of-the-art on benchmarks
+
+### Transformer-Based
+
+**SETR (Segmentation Transformer):**
+- Vision Transformer encoder
+- Various decoder designs
+
+**SegFormer:**
+- Hierarchical transformer
+- Lightweight MLP decoder
+- Efficient multi-scale features
+
+### Instance Segmentation
+
+**Mask R-CNN:**
+- Extends Faster R-CNN
+- Adds mask prediction branch
+- Instance-aware segmentation
+
+**YOLACT/YOLACT++:**
+- Real-time instance segmentation
+- Prototype masks + coefficients
+
+**Panoptic Segmentation:**
+- Combines semantic and instance
+- "Stuff" (background) + "Things" (countable objects)
+- Unified scene understanding
+
+## Evaluation Metrics
+
+### Pixel-wise
+
+**Pixel Accuracy:**
+Correct pixels / Total pixels
+
+**Mean IoU (Intersection over Union):**
+(1/K) Σ (TP_k / (TP_k + FP_k + FN_k))
+
+### Region-wise
+
+**Boundary F-score:**
+Precision/recall of boundary pixels within tolerance.
+
+**Panoptic Quality (PQ):**
+PQ = SQ × RQ (Segmentation Quality × Recognition Quality)
+
+## Applications
+
+### Medical Imaging
+- Organ segmentation
+- Tumor detection
+- Cell counting
+
+### Autonomous Driving
+- Road segmentation
+- Pedestrian detection
+- Lane marking
+
+### Remote Sensing
+- Land cover classification
+- Building extraction
+- Change detection
+
+### Video Analysis
+- Object tracking
+- Action recognition
+- Video editing
+
+## Practical Considerations
+
+### Data Augmentation
+- Random crops, flips, rotations
+- Color jittering
+- Elastic deformations
+
+### Class Imbalance
+- Weighted loss functions
+- Focal loss
+- Oversampling rare classes
+
+### Post-Processing
+- CRF refinement
+- Morphological operations
+- Test-time augmentation
+
+## References
+
+- Long, J. et al. "Fully Convolutional Networks" (CVPR 2015)
+- Ronneberger, O. et al. "U-Net" (MICCAI 2015)
+- Chen, L.-C. et al. "DeepLab" series (PAMI 2018)
+- He, K. et al. "Mask R-CNN" (ICCV 2017)

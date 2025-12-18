@@ -1,0 +1,336 @@
+# Residential HVAC Systems: Design and Installation
+
+## Introduction
+
+Residential HVAC (Heating, Ventilation, and Air Conditioning) systems maintain comfort and indoor air quality in homes. System selection depends on climate, building characteristics, energy costs, and homeowner preferences. Understanding available options enables informed decisions for new construction and retrofits.
+
+## System Types
+
+### Forced Air Systems
+
+**Components:**
+- Air handler or furnace
+- Ductwork distribution
+- Supply and return registers
+- Thermostat control
+
+**Heating Options:**
+- Gas furnace: 80-98% AFUE
+- Electric furnace: 100% efficient (but expensive)
+- Heat pump: 200-400% effective
+
+**Cooling Options:**
+- Split system AC: Outdoor and indoor units
+- Heat pump: Dual function
+- Package unit: All-in-one outdoor
+
+**Advantages:**
+- Filtration included
+- Combines heating/cooling
+- Familiar technology
+- Humidification/dehumidification options
+
+**Disadvantages:**
+- Duct losses (10-30% if poorly installed)
+- Noise from air movement
+- Space for ductwork required
+
+### Ductless Mini-Split Systems
+
+**Configuration:**
+- Outdoor compressor/condenser
+- One or more indoor heads
+- Refrigerant lines between units
+- No ductwork needed
+
+**Capacity:**
+- Single zone: 9,000-36,000 BTU
+- Multi-zone: Up to 8 indoor units
+
+**Advantages:**
+- Zoned control
+- High efficiency (SEER 20-30+)
+- No duct losses
+- Easy retrofit installation
+
+**Disadvantages:**
+- Higher first cost per ton
+- Visible indoor units
+- Multiple indoor units for whole-house
+- May need supplemental ventilation
+
+### Hydronic Systems
+
+**Distribution:**
+- Hot water through pipes
+- Radiators, baseboard, or radiant floor
+- Circulator pumps move water
+
+**Heat Sources:**
+- Boilers (gas, oil, electric)
+- Heat pumps (air-to-water, ground-source)
+- Solar thermal (supplemental)
+
+**Radiant Floor:**
+- Tubing in or under floor
+- Low water temperature (90-140°F)
+- Excellent comfort
+- Slow response time
+
+**Advantages:**
+- Quiet operation
+- Comfortable heat distribution
+- No air movement/dust
+- Zoning relatively easy
+
+**Disadvantages:**
+- Requires separate cooling system
+- Higher installation complexity
+- Response time limitations
+
+### Geothermal (Ground-Source)
+
+**Loop Types:**
+- Horizontal: 4-6 ft deep, requires land area
+- Vertical: Boreholes 150-400 ft
+- Open loop: Groundwater
+
+**Efficiency:**
+- Heating: 300-500% (COP 3-5)
+- Cooling: EER 15-25
+- Consistent year-round
+
+**Economics:**
+- High first cost ($20,000-30,000+)
+- Low operating cost
+- 5-10 year payback typical
+- 25+ year loop life
+
+## System Sizing
+
+### Manual J Load Calculation
+
+ACCA Manual J calculates heating and cooling loads.
+
+**Factors:**
+- Climate data (design temperatures)
+- Building envelope (insulation, windows)
+- Infiltration and ventilation
+- Internal gains (people, equipment)
+- Orientation and shading
+
+**Room-by-Room:**
+Essential for duct design and zoning.
+
+**Common Mistakes:**
+- Using rules of thumb (tons per square foot)
+- Oversizing equipment
+- Ignoring duct gains/losses
+
+### Consequences of Poor Sizing
+
+**Oversizing:**
+- Short cycling
+- Poor humidity control
+- Higher first cost
+- Reduced efficiency
+- Equipment wear
+
+**Undersizing:**
+- Inability to maintain setpoint
+- Continuous operation
+- Comfort complaints
+
+## Ductwork Design
+
+### Manual D
+
+ACCA Manual D sizes ductwork.
+
+**Considerations:**
+- Friction rate
+- Available static pressure
+- Velocity limits
+- Noise criteria
+
+### Duct Types
+
+**Sheet Metal:**
+- Durable, smooth interior
+- Professional installation
+- Rectangular or round
+
+**Flex Duct:**
+- Easy installation
+- Higher friction if compressed
+- Limit runs and bends
+
+**Duct Board:**
+- Built-in insulation
+- Quiet operation
+- Susceptible to damage
+
+### Installation Quality
+
+**Critical Items:**
+- Proper sealing (mastic or tape)
+- Adequate insulation (R-6 to R-8)
+- Support without compression
+- Balanced airflow
+
+**Testing:**
+- Duct leakage (target <4% of flow)
+- Room-by-room airflow
+- System static pressure
+
+## Energy Efficiency
+
+### Efficiency Ratings
+
+**Heating:**
+- AFUE (Annual Fuel Utilization Efficiency): Gas furnaces
+- HSPF (Heating Seasonal Performance Factor): Heat pumps
+
+**Cooling:**
+- SEER (Seasonal Energy Efficiency Ratio): Air conditioners
+- EER (Energy Efficiency Ratio): Peak efficiency
+
+**Current Minimums (2023):**
+- SEER 14-15 (varies by region)
+- HSPF 8.8
+- AFUE 80% (90% in northern regions)
+
+### High-Efficiency Options
+
+**Variable-Speed Equipment:**
+- Compressors: Modulate capacity
+- Blower motors: ECM for efficiency
+- Better dehumidification
+- Quieter operation
+
+**Two-Stage:**
+- High and low capacity
+- Better than single-stage
+- Less expensive than variable
+
+### Building Envelope First
+
+**Priority:**
+1. Air sealing (biggest impact)
+2. Insulation (attic, walls, basement)
+3. Windows and doors
+4. Then HVAC upgrade
+
+**Load Reduction Benefits:**
+- Smaller equipment
+- Lower operating cost
+- Better comfort
+- Longer run times (better humidity control)
+
+## Ventilation
+
+### Why Ventilation Matters
+
+Tight homes need mechanical ventilation:
+- Dilute indoor pollutants
+- Control moisture
+- Provide fresh air
+- Code requirements (ASHRAE 62.2)
+
+### Ventilation Strategies
+
+**Exhaust Only:**
+- Bath fans run continuously or on timer
+- Simple, low cost
+- Negative pressure (may draw radon, pollutants)
+
+**Supply Only:**
+- Fresh air to return duct
+- Simple, positive pressure
+- May introduce unconditioned air
+
+**Balanced:**
+- Equal exhaust and supply
+- HRV (Heat Recovery Ventilator)
+- ERV (Energy Recovery Ventilator)
+- Most efficient in extreme climates
+
+### HRV vs. ERV
+
+**HRV (Heat Recovery):**
+- Recovers sensible heat only
+- Best for cold climates
+- Helps with winter humidity (exhausts moisture)
+
+**ERV (Energy Recovery):**
+- Recovers sensible and latent heat
+- Best for humid climates
+- Retains indoor humidity in winter
+
+## Controls
+
+### Thermostat Options
+
+**Basic Programmable:**
+- Scheduled setbacks
+- Manual override
+- Limited features
+
+**Smart Thermostats:**
+- Learning algorithms
+- Remote access
+- Occupancy sensing
+- Integration with other systems
+- Energy reporting
+
+### Zoning
+
+**Damper-Based:**
+- Motorized dampers in ductwork
+- Zone thermostats
+- Bypass or modulating equipment
+
+**Multi-System:**
+- Separate systems per zone
+- Most flexible
+- Higher cost
+
+**Mini-Split:**
+- Each head independently controlled
+- Inherent zoning
+
+## Maintenance
+
+### Homeowner Tasks
+
+**Monthly:**
+- Check/change air filter
+
+**Seasonally:**
+- Clear outdoor unit of debris
+- Check condensate drain
+- Verify operation before season
+
+**Annual:**
+- Professional maintenance
+- Refrigerant check
+- Clean coils if needed
+
+### Professional Service
+
+**Heating Season:**
+- Combustion analysis
+- Heat exchanger inspection
+- Safety controls
+
+**Cooling Season:**
+- Refrigerant charge
+- Coil cleaning
+- Electrical connections
+
+## References
+
+- ACCA Manual J, D, S (residential standards)
+- ASHRAE Handbook: HVAC Applications
+- ENERGY STAR specifications
+- DOE Home Energy Score

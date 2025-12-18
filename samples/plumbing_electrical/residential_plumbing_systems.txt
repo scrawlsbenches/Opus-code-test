@@ -1,0 +1,260 @@
+# Residential Plumbing Systems: Design and Installation
+
+## Introduction
+
+Plumbing systems deliver clean water and remove waste safely. Understanding residential plumbing enables proper installation, maintenance, and troubleshooting while ensuring compliance with building codes and health standards.
+
+## Water Supply System
+
+### Service Line
+
+**Components:**
+- Main shutoff at street (utility side)
+- Water meter
+- Main shutoff at house
+- Pressure reducing valve (if needed)
+
+**Sizing:**
+Service line sized for peak demand. Typical residential: 3/4" to 1" diameter.
+
+**Materials:**
+- Copper (Type K, L, or M)
+- PEX (cross-linked polyethylene)
+- CPVC (chlorinated PVC)
+- Galvanized steel (older homes)
+- PE (polyethylene) for underground
+
+### Distribution System
+
+**Layout Types:**
+
+**Trunk and Branch:**
+- Large main line (trunk) with smaller branches
+- Traditional approach
+- Longer wait for hot water at distant fixtures
+
+**Home Run (Manifold):**
+- Individual PEX lines from central manifold
+- Faster hot water delivery
+- More material but easier to troubleshoot
+
+**Hybrid:**
+- Combination of approaches
+- Trunk to areas, manifold within areas
+
+### Pipe Sizing
+
+Based on fixture units and developed length.
+
+**Minimum Pipe Sizes:**
+| Fixture | Supply Line |
+|---------|-------------|
+| Lavatory | 1/2" |
+| Kitchen sink | 1/2" |
+| Shower | 1/2" |
+| Toilet | 3/8" |
+| Washing machine | 1/2" |
+| Dishwasher | 3/8" |
+
+**Main Lines:**
+- 3/4" serves most homes
+- 1" for larger homes or long runs
+
+### Water Pressure
+
+**Ideal Range:** 40-80 psi
+**Maximum Allowed:** 80 psi (per most codes)
+
+**Low Pressure Causes:**
+- Undersized pipes
+- Corroded pipes
+- High elevation
+- Supply issues
+
+**High Pressure Solutions:**
+- Pressure reducing valve (PRV)
+- Set to 50-60 psi typical
+
+### Hot Water System
+
+**Water Heater Types:**
+- Tank (storage): 40-80 gallon typical
+- Tankless (on-demand): Higher flow rate requirements
+- Heat pump: Energy efficient
+- Solar: Supplemental heating
+
+**Hot Water Distribution:**
+- Recirculation system: Dedicated return line
+- Demand pump: Activated by button/motion
+- Point-of-use: Small heaters at fixtures
+
+## Drain-Waste-Vent (DWV) System
+
+### Drain Pipes
+
+Carry wastewater by gravity.
+
+**Sizing by Fixture Units:**
+| Fixture | Drainage Fixture Units |
+|---------|----------------------|
+| Lavatory | 1 |
+| Toilet | 4 |
+| Bathtub | 2 |
+| Shower | 2 |
+| Kitchen sink | 2 |
+| Washing machine | 2 |
+| Floor drain | 2 |
+
+**Minimum Pipe Sizes:**
+- Lavatory: 1-1/4"
+- Bathtub/shower: 1-1/2"
+- Kitchen sink: 1-1/2"
+- Toilet: 3" (branch), 3-4" (main)
+- Building drain: 4"
+
+### Traps
+
+Water seal preventing sewer gas entry.
+
+**P-Trap:**
+- Standard under sinks, tubs
+- 2-4" water seal required
+
+**S-Trap (prohibited):**
+- Can siphon dry
+- Replaced with P-trap
+
+**Trap Requirements:**
+- Within 24" of fixture (horizontally)
+- Proper venting to maintain seal
+- Accessible for cleaning
+
+### Vent System
+
+Allows air into drain system for proper flow and trap seal maintenance.
+
+**Vent Types:**
+
+**Individual Vent:**
+- Serves single fixture
+- Rises vertically from drain
+
+**Common Vent:**
+- Serves two fixtures on same level
+- Back-to-back arrangement
+
+**Wet Vent:**
+- Drain pipe serves as vent for upstream fixtures
+- Carefully sized
+
+**Loop Vent:**
+- Returns to stack before rising through roof
+- Islands and special situations
+
+**Air Admittance Valve (AAV):**
+- One-way valve admitting air
+- Code restrictions vary
+- Not a replacement for primary vent
+
+### Slope Requirements
+
+**Horizontal Drains:**
+- 1-1/4" to 3" pipe: 1/4" per foot
+- 4" and larger: 1/8" per foot minimum
+
+Too little slope: Solids accumulate
+Too much slope: Liquids outrun solids
+
+## Installation Best Practices
+
+### Support and Hanging
+
+**Horizontal Pipes:**
+- Copper: Every 6-10 feet
+- PEX: Every 32 inches (4 feet for cold)
+- PVC/ABS: Every 4 feet
+
+**Vertical Pipes:**
+- Support at each floor
+- Base support for risers
+
+### Connections
+
+**Copper:**
+- Solder (sweat) joints
+- Compression fittings
+- Push-fit (SharkBite)
+
+**PEX:**
+- Crimp rings
+- Expansion fittings
+- Push-fit
+
+**PVC/ABS:**
+- Solvent cement (glue)
+- Proper primer required for PVC
+
+### Penetrations
+
+**Fire Stopping:**
+Required where pipes penetrate fire-rated assemblies.
+
+**Sleeves:**
+Allow for pipe movement and thermal expansion.
+
+**Escutcheons:**
+Cover wall/floor penetrations neatly.
+
+## Testing
+
+### Water Supply
+
+**Pressure Test:**
+- Plug all outlets
+- Pressurize to 50-100 psi
+- Hold for specified time (often 15 minutes)
+- Check for leaks
+
+### DWV System
+
+**Water Test:**
+- Plug lowest drain
+- Fill system to flood level rim
+- 15-minute minimum
+- Check for leaks
+
+**Air Test:**
+- 5 psi air pressure
+- Hold for 15 minutes
+- Soap solution reveals leaks
+
+## Code Compliance
+
+### Common Code Requirements
+
+- Potable water protection (backflow prevention)
+- Trap and vent requirements
+- Proper pipe materials for application
+- Access panels for valves and cleanouts
+- Permit and inspection requirements
+
+### Backflow Prevention
+
+**Devices:**
+- Air gap: Most reliable (2× diameter above flood rim)
+- Atmospheric vacuum breaker
+- Pressure vacuum breaker
+- Reduced pressure zone (RPZ)
+
+**Required Locations:**
+- Hose bibbs
+- Sprinkler connections
+- Boiler makeup
+- Any cross-connection risk
+
+## References
+
+- International Plumbing Code (IPC)
+- Uniform Plumbing Code (UPC)
+- ASPE Plumbing Engineering Design Handbook
+- Woodson, R.D. "Plumber's Licensing Study Guide" (2012)

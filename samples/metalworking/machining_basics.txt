@@ -1,0 +1,262 @@
+# Machining Basics: Material Removal Fundamentals
+
+## Introduction
+
+Machining removes material to create precise parts through controlled cutting processes. Understanding cutting theory, machine tools, and proper technique produces accurate parts with good surface finish while maximizing tool life and productivity.
+
+## Cutting Theory
+
+### Chip Formation
+
+Material deforms and separates ahead of cutting edge through shear deformation.
+
+**Shear Plane:**
+Primary deformation zone where material separates. Angle affects forces and temperature.
+
+**Chip Types:**
+
+**Continuous:**
+- Ductile materials, sharp tools, appropriate speed
+- Best surface finish
+- Can cause birds-nest in lathe
+
+**Discontinuous:**
+- Brittle materials or aggressive cuts
+- Segmented chips
+- Rougher surface
+
+**Built-Up Edge (BUE):**
+- Material welds to tool edge
+- Poor surface finish
+- Increase speed or use coolant
+
+### Cutting Forces
+
+**Components:**
+- Cutting force (Fc): Main force opposing cutting direction
+- Feed force (Ff): Opposing feed direction
+- Radial force (Fr): Perpendicular to both
+
+**Specific Cutting Force (Kc):**
+Force per unit chip cross-section.
+- Steel: 150-300 kg/mm²
+- Aluminum: 40-80 kg/mm²
+- Cast iron: 100-200 kg/mm²
+
+### Heat Generation
+
+Most mechanical energy converts to heat:
+- 70-80% in chip
+- 10-20% in workpiece
+- 5-10% in tool
+
+**Managing Heat:**
+- Appropriate cutting speed
+- Coolant/lubricant
+- Tool material selection
+- Interrupted cuts for cooling
+
+## Machine Tools
+
+### Lathe
+
+Creates cylindrical parts by rotating workpiece against stationary tool.
+
+**Operations:**
+- Facing: Flat surface perpendicular to axis
+- Turning: Reduce diameter
+- Boring: Enlarge existing hole
+- Threading: Create screw threads
+- Parting: Cut off completed part
+- Knurling: Create textured surface
+
+**Key Parameters:**
+- Spindle speed (RPM): N = (CS × 12) / (π × D)
+  - CS = cutting speed (ft/min)
+  - D = diameter (inches)
+- Feed: inches per revolution
+- Depth of cut: radial depth
+
+### Milling Machine
+
+Rotating cutter removes material from stationary (or moving) workpiece.
+
+**Types:**
+
+**Vertical Mill:**
+- Spindle vertical
+- Face mills, end mills, drills
+- Most common in job shops
+
+**Horizontal Mill:**
+- Spindle horizontal
+- Slab mills, side cutters
+- Heavy material removal
+
+**Operations:**
+- Face milling: Flat surface perpendicular to spindle
+- Peripheral (slab) milling: Surface parallel to spindle
+- End milling: Vertical surfaces, pockets, slots
+- Drilling/boring: Holes
+- Slotting: Grooves and keyways
+
+**Key Parameters:**
+- Spindle speed (RPM): From cutting speed
+- Feed rate (IPM): = Feed per tooth × Teeth × RPM
+- Depth of cut
+- Width of cut (engagement)
+
+### Drilling
+
+Creates cylindrical holes through material.
+
+**Drill Types:**
+- Twist drill: General purpose
+- Spade drill: Large holes
+- Gun drill: Deep holes
+- Core drill: Enlarge existing holes
+- Center drill: Starting holes
+
+**Parameters:**
+- Point angle: 118° general, 135° harder materials
+- Lip clearance: 10-15° typical
+- Cutting speed: Lower than turning (poor chip clearance)
+- Feed: 0.001-0.010 ipr depending on size
+
+### Grinding
+
+Abrasive removal for precision and surface finish.
+
+**Types:**
+- Surface grinding: Flat surfaces
+- Cylindrical grinding: OD and ID of cylinders
+- Centerless grinding: High production OD
+- Tool and cutter grinding: Sharpen cutting tools
+
+**Wheel Specification:**
+Example: 32A46-H8VBE
+
+- 32A: Abrasive type (aluminum oxide)
+- 46: Grit size (medium)
+- H: Hardness grade (medium)
+- 8: Structure (open)
+- VBE: Bond type (vitrified)
+
+## Cutting Tools
+
+### Tool Materials
+
+**High Speed Steel (HSS):**
+- Tough, can withstand interrupted cuts
+- Limited speed capability
+- Economical for job shops
+
+**Carbide:**
+- Much harder, higher speeds
+- Brittle, needs rigid setup
+- Most common for production
+
+**Ceramics:**
+- Very hard, high temperature capability
+- Very brittle
+- Finishing hard materials
+
+**CBN (Cubic Boron Nitride):**
+- Second hardest material
+- Hardened steel, cast iron
+- Very expensive
+
+**Diamond (PCD):**
+- Hardest material
+- Non-ferrous, abrasive materials
+- Cannot cut steel (carbon affinity)
+
+### Insert Geometry
+
+**Rake Angle:**
+- Positive: Lower forces, sharper edge, weaker
+- Negative: Stronger edge, higher forces
+
+**Relief/Clearance:**
+Prevents rubbing below cutting edge.
+
+**Nose Radius:**
+- Larger: Better surface finish, higher forces
+- Smaller: Finer features, weaker
+
+### Tool Wear
+
+**Flank Wear:**
+Wear on clearance face from abrasion.
+- Monitor wear land width
+- Steady, predictable
+
+**Crater Wear:**
+Depression on rake face from diffusion/adhesion.
+- High temperature issue
+- Weakens cutting edge
+
+**Notch Wear:**
+Localized wear at depth of cut line.
+- Work hardened layer
+- Vary depth of cut
+
+**Built-Up Edge:**
+Material adhered to cutting edge.
+- Increase speed or use coolant
+- More aggressive coating
+
+## Cutting Parameters
+
+### Cutting Speed
+
+Surface speed of tool relative to workpiece (SFM or m/min).
+
+**Recommended Speeds (HSS/Carbide):**
+| Material | HSS (SFM) | Carbide (SFM) |
+|----------|-----------|---------------|
+| Mild steel | 60-100 | 300-700 |
+| Stainless | 30-50 | 100-300 |
+| Aluminum | 200-300 | 800-2000 |
+| Cast iron | 50-80 | 200-500 |
+| Titanium | 30-50 | 100-200 |
+
+### Feed Rate
+
+How quickly tool advances through material.
+
+**Turning:** inches per revolution (ipr)
+**Milling:** inches per minute (ipm) or per tooth (ipt)
+
+### Depth of Cut
+
+Material removed in single pass.
+- Roughing: Maximize (within machine/tool limits)
+- Finishing: Minimize for surface finish
+
+### Metal Removal Rate (MRR)
+
+MRR = Speed × Feed × Depth of Cut
+
+Higher MRR = Higher productivity (but balance against tool life and finish).
+
+## Coolant and Lubrication
+
+**Functions:**
+- Remove heat
+- Lubricate cutting zone
+- Flush chips
+- Protect workpiece from corrosion
+
+**Types:**
+- Soluble oil (emulsion): General purpose
+- Synthetic: Clean, good cooling
+- Semi-synthetic: Compromise
+- Straight oil: Best lubrication, fire risk
+
+## References
+
+- Machinery's Handbook, 31st Edition
+- ASM Handbook Vol. 16: Machining
+- DeGarmo, E.P. "Materials and Processes in Manufacturing" (2011)
+- Sandvik Coromant Technical Guide

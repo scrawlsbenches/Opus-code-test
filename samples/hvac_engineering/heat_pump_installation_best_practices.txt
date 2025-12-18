@@ -1,0 +1,324 @@
+# Heat Pump Installation: Best Practices Guide
+
+## Introduction
+
+Proper heat pump installation is critical for system performance, efficiency, longevity, and customer satisfaction. Poor installation can reduce efficiency by 25% or more and lead to premature failure. This guide covers best practices for residential and light commercial installations.
+
+## Pre-Installation Assessment
+
+### Site Evaluation
+
+**Outdoor Unit Location:**
+- Adequate clearances (manufacturer specs)
+- Away from bedrooms (noise)
+- Good drainage
+- Protected from snow/ice accumulation
+- Not blocked by vegetation or structures
+- Access for service
+
+**Indoor Unit Considerations:**
+- Existing ductwork condition (if applicable)
+- Electrical panel capacity
+- Thermostat location
+- Return air pathways
+- Refrigerant line routing
+
+### Load Calculation
+
+**Manual J Required:**
+- No rules of thumb
+- Room-by-room analysis
+- Account for insulation, windows, infiltration
+- Include internal gains
+
+**Avoid Oversizing:**
+- Shorter run times
+- Poor humidity control
+- Reduced efficiency
+- Equipment wear
+
+**Heat Pump Sizing:**
+- Balance point analysis
+- Backup heat requirements
+- Consider variable-speed for range
+
+### Equipment Selection
+
+**Match to Load:**
+- Size at design conditions
+- Variable-speed for part-load efficiency
+- Consider cold climate rated units
+
+**System Matching:**
+- AHRI-certified combinations
+- Matched indoor and outdoor
+- Proper refrigerant charge specs
+
+## Outdoor Unit Installation
+
+### Pad and Mounting
+
+**Placement:**
+- Level surface essential
+- Concrete pad or composite pads
+- Raised above potential snow accumulation
+- Vibration isolation
+
+**Clearances:**
+- Minimum 24" on service side
+- 18"+ from walls (varies by model)
+- 48"+ vertical clearance
+- No recirculation obstructions
+
+### Electrical Connections
+
+**Disconnect:**
+- Within sight of unit
+- Proper amperage rating
+- Weather-resistant enclosure
+
+**Wiring:**
+- Correct wire gauge for load and distance
+- Proper conduit and fittings
+- Weatherproof connections
+
+### Refrigerant Lines
+
+**Line Set Installation:**
+- Proper insulation on suction line
+- Support every 6 feet (horizontal), 10 feet (vertical)
+- Avoid kinks and sharp bends
+- Proper brazing techniques
+- Nitrogen purge during brazing
+
+**Routing:**
+- Protect from physical damage
+- UV-resistant insulation or covering
+- Proper penetration sealing
+- Service access considerations
+
+## Indoor Unit Installation
+
+### Air Handler/Furnace
+
+**Location:**
+- Accessible for service
+- Adequate combustion air (if applicable)
+- Condensate drainage possible
+- Sound considerations
+
+**Installation:**
+- Level installation
+- Proper connections (gas, electric, refrigerant)
+- Sealed cabinet
+- Vibration isolation
+
+### Coil Installation
+
+**Retrofit Considerations:**
+- Airflow direction (A-coil vs. N-coil)
+- Drain pan arrangement
+- Proper refrigerant distribution
+- Cabinet modifications
+
+**Condensate Management:**
+- Primary and secondary drains
+- Proper trap depth
+- Overflow protection
+- Accessible cleanout
+
+### Ductwork
+
+**Assessment:**
+- Existing duct condition
+- Sizing for heat pump airflow (typically higher than AC)
+- Leakage testing
+- Insulation condition
+
+**Modifications:**
+- Seal all connections (mastic)
+- Add capacity if undersized
+- Balance for room-by-room comfort
+- Return air adequacy
+
+## Refrigerant System
+
+### Evacuation
+
+**Proper Procedure:**
+- Use micron gauge (not compound gauge)
+- Target: 500 microns or below
+- Hold for 10+ minutes
+- If rising, find leak
+
+**Equipment:**
+- Two-stage vacuum pump
+- Large vacuum hoses
+- Core removal tools
+- Clean hoses only
+
+### Charging
+
+**Pre-Charged Systems:**
+- Verify line set length matches charge
+- Add refrigerant per manufacturer specs for additional length
+
+**Field Charging:**
+- Superheat method (fixed orifice)
+- Subcooling method (TXV/EXV)
+- Manufacturer-specific procedures
+- Weigh in refrigerant precisely
+
+**Verification:**
+- Operating pressures
+- Superheat and subcooling
+- Temperature differential
+- Amp draw
+
+### Leak Testing
+
+**Methods:**
+- Electronic leak detector
+- Bubble solution
+- Ultrasonic (large leaks)
+- Standing pressure test
+
+**Critical Joints:**
+- Field-made connections
+- Service valve stems
+- Flare fittings
+- Braze joints
+
+## Electrical Installation
+
+### Sizing
+
+**Per NEC Requirements:**
+- Branch circuit: 125% of MCA
+- Disconnect: 115% of MCA minimum
+- Wire size: Per distance and load
+
+**Heat Pump Specific:**
+- May require larger service
+- Backup heat loads
+- Consider demand management
+
+### Controls
+
+**Thermostat:**
+- Heat pump compatible
+- Staging control (backup heat)
+- Emergency heat function
+- Outdoor temperature lockout (if applicable)
+
+**Defrost:**
+- Verify defrost operation
+- Check auxiliary heat interlock
+- Timer or demand based
+
+### Communication
+
+**Modern Systems:**
+- Communicating thermostats
+- Variable-speed coordination
+- Diagnostics and alerts
+- Commissioning requirements
+
+## Startup and Commissioning
+
+### Pre-Start Checklist
+
+**Verify:**
+- All electrical connections tight
+- Refrigerant charge complete
+- Condensate drain clear
+- Filters installed
+- All panels secured
+- Ductwork connected
+
+### Startup Procedure
+
+1. Verify power off, check voltages
+2. Energize control circuit
+3. Allow crankcase heater time (if applicable)
+4. Start in cooling mode
+5. Check operation and readings
+6. Switch to heating mode
+7. Verify defrost operation
+8. Test emergency heat
+
+### Performance Verification
+
+**Measurements:**
+- Supply and return air temperatures
+- Refrigerant pressures
+- Superheat and subcooling
+- Amp draw
+- Airflow (where measurable)
+
+**Documentation:**
+- Record all readings
+- Compare to manufacturer specs
+- Note any concerns
+- Provide to customer
+
+## Customer Education
+
+### Operation
+
+**Explain:**
+- Thermostat operation
+- Heat pump vs. emergency heat
+- Normal operation sounds
+- Efficiency expectations
+
+**Seasonal:**
+- No need to lower setpoint drastically
+- Avoid emergency heat override
+- Filter maintenance schedule
+
+### Maintenance
+
+**Homeowner Tasks:**
+- Filter changes
+- Keep outdoor unit clear
+- Condensate monitoring
+- Unusual sounds/operation
+
+**Professional Service:**
+- Annual maintenance recommendations
+- Warranty requirements
+- Service agreement options
+
+## Common Installation Errors
+
+### Sizing Issues
+- Oversized equipment
+- Inadequate backup heat
+- Duct system mismatch
+
+### Refrigerant Problems
+- Improper charge
+- Line set restrictions
+- Poor brazing
+- Inadequate evacuation
+
+### Airflow Issues
+- Restricted return air
+- Undersized ductwork
+- Dirty filters at startup
+- Register adjustments not made
+
+### Electrical
+- Undersized circuits
+- Improper grounding
+- Control wiring errors
+- Thermostat compatibility
+
+## References
+
+- ACCA Quality Installation Standards (ANSI/ACCA 5)
+- Manufacturer installation manuals
+- AHRI certification guidelines
+- EPA Section 608 regulations
+- NEC electrical requirements

@@ -1,0 +1,225 @@
+# Photography Fundamentals: Mastering Exposure
+
+## Introduction
+
+Exposure is the foundation of photography—the amount of light that reaches the camera sensor or film. Understanding exposure enables creative control over image brightness, depth of field, motion rendering, and overall image quality.
+
+## The Exposure Triangle
+
+Three interdependent variables control exposure:
+
+### Aperture
+
+The adjustable opening in the lens that controls light passage.
+
+**F-Stop Scale:**
+f/1.4 → f/2 → f/2.8 → f/4 → f/5.6 → f/8 → f/11 → f/16 → f/22
+
+**Properties:**
+- Each full stop halves/doubles light
+- Lower f-number = larger opening = more light
+- Aperture controls depth of field
+
+**Depth of Field:**
+Range of acceptable sharpness in image.
+- Wide aperture (f/1.4): Shallow DoF, blurred background
+- Narrow aperture (f/16): Deep DoF, front-to-back sharpness
+
+**Creative Applications:**
+- Portraits: Wide aperture isolates subject
+- Landscapes: Small aperture for maximum sharpness
+- Product: Medium aperture balances sharpness and lighting
+
+### Shutter Speed
+
+Duration the sensor is exposed to light.
+
+**Scale (in seconds):**
+30" → 15" → 8" → 4" → 2" → 1" → 1/2 → 1/4 → 1/8 → 1/15 → 1/30 → 1/60 → 1/125 → 1/250 → 1/500 → 1/1000 → 1/2000 → 1/4000 → 1/8000
+
+**Properties:**
+- Each full stop halves/doubles exposure time
+- Fast shutter: Freezes motion
+- Slow shutter: Motion blur
+
+**Guidelines:**
+- Handheld minimum: 1/(focal length) rule
+  - 50mm lens → minimum 1/50s
+  - 200mm lens → minimum 1/200s
+- Sports/action: 1/500s or faster
+- Panning: 1/30s to 1/60s with camera movement
+
+**Creative Applications:**
+- Freeze action: 1/1000s+
+- Waterfalls (silky): 1/4s to 2s with tripod
+- Star trails: Minutes to hours
+- Light painting: 30s+ in darkness
+
+### ISO
+
+Sensor sensitivity to light.
+
+**Scale:**
+ISO 100 → 200 → 400 → 800 → 1600 → 3200 → 6400 → 12800 → 25600
+
+**Properties:**
+- Each doubling = one stop more sensitivity
+- Higher ISO = more noise/grain
+- Modern cameras: Usable to ISO 6400+ for some
+
+**Base ISO:**
+Lowest native ISO (typically 100 or 200) delivers best quality.
+
+**Trade-offs:**
+- Low ISO: Cleanest images, needs more light
+- High ISO: Works in low light, increased noise
+
+## Metering
+
+The camera measures light to determine exposure.
+
+### Metering Modes
+
+**Matrix/Evaluative:**
+- Analyzes entire frame
+- Compares to database of scenes
+- Best for general use
+
+**Center-Weighted:**
+- Emphasizes center 60-80% of frame
+- Good for portraits with cluttered backgrounds
+
+**Spot:**
+- Measures small area (1-5% of frame)
+- Precise control
+- Requires understanding of tonal values
+
+### Exposure Compensation
+
+Adjust metered exposure up or down.
+- +EV: Brighter (white subjects, backlit scenes)
+- -EV: Darker (black subjects, preserve highlights)
+
+**Guideline:**
+Meter reads for middle gray (18%). Override for:
+- Snow scenes: +1 to +2 EV
+- Black subjects: -1 to -2 EV
+- Silhouettes: -2 to -3 EV
+
+## The Zone System
+
+Ansel Adams' systematic approach to exposure and development.
+
+**11 Zones (0-X):**
+| Zone | Description | Example |
+|------|-------------|---------|
+| 0 | Pure black | Shadows beyond capture |
+| I | Near black | Darkest shadows with texture |
+| II | Deep shadows | Shadow detail begins |
+| III | Dark | Average dark materials |
+| IV | Dark middle | Dark foliage, shadows |
+| V | Middle gray | 18% gray card |
+| VI | Light middle | Average Caucasian skin |
+| VII | Light | Light surfaces with texture |
+| VIII | Bright | Textured whites |
+| IX | Near white | Brightest with detail |
+| X | Pure white | Light sources, specular highlights |
+
+**Application:**
+1. Meter important shadow area
+2. Place it on appropriate zone
+3. Develop to control highlight zone
+
+## Histograms
+
+Graph showing distribution of tones.
+
+**Reading Histograms:**
+- X-axis: Brightness (black to white)
+- Y-axis: Pixel count at each brightness
+- Left-clipped: Lost shadow detail
+- Right-clipped: Blown highlights
+
+**Ideal Histogram:**
+Depends on scene. High-key scenes skew right; low-key skew left. Avoid clipping in areas with important detail.
+
+**RGB Histograms:**
+Separate channels reveal color clipping that luminance histogram misses.
+
+## Dynamic Range
+
+Range of brightness a sensor can capture.
+
+**Typical Ranges:**
+- Consumer cameras: 10-12 stops
+- Professional cameras: 14-15 stops
+- Human eye: ~20+ stops (adaptation over time)
+
+**Managing High Dynamic Range:**
+
+**Expose to the Right (ETTR):**
+Maximize exposure without clipping highlights. More data in bright tones reduces noise in shadows.
+
+**HDR Techniques:**
+- Bracketing: Multiple exposures
+- Software merge: Combine exposures
+- Tone mapping: Compress range for display
+
+**Graduated ND Filters:**
+Reduce sky brightness while maintaining foreground exposure.
+
+## Practical Scenarios
+
+### Bright Daylight (Sunny 16 Rule)
+
+f/16 at 1/ISO for frontlit subjects in bright sun.
+- ISO 100: f/16, 1/100s
+- Adjust for conditions: +1 stop for overcast, etc.
+
+### Indoor Available Light
+
+Challenge: Low light, mixed sources.
+- Wide aperture (f/1.4-f/2.8)
+- Higher ISO (800-3200)
+- Stable support or fast shutter
+
+### Night Photography
+
+- Tripod essential
+- Low ISO for quality
+- Long exposures (15-30s for stars)
+- Manual focus (AF struggles in dark)
+
+### Fast Action
+
+- Shutter speed priority
+- Higher ISO as needed
+- Continuous focus mode
+- Burst shooting
+
+## Common Problems
+
+**Underexposure:**
+- Increase ISO
+- Open aperture
+- Slow shutter speed
+- Add flash or reflector
+
+**Overexposure:**
+- Decrease ISO
+- Close aperture
+- Faster shutter speed
+- ND filter
+
+**Motion Blur (unintended):**
+- Faster shutter speed
+- Image stabilization
+- Tripod or support
+- Flash to freeze subject
+
+## References
+
+- Adams, A. "The Negative" (1981)
+- Peterson, B. "Understanding Exposure" (2016)
+- Freeman, M. "The Photographer's Eye" (2007)
+- Cambridge in Colour: Digital Camera Tutorials

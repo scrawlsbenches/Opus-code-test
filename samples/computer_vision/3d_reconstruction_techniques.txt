@@ -1,0 +1,246 @@
+# 3D Reconstruction from Images
+
+## Introduction
+
+3D reconstruction creates geometric models of scenes or objects from 2D images. Applications span robotics, augmented reality, cultural heritage preservation, medical imaging, and visual effects.
+
+## Stereo Vision
+
+### Binocular Stereo
+
+**Geometry:**
+Two cameras with known relative pose (baseline b, focal length f).
+
+**Disparity:** d = x_L - x_R (horizontal pixel offset between views)
+
+**Depth:** Z = (b × f) / d
+
+### Stereo Matching Pipeline
+
+1. **Rectification:** Warp images so epipolar lines are horizontal
+2. **Matching Cost:** Compute similarity along scanlines
+3. **Cost Aggregation:** Smooth costs over neighborhoods
+4. **Disparity Selection:** Winner-take-all or optimization
+5. **Refinement:** Sub-pixel interpolation, filtering
+
+### Matching Costs
+
+**SAD (Sum of Absolute Differences):**
+C(x,y,d) = Σ |I_L(x+i, y+j) - I_R(x+i-d, y+j)|
+
+**Census Transform:**
+Encodes local intensity ordering as binary string. Robust to illumination changes.
+
+**Normalized Cross-Correlation:**
+Handles linear intensity variations.
+
+### Semi-Global Matching (SGM)
+
+Aggregates costs along multiple scanlines (8 or 16 directions):
+
+S(p,d) = C(p,d) + min_i[S(p-r, d+i) + P(i)]
+
+Where P(i) penalizes disparity changes:
+- P1 for |i|=1 (small discontinuity)
+- P2 for |i|>1 (large discontinuity)
+
+### Deep Stereo
+
+**PSMNet:**
+- Spatial pyramid pooling
+- 3D cost volume
+- 3D CNN regularization
+
+**RAFT-Stereo:**
+- Iterative refinement
+- All-pairs correlation volume
+- GRU-based updates
+
+## Structure from Motion (SfM)
+
+### Overview
+
+Recover 3D structure and camera poses from multiple unordered images.
+
+### Pipeline
+
+1. **Feature Extraction:** SIFT, ORB, SuperPoint
+2. **Feature Matching:** Brute-force or approximate (FLANN)
+3. **Geometric Verification:** RANSAC + essential/fundamental matrix
+4. **Incremental Reconstruction:**
+   - Initialize with two-view reconstruction
+   - Add images one at a time
+   - Triangulate new points
+5. **Bundle Adjustment:** Joint optimization of all cameras and points
+
+### Bundle Adjustment
+
+Minimize reprojection error:
+min Σ_i Σ_j ||x_ij - π(C_i, X_j)||²
+
+Where:
+- x_ij: Observed 2D point
+- π(C_i, X_j): Projection of 3D point X_j in camera C_i
+
+**Optimization:**
+- Sparse Levenberg-Marquardt
+- Schur complement for efficiency
+- Ceres, g2o, GTSAM libraries
+
+### COLMAP
+
+State-of-the-art SfM/MVS pipeline:
+1. Feature extraction and matching
+2. Incremental SfM
+3. Dense reconstruction via patch-match stereo
+4. Depth map fusion
+
+## Multi-View Stereo (MVS)
+
+### Depth Map Methods
+
+**PatchMatch Stereo:**
+- Random initialization
+- Spatial propagation of good hypotheses
+- Random refinement
+- View propagation
+
+**Plane-Sweep:**
+- Sample depth hypotheses uniformly
+- Aggregate costs from multiple views
+- Select best depth per pixel
+
+### Volumetric Methods
+
+**Voxel-Based:**
+- Divide space into voxels
+- Photo-consistency voting
+- Space carving variants
+
+**TSDF (Truncated Signed Distance Function):**
+- Each voxel stores signed distance to surface
+- Fusion from multiple depth maps
+- Marching cubes for mesh extraction
+
+### Point Cloud Methods
+
+**PMVS (Patch-based MVS):**
+- Sparse feature matching
+- Patch expansion and filtering
+- Dense coverage through iteration
+
+### Deep MVS
+
+**MVSNet:**
+- Build 3D cost volume via homography warping
+- 3D CNN regularization
+- Depth regression
+
+**Cascade MVSNet:**
+- Coarse-to-fine processing
+- Memory efficient
+
+## Neural Radiance Fields (NeRF)
+
+### Representation
+
+Neural network maps (x, y, z, θ, φ) → (RGB, σ)
+- Position (x, y, z)
+- Viewing direction (θ, φ)
+- Color (RGB) and density (σ)
+
+### Volume Rendering
+
+C(r) = ∫ T(t) × σ(r(t)) × c(r(t), d) dt
+
+Where T(t) = exp(-∫σ(r(s))ds) is transmittance.
+
+**Discrete Approximation:**
+C = Σ T_i × (1 - exp(-σ_i × δ_i)) × c_i
+
+### Training
+
+- Minimize photometric loss between rendered and observed images
+- Positional encoding for high-frequency details
+- Hierarchical sampling (coarse + fine networks)
+
+### Extensions
+
+**Mip-NeRF:** Anti-aliasing via cone tracing
+**NeRF++:** Unbounded scenes
+**Instant-NGP:** Hash encoding for fast training
+**3D Gaussian Splatting:** Explicit representation, real-time rendering
+
+## Depth from Single Images
+
+### Monocular Depth Estimation
+
+**MiDaS:**
+- Trained on diverse datasets
+- Affine-invariant loss
+- Strong generalization
+
+**DPT (Dense Prediction Transformer):**
+- Vision Transformer backbone
+- Multi-scale features
+- State-of-the-art accuracy
+
+### Depth Completion
+
+Fill sparse depth (e.g., LiDAR) using image guidance:
+- Encoder-decoder networks
+- Sparse convolutions
+- Confidence propagation
+
+## SLAM (Simultaneous Localization and Mapping)
+
+### Visual SLAM
+
+**Feature-Based (ORB-SLAM):**
+- Feature extraction and tracking
+- Local mapping and bundle adjustment
+- Loop closure with bag-of-words
+
+**Direct Methods (LSD-SLAM, DSO):**
+- Photometric error minimization
+- Semi-dense or sparse depth
+- No feature extraction
+
+### Dense SLAM
+
+**DTAM:** Dense tracking and mapping
+**ElasticFusion:** Surfel-based, non-rigid deformation
+**KinectFusion:** TSDF fusion for RGB-D
+
+## Point Cloud Processing
+
+### Registration
+
+**ICP (Iterative Closest Point):**
+1. Find nearest neighbors
+2. Compute transformation
+3. Apply and iterate
+
+**Feature-Based:**
+- Extract keypoints (ISS, Harris 3D)
+- Describe (FPFH, SHOT)
+- Match and estimate transformation
+
+### Deep Point Cloud Processing
+
+**PointNet:**
+- Direct processing of unordered point sets
+- Per-point MLP + global max pooling
+- Transformation networks for invariance
+
+**PointNet++:**
+- Hierarchical learning
+- Local feature aggregation
+- Set abstraction layers
+
+## References
+
+- Hartley, R. and Zisserman, A. "Multiple View Geometry" (2004)
+- Szeliski, R. "Computer Vision: Algorithms and Applications" (2022)
+- Schönberger, J.L. "COLMAP" documentation
+- Mildenhall, B. et al. "NeRF" (ECCV 2020)

@@ -1,0 +1,269 @@
+# Photography Composition: Visual Design Principles
+
+## Introduction
+
+Composition—the arrangement of visual elements within the frame—transforms snapshots into compelling images. While technical exposure captures light, composition captures attention and communicates meaning.
+
+## Fundamental Principles
+
+### Rule of Thirds
+
+Divide frame into nine equal parts with two horizontal and two vertical lines. Place key elements along lines or at intersections (power points).
+
+**Applications:**
+- Horizon on upper or lower third, not center
+- Subject's eyes at upper intersection
+- Leading elements at lower third entering frame
+
+**When to Break:**
+- Symmetrical subjects (reflections, architecture)
+- Emphasizing isolation or confrontation (center)
+- Dynamic tension through unconventional placement
+
+### Golden Ratio
+
+Phi (φ ≈ 1.618) creates naturally pleasing proportions.
+
+**Golden Spiral:**
+Logarithmic spiral guides eye from outside to focal point.
+
+**Golden Triangles:**
+Diagonal across frame with perpendiculars creating triangular areas.
+
+**Application:**
+Place key elements where spiral tightens or along triangle divisions.
+
+### Visual Weight and Balance
+
+Elements have "weight" based on:
+- Size: Larger = heavier
+- Color: Bright/warm = heavier than muted/cool
+- Contrast: High contrast = heavier
+- Complexity: Detailed = heavier
+- Position: Elements at edges feel heavier
+
+**Balance Types:**
+- Symmetrical: Equal weight both sides
+- Asymmetrical: Different elements balancing
+- Radial: Elements around central point
+
+### Figure-Ground Relationship
+
+Distinct separation between subject (figure) and background (ground).
+
+**Techniques:**
+- Tonal contrast
+- Color contrast
+- Depth of field separation
+- Framing
+- Light/shadow
+
+## Leading Lines
+
+Lines direct viewer's eye through the image.
+
+**Types:**
+- Straight: Roads, fences, architecture
+- Curved: Rivers, paths, S-curves
+- Diagonal: Dynamic energy, tension
+- Converging: Depth, perspective
+
+**Best Practices:**
+- Lead TO subject, not away from frame
+- Enter from corners for maximum effect
+- Avoid leading to empty space or frame edge
+
+### Implied Lines
+
+Suggested rather than physical:
+- Eye direction (where subject looks)
+- Motion direction
+- Gesture and body language
+- Alignment of multiple elements
+
+## Framing
+
+Use scene elements to create frame within frame.
+
+**Natural Frames:**
+- Windows and doorways
+- Arches and tunnels
+- Tree branches
+- Overhangs
+
+**Benefits:**
+- Creates depth layers
+- Focuses attention
+- Provides context
+- Adds visual interest
+
+**Considerations:**
+- Frame should complement, not compete
+- Consistent with subject mood
+- Proper exposure for both frame and subject
+
+## Depth and Layers
+
+Create three-dimensional feeling in two-dimensional image.
+
+### Foreground Interest
+
+Include compelling foreground element:
+- Anchors composition
+- Creates depth
+- Provides scale
+- Adds storytelling element
+
+### Layered Composition
+
+**Three-Layer Structure:**
+1. Foreground: Entry point, context
+2. Middle ground: Main subject
+3. Background: Environment, atmosphere
+
+### Depth Cues
+
+- Size diminution (smaller = farther)
+- Overlap (obscured = behind)
+- Atmospheric perspective (haze = distance)
+- Linear perspective (convergence)
+- Texture gradient (detail decreases with distance)
+
+## Patterns and Repetition
+
+### Pattern Photography
+
+Regular repetition creates visual rhythm:
+- Architecture: Windows, bricks, tiles
+- Nature: Leaves, waves, scales
+- Urban: Crowds, products, vehicles
+
+### Breaking Patterns
+
+Interruption creates focal point:
+- Color difference
+- Size anomaly
+- Direction change
+- Missing element
+
+## Negative Space
+
+Empty area around subject.
+
+**Functions:**
+- Emphasizes subject
+- Creates mood (isolation, tranquility)
+- Provides breathing room
+- Simplifies composition
+
+**Guidelines:**
+- More negative space = greater emphasis
+- Direction of negative space matters (subject "looking into" space)
+- High key (white) vs. low key (black) effects
+
+## Symmetry and Asymmetry
+
+### Symmetry
+
+Mirror-like balance creates:
+- Harmony and calm
+- Formal, structured feeling
+- Emphasis on pattern
+
+**Types:**
+- Vertical: Left-right reflection
+- Horizontal: Top-bottom reflection
+- Radial: Around central point
+
+### Asymmetry
+
+Deliberate imbalance creates:
+- Dynamic tension
+- Visual interest
+- Natural, organic feeling
+
+## Color Composition
+
+### Color Relationships
+
+**Complementary:** Opposite on color wheel (high contrast)
+**Analogous:** Adjacent colors (harmony)
+**Triadic:** Three evenly spaced (vibrant)
+**Monochromatic:** Single hue variations (unity)
+
+### Color Effects
+
+- Warm colors advance; cool colors recede
+- Saturated colors attract attention
+- Color isolation draws the eye
+- Color temperature affects mood
+
+## Simplification
+
+### Remove Distractions
+
+- Change angle to eliminate background clutter
+- Move closer to exclude unnecessary elements
+- Use depth of field to blur distractions
+- Wait for people to leave frame
+
+### One Clear Subject
+
+Every strong image answers: "What is this photo of?"
+
+**Test:** Can you describe the subject in one sentence?
+
+## Perspective
+
+### Height Variations
+
+**Eye Level:** Neutral, relatable
+**Low Angle:** Power, monumentality
+**High Angle:** Overview, vulnerability
+**Ground Level:** Intimate, unique view
+
+### Distance Variations
+
+**Wide:** Context, environment
+**Medium:** Standard view
+**Tight:** Detail, emotion, isolation
+
+## Advanced Techniques
+
+### Juxtaposition
+
+Meaningful contrast between elements:
+- Old/new
+- Large/small
+- Natural/artificial
+- Static/dynamic
+
+### Visual Tension
+
+Deliberately uncomfortable elements:
+- Off-center subjects
+- Partial frames (cropping subject)
+- Tilted horizons (Dutch angle)
+- Extreme negative space
+
+### Gestalt Principles
+
+- Proximity: Close elements group
+- Similarity: Like elements relate
+- Continuity: Eye follows lines
+- Closure: Mind completes incomplete forms
+
+## Developing Your Eye
+
+1. Study great photographs and paintings
+2. Shoot more, edit ruthlessly
+3. Review and critique own work
+4. Practice with constraints (one lens, one subject)
+5. Sketch compositions before shooting
+
+## References
+
+- Freeman, M. "The Photographer's Eye" (2007)
+- Zakia, R.D. "Perception and Imaging" (2013)
+- Präkel, D. "Composition" (2006)
+- Magnum Photos: Master compositions

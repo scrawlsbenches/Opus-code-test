@@ -1,0 +1,229 @@
+# Philosophy of Religion: Central Questions and Arguments
+
+## Introduction
+
+Philosophy of religion examines fundamental questions about religious belief, practice, and experience using philosophical methods. It addresses the nature and existence of God, the problem of evil, religious language, faith and reason, and the epistemology of religious belief.
+
+## Arguments for God's Existence
+
+### Cosmological Arguments
+
+**Argument from First Cause (Kalam):**
+1. Whatever begins to exist has a cause
+2. The universe began to exist
+3. Therefore, the universe has a cause
+
+**Support for Premise 2:**
+- Big Bang cosmology
+- Impossibility of actual infinite past
+- Thermodynamic considerations
+
+**Criticisms:**
+- Why can't the universe be uncaused?
+- What caused God?
+- Quantum mechanics suggests causeless events
+
+**Leibnizian Version:**
+1. Everything that exists has an explanation (in necessity or external cause)
+2. The universe exists
+3. The explanation of the universe is either in its own necessity or external cause
+4. The universe is not necessary
+5. Therefore, the universe has an external cause
+
+### Teleological Arguments
+
+**Design Argument (Paley):**
+Finding a watch on a heath, we infer a designer. The complexity of nature suggests a cosmic designer.
+
+**Fine-Tuning Argument:**
+Physical constants appear precisely calibrated for life:
+- Gravitational constant
+- Strong nuclear force
+- Cosmological constant
+
+P(fine-tuning | design) >> P(fine-tuning | chance)
+
+**Criticisms:**
+- Anthropic principle: We can only observe life-permitting universes
+- Multiverse hypothesis: Enough universes guarantee some with life
+- Selection effect: We cannot observe our non-existence
+
+### Ontological Arguments
+
+**Anselm's Version:**
+1. God is defined as "that than which nothing greater can be conceived"
+2. It is greater to exist in reality than merely in understanding
+3. If God exists only in understanding, something greater could be conceived
+4. Therefore, God exists in reality
+
+**Modal Version (Plantinga):**
+1. Possibly, a maximally great being exists
+2. If possibly necessary, then necessary (S5 modal logic)
+3. Therefore, a maximally great being necessarily exists
+
+**Criticisms:**
+- "Exists" is not a predicate (Kant)
+- Parodies: Perfect island argument (Gaunilo)
+- Why accept the possibility premise?
+
+### Moral Arguments
+
+**Argument from Moral Realism:**
+1. Objective moral facts exist
+2. The best explanation of moral facts is God
+3. Therefore, God exists
+
+**Argument from Moral Knowledge:**
+How could natural selection produce reliable moral intuitions unless guided?
+
+## Arguments Against God's Existence
+
+### Problem of Evil
+
+**Logical Problem:**
+1. God is omnipotent (can do anything)
+2. God is omniscient (knows everything)
+3. God is perfectly good (wants to eliminate evil)
+4. Evil exists
+5. (1-4) are inconsistent
+
+**Free Will Defense (Plantinga):**
+It is possible that:
+- Free will is valuable
+- Creating free beings who always choose good is impossible
+- The world with free will and some evil is better than world without free will
+
+**Evidential Problem (Rowe):**
+The amount and distribution of suffering is strong evidence against God's existence.
+
+**Theodicies:**
+- Soul-making (Hick): Suffering builds character
+- Greater good: Evils serve higher purposes
+- Privation theory: Evil is absence of good, not created
+- Eschatological: Ultimate redemption justifies present suffering
+
+### Divine Hiddenness
+
+**Schellenberg's Argument:**
+1. If God exists, reasonable nonbelief would not occur
+2. Reasonable nonbelief occurs
+3. Therefore, God does not exist
+
+**Responses:**
+- God has reasons for hiddenness
+- Faith requires some hiddenness
+- Nonbelief is never truly reasonable
+
+### Arguments from Incoherence
+
+Can God create a stone too heavy to lift?
+- Omnipotence doesn't include logical impossibilities
+
+Is God's necessary existence coherent?
+- Debates over modal logic and necessity
+
+## Religious Epistemology
+
+### Faith and Reason
+
+**Evidentialism:**
+Belief proportioned to evidence. Religious belief requires sufficient evidence.
+
+**Fideism:**
+Faith transcends or is independent of reason.
+
+**Reformed Epistemology (Plantinga):**
+Religious belief can be properly basic—warranted without inference from other beliefs.
+
+### Religious Experience
+
+**Arguments from Religious Experience:**
+1. Many people have experiences of the divine
+2. The best explanation is God's existence
+
+**Criticisms:**
+- Naturalistic explanations (psychology, neurology)
+- Conflicting reports across religions
+- Unreliability of subjective experience
+
+**Principle of Credulity (Swinburne):**
+If it seems to S that X, then probably X is the case, absent defeaters.
+
+### Miracles
+
+**Hume's Argument:**
+1. A miracle is a violation of natural law
+2. We have maximal evidence for natural laws (uniform experience)
+3. Testimony for miracles is always weaker than evidence against
+4. Therefore, it is never rational to believe miracle reports
+
+**Criticisms:**
+- Begs the question against miracles
+- Evidence can accumulate across testimonies
+- Natural laws are descriptive, not prescriptive
+
+## Religious Language
+
+### Cognitive vs. Non-Cognitive
+
+**Cognitivism:** Religious statements are truth-apt
+**Non-cognitivism:** Religious statements express emotions or commitments
+
+### Verification and Falsification
+
+**Verification Principle (Logical Positivism):**
+Meaningful statements must be empirically verifiable.
+- Religious statements fail this test
+- But so does the principle itself
+
+**Falsification Challenge (Flew):**
+What would have to occur for you to admit God doesn't exist?
+- If nothing, the claim is meaningless
+
+### Analogy and Symbol
+
+**Aquinas on Analogy:**
+Terms applied to God are neither univocal (same meaning) nor equivocal (different meaning) but analogical.
+
+**Tillich on Symbol:**
+Religious language is symbolic, participating in the reality to which it points.
+
+## Religious Diversity
+
+### Exclusivism
+Only one religion is true; others are false.
+
+### Inclusivism
+One religion is fully true; others contain partial truths.
+
+### Pluralism (Hick)
+Multiple religions are equally valid paths to the same ultimate reality.
+
+**Critiques of Pluralism:**
+- Religions make incompatible claims
+- Reduces religions to lowest common denominator
+- Who decides what is "authentic" religion?
+
+## Contemporary Debates
+
+### Divine Action
+How does God act in a world governed by natural laws?
+- Intervention: God overrides laws
+- Non-interventionist: God works within quantum indeterminacy
+
+### Religion and Science
+- Conflict model: Incompatible worldviews
+- Independence: Separate domains (NOMA)
+- Dialogue: Mutual exploration
+- Integration: Unified understanding
+
+### Neuroscience of Religion
+- Does explaining religious experience explain it away?
+- Is the brain designed for religious experience or does it produce illusions?
+
+## References
+
+- Plantinga, A. "Warranted Christian Belief" (2000)
+- Swinburne, R. "The Existence of God" (2004)
+- Mackie, J.L. "The Miracle of Theism" (1982)
+- Peterson, M. et al. "Reason and Religious Belief" (2012)
