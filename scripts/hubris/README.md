@@ -414,9 +414,95 @@ for expert_type, expert in consolidator.experts.items():
 
 ---
 
+## Live Feedback Loop (Git Hooks)
+
+Hubris integrates with git hooks to enable real-time learning from actual commit outcomes.
+
+> **EXPERIMENTAL WARNING**
+>
+> All predictions include an experimental banner. The system is learning and predictions should be verified before trusting them completely.
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    PREDICTION → OUTCOME → CREDIT                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  1. prepare-commit-msg hook                                       │
+│     └── Records expert prediction (predicted files)              │
+│                                                                   │
+│  2. User commits (actual files modified)                         │
+│                                                                   │
+│  3. post-commit hook                                              │
+│     ├── Compares prediction to actual files                      │
+│     ├── Generates ValueSignal (positive/negative)                │
+│     └── Updates expert credit account                            │
+│                                                                   │
+│  4. Next prediction                                               │
+│     └── Uses updated credit weights for routing                  │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Files Involved
+
+| File | Purpose |
+|------|---------|
+| `scripts/hubris-feedback-hook.py` | Hook wrapper for pre/post-commit |
+| `.git/hooks/prepare-commit-msg` | Records prediction before commit |
+| `.git/hooks/post-commit` | Evaluates accuracy after commit |
+| `scripts/hubris/feedback_collector.py` | Core prediction/evaluation logic |
+
+### Prediction Recording (Pre-Commit)
+
+When you run `git commit -m "message"`:
+
+1. The `prepare-commit-msg` hook is triggered
+2. The commit message is extracted
+3. FileExpert makes a prediction of which files will be modified
+4. Prediction is stored in `.git-ml/predictions/pending.jsonl`
+
+### Feedback Processing (Post-Commit)
+
+After the commit completes:
+
+1. The `post-commit` hook is triggered
+2. Actual committed files are extracted via `git diff-tree`
+3. Prediction accuracy is calculated
+4. Credit is awarded/deducted based on accuracy
+5. Expert account balance is updated
+
+### Example Output
+
+```
+────────────────────────────────────────────────────────
+  EXPERIMENTAL: Hubris MoE Feedback Loop
+  Predictions are learning - review before trusting
+────────────────────────────────────────────────────────
+
+Hubris Feedback:
+  Accuracy: 66.7% (2/3 files)
+  file_expert: +8.5 credits
+  Missed: tests/test_new_feature.py
+```
+
+### Disabling the Feedback Loop
+
+To temporarily disable:
+
+```bash
+# Skip Hubris hooks (ML collection continues)
+export HUBRIS_FEEDBACK_ENABLED=0
+```
+
+Or comment out the HUBRIS-FEEDBACK-HOOK sections in `.git/hooks/prepare-commit-msg` and `.git/hooks/post-commit`.
+
+---
+
 ## CLI Usage
 
-**Note:** The `hubris_cli.py` is being created by a parallel agent. Reference implementation:
+**Note:** All predictions now include an EXPERIMENTAL banner to indicate the system is learning.
 
 ```bash
 # Train all experts on latest data
