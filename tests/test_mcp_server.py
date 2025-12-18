@@ -47,20 +47,15 @@ class TestMCPServerCreation(unittest.TestCase):
         processor.process_document("doc2", "Machine learning algorithms learn patterns.")
         processor.compute_all()
 
-        # Save to temporary file
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False, suffix='.pkl') as f:
-            temp_path = f.name
+        # Save to temporary directory (JSON format creates a directory)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_path = os.path.join(tmpdir, "corpus_state")
             processor.save(temp_path)
 
-        try:
             # Create server with corpus
             server = create_mcp_server(corpus_path=temp_path)
             self.assertIsNotNone(server)
             self.assertEqual(len(server.processor.documents), 2)
-        finally:
-            # Cleanup
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
 
     def test_create_server_nonexistent_corpus(self):
         """Test creating a server with nonexistent corpus path."""
