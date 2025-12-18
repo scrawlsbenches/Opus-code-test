@@ -1758,5 +1758,276 @@ class TestValueAttribution(unittest.TestCase):
         self.assertAlmostEqual(amount_old, 5.0, places=1)
 
 
+class TestCreditSystem(unittest.TestCase):
+    """Test CreditAccount and CreditLedger for expert value tracking."""
+
+    def test_credit_transaction_creation(self):
+        """Test creating credit transactions."""
+        tx = CreditTransaction(
+            timestamp=1234567890.0,
+            amount=10.0,
+            expert_id='expert_1',
+            reason='correct_prediction',
+            context={'accuracy': 0.95},
+            balance_after=110.0
+        )
+
+        self.assertEqual(tx.timestamp, 1234567890.0)
+        self.assertEqual(tx.amount, 10.0)
+        self.assertEqual(tx.expert_id, 'expert_1')
+        self.assertEqual(tx.reason, 'correct_prediction')
+        self.assertEqual(tx.balance_after, 110.0)
+
+        # Test serialization
+        d = tx.to_dict()
+        self.assertIsInstance(d, dict)
+        self.assertEqual(d['amount'], 10.0)
+
+        # Test deserialization
+        tx2 = CreditTransaction.from_dict(d)
+        self.assertEqual(tx2.amount, tx.amount)
+        self.assertEqual(tx2.expert_id, tx.expert_id)
+
+    def test_account_credit_debit(self):
+        """Test crediting and debiting accounts."""
+        account = CreditAccount('expert_1', initial_balance=100.0)
+
+        # Test initial state
+        self.assertEqual(account.balance, 100.0)
+        self.assertEqual(len(account.transactions), 0)
+
+        # Test credit
+        tx1 = account.credit(25.0, 'good_prediction', {'query': 'test'})
+        self.assertEqual(account.balance, 125.0)
+        self.assertEqual(tx1.amount, 25.0)
+        self.assertEqual(tx1.balance_after, 125.0)
+        self.assertEqual(len(account.transactions), 1)
+
+        # Test debit
+        tx2 = account.debit(15.0, 'wrong_prediction')
+        self.assertEqual(account.balance, 110.0)
+        self.assertEqual(tx2.amount, -15.0)
+        self.assertEqual(tx2.balance_after, 110.0)
+        self.assertEqual(len(account.transactions), 2)
+
+    def test_account_balance_never_below_min(self):
+        """Test that balance can go negative (track poorly performing experts)."""
+        account = CreditAccount('expert_bad', initial_balance=100.0)
+
+        # Debit more than balance
+        account.debit(150.0, 'very_wrong')
+
+        # Balance should be negative
+        self.assertEqual(account.balance, -50.0)
+        self.assertLess(account.balance, 0)
+
+    def test_transaction_history(self):
+        """Test transaction history queries."""
+        account = CreditAccount('expert_1', initial_balance=100.0)
+
+        # Create some transactions
+        import time
+        t1 = time.time()
+        account.credit(10.0, 'reason1')
+        time.sleep(0.01)
+        t2 = time.time()
+        account.debit(5.0, 'reason2')
+        time.sleep(0.01)
+        account.credit(15.0, 'reason3')
+
+        # Test get_recent_transactions
+        recent = account.get_recent_transactions(n=2)
+        self.assertEqual(len(recent), 2)
+        # Should be newest first
+        self.assertEqual(recent[0].reason, 'reason3')
+        self.assertEqual(recent[1].reason, 'reason2')
+
+        # Test get_transactions_since
+        since = account.get_transactions_since(t2)
+        self.assertEqual(len(since), 2)  # reason2 and reason3
+        # Should be oldest first
+        self.assertEqual(since[0].reason, 'reason2')
+
+        # Test get_balance_history
+        history = account.get_balance_history()
+        self.assertEqual(len(history), 4)  # Initial + 3 transactions
+        # Check balance progression
+        self.assertEqual(history[0][1], 100.0)  # Initial
+        self.assertEqual(history[-1][1], 120.0)  # Final: 100 + 10 - 5 + 15
+
+    def test_account_serialization(self):
+        """Test account save/load roundtrip."""
+        account = CreditAccount('expert_1', initial_balance=100.0)
+        account.credit(25.0, 'test_credit')
+        account.debit(10.0, 'test_debit')
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / 'account.json'
+            account.save(path)
+
+            # Verify file exists
+            self.assertTrue(path.exists())
+
+            # Load and verify
+            loaded = CreditAccount.load(path)
+            self.assertEqual(loaded.expert_id, 'expert_1')
+            self.assertEqual(loaded.balance, 115.0)
+            self.assertEqual(len(loaded.transactions), 2)
+            self.assertEqual(loaded.transactions[0].amount, 25.0)
+
+    def test_ledger_get_or_create(self):
+        """Test ledger account creation and retrieval."""
+        ledger = CreditLedger()
+
+        # Initially empty
+        self.assertEqual(len(ledger.accounts), 0)
+
+        # Create first account
+        account1 = ledger.get_or_create_account('expert_1')
+        self.assertEqual(account1.expert_id, 'expert_1')
+        self.assertEqual(account1.balance, 100.0)
+        self.assertEqual(len(ledger.accounts), 1)
+
+        # Get same account again
+        account1_again = ledger.get_or_create_account('expert_1')
+        self.assertIs(account1_again, account1)  # Same object
+        self.assertEqual(len(ledger.accounts), 1)  # No new account
+
+        # Create second account with custom initial balance
+        account2 = ledger.get_or_create_account('expert_2', initial_balance=200.0)
+        self.assertEqual(account2.balance, 200.0)
+        self.assertEqual(len(ledger.accounts), 2)
+
+    def test_ledger_transfer(self):
+        """Test credit transfers between experts."""
+        ledger = CreditLedger()
+
+        # Create accounts
+        account1 = ledger.get_or_create_account('expert_1')
+        account2 = ledger.get_or_create_account('expert_2')
+
+        initial_balance1 = account1.balance
+        initial_balance2 = account2.balance
+
+        # Transfer
+        debit_tx, credit_tx = ledger.transfer(
+            'expert_1',
+            'expert_2',
+            30.0,
+            'transfer_test',
+            {'metadata': 'value'}
+        )
+
+        # Check balances
+        self.assertEqual(account1.balance, initial_balance1 - 30.0)
+        self.assertEqual(account2.balance, initial_balance2 + 30.0)
+
+        # Check transactions
+        self.assertEqual(debit_tx.amount, -30.0)
+        self.assertEqual(credit_tx.amount, 30.0)
+        self.assertIn('transfer_from', debit_tx.context)
+        self.assertIn('transfer_to', credit_tx.context)
+
+        # Test invalid transfer
+        with self.assertRaises(ValueError):
+            ledger.transfer('expert_1', 'expert_2', -10.0, 'invalid')
+
+    def test_ledger_top_experts(self):
+        """Test getting top experts by balance."""
+        ledger = CreditLedger()
+
+        # Create experts with different balances
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+        ledger.get_or_create_account('expert_2', initial_balance=200.0)
+        ledger.get_or_create_account('expert_3', initial_balance=150.0)
+        ledger.get_or_create_account('expert_4', initial_balance=50.0)
+
+        # Get top 3
+        top3 = ledger.get_top_experts(n=3)
+
+        self.assertEqual(len(top3), 3)
+        # Should be sorted by balance descending
+        self.assertEqual(top3[0][0], 'expert_2')  # 200.0
+        self.assertEqual(top3[0][1], 200.0)
+        self.assertEqual(top3[1][0], 'expert_3')  # 150.0
+        self.assertEqual(top3[2][0], 'expert_1')  # 100.0
+
+        # Get all
+        all_experts = ledger.get_top_experts(n=10)
+        self.assertEqual(len(all_experts), 4)
+
+    def test_ledger_persistence(self):
+        """Test ledger save/load roundtrip."""
+        ledger = CreditLedger()
+
+        # Create some accounts with transactions
+        account1 = ledger.get_or_create_account('expert_1')
+        account1.credit(50.0, 'test')
+
+        account2 = ledger.get_or_create_account('expert_2')
+        account2.debit(20.0, 'test')
+
+        # Save
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / 'ledger.json'
+            ledger.save(path)
+
+            # Verify file exists
+            self.assertTrue(path.exists())
+
+            # Load
+            loaded = CreditLedger.load(path)
+
+            # Verify accounts
+            self.assertEqual(len(loaded.accounts), 2)
+            self.assertIn('expert_1', loaded.accounts)
+            self.assertIn('expert_2', loaded.accounts)
+
+            # Verify balances
+            self.assertEqual(loaded.accounts['expert_1'].balance, 150.0)
+            self.assertEqual(loaded.accounts['expert_2'].balance, 80.0)
+
+            # Verify transaction history preserved
+            self.assertEqual(len(loaded.accounts['expert_1'].transactions), 1)
+            self.assertEqual(loaded.accounts['expert_1'].transactions[0].amount, 50.0)
+
+    def test_ledger_total_credits(self):
+        """Test getting total credits across all accounts."""
+        ledger = CreditLedger()
+
+        # Empty ledger
+        self.assertEqual(ledger.get_total_credits(), 0.0)
+
+        # Add accounts
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+        ledger.get_or_create_account('expert_2', initial_balance=150.0)
+        ledger.get_or_create_account('expert_3', initial_balance=50.0)
+
+        # Total should be sum
+        self.assertEqual(ledger.get_total_credits(), 300.0)
+
+        # After transaction
+        ledger.accounts['expert_1'].credit(25.0, 'test')
+        self.assertEqual(ledger.get_total_credits(), 325.0)
+
+    def test_credit_debit_validation(self):
+        """Test that credit/debit validate positive amounts."""
+        account = CreditAccount('expert_1')
+
+        # Test credit with invalid amounts
+        with self.assertRaises(ValueError):
+            account.credit(0.0, 'invalid')
+
+        with self.assertRaises(ValueError):
+            account.credit(-10.0, 'invalid')
+
+        # Test debit with invalid amounts
+        with self.assertRaises(ValueError):
+            account.debit(0.0, 'invalid')
+
+        with self.assertRaises(ValueError):
+            account.debit(-10.0, 'invalid')
+
+
 if __name__ == '__main__':
     unittest.main()
