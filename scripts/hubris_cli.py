@@ -41,6 +41,7 @@ class Colors:
     YELLOW = '\033[93m'
     RED = '\033[91m'
     BOLD = '\033[1m'
+    DIM = '\033[2m'
     UNDERLINE = '\033[4m'
     END = '\033[0m'
 
@@ -206,12 +207,11 @@ def is_cold_start(ledger: CreditLedger, threshold_balance: float = 100.0) -> boo
     Returns:
         True if all experts have default balance (no learning yet)
     """
-    accounts = ledger.get_all_accounts()
-    if not accounts:
+    if not ledger.accounts:
         return True
 
     # Check if all accounts have exactly the default balance
-    for account in accounts.values():
+    for account in ledger.accounts.values():
         if abs(account.balance - threshold_balance) > 0.01:
             return False  # At least one expert has learned
 
@@ -241,16 +241,17 @@ def try_ml_fallback(query: str, top_n: int = 10) -> bool:
     try:
         import sys
         sys.path.insert(0, str(Path(__file__).parent))
-        from ml_file_prediction import FilePredictor
+        from ml_file_prediction import load_model, predict_files
 
         model_path = Path(__file__).parent.parent / '.git-ml' / 'models' / 'file_prediction.json'
         if not model_path.exists():
             return False
 
-        predictor = FilePredictor()
-        predictor.load(model_path)
+        model = load_model(model_path)
+        if model is None:
+            return False
 
-        predictions = predictor.predict(query, top_n=top_n)
+        predictions = predict_files(query, model, top_n=top_n)
 
         if predictions:
             print(color("\n📁 ML File Prediction Fallback:", Colors.BOLD))
@@ -297,6 +298,11 @@ def cmd_predict(args) -> int:
     # Print EXPERIMENTAL banner before any predictions
     print()
     print_experimental_banner()
+
+    # Check for cold-start mode
+    cold_start = is_cold_start(ledger)
+    if cold_start:
+        print_cold_start_info(ledger)
 
     # Get prediction from each expert
     print(color(f"\n🎯 MoE Prediction for: \"{query}\"", Colors.BOLD))
@@ -347,6 +353,14 @@ def cmd_predict(args) -> int:
     # Show confidence and disagreement
     print(f"\n{color('Overall Confidence:', Colors.BOLD)} {aggregated.confidence:.3f}")
     print(f"{color('Expert Disagreement:', Colors.BOLD)} {aggregated.disagreement_score:.3f}")
+
+    # Offer ML fallback in cold-start mode or when confidence is low
+    low_confidence = aggregated.confidence < 0.5
+    if cold_start or low_confidence:
+        reason = "cold-start mode" if cold_start else "low confidence"
+        print(color(f"\n💡 Due to {reason}, showing ML file prediction fallback:", Colors.CYAN))
+        if not try_ml_fallback(query, top_n=args.top):
+            print(color("   (ML model not trained - run: python scripts/ml_file_prediction.py train)", Colors.DIM))
 
     return 0
 
