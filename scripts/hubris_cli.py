@@ -193,6 +193,79 @@ def print_experimental_banner() -> None:
     print(color("┗" + "━" * 68 + "┛", Colors.YELLOW))
 
 
+def is_cold_start(ledger: CreditLedger, threshold_balance: float = 100.0) -> bool:
+    """
+    Detect if the system is in cold-start mode.
+
+    Cold-start is when all experts have default balance (never received feedback).
+
+    Args:
+        ledger: Credit ledger to check
+        threshold_balance: Default starting balance (100.0)
+
+    Returns:
+        True if all experts have default balance (no learning yet)
+    """
+    accounts = ledger.get_all_accounts()
+    if not accounts:
+        return True
+
+    # Check if all accounts have exactly the default balance
+    for account in accounts.values():
+        if abs(account.balance - threshold_balance) > 0.01:
+            return False  # At least one expert has learned
+
+    return True
+
+
+def print_cold_start_info(ledger: CreditLedger) -> None:
+    """Print information about cold-start mode with recommendations."""
+    print()
+    print(color("┏" + "━" * 68 + "┓", Colors.CYAN))
+    print(color("┃  ❄️  COLD START MODE - Experts Have Not Learned Yet                 ┃", Colors.CYAN))
+    print(color("┃                                                                      ┃", Colors.CYAN))
+    print(color("┃  All experts have equal weight (no feedback received yet).          ┃", Colors.CYAN))
+    print(color("┃  Predictions will improve after making commits.                     ┃", Colors.CYAN))
+    print(color("┃                                                                      ┃", Colors.CYAN))
+    print(color("┃  💡 Try: python scripts/ml_file_prediction.py predict \"your task\"   ┃", Colors.CYAN))
+    print(color("┃     The ML model is trained on commit history and may work better.  ┃", Colors.CYAN))
+    print(color("┗" + "━" * 68 + "┛", Colors.CYAN))
+
+
+def try_ml_fallback(query: str, top_n: int = 10) -> bool:
+    """
+    Try to get predictions from ML file prediction model as fallback.
+
+    Returns True if fallback was used successfully.
+    """
+    try:
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent))
+        from ml_file_prediction import FilePredictor
+
+        model_path = Path(__file__).parent.parent / '.git-ml' / 'models' / 'file_prediction.json'
+        if not model_path.exists():
+            return False
+
+        predictor = FilePredictor()
+        predictor.load(model_path)
+
+        predictions = predictor.predict(query, top_n=top_n)
+
+        if predictions:
+            print(color("\n📁 ML File Prediction Fallback:", Colors.BOLD))
+            print(color("   (Trained on commit history - may be more accurate)", Colors.DIM))
+            print()
+            for i, (filepath, score) in enumerate(predictions[:top_n], 1):
+                print(f"  {i:2}. {color(filepath, Colors.GREEN):55} ({score:.3f})")
+            return True
+
+    except Exception:
+        pass
+
+    return False
+
+
 def cmd_predict(args) -> int:
     """Get predictions for a task."""
     # Load query from file or use argument

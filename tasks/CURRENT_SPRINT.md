@@ -1,36 +1,45 @@
 # Current Sprint
 
-**Sprint ID:** sprint-004-meta-learning
+**Sprint ID:** sprint-005-ux-documentation
 **Epic:** Hubris MoE System (efba)
 **Started:** 2025-12-18
-**Status:** Complete
+**Status:** In Progress
 
 ## Goals
-- [x] Wire feedback_collector to live git hooks
-- [x] Add EXPERIMENTAL banner to predictions
-- [x] Create sprint tracking persistence (this file!)
-- [x] Add git lock detection
+- [ ] Fix cold-start UX - clearer message when experts untrained (T-dbf8-014)
+- [ ] Complete Hubris documentation - book chapter + README (T-2e92-002)
+- [ ] Add calibration status to CLI dashboard
+
+## In Progress
+(None yet)
 
 ## Completed This Sprint
-- [x] Phase 1.α: Book chapter on Hubris (commit 8374986)
-- [x] Phase 1.β: Sprint tracking file (commit 99bec13)
-- [x] Phase 1.γ: Git lock detection (commit 39a83de)
-- [x] Phase 1.δ: Feedback loop wiring with EXPERIMENTAL banner (commit 5e49cb3)
+(None yet)
 
 ## Blocked
 (None currently)
 
 ## Notes
-- Option B chosen: Consolidate and use before adding more features
-- Focus on getting real data flowing through the system
-- Sprint tracking file created to maintain context across sessions
-- Sprint tracking system complete with CLI interface
-- **META-LEARNING LOOP IS NOW LIVE!** Every commit updates expert credits
-- First feedback: 100% accuracy (3/3 files), +5.0 credits to staged_files expert
+- Sprint 4 completed all meta-learning goals
+- Calibration tracking now live (Phase 1+2 done)
+- Focus on user experience and documentation this sprint
+- Cold-start UX: address "Unknown cause" output with fallback to ML model
 
 ---
 
 # Previous Sprints
+
+## Sprint 4: Meta-Learning (Complete)
+**Dates:** 2025-12-18
+**Epic:** Hubris MoE System (efba)
+
+Completed:
+- ✅ Wire feedback_collector to live git hooks
+- ✅ Add EXPERIMENTAL banner to predictions
+- ✅ Create sprint tracking persistence
+- ✅ Add git lock detection
+- ✅ Exception handling audit (9 fixes)
+- ✅ Calibration tracking Phase 1+2 (ResolvedPrediction + CalibrationTracker)
 
 ## Sprint 3: MoE Integration (Complete)
 **Dates:** 2025-12-15 to 2025-12-17

@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "dbf8",
   "started_at": "2025-12-17T20:49:13.257355",
-  "saved_at": "2025-12-18T12:45:54.933967",
+  "saved_at": "2025-12-18T13:13:38.599538",
   "tasks": [
     {
       "id": "T-20251217-204913-dbf8-001",
@@ -181,32 +181,46 @@
     {
       "id": "T-20251218-112540-dbf8-012",
       "title": "Add confidence calibration tracking (predicted vs actual confidence accuracy)",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "moe",
       "description": "",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-18T11:25:40.493481",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-18T13:13:38.326882",
+      "completed_at": "2025-12-18T13:13:38.326882",
       "context": {},
-      "retrospective": null
+      "retrospective": {
+        "notes": "Implemented Phase 1+2: ResolvedPrediction dataclass + CalibrationTracker with ECE/MCE/Brier metrics",
+        "duration_minutes": 108,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-18T13:13:38.326909"
+      }
     },
     {
       "id": "T-20251218-112544-dbf8-013",
       "title": "Add EXPERIMENTAL warning banner to all Hubris predictions",
-      "status": "pending",
+      "status": "completed",
       "priority": "high",
       "category": "moe",
       "description": "",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-18T11:25:44.692066",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-18T13:13:38.476160",
+      "completed_at": "2025-12-18T13:13:38.476160",
       "context": {},
-      "retrospective": null
+      "retrospective": {
+        "notes": "Added EXPERIMENTAL banner in Sprint 4, commit 5e49cb3",
+        "duration_minutes": 108,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-18T13:13:38.476211"
+      }
     },
     {
       "id": "T-20251218-121754-dbf8-014",
@@ -226,17 +240,24 @@
     {
       "id": "T-20251218-124554-dbf8-015",
       "title": "Implement confidence calibration tracking (Phase 1+2): Extend Prediction dataclass with outcome fields, create CalibrationTracker class to compute ECE/MCE/Brier metrics, enable retrospective analysis of existing 277KB predictions",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "moe",
       "description": "",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-18T12:45:54.933831",
-      "updated_at": null,
-      "completed_at": null,
+      "updated_at": "2025-12-18T13:13:38.599405",
+      "completed_at": "2025-12-18T13:13:38.599405",
       "context": {},
-      "retrospective": null
+      "retrospective": {
+        "notes": "Phase 1: ResolvedPrediction dataclass. Phase 2: CalibrationTracker class with full metrics",
+        "duration_minutes": 28,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-18T13:13:38.599430"
+      }
     }
   ]
 }
