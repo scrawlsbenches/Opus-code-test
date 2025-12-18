@@ -13,12 +13,13 @@ import sys
 hubris_dir = Path(__file__).parent.parent.parent / 'scripts' / 'hubris'
 sys.path.insert(0, str(hubris_dir))
 
+# Import with aliases to avoid pytest collection (pytest collects classes starting with 'Test')
 from test_calibration_tracker import (
-    TestCalibrationTracker,
-    TestPrediction,
-    TestOutcome,
-    TestCalibrationRecord,
-    TestCalibrationMetrics
+    TestCalibrationTracker as CalibrationTracker,
+    TestPrediction as Prediction,
+    TestOutcome as Outcome,
+    TestCalibrationRecord as CalibrationRecord,
+    TestCalibrationMetrics as CalibrationMetrics
 )
 
 
@@ -28,7 +29,7 @@ class TestTestCalibrationTracker(unittest.TestCase):
     def setUp(self):
         """Create temp directory for test data."""
         self.temp_dir = tempfile.mkdtemp()
-        self.tracker = TestCalibrationTracker(predictions_dir=Path(self.temp_dir))
+        self.tracker = CalibrationTracker(predictions_dir=Path(self.temp_dir))
 
     def tearDown(self):
         """Clean up temp directory."""
@@ -251,7 +252,7 @@ class TestTestCalibrationTracker(unittest.TestCase):
         )
 
         # Create new tracker and load
-        tracker2 = TestCalibrationTracker(predictions_dir=Path(self.temp_dir))
+        tracker2 = CalibrationTracker(predictions_dir=Path(self.temp_dir))
         loaded = tracker2.load_all()
 
         self.assertEqual(loaded, 1)

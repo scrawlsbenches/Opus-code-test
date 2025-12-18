@@ -21,7 +21,8 @@ from test_feedback import (
     update_test_expert_failures,
     process_test_feedback
 )
-from experts.test_expert import TestExpert
+# Alias to avoid pytest collection (pytest collects classes starting with 'Test')
+from experts.test_expert import TestExpert as TestExpertModel
 
 
 class TestPytestOutputParsing(unittest.TestCase):
@@ -132,7 +133,7 @@ class TestExpertFailureUpdates(unittest.TestCase):
 
     def test_update_failure_patterns(self):
         """Test adding failure patterns to TestExpert."""
-        expert = TestExpert()
+        expert = TestExpertModel()
 
         test_results = {
             'tests/test_foo.py::test_basic': True,
@@ -156,7 +157,7 @@ class TestExpertFailureUpdates(unittest.TestCase):
 
     def test_incremental_failure_patterns(self):
         """Test that failure patterns accumulate over time."""
-        expert = TestExpert()
+        expert = TestExpertModel()
 
         test_results = {
             'tests/test_foo.py::test_basic': False,
@@ -175,7 +176,7 @@ class TestExpertFailureUpdates(unittest.TestCase):
 
     def test_no_failures(self):
         """Test that no patterns are added when all tests pass."""
-        expert = TestExpert()
+        expert = TestExpertModel()
 
         test_results = {
             'tests/test_foo.py::test_basic': True,
@@ -239,7 +240,7 @@ class TestEndToEndIntegration(unittest.TestCase):
             self.assertTrue(model_path.exists())
 
             # Load and verify
-            expert = TestExpert.load(model_path)
+            expert = TestExpertModel.load(model_path)
             patterns = expert.model_data['test_failure_patterns']
             self.assertIn('cortical/query.py', patterns)
             self.assertEqual(patterns['cortical/query.py']['tests/test_foo.py::test_basic'], 1)
