@@ -1,0 +1,104 @@
+Computational Complexity Trade-offs in Graph Algorithms
+
+Building knowledge graphs from text corpora involves fundamental trade-offs between completeness, accuracy, and computational tractability. Understanding these trade-offs enables principled decisions about algorithm parameters.
+
+The Quadratic Explosion Problem
+
+Many natural graph operations have O(n²) complexity:
+- Pairwise similarity: Compare every node to every other node
+- Co-occurrence counting: Check every pair of items in each context
+- Transitive closure: Propagate connections through all paths
+
+With 100,000 nodes, O(n²) means 10 billion operations. This quickly becomes intractable.
+
+Mitigation Strategies
+
+Frequency-Based Filtering
+
+Common terms create connection explosions. A term appearing in 10,000 contexts creates 50 million pairs with other terms. Filter by:
+
+    if term_frequency > max_frequency_threshold:
+        skip_term()  # Too common to be informative
+
+This trades completeness for tractability. Common terms like "the", "self", "return" add noise anyway.
+
+Importance-Based Pruning
+
+Process only the most important items:
+
+    important_items = [x for x in items if x.tfidf > threshold]
+    # Process only important items, reducing pair count quadratically
+
+If filtering removes 50% of items, pair count drops by 75%.
+
+Maximum Connection Limits
+
+Cap connections per node:
+
+    max_connections_per_node = 50
+    if connection_count[node] >= max_connections_per_node:
+        skip_new_connections()
+
+This bounds graph density and prevents hub nodes from dominating.
+
+Early Termination
+
+Stop processing when diminishing returns set in:
+
+    for i, pair in enumerate(sorted_pairs):
+        if pair.score < min_useful_score:
+            break  # Remaining pairs won't help
+
+Sampling Strategies
+
+For very large datasets, statistical sampling provides approximate results:
+- Random sampling: Uniform probability selection
+- Importance sampling: Weight by expected contribution
+- Stratified sampling: Ensure coverage across categories
+
+Locality-Sensitive Hashing (LSH) enables approximate nearest neighbor search in sub-quadratic time for high-dimensional similarity.
+
+Parameter Tuning Guidelines
+
+Typical parameter ranges for text graph construction:
+
+| Parameter | Conservative | Balanced | Aggressive |
+|-----------|--------------|----------|------------|
+| max_items_per_category | 50 | 100 | 500 |
+| max_items_per_document | 200 | 500 | 2000 |
+| max_connections_per_node | 25 | 50 | 200 |
+| min_similarity_threshold | 0.5 | 0.3 | 0.1 |
+
+Conservative settings run fast but may miss connections.
+Aggressive settings capture more structure but risk timeouts.
+
+Measuring Trade-off Impact
+
+Evaluate parameter choices on multiple dimensions:
+- Recall: What fraction of "true" connections are found?
+- Precision: What fraction of found connections are useful?
+- Runtime: How long does construction take?
+- Memory: How much storage is required?
+
+Build evaluation sets with known-good connections to measure recall. Use downstream task performance (search quality, clustering coherence) to validate precision.
+
+Adaptive Algorithms
+
+Advanced approaches adjust parameters dynamically:
+
+    if processing_time > budget:
+        increase_thresholds()
+    if recall < target:
+        decrease_thresholds()
+
+This balances quality and computational constraints automatically.
+
+The Completeness Illusion
+
+Perfect completeness (every possible connection) is rarely desirable:
+- Most potential connections are noise
+- Dense graphs are harder to analyze
+- Storage and query costs scale with edge count
+- Sparse graphs often perform better for retrieval
+
+Accept that tractable algorithms must be incomplete. Focus on capturing the most informative connections.

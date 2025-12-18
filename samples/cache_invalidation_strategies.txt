@@ -1,0 +1,81 @@
+Cache Invalidation Strategies for Dynamic Data Structures
+
+Cache invalidation is one of the hardest problems in computer science. In dynamic data structures like graphs and knowledge networks, cached derived values must be invalidated when underlying data changes. The strategy chosen dramatically affects performance.
+
+Per-Operation Invalidation
+
+The simplest approach invalidates caches immediately when data changes:
+
+    def add_connection(self, target, weight):
+        self.connections[target] = weight
+        self._invalidate_cache()  # Called every time
+
+This guarantees consistency but creates O(n) invalidation overhead for n operations. When building graphs with millions of connections, this becomes the dominant cost.
+
+Deferred Invalidation
+
+Deferred strategies delay invalidation until the cache is actually needed:
+
+    def add_connection(self, target, weight):
+        self.connections[target] = weight
+        self._cache_valid = False  # Just mark dirty
+
+    def get_cached_value(self):
+        if not self._cache_valid:
+            self._rebuild_cache()
+        return self._cache
+
+This amortizes rebuild cost across multiple operations but may cause unexpected latency spikes when the cache is first accessed after many modifications.
+
+Batch Invalidation
+
+The optimal approach for bulk operations batches all modifications, then invalidates once:
+
+    def add_connections_batch(self, connections_dict):
+        for target, weight in connections_dict.items():
+            self.connections[target] = weight
+        self._invalidate_cache()  # Single invalidation for entire batch
+
+This transforms O(n) invalidations into O(1), providing dramatic speedups for graph construction workloads.
+
+Staleness Tracking
+
+For complex systems with multiple cached computations, track staleness per computation type:
+
+    COMP_PAGERANK = 'pagerank'
+    COMP_TFIDF = 'tfidf'
+    COMP_CLUSTERS = 'clusters'
+
+    def mark_stale(self, computation):
+        self._stale_computations.add(computation)
+
+    def is_fresh(self, computation):
+        return computation not in self._stale_computations
+
+This enables selective recomputation - only rebuild what's actually stale.
+
+Hierarchical Invalidation
+
+In layered systems, changes propagate upward. A token change may invalidate bigrams, which invalidates concepts, which invalidates document similarities. Design invalidation to follow these dependencies:
+
+    def invalidate_layer(self, layer_num):
+        for layer in range(layer_num, self.max_layer + 1):
+            self._mark_layer_stale(layer)
+
+Cache Warming Strategies
+
+After invalidation, caches can be rebuilt eagerly or lazily:
+- Eager: Rebuild immediately after bulk operations complete
+- Lazy: Rebuild on first access (risk of latency spikes)
+- Predictive: Rebuild caches likely to be needed soon
+
+The choice depends on access patterns and acceptable latency variance.
+
+Measuring Invalidation Cost
+
+Profile cache operations separately:
+- Count invalidations per operation type
+- Measure rebuild time vs. total operation time
+- Track cache hit rates to justify caching overhead
+
+When invalidation dominates execution time, batch processing patterns become essential for acceptable performance.

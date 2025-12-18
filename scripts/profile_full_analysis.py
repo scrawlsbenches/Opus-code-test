@@ -310,8 +310,8 @@ def print_summary(results: list):
 
 def main():
     parser = argparse.ArgumentParser(description="Profile full-analysis bottlenecks")
-    parser.add_argument('--corpus', default='corpus_dev.pkl',
-                       help='Path to corpus file')
+    parser.add_argument('--corpus', default='corpus_dev',
+                       help='Path to corpus directory (JSON format)')
     parser.add_argument('--phase', choices=['all', 'louvain', 'label_propagation',
                                             'semantics', 'bigram'],
                        default='all', help='Phase to profile')
