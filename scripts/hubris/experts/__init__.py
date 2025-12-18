@@ -7,5 +7,6 @@ of coding tasks.
 
 from .file_expert import FileExpert
 from .test_expert import TestExpert
+from .error_expert import ErrorDiagnosisExpert
 
-__all__ = ['FileExpert', 'TestExpert']
+__all__ = ['FileExpert', 'TestExpert', 'ErrorDiagnosisExpert']

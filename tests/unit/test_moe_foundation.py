@@ -719,5 +719,172 @@ class TestTestExpert(unittest.TestCase):
             self.assertIn('x.py', loaded.model_data['source_to_tests'])
 
 
+class TestErrorDiagnosisExpert(unittest.TestCase):
+    """Test ErrorDiagnosisExpert."""
+
+    def test_create_error_expert(self):
+        """Test creating ErrorDiagnosisExpert."""
+        from scripts.hubris.experts.error_expert import ErrorDiagnosisExpert
+
+        expert = ErrorDiagnosisExpert()
+
+        self.assertEqual(expert.expert_type, 'error')
+        self.assertIn('error_to_files', expert.model_data)
+        self.assertIn('error_categories', expert.model_data)
+
+    def test_extract_error_type(self):
+        """Test error type extraction from messages."""
+        from scripts.hubris.experts.error_expert import ErrorDiagnosisExpert
+
+        expert = ErrorDiagnosisExpert()
+
+        error_type = expert._extract_error_type("TypeError: unsupported operand", "")
+        self.assertEqual(error_type, 'TypeError')
+
+        error_type = expert._extract_error_type("ImportError: No module named 'foo'", "")
+        self.assertEqual(error_type, 'ImportError')
+
+    def test_get_error_category(self):
+        """Test error categorization."""
+        from scripts.hubris.experts.error_expert import ErrorDiagnosisExpert
+
+        expert = ErrorDiagnosisExpert()
+
+        self.assertEqual(expert._get_error_category('TypeError'), 'type')
+        self.assertEqual(expert._get_error_category('ImportError'), 'import')
+        self.assertEqual(expert._get_error_category('FileNotFoundError'), 'io')
+        self.assertEqual(expert._get_error_category('KeyError'), 'key')
+        self.assertEqual(expert._get_error_category('UnknownError'), 'unknown')
+
+    def test_predict_with_error_message(self):
+        """Test prediction with error message."""
+        from scripts.hubris.experts.error_expert import ErrorDiagnosisExpert
+
+        expert = ErrorDiagnosisExpert()
+
+        pred = expert.predict({
+            'error_message': "TypeError: 'NoneType' object has no attribute 'foo'"
+        })
+
+        self.assertEqual(pred.expert_type, 'error')
+        self.assertEqual(pred.metadata['error_type'], 'TypeError')
+        self.assertEqual(pred.metadata['category'], 'type')
+        self.assertGreater(len(pred.items), 0)
+
+    def test_predict_with_stack_trace(self):
+        """Test prediction with stack trace."""
+        from scripts.hubris.experts.error_expert import ErrorDiagnosisExpert
+
+        expert = ErrorDiagnosisExpert()
+
+        stack_trace = '''
+Traceback (most recent call last):
+  File "cortical/query/search.py", line 42, in find_documents
+    return results[0]
+TypeError: 'NoneType' object is not subscriptable
+'''
+        pred = expert.predict({
+            'error_message': "TypeError: 'NoneType' object is not subscriptable",
+            'stack_trace': stack_trace
+        })
+
+        # Should extract file from stack trace
+        self.assertIn('cortical/query/search.py', pred.metadata['suggested_files'])
+
+    def test_diagnose_convenience_method(self):
+        """Test the diagnose convenience method."""
+        from scripts.hubris.experts.error_expert import ErrorDiagnosisExpert
+
+        expert = ErrorDiagnosisExpert()
+
+        result = expert.diagnose("KeyError: 'missing_key'")
+
+        self.assertEqual(result['error_type'], 'KeyError')
+        self.assertEqual(result['category'], 'key')
+        self.assertIn('likely_causes', result)
+        self.assertIn('suggested_fixes', result)
+
+    def test_suggest_fixes_by_keywords(self):
+        """Test fix suggestions based on keywords."""
+        from scripts.hubris.experts.error_expert import ErrorDiagnosisExpert
+
+        expert = ErrorDiagnosisExpert()
+
+        fixes = expert._suggest_fixes_by_keywords("import failed module not found")
+
+        self.assertGreater(len(fixes), 0)
+        # Should suggest import-related fixes
+        fix_names = list(fixes.keys())
+        self.assertTrue(any('import' in f.lower() or 'module' in f.lower() or 'installed' in f.lower() for f in fix_names))
+
+    def test_get_common_causes(self):
+        """Test getting common causes for error types."""
+        from scripts.hubris.experts.error_expert import ErrorDiagnosisExpert
+
+        expert = ErrorDiagnosisExpert()
+
+        causes = expert._get_common_causes('ImportError')
+        self.assertIn('Module not installed', causes)
+
+        causes = expert._get_common_causes('KeyError')
+        self.assertIn('Key not in dictionary', causes)
+
+    def test_train_expert(self):
+        """Test training ErrorDiagnosisExpert on error records."""
+        from scripts.hubris.experts.error_expert import ErrorDiagnosisExpert
+
+        expert = ErrorDiagnosisExpert()
+
+        error_records = [
+            {
+                'error_type': 'TypeError',
+                'error_message': 'unsupported operand type',
+                'files_modified': ['cortical/analysis.py'],
+                'resolution': 'Added type check before operation'
+            },
+            {
+                'error_type': 'ImportError',
+                'error_message': 'No module named foo',
+                'files_modified': ['requirements.txt'],
+                'resolution': 'Added missing dependency to requirements'
+            }
+        ]
+
+        expert.train(error_records)
+
+        self.assertEqual(expert.model_data['total_errors'], 2)
+        self.assertIn('TypeError', expert.model_data['error_to_files'])
+        self.assertGreater(len(expert.model_data['resolution_history']), 0)
+
+    def test_save_load_roundtrip(self):
+        """Test saving and loading ErrorDiagnosisExpert."""
+        from scripts.hubris.experts.error_expert import ErrorDiagnosisExpert
+
+        expert = ErrorDiagnosisExpert(
+            expert_id='error_expert_v1',
+            version='1.0.0',
+            trained_on_commits=10,
+            model_data={
+                'error_to_files': {'TypeError': {'fix.py': 3}},
+                'error_to_causes': {},
+                'keyword_to_fixes': {},
+                'stack_patterns': {},
+                'error_categories': ErrorDiagnosisExpert.ERROR_CATEGORIES.copy(),
+                'resolution_history': [],
+                'total_errors': 10
+            }
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / 'error_expert.json'
+            expert.save(path)
+
+            loaded = ErrorDiagnosisExpert.load(path)
+
+            self.assertEqual(loaded.expert_id, expert.expert_id)
+            self.assertEqual(loaded.trained_on_commits, 10)
+            self.assertIn('TypeError', loaded.model_data['error_to_files'])
+
+
 if __name__ == '__main__':
     unittest.main()
