@@ -129,3 +129,4 @@ cortical/proto/__pycache__/
 .git-ml/cali/
 .git-ml/predictions/
 samples/memories/\[DRAFT\]-*
+.git-ml/current_session.json
