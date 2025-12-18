@@ -686,16 +686,10 @@ def run_background_analysis(
         tracker.log(f"  Concepts (Layer 2): {processor.layers[2].column_count()}")
         tracker.log(f"  Semantic relations: {len(processor.semantic_relations)}")
 
-        # Save corpus
+        # Save corpus (JSON format only - pickle deprecated)
         tracker.start_phase("Saving corpus")
-        save_format = 'pickle' if str(output_path).endswith('.pkl') else 'json'
-        processor.save(str(output_path), format=save_format)
-        if save_format == 'json':
-            # For JSON, output_path is a directory
-            tracker.log(f"  Saved to {output_path.name}/ (JSON format)")
-        else:
-            file_size = output_path.stat().st_size / 1024
-            tracker.log(f"  Saved to {output_path.name} ({file_size:.1f} KB)")
+        processor.save(str(output_path))
+        tracker.log(f"  Saved to {output_path.name}/ (JSON format)")
         tracker.end_phase("Saving corpus")
 
         # Save manifest
@@ -2236,16 +2230,10 @@ def run_indexer(
     tracker.log(f"  Concepts (Layer 2): {processor.layers[2].column_count()}")
     tracker.log(f"  Semantic relations: {len(processor.semantic_relations)}")
 
-    # Save corpus
+    # Save corpus (JSON format only - pickle deprecated)
     tracker.start_phase("Saving corpus")
-    save_format = 'pickle' if str(output_path).endswith('.pkl') else 'json'
-    processor.save(str(output_path), format=save_format)
-    if save_format == 'json':
-        # For JSON, output_path is a directory
-        tracker.log(f"  Saved to {output_path.name}/ (JSON format)")
-    else:
-        file_size = output_path.stat().st_size / 1024
-        tracker.log(f"  Saved to {output_path.name} ({file_size:.1f} KB)")
+    processor.save(str(output_path))
+    tracker.log(f"  Saved to {output_path.name}/ (JSON format)")
     tracker.end_phase("Saving corpus")
 
     # Build file_mtimes for manifest

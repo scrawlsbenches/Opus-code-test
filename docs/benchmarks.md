@@ -78,46 +78,48 @@ Full `compute_all()` pipeline: **140.9 ms**
 
 ---
 
-## Real Codebase Benchmarks (151 Python Files)
+## Real Codebase Benchmarks (247 Python Files)
 
-Benchmarked using the actual `cortical/`, `scripts/`, and `tests/` directories.
+Benchmarked using the actual `cortical/`, `scripts/`, `tests/`, and `docs/` directories.
 
 ### Corpus Profile
 | Metric | Value |
 |--------|-------|
-| Files | 151 |
-| Characters | 2,949,713 |
-| Lines | 83,272 |
-| Tokens (Layer 0) | 11,557 |
-| Bigrams (Layer 1) | 84,978 |
-| Concepts (Layer 2) | 54 |
-| L0 Connections | 388,178 |
+| Files | 247 |
+| Lines | 129,513 |
+| Tokens (Layer 0) | 17,017 |
+| Bigrams (Layer 1) | 138,760 |
+| Concepts (Layer 2) | 22 |
+| L0 Connections | 649,764 |
+
+### Compute Phase Timings (December 2025)
+
+Profiled on full codebase with `scripts/profile_full_analysis.py`:
+
+| Phase | Time (s) | % of Total |
+|-------|----------|------------|
+| louvain | 27.30 | 27.8% |
+| bigram_connections | 24.59 | 25.0% |
+| semantics | 20.45 | 20.8% |
+| doc_connections | 18.36 | 18.7% |
+| pagerank | 5.31 | 5.4% |
+| activation | 2.25 | 2.3% |
+| tfidf | 0.04 | 0.0% |
+| **TOTAL** | **98.30** | **100%** |
 
 ### Processing Times
 
 | Operation | Time |
 |-----------|------|
-| Document processing (total) | 3,993.8 ms |
-| Per-document average | 26.45 ms |
-| compute_all() | 49,437.6 ms (~49 s) |
+| Document processing | ~50 s |
+| compute_all() | ~98 s |
 
-### Query Performance
+### Persistence (JSON format)
 
-| Operation | Average Time |
-|-----------|--------------|
-| Standard search | 1.22 ms |
-| Fast search | 0.66 ms |
-| Passage retrieval | 64.94 ms |
-| Intent search | 0.14 ms |
-
-**Fast search speedup: 1.8x** over standard search
-
-### Persistence
-
-| Operation | Time | Size |
-|-----------|------|------|
-| Save | 21.9 s | 212.35 MB |
-| Load | 16.7 s | - |
+| Operation | Time |
+|-----------|------|
+| Save | ~17 s |
+| Load | ~5 s |
 
 ---
 
@@ -295,9 +297,31 @@ python scripts/index_codebase.py --compact --use-chunks
 
 | Date | Issue | Before | After | Fix |
 |------|-------|--------|-------|-----|
+| 2025-12-18 | bigram_connections overhead | 4.69M calls | 128K calls | Batched connection updates |
 | 2025-12-11 | bigram_connections timeout | 20.85s timeout | 10.79s | `max_bigrams_per_term=100` |
 | 2025-12-11 | semantics timeout | 30.05s timeout | 5.56s | `max_similarity_pairs=100000` |
 | 2025-12-11 | louvain (not a bottleneck) | 2.2s | 2.2s | No change needed |
+
+### Sprint 8 Optimization (2025-12-18)
+
+The `compute_bigram_connections` function was optimized to use batch connection updates:
+
+**Before:** Called `add_lateral_connection()` ~4.69 million times individually, invalidating the lateral connections cache on each call.
+
+**After:** Accumulates all pending connections in memory, then calls `add_lateral_connections_batch()` once per minicolumn (~128K batch calls). This reduces cache invalidation overhead by 37x.
+
+```python
+# Old approach (4.69M individual calls)
+b1.add_lateral_connection(b2.id, weight)
+b2.add_lateral_connection(b1.id, weight)
+
+# New approach (128K batch calls)
+pending_connections[b1.id][b2.id] += weight
+pending_connections[b2.id][b1.id] += weight
+# ... at end of function:
+for bigram_id, connections in pending_connections.items():
+    bigram.add_lateral_connections_batch(dict(connections))
+```
 
 ---
 
