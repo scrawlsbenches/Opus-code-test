@@ -11,13 +11,13 @@ This document provides real performance numbers for the Cortical Text Processor,
 
 ## Quick Reference
 
-| Operation | Small Corpus (25 docs) | Real Codebase (151 files) |
+| Operation | Small Corpus (25 docs) | Real Codebase (539 files) |
 |-----------|------------------------|---------------------------|
-| Document processing | 0.31 ms/doc | 26.45 ms/doc |
-| compute_all() | 141 ms | 49.4 s |
-| Standard search | 0.13 ms | 1.22 ms |
-| Fast search | 0.06 ms | 0.66 ms |
-| Passage retrieval | 0.36 ms | 64.9 ms |
+| Document processing | 0.31 ms/doc | ~20 ms/doc |
+| compute_all() | 141 ms | ~261 s |
+| Standard search | 0.13 ms | ~2 ms |
+| Fast search | 0.06 ms | ~1 ms |
+| Passage retrieval | 0.36 ms | ~100 ms |
 
 ---
 
@@ -78,19 +78,19 @@ Full `compute_all()` pipeline: **140.9 ms**
 
 ---
 
-## Real Codebase Benchmarks (247 Python Files)
+## Real Codebase Benchmarks (539 Files)
 
-Benchmarked using the actual `cortical/`, `scripts/`, `tests/`, and `docs/` directories.
+Benchmarked using the full codebase including `cortical/`, `scripts/`, `tests/`, `docs/`, and `samples/` directories with recursive subdirectory indexing.
 
 ### Corpus Profile
 | Metric | Value |
 |--------|-------|
-| Files | 247 |
-| Lines | 129,513 |
-| Tokens (Layer 0) | 17,017 |
-| Bigrams (Layer 1) | 138,760 |
-| Concepts (Layer 2) | 22 |
-| L0 Connections | 649,764 |
+| Files | 539 |
+| Lines | ~136,000 |
+| Tokens (Layer 0) | 27,306 |
+| Bigrams (Layer 1) | 237,901 |
+| Concepts (Layer 2) | 35 |
+| L0 Connections | 1,189,953 |
 
 ### Compute Phase Timings (December 2025)
 
@@ -98,28 +98,28 @@ Profiled on full codebase with `scripts/profile_full_analysis.py`:
 
 | Phase | Time (s) | % of Total |
 |-------|----------|------------|
-| louvain | 27.30 | 27.8% |
-| bigram_connections | 24.59 | 25.0% |
-| semantics | 20.45 | 20.8% |
-| doc_connections | 18.36 | 18.7% |
-| pagerank | 5.31 | 5.4% |
-| activation | 2.25 | 2.3% |
-| tfidf | 0.04 | 0.0% |
-| **TOTAL** | **98.30** | **100%** |
+| doc_connections | 138.74 | 53.2% |
+| bigram_connections | 53.92 | 20.7% |
+| semantics | 32.27 | 12.4% |
+| louvain | 16.67 | 6.4% |
+| pagerank | 14.24 | 5.5% |
+| activation | 4.64 | 1.8% |
+| tfidf | 0.08 | 0.0% |
+| **TOTAL** | **260.56** | **100%** |
 
 ### Processing Times
 
 | Operation | Time |
 |-----------|------|
-| Document processing | ~50 s |
-| compute_all() | ~98 s |
+| Document processing | ~11 s |
+| compute_all() | ~261 s |
 
 ### Persistence (JSON format)
 
 | Operation | Time |
 |-----------|------|
-| Save | ~17 s |
-| Load | ~5 s |
+| Save | ~34 s |
+| Load | ~8 s |
 
 ---
 
@@ -163,9 +163,15 @@ These thresholds are used in CI to catch performance regressions:
 
 ## Bottleneck Analysis
 
-### Primary Bottleneck: Bigram Connections
+### Primary Bottleneck: Document Connections
 
-On small corpora, `compute_bigram_connections` dominates at **68.6%** of compute time. This is due to O(n²) complexity when building co-occurrence connections.
+On larger corpora (500+ docs), `compute_document_connections` dominates at **53.2%** of compute time. This exhibits O(n²) scaling as it computes similarity between all document pairs.
+
+**Current behavior:** No mitigation parameters available yet. This is the next optimization target.
+
+### Secondary Bottleneck: Bigram Connections
+
+On small corpora, `compute_bigram_connections` dominates at **68.6%** of compute time. On larger corpora it drops to ~21% after the Sprint 8 batch optimization.
 
 **Mitigation parameters:**
 ```python
@@ -175,7 +181,7 @@ CorticalConfig(
 )
 ```
 
-### Secondary Bottleneck: Semantic Extraction
+### Tertiary Bottleneck: Semantic Extraction
 
 On larger corpora, semantic extraction can become expensive due to similarity computation across all term pairs.
 
@@ -297,6 +303,7 @@ python scripts/index_codebase.py --compact --use-chunks
 
 | Date | Issue | Before | After | Fix |
 |------|-------|--------|-------|-----|
+| 2025-12-18 | doc_connections O(n²) scaling | 18s (434 docs) | 139s (539 docs) | **Identified as next optimization target** |
 | 2025-12-18 | bigram_connections overhead | 4.69M calls | 128K calls | Batched connection updates |
 | 2025-12-11 | bigram_connections timeout | 20.85s timeout | 10.79s | `max_bigrams_per_term=100` |
 | 2025-12-11 | semantics timeout | 30.05s timeout | 5.56s | `max_similarity_pairs=100000` |
