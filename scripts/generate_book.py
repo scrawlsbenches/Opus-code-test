@@ -4465,7 +4465,7 @@ class ExerciseGenerator(ChapterGenerator):
                     # Extract source code for this method
                     try:
                         method_source = ast.get_source_segment(source, node)
-                    except:
+                    except (TypeError, AttributeError):
                         method_source = ""
 
                     tests.append({

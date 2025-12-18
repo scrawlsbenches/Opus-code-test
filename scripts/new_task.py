@@ -161,7 +161,7 @@ def complete_task(task_id: str) -> bool:
                     session.save(DEFAULT_TASKS_DIR)
                     print(f"✅ Completed: {task_id} - {t.title}")
                     return True
-        except:
+        except (OSError, ValueError, TypeError, KeyError, AttributeError):
             continue
 
     print(f"Could not update task: {task_id}")

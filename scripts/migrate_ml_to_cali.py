@@ -143,7 +143,7 @@ def run_benchmark(store: MLStore) -> dict:
             try:
                 data = json.loads(line)
                 test_hashes.append(data.get('hash', f'test_{i}'))
-            except:
+            except json.JSONDecodeError:
                 test_hashes.append(f'test_{i}')
 
     if len(test_hashes) < 10:
@@ -184,7 +184,7 @@ def run_benchmark(store: MLStore) -> dict:
                     data = json.loads(line)
                     if data.get('hash') == test_hash:
                         break
-                except:
+                except json.JSONDecodeError:
                     pass
     json_get_time = time.perf_counter() - start
 
@@ -211,7 +211,7 @@ def run_benchmark(store: MLStore) -> dict:
             if line.strip():
                 try:
                     json_records.append(json.loads(line))
-                except:
+                except json.JSONDecodeError:
                     pass
     json_iter_time = time.perf_counter() - start
 

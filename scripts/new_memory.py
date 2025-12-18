@@ -194,7 +194,7 @@ def create_decision_template(title: str, tags: str = "", author: str = "") -> st
             if len(parts) >= 2 and parts[0] == "adr" and parts[1].isdigit():
                 numbers.append(int(parts[1]))
         next_num = max(numbers) + 1 if numbers else 1
-    except:
+    except (ValueError, IndexError, AttributeError):
         next_num = 1
 
     adr_id = f"ADR-{next_num:03d}"
