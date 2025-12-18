@@ -1340,11 +1340,27 @@ def get_doc_files(base_path: Path) -> list:
         for md_file in decisions_dir.glob('*.md'):
             files.append(md_file)
 
-    # Text sample files in samples/ (dog-fooding samples)
+    # Sample files in samples/ (dog-fooding samples)
+    # Include all text-based files, not just .txt, to handle files without extensions
     samples_dir = base_path / 'samples'
     if samples_dir.exists():
-        for txt_file in samples_dir.glob('*.txt'):
-            files.append(txt_file)
+        # Binary extensions to skip
+        binary_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.pdf', '.pkl', '.pickle',
+                            '.pyc', '.pyo', '.so', '.dll', '.exe', '.bin', '.dat',
+                            '.zip', '.tar', '.gz', '.bz2', '.7z', '.rar'}
+        for sample_file in samples_dir.iterdir():
+            # Only include files (not directories) at root level of samples/
+            if sample_file.is_file():
+                # Skip hidden files
+                if sample_file.name.startswith('.'):
+                    continue
+                # Skip binary files
+                if sample_file.suffix.lower() in binary_extensions:
+                    continue
+                # Skip if already handled (memories, decisions subdirs)
+                if sample_file.suffix == '.md':
+                    continue  # .md files in samples/ root are rare, but skip to avoid duplicates
+                files.append(sample_file)
 
     return files
 
@@ -1380,7 +1396,8 @@ def get_doc_type(doc_id: str) -> str:
         return 'memory'
     elif doc_id.startswith('samples/decisions/'):
         return 'decision'
-    elif doc_id.startswith('samples/') and doc_id.endswith('.txt'):
+    elif doc_id.startswith('samples/') and not doc_id.startswith('samples/memories/') and not doc_id.startswith('samples/decisions/'):
+        # Any file directly in samples/ (regardless of extension) is a sample
         return 'sample'
     elif doc_id.startswith('docs/'):
         return 'docs'
