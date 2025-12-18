@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "dbf8",
   "started_at": "2025-12-17T20:49:13.257355",
-  "saved_at": "2025-12-18T11:25:44.692153",
+  "saved_at": "2025-12-18T12:17:54.306748",
   "tasks": [
     {
       "id": "T-20251217-204913-dbf8-001",
@@ -203,6 +203,21 @@
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-18T11:25:44.692066",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251218-121754-dbf8-014",
+      "title": "Improve Hubris MoE cold-start UX - show clearer message when experts are untrained, consider falling back to ML file prediction model",
+      "status": "pending",
+      "priority": "low",
+      "category": "moe",
+      "description": "",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-18T12:17:54.306522",
       "updated_at": null,
       "completed_at": null,
       "context": {},
