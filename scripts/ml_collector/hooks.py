@@ -24,7 +24,14 @@ if [[ "$COMMIT_MSG" == "ml:"* ]] || \\
     exit 0
 fi
 
+# Collect commit data for ML training
 python scripts/ml_data_collector.py commit 2>/dev/null || true
+
+# Link commit to tasks (auto-update task status)
+COMMIT_HASH=$(git rev-parse HEAD 2>/dev/null)
+if [ -n "$COMMIT_HASH" ]; then
+    python scripts/ml_data_collector.py link-tasks 2>/dev/null || true
+fi
 # END-ML-DATA-COLLECTOR-HOOK
 '''
 
