@@ -1,0 +1,48 @@
+Batch Processing Patterns for Graph Operations
+
+When processing large graphs with millions of connections, individual operation overhead becomes a critical bottleneck. Batch processing patterns aggregate multiple operations into single atomic updates, dramatically reducing function call overhead and cache invalidation costs.
+
+The Accumulate-Then-Apply Pattern
+
+The most effective batch pattern for graph connection updates is accumulate-then-apply:
+
+1. Accumulation Phase: Collect all pending operations in memory structures (dictionaries, lists) without modifying the target data structure.
+
+2. Application Phase: Apply all accumulated changes in a single pass, triggering expensive operations (cache invalidation, index updates) only once per target node.
+
+This pattern transforms O(n) cache invalidations into O(k) where k is the number of unique targets, typically orders of magnitude smaller than n total operations.
+
+Implementation Considerations
+
+Memory trade-offs exist between accumulation size and application frequency. For graph operations:
+- Use defaultdict for automatic key initialization
+- Accumulate weights additively for connection strengthening
+- Track statistics separately from the accumulation structure
+- Apply in deterministic order for reproducibility
+
+Connection Building Example
+
+When building lateral connections between nodes based on co-occurrence patterns:
+- Traditional: Call add_connection() for each pair, invalidating caches each time
+- Batched: Accumulate all (source, target, weight) tuples, then call add_connections_batch() once per source node
+
+The batch approach reduces millions of individual method calls to thousands of batch calls, with each batch handling dozens to hundreds of connections.
+
+Performance Characteristics
+
+Batch processing shows greatest improvement when:
+- Individual operations have fixed overhead (cache invalidation, lock acquisition)
+- Operations target the same data structures repeatedly
+- Memory is sufficient to hold the accumulation buffer
+- Order of operations doesn't affect final result (commutative updates)
+
+Typical speedups range from 2x for small batches to 30x+ for large accumulations, primarily from reduced cache management overhead.
+
+Related Patterns
+
+- Write-behind caching: Similar accumulation for database writes
+- Event sourcing: Batch event application for state reconstruction
+- Map-reduce: Accumulation in map phase, application in reduce phase
+- Double buffering: Accumulate in one buffer while applying from another
+
+The batch processing pattern is fundamental to high-performance graph algorithms, enabling linear-time implementations of operations that would otherwise suffer from quadratic overhead.
