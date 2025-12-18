@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "dbf8",
   "started_at": "2025-12-17T20:49:13.257355",
-  "saved_at": "2025-12-18T12:17:54.306748",
+  "saved_at": "2025-12-18T12:45:54.933967",
   "tasks": [
     {
       "id": "T-20251217-204913-dbf8-001",
@@ -218,6 +218,21 @@
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-18T12:17:54.306522",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251218-124554-dbf8-015",
+      "title": "Implement confidence calibration tracking (Phase 1+2): Extend Prediction dataclass with outcome fields, create CalibrationTracker class to compute ECE/MCE/Brier metrics, enable retrospective analysis of existing 277KB predictions",
+      "status": "pending",
+      "priority": "medium",
+      "category": "moe",
+      "description": "",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-18T12:45:54.933831",
       "updated_at": null,
       "completed_at": null,
       "context": {},
