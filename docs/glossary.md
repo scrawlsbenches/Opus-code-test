@@ -296,20 +296,132 @@ Processing multiple queries or documents together to amortize overhead.
 
 ---
 
+## Hubris MoE System
+
+### MicroExpert
+Base class for specialized prediction experts. Each expert focuses on a specific aspect of coding tasks (files, tests, errors, workflows).
+
+**Location:** `scripts/hubris/micro_expert.py`
+
+**Subclasses:**
+- `FileExpert` - Predicts files to modify
+- `TestExpert` - Predicts tests to run
+- `ErrorDiagnosisExpert` - Diagnoses errors
+- `EpisodeExpert` - Learns workflow patterns
+
+### ExpertPrediction
+Standardized output format from any expert. Contains ranked items with confidence scores.
+
+**Fields:**
+- `expert_id`: Which expert made the prediction
+- `expert_type`: Category of expert (file, test, error, episode)
+- `items`: List of (item, confidence) tuples
+- `metadata`: Context about how prediction was made
+
+### Credit System
+Value-based economy where experts earn/lose credits based on prediction accuracy. Higher credits = more influence in ensemble voting.
+
+**Location:** `scripts/hubris/credit_account.py`, `scripts/hubris/credit_router.py`
+
+### CreditLedger
+Central registry of all expert credit accounts. Manages balances, transactions, and inter-expert transfers.
+
+**Key Methods:**
+- `get_or_create_account()`: Get or initialize expert account
+- `get_top_experts()`: Rank experts by balance
+- `transfer()`: Move credits between accounts
+
+### CreditAccount
+Individual expert's credit balance and transaction history. Starts at 100 credits.
+
+**Fields:**
+- `balance`: Current credit balance
+- `transactions`: History of credits/debits
+
+### ValueSignal
+Feedback from real-world outcomes that triggers credit updates. Generated when predictions resolve.
+
+**Types:**
+- `positive`: Prediction was correct
+- `negative`: Prediction was wrong
+- `neutral`: Inconclusive
+
+**Location:** `scripts/hubris/value_signal.py`
+
+### Cold-Start Mode
+Initial state when experts haven't learned yet (all have default 100 credits). Predictions show low confidence and ML fallback is offered.
+
+**Detection:** `is_cold_start()` in `hubris_cli.py`
+
+### Calibration
+Analysis of prediction confidence vs actual accuracy. Well-calibrated experts have confidence that matches their hit rate.
+
+**Location:** `scripts/hubris/calibration_tracker.py`
+
+### ECE (Expected Calibration Error)
+Average gap between predicted confidence and actual accuracy across confidence bins. Lower is better.
+
+**Formula:** `ECE = Σ(bin_size/total) × |accuracy - confidence|`
+
+**Interpretation:**
+- < 0.05: Excellent
+- < 0.10: Good
+- < 0.15: Acceptable
+- ≥ 0.15: Needs attention
+
+### MCE (Max Calibration Error)
+Worst calibration gap in any single bin. Identifies where predictions are most unreliable.
+
+### Brier Score
+Mean squared error of probabilistic predictions. Combines calibration and discrimination.
+
+**Formula:** `Brier = (1/n) × Σ(confidence - outcome)²`
+
+### Staking
+Mechanism for experts to bet credits on high-confidence predictions. Higher multipliers = higher risk/reward.
+
+**Strategies:**
+- CONSERVATIVE (1.0x)
+- MODERATE (1.5x)
+- AGGRESSIVE (2.0x)
+- YOLO (3.0x)
+
+**Location:** `scripts/hubris/staking.py`
+
+### Confidence Boost
+Bonus applied to high-credit experts (>150 credits) during aggregation. Up to +10% confidence.
+
+### Temperature (Credit Routing)
+Softmax temperature controlling weight distribution. Lower = sharper distinctions, higher = more democratic.
+
+### Disagreement Score
+Measure of how much experts disagree on predictions. High disagreement reduces ensemble confidence.
+
+---
+
 ## File Locations Quick Reference
 
 | Term | Primary File |
 |------|--------------|
-| Minicolumn | `minicolumn.py` |
-| Edge | `minicolumn.py` |
-| HierarchicalLayer | `layers.py` |
-| CorticalLayer | `layers.py` |
-| PageRank | `analysis.py` |
-| TF-IDF | `analysis.py` |
-| Label Propagation | `analysis.py` |
-| Query Expansion | `query/expansion.py` |
-| Relation Extraction | `semantics.py` |
-| Retrofitting | `semantics.py` |
-| Tokenization | `tokenizer.py` |
-| Fingerprint | `fingerprint.py` |
-| Code Concepts | `code_concepts.py` |
+| Minicolumn | `cortical/minicolumn.py` |
+| Edge | `cortical/minicolumn.py` |
+| HierarchicalLayer | `cortical/layers.py` |
+| CorticalLayer | `cortical/layers.py` |
+| PageRank | `cortical/analysis.py` |
+| TF-IDF | `cortical/analysis.py` |
+| Label Propagation | `cortical/analysis.py` |
+| Query Expansion | `cortical/query/expansion.py` |
+| Relation Extraction | `cortical/semantics.py` |
+| Retrofitting | `cortical/semantics.py` |
+| Tokenization | `cortical/tokenizer.py` |
+| Fingerprint | `cortical/fingerprint.py` |
+| Code Concepts | `cortical/code_concepts.py` |
+| MicroExpert | `scripts/hubris/micro_expert.py` |
+| FileExpert | `scripts/hubris/experts/file_expert.py` |
+| TestExpert | `scripts/hubris/experts/test_expert.py` |
+| CreditLedger | `scripts/hubris/credit_account.py` |
+| CreditRouter | `scripts/hubris/credit_router.py` |
+| ValueSignal | `scripts/hubris/value_signal.py` |
+| CalibrationTracker | `scripts/hubris/calibration_tracker.py` |
+| Staking | `scripts/hubris/staking.py` |
+| Hubris CLI | `scripts/hubris_cli.py` |
