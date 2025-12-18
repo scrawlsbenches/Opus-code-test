@@ -63,6 +63,34 @@ echo "$stats" | while read line; do
 done
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# Check sync status with origin
+echo ""
+echo "🔄 Checking origin sync status..."
+current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+if [[ -n "$current_branch" ]]; then
+    # Fetch origin (timeout after 5 seconds to not block)
+    timeout 5 git fetch origin main 2>/dev/null || true
+
+    # Count commits behind origin/main
+    behind=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo "0")
+    ahead=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "0")
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "   Branch: $current_branch"
+    if [[ "$behind" -gt 0 && "$ahead" -gt 0 ]]; then
+        echo "   ⚠️  $behind commits behind, $ahead commits ahead of origin/main"
+        echo "   Consider: git fetch origin && git rebase origin/main"
+    elif [[ "$behind" -gt 0 ]]; then
+        echo "   ⚠️  $behind commits behind origin/main"
+        echo "   Consider: git pull --rebase origin main"
+    elif [[ "$ahead" -gt 0 ]]; then
+        echo "   📤 $ahead commits ahead of origin/main (ready to push/PR)"
+    else
+        echo "   ✅ In sync with origin/main"
+    fi
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fi
+
 # Run test suite at session start
 echo ""
 echo "🧪 Running test suite..."
