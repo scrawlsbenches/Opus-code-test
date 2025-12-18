@@ -1,1 +1,0 @@
-{"action_type":"command","context":{"input":{"input":{"command":"python scripts/task_utils.py list --status pending 2>/dev/null | head -40","description":"List pending tasks"},"tool":"Bash"},"tool":"Bash"},"id":"A-20251216-162051-65d9-006","result_summary":null,"session_id":"65d98faa-e171-4896-886c-03d08bad7af7","success":true,"target":"","timestamp":"2025-12-16T15:02:48.355Z"}

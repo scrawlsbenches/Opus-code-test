@@ -1,1 +1,0 @@
-{"prediction_id": "pred_1766027223_65fb452b", "expert_id": "file_expert", "predicted_files": ["cortical/auth.py", "tests/test_auth.py", "docs/api.md"], "confidence": 0.8, "timestamp": 1766027223.1020708, "context": {"task_description": "Add authentication feature", "timestamp": 1766027223.1020696}}
