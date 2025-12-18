@@ -25,7 +25,7 @@ Hubris is a Mixture of Experts system designed to assist Claude Code with predic
 
 Hubris implements a Mixture of Experts (MoE) architecture inspired by **Thousand Brains Theory**, where multiple specialized cortical columns vote to reach consensus. Instead of a single monolithic model, Hubris uses:
 
-- **4 specialized micro-experts**, each trained on specific aspects of coding tasks
+- **5 specialized micro-experts**, each trained on specific aspects of coding tasks
 - **Confidence-weighted voting** to aggregate predictions
 - **Credit-based routing** where experts with better track records get more influence
 - **Staking mechanism** for experts to bet on high-confidence predictions
@@ -38,6 +38,7 @@ Hubris implements a Mixture of Experts (MoE) architecture inspired by **Thousand
 | **Test Prediction** | TestExpert | Which tests should run for code changes? |
 | **Error Diagnosis** | ErrorDiagnosisExpert | What's causing this error and how to fix it? |
 | **Workflow Learning** | EpisodeExpert | What action should come next? |
+| **Refactoring Suggestions** | RefactorExpert | Which files need refactoring? |
 
 ---
 
@@ -64,10 +65,11 @@ hubris/
 │   └── expert_router.py          # Intent-based expert selection
 │
 ├── Experts (Specialized Models)
-│   ├── experts/file_expert.py   # File prediction (TF-IDF + co-occurrence)
-│   ├── experts/test_expert.py   # Test selection (naming + history)
-│   ├── experts/error_expert.py  # Error diagnosis (patterns + stack traces)
-│   └── experts/episode_expert.py # Workflow learning (action sequences)
+│   ├── experts/file_expert.py    # File prediction (TF-IDF + co-occurrence)
+│   ├── experts/test_expert.py    # Test selection (naming + history)
+│   ├── experts/error_expert.py   # Error diagnosis (patterns + stack traces)
+│   ├── experts/episode_expert.py # Workflow learning (action sequences)
+│   └── experts/refactor_expert.py # Refactoring suggestions (heuristics + history)
 │
 ├── Orchestration
 │   └── expert_consolidator.py   # Unified training/prediction hub
@@ -90,13 +92,13 @@ ExpertRouter
 ExpertConsolidator
 (load relevant experts)
     ↓
-┌─────────────┬─────────────┬─────────────┬─────────────┐
-│ FileExpert  │ TestExpert  │ ErrorExpert │EpisodeExpert│
-│  (credit:   │  (credit:   │  (credit:   │  (credit:   │
-│   120.5)    │   98.2)     │   110.0)    │   105.3)    │
-└─────────────┴─────────────┴─────────────┴─────────────┘
-    ↓             ↓             ↓             ↓
-    Prediction   Prediction   Prediction   Prediction
+┌───────────┬───────────┬───────────┬───────────┬───────────┐
+│FileExpert │TestExpert │ErrorExpert│EpisodeExp │RefactorExp│
+│(credit:   │(credit:   │(credit:   │(credit:   │(credit:   │
+│ 120.5)    │  98.2)    │ 110.0)    │ 105.3)    │ 100.0)    │
+└───────────┴───────────┴───────────┴───────────┴───────────┘
+    ↓            ↓            ↓            ↓            ↓
+ Prediction  Prediction  Prediction  Prediction  Prediction
     ↓─────────────────────────────────────────↓
 VotingAggregator / CreditRouter
 (weight by confidence × credit balance)
@@ -331,6 +333,7 @@ Each expert trains on different data sources:
 | **TestExpert** | Commit history | Source-to-test mappings, failure patterns, naming conventions |
 | **ErrorDiagnosisExpert** | Error records | Error-to-file mappings, stack trace patterns, common causes |
 | **EpisodeExpert** | Session transcripts | Action sequences, context-to-action mappings, success patterns |
+| **RefactorExpert** | Commit history (refactor:) | Co-refactoring patterns, file size/complexity heuristics |
 
 ### Consolidated Training
 
@@ -534,6 +537,15 @@ python scripts/hubris_cli.py calibration --curve
 
 # Export calibration data as JSON
 python scripts/hubris_cli.py calibration --json
+
+# Suggest files that may need refactoring
+python scripts/hubris_cli.py suggest-refactor
+
+# Scan entire codebase for refactoring candidates
+python scripts/hubris_cli.py suggest-refactor --scan
+
+# Analyze specific files with detailed recommendations
+python scripts/hubris_cli.py suggest-refactor --files cortical/analysis.py --verbose
 ```
 
 ### Cold-Start Mode
@@ -896,6 +908,72 @@ prediction = episode_expert.predict({
 
 ---
 
+### RefactorExpert
+
+**Purpose**: Identify files that may benefit from refactoring
+
+**Training Data**: Commit history with "refactor:" prefix messages
+
+**Model Components**:
+- Refactoring frequency per file
+- Co-refactoring patterns (files often refactored together)
+- Keyword to file associations
+- File characteristics cache (size, function count, nesting)
+
+**Prediction Signals**:
+1. Historical refactoring frequency (2.0x weight)
+2. Co-refactoring with seed files (1.5x weight)
+3. File heuristics (variable weight based on severity)
+4. Query keyword match (1.0x weight)
+
+**Heuristics (code smell detection)**:
+| Signal | Threshold | Description |
+|--------|-----------|-------------|
+| `extract` | >500 lines | File too large, needs splitting |
+| `extract` | >20 functions | Too many functions |
+| `extract` | >50 lines/function | Long functions |
+| `simplify` | >6 indent levels | Deep nesting |
+| `move` | >20 imports | Possible wrong location |
+
+**Example**:
+```python
+from scripts.hubris.experts.refactor_expert import RefactorExpert
+
+expert = RefactorExpert()
+expert.train(commits)  # Learns from refactor: commits
+
+# Predict files needing refactoring
+prediction = expert.predict({
+    'query': 'improve code quality',
+    'files': ['cortical/analysis.py'],
+    'include_heuristics': True,
+    'repo_root': '.'
+})
+
+# Or scan entire codebase
+prediction = expert.analyze_codebase(repo_root='.', top_n=20)
+
+# Get detailed report for a file
+report = expert.get_file_report('cortical/analysis.py')
+print(f"Score: {report['refactor_score']}")
+print(f"Signals: {report['signals']}")
+print(f"Recommendations: {report['recommendations']}")
+```
+
+**CLI Usage**:
+```bash
+# Analyze recently changed files (default)
+python scripts/hubris_cli.py suggest-refactor
+
+# Scan entire codebase
+python scripts/hubris_cli.py suggest-refactor --scan
+
+# Analyze specific files with recommendations
+python scripts/hubris_cli.py suggest-refactor --files cortical/analysis.py --verbose
+```
+
+---
+
 ## Performance Tuning
 
 ### Temperature Control
@@ -971,12 +1049,13 @@ pred = expert.predict(context)
 
 Potential new experts:
 
-- **RefactorExpert**: Suggest refactoring opportunities
 - **DocumentationExpert**: Predict documentation needs
 - **ReviewExpert**: Code review suggestions
 - **PerformanceExpert**: Performance optimization suggestions
 - **SecurityExpert**: Security vulnerability detection
 - **DependencyExpert**: Dependency update recommendations
+
+*Note: RefactorExpert was implemented in Sprint 7 (2025-12-18).*
 
 ---
 
