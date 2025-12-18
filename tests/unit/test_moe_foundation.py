@@ -30,6 +30,7 @@ from credit_account import CreditAccount, CreditTransaction, CreditLedger
 from value_signal import (
     ValueSignal, SignalType, ValueAttributor, SignalBuffer
 )
+from staking import Stake, StakePool, StakeStrategy, AutoStaker
 
 
 # Test implementation of MicroExpert for testing abstract base class
@@ -2027,6 +2028,454 @@ class TestCreditSystem(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             account.debit(-10.0, 'invalid')
+
+
+class TestStaking(unittest.TestCase):
+    """Test Stake and StakePool for expert credit staking."""
+
+    def test_stake_creation(self):
+        """Test creating a stake."""
+        stake = Stake(
+            stake_id='stake_1',
+            expert_id='expert_1',
+            prediction_id='pred_1',
+            amount=10.0,
+            multiplier=1.5,
+            timestamp=1234567890.0,
+            status='pending',
+            outcome_value=None
+        )
+
+        self.assertEqual(stake.stake_id, 'stake_1')
+        self.assertEqual(stake.expert_id, 'expert_1')
+        self.assertEqual(stake.amount, 10.0)
+        self.assertEqual(stake.multiplier, 1.5)
+        self.assertEqual(stake.status, 'pending')
+        self.assertIsNone(stake.outcome_value)
+
+        # Test serialization
+        d = stake.to_dict()
+        self.assertEqual(d['stake_id'], 'stake_1')
+        self.assertEqual(d['amount'], 10.0)
+
+        # Test deserialization
+        stake2 = Stake.from_dict(d)
+        self.assertEqual(stake2.stake_id, stake.stake_id)
+        self.assertEqual(stake2.amount, stake.amount)
+
+    def test_place_stake_success(self):
+        """Test successfully placing a stake."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, max_stake_ratio=0.5, min_stake=5.0)
+
+        # Create account with balance
+        account = ledger.get_or_create_account('expert_1', initial_balance=100.0)
+        initial_balance = account.balance
+
+        # Place stake
+        stake = pool.place_stake('expert_1', 'pred_1', amount=20.0, multiplier=1.5)
+
+        # Check stake created
+        self.assertIsNotNone(stake)
+        self.assertEqual(stake.expert_id, 'expert_1')
+        self.assertEqual(stake.prediction_id, 'pred_1')
+        self.assertEqual(stake.amount, 20.0)
+        self.assertEqual(stake.multiplier, 1.5)
+        self.assertEqual(stake.status, 'pending')
+
+        # Check balance deducted
+        account = ledger.get_or_create_account('expert_1')
+        self.assertEqual(account.balance, initial_balance - 20.0)
+
+        # Check stake in pool
+        self.assertIn(stake.stake_id, pool.stakes)
+
+    def test_place_stake_insufficient_balance(self):
+        """Test placing stake with insufficient balance."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, min_stake=5.0)
+
+        # Create account with low balance
+        ledger.get_or_create_account('expert_1', initial_balance=10.0)
+
+        # Try to stake more than available
+        with self.assertRaises(ValueError) as ctx:
+            pool.place_stake('expert_1', 'pred_1', amount=20.0, multiplier=1.5)
+
+        self.assertIn('Insufficient balance', str(ctx.exception))
+
+    def test_place_stake_exceeds_ratio(self):
+        """Test placing stake that exceeds max_stake_ratio."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, max_stake_ratio=0.5, min_stake=5.0)
+
+        # Create account
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+
+        # Try to stake more than 50% of balance
+        with self.assertRaises(ValueError) as ctx:
+            pool.place_stake('expert_1', 'pred_1', amount=60.0, multiplier=1.5)
+
+        self.assertIn('exceeds max allowed', str(ctx.exception))
+
+    def test_resolve_stake_win(self):
+        """Test resolving a winning stake."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, min_stake=5.0)
+
+        # Create account and place stake
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+        stake = pool.place_stake('expert_1', 'pred_1', amount=20.0, multiplier=2.0)
+
+        balance_after_stake = ledger.accounts['expert_1'].balance
+
+        # Resolve as win
+        net_gain = pool.resolve_stake(stake.stake_id, success=True)
+
+        # Check net gain (profit only, not including original stake)
+        # Payout = 20.0 * 2.0 = 40.0
+        # Net gain = 40.0 - 20.0 = 20.0
+        self.assertEqual(net_gain, 20.0)
+
+        # Check stake status
+        self.assertEqual(stake.status, 'won')
+        self.assertEqual(stake.outcome_value, 20.0)
+
+        # Check balance (original - stake + payout)
+        # 100 - 20 + 40 = 120
+        account = ledger.get_or_create_account('expert_1')
+        self.assertEqual(account.balance, 120.0)
+
+    def test_resolve_stake_loss(self):
+        """Test resolving a losing stake."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, min_stake=5.0)
+
+        # Create account and place stake
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+        stake = pool.place_stake('expert_1', 'pred_1', amount=20.0, multiplier=2.0)
+
+        # Resolve as loss
+        net_gain = pool.resolve_stake(stake.stake_id, success=False)
+
+        # Check net loss
+        self.assertEqual(net_gain, -20.0)
+
+        # Check stake status
+        self.assertEqual(stake.status, 'lost')
+        self.assertEqual(stake.outcome_value, -20.0)
+
+        # Check balance (original - stake)
+        # 100 - 20 = 80
+        account = ledger.get_or_create_account('expert_1')
+        self.assertEqual(account.balance, 80.0)
+
+    def test_cancel_stake(self):
+        """Test cancelling a pending stake."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, min_stake=5.0)
+
+        # Create account and place stake
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+        stake = pool.place_stake('expert_1', 'pred_1', amount=20.0, multiplier=1.5)
+
+        balance_after_stake = ledger.accounts['expert_1'].balance
+
+        # Cancel stake
+        result = pool.cancel_stake(stake.stake_id)
+
+        # Check cancellation succeeded
+        self.assertTrue(result)
+        self.assertEqual(stake.status, 'cancelled')
+        self.assertEqual(stake.outcome_value, 0.0)
+
+        # Check balance restored
+        account = ledger.get_or_create_account('expert_1')
+        self.assertEqual(account.balance, 100.0)
+
+        # Try to cancel again (should fail)
+        result = pool.cancel_stake(stake.stake_id)
+        self.assertFalse(result)
+
+    def test_get_active_stakes(self):
+        """Test getting active stakes."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, min_stake=5.0)
+
+        # Create accounts
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+        ledger.get_or_create_account('expert_2', initial_balance=100.0)
+
+        # Place stakes
+        stake1 = pool.place_stake('expert_1', 'pred_1', 10.0, 1.5)
+        stake2 = pool.place_stake('expert_1', 'pred_2', 15.0, 2.0)
+        stake3 = pool.place_stake('expert_2', 'pred_3', 20.0, 1.5)
+
+        # Resolve one stake
+        pool.resolve_stake(stake1.stake_id, success=True)
+
+        # Get all active stakes
+        active = pool.get_active_stakes()
+        self.assertEqual(len(active), 2)
+        active_ids = {s.stake_id for s in active}
+        self.assertIn(stake2.stake_id, active_ids)
+        self.assertIn(stake3.stake_id, active_ids)
+        self.assertNotIn(stake1.stake_id, active_ids)
+
+        # Get active stakes for expert_1
+        active_expert1 = pool.get_active_stakes('expert_1')
+        self.assertEqual(len(active_expert1), 1)
+        self.assertEqual(active_expert1[0].stake_id, stake2.stake_id)
+
+        # Get active stakes for expert_2
+        active_expert2 = pool.get_active_stakes('expert_2')
+        self.assertEqual(len(active_expert2), 1)
+        self.assertEqual(active_expert2[0].stake_id, stake3.stake_id)
+
+    def test_stake_pool_persistence(self):
+        """Test saving and loading stake pool."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, max_stake_ratio=0.6, min_stake=10.0)
+
+        # Create account and place stakes
+        ledger.get_or_create_account('expert_1', initial_balance=200.0)
+        stake1 = pool.place_stake('expert_1', 'pred_1', 30.0, 1.5)
+        stake2 = pool.place_stake('expert_1', 'pred_2', 40.0, 2.0)
+
+        # Resolve one stake
+        pool.resolve_stake(stake1.stake_id, success=True)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / 'stake_pool.json'
+            pool.save(path)
+
+            # Verify file exists
+            self.assertTrue(path.exists())
+
+            # Load
+            loaded_pool = StakePool.load(path, ledger)
+
+            # Verify configuration
+            self.assertEqual(loaded_pool.max_stake_ratio, 0.6)
+            self.assertEqual(loaded_pool.min_stake, 10.0)
+
+            # Verify stakes
+            self.assertEqual(len(loaded_pool.stakes), 2)
+            self.assertIn(stake1.stake_id, loaded_pool.stakes)
+            self.assertIn(stake2.stake_id, loaded_pool.stakes)
+
+            # Verify stake details
+            loaded_stake1 = loaded_pool.stakes[stake1.stake_id]
+            self.assertEqual(loaded_stake1.status, 'won')
+            self.assertEqual(loaded_stake1.amount, 30.0)
+
+            loaded_stake2 = loaded_pool.stakes[stake2.stake_id]
+            self.assertEqual(loaded_stake2.status, 'pending')
+            self.assertEqual(loaded_stake2.amount, 40.0)
+
+    def test_auto_staker_high_confidence(self):
+        """Test auto-staker with high confidence prediction."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, max_stake_ratio=0.5, min_stake=5.0)
+        auto_staker = AutoStaker(pool)
+
+        # Create account
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+
+        # Create high confidence prediction
+        prediction = ExpertPrediction(
+            expert_id='expert_1',
+            expert_type='test',
+            items=[('file1.py', 0.9), ('file2.py', 0.7)],
+            metadata={}
+        )
+
+        # Decide stake with MODERATE strategy
+        decision = auto_staker.decide_stake(
+            'expert_1',
+            prediction,
+            StakeStrategy.MODERATE
+        )
+
+        # Should stake
+        self.assertIsNotNone(decision)
+        amount, multiplier = decision
+
+        # Should stake up to max (50% of 100 = 50)
+        self.assertEqual(amount, 50.0)
+        # Should use full strategy multiplier
+        self.assertEqual(multiplier, 1.5)
+
+    def test_auto_staker_low_confidence(self):
+        """Test auto-staker with low confidence prediction."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, max_stake_ratio=0.5, min_stake=5.0)
+        auto_staker = AutoStaker(pool)
+
+        # Create account
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+
+        # Create low confidence prediction
+        prediction = ExpertPrediction(
+            expert_id='expert_1',
+            expert_type='test',
+            items=[('file1.py', 0.3), ('file2.py', 0.2)],
+            metadata={}
+        )
+
+        # Decide stake
+        decision = auto_staker.decide_stake(
+            'expert_1',
+            prediction,
+            StakeStrategy.AGGRESSIVE
+        )
+
+        # Should not stake (confidence too low)
+        self.assertIsNone(decision)
+
+    def test_auto_staker_medium_confidence(self):
+        """Test auto-staker with medium confidence prediction."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, max_stake_ratio=0.5, min_stake=5.0)
+        auto_staker = AutoStaker(pool)
+
+        # Create account
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+
+        # Create medium confidence prediction (0.65)
+        prediction = ExpertPrediction(
+            expert_id='expert_1',
+            expert_type='test',
+            items=[('file1.py', 0.65), ('file2.py', 0.5)],
+            metadata={}
+        )
+
+        # Decide stake with AGGRESSIVE strategy (2.0x)
+        decision = auto_staker.decide_stake(
+            'expert_1',
+            prediction,
+            StakeStrategy.AGGRESSIVE
+        )
+
+        # Should stake
+        self.assertIsNotNone(decision)
+        amount, multiplier = decision
+
+        # Should stake half of max (0.5 * 50 = 25)
+        self.assertEqual(amount, 25.0)
+
+        # Multiplier should be adjusted based on confidence
+        # At 0.65 confidence: confidence_factor = (0.65 - 0.5) / 0.3 = 0.5
+        # adjusted = 1.0 + (2.0 - 1.0) * 0.5 = 1.5
+        self.assertAlmostEqual(multiplier, 1.5)
+
+    def test_stake_strategy_values(self):
+        """Test StakeStrategy enum values."""
+        self.assertEqual(StakeStrategy.CONSERVATIVE.value, 1.0)
+        self.assertEqual(StakeStrategy.MODERATE.value, 1.5)
+        self.assertEqual(StakeStrategy.AGGRESSIVE.value, 2.0)
+        self.assertEqual(StakeStrategy.YOLO.value, 3.0)
+
+    def test_get_total_staked(self):
+        """Test getting total staked amount."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, min_stake=5.0)
+
+        # Create accounts
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+        ledger.get_or_create_account('expert_2', initial_balance=100.0)
+
+        # Place stakes
+        pool.place_stake('expert_1', 'pred_1', 10.0, 1.5)
+        pool.place_stake('expert_1', 'pred_2', 15.0, 2.0)
+        pool.place_stake('expert_2', 'pred_3', 20.0, 1.5)
+
+        # Total staked (all experts)
+        total = pool.get_total_staked()
+        self.assertEqual(total, 45.0)
+
+        # Total staked by expert_1
+        total_expert1 = pool.get_total_staked('expert_1')
+        self.assertEqual(total_expert1, 25.0)
+
+        # Total staked by expert_2
+        total_expert2 = pool.get_total_staked('expert_2')
+        self.assertEqual(total_expert2, 20.0)
+
+    def test_get_stake_history(self):
+        """Test getting stake history for an expert."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, min_stake=5.0)
+
+        # Create account
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+
+        # Place stakes (with small delays to ensure different timestamps)
+        import time
+        stake1 = pool.place_stake('expert_1', 'pred_1', 10.0, 1.5)
+        time.sleep(0.01)
+        stake2 = pool.place_stake('expert_1', 'pred_2', 15.0, 2.0)
+        time.sleep(0.01)
+        stake3 = pool.place_stake('expert_1', 'pred_3', 20.0, 1.5)
+
+        # Resolve one stake
+        pool.resolve_stake(stake1.stake_id, success=True)
+
+        # Get history
+        history = pool.get_stake_history('expert_1')
+
+        # Should have all stakes
+        self.assertEqual(len(history), 3)
+
+        # Should be sorted newest first
+        self.assertEqual(history[0].stake_id, stake3.stake_id)
+        self.assertEqual(history[1].stake_id, stake2.stake_id)
+        self.assertEqual(history[2].stake_id, stake1.stake_id)
+
+        # Should include resolved stakes
+        self.assertEqual(history[2].status, 'won')
+
+    def test_stake_validation(self):
+        """Test stake validation (amount, multiplier, etc.)."""
+        ledger = CreditLedger()
+        pool = StakePool(ledger, min_stake=10.0)
+
+        ledger.get_or_create_account('expert_1', initial_balance=100.0)
+
+        # Test below minimum stake
+        with self.assertRaises(ValueError) as ctx:
+            pool.place_stake('expert_1', 'pred_1', 5.0, 1.5)
+        self.assertIn('below minimum', str(ctx.exception))
+
+        # Test invalid multiplier (too low)
+        with self.assertRaises(ValueError) as ctx:
+            pool.place_stake('expert_1', 'pred_1', 15.0, 0.5)
+        self.assertIn('Multiplier must be', str(ctx.exception))
+
+        # Test invalid multiplier (too high)
+        with self.assertRaises(ValueError) as ctx:
+            pool.place_stake('expert_1', 'pred_1', 15.0, 4.0)
+        self.assertIn('Multiplier must be', str(ctx.exception))
+
+    def test_stake_pool_initialization_validation(self):
+        """Test StakePool initialization parameter validation."""
+        ledger = CreditLedger()
+
+        # Invalid max_stake_ratio (too high)
+        with self.assertRaises(ValueError):
+            StakePool(ledger, max_stake_ratio=1.5)
+
+        # Invalid max_stake_ratio (zero)
+        with self.assertRaises(ValueError):
+            StakePool(ledger, max_stake_ratio=0.0)
+
+        # Invalid min_stake (negative)
+        with self.assertRaises(ValueError):
+            StakePool(ledger, min_stake=-5.0)
+
+        # Valid parameters
+        pool = StakePool(ledger, max_stake_ratio=1.0, min_stake=1.0)
+        self.assertIsNotNone(pool)
 
 
 if __name__ == '__main__':
