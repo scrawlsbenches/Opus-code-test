@@ -1328,38 +1328,23 @@ def get_doc_files(base_path: Path) -> list:
         for md_file in docs_dir.glob('*.md'):
             files.append(md_file)
 
-    # Memory documents in samples/memories/
-    memories_dir = base_path / 'samples' / 'memories'
-    if memories_dir.exists():
-        for md_file in memories_dir.glob('*.md'):
-            files.append(md_file)
-
-    # Decision records in samples/decisions/
-    decisions_dir = base_path / 'samples' / 'decisions'
-    if decisions_dir.exists():
-        for md_file in decisions_dir.glob('*.md'):
-            files.append(md_file)
-
-    # Sample files in samples/ (dog-fooding samples)
-    # Include all text-based files, not just .txt, to handle files without extensions
+    # All sample files in samples/ directory (recursive)
+    # This includes: memories/, decisions/, and all topic subdirectories
     samples_dir = base_path / 'samples'
     if samples_dir.exists():
         # Binary extensions to skip
         binary_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.pdf', '.pkl', '.pickle',
                             '.pyc', '.pyo', '.so', '.dll', '.exe', '.bin', '.dat',
                             '.zip', '.tar', '.gz', '.bz2', '.7z', '.rar'}
-        for sample_file in samples_dir.iterdir():
-            # Only include files (not directories) at root level of samples/
+        # Recursively walk all files in samples/
+        for sample_file in samples_dir.rglob('*'):
             if sample_file.is_file():
-                # Skip hidden files
-                if sample_file.name.startswith('.'):
+                # Skip hidden files and directories
+                if any(part.startswith('.') for part in sample_file.parts):
                     continue
                 # Skip binary files
                 if sample_file.suffix.lower() in binary_extensions:
                     continue
-                # Skip if already handled (memories, decisions subdirs)
-                if sample_file.suffix == '.md':
-                    continue  # .md files in samples/ root are rare, but skip to avoid duplicates
                 files.append(sample_file)
 
     return files
