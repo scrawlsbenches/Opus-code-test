@@ -46,9 +46,9 @@ from .diff import (
 )
 # Pickle support removed - JSON-only persistence now
 
-# MCP Server support (optional import)
+# MCP Server support (optional import) - now in cortical.projects.mcp
 try:
-    from .mcp_server import CorticalMCPServer, create_mcp_server
+    from .projects.mcp import CorticalMCPServer, main as create_mcp_server
     _has_mcp = True
 except ImportError:
     _has_mcp = False

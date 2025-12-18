@@ -106,6 +106,111 @@
 
 ---
 
+## Sprint 9: Projects Architecture ✅
+**Sprint ID:** sprint-009-projects-arch
+**Epic:** Cortical Text Processor (core)
+**Status:** Complete ✅
+**Isolation:** `cortical/projects/` (new), `tests/`, `.github/workflows/`
+**Session:** ac6d
+
+### Goals
+- [x] Create `cortical/projects/` directory structure
+- [x] Move MCP server to `cortical/projects/mcp/`
+- [x] Move proto to `cortical/projects/proto/` (already removed, placeholder added)
+- [x] Update pyproject.toml with per-project dependencies
+- [x] Update CI to isolate project tests
+- [x] Document Projects architecture pattern
+- [x] Verify all tests pass (4,769 core + 38 MCP = 4,807 total)
+- [x] Create knowledge transfer document
+
+### Task Dependency Graph (for Sub-Agents)
+
+```
+                    ┌─────────────────────┐
+                    │ T-001: Create       │
+                    │ directory structure │
+                    └─────────┬───────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              │                               │
+              ▼                               ▼
+┌─────────────────────────┐     ┌─────────────────────────┐
+│ T-002: Move MCP         │     │ T-003: Move proto       │
+│ (can run in parallel)   │     │ (can run in parallel)   │
+└───────────┬─────────────┘     └───────────┬─────────────┘
+            │                               │
+            └───────────────┬───────────────┘
+                            │
+              ┌─────────────┴─────────────┐
+              │                           │
+              ▼                           ▼
+┌─────────────────────────┐ ┌─────────────────────────┐
+│ T-004: Update           │ │ T-006: Document         │
+│ pyproject.toml          │ │ architecture            │
+└───────────┬─────────────┘ └─────────────────────────┘
+            │
+            ▼
+┌─────────────────────────┐
+│ T-005: Update CI        │
+└───────────┬─────────────┘
+            │
+            ▼
+┌─────────────────────────┐
+│ T-007: Verify tests     │
+└───────────┬─────────────┘
+            │
+            ▼
+┌─────────────────────────┐
+│ T-008: Knowledge        │
+│ transfer document       │
+└─────────────────────────┘
+```
+
+### Parallelization Opportunities
+
+| Phase | Tasks | Sub-Agents |
+|-------|-------|------------|
+| 1. Setup | T-001 | 1 agent |
+| 2. Move | T-002, T-003 | 2 parallel agents |
+| 3. Config | T-004, T-006 | 2 parallel agents |
+| 4. CI | T-005 | 1 agent |
+| 5. Verify | T-007 | 1 agent |
+| 6. Document | T-008 | 1 agent |
+
+### Key Files
+
+**New Files:**
+- `cortical/projects/__init__.py`
+- `cortical/projects/mcp/__init__.py`
+- `cortical/projects/mcp/server.py`
+- `cortical/projects/mcp/tests/`
+- `cortical/projects/proto/__init__.py`
+- `docs/projects-architecture.md`
+
+**Modified Files:**
+- `pyproject.toml` - Add project dependency groups
+- `.github/workflows/ci.yml` - Isolate project tests
+- `CLAUDE.md` - Add Projects section
+
+**Removed Files:**
+- `cortical/mcp_server.py` (moved)
+- `tests/test_mcp_server.py` (moved)
+
+### Success Criteria
+- Core tests run independently of project tests
+- MCP tests only run when `[mcp]` dependencies installed
+- CI shows separate status for core vs projects
+- Zero-dependency core library maintained
+- All existing tests pass
+
+### Notes
+- This sprint addresses the recurring MCP test failures
+- Creates pattern for future optional features
+- Maintains backward compatibility via `cortical.projects.mcp`
+- Sub-agents should coordinate via task file updates
+
+---
+
 # Parallel Work Guidelines
 
 ## Thread Assignment
@@ -261,29 +366,33 @@ Completed:
 
 # Future Sprints (Backlog)
 
-## Sprint 9: DocumentationExpert
+## Sprint 10: DocumentationExpert
 Create expert for documentation suggestions.
 
-## Sprint 10: SecurityExpert
+## Sprint 11: SecurityExpert
 Create expert for security vulnerability detection.
 
-## Sprint 11: PerformanceExpert
+## Sprint 12: PerformanceExpert
 Create expert for performance optimization suggestions.
 
-## Sprint 12: DependencyExpert
+## Sprint 13: DependencyExpert
 Create expert for dependency update recommendations.
+
+## Sprint 14: CLI Project Migration
+Move CLI wrapper to projects/cli if it becomes problematic.
 
 ---
 
 # Stats
 
-| Sprint | Duration | Status |
-|--------|----------|--------|
-| Sprint 1 | 3 days | ✅ |
-| Sprint 2 | 2 days | ✅ |
-| Sprint 3 | 3 days | ✅ |
-| Sprint 4 | 1 day | ✅ |
-| Sprint 5 | 1 day | ✅ |
-| Sprint 6 | - | 🟢 |
-| Sprint 7 | - | 🟢 |
-| Sprint 8 | - | 🟢 |
+| Sprint | Duration | Status | Epic |
+|--------|----------|--------|------|
+| Sprint 1 | 3 days | ✅ | Hubris MoE |
+| Sprint 2 | 2 days | ✅ | Hubris MoE |
+| Sprint 3 | 3 days | ✅ | Hubris MoE |
+| Sprint 4 | 1 day | ✅ | Hubris MoE |
+| Sprint 5 | 1 day | ✅ | Hubris MoE |
+| Sprint 6 | - | 🟢 | Hubris MoE |
+| Sprint 7 | - | 🟢 | Hubris MoE |
+| Sprint 8 | - | 🟢 | Core |
+| Sprint 9 | 1 day | ✅ | Core (Projects) |

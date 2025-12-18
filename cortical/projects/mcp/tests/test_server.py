@@ -18,7 +18,7 @@ pytestmark = [pytest.mark.optional, pytest.mark.mcp]
 
 # Guard MCP import - skip all tests if not available
 try:
-    from cortical.mcp_server import CorticalMCPServer, create_mcp_server
+    from cortical.projects.mcp.server import CorticalMCPServer, create_mcp_server
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
@@ -669,7 +669,7 @@ class TestContentTypeValidation(unittest.TestCase):
         """
         # Verify the validation code exists in the source
         import inspect
-        from cortical.mcp_server import CorticalMCPServer
+        from cortical.projects.mcp.server import CorticalMCPServer
 
         source = inspect.getsource(CorticalMCPServer)
         self.assertIn("not isinstance(content, str)", source)
@@ -709,14 +709,14 @@ class TestServerRunAndMain(unittest.TestCase):
         import os
 
         # Import main function
-        from cortical.mcp_server import main
+        from cortical.projects.mcp.server import main
 
         # Mock environment variables and server creation
         with patch.dict(os.environ, {
             "CORTICAL_LOG_LEVEL": "DEBUG",
             "CORTICAL_CORPUS_PATH": ""
         }):
-            with patch('cortical.mcp_server.create_mcp_server') as mock_create:
+            with patch('cortical.projects.mcp.server.create_mcp_server') as mock_create:
                 mock_server = MagicMock()
                 mock_create.return_value = mock_server
 
@@ -740,7 +740,7 @@ class TestServerRunAndMain(unittest.TestCase):
         import os
         import tempfile
 
-        from cortical.mcp_server import main
+        from cortical.projects.mcp.server import main
 
         # Create a temporary corpus file path
         with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
@@ -751,7 +751,7 @@ class TestServerRunAndMain(unittest.TestCase):
                 "CORTICAL_LOG_LEVEL": "INFO",
                 "CORTICAL_CORPUS_PATH": temp_corpus
             }):
-                with patch('cortical.mcp_server.create_mcp_server') as mock_create:
+                with patch('cortical.projects.mcp.server.create_mcp_server') as mock_create:
                     mock_server = MagicMock()
                     mock_create.return_value = mock_server
 
@@ -770,14 +770,14 @@ class TestServerRunAndMain(unittest.TestCase):
         import os
         import logging
 
-        from cortical.mcp_server import main
+        from cortical.projects.mcp.server import main
 
         # Clear the log level env var to test default
         env_without_log_level = {k: v for k, v in os.environ.items() if k != "CORTICAL_LOG_LEVEL"}
         env_without_log_level["CORTICAL_CORPUS_PATH"] = ""
 
         with patch.dict(os.environ, env_without_log_level, clear=True):
-            with patch('cortical.mcp_server.create_mcp_server') as mock_create:
+            with patch('cortical.projects.mcp.server.create_mcp_server') as mock_create:
                 mock_server = MagicMock()
                 mock_create.return_value = mock_server
 

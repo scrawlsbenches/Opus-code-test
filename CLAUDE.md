@@ -785,7 +785,7 @@ Some tests are designed to skip under certain conditions. This is intentional, n
 **Pattern for optional dependencies:**
 ```python
 try:
-    from cortical.proto.serialization import to_proto, from_proto
+    from cortical.projects.proto import to_proto, from_proto
     PROTOBUF_AVAILABLE = True
 except ImportError:
     PROTOBUF_AVAILABLE = False
