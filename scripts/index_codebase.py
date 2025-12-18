@@ -1340,6 +1340,12 @@ def get_doc_files(base_path: Path) -> list:
         for md_file in decisions_dir.glob('*.md'):
             files.append(md_file)
 
+    # Text sample files in samples/ (dog-fooding samples)
+    samples_dir = base_path / 'samples'
+    if samples_dir.exists():
+        for txt_file in samples_dir.glob('*.txt'):
+            files.append(txt_file)
+
     return files
 
 
@@ -1362,7 +1368,7 @@ def get_doc_type(doc_id: str) -> str:
     Determine document type from document ID.
 
     Returns:
-        One of: 'code', 'test', 'docs', 'root_docs', 'memory', 'decision', 'concept'
+        One of: 'code', 'test', 'docs', 'root_docs', 'memory', 'decision', 'concept', 'sample'
     """
     if doc_id.startswith('tests/'):
         return 'test'
@@ -1374,6 +1380,8 @@ def get_doc_type(doc_id: str) -> str:
         return 'memory'
     elif doc_id.startswith('samples/decisions/'):
         return 'decision'
+    elif doc_id.startswith('samples/') and doc_id.endswith('.txt'):
+        return 'sample'
     elif doc_id.startswith('docs/'):
         return 'docs'
     elif doc_id.endswith('.md'):
