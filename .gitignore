@@ -123,3 +123,9 @@ cortical/proto/__pycache__/
 .git-ml/.last_activity  # Session continuity tracking (local only)
 .git-ml/cali/  # CALI storage (local indices, objects, manifest - all regeneratable)
 .git-ml/predictions/  # Hubris prediction state (local, regeneratable)
+
+# Clean ignores for local ML data
+.git-ml/.last_activity
+.git-ml/cali/
+.git-ml/predictions/
+samples/memories/\[DRAFT\]-*
