@@ -9,18 +9,19 @@
 
 # Active Sprints
 
-## Sprint 6: TestExpert Activation
+## Sprint 6: TestExpert Activation ✅
 **Sprint ID:** sprint-006-test-expert
 **Epic:** Hubris MoE System (efba)
-**Status:** Available 🟢
+**Status:** Complete ✅
+**Session:** 0c9WR
 **Isolation:** `scripts/hubris/experts/test_expert.py`, `tests/hubris/`
 
 ### Goals
-- [ ] Wire TestExpert to actual test outcomes (pass/fail signals)
-- [ ] Add `suggest-tests` command to CLI
-- [ ] Integrate with CI results from `.git-ml/commits/` (test_passed field)
-- [ ] Create test selection accuracy metrics
-- [ ] Add TestExpert to feedback loop (post-test-run hook)
+- [x] Wire TestExpert to actual test outcomes (pass/fail signals)
+- [x] Add `suggest-tests` command to CLI
+- [x] Integrate with CI results from `.git-ml/commits/` (test_passed field)
+- [x] Create test selection accuracy metrics
+- [x] Add TestExpert to feedback loop (post-test-run hook)
 
 ### Key Files
 - `scripts/hubris/experts/test_expert.py` - Core expert logic
