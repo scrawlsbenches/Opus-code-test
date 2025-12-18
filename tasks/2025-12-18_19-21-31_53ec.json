@@ -35,7 +35,7 @@
     {
       "id": "T-20251218-192131-53ec-002",
       "title": "Phase 2: Context-aware patterns and calibration",
-      "status": "blocked",
+      "status": "deferred",
       "priority": "low",
       "category": "feature",
       "description": "Wire feedback loop for command success/failure. Learn context→command patterns. Add confidence calibration. Target: >65% accuracy, ECE <0.15.",
@@ -59,7 +59,7 @@
     {
       "id": "T-20251218-192131-53ec-003",
       "title": "Phase 3: CLI suggest-command integration",
-      "status": "blocked",
+      "status": "deferred",
       "priority": "low",
       "category": "feature",
       "description": "Add suggest-command to hubris_cli.py. User-facing command suggestions with explanations. Track adoption rate.",
