@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "dbf8",
   "started_at": "2025-12-17T20:49:13.257355",
-  "saved_at": "2025-12-18T01:28:47.314233",
+  "saved_at": "2025-12-18T02:09:06.636489",
   "tasks": [
     {
       "id": "T-20251217-204913-dbf8-001",
@@ -74,10 +74,19 @@
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-18T00:18:00.217791",
-      "updated_at": null,
+      "updated_at": "2025-12-18T02:09:06.636487",
       "completed_at": null,
       "context": {},
-      "retrospective": null
+      "retrospective": {
+        "notes": "",
+        "duration_minutes": 0,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [
+          "d8c74578b675f7bc1fa6498794afa2799f7876d5"
+        ],
+        "captured_at": "2025-12-18T02:09:06.636475"
+      }
     },
     {
       "id": "T-20251218-012842-dbf8-006",
