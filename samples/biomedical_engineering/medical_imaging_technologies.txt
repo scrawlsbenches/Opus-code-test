@@ -1,0 +1,227 @@
+# Medical Imaging Technologies: Principles and Applications
+
+## Introduction
+
+Medical imaging enables visualization of internal body structures for diagnosis, treatment planning, and monitoring. Each imaging modality exploits different physical principles, offering unique advantages for specific clinical applications.
+
+## X-Ray and Computed Tomography (CT)
+
+### Basic Principles
+
+X-rays are electromagnetic radiation (photon energy 20-150 keV) that penetrate tissues with absorption dependent on atomic number and density.
+
+**Attenuation:** I = I₀ × exp(-μx)
+
+Where μ (linear attenuation coefficient) varies with tissue composition.
+
+### CT Technology
+
+**Generations:**
+1. First: Pencil beam, translate-rotate
+2. Second: Fan beam, translate-rotate
+3. Third: Fan beam, rotate-rotate (current standard)
+4. Fourth: Stationary detector ring
+5. Spiral/helical: Continuous rotation with table translation
+
+**Image Reconstruction:**
+- Filtered back projection (classical)
+- Iterative reconstruction (lower dose, higher quality)
+- Deep learning reconstruction (emerging)
+
+**Hounsfield Units (HU):**
+| Tissue | HU |
+|--------|-----|
+| Air | -1000 |
+| Lung | -500 |
+| Fat | -100 |
+| Water | 0 |
+| Muscle | +40 |
+| Bone | +400 to +3000 |
+
+### Clinical Applications
+
+- Trauma assessment
+- Tumor detection and staging
+- Vascular imaging (CT angiography)
+- Cardiac imaging
+- Guided interventions
+
+### Radiation Dose Considerations
+
+Effective doses (mSv):
+- Chest X-ray: 0.1
+- CT head: 2
+- CT abdomen: 10
+- CT coronary: 15
+
+ALARA principle: As Low As Reasonably Achievable
+
+## Magnetic Resonance Imaging (MRI)
+
+### Physics Fundamentals
+
+MRI exploits nuclear magnetic resonance of hydrogen protons abundant in water and fat.
+
+**Key Concepts:**
+- **Precession:** Protons spin around B₀ field at Larmor frequency (42.58 MHz/T for ¹H)
+- **Excitation:** RF pulse tips magnetization into transverse plane
+- **Relaxation:** T1 (spin-lattice) and T2 (spin-spin) recovery times
+- **Gradient fields:** Spatial encoding in three dimensions
+
+### Pulse Sequences
+
+**Spin Echo:**
+- 90° excitation, 180° refocusing
+- T1-weighted: short TR, short TE (anatomy)
+- T2-weighted: long TR, long TE (pathology)
+
+**Gradient Echo:**
+- Fast imaging
+- Susceptibility weighting
+- Flow-sensitive applications
+
+**Advanced Sequences:**
+- Diffusion-weighted imaging (DWI): Stroke detection
+- Perfusion imaging: Blood flow mapping
+- Functional MRI (fMRI): Brain activation
+- MR spectroscopy: Metabolite concentrations
+
+### Advantages and Limitations
+
+**Advantages:**
+- No ionizing radiation
+- Excellent soft tissue contrast
+- Multiplanar imaging
+- Functional information
+
+**Limitations:**
+- Long acquisition times
+- Claustrophobic scanner
+- Metal contraindications
+- High cost
+- Motion sensitivity
+
+## Ultrasound
+
+### Acoustic Principles
+
+Ultrasound uses mechanical waves (2-18 MHz) reflected at tissue interfaces.
+
+**Key Parameters:**
+- Frequency: Higher → better resolution, less penetration
+- Wavelength: λ = c/f (where c ≈ 1540 m/s in soft tissue)
+- Acoustic impedance: Z = ρc (determines reflection)
+
+### Imaging Modes
+
+**B-mode:** Brightness mode, 2D anatomical imaging
+
+**M-mode:** Motion mode, single line over time (cardiac)
+
+**Doppler:**
+- Color flow: Direction and velocity mapping
+- Pulsed-wave: Velocity at specific depth
+- Continuous-wave: High velocities anywhere along beam
+
+**3D/4D:** Volume acquisition with real-time display
+
+### Clinical Applications
+
+- Obstetrics (fetal imaging)
+- Cardiology (echocardiography)
+- Abdominal imaging
+- Vascular assessment
+- Musculoskeletal
+- Point-of-care diagnostics
+- Guided procedures
+
+### Advantages
+
+- Real-time imaging
+- No radiation
+- Portable systems
+- Low cost
+- Safe during pregnancy
+
+## Nuclear Medicine
+
+### Principles
+
+Radioactive tracers emit gamma rays or positrons detected by external cameras.
+
+**SPECT (Single Photon Emission CT):**
+- Gamma-emitting tracers (⁹⁹ᵐTc, ¹²³I)
+- Rotating gamma camera
+- Tomographic reconstruction
+
+**PET (Positron Emission Tomography):**
+- Positron-emitting tracers (¹⁸F, ¹¹C)
+- Annihilation produces two 511 keV photons
+- Coincidence detection
+- Higher resolution than SPECT
+
+### Common Tracers
+
+| Tracer | Target | Application |
+|--------|--------|-------------|
+| ¹⁸F-FDG | Glucose metabolism | Oncology, neurology |
+| ⁹⁹ᵐTc-MDP | Bone turnover | Bone scan |
+| ⁹⁹ᵐTc-sestamibi | Myocardial perfusion | Cardiac stress test |
+| ¹²³I | Thyroid uptake | Thyroid function |
+
+### Hybrid Imaging
+
+PET/CT and SPECT/CT combine functional and anatomical information.
+
+## Emerging Technologies
+
+### Photoacoustic Imaging
+Pulsed laser generates ultrasound through thermoelastic expansion. Provides optical contrast with ultrasound resolution.
+
+### Optical Coherence Tomography (OCT)
+Interferometric imaging with micron resolution. Standard in ophthalmology, expanding to cardiology.
+
+### Molecular Imaging
+Targeted contrast agents visualize specific molecular markers for early disease detection.
+
+### AI in Medical Imaging
+- Automated detection and diagnosis
+- Image quality enhancement
+- Workflow optimization
+- Quantitative biomarkers
+
+## Image Quality Metrics
+
+**Spatial Resolution:** Ability to distinguish small structures
+
+**Contrast Resolution:** Ability to distinguish similar tissues
+
+**Temporal Resolution:** Frame rate for dynamic imaging
+
+**Signal-to-Noise Ratio (SNR):** Signal quality vs. background noise
+
+**Artifacts:** Sources of image degradation (motion, metal, aliasing)
+
+## Safety Considerations
+
+### Radiation
+- CT and nuclear medicine involve ionizing radiation
+- Justify examinations, optimize protocols
+- Special considerations for pediatric and pregnant patients
+
+### MRI
+- Magnetic field hazards (projectile, implant heating)
+- Gadolinium contrast: nephrogenic systemic fibrosis risk
+- Acoustic noise exposure
+
+### Ultrasound
+- Generally considered safe
+- Thermal and mechanical indices guide exposure
+- Prudent use during early pregnancy
+
+## References
+
+- Bushberg, J.T. et al. "The Essential Physics of Medical Imaging" (2020)
+- Sprawls, P. "Physical Principles of Medical Imaging"
+- Hashemi, R.H. "MRI: The Basics" (2018)
+- ACR Appropriateness Criteria

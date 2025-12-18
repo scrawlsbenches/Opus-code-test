@@ -1,0 +1,182 @@
+# Design Thinking: A Human-Centered Approach to Innovation
+
+## Overview
+
+Design thinking is a non-linear, iterative process that teams use to understand users, challenge assumptions, redefine problems, and create innovative solutions to prototype and test. Originating from the design discipline, it has become a foundational methodology for product development, service design, and organizational innovation.
+
+## The Five Phases
+
+### 1. Empathize
+
+The foundation of human-centered design is understanding the people you're designing for.
+
+**Methods:**
+- **Contextual Inquiry:** Observe users in their natural environment
+- **User Interviews:** Deep conversations about experiences and needs
+- **Journey Mapping:** Document the complete user experience timeline
+- **Empathy Maps:** Visualize what users say, think, feel, and do
+
+**Key Questions:**
+- What tasks are users trying to accomplish?
+- What frustrations do they encounter?
+- What workarounds have they developed?
+- What are their unstated needs?
+
+**Outputs:**
+- User personas representing key segments
+- Insight statements capturing deep understanding
+- Opportunity areas for design intervention
+
+### 2. Define
+
+Synthesize observations into a clear problem statement.
+
+**Methods:**
+- **Affinity Diagramming:** Cluster observations into themes
+- **Point of View (POV) Statements:** User + Need + Insight format
+- **"How Might We" Questions:** Reframe challenges as opportunities
+
+**POV Format:**
+[User] needs [need] because [insight].
+
+Example: "Urban commuters need a way to make productive use of transit time because they feel frustrated by hours lost daily to passive travel."
+
+**Criteria for Good Problem Statements:**
+- Human-centered, not technology-focused
+- Broad enough for creative freedom
+- Narrow enough to be actionable
+- Inspirational and motivating
+
+### 3. Ideate
+
+Generate a wide range of creative solutions.
+
+**Methods:**
+- **Brainstorming:** Defer judgment, encourage wild ideas
+- **SCAMPER:** Substitute, Combine, Adapt, Modify, Put to other uses, Eliminate, Reverse
+- **Analogous Inspiration:** Look to other industries for solutions
+- **Worst Possible Idea:** Deliberately generate bad ideas to unlock creativity
+
+**Rules for Productive Ideation:**
+1. Quantity over quality (initially)
+2. Build on others' ideas ("Yes, and...")
+3. One conversation at a time
+4. Be visual (sketch ideas)
+5. Defer judgment
+6. Stay focused on the problem
+
+**Selection Criteria:**
+- Desirability (human value)
+- Feasibility (technical viability)
+- Viability (business sustainability)
+
+### 4. Prototype
+
+Create tangible representations of ideas to learn from.
+
+**Prototype Spectrum:**
+
+| Fidelity | Examples | Purpose |
+|----------|----------|---------|
+| Low | Paper sketches, storyboards | Explore concepts quickly |
+| Medium | Wireframes, foam models | Test functionality |
+| High | Working apps, 3D prints | Validate experience |
+
+**Principles:**
+- Prototype to learn, not to prove
+- Fail early, fail cheaply
+- Build just enough to get feedback
+- Test one variable at a time
+
+**Types of Prototypes:**
+- Physical models (products)
+- Storyboards (services)
+- Role-playing (interactions)
+- Digital mockups (interfaces)
+- Wizard of Oz (fake back-ends)
+
+### 5. Test
+
+Put prototypes in front of users and gather feedback.
+
+**Methods:**
+- Usability testing with think-aloud protocol
+- A/B testing different concepts
+- Contextual testing in real environments
+- Feedback capture grids (likes, wishes, questions, ideas)
+
+**Questions to Answer:**
+- Does the solution address the real need?
+- What aspects resonate with users?
+- What creates confusion or friction?
+- What's missing?
+
+**Iteration:**
+Testing naturally leads back to earlier phases:
+- New insights → Empathize again
+- Problem reframing → Redefine
+- Solution pivots → Ideate alternatives
+- Refinements → Prototype improvements
+
+## Design Thinking Mindsets
+
+### Beginner's Mind
+Approach problems without preconceptions. Question obvious assumptions.
+
+### Bias Toward Action
+Favor doing over planning. Prototype your way to understanding.
+
+### Radical Collaboration
+Diverse teams bring diverse perspectives. Include users as co-designers.
+
+### Human-Centeredness
+People are the source of inspiration and the ultimate judges of success.
+
+### Comfort with Ambiguity
+The process is messy. Trust emerges from iteration.
+
+### Optimism
+Believe that a better solution exists and can be found.
+
+## Applications Beyond Products
+
+### Service Design
+Map customer journeys, identify touchpoints, prototype service experiences.
+
+### Organizational Change
+Empathize with employees, define culture challenges, prototype new ways of working.
+
+### Strategy Development
+Understand stakeholder needs, reframe strategic questions, prototype business models.
+
+### Social Innovation
+Apply design thinking to education, healthcare, poverty, and sustainability challenges.
+
+## Common Pitfalls
+
+**Skipping Empathize:** Jumping to solutions without understanding users leads to products nobody wants.
+
+**Falling in Love with First Idea:** Premature commitment prevents better solutions from emerging.
+
+**Over-Polished Prototypes:** High-fidelity too early discourages honest feedback and pivots.
+
+**Testing with Wrong Users:** Feedback from friends or colleagues misses real user perspectives.
+
+**Treating Phases as Linear:** The process is iterative. Be prepared to loop back repeatedly.
+
+## Tools and Techniques Summary
+
+| Phase | Tools |
+|-------|-------|
+| Empathize | Interviews, observation, empathy maps, journey maps |
+| Define | Affinity diagrams, POV statements, HMW questions |
+| Ideate | Brainstorming, SCAMPER, mind maps, sketching |
+| Prototype | Paper prototypes, wireframes, storyboards, models |
+| Test | Usability testing, A/B tests, feedback grids |
+
+## References
+
+- Brown, Tim. "Change by Design" (2009)
+- IDEO. "Human-Centered Design Toolkit"
+- Stanford d.school Design Thinking Bootcamp
+- Kelley, David and Tom. "Creative Confidence" (2013)

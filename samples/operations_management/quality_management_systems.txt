@@ -1,0 +1,302 @@
+# Quality Management Systems: Principles and Implementation
+
+## Introduction
+
+A Quality Management System (QMS) is a formalized system documenting processes, procedures, and responsibilities for achieving quality policies and objectives. Effective QMS ensures consistent products and services, customer satisfaction, and continuous improvement.
+
+## Quality Management Principles (ISO 9001)
+
+### 1. Customer Focus
+
+**Objective:** Meet customer requirements and exceed expectations
+
+**Actions:**
+- Understand current and future customer needs
+- Link organizational objectives to customer needs
+- Measure and monitor customer satisfaction
+- Manage customer relationships systematically
+
+### 2. Leadership
+
+**Objective:** Create unity of purpose and direction
+
+**Actions:**
+- Establish quality policy and objectives
+- Ensure integration of QMS into business processes
+- Promote process approach and risk-based thinking
+- Recognize employee contributions
+
+### 3. Engagement of People
+
+**Objective:** Competent, empowered people at all levels
+
+**Actions:**
+- Communicate importance of individual contribution
+- Enable people to identify constraints
+- Recognize and acknowledge contribution
+- Enable self-evaluation against objectives
+
+### 4. Process Approach
+
+**Objective:** Manage activities as interrelated processes
+
+**Actions:**
+- Define objectives and processes to achieve them
+- Establish authority and responsibility
+- Understand and manage interrelationships
+- Make decisions based on data analysis
+
+### 5. Improvement
+
+**Objective:** Ongoing focus on improvement
+
+**Actions:**
+- Promote improvement objectives at all levels
+- Train people in improvement methods
+- Track and review improvement projects
+- Recognize improvement success
+
+### 6. Evidence-Based Decision Making
+
+**Objective:** Decisions based on data analysis
+
+**Actions:**
+- Determine, measure, and monitor key indicators
+- Make data available to relevant people
+- Use appropriate methods for analysis
+- Balance evidence with experience and intuition
+
+### 7. Relationship Management
+
+**Objective:** Manage relationships with interested parties
+
+**Actions:**
+- Identify relevant interested parties
+- Prioritize relationships to manage
+- Establish mutually beneficial relationships
+- Pool resources and share information
+
+## ISO 9001:2015 Requirements
+
+### Context of Organization
+
+- Understand internal and external issues
+- Identify interested parties and their requirements
+- Determine QMS scope
+- Establish QMS processes
+
+### Leadership
+
+- Demonstrate leadership and commitment
+- Establish quality policy
+- Assign roles, responsibilities, and authorities
+- Address risks and opportunities
+
+### Planning
+
+- Actions to address risks and opportunities
+- Quality objectives and planning
+- Planning of changes
+
+### Support
+
+- Resources (people, infrastructure, environment, monitoring/measuring, knowledge)
+- Competence
+- Awareness
+- Communication
+- Documented information
+
+### Operation
+
+- Operational planning and control
+- Requirements for products and services
+- Design and development
+- Control of external provision
+- Production and service provision
+- Release and control of nonconforming outputs
+
+### Performance Evaluation
+
+- Monitoring, measurement, analysis, evaluation
+- Internal audit
+- Management review
+
+### Improvement
+
+- Nonconformity and corrective action
+- Continual improvement
+
+## Quality Tools and Techniques
+
+### Seven Basic Quality Tools
+
+**1. Check Sheet:**
+Structured form for collecting data
+
+**2. Histogram:**
+Bar chart showing frequency distribution
+
+**3. Pareto Chart:**
+Bar chart ordered by frequency (80/20 rule)
+
+**4. Cause-and-Effect Diagram (Fishbone):**
+Identify root causes by category (Man, Machine, Method, Material, Measurement, Environment)
+
+**5. Scatter Diagram:**
+Plot relationship between two variables
+
+**6. Control Chart:**
+Track process over time, identify special cause variation
+
+**7. Flowchart:**
+Visual representation of process steps
+
+### Statistical Process Control (SPC)
+
+**Control Charts:**
+- X-bar and R chart: Mean and range of samples
+- p-chart: Proportion defective
+- c-chart: Count of defects
+
+**Control Limits:**
+UCL = X̄ + 3σ
+LCL = X̄ - 3σ
+
+**Interpretation Rules:**
+- Point outside control limits
+- Run of 7+ points above/below center
+- Trends of 7+ consecutive increasing/decreasing points
+- Patterns suggesting non-random behavior
+
+### Process Capability
+
+**Capability Indices:**
+
+Cp = (USL - LSL) / (6σ)  [Process potential]
+
+Cpk = min[(USL - μ) / (3σ), (μ - LSL) / (3σ)]  [Process capability]
+
+**Targets:**
+- Cp ≥ 1.33: Capable process
+- Cpk ≥ 1.33: Capable and centered
+
+### Six Sigma
+
+**DMAIC Methodology:**
+- **Define:** Project scope, goals, customer requirements
+- **Measure:** Current performance, data collection
+- **Analyze:** Root cause analysis
+- **Improve:** Solution implementation
+- **Control:** Sustain improvements
+
+**Sigma Levels:**
+| Sigma | DPMO | Yield |
+|-------|------|-------|
+| 2σ | 308,537 | 69.1% |
+| 3σ | 66,807 | 93.3% |
+| 4σ | 6,210 | 99.38% |
+| 5σ | 233 | 99.977% |
+| 6σ | 3.4 | 99.9997% |
+
+## Quality Costs
+
+### Prevention Costs
+- Quality planning
+- Training
+- Process control
+- Supplier evaluation
+
+### Appraisal Costs
+- Inspection and testing
+- Audit
+- Calibration
+- Laboratory testing
+
+### Internal Failure Costs
+- Scrap and rework
+- Reinspection
+- Downtime
+- Failure analysis
+
+### External Failure Costs
+- Warranty claims
+- Returns and complaints
+- Recalls
+- Liability
+
+**Cost of Quality:**
+Typically 15-25% of revenue; world-class organizations <5%
+
+## Auditing
+
+### Types of Audits
+
+**First-Party (Internal):**
+Organization audits itself
+
+**Second-Party:**
+Customer audits supplier
+
+**Third-Party:**
+Independent certification body
+
+### Audit Process
+
+1. **Planning:** Scope, criteria, schedule
+2. **Preparation:** Document review, checklist
+3. **Opening Meeting:** Confirm scope, logistics
+4. **Evidence Gathering:** Interviews, observation, document review
+5. **Analysis:** Compare evidence to criteria
+6. **Reporting:** Findings, nonconformities
+7. **Closing Meeting:** Present results
+8. **Follow-up:** Verify corrective actions
+
+### Writing Nonconformities
+
+**Structure:**
+- Requirement violated (reference standard clause)
+- Objective evidence observed
+- Classification (major, minor, observation)
+
+**Example:**
+"Requirement: ISO 9001:2015 clause 7.5.3.2(a) requires documented information to be available where needed. Evidence: The work instruction for assembly (WI-123) was not available at the workstation during the audit on 15 Dec."
+
+## Implementation Approach
+
+### Phase 1: Planning
+- Obtain management commitment
+- Appoint management representative
+- Conduct gap assessment
+- Develop implementation plan
+
+### Phase 2: Documentation
+- Write quality manual (optional in 2015)
+- Develop procedures for key processes
+- Create work instructions as needed
+- Establish forms and records
+
+### Phase 3: Implementation
+- Train all personnel
+- Implement processes and procedures
+- Begin collecting records
+- Establish monitoring and measurement
+
+### Phase 4: Verification
+- Conduct internal audits
+- Perform management review
+- Take corrective actions
+- Verify effectiveness
+
+### Phase 5: Certification
+- Select certification body
+- Stage 1 audit (documentation review)
+- Stage 2 audit (implementation verification)
+- Address nonconformities
+- Achieve certification
+
+## References
+
+- ISO 9001:2015 Quality Management Systems—Requirements
+- ISO 9000:2015 Quality Management Systems—Fundamentals and Vocabulary
+- Juran, J.M. "Juran's Quality Handbook" (2010)
+- Montgomery, D.C. "Statistical Quality Control" (2012)

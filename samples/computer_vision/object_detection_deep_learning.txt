@@ -1,0 +1,246 @@
+# Object Detection with Deep Learning
+
+## Introduction
+
+Object detection identifies and localizes objects within images, predicting both class labels and bounding box coordinates. Deep learning has revolutionized this field, achieving near-human performance on challenging benchmarks.
+
+## Problem Formulation
+
+**Input:** Image I ∈ ℝ^(H×W×3)
+
+**Output:** Set of detections {(c_i, b_i, s_i)} where:
+- c_i: Class label
+- b_i: Bounding box (x, y, w, h) or (x1, y1, x2, y2)
+- s_i: Confidence score
+
+## Two-Stage Detectors
+
+### R-CNN Family
+
+**R-CNN (2014):**
+1. Generate ~2000 region proposals (Selective Search)
+2. Warp each region to fixed size
+3. Extract CNN features (AlexNet)
+4. SVM classifier per class
+5. Bounding box regression
+
+**Problems:** Slow (47s/image), redundant computation
+
+**Fast R-CNN (2015):**
+- Single CNN forward pass for entire image
+- RoI pooling extracts fixed-size features from proposals
+- Multi-task loss (classification + regression)
+- 9× faster than R-CNN
+
+**Faster R-CNN (2016):**
+- Region Proposal Network (RPN) generates proposals
+- Shared convolutional features
+- Anchor boxes at each spatial location
+- End-to-end trainable
+- Near real-time (5 fps)
+
+### RPN Architecture
+
+**Anchors:**
+- K anchor boxes per location
+- Multiple scales (128, 256, 512)
+- Multiple aspect ratios (1:1, 1:2, 2:1)
+
+**Outputs per anchor:**
+- Objectness score (2 values)
+- Box regression (4 values)
+
+**Training:**
+- Positive: IoU > 0.7 with any GT box
+- Negative: IoU < 0.3 with all GT boxes
+- Balanced sampling (256 anchors, 1:1 ratio)
+
+### Feature Pyramid Networks (FPN)
+
+**Multi-scale Feature Maps:**
+- Bottom-up pathway: Standard CNN backbone
+- Top-down pathway: Upsampling from semantic features
+- Lateral connections: 1×1 conv for channel matching
+
+**Benefits:**
+- Strong features at all scales
+- Improved small object detection
+- Standard backbone for modern detectors
+
+## One-Stage Detectors
+
+### YOLO (You Only Look Once)
+
+**YOLO v1 (2016):**
+- Divide image into S×S grid
+- Each cell predicts B boxes + C class probabilities
+- Single forward pass
+- 45 fps (real-time)
+- Struggles with small objects
+
+**YOLO v3 (2018):**
+- Darknet-53 backbone
+- Multi-scale predictions (FPN-like)
+- Binary cross-entropy for multi-label classification
+- 3 scales: 13×13, 26×26, 52×52
+
+**YOLO v4/v5/v7/v8:**
+- Various architectural improvements
+- Better augmentation (Mosaic, MixUp)
+- Advanced training techniques (DropBlock, CIoU loss)
+- Production-optimized implementations
+
+### SSD (Single Shot MultiBox Detector)
+
+**Architecture:**
+- VGG16 base + auxiliary convolutional layers
+- Multi-scale feature maps (from 38×38 to 1×1)
+- Predictions at each scale
+- 4-6 aspect ratios per location
+
+**Hard Negative Mining:**
+- Background overwhelms positives
+- Select high-loss negatives (3:1 ratio)
+
+### RetinaNet
+
+**Key Innovation: Focal Loss**
+
+FL(p_t) = -α_t(1-p_t)^γ log(p_t)
+
+- γ modulating factor reduces loss for well-classified examples
+- Addresses class imbalance without sampling
+- γ=2, α=0.25 typical values
+
+**Architecture:**
+- ResNet + FPN backbone
+- Separate classification and regression subnets
+- Anchors with multiple scales/ratios
+
+## Anchor-Free Detectors
+
+### FCOS (Fully Convolutional One-Stage)
+
+**Approach:**
+- Predict at every foreground pixel
+- Regress distances to box boundaries (l, t, r, b)
+- Centerness branch suppresses low-quality predictions
+- Multi-level prediction with FPN
+
+### CenterNet (Objects as Points)
+
+**Keypoint Detection:**
+- Predict object centers as heatmap peaks
+- Regress size and offset from center
+- Simple, anchor-free design
+- Extension to 3D, pose, tracking
+
+### DETR (Detection Transformer)
+
+**Transformer-Based:**
+- CNN backbone extracts features
+- Transformer encoder-decoder
+- Object queries learn to attend to different objects
+- Bipartite matching for loss computation
+- Set prediction (no NMS needed)
+
+**Architecture:**
+```
+Image → CNN → Flatten → Transformer Encoder
+→ Decoder (with N object queries) → FFN → Predictions
+```
+
+## Loss Functions
+
+### Classification Loss
+
+**Cross-Entropy:**
+L_cls = -log(p_c) for positive, -log(1-p_c) for negative
+
+**Focal Loss:**
+Handles class imbalance by down-weighting easy examples
+
+### Localization Loss
+
+**Smooth L1:**
+```
+L1_smooth(x) = 0.5x² if |x| < 1
+               |x| - 0.5 otherwise
+```
+
+**IoU-Based Losses:**
+- IoU Loss: 1 - IoU
+- GIoU: Accounts for non-overlapping boxes
+- DIoU: Considers center distance
+- CIoU: Adds aspect ratio consistency
+
+## Non-Maximum Suppression (NMS)
+
+**Standard NMS:**
+1. Sort detections by confidence
+2. Select highest confidence
+3. Remove boxes with IoU > threshold
+4. Repeat until no boxes remain
+
+**Soft-NMS:**
+- Decay confidence instead of removing
+- Better for overlapping objects
+
+**Learned NMS:**
+- Network learns to suppress duplicates
+- End-to-end differentiable
+
+## Evaluation Metrics
+
+**Precision-Recall:**
+- Detection correct if IoU > 0.5 (or other threshold)
+- P-R curve for each class
+
+**Average Precision (AP):**
+- Area under P-R curve
+- 11-point or all-point interpolation
+
+**mAP (mean AP):**
+- Average across classes
+- COCO: Average across IoU thresholds (0.5:0.05:0.95)
+
+**COCO Metrics:**
+- AP: mAP @ IoU=0.5:0.95
+- AP50: mAP @ IoU=0.5
+- AP75: mAP @ IoU=0.75
+- APS, APM, APL: Small, medium, large objects
+
+## Practical Considerations
+
+### Backbone Selection
+- ResNet-50/101: Standard choice
+- EfficientNet: Efficiency-focused
+- Swin Transformer: State-of-the-art features
+
+### Data Augmentation
+- Random crop, flip, scale
+- Color jitter
+- Mosaic: Combine 4 images
+- MixUp: Blend images and labels
+
+### Training Tips
+- Warm-up learning rate
+- Multi-scale training
+- Synchronized batch normalization
+- Mixed precision training
+
+## Applications
+
+- Autonomous driving
+- Surveillance and security
+- Medical imaging
+- Retail analytics
+- Robotics and automation
+
+## References
+
+- Girshick, R. et al. "R-CNN" (CVPR 2014)
+- Ren, S. et al. "Faster R-CNN" (NeurIPS 2015)
+- Redmon, J. et al. "YOLO" series
+- Lin, T.-Y. et al. "RetinaNet" (ICCV 2017)
+- Carion, N. et al. "DETR" (ECCV 2020)

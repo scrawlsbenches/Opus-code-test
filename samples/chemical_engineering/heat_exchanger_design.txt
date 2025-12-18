@@ -1,0 +1,198 @@
+# Heat Exchanger Design and Selection
+
+## Introduction
+
+Heat exchangers are critical equipment in chemical processes, responsible for transferring thermal energy between fluid streams. Proper design ensures efficient heat transfer, acceptable pressure drops, and economical construction while meeting process requirements.
+
+## Heat Exchanger Types
+
+### Shell and Tube Exchangers
+
+The workhorse of chemical industry, handling high pressures and temperatures.
+
+**TEMA Classifications:**
+- Front end types: A (removable cover), B (bonnet), C (channel integral)
+- Shell types: E (one pass), F (two pass), G (split flow), J (divided flow)
+- Rear end types: L (fixed tubesheet), M (fixed like L), S (floating head)
+
+Common configurations:
+- BEM: Fixed tubesheet, most economical
+- AES: Floating head, allows thermal expansion
+- BEU: U-tube, self-supporting, differential expansion accommodated
+
+**Typical Applications:**
+- Process-to-process heat recovery
+- Reboilers and condensers
+- High-pressure services (>30 bar)
+- Fouling or corrosive services
+
+### Plate Heat Exchangers
+
+Corrugated plates create turbulent flow at low Reynolds numbers.
+
+**Advantages:**
+- High heat transfer coefficients (3-5× shell-and-tube)
+- Compact footprint
+- Easy to clean and expand
+- True countercurrent flow
+
+**Limitations:**
+- Pressure limit typically <25 bar
+- Temperature limit <150°C for gasketed type
+- Not suitable for viscous fluids or slurries
+
+### Air-Cooled Exchangers
+
+Use ambient air as cooling medium, eliminating water requirements.
+
+**Design Considerations:**
+- Tube-side fluid: process stream
+- Air-side: induced or forced draft
+- Finned tubes increase air-side area
+- Ambient temperature variations affect capacity
+
+### Spiral Heat Exchangers
+
+Two channels wound around central core, truly countercurrent.
+- Excellent for viscous or fouling fluids
+- Self-cleaning due to high shear
+- Single-channel design eliminates cross-contamination risk
+
+## Fundamental Design Equations
+
+### Heat Duty
+
+Q = ṁ × C_p × ΔT = U × A × ΔTLM
+
+Where:
+- Q = heat duty (W)
+- ṁ = mass flow rate (kg/s)
+- C_p = specific heat capacity (J/kg·K)
+- U = overall heat transfer coefficient (W/m²·K)
+- A = heat transfer area (m²)
+- ΔTLM = log mean temperature difference (K)
+
+### Log Mean Temperature Difference
+
+ΔTLM = (ΔT₁ - ΔT₂) / ln(ΔT₁/ΔT₂)
+
+For non-countercurrent flow, apply correction factor F:
+ΔTLM,corrected = F × ΔTLM,countercurrent
+
+F values from charts based on P (temperature effectiveness) and R (heat capacity ratio).
+
+### Overall Heat Transfer Coefficient
+
+1/U = 1/h_i + R_fi + x/k + R_fo + 1/h_o
+
+Where:
+- h_i, h_o = inside and outside film coefficients
+- R_fi, R_fo = fouling resistances
+- x/k = tube wall resistance
+
+### Film Coefficients
+
+**Tubeside (Dittus-Boelter):**
+Nu = 0.023 × Re^0.8 × Pr^n
+
+Where n = 0.4 (heating) or 0.3 (cooling)
+
+**Shellside (Kern Method):**
+h_o = 0.36 × (k/D_e) × Re^0.55 × Pr^0.33 × (μ/μ_w)^0.14
+
+## Design Procedure
+
+### Step 1: Process Specification
+
+Define:
+- Fluid properties (both streams)
+- Inlet and outlet temperatures
+- Flow rates
+- Allowable pressure drops
+- Fouling characteristics
+- Material constraints
+
+### Step 2: Thermal Design
+
+1. Calculate heat duty from energy balance
+2. Estimate overall U (from experience or correlations)
+3. Calculate LMTD and correction factor
+4. Determine required area: A = Q / (U × ΔTLM × F)
+
+### Step 3: Mechanical Design
+
+1. Select tube diameter, length, and layout
+2. Determine number of tubes: N = A / (π × D × L)
+3. Calculate shell diameter from tube count
+4. Specify baffle spacing and cut
+5. Verify pressure drops acceptable
+
+### Step 4: Iteration
+
+1. Calculate actual film coefficients
+2. Update overall U
+3. Recalculate area requirement
+4. Adjust geometry and repeat until converged
+
+## Pressure Drop Calculations
+
+### Tube Side
+
+ΔP_tube = (4 × f × L × N_p / D) × (ρ × v² / 2) + N_p × (ρ × v² / 2)
+
+Where:
+- f = friction factor (Moody chart or correlation)
+- N_p = number of tube passes
+- Second term accounts for turn losses
+
+### Shell Side (Kern Method)
+
+ΔP_shell = (f × G_s² × D_s × (N_b + 1)) / (2 × ρ × D_e × φ_s)
+
+Where:
+- G_s = mass velocity
+- N_b = number of baffles
+- φ_s = viscosity correction
+
+## Fouling Considerations
+
+Fouling resistances (m²·K/W) from TEMA standards:
+
+| Service | R_f |
+|---------|-----|
+| Clean water | 0.0001 |
+| Cooling tower water | 0.0003 |
+| Light hydrocarbons | 0.0002 |
+| Heavy hydrocarbons | 0.0005 |
+| Crude oil | 0.0009 |
+
+Design margin typically adds 20-40% excess area for fouling.
+
+## Optimization Strategies
+
+### Economic Tradeoffs
+
+- Increased area → lower ΔT approach → more heat recovery
+- More tubes → lower velocities → reduced pressure drop but more fouling
+- Closer baffle spacing → higher h but higher ΔP
+
+### Energy Integration
+
+Heat exchanger networks (HEN) optimize process-wide energy use:
+- Pinch analysis identifies minimum utility requirements
+- Composite curves guide heat integration
+- Grand composite curve sizes utility exchangers
+
+## Software Tools
+
+- Aspen EDR (Exchanger Design and Rating)
+- HTRI Xchanger Suite
+- HTFS Tasc
+- TEMA specification sheets for documentation
+
+## References
+
+- Kern, D.Q. "Process Heat Transfer" (1950)
+- Hewitt, G.F. et al. "Process Heat Transfer" (1994)
+- TEMA Standards, 10th Edition
+- Perry's Chemical Engineers' Handbook

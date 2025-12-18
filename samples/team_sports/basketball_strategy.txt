@@ -1,0 +1,289 @@
+# Basketball Strategy: Offensive and Defensive Systems
+
+## Introduction
+
+Basketball strategy has evolved dramatically, from simple set plays to complex motion offenses and switching defenses. Understanding strategic principles enables coaches to maximize team strengths and exploit opponent weaknesses while adapting to game situations.
+
+## Offensive Principles
+
+### Spacing
+
+The foundation of modern offense. Proper spacing:
+- Creates driving lanes
+- Opens passing angles
+- Forces help defense to travel farther
+- Enables one-on-one opportunities
+
+**Optimal Spacing:** 15-18 feet between players
+**Floor Balance:** Cover corners, wings, and slots
+
+### Ball Movement
+
+"Good to great" shots come from ball movement.
+
+**Principles:**
+- Attack closeouts
+- Extra pass for open shot
+- Swing-swing action
+- Ball reversal attacks scrambled defense
+
+### Player Movement
+
+Movement without the ball creates opportunities.
+
+**Types:**
+- Cuts: Basket cuts, back cuts, flare cuts
+- Screens: Ball screens, off-ball screens
+- Relocations: Spacing after drives
+
+### Pace
+
+**Transition Offense:**
+- Push ball quickly
+- Outlet passes
+- Fill lanes
+- Attack before defense sets
+
+**Half-Court Offense:**
+- Controlled pace
+- Execute sets
+- Work for good shots
+- Avoid turnovers
+
+## Offensive Systems
+
+### Motion Offense
+
+**Principles:**
+- Read and react to defense
+- Screening actions
+- Cutting sequences
+- Player interchangeability
+
+**Five-Out Motion:**
+- All players on perimeter
+- Maximum spacing
+- Continuous cutting
+- Drive and kick
+
+**Four-Out One-In:**
+- Post player inside
+- Perimeter players space
+- Post feeds and screens
+- High-low action
+
+### Pick and Roll
+
+Most prevalent action in modern basketball.
+
+**Ball Handler Options:**
+1. Turn corner and finish
+2. Pull-up jumper
+3. Pass to roller
+4. Pass to corner/skip
+5. Re-screen
+
+**Defensive Coverage:**
+- Drop: Big protects rim, contains
+- Hedge: Big shows, guards fight over
+- Switch: Exchange assignments
+- Blitz: Trap ball handler
+- Ice/Down: Force away from screen
+
+### Dribble Drive Motion
+
+Attack-focused system.
+
+**Principles:**
+- Four perimeter players, one post
+- Attack gaps
+- Kick to open shooters
+- Post player relocates opposite ball
+
+### Triangle Offense
+
+Phil Jackson's system emphasizing:
+- Triangle formation (ball, wing, corner)
+- Post presence
+- Spacing and timing
+- Read-and-react decisions
+
+## Defensive Systems
+
+### Man-to-Man Defense
+
+**On-Ball:**
+- Pressure ball handler
+- Force direction
+- Contain drives
+- Contest shots
+
+**Off-Ball:**
+- Help position (ball-you-man)
+- Deny passing lanes
+- Closeout technique
+- Box out and rebound
+
+**Defensive Communication:**
+Essential for switches, screens, and help
+
+### Zone Defense
+
+**2-3 Zone:**
+- Two guards up top
+- Three players on baseline
+- Protects paint
+- Vulnerable to corners and high post
+
+**3-2 Zone:**
+- Three up top
+- Two down low
+- Better perimeter coverage
+- Vulnerable to short corners
+
+**1-3-1 Zone:**
+- One point, three wings, one baseline
+- Trapping opportunities
+- Vulnerable to corners
+
+### Switching Defense
+
+Modern defensive approach:
+- Switch all screens
+- Requires versatile players
+- Eliminates miscommunication
+- Manages mismatches through positioning
+
+### Pressing Defense
+
+**Full-Court Press:**
+- 2-2-1 press: Ball pressure, trap areas
+- 1-2-1-1 diamond: Force sideline
+- Run and jump: Surprise traps
+
+**Half-Court Traps:**
+- Baseline traps
+- Wing traps
+- Post traps
+
+## Situational Basketball
+
+### End of Game
+
+**Winning:**
+- Milk clock
+- Attack basket (force fouls)
+- Hit free throws
+- Intentional fouling if needed
+
+**Losing:**
+- Quick shots
+- Foul strategically
+- Full-court pressure
+- Three-point focus
+
+### After Timeout (ATOs)
+
+**Principles:**
+- Quick hits
+- Misdirection
+- Best players in scoring positions
+- Multiple options
+
+**Common Actions:**
+- Stagger screens
+- Pindowns
+- Slip screens
+- Isolation
+
+### Inbounds Plays
+
+**Sideline:**
+- Cutters and screens
+- Quick hitters
+- Secondary actions
+
+**Baseline (BLOB):**
+- Box sets
+- Stack sets
+- Line sets
+- Shooter specials
+
+### Foul Situations
+
+**Bonus:**
+- Attack basket
+- Draw fouls
+- Free throw shooting emphasis
+
+**Team Fouls to Give:**
+- Disrupt without shooting fouls
+- Stop clock if needed
+- Hard fouls in transition
+
+## Analytics in Strategy
+
+### Key Metrics
+
+**Offensive:**
+- eFG% (Effective Field Goal %)
+- True Shooting %
+- Points per possession
+- Assist to turnover ratio
+
+**Defensive:**
+- Defensive rating
+- Opponent eFG%
+- Defensive rebound %
+- Steals and blocks
+
+### Shot Selection
+
+**High Value:**
+- Layups and dunks (65%+ eFG)
+- Open threes (35%+ from three = 52.5% eFG)
+- Free throws
+
+**Low Value:**
+- Long twos
+- Contested mid-range
+- Early shot clock
+
+### Lineup Data
+
+- Plus/minus analysis
+- Lineup combinations
+- Individual matchup data
+- Minutes management
+
+## Practice Planning
+
+### Skill Development
+
+Individual skills foundation for team play:
+- Shooting form and repetition
+- Ball handling and decision-making
+- Finishing at rim
+- Defensive footwork
+
+### Team Practice
+
+**Components:**
+- Breakdown drills (2-on-2, 3-on-3)
+- Full team concepts
+- Competitive segments
+- Situational work
+
+### Game Preparation
+
+- Scout opponent tendencies
+- Install game-specific adjustments
+- Walk through sets
+- Mental preparation
+
+## References
+
+- Wooden, J. "Practical Modern Basketball" (1988)
+- Krause, J. "Basketball Skills and Drills" (2008)
+- Oliver, D. "Basketball on Paper" (2004)
+- NBA Coaches Association Resources

@@ -1,0 +1,332 @@
+# Rule-Based Expert Systems: Architecture and Design
+
+## Introduction
+
+Rule-based expert systems capture human expertise in the form of IF-THEN rules, enabling automated reasoning and decision-making. Despite the rise of machine learning, rule-based systems remain valuable for their transparency, maintainability, and ability to encode explicit domain knowledge.
+
+## System Architecture
+
+### Core Components
+
+**Knowledge Base:**
+- Collection of rules encoding domain expertise
+- Facts representing current state
+- Relationships and constraints
+
+**Inference Engine:**
+- Pattern matching mechanism
+- Conflict resolution strategy
+- Execution controller
+
+**Working Memory:**
+- Current facts and assertions
+- Intermediate conclusions
+- Session state
+
+**Explanation Facility:**
+- Traces rule firing sequence
+- Justifies conclusions
+- Supports user trust and debugging
+
+**User Interface:**
+- Query input
+- Result presentation
+- Explanation access
+
+## Rule Representation
+
+### Production Rules
+
+Basic format: IF <conditions> THEN <actions>
+
+**Example (Medical Diagnosis):**
+```
+RULE: bacterial_infection_diagnosis
+IF
+    patient has fever > 38.5°C
+    AND patient has elevated white_blood_cell_count
+    AND patient has localized_inflammation
+    AND NOT patient has viral_markers
+THEN
+    ASSERT patient has probable_bacterial_infection
+    RECOMMEND blood_culture test
+    CONFIDENCE 0.85
+```
+
+### Rule Components
+
+**Conditions (LHS - Left Hand Side):**
+- Pattern matching against working memory
+- Logical operators (AND, OR, NOT)
+- Comparison operators
+- Variable binding
+
+**Actions (RHS - Right Hand Side):**
+- Assert new facts
+- Retract facts
+- Modify existing facts
+- Execute procedures
+- Output conclusions
+
+### Rule Attributes
+
+- **Priority/Salience:** Ordering for conflict resolution
+- **Confidence Factor:** Certainty of conclusion
+- **Source:** Documentation of knowledge origin
+- **Activation Group:** Mutual exclusion categories
+
+## Inference Strategies
+
+### Forward Chaining (Data-Driven)
+
+**Process:**
+1. Start with known facts
+2. Match rule conditions against facts
+3. Fire applicable rules
+4. Add conclusions to working memory
+5. Repeat until goal reached or no rules fire
+
+**Characteristics:**
+- Explores all derivable conclusions
+- Good for monitoring, classification
+- May derive irrelevant conclusions
+
+### Backward Chaining (Goal-Driven)
+
+**Process:**
+1. Start with hypothesis/goal
+2. Find rules that conclude goal
+3. Try to prove rule conditions
+4. Recursively prove subgoals
+5. Succeed when all conditions proven
+
+**Characteristics:**
+- Focused search toward goal
+- Good for diagnosis, configuration
+- More efficient for specific queries
+
+### Hybrid Approaches
+
+Combine forward and backward chaining:
+- Forward chain to derive intermediate facts
+- Backward chain when goal becomes active
+
+## Pattern Matching
+
+### Rete Algorithm
+
+Efficient pattern matching for production systems.
+
+**Key Structures:**
+- **Alpha Network:** Single-condition tests
+- **Beta Network:** Inter-condition joins
+- **Conflict Set:** Matched rule instantiations
+
+**Optimizations:**
+- Share common condition tests
+- Index facts for fast lookup
+- Incremental matching on updates
+
+**Complexity:**
+- Space: O(rules × conditions)
+- Time per cycle: Near-constant for stable working memory
+
+### Variable Binding
+
+Variables match and capture values:
+```
+IF ?patient has temperature ?temp
+   AND ?temp > 38.5
+THEN ...
+```
+
+Variables propagate through conditions, enabling joins.
+
+## Conflict Resolution
+
+When multiple rules match, select one to fire.
+
+### Strategies
+
+**Refraction:**
+- Don't fire same rule instance twice
+- Prevents infinite loops
+
+**Recency:**
+- Prefer rules matching recent facts
+- Focuses on new information
+
+**Specificity:**
+- Prefer rules with more conditions
+- More specific knowledge takes precedence
+
+**Priority/Salience:**
+- Explicit numerical ordering
+- Expert-assigned importance
+
+**Random:**
+- Arbitrary selection
+- Useful for simulation
+
+### LEX and MEA Strategies
+
+**LEX (Lexicographic):**
+Ordered comparison of fact recency.
+
+**MEA (Means-Ends Analysis):**
+Prioritize rules matching most recent goal-related fact.
+
+## Uncertainty Handling
+
+### Certainty Factors (MYCIN)
+
+Confidence values [-1, 1]:
+- 1: Definitely true
+- 0: Unknown
+- -1: Definitely false
+
+**Combination Rules:**
+CF(A AND B) = min(CF(A), CF(B))
+CF(A OR B) = max(CF(A), CF(B))
+CF(conclusion) = CF(evidence) × CF(rule)
+
+### Dempster-Shafer Theory
+
+Belief functions for uncertain reasoning:
+- Belief (lower bound)
+- Plausibility (upper bound)
+- Combination rule for multiple evidence
+
+### Fuzzy Logic
+
+Linguistic variables and membership functions:
+- "Temperature is HIGH" with degree 0.7
+- Fuzzy inference rules
+- Defuzzification for crisp output
+
+## Knowledge Acquisition
+
+### Expert Interviews
+
+**Techniques:**
+- Structured interviews
+- Think-aloud protocols
+- Critical incident analysis
+- Concept mapping
+
+**Challenges:**
+- Experts struggle to articulate tacit knowledge
+- Knowledge may be inconsistent
+- Time-consuming process
+
+### Knowledge Elicitation
+
+**Repertory Grids:**
+Elements and constructs for concept analysis
+
+**Protocol Analysis:**
+Trace problem-solving steps
+
+**Card Sorting:**
+Categorization tasks reveal conceptual structure
+
+### Machine Learning Integration
+
+- Learn rules from data
+- Refine confidence factors
+- Identify missing rules
+
+## Validation and Verification
+
+### Verification (Building Right)
+
+**Consistency Checking:**
+- Conflicting rules
+- Unreachable conclusions
+- Redundant rules
+- Circular dependencies
+
+**Completeness:**
+- All relevant inputs handled
+- No undefined conditions
+
+### Validation (Building Right System)
+
+**Test Cases:**
+- Known correct answers
+- Edge cases
+- Real-world scenarios
+
+**Expert Review:**
+- Domain expert evaluation
+- Explanation examination
+
+**Field Testing:**
+- Pilot deployment
+- User feedback
+- Performance monitoring
+
+## Implementation Platforms
+
+### Classic Systems
+
+**CLIPS:**
+- C Language Integrated Production System
+- NASA-developed, widely used
+- Forward chaining, Rete algorithm
+
+**Drools:**
+- Java-based, enterprise-ready
+- Forward and backward chaining
+- Business rules management
+
+**JESS:**
+- Java Expert System Shell
+- CLIPS derivative
+- Java integration
+
+### Modern Alternatives
+
+**Prolog:**
+- Logic programming
+- Natural backward chaining
+- Pattern matching built-in
+
+**Business Rules Engines:**
+- DMN (Decision Model and Notation)
+- OpenRules
+- FICO Blaze Advisor
+
+## Applications
+
+### Medical Diagnosis
+
+MYCIN (bacterial infections), DXplain, Isabel
+
+### Configuration
+
+XCON/R1 (computer configuration), automotive options
+
+### Financial
+
+Credit scoring, fraud detection, underwriting
+
+### Industrial
+
+Quality control, fault diagnosis, process control
+
+## Design Best Practices
+
+1. **Modular Rule Organization:** Group by topic
+2. **Consistent Naming:** Conventions for rules and facts
+3. **Documentation:** Rule sources and rationale
+4. **Testing:** Comprehensive test suites
+5. **Explanation:** Meaningful justifications
+6. **Maintenance:** Version control, change tracking
+
+## References
+
+- Giarratano, J. and Riley, G. "Expert Systems: Principles and Programming" (2004)
+- Jackson, P. "Introduction to Expert Systems" (1999)
+- Forgy, C.L. "Rete: A Fast Algorithm" (1982)
+- Buchanan, B.G. and Shortliffe, E.H. "Rule-Based Expert Systems" (1984)

@@ -1,0 +1,266 @@
+# Electrical Wiring Fundamentals: Residential Systems
+
+## Introduction
+
+Electrical systems power modern homes safely and reliably when properly designed and installed. Understanding electrical principles, wiring methods, and code requirements is essential for any electrical work. Always consult local codes and consider hiring licensed electricians for complex work.
+
+## Basic Electrical Concepts
+
+### Ohm's Law
+
+V = I × R
+
+**Where:**
+- V = Voltage (volts)
+- I = Current (amperes)
+- R = Resistance (ohms)
+
+### Power
+
+P = V × I
+
+**For Resistive Loads:**
+P = V²/R = I²R
+
+**Units:**
+- Power: Watts (W)
+- Energy: Kilowatt-hours (kWh)
+
+### AC Power
+
+**Single Phase (Residential):**
+- 120V/240V split phase
+- Two hot legs, 120V to neutral each
+- 240V between hot legs
+
+**Key Terms:**
+- Hot (ungrounded): Current-carrying conductor
+- Neutral (grounded): Return path, white wire
+- Ground (grounding): Safety path, green/bare
+
+## Service Entrance
+
+### Service Drop or Lateral
+
+Power from utility to house.
+
+**Components:**
+- Service entrance conductors
+- Meter base
+- Main disconnect
+- Service panel (load center)
+
+### Panel Sizing
+
+**Common Residential:**
+- 100 amp: Smaller homes, no electric heat
+- 200 amp: Most modern homes
+- 400 amp: Large homes, workshops
+
+**Load Calculation (simplified):**
+1. General lighting: 3 VA per sq ft
+2. Small appliance circuits: 1,500 VA each
+3. Fixed appliances: Nameplate ratings
+4. Apply demand factors per code
+
+### Grounding System
+
+**Components:**
+- Grounding electrode conductor (GEC)
+- Grounding electrode (ground rod, water pipe, Ufer)
+- Equipment grounding conductor (EGC)
+
+**Bonding:**
+Connect all metallic systems to grounding system:
+- Metal water pipes
+- Gas piping
+- Structural steel
+
+## Branch Circuits
+
+### Circuit Types
+
+**General Purpose (15A/20A):**
+- Lighting and receptacles
+- 14 AWG for 15A, 12 AWG for 20A
+- Maximum 12-16 devices typical
+
+**Small Appliance (20A):**
+- Kitchen, dining room, pantry
+- No lighting on these circuits
+- Minimum two required
+
+**Dedicated Circuits:**
+- Individual appliance circuits
+- Required for: Range, dryer, HVAC, garbage disposal, dishwasher, microwave
+
+### Wire Sizing
+
+**Ampacity by AWG (Copper, NM cable):**
+| AWG | Ampacity | Typical Use |
+|-----|----------|-------------|
+| 14 | 15A | Lighting, receptacles |
+| 12 | 20A | General purpose, small appliance |
+| 10 | 30A | Dryers, water heaters |
+| 8 | 40A | Ranges, HVAC |
+| 6 | 55A | Large HVAC, subpanels |
+| 4 | 70A | Large subpanels |
+| 2 | 95A | Services, feeders |
+
+### Voltage Drop
+
+Keep below 3% on branch circuits, 5% total.
+
+VD = (2 × L × I × R) / 1000
+
+**Where:**
+- L = One-way length (feet)
+- I = Current (amps)
+- R = Resistance per 1000 ft
+
+## Wiring Methods
+
+### Nonmetallic Sheathed Cable (NM/Romex)
+
+Most common residential wiring.
+
+**Types:**
+- NM-B: Standard indoor dry locations
+- UF-B: Underground/wet locations
+
+**Components:**
+- Hot conductor(s): Black, red
+- Neutral: White
+- Ground: Bare or green
+
+**Cable Designation:**
+14/2 NM-B = 14 AWG, 2 conductors + ground
+
+### Armored Cable (AC/BX)
+
+Steel spiral armor protecting conductors.
+
+**Applications:**
+- Exposed locations
+- Where physical protection needed
+- Commercial/industrial
+
+### Electrical Metallic Tubing (EMT)
+
+Thin-wall steel conduit.
+
+**Benefits:**
+- Easy to bend and work
+- Provides mechanical protection
+- Conductors can be replaced
+
+### PVC Conduit
+
+Plastic conduit for outdoor/underground.
+
+**Types:**
+- Schedule 40: Above ground
+- Schedule 80: Exposed, subject to damage
+- Electrical grade PVC (not plumbing)
+
+## Devices and Connections
+
+### Receptacles
+
+**Standard Duplex (15A/20A):**
+- NEMA 5-15R: 15A, 125V
+- NEMA 5-20R: 20A, 125V (T-slot)
+
+**GFCI (Ground Fault Circuit Interrupter):**
+Required locations:
+- Bathrooms
+- Kitchen (within 6 feet of sink)
+- Outdoors
+- Garages
+- Unfinished basements
+- Near pools/hot tubs
+
+**AFCI (Arc Fault Circuit Interrupter):**
+Required for most living areas (bedrooms, living rooms, hallways, etc.)
+
+**Tamper Resistant:**
+Required for all 15A/20A receptacles.
+
+### Switches
+
+**Types:**
+- Single pole: One location control
+- Three-way: Two location control
+- Four-way: Three+ location control
+- Dimmer: Variable light level
+
+**Wiring:**
+- Hot to common terminal
+- Travelers between three-way switches
+- Always switch hot, never neutral
+
+### Wire Connections
+
+**Methods:**
+- Wire nuts: Twist connectors
+- Push-in connectors: Wago, Ideal In-Sure
+- Terminal screws: Wrapped clockwise
+
+**Best Practices:**
+- Strip proper length (gauge on connector)
+- Solid connection, no exposed copper
+- Box fill calculations
+
+## Box Fill and Installation
+
+### Box Fill Calculation
+
+Count volume required for:
+- Each conductor: Based on largest wire size
+- Each device: 2× largest conductor volume
+- Grounding conductors: 1× for all grounds
+- Clamps: 1× if internal clamps
+
+**Minimum Volumes (cubic inches):**
+| AWG | Volume |
+|-----|--------|
+| 14 | 2.00 |
+| 12 | 2.25 |
+| 10 | 2.50 |
+| 8 | 3.00 |
+
+### Box Support
+
+- Securely fastened to structure
+- Within 8" of box for NM cable
+- Within 12" for armored cable
+
+## Safety
+
+### Working Safely
+
+1. **De-energize circuits** before work
+2. **Verify power is off** with voltage tester
+3. **Lock out/tag out** if others might restore power
+4. **Assume all wires are hot** until verified
+
+### Common Hazards
+
+- Shock/electrocution
+- Arc flash
+- Fire from overloaded circuits
+- Fire from improper connections
+
+### Emergency Response
+
+- Do not touch victim in contact with electricity
+- De-energize if possible
+- Call 911
+- CPR if trained and safe to approach
+
+## References
+
+- National Electrical Code (NEC/NFPA 70)
+- Ugly's Electrical References
+- Black & Decker Complete Guide to Wiring
+- Mike Holt's Illustrated Guide to the NEC
