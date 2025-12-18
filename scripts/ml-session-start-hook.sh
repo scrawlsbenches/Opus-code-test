@@ -27,6 +27,58 @@ fi
 
 cd "$cwd" || exit 0
 
+# Function: Check and clean stale git locks
+check_and_clean_git_locks() {
+    local lock_file=".git/index.lock"
+
+    if [ -f "$lock_file" ]; then
+        # Get lock file age in seconds
+        local lock_age=$(( $(date +%s) - $(stat -c %Y "$lock_file" 2>/dev/null || echo $(date +%s)) ))
+
+        if [ "$lock_age" -gt 60 ]; then
+            echo "⚠️  Stale git lock detected (${lock_age}s old)"
+            echo "    Likely from interrupted operation or context compaction"
+            rm -f "$lock_file"
+            echo "    ✓ Cleaned up .git/index.lock"
+        else
+            echo "⚠️  Recent git lock exists (${lock_age}s old)"
+            echo "    Another git process may be running"
+            echo "    Will NOT auto-remove (too recent)"
+        fi
+    fi
+
+    # Also check for other common lock files
+    for lock in .git/refs/heads/*.lock .git/HEAD.lock; do
+        if ls $lock 1>/dev/null 2>&1; then
+            echo "⚠️  Found additional lock: $lock"
+        fi
+    done
+}
+
+# Function: Check session continuity (detect long gaps indicating compaction)
+check_session_continuity() {
+    local last_activity_file=".git-ml/.last_activity"
+    local current_time=$(date +%s)
+
+    if [ -f "$last_activity_file" ]; then
+        local last_time=$(cat "$last_activity_file" 2>/dev/null || echo $current_time)
+        local gap=$(( current_time - last_time ))
+
+        if [ "$gap" -gt 300 ]; then  # 5 minutes
+            echo "⏰ Long gap detected: ${gap}s since last activity"
+            echo "   Session may have been compacted or interrupted"
+        fi
+    fi
+
+    # Update last activity
+    mkdir -p .git-ml
+    echo "$current_time" > "$last_activity_file"
+}
+
+# Run lock and continuity checks
+check_and_clean_git_locks
+check_session_continuity
+
 # Check if ML collection is disabled
 if [[ "${ML_COLLECTION_ENABLED:-1}" == "0" ]]; then
     echo "📊 ML collection disabled (ML_COLLECTION_ENABLED=0)"

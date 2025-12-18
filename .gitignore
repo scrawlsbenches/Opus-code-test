@@ -120,4 +120,5 @@ cortical/proto/__pycache__/
 .git-ml/current_session.json  # Session-specific data
 # .git-ml/contribution_consent.json  # Uncomment to ignore consent file
 .git-ml/current_session.json.lock
+.git-ml/.last_activity  # Session continuity tracking (local only)
 .git-ml/cali/  # CALI storage (local indices, objects, manifest - all regeneratable)
