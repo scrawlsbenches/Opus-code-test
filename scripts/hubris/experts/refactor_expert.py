@@ -440,7 +440,8 @@ class RefactorExpert(MicroExpert):
 
         for commit in commits:
             message = commit.get('message', '')
-            files = commit.get('files', [])
+            # Support both 'files' and 'files_changed' keys for compatibility
+            files = commit.get('files', commit.get('files_changed', []))
 
             # Check if this is a refactoring commit
             if not self._is_refactor_commit(message):
