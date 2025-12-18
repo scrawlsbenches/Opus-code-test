@@ -3,19 +3,20 @@
 **Sprint ID:** sprint-005-ux-documentation
 **Epic:** Hubris MoE System (efba)
 **Started:** 2025-12-18
-**Status:** In Progress
+**Status:** Complete ✅
 
 ## Goals
 - [x] Fix cold-start UX - clearer message when experts untrained (T-dbf8-014)
-- [ ] Complete Hubris documentation - book chapter + README (T-2e92-002)
+- [x] Complete Hubris documentation - book chapter + README (T-2e92-002)
 - [x] Add calibration status to CLI dashboard
 
 ## In Progress
-- Complete Hubris documentation
+(None - sprint complete!)
 
 ## Completed This Sprint
 - ✅ Cold-start UX fix with ML fallback (ce81d6d)
 - ✅ Calibration command for CLI (8ac951c)
+- ✅ Hubris documentation update (e2fc096)
 
 ## Blocked
 (None currently)
