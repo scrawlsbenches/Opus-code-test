@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "session_id": "a896",
+  "started_at": "2025-12-18T21:34:25.102210",
+  "saved_at": "2025-12-18T21:34:25.102895",
+  "tasks": [
+    {
+      "id": "T-20251218-213425-a896-001",
+      "title": "Sprint 6 TestExpert Follow-up: Calibration Data Collection and Benchmark Creation",
+      "status": "pending",
+      "priority": "medium",
+      "category": "feature",
+      "description": "## Context\nSprint 6 (TestExpert Activation) is complete. The model is trained and operational but needs production usage to collect calibration data.\n\n## Current State\n- **Branch**: `claude/testexpert-activation-sprint6-0c9WR` (ready for PR to main)\n- **Tests**: 4,775 passing, 89% coverage\n- **Model**: Trained on 868 commits with 138,196 source\u2192test mappings\n\n## What's Done\n1. \u2705 `suggest-tests` CLI command working\n2. \u2705 TestExpert trained with source-to-test mappings\n3. \u2705 Post-test feedback hook (`scripts/ml-post-test-hook.sh`)\n4. \u2705 Test calibration tracker (`scripts/hubris/test_calibration_tracker.py`)\n5. \u2705 19 unit tests for new features\n6. \u2705 Knowledge transfer doc (`docs/sprint6-testexpert-knowledge-transfer.md`)\n\n## What Remains (Future Work)\n\n### 1. Collect Calibration Data\nRun the system in production to gather prediction\u2192outcome pairs:\n```bash\n# Before running tests, record prediction\npython -c \"from scripts.hubris.test_calibration_tracker import TestCalibrationTracker; t = TestCalibrationTracker(); t.record_prediction('pred1', ['test_a.py'], 0.8, ['src.py'])\"\n\n# After tests, record outcome\npython -c \"from scripts.hubris.test_calibration_tracker import TestCalibrationTracker; t = TestCalibrationTracker(); t.record_outcome('pred1', ['test_a.py'], ['test_a.py'], [])\"\n```\n\n### 2. Create Hubris Benchmarks File\nOnce calibration data exists, create `docs/hubris-benchmarks.md` with:\n- Precision@5, Recall, Hit Rate, MRR metrics\n- Comparison across model versions\n- Training data requirements\n\n### 3. Integrate Post-Test Hook\nEnable automatic calibration by integrating `scripts/ml-post-test-hook.sh` into CI workflow.\n\n### 4. Model Improvement Iterations\nBased on calibration metrics:\n- Tune confidence thresholds\n- Improve test file detection patterns\n- Add failure pattern learning\n\n## Key Files\n- `scripts/hubris_cli.py` - CLI with suggest-tests command\n- `scripts/hubris/experts/test_expert.py` - Core expert\n- `scripts/hubris/test_calibration_tracker.py` - Calibration system\n- `scripts/hubris/test_feedback.py` - Feedback processing\n- `.git-ml/models/hubris/test_expert.json` - Trained model (21MB)\n\n## Commands to Resume\n```bash\n# Check model stats\npython scripts/hubris_cli.py stats\n\n# Test predictions\npython scripts/hubris_cli.py suggest-tests --files cortical/processor/compute.py\n\n# View calibration (once data exists)\npython scripts/hubris_cli.py calibration --tests\n\n# Evaluate on recent commits\npython scripts/hubris_cli.py evaluate --commits 50\n```\n\n## Related Tasks\n- Sprint 7: RefactorExpert (new expert type)\n- Sprint 8: Core Performance optimization",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-18T21:34:25.102724",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    }
+  ]
+}

@@ -301,15 +301,20 @@ def compute_bigram_connections(
     # Track connection count per bigram to enforce max_connections_per_bigram
     connection_counts: Dict[str, int] = defaultdict(int)
 
+    # OPTIMIZATION: Accumulate all connections in memory first, then batch apply
+    # This reduces ~4.7M individual add_lateral_connection calls to ~138K batch calls
+    # Each batch call invalidates cache only once instead of per-connection
+    pending_connections: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
+
     def add_connection(b1: Minicolumn, b2: Minicolumn, weight: float, conn_type: str) -> bool:
-        """Add bidirectional connection if not already connected and under limit."""
+        """Queue bidirectional connection if not already connected and under limit."""
         nonlocal component_connections, chain_connections, cooccurrence_connections, skipped_max_connections
 
         pair = tuple(sorted([b1.id, b2.id]))
         if pair in connected_pairs:
-            # Already connected, just strengthen the connection
-            b1.add_lateral_connection(b2.id, weight)
-            b2.add_lateral_connection(b1.id, weight)
+            # Already connected, just strengthen the connection (accumulate weight)
+            pending_connections[b1.id][b2.id] += weight
+            pending_connections[b2.id][b1.id] += weight
             return False
 
         # Check if either bigram has reached its connection limit
@@ -319,8 +324,8 @@ def compute_bigram_connections(
             return False
 
         connected_pairs.add(pair)
-        b1.add_lateral_connection(b2.id, weight)
-        b2.add_lateral_connection(b1.id, weight)
+        pending_connections[b1.id][b2.id] += weight
+        pending_connections[b2.id][b1.id] += weight
         connection_counts[b1.id] += 1
         connection_counts[b2.id] += 1
 
@@ -424,6 +429,14 @@ def compute_bigram_connections(
                 weight = cooccurrence_weight * jaccard
                 add_connection(b1, b2, weight, 'cooccurrence')
 
+    # OPTIMIZATION: Apply all accumulated connections in batch
+    # This is ~34x faster than individual calls (one cache invalidation per minicolumn
+    # instead of one per connection)
+    for bigram_id, connections in pending_connections.items():
+        bigram = layer1.get_by_id(bigram_id)
+        if bigram:
+            bigram.add_lateral_connections_batch(dict(connections))
+
     return {
         'connections_created': len(connected_pairs),
         'bigrams': len(bigrams),
@@ -447,6 +460,10 @@ def compute_document_connections(
     Documents are connected based on shared vocabulary,
     weighted by TF-IDF scores of shared terms.
 
+    OPTIMIZATION (Sprint 8): Instead of O(n²·m) nested loops checking every
+    document pair against every token, we iterate tokens once and accumulate
+    document pairs. This is O(m·d²) where d = avg docs per token, much faster.
+
     Args:
         layers: Dictionary of all layers
         documents: Dictionary of documents
@@ -455,29 +472,39 @@ def compute_document_connections(
     layer0 = layers[CorticalLayer.TOKENS]
     layer3 = layers[CorticalLayer.DOCUMENTS]
 
-    doc_ids = list(documents.keys())
+    # Accumulate shared weights and counts for each document pair
+    # Key: (doc1, doc2) tuple where doc1 < doc2 lexicographically
+    pair_weights: Dict[Tuple[str, str], float] = defaultdict(float)
+    pair_counts: Dict[Tuple[str, str], int] = defaultdict(int)
 
-    for i, doc1 in enumerate(doc_ids):
-        col1 = layer3.get_minicolumn(doc1)
-        if not col1:
-            col1 = layer3.get_or_create_minicolumn(doc1)
+    # Single pass through all tokens - O(m·d²) instead of O(n²·m)
+    for token_col in layer0.minicolumns.values():
+        doc_list = list(token_col.document_ids)
+        if len(doc_list) < 2:
+            continue
 
-        for doc2 in doc_ids[i+1:]:
+        weight = token_col.tfidf
+
+        # For each pair of documents sharing this token
+        for i, doc1 in enumerate(doc_list):
+            for doc2 in doc_list[i+1:]:
+                # Canonical ordering for consistent keys
+                key = (doc1, doc2) if doc1 < doc2 else (doc2, doc1)
+                pair_weights[key] += weight
+                pair_counts[key] += 1
+
+    # Create connections for pairs meeting threshold
+    for (doc1, doc2), count in pair_counts.items():
+        if count >= min_shared_terms:
+            weight = pair_weights[(doc1, doc2)]
+
+            col1 = layer3.get_minicolumn(doc1)
+            if not col1:
+                col1 = layer3.get_or_create_minicolumn(doc1)
+
             col2 = layer3.get_minicolumn(doc2)
             if not col2:
                 col2 = layer3.get_or_create_minicolumn(doc2)
 
-            # Find shared terms
-            shared_weight = 0.0
-            shared_count = 0
-
-            for token_col in layer0.minicolumns.values():
-                if doc1 in token_col.document_ids and doc2 in token_col.document_ids:
-                    # Weight by TF-IDF
-                    weight = token_col.tfidf
-                    shared_weight += weight
-                    shared_count += 1
-
-            if shared_count >= min_shared_terms:
-                col1.add_lateral_connection(col2.id, shared_weight)
-                col2.add_lateral_connection(col1.id, shared_weight)
+            col1.add_lateral_connection(col2.id, weight)
+            col2.add_lateral_connection(col1.id, weight)

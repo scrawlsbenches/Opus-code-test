@@ -11,13 +11,13 @@ This document provides real performance numbers for the Cortical Text Processor,
 
 ## Quick Reference
 
-| Operation | Small Corpus (25 docs) | Real Codebase (151 files) |
+| Operation | Small Corpus (25 docs) | Real Codebase (539 files) |
 |-----------|------------------------|---------------------------|
-| Document processing | 0.31 ms/doc | 26.45 ms/doc |
-| compute_all() | 141 ms | 49.4 s |
-| Standard search | 0.13 ms | 1.22 ms |
-| Fast search | 0.06 ms | 0.66 ms |
-| Passage retrieval | 0.36 ms | 64.9 ms |
+| Document processing | 0.31 ms/doc | ~20 ms/doc |
+| compute_all() | 141 ms | ~130 s |
+| Standard search | 0.13 ms | ~2 ms |
+| Fast search | 0.06 ms | ~1 ms |
+| Passage retrieval | 0.36 ms | ~100 ms |
 
 ---
 
@@ -78,46 +78,48 @@ Full `compute_all()` pipeline: **140.9 ms**
 
 ---
 
-## Real Codebase Benchmarks (151 Python Files)
+## Real Codebase Benchmarks (539 Files)
 
-Benchmarked using the actual `cortical/`, `scripts/`, and `tests/` directories.
+Benchmarked using the full codebase including `cortical/`, `scripts/`, `tests/`, `docs/`, and `samples/` directories with recursive subdirectory indexing.
 
 ### Corpus Profile
 | Metric | Value |
 |--------|-------|
-| Files | 151 |
-| Characters | 2,949,713 |
-| Lines | 83,272 |
-| Tokens (Layer 0) | 11,557 |
-| Bigrams (Layer 1) | 84,978 |
-| Concepts (Layer 2) | 54 |
-| L0 Connections | 388,178 |
+| Files | 539 |
+| Lines | ~136,000 |
+| Tokens (Layer 0) | 27,306 |
+| Bigrams (Layer 1) | 237,901 |
+| Concepts (Layer 2) | 35 |
+| L0 Connections | 1,189,953 |
+
+### Compute Phase Timings (December 2025)
+
+Profiled on full codebase with `scripts/profile_full_analysis.py`:
+
+| Phase | Time (s) | % of Total |
+|-------|----------|------------|
+| bigram_connections | 55.41 | 42.6% |
+| semantics | 32.46 | 24.9% |
+| louvain | 17.97 | 13.8% |
+| pagerank | 15.70 | 12.1% |
+| activation | 5.04 | 3.9% |
+| doc_connections | 3.46 | 2.7% |
+| tfidf | 0.10 | 0.1% |
+| **TOTAL** | **130.14** | **100%** |
 
 ### Processing Times
 
 | Operation | Time |
 |-----------|------|
-| Document processing (total) | 3,993.8 ms |
-| Per-document average | 26.45 ms |
-| compute_all() | 49,437.6 ms (~49 s) |
+| Document processing | ~11 s |
+| compute_all() | ~130 s |
 
-### Query Performance
+### Persistence (JSON format)
 
-| Operation | Average Time |
-|-----------|--------------|
-| Standard search | 1.22 ms |
-| Fast search | 0.66 ms |
-| Passage retrieval | 64.94 ms |
-| Intent search | 0.14 ms |
-
-**Fast search speedup: 1.8x** over standard search
-
-### Persistence
-
-| Operation | Time | Size |
-|-----------|------|------|
-| Save | 21.9 s | 212.35 MB |
-| Load | 16.7 s | - |
+| Operation | Time |
+|-----------|------|
+| Save | ~34 s |
+| Load | ~8 s |
 
 ---
 
@@ -163,7 +165,7 @@ These thresholds are used in CI to catch performance regressions:
 
 ### Primary Bottleneck: Bigram Connections
 
-On small corpora, `compute_bigram_connections` dominates at **68.6%** of compute time. This is due to O(n²) complexity when building co-occurrence connections.
+On both small and large corpora, `compute_bigram_connections` dominates at **42.6%** of compute time. Uses batch processing to reduce method call overhead.
 
 **Mitigation parameters:**
 ```python
@@ -175,7 +177,7 @@ CorticalConfig(
 
 ### Secondary Bottleneck: Semantic Extraction
 
-On larger corpora, semantic extraction can become expensive due to similarity computation across all term pairs.
+On larger corpora, semantic extraction is the second largest phase at **24.9%** due to similarity computation across term pairs.
 
 **Mitigation parameters:**
 ```python
@@ -185,13 +187,18 @@ CorticalConfig(
 )
 ```
 
+### Optimized: Document Connections
+
+Previously the dominant bottleneck at 53.2% (138.74s), now only **2.7%** (3.46s) after Sprint 8 optimization that changed from O(n²·m) to O(m·d²) complexity.
+
 ### Lessons Learned
 
 From profiling sessions (documented in `samples/performance_profiling_process.txt`):
 
-1. **Profile before optimizing** - The obvious bottleneck (Louvain clustering) was actually fast (2.2s); the real culprits were bigram connections and semantics
+1. **Profile before optimizing** - The obvious bottleneck (Louvain clustering) was actually fast; real culprits were connections and semantics
 2. **O(n²) patterns explode** - Common terms like "self" creating millions of pairs
-3. **Parameter limits are essential** - Trading completeness for tractability
+3. **Invert the loop** - Iterating tokens once and accumulating document pairs is faster than checking all pairs against all tokens
+4. **Parameter limits are essential** - Trading completeness for tractability
 
 ---
 
@@ -295,9 +302,47 @@ python scripts/index_codebase.py --compact --use-chunks
 
 | Date | Issue | Before | After | Fix |
 |------|-------|--------|-------|-----|
+| 2025-12-18 | doc_connections O(n²·m) | 138.74s | 3.46s | **Inverted loop: O(m·d²) - 40x faster** |
+| 2025-12-18 | bigram_connections overhead | 4.69M calls | 128K calls | Batched connection updates |
 | 2025-12-11 | bigram_connections timeout | 20.85s timeout | 10.79s | `max_bigrams_per_term=100` |
 | 2025-12-11 | semantics timeout | 30.05s timeout | 5.56s | `max_similarity_pairs=100000` |
 | 2025-12-11 | louvain (not a bottleneck) | 2.2s | 2.2s | No change needed |
+
+### Sprint 8 Optimizations (2025-12-18)
+
+**1. Bigram Connections - Batch Processing**
+
+The `compute_bigram_connections` function was optimized to use batch connection updates:
+
+```python
+# Old: 4.69M individual calls with cache invalidation
+b1.add_lateral_connection(b2.id, weight)
+
+# New: Accumulate then batch (128K batch calls)
+pending_connections[b1.id][b2.id] += weight
+# ... at end:
+bigram.add_lateral_connections_batch(dict(connections))
+```
+
+**2. Document Connections - Loop Inversion**
+
+The `compute_document_connections` function was optimized from O(n²·m) to O(m·d²):
+
+```python
+# Old: For each doc pair, check ALL tokens (4B iterations for 539 docs)
+for doc1 in docs:
+    for doc2 in docs:
+        for token in all_tokens:  # 27,306 tokens!
+            if doc1 in token.docs and doc2 in token.docs: ...
+
+# New: Iterate tokens once, accumulate document pairs
+for token in all_tokens:
+    for doc1 in token.docs:
+        for doc2 in token.docs:  # Only docs sharing this token
+            pair_weights[(doc1, doc2)] += token.tfidf
+```
+
+Result: **40x speedup** (138.74s → 3.46s), total compute_all() reduced by **50%**.
 
 ---
 

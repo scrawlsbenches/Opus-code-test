@@ -686,16 +686,10 @@ def run_background_analysis(
         tracker.log(f"  Concepts (Layer 2): {processor.layers[2].column_count()}")
         tracker.log(f"  Semantic relations: {len(processor.semantic_relations)}")
 
-        # Save corpus
+        # Save corpus (JSON format only - pickle deprecated)
         tracker.start_phase("Saving corpus")
-        save_format = 'pickle' if str(output_path).endswith('.pkl') else 'json'
-        processor.save(str(output_path), format=save_format)
-        if save_format == 'json':
-            # For JSON, output_path is a directory
-            tracker.log(f"  Saved to {output_path.name}/ (JSON format)")
-        else:
-            file_size = output_path.stat().st_size / 1024
-            tracker.log(f"  Saved to {output_path.name} ({file_size:.1f} KB)")
+        processor.save(str(output_path))
+        tracker.log(f"  Saved to {output_path.name}/ (JSON format)")
         tracker.end_phase("Saving corpus")
 
         # Save manifest
@@ -1334,17 +1328,24 @@ def get_doc_files(base_path: Path) -> list:
         for md_file in docs_dir.glob('*.md'):
             files.append(md_file)
 
-    # Memory documents in samples/memories/
-    memories_dir = base_path / 'samples' / 'memories'
-    if memories_dir.exists():
-        for md_file in memories_dir.glob('*.md'):
-            files.append(md_file)
-
-    # Decision records in samples/decisions/
-    decisions_dir = base_path / 'samples' / 'decisions'
-    if decisions_dir.exists():
-        for md_file in decisions_dir.glob('*.md'):
-            files.append(md_file)
+    # All sample files in samples/ directory (recursive)
+    # This includes: memories/, decisions/, and all topic subdirectories
+    samples_dir = base_path / 'samples'
+    if samples_dir.exists():
+        # Binary extensions to skip
+        binary_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.pdf', '.pkl', '.pickle',
+                            '.pyc', '.pyo', '.so', '.dll', '.exe', '.bin', '.dat',
+                            '.zip', '.tar', '.gz', '.bz2', '.7z', '.rar'}
+        # Recursively walk all files in samples/
+        for sample_file in samples_dir.rglob('*'):
+            if sample_file.is_file():
+                # Skip hidden files and directories
+                if any(part.startswith('.') for part in sample_file.parts):
+                    continue
+                # Skip binary files
+                if sample_file.suffix.lower() in binary_extensions:
+                    continue
+                files.append(sample_file)
 
     return files
 
@@ -1368,7 +1369,7 @@ def get_doc_type(doc_id: str) -> str:
     Determine document type from document ID.
 
     Returns:
-        One of: 'code', 'test', 'docs', 'root_docs', 'memory', 'decision', 'concept'
+        One of: 'code', 'test', 'docs', 'root_docs', 'memory', 'decision', 'concept', 'sample'
     """
     if doc_id.startswith('tests/'):
         return 'test'
@@ -1380,6 +1381,9 @@ def get_doc_type(doc_id: str) -> str:
         return 'memory'
     elif doc_id.startswith('samples/decisions/'):
         return 'decision'
+    elif doc_id.startswith('samples/') and not doc_id.startswith('samples/memories/') and not doc_id.startswith('samples/decisions/'):
+        # Any file directly in samples/ (regardless of extension) is a sample
+        return 'sample'
     elif doc_id.startswith('docs/'):
         return 'docs'
     elif doc_id.endswith('.md'):
@@ -2236,16 +2240,10 @@ def run_indexer(
     tracker.log(f"  Concepts (Layer 2): {processor.layers[2].column_count()}")
     tracker.log(f"  Semantic relations: {len(processor.semantic_relations)}")
 
-    # Save corpus
+    # Save corpus (JSON format only - pickle deprecated)
     tracker.start_phase("Saving corpus")
-    save_format = 'pickle' if str(output_path).endswith('.pkl') else 'json'
-    processor.save(str(output_path), format=save_format)
-    if save_format == 'json':
-        # For JSON, output_path is a directory
-        tracker.log(f"  Saved to {output_path.name}/ (JSON format)")
-    else:
-        file_size = output_path.stat().st_size / 1024
-        tracker.log(f"  Saved to {output_path.name} ({file_size:.1f} KB)")
+    processor.save(str(output_path))
+    tracker.log(f"  Saved to {output_path.name}/ (JSON format)")
     tracker.end_phase("Saving corpus")
 
     # Build file_mtimes for manifest
