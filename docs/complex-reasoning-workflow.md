@@ -1203,18 +1203,26 @@ python scripts/search_codebase.py "existing documentation"
 
 ### Common Situations Lookup
 
-| Situation | Do This |
-|-----------|---------|
-| Don't understand the task | Question phase → ask for clarification |
-| Multiple valid approaches | Parallel exploration → synthesize → choose |
-| Approach not working | Prune → document why → try different branch |
-| Verification failing | Stop → Observe → Hypothesize → Investigate |
-| Running out of time | Time box → escalate or simplify scope |
-| Found new issue | Create task immediately → continue or pivot |
-| Significant learning | Create memory → link to relevant code/docs |
-| Need permission | Approval request format → wait for response |
-| Work should stop | Cancel gracefully → document → preserve learnings |
-| Handing off work | Handoff document → include decisions + questions |
+| Situation | Do This | See Part |
+|-----------|---------|----------|
+| Don't understand the task | Question phase → ask for clarification | 4 |
+| Multiple valid approaches | Parallel exploration → synthesize → choose | 2 |
+| Approach not working | Prune → document why → try different branch | 3 |
+| Verification failing | Stop → Observe → Hypothesize → Investigate | 6 |
+| Repeated failures (3+) | STOP → escalate with analysis | 13.2 |
+| Running out of time | Time box → escalate or simplify scope | 8 |
+| Found new issue | Create task immediately → continue or pivot | 11 |
+| Significant learning | Create memory → link to relevant code/docs | 7 |
+| Need permission | Approval request format → wait for response | 9 |
+| Work should stop | Cancel gracefully → document → preserve learnings | 9.3 |
+| Handing off work | Handoff document → include decisions + questions | 7.2 |
+| Blocked by dependency | Workaround or switch to independent work | 13.3 |
+| Scope is creeping | Scope Creep Alert → reframe with human | 13.4 |
+| All options seem bad | "No Good Options" analysis → least bad | 16.3 |
+| Joining mid-work | Onboarding protocol → read, validate, start small | 15 |
+| Disagree with human | Respectful disagreement format → their call | 14.2 |
+| Parallel agents conflict | Stop → document → escalate | 14.2 |
+| Need to assess risk | Reversibility matrix → scenario planning | 16 |
 
 ### Commands Cheat Sheet
 
@@ -1243,6 +1251,959 @@ python scripts/task_utils.py sprint note "observation"
 # ML Data
 python scripts/ml_data_collector.py stats
 python scripts/ml_data_collector.py session status
+```
+
+---
+
+## Part 13: Crisis Management & Recovery
+
+<!--
+  CRITICAL ADDITION:
+  The original document covered the "happy path" well but lacked guidance
+  for when things go seriously wrong. This section fills that gap.
+
+  Key insight: How you handle failure determines long-term success.
+  Systems that can't recover gracefully become fragile and untrusted.
+-->
+
+### 13.1 Crisis Classification
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     CRISIS SEVERITY LEVELS                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  LEVEL 1: HICCUP (Self-recoverable)                                 │
+│  ├── Test failure with obvious fix                                  │
+│  ├── Minor misunderstanding, easily clarified                       │
+│  └── Time estimate off by <50%                                      │
+│  └── Response: Fix it, note it, continue                            │
+│                                                                      │
+│  LEVEL 2: OBSTACLE (Needs adaptation)                               │
+│  ├── Verification repeatedly failing                                │
+│  ├── Blocked by external dependency                                 │
+│  ├── Approach hitting diminishing returns                           │
+│  └── Response: Pause, analyze, adjust approach                      │
+│                                                                      │
+│  LEVEL 3: WALL (Needs human intervention)                           │
+│  ├── Fundamental assumption proven false                            │
+│  ├── Multiple approaches have failed                                │
+│  ├── Scope has grown beyond original boundaries                     │
+│  └── Response: Stop, document, escalate to human                    │
+│                                                                      │
+│  LEVEL 4: CRISIS (Immediate stop required)                          │
+│  ├── Work is causing damage (breaking other systems)                │
+│  ├── Security or data integrity issue discovered                    │
+│  ├── Work contradicts explicit user values                          │
+│  └── Response: STOP NOW, preserve state, alert human                │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.2 Repeated Verification Failure Protocol
+
+<!--
+  WHEN FIXES KEEP FAILING:
+  This is the most common crisis. The temptation is to keep trying.
+  But insanity is doing the same thing expecting different results.
+-->
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│            REPEATED VERIFICATION FAILURE DECISION TREE               │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Attempt 1 failed                                                   │
+│  └── Normal: Investigate, hypothesize, fix                          │
+│                                                                      │
+│  Attempt 2 failed                                                   │
+│  └── Concern: Was hypothesis wrong?                                 │
+│  └── Action: Re-examine assumptions, try different hypothesis       │
+│                                                                      │
+│  Attempt 3 failed                                                   │
+│  └── WARNING: Pattern suggests deeper issue                         │
+│  └── Action: STOP fixing. Step back. Ask:                           │
+│      ├── "Am I solving the right problem?"                          │
+│      ├── "Is there a hidden dependency I'm missing?"                │
+│      └── "Should I try a completely different approach?"            │
+│                                                                      │
+│  Attempt 4+                                                         │
+│  └── ESCALATE: Human intervention required                          │
+│  └── Document:                                                       │
+│      ├── What was tried                                             │
+│      ├── What each attempt revealed                                 │
+│      ├── Current hypotheses                                         │
+│      └── Recommended next steps for human                           │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Escalation template:**
+```markdown
+## Escalation: Repeated Verification Failure
+
+**What I'm trying to do:**
+[Goal]
+
+**What keeps failing:**
+[Specific failure pattern]
+
+**Attempts made:**
+1. [Attempt 1]: [Hypothesis] → [Result]
+2. [Attempt 2]: [Hypothesis] → [Result]
+3. [Attempt 3]: [Hypothesis] → [Result]
+
+**What I've learned:**
+- [Insight 1]
+- [Insight 2]
+
+**Current hypotheses:**
+- [Hypothesis A]: [Evidence for/against]
+- [Hypothesis B]: [Evidence for/against]
+
+**My recommendation:**
+[What I think we should try next, or why we should abandon]
+
+**Help needed:**
+[Specific question or decision I need from you]
+```
+
+### 13.3 Blocked Dependency Recovery
+
+```
+EXTERNAL DEPENDENCY BLOCKED:
+├── Immediate: Document what's blocked and why
+├── Check: Is there a workaround that doesn't compromise quality?
+│   ├── YES → Implement workaround, document as HACK, create follow-up task
+│   └── NO → Continue to next step
+├── Check: Can we work on something else while waiting?
+│   ├── YES → Switch to independent work, set reminder to return
+│   └── NO → Continue to next step
+├── Check: Is the dependency likely to unblock soon?
+│   ├── YES → Wait with timeout (max 1 hour), then escalate
+│   └── NO → Escalate immediately
+
+INTERNAL DEPENDENCY BLOCKED (other agent's work):
+├── Check: Is the other work close to done?
+│   ├── YES → Wait (max 30 min), then coordinate
+│   └── NO → Continue to next step
+├── Check: Can work proceed in parallel with conflicts resolved later?
+│   ├── YES → Proceed with clear boundaries, plan merge
+│   └── NO → Escalate to human for prioritization
+```
+
+### 13.4 Scope Creep Detection & Response
+
+<!--
+  SCOPE CREEP:
+  Like boiling a frog, it happens gradually.
+  These triggers help you notice before it's too late.
+-->
+
+**Warning signs of scope creep:**
+- [ ] "Just one more thing" has been said 3+ times
+- [ ] Original time estimate is exceeded by 2x
+- [ ] You're modifying files you didn't expect to touch
+- [ ] The solution now requires learning new concepts
+- [ ] You can't remember the original goal clearly
+
+**When scope creep is detected:**
+
+```markdown
+## Scope Creep Alert
+
+**Original scope:**
+[What we set out to do]
+
+**Current scope:**
+[What we're actually doing now]
+
+**Drift:**
+[How and why scope expanded]
+
+**Options:**
+1. **Finish expanded scope**: Est. [X] more time
+   - Pro: Delivers more value
+   - Con: [Risks of continuing]
+
+2. **Return to original scope**: Est. [Y] more time
+   - Pro: Delivers on original promise
+   - Con: [What we'd lose/defer]
+
+3. **Pause and reframe**: Est. [Z] time for new plan
+   - Pro: Right-sized scope going forward
+   - Con: Loses momentum
+
+**My recommendation:** [1/2/3 and why]
+```
+
+### 13.5 Recovery Procedures
+
+**Full rollback (when nothing is salvageable):**
+```bash
+# Save current state for analysis
+git stash save "failed-attempt-$(date +%Y%m%d-%H%M%S)"
+
+# Return to known good state
+git checkout <last-known-good-commit>
+
+# Document what happened
+python scripts/new_memory.py "rollback: what we learned"
+```
+
+**Partial recovery (salvage what works):**
+```bash
+# Commit working pieces separately
+git add <files-that-work>
+git commit -m "partial: working pieces from failed attempt"
+
+# Stash or discard broken pieces
+git stash save "broken-pieces-for-analysis"
+
+# Document
+python scripts/new_task.py "Resume: [what still needs doing]" --priority high
+```
+
+**Knowledge preservation (even from failure):**
+```markdown
+## Failed Approach Analysis: [Name]
+
+**Goal:** [What we were trying to achieve]
+
+**Approach:** [What we tried]
+
+**Why it failed:**
+[Root cause, not just symptoms]
+
+**What we learned:**
+- [Technical insight]
+- [Process insight]
+
+**What would make this approach work:**
+[Conditions under which to revisit]
+
+**Red flags we should have noticed:**
+[Hindsight patterns to watch for next time]
+```
+
+---
+
+## Part 14: Real-Time Collaboration & Coordination
+
+<!--
+  ADDRESSING THE GAP:
+  The original document focused on individual cognitive processes.
+  But real work involves coordination with others (humans and AIs).
+  This section covers the dynamics of working together.
+-->
+
+### 14.1 Collaboration Modes
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      COLLABORATION MODES                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  SYNCHRONOUS (Real-time)                                            │
+│  ├── Human actively present, providing feedback                     │
+│  ├── Questions answered immediately                                 │
+│  ├── Direction changes can happen mid-stream                        │
+│  └── Best for: complex decisions, clarification-heavy work          │
+│                                                                      │
+│  ASYNCHRONOUS (Batch)                                               │
+│  ├── Human provides task, returns for results                       │
+│  ├── Questions must be batched or assumptions documented            │
+│  ├── Must plan for decision points without immediate input          │
+│  └── Best for: well-defined tasks, parallel execution               │
+│                                                                      │
+│  SEMI-SYNCHRONOUS (Hybrid)                                          │
+│  ├── Human available but not actively watching                      │
+│  ├── Can interrupt for critical decisions                           │
+│  ├── Should batch non-critical questions                            │
+│  └── Best for: most real-world work                                 │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 14.2 Disagreement Resolution Protocol
+
+<!--
+  CRITICAL FOR AI AGENTS:
+  Sometimes the AI has information or perspective the human lacks.
+  Respectfully surfacing disagreement is a feature, not a bug.
+-->
+
+**When you disagree with human guidance:**
+
+```markdown
+## Respectful Disagreement
+
+**Your instruction:**
+[What you asked me to do]
+
+**My concern:**
+[Why I think this might not be optimal]
+
+**Evidence:**
+[Specific data, code references, or reasoning]
+
+**Risk if we proceed as instructed:**
+[What could go wrong]
+
+**Alternative I'd suggest:**
+[Different approach with rationale]
+
+**However:**
+You have context I may lack. If you still want to proceed
+with the original instruction, I will do so and document
+my concern for future reference.
+
+**Your call:** Proceed as instructed / Try alternative / Discuss further
+```
+
+**When parallel agents conflict:**
+1. DETECT: Agent discovers its work conflicts with another's
+2. STOP: Don't proceed with conflicting changes
+3. DOCUMENT: What the conflict is and why it matters
+4. ESCALATE: Notify coordinator/human
+5. WAIT: Don't resolve unilaterally unless explicitly authorized
+
+### 14.3 Status Communication Standards
+
+**Status update frequency:**
+
+| Work Type | Update Frequency | Update Content |
+|-----------|------------------|----------------|
+| Quick task (<30 min) | On completion | Result summary |
+| Standard task (30 min - 2 hr) | At milestones | Progress, blockers |
+| Large task (2+ hr) | Every hour | Progress, ETA, concerns |
+| Blocked task | Immediately | What's blocked, what's needed |
+
+**Status update format:**
+```markdown
+## Status: [Task Name]
+
+**Progress:** [X]% complete
+**Current phase:** [QUESTION/ANSWER/PRODUCE/VERIFY]
+**ETA:** [Time estimate if known]
+
+**Completed:**
+- [x] [Completed item]
+
+**In progress:**
+- [ ] [Current work]
+
+**Blockers:** [None / Description]
+**Concerns:** [None / What might go wrong]
+**Need from you:** [Nothing / Specific request]
+```
+
+**Blocker classification:**
+
+| Type | Meaning | Response Time Expected |
+|------|---------|------------------------|
+| HARD | Cannot proceed at all | ASAP - work stopped |
+| SOFT | Can workaround but suboptimal | Before task completes |
+| INFO | Would help but not blocking | When convenient |
+
+### 14.4 Parallel Work Coordination
+
+<!--
+  WHEN MULTIPLE AGENTS WORK SIMULTANEOUSLY:
+  Coordination prevents collisions and ensures coherent output.
+-->
+
+**Pre-parallel work checklist:**
+- [ ] Clear boundaries defined (which files, which functions)
+- [ ] Dependencies identified (who waits for whom)
+- [ ] Communication channel established (how to report issues)
+- [ ] Conflict resolution plan (what if boundaries blur)
+- [ ] Merge strategy decided (how work comes together)
+
+**During parallel work:**
+```markdown
+## Coordination Check-In
+
+**Agent ID:** [Identifier]
+**Working on:** [Specific scope]
+**Files modified:** [List]
+
+**Boundary breaches:**
+[None / I needed to touch X which was outside my scope because Y]
+
+**Discovered dependencies:**
+[None / My work now needs Z from Agent Y]
+
+**Completion estimate:** [Time]
+**Blockers:** [None / Description]
+```
+
+**Merge coordination:**
+```bash
+# Before merging parallel work
+git fetch origin
+git log --oneline origin/main..HEAD  # See what we're merging
+
+# Check for conflicts before actual merge
+git merge --no-commit --no-ff origin/main
+git merge --abort  # If conflicts, plan resolution
+
+# Or for parallel branches
+git diff branch-a..branch-b --stat  # See what differs
+```
+
+### 14.5 Handoff During Active Work
+
+<!--
+  WHEN YOU MUST STOP MID-WORK:
+  Context limits, session ends, or work must transfer.
+  Make handoff seamless.
+-->
+
+**Mid-work handoff document:**
+```markdown
+## Active Work Handoff
+
+**Task:** [What's being worked on]
+**Status:** [Where we are in the process]
+**Urgency:** [How time-sensitive]
+
+### Current State
+
+**What's working:**
+- [Files that are in good state]
+
+**What's in progress:**
+- [File]: [What state it's in, what remains]
+
+**What's broken:**
+- [Known issues that need fixing]
+
+### Context You Need
+
+**Why we're doing it this way:**
+[Key decisions and rationale]
+
+**Gotchas discovered:**
+- [Thing that wasn't obvious]
+
+**Files to read first:**
+1. [Most important file to understand]
+2. [Second most important]
+
+### Immediate Next Steps
+
+1. [Very next action to take]
+2. [Action after that]
+3. [Action after that]
+
+### Questions Still Open
+
+- [Unanswered question 1]
+- [Unanswered question 2]
+
+### How to Verify You're On Track
+
+[Command to run or check to perform to confirm understanding]
+```
+
+---
+
+## Part 15: Onboarding & Context Transfer
+
+<!--
+  GAP ADDRESSED:
+  How does someone new (human or AI) join ongoing work?
+  This section provides the ramp-up protocol.
+-->
+
+### 15.1 Essential Context Questions
+
+**Before touching any code, answer these:**
+
+```markdown
+## Context Gathering Checklist
+
+### The Task
+- [ ] What is the end goal in one sentence?
+- [ ] What does "done" look like specifically?
+- [ ] What's the deadline or urgency level?
+
+### The History
+- [ ] What has already been tried?
+- [ ] What failed and why?
+- [ ] What decisions have been made?
+
+### The Constraints
+- [ ] What can't we change?
+- [ ] What files are off-limits?
+- [ ] What patterns must we follow?
+
+### The Stakeholders
+- [ ] Who requested this?
+- [ ] Who approves completion?
+- [ ] Who else is affected?
+
+### The Scary Parts
+- [ ] What's the riskiest aspect?
+- [ ] What's most likely to go wrong?
+- [ ] What's the recovery plan if it does?
+```
+
+### 15.2 Joining Mid-Sprint Protocol
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    MID-SPRINT ONBOARDING                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  STEP 1: Read the landscape (10 min)                                │
+│  ├── python scripts/task_utils.py sprint status                    │
+│  ├── python scripts/task_utils.py list --status in_progress        │
+│  └── git log --oneline -20  # Recent activity                      │
+│                                                                      │
+│  STEP 2: Understand current work (15 min)                           │
+│  ├── Read CURRENT_SPRINT.md for goals                               │
+│  ├── Check for any active handoff documents                         │
+│  └── Scan recent commits for patterns                               │
+│                                                                      │
+│  STEP 3: Identify your entry point (10 min)                         │
+│  ├── What tasks are unassigned?                                     │
+│  ├── What's blocked that you can unblock?                           │
+│  └── What's the highest priority available work?                    │
+│                                                                      │
+│  STEP 4: Validate understanding (5 min)                             │
+│  ├── Summarize your understanding to yourself                       │
+│  ├── If possible, confirm with human or prior context               │
+│  └── Identify what you're uncertain about                           │
+│                                                                      │
+│  STEP 5: Start small, verify understanding (30 min)                 │
+│  ├── Pick smallest available task first                             │
+│  ├── Complete it fully before taking larger work                    │
+│  └── Use completion to validate your context is correct             │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 15.3 Files to Read First
+
+**Universal priority order for this codebase:**
+
+```markdown
+## Onboarding Reading List
+
+### Tier 1: Immediate Context (Always Read)
+1. **CLAUDE.md** - Project instructions and patterns
+2. **tasks/CURRENT_SPRINT.md** - What's being worked on now
+3. **Recent handoff docs** - Any in samples/memories/[DRAFT]*
+
+### Tier 2: Architecture (Read for Significant Work)
+4. **docs/architecture.md** - System structure
+5. **cortical/processor/__init__.py.ai_meta** - Main module metadata
+6. **docs/definition-of-done.md** - Completion standards
+
+### Tier 3: Process (Read When Needed)
+7. **docs/code-of-ethics.md** - Quality standards
+8. **docs/dogfooding-checklist.md** - Testing practices
+9. **.claude/commands/director.md** - Orchestration patterns
+
+### Tier 4: History (Read for Context)
+10. **samples/decisions/adr-*.md** - Past decisions
+11. **samples/memories/*.md** - Past learnings
+```
+
+### 15.4 Context Recovery Commands
+
+```bash
+# "Where are we?" - Sprint and task status
+python scripts/task_utils.py sprint status
+python scripts/task_utils.py list --status in_progress
+
+# "What happened recently?" - Git history
+git log --oneline -20
+git log --oneline --since="1 day ago"
+
+# "What's related to X?" - Semantic search
+python scripts/search_codebase.py "topic you're working on"
+
+# "What do we know about X?" - Memory search
+grep -r "keyword" samples/memories/ samples/decisions/
+
+# "What's the current state?" - File changes
+git status
+git diff --stat HEAD~5
+
+# "Who worked on this?" - File history
+git log --oneline -10 -- path/to/file.py
+```
+
+### 15.5 Common Onboarding Mistakes
+
+**Don't:**
+- ❌ Start coding before understanding context
+- ❌ Assume the obvious approach is correct
+- ❌ Ignore existing patterns in favor of "better" ones
+- ❌ Skip reading CLAUDE.md (it has critical info)
+- ❌ Work on something without checking if it's already in progress
+
+**Do:**
+- ✅ Read before writing
+- ✅ Ask clarifying questions early
+- ✅ Follow existing patterns even if you'd do it differently
+- ✅ Start with small tasks to validate understanding
+- ✅ Check for related tasks before creating new ones
+
+---
+
+## Part 16: Risk Assessment & Decision Quality
+
+<!--
+  GAP ADDRESSED:
+  How do we make good decisions under uncertainty?
+  This section provides frameworks for decision quality.
+-->
+
+### 16.1 Reversibility Matrix
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     REVERSIBILITY ASSESSMENT                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  EASILY REVERSIBLE (Low Risk)                                       │
+│  ├── Adding new functions/classes (can delete)                      │
+│  ├── Adding new tests (can remove)                                  │
+│  ├── Adding documentation (can edit)                                │
+│  ├── Local refactors within a function                              │
+│  └── Decision: Proceed with normal approval                         │
+│                                                                      │
+│  REVERSIBLE WITH COST (Medium Risk)                                 │
+│  ├── Changing function signatures (need to update callers)          │
+│  ├── Renaming public APIs (need coordinated change)                 │
+│  ├── Restructuring modules (need to update imports)                 │
+│  ├── Changing data formats (need migration)                         │
+│  └── Decision: Weigh cost of reversal vs benefit of change          │
+│                                                                      │
+│  DIFFICULT TO REVERSE (High Risk)                                   │
+│  ├── Deleting code/features (may lose context)                      │
+│  ├── Changing database schemas (data migration complex)             │
+│  ├── Modifying security boundaries                                  │
+│  ├── Changing core abstractions used everywhere                     │
+│  └── Decision: Require explicit human approval                      │
+│                                                                      │
+│  IRREVERSIBLE (Critical)                                            │
+│  ├── Deleting data                                                  │
+│  ├── Publishing to production                                       │
+│  ├── Sending external communications                                │
+│  ├── Modifying others' credentials                                  │
+│  └── Decision: NEVER proceed without explicit authorization         │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 16.2 Information Quality Assessment
+
+**Before making a decision, assess information quality:**
+
+```markdown
+## Information Quality Check
+
+**Decision to make:** [Description]
+
+### What We Know (High Confidence)
+- [Fact 1]: [Source/evidence]
+- [Fact 2]: [Source/evidence]
+
+### What We Believe (Medium Confidence)
+- [Belief 1]: [Why we believe this]
+- [Belief 2]: [Why we believe this]
+
+### What We're Guessing (Low Confidence)
+- [Guess 1]: [Why we're guessing this]
+- [Guess 2]: [Why we're guessing this]
+
+### What We Don't Know (Unknown)
+- [Unknown 1]: [Why it matters]
+- [Unknown 2]: [Why it matters]
+
+### Information-Gathering Options
+- [Option A]: [Time cost] → [Would tell us X]
+- [Option B]: [Time cost] → [Would tell us Y]
+
+### Decision
+- [ ] Gather more information (which?)
+- [ ] Proceed with current information (justify risk)
+```
+
+### 16.3 "No Good Options" Protocol
+
+<!--
+  WHEN ALL PATHS SEEM BAD:
+  This happens more often than we admit.
+  Having a protocol prevents paralysis.
+-->
+
+**When all options seem unacceptable:**
+
+```markdown
+## No Good Options Analysis
+
+**The dilemma:** [Description of situation]
+
+### Available Options
+
+**Option A: [Name]**
+- What's bad about it: [Problems]
+- What's good about it: [Benefits]
+- Risk level: [Low/Medium/High]
+
+**Option B: [Name]**
+- What's bad about it: [Problems]
+- What's good about it: [Benefits]
+- Risk level: [Low/Medium/High]
+
+**Option C: Do nothing**
+- What happens if we wait: [Consequences]
+- Could situation improve: [Yes/No/Unknown]
+
+### Analysis
+
+**Least bad option:** [A/B/C] because [reasoning]
+
+**Could we create a better option?**
+[Yes → what would it look like? / No → why not]
+
+**Are we framing the problem wrong?**
+[If we stepped back, is there a different question we should ask?]
+
+### Recommendation
+
+[Proceed with Option X, or escalate with this analysis]
+```
+
+### 16.4 Scenario Planning
+
+**For significant decisions, consider multiple futures:**
+
+```markdown
+## Scenario Analysis: [Decision]
+
+### Best Case Scenario
+**If everything goes right:**
+- [Outcome 1]
+- [Outcome 2]
+**Likelihood:** [Low/Medium/High]
+
+### Most Likely Scenario
+**Realistic expectation:**
+- [Outcome 1]
+- [Outcome 2]
+**Likelihood:** [Low/Medium/High]
+
+### Worst Case Scenario
+**If things go wrong:**
+- [Outcome 1]
+- [Outcome 2]
+**Likelihood:** [Low/Medium/High]
+
+### Mitigation for Worst Case
+**If worst case happens, we would:**
+1. [Recovery action 1]
+2. [Recovery action 2]
+**Recovery cost:** [Low/Medium/High]
+
+### Decision
+- [ ] Proceed (benefits outweigh risks)
+- [ ] Don't proceed (risks too high)
+- [ ] Modify approach to reduce worst-case likelihood
+- [ ] Need more information before deciding
+```
+
+### 16.5 Decision Quality Retrospective
+
+**After significant decisions play out, learn from them:**
+
+```markdown
+## Decision Retrospective: [Decision Made]
+
+**Date decided:** [When]
+**Decision made:** [What we chose]
+**Rationale at the time:** [Why we chose it]
+
+**What actually happened:**
+[Outcome]
+
+**Was the decision good?**
+- [ ] Yes - outcome matched expectation
+- [ ] Partially - some surprises
+- [ ] No - outcome was worse than expected
+
+**What we learned:**
+- [Learning about this type of decision]
+- [Learning about our decision process]
+
+**What we'd do differently:**
+- [Process change for next time]
+
+**Pattern to remember:**
+[One-line summary of the lesson]
+```
+
+---
+
+## Part 17: Anti-Patterns & Failure Modes
+
+<!--
+  LEARNING FROM MISTAKES:
+  Document what NOT to do based on real experience.
+  This section grows over time as we encounter new failure modes.
+-->
+
+### 17.1 Cognitive Anti-Patterns
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    COGNITIVE ANTI-PATTERNS                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  SUNK COST FALLACY                                                  │
+│  ├── Symptom: "We've already invested X, we can't stop now"         │
+│  ├── Reality: Past investment doesn't justify future waste          │
+│  └── Cure: Evaluate based on future value, not past cost            │
+│                                                                      │
+│  CONFIRMATION BIAS                                                  │
+│  ├── Symptom: Only seeing evidence that supports your approach      │
+│  ├── Reality: You're ignoring warning signs                         │
+│  └── Cure: Actively seek disconfirming evidence                     │
+│                                                                      │
+│  PLANNING FALLACY                                                   │
+│  ├── Symptom: "This will take 2 hours" (takes 8)                    │
+│  ├── Reality: We systematically underestimate complexity            │
+│  └── Cure: Multiply estimates by 2-3x, use reference class          │
+│                                                                      │
+│  BIKESHEDDING                                                       │
+│  ├── Symptom: Debating trivial details while ignoring big issues    │
+│  ├── Reality: Easy problems feel productive; hard ones don't        │
+│  └── Cure: Explicitly prioritize by impact, not comfort             │
+│                                                                      │
+│  PREMATURE OPTIMIZATION                                             │
+│  ├── Symptom: Making it fast before making it work                  │
+│  ├── Reality: 90% of optimization is wasted on non-bottlenecks      │
+│  └── Cure: Make it work, measure, THEN optimize hot paths           │
+│                                                                      │
+│  ANALYSIS PARALYSIS                                                 │
+│  ├── Symptom: Endlessly researching instead of starting             │
+│  ├── Reality: Some learning only happens by doing                   │
+│  └── Cure: Time-box research, then start with smallest step         │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 17.2 Process Anti-Patterns
+
+**The "Just One More Fix" Trap:**
+- Symptom: Making small changes without re-verifying
+- Result: Accumulated small changes create big failures
+- Prevention: Verify after EVERY change, no exceptions
+
+**The "It Works On My Machine" Trap:**
+- Symptom: Testing only happy path with toy data
+- Result: Edge cases fail in real usage
+- Prevention: Test with realistic data, empty cases, and boundaries
+
+**The "Silent Assumption" Trap:**
+- Symptom: Assuming context that isn't explicitly confirmed
+- Result: Work diverges from actual requirements
+- Prevention: Document assumptions, ask clarifying questions
+
+**The "Heroic Fix" Trap:**
+- Symptom: One person staying late to fix everything
+- Result: Knowledge siloed, burnout, hidden problems
+- Prevention: Escalate early, document always, share load
+
+### 17.3 Collaboration Anti-Patterns
+
+**Over-Parallelization:**
+- Symptom: 10 agents working simultaneously on related work
+- Result: Merge hell, conflicting changes, rework
+- Prevention: Max 3-4 truly independent parallel streams
+
+**Under-Communication:**
+- Symptom: Working for hours without status update
+- Result: Human can't help when blocked, work diverges
+- Prevention: Status updates at milestones, blockers immediately
+
+**Assuming Competence:**
+- Symptom: Not verifying understanding before starting
+- Result: Subtle misalignment compounds into big problems
+- Prevention: Summarize understanding, confirm before proceeding
+
+---
+
+## Part 18: Metrics & Process Health
+
+<!--
+  YOU CAN'T IMPROVE WHAT YOU DON'T MEASURE:
+  But measure the right things, or you'll optimize the wrong ones.
+-->
+
+### 18.1 Workflow Effectiveness Metrics
+
+**Cycle Metrics:**
+
+| Metric | What It Measures | Healthy Range |
+|--------|-----------------|---------------|
+| Loops per task | How many QAPV cycles to complete | 1-3 typical |
+| Escalations per week | How often human intervention needed | <5% of decisions |
+| Rework rate | How often we undo and redo | <10% of time |
+| Verification pass rate | First-time pass on verification | >80% |
+| Knowledge reuse | How often we reference past learnings | Should increase |
+
+**Quality Metrics:**
+
+| Metric | What It Measures | Healthy Range |
+|--------|-----------------|---------------|
+| Regression rate | New bugs introduced | <1 per sprint |
+| Test coverage delta | Coverage change per task | >= 0 |
+| Documentation ratio | Docs updated per code change | ~1:1 |
+| Rollback frequency | How often we revert | <5% of deploys |
+
+### 18.2 Self-Assessment Prompts
+
+**Weekly:**
+- Did we complete what we planned?
+- What blocked us that we didn't expect?
+- What took longer than expected? Why?
+- What knowledge did we gain that should be documented?
+
+**Monthly:**
+- Are we getting better at estimating?
+- Are the same problems recurring?
+- Is the codebase healthier than last month?
+- What process changes should we try?
+
+### 18.3 Process Improvement Protocol
+
+```markdown
+## Process Improvement Proposal
+
+**What's not working:**
+[Specific problem or friction]
+
+**Evidence:**
+[Data or examples showing this is a problem]
+
+**Proposed change:**
+[What we should do differently]
+
+**How we'll know if it's better:**
+[Measurable success criteria]
+
+**Trial period:**
+[How long to try before evaluating]
+
+**Rollback plan:**
+[What we do if it's worse]
 ```
 
 ---
@@ -1278,6 +2239,34 @@ We're all learning together, one loop at a time.
 
 *"In theory, there is no difference between theory and practice. In practice, there is."* - Yogi Berra (or maybe not, which proves the point)
 
+---
+
+## Document Summary
+
+| Part | Title | Focus |
+|------|-------|-------|
+| 1 | Cognitive Loop Architecture | QAPV loop, nested loops, termination |
+| 2 | Branching and Decision Trees | Decision types, exploration strategies |
+| 3 | Pruning | When/how to stop exploring branches |
+| 4 | Question Protocol | Question types, ladder technique |
+| 5 | Production Protocol | States, chunking, comments |
+| 6 | Verification Protocol | Pyramid, checklists, failure response |
+| 7 | Knowledge Transfer | Artifacts, handoffs, memories |
+| 8 | Timing and Profiling | Time boxing, performance |
+| 9 | Approval and Cancellation | Gates, when to stop |
+| 10 | Cognitive Exercises | Pre/mid/post work routines |
+| 11 | Integration | Task/sprint/ML system connections |
+| 12 | Quick Reference | One-page summary, situation lookup |
+| 13 | **Crisis Management** | Failure levels, recovery, scope creep |
+| 14 | **Collaboration** | Modes, disagreement, coordination |
+| 15 | **Onboarding** | Context gathering, mid-sprint joining |
+| 16 | **Risk Assessment** | Reversibility, decision quality |
+| 17 | **Anti-Patterns** | Cognitive, process, collaboration traps |
+| 18 | **Metrics** | Workflow health, self-assessment |
+
+---
+
 *Created: 2025-12-19*
-*Version: 1.0*
+*Version: 2.0* (Major expansion: Added Parts 13-18 covering crisis management, collaboration, onboarding, risk, anti-patterns, and metrics)
 *Status: Living document - update as patterns evolve*
+*Lines: ~2,300*
