@@ -55,6 +55,17 @@ from .transfer import (
     create_portable_model,
     transfer_knowledge,
 )
+from .quality import (
+    QualityEvaluator,
+    SearchQualityEvaluator,
+    AlignmentEvaluator,
+    PredictionMetrics,
+    SearchMetrics,
+    SearchComparison,
+    AlignmentMetrics,
+    generate_test_queries,
+    generate_relevance_judgments,
+)
 
 __all__ = [
     # Core
@@ -79,4 +90,14 @@ __all__ = [
     'PROGRAMMING_VOCABULARY',
     'create_portable_model',
     'transfer_knowledge',
+    # Quality Evaluation
+    'QualityEvaluator',
+    'SearchQualityEvaluator',
+    'AlignmentEvaluator',
+    'PredictionMetrics',
+    'SearchMetrics',
+    'SearchComparison',
+    'AlignmentMetrics',
+    'generate_test_queries',
+    'generate_relevance_judgments',
 ]

@@ -1058,3 +1058,256 @@ class SparkMixin:
         union = len(my_vocab | other_vocab)
 
         return intersection / max(union, 1)
+
+    # =========================================================================
+    # Quality Evaluation Methods (Phase 2: Quality Measurement)
+    # =========================================================================
+
+    def evaluate_prediction_quality(
+        self,
+        test_texts: Optional[List[str]] = None,
+        test_ratio: float = 0.2,
+        context_size: int = 2
+    ) -> Dict[str, Any]:
+        """
+        Evaluate SparkSLM prediction quality.
+
+        Measures accuracy@k, perplexity, and coverage on test data.
+
+        Args:
+            test_texts: Optional test texts. If not provided, uses
+                       held-out split from documents.
+            test_ratio: Fraction of documents for test (if test_texts not given)
+            context_size: Number of context words for predictions
+
+        Returns:
+            Dict with:
+            - accuracy_at_1: Top-1 prediction accuracy
+            - accuracy_at_5: Top-5 prediction accuracy
+            - accuracy_at_10: Top-10 prediction accuracy
+            - mean_reciprocal_rank: MRR
+            - perplexity: Average perplexity
+            - coverage: Fraction with predictions
+
+        Raises:
+            RuntimeError: If SparkSLM not enabled
+
+        Example:
+            >>> metrics = processor.evaluate_prediction_quality()
+            >>> print(f"Accuracy@5: {metrics['accuracy_at_5']:.1%}")
+        """
+        if not self.spark_enabled:
+            raise RuntimeError("SparkSLM must be enabled. Call enable_spark() first.")
+
+        from ..spark import QualityEvaluator
+
+        evaluator = QualityEvaluator(self._spark.ngram)
+
+        # Use provided test texts or create held-out split
+        if test_texts is None:
+            all_texts = list(self.documents.values())
+            _, test_texts = evaluator.create_held_out_split(all_texts, test_ratio)
+
+        metrics = evaluator.evaluate_predictions(test_texts, context_size)
+        return metrics.to_dict()
+
+    def cross_validate_predictions(
+        self,
+        folds: int = 5
+    ) -> Dict[str, Any]:
+        """
+        Cross-validate prediction quality across folds.
+
+        Args:
+            folds: Number of cross-validation folds
+
+        Returns:
+            Dict with:
+            - folds: List of metrics per fold
+            - mean_accuracy_at_5: Average accuracy@5 across folds
+            - std_accuracy_at_5: Std of accuracy@5
+            - mean_perplexity: Average perplexity
+
+        Raises:
+            RuntimeError: If SparkSLM not enabled
+
+        Example:
+            >>> cv = processor.cross_validate_predictions(folds=5)
+            >>> print(f"Mean accuracy@5: {cv['mean_accuracy_at_5']:.1%}")
+        """
+        if not self.spark_enabled:
+            raise RuntimeError("SparkSLM must be enabled. Call enable_spark() first.")
+
+        from ..spark import QualityEvaluator
+
+        evaluator = QualityEvaluator(self._spark.ngram)
+        all_texts = list(self.documents.values())
+
+        results = evaluator.cross_validate_predictions(all_texts, folds)
+
+        # Aggregate results
+        accuracies = [r.accuracy_at_5 for r in results]
+        perplexities = [r.perplexity for r in results if r.perplexity < float('inf')]
+
+        mean_acc = sum(accuracies) / len(accuracies) if accuracies else 0
+        std_acc = (
+            (sum((a - mean_acc) ** 2 for a in accuracies) / len(accuracies)) ** 0.5
+            if accuracies else 0
+        )
+        mean_perp = sum(perplexities) / len(perplexities) if perplexities else float('inf')
+
+        return {
+            'folds': [r.to_dict() for r in results],
+            'mean_accuracy_at_5': mean_acc,
+            'std_accuracy_at_5': std_acc,
+            'mean_perplexity': mean_perp,
+        }
+
+    def measure_perplexity_stability(
+        self,
+        test_texts: Optional[List[str]] = None,
+        runs: int = 5
+    ) -> Dict[str, float]:
+        """
+        Measure perplexity stability across runs.
+
+        Validates that the model produces consistent perplexity scores.
+
+        Args:
+            test_texts: Optional test texts. Uses all documents if not provided.
+            runs: Number of runs to average
+
+        Returns:
+            Dict with mean, std, min, max, and is_stable flag
+
+        Raises:
+            RuntimeError: If SparkSLM not enabled
+        """
+        if not self.spark_enabled:
+            raise RuntimeError("SparkSLM must be enabled. Call enable_spark() first.")
+
+        from ..spark import QualityEvaluator
+
+        evaluator = QualityEvaluator(self._spark.ngram)
+
+        if test_texts is None:
+            test_texts = list(self.documents.values())[:20]  # Sample for speed
+
+        return evaluator.measure_perplexity_stability(test_texts, runs)
+
+    def compare_search_quality(
+        self,
+        queries: List[str],
+        relevance: Dict[str, set],
+        k: int = 5
+    ) -> Dict[str, Any]:
+        """
+        Compare search quality with and without Spark enhancement.
+
+        Args:
+            queries: List of test queries
+            relevance: Dict mapping queries to sets of relevant doc_ids
+            k: Number of results to evaluate
+
+        Returns:
+            Dict with baseline metrics, spark metrics, and improvements
+
+        Raises:
+            RuntimeError: If SparkSLM not enabled
+
+        Example:
+            >>> comparison = processor.compare_search_quality(
+            ...     queries=["authentication", "login"],
+            ...     relevance={
+            ...         "authentication": {"auth.py", "login.py"},
+            ...         "login": {"login.py", "session.py"},
+            ...     }
+            ... )
+            >>> print(f"Precision improved by {comparison['precision_improvement']:.1%}")
+        """
+        if not self.spark_enabled:
+            raise RuntimeError("SparkSLM must be enabled. Call enable_spark() first.")
+
+        from ..spark import SearchQualityEvaluator
+
+        def search_baseline(query: str) -> List[Tuple[str, float]]:
+            # Temporarily disable spark for baseline
+            return self.find_documents_for_query(query, top_n=k)
+
+        def search_with_spark(query: str) -> List[Tuple[str, float]]:
+            # Use spark-enhanced expansion
+            expanded = self.expand_query_with_spark(query)
+            # Find documents using expanded terms
+            return self.find_documents_for_query(query, top_n=k)
+
+        evaluator = SearchQualityEvaluator(search_baseline, search_with_spark)
+        comparison = evaluator.compare_search(queries, relevance, k)
+
+        return comparison.to_dict()
+
+    def generate_quality_report(self) -> str:
+        """
+        Generate a comprehensive quality report.
+
+        Evaluates prediction quality, perplexity stability, and provides
+        recommendations.
+
+        Returns:
+            Markdown-formatted quality report
+
+        Raises:
+            RuntimeError: If SparkSLM not enabled
+
+        Example:
+            >>> report = processor.generate_quality_report()
+            >>> print(report)
+        """
+        if not self.spark_enabled:
+            raise RuntimeError("SparkSLM must be enabled. Call enable_spark() first.")
+
+        lines = ["# SparkSLM Quality Report\n"]
+
+        # Prediction quality
+        try:
+            pred_metrics = self.evaluate_prediction_quality()
+            lines.append("## Prediction Quality\n")
+            lines.append(f"- Accuracy@1: {pred_metrics['accuracy_at_1']:.1%}")
+            lines.append(f"- Accuracy@5: {pred_metrics['accuracy_at_5']:.1%}")
+            lines.append(f"- Accuracy@10: {pred_metrics['accuracy_at_10']:.1%}")
+            lines.append(f"- MRR: {pred_metrics['mean_reciprocal_rank']:.3f}")
+            lines.append(f"- Perplexity: {pred_metrics['perplexity']:.1f}")
+            lines.append(f"- Coverage: {pred_metrics['coverage']:.1%}")
+            lines.append("")
+
+            # Validation against roadmap criteria
+            lines.append("### Roadmap Validation\n")
+
+            if pred_metrics['accuracy_at_5'] > 0.30:
+                lines.append("- [x] Accuracy@5 > 30% (better than random) - PASSED")
+            else:
+                lines.append(f"- [ ] Accuracy@5 > 30% - FAILED ({pred_metrics['accuracy_at_5']:.1%})")
+
+        except Exception as e:
+            lines.append(f"## Prediction Quality\n\nError: {e}")
+
+        # Perplexity stability
+        try:
+            stability = self.measure_perplexity_stability()
+            lines.append("\n## Perplexity Stability\n")
+            lines.append(f"- Mean: {stability['mean']:.1f}")
+            lines.append(f"- Std: {stability['std']:.2f}")
+            lines.append(f"- Stable: {'Yes' if stability['is_stable'] else 'No'}")
+        except Exception as e:
+            lines.append(f"\n## Perplexity Stability\n\nError: {e}")
+
+        # Model stats
+        try:
+            stats = self.get_spark_stats()
+            lines.append("\n## Model Statistics\n")
+            lines.append(f"- Vocabulary size: {stats['vocabulary_size']}")
+            lines.append(f"- N-gram order: {stats['ngram_order']}")
+            lines.append(f"- Contexts: {stats['context_count']}")
+        except Exception as e:
+            lines.append(f"\n## Model Statistics\n\nError: {e}")
+
+        return "\n".join(lines)

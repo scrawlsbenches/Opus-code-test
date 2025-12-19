@@ -492,5 +492,123 @@ class TestSparkMixinTransfer(unittest.TestCase):
             self.assertLessEqual(overlap, 1.0)
 
 
+class TestQualityIntegration(unittest.TestCase):
+    """Test quality evaluation integration with processor."""
+
+    def setUp(self):
+        """Set up processor with trained spark model."""
+        self.processor = CorticalTextProcessor(spark=True)
+        # Add documents with predictable patterns
+        for i in range(10):
+            self.processor.process_document(
+                f'doc{i}',
+                'the quick brown fox jumps over the lazy dog'
+            )
+            self.processor.process_document(
+                f'doc{i}_alt',
+                'a quick brown cat chases the mouse'
+            )
+        self.processor.compute_all()
+        self.processor.train_spark()
+
+    def test_evaluate_prediction_quality(self):
+        """Test prediction quality evaluation."""
+        metrics = self.processor.evaluate_prediction_quality()
+
+        self.assertIn('accuracy_at_1', metrics)
+        self.assertIn('accuracy_at_5', metrics)
+        self.assertIn('accuracy_at_10', metrics)
+        self.assertIn('mean_reciprocal_rank', metrics)
+        self.assertIn('perplexity', metrics)
+        self.assertIn('coverage', metrics)
+
+    def test_evaluate_prediction_quality_custom_texts(self):
+        """Test prediction quality with custom test texts."""
+        test_texts = ['the quick brown fox jumps']
+        metrics = self.processor.evaluate_prediction_quality(test_texts=test_texts)
+
+        self.assertIsInstance(metrics, dict)
+        self.assertGreaterEqual(metrics['accuracy_at_1'], 0.0)
+
+    def test_cross_validate_predictions(self):
+        """Test cross-validation of predictions."""
+        # Need at least 2 documents per fold
+        cv = self.processor.cross_validate_predictions(folds=2)
+
+        self.assertIn('folds', cv)
+        self.assertIn('mean_accuracy_at_5', cv)
+        self.assertIn('std_accuracy_at_5', cv)
+        self.assertIn('mean_perplexity', cv)
+        self.assertEqual(len(cv['folds']), 2)
+
+    def test_measure_perplexity_stability(self):
+        """Test perplexity stability measurement."""
+        stability = self.processor.measure_perplexity_stability(runs=3)
+
+        self.assertIn('mean', stability)
+        self.assertIn('std', stability)
+        self.assertIn('min', stability)
+        self.assertIn('max', stability)
+        self.assertIn('is_stable', stability)
+
+    def test_measure_perplexity_stability_custom_texts(self):
+        """Test perplexity stability with custom texts."""
+        test_texts = ['the quick brown fox jumps over the lazy dog']
+        stability = self.processor.measure_perplexity_stability(
+            test_texts=test_texts,
+            runs=2
+        )
+
+        self.assertIn('mean', stability)
+        self.assertTrue(stability['is_stable'])
+
+    def test_generate_quality_report(self):
+        """Test quality report generation."""
+        report = self.processor.generate_quality_report()
+
+        self.assertIsInstance(report, str)
+        self.assertIn('Quality Report', report)
+        self.assertIn('Prediction Quality', report)
+        self.assertIn('Accuracy', report)
+
+    def test_generate_quality_report_has_validation(self):
+        """Test quality report includes roadmap validation."""
+        report = self.processor.generate_quality_report()
+
+        self.assertIn('Roadmap Validation', report)
+
+    def test_compare_search_quality(self):
+        """Test search quality comparison."""
+        queries = ['quick fox']
+        relevance = {'quick fox': {'doc0', 'doc1'}}
+
+        comparison = self.processor.compare_search_quality(
+            queries=queries,
+            relevance=relevance,
+            k=5
+        )
+
+        self.assertIn('baseline', comparison)
+        self.assertIn('with_spark', comparison)
+        self.assertIn('precision_improvement', comparison)
+        self.assertIn('recall_improvement', comparison)
+
+    def test_quality_methods_require_spark(self):
+        """Test quality methods raise error without spark."""
+        processor = CorticalTextProcessor()
+
+        with self.assertRaises(RuntimeError):
+            processor.evaluate_prediction_quality()
+
+        with self.assertRaises(RuntimeError):
+            processor.cross_validate_predictions()
+
+        with self.assertRaises(RuntimeError):
+            processor.measure_perplexity_stability()
+
+        with self.assertRaises(RuntimeError):
+            processor.generate_quality_report()
+
+
 if __name__ == '__main__':
     unittest.main()
