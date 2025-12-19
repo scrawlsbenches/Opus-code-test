@@ -393,10 +393,15 @@ Move CLI wrapper to projects/cli if it becomes problematic.
 | Sprint 3 | 3 days | ✅ | Hubris MoE |
 | Sprint 4 | 1 day | ✅ | Hubris MoE |
 | Sprint 5 | 1 day | ✅ | Hubris MoE |
-| Sprint 6 | - | 🟢 | Hubris MoE |
+| Sprint 6 | - | ✅ | Hubris MoE |
 | Sprint 7 | - | 🟢 | Hubris MoE |
 | Sprint 8 | - | 🟢 | Core |
 | Sprint 9 | 1 day | ✅ | Core (Projects) |
+| Sprint 15 | - | 🟢 | NLU Enhancement |
+| Sprint 16 | - | 🟢 | NLU Enhancement |
+| Sprint 17 | - | 🟡 | NLU Enhancement |
+| Sprint 18 | - | 🟢 | NLU Enhancement |
+| Sprint 19 | - | 🟢 | NLU Enhancement |
 
 ---
 
@@ -492,7 +497,8 @@ T-NLU-018: Documentation and examples
 ## Sprint 17: SparkSLM - Statistical First-Blitz Predictor
 **Sprint ID:** sprint-017-spark-slm
 **Epic:** NLU Enhancement (nlu)
-**Status:** Available 🟢
+**Status:** In Progress 🟡
+**Session:** 1Z3rd
 **Isolation:** `cortical/spark/` (new package)
 
 ### Concept
@@ -504,58 +510,82 @@ SparkSLM is NOT a neural language model. It's a fast statistical predictor that 
 ```
 SparkSLM = Statistical Language Model for Spark Ideas
 ├── N-gram predictor (bigram/trigram transition probabilities)
-├── Topic classifier (TF-IDF based fast categorization)
-├── Keyword extractor (rapid salient term identification)
-└── Prompt primer (initial expansion before full search)
+├── AlignmentIndex (definitions/patterns/preferences from markdown)
+├── AnomalyDetector (prompt injection detection)
+└── SparkPredictor facade (unified API)
 ```
 
 ### Use Cases
 1. **Prompt Injection Detection**: Statistical anomaly detection on input patterns
-2. **First-Blitz Ideas**: Quick topic classification before deeper search
+2. **Alignment Learning**: Extract and use knowledge from markdown documentation
 3. **Auto-Complete**: N-gram based next-word suggestions
 4. **Query Priming**: Rapid keyword extraction to seed query expansion
 
 ### Goals
-- [ ] Create `cortical/spark/` package structure
-- [ ] Implement N-gram model (bigram/trigram) with Laplace smoothing
-- [ ] Implement fast topic classifier using TF-IDF centroids
-- [ ] Implement keyword extractor using TextRank variant
-- [ ] Create SparkPredictor class with `prime()` method
-- [ ] Add statistical anomaly detection for prompt injection
+- [x] Create `cortical/spark/` package structure
+- [x] Implement N-gram model (bigram/trigram) with Laplace smoothing
+- [x] Implement AlignmentIndex for definitions/patterns/preferences
+- [x] Create SparkPredictor facade class
+- [x] Load alignment from markdown files
+- [ ] Implement AnomalyDetector for prompt injection
 - [ ] Integrate with query expansion as optional primer
+- [ ] Add training script for SparkSLM
+- [ ] Benchmark speed and accuracy
+- [ ] Documentation and examples
+- [ ] Write unit tests
+
+### Session Notes (2025-12-19, Session 1Z3rd)
+**What was completed:**
+- ✅ Created `cortical/spark/` package with `__init__.py`, `ngram.py`, `alignment.py`, `predictor.py`
+- ✅ Implemented `NGramModel` with train/predict/perplexity/save/load methods
+- ✅ Implemented `AlignmentIndex` with markdown file loading and pattern extraction
+- ✅ Created `SparkPredictor` facade class integrating N-gram and alignment components
+- ✅ Pivot from TF-IDF/TextRank approach to alignment-based learning (inspired by InstructGPT/RLHF)
+
+**Architecture decision:**
+Instead of implementing topic classification and keyword extraction separately, pivoted to a unified alignment-based approach where the system learns from human-authored documentation. This aligns better with the "text-as-memories" philosophy and provides a clearer path to useful predictions.
+
+**Next priorities:**
+1. Implement AnomalyDetector for prompt injection detection
+2. Write comprehensive unit tests for all components
+3. Create training script to build models from corpus
+4. Benchmark performance and accuracy
 
 ### Key Files (New)
-- `cortical/spark/__init__.py`
-- `cortical/spark/ngram.py` - N-gram language model
-- `cortical/spark/classifier.py` - Fast topic classification
-- `cortical/spark/keywords.py` - Keyword extraction
-- `cortical/spark/predictor.py` - SparkPredictor main class
-- `cortical/spark/anomaly.py` - Prompt injection detection
+- `cortical/spark/__init__.py` - Package exports ✅
+- `cortical/spark/ngram.py` - N-gram language model ✅
+- `cortical/spark/alignment.py` - AlignmentIndex for learning from markdown ✅
+- `cortical/spark/predictor.py` - SparkPredictor facade class ✅
+- `cortical/spark/anomaly.py` - Prompt injection detection (pending)
 
 ### Success Criteria
-- N-gram model trained on corpus vocabulary
-- Topic classification in <10ms for typical queries
-- Prompt injection detection with reasonable precision
-- Query priming shows measurable improvement in result relevance
+- [x] N-gram model trained on corpus vocabulary
+- [x] AlignmentIndex loads and indexes markdown documentation
+- [ ] Prompt injection detection with reasonable precision
+- [ ] Query priming shows measurable improvement in result relevance
+- [ ] Unit test coverage >80% for all components
+- [ ] Performance benchmarks documented
 
 ### Honest Limitations
 - NOT a true language model - no semantic understanding
 - Cannot generate coherent text (just statistical completions)
 - Anomaly detection is pattern-based, not semantic
 - Useful as "spark" primer, not replacement for real search
+- Alignment quality depends on documentation quality
 
 ### Tasks (Detailed)
 ```
-T-SPARK-001: Create cortical/spark/ package structure
-T-SPARK-002: Implement NGramModel class with train/predict
-T-SPARK-003: Implement FastTopicClassifier using TF-IDF centroids
-T-SPARK-004: Implement KeywordExtractor using TextRank-lite
-T-SPARK-005: Create SparkPredictor facade class
-T-SPARK-006: Implement AnomalyDetector for prompt injection
-T-SPARK-007: Integrate SparkPredictor with query expansion
-T-SPARK-008: Add training script for SparkSLM
-T-SPARK-009: Benchmark speed and accuracy
-T-SPARK-010: Documentation and examples
+T-SPARK-001: Create cortical/spark/ package structure ✅
+T-SPARK-002: Implement NGramModel class with train/predict ✅
+T-SPARK-003: Implement AlignmentIndex for markdown learning ✅
+T-SPARK-004: Create SparkPredictor facade class ✅
+T-SPARK-005: Load alignment from markdown files ✅
+T-SPARK-006: Implement AnomalyDetector for prompt injection (in progress)
+T-SPARK-007: Integrate SparkPredictor with query expansion (pending)
+T-SPARK-008: Add training script for SparkSLM (pending)
+T-SPARK-009: Benchmark speed and accuracy (pending)
+T-SPARK-010: Documentation and examples (pending)
+T-SPARK-011: Write comprehensive unit tests (pending)
 ```
 
 ---
