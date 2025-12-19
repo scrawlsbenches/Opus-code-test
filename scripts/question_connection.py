@@ -464,7 +464,7 @@ Examples:
         else:
             data = raw_data
 
-        # Build output structure
+        # Build output structure - include original data for downstream stages
         output = {
             'stage': 'question_connection',
             'query': args.query or None,
@@ -482,7 +482,12 @@ Examples:
                 'bridges_count': len(data.get('bridges', [])),
                 'domains_count': len(data.get('domains', {})),
                 'network_size': len(data.get('network', {}))
-            }
+            },
+            # Pass through original data for downstream stages
+            'concepts': data.get('concepts', []),
+            'bridges': data.get('bridges', []),
+            'network': data.get('network', {}),
+            'domains': data.get('domains', {})
         }
 
         # Filter by focus domains if specified

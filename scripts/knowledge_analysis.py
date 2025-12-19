@@ -100,6 +100,30 @@ class KnowledgeAnalyzer:
 
     def _extract_from_question_connection(self):
         """Extract network from question_connection.py output."""
+        # First, extract from pass-through data (from world_model_analysis)
+        # This is the primary source of network structure
+        if "concepts" in self.data:
+            for concept in self.data["concepts"]:
+                term = concept.get("term", "")
+                if term:
+                    self.terms.add(term)
+                    if "domains" in concept:
+                        for domain in concept["domains"]:
+                            self.term_domains[term].add(domain)
+
+        if "bridges" in self.data:
+            for bridge in self.data["bridges"]:
+                term = bridge.get("term", "")
+                if term:
+                    self.terms.add(term)
+                    if "domains" in bridge:
+                        for domain in bridge["domains"]:
+                            self.term_domains[term].add(domain)
+
+        if "network" in self.data:
+            self._extract_from_network(self.data["network"])
+
+        # Also extract from question_connection specific fields
         # Extract expanded terms
         if "expanded_terms" in self.data:
             for term_data in self.data["expanded_terms"]:
@@ -687,6 +711,14 @@ Output format:
 
     # Add stage identifier
     results['stage'] = 'knowledge_analysis'
+
+    # Pass through original data for downstream stages (knowledge_bridge needs this)
+    if 'concepts' in data:
+        results['concepts'] = data['concepts']
+    if 'bridges' in data:
+        results['bridges'] = data['bridges']
+    if 'network' in data:
+        results['network'] = data['network']
 
     # Handle chain output
     if args.preserve_chain and chain:
