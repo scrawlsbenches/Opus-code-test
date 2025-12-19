@@ -844,3 +844,217 @@ class SparkMixin:
     def suggester_enabled(self) -> bool:
         """Check if sample suggester is enabled."""
         return hasattr(self, '_suggester') and self._suggester is not None
+
+    # =========================================================================
+    # Transfer Learning Methods (Phase 5: Cross-Project Transfer)
+    # =========================================================================
+
+    def analyze_vocabulary(self) -> Dict[str, Any]:
+        """
+        Analyze vocabulary composition for transfer learning.
+
+        Separates programming language constructs (transferable) from
+        project-specific terms.
+
+        Returns:
+            Dict with vocabulary analysis including:
+            - total_terms: Total unique terms
+            - programming_terms: Count of programming terms
+            - project_specific_terms: Count of project-specific terms
+            - programming_ratio: Ratio of programming terms
+            - top_programming_terms: Most common programming terms
+            - top_project_terms: Most common project-specific terms
+
+        Raises:
+            RuntimeError: If SparkSLM not enabled
+
+        Example:
+            >>> analysis = processor.analyze_vocabulary()
+            >>> print(f"Programming: {analysis['programming_ratio']:.1%}")
+        """
+        if not self.spark_enabled:
+            raise RuntimeError("SparkSLM must be enabled. Call enable_spark() first.")
+
+        from ..spark import VocabularyAnalyzer
+
+        analyzer = VocabularyAnalyzer()
+        analysis = analyzer.analyze(self._spark.ngram)
+        return analysis.to_dict()
+
+    def export_portable_model(
+        self,
+        path: str,
+        project_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Export a portable model for cross-project transfer.
+
+        Creates a model containing only transferable patterns (programming
+        constructs) that can be loaded into other projects.
+
+        Args:
+            path: Directory to save the portable model
+            project_name: Optional name for this project
+
+        Returns:
+            Dict with export statistics
+
+        Raises:
+            RuntimeError: If SparkSLM not enabled
+
+        Example:
+            >>> stats = processor.export_portable_model("./portable_model")
+            >>> print(f"Exported {stats['vocab_size']} terms")
+        """
+        if not self.spark_enabled:
+            raise RuntimeError("SparkSLM must be enabled. Call enable_spark() first.")
+
+        from ..spark import PortableModel
+
+        portable = PortableModel.from_ngram_model(
+            self._spark.ngram,
+            source_project=project_name or ""
+        )
+        portable.save(path)
+
+        logger.info(f"Portable model saved to {path}")
+        return portable.get_stats()
+
+    def import_base_model(
+        self,
+        path: str,
+        blend_weight: float = 0.3
+    ) -> Dict[str, Any]:
+        """
+        Import a portable model as a base for transfer learning.
+
+        Blends transferred patterns with the current model's knowledge.
+
+        Args:
+            path: Directory containing the portable model
+            blend_weight: How much to weight transferred knowledge (0-1).
+                         0.3 means 30% transfer, 70% local.
+
+        Returns:
+            Dict with transfer metrics
+
+        Raises:
+            RuntimeError: If SparkSLM not enabled
+
+        Example:
+            >>> metrics = processor.import_base_model("./base_model")
+            >>> print(f"Vocabulary overlap: {metrics['vocabulary_overlap']:.1%}")
+        """
+        if not self.spark_enabled:
+            raise RuntimeError("SparkSLM must be enabled. Call enable_spark() first.")
+
+        from ..spark import PortableModel, TransferAdapter
+
+        portable = PortableModel.load(path)
+        adapter = TransferAdapter(portable, blend_weight=blend_weight)
+
+        # Adapt in-place to current model
+        adapter.adapt(self._spark.ngram, in_place=True)
+
+        # Measure effectiveness
+        metrics = adapter.measure_effectiveness(self._spark.ngram)
+
+        logger.info(f"Imported model from {path}, overlap: {metrics.vocabulary_overlap:.1%}")
+        return metrics.to_dict()
+
+    def measure_transfer_effectiveness(
+        self,
+        source_path: str,
+        test_queries: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Measure how effective a transfer would be without applying it.
+
+        Useful for deciding whether to import a base model.
+
+        Args:
+            source_path: Path to portable model to evaluate
+            test_queries: Optional queries to measure perplexity on
+
+        Returns:
+            Dict with effectiveness metrics
+
+        Raises:
+            RuntimeError: If SparkSLM not enabled
+
+        Example:
+            >>> metrics = processor.measure_transfer_effectiveness("./model")
+            >>> if metrics['vocabulary_overlap'] > 0.3:
+            ...     processor.import_base_model("./model")
+        """
+        if not self.spark_enabled:
+            raise RuntimeError("SparkSLM must be enabled. Call enable_spark() first.")
+
+        from ..spark import PortableModel, TransferAdapter
+
+        portable = PortableModel.load(source_path)
+        adapter = TransferAdapter(portable)
+
+        metrics = adapter.measure_effectiveness(
+            self._spark.ngram,
+            test_texts=test_queries
+        )
+
+        return {
+            **metrics.to_dict(),
+            'source_project': portable.source_project,
+            'summary': adapter.get_transfer_summary(),
+        }
+
+    def get_transferable_vocabulary(self) -> List[str]:
+        """
+        Get list of terms that are good candidates for transfer.
+
+        Returns programming terms that appear frequently enough
+        to have meaningful patterns.
+
+        Returns:
+            List of transferable terms
+
+        Raises:
+            RuntimeError: If SparkSLM not enabled
+        """
+        if not self.spark_enabled:
+            raise RuntimeError("SparkSLM must be enabled. Call enable_spark() first.")
+
+        from ..spark import VocabularyAnalyzer
+
+        analyzer = VocabularyAnalyzer()
+        transferable = analyzer.get_transferable_terms(self._spark.ngram)
+        return sorted(transferable)
+
+    def calculate_vocabulary_overlap(self, other_model_path: str) -> float:
+        """
+        Calculate vocabulary overlap with another model.
+
+        Useful for determining if transfer learning would be beneficial.
+
+        Args:
+            other_model_path: Path to another portable model
+
+        Returns:
+            Jaccard similarity (0.0 to 1.0)
+
+        Raises:
+            RuntimeError: If SparkSLM not enabled
+        """
+        if not self.spark_enabled:
+            raise RuntimeError("SparkSLM must be enabled. Call enable_spark() first.")
+
+        from ..spark import PortableModel
+
+        other = PortableModel.load(other_model_path)
+
+        # Calculate overlap between vocabularies
+        my_vocab = set(self._spark.ngram.vocab)
+        other_vocab = other.shared_vocab
+
+        intersection = len(my_vocab & other_vocab)
+        union = len(my_vocab | other_vocab)
+
+        return intersection / max(union, 1)

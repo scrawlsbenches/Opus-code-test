@@ -45,16 +45,38 @@ from .suggester import (
     PreferenceSuggestion,
     Observation
 )
+from .transfer import (
+    VocabularyAnalyzer,
+    VocabularyAnalysis,
+    PortableModel,
+    TransferAdapter,
+    TransferMetrics,
+    PROGRAMMING_VOCABULARY,
+    create_portable_model,
+    transfer_knowledge,
+)
 
 __all__ = [
+    # Core
     'NGramModel',
     'AlignmentIndex',
     'SparkPredictor',
+    # Anomaly Detection
     'AnomalyDetector',
     'AnomalyResult',
+    # Sample Suggestion
     'SampleSuggester',
     'DefinitionSuggestion',
     'PatternSuggestion',
     'PreferenceSuggestion',
-    'Observation'
+    'Observation',
+    # Transfer Learning
+    'VocabularyAnalyzer',
+    'VocabularyAnalysis',
+    'PortableModel',
+    'TransferAdapter',
+    'TransferMetrics',
+    'PROGRAMMING_VOCABULARY',
+    'create_portable_model',
+    'transfer_knowledge',
 ]

@@ -408,5 +408,89 @@ class TestSparkMixinSuggester(unittest.TestCase):
         self.assertIn("Suggested Alignment Entries", md)
 
 
+class TestSparkMixinTransfer(unittest.TestCase):
+    """Test transfer learning integration with processor."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor(spark=True)
+        self.processor.process_document('doc1', 'def function return value for item in list')
+        self.processor.compute_all()
+        self.processor.train_spark()
+
+    def test_analyze_vocabulary(self):
+        """Test vocabulary analysis."""
+        analysis = self.processor.analyze_vocabulary()
+        self.assertIn('total_terms', analysis)
+        self.assertIn('programming_terms', analysis)
+        self.assertIn('programming_ratio', analysis)
+
+    def test_analyze_vocabulary_requires_spark(self):
+        """Test analyze_vocabulary requires spark enabled."""
+        p = CorticalTextProcessor()
+        with self.assertRaises(RuntimeError):
+            p.analyze_vocabulary()
+
+    def test_export_portable_model(self):
+        """Test exporting portable model."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "portable")
+            stats = self.processor.export_portable_model(path, project_name="test")
+            self.assertIn('ngram_order', stats)
+            self.assertIn('vocab_size', stats)
+            self.assertTrue(os.path.exists(os.path.join(path, 'portable_model.json')))
+
+    def test_import_base_model(self):
+        """Test importing base model."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # First export
+            path = os.path.join(tmpdir, "portable")
+            self.processor.export_portable_model(path)
+
+            # Then import into new processor
+            p2 = CorticalTextProcessor(spark=True)
+            p2.process_document('doc1', 'custom project terms here')
+            p2.compute_all()
+            p2.train_spark()
+
+            metrics = p2.import_base_model(path, blend_weight=0.3)
+            self.assertIn('vocabulary_overlap', metrics)
+            self.assertIn('ngram_coverage', metrics)
+
+    def test_measure_transfer_effectiveness(self):
+        """Test measuring transfer effectiveness."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "portable")
+            self.processor.export_portable_model(path)
+
+            # Measure on another processor
+            p2 = CorticalTextProcessor(spark=True)
+            p2.process_document('doc1', 'different content here')
+            p2.compute_all()
+            p2.train_spark()
+
+            metrics = p2.measure_transfer_effectiveness(path)
+            self.assertIn('vocabulary_overlap', metrics)
+            self.assertIn('summary', metrics)
+
+    def test_get_transferable_vocabulary(self):
+        """Test getting transferable vocabulary."""
+        vocab = self.processor.get_transferable_vocabulary()
+        self.assertIsInstance(vocab, list)
+
+    def test_calculate_vocabulary_overlap(self):
+        """Test calculating vocabulary overlap."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "portable")
+            self.processor.export_portable_model(path)
+
+            overlap = self.processor.calculate_vocabulary_overlap(path)
+            self.assertGreaterEqual(overlap, 0.0)
+            self.assertLessEqual(overlap, 1.0)
+
+
 if __name__ == '__main__':
     unittest.main()
