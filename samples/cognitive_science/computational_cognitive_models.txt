@@ -1,0 +1,55 @@
+Computational Cognitive Models
+
+Computational cognitive modeling involves creating formal, implementable models of cognitive processes to test theories and generate precise predictions about human behavior and cognition. These models provide rigorous frameworks for understanding mechanisms underlying perception, memory, learning, reasoning, and decision-making.
+
+Cognitive architectures are comprehensive computational frameworks that specify the fixed structural and procedural constraints of cognition. These architectures aim to capture invariant aspects of the cognitive system while allowing flexible knowledge and strategies to be learned. Major cognitive architectures include ACT-R, SOAR, and connectionist models.
+
+ACT-R (Adaptive Control of Thought-Rational) is a symbolic cognitive architecture developed by John Anderson and colleagues. ACT-R assumes that cognition emerges from the interaction of independent modules for perception, motor control, declarative memory, and procedural knowledge. The architecture is grounded in cognitive neuroscience, with modules corresponding to distinct brain regions.
+
+In ACT-R, declarative knowledge is represented as chunks stored in declarative memory, while procedural knowledge consists of production rules that specify condition-action pairs. A central production system coordinates these components, matching current goals and perceptual input against production conditions to select actions.
+
+The activation level of chunks in ACT-R determines their accessibility, with frequently and recently accessed information having higher activation. This base-level learning mechanism accounts for practice and recency effects in memory retrieval. Activation spreading through associative links provides an account of priming and context effects.
+
+SOAR is another prominent symbolic architecture, originally developed by Allen Newell, John Laird, and Paul Rosenbloom. SOAR views cognition as problem-solving through search in problem spaces. The architecture employs a unified learning mechanism called chunking that compiles frequently used sequences of operations into single production rules.
+
+Impasses in SOAR occur when the system lacks knowledge to select an operator or cannot continue problem-solving. These impasses trigger subgoaling, where new problem spaces are created to resolve the impasse. Once resolved, chunking creates new production rules that prevent similar impasses in the future, implementing learning from experience.
+
+Connectionist models, also called neural networks or parallel distributed processing models, represent a fundamentally different approach to computational cognitive modeling. Unlike symbolic architectures, connectionist models use networks of simple processing units with weighted connections, inspired by neural organization.
+
+Backpropagation is a learning algorithm widely used in connectionist models, adjusting connection weights based on the difference between actual and desired outputs. Through repeated exposure to training examples, networks gradually learn to perform tasks like pattern recognition, categorization, and sequence prediction.
+
+Localist connectionist models represent each concept with a single unit, while distributed models represent concepts as patterns of activation across many units. Distributed representations allow generalization and similarity-based reasoning to emerge naturally from the network structure.
+
+Recurrent neural networks include feedback connections that allow activation to cycle through the network, creating dynamic temporal processing capabilities. These networks can learn sequential dependencies and have been applied to language processing, motor control, and working memory modeling.
+
+The complementary learning systems theory proposes that the brain uses two distinct learning systems: a fast hippocampal system for rapid learning of specific experiences and a slower neocortical system for extracting statistical regularities. This dual-system architecture solves the stability-plasticity dilemma of how to learn new information without catastrophically forgetting old knowledge.
+
+Bayesian models represent uncertainty explicitly through probability distributions and update beliefs according to Bayes' rule when new evidence is encountered. Bayesian cognitive models have been successful in explaining perception, categorization, causal reasoning, and decision-making as optimal or near-optimal inference under uncertainty.
+
+The rational analysis approach, pioneered by John Anderson, analyzes cognitive systems by asking what would be optimal given the structure of the environment and the computational constraints of the mind. This approach has yielded insights into memory, categorization, and causal reasoning.
+
+Reinforcement learning models describe how agents learn to maximize rewards through trial and error. Temporal difference learning algorithms, which learn value predictions incrementally based on prediction errors, have strong connections to dopamine-based learning in the brain and are widely used in modeling decision-making and habit formation.
+
+Instance-based learning models, such as the exemplar model of categorization and instance-based learning theory, propose that people store specific experiences rather than abstracting rules or prototypes. Similarity to stored instances determines categorization, recognition, and decision-making.
+
+ACT-R has been extended to model timing and temporal processing through a specialized temporal module. This module maintains an internal clock that can be started, stopped, and read, allowing the model to perform temporal judgments and time-based coordination of actions.
+
+Hybrid architectures attempt to combine strengths of symbolic and connectionist approaches. ACT-R itself incorporates subsymbolic activation mechanisms alongside symbolic production rules. Other hybrids use neural networks for low-level processing while maintaining symbolic representations for higher-level reasoning.
+
+Embodied and situated models emphasize the role of sensorimotor interaction with the environment. These models often use robotic platforms or simulated agents that learn through direct interaction rather than being trained on abstract input-output patterns.
+
+Model comparison in cognitive science increasingly uses formal methods from statistics and information theory. The Bayesian Information Criterion and Akaike Information Criterion provide principled ways to trade off model fit against complexity, rewarding models that explain data well with fewer free parameters.
+
+Parameter estimation and model fitting require careful attention to avoid overfitting, where models capture noise rather than genuine patterns. Cross-validation, where models are tested on data not used for parameter estimation, helps ensure that models generalize beyond the specific fitting dataset.
+
+Computational modeling enables precise predictions that qualitative theories cannot provide. Models make commitments to specific mechanisms and parameters, allowing them to be tested rigorously and compared quantitatively.
+
+The development of large-scale cognitive architectures capable of performing realistic tasks in complex environments represents a major challenge for computational cognitive modeling. Recent progress includes ACT-R models that can drive simulated vehicles and SOAR models that play video games.
+
+Machine learning and artificial intelligence increasingly influence computational cognitive modeling. Deep learning architectures, while not designed as cognitive models, sometimes show similar representations and behaviors to human cognition, suggesting possible shared computational principles.
+
+Computational phenotyping uses computational models to characterize individual differences in cognitive processing. By fitting models to individual participants' data, researchers can identify specific processing differences that may not be apparent in raw behavioral measures.
+
+Future directions in computational cognitive modeling include greater integration with neuroscience through neural network models that respect biological constraints, development of models that operate across multiple time scales from milliseconds to years, and creation of models that can learn flexibly across diverse tasks like human cognition.
+
+Computational cognitive modeling transforms cognitive science from a largely descriptive to a genuinely predictive and mechanistic science, providing implementable theories that can be rigorously tested, compared, and refined through ongoing research.
