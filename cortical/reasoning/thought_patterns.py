@@ -4,11 +4,21 @@ Factory functions for common Graph of Thought patterns.
 This module provides pre-structured ThoughtGraph instances for common reasoning
 workflows like investigation, decision-making, debugging, feature planning, and
 requirements analysis.
+
+Each pattern creates a graph with appropriate node types and relationships,
+ready to be populated with actual content during reasoning.
 """
 
 from typing import List, Optional
+import uuid
+
 from .thought_graph import ThoughtGraph
 from .graph_of_thought import NodeType, EdgeType
+
+
+def _generate_id(prefix: str = "n") -> str:
+    """Generate a unique node ID with optional prefix."""
+    return f"{prefix}_{uuid.uuid4().hex[:8]}"
 
 
 def create_investigation_graph(
@@ -34,38 +44,34 @@ def create_investigation_graph(
     graph = ThoughtGraph()
 
     # Create root question node
-    question_id = graph.add_node(
+    question_id = _generate_id("q")
+    graph.add_node(
+        node_id=question_id,
+        node_type=NodeType.QUESTION,
         content=question,
-        node_type=NodeType.QUESTION
     )
 
     # Add initial hypotheses or placeholders
-    if initial_hypotheses:
-        for i, hypothesis in enumerate(initial_hypotheses):
-            hyp_id = graph.add_node(
-                content=hypothesis,
-                node_type=NodeType.HYPOTHESIS
-            )
-            graph.add_edge(
-                source=question_id,
-                target=hyp_id,
-                edge_type=EdgeType.EXPLORES,
-                weight=1.0
-            )
-    else:
-        # Create placeholder hypothesis nodes
-        for i in range(3):
-            hyp_id = graph.add_node(
-                content=f"Hypothesis {i+1} (to be investigated)",
-                node_type=NodeType.HYPOTHESIS,
-                metadata={"placeholder": True}
-            )
-            graph.add_edge(
-                source=question_id,
-                target=hyp_id,
-                edge_type=EdgeType.EXPLORES,
-                weight=0.5
-            )
+    hypotheses = initial_hypotheses or [
+        "Hypothesis 1 (to be investigated)",
+        "Hypothesis 2 (to be investigated)",
+        "Hypothesis 3 (to be investigated)",
+    ]
+
+    for hypothesis in hypotheses:
+        hyp_id = _generate_id("h")
+        graph.add_node(
+            node_id=hyp_id,
+            node_type=NodeType.HYPOTHESIS,
+            content=hypothesis,
+            metadata={"placeholder": initial_hypotheses is None},
+        )
+        graph.add_edge(
+            from_id=question_id,
+            to_id=hyp_id,
+            edge_type=EdgeType.EXPLORES,
+            weight=1.0 if initial_hypotheses else 0.5,
+        )
 
     return graph
 
@@ -80,15 +86,12 @@ def create_decision_graph(
     Structure:
         decision (root)
         ├── option_1
-        │   ├── pro_1
-        │   ├── pro_2
-        │   ├── con_1
-        │   └── con_2
+        │   ├── pro_1 (placeholder)
+        │   └── con_1 (placeholder)
         ├── option_2
-        │   ├── pro_1
-        │   └── con_1
-        └── option_3
-            └── ...
+        │   ├── pro_1 (placeholder)
+        │   └── con_1 (placeholder)
+        └── ...
 
     Args:
         decision: The decision to be made
@@ -100,48 +103,56 @@ def create_decision_graph(
     graph = ThoughtGraph()
 
     # Create root decision node
-    decision_id = graph.add_node(
+    decision_id = _generate_id("d")
+    graph.add_node(
+        node_id=decision_id,
+        node_type=NodeType.DECISION,
         content=decision,
-        node_type=NodeType.DECISION
     )
 
-    # Create option nodes
-    for option in options:
-        option_id = graph.add_node(
+    # Create option nodes with pros/cons
+    for i, option in enumerate(options):
+        option_id = _generate_id(f"opt{i}")
+        graph.add_node(
+            node_id=option_id,
+            node_type=NodeType.OPTION,
             content=option,
-            node_type=NodeType.OPTION
         )
         graph.add_edge(
-            source=decision_id,
-            target=option_id,
+            from_id=decision_id,
+            to_id=option_id,
             edge_type=EdgeType.HAS_OPTION,
-            weight=1.0
+            weight=1.0,
         )
 
         # Add pro placeholder
-        pro_id = graph.add_node(
-            content=f"Pros for: {option}",
+        pro_id = _generate_id(f"pro{i}")
+        graph.add_node(
+            node_id=pro_id,
             node_type=NodeType.EVIDENCE,
-            metadata={"valence": "positive", "placeholder": True}
+            content=f"Pros for: {option}",
+            metadata={"valence": "positive", "placeholder": True},
         )
         graph.add_edge(
-            source=option_id,
-            target=pro_id,
+            from_id=option_id,
+            to_id=pro_id,
             edge_type=EdgeType.SUPPORTS,
-            weight=0.5
+            weight=0.5,
         )
 
         # Add con placeholder
-        con_id = graph.add_node(
-            content=f"Cons for: {option}",
+        con_id = _generate_id(f"con{i}")
+        graph.add_node(
+            node_id=con_id,
             node_type=NodeType.EVIDENCE,
-            metadata={"valence": "negative", "placeholder": True}
+            content=f"Cons for: {option}",
+            metadata={"valence": "negative", "placeholder": True},
         )
         graph.add_edge(
-            source=option_id,
-            target=con_id,
+            from_id=option_id,
+            to_id=con_id,
             edge_type=EdgeType.CONTRADICTS,
-            weight=0.5
+            weight=0.5,
         )
 
     return graph
@@ -153,12 +164,12 @@ def create_debug_graph(symptom: str) -> ThoughtGraph:
 
     Structure:
         symptom (root)
-        ├── observation_1
-        ├── observation_2
-        └── observation_3
-            ├── possible_cause_1
-            ├── possible_cause_2
-            └── possible_cause_3
+        ├── observation_1 (placeholder)
+        ├── observation_2 (placeholder)
+        └── observation_3 (placeholder)
+            ├── possible_cause_1 (placeholder)
+            ├── possible_cause_2 (placeholder)
+            └── possible_cause_3 (placeholder)
 
     Args:
         symptom: The observed symptom or problem
@@ -169,24 +180,28 @@ def create_debug_graph(symptom: str) -> ThoughtGraph:
     graph = ThoughtGraph()
 
     # Create root symptom node
-    symptom_id = graph.add_node(
+    symptom_id = _generate_id("sym")
+    graph.add_node(
+        node_id=symptom_id,
+        node_type=NodeType.OBSERVATION,
         content=symptom,
-        node_type=NodeType.OBSERVATION
     )
 
     # Add observation placeholders
     observation_ids = []
     for i in range(3):
-        obs_id = graph.add_node(
-            content=f"Observation {i+1} (to be documented)",
+        obs_id = _generate_id(f"obs{i}")
+        graph.add_node(
+            node_id=obs_id,
             node_type=NodeType.OBSERVATION,
-            metadata={"placeholder": True}
+            content=f"Observation {i+1} (to be documented)",
+            metadata={"placeholder": True},
         )
         graph.add_edge(
-            source=symptom_id,
-            target=obs_id,
+            from_id=symptom_id,
+            to_id=obs_id,
             edge_type=EdgeType.OBSERVES,
-            weight=0.5
+            weight=0.5,
         )
         observation_ids.append(obs_id)
 
@@ -194,16 +209,18 @@ def create_debug_graph(symptom: str) -> ThoughtGraph:
     if observation_ids:
         last_obs = observation_ids[-1]
         for i in range(3):
-            cause_id = graph.add_node(
-                content=f"Possible cause {i+1} (to be investigated)",
+            cause_id = _generate_id(f"cause{i}")
+            graph.add_node(
+                node_id=cause_id,
                 node_type=NodeType.HYPOTHESIS,
-                metadata={"placeholder": True}
+                content=f"Possible cause {i+1} (to be investigated)",
+                metadata={"placeholder": True},
             )
             graph.add_edge(
-                source=last_obs,
-                target=cause_id,
+                from_id=last_obs,
+                to_id=cause_id,
                 edge_type=EdgeType.SUGGESTS,
-                weight=0.3
+                weight=0.3,
             )
 
     return graph
@@ -216,9 +233,9 @@ def create_feature_graph(goal: str, user_story: str) -> ThoughtGraph:
     Structure:
         goal (root)
         └── user_story
-            ├── task_1
-            ├── task_2
-            └── task_3
+            ├── task_1 (placeholder)
+            ├── task_2 (placeholder)
+            └── task_3 (placeholder)
 
     Args:
         goal: The feature goal
@@ -230,35 +247,41 @@ def create_feature_graph(goal: str, user_story: str) -> ThoughtGraph:
     graph = ThoughtGraph()
 
     # Create root goal node
-    goal_id = graph.add_node(
+    goal_id = _generate_id("goal")
+    graph.add_node(
+        node_id=goal_id,
+        node_type=NodeType.GOAL,
         content=goal,
-        node_type=NodeType.GOAL
     )
 
     # Create user story node
-    story_id = graph.add_node(
+    story_id = _generate_id("story")
+    graph.add_node(
+        node_id=story_id,
+        node_type=NodeType.CONTEXT,
         content=user_story,
-        node_type=NodeType.CONTEXT
     )
     graph.add_edge(
-        source=goal_id,
-        target=story_id,
+        from_id=goal_id,
+        to_id=story_id,
         edge_type=EdgeType.MOTIVATES,
-        weight=1.0
+        weight=1.0,
     )
 
     # Add task placeholders
     for i in range(3):
-        task_id = graph.add_node(
-            content=f"Task {i+1} (to be defined)",
+        task_id = _generate_id(f"task{i}")
+        graph.add_node(
+            node_id=task_id,
             node_type=NodeType.ACTION,
-            metadata={"placeholder": True}
+            content=f"Task {i+1} (to be defined)",
+            metadata={"placeholder": True},
         )
         graph.add_edge(
-            source=story_id,
-            target=task_id,
+            from_id=story_id,
+            to_id=task_id,
             edge_type=EdgeType.REQUIRES,
-            weight=0.5
+            weight=0.5,
         )
 
     return graph
@@ -270,15 +293,15 @@ def create_requirements_graph(user_need: str) -> ThoughtGraph:
 
     Structure:
         user_need (root)
-        ├── requirement_1
-        │   └── specification_1
-        │       └── design_1
-        ├── requirement_2
-        │   └── specification_2
-        │       └── design_2
-        └── requirement_3
-            └── specification_3
-                └── design_3
+        ├── requirement_1 (placeholder)
+        │   └── specification_1 (placeholder)
+        │       └── design_1 (placeholder)
+        ├── requirement_2 (placeholder)
+        │   └── specification_2 (placeholder)
+        │       └── design_2 (placeholder)
+        └── requirement_3 (placeholder)
+            └── specification_3 (placeholder)
+                └── design_3 (placeholder)
 
     Args:
         user_need: The user need to analyze
@@ -289,50 +312,58 @@ def create_requirements_graph(user_need: str) -> ThoughtGraph:
     graph = ThoughtGraph()
 
     # Create root user need node
-    need_id = graph.add_node(
+    need_id = _generate_id("need")
+    graph.add_node(
+        node_id=need_id,
+        node_type=NodeType.GOAL,
         content=user_need,
-        node_type=NodeType.GOAL
     )
 
     # Create requirement chains
     for i in range(3):
         # Requirement node
-        req_id = graph.add_node(
-            content=f"Requirement {i+1} (to be defined)",
+        req_id = _generate_id(f"req{i}")
+        graph.add_node(
+            node_id=req_id,
             node_type=NodeType.CONSTRAINT,
-            metadata={"placeholder": True}
+            content=f"Requirement {i+1} (to be defined)",
+            metadata={"placeholder": True},
         )
         graph.add_edge(
-            source=need_id,
-            target=req_id,
+            from_id=need_id,
+            to_id=req_id,
             edge_type=EdgeType.REQUIRES,
-            weight=0.5
+            weight=0.5,
         )
 
         # Specification node
-        spec_id = graph.add_node(
-            content=f"Specification {i+1} (to be detailed)",
+        spec_id = _generate_id(f"spec{i}")
+        graph.add_node(
+            node_id=spec_id,
             node_type=NodeType.CONTEXT,
-            metadata={"placeholder": True}
+            content=f"Specification {i+1} (to be detailed)",
+            metadata={"placeholder": True},
         )
         graph.add_edge(
-            source=req_id,
-            target=spec_id,
+            from_id=req_id,
+            to_id=spec_id,
             edge_type=EdgeType.REFINES,
-            weight=0.5
+            weight=0.5,
         )
 
         # Design node
-        design_id = graph.add_node(
-            content=f"Design {i+1} (to be created)",
+        design_id = _generate_id(f"design{i}")
+        graph.add_node(
+            node_id=design_id,
             node_type=NodeType.ACTION,
-            metadata={"placeholder": True}
+            content=f"Design {i+1} (to be created)",
+            metadata={"placeholder": True},
         )
         graph.add_edge(
-            source=spec_id,
-            target=design_id,
+            from_id=spec_id,
+            to_id=design_id,
             edge_type=EdgeType.IMPLEMENTS,
-            weight=0.5
+            weight=0.5,
         )
 
     return graph
@@ -345,14 +376,14 @@ def create_analysis_graph(topic: str, aspects: Optional[List[str]] = None) -> Th
     Structure:
         topic (root)
         ├── aspect_1
-        │   ├── finding_1
-        │   └── finding_2
+        │   ├── finding_1 (placeholder)
+        │   └── finding_2 (placeholder)
         ├── aspect_2
-        │   ├── finding_1
-        │   └── finding_2
+        │   ├── finding_1 (placeholder)
+        │   └── finding_2 (placeholder)
         └── aspect_3
-            ├── finding_1
-            └── finding_2
+            ├── finding_1 (placeholder)
+            └── finding_2 (placeholder)
 
     Args:
         topic: The topic to analyze
@@ -364,41 +395,52 @@ def create_analysis_graph(topic: str, aspects: Optional[List[str]] = None) -> Th
     graph = ThoughtGraph()
 
     # Create root topic node
-    topic_id = graph.add_node(
+    topic_id = _generate_id("topic")
+    graph.add_node(
+        node_id=topic_id,
+        node_type=NodeType.CONTEXT,
         content=topic,
-        node_type=NodeType.CONTEXT
     )
 
     # Default aspects if none provided
     if aspects is None:
-        aspects = ["Aspect 1 (to be defined)", "Aspect 2 (to be defined)", "Aspect 3 (to be defined)"]
+        aspects = [
+            "Aspect 1 (to be defined)",
+            "Aspect 2 (to be defined)",
+            "Aspect 3 (to be defined)",
+        ]
 
     # Create aspect nodes with finding placeholders
-    for aspect in aspects:
-        aspect_id = graph.add_node(
-            content=aspect,
+    for i, aspect in enumerate(aspects):
+        aspect_id = _generate_id(f"aspect{i}")
+        is_placeholder = "to be defined" in aspect.lower()
+        graph.add_node(
+            node_id=aspect_id,
             node_type=NodeType.CONTEXT,
-            metadata={"placeholder": "to be defined" in aspect.lower()}
+            content=aspect,
+            metadata={"placeholder": is_placeholder},
         )
         graph.add_edge(
-            source=topic_id,
-            target=aspect_id,
+            from_id=topic_id,
+            to_id=aspect_id,
             edge_type=EdgeType.HAS_ASPECT,
-            weight=1.0
+            weight=1.0,
         )
 
         # Add finding placeholders
-        for i in range(2):
-            finding_id = graph.add_node(
-                content=f"Finding {i+1} for {aspect}",
+        for j in range(2):
+            finding_id = _generate_id(f"find{i}_{j}")
+            graph.add_node(
+                node_id=finding_id,
                 node_type=NodeType.EVIDENCE,
-                metadata={"placeholder": True}
+                content=f"Finding {j+1} for {aspect}",
+                metadata={"placeholder": True},
             )
             graph.add_edge(
-                source=aspect_id,
-                target=finding_id,
+                from_id=aspect_id,
+                to_id=finding_id,
                 edge_type=EdgeType.OBSERVES,
-                weight=0.5
+                weight=0.5,
             )
 
     return graph
@@ -420,7 +462,8 @@ def create_pattern_graph(pattern_name: str, **kwargs) -> ThoughtGraph:
     Create a thought graph using a named pattern.
 
     Args:
-        pattern_name: Name of the pattern (investigation, decision, debug, feature, requirements, analysis)
+        pattern_name: Name of the pattern (investigation, decision, debug,
+                     feature, requirements, analysis)
         **kwargs: Pattern-specific arguments
 
     Returns:
@@ -428,6 +471,10 @@ def create_pattern_graph(pattern_name: str, **kwargs) -> ThoughtGraph:
 
     Raises:
         ValueError: If pattern_name is not recognized
+
+    Example:
+        >>> graph = create_pattern_graph("investigation", question="Why is the API slow?")
+        >>> graph = create_pattern_graph("decision", decision="Auth method", options=["OAuth", "JWT"])
     """
     if pattern_name not in PATTERN_REGISTRY:
         valid_patterns = ", ".join(PATTERN_REGISTRY.keys())

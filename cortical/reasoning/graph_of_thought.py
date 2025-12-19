@@ -28,6 +28,8 @@ class NodeType(Enum):
     Types of nodes in a thought graph.
 
     Each node type represents a different kind of cognitive unit:
+
+    Core types (from original design):
     - CONCEPT: An idea, pattern, or abstraction (e.g., "Dependency Injection")
     - QUESTION: Something unknown or uncertain (e.g., "How should we handle auth?")
     - DECISION: A choice point with options (e.g., "REST vs GraphQL")
@@ -35,8 +37,19 @@ class NodeType(Enum):
     - TASK: Work to be done (e.g., "Implement caching")
     - ARTIFACT: Something created (e.g., "auth.py module")
     - INSIGHT: A learning or realization (e.g., "The bottleneck is in serialization")
+
+    Extended types (for reasoning patterns):
+    - HYPOTHESIS: A proposed explanation to be tested (e.g., "Auth fails due to token expiry")
+    - OPTION: A choice within a decision (e.g., "Use OAuth" as option for auth decision)
+    - EVIDENCE: Data supporting or refuting something (e.g., "Logs show 401 errors")
+    - OBSERVATION: Something noticed during investigation (e.g., "Response times spike at 3pm")
+    - GOAL: A desired outcome (e.g., "Reduce latency to <100ms")
+    - CONTEXT: Background information (e.g., "User story: As a developer...")
+    - CONSTRAINT: A limitation or requirement (e.g., "Must support IE11")
+    - ACTION: A concrete step to take (e.g., "Add caching layer")
     """
 
+    # Core types
     CONCEPT = "concept"
     QUESTION = "question"
     DECISION = "decision"
@@ -44,6 +57,16 @@ class NodeType(Enum):
     TASK = "task"
     ARTIFACT = "artifact"
     INSIGHT = "insight"
+
+    # Extended types for reasoning patterns
+    HYPOTHESIS = "hypothesis"
+    OPTION = "option"
+    EVIDENCE = "evidence"
+    OBSERVATION = "observation"
+    GOAL = "goal"
+    CONTEXT = "context"
+    CONSTRAINT = "constraint"
+    ACTION = "action"
 
     def __repr__(self) -> str:
         """Return enum representation."""
@@ -65,6 +88,7 @@ class EdgeType(Enum):
     - REFUTES: A provides evidence against B
     - SIMILAR: A and B share significant properties
     - CONTAINS: A includes B as a component
+    - CONTRADICTS: A contradicts B (stronger than REFUTES)
 
     Temporal edges (time relationships):
     - PRECEDES: A must happen before B
@@ -74,11 +98,20 @@ class EdgeType(Enum):
     Epistemic edges (knowledge relationships):
     - ANSWERS: A answers question B
     - RAISES: A raises question B
+    - EXPLORES: A explores/investigates B
+    - OBSERVES: A observes/notices B
+    - SUGGESTS: A suggests B as possibility
 
     Practical edges (work relationships):
     - IMPLEMENTS: A implements concept/decision B
     - TESTS: A tests/verifies B
     - DEPENDS_ON: A needs B to be complete first
+    - REFINES: A refines/details B
+    - MOTIVATES: A motivates/justifies B
+
+    Structural edges (organization relationships):
+    - HAS_OPTION: A (decision) has B as an option
+    - HAS_ASPECT: A has B as an aspect/dimension
     """
 
     # Semantic edges
@@ -89,6 +122,7 @@ class EdgeType(Enum):
     REFUTES = "refutes"
     SIMILAR = "similar"
     CONTAINS = "contains"
+    CONTRADICTS = "contradicts"
 
     # Temporal edges
     PRECEDES = "precedes"
@@ -98,11 +132,20 @@ class EdgeType(Enum):
     # Epistemic edges
     ANSWERS = "answers"
     RAISES = "raises"
+    EXPLORES = "explores"
+    OBSERVES = "observes"
+    SUGGESTS = "suggests"
 
     # Practical edges
     IMPLEMENTS = "implements"
     TESTS = "tests"
     DEPENDS_ON = "depends_on"
+    REFINES = "refines"
+    MOTIVATES = "motivates"
+
+    # Structural edges
+    HAS_OPTION = "has_option"
+    HAS_ASPECT = "has_aspect"
 
     def __repr__(self) -> str:
         """Return enum representation."""
