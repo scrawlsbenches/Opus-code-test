@@ -38,5 +38,23 @@ from .ngram import NGramModel
 from .alignment import AlignmentIndex
 from .predictor import SparkPredictor
 from .anomaly import AnomalyDetector, AnomalyResult
+from .suggester import (
+    SampleSuggester,
+    DefinitionSuggestion,
+    PatternSuggestion,
+    PreferenceSuggestion,
+    Observation
+)
 
-__all__ = ['NGramModel', 'AlignmentIndex', 'SparkPredictor', 'AnomalyDetector', 'AnomalyResult']
+__all__ = [
+    'NGramModel',
+    'AlignmentIndex',
+    'SparkPredictor',
+    'AnomalyDetector',
+    'AnomalyResult',
+    'SampleSuggester',
+    'DefinitionSuggestion',
+    'PatternSuggestion',
+    'PreferenceSuggestion',
+    'Observation'
+]

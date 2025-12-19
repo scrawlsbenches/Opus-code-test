@@ -605,3 +605,242 @@ class SparkMixin:
     def anomaly_detection_enabled(self) -> bool:
         """Check if anomaly detection is enabled."""
         return self._anomaly_detector is not None
+
+    # =========================================================================
+    # Sample Suggestion Methods (Phase 4: Self-Documentation)
+    # =========================================================================
+
+    def enable_suggester(
+        self,
+        known_terms: Optional[set] = None,
+        min_frequency: int = 3,
+        min_confidence: float = 0.5
+    ) -> None:
+        """
+        Enable sample suggestion for alignment improvement.
+
+        Creates a SampleSuggester that observes interactions and suggests
+        new alignment entries (definitions, patterns, preferences).
+
+        Args:
+            known_terms: Set of already-defined terms to skip
+            min_frequency: Minimum occurrences before suggesting
+            min_confidence: Minimum confidence for suggestions
+
+        Example:
+            >>> processor = CorticalTextProcessor(spark=True)
+            >>> processor.enable_suggester()
+            >>> # Now queries will be observed for pattern detection
+        """
+        from ..spark import SampleSuggester
+
+        # Load known terms from alignment if available
+        if known_terms is None and self.spark_enabled:
+            known_terms = set()
+            for entry in self._spark.alignment.get_all_definitions():
+                known_terms.add(entry.key.lower())
+
+        self._suggester = SampleSuggester(
+            known_terms=known_terms,
+            min_frequency=min_frequency,
+            min_confidence=min_confidence
+        )
+        logger.info("Sample suggester enabled")
+
+    def observe_query_for_suggestions(
+        self,
+        query: str,
+        success: bool = True,
+        context: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """
+        Record a query for suggestion analysis.
+
+        Call this after each query to build up patterns for suggestions.
+
+        Args:
+            query: The query text
+            success: Whether the query was successful
+            context: Additional context (e.g., result count)
+
+        Raises:
+            RuntimeError: If suggester not enabled
+
+        Example:
+            >>> results = processor.find_documents_for_query("neural network")
+            >>> processor.observe_query_for_suggestions(
+            ...     "neural network",
+            ...     success=len(results) > 0,
+            ...     context={'result_count': len(results)}
+            ... )
+        """
+        if not hasattr(self, '_suggester') or self._suggester is None:
+            raise RuntimeError("Suggester not enabled. Call enable_suggester() first.")
+
+        self._suggester.observe_query(query, success=success, context=context)
+
+    def observe_choice_for_suggestions(
+        self,
+        choice_type: str,
+        chosen: str,
+        alternatives: List[str]
+    ) -> None:
+        """
+        Record a choice for preference detection.
+
+        Args:
+            choice_type: Type of choice (e.g., "naming", "approach")
+            chosen: What was chosen
+            alternatives: What could have been chosen
+
+        Raises:
+            RuntimeError: If suggester not enabled
+
+        Example:
+            >>> processor.observe_choice_for_suggestions(
+            ...     choice_type="naming_convention",
+            ...     chosen="camelCase",
+            ...     alternatives=["snake_case", "kebab-case"]
+            ... )
+        """
+        if not hasattr(self, '_suggester') or self._suggester is None:
+            raise RuntimeError("Suggester not enabled. Call enable_suggester() first.")
+
+        self._suggester.observe_choice(choice_type, chosen, alternatives)
+
+    def get_suggestions(self) -> Dict[str, List]:
+        """
+        Get all current suggestions organized by type.
+
+        Returns:
+            Dict with 'definitions', 'patterns', 'preferences' lists
+
+        Raises:
+            RuntimeError: If suggester not enabled
+
+        Example:
+            >>> suggestions = processor.get_suggestions()
+            >>> for defn in suggestions['definitions']:
+            ...     print(f"Define '{defn.term}': seen {defn.frequency} times")
+        """
+        if not hasattr(self, '_suggester') or self._suggester is None:
+            raise RuntimeError("Suggester not enabled. Call enable_suggester() first.")
+
+        return self._suggester.get_all_suggestions()
+
+    def get_definition_suggestions(self) -> List:
+        """
+        Get suggested definitions for undefined terms.
+
+        Returns:
+            List of DefinitionSuggestion objects
+
+        Raises:
+            RuntimeError: If suggester not enabled
+        """
+        if not hasattr(self, '_suggester') or self._suggester is None:
+            raise RuntimeError("Suggester not enabled. Call enable_suggester() first.")
+
+        return self._suggester.suggest_definitions()
+
+    def get_pattern_suggestions(self) -> List:
+        """
+        Get suggested patterns from repeated query structures.
+
+        Returns:
+            List of PatternSuggestion objects
+
+        Raises:
+            RuntimeError: If suggester not enabled
+        """
+        if not hasattr(self, '_suggester') or self._suggester is None:
+            raise RuntimeError("Suggester not enabled. Call enable_suggester() first.")
+
+        return self._suggester.suggest_patterns()
+
+    def get_preference_suggestions(self) -> List:
+        """
+        Get suggested preferences from consistent choices.
+
+        Returns:
+            List of PreferenceSuggestion objects
+
+        Raises:
+            RuntimeError: If suggester not enabled
+        """
+        if not hasattr(self, '_suggester') or self._suggester is None:
+            raise RuntimeError("Suggester not enabled. Call enable_suggester() first.")
+
+        return self._suggester.suggest_preferences()
+
+    def export_suggestions_markdown(self) -> str:
+        """
+        Export all suggestions as markdown for alignment file.
+
+        Returns:
+            Markdown string ready to save
+
+        Raises:
+            RuntimeError: If suggester not enabled
+
+        Example:
+            >>> md = processor.export_suggestions_markdown()
+            >>> with open("suggested_alignment.md", "w") as f:
+            ...     f.write(md)
+        """
+        if not hasattr(self, '_suggester') or self._suggester is None:
+            raise RuntimeError("Suggester not enabled. Call enable_suggester() first.")
+
+        return self._suggester.export_suggestions_markdown()
+
+    def add_known_term_to_suggester(self, term: str) -> None:
+        """
+        Add a term to the known set (won't be suggested).
+
+        Use this after adding a definition to the alignment index.
+
+        Args:
+            term: Term to mark as known
+
+        Raises:
+            RuntimeError: If suggester not enabled
+        """
+        if not hasattr(self, '_suggester') or self._suggester is None:
+            raise RuntimeError("Suggester not enabled. Call enable_suggester() first.")
+
+        self._suggester.add_known_term(term)
+
+    def get_suggester_stats(self) -> Dict[str, Any]:
+        """
+        Get suggestion system statistics.
+
+        Returns:
+            Dict with observation counts, suggestion counts, etc.
+
+        Raises:
+            RuntimeError: If suggester not enabled
+        """
+        if not hasattr(self, '_suggester') or self._suggester is None:
+            raise RuntimeError("Suggester not enabled. Call enable_suggester() first.")
+
+        return self._suggester.get_stats()
+
+    def clear_suggester(self) -> None:
+        """
+        Clear all observations from the suggester.
+
+        Use this to start fresh after processing suggestions.
+
+        Raises:
+            RuntimeError: If suggester not enabled
+        """
+        if not hasattr(self, '_suggester') or self._suggester is None:
+            raise RuntimeError("Suggester not enabled. Call enable_suggester() first.")
+
+        self._suggester.clear()
+        logger.info("Suggester observations cleared")
+
+    @property
+    def suggester_enabled(self) -> bool:
+        """Check if sample suggester is enabled."""
+        return hasattr(self, '_suggester') and self._suggester is not None

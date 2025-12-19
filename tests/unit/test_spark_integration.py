@@ -256,5 +256,157 @@ class TestSparkMixinBackwardsCompatibility(unittest.TestCase):
         self.assertIsInstance(expanded, dict)
 
 
+class TestSparkMixinSuggester(unittest.TestCase):
+    """Test suggester integration with processor."""
+
+    def test_suggester_disabled_by_default(self):
+        """Verify suggester is disabled by default."""
+        p = CorticalTextProcessor(spark=True)
+        self.assertFalse(p.suggester_enabled)
+
+    def test_enable_suggester(self):
+        """Test enabling suggester."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        self.assertTrue(p.suggester_enabled)
+
+    def test_enable_suggester_with_params(self):
+        """Test enabling suggester with custom parameters."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester(min_frequency=5, min_confidence=0.7)
+        self.assertTrue(p.suggester_enabled)
+
+    def test_observe_query(self):
+        """Test observing a query."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        p.observe_query_for_suggestions("test query", success=True)
+        stats = p.get_suggester_stats()
+        self.assertEqual(stats['total_observations'], 1)
+
+    def test_observe_query_with_context(self):
+        """Test observing query with context."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        p.observe_query_for_suggestions(
+            "test query",
+            success=True,
+            context={'result_count': 5}
+        )
+        stats = p.get_suggester_stats()
+        self.assertEqual(stats['total_observations'], 1)
+
+    def test_observe_choice(self):
+        """Test observing a choice."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        p.observe_choice_for_suggestions("style", "A", ["B", "C"])
+        stats = p.get_suggester_stats()
+        self.assertEqual(stats['total_observations'], 1)
+
+    def test_get_suggestions_empty(self):
+        """Test getting suggestions when empty."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        suggestions = p.get_suggestions()
+        self.assertEqual(len(suggestions['definitions']), 0)
+        self.assertEqual(len(suggestions['patterns']), 0)
+        self.assertEqual(len(suggestions['preferences']), 0)
+
+    def test_get_definition_suggestions(self):
+        """Test getting definition suggestions."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester(min_frequency=2, min_confidence=0.3)
+        for _ in range(5):
+            p.observe_query_for_suggestions("minicolumn activation")
+        definitions = p.get_definition_suggestions()
+        self.assertIsInstance(definitions, list)
+
+    def test_get_pattern_suggestions(self):
+        """Test getting pattern suggestions."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester(min_frequency=2, min_confidence=0.3)
+        for _ in range(5):
+            p.observe_query_for_suggestions("how do I search?")
+        patterns = p.get_pattern_suggestions()
+        self.assertIsInstance(patterns, list)
+
+    def test_get_preference_suggestions(self):
+        """Test getting preference suggestions."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester(min_frequency=2, min_confidence=0.3)
+        for _ in range(8):
+            p.observe_choice_for_suggestions("style", "A", ["B"])
+        for _ in range(2):
+            p.observe_choice_for_suggestions("style", "B", ["A"])
+        preferences = p.get_preference_suggestions()
+        self.assertIsInstance(preferences, list)
+
+    def test_export_suggestions_markdown(self):
+        """Test exporting suggestions as markdown."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        md = p.export_suggestions_markdown()
+        self.assertIn("Suggested Alignment Entries", md)
+
+    def test_add_known_term(self):
+        """Test adding a known term."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        p.add_known_term_to_suggester("neural")
+        stats = p.get_suggester_stats()
+        self.assertEqual(stats['known_terms'], 1)
+
+    def test_clear_suggester(self):
+        """Test clearing suggester observations."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        p.observe_query_for_suggestions("test query")
+        p.clear_suggester()
+        stats = p.get_suggester_stats()
+        self.assertEqual(stats['total_observations'], 0)
+
+    def test_suggester_stats(self):
+        """Test getting suggester statistics."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        stats = p.get_suggester_stats()
+        self.assertIn('total_observations', stats)
+        self.assertIn('unique_terms', stats)
+        self.assertIn('success_rate', stats)
+
+    def test_suggester_requires_enabled(self):
+        """Test that suggester methods require it to be enabled."""
+        p = CorticalTextProcessor(spark=True)
+        with self.assertRaises(RuntimeError):
+            p.observe_query_for_suggestions("test")
+        with self.assertRaises(RuntimeError):
+            p.get_suggestions()
+        with self.assertRaises(RuntimeError):
+            p.export_suggestions_markdown()
+
+    def test_integration_workflow(self):
+        """Test full suggester workflow."""
+        p = CorticalTextProcessor(spark=True)
+        p.process_document('doc1', 'Neural networks process data efficiently.')
+        p.compute_all()
+        p.train_spark()
+        p.enable_suggester()
+
+        # Observe some queries
+        for _ in range(5):
+            p.observe_query_for_suggestions("minicolumn connections", success=True)
+            p.observe_query_for_suggestions("how do I search?", success=True)
+
+        # Get suggestions
+        suggestions = p.get_suggestions()
+        self.assertIsInstance(suggestions['definitions'], list)
+        self.assertIsInstance(suggestions['patterns'], list)
+
+        # Export markdown
+        md = p.export_suggestions_markdown()
+        self.assertIn("Suggested Alignment Entries", md)
+
+
 if __name__ == '__main__':
     unittest.main()
