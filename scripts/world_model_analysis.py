@@ -8,10 +8,11 @@ to explore how concepts connect across prediction, influence, and cognition.
 Inspired by showcase.py but focused on supporting cognitive workflows.
 """
 
+import json
 import os
 import sys
 import time
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 from collections import defaultdict
 
 # Add parent directory to path for imports
@@ -80,13 +81,19 @@ class WorldModelAnalyzer:
         self.domain_docs = defaultdict(list)
         self.start_time = None
 
-    def run(self, mode: str = "full"):
+    def run(self, mode: str = "full", json_output: bool = False):
         """
         Run the analysis.
 
         Args:
             mode: "full" for complete analysis, "quick" for overview only
+            json_output: If True, output JSON to stdout instead of formatted text
         """
+        if json_output:
+            results = self.collect_results(mode)
+            print(json.dumps(results, indent=2))
+            return results
+
         self.print_intro()
 
         if not self.ingest_cognitive_corpus():
@@ -105,6 +112,210 @@ class WorldModelAnalyzer:
             self.suggest_connections()
 
         self.print_cognitive_summary()
+
+    def collect_results(self, mode: str = "full") -> Dict[str, Any]:
+        """
+        Collect analysis results as a dictionary for JSON output/piping.
+
+        Returns:
+            Dictionary with all analysis results
+        """
+        results = {
+            "metadata": {
+                "samples_dir": self.samples_dir,
+                "mode": mode,
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            },
+            "domains": {},
+            "concepts": [],
+            "bridges": [],
+            "network": {},
+            "gaps": {},
+            "suggestions": [],
+        }
+
+        # Ingest corpus silently
+        if not self._ingest_silent():
+            return {"error": "No cognitive documents found"}
+
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+
+        # Domain structure
+        for domain in self.COGNITIVE_DOMAINS:
+            if domain in self.domain_docs:
+                docs = self.domain_docs[domain]
+                domain_terms = set()
+                for doc_id in docs:
+                    col = self.processor.get_layer(CorticalLayer.DOCUMENTS).get_minicolumn(doc_id)
+                    if col:
+                        for conn_id in col.feedforward_connections:
+                            term_col = layer0.get_by_id(conn_id)
+                            if term_col:
+                                domain_terms.add(term_col.content)
+
+                results["domains"][domain] = {
+                    "document_count": len(docs),
+                    "documents": docs,
+                    "unique_terms": len(domain_terms),
+                }
+
+        # Core concepts (PageRank)
+        top_tokens = sorted(
+            layer0.minicolumns.values(),
+            key=lambda c: c.pagerank,
+            reverse=True
+        )[:30]
+
+        for col in top_tokens:
+            domains = set()
+            for doc_id in col.document_ids:
+                domain = doc_id.split('/')[0] if '/' in doc_id else 'other'
+                domains.add(domain)
+
+            results["concepts"].append({
+                "term": col.content,
+                "pagerank": round(col.pagerank, 6),
+                "tfidf": round(col.tfidf, 4),
+                "document_count": len(col.document_ids),
+                "domains": list(domains),
+                "connection_count": len(col.lateral_connections),
+            })
+
+        # Cross-domain bridges
+        term_domains = defaultdict(set)
+        for col in layer0.minicolumns.values():
+            for doc_id in col.document_ids:
+                domain = doc_id.split('/')[0] if '/' in doc_id else 'other'
+                if domain in self.COGNITIVE_DOMAINS:
+                    term_domains[col.content].add(domain)
+
+        bridges = [
+            (term, domains)
+            for term, domains in term_domains.items()
+            if len(domains) >= 3
+        ]
+        bridges.sort(key=lambda x: (-len(x[1]), -layer0.get_minicolumn(x[0]).pagerank))
+
+        for term, domains in bridges[:20]:
+            col = layer0.get_minicolumn(term)
+            results["bridges"].append({
+                "term": term,
+                "domain_count": len(domains),
+                "domains": list(domains),
+                "pagerank": round(col.pagerank, 6) if col else 0,
+            })
+
+        # World model network
+        world_model_terms = ["model", "prediction", "simulation", "representation", "learning"]
+        for term in world_model_terms:
+            col = layer0.get_minicolumn(term)
+            if col and col.lateral_connections:
+                sorted_conns = sorted(
+                    col.lateral_connections.items(),
+                    key=lambda x: x[1],
+                    reverse=True
+                )[:10]
+
+                connections = []
+                for neighbor_id, weight in sorted_conns:
+                    neighbor = layer0.get_by_id(neighbor_id)
+                    if neighbor:
+                        connections.append({
+                            "term": neighbor.content,
+                            "weight": round(weight, 2),
+                        })
+
+                results["network"][term] = connections
+
+        # Knowledge gaps
+        if mode == "full":
+            gaps = self.processor.analyze_knowledge_gaps()
+            results["gaps"] = {
+                "coverage_score": round(gaps['coverage_score'], 4),
+                "connectivity_score": round(gaps['connectivity_score'], 4),
+                "weak_topics": gaps.get('weak_topics', [])[:10],
+            }
+
+            # Category coverage
+            category_coverage = {}
+            for category, terms in self.KEY_CONCEPTS.items():
+                found = sum(1 for t in terms if layer0.get_minicolumn(t) is not None)
+                category_coverage[category] = {
+                    "found": found,
+                    "total": len(terms),
+                    "coverage": round(found / len(terms), 2),
+                }
+            results["gaps"]["category_coverage"] = category_coverage
+
+            # Suggested connections
+            important_terms = sorted(
+                layer0.minicolumns.values(),
+                key=lambda c: c.pagerank,
+                reverse=True
+            )[:50]
+
+            for i, col1 in enumerate(important_terms):
+                for col2 in important_terms[i+1:]:
+                    col2_id = f"L0_{col2.content}"
+                    if col2_id not in col1.lateral_connections:
+                        shared = set(col1.lateral_connections.keys()) & set(col2.lateral_connections.keys())
+                        if len(shared) >= 2:
+                            results["suggestions"].append({
+                                "term1": col1.content,
+                                "term2": col2.content,
+                                "shared_neighbors": len(shared),
+                            })
+
+            results["suggestions"].sort(key=lambda x: -x["shared_neighbors"])
+            results["suggestions"] = results["suggestions"][:15]
+
+        # Summary metrics
+        layer2 = self.processor.get_layer(CorticalLayer.CONCEPTS)
+        total_conns = sum(layer.total_connections() for layer in self.processor.layers.values())
+
+        results["summary"] = {
+            "total_documents": len(self.loaded_files),
+            "total_domains": len(self.domain_docs),
+            "unique_concepts": layer0.column_count(),
+            "concept_clusters": layer2.column_count(),
+            "total_connections": total_conns,
+        }
+
+        return results
+
+    def _ingest_silent(self) -> bool:
+        """Ingest corpus without printing (for JSON mode)."""
+        self.start_time = time.perf_counter()
+        total_docs = 0
+
+        for domain in self.COGNITIVE_DOMAINS:
+            domain_path = os.path.join(self.samples_dir, domain)
+            if not os.path.exists(domain_path):
+                continue
+
+            files = sorted([f for f in os.listdir(domain_path) if f.endswith('.txt')])
+            for filename in files:
+                filepath = os.path.join(domain_path, filename)
+                with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                doc_id = f"{domain}/{filename.replace('.txt', '')}"
+                self.processor.process_document(doc_id, content)
+                self.loaded_files.append((doc_id, len(content.split())))
+                self.domain_docs[domain].append(doc_id)
+                total_docs += 1
+
+        if total_docs == 0:
+            return False
+
+        self.processor.compute_all(
+            verbose=False,
+            connection_strategy='hybrid',
+            cluster_strictness=0.5,
+            bridge_weight=0.3
+        )
+
+        return True
 
     def print_intro(self):
         """Print introduction."""
@@ -570,7 +781,11 @@ def main():
 Examples:
   python scripts/world_model_analysis.py                    # Full analysis
   python scripts/world_model_analysis.py --quick            # Quick overview
+  python scripts/world_model_analysis.py --json             # JSON output for piping
   python scripts/world_model_analysis.py --samples ./data   # Custom directory
+
+Pipeline usage:
+  python scripts/world_model_analysis.py --json | python scripts/question_connection.py
         """
     )
 
@@ -586,10 +801,19 @@ Examples:
         help="Quick analysis (skip detailed queries and gaps)"
     )
 
+    parser.add_argument(
+        "--json", "-j",
+        action="store_true",
+        help="Output results as JSON (for piping to other scripts)"
+    )
+
     args = parser.parse_args()
 
     analyzer = WorldModelAnalyzer(samples_dir=args.samples)
-    analyzer.run(mode="quick" if args.quick else "full")
+    analyzer.run(
+        mode="quick" if args.quick else "full",
+        json_output=args.json
+    )
 
 
 if __name__ == "__main__":
