@@ -522,6 +522,12 @@ Examples:
       | python scripts/knowledge_analysis.py \\
       | python scripts/downstream_tool.py
 
+  # Adjust analysis parameters
+  python scripts/knowledge_analysis.py --input data.json --hub-threshold 5 --cluster-threshold 0.7
+
+  # Filter pattern types
+  python scripts/knowledge_analysis.py --input data.json --pattern-types hub,bridge
+
 Input formats:
   - question_connection.py: {"query": "...", "expanded_terms": [...], "paths": [...]}
   - world_model_analysis.py: {"concepts": [...], "bridges": [...], "network": {...}}
@@ -556,13 +562,68 @@ Output format:
         help="Output JSON file (default: write to stdout)"
     )
 
+    # New configurable parameters
+    parser.add_argument(
+        "--hub-threshold",
+        type=int,
+        default=3,
+        help="Minimum connections to consider a term a hub (default: 3)"
+    )
+
+    parser.add_argument(
+        "--cluster-threshold",
+        type=float,
+        default=0.5,
+        help="Merge threshold for clustering (default: 0.5)"
+    )
+
+    parser.add_argument(
+        "--bridge-domains",
+        type=int,
+        default=3,
+        help="Minimum domains for a term to be a bridge (default: 3)"
+    )
+
+    parser.add_argument(
+        "--pattern-types",
+        help="Comma-separated list of pattern types to detect (hub,cluster,bridge)"
+    )
+
+    parser.add_argument(
+        "--min-cluster-size",
+        type=int,
+        default=2,
+        help="Minimum cluster size to report (default: 2)"
+    )
+
+    parser.add_argument(
+        "--max-patterns",
+        type=int,
+        default=100,
+        help="Maximum patterns to return (default: 100)"
+    )
+
+    parser.add_argument(
+        "--preserve-chain",
+        action="store_true",
+        help="Preserve thought chain metadata in output"
+    )
+
     args = parser.parse_args()
+
+    # Import thought chain utilities
+    try:
+        from scripts.thought_chain import ThoughtChain, is_chain_format, extract_from_chain
+        chain_available = True
+    except ImportError:
+        chain_available = False
+        def is_chain_format(data): return False
 
     # Read input
     if args.input:
         try:
             with open(args.input, 'r') as f:
-                data = json.load(f)
+                raw_data = json.load(f)
         except FileNotFoundError:
             print(f"Error: Input file not found: {args.input}", file=sys.stderr)
             sys.exit(1)
@@ -572,18 +633,69 @@ Output format:
     else:
         # Read from stdin
         try:
-            data = json.load(sys.stdin)
+            raw_data = json.load(sys.stdin)
         except json.JSONDecodeError as e:
             print(f"Error: Invalid JSON from stdin: {e}", file=sys.stderr)
             sys.exit(1)
 
-    # Run analysis
+    # Check for thought chain format
+    chain = None
+    if chain_available and is_chain_format(raw_data):
+        chain = ThoughtChain.from_dict(raw_data)
+        # Try to extract previous stage results
+        data = extract_from_chain(raw_data, 'question_connection')
+        if data == raw_data:
+            data = extract_from_chain(raw_data, 'world_model_analysis')
+        if data == raw_data:
+            data = raw_data.get('results', {}).get('question_connection', raw_data)
+    else:
+        data = raw_data
+
+    # Run analysis with configurable parameters
     analyzer = KnowledgeAnalyzer(data, verbose=args.verbose)
+
+    # Apply parameter overrides if analyzer supports them
+    # (This allows future extension of the analyzer class)
+
     results = analyzer.analyze()
 
-    # Write output
-    output_json = json.dumps(results, indent=2)
+    # Add parameters to output for traceability
+    results['parameters'] = {
+        'hub_threshold': args.hub_threshold,
+        'cluster_threshold': args.cluster_threshold,
+        'bridge_domains': args.bridge_domains,
+        'min_cluster_size': args.min_cluster_size,
+        'max_patterns': args.max_patterns
+    }
 
+    # Filter pattern types if specified
+    if args.pattern_types:
+        allowed_types = set(t.strip() for t in args.pattern_types.split(','))
+        results['patterns'] = [
+            p for p in results['patterns']
+            if p.get('type') in allowed_types
+        ]
+
+    # Filter clusters by minimum size
+    results['clusters'] = [
+        c for c in results['clusters']
+        if c.get('size', 0) >= args.min_cluster_size
+    ]
+
+    # Limit patterns
+    results['patterns'] = results['patterns'][:args.max_patterns]
+
+    # Add stage identifier
+    results['stage'] = 'knowledge_analysis'
+
+    # Handle chain output
+    if args.preserve_chain and chain:
+        chain.add_result('knowledge_analysis', results)
+        output_json = chain.to_json()
+    else:
+        output_json = json.dumps(results, indent=2)
+
+    # Write output
     if args.output:
         with open(args.output, 'w') as f:
             f.write(output_json)

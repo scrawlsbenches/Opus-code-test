@@ -4,6 +4,7 @@ Question Connection Pipeline
 ============================
 
 Takes JSON output from world_model_analysis.py and explores concept connections.
+Supports ThoughtChain format for loop-based reanalysis and context preservation.
 
 This script:
 1. Reads JSON from stdin or file (output of world_model_analysis.py --json)
@@ -26,6 +27,14 @@ Usage:
 
     # Show query expansion
     python scripts/question_connection.py --input analysis.json --query "learning" --expand
+
+    # With thought chain parameters
+    python scripts/question_connection.py --input chain.json --max-depth 5 --min-weight 0.3
+
+Chain-Aware Features:
+    - Auto-detects ThoughtChain format and preserves chain metadata
+    - Reads query from chain context if not provided via CLI
+    - Stores results in chain format for downstream stages
 """
 
 import argparse
@@ -40,6 +49,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from cortical import CorticalTextProcessor, CorticalLayer
 from cortical.tokenizer import Tokenizer
+
+# Import thought chain utilities
+try:
+    from scripts.thought_chain import ThoughtChain, is_chain_format, extract_from_chain
+    CHAIN_AVAILABLE = True
+except ImportError:
+    CHAIN_AVAILABLE = False
+    def is_chain_format(data): return False
+    def extract_from_chain(data, stage): return data
 
 
 def load_json_input(args: argparse.Namespace) -> Dict[str, Any]:
@@ -343,6 +361,12 @@ Examples:
 
   # Limit results
   python scripts/question_connection.py --input analysis.json --query "model" --top_k 5
+
+  # Advanced: adjust path exploration
+  python scripts/question_connection.py --input analysis.json --explore --max-depth 5 --min-weight 0.3
+
+  # Chain-aware mode (preserves thought chain context)
+  python scripts/cognitive_pipeline.py --query "learning" | python scripts/question_connection.py
         """
     )
 
@@ -375,18 +399,84 @@ Examples:
         help='Number of results to return (default: 10)'
     )
 
+    # New parameters for fine-grained control
+    parser.add_argument(
+        '--max-depth',
+        type=int,
+        default=3,
+        help='Maximum path depth for exploration (default: 3)'
+    )
+
+    parser.add_argument(
+        '--min-weight',
+        type=float,
+        default=0.0,
+        help='Minimum connection weight threshold (default: 0.0)'
+    )
+
+    parser.add_argument(
+        '--max-expansions',
+        type=int,
+        default=20,
+        help='Maximum expansion terms per query (default: 20)'
+    )
+
+    parser.add_argument(
+        '--focus-domains',
+        help='Comma-separated list of domains to focus on'
+    )
+
+    parser.add_argument(
+        '--preserve-chain',
+        action='store_true',
+        help='Preserve thought chain metadata in output'
+    )
+
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='Verbose output to stderr'
+    )
+
     args = parser.parse_args()
 
     try:
         # Load input
-        data = load_json_input(args)
+        raw_data = load_json_input(args)
+
+        # Check for thought chain format
+        chain = None
+        if CHAIN_AVAILABLE and is_chain_format(raw_data):
+            chain = ThoughtChain.from_dict(raw_data)
+            # Extract the relevant stage data
+            data = extract_from_chain(raw_data, 'world_model_analysis')
+            if not data or data == raw_data:
+                # Try input stage
+                data = extract_from_chain(raw_data, 'input')
+                if not data or data == raw_data:
+                    data = raw_data.get('results', {}).get('world_model_analysis', raw_data)
+
+            # Use query from chain context if not provided via CLI
+            if not args.query and chain.context.query:
+                args.query = chain.context.query
+                if args.verbose:
+                    print(f"Using query from chain: {args.query}", file=sys.stderr)
+        else:
+            data = raw_data
 
         # Build output structure
         output = {
+            'stage': 'question_connection',
             'query': args.query or None,
             'expanded_terms': [],
             'paths': [],
             'related_concepts': [],
+            'parameters': {
+                'top_k': args.top_k,
+                'max_depth': args.max_depth,
+                'min_weight': args.min_weight,
+                'max_expansions': args.max_expansions
+            },
             'input_summary': {
                 'concepts_count': len(data.get('concepts', [])),
                 'bridges_count': len(data.get('bridges', [])),
@@ -395,37 +485,61 @@ Examples:
             }
         }
 
+        # Filter by focus domains if specified
+        focus_domains = None
+        if args.focus_domains:
+            focus_domains = set(d.strip() for d in args.focus_domains.split(','))
+            if args.verbose:
+                print(f"Focusing on domains: {focus_domains}", file=sys.stderr)
+
         # Process query if provided
         if args.query:
             # Build processor for query expansion
             if args.expand:
                 processor = build_processor_from_json(data)
-                expanded = expand_query_terms(processor, args.query, args.top_k)
+                expanded = expand_query_terms(processor, args.query, args.max_expansions)
 
-                # Convert to list format
+                # Convert to list format, filtering by min weight
                 output['expanded_terms'] = [
                     {'term': term, 'weight': round(weight, 4)}
                     for term, weight in sorted(
                         expanded.items(),
                         key=lambda x: -x[1]
                     )
-                ]
+                    if weight >= args.min_weight
+                ][:args.top_k]
 
             # Find related concepts
             tokenizer = Tokenizer()
             query_terms = tokenizer.tokenize(args.query)
-            output['related_concepts'] = find_related_concepts(
-                data, query_terms, args.top_k
-            )
+            related = find_related_concepts(data, query_terms, args.top_k * 2)
+
+            # Filter by focus domains if specified
+            if focus_domains:
+                related = [
+                    r for r in related
+                    if any(d in focus_domains for d in r.get('domains', []))
+                ]
+
+            output['related_concepts'] = related[:args.top_k]
 
         # Find connection paths if requested
         if args.explore:
             output['paths'] = find_connection_paths(
-                data, max_paths=args.top_k, max_depth=3
+                data, max_paths=args.top_k, max_depth=args.max_depth
             )
 
-        # Output JSON
-        print(json.dumps(output, indent=2))
+        # Wrap in chain format if requested or if input was chain
+        if args.preserve_chain and chain:
+            chain.add_result('question_connection', output)
+            print(chain.to_json())
+        elif chain and CHAIN_AVAILABLE:
+            # Add to chain but output just this stage
+            chain.add_result('question_connection', output)
+            print(json.dumps(output, indent=2))
+        else:
+            # Output JSON
+            print(json.dumps(output, indent=2))
 
     except (ValueError, FileNotFoundError) as e:
         print(f"Error: {e}", file=sys.stderr)

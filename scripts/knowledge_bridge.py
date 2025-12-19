@@ -556,9 +556,16 @@ Examples:
   # Focus on weak links only
   python scripts/knowledge_bridge.py --input results.json --max-gaps 0 --max-weak-links 100
 
+  # Prioritize bridge suggestions
+  python scripts/knowledge_bridge.py --input results.json --bridge-priority novelty
+
+  # Filter by domains
+  python scripts/knowledge_bridge.py --input results.json --focus-domains cognitive_science,world_models
+
 Input Format:
   Accepts JSON from world_model_analysis.py or knowledge_analysis.py.
   Auto-detects format based on structure.
+  Also supports ThoughtChain format for pipeline context preservation.
 
 Output Format:
   JSON with gaps, bridge_suggestions, weak_links, synthesis_opportunities, and summary.
@@ -619,14 +626,77 @@ Output Format:
         help="Pretty-print JSON output with indentation"
     )
 
+    # New configurable parameters
+    parser.add_argument(
+        "--bridge-priority",
+        choices=["strength", "novelty", "coverage"],
+        default="strength",
+        help="How to prioritize bridge suggestions (default: strength)"
+    )
+
+    parser.add_argument(
+        "--focus-domains",
+        help="Comma-separated list of domains to focus on"
+    )
+
+    parser.add_argument(
+        "--min-synthesis-overlap",
+        type=int,
+        default=3,
+        help="Minimum shared concepts for synthesis opportunity (default: 3)"
+    )
+
+    parser.add_argument(
+        "--include-actionable",
+        action="store_true",
+        help="Include actionable recommendations for each gap"
+    )
+
+    parser.add_argument(
+        "--preserve-chain",
+        action="store_true",
+        help="Preserve thought chain metadata in output"
+    )
+
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Verbose output to stderr"
+    )
+
     args = parser.parse_args()
+
+    # Import thought chain utilities
+    try:
+        from scripts.thought_chain import ThoughtChain, is_chain_format, extract_from_chain
+        chain_available = True
+    except ImportError:
+        chain_available = False
+        def is_chain_format(data): return False
 
     # Read input
     if args.input:
         with open(args.input, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+            raw_data = json.load(f)
     else:
-        data = json.load(sys.stdin)
+        raw_data = json.load(sys.stdin)
+
+    # Check for thought chain format
+    chain = None
+    if chain_available and is_chain_format(raw_data):
+        chain = ThoughtChain.from_dict(raw_data)
+        # Try to extract previous stage results
+        data = extract_from_chain(raw_data, 'knowledge_analysis')
+        if data == raw_data:
+            data = extract_from_chain(raw_data, 'question_connection')
+        if data == raw_data:
+            data = extract_from_chain(raw_data, 'world_model_analysis')
+        if data == raw_data:
+            data = raw_data.get('results', {}).get('knowledge_analysis', raw_data)
+        if args.verbose:
+            print(f"[knowledge_bridge] Loaded from chain, iteration {chain.iteration}", file=sys.stderr)
+    else:
+        data = raw_data
 
     # Process
     results = process_knowledge_bridge(
@@ -639,11 +709,50 @@ Output Format:
         max_synthesis=args.max_synthesis,
     )
 
+    # Add parameters to output for traceability
+    results['parameters'] = {
+        'min_gap_distance': args.min_gap_distance,
+        'weak_link_threshold': args.weak_link_threshold,
+        'max_gaps': args.max_gaps,
+        'max_bridges': args.max_bridges,
+        'bridge_priority': args.bridge_priority,
+        'min_synthesis_overlap': args.min_synthesis_overlap
+    }
+
+    # Add stage identifier
+    results['stage'] = 'knowledge_bridge'
+
+    # Filter by focus domains if specified
+    if args.focus_domains:
+        focus = set(d.strip() for d in args.focus_domains.split(','))
+        results['gaps'] = [
+            g for g in results['gaps']
+            if any(f"domain_{d}" in str(g.get('between', [])) for d in focus)
+        ]
+        if args.verbose:
+            print(f"[knowledge_bridge] Filtered to domains: {focus}", file=sys.stderr)
+
+    # Add actionable recommendations if requested
+    if args.include_actionable:
+        for gap in results['gaps']:
+            bridges = gap.get('potential_bridges', [])
+            if bridges:
+                gap['recommendation'] = f"Create content bridging via: {', '.join(bridges[:3])}"
+            else:
+                gap['recommendation'] = "Consider creating explicit bridge document"
+
+    # Handle chain output
+    if args.preserve_chain and chain:
+        chain.add_result('knowledge_bridge', results)
+        output_data = chain.to_dict()
+    else:
+        output_data = results
+
     # Output
     if args.pretty:
-        print(json.dumps(results, indent=2))
+        print(json.dumps(output_data, indent=2))
     else:
-        print(json.dumps(results))
+        print(json.dumps(output_data))
 
 
 if __name__ == "__main__":

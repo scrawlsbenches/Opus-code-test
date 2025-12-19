@@ -68,7 +68,32 @@ Be specific and actionable in your recommendations."""
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        description="Generate LLM prompts from cognitive analysis results"
+        description="Generate LLM prompts from cognitive analysis results",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Generate prompt from pipeline output
+  python scripts/knowledge_bridge.py --input data.json | python scripts/llm_generate_response.py
+
+  # Use specific template
+  python scripts/llm_generate_response.py --input data.json --template gaps
+
+  # Custom prompt
+  python scripts/llm_generate_response.py --input data.json --template custom \\
+      --custom-prompt "Summarize the key insights from: {context}"
+
+  # Call API directly
+  python scripts/llm_generate_response.py --input data.json --mode api --max-tokens 2000
+
+  # Chain-aware mode
+  python scripts/cognitive_pipeline.py --query "learning" | python scripts/llm_generate_response.py
+
+Templates:
+  synthesis   - Create unified conceptual framework
+  explanation - Explain relationships clearly
+  gaps        - Analyze knowledge gaps with recommendations
+  custom      - Use custom prompt with {context} placeholder
+        """
     )
     parser.add_argument(
         "--input",
@@ -103,6 +128,34 @@ def parse_arguments() -> argparse.Namespace:
         type=str,
         default="claude-3-haiku-20240307",
         help="Model to use (default: claude-3-haiku-20240307)"
+    )
+    # New parameters
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.7,
+        help="Temperature for API response (default: 0.7)"
+    )
+    parser.add_argument(
+        "--focus-section",
+        choices=["concepts", "bridges", "gaps", "all"],
+        default="all",
+        help="Which section of context to emphasize (default: all)"
+    )
+    parser.add_argument(
+        "--include-raw-data",
+        action="store_true",
+        help="Include raw input data in output for debugging"
+    )
+    parser.add_argument(
+        "--preserve-chain",
+        action="store_true",
+        help="Preserve thought chain metadata in output"
+    )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Verbose output to stderr"
     )
     return parser.parse_args()
 
@@ -351,12 +404,44 @@ def main() -> None:
     """Main entry point."""
     args = parse_arguments()
 
+    # Import thought chain utilities
+    try:
+        from scripts.thought_chain import ThoughtChain, is_chain_format, extract_from_chain
+        chain_available = True
+    except ImportError:
+        chain_available = False
+        def is_chain_format(data): return False
+
     # Read input
     try:
-        data = read_input(args.input)
+        raw_data = read_input(args.input)
     except Exception as e:
         print(f"Error reading input: {e}", file=sys.stderr)
         sys.exit(1)
+
+    # Check for thought chain format
+    chain = None
+    if chain_available and is_chain_format(raw_data):
+        chain = ThoughtChain.from_dict(raw_data)
+        # Try to extract previous stage results - accumulate all available data
+        data = {}
+        for stage in ['world_model_analysis', 'question_connection', 'knowledge_analysis', 'knowledge_bridge']:
+            stage_data = extract_from_chain(raw_data, stage)
+            if stage_data != raw_data and stage_data:
+                data[stage] = stage_data
+
+        # If no specific stages found, use the raw results
+        if not data:
+            data = raw_data.get('results', raw_data)
+
+        # Use chain context for template selection if not specified
+        if chain.context.query:
+            # Infer template from context
+            if 'gap' in chain.context.query.lower() or 'bridge' in chain.context.query.lower():
+                if args.template == 'synthesis':  # default
+                    args.template = 'gaps'
+    else:
+        data = raw_data
 
     # Generate prompt
     prompt = generate_prompt(data, args.template, args.custom_prompt)
@@ -374,12 +459,27 @@ def main() -> None:
 
     # Build output
     output = {
+        "stage": "llm_generate_response",
         "prompt": prompt,
         "context_summary": context_summary,
         "response": None,
         "api_used": None,
-        "mode": mode
+        "mode": mode,
+        "parameters": {
+            "template": args.template,
+            "max_tokens": args.max_tokens,
+            "model": args.model
+        }
     }
+
+    # Add chain context if available
+    if chain:
+        output["chain_context"] = {
+            "query": chain.context.query,
+            "iteration": chain.iteration,
+            "insights_count": len(chain.insights),
+            "stages_completed": chain.stages
+        }
 
     # Call API if requested and available
     if mode == "api_call":
@@ -391,12 +491,24 @@ def main() -> None:
             if response:
                 output["response"] = response
                 output["api_used"] = api_type
+                # Extract insights from response if chain available
+                if chain and response:
+                    chain.add_insight(
+                        f"LLM synthesis generated for template '{args.template}'",
+                        stage="llm_generate_response",
+                        confidence=0.8
+                    )
             else:
                 print(f"Warning: API call failed: {error}. Falling back to prompt-only mode.", file=sys.stderr)
                 output["mode"] = "prompt_only"
 
-    # Output result
-    json.dump(output, sys.stdout, indent=2)
+    # Handle chain output
+    if chain and args.preserve_chain if hasattr(args, 'preserve_chain') else False:
+        chain.add_result('llm_generate_response', output)
+        json.dump(chain.to_dict(), sys.stdout, indent=2)
+    else:
+        # Output result
+        json.dump(output, sys.stdout, indent=2)
     print()  # Newline for readability
 
 
