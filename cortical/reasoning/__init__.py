@@ -1,31 +1,55 @@
 """
-Graph of Thought (GoT) reasoning framework for the Cortical Text Processor.
+Graph of Thought (GoT) Reasoning Framework for the Cortical Text Processor.
 
-This module provides a network-based approach to complex reasoning tasks, where
-thoughts are represented as nodes in a graph and relationships between thoughts
-are edges. This enables:
+This package provides a comprehensive framework for complex reasoning tasks,
+implementing the cognitive architecture defined in docs/complex-reasoning-workflow.md.
 
+The framework supports:
 - Multi-step reasoning with explicit dependency tracking
-- Parallel exploration of reasoning paths
-- Aggregation of insights from multiple perspectives
-- Validation and refinement of conclusions
+- QAPV cognitive loops (Question, Answer, Produce, Verify)
+- Production state management with chunking
+- Crisis management and recovery
+- Verification protocols (unit → integration → E2E → acceptance)
+- Collaboration modes (synchronous, asynchronous, semi-synchronous)
+- Graph-based thought representation
 
-The framework is inspired by Graph of Thoughts (GoT) research but adapted for
-text analysis and information retrieval domains.
+Quick Start:
+    >>> from cortical.reasoning import ReasoningWorkflow
+    >>> workflow = ReasoningWorkflow()
+    >>> ctx = workflow.start_session("Implement feature X")
+    >>> workflow.begin_question_phase(ctx)
+    >>> workflow.record_question(ctx, "What are the requirements?")
+    >>> # ... continue through QAPV phases
 
 Core Components:
-    - ThoughtNode: Individual reasoning units with content and metadata
+    - ReasoningWorkflow: Main orchestrator (workflow.py)
+    - ThoughtGraph: Graph-based thought representation (thought_graph.py)
+    - CognitiveLoop: QAPV loop implementation (cognitive_loop.py)
+    - ProductionTask: Artifact creation tracking (production_state.py)
+    - CrisisManager: Failure handling (crisis_manager.py)
+    - VerificationManager: Testing protocols (verification.py)
+    - CollaborationManager: Human-AI coordination (collaboration.py)
+
+Data Structures:
+    - ThoughtNode: Individual reasoning units
     - ThoughtEdge: Typed relationships between thoughts
     - ThoughtCluster: Grouped thoughts for hierarchical reasoning
-    - ThoughtGraph: Network structure managing nodes and edges
-    - Pattern factories: Pre-built reasoning patterns (chain, tree, etc.)
 
-Example:
-    >>> from cortical.reasoning import ThoughtGraph, NodeType
-    >>> graph = ThoughtGraph()
-    >>> node = graph.add_thought("Initial observation", NodeType.OBSERVATION)
-    >>> reasoning = graph.add_thought("Analysis", NodeType.REASONING, parents=[node.id])
+Pattern Factories:
+    - create_investigation_graph(): For investigating questions
+    - create_decision_graph(): For decision-making
+    - create_debug_graph(): For debugging problems
+    - create_feature_graph(): For feature planning
+    - create_requirements_graph(): For requirements analysis
+
+See Also:
+    - docs/complex-reasoning-workflow.md: Full workflow documentation
+    - docs/graph-of-thought.md: Graph-based reasoning patterns
 """
+
+# =============================================================================
+# CORE DATA STRUCTURES
+# =============================================================================
 
 from .graph_of_thought import (
     NodeType,
@@ -37,6 +61,122 @@ from .graph_of_thought import (
 
 from .thought_graph import ThoughtGraph
 
+# =============================================================================
+# COGNITIVE LOOP SYSTEM
+# =============================================================================
+
+from .cognitive_loop import (
+    # Enums
+    LoopPhase,
+    LoopStatus,
+    TerminationReason,
+    # Core classes
+    PhaseContext,
+    LoopTransition,
+    CognitiveLoop,
+    CognitiveLoopManager,
+    # Stub classes (for extension)
+    NestedLoopExecutor,
+    LoopStateSerializer,
+)
+
+# =============================================================================
+# PRODUCTION STATE MANAGEMENT
+# =============================================================================
+
+from .production_state import (
+    # Enums
+    ProductionState,
+    # Core classes
+    ProductionChunk,
+    CommentMarker,
+    ProductionTask,
+    ProductionManager,
+    # Stub classes
+    ChunkPlanner,
+    CommentCleaner,
+    ProductionMetrics,
+)
+
+# =============================================================================
+# CRISIS MANAGEMENT
+# =============================================================================
+
+from .crisis_manager import (
+    # Enums
+    CrisisLevel,
+    RecoveryAction,
+    # Core classes
+    CrisisEvent,
+    FailureAttempt,
+    RepeatedFailureTracker,
+    ScopeCreepDetector,
+    BlockedDependency,
+    CrisisManager,
+    # Stub classes
+    RecoveryProcedures,
+    CrisisPredictor,
+)
+
+# =============================================================================
+# VERIFICATION SYSTEM
+# =============================================================================
+
+from .verification import (
+    # Enums
+    VerificationLevel,
+    VerificationPhase,
+    VerificationStatus,
+    # Core classes
+    VerificationCheck,
+    VerificationFailure,
+    VerificationSuite,
+    VerificationManager,
+    # Factory functions
+    create_drafting_checklist,
+    create_refining_checklist,
+    create_finalizing_checklist,
+    # Stub classes
+    VerificationRunner,
+    FailureAnalyzer,
+    RegressionDetector,
+)
+
+# =============================================================================
+# COLLABORATION SYSTEM
+# =============================================================================
+
+from .collaboration import (
+    # Enums
+    CollaborationMode,
+    BlockerType,
+    ConflictType,
+    # Core classes
+    StatusUpdate,
+    Blocker,
+    DisagreementRecord,
+    ParallelWorkBoundary,
+    ConflictEvent,
+    ActiveWorkHandoff,
+    CollaborationManager,
+    # Stub classes
+    ParallelCoordinator,
+    QuestionBatcher,
+)
+
+# =============================================================================
+# MAIN WORKFLOW ORCHESTRATOR
+# =============================================================================
+
+from .workflow import (
+    WorkflowContext,
+    ReasoningWorkflow,
+)
+
+# =============================================================================
+# PATTERN FACTORIES
+# =============================================================================
+
 from .thought_patterns import (
     create_investigation_graph,
     create_decision_graph,
@@ -45,18 +185,89 @@ from .thought_patterns import (
     create_requirements_graph,
     create_analysis_graph,
     create_pattern_graph,
+    PATTERN_REGISTRY,
 )
 
+# =============================================================================
+# PUBLIC API
+# =============================================================================
+
 __all__ = [
-    # Core types
+    # === Core Data Structures ===
     'NodeType',
     'EdgeType',
     'ThoughtNode',
     'ThoughtEdge',
     'ThoughtCluster',
-    # Graph structure
     'ThoughtGraph',
-    # Pattern factories
+
+    # === Cognitive Loop ===
+    'LoopPhase',
+    'LoopStatus',
+    'TerminationReason',
+    'PhaseContext',
+    'LoopTransition',
+    'CognitiveLoop',
+    'CognitiveLoopManager',
+    'NestedLoopExecutor',
+    'LoopStateSerializer',
+
+    # === Production State ===
+    'ProductionState',
+    'ProductionChunk',
+    'CommentMarker',
+    'ProductionTask',
+    'ProductionManager',
+    'ChunkPlanner',
+    'CommentCleaner',
+    'ProductionMetrics',
+
+    # === Crisis Management ===
+    'CrisisLevel',
+    'RecoveryAction',
+    'CrisisEvent',
+    'FailureAttempt',
+    'RepeatedFailureTracker',
+    'ScopeCreepDetector',
+    'BlockedDependency',
+    'CrisisManager',
+    'RecoveryProcedures',
+    'CrisisPredictor',
+
+    # === Verification ===
+    'VerificationLevel',
+    'VerificationPhase',
+    'VerificationStatus',
+    'VerificationCheck',
+    'VerificationFailure',
+    'VerificationSuite',
+    'VerificationManager',
+    'create_drafting_checklist',
+    'create_refining_checklist',
+    'create_finalizing_checklist',
+    'VerificationRunner',
+    'FailureAnalyzer',
+    'RegressionDetector',
+
+    # === Collaboration ===
+    'CollaborationMode',
+    'BlockerType',
+    'ConflictType',
+    'StatusUpdate',
+    'Blocker',
+    'DisagreementRecord',
+    'ParallelWorkBoundary',
+    'ConflictEvent',
+    'ActiveWorkHandoff',
+    'CollaborationManager',
+    'ParallelCoordinator',
+    'QuestionBatcher',
+
+    # === Main Workflow ===
+    'WorkflowContext',
+    'ReasoningWorkflow',
+
+    # === Pattern Factories ===
     'create_investigation_graph',
     'create_decision_graph',
     'create_debug_graph',
@@ -64,4 +275,5 @@ __all__ = [
     'create_requirements_graph',
     'create_analysis_graph',
     'create_pattern_graph',
+    'PATTERN_REGISTRY',
 ]
