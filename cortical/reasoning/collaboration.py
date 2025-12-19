@@ -637,18 +637,40 @@ class ParallelCoordinator:
         }
 
 
+@dataclass
+class BatchedQuestion:
+    """
+    A question in the batch with metadata for categorization and tracking.
+
+    From docs/complex-reasoning-workflow.md Part 4.3:
+    "Before asking the human questions:
+    - Batch them
+    - Explain why you're asking
+    - Respect their time and attention"
+    """
+    id: str
+    question: str
+    context: str = ""
+    default: Optional[str] = None
+    urgency: str = "medium"  # critical, high, medium, low
+    category: str = "general"  # technical, clarification, approval, design, general
+    blocking: bool = False  # Does work stop until answered?
+    related_ids: List[str] = field(default_factory=list)  # Related question IDs
+    answered: bool = False
+    response: Optional[str] = None
+
+
 class QuestionBatcher:
     """
-    STUB: Intelligent question batching for async communication.
+    Intelligent question batching for async communication.
 
-    Full Implementation Would:
-    --------------------------
     From docs/complex-reasoning-workflow.md Part 4.3:
     "Before asking the human questions:
     - Batch them
     - Explain why you're asking
     - Respect their time and attention"
 
+    Features:
     1. Question collection
        - Collect questions as they arise
        - Categorize by urgency and topic
@@ -668,52 +690,310 @@ class QuestionBatcher:
     """
 
     def __init__(self):
-        self._pending_questions: List[Dict[str, Any]] = []
+        """Initialize the question batcher."""
+        self._questions: Dict[str, BatchedQuestion] = {}
+        self._question_counter = 0
 
     def add_question(
         self,
         question: str,
         context: str = "",
-        default: str = None,
-        urgency: str = "medium"
+        default: Optional[str] = None,
+        urgency: str = "medium",
+        category: str = "general",
+        blocking: bool = False,
+        related_ids: Optional[List[str]] = None
     ) -> str:
         """
-        STUB: Add a question to the batch.
+        Add a question to the batch.
+
+        Args:
+            question: The question text
+            context: Context explaining why we're asking
+            default: Default value if no response
+            urgency: Priority level (critical, high, medium, low)
+            category: Question category (technical, clarification, approval, design, general)
+            blocking: Whether work stops until answered
+            related_ids: IDs of related questions
 
         Returns:
             Question ID for tracking
         """
-        q_id = f"Q-{len(self._pending_questions):03d}"
-        self._pending_questions.append({
-            'id': q_id,
-            'question': question,
-            'context': context,
-            'default': default,
-            'urgency': urgency,
-        })
+        q_id = f"Q-{self._question_counter:03d}"
+        self._question_counter += 1
+
+        batched_q = BatchedQuestion(
+            id=q_id,
+            question=question,
+            context=context,
+            default=default,
+            urgency=urgency,
+            category=category,
+            blocking=blocking,
+            related_ids=related_ids or [],
+        )
+
+        self._questions[q_id] = batched_q
         return q_id
+
+    def categorize_questions(self) -> Dict[str, List[BatchedQuestion]]:
+        """
+        Group questions by category and sort by priority.
+
+        Returns:
+            Dictionary mapping category to sorted list of questions
+        """
+        # Priority order for urgency
+        urgency_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
+
+        # Group by category
+        categorized: Dict[str, List[BatchedQuestion]] = {}
+        for question in self._questions.values():
+            if not question.answered:
+                category = question.category
+                if category not in categorized:
+                    categorized[category] = []
+                categorized[category].append(question)
+
+        # Sort within each category by urgency (critical first) and blocking status
+        for category in categorized:
+            categorized[category].sort(
+                key=lambda q: (
+                    not q.blocking,  # Blocking questions first
+                    urgency_order.get(q.urgency, 99),  # Then by urgency
+                    q.id  # Then by ID for stable sort
+                )
+            )
+
+        return categorized
 
     def generate_batch(self) -> str:
         """
-        STUB: Generate a batched question request.
+        Generate a well-formatted markdown batch of questions.
 
         Returns:
-            Markdown-formatted question batch
+            Markdown-formatted question batch with sections by category
         """
-        if not self._pending_questions:
+        unanswered = [q for q in self._questions.values() if not q.answered]
+
+        if not unanswered:
             return "No pending questions."
+
+        categorized = self.categorize_questions()
+        blocking_questions = [q for q in unanswered if q.blocking]
 
         lines = [
             "## Question Request",
             "",
-            f"I need to ask {len(self._pending_questions)} questions before proceeding.",
-            "",
-            "**Questions:**",
         ]
 
-        for i, q in enumerate(self._pending_questions, 1):
-            lines.append(f"{i}. {q['question']}")
-            if q['default']:
-                lines.append(f"   (Default if no response: {q['default']})")
+        # Summary
+        if blocking_questions:
+            lines.extend([
+                f"**URGENT:** {len(blocking_questions)} blocking question(s) - work cannot proceed until answered.",
+                "",
+            ])
+
+        lines.extend([
+            f"I need to ask {len(unanswered)} question(s) to ensure I proceed correctly.",
+            "",
+        ])
+
+        # Questions by category
+        category_names = {
+            'technical': 'Technical Questions',
+            'clarification': 'Clarification Needed',
+            'approval': 'Approval Required',
+            'design': 'Design Decisions',
+            'general': 'General Questions',
+        }
+
+        for category in sorted(categorized.keys()):
+            questions = categorized[category]
+            category_title = category_names.get(category, category.title())
+
+            lines.extend([
+                f"### {category_title}",
+                "",
+            ])
+
+            for q in questions:
+                # Question with ID
+                prefix = "🔴 **[BLOCKING]**" if q.blocking else ""
+                urgency_marker = ""
+                if q.urgency == "critical":
+                    urgency_marker = " ⚠️"
+                elif q.urgency == "high":
+                    urgency_marker = " ⬆️"
+
+                lines.append(f"**{q.id}:**{urgency_marker} {prefix} {q.question}")
+
+                # Context if provided
+                if q.context:
+                    lines.append(f"   *Context:* {q.context}")
+
+                # Default if provided
+                if q.default:
+                    lines.append(f"   *Default if no response:* `{q.default}`")
+
+                # Related questions
+                if q.related_ids:
+                    related_str = ", ".join(q.related_ids)
+                    lines.append(f"   *Related to:* {related_str}")
+
+                lines.append("")
+
+        # Instructions for responding
+        lines.extend([
+            "---",
+            "",
+            "### How to Respond",
+            "",
+            "Please answer using the question IDs:",
+            "```",
+            "Q-001: Your answer here",
+            "Q-002: Another answer",
+            "```",
+            "",
+            "Or in any clear format that references the question IDs.",
+        ])
 
         return "\n".join(lines)
+
+    def process_responses(self, response_text: str) -> Dict[str, Any]:
+        """
+        Parse structured responses and match to question IDs.
+
+        Supports formats:
+        - Q-001: Answer text
+        - Q-001 Answer text
+        - 1: Answer text (maps to Q-000, i.e., first question)
+        - 2: Answer text (maps to Q-001, i.e., second question)
+        - Question ID followed by answer on next line
+
+        Args:
+            response_text: The human's response text
+
+        Returns:
+            Dictionary with parsed results:
+            {
+                'matched': {question_id: answer},
+                'unmatched_questions': [question_ids],
+                'unparsed_lines': [lines we couldn't parse]
+            }
+        """
+        matched: Dict[str, str] = {}
+        unparsed: List[str] = []
+
+        lines = response_text.strip().split('\n')
+        i = 0
+
+        while i < len(lines):
+            line = lines[i].strip()
+
+            # Skip empty lines and markdown artifacts
+            if not line or line.startswith('```') or line.startswith('#'):
+                i += 1
+                continue
+
+            # Try to parse Q-NNN: Answer format
+            if line.startswith('Q-'):
+                parts = line.split(':', 1)
+                if len(parts) == 2:
+                    q_id = parts[0].strip()
+                    answer = parts[1].strip()
+
+                    # Check if this is a valid question ID
+                    if q_id in self._questions:
+                        matched[q_id] = answer
+                        self._questions[q_id].answered = True
+                        self._questions[q_id].response = answer
+                    else:
+                        unparsed.append(line)
+                else:
+                    # Q-NNN on its own line, answer on next line
+                    q_id = parts[0].strip()
+                    if q_id in self._questions and i + 1 < len(lines):
+                        answer = lines[i + 1].strip()
+                        matched[q_id] = answer
+                        self._questions[q_id].answered = True
+                        self._questions[q_id].response = answer
+                        i += 1  # Skip the answer line
+                    else:
+                        unparsed.append(line)
+            # Try to parse numeric format (1: Answer -> Q-000, 2: Answer -> Q-001)
+            elif line[0].isdigit():
+                parts = line.split(':', 1)
+                if len(parts) == 2:
+                    try:
+                        num = int(parts[0].strip())
+                        # Convert 1-indexed (human-friendly) to 0-indexed (our IDs)
+                        q_id = f"Q-{num-1:03d}"
+                        answer = parts[1].strip()
+
+                        if q_id in self._questions:
+                            matched[q_id] = answer
+                            self._questions[q_id].answered = True
+                            self._questions[q_id].response = answer
+                        else:
+                            unparsed.append(line)
+                    except ValueError:
+                        unparsed.append(line)
+                else:
+                    unparsed.append(line)
+            else:
+                # Couldn't parse this line
+                if line:  # Only track non-empty unparsed lines
+                    unparsed.append(line)
+
+            i += 1
+
+        # Find unanswered questions
+        unanswered = [q.id for q in self._questions.values() if not q.answered]
+
+        return {
+            'matched': matched,
+            'unanswered_questions': unanswered,
+            'unparsed_lines': unparsed,
+        }
+
+    def get_pending_blockers(self) -> List[BatchedQuestion]:
+        """
+        Get all unanswered blocking questions.
+
+        Returns:
+            List of blocking questions that haven't been answered
+        """
+        return [
+            q for q in self._questions.values()
+            if q.blocking and not q.answered
+        ]
+
+    def get_question(self, question_id: str) -> Optional[BatchedQuestion]:
+        """Get a question by ID."""
+        return self._questions.get(question_id)
+
+    def get_all_questions(self) -> List[BatchedQuestion]:
+        """Get all questions."""
+        return list(self._questions.values())
+
+    def get_unanswered_questions(self) -> List[BatchedQuestion]:
+        """Get all unanswered questions."""
+        return [q for q in self._questions.values() if not q.answered]
+
+    def mark_answered(self, question_id: str, response: str) -> bool:
+        """
+        Mark a question as answered.
+
+        Args:
+            question_id: The question ID
+            response: The answer
+
+        Returns:
+            True if question was found and marked, False otherwise
+        """
+        if question_id in self._questions:
+            self._questions[question_id].answered = True
+            self._questions[question_id].response = response
+            return True
+        return False

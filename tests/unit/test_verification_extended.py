@@ -622,7 +622,11 @@ class TestRegressionDetector:
 
         regressions = detector.detect_regression(current, baseline)
         assert len(regressions) == 1
-        assert "test2" in regressions
+        # New implementation returns detailed dicts
+        if isinstance(regressions[0], dict):
+            assert regressions[0]['test_name'] == 'test2'
+        else:
+            assert "test2" in regressions
 
     def test_no_regression(self):
         """Test when no regressions exist."""

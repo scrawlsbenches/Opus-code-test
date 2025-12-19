@@ -408,16 +408,15 @@ class TestChunkPlanner:
 
 
 class TestCommentCleaner:
-    """Tests for CommentCleaner stub class."""
+    """Tests for CommentCleaner class."""
 
-    def test_scan_file(self):
-        """Test scanning a file for markers."""
+    def test_scan_file_nonexistent(self):
+        """Test scanning a nonexistent file raises FileNotFoundError."""
         cleaner = CommentCleaner()
 
-        markers = cleaner.scan_file("some/file.py")
-
-        # Stub returns empty list
-        assert isinstance(markers, list)
+        # Real implementation raises FileNotFoundError for missing files
+        with pytest.raises(FileNotFoundError):
+            cleaner.scan_file("some/file.py")
 
     def test_suggest_cleanup_thinking(self):
         """Test cleanup suggestion for THINKING marker."""
@@ -448,7 +447,7 @@ class TestCommentCleaner:
 
 
 class TestProductionMetrics:
-    """Tests for ProductionMetrics stub class."""
+    """Tests for ProductionMetrics class."""
 
     def test_record_state_transition(self):
         """Test recording state transition."""
@@ -462,13 +461,14 @@ class TestProductionMetrics:
             ProductionState.DRAFTING
         )
 
-    def test_get_average_time_in_state(self):
-        """Test getting average time in state."""
+    def test_get_average_time_in_state_no_data(self):
+        """Test getting average time in state with no data."""
         metrics = ProductionMetrics()
 
+        # Real implementation returns 0 when no data
         avg = metrics.get_average_time_in_state(ProductionState.DRAFTING)
 
-        assert avg > 0
+        assert avg == 0.0
 
     def test_get_estimation_accuracy(self):
         """Test getting estimation accuracy."""
@@ -476,4 +476,5 @@ class TestProductionMetrics:
 
         accuracy = metrics.get_estimation_accuracy()
 
-        assert 0 <= accuracy <= 1
+        # Real implementation returns 0 when no completed chunks
+        assert accuracy == 0.0

@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+import os
+import re
 import uuid
 
 
@@ -403,79 +405,334 @@ class ProductionManager:
 
 class ChunkPlanner:
     """
-    STUB: Automatic chunk planning based on task complexity.
+    Automatic chunk planning based on task complexity.
 
-    Full Implementation Would:
-    --------------------------
-    1. Analyze task description to identify logical work units
-       - Use NLP to extract action items
-       - Identify dependencies between items
-       - Group related items into chunks
-
-    2. Estimate time for each chunk
-       - Use historical data from similar tasks
-       - Consider complexity indicators (files touched, LOC)
-       - Adjust for developer experience level
-
-    3. Suggest optimal chunk ordering
-       - Dependency-aware topological sort
-       - Front-load risky/uncertain chunks
-       - Parallelize where possible
-
-    4. Adapt chunks as work progresses
-       - Detect when estimates are off
-       - Suggest re-chunking for too-large chunks
-       - Merge too-small chunks
+    Analyzes task descriptions to:
+    1. Extract action items from goal text
+    2. Create focused work chunks (15-45 minutes each)
+    3. Estimate time based on complexity indicators
+    4. Detect dependencies between chunks
+    5. Suggest parallel execution opportunities
 
     Key Algorithms:
     ---------------
-    - Task decomposition (dependency graph construction)
-    - Time estimation (historical similarity matching)
-    - Topological sorting with risk weighting
-    - Dynamic re-planning based on actual progress
+    - Pattern-based action extraction (regex + verb detection)
+    - Complexity-based time estimation
+    - Dependency detection via keyword matching
+    - Progress-aware re-planning
     """
 
     def plan_chunks(self, task: ProductionTask) -> List[ProductionChunk]:
         """
-        STUB: Plan chunks for a production task.
+        Plan chunks for a production task.
+
+        Analyzes the task goal to identify:
+        - Numbered lists (1., 2., etc.)
+        - Bullet points (-, *, •)
+        - Verb phrases (implement X, test Y, refactor Z)
 
         Args:
             task: The task to plan chunks for
 
         Returns:
-            List of suggested ProductionChunk instances
+            List of ProductionChunk instances with time estimates and dependencies
         """
-        # STUB: Generate placeholder chunks based on goal length
-        # Full impl would use NLP and historical data
-        chunks = []
-        for i in range(3):  # Default to 3 chunks
-            chunks.append(ProductionChunk(
-                name=f"Chunk {i+1}",
-                goal=f"Part {i+1} of: {task.goal[:50]}...",
+        import re
+
+        # Extract action items from goal
+        action_items = self._extract_action_items(task.goal)
+
+        # If no action items found, create a single chunk
+        if not action_items:
+            return [ProductionChunk(
+                name="Main task",
+                goal=task.goal,
                 time_estimate_minutes=30,
-            ))
+            )]
+
+        # Create chunks from action items
+        chunks = []
+        for i, action in enumerate(action_items):
+            # Extract files mentioned in action (look for .py, .md, etc.)
+            files = re.findall(r'[\w/]+\.(?:py|md|txt|json|yaml|yml|js|ts|jsx|tsx)', action)
+
+            chunk = ProductionChunk(
+                name=f"Step {i+1}: {action[:30]}..." if len(action) > 30 else f"Step {i+1}: {action}",
+                goal=action,
+                outputs=files,
+                time_estimate_minutes=self._estimate_chunk_time(action, files),
+            )
+            chunks.append(chunk)
+
+        # Detect dependencies between chunks
+        self._detect_dependencies(chunks)
+
         return chunks
+
+    def _extract_action_items(self, goal: str) -> List[str]:
+        """
+        Extract action items from goal text.
+
+        Looks for:
+        - Numbered lists: "1. Do X", "2. Do Y"
+        - Bullet points: "- Do X", "* Do Y"
+        - Verb phrases: "implement X", "test Y", "refactor Z"
+
+        Args:
+            goal: The task goal text
+
+        Returns:
+            List of action item strings
+        """
+        import re
+
+        items = []
+
+        # Pattern 1: Numbered lists (1., 2., etc.)
+        numbered = re.findall(r'(?:^|\n)\s*\d+[.)]\s*(.+?)(?=\n\s*\d+[.]|\n\s*[*•-]|$)', goal, re.MULTILINE | re.DOTALL)
+        items.extend([item.strip() for item in numbered if item.strip()])
+
+        # Pattern 2: Bullet points (-, *, •)
+        bullets = re.findall(r'(?:^|\n)\s*[*•-]\s*(.+?)(?=\n\s*[*•-]|\n\s*\d+[.]|\n\n|$)', goal, re.MULTILINE | re.DOTALL)
+        items.extend([item.strip() for item in bullets if item.strip()])
+
+        # Pattern 3: Verb phrases (if no lists found)
+        if not items:
+            # Common action verbs in programming tasks
+            verbs = [
+                'implement', 'add', 'create', 'build', 'write', 'design',
+                'test', 'verify', 'validate', 'check',
+                'refactor', 'redesign', 'restructure', 'optimize',
+                'fix', 'debug', 'resolve', 'handle',
+                'update', 'modify', 'change', 'edit',
+                'document', 'explain', 'describe',
+                'remove', 'delete', 'clean'
+            ]
+
+            # Split on sentence boundaries and look for verb phrases
+            sentences = re.split(r'[.!?]+', goal)
+            for sentence in sentences:
+                sentence = sentence.strip()
+                if not sentence:
+                    continue
+
+                # Check if sentence starts with a verb
+                lower = sentence.lower()
+                for verb in verbs:
+                    if lower.startswith(verb) or f' {verb} ' in lower:
+                        items.append(sentence)
+                        break
+
+        # Clean up items (remove newlines, extra spaces)
+        items = [re.sub(r'\s+', ' ', item).strip() for item in items]
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_items = []
+        for item in items:
+            if item and item not in seen:
+                seen.add(item)
+                unique_items.append(item)
+
+        return unique_items
+
+    def _estimate_chunk_time(self, action: str, files: List[str]) -> int:
+        """
+        Estimate time for a chunk based on complexity indicators.
+
+        Heuristics:
+        - Base time: 15 minutes per action item
+        - +10 minutes per file mentioned
+        - +20 minutes for refactor/redesign tasks
+        - +15 minutes for test/verify tasks
+        - +10 minutes for multiple related operations
+        - Cap at 60 minutes per chunk
+
+        Args:
+            action: The action item text
+            files: List of files mentioned in action
+
+        Returns:
+            Estimated time in minutes (15-60)
+        """
+        base_time = 15
+
+        # Add time per file
+        base_time += len(files) * 10
+
+        # Check for complexity keywords
+        lower = action.lower()
+
+        # Refactoring/redesign is complex
+        if any(word in lower for word in ['refactor', 'redesign', 'restructure']):
+            base_time += 20
+
+        # Testing requires setup and verification
+        if any(word in lower for word in ['test', 'verify', 'validate', 'check']):
+            base_time += 15
+
+        # Multiple operations (and, then, also)
+        if any(word in lower for word in [' and ', ' then ', ' also ']):
+            base_time += 10
+
+        # Long descriptions suggest complexity
+        if len(action) > 100:
+            base_time += 10
+
+        # Cap at 60 minutes (if longer, should be broken down)
+        return min(base_time, 60)
+
+    def _detect_dependencies(self, chunks: List[ProductionChunk]) -> None:
+        """
+        Detect dependencies between chunks.
+
+        Rules:
+        - Tests depend on implementations
+        - Documentation depends on implementation
+        - If chunk B mentions output of chunk A, B depends on A
+        - Refactoring depends on having tests
+
+        Modifies chunks in place by setting the 'inputs' field.
+
+        Args:
+            chunks: List of chunks to analyze
+        """
+        import re
+
+        for i, chunk in enumerate(chunks):
+            chunk_lower = chunk.goal.lower()
+
+            # Check previous chunks for dependencies
+            for j, prev_chunk in enumerate(chunks[:i]):
+                prev_lower = prev_chunk.goal.lower()
+
+                # Rule 1: Tests depend on implementations
+                if 'test' in chunk_lower and 'implement' in prev_lower:
+                    chunk.inputs.append(f"{prev_chunk.name}")
+
+                # Rule 2: Documentation depends on implementation
+                if any(word in chunk_lower for word in ['document', 'doc', 'readme']) and \
+                   any(word in prev_lower for word in ['implement', 'add', 'create', 'build']):
+                    chunk.inputs.append(f"{prev_chunk.name}")
+
+                # Rule 3: Refactoring depends on having tests
+                if 'refactor' in chunk_lower and 'test' in prev_lower:
+                    chunk.inputs.append(f"{prev_chunk.name}")
+
+                # Rule 4: If chunk mentions files from previous chunk
+                if prev_chunk.outputs:
+                    for output_file in prev_chunk.outputs:
+                        if output_file in chunk.goal or output_file in chunk.outputs:
+                            chunk.inputs.append(f"{prev_chunk.name}")
+                            break
+
+                # Rule 5: Sequential numbered steps have implicit dependency
+                # (Step 2 depends on Step 1)
+                if i == j + 1 and 'step' in chunk.name.lower() and 'step' in prev_chunk.name.lower():
+                    # Only add if no other dependencies found (avoid redundant deps)
+                    if not chunk.inputs:
+                        chunk.inputs.append(f"{prev_chunk.name}")
 
     def replan(self, task: ProductionTask) -> List[ProductionChunk]:
         """
-        STUB: Re-plan chunks based on actual progress.
+        Re-plan chunks based on actual progress.
 
-        Full Implementation Would:
-        - Analyze completed chunks vs estimates
-        - Identify remaining work
-        - Generate new chunk plan for remaining work
-        - Preserve completed chunk history
+        Strategy:
+        1. Keep all completed chunks (preserve history)
+        2. Identify incomplete chunks
+        3. Re-estimate remaining time based on progress
+        4. Suggest new chunks if scope has changed
+
+        Args:
+            task: The task to re-plan
+
+        Returns:
+            Updated list of chunks
         """
-        # STUB: Return existing chunks
-        return task.chunks
+        completed = [c for c in task.chunks if c.status == ProductionState.COMPLETE]
+        incomplete = [c for c in task.chunks if c.status != ProductionState.COMPLETE]
+
+        # If no incomplete chunks, we're done
+        if not incomplete:
+            return task.chunks
+
+        # Recalculate estimates for incomplete chunks
+        for chunk in incomplete:
+            # If chunk has been started, adjust estimate based on progress
+            if chunk.started_at and chunk.status == ProductionState.DRAFTING:
+                elapsed = (datetime.now() - chunk.started_at).total_seconds() / 60
+
+                # If we've spent more than the estimate, increase it
+                if elapsed > chunk.time_estimate_minutes:
+                    chunk.time_estimate_minutes = int(elapsed * 1.3)  # Add 30% buffer
+
+        # Return updated chunk list
+        return completed + incomplete
+
+    def suggest_parallel_chunks(self, chunks: List[ProductionChunk]) -> List[List[ProductionChunk]]:
+        """
+        Suggest which chunks can be executed in parallel.
+
+        Chunks can run in parallel if:
+        - They have no dependencies on each other
+        - They don't modify the same files
+
+        Args:
+            chunks: List of chunks to analyze
+
+        Returns:
+            List of groups, where each group contains chunks that can run in parallel
+        """
+        # Build dependency graph
+        parallel_groups = []
+        processed = set()
+
+        for chunk in chunks:
+            if chunk.id in processed:
+                continue
+
+            # Start a new parallel group with this chunk
+            group = [chunk]
+            processed.add(chunk.id)
+
+            # Find other chunks that can run in parallel with this one
+            for other in chunks:
+                if other.id in processed:
+                    continue
+
+                # Check if they can run in parallel
+                can_parallelize = True
+
+                # Check 1: No dependency on each other
+                if chunk.name in other.inputs or other.name in chunk.inputs:
+                    can_parallelize = False
+
+                # Check 2: Don't modify same files
+                chunk_files = set(chunk.outputs)
+                other_files = set(other.outputs)
+                if chunk_files & other_files:  # Intersection
+                    can_parallelize = False
+
+                # Check 3: Other doesn't depend on anything in current group
+                for group_chunk in group:
+                    if group_chunk.name in other.inputs:
+                        can_parallelize = False
+                        break
+
+                if can_parallelize:
+                    group.append(other)
+                    processed.add(other.id)
+
+            parallel_groups.append(group)
+
+        return parallel_groups
+
 
 
 class CommentCleaner:
     """
-    STUB: Automated comment cleanup after production.
+    Automated comment cleanup after production.
 
-    Full Implementation Would:
-    --------------------------
     From docs/complex-reasoning-workflow.md Part 5.3:
     "Post-production comment cleanup:
     - THINKING → Usually remove or convert to doc comment
@@ -485,15 +742,11 @@ class CommentCleaner:
     - PERF → Keep, these are valuable
     - HACK → Keep until resolved, reference task"
 
-    1. Scan files for in-progress comment markers
-    2. For each marker, suggest appropriate action:
-       - Remove (resolved, no longer relevant)
-       - Keep (valuable context)
-       - Convert (change to standard doc comment)
-       - Escalate (create task for unresolved issues)
-
-    3. Apply suggestions (with user approval)
-    4. Track which comments were cleaned for audit
+    Scans files for in-progress comment markers and suggests appropriate actions:
+    - Remove (resolved, no longer relevant)
+    - Keep (valuable context)
+    - Convert (change to standard doc comment)
+    - Escalate (create task for unresolved issues)
 
     Integration Points:
     -------------------
@@ -502,67 +755,396 @@ class CommentCleaner:
     - Git: Track comment changes in commits
     """
 
+    # Marker patterns: # MARKER: content or # MARKER content
+    MARKER_PATTERN = re.compile(
+        r'^\s*#\s*(THINKING|TODO|QUESTION|NOTE|PERF|HACK)\s*:?\s*(.*)$',
+        re.IGNORECASE
+    )
+
+    # Keywords that suggest a comment should be kept
+    KEEP_KEYWORDS = {
+        'cross-reference', 'see also', 'related to', 'matches',
+        'performance', 'complexity', 'O(', 'edge case', 'workaround',
+        'issue', 'bug', 'ticket', 'task'
+    }
+
+    # Keywords that suggest a comment can be removed
+    REMOVE_KEYWORDS = {
+        'obvious', 'self-explanatory', 'debug', 'temporary',
+        'testing', 'experiment', 'try'
+    }
+
     def scan_file(self, file_path: str) -> List[CommentMarker]:
         """
-        STUB: Scan a file for comment markers.
+        Scan a file for comment markers.
 
         Args:
             file_path: Path to file to scan
 
         Returns:
             List of CommentMarker instances found
+
+        Raises:
+            FileNotFoundError: If file doesn't exist
+            IOError: If file can't be read
         """
-        # STUB: Would parse file and extract markers
-        return []
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        markers = []
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for line_num, line in enumerate(f, 1):
+                    marker = self._parse_marker(line, line_num)
+                    if marker:
+                        marker.file_path = file_path
+                        markers.append(marker)
+        except IOError as e:
+            raise IOError(f"Failed to read file {file_path}: {e}")
+
+        return markers
+
+    def _parse_marker(self, line: str, line_num: int) -> Optional[CommentMarker]:
+        """
+        Parse a line to extract comment marker.
+
+        Args:
+            line: Line of text to parse
+            line_num: Line number in file
+
+        Returns:
+            CommentMarker if found, None otherwise
+        """
+        match = self.MARKER_PATTERN.match(line)
+        if not match:
+            return None
+
+        marker_type = match.group(1).upper()
+        content = match.group(2).strip()
+
+        return CommentMarker(
+            marker_type=marker_type,
+            content=content,
+            line_number=line_num
+        )
 
     def suggest_cleanup(self, marker: CommentMarker) -> Dict[str, Any]:
         """
-        STUB: Suggest cleanup action for a marker.
+        Suggest cleanup action for a marker with smart rules.
+
+        Args:
+            marker: The comment marker to analyze
 
         Returns:
-            {'action': 'remove'|'keep'|'convert'|'escalate', 'reason': str}
+            Dict with 'action' ('remove'|'keep'|'convert'|'escalate') and 'reason'
         """
-        # STUB: Simple heuristic by marker type
-        cleanup_rules = {
-            'THINKING': {'action': 'remove', 'reason': 'Reasoning captured elsewhere'},
-            'TODO': {'action': 'escalate', 'reason': 'Create task for unresolved TODO'},
-            'QUESTION': {'action': 'convert', 'reason': 'Document the decision made'},
-            'NOTE': {'action': 'keep', 'reason': 'Cross-reference is valuable'},
-            'PERF': {'action': 'keep', 'reason': 'Performance context is valuable'},
-            'HACK': {'action': 'keep', 'reason': 'Technical debt must be tracked'},
+        content_lower = marker.content.lower()
+
+        # THINKING: remove unless it explains non-obvious logic
+        if marker.marker_type == 'THINKING':
+            if any(kw in content_lower for kw in self.KEEP_KEYWORDS):
+                return {
+                    'action': 'keep',
+                    'reason': 'Explains non-obvious logic or design decision'
+                }
+            return {
+                'action': 'remove',
+                'reason': 'Reasoning should be captured in docs or commit messages'
+            }
+
+        # TODO: escalate if not addressed, check if task exists
+        elif marker.marker_type == 'TODO':
+            # Check if it references a task/issue
+            if re.search(r'(task|issue|ticket|#)\s*\d+', content_lower):
+                return {
+                    'action': 'keep',
+                    'reason': 'References existing task, keep for tracking'
+                }
+            # Otherwise escalate to create a task
+            return {
+                'action': 'escalate',
+                'reason': 'Create task for unresolved TODO'
+            }
+
+        # QUESTION: convert to doc if resolved, escalate if not
+        elif marker.marker_type == 'QUESTION':
+            # Check if it contains resolution indicators
+            if any(word in content_lower for word in ['resolved', 'answered', 'yes', 'no', 'decided']):
+                return {
+                    'action': 'convert',
+                    'reason': 'Convert resolved question to documentation'
+                }
+            return {
+                'action': 'escalate',
+                'reason': 'Unresolved question needs attention'
+            }
+
+        # NOTE: keep if cross-reference, remove if obvious
+        elif marker.marker_type == 'NOTE':
+            if any(kw in content_lower for kw in self.KEEP_KEYWORDS):
+                return {
+                    'action': 'keep',
+                    'reason': 'Cross-reference or valuable context'
+                }
+            if any(kw in content_lower for kw in self.REMOVE_KEYWORDS):
+                return {
+                    'action': 'remove',
+                    'reason': 'Obvious or temporary note'
+                }
+            return {
+                'action': 'keep',
+                'reason': 'NOTE provides context, keep by default'
+            }
+
+        # PERF: always keep
+        elif marker.marker_type == 'PERF':
+            return {
+                'action': 'keep',
+                'reason': 'Performance context is valuable'
+            }
+
+        # HACK: always keep, suggest task creation
+        elif marker.marker_type == 'HACK':
+            if re.search(r'(task|issue|ticket|#)\s*\d+', content_lower):
+                return {
+                    'action': 'keep',
+                    'reason': 'Technical debt tracked via task reference'
+                }
+            return {
+                'action': 'escalate',
+                'reason': 'Technical debt should be tracked as a task'
+            }
+
+        # Unknown marker type
+        return {
+            'action': 'keep',
+            'reason': 'Unknown marker type, keep for manual review'
         }
-        return cleanup_rules.get(marker.marker_type, {'action': 'keep', 'reason': 'Unknown type'})
+
+    def apply_cleanup(self, file_path: str, actions: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Apply cleanup actions to a file.
+
+        Args:
+            file_path: Path to file to modify
+            actions: List of dicts with 'line_number', 'action', and optional 'replacement'
+
+        Returns:
+            Dict with 'modified' (bool), 'removed' (int), 'converted' (int), 'kept' (int)
+
+        Raises:
+            FileNotFoundError: If file doesn't exist
+            IOError: If file can't be read/written
+        """
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        # Read file
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        except IOError as e:
+            raise IOError(f"Failed to read file {file_path}: {e}")
+
+        # Build action map by line number
+        action_map = {a['line_number']: a for a in actions}
+
+        # Apply actions
+        new_lines = []
+        stats = {'removed': 0, 'converted': 0, 'kept': 0}
+
+        for line_num, line in enumerate(lines, 1):
+            if line_num in action_map:
+                action = action_map[line_num]['action']
+
+                if action == 'remove':
+                    stats['removed'] += 1
+                    continue  # Skip this line
+
+                elif action == 'convert':
+                    # Convert to standard comment (remove marker prefix)
+                    replacement = action_map[line_num].get('replacement')
+                    if replacement:
+                        new_lines.append(replacement)
+                    else:
+                        # Default: just remove the marker prefix
+                        match = self.MARKER_PATTERN.match(line)
+                        if match:
+                            content = match.group(2).strip()
+                            indent = len(line) - len(line.lstrip())
+                            new_lines.append(' ' * indent + f"# {content}\n")
+                        else:
+                            new_lines.append(line)
+                    stats['converted'] += 1
+
+                elif action == 'keep':
+                    new_lines.append(line)
+                    stats['kept'] += 1
+
+                else:  # escalate or unknown
+                    new_lines.append(line)
+                    stats['kept'] += 1
+            else:
+                new_lines.append(line)
+
+        # Check if file was modified
+        modified = new_lines != lines
+
+        # Write file if modified
+        if modified:
+            try:
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.writelines(new_lines)
+            except IOError as e:
+                raise IOError(f"Failed to write file {file_path}: {e}")
+
+        return {'modified': modified, **stats}
+
+    def scan_directory(
+        self,
+        dir_path: str,
+        extensions: Optional[List[str]] = None
+    ) -> Dict[str, List[CommentMarker]]:
+        """
+        Recursively scan directory for comment markers.
+
+        Args:
+            dir_path: Directory to scan
+            extensions: List of file extensions to scan (default: ['.py'])
+
+        Returns:
+            Dict mapping file paths to lists of markers found
+
+        Raises:
+            FileNotFoundError: If directory doesn't exist
+        """
+        if not os.path.exists(dir_path):
+            raise FileNotFoundError(f"Directory not found: {dir_path}")
+
+        if not os.path.isdir(dir_path):
+            raise ValueError(f"Not a directory: {dir_path}")
+
+        if extensions is None:
+            extensions = ['.py']
+
+        results = {}
+
+        for root, dirs, files in os.walk(dir_path):
+            # Skip hidden directories and common excludes
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in {'__pycache__', 'node_modules'}]
+
+            for filename in files:
+                # Check extension
+                if not any(filename.endswith(ext) for ext in extensions):
+                    continue
+
+                file_path = os.path.join(root, filename)
+                try:
+                    markers = self.scan_file(file_path)
+                    if markers:
+                        results[file_path] = markers
+                except (IOError, UnicodeDecodeError):
+                    # Skip files that can't be read
+                    continue
+
+        return results
+
+    def generate_cleanup_report(self, markers: Dict[str, List[CommentMarker]]) -> str:
+        """
+        Generate a markdown report of all markers found.
+
+        Args:
+            markers: Dict mapping file paths to lists of markers
+
+        Returns:
+            Markdown-formatted report string
+        """
+        if not markers:
+            return "# Comment Cleanup Report\n\nNo markers found.\n"
+
+        # Count markers by type
+        type_counts = {}
+        total_count = 0
+
+        for file_markers in markers.values():
+            for marker in file_markers:
+                type_counts[marker.marker_type] = type_counts.get(marker.marker_type, 0) + 1
+                total_count += 1
+
+        # Build report
+        lines = [
+            "# Comment Cleanup Report",
+            "",
+            f"**Total markers found:** {total_count}",
+            "",
+            "## Summary by Type",
+            ""
+        ]
+
+        for marker_type in sorted(type_counts.keys()):
+            count = type_counts[marker_type]
+            lines.append(f"- **{marker_type}:** {count}")
+
+        lines.extend(["", "## Markers by File", ""])
+
+        # Group by file
+        for file_path in sorted(markers.keys()):
+            file_markers = markers[file_path]
+            lines.append(f"### `{file_path}`")
+            lines.append("")
+
+            # Group by marker type within file
+            by_type = {}
+            for marker in file_markers:
+                if marker.marker_type not in by_type:
+                    by_type[marker.marker_type] = []
+                by_type[marker.marker_type].append(marker)
+
+            for marker_type in sorted(by_type.keys()):
+                lines.append(f"**{marker_type}** ({len(by_type[marker_type])} found):")
+                lines.append("")
+
+                for marker in by_type[marker_type]:
+                    suggestion = self.suggest_cleanup(marker)
+                    action = suggestion['action']
+                    reason = suggestion['reason']
+
+                    lines.append(f"- Line {marker.line_number}: `{marker.content}`")
+                    lines.append(f"  - **Suggested action:** {action}")
+                    lines.append(f"  - **Reason:** {reason}")
+                    lines.append("")
+
+        return "\n".join(lines)
 
 
 class ProductionMetrics:
     """
-    STUB: Metrics collection for production analysis.
+    Metrics collection for production analysis.
 
-    Full Implementation Would:
-    --------------------------
-    1. Track timing metrics:
-       - Time in each state
-       - Time per chunk
-       - Actual vs estimated time
-       - Rework cycles
+    Tracks timing and quality metrics across production tasks:
+    - Time in each state per task
+    - Chunk completion times vs estimates
+    - State transition patterns
+    - Estimation accuracy over time
 
-    2. Track quality metrics:
-       - Markers per task
-       - Resolution rate
-       - Chunk completion rate
-       - Files per task
-
-    3. Provide analytics:
-       - Average production time by task type
-       - Common bottleneck states
-       - Estimation accuracy over time
-       - Correlation: markers vs rework
-
-    4. Generate reports:
-       - Session summary
-       - Trend analysis
-       - Recommendations for improvement
+    Example:
+        >>> metrics = ProductionMetrics()
+        >>> metrics.record_state_transition(task, ProductionState.PLANNING, ProductionState.DRAFTING)
+        >>> metrics.record_chunk_start(chunk, estimated_minutes=30)
+        >>> metrics.record_chunk_complete(chunk)
+        >>> accuracy = metrics.get_estimation_accuracy()
     """
+
+    def __init__(self):
+        """Initialize metrics tracking."""
+        # State transitions: {task_id, from_state, to_state, timestamp, duration_in_previous_state}
+        self._state_transitions: List[Dict[str, Any]] = []
+
+        # Chunk timings: chunk_id -> {start, end, estimated, actual, status}
+        self._chunk_timings: Dict[str, Dict[str, Any]] = {}
+
+        # Task timings: task_id -> {state -> [durations_in_minutes]}
+        self._task_timings: Dict[str, Dict[str, List[float]]] = {}
 
     def record_state_transition(
         self,
@@ -570,21 +1152,186 @@ class ProductionMetrics:
         from_state: ProductionState,
         to_state: ProductionState
     ) -> None:
-        """STUB: Record a state transition for metrics."""
-        pass  # Would store in time-series database
+        """
+        Record a state transition for metrics.
+
+        Args:
+            task: The task that transitioned
+            from_state: Previous state
+            to_state: New state
+        """
+        timestamp = datetime.now()
+
+        # Calculate duration in previous state
+        duration_minutes = 0.0
+        if self._state_transitions:
+            # Find last transition for this task
+            last_transition = None
+            for trans in reversed(self._state_transitions):
+                if trans['task_id'] == task.id:
+                    last_transition = trans
+                    break
+
+            if last_transition:
+                # Calculate time since last transition
+                last_timestamp = datetime.fromisoformat(last_transition['timestamp'])
+                duration_minutes = (timestamp - last_timestamp).total_seconds() / 60
+
+        # Record transition
+        self._state_transitions.append({
+            'task_id': task.id,
+            'from_state': from_state.name,
+            'to_state': to_state.name,
+            'timestamp': timestamp.isoformat(),
+            'duration_in_previous_state': duration_minutes,
+        })
+
+        # Update task timings
+        if task.id not in self._task_timings:
+            self._task_timings[task.id] = {}
+
+        state_name = from_state.name
+        if state_name not in self._task_timings[task.id]:
+            self._task_timings[task.id][state_name] = []
+
+        if duration_minutes > 0:  # Only record if we have a valid duration
+            self._task_timings[task.id][state_name].append(duration_minutes)
+
+    def record_chunk_start(self, chunk: ProductionChunk, estimated_minutes: int = None) -> None:
+        """
+        Record the start of a chunk.
+
+        Args:
+            chunk: The chunk being started
+            estimated_minutes: Estimated time (uses chunk.time_estimate_minutes if None)
+        """
+        if estimated_minutes is None:
+            estimated_minutes = chunk.time_estimate_minutes
+
+        self._chunk_timings[chunk.id] = {
+            'start': datetime.now().isoformat(),
+            'end': None,
+            'estimated_minutes': estimated_minutes,
+            'actual_minutes': None,
+            'status': 'in_progress',
+        }
+
+    def record_chunk_complete(self, chunk: ProductionChunk) -> None:
+        """
+        Record the completion of a chunk.
+
+        Args:
+            chunk: The chunk being completed
+        """
+        if chunk.id not in self._chunk_timings:
+            # Chunk was never started via record_chunk_start, create entry
+            if chunk.started_at:
+                self._chunk_timings[chunk.id] = {
+                    'start': chunk.started_at.isoformat(),
+                    'end': None,
+                    'estimated_minutes': chunk.time_estimate_minutes,
+                    'actual_minutes': None,
+                    'status': 'in_progress',
+                }
+            else:
+                # No timing data available
+                return
+
+        timing = self._chunk_timings[chunk.id]
+        timing['end'] = datetime.now().isoformat()
+        timing['status'] = 'complete'
+
+        # Calculate actual duration
+        start_time = datetime.fromisoformat(timing['start'])
+        end_time = datetime.fromisoformat(timing['end'])
+        timing['actual_minutes'] = (end_time - start_time).total_seconds() / 60
 
     def get_average_time_in_state(self, state: ProductionState) -> float:
-        """STUB: Get average time spent in a state (minutes)."""
-        # Would calculate from historical data
-        default_times = {
-            ProductionState.PLANNING: 15,
-            ProductionState.DRAFTING: 45,
-            ProductionState.REFINING: 30,
-            ProductionState.FINALIZING: 20,
-        }
-        return default_times.get(state, 0)
+        """
+        Get average time spent in a state across all tasks (minutes).
+
+        Args:
+            state: The state to calculate average for
+
+        Returns:
+            Average minutes spent in state, or 0 if no data
+        """
+        state_name = state.name
+        all_durations = []
+
+        for task_id, states in self._task_timings.items():
+            if state_name in states:
+                all_durations.extend(states[state_name])
+
+        if not all_durations:
+            return 0.0
+
+        return sum(all_durations) / len(all_durations)
 
     def get_estimation_accuracy(self) -> float:
-        """STUB: Get accuracy of time estimates (actual/estimated ratio)."""
-        # Would calculate from completed chunks
-        return 0.85  # Placeholder
+        """
+        Get accuracy of time estimates (actual/estimated ratio).
+
+        Returns:
+            Ratio of actual to estimated time:
+            - 1.0 = perfect accuracy
+            - < 1.0 = faster than estimated
+            - > 1.0 = slower than estimated
+            - 0.0 = no completed chunks
+        """
+        completed_chunks = [
+            timing for timing in self._chunk_timings.values()
+            if timing['status'] == 'complete' and timing['actual_minutes'] is not None
+        ]
+
+        if not completed_chunks:
+            return 0.0
+
+        total_actual = sum(c['actual_minutes'] for c in completed_chunks)
+        total_estimated = sum(c['estimated_minutes'] for c in completed_chunks)
+
+        if total_estimated == 0:
+            return 0.0
+
+        return total_actual / total_estimated
+
+    def get_time_in_state_distribution(self) -> Dict[str, float]:
+        """
+        Get average time distribution across all states.
+
+        Returns:
+            Dictionary mapping state name to average minutes
+        """
+        distribution = {}
+
+        for state in ProductionState:
+            avg_time = self.get_average_time_in_state(state)
+            if avg_time > 0:
+                distribution[state.name] = avg_time
+
+        return distribution
+
+    def get_summary(self) -> Dict[str, Any]:
+        """
+        Get comprehensive metrics summary.
+
+        Returns:
+            Dictionary with:
+            - total_transitions: Number of state transitions recorded
+            - average_accuracy: Estimation accuracy ratio
+            - time_distribution: Average time per state
+            - chunks_completed: Number of completed chunks
+            - chunks_in_progress: Number of in-progress chunks
+            - tasks_tracked: Number of unique tasks tracked
+        """
+        completed = sum(1 for t in self._chunk_timings.values() if t['status'] == 'complete')
+        in_progress = sum(1 for t in self._chunk_timings.values() if t['status'] == 'in_progress')
+
+        return {
+            'total_transitions': len(self._state_transitions),
+            'average_accuracy': self.get_estimation_accuracy(),
+            'time_distribution': self.get_time_in_state_distribution(),
+            'chunks_completed': completed,
+            'chunks_in_progress': in_progress,
+            'tasks_tracked': len(self._task_timings),
+        }

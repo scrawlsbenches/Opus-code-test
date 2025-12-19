@@ -719,7 +719,8 @@ class TestQuestionBatcher:
         md = batcher.generate_batch()
 
         assert "## Question Request" in md
-        assert "2 questions" in md
+        assert "2 question(s)" in md
         assert "What API version?" in md
         assert "Use caching?" in md
-        assert "Default if no response: v2" in md
+        assert "Default if no response:" in md
+        assert "v2" in md

@@ -24,6 +24,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Tuple
+import os
+import re
+import shutil
+import subprocess
 import uuid
 
 
@@ -535,10 +539,8 @@ class CrisisManager:
 
 class RecoveryProcedures:
     """
-    STUB: Automated recovery procedures for different crisis types.
+    Automated recovery procedures for different crisis types.
 
-    Full Implementation Would:
-    --------------------------
     From docs/complex-reasoning-workflow.md Part 13.5:
 
     1. Full Rollback:
@@ -567,70 +569,489 @@ class RecoveryProcedures:
     - Metrics for failure analysis
     """
 
-    def full_rollback(self, checkpoint: str) -> Dict[str, Any]:
+    def __init__(self, memory_path: Optional[str] = None):
         """
-        STUB: Perform full rollback to a checkpoint.
+        Initialize recovery procedures.
 
-        Full Implementation Would:
-        - git stash save "failed-attempt-{timestamp}"
-        - git checkout {checkpoint}
-        - Generate memory document
+        Args:
+            memory_path: Directory for memory documents (default: samples/memories/)
+        """
+        self._git_available = shutil.which('git') is not None
+        self._recovery_log: List[Dict[str, Any]] = []
+        self._memory_path = memory_path or 'samples/memories/'
+
+    def _run_git(self, *args: str, **kwargs) -> subprocess.CompletedProcess:
+        """
+        Run a git command safely.
+
+        Args:
+            *args: Git command arguments
+            **kwargs: Additional subprocess.run arguments
 
         Returns:
-            {'success': bool, 'stash_ref': str, 'restored_to': str}
+            CompletedProcess result
+
+        Raises:
+            RuntimeError: If git is not available
+            subprocess.CalledProcessError: If git command fails
         """
-        return {
-            'success': True,
-            'stash_ref': 'stash@{0}',
+        if not self._git_available:
+            raise RuntimeError("Git is not available")
+
+        cmd = ['git'] + list(args)
+        defaults = {
+            'capture_output': True,
+            'text': True,
+            'check': True,
+        }
+        defaults.update(kwargs)
+        return subprocess.run(cmd, **defaults)
+
+    def full_rollback(self, checkpoint: str, crisis_description: str = "") -> Dict[str, Any]:
+        """
+        Perform full rollback to a checkpoint.
+
+        Steps:
+        1. Stash current state with recovery label
+        2. Checkout to the checkpoint commit
+        3. Generate memory document about the failure
+        4. Log the recovery action
+
+        Args:
+            checkpoint: Git commit hash or reference to restore to
+            crisis_description: Description of what went wrong
+
+        Returns:
+            Dict with:
+            - success: bool - Whether rollback succeeded
+            - stash_ref: str - Reference to stashed changes
+            - restored_to: str - Commit hash restored to
+            - memory_file: str - Path to generated memory document
+            - error: str - Error message if failed (optional)
+        """
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        result = {
+            'success': False,
+            'stash_ref': '',
             'restored_to': checkpoint,
-            'note': 'STUB: Would perform actual git operations',
+            'memory_file': '',
         }
 
-    def partial_recovery(self, working_files: List[str], broken_files: List[str]) -> Dict[str, Any]:
+        try:
+            if not self._git_available:
+                result['error'] = 'Git is not available'
+                return result
+
+            # Stash current state
+            stash_label = f"recovery-{timestamp}"
+            try:
+                self._run_git('stash', 'save', stash_label)
+                # Get the stash ref (should be stash@{0})
+                stash_list = self._run_git('stash', 'list')
+                stash_ref = 'stash@{0}'  # Most recent stash
+                result['stash_ref'] = stash_ref
+            except subprocess.CalledProcessError as e:
+                # Might fail if there are no changes to stash
+                result['stash_ref'] = 'none (no changes)'
+
+            # Checkout to checkpoint
+            self._run_git('checkout', checkpoint)
+
+            # Generate memory document
+            memory_file = self.create_recovery_memory(
+                crisis=crisis_description or f"Rollback to {checkpoint}",
+                actions=[
+                    f"Stashed current state as: {result['stash_ref']}",
+                    f"Restored to commit: {checkpoint}",
+                ],
+                lessons=[
+                    "Full rollback was necessary",
+                    "Previous approach was not viable",
+                ],
+            )
+            result['memory_file'] = memory_file
+            result['success'] = True
+
+            # Log the recovery
+            self._recovery_log.append({
+                'type': 'full_rollback',
+                'timestamp': timestamp,
+                'checkpoint': checkpoint,
+                'stash_ref': result['stash_ref'],
+                'memory_file': memory_file,
+            })
+
+        except subprocess.CalledProcessError as e:
+            result['error'] = f"Git command failed: {e.stderr}"
+        except Exception as e:
+            result['error'] = str(e)
+
+        return result
+
+    def partial_recovery(
+        self,
+        working_files: List[str],
+        broken_files: List[str],
+        commit_message: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        STUB: Salvage working parts, preserve broken parts for analysis.
+        Salvage working parts, preserve broken parts for analysis.
+
+        Steps:
+        1. Add working files to staging
+        2. Commit working changes
+        3. Stash broken files separately
+        4. Generate follow-up task description
+
+        Args:
+            working_files: Files that are working and should be committed
+            broken_files: Files that are broken and should be stashed
+            commit_message: Custom commit message (optional)
 
         Returns:
-            {'committed_files': list, 'stashed_files': list, 'task_created': str}
+            Dict with:
+            - success: bool - Whether recovery succeeded
+            - committed_files: list - Files successfully committed
+            - commit_hash: str - Hash of the salvage commit
+            - stashed_files: list - Files stashed for later analysis
+            - stash_ref: str - Reference to stashed broken files
+            - task_description: str - Follow-up task description
+            - error: str - Error message if failed (optional)
         """
-        return {
-            'committed_files': working_files,
-            'stashed_files': broken_files,
-            'task_created': 'T-STUB-001',
-            'note': 'STUB: Would perform actual git operations',
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        result = {
+            'success': False,
+            'committed_files': [],
+            'commit_hash': '',
+            'stashed_files': [],
+            'stash_ref': '',
+            'task_description': '',
         }
+
+        try:
+            if not self._git_available:
+                result['error'] = 'Git is not available'
+                return result
+
+            # Add working files and commit
+            if working_files:
+                for file_path in working_files:
+                    self._run_git('add', file_path)
+                result['committed_files'] = working_files
+
+                msg = commit_message or f"partial: salvaged working changes ({timestamp})"
+                self._run_git('commit', '-m', msg)
+
+                # Get the commit hash
+                commit_hash_result = self._run_git('rev-parse', 'HEAD')
+                result['commit_hash'] = commit_hash_result.stdout.strip()
+
+            # Stash broken files
+            if broken_files:
+                for file_path in broken_files:
+                    self._run_git('add', file_path)
+
+                stash_label = f"broken-{timestamp}"
+                self._run_git('stash', 'save', stash_label)
+                result['stashed_files'] = broken_files
+                result['stash_ref'] = 'stash@{0}'
+
+            # Generate follow-up task description
+            result['task_description'] = f"""## Follow-up: Fix Broken Files
+
+**Working files committed:** {len(working_files)}
+- {chr(10).join(f"  - {f}" for f in working_files)}
+
+**Broken files stashed:** {len(broken_files)}
+- {chr(10).join(f"  - {f}" for f in broken_files)}
+
+**Stash reference:** {result['stash_ref']}
+
+**Next steps:**
+1. Analyze why broken files failed
+2. Fix issues individually
+3. Restore from stash: `git stash apply {result['stash_ref']}`
+4. Re-test and commit fixed files
+"""
+
+            result['success'] = True
+
+            # Log the recovery
+            self._recovery_log.append({
+                'type': 'partial_recovery',
+                'timestamp': timestamp,
+                'working_files': working_files,
+                'broken_files': broken_files,
+                'commit_hash': result['commit_hash'],
+                'stash_ref': result['stash_ref'],
+            })
+
+        except subprocess.CalledProcessError as e:
+            result['error'] = f"Git command failed: {e.stderr}"
+        except Exception as e:
+            result['error'] = str(e)
+
+        return result
+
+    def create_recovery_memory(
+        self,
+        crisis: str,
+        actions: List[str],
+        lessons: List[str]
+    ) -> str:
+        """
+        Generate and save a recovery memory document.
+
+        Args:
+            crisis: Description of the crisis
+            actions: List of actions taken during recovery
+            lessons: List of lessons learned
+
+        Returns:
+            Path to the created memory document
+        """
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+
+        # Create memory directory if it doesn't exist
+        os.makedirs(self._memory_path, exist_ok=True)
+
+        # Generate filename
+        filename = f"[DRAFT]-recovery-{date_str}-{timestamp}.md"
+        file_path = os.path.join(self._memory_path, filename)
+
+        # Generate content
+        content = f"""# Recovery Memory: {crisis}
+
+**Date:** {date_str}
+**Type:** Crisis Recovery
+**Tags:** `recovery`, `crisis`, `lessons-learned`
+
+## Crisis Description
+
+{crisis}
+
+## Recovery Actions Taken
+
+{chr(10).join(f"{i+1}. {action}" for i, action in enumerate(actions))}
+
+## Lessons Learned
+
+{chr(10).join(f"- {lesson}" for lesson in lessons)}
+
+## Preventive Measures
+
+Consider the following to prevent similar crises:
+- Review the warning signs that led to this crisis
+- Update documentation or process guidelines
+- Add automated checks if applicable
+- Share learnings with the team
+
+## Related
+
+- [[crisis-management.md]]
+- [[recovery-procedures.md]]
+
+---
+*This is a draft memory document. Review, edit, and remove [DRAFT] prefix when finalized.*
+"""
+
+        # Write the file
+        with open(file_path, 'w') as f:
+            f.write(content)
+
+        return file_path
+
+    def get_last_good_commit(self, max_commits: int = 50) -> str:
+        """
+        Find the most recent commit where tests likely passed.
+
+        Heuristics:
+        1. Look for commits with "test" or "fix" in message
+        2. Avoid commits with "WIP", "broken", "failing"
+        3. Look for merge commits (usually tested)
+        4. Check for CI markers in commit messages
+
+        Args:
+            max_commits: Maximum number of commits to search
+
+        Returns:
+            Commit hash of the last likely good commit, or empty string if not found
+        """
+        if not self._git_available:
+            return ""
+
+        try:
+            # Get recent commit log
+            result = self._run_git('log', f'-{max_commits}', '--pretty=format:%H|%s')
+            lines = result.stdout.strip().split('\n')
+
+            # Score each commit
+            for line in lines:
+                if '|' not in line:
+                    continue
+
+                commit_hash, message = line.split('|', 1)
+                message_lower = message.lower()
+
+                # Bad indicators
+                if any(bad in message_lower for bad in ['wip', 'broken', 'failing', 'todo', 'fixme']):
+                    continue
+
+                # Good indicators
+                if any(good in message_lower for good in ['test', 'fix', 'merge', 'ci pass', 'coverage']):
+                    return commit_hash
+
+            # If no obviously good commit found, return the 5th most recent
+            # (assuming recent commits might be problematic)
+            if len(lines) >= 5:
+                return lines[4].split('|')[0]
+
+            # Fallback to HEAD~1
+            result = self._run_git('rev-parse', 'HEAD~1')
+            return result.stdout.strip()
+
+        except (subprocess.CalledProcessError, IndexError):
+            return ""
+
+    def stash_current_state(self, label: str) -> str:
+        """
+        Stash the current working state with a label.
+
+        Args:
+            label: Label for the stash
+
+        Returns:
+            Stash reference (e.g., "stash@{0}"), or empty string if failed
+        """
+        if not self._git_available:
+            return ""
+
+        try:
+            self._run_git('stash', 'save', label)
+            return 'stash@{0}'  # Most recent stash
+        except subprocess.CalledProcessError:
+            return ""
+
+    def list_stashes(self) -> List[Dict[str, str]]:
+        """
+        List all stashes in the repository.
+
+        Returns:
+            List of dicts with: {ref, message, date}
+        """
+        if not self._git_available:
+            return []
+
+        try:
+            # Format: stash@{0}: On branch: message
+            result = self._run_git('stash', 'list')
+            stashes = []
+
+            for line in result.stdout.strip().split('\n'):
+                if not line:
+                    continue
+
+                # Parse stash entry
+                # Format: stash@{N}: WIP on branch: message
+                match = re.match(r'(stash@\{(\d+)\}):\s*(.+)', line)
+                if match:
+                    stash_ref = match.group(1)
+                    stash_num = match.group(2)
+                    message = match.group(3)
+
+                    stashes.append({
+                        'ref': stash_ref,
+                        'message': message,
+                        'index': int(stash_num),
+                    })
+
+            return stashes
+
+        except subprocess.CalledProcessError:
+            return []
+
+    def restore_from_stash(self, stash_ref: str) -> bool:
+        """
+        Restore (apply) a stash without dropping it.
+
+        Args:
+            stash_ref: Stash reference (e.g., "stash@{0}")
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self._git_available:
+            return False
+
+        try:
+            self._run_git('stash', 'apply', stash_ref)
+            return True
+        except subprocess.CalledProcessError:
+            return False
 
     def generate_failure_analysis(self, event: CrisisEvent) -> str:
         """
-        STUB: Generate a failure analysis document.
+        Generate a failure analysis document from a crisis event.
 
-        Full Implementation Would:
-        - Analyze event context and timeline
-        - Extract patterns from failure attempts
-        - Identify root causes
-        - Suggest preventive measures
+        Args:
+            event: The crisis event to analyze
 
         Returns:
             Markdown-formatted analysis document
         """
-        return f"""## Failed Approach Analysis: {event.description}
+        # Extract context
+        context = event.context
+        goal = context.get('goal', '[Unknown goal]')
+        approach = context.get('approach', '[Unknown approach]')
+        attempts = context.get('attempts', [])
 
-**Goal:** [Would extract from context]
+        # Build analysis
+        lines = [
+            f"## Failed Approach Analysis: {event.description}",
+            "",
+            f"**Goal:** {goal}",
+            "",
+            f"**Approach:** {approach}",
+            "",
+            "**Why it failed:**",
+        ]
 
-**Approach:** [Would analyze attempts]
+        # Analyze attempts if available
+        if attempts:
+            lines.append("Multiple attempts were made:")
+            for i, attempt in enumerate(attempts, 1):
+                lines.append(f"{i}. {attempt}")
+            lines.append("")
+            lines.append("Pattern suggests a fundamental issue with the approach.")
+        else:
+            lines.append("[Analyze from event context]")
 
-**Why it failed:**
-[Would identify root cause from patterns]
+        lines.extend([
+            "",
+            "**What we learned:**",
+        ])
 
-**What we learned:**
-- [Would extract from event history]
+        if event.lessons_learned:
+            for lesson in event.lessons_learned:
+                lines.append(f"- {lesson}")
+        else:
+            lines.append("- [Extract lessons from failure]")
 
-**Red flags we should have noticed:**
-- [Would identify early warning signs]
+        lines.extend([
+            "",
+            "**Red flags we should have noticed:**",
+            "- Repeated failures with same approach",
+            "- Escalating complexity without progress",
+            "- Divergence from original scope",
+            "",
+            "**Conditions that would make this work:**",
+            "- [Identify prerequisites for approach to succeed]",
+            "- [List assumptions that need to be true]",
+            "- [Suggest when to revisit this approach]",
+        ])
 
-**Conditions that would make this work:**
-- [Would suggest when to revisit]
-"""
+        return "\n".join(lines)
 
 
 class CrisisPredictor:

@@ -664,53 +664,30 @@ class NestedLoopExecutor:
 
 class LoopStateSerializer:
     """
-    STUB: Serializer for persisting and restoring loop state.
+    Serializer for persisting and restoring loop state.
 
-    Full Implementation Would:
-    --------------------------
-    1. Serialize loop state to JSON/YAML for persistence
-       - All loop attributes including contexts and transitions
-       - Parent/child relationships
-       - Callback references (by name, not object)
-
-    2. Support incremental state updates
-       - Only write changed portions to reduce I/O
-       - Use content-addressed storage for deduplication
-       - Support append-only log for audit trail
-
-    3. Enable state transfer between sessions
-       - Generate human-readable summaries
-       - Create continuation prompts for new sessions
-       - Preserve context sufficient to resume work
-
-    4. Integrate with git-based storage
-       - Store state in .git-ml or similar
-       - Support merge-friendly file format
-       - Track state evolution across branches
+    Supports full serialization of:
+    - All loop attributes including contexts and transitions
+    - Parent/child relationships
+    - Complete phase history with notes, questions, decisions, artifacts
+    - Full transition history with context snapshots
+    - Proper datetime handling with ISO format
+    - Enum serialization (status, phase, termination reason)
 
     File Format Design:
     -------------------
-    ```yaml
-    loop:
-      id: "abc123"
-      goal: "Implement authentication"
-      status: "ACTIVE"
-      current_phase: "PRODUCE"
-      created_at: "2025-12-19T10:00:00"
-      parent_id: null
-      children: ["def456", "ghi789"]
-
-    phases:
-      - phase: "QUESTION"
-        started_at: "2025-12-19T10:00:00"
-        iteration: 1
-        notes: [...]
-
-    transitions:
-      - from: null
-        to: "QUESTION"
-        timestamp: "2025-12-19T10:00:00"
-        reason: "Loop started"
+    ```json
+    {
+      "id": "abc123",
+      "goal": "Implement authentication",
+      "status": "ACTIVE",
+      "current_phase": "PRODUCE",
+      "created_at": "2025-12-19T10:00:00",
+      "parent_id": null,
+      "children": ["def456", "ghi789"],
+      "phase_contexts": [...],
+      "transitions": [...]
+    }
     ```
 
     Integration Points:
@@ -720,9 +697,105 @@ class LoopStateSerializer:
     - Session memory: Context for future sessions
     """
 
+    def serialize_phase_context(self, context: PhaseContext) -> Dict[str, Any]:
+        """
+        Serialize a PhaseContext to dictionary.
+
+        Args:
+            context: The PhaseContext to serialize
+
+        Returns:
+            Dictionary representation
+        """
+        return {
+            'phase': context.phase.value,
+            'started_at': context.started_at.isoformat(),
+            'iteration': context.iteration,
+            'notes': context.notes.copy(),
+            'questions_raised': context.questions_raised.copy(),
+            'decisions_made': context.decisions_made.copy(),
+            'artifacts_produced': context.artifacts_produced.copy(),
+            'time_box_minutes': context.time_box_minutes,
+            'ended_at': context.ended_at.isoformat() if context.ended_at else None,
+            'duration_seconds': context.duration_seconds,
+        }
+
+    def deserialize_phase_context(self, data: Dict[str, Any]) -> PhaseContext:
+        """
+        Deserialize a PhaseContext from dictionary.
+
+        Args:
+            data: Dictionary with PhaseContext data
+
+        Returns:
+            Reconstructed PhaseContext
+        """
+        from datetime import datetime
+
+        context = PhaseContext(
+            phase=LoopPhase(data['phase']),
+            started_at=datetime.fromisoformat(data['started_at']),
+            iteration=data['iteration'],
+            notes=data['notes'].copy(),
+            questions_raised=data['questions_raised'].copy(),
+            decisions_made=data['decisions_made'].copy(),
+            artifacts_produced=data['artifacts_produced'].copy(),
+            time_box_minutes=data['time_box_minutes'],
+            ended_at=datetime.fromisoformat(data['ended_at']) if data.get('ended_at') else None,
+            duration_seconds=data.get('duration_seconds'),
+        )
+        return context
+
+    def serialize_loop_transition(self, transition: LoopTransition) -> Dict[str, Any]:
+        """
+        Serialize a LoopTransition to dictionary.
+
+        Args:
+            transition: The LoopTransition to serialize
+
+        Returns:
+            Dictionary representation
+        """
+        return {
+            'from_phase': transition.from_phase.value if transition.from_phase else None,
+            'to_phase': transition.to_phase.value,
+            'timestamp': transition.timestamp.isoformat(),
+            'reason': transition.reason,
+            'context_snapshot': transition.context_snapshot.copy(),
+        }
+
+    def deserialize_loop_transition(self, data: Dict[str, Any]) -> LoopTransition:
+        """
+        Deserialize a LoopTransition from dictionary.
+
+        Args:
+            data: Dictionary with LoopTransition data
+
+        Returns:
+            Reconstructed LoopTransition
+        """
+        from datetime import datetime
+
+        transition = LoopTransition(
+            from_phase=LoopPhase(data['from_phase']) if data.get('from_phase') else None,
+            to_phase=LoopPhase(data['to_phase']),
+            timestamp=datetime.fromisoformat(data['timestamp']),
+            reason=data['reason'],
+            context_snapshot=data['context_snapshot'].copy(),
+        )
+        return transition
+
     def serialize(self, loop: CognitiveLoop) -> str:
         """
-        STUB: Serialize a loop to JSON string.
+        Serialize a loop to JSON string.
+
+        Handles all loop attributes including:
+        - Basic attributes (id, goal, status, phase)
+        - Timestamps (created_at, completed_at)
+        - Parent/child relationships
+        - Full phase contexts with all data
+        - Full transitions with context snapshots
+        - Block reason and termination reason
 
         Args:
             loop: The loop to serialize
@@ -732,44 +805,134 @@ class LoopStateSerializer:
         """
         import json
 
-        # STUB: Basic serialization - full impl would handle all fields
-        return json.dumps({
+        data = {
             'id': loop.id,
             'goal': loop.goal,
             'status': loop.status.name,
             'current_phase': loop.current_phase.value if loop.current_phase else None,
             'created_at': loop.created_at.isoformat(),
+            'completed_at': loop.completed_at.isoformat() if loop.completed_at else None,
+            'termination_reason': loop.termination_reason.value if loop.termination_reason else None,
             'parent_id': loop.parent_id,
-            'child_ids': loop.child_ids,
-            'phase_count': len(loop.phase_contexts),
-            'transition_count': len(loop.transitions),
-        })
+            'child_ids': loop.child_ids.copy(),
+            'block_reason': loop.block_reason,
+            'phase_contexts': [
+                self.serialize_phase_context(ctx) for ctx in loop.phase_contexts
+            ],
+            'transitions': [
+                self.serialize_loop_transition(trans) for trans in loop.transitions
+            ],
+        }
+
+        return json.dumps(data, indent=2)
 
     def deserialize(self, data: str) -> CognitiveLoop:
         """
-        STUB: Deserialize a loop from JSON string.
+        Deserialize a loop from JSON string.
+
+        Reconstructs all loop state including:
+        - All basic attributes
+        - Full phase contexts with notes, questions, decisions, artifacts
+        - Full transitions with context snapshots
+        - Parent/child relationships
+        - Block reason and termination reason
 
         Args:
             data: JSON string to deserialize
 
         Returns:
-            Reconstructed CognitiveLoop
+            Reconstructed CognitiveLoop with full state
         """
         import json
+        from datetime import datetime
 
         obj = json.loads(data)
+
+        # Create loop with basic attributes
         loop = CognitiveLoop(
             id=obj['id'],
             goal=obj['goal'],
             status=LoopStatus[obj['status']],
             parent_id=obj.get('parent_id'),
-            child_ids=obj.get('child_ids', []),
+            child_ids=obj.get('child_ids', []).copy(),
         )
 
-        # STUB: Would restore full state including contexts and transitions
-        loop.add_note("Restored from serialized state (partial reconstruction)")
+        # Restore timestamps
+        loop.created_at = datetime.fromisoformat(obj['created_at'])
+        if obj.get('completed_at'):
+            loop.completed_at = datetime.fromisoformat(obj['completed_at'])
+
+        # Restore current phase
+        if obj.get('current_phase'):
+            loop.current_phase = LoopPhase(obj['current_phase'])
+
+        # Restore termination reason
+        if obj.get('termination_reason'):
+            loop.termination_reason = TerminationReason(obj['termination_reason'])
+
+        # Restore block reason
+        if obj.get('block_reason'):
+            loop._block_reason = obj['block_reason']
+
+        # Restore phase contexts
+        loop.phase_contexts = [
+            self.deserialize_phase_context(ctx_data)
+            for ctx_data in obj.get('phase_contexts', [])
+        ]
+
+        # Restore transitions
+        loop.transitions = [
+            self.deserialize_loop_transition(trans_data)
+            for trans_data in obj.get('transitions', [])
+        ]
 
         return loop
+
+    def serialize_manager(self, manager: CognitiveLoopManager) -> str:
+        """
+        Serialize entire CognitiveLoopManager state to JSON string.
+
+        Args:
+            manager: The CognitiveLoopManager to serialize
+
+        Returns:
+            JSON string representation of all loops
+        """
+        import json
+
+        data = {
+            'loops': {
+                loop_id: json.loads(self.serialize(loop))
+                for loop_id, loop in manager._loops.items()
+            }
+        }
+
+        return json.dumps(data, indent=2)
+
+    def deserialize_manager(self, data: str) -> CognitiveLoopManager:
+        """
+        Deserialize CognitiveLoopManager state from JSON string.
+
+        Restores all loops with their complete state and rebuilds
+        the manager's internal tracking structures.
+
+        Args:
+            data: JSON string with manager state
+
+        Returns:
+            Reconstructed CognitiveLoopManager with all loops
+        """
+        import json
+
+        obj = json.loads(data)
+        manager = CognitiveLoopManager()
+
+        # Restore all loops
+        for loop_id, loop_data in obj.get('loops', {}).items():
+            loop = self.deserialize(json.dumps(loop_data))
+            manager._loops[loop_id] = loop
+
+        return manager
 
     def generate_handoff(self, loop: CognitiveLoop) -> str:
         """
