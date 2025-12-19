@@ -1,0 +1,71 @@
+Furniture Design Principles: Creating Functional Beauty
+
+Overview
+
+Furniture design integrates function, structure, aesthetics, and craft into objects serving human needs. Successful design balances competing requirements: a chair must be comfortable, stable, durable, attractive, and buildable with available skills and materials. Understanding design principles enables creating furniture that works well, looks good, and lasts generations.
+
+Design proceeds from requirements to solutions. What purpose will the piece serve? Who will use it? Where will it live? What style suits the context? What construction methods match available skills? Systematic consideration of these questions guides design decisions.
+
+Functional Requirements
+
+Ergonomics governs dimensions for human use. Standard heights for tables, chairs, and work surfaces derive from human body proportions. Dining tables typically stand 28-30 inches high; chair seats measure 17-19 inches; desk heights accommodate seated workers.
+
+Comfort involves more than dimension. Chair back angles, seat depths, and lumbar support affect usability. Test seating during design development reveals problems drawings may miss.
+
+Storage requirements shape case furniture. What will the piece contain? How frequently accessed? What sizes and quantities? Drawer depths, shelf spacing, and access considerations follow from content analysis.
+
+Traffic patterns affect placement and proportion. Furniture must fit its intended space while permitting movement around it. Scale drawings of rooms with furniture placement reveal spatial relationships.
+
+Structural Requirements
+
+Loads determine structural design. Tables must support weight without sagging; chairs must withstand dynamic forces from sitting and moving; shelving must carry book loads without deflection.
+
+Joinery provides structural connections. Mortise and tenon joints resist racking in frames; dovetails prevent drawer sides from separating; proper joinery eliminates reliance on glue alone for strength.
+
+Wood movement must be accommodated. Tabletops expand and shrink across the grain; frames expand less. Attachment methods must permit movement while maintaining flatness. Ignoring wood movement causes joint failure or cracking.
+
+Engineering principles apply even to traditional furniture. Understanding how forces travel through structures enables efficient design. Over-built furniture wastes material and appears clumsy; under-built furniture fails.
+
+Aesthetic Principles
+
+Proportion relates part dimensions to each other and to the whole. Classical systems (golden ratio, musical intervals) provide starting points; trained eye refined through practice develops proportion sense.
+
+Visual weight affects perceived balance. Dark colors, complex shapes, and dense textures appear heavier. Balanced composition distributes visual weight appropriately; deliberate imbalance creates dynamic tension.
+
+Line quality creates movement and character. Straight lines suggest strength and simplicity; curves imply grace and organic connection. The meeting of lines—intersections, terminations, tangencies—requires careful attention.
+
+Rhythm emerges from repeated elements. Equally spaced slats, repeated turnings, or consistent molding profiles establish visual rhythm. Variation within repetition creates interest while maintaining unity.
+
+Negative space—the areas around and between solid elements—shapes perception as much as positive form. Framed openings, the space between legs, and air around the object all require design attention.
+
+Style and Context
+
+Historical styles provide design vocabularies. Shaker simplicity, Arts and Crafts solidity, Danish Modern elegance, and countless other traditions offer coherent design languages. Studying historical examples develops design vocabulary.
+
+Contemporary design may reference, adapt, or reject historical precedent. Understanding tradition enables meaningful dialogue with the past, whether following convention or deliberately departing.
+
+Context appropriateness matches furniture to setting. A formal dining room suggests different design than a rustic cabin. Client preferences and intended placement guide style decisions.
+
+Material expression respects wood's nature. Design should reveal rather than disguise material. Honest construction shows how pieces go together; appropriate finishing enhances natural beauty.
+
+Design Process
+
+Sketching explores possibilities quickly. Rough drawings test ideas without commitment; iteration refines promising directions. Quantity of sketches matters; breakthrough ideas often emerge after obvious solutions are exhausted.
+
+Scale drawings establish proportions and dimensions. Plan, elevation, and section views provide construction information. Full-scale drawings of critical details enable evaluation before cutting.
+
+Mock-ups test design in three dimensions. Cardboard or scrap wood models reveal problems invisible in drawings. Sitting in a chair mock-up, viewing a table at actual height, and handling mock drawer pulls inform refinement.
+
+Story sticks record dimensions for consistent repetition. These simple devices—marked sticks or boards—enable accurate transfer of measurements without number transcription errors.
+
+Design Refinement
+
+Details matter disproportionately. Edge treatments, reveal dimensions, and surface textures accumulate into overall impression. A drawer pull's curve, a leg's taper, or a top's edge profile may distinguish excellent from mediocre furniture.
+
+Revision improves designs. Building reveals design weaknesses; subsequent versions address problems. Many furniture makers build signature pieces repeatedly, refining with each iteration.
+
+Critique from others provides fresh perspective. Showing work to fellow woodworkers, designers, or intended users reveals blind spots. Willingness to receive and act on feedback improves design.
+
+Documentation preserves successful designs. Measured drawings, photographs, and notes enable reproduction and provide record of development. Building on documented experience accelerates progress.
+
+Furniture design unites practical problem-solving with aesthetic expression. The discipline of meeting functional requirements within structural constraints challenges creativity while the opportunity for beauty rewards patient refinement. Well-designed furniture enhances daily life while demonstrating the maker's understanding and skill.

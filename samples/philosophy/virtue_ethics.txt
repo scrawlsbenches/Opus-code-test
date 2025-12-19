@@ -1,0 +1,35 @@
+Virtue Ethics: Character and Human Flourishing
+
+Overview
+
+Virtue ethics focuses on character rather than rules or consequences. Where deontology asks "What should I do?" and consequentialism asks "What outcome should I produce?", virtue ethics asks "What kind of person should I become?" The virtuous agent does the right thing because they have cultivated the right dispositions—not from obligation or calculation but from practical wisdom shaped by habituation and experience.
+
+The approach traces to Aristotle's Nicomachean Ethics, where eudaimonia (flourishing or well-being) represents the ultimate human good, achieved through exercising virtues. After centuries of relative neglect in Western moral philosophy, virtue ethics was revived in the twentieth century through works like Elizabeth Anscombe's "Modern Moral Philosophy" and Alasdair MacIntyre's After Virtue. Contemporary virtue ethics offers a genuine alternative to deontological and consequentialist frameworks.
+
+Key Concepts
+
+Eudaimonia, often translated as happiness but better rendered as flourishing or living well, is the characteristic human good. Unlike pleasure (hedone), eudaimonia is not a feeling but an activity—living in accordance with virtue throughout a complete life. It is constituted by virtuous activity rather than merely caused by it. Eudaimonia involves objective standards: one can be mistaken about whether one is flourishing.
+
+The virtues are excellences of character enabling their possessor to live well. Aristotle identified courage, temperance, justice, and practical wisdom as central virtues, alongside others like generosity, wit, and truthfulness. Virtues are means between extremes—courage lies between cowardice and recklessness. But the mean is relative to the individual and situation, not a mathematical average. Finding the mean requires practical wisdom.
+
+Practical wisdom (phronesis) is the intellectual virtue enabling correct perception of particular situations and appropriate response. The phronimos (practically wise person) perceives morally salient features, feels appropriate emotions, and acts rightly. Practical wisdom cannot be reduced to rules: it involves contextual judgment developed through experience. This is why moral education requires habituation and exposure to good examples, not merely learning principles.
+
+Character development occurs through habituation. We become just by performing just actions, courageous by acting courageously. At first, virtuous action may require effort; with practice, it becomes second nature. Good upbringing and education are crucial: those raised in vice may never develop practical wisdom. Moral responsibility extends to character itself—we are responsible not only for actions but for the dispositions that generate them.
+
+Virtue and emotion are integrated in the virtuous agent. The temperate person does not merely resist temptation but genuinely desires what is appropriate. Aristotle criticized continence (enkrateia), where one does the right thing despite contrary desires, as inferior to virtue proper. Virtue involves the right emotional response—feeling pleasure and pain at the right things, in the right way, at the right time.
+
+The unity of the virtues thesis holds that possessing one virtue requires possessing all. Genuine courage requires practical wisdom to recognize what is worth risking; it differs from recklessness. Justice requires temperance to avoid using others for one's pleasure. The virtues form an integrated whole in the mature character.
+
+Function (ergon) provides the basis for human virtue in Aristotle's account. Just as a knife's excellence lies in cutting well, human excellence involves performing the human function well. Aristotle identified rationality as distinctive of humans: we flourish by living according to reason. This function-based approach raises questions about essentialism and the nature of human nature.
+
+Applications
+
+Moral education on the virtue ethics model emphasizes role models, narrative, and habituation rather than principle-learning alone. Children learn virtue by observing and imitating virtuous adults, practicing good actions until they become habitual, and developing emotional attunement to moral considerations. This approach influences character education programs.
+
+Professional ethics can be framed in virtue terms. Rather than merely following rules, good professionals embody the virtues appropriate to their roles. Medical virtue includes compassion, honesty, and courage; legal virtue includes justice, diligence, and integrity. Virtue-based professional ethics emphasizes formation and aspiration alongside compliance.
+
+Environmental virtue ethics asks what character traits enable proper relationship with nature. Environmental virtues might include humility about human status, appreciation for nature's beauty and complexity, and temperance in consumption. This approach complements rule-based and consequentialist environmental ethics.
+
+Care ethics, developed by Carol Gilligan and Nel Noddings, shares virtue ethics' emphasis on character and relationship over abstract principles. Caring, responsiveness, and attentiveness function as virtues. Some theorists integrate care ethics with virtue ethics; others see them as distinct approaches with different roots and emphases. Both challenge the dominance of impartial principles in moral theory.
+
+Critics raise several objections. The action-guidance problem notes that virtue ethics seems less helpful than rules for deciding what to do—"act as the virtuous person would" may be uninformative. The cultural relativity problem observes that virtues vary across societies. Situationist psychology challenges whether stable character traits exist. Virtue ethicists have developed responses to these challenges while maintaining the approach's distinctive focus on character and flourishing.

@@ -1,0 +1,33 @@
+The Metaethical Debate: Moral Realism and Its Critics
+
+Overview
+
+Metaethics investigates the nature, foundations, and status of moral claims. Unlike normative ethics, which asks what we ought to do, metaethics asks what we mean when we say something is right or wrong, whether moral claims can be true, and how we might know moral truths if they exist. The central divide in metaethics separates moral realists, who hold that objective moral facts exist, from anti-realists, who deny this in various ways.
+
+This debate matters beyond academic philosophy. If morality is objective, moral disagreement can be genuine error correctable through inquiry. If morality is subjective or constructed, the authority of moral claims and the possibility of moral progress become problematic. Understanding these positions illuminates both philosophical argument and practical moral discourse.
+
+Key Concepts
+
+Moral realism holds that moral statements express beliefs about objective moral facts, that some moral statements are true, and that their truth is independent of what anyone thinks. Robust realism maintains that moral properties are part of the fundamental furniture of reality. Cornell realism, developed by Richard Boyd and Nicholas Sturgeon, identifies moral properties with natural properties—moral goodness might be identical to whatever natural properties promote flourishing, even if we cannot define moral terms in natural terms.
+
+Non-naturalist realism, associated with G.E. Moore and contemporary philosophers like Russ Shafer-Landau, holds that moral properties are sui generis—they exist but cannot be reduced to natural properties. Moore's open question argument claimed that for any natural property N, it remains an open question whether N is good. This suggests that moral properties are irreducibly different from natural ones, though how we access such non-natural facts raises epistemological challenges.
+
+Constructivism offers an intermediate position: moral truths exist but are constructed through rational procedures rather than discovered as prior facts. Kantian constructivism, developed by Christine Korsgaard, grounds morality in the structure of practical reason—moral claims are true if they would be endorsed by ideally rational agents. Contractualist constructivism, following T.M. Scanlon, analyzes wrongness in terms of principles that no one could reasonably reject. These views secure objectivity without metaphysically robust moral facts.
+
+Moral anti-realism encompasses several positions denying objective moral facts. Error theory, defended by J.L. Mackie, holds that moral statements attempt to describe objective facts but systematically fail—morality involves a kind of collective mistake. Mackie argued that objective prescriptivity would be metaphysically "queer," unlike anything else we know. Moral discourse presupposes objectivity but the presupposition is false.
+
+Expressivism denies that moral statements express beliefs at all. Instead, moral utterances express attitudes, emotions, or commitments. A.J. Ayer's emotivism analyzed moral judgments as emotional expressions. Simon Blackburn's quasi-realism attempts to explain why moral discourse behaves as if it were truth-apt while maintaining an expressivist foundation. Allan Gibbard's norm-expressivism analyzes moral claims as expressions of acceptance of norms.
+
+Relativism holds that moral truths exist but are relative to cultures, individuals, or frameworks. Gilbert Harman's moral relativism grounds moral claims in social agreements. Moral claims are true or false relative to moral frameworks, but there is no framework-independent moral truth. Critics argue that relativism cannot account for cross-cultural moral criticism or explain why we treat some frameworks as better than others.
+
+The Frege-Geach problem poses a challenge for non-cognitivist views. In arguments like "If lying is wrong, then getting your brother to lie is wrong; lying is wrong; therefore, getting your brother to lie is wrong," the word "wrong" must mean the same thing in the premise and the conditional. But if moral claims express attitudes rather than beliefs, how can they function in valid logical arguments? Expressivists have developed sophisticated responses, but whether they succeed remains contested.
+
+Applications
+
+The realism debate connects to moral epistemology. If moral facts exist, how do we know them? Moral intuitionists argue that we directly perceive moral truths through a faculty analogous to perception. Coherentists ground moral knowledge in the coherence of moral beliefs. Naturalists seek empirical methods for discovering natural moral facts. Anti-realists must explain why moral practices seem knowledge-seeking if there is nothing to know.
+
+Moral disagreement provides evidence in this debate. Realists must explain persistent disagreement despite shared rational faculties. Some invoke distorting factors (bias, limited information, evolutionary influences) that prevent convergence. Anti-realists can more easily explain disagreement but must account for why moral discourse seems aimed at truth and why some positions seem clearly wrong.
+
+The relationship between morality and motivation bears on metaethics. Internalists hold that moral judgments necessarily motivate. If someone judges an action wrong but feels no motivation to avoid it, we doubt their sincerity. This supports expressivism, which builds motivation into moral judgment. Externalists allow that moral beliefs need not motivate, which fits better with cognitivism about moral judgment.
+
+Evolutionary debunking arguments challenge moral realism. If our moral faculties evolved for survival and reproduction rather than tracking moral truth, we have reason to doubt our moral beliefs. Realists respond that evolution might have tracked moral truths or that moral beliefs can be justified independently of their origins. The debate continues over whether evolutionary accounts threaten moral knowledge.
