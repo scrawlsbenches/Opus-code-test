@@ -1,0 +1,276 @@
+# Heat Pump Fundamentals: Principles and Applications
+
+## Introduction
+
+Heat pumps transfer thermal energy from one location to another using refrigeration cycles, providing both heating and cooling from a single system. As electrification accelerates and efficiency standards tighten, heat pumps have become central to sustainable building climate control.
+
+## Thermodynamic Principles
+
+### Refrigeration Cycle
+
+The vapor-compression cycle underlies most heat pump operation.
+
+**Four Main Processes:**
+
+**1. Compression:**
+- Low-pressure vapor enters compressor
+- Compressed to high pressure and temperature
+- Work input required
+- Superheated vapor output
+
+**2. Condensation:**
+- High-pressure vapor enters condenser
+- Rejects heat to surroundings
+- Phase change: vapor to liquid
+- Subcooled liquid output
+
+**3. Expansion:**
+- Liquid passes through expansion device
+- Pressure and temperature drop
+- Partial vaporization (flash gas)
+- Two-phase mixture output
+
+**4. Evaporation:**
+- Low-pressure mixture enters evaporator
+- Absorbs heat from surroundings
+- Phase change: liquid to vapor
+- Saturated or superheated vapor output
+
+### Coefficient of Performance (COP)
+
+**Heating Mode:**
+COP_heating = Q_heating / W_input
+
+**Cooling Mode:**
+COP_cooling = Q_cooling / W_input
+
+**Typical Values:**
+- Air-source (mild climate): 3-4 COP
+- Air-source (cold climate): 2-3 COP
+- Ground-source: 4-5 COP
+
+**Relationship:**
+COP_heating = COP_cooling + 1 (ideal cycle)
+
+### Carnot Efficiency
+
+Maximum theoretical COP:
+
+COP_Carnot (heating) = T_hot / (T_hot - T_cold)
+
+Where temperatures are in Kelvin.
+
+**Implications:**
+- Smaller temperature difference = higher efficiency
+- Ground-source outperforms air-source in extreme weather
+- Delivery temperature affects performance significantly
+
+## Heat Pump Types
+
+### Air-Source Heat Pumps (ASHP)
+
+**Air-to-Air:**
+- Most common residential type
+- Outdoor unit exchanges with ambient air
+- Indoor unit delivers conditioned air
+- Ductless (mini-splits) or ducted
+
+**Air-to-Water:**
+- Outdoor unit exchanges with air
+- Produces hot/chilled water
+- For hydronic systems (radiant, fan coils)
+- Common in Europe, growing in North America
+
+**Performance Characteristics:**
+- Capacity decreases as temperature difference increases
+- Defrost cycles needed in cold weather
+- Variable-speed compressors improve part-load efficiency
+
+### Ground-Source Heat Pumps (GSHP)
+
+**Closed Loop:**
+- Buried pipes circulate fluid (water + antifreeze)
+- Horizontal: Trenches, 4-6 ft deep
+- Vertical: Boreholes, 150-400 ft deep
+- Pond/lake loops where available
+
+**Open Loop:**
+- Pumps groundwater directly
+- Returns water to aquifer or surface
+- High efficiency, water quality concerns
+- Permits required
+
+**Advantages:**
+- Stable ground temperatures (50-60°F)
+- Higher efficiency than air-source
+- No defrost required
+- Quiet operation
+
+**Disadvantages:**
+- Higher installation cost
+- Site-dependent feasibility
+- Loop sizing critical
+
+### Water-Source Heat Pumps (WSHP)
+
+**Commercial Applications:**
+- Multiple units share water loop
+- Heat recovery between zones
+- Simultaneous heating and cooling
+- Boiler/cooling tower supplement
+
+## Cold Climate Considerations
+
+### Performance Challenges
+
+**Below 25°F:**
+- Traditional ASHPs lose significant capacity
+- Backup heat often required
+- Defrost cycles more frequent
+
+**Cold Climate Heat Pumps (ccASHP):**
+- Enhanced vapor injection (EVI)
+- Variable-speed compressors
+- Optimized for low ambient
+- Rated to -15°F or lower
+
+### Design Strategies
+
+**Sizing:**
+- Balance point analysis
+- Don't oversize (short cycling)
+- Consider backup integration
+
+**Defrost Management:**
+- Intelligent defrost algorithms
+- Demand defrost vs. timed
+- Hot gas defrost systems
+
+## System Components
+
+### Compressors
+
+**Types:**
+- Scroll: Quiet, efficient, common
+- Rotary: Compact, variable speed capable
+- Reciprocating: Older technology
+- Screw: Large commercial
+
+**Variable Speed:**
+- Inverter-driven motor
+- Matches capacity to load
+- Higher efficiency at part load
+- Better comfort control
+
+### Heat Exchangers
+
+**Evaporator/Condenser:**
+- Fin-and-tube (air-refrigerant)
+- Plate heat exchangers (water-refrigerant)
+- Shell-and-tube (large systems)
+
+**Design Considerations:**
+- Surface area for heat transfer
+- Pressure drop
+- Frost management
+- Serviceability
+
+### Expansion Devices
+
+**Types:**
+- Thermostatic expansion valve (TXV)
+- Electronic expansion valve (EXV)
+- Fixed orifice (capillary tube)
+
+**EXV Advantages:**
+- Precise superheat control
+- Responds to varying conditions
+- Essential for variable-speed systems
+
+### Refrigerants
+
+**Common Types:**
+| Refrigerant | GWP | Applications |
+|-------------|-----|--------------|
+| R-410A | 2088 | Current standard (phasing out) |
+| R-32 | 675 | Lower GWP alternative |
+| R-290 (propane) | 3 | Small systems, flammable |
+| R-744 (CO2) | 1 | Commercial, transcritical |
+
+**Transition Trends:**
+- HFC phase-down (Kigali Amendment)
+- Lower GWP alternatives
+- Natural refrigerants growing
+
+## Applications
+
+### Residential
+
+**Single-Family:**
+- Central ducted systems
+- Ductless mini-splits
+- Hybrid with gas furnace
+- Whole-house or zoned
+
+**Multi-Family:**
+- Individual unit ASHPs
+- Variable refrigerant flow (VRF)
+- Water-loop systems
+- Central plant with distribution
+
+### Commercial
+
+**Variable Refrigerant Flow (VRF):**
+- One outdoor unit, multiple indoor
+- Individual zone control
+- Heat recovery between zones
+- High part-load efficiency
+
+**Rooftop Units:**
+- Packaged heat pumps
+- Easy installation
+- Economizer options
+- Larger capacity
+
+### Industrial
+
+**Process Heat:**
+- Heat pumps for process temperatures
+- Waste heat recovery
+- District heating supply
+- Industrial drying
+
+## Integration Considerations
+
+### Electrical Infrastructure
+
+**Load Implications:**
+- Higher electrical demand than gas
+- Peak demand during cold snaps
+- Service upgrade may be needed
+- Grid impact at scale
+
+**Demand Management:**
+- Thermal storage (building mass, tanks)
+- Smart grid integration
+- Time-of-use optimization
+
+### Hybrid Systems
+
+**Dual-Fuel:**
+- Heat pump primary
+- Gas furnace backup below switchover
+- Optimizes for cost or carbon
+- Useful in extreme climates
+
+**Hybrid Water Heating:**
+- Heat pump water heaters
+- Electric backup element
+- Combined space/water heating
+
+## References
+
+- ASHRAE Handbook: HVAC Systems and Equipment
+- Bhatia, A. "Heat Pump Systems" (HVAC course materials)
+- DOE Heat Pump Technology Roadmap
+- IEA Heat Pump Programme Publications

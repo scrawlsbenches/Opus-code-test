@@ -1,0 +1,297 @@
+# Endurance Training: Physiology and Programming
+
+## Introduction
+
+Endurance training develops the cardiovascular system and metabolic pathways that support sustained physical activity. Whether preparing for a marathon, cycling event, or general cardiovascular health, understanding the underlying physiology enables intelligent program design.
+
+## Energy Systems
+
+### Aerobic System
+
+**Oxidative Phosphorylation:**
+Primary system for activities lasting >2 minutes.
+
+**Characteristics:**
+- Uses oxygen to produce ATP
+- Sustainable for hours
+- Fuels: Carbohydrates and fats
+- 36+ ATP per glucose molecule
+
+**Substrates:**
+- Below 65% VO2max: Primarily fat oxidation
+- Above 65% VO2max: Increasing carbohydrate use
+- Race intensities: Predominantly carbohydrate
+
+### Anaerobic Systems
+
+**Glycolytic System:**
+- Glucose breakdown without oxygen
+- Duration: ~30 seconds to 2 minutes
+- Produces lactate
+- 2 ATP per glucose (fast but inefficient)
+
+**Phosphocreatine System:**
+- Immediate energy (<10 seconds)
+- Creatine phosphate regenerates ATP
+- Very limited capacity
+- Sprints and explosive efforts
+
+### Lactate Threshold
+
+Intensity above which lactate accumulates faster than clearance.
+
+**Training Zones:**
+- Below LT: Sustainable, aerobic development
+- At LT: "Threshold" training, sustainable hard effort
+- Above LT: Accumulating fatigue, limited duration
+
+**Typical Values:**
+- Untrained: ~50-60% VO2max
+- Trained: ~75-85% VO2max
+- Elite: ~85-95% VO2max
+
+## Physiological Adaptations
+
+### Central Adaptations
+
+**Cardiac:**
+- Increased stroke volume
+- Lower resting heart rate
+- Greater cardiac output
+- Chamber enlargement (athlete's heart)
+
+**Blood:**
+- Increased plasma volume
+- Greater red blood cell mass
+- Enhanced oxygen-carrying capacity
+
+### Peripheral Adaptations
+
+**Muscular:**
+- Increased mitochondrial density
+- Enhanced capillary density
+- Improved oxidative enzyme activity
+- Greater fat oxidation capacity
+
+**Metabolic:**
+- Improved glycogen storage
+- Better fuel utilization
+- Enhanced lactate clearance
+- Greater metabolic efficiency
+
+## Training Zones
+
+### Zone System (5-Zone Model)
+
+| Zone | % Max HR | % LT | Purpose |
+|------|----------|------|---------|
+| 1 | 55-65% | <70% | Recovery, base building |
+| 2 | 65-75% | 70-80% | Aerobic development |
+| 3 | 75-85% | 80-95% | Tempo, threshold |
+| 4 | 85-95% | 95-105% | VO2max intervals |
+| 5 | 95-100% | >105% | Anaerobic capacity |
+
+### Determining Zones
+
+**Methods:**
+- Lab testing (gold standard)
+- Field tests (time trials, ramp tests)
+- Heart rate formulas (less accurate)
+- Perceived exertion (experience required)
+
+**Heart Rate Reserve (Karvonen):**
+Target HR = ((Max HR - Resting HR) × %intensity) + Resting HR
+
+### Rating of Perceived Exertion
+
+| RPE | Description | Zone |
+|-----|-------------|------|
+| 1-2 | Very light, recovery | Zone 1 |
+| 3-4 | Light, conversational | Zone 2 |
+| 5-6 | Moderate, breathing harder | Zone 3 |
+| 7-8 | Hard, can speak in phrases | Zone 4 |
+| 9-10 | Maximum, can't speak | Zone 5 |
+
+## Training Methods
+
+### Base Training (Zone 2)
+
+**Purpose:**
+- Mitochondrial development
+- Fat oxidation capacity
+- Cardiac adaptations
+- Foundation for higher intensity
+
+**Characteristics:**
+- Conversational pace
+- 70-80% of training volume
+- Long duration possible
+- Monotonous but essential
+
+### Threshold Training (Zone 3-4)
+
+**Purpose:**
+- Raise lactate threshold
+- Improve sustainable power
+- Race-specific fitness
+
+**Methods:**
+- Tempo runs: 20-40 minutes at threshold
+- Cruise intervals: 8-15 minute efforts with short rest
+- Sweet spot: Just below threshold, higher volume
+
+### VO2max Intervals (Zone 4-5)
+
+**Purpose:**
+- Maximum aerobic capacity
+- Cardiac output ceiling
+- High-end fitness
+
+**Classic Protocol:**
+- 3-5 minute intervals
+- Work:rest ratio 1:1 to 1:0.5
+- Total time at intensity: 12-20 minutes
+- High physiological stress
+
+### High-Intensity Interval Training (HIIT)
+
+**Purpose:**
+- Time-efficient fitness gains
+- Both aerobic and anaerobic
+- Performance at high intensity
+
+**Protocols:**
+- 30/30s: 30 seconds hard, 30 seconds easy
+- Tabata: 20 seconds all-out, 10 seconds rest × 8
+- 4×4 Norwegian: 4 minutes at 90-95% max HR × 4
+
+## Periodization
+
+### Annual Planning
+
+**Macrocycles:**
+- Base phase: Build aerobic foundation
+- Build phase: Increase intensity
+- Peak phase: Race-specific sharpening
+- Recovery: Active rest, maintenance
+
+### Microcycle (Weekly) Structure
+
+**Example (12 hours/week):**
+- Monday: Rest or cross-training
+- Tuesday: Intervals (90 min including warmup/cooldown)
+- Wednesday: Easy aerobic (60-90 min)
+- Thursday: Tempo/threshold (75-90 min)
+- Friday: Easy/recovery (45-60 min)
+- Saturday: Long easy (2-3 hours)
+- Weekend: Moderate duration (60-90 min)
+
+### Training Load Management
+
+**Acute Training Load (ATL):**
+Recent training stress (7-day average)
+
+**Chronic Training Load (CTL):**
+Fitness indicator (42-day average)
+
+**Training Stress Balance:**
+CTL - ATL = Form (high form for racing)
+
+## Sport-Specific Considerations
+
+### Running
+
+**Key Sessions:**
+- Long run: Build endurance, mental toughness
+- Tempo run: Threshold development
+- Intervals: VO2max, speed
+- Recovery runs: Between hard sessions
+
+**Injury Prevention:**
+- Gradual mileage increases (<10%/week)
+- Appropriate footwear
+- Strength training
+- Surface variety
+
+### Cycling
+
+**Key Sessions:**
+- Long ride: Aerobic base, fat adaptation
+- Sweet spot: Threshold-adjacent work
+- Over-unders: Threshold tolerance
+- Sprint work: Neuromuscular power
+
+**Power Meter Training:**
+Enables precise intensity control and performance tracking.
+
+### Swimming
+
+**Key Considerations:**
+- Technique critical (efficiency)
+- Drag reduction
+- Pool vs. open water differences
+- Breath control
+
+## Recovery Strategies
+
+### Sleep
+
+Most important recovery factor.
+- 7-9 hours minimum
+- Quality matters (deep sleep)
+- Consistent schedule
+
+### Nutrition
+
+**Post-Workout Window:**
+- Carbohydrates: Glycogen replenishment (1-1.2g/kg)
+- Protein: Muscle repair (20-40g)
+- Fluids: Rehydration
+
+**Daily Fueling:**
+- Periodize carbohydrate intake with training load
+- Adequate protein throughout day
+- Support training demands
+
+### Active Recovery
+
+**Purpose:**
+- Blood flow for nutrient delivery
+- Reduce muscle tension
+- Mental break from intensity
+
+**Methods:**
+- Easy spinning/jogging
+- Swimming
+- Walking
+- Gentle yoga
+
+## Monitoring and Testing
+
+### Performance Tests
+
+**Lab Tests:**
+- VO2max testing
+- Lactate profiling
+- Body composition
+
+**Field Tests:**
+- Time trials (5K, 20-minute FTP)
+- Ramp tests
+- Submaximal heart rate tests
+
+### Daily Monitoring
+
+**Indicators:**
+- Resting heart rate (morning)
+- Heart rate variability (HRV)
+- Sleep quality
+- Mood and motivation
+- Soreness levels
+
+## References
+
+- Seiler, S. "What is Best Practice for Training Intensity and Duration Distribution?"
+- Friel, J. "The Triathlete's Training Bible" (2016)
+- Daniels, J. "Daniels' Running Formula" (2013)
+- Coggan, A. "Training and Racing with a Power Meter" (2019)

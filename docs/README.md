@@ -8,12 +8,16 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 
 | Document | Description | Audience |
 |----------|-------------|----------|
+| [our-story.md](our-story.md) | How we build search that searches itself | All |
+| [why-transparent-ir.md](why-transparent-ir.md) | Why transparency beats black boxes | All |
 | [quickstart.md](quickstart.md) | 5-minute getting started guide | New users |
 | [architecture.md](architecture.md) | 4-layer hierarchical system design | All |
 | [algorithms.md](algorithms.md) | Core IR algorithms (PageRank, TF-IDF, Louvain) | Developers |
 | [query-guide.md](query-guide.md) | How to formulate effective queries | Users |
 | [cookbook.md](cookbook.md) | Common patterns and recipes | Users |
 | [patterns.md](patterns.md) | Advanced usage (code search, fingerprinting) | Advanced users |
+| [fluent-api.md](fluent-api.md) | FluentProcessor builder pattern API | Developers |
+| [deployment.md](deployment.md) | MCP server deployment and production tuning | DevOps |
 | [glossary.md](glossary.md) | Terminology definitions | All |
 
 ---
@@ -53,11 +57,19 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 | [quickstart.md](quickstart.md) | 5-minute introduction |
 | [glossary.md](glossary.md) | Key terminology definitions |
 
+### Philosophy & Story
+
+| Document | Purpose |
+|----------|---------|
+| [our-story.md](our-story.md) | How we develop by using the system on itself |
+| [why-transparent-ir.md](why-transparent-ir.md) | Why transparency matters over black-box solutions |
+
 ### Architecture & Algorithms
 
 | Document | Purpose |
 |----------|---------|
 | [architecture.md](architecture.md) | 4-layer system design (Tokens → Bigrams → Concepts → Documents) |
+| [projects-architecture.md](projects-architecture.md) | Projects pattern for optional features and dependencies |
 | [algorithms.md](algorithms.md) | PageRank, TF-IDF, Louvain clustering, co-occurrence |
 | [louvain_resolution_analysis.md](louvain_resolution_analysis.md) | Research on clustering resolution parameter |
 
@@ -68,6 +80,13 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 | [query-guide.md](query-guide.md) | Query formulation and search tips |
 | [cookbook.md](cookbook.md) | Common patterns and recipes |
 | [patterns.md](patterns.md) | Advanced patterns: code search, fingerprinting, intent queries |
+| [fluent-api.md](fluent-api.md) | FluentProcessor builder pattern API reference |
+
+### Deployment & Operations
+
+| Document | Purpose |
+|----------|---------|
+| [deployment.md](deployment.md) | MCP server deployment, Docker, production tuning |
 
 ### Development Process
 
@@ -77,6 +96,9 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 | [definition-of-done.md](definition-of-done.md) | Task completion checklist |
 | [dogfooding.md](dogfooding.md) | Using the system to test itself |
 | [dogfooding-checklist.md](dogfooding-checklist.md) | Systematic dog-fooding checklist |
+| [ml-training-best-practices.md](ml-training-best-practices.md) | ML model training, evaluation, and optimization |
+| [ml-precommit-suggestions.md](ml-precommit-suggestions.md) | ML-powered file suggestions for pre-commit hooks |
+| [ml-data-collection-knowledge-transfer.md](ml-data-collection-knowledge-transfer.md) | ML data collection system architecture and usage |
 
 ### AI Agent Resources
 
@@ -104,9 +126,9 @@ Welcome to the Cortical Text Processor documentation. This index provides naviga
 
 - **[CLAUDE.md](../CLAUDE.md)** - Main development guide (in repo root)
 - **[CONTRIBUTING.md](../CONTRIBUTING.md)** - How to contribute
-- **[TASK_LIST.md](../TASK_LIST.md)** - Active task backlog
+- **[merge-friendly-tasks.md](merge-friendly-tasks.md)** - Task management system (see tasks/ directory)
 - **[README.md](../README.md)** - Project overview
 
 ---
 
-*Last updated: 2025-12-14*
+*Last updated: 2025-12-16*

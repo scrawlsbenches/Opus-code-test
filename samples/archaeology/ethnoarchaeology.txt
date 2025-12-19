@@ -1,0 +1,45 @@
+Ethnoarchaeology: Living Societies and Archaeological Interpretation
+
+Overview
+
+Ethnoarchaeology studies living or historically documented societies to generate interpretive frameworks for understanding archaeological evidence. By observing how contemporary activities produce material residues, ethnoarchaeologists develop middle-range theory—the bridging arguments connecting static archaeological remains to dynamic past behaviors. This approach recognizes that archaeological interpretation inevitably depends on assumptions about how people behave, and that these assumptions should be developed systematically.
+
+The discipline emerged in the 1960s and 1970s as processual archaeology sought scientific methods for interpreting the past. Lewis Binford's studies among the Nunamiut of Alaska exemplified the approach, documenting hunting, butchering, and discard behaviors that generated bone distributions comparable to archaeological patterns. Ethnoarchaeology has since diversified, addressing technologies, settlement, exchange, symbolism, and social organization.
+
+Key Concepts
+
+Middle-range theory connects archaeological statics to behavioral dynamics. Archaeological deposits are static patterns—artifacts in sediments; past behaviors were dynamic processes—people making, using, and discarding things. Bridging between statics and dynamics requires understanding formation processes. Ethnoarchaeology provides empirically grounded bridging arguments.
+
+Formation processes, categorized by Michael Schiffer as cultural and natural, shape what enters the archaeological record and how it preserves. Cultural formation processes include manufacture, use, maintenance, recycling, and discard. Natural formation processes include decay, disturbance, and burial. Ethnoarchaeological observation documents these processes in action.
+
+Behavioral archaeology emphasizes that all behavior has material correlates and all materials have behavioral correlates. Understanding these correlations—how behavior produces things and contexts—enables reverse inference from things and contexts to behavior. Ethnoarchaeology empirically establishes such correlations.
+
+Uniformitarianism assumes that relationships between behavior and material residues observed today also held in the past. This assumption enables using present observations to interpret past evidence. Critics note that behaviors vary culturally and historically; defenders argue that physical formation processes and certain behavioral constraints remain constant.
+
+Research Approaches
+
+Participant observation immerses researchers in daily activities of communities. Extended residence enables documentation of seasonal activities, production sequences, and use-life of artifacts. Participation provides experiential understanding supplementing observation. Building rapport facilitates access to private and ritual activities.
+
+Actualistic studies focus on specific activities to document their material outcomes. Butchering and carcass processing, ceramic production, stone tool manufacture, and site abandonment have received extensive actualistic study. Controlled observation can isolate variables affecting archaeological residues.
+
+Quantitative documentation measures rates, frequencies, and spatial distributions. How many artifacts per person per year? What proportion survives in middens versus elsewhere? What spatial patterning results from activity organization? Quantified patterns enable statistical comparison with archaeological assemblages.
+
+Cross-cultural comparison identifies regularities and variations. Do hunting societies worldwide produce similar site structures? How does ceramic production organization relate to social complexity? Comparative analysis distinguishes universal patterns from culturally specific behaviors.
+
+Domains of Study
+
+Subsistence and settlement studies document how people provision themselves and move across landscapes. Forager mobility patterns, agricultural scheduling, and pastoral transhumance produce distinctive site distributions and contents. Understanding these relationships enables archaeological inference about past subsistence systems.
+
+Technology studies observe production sequences from raw material to finished product to discarded item. Ceramic manufacture, lithic reduction, metallurgy, and textile production have been documented ethnographically. Technological choices—not just functional outcomes—reflect cultural traditions and social relations.
+
+Discard and refuse studies examine where garbage goes. Primary refuse stays where generated; secondary refuse is removed to disposal areas. Discard rates, locations, and subsequent scavenging or reuse affect what archaeologists recover. Understanding refuse behavior is essential for interpreting site deposits.
+
+Architectural and spatial studies document how people organize living space. Hearth placement, activity areas, storage facilities, and sleeping arrangements pattern artifact distributions. Household archaeology draws heavily on ethnoarchaeological models of domestic space.
+
+Critical Considerations
+
+The colonial context of much ethnoarchaeological research requires reflexivity. Studying non-Western societies as analogues for the past risks perpetuating evolutionary assumptions and treating living people as relics. Ethical practice involves reciprocal relationships, collaborative research design, and benefit sharing.
+
+Analogy limitations constrain interpretation. No analogy is perfect; past behaviors may have no modern counterparts. Arguments by analogy require attention to relevance—which aspects of the analogue situation are pertinent and which may differ. Multiple lines of evidence and explicit criteria strengthen analogical inference.
+
+Historical contingency means that behaviors vary with specific cultural and historical circumstances. Universal generalizations about human behavior may be elusive. Ethnoarchaeology increasingly attends to variability and historical context rather than seeking timeless laws.

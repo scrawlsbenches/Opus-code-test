@@ -112,6 +112,7 @@ class QueryMixin:
         cache_key = f"{query_text}|{max_expansions}|{use_variants}|{use_code_concepts}"
 
         if cache_key in self._query_expansion_cache:
+            self._query_expansion_cache.move_to_end(cache_key)  # Mark as recently used
             self._metrics.record_count("query_cache_hits")
             return self._query_expansion_cache[cache_key].copy()
 
@@ -126,8 +127,7 @@ class QueryMixin:
         )
 
         if len(self._query_expansion_cache) >= self._query_cache_max_size:
-            oldest_key = next(iter(self._query_expansion_cache))
-            del self._query_expansion_cache[oldest_key]
+            self._query_expansion_cache.popitem(last=False)  # Remove LRU (first item)
 
         self._query_expansion_cache[cache_key] = result.copy()
         return result
@@ -158,8 +158,7 @@ class QueryMixin:
         self._query_cache_max_size = max_size
 
         while len(self._query_expansion_cache) > max_size:
-            oldest_key = next(iter(self._query_expansion_cache))
-            del self._query_expansion_cache[oldest_key]
+            self._query_expansion_cache.popitem(last=False)  # Remove LRU (first item)
 
     def parse_intent_query(self, query_text: str) -> Dict:
         """

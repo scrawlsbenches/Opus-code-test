@@ -1,0 +1,269 @@
+# Lean Manufacturing: Principles and Implementation
+
+## Introduction
+
+Lean manufacturing is a systematic approach to identifying and eliminating waste through continuous improvement, pursuing perfect value for customers with zero waste. Originating from the Toyota Production System (TPS), lean principles have transformed manufacturing worldwide and extended to service industries.
+
+## The Five Principles of Lean
+
+### 1. Define Value
+
+Value is defined solely from the customer's perspective—what they are willing to pay for.
+
+**Questions to Ask:**
+- What does the customer actually need?
+- What features and quality level are required?
+- What is the customer willing to pay?
+- What constitutes waste from customer viewpoint?
+
+### 2. Map the Value Stream
+
+Identify all activities required to design, order, and produce a product.
+
+**Value Stream Mapping (VSM):**
+1. Select product family
+2. Map current state (as-is)
+3. Identify value-added vs. non-value-added activities
+4. Design future state (to-be)
+5. Create implementation plan
+
+**Symbols and Metrics:**
+- Process boxes with cycle time, changeover time
+- Inventory triangles with quantities
+- Information flows (electronic, manual)
+- Lead time ladder
+
+### 3. Create Flow
+
+Make value-creating steps flow continuously without interruption.
+
+**Flow Enablers:**
+- Small lot sizes approaching one-piece flow
+- Cellular manufacturing
+- Cross-trained operators
+- Quick changeovers (SMED)
+- Level production (heijunka)
+
+**Signs of Poor Flow:**
+- Work-in-process inventory accumulation
+- Long queue times
+- Batching between operations
+- Expediting and firefighting
+
+### 4. Establish Pull
+
+Produce only what the customer needs, when they need it.
+
+**Pull vs. Push:**
+| Push System | Pull System |
+|-------------|-------------|
+| Forecast-driven | Demand-driven |
+| Schedules push work | Consumption signals pull |
+| High inventory | Low inventory |
+| Long lead times | Short lead times |
+
+**Kanban Implementation:**
+- Visual signals for replenishment
+- Calculate kanban quantity: K = (D × L × (1 + S)) / C
+  - D = Demand rate
+  - L = Lead time
+  - S = Safety factor
+  - C = Container quantity
+
+### 5. Pursue Perfection
+
+Continuously improve toward ideal state of creating perfect value with zero waste.
+
+**Kaizen (Continuous Improvement):**
+- Small, incremental improvements
+- Everyone's responsibility
+- Daily practice
+- Standard work as baseline
+
+## The Eight Wastes (DOWNTIME)
+
+### Defects
+Products or services not meeting specifications.
+- Rework and scrap costs
+- Customer dissatisfaction
+- **Countermeasure:** Poka-yoke (error-proofing)
+
+### Overproduction
+Making more than needed or before needed—the worst waste.
+- Consumes resources
+- Hides problems
+- Creates excess inventory
+- **Countermeasure:** Pull systems, takt time
+
+### Waiting
+Idle time when work, information, or materials are not available.
+- Operators waiting for machines
+- Machines waiting for operators
+- Waiting for approvals
+- **Countermeasure:** Flow, line balancing
+
+### Non-utilized Talent
+Underutilizing people's skills and knowledge.
+- Not involving workers in improvement
+- Ignoring suggestions
+- Limited job scope
+- **Countermeasure:** Cross-training, empowerment
+
+### Transportation
+Moving products or materials unnecessarily.
+- Fork truck trips
+- Conveyor systems
+- Inter-building transport
+- **Countermeasure:** Cellular layout, proximity
+
+### Inventory
+Excess raw materials, WIP, or finished goods.
+- Storage costs
+- Obsolescence risk
+- Hides quality problems
+- **Countermeasure:** Pull systems, flow
+
+### Motion
+Unnecessary movement by people.
+- Walking to get tools
+- Searching for materials
+- Awkward reaches
+- **Countermeasure:** 5S, ergonomic workstation design
+
+### Extra Processing
+Doing more work than required.
+- Over-engineering
+- Redundant inspections
+- Unnecessary approvals
+- **Countermeasure:** Value analysis, simplification
+
+## Key Lean Tools
+
+### 5S Workplace Organization
+
+**Sort (Seiri):** Remove unnecessary items
+**Set in Order (Seiton):** Organize remaining items
+**Shine (Seiso):** Clean and inspect
+**Standardize (Seiketsu):** Create standards
+**Sustain (Shitsuke):** Maintain discipline
+
+### SMED (Single-Minute Exchange of Die)
+
+Reduce changeover time to under 10 minutes.
+
+**Steps:**
+1. Document current changeover
+2. Separate internal (machine stopped) from external (while running)
+3. Convert internal to external
+4. Streamline remaining internal
+5. Streamline external
+
+**Techniques:**
+- Preset tooling
+- Quick-release fasteners
+- Intermediate jigs
+- Parallel operations
+
+### Standard Work
+
+Document best-known method for each operation.
+
+**Components:**
+- Takt time: Rate of customer demand
+- Work sequence: Step-by-step method
+- Standard WIP: Minimum inventory required
+
+**Benefits:**
+- Baseline for improvement
+- Training consistency
+- Abnormality detection
+- Knowledge preservation
+
+### Total Productive Maintenance (TPM)
+
+Maximize equipment effectiveness through:
+
+**Autonomous Maintenance:** Operators perform basic care
+**Planned Maintenance:** Scheduled preventive activities
+**Focused Improvement:** Attack chronic losses
+**Quality Maintenance:** Zero defects
+**Early Equipment Management:** Design for reliability
+
+**OEE (Overall Equipment Effectiveness):**
+OEE = Availability × Performance × Quality
+- World-class: 85%+
+- Average: 60%
+
+### Jidoka (Automation with Human Touch)
+
+Build quality in by stopping when problems occur.
+
+**Elements:**
+- Automatic stop on abnormality
+- Andon systems (visual alerts)
+- Problem-solving at source
+- Separating human work from machine work
+
+## Implementation Approach
+
+### Assessment
+
+- Current state mapping
+- Waste identification
+- Baseline metrics
+- Readiness evaluation
+
+### Strategy Development
+
+- Future state vision
+- Prioritized improvement areas
+- Resource allocation
+- Timeline and milestones
+
+### Pilot Projects
+
+- Select model area
+- Train team
+- Implement improvements
+- Measure results
+- Learn and adjust
+
+### Deployment
+
+- Roll out to other areas
+- Develop internal capabilities
+- Sustain and improve
+- Cultural transformation
+
+## Common Pitfalls
+
+**Tool Focus Without Principles:**
+Implementing 5S or kanban without understanding why.
+
+**Top-Down Only:**
+Lean requires everyone's involvement.
+
+**Lack of Persistence:**
+Improvements erode without sustained effort.
+
+**Ignoring People:**
+Lean is about developing people, not just processes.
+
+**Copying Without Adapting:**
+Each organization must develop its own approach.
+
+## Metrics
+
+**Lead Time:** Total time from order to delivery
+**Cycle Time:** Time to complete one unit
+**Takt Time:** Available time / Customer demand
+**First Pass Yield:** % good without rework
+**Inventory Turns:** COGS / Average inventory
+**Value-Added Ratio:** Value-added time / Total lead time
+
+## References
+
+- Womack, J.P. and Jones, D.T. "Lean Thinking" (2003)
+- Liker, J.K. "The Toyota Way" (2004)
+- Ohno, T. "Toyota Production System" (1988)
+- Rother, M. and Shook, J. "Learning to See" (1999)

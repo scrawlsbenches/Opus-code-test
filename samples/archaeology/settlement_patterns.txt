@@ -1,0 +1,47 @@
+Settlement Pattern Analysis: Sites across Space and Time
+
+Overview
+
+Settlement pattern analysis examines how archaeological sites distribute across landscapes to understand past societies' organization, economy, and adaptation. Rather than focusing on individual sites, this approach treats settlement as a regional phenomenon, asking how communities organized themselves spatially and how these patterns changed over time. Settlement studies reveal population dynamics, political integration, subsistence strategies, and social hierarchies.
+
+Gordon Willey's pioneering Virú Valley survey in Peru (1953) established settlement pattern study as a core archaeological method. Subsequent research developed theoretical frameworks linking settlement patterns to ecological adaptation, demographic processes, and political organization. Contemporary approaches integrate environmental reconstruction, spatial analysis, and multi-scalar investigation from households to regions.
+
+Key Concepts
+
+Site hierarchy refers to size and functional differences among contemporary sites. Simple societies may show relatively uniform site sizes; complex societies typically show size hierarchies reflecting administrative organization. Central place theory models settlement hierarchies as spatially optimal distributions for service provision. Archaeological application requires identifying contemporary site assemblages and functional differentiation.
+
+Settlement systems encompass the full range of sites occupied by a population. Base camps, extraction sites, seasonal camps, and specialized activity locations constitute systems within which people moved. Understanding systems requires identifying all site types, not just prominent habitation sites. Foragers and mobile pastoralists present different system patterns than sedentary farmers.
+
+Carrying capacity concepts from ecology estimate population sustainable in an environment given subsistence technology. Settlement density relative to calculated carrying capacity indicates intensification or underutilization. Such calculations depend on environmental reconstruction and ethnographic productivity estimates. Critiques note that carrying capacity is not fixed but varies with technology, organization, and social choice.
+
+Population estimates derive from site counts and sizes. Various methods translate site area or room counts into population figures. Assumptions about contemporaneity, occupation intensity, and household size affect estimates. Demographic models project population growth, decline, and movement. Population dynamics underlie changes in settlement patterns.
+
+Spatial organization reflects social principles. Nucleated settlements differ from dispersed homesteads; clustered patterns differ from regular spacing. Settlement orientation to cardinal directions, alignment on natural features, and internal organization express cultural values. Spatial analysis quantifies patterns and tests hypotheses about organizing principles.
+
+Analytical Methods
+
+Regional survey provides data for settlement pattern analysis. Systematic coverage of sample areas locates sites across landscapes. Recording site size, artifact density, and chronological indicators enables pattern analysis. Survey intensity, sampling strategy, and visibility conditions affect data quality and coverage.
+
+Chronological control enables identifying contemporary site assemblages. Radiocarbon dating, ceramic seriation, and other dating methods assign sites to periods. Fine chronological resolution improves pattern analysis; coarse resolution conflates patterns from different moments. Building chronological frameworks typically precedes settlement analysis.
+
+GIS-based spatial analysis examines site distributions statistically. Nearest neighbor analysis tests clustering versus regularity. Viewshed analysis examines visual connections. Cost-path modeling identifies efficient routes. Site catchment analysis maps resources accessible from sites. These methods quantify patterns qualitatively observed.
+
+Environmental correlation examines relationships between sites and environmental variables. Proximity to water, soil types, elevation, and slope aspect may predict site locations. Predictive modeling uses these correlations to identify high-probability areas for undiscovered sites. Such models also inform interpretation of settlement choices.
+
+Interpretive Frameworks
+
+Ecological approaches explain settlement as adaptation to environment. Optimal foraging models predict where hunters should locate; agricultural models relate settlement to arable land. Environmental constraints shape possible patterns. This perspective emphasizes practical considerations in settlement choice.
+
+Political models examine settlement in relation to power. Central places may represent administrative control; site hierarchies may reflect political integration. Fortified sites indicate conflict; vacant buffer zones suggest political boundaries. Changes in settlement patterns may mark political events—state formation, collapse, conquest.
+
+Social approaches consider settlement as expressing social relationships. Kin groups may cluster residentially; ethnic boundaries may appear spatially. Village organization reflects social structure. Settlement persistence indicates community identity; abandonment marks social rupture.
+
+Demographic models link settlement patterns to population processes. Growth fills available niches; decline contracts the occupied area. Migration produces distinctive patterns of expansion or replacement. Understanding population dynamics contextualizes settlement change.
+
+Applications
+
+Cultural ecology studies relate settlement to subsistence adaptation. Agricultural societies settle near arable land; pastoralists occupy rangelands; foragers target high-productivity patches. Changes in settlement patterns may track subsistence transitions or intensification.
+
+Political development manifests in settlement patterns. State formation typically correlates with settlement hierarchy and nucleation around centers. Imperial integration appears in standardized site distributions. Collapse often involves settlement dispersal and reduced hierarchy.
+
+Historical processes including colonization, migration, and abandonment leave settlement signatures. Colonial encounters produce distinctive patterns as populations interact. Large-scale population movements appear in settlement discontinuities. Settlement pattern evidence complements historical documentation.

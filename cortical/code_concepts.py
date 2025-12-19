@@ -39,6 +39,15 @@ CODE_CONCEPT_GROUPS: Dict[str, FrozenSet[str]] = {
         'access', 'authorize', 'verify', 'validate', 'identity'
     ]),
 
+    # Security operations and protection
+    'security': frozenset([
+        'encrypt', 'decrypt', 'cipher', 'hash', 'salt', 'digest',
+        'secure', 'secret', 'key', 'certificate', 'signature',
+        'vulnerability', 'exploit', 'injection', 'xss', 'csrf', 'sanitize',
+        'firewall', 'whitelist', 'blacklist', 'allowlist', 'denylist',
+        'audit', 'scan', 'detect', 'block', 'filter'
+    ]),
+
     # Error handling
     'error': frozenset([
         'error', 'exception', 'fail', 'failure', 'catch', 'handle',

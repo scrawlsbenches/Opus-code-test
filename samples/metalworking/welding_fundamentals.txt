@@ -1,0 +1,240 @@
+# Welding Fundamentals: Processes and Techniques
+
+## Introduction
+
+Welding joins metals by melting and fusing them together, often with added filler material. Understanding welding processes, metallurgy, and safety enables strong, reliable joints for fabrication, repair, and construction.
+
+## Arc Welding Processes
+
+### Shielded Metal Arc Welding (SMAW/Stick)
+
+**Process:**
+Electric arc between consumable electrode and workpiece. Flux coating provides shielding gas and slag.
+
+**Equipment:**
+- Welding machine (AC, DC, or AC/DC)
+- Electrode holder (stinger)
+- Ground clamp
+- Welding helmet
+- Electrodes
+
+**Electrode Classification (AWS):**
+E7018: E = Electrode, 70 = 70,000 psi tensile, 1 = all position, 8 = coating/current type
+
+**Common Electrodes:**
+| Type | Characteristics | Applications |
+|------|-----------------|--------------|
+| E6010 | Deep penetration, DC+ | Root passes, dirty metal |
+| E6011 | Similar to 6010, AC/DC | Root passes, general |
+| E6013 | Shallow penetration | Sheet metal, beginners |
+| E7014 | Iron powder, high deposition | Flat/horizontal fill |
+| E7018 | Low hydrogen, DC+ or AC | Structural, all positions |
+
+**Technique:**
+- Strike arc like match (scratch) or tap
+- Maintain arc length (equal to electrode diameter)
+- Travel speed: Watch puddle, not arc
+- Angle: 10-15° drag angle
+
+### Gas Metal Arc Welding (GMAW/MIG)
+
+**Process:**
+Continuous wire electrode fed through gun. Shielding gas from external source protects weld.
+
+**Equipment:**
+- Power source (CV)
+- Wire feeder
+- Welding gun
+- Shielding gas supply
+- Ground clamp
+
+**Shielding Gases:**
+- CO2: Deep penetration, economical, more spatter
+- 75/25 (Ar/CO2): General purpose steel
+- 100% Argon: Aluminum, stainless
+- Tri-mix: Specialty applications
+
+**Transfer Modes:**
+
+**Short Circuit:**
+- Low heat, low spatter
+- Thin materials
+- All positions
+- Lower deposition rate
+
+**Globular:**
+- Higher current than short circuit
+- Large droplets, gravity-driven
+- Flat/horizontal only
+- More spatter
+
+**Spray Transfer:**
+- High current, high deposition
+- Flat/horizontal only
+- Clean, minimal spatter
+- Requires higher argon mix
+
+**Pulsed Spray:**
+- Alternates high/low current
+- All positions
+- Controls heat input
+- Requires advanced power source
+
+### Gas Tungsten Arc Welding (GTAW/TIG)
+
+**Process:**
+Non-consumable tungsten electrode creates arc. Separate filler rod added manually. Inert gas shield.
+
+**Equipment:**
+- Power source (CC, AC/DC)
+- TIG torch with tungsten
+- Argon gas supply
+- Filler rods
+- Foot pedal (amperage control)
+
+**Tungsten Types:**
+- Pure (green): AC aluminum
+- 2% thoriated (red): DC steel, stainless
+- 2% ceriated (gray): AC/DC, all-purpose
+- 2% lanthanated (blue): Similar to ceriated
+
+**Technique:**
+- Hold torch like pencil, 15-20° angle
+- Dab filler into leading edge of puddle
+- Maintain short arc length (1/8" or less)
+- Gas post-flow protects cooling weld
+
+**Applications:**
+- Thin materials
+- Critical joints (aerospace, nuclear)
+- Aluminum, stainless, exotic alloys
+- Root passes for pipe
+
+### Flux-Cored Arc Welding (FCAW)
+
+**Process:**
+Tubular wire with flux core. Self-shielded (no external gas) or gas-shielded.
+
+**Applications:**
+- Outdoor welding (wind tolerance)
+- High deposition rates
+- Structural steel
+- Shipbuilding
+
+## Joint Design
+
+### Basic Joint Types
+
+**Butt Joint:**
+Two pieces aligned edge-to-edge.
+- Groove preparations: Square, V, U, J, double-V
+- Full penetration for strength
+
+**T-Joint:**
+One piece perpendicular to another.
+- Fillet welds typical
+- Watch for lamellar tearing in thick material
+
+**Lap Joint:**
+Overlapping pieces.
+- Fillet welds on one or both sides
+- Double lap for strength
+
+**Corner Joint:**
+Pieces meet at angle.
+- Open or closed corner
+- Fillet or groove welds
+
+**Edge Joint:**
+Edges of two pieces joined.
+- Limited strength
+- Typically thin material
+
+### Weld Types
+
+**Fillet Weld:**
+Triangular cross-section joining perpendicular surfaces.
+- Size specified by leg dimension
+- Throat determines strength
+
+**Groove Weld:**
+Fills prepared groove between pieces.
+- Complete Joint Penetration (CJP)
+- Partial Joint Penetration (PJP)
+
+## Weld Quality
+
+### Defects
+
+**Porosity:**
+Gas pockets trapped in weld.
+- Causes: Contamination, improper shielding, wet electrode
+- Prevention: Clean base metal, proper gas coverage
+
+**Undercut:**
+Groove melted into base metal at toe.
+- Causes: Excessive current, wrong angle, fast travel
+- Prevention: Adjust parameters, technique
+
+**Lack of Fusion:**
+Weld metal doesn't fuse to base metal.
+- Causes: Cold weld, wrong angle, contamination
+- Prevention: Increase heat, proper technique
+
+**Cracking:**
+Fractures in weld or HAZ.
+- Hot cracking: Solidification issues
+- Cold cracking: Hydrogen + stress
+- Prevention: Proper filler, preheat, post-weld treatment
+
+**Incomplete Penetration:**
+Root doesn't fully fuse.
+- Causes: Low heat, improper joint prep
+- Prevention: Proper gap, root face, technique
+
+### Inspection Methods
+
+**Visual:** First-line inspection for surface defects
+
+**Dye Penetrant:** Surface crack detection
+
+**Magnetic Particle:** Surface/near-surface in ferrous metals
+
+**Radiography (X-ray):** Internal defects
+
+**Ultrasonic:** Internal defects, thickness measurement
+
+## Safety
+
+### Personal Protective Equipment
+
+**Welding Helmet:**
+- Auto-darkening or fixed shade
+- Shade 10-13 for arc welding
+- Protection from UV/IR and spatter
+
+**Clothing:**
+- Flame-resistant jacket/shirt
+- Leather gloves
+- Leather boots (no sneakers)
+- Cap or hood for overhead work
+
+**Respiratory:**
+- Ventilation essential
+- Respirator for confined spaces or toxic metals
+
+### Hazards
+
+**Arc Flash:** Eye damage from UV
+**Burns:** Hot metal, spatter, UV
+**Fumes:** Metal oxide fumes, hexavalent chromium (stainless)
+**Fire:** Sparks, hot slag, cutting
+**Electric Shock:** Faulty equipment, wet conditions
+**Confined Space:** Oxygen depletion, fume buildup
+
+## References
+
+- AWS Welding Handbook, 9th Edition
+- Lincoln Electric "The Procedure Handbook of Arc Welding" (2000)
+- Miller Electric "TIG Handbook"
+- American Welding Society Certifications

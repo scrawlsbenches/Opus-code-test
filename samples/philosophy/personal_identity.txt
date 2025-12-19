@@ -1,0 +1,35 @@
+Personal Identity: The Persistence of Persons
+
+Overview
+
+The problem of personal identity asks what makes a person the same individual over time and what constitutes personal identity at a given moment. When you recall childhood memories, in what sense is the remembering adult the same person as the remembered child? The body has changed completely; beliefs, desires, and personality have transformed. Yet we naturally think of ourselves as persistent individuals with continuous histories. Explaining and justifying this assumption is the task of theories of personal identity.
+
+These questions bear on practical concerns: What justifies prudential concern for one's future self? When does a person die? What would resurrection or mind uploading require? Thought experiments involving teleportation, brain splitting, and gradual replacement probe our intuitions and test proposed criteria of identity. The philosophical debate reveals that personal identity is more puzzling than common sense suggests.
+
+Key Concepts
+
+The persistence question asks what makes a person at one time the same person as someone at another time. Various criteria have been proposed:
+
+The soul theory holds that personal identity consists in the persistence of an immaterial soul. The soul remains constant through bodily and psychological change. This view faces difficulties: How do we know souls persist? How do souls interact with bodies? In the absence of independent access to souls, how could we ever verify personal identity?
+
+Bodily continuity theories ground identity in the continuation of the same living body. I am identical to a future person if that person's body is the continuous biological successor of my current body. This view handles everyday cases but faces challenges from thought experiments: Would I survive gradual replacement of my body parts? Would teleportation that destroys and recreates my body preserve or destroy me?
+
+Psychological continuity theories, associated with John Locke and developed by contemporary philosophers like Derek Parfit, locate identity in connected psychological states. What matters is continuity of memory, personality, beliefs, desires, and intentions. I am identical to the person who remembers my experiences, continues my projects, and shares my psychological characteristics. This view explains why we care about psychological continuity and accommodates intuitions about survival through bodily change.
+
+Narrative identity theory emphasizes the role of self-conception and life story. We constitute ourselves as unified persons through narratives that integrate past, present, and future into coherent wholes. Identity is not a metaphysical given but an achievement of self-interpretation. This approach connects personal identity to questions of meaning and authenticity.
+
+The branching problem challenges all continuity theories. Suppose my brain is divided and each half is transplanted into a different body, with both resulting persons having psychological continuity with me. Both cannot be identical to me (they differ from each other), yet neither has a better claim than the other. Parfit concluded that identity is not what matters in survival—what matters is psychological continuity, which can divide. This reductionist view holds that persons are not separately existing entities over and above bodies and mental events.
+
+The four-dimensionalist view treats persons as extended through time just as objects extend through space. A person is a four-dimensional worm with temporal parts at different times. There is no deep question of what makes temporal parts belong to the same person—they simply are parts of a unified spatiotemporal entity. This view dissolves some puzzles but conflicts with ordinary thinking about persons.
+
+The no-self view, influenced by Buddhist philosophy and defended by Parfit, denies that there is a continuously existing self underlying experiences. There are experiences, thoughts, and bodily events, but no additional entity—the self—that has them. This deflationary view challenges deep assumptions about what we are while claiming to liberate us from excessive self-concern.
+
+Applications
+
+Advance directives and end-of-life decisions implicitly invoke personal identity. If I become severely demented, am I the same person who wrote an advance directive declining certain treatments? Psychological continuity views may imply that severe dementia creates a new person, complicating the authority of prior directives.
+
+Moral responsibility across time depends on personal identity. We hold people responsible for past actions because they are the same persons who acted. But if psychological continuity is weak—if character has transformed, memories faded—does responsibility diminish? Some argue that responsibility requires identity; others that it requires only appropriate connection.
+
+Resurrection and afterlife raise identity puzzles. If God recreates my body and psychological states after death, is the recreated being me or a copy? Materialist resurrection requires some form of bodily or psychological continuity; immaterialist views rely on soul identity. These theological questions engage the same philosophical problems.
+
+Personal identity over time shapes prudential reasoning. Why should I sacrifice now for my future self's benefit if that future self is a distinct person? If identity is what matters, I have strong reason to care about my future; if only continuity matters, the degree of care should track the degree of continuity. These implications bear on questions of saving, planning, and temporal discounting.

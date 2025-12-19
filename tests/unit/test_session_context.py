@@ -124,11 +124,12 @@ class TestSessionContextGenerator(unittest.TestCase):
 
         sessions = self.generator.get_recent_sessions(3)
 
-        # Should get 3 most recent (sorted by file modification time, so last created is first)
+        # Should get 3 most recent (sorted by mtime, with filename as tiebreaker)
         self.assertEqual(len(sessions), 3)
 
-        # Most recent file (test4) should be first since it was created last
-        self.assertEqual(sessions[0]['session_id'], 'test4')
+        # When files have same mtime (fast loop), reverse filename sort applies.
+        # Filenames include started_at timestamp, so test0 (newest started_at) comes first.
+        self.assertEqual(sessions[0]['session_id'], 'test0')
 
     def test_get_recent_sessions_with_corrupted_file(self):
         """Test handling of corrupted session files."""

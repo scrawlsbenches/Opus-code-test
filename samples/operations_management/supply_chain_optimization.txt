@@ -1,0 +1,283 @@
+# Supply Chain Optimization: Strategies and Techniques
+
+## Introduction
+
+Supply chain optimization seeks to maximize efficiency and minimize costs across the network of suppliers, manufacturers, distributors, and retailers that bring products from raw materials to end customers. Effective optimization balances cost, service level, and risk.
+
+## Supply Chain Structure
+
+### Network Design
+
+**Facility Location:**
+- Where to place plants, warehouses, distribution centers
+- Trade-offs: Transportation cost vs. facility cost vs. service time
+- Strategic decision with long-term impact
+
+**Optimization Approaches:**
+- Mixed-integer programming (MIP)
+- Gravity models (center of gravity)
+- Heuristics for large-scale problems
+
+**Factors Considered:**
+- Customer locations and demand
+- Supplier locations
+- Transportation infrastructure
+- Labor costs and availability
+- Tax incentives
+- Risk factors
+
+### Network Flow
+
+**Transportation Problem:**
+Minimize cost of shipping from sources to destinations.
+
+Minimize: Σᵢ Σⱼ cᵢⱼ xᵢⱼ
+Subject to:
+- Supply constraints: Σⱼ xᵢⱼ ≤ sᵢ (source capacity)
+- Demand constraints: Σᵢ xᵢⱼ ≥ dⱼ (destination demand)
+- xᵢⱼ ≥ 0
+
+**Transshipment:**
+Allow intermediate nodes for cross-docking and consolidation.
+
+**Multi-Echelon:**
+Multiple tiers (supplier → plant → warehouse → customer)
+
+## Inventory Optimization
+
+### Economic Order Quantity (EOQ)
+
+Classic formula balancing ordering and holding costs:
+
+EOQ = √(2DS/H)
+
+Where:
+- D = Annual demand
+- S = Ordering cost per order
+- H = Holding cost per unit per year
+
+### Safety Stock
+
+Buffer against demand and supply variability:
+
+SS = z × σ_D × √L
+
+Where:
+- z = Service level factor (e.g., 1.65 for 95%)
+- σ_D = Demand standard deviation
+- L = Lead time
+
+### Multi-Echelon Inventory Optimization (MEIO)
+
+Optimize inventory across entire network:
+- Base stock policies
+- Installation vs. echelon stock
+- Guaranteed service models
+
+**Benefits:**
+- Reduce total inventory while maintaining service
+- Identify optimal placement (push upstream for commodities)
+- Balance across locations
+
+### ABC Analysis
+
+Classify items by value/volume:
+- A items: 20% of SKUs, 80% of value (tight control)
+- B items: 30% of SKUs, 15% of value (moderate control)
+- C items: 50% of SKUs, 5% of value (simple rules)
+
+## Demand Planning
+
+### Forecasting Methods
+
+**Time Series:**
+- Moving average
+- Exponential smoothing
+- ARIMA models
+- Seasonal decomposition
+
+**Causal Models:**
+- Regression on drivers (price, promotion, economy)
+- Leading indicators
+
+**Machine Learning:**
+- Gradient boosting (XGBoost, LightGBM)
+- Neural networks for complex patterns
+- Ensemble methods
+
+### Forecast Error Metrics
+
+**MAPE:** Mean Absolute Percentage Error
+**WMAPE:** Weighted MAPE (volume-weighted)
+**Bias:** Systematic over/under forecasting
+**Forecast Value Added:** Improvement over naive
+
+### Demand Sensing
+
+Near-term forecast adjustment using:
+- Point-of-sale data
+- Customer orders
+- Market signals
+- Social media sentiment
+
+## Production Planning
+
+### Aggregate Planning
+
+Balance demand, capacity, and inventory over medium term (3-18 months):
+- Workforce levels
+- Production rates
+- Inventory targets
+- Subcontracting
+
+**Strategies:**
+- Chase: Vary production to match demand
+- Level: Constant production, inventory absorbs variation
+- Hybrid: Combination approach
+
+### Master Production Schedule (MPS)
+
+Detailed plan of what to produce:
+- Time-phased quantities by SKU
+- Available-to-promise (ATP) calculations
+- Rough-cut capacity planning
+
+### Material Requirements Planning (MRP)
+
+Explode BOM to determine component needs:
+1. Gross requirements from MPS
+2. Net requirements (subtract inventory, scheduled receipts)
+3. Planned order releases (offset by lead time)
+4. Explosion to next BOM level
+
+## Transportation Optimization
+
+### Vehicle Routing Problem (VRP)
+
+Find optimal routes for fleet serving customers.
+
+**Variants:**
+- Capacitated VRP: Vehicle capacity limits
+- VRP with Time Windows: Delivery appointments
+- Multi-Depot VRP: Multiple starting points
+- Dynamic VRP: Real-time adjustments
+
+**Solution Methods:**
+- Exact: Branch and bound (small instances)
+- Heuristics: Savings algorithm, sweep, insertion
+- Metaheuristics: Genetic algorithms, simulated annealing, tabu search
+
+### Mode Selection
+
+| Mode | Cost | Speed | Capacity | Best For |
+|------|------|-------|----------|----------|
+| Truck | Medium | Fast | Flexible | Regional, LTL |
+| Rail | Low | Slow | High | Bulk, long-haul |
+| Air | High | Fastest | Limited | Urgent, high-value |
+| Ocean | Lowest | Slowest | Highest | International bulk |
+
+### Load Optimization
+
+**Consolidation:**
+Combine shipments to fill vehicles
+
+**Cube Utilization:**
+Optimize packing to use space efficiently
+
+**Continuous Moves:**
+Chain multiple pickups/deliveries to reduce empty miles
+
+## Technology Enablers
+
+### Planning Systems
+
+**APS (Advanced Planning Systems):**
+- Demand planning
+- Supply planning
+- Production scheduling
+- Transportation planning
+
+**Vendors:** SAP APO/IBP, Oracle ASCP, Blue Yonder, Kinaxis
+
+### Visibility Platforms
+
+- Track shipments across modes and carriers
+- Exception alerting
+- Estimated arrival updates
+
+### Analytics and AI
+
+- Predictive maintenance
+- Dynamic pricing
+- Demand shaping
+- Autonomous planning
+
+## Key Performance Indicators
+
+### Cost Metrics
+- Total supply chain cost as % of revenue
+- Transportation cost per unit
+- Warehouse cost per unit handled
+- Inventory carrying cost
+
+### Service Metrics
+- Perfect order rate
+- On-time delivery
+- Fill rate
+- Order cycle time
+
+### Efficiency Metrics
+- Inventory turns
+- Cash-to-cash cycle time
+- Asset utilization
+- Forecast accuracy
+
+## Risk Management
+
+### Risk Categories
+
+**Supply Risk:**
+- Supplier failure
+- Quality problems
+- Capacity constraints
+
+**Demand Risk:**
+- Forecast error
+- Customer bankruptcy
+- Market shifts
+
+**Environmental Risk:**
+- Natural disasters
+- Political instability
+- Pandemics
+
+### Mitigation Strategies
+
+- Multi-sourcing
+- Safety stock positioning
+- Geographic diversification
+- Business continuity planning
+- Supply chain insurance
+
+## Sustainability
+
+### Green Supply Chain
+
+- Carbon footprint measurement
+- Route optimization for emissions
+- Modal shift (truck to rail)
+- Packaging reduction
+
+### Circular Economy
+
+- Reverse logistics
+- Product take-back
+- Recycling and remanufacturing
+- Design for disassembly
+
+## References
+
+- Chopra, S. and Meindl, P. "Supply Chain Management" (2018)
+- Simchi-Levi, D. et al. "Designing and Managing the Supply Chain" (2008)
+- Silver, E.A. et al. "Inventory and Production Management" (2017)
+- APICS CPIM and CSCP Body of Knowledge

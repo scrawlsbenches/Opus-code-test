@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "session_id": "d9f2",
+  "started_at": "2025-12-17T20:06:42.010789",
+  "saved_at": "2025-12-18T21:45:00.000000",
+  "tasks": [
+    {
+      "id": "T-20251217-200642-d9f2-001",
+      "title": "Complete corpus balancing for MoE training - generate ~2,500 documents across 80+ domains",
+      "status": "in_progress",
+      "priority": "high",
+      "category": "arch",
+      "description": "## Context\nBuilding a balanced corpus capable of training ~100 specialized micro-models for a Mixture of Experts (MoE) system.\n\n## Current State (as of 2025-12-18)\n- Total samples: 301 documents\n- Domains covered: 101/101\n- Balance score: 0.357 (target >0.7)\n- Gini coefficient: 0.643 (lower is better)\n- Gap: ~2,342 documents needed to reach target\n\n## Progress (2025-12-18)\n\n### Phase 1: Document Creation (44 docs across 17 domains)\n**Critical Gap Domains (16 domains that had 0 docs):**\n- chemical_engineering: 3 docs (distillation, kinetics, heat exchangers)\n- industrial_design: 3 docs (design thinking, ergonomics, materials)\n- biomedical_engineering: 3 docs (imaging, prosthetics, biomaterials)\n- computer_vision: 3 docs (segmentation, detection, 3D reconstruction)\n- expert_systems: 2 docs (rule-based systems, ontologies)\n- operations_management: 3 docs (supply chain, lean, quality)\n- religious_studies: 2 docs (world religions, philosophy of religion)\n- art_history: 2 docs (Renaissance, Modern art)\n- photography: 2 docs (exposure, composition)\n- woodworking: 2 docs (joinery, hand tools)\n- metalworking: 2 docs (welding, machining)\n- plumbing_electrical: 2 docs (plumbing systems, electrical wiring)\n- team_sports: 2 docs (basketball, soccer)\n- outdoor_recreation: 2 docs (hiking/backpacking, rock climbing)\n- fitness_training: 2 docs (strength training, endurance)\n- extreme_sports: 2 docs (skydiving, mountain biking)\n\n**New Domain Added:**\n- hvac_engineering: 5 docs (heat pumps, chillers, residential HVAC, business operations, installation)\n\n### Phase 2: Taxonomy Improvements\n- Added hvac_engineering domain with HVAC-specific keywords\n- Expanded extreme_sports keywords (skydiving, mountain biking, rock climbing)\n- Expanded chemical_engineering keywords (heat exchanger, reaction kinetics)\n- Expanded biomedical_engineering keywords (tissue engineering, medical imaging)\n- Expanded photography keywords (rule of thirds, depth of field)\n\n## Key Files\n- docs/corpus-balancing-plan.md - Full strategy document\n- scripts/analyze_corpus_balance.py - Balance analyzer (updated with improved taxonomy)\n- scripts/generate_sample_docs.py - Template generator\n\n## Next Steps\n1. Continue adding documents to critical gap domains (60+ domains with <5 docs)\n2. Target high-value domains: pharmacology, quantum_computing, embedded_systems, ai_ethics\n3. Add more documents to existing domains to reach 25+ per domain\n4. Re-index corpus periodically to verify PageRank improvement\n\n## Success Criteria\n- Balance score > 0.7\n- 80+ domains with 25+ docs each\n- PageRank top 20 shows domain terms, not code artifacts\n- Concept clusters align with knowledge domains",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-17T20:06:42.011156",
+      "updated_at": "2025-12-18T21:45:00.000000",
+      "completed_at": null,
+      "context": {
+        "documents_added": 44,
+        "domains_addressed": 17,
+        "taxonomy_domains_added": 1,
+        "taxonomy_improvements": 5,
+        "commits": ["c9ddcce", "2beb698"]
+      },
+      "retrospective": null
+    }
+  ]
+}

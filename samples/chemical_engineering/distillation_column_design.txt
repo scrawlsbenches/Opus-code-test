@@ -1,0 +1,110 @@
+# Distillation Column Design Principles
+
+## Overview
+
+Distillation is a fundamental separation process in chemical engineering that exploits differences in volatility between components of a liquid mixture. The design of distillation columns requires careful consideration of thermodynamics, mass transfer, and hydraulics to achieve efficient separation while minimizing energy consumption.
+
+## Key Design Parameters
+
+### Vapor-Liquid Equilibrium (VLE)
+
+The foundation of distillation design lies in understanding VLE behavior. The relative volatility (α) between components determines separation feasibility:
+
+α = (y_A/x_A) / (y_B/x_B)
+
+Where y represents vapor mole fraction and x represents liquid mole fraction. Systems with α close to 1.0 require more theoretical stages and higher reflux ratios.
+
+### McCabe-Thiele Method
+
+This graphical technique remains essential for preliminary design:
+
+1. Plot the equilibrium curve from VLE data
+2. Draw operating lines for rectifying and stripping sections
+3. Step off theoretical stages between operating lines and equilibrium curve
+4. Determine feed stage location from q-line intersection
+
+The minimum reflux ratio (R_min) occurs when operating lines intersect the equilibrium curve at the feed composition pinch point.
+
+### Column Internals
+
+**Tray Columns:**
+- Sieve trays: Simple, low cost, 50-80% efficiency
+- Valve trays: Better turndown ratio, 70-85% efficiency
+- Bubble cap trays: High turndown, expensive, 65-80% efficiency
+
+**Packed Columns:**
+- Random packing (Raschig rings, Pall rings, Intalox saddles)
+- Structured packing (Mellapak, Flexipac): Higher efficiency, lower pressure drop
+- HETP (Height Equivalent to Theoretical Plate) typically 0.3-0.6 m
+
+### Hydraulic Considerations
+
+**Tray columns must avoid:**
+- Flooding: Vapor velocity exceeds capacity, liquid entrainment increases
+- Weeping: Low vapor velocity, liquid falls through tray holes
+- Dumping: Severe weeping causing complete liquid bypass
+
+The flooding correlation by Fair (1961) remains widely used:
+
+C_sb = 0.0105 + 8.127×10^(-4) × σ^0.125 × (ρ_L - ρ_V)^0.5 / ρ_V^0.5
+
+### Energy Integration
+
+Distillation is energy-intensive, typically consuming 40-60% of plant energy. Modern designs incorporate:
+
+- Heat integration with process streams
+- Divided wall columns (DWC) for multicomponent separations
+- Heat pump assisted distillation
+- Vapor recompression schemes
+
+## Design Procedure
+
+1. **Define separation requirements:** Feed composition, product purities, recovery rates
+2. **Select operating pressure:** Balance between temperature and relative volatility
+3. **Determine minimum stages:** Fenske equation at total reflux
+4. **Calculate minimum reflux:** Underwood equations or graphical method
+5. **Specify actual reflux:** Typically 1.1-1.5 × R_min
+6. **Determine actual stages:** Gilliland correlation
+7. **Size column diameter:** Based on vapor handling capacity
+8. **Design internals:** Tray layout or packing selection
+9. **Perform detailed simulation:** Rigorous modeling with ASPEN, HYSYS, or similar
+
+## Common Challenges
+
+### Azeotropes
+Mixtures forming azeotropes cannot be separated by simple distillation. Solutions include:
+- Pressure-swing distillation
+- Extractive distillation with entrainer
+- Azeotropic distillation
+
+### High Purity Separations
+Products requiring >99.9% purity face diminishing returns. Consider:
+- Additional columns in series
+- Hybrid separation (distillation + adsorption)
+- Reactive distillation where applicable
+
+### Thermal Sensitivity
+Heat-sensitive materials require:
+- Vacuum operation to reduce temperatures
+- Short residence time designs
+- Falling film or wiped film evaporators
+
+## Economic Considerations
+
+Capital costs scale approximately with:
+- Column diameter^1.7 (shell and internals)
+- Number of stages (height)
+- Material of construction (carbon steel baseline, 2-5× for alloys)
+
+Operating costs dominated by:
+- Reboiler steam consumption (60-80% of utility cost)
+- Condenser cooling water
+- Pumping and instrumentation
+
+The economic optimum typically occurs at 1.2-1.3 × R_min, balancing capital (stages) against operating (energy) costs.
+
+## References
+
+- Kister, H.Z. "Distillation Design" (1992)
+- Seader, J.D. and Henley, E.J. "Separation Process Principles" (2006)
+- Perry's Chemical Engineers' Handbook, 9th Edition

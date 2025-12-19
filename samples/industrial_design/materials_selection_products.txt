@@ -1,0 +1,242 @@
+# Materials Selection in Product Design
+
+## Introduction
+
+Material selection is a critical decision in product design, affecting performance, cost, manufacturability, sustainability, and user experience. Systematic selection processes balance technical requirements with economic and environmental constraints.
+
+## Selection Methodology
+
+### Ashby's Method
+
+Professor Michael Ashby developed a systematic approach using material property charts and performance indices.
+
+**Steps:**
+1. **Translation:** Convert design requirements to material properties
+2. **Screening:** Eliminate materials that cannot meet constraints
+3. **Ranking:** Use performance indices to compare candidates
+4. **Documentation:** Research top candidates in depth
+
+### Performance Indices
+
+Performance indices combine properties to optimize for specific loading scenarios:
+
+**Stiffness-Limited Design (beam, minimum mass):**
+M = E^(1/2) / ρ
+
+**Strength-Limited Design (beam, minimum mass):**
+M = σ_y^(2/3) / ρ
+
+**Thermal Conductivity (heat sink):**
+M = k / ρ
+
+Higher index values indicate better performance for that application.
+
+## Major Material Classes
+
+### Metals
+
+**Steels:**
+- Carbon steel: Strong, cheap, corrosion-prone
+- Stainless steel: Corrosion resistant, higher cost
+- Tool steel: Hard, wear-resistant
+
+**Aluminum Alloys:**
+- Low density (2.7 g/cm³)
+- Good corrosion resistance
+- Easy to machine and form
+- 1000 series: Pure, electrical conductivity
+- 6000 series: General purpose, good formability
+- 7000 series: High strength, aerospace
+
+**Other Metals:**
+- Titanium: High strength-to-weight, expensive
+- Copper: Electrical/thermal conductivity
+- Magnesium: Lightest structural metal
+- Zinc: Die casting, corrosion protection
+
+### Polymers
+
+**Thermoplastics (recyclable, remeltable):**
+- ABS: Impact resistant, easy to process
+- Polycarbonate: Transparent, tough, heat resistant
+- Polypropylene: Chemical resistant, low cost
+- Nylon: Strong, wear resistant, absorbs moisture
+- PEEK: High performance, expensive
+
+**Thermosets (cross-linked, not remeltable):**
+- Epoxy: Strong adhesives and composites
+- Phenolic: Heat resistant, electrical insulators
+- Polyurethane: Flexible to rigid foams
+
+**Elastomers:**
+- Natural rubber: Resilient, fatigue resistant
+- Silicone: Temperature stable, flexible
+- EPDM: Weather and ozone resistant
+
+### Ceramics and Glasses
+
+**Engineering Ceramics:**
+- Alumina: Hard, wear resistant, electrical insulator
+- Zirconia: Tough, thermal barrier
+- Silicon carbide: Extreme hardness, abrasives
+- Silicon nitride: High-temperature structural
+
+**Glasses:**
+- Soda-lime: Windows, containers
+- Borosilicate: Thermal shock resistant (Pyrex)
+- Tempered: Safety glass, high strength
+
+### Composites
+
+**Fiber-Reinforced:**
+- Glass fiber (GFRP): Low cost, moderate strength
+- Carbon fiber (CFRP): High stiffness-to-weight, expensive
+- Aramid (Kevlar): Toughness, ballistic protection
+
+**Matrix Systems:**
+- Thermoset (epoxy, polyester)
+- Thermoplastic (PEEK, nylon)
+- Metal matrix (aluminum + ceramic particles)
+
+## Property Considerations
+
+### Mechanical Properties
+
+| Property | Definition | Units |
+|----------|------------|-------|
+| Young's modulus (E) | Stiffness | GPa |
+| Yield strength (σ_y) | Onset of permanent deformation | MPa |
+| Ultimate strength (σ_u) | Maximum stress before failure | MPa |
+| Hardness | Resistance to indentation | HV, HRC |
+| Fatigue strength | Cyclic loading endurance | MPa |
+| Fracture toughness | Crack resistance | MPa√m |
+
+### Physical Properties
+
+- Density (ρ): Mass per volume
+- Thermal conductivity (k): Heat transfer rate
+- Thermal expansion (α): Dimensional change with temperature
+- Electrical conductivity: Current-carrying capacity
+- Optical properties: Transparency, reflectivity
+
+### Processability
+
+Different materials suit different manufacturing methods:
+
+| Process | Best Materials |
+|---------|---------------|
+| Injection molding | Thermoplastics |
+| Die casting | Aluminum, zinc, magnesium |
+| Sheet metal forming | Steel, aluminum |
+| Machining | Metals, engineering plastics |
+| 3D printing | Varies by technology |
+| Composite layup | CFRP, GFRP |
+
+## Cost Analysis
+
+### Material Cost Components
+
+1. Raw material price ($/kg)
+2. Processing cost (forming, joining, finishing)
+3. Tooling amortization
+4. Scrap and waste
+5. Quality assurance
+
+### Life-Cycle Costs
+
+- Acquisition cost
+- Operating cost (energy, maintenance)
+- End-of-life cost (disposal, recycling)
+
+High-performance materials with higher acquisition cost may have lower total cost due to durability or weight savings.
+
+## Sustainability Considerations
+
+### Environmental Impact Metrics
+
+- Embodied energy (MJ/kg)
+- Carbon footprint (kg CO₂/kg)
+- Water consumption
+- Toxic emissions
+- Recyclability
+
+### Design for Sustainability
+
+1. Minimize material use (lightweighting)
+2. Select low-impact materials
+3. Design for disassembly
+4. Use recycled content
+5. Enable recycling at end-of-life
+6. Extend product life (durability, repairability)
+
+### Material Substitution Trends
+
+- Bio-based plastics replacing petroleum-based
+- Recycled metals reducing virgin ore extraction
+- Natural fiber composites replacing synthetic
+- Lightweight materials improving vehicle efficiency
+
+## Surface Treatments and Coatings
+
+**Corrosion Protection:**
+- Anodizing (aluminum)
+- Galvanizing (steel)
+- Powder coating
+- Plating (chrome, nickel, zinc)
+
+**Wear Resistance:**
+- Hard chrome plating
+- Thermal spray coatings
+- Case hardening (carburizing, nitriding)
+
+**Aesthetics:**
+- Paint systems
+- Decorative plating
+- Anodized colors
+- In-mold decoration
+
+## Decision Tools
+
+### Material Property Databases
+
+- CES EduPack (Granta)
+- MatWeb
+- Matweb
+- ASM Handbooks
+
+### Selection Software
+
+- Granta Selector
+- Total Materia
+- Material Connexion (physical samples)
+
+### Expert Resources
+
+- Material suppliers' technical support
+- Industry associations (steel, aluminum, plastics)
+- Research institutions
+
+## Case Study: Consumer Electronics Enclosure
+
+**Requirements:**
+- Lightweight, portable
+- EMI shielding
+- Impact resistance
+- Premium appearance
+- High-volume production
+
+**Candidates:**
+1. Aluminum (die cast or machined)
+2. Magnesium alloy
+3. PC/ABS with conductive coating
+4. Glass-filled nylon
+
+**Selection Rationale:**
+Magnesium offers best weight savings but higher cost. PC/ABS with metallic coating balances cost, appearance, and performance for high-volume consumer products. Aluminum machined bodies reserved for premium segments.
+
+## References
+
+- Ashby, M.F. "Materials Selection in Mechanical Design" (2017)
+- Ashby, M.F. and Johnson, K. "Materials and Design" (2014)
+- Callister, W.D. "Materials Science and Engineering" (2018)
+- CES EduPack Teaching Resources

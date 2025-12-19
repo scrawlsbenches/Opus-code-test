@@ -7,6 +7,8 @@ allowed-tools: Read, Bash, Write
 
 This skill enables **merge-friendly task management** for parallel agent workflows. It uses timestamp+session IDs that can't conflict when multiple agents work simultaneously.
 
+> **IMPORTANT:** The `tasks/` directory with merge-friendly JSON is now the **only task management system**. The legacy `TASK_LIST.md` and `TASK_ARCHIVE.md` have been removed. Use this skill or `scripts/new_task.py` for all task creation and management.
+
 ## Key Capabilities
 
 - **Conflict-free task creation**: Each agent writes to its own session file
@@ -92,18 +94,31 @@ python scripts/consolidate_tasks.py --update --archive
 }
 ```
 
-## Legacy TASK_LIST.md (Deprecated)
+## Legacy Tasks (Migrated)
 
-**The `tasks/` directory is now the primary task system.** `TASK_LIST.md` is kept for historical reference only.
+The legacy `TASK_LIST.md` and `TASK_ARCHIVE.md` files have been removed. All historical tasks were migrated to `tasks/legacy_migration.json`.
 
 - **Migrated tasks**: `LEGACY-001` through `LEGACY-238` in `tasks/legacy_migration.json`
 - **New tasks**: Use `T-YYYYMMDD-HHMMSS-XXXX` format
-- **Do NOT add new tasks to TASK_LIST.md** - use this skill or `scripts/new_task.py` instead
 
 To view legacy task history:
 ```bash
 python3 -c "import json; [print(f\"{t['id']}: {t['title']}\") for t in json.load(open('tasks/legacy_migration.json'))['tasks'][:20]]"
 ```
+
+## Integration with Search
+
+Task files in `tasks/` are **automatically indexed** by the corpus-indexer skill. This means:
+- Task titles and descriptions are searchable via `search_codebase.py`
+- Task context (file references) are included in semantic search
+- Task history is preserved and discoverable
+
+To keep search index up-to-date after creating tasks:
+```bash
+python scripts/index_codebase.py --incremental
+```
+
+See the `corpus-indexer` skill for more details.
 
 ## Tips
 
@@ -111,6 +126,7 @@ python3 -c "import json; [print(f\"{t['id']}: {t['title']}\") for t in json.load
 2. **Save before commit** - persist tasks to disk
 3. **Consolidate weekly** - merge sessions, resolve duplicates
 4. **Use context field** - add file/method references for quick navigation
+5. **Index after task creation** - keeps task directory searchable
 
 ## Security Model
 

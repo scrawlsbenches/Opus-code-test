@@ -13,7 +13,7 @@ each extracting progressively more abstract features:
 """
 
 from enum import IntEnum
-from typing import Dict, Optional, Iterator
+from typing import Dict, Optional, Iterator, Any
 
 from .minicolumn import Minicolumn
 
@@ -267,10 +267,10 @@ class HierarchicalLayer:
         """Check if content exists in this layer."""
         return content in self.minicolumns
     
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         """
         Convert layer to dictionary for serialization.
-        
+
         Returns:
             Dictionary representation of this layer
         """

@@ -1,0 +1,303 @@
+# Strength Training Principles: Science-Based Programming
+
+## Introduction
+
+Strength training systematically applies resistance to stimulate muscular adaptations. Understanding fundamental principles enables effective program design for various goals—from general fitness to competitive athletics. Evidence-based approaches maximize results while minimizing injury risk.
+
+## Foundational Principles
+
+### Progressive Overload
+
+The cornerstone of strength development: Gradually increase training demands to drive continued adaptation.
+
+**Methods:**
+- Increase weight (load)
+- Add repetitions
+- Add sets (volume)
+- Decrease rest periods
+- Improve technique (increase range of motion)
+
+**Application:**
+Small, consistent increases over time. 2.5-5 lb increases for upper body, 5-10 lb for lower body movements.
+
+### Specificity (SAID Principle)
+
+Specific Adaptation to Imposed Demands: Training adaptations are specific to the stimulus provided.
+
+**Implications:**
+- Train movements you want to improve
+- Use appropriate rep ranges for goals
+- Consider sport-specific needs
+- Strength is partially skill-based
+
+### Individual Differences
+
+Genetic potential, training history, age, and recovery capacity vary between individuals.
+
+**Considerations:**
+- Assess starting point honestly
+- Adjust volume based on recovery
+- Some respond better to high frequency, others high volume
+- Track and iterate
+
+### Reversibility
+
+"Use it or lose it." Adaptations diminish when training ceases.
+
+**Maintenance:**
+- Reduced volume can maintain strength
+- Frequency and intensity more important than volume
+- Detraining occurs faster than training
+
+## Programming Variables
+
+### Intensity (Load)
+
+Percentage of one-rep maximum (1RM) or Rating of Perceived Exertion (RPE).
+
+**Rep Range Relationships:**
+| %1RM | Approximate Reps |
+|------|------------------|
+| 100% | 1 |
+| 95% | 2 |
+| 90% | 4 |
+| 85% | 6 |
+| 80% | 8 |
+| 75% | 10 |
+| 70% | 12 |
+| 65% | 15 |
+
+**RPE Scale (0-10):**
+- 10: Maximum effort, no reps left
+- 9: Could do 1 more
+- 8: Could do 2 more
+- 7: Could do 3 more
+
+### Volume
+
+Total work performed: Sets × Reps × Weight
+
+**Recommendations:**
+- Beginners: 10-15 sets per muscle group per week
+- Intermediate: 15-20 sets per muscle group per week
+- Advanced: 20-30+ sets per muscle group per week
+
+**Minimum Effective Volume:**
+~6-8 sets per muscle group weekly for maintenance.
+
+**Maximum Recoverable Volume:**
+Individual ceiling beyond which recovery suffers. Watch for:
+- Performance decline
+- Excessive soreness
+- Sleep disruption
+- Mood changes
+
+### Frequency
+
+Training sessions per muscle group per week.
+
+**Research Suggests:**
+- 2× weekly minimum for growth
+- Higher frequency can work with appropriate volume distribution
+- Individual variation significant
+
+**Considerations:**
+- Recovery between sessions
+- Schedule constraints
+- Total volume distribution
+
+### Exercise Selection
+
+**Compound Movements:**
+Multi-joint exercises recruiting large muscle mass.
+- Squat variations
+- Deadlift variations
+- Bench press/overhead press
+- Rows and pull-ups
+
+**Isolation Movements:**
+Single-joint exercises targeting specific muscles.
+- Bicep curls
+- Tricep extensions
+- Lateral raises
+- Leg curls
+
+**Movement Patterns:**
+- Squat: Quad-dominant vertical push
+- Hinge: Hip-dominant, posterior chain
+- Push: Horizontal and vertical
+- Pull: Horizontal and vertical
+- Carry: Loaded locomotion
+- Core: Anti-extension, anti-rotation
+
+## Periodization
+
+### Linear Periodization
+
+Progressive increase in intensity, decrease in volume over time.
+
+**Example (12-week):**
+- Weeks 1-4: 4×10 @ 70%
+- Weeks 5-8: 4×6 @ 80%
+- Weeks 9-12: 5×3 @ 90%
+
+**Best For:**
+Beginners, peaking for competition
+
+### Undulating Periodization
+
+Vary intensity and volume within week.
+
+**Daily Undulating Example:**
+- Monday: 5×5 @ 80% (strength)
+- Wednesday: 3×10 @ 70% (hypertrophy)
+- Friday: 6×3 @ 85% (power)
+
+**Best For:**
+Intermediate/advanced, simultaneous goals
+
+### Block Periodization
+
+Concentrated periods focusing on specific qualities.
+
+**Phases:**
+- Accumulation: High volume, lower intensity (hypertrophy)
+- Transmutation: Moderate volume, higher intensity (strength)
+- Realization: Low volume, peak intensity (peaking)
+
+## Program Templates
+
+### Full Body (3×/week)
+
+**Workout A:**
+- Squat: 3×5
+- Bench Press: 3×5
+- Barbell Row: 3×5
+- Accessories: 2-3 exercises
+
+**Workout B:**
+- Deadlift: 3×5
+- Overhead Press: 3×5
+- Pull-ups: 3×8-12
+- Accessories: 2-3 exercises
+
+### Upper/Lower (4×/week)
+
+**Upper A (horizontal focus):**
+- Bench Press: 4×6
+- Barbell Row: 4×6
+- Overhead Press: 3×8
+- Pull-ups: 3×8
+- Accessories
+
+**Lower A (quad focus):**
+- Squat: 4×6
+- Romanian Deadlift: 3×8
+- Leg Press: 3×10
+- Leg Curl: 3×12
+- Accessories
+
+### Push/Pull/Legs (6×/week)
+
+High frequency, distributed volume. Each muscle hit twice weekly.
+
+## Recovery Factors
+
+### Sleep
+
+**Impact:**
+- Growth hormone release
+- Protein synthesis
+- Cognitive function
+- Performance
+
+**Recommendations:**
+- 7-9 hours per night
+- Consistent schedule
+- Dark, cool environment
+
+### Nutrition
+
+**Protein:**
+- 1.6-2.2 g/kg body weight daily
+- Distribute across meals (20-40g per meal)
+- Complete proteins with leucine
+
+**Energy Balance:**
+- Surplus for muscle gain (~300-500 kcal)
+- Deficit for fat loss (while preserving muscle)
+- Maintenance for recomposition
+
+**Carbohydrates:**
+- Fuel training
+- Support recovery
+- Amount depends on activity level
+
+### Stress Management
+
+**Cortisol Impact:**
+Chronic stress impairs recovery and adaptation.
+
+**Strategies:**
+- Training load management
+- Life stress consideration
+- Active recovery
+- Relaxation practices
+
+## Common Mistakes
+
+### Ego Lifting
+
+Sacrificing form for weight.
+- Increased injury risk
+- Reduced muscle tension
+- Unsustainable progression
+
+### Program Hopping
+
+Switching programs too frequently.
+- Insufficient time for adaptation
+- No progressive overload tracking
+- Paralysis by options
+
+### Ignoring Weaknesses
+
+Favoring strong movements.
+- Creates imbalances
+- Limits long-term progress
+- Injury risk from asymmetry
+
+### Insufficient Recovery
+
+More is not always better.
+- Overtraining syndrome
+- Diminished returns
+- Injury accumulation
+
+## Assessment
+
+### Strength Standards
+
+Relative strength (multiple of body weight) provides context.
+
+**General Guidelines (intermediate):**
+| Exercise | Male | Female |
+|----------|------|--------|
+| Squat | 1.5× BW | 1.0× BW |
+| Bench Press | 1.25× BW | 0.75× BW |
+| Deadlift | 2.0× BW | 1.5× BW |
+| Overhead Press | 0.75× BW | 0.5× BW |
+
+### Progress Tracking
+
+- Training logs (weights, sets, reps)
+- Body measurements
+- Performance tests
+- Progress photos
+
+## References
+
+- Rippetoe, M. "Starting Strength" (2011)
+- Schoenfeld, B.J. "Science and Development of Muscle Hypertrophy" (2020)
+- Israetel, M. "Scientific Principles of Hypertrophy Training" (2021)
+- NSCA "Essentials of Strength Training and Conditioning" (2016)

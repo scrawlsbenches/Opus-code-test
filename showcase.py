@@ -23,33 +23,11 @@ from typing import Dict, List, Optional, Tuple
 
 from cortical import CorticalTextProcessor, CorticalLayer
 from cortical.chunk_index import ChunkWriter, ChunkLoader
+from scripts.demo_utils import Timer
 
 # Default locations
 DEFAULT_INDEX_PATH = "showcase_index.pkl"
 DEFAULT_CHUNKS_DIR = "showcase_chunks"
-
-
-class Timer:
-    """Simple timer for measuring operation durations."""
-
-    def __init__(self):
-        self.times: Dict[str, float] = {}
-        self._start: float = 0
-
-    def start(self, name: str):
-        """Start timing an operation."""
-        self._start = time.perf_counter()
-        self._current = name
-
-    def stop(self) -> float:
-        """Stop timing and record the duration."""
-        elapsed = time.perf_counter() - self._start
-        self.times[self._current] = elapsed
-        return elapsed
-
-    def get(self, name: str) -> float:
-        """Get recorded time for an operation."""
-        return self.times.get(name, 0)
 
 
 def print_header(title: str, char: str = "="):

@@ -44,11 +44,11 @@ from .diff import (
     compare_documents,
     what_changed
 )
-from .persistence import SignatureVerificationError
+# Pickle support removed - JSON-only persistence now
 
-# MCP Server support (optional import)
+# MCP Server support (optional import) - now in cortical.projects.mcp
 try:
-    from .mcp_server import CorticalMCPServer, create_mcp_server
+    from .projects.mcp import CorticalMCPServer, main as create_mcp_server
     _has_mcp = True
 except ImportError:
     _has_mcp = False
@@ -85,8 +85,6 @@ __all__ = [
     "compare_processors",
     "compare_documents",
     "what_changed",
-    # Security
-    "SignatureVerificationError",
 ]
 
 # Add MCP exports if available

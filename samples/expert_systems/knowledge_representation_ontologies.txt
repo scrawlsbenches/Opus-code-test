@@ -1,0 +1,306 @@
+# Knowledge Representation and Ontologies
+
+## Introduction
+
+Knowledge representation (KR) is the field concerned with how to formally encode information about the world so that computer systems can reason about it. Ontologies provide structured vocabularies and relationships that enable knowledge sharing and interoperability.
+
+## Representation Formalisms
+
+### Semantic Networks
+
+Graph structures where:
+- Nodes represent concepts or instances
+- Edges represent relationships
+
+**Types of Links:**
+- IS-A: Class hierarchy (Dog IS-A Mammal)
+- PART-OF: Composition (Engine PART-OF Car)
+- HAS-PROPERTY: Attributes (Apple HAS-COLOR Red)
+- Arbitrary relations: (John OWNS House)
+
+**Inheritance:**
+Properties propagate down IS-A hierarchy.
+Dog IS-A Mammal → Dogs inherit mammal properties
+
+**Limitations:**
+- Informal semantics
+- Ambiguous interpretation
+- No standard inference
+
+### Frame Systems
+
+Structured knowledge packages:
+
+```
+Frame: Dog
+  Superclass: Mammal
+  Slots:
+    legs:
+      type: integer
+      default: 4
+    size:
+      type: {small, medium, large}
+    owner:
+      type: Person
+      cardinality: 0..1
+  Methods:
+    bark(): Sound
+```
+
+**Features:**
+- Default values
+- Procedural attachments (demons)
+- Multiple inheritance (with resolution strategies)
+- Facets (constraints, documentation)
+
+**Relation to Object-Oriented:**
+Frames influenced OOP; classes are similar but typically lack default reasoning.
+
+### Description Logics
+
+Formal, decidable subset of first-order logic.
+
+**Syntax:**
+- Concepts (unary predicates): Human, Parent
+- Roles (binary relations): hasChild, worksFor
+- Individuals: john, mary
+
+**Constructors:**
+| Symbol | Meaning |
+|--------|---------|
+| ⊤ | Top (everything) |
+| ⊥ | Bottom (nothing) |
+| ¬C | Negation |
+| C ⊓ D | Intersection |
+| C ⊔ D | Union |
+| ∀R.C | Value restriction |
+| ∃R.C | Existential restriction |
+| ≥n R | Cardinality restriction |
+
+**Example:**
+```
+Parent ≡ Person ⊓ ∃hasChild.Person
+Father ≡ Parent ⊓ Male
+GoodParent ≡ Parent ⊓ ∀hasChild.(Happy ⊓ Healthy)
+```
+
+**Reasoning Services:**
+- Subsumption: Is C subclass of D?
+- Consistency: Can concept have instances?
+- Classification: Place concept in hierarchy
+- Realization: Find most specific concepts for individual
+
+### First-Order Logic
+
+Full predicate logic with quantifiers.
+
+**Expressiveness:**
+- Universal quantification: ∀x
+- Existential quantification: ∃x
+- Functions and predicates
+
+**Example:**
+```
+∀x.(Parent(x) → ∃y.(Child(y) ∧ hasChild(x,y)))
+∀x.∀y.(hasParent(x,y) ↔ hasChild(y,x))
+```
+
+**Limitations:**
+- Undecidable in general
+- Computationally intractable
+- Difficult to use practically
+
+## Ontology Engineering
+
+### Definition
+
+An ontology is a formal, explicit specification of a shared conceptualization.
+
+- **Formal:** Machine-readable
+- **Explicit:** Clearly defined
+- **Shared:** Community consensus
+- **Conceptualization:** Abstract model
+
+### Components
+
+**Classes (Concepts):**
+Categories of things (Person, Vehicle, Event)
+
+**Properties (Relations):**
+- Object properties: Link individuals (hasAuthor)
+- Datatype properties: Link to values (hasAge → integer)
+
+**Individuals (Instances):**
+Specific entities (John_Smith, Toyota_Camry_2020)
+
+**Axioms:**
+Logical statements constraining the model
+
+### OWL (Web Ontology Language)
+
+W3C standard built on description logics.
+
+**Sublanguages:**
+- **OWL Lite:** Simple constraints
+- **OWL DL:** Maximum expressiveness with decidability
+- **OWL Full:** No restrictions, undecidable
+
+**Key Features:**
+- Class definitions (equivalent, disjoint)
+- Property characteristics (transitive, symmetric, functional)
+- Cardinality constraints
+- Enumerated classes (oneOf)
+
+**Example (Turtle syntax):**
+```
+:Person a owl:Class .
+:hasSpouse a owl:ObjectProperty, owl:SymmetricProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Person .
+:MarriedPerson owl:equivalentClass [
+    a owl:Restriction ;
+    owl:onProperty :hasSpouse ;
+    owl:someValuesFrom :Person
+] .
+```
+
+### Development Methodologies
+
+**METHONTOLOGY:**
+1. Specification
+2. Conceptualization
+3. Formalization
+4. Implementation
+5. Maintenance
+
+**NeOn Methodology:**
+Scenario-based approach for networked ontologies
+
+**Competency Questions:**
+Define what the ontology should answer:
+- "What medications interact with drug X?"
+- "Who are the authors of papers in domain Y?"
+
+### Design Principles
+
+**Clarity:** Definitions effectively communicate meaning
+
+**Coherence:** Inferences consistent with definitions
+
+**Extendibility:** Can add concepts without revision
+
+**Minimal Encoding Bias:** Don't assume particular encoding
+
+**Minimal Ontological Commitment:** Make minimal assumptions
+
+## Upper Ontologies
+
+Domain-independent top-level categories.
+
+### Examples
+
+**DOLCE (Descriptive Ontology for Linguistic and Cognitive Engineering):**
+- Endurants (objects)
+- Perdurants (events)
+- Qualities
+- Abstracts
+
+**BFO (Basic Formal Ontology):**
+- Continuants (independent, dependent)
+- Occurrents (processes, temporal regions)
+- Used in biomedical ontologies
+
+**SUMO (Suggested Upper Merged Ontology):**
+- Physical, abstract, process
+- Maps to WordNet synsets
+
+### Benefits
+
+- Interoperability across domains
+- Consistent foundational concepts
+- Guide domain ontology development
+
+## Ontology Languages and Tools
+
+### Languages
+
+**RDF (Resource Description Framework):**
+- Subject-Predicate-Object triples
+- URI-based identification
+- Foundation for Semantic Web
+
+**RDFS (RDF Schema):**
+- Class and property hierarchies
+- Domain and range constraints
+
+**OWL:**
+- Rich ontology language
+- Based on description logics
+
+**SKOS (Simple Knowledge Organization System):**
+- Thesauri, taxonomies
+- Broader/narrower/related
+
+### Tools
+
+**Protégé:**
+- Leading ontology editor
+- OWL and RDF support
+- Reasoner integration
+
+**TopBraid Composer:**
+- Enterprise ontology management
+- SPARQL integration
+
+**Reasoners:**
+- HermiT, Pellet, FaCT++
+- Classification, consistency checking
+- Query answering
+
+## Applications
+
+### Semantic Web
+
+- Linked data
+- Knowledge graphs
+- Semantic search
+
+### Biomedical Informatics
+
+- Gene Ontology
+- SNOMED CT
+- Disease ontologies
+
+### Enterprise Knowledge Management
+
+- Product catalogs
+- Organizational structures
+- Business rules
+
+### AI and NLP
+
+- Common sense reasoning
+- Word sense disambiguation
+- Question answering
+
+## Evaluation
+
+**Criteria:**
+- Consistency: No logical contradictions
+- Completeness: Covers domain adequately
+- Conciseness: No redundancy
+- Adaptability: Handles changes
+- Computational efficiency: Reasoning tractable
+
+**Methods:**
+- Expert review
+- Application-based testing
+- Automated consistency checking
+- Comparison with reference ontologies
+
+## References
+
+- Baader, F. et al. "Description Logic Handbook" (2007)
+- Noy, N.F. and McGuinness, D.L. "Ontology Development 101"
+- Staab, S. and Studer, R. "Handbook on Ontologies" (2009)
+- W3C OWL 2 Web Ontology Language

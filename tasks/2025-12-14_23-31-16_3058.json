@@ -7,17 +7,21 @@
     {
       "id": "T-20251214-233116-3058-001",
       "title": "Weight lateral connections by TF-IDF in query expansion",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "bugfix",
-      "description": "Incorporate IDF into lateral expansion scoring at cortical/query/expansion.py:164 to penalize ubiquitous terms. Currently: score = weight * neighbor.pagerank * 0.6. Proposed: Add idf_factor to penalize terms that appear everywhere. Medium risk - requires testing to ensure good queries aren't hurt.",
+      "description": "Incorporated TF-IDF weighting into lateral expansion scoring at cortical/query/expansion.py. Added tfidf_weight parameter (default 0.7) to control balance between TF-IDF (distinctive terms) and PageRank (well-connected terms).",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-14T23:31:16.045127",
-      "updated_at": null,
-      "completed_at": null,
-      "context": {},
-      "retrospective": null
+      "updated_at": "2025-12-15T19:15:00.000000",
+      "completed_at": "2025-12-15T19:15:00.000000",
+      "context": {
+        "files_modified": ["cortical/query/expansion.py"],
+        "tests_added": 7,
+        "test_file": "tests/unit/test_query_expansion.py"
+      },
+      "retrospective": "Added tfidf_weight parameter to expand_query(). Default 0.7 = 70% TF-IDF + 30% PageRank. Improves query expansion by prioritizing distinctive terms over common ones while preserving connection strength."
     },
     {
       "id": "T-20251214-233136-3058-002",
@@ -66,17 +70,22 @@
     {
       "id": "T-20251214-233143-3058-004",
       "title": "Add security concept group to code_concepts.py",
-      "status": "pending",
+      "status": "completed",
       "priority": "medium",
       "category": "feature",
-      "description": "Add security-related terms to CODE_CONCEPT_GROUPS in cortical/code_concepts.py. Include: security, sanitize, validate, escape, injection, xss, csrf, fuzzing, exploit, vulnerability, attack, defense, protect, encrypt, decrypt, hash, permission, credential, token. Enables better query expansion for security-related searches.",
+      "description": "Added 'security' concept group with 27 terms covering encryption, security primitives, vulnerabilities, access control, and security operations.",
       "depends_on": [],
       "effort": "small",
       "created_at": "2025-12-14T23:31:43.882369",
-      "updated_at": null,
-      "completed_at": null,
-      "context": {},
-      "retrospective": null
+      "updated_at": "2025-12-15T19:15:00.000000",
+      "completed_at": "2025-12-15T19:15:00.000000",
+      "context": {
+        "files_modified": ["cortical/code_concepts.py"],
+        "tests_added": 7,
+        "test_file": "tests/unit/test_code_concepts_coverage.py",
+        "terms_added": 27
+      },
+      "retrospective": "Added 'security' concept group with 27 terms: encrypt, decrypt, cipher, hash, salt, digest, secure, secret, key, certificate, signature, vulnerability, exploit, injection, xss, csrf, sanitize, firewall, whitelist, blacklist, allowlist, denylist, audit, scan, detect, block, filter. 100% coverage maintained."
     }
   ]
 }

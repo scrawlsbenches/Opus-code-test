@@ -1,0 +1,208 @@
+# Renaissance Art: Transformation and Innovation
+
+## Introduction
+
+The Renaissance (roughly 1400-1600) marked a profound transformation in European art, characterized by renewed interest in classical antiquity, humanism, naturalistic representation, and technical innovations. Originating in Italy, Renaissance ideas spread throughout Europe, reshaping artistic practice and theory.
+
+## Early Renaissance (1400-1480)
+
+### Florence: The Crucible
+
+**Key Innovations:**
+- Linear perspective: Mathematical system for spatial illusion
+- Naturalistic anatomy: Study from life and dissection
+- Classical references: Greek and Roman models
+- Patronage systems: Medici family and guilds
+
+### Pioneering Artists
+
+**Filippo Brunelleschi (1377-1446):**
+- Architect of Florence Cathedral dome
+- Developed linear perspective (~1413)
+- Demonstrated perspective in paintings of Florentine buildings
+
+**Masaccio (1401-1428):**
+- "Holy Trinity" (1427): First major work using linear perspective
+- "Tribute Money" in Brancacci Chapel
+- Volumetric figures with realistic light and shadow
+- Died at 27, yet revolutionized painting
+
+**Donatello (1386-1466):**
+- "David" (c. 1440): First free-standing nude male since antiquity
+- "Gattamelata": Equestrian monument in Padua
+- Psychological depth and emotional intensity
+- Pioneered rilievo schiacciato (flattened relief)
+
+**Lorenzo Ghiberti (1378-1455):**
+- "Gates of Paradise" (1425-52): East doors of Florence Baptistery
+- Narrative clarity through atmospheric perspective
+- Classical balance and harmony
+
+### Technical Foundations
+
+**Linear Perspective:**
+All parallel lines converge at vanishing point on horizon line.
+- One-point: Single vanishing point (frontal view)
+- Two-point: Separate vanishing points for each set of parallels
+- Three-point: Includes vertical convergence
+
+**Chiaroscuro:**
+Modeling form through gradations of light and shadow.
+
+## High Renaissance (1480-1520)
+
+### The Triumvirate
+
+**Leonardo da Vinci (1452-1519):**
+
+Works:
+- "Last Supper" (1495-98): Psychological drama, geometric composition
+- "Mona Lisa" (1503-19): Sfumato technique, enigmatic expression
+- "Virgin of the Rocks": Atmospheric effects, pyramidal composition
+
+Innovations:
+- Sfumato: Smoky, soft transitions without lines
+- Scientific observation: Anatomy, botany, geology
+- Dynamic composition: Implied movement
+
+**Michelangelo Buonarroti (1475-1564):**
+
+Works:
+- "David" (1501-04): Heroic male nude, psychological tension
+- Sistine Chapel ceiling (1508-12): Creation narrative
+- "Last Judgment" (1536-41): Muscular figures, emotional intensity
+- St. Peter's Basilica dome
+
+Style:
+- Terribilità: Awesome, overwhelming power
+- Ignudi: Idealized male nudes
+- Non finito: Deliberate unfinished surfaces
+
+**Raphael Sanzio (1483-1520):**
+
+Works:
+- "School of Athens" (1509-11): Classical philosophy visualized
+- "Sistine Madonna": Serene beauty, harmonious composition
+- Vatican Stanze frescoes
+
+Style:
+- Grazia: Effortless grace
+- Clarity and balance
+- Synthesis of Leonardo and Michelangelo
+
+### Venetian School
+
+**Giovanni Bellini (1430-1516):**
+Pioneer of oil painting in Venice; atmospheric landscapes; luminous color.
+
+**Titian (1488-1576):**
+- "Assumption of the Virgin": Dynamic composition
+- Mythological scenes: Sensuous color and flesh
+- Late style: Loose brushwork anticipating Impressionism
+
+**Characteristics:**
+- Oil paint emphasis (vs. Florentine fresco)
+- Colorito: Color as primary element
+- Soft edges and atmospheric effects
+- Pastoral landscapes
+
+## Northern Renaissance
+
+### Distinct Characteristics
+
+**Technical Mastery:**
+- Oil painting perfected
+- Minute detail and precise observation
+- Disguised symbolism
+
+**Jan van Eyck (c. 1390-1441):**
+- "Arnolfini Portrait" (1434): Symbolic details, mirror reflection
+- "Ghent Altarpiece": Jewel-like color, naturalistic landscape
+- Perfected oil glazing technique
+
+**Albrecht Dürer (1471-1528):**
+- Synthesized Northern and Italian traditions
+- Masterful printmaker: woodcuts and engravings
+- Self-portraits: Artist as intellectual
+- Theoretical writings on proportion
+
+**Hieronymus Bosch (c. 1450-1516):**
+- "Garden of Earthly Delights": Surreal imagery, moral allegory
+- Fantastical creatures and dreamlike landscapes
+- Influenced Surrealism centuries later
+
+**Pieter Bruegel the Elder (c. 1525-1569):**
+- Peasant scenes: "Peasant Wedding"
+- Landscape panoramas: "Hunters in the Snow"
+- Allegorical works: "Tower of Babel"
+
+## Mannerism (1520-1600)
+
+### Characteristics
+
+Response to High Renaissance perfection:
+- Elongated figures
+- Unusual colors (acid greens, pinks)
+- Ambiguous space
+- Artifice and elegance
+
+### Key Artists
+
+**Pontormo (1494-1557):**
+- "Deposition" (1528): Swirling composition, ethereal colors
+
+**Parmigianino (1503-1540):**
+- "Madonna with Long Neck": Extreme elegance
+
+**El Greco (1541-1614):**
+- Elongated figures, intense spirituality
+- "Burial of Count Orgaz"
+
+## Artistic Theory
+
+### Vasari and the Lives
+
+Giorgio Vasari's "Lives of the Artists" (1550/1568):
+- First art history text
+- Established Renaissance narrative
+- Concept of artistic progress
+
+### Renaissance Concepts
+
+**Disegno:** Drawing as intellectual foundation
+**Invention:** Creative imagination
+**Decorum:** Appropriate style for subject
+**Mimesis:** Imitation of nature
+**Paragone:** Comparison of arts (painting vs. sculpture)
+
+## Patronage and Context
+
+### Patrons
+
+- **Medici family:** Florence banking dynasty
+- **Papal court:** Julius II, Leo X
+- **Civic institutions:** Guilds, confraternities
+- **Noble courts:** Este in Ferrara, Gonzaga in Mantua
+
+### Workshop System
+
+- Master-apprentice training
+- Collaborative production
+- Division of labor
+- Transition to individual genius concept
+
+## Legacy
+
+The Renaissance established:
+- Art as intellectual pursuit
+- Artist as creative genius
+- Classical tradition as foundation
+- Naturalism as goal
+- Theory alongside practice
+
+## References
+
+- Vasari, G. "Lives of the Artists" (1550/1568)
+- Hartt, F. "History of Italian Renaissance Art" (2006)
+- Baxandall, M. "Painting and Experience in Fifteenth-Century Italy" (1988)
+- Panofsky, E. "Renaissance and Renascences in Western Art" (1960)

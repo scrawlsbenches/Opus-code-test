@@ -1,0 +1,271 @@
+# Hand Tool Woodworking: Techniques and Methods
+
+## Introduction
+
+Hand tools offer control, quiet operation, and a direct connection to the material that power tools cannot match. Mastering hand tool techniques develops skill, patience, and understanding of wood behavior that makes any woodworker more capable.
+
+## Measuring and Layout
+
+### Essential Tools
+
+**Combination Square:**
+- Check 90° and 45° angles
+- Measure depths
+- Mark lines parallel to edge
+- Transfer measurements
+
+**Marking Gauge:**
+- Scribe lines parallel to edge
+- Set mortise and tenon dimensions
+- Mark depth lines
+
+**Marking Knife:**
+- Sever wood fibers for clean cuts
+- More precise than pencil
+- Creates registration for saw or chisel
+
+**Dividers:**
+- Step off equal divisions
+- Transfer measurements
+- Scribe circles and arcs
+
+### Layout Principles
+
+**Work from a Face Side:**
+1. Flatten one face (face side)
+2. Square one edge to face (face edge)
+3. All measurements reference these surfaces
+
+**Mark Waste:**
+X marks on waste side prevent cutting errors.
+
+**Knife Walls:**
+For cross-grain cuts, deepen knife line with chisel to create wall that guides saw.
+
+## Sawing
+
+### Hand Saw Anatomy
+
+**Parts:**
+- Blade: Flexible steel with teeth
+- Teeth: Cutting edges filed to points
+- Set: Teeth bent alternately for kerf clearance
+- Handle: Tote (closed) or pistol grip
+
+### Saw Types
+
+**Rip Saw:**
+- Chisel-like teeth (0° rake)
+- Cuts with grain
+- 4-7 TPI (teeth per inch)
+
+**Crosscut Saw:**
+- Knife-like teeth (15° rake)
+- Cuts across grain
+- 8-12 TPI
+
+**Back Saw:**
+- Rigid spine for control
+- Dovetail saw: Fine (15-20 TPI), narrow blade
+- Tenon saw: Coarser (11-14 TPI), deeper blade
+- Carcass saw: Medium size
+
+**Japanese Saws:**
+- Cut on pull stroke
+- Thinner kerf, finer teeth
+- Dozuki (back saw), Ryoba (double-edged)
+
+### Sawing Technique
+
+**Starting:**
+1. Position saw at far edge of cut line
+2. Draw back to create groove
+3. Use thumb as guide
+4. Light strokes until groove established
+
+**Full Stroke:**
+- Use full blade length
+- Let saw do the work (minimal pressure)
+- Watch cut line, not blade
+- Keep arm, wrist, blade aligned
+
+**Preventing Wander:**
+- Twist handle slightly to steer
+- Stay on waste side
+- Watch reflection if blade is polished
+
+## Planing
+
+### Plane Types and Uses
+
+**Block Plane:**
+- Low angle, bevel-up
+- One-handed operation
+- End grain, chamfers, trimming
+
+**Jack Plane (#5):**
+- Cambered blade for rough work
+- Initial flattening
+- 14" length
+
+**Jointer Plane (#7, #8):**
+- Long sole references flat
+- Final flattening
+- Edge jointing
+- 22-24" length
+
+**Smoothing Plane (#4, #4.5):**
+- Fine shavings, smooth surface
+- Final surface prep
+- 9-10" length
+
+**Specialty Planes:**
+- Shoulder plane: Trim tenon shoulders
+- Router plane: Clean up dado bottoms
+- Spokeshave: Curved surfaces
+
+### Plane Anatomy
+
+**Key Components:**
+- Sole: Flat reference surface
+- Mouth: Opening for shavings
+- Blade (iron): Cutting edge
+- Cap iron (chip breaker): Controls shaving curl
+- Frog: Adjustable blade support
+- Lever cap: Holds blade assembly
+
+### Plane Setup
+
+**Sharp Blade:**
+Essential—dull plane tears rather than cuts.
+
+**Cap Iron Position:**
+- Heavy cuts: 1/16" from edge
+- Fine cuts: 1/32" from edge
+- Difficult grain: Very close to edge
+
+**Mouth Opening:**
+- Wide for heavy cuts
+- Narrow for fine cuts and difficult grain
+
+**Blade Projection:**
+- Start with minimal projection
+- Increase until taking consistent shavings
+
+### Planing Technique
+
+**Body Position:**
+- Feet planted, shoulders square to work
+- Power from legs and body, not arms
+- Keep plane flat throughout stroke
+
+**Pressure Distribution:**
+- Start of stroke: More pressure on toe
+- Middle: Equal pressure
+- End: More pressure on heel
+
+**Skewing:**
+Angling plane improves cutting action.
+
+**Reading Grain:**
+- Look for fiber direction
+- Plane "downhill" (with grain)
+- Reverse direction if tearout occurs
+
+## Chiseling
+
+### Chisel Types
+
+**Bench Chisels:**
+- General purpose
+- Beveled edges for tight spaces
+- Sizes: 1/4", 3/8", 1/2", 3/4", 1"
+
+**Mortise Chisels:**
+- Thick, strong for levering
+- Square edges
+- Heavy duty chopping
+
+**Paring Chisels:**
+- Long, thin blades
+- Hand pressure only
+- Precise trimming
+
+### Chisel Techniques
+
+**Chopping:**
+- Mallet strikes for heavy removal
+- Start inside line, work to layout
+- Don't chop to full depth at once
+
+**Paring:**
+- Hand pressure only
+- Controlled slicing cuts
+- Guide with off-hand
+
+**Clearing Waste:**
+- Alternate chopping and paring
+- Create relief for chip clearance
+- Work to final surface in last pass
+
+### Mortise Cutting
+
+1. Define ends with mallet and chisel
+2. Chop from center, working toward ends
+3. Clear waste regularly
+4. Pare walls flat
+5. Check depth with gauge
+
+### Dovetail Chopping
+
+1. Chisel into baseline (vertical)
+2. Pare away waste at angle
+3. Work from both sides for through joints
+4. Final cuts exactly to baseline
+
+## Sharpening
+
+### System Overview
+
+**Stages:**
+1. Grinding: Establish bevel angle (grinder, coarse stones)
+2. Honing: Refine edge (medium to fine stones)
+3. Polishing: Mirror edge (fine to ultra-fine)
+4. Stropping: Maintain between honings
+
+### Bevel Angles
+
+| Tool | Angle | Notes |
+|------|-------|-------|
+| Bench chisel | 25-30° | 25° for softwood, 30° for hardwood |
+| Paring chisel | 20-25° | Lower for slicing |
+| Plane blade | 25-30° | With cap iron, can use lower |
+| Block plane | 25° | Bevel-up adds bed angle |
+
+### Flat Back
+
+First sharpen the back:
+- Must be flat near edge
+- Mirror polish near cutting edge
+- Only done once if careful
+
+### Stone Types
+
+**Oil Stones:** India, Arkansas—traditional, slow cutting
+**Water Stones:** Fast cutting, require flattening
+**Diamond Plates:** Fast, stay flat, expensive
+**Sandpaper:** Inexpensive, consistent grits
+
+### Testing Sharpness
+
+- Light reflection (sharp edge has no reflection)
+- Shave arm hair
+- Slice end grain cleanly
+- Pare without tearing
+
+## References
+
+- Kingshott, J. "Sharpening: The Complete Guide" (1994)
+- Garrett Hack "The Handplane Book" (2003)
+- Schwarz, C. "The Anarchist's Tool Chest" (2011)
+- Paul Sellers YouTube Channel

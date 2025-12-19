@@ -478,9 +478,9 @@ class TestExportData(unittest.TestCase):
             reader = csv.DictReader(f)
             row = next(reader)
 
-        # Should be truncated to 1000 chars
-        self.assertLessEqual(len(row['input']), 1000)
-        self.assertLessEqual(len(row['output']), 1000)
+        # Should be truncated to default limits (input=500, output=2000)
+        self.assertLessEqual(len(row['input']), 500)
+        self.assertLessEqual(len(row['output']), 2000)
 
     def test_export_csv_escapes_special_chars(self):
         """CSV export should properly escape special characters."""

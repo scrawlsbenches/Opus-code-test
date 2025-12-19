@@ -1,0 +1,312 @@
+# Soccer Tactics: Formation Systems and Playing Principles
+
+## Introduction
+
+Soccer tactics encompass team formations, playing principles, and strategic decisions that shape how teams attack and defend. Modern tactics have evolved toward pressing systems, positional play, and tactical flexibility, requiring players to understand both structure and fluidity.
+
+## Formation Fundamentals
+
+### Formation Notation
+
+Three or four numbers indicating players from back to front.
+- 4-3-3: Four defenders, three midfielders, three forwards
+- 4-4-2: Four defenders, four midfielders, two forwards
+
+Goalkeeper assumed; not included in notation.
+
+### Modern Formations
+
+**4-3-3:**
+- Base for many top clubs
+- Wide forwards provide width
+- Single pivot or double pivot options
+- Variants: 4-3-3 holding, 4-3-3 narrow
+
+**4-2-3-1:**
+- Defensive solidity (double pivot)
+- Number 10 behind striker
+- Wide players tucked in
+- Popular transition system
+
+**3-5-2 / 3-4-3:**
+- Three center-backs
+- Wing-backs provide width
+- Midfield numerical superiority
+- Requires athletic wing-backs
+
+**4-4-2 Diamond:**
+- Narrow midfield
+- Central overload
+- Relies on full-backs for width
+- Strong number 10 role
+
+### Formation Fluidity
+
+Modern teams shift between formations:
+- Different shapes in possession vs. out of possession
+- Situational adjustments during match
+- Players rotating positions
+
+## Attacking Principles
+
+### Building from the Back
+
+**Goals:**
+- Maintain possession under pressure
+- Draw opponents forward
+- Create numerical advantages
+- Progress ball to final third
+
+**Goalkeeper Involvement:**
+- Short distribution
+- Playing out under pressure
+- Split center-backs
+- Third-man combinations
+
+**Center-Back Splits:**
+- Wide positioning
+- Create passing angles
+- Invite press
+- Switch play
+
+### Progression Through Midfield
+
+**Third-Man Concept:**
+Ball to player A → A plays to B → B finds C (third man)
+Bypasses direct pressure and finds advanced positions.
+
+**Half-Spaces:**
+Zones between central and wide areas. Most creative and dangerous space.
+- Number 10s, inverted wingers
+- Difficult for defense to cover
+- Diagonal runs and passes
+
+### Final Third Play
+
+**Width and Depth:**
+- Stretch defense horizontally
+- Create 1v1 situations
+- Overlapping/underlapping runs
+- Crossing opportunities
+
+**Central Penetration:**
+- Through balls
+- Combinations (wall passes)
+- Runs between lines
+- Arriving runners from deep
+
+### Transition Offense
+
+**Counter-Attacking:**
+- Quick ball progression
+- Vertical passes
+- Running at defenders
+- Numerical advantage before defense organizes
+
+**Counter-Press:**
+- Immediate pressing after loss
+- Win ball in advanced position
+- Disorganized opponent defense
+- "Six-second rule" for pressing
+
+## Defensive Principles
+
+### Pressing Systems
+
+**High Press:**
+- Press in opponent's defensive third
+- Force turnovers in dangerous areas
+- Requires team fitness and coordination
+- Risk of exposing space behind
+
+**Mid-Block:**
+- Defend in middle third
+- More compact shape
+- Less energy expenditure
+- Counter-attack opportunities
+
+**Low Block:**
+- Deep defensive positioning
+- Protect goal at all costs
+- Requires discipline
+- Counter-attack only option
+
+### Pressing Triggers
+
+**When to Press:**
+- Poor first touch
+- Backward pass to goalkeeper
+- Player receiving with back to goal
+- Switch of play (long ball travel time)
+
+**When to Hold:**
+- Ball on strong foot
+- Opponent facing forward
+- Numerical disadvantage
+- Team not in position
+
+### Defensive Shape
+
+**Compactness:**
+- Reduce space between lines
+- Force play wide
+- Block central passes
+
+**Defensive Line:**
+- Stay connected
+- Step together
+- Offside trap timing
+- Cover and balance
+
+### Zonal vs. Man Marking
+
+**Zonal:**
+- Defend space, not individuals
+- Transfer responsibility
+- Requires understanding
+- Modern preference
+
+**Man-to-Man:**
+- Each player has assignment
+- Clear accountability
+- Can be exploited by movement
+- Used selectively (set pieces)
+
+## Set Pieces
+
+### Attacking Corners
+
+**Delivery Types:**
+- In-swinger: Curves toward goal
+- Out-swinger: Curves away
+- Driven: Flat trajectory
+- Short: Create angle or movement
+
+**Runs:**
+- Near post
+- Far post
+- Penalty spot
+- Edge of box (second ball)
+
+### Defending Corners
+
+**Zonal:**
+- Players in zones
+- Attack ball
+- Numbers at posts and edge
+- Less susceptible to movement
+
+**Man-Marking:**
+- Assign dangerous players
+- Hybrid with zones
+- Clear accountability
+
+### Free Kicks
+
+**Direct:**
+- Shot or cross opportunity
+- Routine plays
+- Decoy runners
+- Wall management (defending)
+
+**Indirect:**
+- Creative setups
+- Quick plays
+- Misdirection
+
+## Match Analysis
+
+### Key Performance Indicators
+
+**Possession:**
+- Possession percentage
+- Passes completed
+- Passing accuracy
+- Progression rate
+
+**Attacking:**
+- Expected goals (xG)
+- Shots and shots on target
+- Chances created
+- Final third entries
+
+**Defensive:**
+- Expected goals against (xGA)
+- Pressures and pressure success
+- Tackles and interceptions
+- Defensive duels
+
+### Video Analysis
+
+**Individual:**
+- Player positioning
+- Decision making
+- Technical execution
+- Physical performance
+
+**Team:**
+- Shape and structure
+- Patterns of play
+- Transition moments
+- Set piece execution
+
+## Game Management
+
+### Scoreline Management
+
+**Leading:**
+- Game management
+- Possession retention
+- Selective pressing
+- Substitution timing
+
+**Behind:**
+- Increased risk
+- Formation adjustments
+- Attacking substitutions
+- Press for turnovers
+
+### In-Game Adjustments
+
+**Reading the Game:**
+- Identify opponent patterns
+- Recognize tactical matchups
+- Communicate adjustments
+- Substitution strategy
+
+**Half-Time Changes:**
+- Formation adjustments
+- Personnel changes
+- Set piece adjustments
+- Motivation and focus
+
+## Training Methodology
+
+### Tactical Periodization
+
+Training organized around tactical principles:
+- Game model drives training
+- Integrated physical development
+- Position-specific training
+- Match simulation
+
+### Small-Sided Games
+
+**Benefits:**
+- Game-realistic decisions
+- High repetition
+- Physical and technical development
+- Tactical understanding
+
+**Constraints:**
+- Field size manipulation
+- Rules modification
+- Numerical variations
+- Overload situations
+
+## References
+
+- Wilson, J. "Inverting the Pyramid" (2018)
+- Carling, C. "Performance Assessment in Football" (2005)
+- UEFA Pro License Materials
+- Spielverlagerung Tactical Analysis

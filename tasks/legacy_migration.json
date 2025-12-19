@@ -2,13 +2,13 @@
   "version": 1,
   "session_id": "legacy-migration",
   "started_at": "2025-12-14T11:11:44.783627",
-  "saved_at": "2025-12-14T21:43:24.122320",
+  "saved_at": "2025-12-15T19:30:02.469767",
   "migration_info": {
     "source": "TASK_LIST.md + TASK_ARCHIVE.md",
     "migrated_at": "2025-12-14T11:11:44.783627",
     "total_tasks": 158,
-    "completed": 138,
-    "pending": 13,
+    "completed": 139,
+    "pending": 12,
     "deferred": 7,
     "status_corrections_applied": [
       206,
@@ -1946,7 +1946,7 @@
     {
       "id": "LEGACY-130",
       "title": "Expand customer service sample cluster",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "samples",
       "description": "Migrated from legacy TASK_LIST.md task #130",
@@ -1954,11 +1954,11 @@
       "effort": "unknown",
       "created_at": "2025-12-10T00:00:00",
       "updated_at": "2025-12-14T11:11:44.783627",
-      "completed_at": null,
+      "completed_at": "2025-12-15T19:30:02.469675",
       "context": {
         "legacy_task_number": 130
       },
-      "retrospective": null
+      "retrospective": "Added 3 new customer service documents (refund_request_handling.txt, empathy_and_active_listening.txt, complaint_escalation_procedures.txt). Updated shared_processor fixture to include subdirectories. Removed xfail markers from 4 behavioral tests."
     },
     {
       "id": "LEGACY-132",
@@ -2643,19 +2643,26 @@
     {
       "id": "LEGACY-189",
       "title": "Add observability hooks (timing, traces, metrics)",
-      "status": "pending",
+      "status": "completed",
       "priority": "low",
       "category": "devex",
-      "description": "Migrated from legacy TASK_LIST.md task #189",
+      "description": "Implemented via cortical/observability.py with MetricsCollector, timing decorators, and trace context",
       "depends_on": [],
-      "effort": "unknown",
+      "effort": "medium",
       "created_at": "2025-12-10T00:00:00",
-      "updated_at": "2025-12-14T11:11:44.783627",
-      "completed_at": null,
+      "updated_at": "2025-12-15T19:00:00.000000",
+      "completed_at": "2025-12-15T19:00:00.000000",
       "context": {
-        "legacy_task_number": 189
+        "legacy_task_number": 189,
+        "implementation_file": "cortical/observability.py",
+        "features": [
+          "MetricsCollector class",
+          "timing decorators",
+          "trace context",
+          "metrics summary"
+        ]
       },
-      "retrospective": null
+      "retrospective": "Already implemented. Full observability module exists with MetricsCollector, timing hooks, and trace context. Integrated into processor via enable_metrics flag."
     },
     {
       "id": "LEGACY-190",

@@ -22,6 +22,62 @@ from ..code_concepts import get_related_terms
 from .expansion import expand_query, get_expanded_query_terms
 
 
+def _apply_document_name_boost(
+    doc_scores: Dict[str, float],
+    query_tokens: set,
+    tokenizer: 'Tokenizer',
+    doc_name_boost: float,
+    layer3: Optional['HierarchicalLayer'] = None
+) -> None:
+    """
+    Apply document name matching boost to scores in-place.
+
+    Identifies exact and partial matches between query tokens and document names,
+    then applies multiplicative (partial) or additive (exact) boosts.
+
+    Args:
+        doc_scores: Dictionary of doc_id -> score (modified in-place)
+        query_tokens: Set of query tokens to match
+        tokenizer: Tokenizer instance for tokenizing document names
+        doc_name_boost: Boost factor (only applied if > 1.0)
+        layer3: Optional document layer for cached name tokens
+    """
+    if doc_name_boost <= 1.0 or not doc_scores or not query_tokens:
+        return
+
+    max_score = max(doc_scores.values())
+    exact_matches = []
+    partial_matches = []
+
+    for doc_id in doc_scores:
+        # Try to get cached tokens from layer3 if available
+        doc_name_tokens = None
+        if layer3:
+            doc_col = layer3.get_by_id(f"L3_{doc_id}")
+            if doc_col and hasattr(doc_col, 'name_tokens') and doc_col.name_tokens is not None:
+                doc_name_tokens = doc_col.name_tokens
+
+        if doc_name_tokens is None:
+            doc_name_tokens = set(tokenizer.tokenize(doc_id.replace('_', ' ')))
+
+        matches = len(query_tokens & doc_name_tokens)
+        if matches > 0:
+            match_ratio = matches / len(query_tokens)
+            if match_ratio == 1.0:
+                exact_matches.append(doc_id)
+            else:
+                partial_matches.append((doc_id, match_ratio))
+
+    # Apply exact match additive boost
+    for doc_id in exact_matches:
+        doc_scores[doc_id] += max_score * doc_name_boost
+
+    # Apply partial match multiplicative boost
+    for doc_id, match_ratio in partial_matches:
+        boost = 1 + (doc_name_boost - 1) * match_ratio
+        doc_scores[doc_id] *= boost
+
+
 def find_documents_for_query(
     query_text: str,
     layers: Dict[CorticalLayer, HierarchicalLayer],
@@ -76,44 +132,9 @@ def find_documents_for_query(
                 doc_scores[doc_id] += tfidf * term_weight
 
     # Boost documents whose name matches query terms
-    if doc_name_boost > 1.0 and doc_scores:
+    if doc_name_boost > 1.0:
         query_tokens = set(tokenizer.tokenize(query_text))
-        max_score = max(doc_scores.values()) if doc_scores else 0.0
-
-        # First pass: identify exact and partial matches
-        exact_matches = []
-        partial_matches = []
-
-        for doc_id in doc_scores:
-            # Use cached tokenized name if available, otherwise tokenize on-the-fly
-            doc_col = layer3.get_by_id(f"L3_{doc_id}")
-            if doc_col and hasattr(doc_col, 'name_tokens') and doc_col.name_tokens is not None:
-                doc_name_tokens = doc_col.name_tokens
-            else:
-                # Fallback for old data without cached tokens (or mock objects in tests)
-                doc_name_tokens = set(tokenizer.tokenize(doc_id.replace('_', ' ')))
-            # Count how many query tokens appear in doc name
-            matches = len(query_tokens & doc_name_tokens)
-            if matches > 0:
-                match_ratio = matches / len(query_tokens) if query_tokens else 0
-
-                if match_ratio == 1.0:
-                    exact_matches.append(doc_id)
-                else:
-                    partial_matches.append((doc_id, match_ratio))
-
-        # Apply boosts:
-        # - Exact matches: ensure they rank above all non-exact matches
-        # - Partial matches: proportional boost
-        for doc_id in exact_matches:
-            # For exact matches, add max_score to ensure they rank first
-            # This guarantees exact match beats all other documents
-            doc_scores[doc_id] += max_score * doc_name_boost
-
-        for doc_id, match_ratio in partial_matches:
-            # Partial matches use proportional boost
-            boost = 1 + (doc_name_boost - 1) * match_ratio
-            doc_scores[doc_id] *= boost
+        _apply_document_name_boost(doc_scores, query_tokens, tokenizer, doc_name_boost, layer3)
 
     # Apply test file penalty to reduce test file ranking
     if test_file_penalty < 1.0:
@@ -237,30 +258,7 @@ def fast_find_documents(
         doc_scores[doc_id] = score
 
     # Apply document name boost after all scores calculated
-    if doc_name_boost > 1.0 and doc_scores:
-        max_score = max(doc_scores.values())
-        exact_matches = []
-        partial_matches = []
-
-        for doc_id in doc_scores:
-            doc_name_tokens = set(tokenizer.tokenize(doc_id.replace('_', ' ')))
-            matches = len(query_tokens & doc_name_tokens)
-            if matches > 0:
-                match_ratio = matches / len(query_tokens)
-
-                if match_ratio == 1.0:
-                    exact_matches.append(doc_id)
-                else:
-                    partial_matches.append((doc_id, match_ratio))
-
-        # Exact matches get additive boost to ensure top ranking
-        for doc_id in exact_matches:
-            doc_scores[doc_id] += max_score * doc_name_boost
-
-        # Partial matches get multiplicative boost
-        for doc_id, match_ratio in partial_matches:
-            boost = 1 + (doc_name_boost - 1) * match_ratio
-            doc_scores[doc_id] *= boost
+    _apply_document_name_boost(doc_scores, query_tokens, tokenizer, doc_name_boost)
 
     # Return top results
     sorted_docs = sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)
@@ -458,7 +456,16 @@ def graph_boosted_search(
 
     Returns:
         List of (doc_id, score) tuples ranked by combined relevance
+
+    Raises:
+        ValueError: If pagerank_weight or proximity_weight not in [0.0, 1.0]
     """
+    # Validate weight parameters
+    if not (0.0 <= pagerank_weight <= 1.0):
+        raise ValueError(f"pagerank_weight must be in [0.0, 1.0], got {pagerank_weight}")
+    if not (0.0 <= proximity_weight <= 1.0):
+        raise ValueError(f"proximity_weight must be in [0.0, 1.0], got {proximity_weight}")
+
     layer0 = layers[CorticalLayer.TOKENS]
     layer3 = layers[CorticalLayer.DOCUMENTS]
 

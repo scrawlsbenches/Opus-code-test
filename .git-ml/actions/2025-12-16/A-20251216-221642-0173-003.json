@@ -1,0 +1,18 @@
+{
+  "id": "A-20251216-221642-0173-003",
+  "timestamp": "2025-12-16T19:52:06.387Z",
+  "session_id": "0173f6d3-5722-4d7c-b33b-3999648ff154",
+  "action_type": "command",
+  "target": "",
+  "context": {
+    "tool": "Bash",
+    "input": {
+      "tool": "Glob",
+      "input": {
+        "pattern": "cortical/*.py"
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}

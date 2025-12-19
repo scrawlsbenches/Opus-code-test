@@ -1,0 +1,79 @@
+Power Tool Fundamentals: Machines for the Modern Workshop
+
+Overview
+
+Power tools revolutionized woodworking, enabling faster material processing, greater precision, and capabilities impossible with hand tools alone. From the fundamental table saw to specialized machines, power equipment shapes how woodworkers approach projects. Understanding each tool's capabilities, proper operation, and safety requirements enables effective, safe workshop practice.
+
+The well-equipped workshop balances power and hand tool capabilities. Power tools excel at dimensioning lumber, cutting joints efficiently, and removing material quickly. Hand tools refine power tool work, handle tasks requiring sensitivity, and provide satisfaction through direct connection with material. Most woodworkers employ both.
+
+The Table Saw
+
+The table saw serves as most workshops' central machine. A circular blade protruding through a flat table rips, crosscuts, and performs specialized operations. Accuracy depends on fence alignment, blade quality, and operator technique.
+
+Ripping—cutting along the grain—constitutes the table saw's primary function. The fence parallels the blade at desired width; material feeds against the fence through the cut. Proper technique prevents kickback, a dangerous condition where the blade throws work violently backward.
+
+Crosscutting—cutting across the grain—employs a miter gauge or crosscut sled. The miter gauge slides in slots parallel to the blade; sleds ride on the same slots with greater capacity and accuracy.
+
+Table saw types include contractor saws (lighter, portable), hybrid saws (improved dust collection, more power), and cabinet saws (professional grade, heavy, precise). Saw selection balances budget, space, and performance requirements.
+
+Safety equipment includes blade guards, splitters or riving knives, and anti-kickback pawls. While experienced woodworkers sometimes remove guards for specific operations, beginners should maintain all safety equipment.
+
+The Bandsaw
+
+Bandsaws employ continuous loop blades running over two or three wheels. The thin blade enables curves impossible on table saws while also handling resawing (ripping thick stock into thinner pieces).
+
+Blade selection significantly affects performance. Narrow blades cut tight curves; wide blades cut straight and resaw effectively. Tooth patterns (hook, skip, regular) suit different applications.
+
+Bandsaw setup requires proper blade tension, tracking, and guide adjustment. Drift—the blade's tendency to cut at angles rather than straight—requires fence adjustment or accepting blade angle.
+
+The Jointer
+
+Jointers create flat faces and square edges essential for accurate woodworking. An infeed table, outfeed table, and rotating cutterhead work together. Material fed across the cutterhead references against the fence.
+
+Jointing faces before edges establishes reference surfaces. One flat face registers against the jointer table; one straight edge registers against the fence. These reference surfaces enable accurate thickness planing and ripping.
+
+Jointer width limits face jointing capacity. Common consumer jointers handle 6" or 8" widths; professional shops may employ 12" or wider machines.
+
+The Thickness Planer
+
+Planers thickness lumber to consistent dimension. Feed rollers pull stock beneath a rotating cutterhead; the table adjusts for desired thickness. The opposite face from that contacting the table gets machined.
+
+Planing requires jointed reference face. The jointed face contacts the table; the planer makes the opposite face parallel. Without flat reference face, planers follow existing irregularities.
+
+Snipe—deeper cuts at board ends—results from stock lifting into the cutterhead as support diminishes. Technique, auxiliary supports, and machine adjustment minimize snipe.
+
+The Router
+
+Routers spin bits at high speed for profiling, joinery, and pattern work. Fixed-base routers provide stable depth; plunge routers enable interior cuts; combination kits offer both capabilities.
+
+Router table mounting inverts the tool, creating a small shaper. Fence-guided and bearing-guided operations become easier; safety improves by keeping hands away from bits.
+
+Router bits include edge profiles (roundover, chamfer, ogee), joinery bits (rabbeting, dovetail), and pattern bits (flush trim, template). Carbide bits outlast high-speed steel; quality varies significantly.
+
+The Drill Press
+
+Drill presses provide accurate, perpendicular boring impossible with handheld drills. The quill descends through a column-mounted head; the table supports and positions work.
+
+Speed adjustment matches material and bit type. Larger bits and harder materials require slower speeds. Most drill presses offer stepped pulleys or variable speed control.
+
+Accessories expand capability. Drum sanding attachments, mortising attachments, and various jigs adapt the drill press beyond simple drilling.
+
+Additional Power Tools
+
+Miter saws (chop saws) crosscut and miter efficiently. Sliding compound miter saws handle wide boards; basic chop saws cost less but limit capacity.
+
+Random orbit sanders combine rotary and orbital motion for swirl-free sanding. They remove material faster than orbital sanders while leaving finer finishes.
+
+Jigsaws cut curves in material too thick or large for bandsaws. They also handle plunge cuts impossible for other saws.
+
+Circular saws provide portable cutting capability. With guides, they can make accurate straight cuts rivaling table saws.
+
+Safety Principles
+
+Power tool safety requires respect for the machinery's capabilities. Sharp, spinning blades and bits can cause severe injury instantly. Hearing protection, eye protection, and dust control protect long-term health.
+
+Never reach over or behind spinning blades. Keep hands clear of cut lines. Use push sticks and hold-downs appropriately. Maintain focus; avoid working while tired or distracted.
+
+Proper setup prevents many accidents. Check fences, guards, and blade condition before operations. Ensure work support adequate for material size. Clear the work area of clutter.
+
+Power tools serve the woodworker who understands their capabilities, operates them correctly, and respects their hazards. Mastery develops through practice guided by proper technique and sustained safety consciousness.

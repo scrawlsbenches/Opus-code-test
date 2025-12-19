@@ -1,0 +1,186 @@
+# Chemical Reaction Kinetics Fundamentals
+
+## Introduction
+
+Reaction kinetics describes the rates at which chemical reactions occur and the mechanisms by which reactants transform into products. Understanding kinetics is essential for reactor design, process optimization, and predicting reaction behavior under varying conditions.
+
+## Rate Laws and Reaction Orders
+
+### Elementary Rate Expressions
+
+For an elementary reaction A + B → C, the rate law follows directly from stoichiometry:
+
+r = k × C_A × C_B
+
+Where:
+- r = reaction rate (mol/L·s)
+- k = rate constant (units depend on order)
+- C_A, C_B = concentrations of reactants
+
+### Reaction Order
+
+The overall order is the sum of exponents in the rate law:
+
+**Zero Order:** r = k (independent of concentration)
+- Common in surface-catalyzed reactions at saturation
+- Units of k: mol/L·s
+
+**First Order:** r = k × C_A
+- Radioactive decay, unimolecular decomposition
+- Units of k: s^-1
+
+**Second Order:** r = k × C_A² or r = k × C_A × C_B
+- Most bimolecular reactions
+- Units of k: L/mol·s
+
+### Determining Reaction Order
+
+**Integral Method:**
+Plot appropriate function of concentration vs. time:
+- Zero order: C_A vs. t (linear)
+- First order: ln(C_A) vs. t (linear)
+- Second order: 1/C_A vs. t (linear)
+
+**Differential Method:**
+Use log(r) vs. log(C_A) to find order from slope.
+
+**Method of Initial Rates:**
+Measure initial rates at different starting concentrations.
+
+## Temperature Dependence
+
+### Arrhenius Equation
+
+The fundamental relationship between rate constant and temperature:
+
+k = A × exp(-E_a/RT)
+
+Where:
+- A = pre-exponential factor (frequency factor)
+- E_a = activation energy (J/mol)
+- R = gas constant (8.314 J/mol·K)
+- T = absolute temperature (K)
+
+Taking logarithms:
+
+ln(k) = ln(A) - E_a/(RT)
+
+A plot of ln(k) vs. 1/T yields a straight line with slope -E_a/R.
+
+### Typical Activation Energies
+
+| Reaction Type | E_a (kJ/mol) |
+|--------------|--------------|
+| Enzyme-catalyzed | 20-80 |
+| Heterogeneous catalysis | 40-120 |
+| Homogeneous gas reactions | 150-350 |
+| Bond dissociation | 200-400 |
+
+### Rule of Thumb
+
+For many reactions near room temperature, the rate doubles for every 10°C increase (E_a ≈ 50-80 kJ/mol).
+
+## Reaction Mechanisms
+
+### Elementary Steps
+
+Complex reactions proceed through sequences of elementary steps. The rate-determining step (RDS) controls the overall rate.
+
+Example: Hydrogen-Bromine Reaction
+H₂ + Br₂ → 2HBr
+
+Mechanism:
+1. Br₂ → 2Br· (initiation)
+2. Br· + H₂ → HBr + H· (propagation)
+3. H· + Br₂ → HBr + Br· (propagation)
+4. 2Br· → Br₂ (termination)
+
+### Steady-State Approximation
+
+For reactive intermediates (I), assume:
+d[I]/dt ≈ 0
+
+This simplifies rate expressions by eliminating intermediate concentrations.
+
+### Pre-Equilibrium Approximation
+
+When initial steps equilibrate faster than subsequent reactions:
+
+A + B ⇌ C (fast equilibrium, K_eq)
+C → D (slow, rate-determining)
+
+Rate = k × K_eq × C_A × C_B
+
+## Catalysis
+
+### Homogeneous Catalysis
+
+Catalyst in same phase as reactants. Mechanism typically involves:
+1. Catalyst-reactant complex formation
+2. Reaction within complex
+3. Product release and catalyst regeneration
+
+Example: Acid-catalyzed ester hydrolysis follows Michaelis-Menten kinetics.
+
+### Heterogeneous Catalysis
+
+Catalyst in different phase (usually solid with fluid reactants). Steps:
+1. External diffusion to catalyst surface
+2. Internal diffusion through pores
+3. Adsorption onto active sites
+4. Surface reaction
+5. Desorption of products
+6. Internal and external diffusion of products
+
+### Langmuir-Hinshelwood Kinetics
+
+For surface reactions where both reactants adsorb:
+
+r = k × K_A × K_B × C_A × C_B / (1 + K_A × C_A + K_B × C_B)²
+
+At low coverage: r ∝ C_A × C_B
+At high coverage: r approaches constant
+
+## Reactor Design Implications
+
+### Batch Reactor
+
+Design equation:
+t = ∫[C_A0 to C_A] dC_A / r_A
+
+### Continuous Stirred Tank Reactor (CSTR)
+
+Design equation:
+V/F_A0 = X_A / (-r_A)
+
+Operates at exit concentration, less efficient for positive-order kinetics.
+
+### Plug Flow Reactor (PFR)
+
+Design equation:
+V/F_A0 = ∫[0 to X_A] dX_A / (-r_A)
+
+More efficient than CSTR for same conversion (positive-order reactions).
+
+## Data Analysis Techniques
+
+### Linear Regression
+
+Transform rate equations to linear form for parameter estimation.
+
+### Non-Linear Regression
+
+Use Levenberg-Marquardt or similar algorithms for direct fitting to rate laws.
+
+### Statistical Validation
+
+- R² value for goodness of fit
+- Confidence intervals on parameters
+- F-test for model discrimination
+- Residual analysis for systematic errors
+
+## References
+
+- Fogler, H.S. "Elements of Chemical Reaction Engineering" (2016)
+- Levenspiel, O. "Chemical Reaction Engineering" (1999)
+- Smith, J.M. "Chemical Engineering Kinetics" (1981)
