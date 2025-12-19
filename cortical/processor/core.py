@@ -6,6 +6,7 @@ other processor mixins depend on.
 """
 
 import logging
+from collections import OrderedDict
 from typing import Dict, Optional, Any
 
 from ..tokenizer import Tokenizer
@@ -67,13 +68,36 @@ class CoreMixin:
         # Track which computations are stale and need recomputation
         self._stale_computations: set = set()
         # LRU cache for query expansion results
-        self._query_expansion_cache: Dict[str, Dict[str, float]] = {}
-        self._query_cache_max_size: int = 100
+        self._query_expansion_cache: OrderedDict[str, Dict[str, float]] = OrderedDict()
+        self._query_cache_max_size: int = 1000
         # Observability: metrics collection
         self._metrics = MetricsCollector(enabled=enable_metrics)
 
     def _mark_all_stale(self) -> None:
-        """Mark all computations as stale (needing recomputation)."""
+        """
+        Mark all computations as stale (needing recomputation).
+
+        This private method invalidates all computed analysis results, indicating
+        that they need to be recalculated before they can be trusted. It's called
+        automatically when the corpus changes (e.g., when documents are added or
+        removed) to ensure computed values reflect the current state.
+
+        The method sets the internal _stale_computations set to include all
+        computation types: TF-IDF, PageRank, activation, document connections,
+        bigram connections, concepts, embeddings, and semantic relations.
+
+        Note:
+            This is an internal method called by document management methods
+            (process_document, remove_document, etc.). Users should not call
+            this directly; instead, use the public staleness API:
+            - is_stale(computation_type)
+            - get_stale_computations()
+
+        See Also:
+            _mark_fresh: Mark specific computations as up-to-date
+            is_stale: Check if a computation needs recomputation
+            get_stale_computations: Get all stale computations
+        """
         self._stale_computations = {
             self.COMP_TFIDF,
             self.COMP_PAGERANK,
@@ -86,7 +110,35 @@ class CoreMixin:
         }
 
     def _mark_fresh(self, *computation_types: str) -> None:
-        """Mark specified computations as fresh (up-to-date)."""
+        """
+        Mark specified computations as fresh (up-to-date).
+
+        This private method removes the specified computation types from the
+        staleness tracking set, indicating that they have been computed and
+        their results are current. It's called by compute methods after they
+        successfully complete their calculations.
+
+        Args:
+            *computation_types: Variable number of computation type strings
+                (COMP_TFIDF, COMP_PAGERANK, etc.) to mark as fresh.
+                Uses discard() so non-existent types are safely ignored.
+
+        Note:
+            This is an internal method called by compute_* methods after
+            successful completion (e.g., compute_tfidf calls
+            _mark_fresh(COMP_TFIDF)). Users should not call this directly.
+
+        Example (internal usage):
+            >>> # Inside compute_tfidf method:
+            >>> self._mark_fresh(self.COMP_TFIDF)
+            >>>
+            >>> # Can mark multiple at once:
+            >>> self._mark_fresh(self.COMP_PAGERANK, self.COMP_ACTIVATION)
+
+        See Also:
+            _mark_all_stale: Mark all computations as needing recomputation
+            is_stale: Check if a computation needs recomputation
+        """
         for comp in computation_types:
             self._stale_computations.discard(comp)
 

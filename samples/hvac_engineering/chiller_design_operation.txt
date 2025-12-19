@@ -1,0 +1,298 @@
+# Chiller Design and Operation: Cooling System Engineering
+
+## Introduction
+
+Chillers produce chilled water for air conditioning and process cooling applications. As the largest single energy consumers in many commercial buildings, understanding chiller design, operation, and optimization is essential for efficient building systems.
+
+## Chiller Types
+
+### Vapor Compression Chillers
+
+**Centrifugal Chillers:**
+- Large capacity: 150-10,000+ tons
+- Centrifugal compressor (impeller)
+- Highest efficiency at full load
+- Best for base-loaded operation
+
+**Screw Chillers:**
+- Medium capacity: 20-700 tons
+- Twin helical rotors
+- Good part-load efficiency
+- Tolerant of varying conditions
+
+**Scroll Chillers:**
+- Small capacity: 5-60 tons
+- Scroll compressors
+- Compact, quiet
+- Modular installations
+
+**Reciprocating Chillers:**
+- Small to medium: 2-200 tons
+- Piston compressors
+- Older technology, still used
+- Variable capacity through staging
+
+### Absorption Chillers
+
+**Single Effect:**
+- COP: 0.6-0.7
+- Hot water or low-pressure steam input
+- Waste heat applications
+
+**Double Effect:**
+- COP: 1.0-1.2
+- Higher temperature input required
+- More complex, higher efficiency
+
+**Working Pairs:**
+- Lithium bromide/water (most common)
+- Ammonia/water (low temperature)
+
+**Best Applications:**
+- Waste heat available
+- Natural gas preference
+- Limited electrical capacity
+- Combined heat and power systems
+
+## Refrigeration Cycle Components
+
+### Compressor
+
+**Function:** Raises refrigerant pressure and temperature
+
+**Performance Factors:**
+- Isentropic efficiency
+- Volumetric efficiency
+- Motor efficiency
+- Variable speed capability
+
+**Centrifugal Optimization:**
+- Inlet guide vanes
+- Variable speed drives
+- Multi-stage compression
+- Magnetic bearings (oil-free)
+
+### Evaporator
+
+**Function:** Absorbs heat from chilled water
+
+**Types:**
+- Shell-and-tube: Most common
+- Falling film: Higher efficiency
+- Direct expansion: Package units
+
+**Design Considerations:**
+- Approach temperature: 2-4°F typical
+- Fouling factor allowance
+- Water velocity: 3-12 ft/s
+- Pressure drop limits
+
+### Condenser
+
+**Function:** Rejects heat to cooling water or air
+
+**Water-Cooled:**
+- Higher efficiency
+- Requires cooling tower
+- Shell-and-tube construction
+
+**Air-Cooled:**
+- Simpler system
+- Lower efficiency (higher condensing temp)
+- Finned coil with fans
+
+**Design Considerations:**
+- Condenser approach temperature
+- Water temperature rise (typically 10°F)
+- Fouling and maintenance access
+
+### Expansion Device
+
+**Types:**
+- Float valve (common in large chillers)
+- Electronic expansion valve
+- Orifice plate
+
+**Function:**
+- Meter refrigerant flow
+- Create pressure drop for evaporation
+
+## Performance Metrics
+
+### Efficiency Ratings
+
+**Full Load:**
+- kW/ton: Power per ton of cooling
+- COP: Coefficient of Performance
+- EER: Energy Efficiency Ratio (BTU/h per watt)
+
+**Part Load:**
+- IPLV: Integrated Part Load Value
+- NPLV: Non-standard Part Load Value
+- Weighted at multiple operating points
+
+**Typical Values:**
+| Chiller Type | kW/ton | IPLV |
+|--------------|--------|------|
+| Centrifugal (water) | 0.50-0.60 | 0.35-0.45 |
+| Screw (water) | 0.55-0.70 | 0.45-0.55 |
+| Air-cooled screw | 0.90-1.20 | 0.70-0.90 |
+| Absorption (2-effect) | N/A | COP 1.0-1.2 |
+
+### Operating Conditions
+
+**Standard Rating (ARI 550/590):**
+- Chilled water: 54°F in, 44°F out
+- Condenser water: 85°F in, 95°F out
+- Fouling factors included
+
+**Part Load:**
+Buildings rarely operate at full load.
+- Average building: 50-60% part load
+- IPLV weights: 1%@100%, 42%@75%, 45%@50%, 12%@25%
+
+## System Design
+
+### Chiller Plant Configuration
+
+**Single Chiller:**
+- Simple, lower cost
+- No redundancy
+- Inefficient at part load
+
+**Multiple Chillers:**
+- Staged loading
+- Redundancy for reliability
+- Better part-load efficiency
+- More complex control
+
+**Parallel Configuration:**
+- Common headers
+- Simple piping
+- Pump staging required
+
+**Series Configuration:**
+- Counter-flow arrangement
+- Higher efficiency possible
+- More complex piping
+
+### Primary/Secondary Pumping
+
+**Primary-Only Variable Flow:**
+- Chillers with VFDs
+- Minimum flow requirements
+- Simpler, lower first cost
+
+**Primary-Secondary:**
+- Constant primary flow through chillers
+- Variable secondary to loads
+- Decoupling bridge
+- Traditional approach
+
+**Primary-Secondary-Tertiary:**
+- Building-level pumping
+- Multiple pressure zones
+- Campus applications
+
+### Cooling Towers
+
+**Types:**
+- Crossflow: Lower height, more footprint
+- Counterflow: More compact, higher efficiency
+- Induced draft: Fan at top
+- Forced draft: Fan at bottom
+
+**Sizing:**
+- Match to chiller heat rejection
+- Consider ambient wet-bulb
+- Approach temperature: 7-10°F typical
+
+## Control Strategies
+
+### Chiller Sequencing
+
+**Load-Based:**
+- Stage chillers at fixed percentages
+- Hysteresis prevents short cycling
+- Simple but not optimal
+
+**Efficiency-Optimized:**
+- Operate at best efficiency point
+- May run more chillers at part load
+- Requires efficiency curves
+
+### Condenser Water Reset
+
+**Fixed Setpoint:**
+- Conservative, reliable
+- Higher energy consumption
+
+**Wet-Bulb Following:**
+- Lower approach as ambient drops
+- Improved chiller efficiency
+- Cooling tower fan energy increase
+
+**Optimization:**
+Total plant optimization considering:
+- Chiller lift (efficiency impact)
+- Cooling tower fan power
+- Condenser pump power
+
+### Chilled Water Reset
+
+**Benefits:**
+- Raised setpoint improves COP
+- Each 1°F saves ~1.5% energy
+
+**Constraints:**
+- Dehumidification requirements
+- Equipment limitations
+- Coil capacity at reset conditions
+
+## Maintenance and Operations
+
+### Regular Maintenance
+
+**Daily/Weekly:**
+- Log operating parameters
+- Check for leaks
+- Monitor pressures and temperatures
+
+**Monthly:**
+- Tube sheet inspection
+- Oil analysis (if applicable)
+- Refrigerant charge check
+
+**Annual:**
+- Tube cleaning
+- Eddy current testing
+- Control calibration
+- Safety device testing
+
+### Water Treatment
+
+**Chilled Water (Closed):**
+- Corrosion inhibitors
+- pH control
+- Makeup water quality
+
+**Condenser Water (Open):**
+- Scale prevention
+- Biological control
+- Corrosion inhibitors
+- Blowdown management
+
+### Troubleshooting
+
+**Common Issues:**
+- Low capacity: Refrigerant charge, fouling
+- High kW/ton: Fouling, control issues
+- Surge (centrifugal): Low load, high lift
+- Oil return issues: System charge, velocities
+
+## References
+
+- ASHRAE Handbook: HVAC Systems and Equipment
+- ASHRAE Standard 90.1 (energy efficiency)
+- ARI Standard 550/590 (chiller ratings)
+- Taylor, S. "Optimizing Design & Control of Chilled Water Plants"

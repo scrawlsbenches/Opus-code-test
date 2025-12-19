@@ -1,0 +1,243 @@
+# Ergonomics and Human Factors in Product Design
+
+## Introduction
+
+Ergonomics (also called human factors engineering) is the scientific discipline concerned with understanding interactions between humans and designed systems. In product design, ergonomics ensures that products fit the user rather than forcing users to adapt to poor design.
+
+## Anthropometric Considerations
+
+### Physical Dimensions
+
+Anthropometry provides statistical data on human body dimensions essential for sizing products.
+
+**Key Measurements:**
+- Stature (standing height)
+- Sitting height
+- Arm reach (forward, lateral)
+- Hand dimensions (length, breadth, grip span)
+- Clearance dimensions (knee, elbow, head)
+
+**Design for Range:**
+- Design for 5th-95th percentile covers 90% of population
+- Critical dimensions may require 1st-99th percentile
+- Adjustability addresses broader range
+- Accommodate extremes for safety-critical clearances
+
+**Population Considerations:**
+- Gender differences (average male stature ~7% greater than female)
+- Age-related changes (decreased reach, flexibility with age)
+- Cultural/geographic variations
+- Secular trends (population getting taller)
+
+### Strength and Force
+
+**Force Application Guidelines:**
+| Action | Maximum (one-hand) | Recommended |
+|--------|-------------------|-------------|
+| Push/pull | 220 N | 70 N |
+| Grip (power) | 400 N | 150 N |
+| Pinch (key) | 100 N | 35 N |
+| Finger press | 40 N | 10 N |
+
+**Design Principles:**
+- Use strongest capable muscle groups
+- Allow natural postures during force application
+- Provide mechanical advantage where possible
+- Consider repetition and fatigue
+
+## Cognitive Ergonomics
+
+### Mental Workload
+
+Products should match cognitive capabilities and limitations.
+
+**Attention:**
+- Selective attention is limited
+- Divided attention degrades performance
+- Sustained attention fatigues over time
+
+**Memory:**
+- Working memory holds 4±1 chunks
+- Recognition easier than recall
+- Provide external memory aids
+
+**Decision Making:**
+- More options increase decision time (Hick's Law)
+- Too many choices cause decision paralysis
+- Defaults reduce cognitive load
+
+### Information Processing
+
+**Signal Detection:**
+- Signals must exceed detection threshold
+- Background noise affects detection
+- False alarms and misses have different costs
+
+**Response Compatibility:**
+- Controls should map naturally to effects
+- Spatial correspondence (left control → left action)
+- Movement compatibility (up → increase)
+
+## Biomechanics in Design
+
+### Posture
+
+**Neutral Posture Principles:**
+- Joints at mid-range of motion
+- Balanced muscle loading
+- Minimal sustained effort
+- Natural spinal curves maintained
+
+**Common Postural Risks:**
+- Prolonged static postures
+- Extreme joint angles
+- Sustained reaches
+- Trunk twisting/bending
+
+### Repetitive Motion
+
+**Risk Factors for Repetitive Strain:**
+- High repetition rate (>30 motions/minute)
+- Forceful exertions
+- Awkward postures
+- Vibration exposure
+- Insufficient recovery time
+
+**Design Mitigations:**
+- Reduce required force
+- Alternate tasks
+- Provide adjustability
+- Power tool assistance
+- Vibration dampening
+
+## Environmental Factors
+
+### Visual Environment
+
+**Lighting Requirements:**
+| Task | Illuminance (lux) |
+|------|------------------|
+| Casual reading | 300 |
+| Office work | 500 |
+| Detailed assembly | 1000 |
+| Inspection | 2000 |
+
+**Display Design:**
+- Contrast ratio >3:1 (7:1 preferred)
+- Character height: 16-22 arc-minutes
+- Avoid glare and reflections
+- Consider viewing angle and distance
+
+### Thermal Environment
+
+Thermal comfort depends on:
+- Air temperature
+- Radiant temperature
+- Humidity
+- Air velocity
+- Clothing insulation
+- Activity level
+
+Optimal conditions: 20-24°C, 40-60% RH for sedentary work.
+
+### Acoustic Environment
+
+**Noise Exposure Limits:**
+- 85 dBA for 8 hours (OSHA)
+- 80 dBA for 8 hours (NIOSH)
+- Communication interference above 55 dBA
+
+**Design Considerations:**
+- Source reduction (quieter mechanisms)
+- Path interruption (enclosures, barriers)
+- Receiver protection (personal protection)
+
+## Usability Engineering
+
+### Nielsen's Heuristics
+
+1. **Visibility of system status**
+2. **Match between system and real world**
+3. **User control and freedom**
+4. **Consistency and standards**
+5. **Error prevention**
+6. **Recognition rather than recall**
+7. **Flexibility and efficiency of use**
+8. **Aesthetic and minimalist design**
+9. **Help users recognize and recover from errors**
+10. **Help and documentation**
+
+### Usability Metrics
+
+- Effectiveness: Can users complete tasks?
+- Efficiency: How long do tasks take?
+- Satisfaction: How do users feel?
+- Learnability: How quickly do users improve?
+- Errors: How often do users make mistakes?
+
+## Accessibility and Inclusive Design
+
+### Universal Design Principles
+
+1. **Equitable Use:** Design useful to people with diverse abilities
+2. **Flexibility in Use:** Accommodate wide range of preferences
+3. **Simple and Intuitive:** Easy to understand regardless of experience
+4. **Perceptible Information:** Communicate effectively to all users
+5. **Tolerance for Error:** Minimize hazards of accidental actions
+6. **Low Physical Effort:** Efficient and comfortable use
+7. **Size and Space:** Appropriate for approach and manipulation
+
+### Accessibility Standards
+
+- WCAG 2.1 for digital interfaces
+- ADA requirements for physical products
+- Section 508 for government procurement
+- EN 301 549 (European accessibility)
+
+## Assessment Methods
+
+### Checklists and Guidelines
+
+Quick evaluation against established criteria (e.g., NIOSH lifting equation, RULA).
+
+### User Testing
+
+Observe representative users performing real tasks with prototypes.
+
+### Expert Review
+
+Heuristic evaluation by trained ergonomists.
+
+### Simulation and Modeling
+
+Digital human modeling (JACK, RAMSIS) predicts fit and reach.
+
+### Field Studies
+
+Observe actual use in context to identify real-world issues.
+
+## Design Process Integration
+
+**Concept Phase:**
+- Define user characteristics and requirements
+- Establish ergonomic targets
+
+**Detailed Design:**
+- Size for anthropometric range
+- Verify force and posture requirements
+- Apply cognitive principles
+
+**Prototype Phase:**
+- User testing with mockups
+- Iterate based on feedback
+
+**Production:**
+- Verify production units meet specs
+- Gather field feedback for improvements
+
+## References
+
+- Kroemer, K.H.E. "Fitting the Human" (2017)
+- Sanders, M.S. and McCormick, E.J. "Human Factors in Engineering and Design" (1993)
+- Wickens, C.D. et al. "Engineering Psychology and Human Performance" (2021)
+- Pheasant, S. "Bodyspace: Anthropometry, Ergonomics and Design" (2006)

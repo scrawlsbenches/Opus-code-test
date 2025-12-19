@@ -131,7 +131,7 @@ scripts/              # Utility scripts
 
 ### Before You Start
 
-1. Check [TASK_LIST.md](TASK_LIST.md) for existing planned work
+1. Check existing tasks using `python scripts/task_utils.py list` for planned work
 2. Read [CLAUDE.md](CLAUDE.md) for detailed developer documentation
 3. Look at existing code to understand patterns
 
@@ -158,7 +158,7 @@ Add query expansion for code patterns
 
 1. Ensure all tests pass
 2. Update documentation if needed
-3. Add entry to TASK_LIST.md if relevant
+3. Create a task using `python scripts/new_task.py "your description"` if relevant
 4. Request review from maintainers
 
 ### PR Checklist
@@ -178,9 +178,45 @@ We follow rigorous standards documented in:
 Key principles:
 
 1. **Verify claims** - Test assumptions, check edge cases
-2. **Document findings** - Add issues to TASK_LIST.md
+2. **Document findings** - Create tasks using `python scripts/new_task.py` for discovered issues
 3. **Test thoroughly** - Empty corpus, single doc, multiple docs, edge cases
 4. **Be skeptical** - Question the obvious
+
+## AI-Assisted Development
+
+This project supports AI coding assistants (like Claude Code). Several automated hooks are configured in `.claude/settings.local.json`:
+
+### Session Hooks
+
+| Hook | Purpose |
+|------|---------|
+| **SessionStart** | Runs tests, shows ML stats, checks origin sync status |
+| **PreCompact** | Auto-pushes changes before context window compaction |
+| **Stop** | Captures session transcripts for ML training data |
+
+### Context Compaction Recovery
+
+When AI sessions run long, the context window may be compacted (summarized). The `PreCompact` hook automatically:
+
+1. Commits any uncommitted tracked changes
+2. Pushes to the remote branch
+
+This creates a recovery checkpoint. If compaction causes issues:
+
+```bash
+# View the last pushed state
+git log origin/your-branch -1
+
+# Reset to pre-compaction state if needed
+git reset --hard origin/your-branch
+```
+
+### Best Practices for AI Sessions
+
+1. **Work in feature branches** - Keep main clean
+2. **Commit frequently** - Smaller commits = better recovery points
+3. **Push before long operations** - Manual checkpoint before risky changes
+4. **Check origin sync at session start** - The dashboard shows if you're behind
 
 ## Getting Help
 

@@ -2,14 +2,35 @@
   "hooks": {
     "SessionStart": [
       {
-        "type": "command",
-        "command": "./scripts/ml-session-start-hook.sh"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/ml-session-start-hook.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/ml-precompact-push-hook.sh"
+          }
+        ]
       }
     ],
     "Stop": [
       {
-        "type": "command",
-        "command": "./scripts/ml-session-capture-hook.sh"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./scripts/ml-session-capture-hook.sh"
+          }
+        ]
       }
     ]
   }

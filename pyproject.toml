@@ -44,11 +44,29 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
+# Project-specific dependencies
+mcp = [
+    "mcp>=1.0",
+    "pydantic>=2.0",
+    "httpx>=0.24",
+    "uvicorn>=0.20",
+    "starlette>=0.27",
+    "sse-starlette>=1.0",
+]
+proto = [
+    "protobuf>=4.0",
+]
+cli = [
+    "click>=8.0",
+]
+
+# Development dependencies (includes all projects for testing)
 dev = [
-    "coverage>=7.0",
     "pytest>=7.0",
-    "mcp>=1.0",  # Required for MCP server tests
+    "coverage>=7.0",
+    "hypothesis>=6.0",
     "pyyaml>=6.0",  # Required for workflow integration tests
+    "cortical-text-processor[mcp]",  # Include MCP for testing
 ]
 
 [project.urls]
@@ -90,4 +108,21 @@ filterwarnings = [
     "error",
     # Allow our intentional pickle deprecation warnings (SEC-008)
     "ignore:Pickle format is deprecated:DeprecationWarning",
+    # Hubris TestExpert and related classes have __init__ but aren't test classes
+    "ignore:cannot collect test class.*TestExpert.*:pytest.PytestCollectionWarning",
+    "ignore:cannot collect test class.*TestPrediction.*:pytest.PytestCollectionWarning",
+    "ignore:cannot collect test class.*TestOutcome.*:pytest.PytestCollectionWarning",
+    "ignore:cannot collect test class.*TestCalibration.*:pytest.PytestCollectionWarning",
 ]
+
+# Custom markers for test organization
+markers = [
+    "optional: Tests requiring optional dependencies (mcp, hypothesis, numpy)",
+    "fuzz: Property-based fuzzing tests (requires hypothesis)",
+    "mcp: MCP server tests (requires mcp package)",
+    "slow: Tests that take >5 seconds to run",
+]
+
+# Default: skip optional and slow tests during development
+# CI overrides with: pytest -m "" (run all) or explicitly includes markers
+addopts = "-m 'not optional and not slow'"

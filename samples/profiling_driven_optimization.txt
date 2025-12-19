@@ -1,0 +1,86 @@
+Profiling-Driven Optimization: Measure Before You Cut
+
+The cardinal rule of performance optimization: profile before optimizing. Intuition about bottlenecks is frequently wrong. The obvious suspect is often innocent while the real culprit hides in unexpected places.
+
+The Profile-First Methodology
+
+1. Establish baseline measurements with representative workloads
+2. Profile to identify actual bottlenecks (not suspected ones)
+3. Analyze profile data to understand root causes
+4. Implement targeted optimizations for verified bottlenecks
+5. Measure again to confirm improvement
+6. Document findings for future reference
+
+Case Study: Graph Analysis Pipeline
+
+Consider a pipeline with these phases: activation propagation, PageRank computation, TF-IDF calculation, connection building, and clustering.
+
+Initial suspicion: Louvain clustering must be slow - it's the most algorithmically complex phase with community detection and modularity optimization.
+
+Profiling revealed: Clustering took only 2.2 seconds. The actual bottlenecks were:
+- Bigram connections: 24+ seconds (millions of individual method calls)
+- Semantic extraction: 20+ seconds (O(n²) similarity computations)
+
+The "complex" algorithm was fast. Simple operations repeated millions of times dominated execution time.
+
+Profiling Tools and Techniques
+
+Function-level profiling shows cumulative and per-call time:
+
+    import cProfile
+    cProfile.run('processor.compute_all()', sort='cumtime')
+
+Line-level profiling identifies hot lines within functions:
+
+    from line_profiler import profile
+    @profile
+    def compute_connections(self):
+        ...
+
+Phase timing isolates pipeline stages:
+
+    start = time.perf_counter()
+    self.compute_phase_one()
+    phase_one_time = time.perf_counter() - start
+
+Interpreting Profile Data
+
+Key metrics to examine:
+- cumtime: Total time including subcalls (find expensive call trees)
+- tottime: Time in function excluding subcalls (find expensive code)
+- ncalls: Call count (identify hot loops)
+- percall: Time per call (find expensive operations)
+
+High ncalls with low percall suggests optimization via batching.
+High tottime with low ncalls suggests algorithmic improvement.
+
+Common Profiling Pitfalls
+
+1. Profiling toy data: Small inputs may not reveal O(n²) behavior
+2. Ignoring I/O: Disk and network often dominate real workloads
+3. Micro-benchmarks: Isolated tests miss system interactions
+4. Optimizing cold code: Focus on hot paths first
+5. Coverage overhead: Profiling under coverage distorts measurements
+
+The 80/20 Rule
+
+Typically, 20% of code accounts for 80% of execution time. Profile to find this 20%, then optimize ruthlessly. Optimizing cold code wastes effort.
+
+Documentation Requirements
+
+After optimization, document:
+- What the profile showed (data, not intuition)
+- What optimization was applied
+- Before/after measurements
+- Why this approach was chosen over alternatives
+
+This prevents future developers from reverting optimizations or repeating investigations.
+
+Continuous Performance Monitoring
+
+Establish performance regression tests that catch degradation early:
+- Threshold-based tests for critical operations
+- Trend tracking across commits
+- Automated profiling in CI for suspicious changes
+
+Profile-driven optimization is a discipline, not a one-time activity.

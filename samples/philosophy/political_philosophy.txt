@@ -1,0 +1,31 @@
+Political Philosophy: Authority, Justice, and the State
+
+Overview
+
+Political philosophy investigates the fundamental questions of political life: What justifies political authority? How should society be organized? What do citizens owe one another and what does the state owe them? These questions have occupied thinkers from Plato and Aristotle through Hobbes, Locke, and Rousseau to contemporary theorists like John Rawls and Robert Nozick. Political philosophy examines the normative foundations of political institutions, seeking principles that should govern the distribution of power, rights, and resources within society.
+
+Unlike political science, which describes how political systems actually function, political philosophy asks how they ought to function. It stands at the intersection of ethics, which concerns individual conduct, and political theory, which analyzes actual political arrangements. The discipline addresses perennial questions while responding to contemporary challenges: the legitimacy of democratic governance, the limits of state power, the demands of global justice, and the rights of individuals against collective decisions.
+
+Key Concepts
+
+The social contract tradition offers influential accounts of political legitimacy. Thomas Hobbes argued that rational individuals in a state of nature—lacking government—would consent to absolute sovereignty to escape the war of all against all. John Locke's version emphasized natural rights to life, liberty, and property, with government legitimate only insofar as it protects these pre-political rights; citizens retain the right of revolution against tyrannical power. Jean-Jacques Rousseau's general will aimed to reconcile individual freedom with political obligation, arguing that true freedom consists in obedience to self-prescribed law.
+
+Contemporary contractarianism, most notably John Rawls's justice as fairness, employs the original position—a hypothetical choice situation behind a veil of ignorance—to derive principles of justice. Rawls argued that rational choosers unaware of their place in society would select two principles: equal basic liberties for all and the difference principle, permitting social and economic inequalities only if they benefit the least advantaged members of society. This theory of distributive justice has dominated political philosophy since A Theory of Justice appeared in 1971.
+
+Libertarianism challenges extensive redistribution, emphasizing individual rights and limiting legitimate state action to protecting persons and property. Robert Nozick's entitlement theory holds that distributions are just if they arise from just acquisitions and voluntary transfers, regardless of the resulting pattern. Taxation for redistribution, on this view, violates rights by coercing labor. Left-libertarians share the commitment to self-ownership but argue that natural resources belong to everyone, justifying redistribution of external goods.
+
+Communitarianism emerged partly in response to liberal individualism, emphasizing the social constitution of identity and the importance of community ties. Thinkers like Alasdair MacIntyre, Michael Sandel, and Charles Taylor argue that liberal theory wrongly abstracts individuals from their cultural contexts and undervalues the goods achievable only through participation in shared practices and traditions. Communitarians highlight the role of civic virtue and question whether liberal neutrality about the good life is either possible or desirable.
+
+Democratic theory examines what democracy requires and why it matters. Procedural democrats emphasize fair processes—voting rights, majority rule, constitutional limits. Deliberative democrats like Jürgen Habermas and Amy Gutmann argue that legitimate law emerges from reasoned public deliberation among free and equal citizens. Epistemic democrats contend that democratic procedures tend to produce good decisions. Critics debate whether democracy's value is intrinsic or instrumental and how to handle the tension between majority rule and minority rights.
+
+The concept of political obligation asks why, if at all, citizens must obey the law. Voluntarist theories ground obligation in consent, actual or hypothetical. Natural duty theories argue that we have duties of justice independent of consent. Fairness theories, following H.L.A. Hart, suggest that those who benefit from cooperative schemes have obligations to do their part. Anarchist critiques question whether any state legitimately commands obedience.
+
+Applications
+
+Global justice extends political philosophy beyond state boundaries. Cosmopolitans argue that justice applies globally—national borders lack fundamental moral significance. Nationalist and statist views maintain that special obligations hold among co-nationals or within political communities. Debates address immigration restrictions, humanitarian intervention, international institutions, and duties to the global poor.
+
+Multiculturalism raises questions about cultural rights and recognition. Should liberal states accommodate cultural minorities with group-specific rights? How should conflicts between individual rights and cultural practices be resolved? Will Kymlicka's defense of minority rights within a liberal framework competes with approaches emphasizing exit rights and protection of internal minorities.
+
+Contemporary political philosophy addresses identity-based oppression. Critical race theory, feminist political philosophy, and disability studies examine how social structures perpetuate injustice beyond formal legal inequality. These approaches often challenge the adequacy of liberal frameworks, arguing that systemic oppression requires structural transformation rather than merely individual rights.
+
+Questions about legitimate state action extend to areas like criminalization, punishment, and war. What justifies making conduct criminal? When, if ever, is punishment justified, and what forms may it take? Just war theory asks when armed conflict is permissible, how it may be conducted, and what post-war justice requires. These applied questions test and refine fundamental principles.

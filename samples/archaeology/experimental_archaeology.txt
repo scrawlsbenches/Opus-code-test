@@ -1,0 +1,49 @@
+Experimental Archaeology: Testing Ideas Through Replication
+
+Overview
+
+Experimental archaeology uses controlled experiments to test hypotheses about past technologies, behaviors, and processes. By replicating ancient artifacts, constructing buildings, processing materials, and observing decay, archaeologists generate comparative data for interpreting evidence from the past. Experiments transform speculation into testable propositions and reveal possibilities and constraints invisible in finished artifacts alone.
+
+The approach has deep roots—antiquarians replicated stone tools to understand their manufacture—but became systematic in the twentieth century. Contemporary experimental archaeology encompasses academic research programs, educational projects, and publicly accessible reconstructions. While no experiment can prove what happened in the past, experiments can eliminate impossible interpretations and quantify the range of possible outcomes.
+
+Key Principles
+
+Hypothesis testing drives rigorous experimental design. An experiment should test a specific, falsifiable proposition: "Bronze Age smelting required particular ore grades," "Fiber degrades in this soil within specific timeframes," "This stone type cannot produce sharp edges through this technique." Open-ended exploration, while valuable, differs from hypothesis testing.
+
+Control of variables enables meaningful interpretation. Experiments should vary one factor while holding others constant. When replicating ceramics, for instance, varying firing temperature while holding clay, temper, vessel form, and kiln design constant isolates temperature effects. Without control, outcomes cannot be attributed to specific causes.
+
+Documentation records all procedures, materials, and results. Raw material sources, production sequences, time investment, failures, and successes must be recorded systematically. Other researchers should be able to evaluate, critique, and replicate experiments from published documentation.
+
+Replicability means that results can be tested by repeating experiments. Single trials may produce anomalous results; patterns emerging across multiple trials are more reliable. Reporting failures alongside successes enables realistic assessment of archaeological possibilities.
+
+Comparison to archaeological evidence connects experimental outcomes to the archaeological record. Experiments producing waste, wear patterns, or structures comparable to archaeological cases suggest similar processes may have occurred. Discrepancies indicate that archaeological evidence resulted from different processes than experimental conditions.
+
+Domains of Application
+
+Technology replication investigates how things were made. Knapping stone tools, smelting metals, firing ceramics, weaving textiles, and constructing buildings have all been experimentally studied. Replication reveals skill requirements, time investment, raw material constraints, and production waste. Master craftspeople often collaborate with archaeologists, bringing embodied knowledge inaccessible through textual research.
+
+Use-wear experiments create comparative collections for analyzing tool function. Stone tools used on specific materials—wood, bone, hide, plants—develop characteristic damage and polish. Experimental use-wear, documented microscopically, provides standards against which archaeological specimens are compared.
+
+Taphonomic experiments investigate how materials decay, modify, and preserve. Controlled studies of bone weathering, burial conditions, and biological agents clarify how deposits form. Understanding what survives—and what does not—is essential for interpreting incomplete records.
+
+Structural experiments test building performance. Reconstructed roundhouses, longhouses, and temples reveal construction requirements, structural problems, and maintenance needs. Burning experimental structures generates comparative data for interpreting architectural destruction.
+
+Agricultural experiments replicate ancient farming systems. Reconstructed field systems, traditional cultivation techniques, and heritage crop varieties enable measuring yields, labor requirements, and sustainability. The Butser Ancient Farm in England has hosted such experiments for decades.
+
+Experimental Sites
+
+Living history sites combine education with research. Reconstructed settlements allow long-term experiments with buildings, crafts, and land use while engaging the public. Sites like the Danish National Museum's Lejre Research Centre have produced significant research alongside public programming.
+
+University-based laboratories enable controlled experiments. Ceramic firing, metallurgy, and taphonomy require specialized facilities. Academic settings also facilitate systematic hypothesis testing with statistical design.
+
+Field experiments situate studies in natural conditions. Artifact burial experiments in various soils and climates document preservation. Experimental fields test agricultural hypotheses under realistic conditions. Field settings capture environmental complexity that laboratory conditions cannot.
+
+Limitations and Considerations
+
+Experiments cannot prove the past—they can only assess possibility. Demonstrating that something could be done a certain way does not prove it was done that way. Multiple means might achieve similar ends. Experiments constrain interpretation without determining it.
+
+Modern practitioners differ from ancient ones. No contemporary knapper, however skilled, shares a Paleolithic individual's lifetime of experience, cultural knowledge, and bodily habitus. Experimental results represent modern capabilities, not necessarily ancient ones.
+
+Material differences complicate replication. Raw materials may differ from ancient sources; modern tools may substitute imperfectly for ancient ones. Documenting and accounting for such differences is essential.
+
+Ethical considerations apply to experiments involving animals, fire, or potentially dangerous materials. Safety protocols and ethical review ensure responsible experimentation.

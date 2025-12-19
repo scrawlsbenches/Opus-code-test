@@ -90,7 +90,9 @@ def expand_query(
     use_concepts: bool = True,
     use_variants: bool = True,
     use_code_concepts: bool = False,
-    filter_code_stop_words: bool = False
+    filter_code_stop_words: bool = False,
+    tfidf_weight: float = 0.7,
+    max_expansion_weight: float = 2.0
 ) -> Dict[str, float]:
     """
     Expand a query using lateral connections and concept clusters.
@@ -112,6 +114,14 @@ def expand_query(
         use_code_concepts: Include programming synonym expansions
         filter_code_stop_words: Filter ubiquitous code tokens (self, cls, etc.)
                                 from expansion candidates. Useful for code search.
+        tfidf_weight: Weight for TF-IDF vs PageRank in lateral expansion scoring.
+                      Range [0.0, 1.0]. Default 0.7 favors distinctive terms (TF-IDF).
+                      0.0 = use only PageRank (well-connected terms)
+                      1.0 = use only TF-IDF (distinctive terms)
+        max_expansion_weight: Maximum weight for expanded terms relative to original
+                              terms. Prevents single expanded terms from dominating
+                              search results. Default 2.0 means expanded terms can
+                              have at most 2x the weight of original terms.
 
     Returns:
         Dict mapping terms to weights (original terms get weight 1.0)
@@ -161,7 +171,11 @@ def expand_query(
                     # Use O(1) ID lookup instead of linear search
                     neighbor = layer0.get_by_id(neighbor_id)
                     if neighbor and neighbor.content not in expanded:
-                        score = weight * neighbor.pagerank * 0.6
+                        # Combine TF-IDF (distinctiveness) and PageRank (importance)
+                        # tfidf_weight controls the balance between the two
+                        term_score = (neighbor.tfidf * tfidf_weight +
+                                      neighbor.pagerank * (1.0 - tfidf_weight))
+                        score = weight * term_score * 0.6
                         candidate_expansions[neighbor.content] = max(
                             candidate_expansions[neighbor.content], score
                         )
@@ -200,6 +214,16 @@ def expand_query(
         candidate_expansions = {
             term: score for term, score in candidate_expansions.items()
             if term not in CODE_EXPANSION_STOP_WORDS
+        }
+
+    # Cap expansion weights to prevent single terms from dominating
+    # Max weight is relative to the highest weight of original terms
+    if candidate_expansions and max_expansion_weight > 0:
+        max_original_weight = max(expanded.values()) if expanded else 1.0
+        weight_cap = max_original_weight * max_expansion_weight
+        candidate_expansions = {
+            term: min(score, weight_cap)
+            for term, score in candidate_expansions.items()
         }
 
     # Select top expansions

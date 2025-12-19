@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "session_id": "26eb",
+  "started_at": "2025-12-18T21:10:26.696934",
+  "saved_at": "2025-12-18T21:21:09.345017",
+  "tasks": [
+    {
+      "id": "T-20251218-211026-26eb-001",
+      "title": "Optimize doc_connections O(n\u00b2) bottleneck - 139s at 539 docs",
+      "status": "completed",
+      "priority": "high",
+      "category": "performance",
+      "description": "",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-18T21:10:26.697531",
+      "updated_at": "2025-12-18T21:21:09.344860",
+      "completed_at": "2025-12-18T21:21:09.344860",
+      "context": {},
+      "retrospective": {
+        "notes": "Optimized from O(n\u00b2\u00b7m) to O(m\u00b7d\u00b2) via loop inversion. 40x speedup achieved.",
+        "duration_minutes": 11,
+        "files_touched": [],
+        "tests_added": 0,
+        "commits": [],
+        "captured_at": "2025-12-18T21:21:09.344884"
+      }
+    }
+  ]
+}

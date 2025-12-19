@@ -1,0 +1,217 @@
+# Prosthetics Design: Engineering Human Mobility
+
+## Overview
+
+Prosthetics engineering integrates biomechanics, materials science, control systems, and human factors to create artificial limbs that restore function and quality of life for individuals with limb loss or limb difference.
+
+## Lower Limb Prosthetics
+
+### Transtibial (Below-Knee)
+
+**Socket Design:**
+- Patellar tendon bearing (PTB): Weight on pressure-tolerant areas
+- Total surface bearing (TSB): Uniform load distribution with silicone liner
+- Vacuum-assisted suspension: Enhanced proprioception and control
+
+**Foot-Ankle Systems:**
+- SACH (Solid Ankle Cushioned Heel): Simple, durable
+- Dynamic response feet: Energy storage and return
+- Microprocessor feet: Adaptive terrain response
+
+### Transfemoral (Above-Knee)
+
+**Socket Types:**
+- Quadrilateral: Traditional ischial weight-bearing
+- Ischial containment: Better rotation control
+- Subischial: Reduced pressure, improved comfort
+
+**Knee Mechanisms:**
+- Single-axis: Simple, reliable
+- Polycentric: Geometric stability
+- Microprocessor (C-Leg, Genium): Real-time gait adaptation
+- Powered knees: Active assistance for stairs and slopes
+
+### Gait Biomechanics
+
+Normal gait requires:
+- Stance stability (60% of cycle)
+- Swing clearance (40% of cycle)
+- Energy efficiency
+- Symmetry
+
+Prosthetic goals: Approximate normal gait patterns while compensating for absent structures.
+
+**Key Parameters:**
+- Step length
+- Cadence
+- Walking speed
+- Energy expenditure (often 20-40% higher than normal)
+
+## Upper Limb Prosthetics
+
+### Classification by Level
+
+| Level | Amputation Site | Complexity |
+|-------|----------------|------------|
+| Partial hand | Finger(s) | Cosmetic to functional |
+| Transradial | Below elbow | Most common, good function |
+| Transhumeral | Above elbow | Requires elbow unit |
+| Shoulder disarticulation | At shoulder | Maximum componentry |
+
+### Control Strategies
+
+**Body-Powered:**
+- Harness captures shoulder/body motion
+- Cable transmits force to terminal device
+- Voluntary opening or voluntary closing
+- Simple, reliable, provides proprioceptive feedback
+
+**Myoelectric:**
+- EMG signals from residual muscles
+- Amplified and processed to control motors
+- Proportional control: Grip force varies with signal amplitude
+- Pattern recognition: Machine learning identifies intended movements
+
+**Targeted Muscle Reinnervation (TMR):**
+- Nerves redirected to chest or arm muscles
+- Multiple independent control signals
+- More intuitive, faster learning
+
+### Terminal Devices
+
+**Hooks:**
+- Split hook: Versatile, durable work tool
+- Excellent visual feedback
+- High grip force
+
+**Hands:**
+- Cosmetic: Appearance only
+- Functional: Passive positioning
+- Myoelectric: Powered grip patterns
+- Multi-articulating (i-limb, bebionic): Individual finger control
+
+### Advanced Technologies
+
+**Osseointegration:**
+- Direct skeletal attachment
+- Eliminates socket problems
+- Enhanced proprioception
+- Infection risk requires careful management
+
+**Sensory Feedback:**
+- Vibrotactile: Pressure encoded as vibration
+- Electrotactile: Electrical stimulation of skin
+- Targeted sensory reinnervation: Direct nerve interface
+
+## Materials and Manufacturing
+
+### Socket Materials
+
+**Traditional:**
+- Laminated plastics (carbon fiber, fiberglass)
+- Thermoformed polymers
+- Rigid, durable, but labor-intensive
+
+**3D Printing:**
+- Patient-specific geometry from scanning
+- Rapid iteration
+- Potential cost reduction
+- Material properties still developing
+
+### Structural Components
+
+| Material | Application | Properties |
+|----------|-------------|------------|
+| Titanium | Pylons, frames | High strength-to-weight, biocompatible |
+| Carbon fiber | Feet, frames | Energy return, lightweight |
+| Aluminum | Economy components | Moderate strength, affordable |
+| Stainless steel | Heavy-duty | Strong, corrosion resistant |
+
+### Covers and Cosmetics
+
+- Soft foam covers shaped to match contralateral limb
+- Silicone cosmeses with realistic skin texture
+- Custom coloring and features (freckles, veins, hair)
+
+## Fitting and Alignment
+
+### Assessment Process
+
+1. Medical history and residual limb evaluation
+2. Functional goals and lifestyle assessment
+3. Measurements and casting/scanning
+4. Component selection
+5. Test socket fabrication
+6. Dynamic alignment
+7. Final fabrication
+8. Training and follow-up
+
+### Alignment Principles
+
+**Lower Limb:**
+- TKA line (trochanter-knee-ankle) relationship
+- Load line through knee center at midstance
+- Foot rotation matching contralateral
+
+**Upper Limb:**
+- Functional reach envelope
+- Terminal device orientation for tasks
+- Harness fit and excursion
+
+## Rehabilitation
+
+### Physical Therapy Goals
+
+- Strength and range of motion
+- Balance training (lower limb)
+- Prosthetic training (donning, walking, manipulation)
+- Advanced activities (stairs, uneven terrain, sports)
+
+### Occupational Therapy
+
+- Activities of daily living
+- Work-related tasks
+- Adaptive strategies
+- Community reintegration
+
+### Psychological Support
+
+- Body image adjustment
+- Grief processing
+- Peer support programs
+- Goal setting and motivation
+
+## Outcome Measures
+
+**Lower Limb:**
+- Timed Up and Go (TUG)
+- 6-Minute Walk Test
+- Prosthesis Evaluation Questionnaire (PEQ)
+- Socket Comfort Score
+
+**Upper Limb:**
+- Box and Block Test
+- Jebsen-Taylor Hand Function Test
+- Activities Measure for Upper Limb Amputees (AM-ULA)
+- DASH (Disabilities of Arm, Shoulder, Hand)
+
+## Future Directions
+
+### Neural Interfaces
+Direct connection to peripheral nerves or brain for intuitive control and sensory feedback.
+
+### Powered Exoskeletons
+Hybrid devices augmenting residual function.
+
+### Regenerative Medicine
+Tissue engineering for biological reconstruction.
+
+### Affordable Access
+Designing for global health, reducing cost barriers.
+
+## References
+
+- Seymour, R. "Prosthetics and Orthotics: Lower Limb and Spine" (2002)
+- Bowker, J.H. and Michael, J.W. "Atlas of Limb Prosthetics" (1992)
+- Lusardi, M.M. "Orthotics and Prosthetics in Rehabilitation" (2013)
+- Journal of Prosthetics and Orthotics

@@ -1,0 +1,291 @@
+# Rock Climbing Fundamentals: Techniques and Safety
+
+## Introduction
+
+Rock climbing challenges body and mind through vertical movement on natural and artificial rock. From indoor gyms to remote alpine walls, climbing offers progressive challenges. Understanding fundamental techniques and safety systems is essential for enjoyment and longevity in the sport.
+
+## Climbing Disciplines
+
+### Bouldering
+
+**Characteristics:**
+- Short problems (typically <20 feet)
+- No rope, uses crash pads
+- Focus on power and problem-solving
+- Social, accessible
+
+**Grading (US):**
+V0-V17 (V-scale)
+- V0-V2: Beginner
+- V3-V5: Intermediate
+- V6-V8: Advanced
+- V9+: Expert
+
+### Sport Climbing
+
+**Characteristics:**
+- Bolted routes on rock or indoor walls
+- Rope, harness, quickdraws
+- Focus on endurance and technique
+- Lead climbing progression
+
+**Grading (Yosemite Decimal):**
+5.0-5.15 (with letter subdivisions a-d)
+- 5.6-5.8: Beginner leads
+- 5.9-5.10: Intermediate
+- 5.11-5.12: Advanced
+- 5.13+: Expert
+
+### Traditional (Trad) Climbing
+
+**Characteristics:**
+- Climber places protection
+- Cams, nuts, and other gear
+- Additional skills and judgment
+- Commitment and adventure
+
+**Additional Equipment:**
+- Cams (spring-loaded devices)
+- Nuts/stoppers (passive protection)
+- Slings and cordage
+- Gear placement knowledge
+
+### Alpine/Mountaineering
+
+**Characteristics:**
+- Mountain environments
+- Mixed terrain (rock, snow, ice)
+- Multi-day objectives
+- Mountain hazards and weather
+
+## Movement Fundamentals
+
+### Body Position
+
+**Center of Gravity:**
+- Keep hips close to wall
+- Weight over feet
+- Avoid "barndooring" (swinging out)
+
+**Straight Arms:**
+- Hang on skeleton, not muscles
+- Conserve arm strength
+- Arms tire faster than legs
+
+**Quiet Feet:**
+- Precise foot placement
+- Look at footholds
+- Trust small holds
+
+### Footwork Techniques
+
+**Edging:**
+Using shoe edge on small holds.
+- Inside edge most common
+- Outside edge for specific positions
+- Precision and pressure
+
+**Smearing:**
+Using friction of shoe rubber.
+- Press flat against rock
+- No defined hold needed
+- Trust and commitment
+
+**Heel Hooks:**
+Pulling with heel for leverage.
+- Rock-over moves
+- Roof climbing
+- Weight distribution
+
+**Toe Hooks:**
+Top of toe pulling for balance.
+- Overhanging terrain
+- Maintain position
+- Core engagement
+
+### Hand Techniques
+
+**Crimping:**
+Fingers bent at first joint, thumb over.
+- Small holds
+- Powerful but injury-prone
+- Half-crimp safer for training
+
+**Open Hand:**
+Fingers on hold without sharp bend.
+- Slopers and larger holds
+- Safer for tendons
+- Train this grip
+
+**Pinching:**
+Thumb opposed to fingers.
+- Obvious pinch features
+- Core and shoulder engagement
+- Common on arêtes
+
+**Underclings:**
+Palm-up grip, pulling outward.
+- Combined with feet
+- Body position critical
+- Often transition moves
+
+### Movement Patterns
+
+**Static Movement:**
+Controlled, deliberate moves.
+- Precision
+- Requires strength to hold position
+- Safe and controlled
+
+**Dynamic Movement:**
+Using momentum.
+- Deadpoints: Catch hold at apex
+- Dynos: Full commitment leaps
+- Requires timing and confidence
+
+**Flagging:**
+Leg extended for balance.
+- Inside flag: Leg behind
+- Outside flag: Leg across
+- Prevents barndooring
+
+## Safety Systems
+
+### The Belay System
+
+**Components:**
+- Rope (dynamic, rated for climbing)
+- Harness (fitted properly)
+- Belay device (ATC, GriGri)
+- Locking carabiner
+- Competent belayer
+
+**Belay Techniques:**
+- PBUS: Pull, Brake, Under, Slide
+- Never let go of brake strand
+- Attention at all times
+- Communication protocol
+
+### Knots
+
+**Figure-8 Follow-Through:**
+Primary tie-in knot.
+- Double-check dress and tail length
+- Partner check essential
+
+**Clove Hitch:**
+Adjustable attachment to anchor.
+- Quick to tie and adjust
+- Used in anchor systems
+
+**Girth Hitch:**
+Connecting slings.
+- Simple, reliable
+- Reduces sling strength slightly
+
+**Double Fisherman's:**
+Joining ropes or cordelette.
+- Very secure
+- Difficult to untie after loading
+
+### Anchor Building
+
+**SERENE/EARNEST Principles:**
+
+**S**trong: Individual placements solid
+**E**qualized: Load distributed
+**R**edundant: Multiple pieces, no single point of failure
+**E**fficient: Quick to build and clean
+**N**o Extension: Limited shock load if piece fails
+**E**xtendable: Adjustable for direction
+
+### Communication
+
+**Standard Commands:**
+- "On belay?" → "Belay on"
+- "Climbing" → "Climb on"
+- "Slack" (need rope)
+- "Up rope" (take in slack)
+- "Falling"
+- "Take" (hold fall)
+- "Lower" → "Lowering"
+- "Off belay"
+
+## Training
+
+### Physical Preparation
+
+**Finger Strength:**
+- Hangboard training
+- Progressive loading
+- Rest days essential
+- Injury prevention focus
+
+**Core Strength:**
+- Hollow body holds
+- Leg raises
+- Compression exercises
+- Tension maintenance
+
+**Pulling Strength:**
+- Pull-ups
+- Lock-off training
+- Rows for shoulder health
+
+### Skill Development
+
+**Deliberate Practice:**
+- Work weaknesses
+- Technique drills
+- Mileage on rock
+- Video analysis
+
+**Projecting:**
+Working routes at limit.
+- Learn moves
+- Build endurance
+- Mental preparation
+
+### Recovery
+
+**Importance:**
+- Adaptation occurs during rest
+- Tendons recover slowly
+- Prevent overuse injuries
+- Sleep and nutrition
+
+## Injury Prevention
+
+### Common Climbing Injuries
+
+**Pulley Injuries:**
+- Finger tendon pulleys
+- From crimping
+- Rest and rehabilitation
+- H-taping for support
+
+**Elbow Tendinopathy:**
+- Medial or lateral
+- Overuse pattern
+- Eccentric exercises
+- Load management
+
+**Shoulder Issues:**
+- Impingement
+- Rotator cuff
+- Push-up and rowing balance
+
+### Prevention Strategies
+
+- Warm up thoroughly
+- Progress gradually
+- Open-hand grip training
+- Antagonist training
+- Listen to body signals
+
+## References
+
+- Hörst, E.J. "Training for Climbing" (2016)
+- Long, J. "How to Rock Climb" (2010)
+- MacLeod, D. "Make or Break" (2014)
+- American Alpine Club Accident Reports

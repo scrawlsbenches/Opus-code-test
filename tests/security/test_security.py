@@ -23,7 +23,6 @@ from cortical import CorticalTextProcessor, CorticalConfig
 from cortical.persistence import (
     save_processor,
     load_processor,
-    SignatureVerificationError,
 )
 from cortical.validation import (
     validate_non_empty_string,
@@ -50,14 +49,14 @@ class TestPathTraversalPrevention:
         # 2. Create the file in a safe location (normalized path)
         with tempfile.TemporaryDirectory() as tmpdir:
             # Try to escape the directory
-            malicious_path = os.path.join(tmpdir, "..", "escaped.pkl")
+            malicious_path = os.path.join(tmpdir, "..", "escaped_state")
 
             # This should either raise an error or normalize the path
             # The important thing is it shouldn't create files outside tmpdir parent
             try:
                 processor.save(malicious_path)
                 # If it succeeded, verify the file is in a reasonable location
-                # (os.path normalizes the path, so "../escaped.pkl" becomes parent/escaped.pkl)
+                # (os.path normalizes the path, so "../escaped_state" becomes parent/escaped_state)
                 # This is acceptable as long as we document the behavior
                 assert os.path.exists(malicious_path) or os.path.exists(
                     os.path.normpath(malicious_path)
@@ -72,7 +71,7 @@ class TestPathTraversalPrevention:
         processor.process_document("test", "Test content")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            abs_path = os.path.join(tmpdir, "test.pkl")
+            abs_path = os.path.join(tmpdir, "test_state")
             processor.save(abs_path)
             assert os.path.exists(abs_path)
 
@@ -355,74 +354,6 @@ class TestConfigurationSecurity:
 
         with pytest.raises(ValueError):
             CorticalConfig(louvain_resolution=-1.0)
-
-
-class TestSignatureVerificationIntegration:
-    """
-    Integration tests for signature verification.
-
-    Note: Unit tests are in tests/unit/test_persistence.py.
-    These tests verify the full save/load workflow.
-    """
-
-    def test_signed_save_load_roundtrip(self):
-        """Signed files should load correctly with the right key."""
-        processor = CorticalTextProcessor()
-        processor.process_document("doc1", "Test content")
-
-        key = b"test_secret_key_32bytes_minimum!"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = os.path.join(tmpdir, "signed.pkl")
-
-            # Save with signature
-            processor.save(path, signing_key=key)
-
-            # Should have created signature file
-            assert os.path.exists(f"{path}.sig")
-
-            # Load with verification
-            loaded = CorticalTextProcessor.load(path, verify_key=key)
-            assert "doc1" in loaded.documents
-
-    def test_tampered_file_rejected(self):
-        """Tampered files should be rejected."""
-        processor = CorticalTextProcessor()
-        processor.process_document("doc1", "Test content")
-
-        key = b"test_secret_key_32bytes_minimum!"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = os.path.join(tmpdir, "signed.pkl")
-
-            # Save with signature
-            processor.save(path, signing_key=key)
-
-            # Tamper with the file
-            with open(path, 'ab') as f:
-                f.write(b"tampered")
-
-            # Load should fail
-            with pytest.raises(SignatureVerificationError):
-                CorticalTextProcessor.load(path, verify_key=key)
-
-    def test_wrong_key_rejected(self):
-        """Loading with wrong key should be rejected."""
-        processor = CorticalTextProcessor()
-        processor.process_document("doc1", "Test content")
-
-        key1 = b"correct_key_here_32bytes_minimum"
-        key2 = b"wrong_key_here_32_bytes_minimum!"
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = os.path.join(tmpdir, "signed.pkl")
-
-            # Save with key1
-            processor.save(path, signing_key=key1)
-
-            # Load with key2 should fail
-            with pytest.raises(SignatureVerificationError):
-                CorticalTextProcessor.load(path, verify_key=key2)
 
 
 if __name__ == "__main__":

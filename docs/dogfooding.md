@@ -73,7 +73,7 @@ The indexer processes these files:
 | Tests | `tests/*.py` | Test cases and examples |
 | Documentation | `CLAUDE.md`, `README.md` | Project documentation |
 | Intelligence | `docs/*.md` | Architecture docs |
-| Task tracking | `TASK_LIST.md` | Development tasks |
+| Task tracking | `tasks/*.json` | Development tasks |
 
 ### Index Files Created
 
@@ -258,7 +258,7 @@ python scripts/search_codebase.py "my new function"
 
 2. **Check the task list**
    ```bash
-   python scripts/search_codebase.py "TASK_LIST feature name"
+   python scripts/task_utils.py list --status pending
    ```
 
 3. **Implement the feature**

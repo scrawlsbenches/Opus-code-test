@@ -27,9 +27,26 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 - Document findings even when they contradict initial hypotheses
 
 **Test-Driven Confidence**
-- Maintain >89% code coverage before optimizations
+- Don't regress coverage on files you modify
 - Run the full test suite after every change
 - Write tests for the bug before writing the fix
+
+> **⚠️ CODE COVERAGE POLICY:**
+> - **Current baseline:** 61% (as of 2025-12-17)
+> - **Target:** Improve incrementally, never regress on modified files
+> - **Reality:** Some modules have low coverage (see debt list below)
+>
+> When you add new code, add corresponding unit tests. Before committing:
+> ```bash
+> python -m coverage run -m pytest tests/ && python -m coverage report --include="cortical/*"
+> ```
+>
+> **Known coverage debt (acknowledged, not blocking):**
+> - `cortical/query/analogy.py` (3%), `cortical/mcp_server.py` (4%), `cortical/gaps.py` (9%)
+> - `cortical/cli_wrapper.py` (0% - CLI entry point), `cortical/types.py` (0% - type aliases)
+> - Full list: `samples/memories/2025-12-17-session-coverage-and-workflow-analysis.md`
+>
+> **Rule:** New code in well-covered modules needs tests. New code in debt modules: use judgment.
 
 **Dog-Food Everything**
 - Use the system to test itself when possible
@@ -98,6 +115,27 @@ python -c "import coverage; print('coverage OK')"
 ## AI Agent Onboarding
 
 **New to this codebase?** Follow these steps to get oriented quickly:
+
+### Step 0: Check Current Sprint Context
+
+Before diving into code, understand what's being worked on:
+
+```bash
+# View current sprint status and goals
+python scripts/task_utils.py sprint status
+
+# Or read the file directly
+cat tasks/CURRENT_SPRINT.md
+```
+
+**What sprint tracking provides:**
+- Current sprint ID and epic context
+- Active goals and their completion status
+- Recently completed work in this sprint
+- Blocked items that need attention
+- Strategic notes and decisions
+
+This helps you understand the current development focus and avoid duplicate work.
 
 ### Step 1: Generate AI Metadata (if missing)
 
@@ -606,7 +644,6 @@ Key defaults to know:
 ### Task Management (Merge-Friendly System)
 
 **IMPORTANT:** This project uses a merge-friendly task system in `tasks/` directory.
-The legacy `TASK_LIST.md` is kept for historical reference only.
 
 **Creating tasks:**
 ```bash
@@ -696,6 +733,38 @@ class TestYourFeature(unittest.TestCase):
 | `fresh_processor` | function | Empty processor for isolated tests |
 | `small_corpus_docs` | function | Raw document dict |
 
+### Test Markers for Optional Dependencies
+
+Tests requiring optional dependencies are excluded by default during development for faster iteration.
+
+**Markers defined in pyproject.toml:**
+
+| Marker | Tests | Dependency |
+|--------|-------|------------|
+| `optional` | All optional tests | (meta-marker) |
+| `mcp` | MCP server tests | `mcp>=1.0` |
+| `protobuf` | Serialization tests | `protobuf>=4.0` |
+| `fuzz` | Property-based tests | `hypothesis>=6.0` |
+| `slow` | Long-running tests | (none) |
+
+**Running tests:**
+
+```bash
+# Development (default) - excludes optional tests
+pytest tests/
+
+# Include optional tests (like CI)
+pytest tests/ -m ""
+
+# Using run_tests.py
+python scripts/run_tests.py unit --include-optional
+
+# Run only fuzzing tests
+pytest tests/ -m "fuzz"
+```
+
+**CI behavior:** All CI stages use `-m ""` to run the complete test suite including optional tests.
+
 **Always test:**
 - Empty corpus case
 - Single document case
@@ -716,7 +785,7 @@ Some tests are designed to skip under certain conditions. This is intentional, n
 **Pattern for optional dependencies:**
 ```python
 try:
-    from cortical.proto.serialization import to_proto, from_proto
+    from cortical.projects.proto import to_proto, from_proto
     PROTOBUF_AVAILABLE = True
 except ImportError:
     PROTOBUF_AVAILABLE = False
@@ -1083,8 +1152,9 @@ python examples/observability_demo.py
 | RAG passages | `processor.find_passages_for_query(query)` |
 | Fingerprint | `processor.get_fingerprint(text)` |
 | Compare | `processor.compare_fingerprints(fp1, fp2)` |
-| Save state | `processor.save("corpus.pkl")` |
-| Load state | `processor = CorticalTextProcessor.load("corpus.pkl")` |
+| Save state (JSON) | `processor.save("corpus_state")` (recommended) |
+| Save state (pkl) | `processor.save("corpus.pkl", format='pickle')` (deprecated) |
+| Load state | `processor = CorticalTextProcessor.load("corpus_state")` (auto-detects format) |
 | Enable metrics | `processor = CorticalTextProcessor(enable_metrics=True)` |
 | Get metrics | `processor.get_metrics()` |
 | Metrics summary | `processor.get_metrics_summary()` |
@@ -1102,9 +1172,83 @@ python examples/observability_demo.py
 | Create memory | `python scripts/new_memory.py "topic"` |
 | Create decision | `python scripts/new_memory.py "topic" --decision` |
 | Session handoff | `python scripts/session_handoff.py` |
+| Generate session memory | `python scripts/session_memory_generator.py --session-id ID` |
 | Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
 | Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
 | Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
+| View sprint status | `python scripts/task_utils.py sprint status` |
+| Mark sprint goal complete | `python scripts/task_utils.py sprint complete "goal text"` |
+| Add sprint note | `python scripts/task_utils.py sprint note "note text"` |
+| Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
+| List orchestration plans | `python scripts/orchestration_utils.py list` |
+| Verify batch | `python scripts/verify_batch.py --quick` |
+| View orchestration metrics | From Python: `OrchestrationMetrics().get_summary()` |
+
+### Orchestration Utilities
+
+For Director orchestration and parallel agent workflows:
+
+- `scripts/orchestration_utils.py` - Director orchestration tracking (plans, batches, metrics)
+- `scripts/verify_batch.py` - Automated batch verification
+
+See `.claude/commands/director.md` for comprehensive orchestration documentation.
+
+---
+
+## Persistence Format Migration
+
+**⚠️ IMPORTANT:** Pickle format is deprecated due to security concerns (Remote Code Execution vulnerability). JSON is now the default and recommended format.
+
+### Why JSON?
+
+- **Secure**: No code execution risk (pickle can execute arbitrary code when loading)
+- **Git-friendly**: Human-readable diffs, no merge conflicts
+- **Cross-platform**: Works across Python versions and platforms
+- **Debuggable**: Can inspect state without loading into Python
+
+### Migration from Pickle to JSON
+
+```bash
+# Migrate existing pickle files to JSON
+python -c "
+from cortical.processor import CorticalTextProcessor
+processor = CorticalTextProcessor.load('corpus_dev.pkl')  # Auto-detects pickle
+processor.save('corpus_dev.json')  # Saves as JSON directory
+"
+```
+
+**Or use the processor API:**
+```python
+from cortical.processor import CorticalTextProcessor
+
+# Load from pickle (auto-detects format)
+processor = CorticalTextProcessor.load('old_corpus.pkl')
+
+# Save as JSON
+processor.save('new_corpus')  # Creates directory with JSON files
+```
+
+### Backward Compatibility
+
+Existing pickle files will continue to work with deprecation warnings:
+
+```python
+# Load automatically detects format
+processor = CorticalTextProcessor.load('corpus.pkl')  # DeprecationWarning
+
+# Explicit format specification
+processor = CorticalTextProcessor.load('corpus.pkl', format='pickle')
+
+# Save with explicit pickle format (not recommended)
+processor.save('corpus.pkl', format='pickle')  # DeprecationWarning
+```
+
+### Format Detection
+
+The `load()` method auto-detects format based on file content (not extension):
+- **Directory** → JSON format (StateLoader)
+- **File starting with `{`** → JSON format
+- **File with pickle magic bytes** → Pickle format
 
 ---
 
@@ -1115,7 +1259,7 @@ The Cortical Text Processor can index and search its own codebase, providing sem
 ### Quick Start
 
 ```bash
-# Index the codebase (creates corpus_dev.pkl, ~2s)
+# Index the codebase (creates corpus_dev.json/, ~2s)
 python scripts/index_codebase.py
 
 # Incremental update (only changed files)
@@ -1125,6 +1269,9 @@ python scripts/index_codebase.py --incremental
 python scripts/search_codebase.py "PageRank algorithm"
 python scripts/search_codebase.py "bigram separator" --verbose
 python scripts/search_codebase.py --interactive
+
+# Legacy pickle format (deprecated)
+python scripts/index_codebase.py --output corpus_dev.pkl --format pkl
 ```
 
 ### Claude Skills
@@ -1399,6 +1546,110 @@ export ML_COLLECTION_ENABLED=0
 # Stats and validation still work when disabled
 ```
 
+### File Prediction Model
+
+The first ML model is available: **predict which files to modify** based on a task description.
+
+```bash
+# Train the model on commit history
+python scripts/ml_file_prediction.py train
+
+# Predict files for a task
+python scripts/ml_file_prediction.py predict "Add authentication feature"
+
+# Evaluate model performance (80/20 train/test split)
+python scripts/ml_file_prediction.py evaluate --split 0.2
+
+# View model statistics
+python scripts/ml_file_prediction.py stats
+```
+
+**How it works:**
+- Extracts commit type patterns (feat:, fix:, docs:, refactor:, etc.)
+- Builds file co-occurrence matrix from commit history
+- Maps keywords from commit messages to files
+- Uses TF-IDF-style scoring with frequency penalties
+
+**For comprehensive training guidance**, see [docs/ml-training-best-practices.md](docs/ml-training-best-practices.md) covering:
+- Data quality guidelines and filtering strategies
+- Training workflow and when to retrain
+- Performance optimization and hyperparameter tuning
+- Common pitfalls (overfitting, staleness, data leakage)
+- Evaluation metrics interpretation (MRR, Recall@K, Precision@K)
+- Integration with git hooks and CI/CD
+
+**Prediction with seed files:**
+```bash
+# If you know some files, boost co-occurring files
+python scripts/ml_file_prediction.py predict "Fix related bug" --seed auth.py login.py
+```
+
+**Current metrics** (403 commits, 20% test split):
+| Metric | Value | Description |
+|--------|-------|-------------|
+| MRR | 0.43 | First correct prediction ~position 2-3 |
+| Recall@10 | 0.48 | Half of actual files in top 10 |
+| Precision@1 | 0.31 | 31% of top predictions correct |
+
+**Model storage:** `.git-ml/models/file_prediction.json`
+
+**Training requirements:** See [docs/ml-milestone-thresholds.md](docs/ml-milestone-thresholds.md) for detailed explanation of why 500 commits are needed for reliable file prediction.
+
+#### Pre-Commit File Suggestions
+
+The ML file prediction is integrated into git as a pre-commit hook that suggests potentially missing files:
+
+```bash
+# Automatically installed when you run:
+python scripts/ml_data_collector.py install-hooks
+
+# Creates .git/hooks/prepare-commit-msg
+```
+
+**How it works:**
+1. You run `git commit -m "feat: Add authentication"`
+2. Hook analyzes the commit message
+3. Hook runs ML file prediction
+4. If high-confidence files aren't staged, warns you
+5. You can choose to add them or proceed
+
+**Example output:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 ML File Prediction Suggestion
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Based on your commit message, these files might need changes:
+
+  • tests/test_authentication.py                 (confidence: 0.823)
+  • docs/api.md                                  (confidence: 0.654)
+
+Staged files:
+  ✓ cortical/authentication.py
+
+ℹ️  Tip: Review the suggestions above.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Configuration (via environment variables):**
+- `ML_SUGGEST_ENABLED=0` - Disable suggestions (default: 1)
+- `ML_SUGGEST_THRESHOLD=0.7` - Confidence threshold (default: 0.5)
+- `ML_SUGGEST_BLOCKING=1` - Block commit if missing files (default: 0)
+- `ML_SUGGEST_TOP_N=10` - Number of predictions to check (default: 5)
+
+**When it runs:**
+- ✅ Regular commits (`git commit -m "..."`)
+- ❌ Merge commits, amends, rebases (too noisy)
+- ❌ Empty commits or no staged files
+- ❌ Model not trained (silently skips)
+
+**Testing without committing:**
+```bash
+bash scripts/test-ml-precommit-hook.sh
+```
+
+See [docs/ml-precommit-suggestions.md](docs/ml-precommit-suggestions.md) for detailed documentation.
+
 ### Automatic Session Capture
 
 **Pre-configured. No setup needed.**
@@ -1421,6 +1672,31 @@ python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl
 python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl --dry-run --verbose
 ```
 
+**Generate session memory:**
+```bash
+# Generate a draft memory document from current session
+python scripts/session_memory_generator.py --session-id abc123
+
+# Generate from recent commits (no session ID needed)
+python scripts/session_memory_generator.py --commits 10
+
+# Dry run (preview without saving)
+python scripts/session_memory_generator.py --session-id abc123 --dry-run
+```
+
+**What gets auto-generated:**
+- Session summary with commit history
+- Files modified during the session
+- Task IDs referenced in commits
+- Categorized file changes (Core Library, Tests, Scripts, etc.)
+- Auto-extracted insights and tags
+- Draft memory saved to `samples/memories/[DRAFT]-YYYY-MM-DD-session-{id}.md`
+
+**When it runs:**
+- Automatically at session end via `ml-session-capture-hook.sh`
+- Manually via command line for any session
+- Integrated into the Stop hook workflow
+
 ### Integration
 
 Data collection is fully automatic via hooks configured in `.claude/settings.local.json`:
@@ -1428,14 +1704,17 @@ Data collection is fully automatic via hooks configured in `.claude/settings.loc
 | Hook | Trigger | Action |
 |------|---------|--------|
 | **SessionStart** | Session begins | Starts ML session, installs git hooks, shows stats |
-| **Stop** | Session ends | Captures full transcript with all exchanges |
+| **Stop** | Session ends | Captures full transcript with all exchanges, generates draft memory |
+| **prepare-commit-msg** | Before commit | Suggests missing files based on commit message |
 | **post-commit** | After commit | Captures commit metadata with diff hunks |
 | **pre-push** | Before push | Reports collection stats |
 | **CI workflow** | GitHub Actions | Auto-captures CI pass/fail results |
 
 **Hook files:**
 - `scripts/ml-session-start-hook.sh` - SessionStart handler
-- `scripts/ml-session-capture-hook.sh` - Stop handler
+- `scripts/ml-session-capture-hook.sh` - Stop handler (includes session memory generation)
+- `scripts/session_memory_generator.py` - Auto-generates draft memory documents
+- `scripts/ml-precommit-suggest.sh` - prepare-commit-msg handler
 
 **CI Integration:**
 The GitHub Actions workflow (`.github/workflows/ci.yml`) includes an `ml-ci-capture` job that automatically records CI results for each commit. This runs after the coverage-report job and captures:
@@ -1465,7 +1744,9 @@ See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
 - **Dog-fooding**: `docs/dogfooding-checklist.md` - checklist for testing with real usage
 - **Definition of Done**: `docs/definition-of-done.md` - when is a task truly complete?
 - **Text-as-Memories**: `docs/text-as-memories.md` - knowledge management guide
-- **Task Archive**: `TASK_ARCHIVE.md` - completed tasks history
+- **Task Management**: `docs/merge-friendly-tasks.md` - merge-friendly task system with collision-free IDs
+- **ML Milestone Thresholds**: `docs/ml-milestone-thresholds.md` - why 500/2000/5000 commits for training
+- **Merge-Friendly Tasks**: See "Task Management (Merge-Friendly System)" section above for task workflow
 
 ---
 

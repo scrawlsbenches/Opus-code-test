@@ -1,0 +1,35 @@
+Philosophy of Religion: Reason, Faith, and the Divine
+
+Overview
+
+Philosophy of religion examines fundamental questions about religion using philosophical methods. Does God exist? If so, what is God's nature? Can religious belief be rational? What is the relationship between faith and reason? How should we understand religious language and experience? Unlike theology, which often works within particular religious traditions, philosophy of religion subjects religious claims to critical analysis from a stance that does not presuppose their truth.
+
+The field engages both believers and skeptics, offering conceptual tools for understanding and evaluating religious thought. While some philosophers have used these tools to defend traditional theism, others have developed sophisticated critiques. Contemporary philosophy of religion has become increasingly rigorous and technically sophisticated while maintaining connection to lived religious questions.
+
+Key Concepts
+
+The traditional theistic concept of God includes perfect being attributes: omnipotence (all-powerful), omniscience (all-knowing), omnibenevolence (perfectly good), and often aseity (self-existence), eternity, and immutability. Perfect being theology, tracing to Anselm, derives divine attributes from the concept of a being than which none greater can be conceived. Critics question whether these attributes are coherent and whether they describe the God of actual religious traditions.
+
+Arguments for God's existence have been debated for centuries. The ontological argument, in Anselm's version, claims that existence is a perfection; therefore, the greatest conceivable being must exist. Kant's critique holds that existence is not a real predicate adding to a concept's content. Contemporary modal versions (Plantinga) reformulate the argument in terms of possible worlds.
+
+Cosmological arguments infer God from features of the universe. The kalam argument claims that everything with a beginning has a cause; the universe began; therefore, the universe has a cause—identified as God. The contingency argument observes that contingent things require explanation; infinite regress of contingent causes is impossible; therefore, a necessary being must exist. Critics question the premises and whether the conclusion establishes specifically theistic conclusions.
+
+The design argument infers an intelligent designer from apparent order and purpose in nature. William Paley's classic version compared finding a watch to observing biological complexity. Hume's critique anticipated Darwin in suggesting that apparent design could arise from natural processes. Contemporary fine-tuning arguments note that physical constants appear precisely calibrated for life, though critics invoke multiple universes and anthropic considerations.
+
+The problem of evil challenges theistic belief: If God is omnipotent, omniscient, and perfectly good, why does evil exist? The logical problem claims that the existence of any evil is inconsistent with God's existence. The evidential problem grants consistency but argues that the amount and distribution of suffering provide evidence against God. Theodicies attempt to explain how God might permit evil—for free will, soul-making, or greater goods beyond our ken.
+
+Religious experience has been cited as evidence for God. William James analyzed varieties of religious experience, noting their noetic quality—they seem to convey knowledge. Plantinga's reformed epistemology argues that belief in God can be properly basic, warranted through immediate experience rather than inference. Critics question whether religious experience supports specifically theistic conclusions and whether it can be explained naturalistically.
+
+Faith and reason relate differently on various views. Evidentialism holds that belief is justified only by sufficient evidence. Fideism maintains that faith does not require rational justification. Reformed epistemology argues that certain beliefs can be properly basic without inferential evidence. The nature of faith itself is debated—whether it is belief, trust, acceptance, or practical commitment.
+
+The problem of divine hiddenness asks why God, if existing, does not make divine existence more evident. A loving God would presumably want relationship with creatures; reasonable nonbelief exists; therefore, God does not exist. Responses include claims about the value of freely chosen faith and the possibility of deeper divine purposes for hiddenness.
+
+Applications
+
+Religious pluralism poses the challenge of multiple religions with competing truth claims. Exclusivism holds that one religion is correct; inclusivism maintains that salvation is available through other paths; pluralism suggests that different religions represent different responses to ultimate reality. These positions have implications for tolerance, evangelism, and interreligious dialogue.
+
+Religion and science interact in complex ways. Conflict models emphasize incompatibility; independence models assign separate domains; integration models seek harmony. Debates over creation and evolution, cosmology and divine action, and consciousness and soul engage both scientific and philosophical questions.
+
+The meaning of religious language raises questions about how talk of God can be meaningful. Logical positivists denied that religious statements were cognitively significant. Wittgensteinian approaches analyze religious language as expressing a form of life rather than making factual claims. Analogical and symbolic theories explain how human language can apply to a transcendent God.
+
+Moral arguments for and against religious belief remain active. Some argue that theism provides the best foundation for objective morality; others contend that divine command theories face Euthyphro problems. The moral argument from the existence of objective values to God is debated alongside concerns about religiously motivated evils.

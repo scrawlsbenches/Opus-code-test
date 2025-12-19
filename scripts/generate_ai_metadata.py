@@ -208,6 +208,9 @@ class ModuleAnalyzer:
 
         self._extract_components()
 
+        # Find test coverage (lazy load)
+        self._test_coverage_cache = None
+
     def _extract_components(self):
         """Extract all components from AST."""
         for node in ast.iter_child_nodes(self.tree):
@@ -345,6 +348,9 @@ class ModuleAnalyzer:
                     'methods': [m.name for m in cls.methods if not m.is_private],
                 }
 
+        # Get test coverage mapping
+        test_coverage = self.get_test_coverage()
+
         # Functions (detailed)
         metadata['functions'] = {}
         for cls_name, func in self.get_all_functions():
@@ -378,6 +384,10 @@ class ModuleAnalyzer:
             if func.decorators:
                 func_meta['decorators'] = func.decorators
 
+            # Add test coverage
+            if func.name in test_coverage:
+                func_meta['tested_by'] = test_coverage[func.name]
+
             metadata['functions'][full_name] = func_meta
 
         # Dependencies
@@ -400,6 +410,161 @@ class ModuleAnalyzer:
             'stdlib': sorted(set(stdlib)),
             'local': sorted(set(local)),
         }
+
+    def _find_test_files(self) -> List[str]:
+        """Find test files that might test this module."""
+        # Get module name without extension
+        module_name = self.filename.replace('.py', '')
+
+        # Find project root (assume tests/ is at same level as cortical/)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(script_dir)
+        tests_dir = os.path.join(project_root, 'tests')
+
+        if not os.path.exists(tests_dir):
+            return []
+
+        test_files = []
+
+        # Search for test files matching patterns:
+        # - test_<module>.py
+        # - test_<module>_*.py (e.g., test_config_coverage.py)
+        # - In subdirectories: unit/, integration/, etc.
+        for root, dirs, files in os.walk(tests_dir):
+            for filename in files:
+                if not filename.endswith('.py'):
+                    continue
+
+                # Check if filename matches test patterns for this module
+                if filename == f'test_{module_name}.py':
+                    test_files.append(os.path.join(root, filename))
+                elif filename.startswith(f'test_{module_name}_'):
+                    test_files.append(os.path.join(root, filename))
+
+        return test_files
+
+    def _parse_test_file(self, test_filepath: str) -> Dict[str, List[str]]:
+        """Parse a test file and extract test function/method names.
+
+        Returns:
+            Dict mapping source function names to test function names that might test them.
+        """
+        try:
+            with open(test_filepath, 'r', encoding='utf-8') as f:
+                test_source = f.read()
+
+            test_tree = ast.parse(test_source, filename=test_filepath)
+        except Exception:
+            return {}
+
+        # Extract test functions/methods with their class context
+        test_functions = []  # List of (test_name, class_name_or_none, func_node)
+
+        for node in ast.walk(test_tree):
+            if isinstance(node, ast.ClassDef):
+                # Extract methods from test classes
+                for item in node.body:
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        if item.name.startswith('test_'):
+                            test_functions.append((item.name, node.name, item))
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                # Top-level test functions
+                if node.name.startswith('test_'):
+                    # Check if it's not inside a class
+                    test_functions.append((node.name, None, node))
+
+        # Match test functions to source functions
+        coverage_map = defaultdict(list)
+
+        # Get relative test file path for display
+        test_filename = os.path.basename(test_filepath)
+
+        # Get all source function names
+        source_funcs = {func.name for _, func in self.get_all_functions()}
+
+        for test_func_name, test_class_name, func_node in test_functions:
+            # Remove 'test_' prefix from test name
+            test_name = test_func_name[5:]  # Remove 'test_'
+
+            # Parse test class name for hints (e.g., TestComputeFingerprintEdgeCases)
+            class_hints = []
+            if test_class_name:
+                # Remove 'Test' prefix and extract potential function names
+                class_lower = test_class_name.lower()
+                if class_lower.startswith('test'):
+                    class_lower = class_lower[4:]
+                # Try to extract words from camelCase
+                class_hints.append(class_lower)
+
+            # Try to match against source functions
+            for source_func in source_funcs:
+                matched = False
+                source_lower = source_func.lower()
+
+                # Direct match: test_compute_fingerprint -> compute_fingerprint
+                if test_name == source_func:
+                    matched = True
+                # Prefix match: test_compute_fingerprint_empty -> compute_fingerprint
+                elif test_name.startswith(source_func + '_'):
+                    matched = True
+                # Partial match in test name
+                elif source_lower in test_name.lower():
+                    matched = True
+                # Match via test class name
+                elif test_class_name and source_lower in test_class_name.lower():
+                    matched = True
+
+                # Also check if the test function calls this source function
+                # by looking at function calls in the test body
+                if not matched:
+                    for subnode in ast.walk(func_node):
+                        if isinstance(subnode, ast.Call):
+                            if isinstance(subnode.func, ast.Name):
+                                if subnode.func.id == source_func:
+                                    matched = True
+                                    break
+                            elif isinstance(subnode.func, ast.Attribute):
+                                if subnode.func.attr == source_func:
+                                    matched = True
+                                    break
+
+                if matched:
+                    if test_class_name:
+                        coverage_map[source_func].append(f"{test_filename}::{test_class_name}::{test_func_name}")
+                    else:
+                        coverage_map[source_func].append(f"{test_filename}::{test_func_name}")
+
+        return dict(coverage_map)
+
+    def get_test_coverage(self) -> Dict[str, List[str]]:
+        """Get test coverage mapping for all functions in this module.
+
+        Returns:
+            Dict mapping function names to lists of test functions that test them.
+        """
+        if self._test_coverage_cache is not None:
+            return self._test_coverage_cache
+
+        test_files = self._find_test_files()
+
+        if not test_files:
+            self._test_coverage_cache = {}
+            return self._test_coverage_cache
+
+        # Aggregate coverage from all test files
+        coverage = defaultdict(list)
+
+        for test_file in test_files:
+            file_coverage = self._parse_test_file(test_file)
+            for func_name, tests in file_coverage.items():
+                coverage[func_name].extend(tests)
+
+        # Remove duplicates and sort
+        for func_name in coverage:
+            coverage[func_name] = sorted(set(coverage[func_name]))
+
+        self._test_coverage_cache = dict(coverage)
+        return self._test_coverage_cache
 
 
 def dict_to_yaml(data: Any, indent: int = 0) -> str:

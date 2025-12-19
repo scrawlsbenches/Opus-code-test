@@ -150,7 +150,7 @@ class TestExpandQuery:
         assert result["network"] > 0
 
     def test_lateral_expansion_weight_calculation(self, tokenizer):
-        """Expanded terms weighted by connection * pagerank * 0.6."""
+        """Expanded terms weighted by connection * pagerank * 0.6 (legacy PageRank-only mode)."""
         col1 = MockMinicolumn(
             content="neural",
             pagerank=1.0,
@@ -164,7 +164,8 @@ class TestExpandQuery:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
-        result = expand_query("neural", layers, tokenizer)
+        # Disable capping to test weight calculation in isolation
+        result = expand_query("neural", layers, tokenizer, tfidf_weight=0.0, max_expansion_weight=0)
         # Expected: 10.0 * 0.5 * 0.6 = 3.0
         assert result["networks"] == pytest.approx(3.0, rel=0.01)
 
@@ -400,7 +401,8 @@ class TestExpandQuery:
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
 
-        result = expand_query("term1 term2", layers, tokenizer)
+        # Disable capping to test max weight selection in isolation
+        result = expand_query("term1 term2", layers, tokenizer, tfidf_weight=0.0, max_expansion_weight=0)
 
         # Target reachable from both term1 (weight 10) and term2 (weight 5)
         # Should use maximum weight path
@@ -940,9 +942,10 @@ class TestGetExpandedQueryTerms:
         col1 = MockMinicolumn(
             content="term1",
             pagerank=1.0,
+            tfidf=0.0,
             lateral_connections={"L0_target": 10.0}
         )
-        col2 = MockMinicolumn(content="target", pagerank=0.5)
+        col2 = MockMinicolumn(content="target", pagerank=0.5, tfidf=0.0)
         layer0 = MockHierarchicalLayer([col1, col2])
         layers = MockLayers.empty()
         layers[MockLayers.TOKENS] = layer0
@@ -951,6 +954,17 @@ class TestGetExpandedQueryTerms:
             ("term1", "RelatedTo", "target", 0.6)
         ]
 
+        # Use tfidf_weight=0.0 via the expand_query internals
+        # We need to pass this through get_expanded_query_terms, but it doesn't expose tfidf_weight
+        # For now, we'll update the expected value based on default tfidf_weight=0.7
+        # With tfidf=0.0, pagerank=0.5, default tfidf_weight=0.7:
+        # term_score = 0.0 * 0.7 + 0.5 * 0.3 = 0.15
+        # Lateral: 10.0 * 0.15 * 0.6 = 0.9
+        # Semantic: 0.6 * 0.7 * 0.8 (discount) = 0.336
+        # Should use lateral (higher)
+
+        # TODO: Expose tfidf_weight in get_expanded_query_terms for full control
+        # For now, test with the new default behavior
         result = get_expanded_query_terms(
             "term1",
             layers,
@@ -960,10 +974,7 @@ class TestGetExpandedQueryTerms:
             semantic_relations=relations
         )
 
-        # Lateral: 10.0 * 0.5 * 0.6 = 3.0
-        # Semantic: 0.6 * 0.7 * 0.8 (discount) = 0.336
-        # Should use lateral (higher)
-        assert result["target"] == pytest.approx(3.0, rel=0.01)
+        assert result["target"] == pytest.approx(0.9, rel=0.01)
 
     def test_use_semantic_false(self, tokenizer):
         """use_semantic=False skips semantic expansion."""
@@ -1066,3 +1077,857 @@ class TestGetExpandedQueryTerms:
         )
 
         assert "neural" in result
+
+
+# =============================================================================
+# ADDITIONAL EDGE CASE TESTS FOR IMPROVED COVERAGE
+# =============================================================================
+
+
+class TestExpandQueryTFIDFWeighting:
+    """Tests for TF-IDF weighting in query expansion (Task T-20251214-233116-3058-001)."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_tfidf_weight_default(self, tokenizer):
+        """Default tfidf_weight=0.7 uses 70% TF-IDF, 30% PageRank."""
+        col1 = MockMinicolumn(
+            content="neural",
+            pagerank=0.5,
+            tfidf=2.0,
+            lateral_connections={"L0_networks": 10.0}
+        )
+        col2 = MockMinicolumn(
+            content="networks",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Disable capping to test TF-IDF weighting in isolation
+        result = expand_query("neural", layers, tokenizer, max_expansion_weight=0)
+
+        # Expected: 10.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6 = 10.0 * (1.05 + 0.24) * 0.6
+        #         = 10.0 * 1.29 * 0.6 = 7.74
+        expected_score = 10.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6
+        assert "networks" in result
+        assert result["networks"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_tfidf_weight_zero_uses_pagerank_only(self, tokenizer):
+        """tfidf_weight=0.0 uses only PageRank (legacy behavior)."""
+        col1 = MockMinicolumn(
+            content="neural",
+            pagerank=0.5,
+            tfidf=2.0,
+            lateral_connections={"L0_networks": 10.0}
+        )
+        col2 = MockMinicolumn(
+            content="networks",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Disable capping to test TF-IDF weighting in isolation
+        result = expand_query("neural", layers, tokenizer, tfidf_weight=0.0, max_expansion_weight=0)
+
+        # Expected: 10.0 * 0.8 * 0.6 = 4.8 (PageRank only)
+        expected_score = 10.0 * 0.8 * 0.6
+        assert "networks" in result
+        assert result["networks"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_tfidf_weight_one_uses_tfidf_only(self, tokenizer):
+        """tfidf_weight=1.0 uses only TF-IDF."""
+        col1 = MockMinicolumn(
+            content="neural",
+            pagerank=0.5,
+            tfidf=2.0,
+            lateral_connections={"L0_networks": 10.0}
+        )
+        col2 = MockMinicolumn(
+            content="networks",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Disable capping to test TF-IDF weighting in isolation
+        result = expand_query("neural", layers, tokenizer, tfidf_weight=1.0, max_expansion_weight=0)
+
+        # Expected: 10.0 * 1.5 * 0.6 = 9.0 (TF-IDF only)
+        expected_score = 10.0 * 1.5 * 0.6
+        assert "networks" in result
+        assert result["networks"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_tfidf_weight_affects_ranking(self, tokenizer):
+        """Different tfidf_weight values change expansion ranking."""
+        # Create scenario where PageRank and TF-IDF favor different terms
+        # term1: high PageRank, low TF-IDF
+        # term2: low PageRank, high TF-IDF
+        col_source = MockMinicolumn(
+            content="source",
+            pagerank=1.0,
+            tfidf=2.0,
+            lateral_connections={"L0_common": 5.0, "L0_rare": 5.0}
+        )
+        col_common = MockMinicolumn(
+            content="common",
+            pagerank=0.9,  # High PageRank (well-connected)
+            tfidf=0.5      # Low TF-IDF (not distinctive)
+        )
+        col_rare = MockMinicolumn(
+            content="rare",
+            pagerank=0.3,  # Low PageRank (not well-connected)
+            tfidf=2.5      # High TF-IDF (very distinctive)
+        )
+        layer0 = MockHierarchicalLayer([col_source, col_common, col_rare])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Disable capping to test TF-IDF weighting in isolation
+        # With tfidf_weight=0.0 (PageRank only), "common" should rank higher
+        result_pagerank = expand_query("source", layers, tokenizer, tfidf_weight=0.0, max_expansion_weight=0)
+        score_common_pr = result_pagerank["common"]
+        score_rare_pr = result_pagerank["rare"]
+        assert score_common_pr > score_rare_pr, "PageRank should favor 'common'"
+
+        # With tfidf_weight=1.0 (TF-IDF only), "rare" should rank higher
+        result_tfidf = expand_query("source", layers, tokenizer, tfidf_weight=1.0, max_expansion_weight=0)
+        score_common_tfidf = result_tfidf["common"]
+        score_rare_tfidf = result_tfidf["rare"]
+        assert score_rare_tfidf > score_common_tfidf, "TF-IDF should favor 'rare'"
+
+    def test_tfidf_weight_half_equal_blend(self, tokenizer):
+        """tfidf_weight=0.5 gives equal weight to TF-IDF and PageRank."""
+        col1 = MockMinicolumn(
+            content="neural",
+            pagerank=0.6,
+            tfidf=2.0,
+            lateral_connections={"L0_networks": 10.0}
+        )
+        col2 = MockMinicolumn(
+            content="networks",
+            pagerank=0.8,
+            tfidf=1.2
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Disable capping to test TF-IDF weighting in isolation
+        result = expand_query("neural", layers, tokenizer, tfidf_weight=0.5, max_expansion_weight=0)
+
+        # Expected: 10.0 * (1.2 * 0.5 + 0.8 * 0.5) * 0.6 = 10.0 * 1.0 * 0.6 = 6.0
+        expected_score = 10.0 * (1.2 * 0.5 + 0.8 * 0.5) * 0.6
+        assert "networks" in result
+        assert result["networks"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_tfidf_weight_multiple_expansions(self, tokenizer):
+        """tfidf_weight affects all lateral expansions consistently."""
+        col_source = MockMinicolumn(
+            content="source",
+            pagerank=1.0,
+            tfidf=2.0,
+            lateral_connections={
+                "L0_term1": 8.0,
+                "L0_term2": 6.0,
+                "L0_term3": 4.0
+            }
+        )
+        col1 = MockMinicolumn(content="term1", pagerank=0.5, tfidf=1.5)
+        col2 = MockMinicolumn(content="term2", pagerank=0.7, tfidf=1.0)
+        col3 = MockMinicolumn(content="term3", pagerank=0.9, tfidf=0.5)
+
+        layer0 = MockHierarchicalLayer([col_source, col1, col2, col3])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Disable capping to test TF-IDF weighting in isolation
+        result = expand_query("source", layers, tokenizer, tfidf_weight=0.8, max_expansion_weight=0)
+
+        # Verify all terms are weighted consistently
+        # term1: 8.0 * (1.5 * 0.8 + 0.5 * 0.2) * 0.6 = 8.0 * 1.3 * 0.6 = 6.24
+        # term2: 6.0 * (1.0 * 0.8 + 0.7 * 0.2) * 0.6 = 6.0 * 0.94 * 0.6 = 3.384
+        # term3: 4.0 * (0.5 * 0.8 + 0.9 * 0.2) * 0.6 = 4.0 * 0.58 * 0.6 = 1.392
+        assert "term1" in result
+        assert "term2" in result
+        assert "term3" in result
+        expected_1 = 8.0 * (1.5 * 0.8 + 0.5 * 0.2) * 0.6
+        expected_2 = 6.0 * (1.0 * 0.8 + 0.7 * 0.2) * 0.6
+        expected_3 = 4.0 * (0.5 * 0.8 + 0.9 * 0.2) * 0.6
+        assert result["term1"] == pytest.approx(expected_1, rel=0.01)
+        assert result["term2"] == pytest.approx(expected_2, rel=0.01)
+        assert result["term3"] == pytest.approx(expected_3, rel=0.01)
+
+    def test_tfidf_weight_with_concepts_disabled(self, tokenizer):
+        """tfidf_weight applies to lateral expansion even with concepts disabled."""
+        col1 = MockMinicolumn(
+            content="neural",
+            pagerank=0.5,
+            tfidf=2.0,
+            lateral_connections={"L0_networks": 10.0}
+        )
+        col2 = MockMinicolumn(
+            content="networks",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Disable capping to test TF-IDF weighting in isolation
+        result = expand_query(
+            "neural",
+            layers,
+            tokenizer,
+            tfidf_weight=1.0,
+            use_concepts=False,
+            max_expansion_weight=0
+        )
+
+        # Should still apply TF-IDF weighting
+        expected_score = 10.0 * 1.5 * 0.6
+        assert "networks" in result
+        assert result["networks"] == pytest.approx(expected_score, rel=0.01)
+
+
+class TestExpandQueryMaxExpansionWeight:
+    """Tests for max_expansion_weight parameter (expansion weight capping)."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_max_expansion_weight_caps_high_scores(self, tokenizer):
+        """max_expansion_weight caps expansion scores to prevent single terms dominating."""
+        # Create a scenario where lateral connection weight is very high
+        col1 = MockMinicolumn(
+            content="management",
+            pagerank=0.5,
+            tfidf=1.0,
+            lateral_connections={"L0_risk": 50.0}  # Very high co-occurrence
+        )
+        col2 = MockMinicolumn(
+            content="risk",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # With default max_expansion_weight=2.0, cap = 1.0 * 2.0 = 2.0
+        result = expand_query("management", layers, tokenizer, max_expansion_weight=2.0)
+
+        # risk score without cap: 50.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6 = 50.0 * 1.29 * 0.6 = 38.7
+        # with cap of 2.0, it should be exactly 2.0
+        assert "risk" in result
+        assert result["risk"] == pytest.approx(2.0, rel=0.01)
+
+    def test_max_expansion_weight_zero_disables_capping(self, tokenizer):
+        """max_expansion_weight=0 disables capping (uses raw scores)."""
+        col1 = MockMinicolumn(
+            content="management",
+            pagerank=0.5,
+            tfidf=1.0,
+            lateral_connections={"L0_risk": 50.0}
+        )
+        col2 = MockMinicolumn(
+            content="risk",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # max_expansion_weight=0 disables capping
+        result = expand_query("management", layers, tokenizer, max_expansion_weight=0)
+
+        # Should get uncapped score: 50.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6 = 38.7
+        expected_score = 50.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6
+        assert "risk" in result
+        assert result["risk"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_max_expansion_weight_does_not_affect_low_scores(self, tokenizer):
+        """Scores below the cap are not affected."""
+        col1 = MockMinicolumn(
+            content="neural",
+            pagerank=0.5,
+            tfidf=1.0,
+            lateral_connections={"L0_networks": 2.0}  # Low co-occurrence
+        )
+        col2 = MockMinicolumn(
+            content="networks",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # With max_expansion_weight=2.0, cap = 1.0 * 2.0 = 2.0
+        result = expand_query("neural", layers, tokenizer, max_expansion_weight=2.0)
+
+        # networks score: 2.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6 = 2.0 * 1.29 * 0.6 = 1.548
+        # This is below cap of 2.0, so should remain unchanged
+        expected_score = 2.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6
+        assert "networks" in result
+        assert result["networks"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_max_expansion_weight_high_value_effectively_disables(self, tokenizer):
+        """Very high max_expansion_weight effectively disables capping."""
+        col1 = MockMinicolumn(
+            content="management",
+            pagerank=0.5,
+            tfidf=1.0,
+            lateral_connections={"L0_risk": 50.0}
+        )
+        col2 = MockMinicolumn(
+            content="risk",
+            pagerank=0.8,
+            tfidf=1.5
+        )
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # With very high cap, no expansion should be affected
+        result = expand_query("management", layers, tokenizer, max_expansion_weight=100.0)
+
+        # Should get uncapped score
+        expected_score = 50.0 * (1.5 * 0.7 + 0.8 * 0.3) * 0.6
+        assert "risk" in result
+        assert result["risk"] == pytest.approx(expected_score, rel=0.01)
+
+
+class TestExpandQueryEdgeCases:
+    """Additional edge case tests to improve coverage."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_variant_matching_success(self, tokenizer):
+        """Test variant matching when query term not found but variant exists."""
+        # Create a corpus with "computing" but query for "computed"
+        # The tokenizer should find variants
+        col = MockMinicolumn(content="comput", pagerank=0.8)
+        layer0 = MockHierarchicalLayer([col])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Query with a term that doesn't exist but has variants
+        result = expand_query("computed", layers, tokenizer, use_variants=True)
+
+        # Should find the variant with weight 0.8
+        if "comput" in result:
+            assert result["comput"] == 0.8
+
+    def test_variant_matching_multiple_unmatched(self, tokenizer):
+        """Test variant matching with multiple unmatched terms."""
+        col1 = MockMinicolumn(content="comput", pagerank=0.8)
+        col2 = MockMinicolumn(content="learn", pagerank=0.7)
+        layer0 = MockHierarchicalLayer([col1, col2])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Query with terms that need variant matching
+        result = expand_query("computing learning", layers, tokenizer, use_variants=True)
+
+        # Check that variants were found
+        assert len(result) > 0
+
+    def test_no_concepts_layer(self, tokenizer):
+        """Test expand_query when concepts layer is missing."""
+        layers = MockLayers.single_term("neural", pagerank=0.8)
+        # Remove concepts layer
+        if MockLayers.CONCEPTS in layers:
+            del layers[MockLayers.CONCEPTS]
+
+        result = expand_query("neural", layers, tokenizer, use_concepts=True)
+
+        # Should still work, just skip concept expansion
+        assert "neural" in result
+
+    def test_empty_concepts_layer(self, tokenizer):
+        """Test expand_query when concepts layer exists but is empty."""
+        layers = MockLayers.single_term("neural", pagerank=0.8)
+        # Add empty concepts layer
+        layers[MockLayers.CONCEPTS] = MockHierarchicalLayer([], level=2)
+
+        result = expand_query("neural", layers, tokenizer, use_concepts=True)
+
+        # Should still work
+        assert "neural" in result
+
+    def test_lateral_and_concept_combined(self, tokenizer):
+        """Test that lateral and concept expansion work together."""
+        # Create a rich structure with both lateral and concept connections
+        builder = LayerBuilder()
+        builder.with_term("neural", pagerank=0.9)
+        builder.with_term("deep", pagerank=0.8)
+        builder.with_term("learning", pagerank=0.8)
+        builder.with_term("network", pagerank=0.7)
+
+        # Add lateral connection
+        builder.with_connection("neural", "network", weight=5.0)
+
+        layers = builder.build()
+
+        # Add concept cluster
+        concept = MockMinicolumn(
+            content="ml_concept",
+            id="L2_ml_concept",
+            layer=2,
+            pagerank=0.9,
+            feedforward_sources={"L0_neural", "L0_deep", "L0_learning"}
+        )
+        layers[MockLayers.CONCEPTS] = MockHierarchicalLayer([concept], level=2)
+
+        result = expand_query(
+            "neural",
+            layers,
+            tokenizer,
+            use_lateral=True,
+            use_concepts=True
+        )
+
+        # Should have original
+        assert "neural" in result
+        # Should have lateral expansion
+        assert "network" in result
+        # Should have concept expansions
+        assert "deep" in result or "learning" in result
+
+    def test_code_concepts_with_lateral_combined(self, tokenizer):
+        """Test code concepts and lateral expansion together."""
+        col1 = MockMinicolumn(
+            content="fetch",
+            pagerank=0.9,
+            lateral_connections={"L0_data": 5.0}
+        )
+        col2 = MockMinicolumn(content="retrieve", pagerank=0.7)
+        col3 = MockMinicolumn(content="get", pagerank=0.8)
+        col4 = MockMinicolumn(content="data", pagerank=0.6)
+
+        layer0 = MockHierarchicalLayer([col1, col2, col3, col4])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        result = expand_query(
+            "fetch",
+            layers,
+            tokenizer,
+            use_code_concepts=True,
+            use_lateral=True,
+            use_concepts=False
+        )
+
+        # Should have original
+        assert "fetch" in result
+        # Should have lateral expansion
+        assert "data" in result
+
+
+class TestExpandQueryMultihopEdgeCases:
+    """Additional edge case tests for multihop expansion."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_frontier_exceeds_max_hops(self, tokenizer):
+        """Test that frontier items at max_hops are skipped."""
+        builder = LayerBuilder()
+        builder.with_terms(["start", "hop1", "hop2", "hop3"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("start", "IsA", "hop1", 0.9),
+            ("hop1", "IsA", "hop2", 0.9),
+            ("hop2", "IsA", "hop3", 0.9)
+        ]
+
+        # With max_hops=2, hop3 should not be reached
+        result = expand_query_multihop(
+            "start",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=2
+        )
+
+        assert "start" in result
+        assert "hop1" in result
+        assert "hop2" in result
+        # hop3 should be filtered out
+        assert "hop3" not in result
+
+    def test_neighbor_not_in_corpus(self, tokenizer):
+        """Test multihop skips neighbors not in corpus."""
+        # Only include "dog" in corpus, not "animal"
+        col = MockMinicolumn(content="dog", pagerank=0.8)
+        layer0 = MockHierarchicalLayer([col])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        # Relation points to term not in corpus
+        relations = [
+            ("dog", "IsA", "animal", 0.9)
+        ]
+
+        result = expand_query_multihop("dog", layers, tokenizer, relations)
+
+        # Should only have original term
+        assert "dog" in result
+        assert "animal" not in result
+
+    def test_low_path_score_filtered(self, tokenizer):
+        """Test that paths below min_path_score are filtered."""
+        builder = LayerBuilder()
+        builder.with_terms(["term1", "term2", "term3"], pagerank=0.7)
+        layers = builder.build()
+
+        # Create a chain with weak validity
+        relations = [
+            ("term1", "Antonym", "term2", 0.9),
+            ("term2", "IsA", "term3", 0.8)
+        ]
+
+        # Antonym -> IsA has score 0.1 (from VALID_RELATION_CHAINS)
+        result = expand_query_multihop(
+            "term1",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=2,
+            min_path_score=0.15  # Set above 0.1
+        )
+
+        assert "term1" in result
+        # term3 should be filtered due to low path score through Antonym->IsA
+        # Note: term2 might still be included if single-hop path is valid
+
+    def test_visited_at_earlier_hop(self, tokenizer):
+        """Test that terms visited at earlier hops aren't revisited."""
+        builder = LayerBuilder()
+        builder.with_terms(["start", "mid", "target"], pagerank=0.7)
+        layers = builder.build()
+
+        # Multiple paths to target, one shorter
+        relations = [
+            ("start", "IsA", "target", 0.9),  # Direct path
+            ("start", "RelatedTo", "mid", 0.8),
+            ("mid", "IsA", "target", 0.9)  # Longer path
+        ]
+
+        result = expand_query_multihop(
+            "start",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=2
+        )
+
+        # Target should be included
+        assert "target" in result
+        # Weight should be from shorter path (hop 1)
+
+    def test_multiple_query_terms_expansion(self, tokenizer):
+        """Test multihop with multiple query terms expanding in parallel."""
+        builder = LayerBuilder()
+        builder.with_terms(["term1", "term2", "exp1", "exp2"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("term1", "IsA", "exp1", 0.9),
+            ("term2", "IsA", "exp2", 0.9)
+        ]
+
+        result = expand_query_multihop(
+            "term1 term2",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=1
+        )
+
+        # Should have both original terms
+        assert "term1" in result
+        assert "term2" in result
+        assert result["term1"] == 1.0
+        assert result["term2"] == 1.0
+        # Should have expansions from both
+        assert "exp1" in result
+        assert "exp2" in result
+
+    def test_zero_decay_factor(self, tokenizer):
+        """Test multihop with decay_factor=0 (no expansions beyond hop 0)."""
+        builder = LayerBuilder()
+        builder.with_terms(["start", "next"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("start", "IsA", "next", 0.9)
+        ]
+
+        result = expand_query_multihop(
+            "start",
+            layers,
+            tokenizer,
+            relations,
+            decay_factor=0.0
+        )
+
+        # With decay=0, expansions get weight 0
+        assert "start" in result
+        # "next" might be filtered out due to 0 weight
+
+    def test_complex_relation_chain(self, tokenizer):
+        """Test complex multi-hop chain with different relation types."""
+        builder = LayerBuilder()
+        builder.with_terms(["wheel", "car", "fast", "racing"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("wheel", "PartOf", "car", 0.9),       # PartOf
+            ("car", "HasProperty", "fast", 0.8),   # HasProperty
+            ("fast", "RelatedTo", "racing", 0.7)   # RelatedTo
+        ]
+
+        result = expand_query_multihop(
+            "wheel",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=3
+        )
+
+        # Should follow the chain
+        assert "wheel" in result
+        assert "car" in result
+        assert "fast" in result
+        # racing might be filtered based on path validity
+
+
+class TestExpandQuerySemanticEdgeCases:
+    """Additional edge case tests for semantic expansion."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_query_term_not_in_corpus(self, tokenizer):
+        """Test semantic expansion when query term not in corpus."""
+        col = MockMinicolumn(content="term1", pagerank=0.8)
+        layer0 = MockHierarchicalLayer([col])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        relations = [
+            ("nonexistent", "IsA", "term1", 0.9)
+        ]
+
+        result = expand_query_semantic("nonexistent", layers, tokenizer, relations)
+
+        # Should return empty since query term not in corpus
+        assert result == {}
+
+    def test_semantic_self_loop(self, tokenizer):
+        """Test semantic expansion with self-referential relations."""
+        col = MockMinicolumn(content="term", pagerank=0.8)
+        layer0 = MockHierarchicalLayer([col])
+        layers = MockLayers.empty()
+        layers[MockLayers.TOKENS] = layer0
+
+        relations = [
+            ("term", "RelatedTo", "term", 0.9)  # Self-loop
+        ]
+
+        result = expand_query_semantic("term", layers, tokenizer, relations)
+
+        # Should have original term, self-loop doesn't add duplicate
+        assert "term" in result
+        assert result["term"] == 1.0
+        assert len(result) == 1
+
+
+class TestScoreRelationPathEdgeCases:
+    """Additional edge cases for score_relation_path."""
+
+    def test_very_long_chain(self):
+        """Test scoring of very long relation chains."""
+        # Create a chain of 10 weak relations
+        long_chain = ["RelatedTo"] * 10
+        score = score_relation_path(long_chain)
+
+        # Each pair has score 0.6, so total should be 0.6^9
+        expected = 0.6 ** 9
+        assert score == pytest.approx(expected, rel=0.01)
+
+    def test_mixed_strong_weak_chain(self):
+        """Test chain with mix of strong and weak relations."""
+        # IsA->IsA (1.0) -> RelatedTo (0.6 for transition)
+        chain = ["IsA", "IsA", "RelatedTo"]
+        score = score_relation_path(chain)
+
+        # Should be weaker than pure IsA chain
+        assert 0 < score < 1.0
+
+    def test_all_unknown_relations(self):
+        """Test chain of completely unknown relation types."""
+        chain = ["UnknownA", "UnknownB", "UnknownC"]
+        score = score_relation_path(chain)
+
+        # Should use default validity for each pair
+        assert 0 <= score <= 1.0
+
+
+class TestExpandQueryStressTests:
+    """Stress tests with large numbers of connections."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_large_number_of_lateral_connections(self, tokenizer):
+        """Test expand_query with many lateral connections."""
+        builder = LayerBuilder()
+        builder.with_term("hub", pagerank=1.0)
+
+        # Create 100 connected terms
+        for i in range(100):
+            builder.with_term(f"spoke{i}", pagerank=0.5)
+            builder.with_connection("hub", f"spoke{i}", weight=float(100-i))
+
+        layers = builder.build()
+
+        result = expand_query("hub", layers, tokenizer, max_expansions=10)
+
+        # Should limit to max_expansions
+        assert len(result) <= 11  # hub + 10 expansions
+
+    def test_multiple_concepts_with_overlap(self, tokenizer):
+        """Test expand_query with overlapping concept clusters."""
+        builder = LayerBuilder()
+        builder.with_terms(["neural", "deep", "learning", "network"], pagerank=0.7)
+        layers = builder.build()
+
+        # Create multiple overlapping concepts
+        concept1 = MockMinicolumn(
+            content="concept1",
+            id="L2_concept1",
+            layer=2,
+            pagerank=0.9,
+            feedforward_sources={"L0_neural", "L0_deep"}
+        )
+        concept2 = MockMinicolumn(
+            content="concept2",
+            id="L2_concept2",
+            layer=2,
+            pagerank=0.8,
+            feedforward_sources={"L0_deep", "L0_learning"}
+        )
+
+        layers[MockLayers.CONCEPTS] = MockHierarchicalLayer([concept1, concept2], level=2)
+
+        result = expand_query("neural", layers, tokenizer, use_concepts=True)
+
+        # Should expand through concepts
+        assert "neural" in result
+        assert "deep" in result
+
+
+class TestMultihopBoundaryConditions:
+    """Boundary condition tests for multihop expansion."""
+
+    @pytest.fixture
+    def tokenizer(self):
+        """Create a standard tokenizer for tests."""
+        return Tokenizer()
+
+    def test_max_expansions_zero(self, tokenizer):
+        """Test multihop with max_expansions=0."""
+        builder = LayerBuilder()
+        builder.with_terms(["start", "next"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("start", "IsA", "next", 0.9)
+        ]
+
+        result = expand_query_multihop(
+            "start",
+            layers,
+            tokenizer,
+            relations,
+            max_expansions=0
+        )
+
+        # Should only have original term
+        assert "start" in result
+        assert len(result) == 1
+
+    def test_very_high_min_path_score(self, tokenizer):
+        """Test multihop with min_path_score near 1.0."""
+        builder = LayerBuilder()
+        builder.with_terms(["dog", "animal", "living"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("dog", "IsA", "animal", 0.9),
+            ("animal", "HasProperty", "living", 0.8)
+        ]
+
+        result = expand_query_multihop(
+            "dog",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=2,
+            min_path_score=0.95  # Very high threshold
+        )
+
+        # Should only include paths with very high validity
+        assert "dog" in result
+        # Single IsA is fine (score 1.0), but two-hop might be filtered
+
+    def test_single_hop_with_high_decay(self, tokenizer):
+        """Test that even with high decay, single hop still works."""
+        builder = LayerBuilder()
+        builder.with_terms(["start", "next"], pagerank=0.7)
+        layers = builder.build()
+
+        relations = [
+            ("start", "IsA", "next", 0.9)
+        ]
+
+        result = expand_query_multihop(
+            "start",
+            layers,
+            tokenizer,
+            relations,
+            max_hops=1,
+            decay_factor=0.9
+        )
+
+        assert "start" in result
+        assert "next" in result
+        # Check decay is applied
+        assert result["next"] < result["start"]

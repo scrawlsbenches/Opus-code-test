@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "session_id": "4e1b",
+  "started_at": "2025-12-15T20:33:33.700179",
+  "saved_at": "2025-12-15T20:33:33.700395",
+  "tasks": [
+    {
+      "id": "T-20251215-203333-4e1b-001",
+      "title": "Remove legacy TASK_LIST.md and TASK_ARCHIVE.md",
+      "status": "completed",
+      "priority": "medium",
+      "category": "arch",
+      "description": "Remove the legacy task management files now that we use the merge-friendly task system.\n\nFiles to remove:\n- TASK_LIST.md (18KB)\n- TASK_ARCHIVE.md (14KB)\n\nScripts to update/remove:\n- scripts/validate_task_list.py - Remove (validates legacy format)\n- scripts/migrate_legacy_tasks.py - Remove (migration complete)\n- scripts/select_task.py - Update to use tasks/*.json\n- scripts/task_graph.py - Update to use tasks/*.json\n- scripts/consolidate_tasks.py - Already uses new format, verify\n\nCI changes:\n- .github/workflows/ci.yml: Remove validate-task-list job (or update to validate tasks/*.json)\n\nDocumentation updates needed:\n- CLAUDE.md: Update task management references\n- docs/definition-of-done.md: Update TASK_LIST.md references\n- docs/merge-friendly-tasks.md: Mark as primary system\n- CONTRIBUTING.md: Update task references\n- Multiple other docs (see grep results)\n\nPre-requisites:\n- Ensure all pending tasks from legacy are in tasks/*.json\n- Verify legacy_migration.json captures historical context",
+      "depends_on": [],
+      "effort": "medium",
+      "created_at": "2025-12-15T20:33:33.700219",
+      "updated_at": "2025-12-16T09:10:00.000000",
+      "completed_at": "2025-12-16T09:10:00.000000",
+      "context": {},
+      "retrospective": "Successfully removed TASK_LIST.md and TASK_ARCHIVE.md. Updated scripts to handle missing files gracefully. Updated CLAUDE.md and skill docs to reference new task system. All historical tasks preserved in tasks/legacy_migration.json."
+    },
+    {
+      "id": "T-20251215-203333-4e1b-002",
+      "title": "Update CI to validate merge-friendly tasks instead of TASK_LIST.md",
+      "status": "completed",
+      "priority": "medium",
+      "category": "infra",
+      "description": "Replace validate-task-list CI job with validation for tasks/*.json.\n\nCurrent job (line 58-81 in ci.yml):\n- Runs scripts/validate_task_list.py\n- Reports pending tasks via scripts/ci_task_report.py\n\nNew validation should check:\n- tasks/*.json files are valid JSON\n- Task IDs follow the expected format\n- No duplicate task IDs across sessions\n- Required fields present (id, title, status)\n\nOptions:\n1. Update validate_task_list.py to validate new format\n2. Create new scripts/validate_tasks.py for JSON format\n3. Add validation to existing task_utils.py\n\nAlso update scripts/ci_task_report.py to read from tasks/*.json",
+      "depends_on": [
+        "T-20251215-203333-4e1b-001"
+      ],
+      "effort": "small",
+      "created_at": "2025-12-15T20:33:33.700229",
+      "updated_at": "2025-12-16T09:44:00.000000",
+      "completed_at": "2025-12-16T09:44:00.000000",
+      "context": {},
+      "retrospective": "Verified CI already uses scripts/validate_tasks.py for JSON validation. No changes needed - CI was updated in a previous session."
+    }
+  ]
+}

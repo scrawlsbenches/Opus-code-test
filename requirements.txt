@@ -17,3 +17,4 @@ pyyaml>=6.0          # Workflow integration tests
 # Optional dependencies
 protobuf>=4.0        # Protocol Buffers serialization (optional, for cross-language support)
 grpcio-tools>=1.0    # Protocol Buffers compiler (optional, for schema compilation)
+hypothesis

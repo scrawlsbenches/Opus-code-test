@@ -1,0 +1,79 @@
+Refund Request Handling Guide
+
+Overview and Policy Framework
+
+Refund requests are among the most sensitive customer interactions, requiring balance between customer satisfaction and business sustainability. Effective refund handling can transform disappointed customers into loyal advocates while protecting revenue when requests fall outside policy guidelines.
+
+Our refund policy provides clear eligibility windows: full refunds within 14 days of purchase for any reason, partial refunds between 15-30 days based on usage level, and case-by-case evaluation for requests beyond 30 days. Subscription services follow monthly billing cycles with prorated refunds available mid-cycle.
+
+Refund Request Evaluation Process
+
+Initial Assessment: When receiving a refund request, gather essential information including purchase date, order number, reason for dissatisfaction, and any previous support interactions. Check account history for prior refunds, subscription length, and overall customer value.
+
+Eligibility Determination: Verify the request falls within policy parameters. Calculate usage percentage for partial refund scenarios. Note any extenuating circumstances such as service outages, billing errors, or documented product defects that may warrant exceptions.
+
+Authority Levels: Front-line agents can approve refunds up to $100 within policy guidelines. Refunds between $100-500 require team lead approval. Amounts exceeding $500 or policy exceptions require manager authorization. Enterprise accounts follow dedicated account management procedures.
+
+Handling Different Refund Scenarios
+
+Product Not As Described: Full refund eligible regardless of time elapsed. Document specific discrepancy between marketing materials and actual product. Escalate to product team for potential corrections. Apologize for miscommunication and offer alternative products if appropriate.
+
+Service Quality Issues: Partial or full refund based on documented service degradation. Reference SLA commitments and any compensation already provided. Offer service credits as alternative to cash refunds when customers plan to continue relationship.
+
+Changed Circumstances: Customer's needs changed but product worked as expected. Standard policy applies with empathy for their situation. Consider retention offers such as pause options, plan downgrades, or extended trial of different features.
+
+Buyer's Remorse: Handle with empathy while following standard policy windows. Avoid language suggesting blame or judgment. If outside window, explain policy kindly and explore alternatives like plan modifications or feature highlights they may have missed.
+
+Billing Errors: Immediate full refund without requiring standard documentation. Apologize for the error and explain what went wrong. Document issue for accounting and system improvement purposes.
+
+Communication Best Practices
+
+Opening Response: Acknowledge the request promptly, express understanding of their situation, and provide clear timeline for resolution. Example: "I understand you'd like a refund for your recent purchase. I'm looking into this now and will have an answer for you within 24 hours."
+
+Approval Communication: Confirm the refund amount, processing timeline (typically 5-10 business days), and return method matching original payment. Express hope they'll consider us again in the future. Offer to address any remaining concerns.
+
+Partial Refund Communication: Explain calculation methodology clearly. Acknowledge their full request while explaining policy basis for partial amount. Offer escalation path if they disagree with determination.
+
+Denial Communication: Lead with empathy and acknowledgment of disappointment. Explain specific policy provision preventing approval. Offer alternative solutions such as account credits, service extensions, or plan modifications. Provide escalation path for further review.
+
+Retention During Refund Conversations
+
+Identify Salvageable Situations: Some refund requests stem from fixable problems like unused features, configuration issues, or misunderstandings. Before processing refunds, explore whether addressing root cause might change their decision.
+
+Alternative Offers: Service credits often retain customers better than cash refunds while costing less. Plan downgrades let customers stay at lower commitment levels. Pause options help customers facing temporary budget constraints.
+
+When Not to Retain: If customer has made firm decision, respect it gracefully. Aggressive retention attempts damage brand reputation. Processing refunds efficiently leaves door open for future return.
+
+Documentation and Follow-Up
+
+Required Documentation: Record refund amount, reason category, approval authority, and any exceptions granted. Note customer's stated future intentions. Document any retention offers made and responses received.
+
+Post-Refund Survey: Optional brief survey asking about refund experience and likelihood of future consideration. Keep survey separate from refund processing to avoid appearing transactional.
+
+Trend Analysis: Monthly analysis of refund patterns identifies product issues, policy gaps, or training needs. High refund categories receive focused attention from product and support leadership.
+
+Special Situations
+
+Chargebacks and Disputes: When customers initiate payment disputes, attempt contact before responding to payment processor. Provide documentation showing delivered service and customer acceptance. Follow processor's evidence submission requirements carefully.
+
+Enterprise Refunds: Large accounts involve contract terms, committed usage, and relationship considerations beyond standard policy. Coordinate with account management and finance teams. Document approval chain thoroughly.
+
+Promotional Pricing: Refunds on discounted purchases return the amount actually paid, not regular pricing. Explain this clearly when approving partial refunds where discount affects calculation.
+
+Gift Purchases: Refunds return to original purchaser's payment method unless recipient requests store credit. Verify identity for both parties in gift refund scenarios.
+
+Processing Procedures
+
+System Workflow: Submit refund through order management system with required approval documentation. Finance team processes approved refunds daily. Confirmation emails sent automatically upon processing completion.
+
+Timing Expectations: Credit card refunds appear within 5-10 business days depending on card issuer. PayPal refunds typically complete within 3-5 business days. Bank transfers may require 10-14 business days for international accounts.
+
+Failed Refund Processing: If original payment method is unavailable, contact customer for alternative. Issue store credit as temporary measure while arranging alternative refund method. Document all attempts and communications.
+
+Quality Standards
+
+Response Time: Initial acknowledgment within 4 hours for all refund requests. Complete resolution within 48 hours for straightforward cases. Complex cases receive status updates every 24 hours.
+
+Customer Satisfaction: Post-refund surveys target 85% satisfaction with handling process regardless of refund outcome. Monthly coaching addresses agents with satisfaction scores below team average.
+
+Accuracy: Zero tolerance for incorrect refund amounts or unauthorized approvals. Regular audits verify compliance with policy and approval authority limits.

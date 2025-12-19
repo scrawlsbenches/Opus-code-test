@@ -1,0 +1,19 @@
+{
+  "id": "A-20251216-151800-48d8-008",
+  "timestamp": "2025-12-16T15:15:46.590Z",
+  "session_id": "48d8b233-0518-4d73-9466-0b436b77168c",
+  "action_type": "command",
+  "target": "",
+  "context": {
+    "tool": "Bash",
+    "input": {
+      "tool": "Bash",
+      "input": {
+        "command": "python scripts/task_utils.py list --status pending 2>/dev/null | grep -v \"LEGACY\" | head -20",
+        "description": "List non-legacy pending tasks"
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}

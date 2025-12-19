@@ -1,0 +1,309 @@
+# Skydiving: Training, Techniques, and Safety
+
+## Introduction
+
+Skydiving—the act of jumping from an aircraft and freefalling before deploying a parachute—combines exhilaration with technical skill and rigorous safety protocols. From first tandem jumps to advanced disciplines like wingsuit flying, the sport offers progressive challenges and community.
+
+## Learning Progression
+
+### First Jump Options
+
+**Tandem Skydiving:**
+- Attached to certified instructor
+- Minimal training (15-30 minutes)
+- Full freefall and canopy experience
+- Most common introduction
+
+**Static Line/IAD:**
+- Solo jump with automatic deployment
+- Ground training (4-6 hours)
+- Gradual progression to freefall
+- Traditional training method
+
+**Accelerated Freefall (AFF):**
+- Solo freefall from first jump
+- Two instructors in freefall
+- Intensive ground training (6-8 hours)
+- Fastest path to solo jumping
+
+### Student Progression (AFF)
+
+**Levels 1-3: Basic Body Position**
+- Arch position fundamentals
+- Altitude awareness
+- Practice pulls
+- Two instructor jumps
+
+**Levels 4-7: Maneuvers**
+- Turns (90°, 360°)
+- Forward and backward movement
+- Solo stability
+- One instructor, then solo
+
+**Post-AFF Requirements:**
+- 25 jumps for A-License
+- Coach jumps for specific skills
+- Written and practical tests
+- Canopy skills demonstration
+
+### License System (USPA)
+
+**A-License:**
+- 25 jumps minimum
+- Basic freefall and canopy skills
+- Jump solo, no supervision required
+
+**B-License:**
+- 50 jumps
+- Water training
+- Night jump and additional skills
+
+**C-License:**
+- 200 jumps
+- Can perform demonstrations
+- Additional maneuvers
+
+**D-License:**
+- 500 jumps
+- Highest rating
+- Can become instructor/examiner
+
+## Body Position
+
+### Basic Stable (Belly-to-Earth)
+
+**Arch Position:**
+- Hips pressed forward
+- Arms at 90° (like holding beach ball)
+- Legs extended, slight bend
+- Head up, looking at horizon
+
+**Common Errors:**
+- Flat body (no arch)
+- Arms too high or low
+- Legs together
+- Looking down
+
+### Turns
+
+**Principles:**
+- Lower shoulder in turn direction
+- Opposite knee drops
+- Maintain arch
+- Smoothness over speed
+
+**Execution:**
+- 90° turns first
+- Progress to 360°
+- Practice both directions
+- Stop turns precisely
+
+### Movement
+
+**Forward Movement:**
+- Arms back (delta position)
+- De-arch slightly
+- Head down
+- Like flying downhill
+
+**Backward Movement:**
+- Arms forward (cup air)
+- Increase arch
+- Head up
+- Like flying uphill
+
+### Tracking
+
+Horizontal movement across sky.
+
+**Body Position:**
+- Arms back, tight to body
+- Legs straight, together
+- Slight de-arch
+- Delta wing shape
+
+**Purpose:**
+- Separation before deployment
+- Group breakoff
+- Fun skill to develop
+
+## Canopy Skills
+
+### Deployment Sequence
+
+**Wave-off:** Signal to others (altitude 5,500-6,000 ft)
+**Track:** Separation from others
+**Pull:** Deploy main at 4,000-5,500 ft (students higher)
+**Check:** Verify good canopy
+**Navigate:** Orient to landing area
+
+### Canopy Control
+
+**Toggles:**
+- Primary steering
+- Pull both for brakes
+- One for turns
+- Flare for landing
+
+**Rear Risers:**
+- Faster response
+- Used in flight, not landing
+- More advanced technique
+
+**Front Risers:**
+- Dive canopy faster
+- Advanced maneuvers
+- Swooping technique
+
+### Landing Pattern
+
+**Downwind Leg:**
+Parallel to runway, with wind.
+
+**Base Leg:**
+Perpendicular to runway.
+
+**Final Approach:**
+Into wind, toward target.
+
+**Flare:**
+Both toggles down to stop forward speed and descend gently.
+
+### Emergency Procedures
+
+**Malfunction Recognition:**
+- Line twists (minor, try to kick out)
+- Tension knots (minor to serious)
+- Bag lock (serious)
+- Horseshoe (serious)
+- Streamer/partial deployment (serious)
+
+**Decision Altitude:**
+1,800-2,500 ft (hard deck)—must have good canopy or initiate emergency procedures.
+
+**Cutaway Procedure:**
+1. Arch (stable body position)
+2. Look at cutaway handle
+3. Peel, punch cutaway handle
+4. Look at reserve handle
+5. Pull reserve handle
+6. Check canopy
+
+### AAD (Automatic Activation Device)
+
+Fires reserve if still in freefall at set altitude.
+
+**Types:**
+- Cypres (most common)
+- Vigil
+- Mars
+
+**Settings:**
+- Student mode: Higher activation
+- Expert mode: Lower activation
+- Must be serviced regularly
+
+## Equipment
+
+### Main Parachute
+
+**Components:**
+- Container (holds everything)
+- Main canopy (ram-air wing)
+- Deployment system (pilot chute, bridle, deployment bag)
+- Steering toggles
+
+**Sizing:**
+Wing loading = Exit weight / Canopy size (sq ft)
+- Students: 0.7-0.9 lb/sq ft
+- Intermediate: 0.9-1.1 lb/sq ft
+- Expert: 1.1-1.5+ lb/sq ft
+
+### Reserve Parachute
+
+- Packed by certified rigger
+- Must be repacked every 180 days
+- More conservative design
+- Always reliable
+
+### Altimeter
+
+**Types:**
+- Analog (wrist or chest mount)
+- Digital
+- Audible (in helmet)
+
+**Importance:**
+Critical for altitude awareness—check frequently.
+
+## Safety Culture
+
+### Pre-Jump Preparation
+
+**Gear Check:**
+- Handles visible and secure
+- AAD on and calibrated
+- Pins and closing loops
+- Toggles stowed
+
+**Exit Check:**
+- Aircraft position
+- Spot (exit point)
+- Separation from others
+- Winds aloft
+
+### Weather Limitations
+
+**Student Limits:**
+- Winds <14 mph
+- No clouds below jump altitude
+- Good visibility
+- No precipitation
+
+### Incident Response
+
+**If Something Goes Wrong:**
+- Remain calm
+- Follow training
+- Execute emergency procedures
+- Altitude awareness critical
+
+**Post-Incident:**
+- Report to S&TA (Safety & Training Advisor)
+- Equipment inspection
+- Debriefing and learning
+
+## Advanced Disciplines
+
+### Formation Skydiving (FS)
+
+- Building formations with others
+- Sequential patterns
+- Team competition
+
+### Freeflying
+
+- Head-down and sit-fly
+- Vertical flying positions
+- Higher fall rates
+
+### Wingsuit Flying
+
+- Fabric between arms and legs
+- Horizontal flight
+- Requires 200+ jumps
+- BASE jumping progression
+
+### Canopy Piloting (Swooping)
+
+- High-performance landings
+- Competition discipline
+- Requires extensive experience
+- Highest risk discipline
+
+## References
+
+- USPA Skydiver's Information Manual (SIM)
+- Germain, D. "The Parachute and its Pilot" (2007)
+- Poynter, D. "Parachuting: The Skydiver's Handbook" (2003)
+- dropzone.com forums and resources

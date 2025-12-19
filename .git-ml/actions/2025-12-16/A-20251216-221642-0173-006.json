@@ -1,0 +1,19 @@
+{
+  "id": "A-20251216-221642-0173-006",
+  "timestamp": "2025-12-16T20:29:49.775Z",
+  "session_id": "0173f6d3-5722-4d7c-b33b-3999648ff154",
+  "action_type": "command",
+  "target": "",
+  "context": {
+    "tool": "Bash",
+    "input": {
+      "tool": "Bash",
+      "input": {
+        "command": "python scripts/ml_data_collector.py stats 2>&1",
+        "description": "Check ML data stats"
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}

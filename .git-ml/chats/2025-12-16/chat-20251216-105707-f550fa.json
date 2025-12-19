@@ -1,0 +1,19 @@
+{
+  "id": "chat-20251216-105707-f550fa",
+  "timestamp": "2025-12-16T10:45:55.005Z",
+  "session_id": "e48d9b89-f22e-444d-99ef-668f328b09f0",
+  "query": "Why are our smoke tests failing on the build server?",
+  "response": "Let me investigate the CI smoke test failures.",
+  "files_referenced": [],
+  "files_modified": [],
+  "tools_used": [
+    "Bash"
+  ],
+  "tool_outputs": [],
+  "user_feedback": null,
+  "resulted_in_commit": false,
+  "related_commit": null,
+  "query_tokens": 10,
+  "response_tokens": 8,
+  "duration_seconds": null
+}

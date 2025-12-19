@@ -81,10 +81,8 @@ class TestPersistenceIntegration:
         results_before = processor1.find_documents_for_query("neural", top_n=2)
 
         # Save and reload
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            path = f.name
-
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "corpus_state")
             processor1.save(path)
             processor2 = CorticalTextProcessor.load(path)
 
@@ -95,8 +93,6 @@ class TestPersistenceIntegration:
             for (id1, score1), (id2, score2) in zip(results_before, results_after):
                 assert id1 == id2
                 assert abs(score1 - score2) < 0.001
-        finally:
-            os.unlink(path)
 
     def test_save_and_load_preserves_layers(self):
         """Layer structure should be preserved after save/load."""
@@ -110,18 +106,14 @@ class TestPersistenceIntegration:
             for layer in CorticalLayer
         }
 
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            path = f.name
-
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "corpus_state")
             processor1.save(path)
             processor2 = CorticalTextProcessor.load(path)
 
             # Layer counts should match
             for layer in CorticalLayer:
                 assert processor2.get_layer(layer).column_count() == counts_before[layer]
-        finally:
-            os.unlink(path)
 
 
 class TestConfigIntegration:
@@ -261,10 +253,8 @@ class TestEndToEndWorkflow:
         processor1.process_document("doc1", "Initial document about algorithms.")
         processor1.compute_all(verbose=False)
 
-        with tempfile.NamedTemporaryFile(suffix='.pkl', delete=False) as f:
-            path = f.name
-
-        try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "corpus_state")
             processor1.save(path)
 
             # Load and continue
@@ -277,5 +267,3 @@ class TestEndToEndWorkflow:
 
             # At least one original doc should appear
             assert "doc1" in doc_ids or "doc2" in doc_ids
-        finally:
-            os.unlink(path)

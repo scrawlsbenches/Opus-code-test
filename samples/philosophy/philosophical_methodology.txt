@@ -1,0 +1,37 @@
+Philosophical Methodology: How Philosophy Proceeds
+
+Overview
+
+Philosophical methodology examines how philosophers investigate questions and evaluate answers. What methods distinguish philosophy from other inquiries? What role do intuitions, thought experiments, and conceptual analysis play? How should philosophical claims be justified? These meta-philosophical questions have become increasingly prominent as philosophers reflect on their discipline's nature and legitimacy.
+
+Unlike empirical sciences with laboratories and experiments, philosophy relies on reason, analysis, and argument. This has led some to question philosophy's status—is it merely sophisticated opinion, or does it produce genuine knowledge? Examining methodology clarifies what philosophy can accomplish and how its methods compare to those of other disciplines.
+
+Key Concepts
+
+Conceptual analysis, central to analytic philosophy, seeks to articulate the necessary and sufficient conditions for concepts. What is knowledge? What is justice? What is causation? Analysis aims to make explicit what competent users of concepts implicitly understand. The goal is to specify criteria that capture all and only instances falling under a concept.
+
+The method of cases tests proposed analyses against particular examples. If an analysis implies that a case is X when intuitively it is not, or vice versa, the analysis requires revision. Gettier's counterexamples to the justified true belief analysis of knowledge exemplify this method. Cases can be actual or hypothetical; thought experiments construct scenarios specifically designed to probe concepts.
+
+Intuitions serve as data in philosophical argument. When presented with a case, we have intuitive judgments—this is knowledge, that is wrong, this person is responsible. These intuitions function as evidence that philosophical theories must accommodate or explain. Disagreement persists about the nature of intuitions—whether they are reliable, whether they vary across cultures, and how much weight they deserve.
+
+Reflective equilibrium, articulated by John Rawls, describes the process of achieving coherence among intuitions about particular cases and general principles. We adjust principles when they conflict with firm intuitions and revise intuitions when they conflict with well-supported principles. The goal is a stable equilibrium where intuitions and principles mutually support one another.
+
+Thought experiments construct hypothetical scenarios to test theories and probe intuitions. Plato's ring of Gyges, Descartes' evil demon, Locke's prince and cobbler, Parfit's teleporter—these imaginative constructions have driven philosophical inquiry. Critics question whether intuitions about bizarre hypothetical cases reliably indicate truths about actual concepts and reality.
+
+A priori reasoning proceeds independently of experience; a posteriori reasoning depends on empirical evidence. Traditional philosophy claimed a priori access to necessary truths about the structure of reality, knowledge, and value. Naturalistic philosophy challenges this distinction, arguing that philosophical claims should be continuous with empirical science and responsive to empirical findings.
+
+Argument is the primary tool of philosophical justification. Philosophers construct arguments with premises and conclusions, aiming for validity (the conclusion follows from premises) and soundness (the premises are true). Philosophical debate often focuses on whether premises are acceptable, whether arguments commit fallacies, and whether alternative premises yield different conclusions.
+
+Modality—possibility and necessity—figures prominently in philosophical reasoning. Philosophers ask whether claims are merely true or necessarily true, whether alternatives are genuinely possible. Modal reasoning underlies thought experiments (which explore possible scenarios) and conceptual analysis (which seeks necessary truths about concepts). Possible worlds semantics provides formal tools for modal reasoning.
+
+Applications
+
+Experimental philosophy applies empirical methods to traditional philosophical questions. Rather than relying on philosophers' own intuitions, experimental philosophers survey diverse populations about thought experiments. Findings of cross-cultural and demographic variation in intuitions challenge the evidential status of intuitions and raise questions about whose intuitions matter.
+
+Naturalized epistemology, following W.V.O. Quine, replaces traditional a priori epistemology with empirical investigation of actual cognitive processes. Philosophy becomes continuous with psychology and cognitive science. This approach abandons the project of justifying knowledge from an Archimedean point outside our beliefs, replacing it with internal assessment of belief-forming processes.
+
+History of philosophy as method uses historical study to illuminate philosophical problems. Examining how past philosophers addressed questions can reveal overlooked options, challenge assumptions, and enrich contemporary debate. This approach contrasts with purely systematic philosophy that abstracts from historical context.
+
+Comparative philosophy brings non-Western traditions into dialogue with Western philosophy. This method questions the universality of assumptions embedded in Western frameworks and enriches the philosophical toolkit. Comparative methodology raises questions about translation, commensurability, and the possibility of genuine philosophical exchange across traditions.
+
+Meta-philosophy itself becomes a philosophical inquiry. What are philosophy's appropriate methods, scope, and aims? Is progress possible in philosophy? How should philosophical success be measured? These reflexive questions shape how philosophy is practiced and evaluated.

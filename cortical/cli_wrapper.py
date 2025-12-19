@@ -326,8 +326,8 @@ class HookRegistry:
         for callback in self.get_hooks(hook_type, context.command):
             try:
                 callback(context)
-            except Exception as e:
-                # Log but don't fail on hook errors
+            except (TypeError, AttributeError, ValueError, KeyError) as e:
+                # Log but don't fail on hook callback errors
                 context.metadata.setdefault('hook_errors', []).append(
                     f"{hook_type.value}: {str(e)}"
                 )
@@ -493,10 +493,10 @@ class CLIWrapper:
             ctx.success = False
             ctx.metadata['error'] = f"Command not found: {command[0]}"
 
-        except Exception as e:
+        except OSError as e:
             ctx.exit_code = -1
             ctx.success = False
-            ctx.metadata['error'] = str(e)
+            ctx.metadata['error'] = f"{type(e).__name__}: {e}"
 
         # Finalize timing
         ctx.end_time = time.time()
@@ -603,6 +603,8 @@ class TaskCompletionManager:
                 try:
                     callback(context)
                 except Exception as e:
+                    # Catch all exceptions from user callbacks to prevent crashes.
+                    # Previously only caught specific types, but user code can raise any exception.
                     context.metadata.setdefault('completion_errors', []).append(str(e))
 
         # Trigger global completion callbacks
@@ -610,6 +612,8 @@ class TaskCompletionManager:
             try:
                 callback(context)
             except Exception as e:
+                # Catch all exceptions from user callbacks to prevent crashes.
+                # Previously only caught specific types, but user code can raise any exception.
                 context.metadata.setdefault('completion_errors', []).append(str(e))
 
     def get_session_summary(self) -> Dict[str, Any]:

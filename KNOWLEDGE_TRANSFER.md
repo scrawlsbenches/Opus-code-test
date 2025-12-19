@@ -215,7 +215,7 @@ The `compute_all(verbose=True)` method runs steps 3-6 in optimal order:
 
 A comprehensive code review was performed, resulting in:
 - CODE_REVIEW.md documenting findings
-- TASK_LIST.md tracking required fixes
+- tasks/ directory tracking required fixes (merge-friendly task system)
 - CLAUDE.md project guide
 
 ### Bug Fixes Applied
@@ -443,7 +443,7 @@ Quality score: 90.1%
 - **README.md**: User-facing documentation and installation
 - **CLAUDE.md**: Project guide for Claude Code
 - **CODE_REVIEW.md**: Detailed code review findings
-- **TASK_LIST.md**: Bug fix tracking and status
+- **tasks/**: Merge-friendly task system for bug tracking and work items
 
 ---
 

@@ -682,6 +682,373 @@ def _write_consolidated_markdown(
         f.write('\n'.join(lines))
 
 
+# Orchestration integration functions
+def create_orchestration_tasks(
+    plan: 'OrchestrationPlan',
+    session: TaskSession
+) -> List[Task]:
+    """
+    Create tasks from an orchestration plan.
+
+    Creates:
+    - One task per batch in the plan
+    - Sets depends_on based on batch dependencies
+    - Returns list of created tasks
+
+    Args:
+        plan: OrchestrationPlan with batches
+        session: TaskSession to create tasks in
+
+    Returns:
+        List of created Task objects
+    """
+    # Import at function level to avoid circular imports
+    from scripts.orchestration_utils import OrchestrationPlan
+
+    created_tasks = []
+    batch_to_task_map = {}  # Map batch_id -> task_id
+
+    for batch in plan.batches:
+        # Map batch depends_on to task depends_on
+        task_depends_on = []
+        for dep_batch_id in batch.depends_on:
+            if dep_batch_id in batch_to_task_map:
+                task_depends_on.append(batch_to_task_map[dep_batch_id])
+
+        # Create task for this batch
+        task = session.create_task(
+            title=f"{plan.title} - {batch.name}",
+            priority="medium",
+            category="orchestration",
+            description=f"Batch {batch.batch_id}: {batch.name} ({batch.batch_type})\n"
+                       f"{len(batch.agents)} agent(s)",
+            depends_on=task_depends_on,
+            effort="medium",
+            context={
+                'plan_id': plan.plan_id,
+                'batch_id': batch.batch_id,
+                'batch_type': batch.batch_type,
+                'agent_count': len(batch.agents)
+            }
+        )
+
+        # Track mapping for dependency resolution
+        batch_to_task_map[batch.batch_id] = task.id
+        created_tasks.append(task)
+
+    return created_tasks
+
+
+def link_plan_to_task(
+    plan_id: str,
+    task_id: str,
+    tasks_dir: str = DEFAULT_TASKS_DIR
+) -> None:
+    """
+    Link an orchestration plan to an existing task.
+
+    Updates the task's context with plan_id reference.
+
+    Args:
+        plan_id: The orchestration plan ID
+        task_id: The task ID to link
+        tasks_dir: Directory containing task files
+    """
+    # Find the session file containing this task
+    dir_path = Path(tasks_dir)
+    if not dir_path.exists():
+        raise ValueError(f"Tasks directory not found: {tasks_dir}")
+
+    target_session = None
+    session_file = None
+
+    for filepath in sorted(dir_path.glob("*.json")):
+        try:
+            session = TaskSession.load(filepath)
+            if session.get_task(task_id):
+                target_session = session
+                session_file = filepath
+                break
+        except (json.JSONDecodeError, KeyError):
+            continue
+
+    if not target_session:
+        raise ValueError(f"Task not found: {task_id}")
+
+    # Update task context with plan_id
+    task = target_session.get_task(task_id)
+    if task:
+        task.context['plan_id'] = plan_id
+        task.updated_at = datetime.now().isoformat()
+
+        # Save the session
+        target_session.save(tasks_dir)
+
+
+def get_tasks_for_plan(
+    plan_id: str,
+    tasks_dir: str = DEFAULT_TASKS_DIR
+) -> List[Task]:
+    """
+    Find all tasks linked to an orchestration plan.
+
+    Args:
+        plan_id: The orchestration plan ID
+        tasks_dir: Directory containing task files
+
+    Returns:
+        List of Task objects linked to the plan
+    """
+    all_tasks = load_all_tasks(tasks_dir)
+
+    # Filter for tasks with matching plan_id in context
+    linked_tasks = [
+        task for task in all_tasks
+        if isinstance(task.context, dict) and task.context.get('plan_id') == plan_id
+    ]
+
+    return linked_tasks
+
+
+# Sprint tracking utilities
+SPRINT_FILE = os.path.join(DEFAULT_TASKS_DIR, "CURRENT_SPRINT.md")
+
+
+def read_sprint_status(sprint_file: str = SPRINT_FILE) -> Dict[str, Any]:
+    """
+    Read the current sprint status from CURRENT_SPRINT.md.
+
+    Args:
+        sprint_file: Path to the sprint tracking file
+
+    Returns:
+        Dictionary with sprint information:
+        - sprint_id: Current sprint ID
+        - epic: Epic name
+        - started: Start date
+        - status: Sprint status
+        - goals: List of goal dictionaries with 'completed' and 'text'
+        - notes: List of notes
+        - blocked: List of blocked items
+
+    Raises:
+        FileNotFoundError: If sprint file doesn't exist
+    """
+    if not os.path.exists(sprint_file):
+        raise FileNotFoundError(f"Sprint file not found: {sprint_file}")
+
+    with open(sprint_file, 'r') as f:
+        content = f.read()
+
+    # Parse the markdown
+    sprint_info = {
+        'sprint_id': None,
+        'epic': None,
+        'started': None,
+        'status': None,
+        'goals': [],
+        'completed': [],
+        'blocked': [],
+        'notes': []
+    }
+
+    lines = content.split('\n')
+    current_section = None
+    in_main_section = True  # Track if we're still in the main sprint section
+
+    for line in lines:
+        line_stripped = line.strip()
+
+        # Stop parsing at the first separator (end of current sprint section)
+        if line_stripped.startswith('---'):
+            break
+
+        # Parse header metadata (only in main section)
+        if in_main_section and line_stripped.startswith('**Sprint ID:**'):
+            sprint_info['sprint_id'] = line_stripped.split('**Sprint ID:**')[1].strip()
+        elif in_main_section and line_stripped.startswith('**Epic:**'):
+            sprint_info['epic'] = line_stripped.split('**Epic:**')[1].strip()
+        elif in_main_section and line_stripped.startswith('**Started:**'):
+            sprint_info['started'] = line_stripped.split('**Started:**')[1].strip()
+        elif in_main_section and line_stripped.startswith('**Status:**'):
+            sprint_info['status'] = line_stripped.split('**Status:**')[1].strip()
+
+        # Track sections
+        elif line_stripped == '## Goals':
+            current_section = 'goals'
+        elif line_stripped == '## Completed This Sprint':
+            current_section = 'completed'
+        elif line_stripped == '## Blocked':
+            current_section = 'blocked'
+        elif line_stripped == '## Notes':
+            current_section = 'notes'
+
+        # Parse section content
+        elif current_section == 'goals' and line_stripped.startswith('- [ ]'):
+            goal_text = line_stripped[5:].strip()
+            sprint_info['goals'].append({'completed': False, 'text': goal_text})
+        elif current_section == 'goals' and line_stripped.startswith('- [x]'):
+            goal_text = line_stripped[5:].strip()
+            sprint_info['goals'].append({'completed': True, 'text': goal_text})
+        elif current_section == 'completed' and line_stripped.startswith('- [x]'):
+            completed_text = line_stripped[5:].strip()
+            sprint_info['completed'].append(completed_text)
+        elif current_section == 'blocked' and line_stripped.startswith('-'):
+            blocked_text = line_stripped[1:].strip()
+            if blocked_text and blocked_text != '(None currently)':
+                sprint_info['blocked'].append(blocked_text)
+        elif current_section == 'notes' and line_stripped.startswith('-'):
+            note_text = line_stripped[1:].strip()
+            sprint_info['notes'].append(note_text)
+
+    return sprint_info
+
+
+def update_sprint_goal(
+    goal_text: str,
+    completed: bool = True,
+    sprint_file: str = SPRINT_FILE
+) -> None:
+    """
+    Mark a sprint goal as completed or incomplete.
+
+    Args:
+        goal_text: Text of the goal to update
+        completed: Whether the goal is completed
+        sprint_file: Path to the sprint tracking file
+
+    Raises:
+        FileNotFoundError: If sprint file doesn't exist
+        ValueError: If goal text is not found
+    """
+    if not os.path.exists(sprint_file):
+        raise FileNotFoundError(f"Sprint file not found: {sprint_file}")
+
+    with open(sprint_file, 'r') as f:
+        content = f.read()
+
+    # Find and update the goal
+    checkbox_old = '- [ ]' if not completed else '- [x]'
+    checkbox_new = '- [x]' if completed else '- [ ]'
+
+    # Try to find the goal with either checkbox state
+    goal_patterns = [
+        f'- [ ] {goal_text}',
+        f'- [x] {goal_text}'
+    ]
+
+    found = False
+    for pattern in goal_patterns:
+        if pattern in content:
+            content = content.replace(pattern, f'{checkbox_new} {goal_text}', 1)
+            found = True
+            break
+
+    if not found:
+        raise ValueError(f"Goal not found: {goal_text}")
+
+    with open(sprint_file, 'w') as f:
+        f.write(content)
+
+
+def add_sprint_note(
+    note: str,
+    sprint_file: str = SPRINT_FILE
+) -> None:
+    """
+    Add a note to the current sprint.
+
+    Args:
+        note: Note text to add
+        sprint_file: Path to the sprint tracking file
+
+    Raises:
+        FileNotFoundError: If sprint file doesn't exist
+    """
+    if not os.path.exists(sprint_file):
+        raise FileNotFoundError(f"Sprint file not found: {sprint_file}")
+
+    with open(sprint_file, 'r') as f:
+        content = f.read()
+
+    # Find the Notes section and append the note at the end of the section
+    notes_marker = '## Notes'
+    if notes_marker not in content:
+        raise ValueError("Notes section not found in sprint file")
+
+    lines = content.split('\n')
+    new_lines = []
+    in_notes_section = False
+    note_inserted = False
+
+    for i, line in enumerate(lines):
+        if line.strip() == notes_marker:
+            in_notes_section = True
+            new_lines.append(line)
+        elif in_notes_section and (line.strip().startswith('---') or line.strip().startswith('##')):
+            # End of notes section - insert note before the next section
+            new_lines.append(f'- {note}')
+            new_lines.append('')  # Add blank line before next section
+            new_lines.append(line)
+            in_notes_section = False
+            note_inserted = True
+        else:
+            new_lines.append(line)
+
+    # If we're still in notes section at end of file, append there
+    if in_notes_section and not note_inserted:
+        new_lines.append(f'- {note}')
+
+    with open(sprint_file, 'w') as f:
+        f.write('\n'.join(new_lines))
+
+
+def get_sprint_summary(sprint_file: str = SPRINT_FILE) -> str:
+    """
+    Get a human-readable summary of the current sprint.
+
+    Args:
+        sprint_file: Path to the sprint tracking file
+
+    Returns:
+        Formatted string with sprint summary
+    """
+    try:
+        info = read_sprint_status(sprint_file)
+    except FileNotFoundError:
+        return "No sprint file found. Create one at tasks/CURRENT_SPRINT.md"
+
+    lines = [
+        f"Sprint: {info['sprint_id']}",
+        f"Epic: {info['epic']}",
+        f"Status: {info['status']}",
+        f"Started: {info['started']}",
+        "",
+        "Goals:"
+    ]
+
+    total_goals = len(info['goals'])
+    completed_goals = sum(1 for g in info['goals'] if g['completed'])
+
+    for goal in info['goals']:
+        checkbox = '[x]' if goal['completed'] else '[ ]'
+        lines.append(f"  {checkbox} {goal['text']}")
+
+    lines.append(f"\nProgress: {completed_goals}/{total_goals} goals completed")
+
+    if info['blocked']:
+        lines.append("\nBlocked:")
+        for blocked in info['blocked']:
+            lines.append(f"  - {blocked}")
+
+    if info['notes']:
+        lines.append("\nRecent Notes:")
+        for note in info['notes'][-3:]:  # Show last 3 notes
+            lines.append(f"  - {note}")
+
+    return '\n'.join(lines)
+
+
 # CLI interface
 if __name__ == "__main__":
     import argparse
@@ -711,6 +1078,21 @@ if __name__ == "__main__":
     complete_parser.add_argument("--retrospective", help="Completion notes/learnings")
     complete_parser.add_argument("--create-memory", action="store_true", help="Create memory entry")
     complete_parser.add_argument("--dir", default=DEFAULT_TASKS_DIR, help="Tasks directory")
+
+    # sprint command
+    sprint_parser = subparsers.add_parser("sprint", help="Sprint tracking commands")
+    sprint_subparsers = sprint_parser.add_subparsers(dest="sprint_command", help="Sprint commands")
+
+    # sprint status
+    sprint_status_parser = sprint_subparsers.add_parser("status", help="Show current sprint status")
+
+    # sprint complete
+    sprint_complete_parser = sprint_subparsers.add_parser("complete", help="Mark a sprint goal complete")
+    sprint_complete_parser.add_argument("goal", help="Goal text to mark complete")
+
+    # sprint note
+    sprint_note_parser = sprint_subparsers.add_parser("note", help="Add a note to current sprint")
+    sprint_note_parser.add_argument("note", help="Note text to add")
 
     args = parser.parse_args()
 
@@ -773,6 +1155,34 @@ if __name__ == "__main__":
         print(f"✓ Task {args.task_id} marked as completed")
         if memory_path:
             print(f"✓ Memory entry created: {memory_path}")
+
+    elif args.command == "sprint":
+        if args.sprint_command == "status":
+            try:
+                summary = get_sprint_summary()
+                print(summary)
+            except FileNotFoundError as e:
+                print(f"Error: {e}")
+                sys.exit(1)
+
+        elif args.sprint_command == "complete":
+            try:
+                update_sprint_goal(args.goal, completed=True)
+                print(f"✓ Marked goal as complete: {args.goal}")
+            except (FileNotFoundError, ValueError) as e:
+                print(f"Error: {e}")
+                sys.exit(1)
+
+        elif args.sprint_command == "note":
+            try:
+                add_sprint_note(args.note)
+                print(f"✓ Added note to sprint")
+            except (FileNotFoundError, ValueError) as e:
+                print(f"Error: {e}")
+                sys.exit(1)
+
+        else:
+            sprint_parser.print_help()
 
     else:
         parser.print_help()

@@ -24,8 +24,6 @@ Usage:
 import json
 import os
 import sys
-import hashlib
-from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -33,74 +31,60 @@ from typing import List, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
 
 try:
-    from ml_data_collector import (
-        log_chat, log_action, ensure_dirs,
-        SESSIONS_DIR, generate_session_id
+    from ml_data_collector import log_chat, log_action, ensure_dirs
+    # Import session management from authoritative source
+    from ml_collector.session import (
+        get_current_session,
+        start_session,
+        end_session as ml_end_session,
+        find_chat_file
     )
+    from ml_collector.config import CHATS_DIR
     ML_COLLECTOR_AVAILABLE = True
 except ImportError:
     ML_COLLECTOR_AVAILABLE = False
 
 
-# Session state file
-SESSION_STATE_FILE = Path(".git-ml/current_session.json")
-
-
-def get_current_session() -> Optional[dict]:
-    """Get the current active session."""
-    if SESSION_STATE_FILE.exists():
-        with open(SESSION_STATE_FILE) as f:
-            return json.load(f)
-    return None
-
-
-def start_session() -> str:
-    """Start a new logging session."""
-    ensure_dirs()
-
-    session = {
-        "id": generate_session_id(),
-        "started_at": datetime.now().isoformat(),
-        "exchanges": 0,
-        "files_touched": [],
-        "tools_used": [],
-    }
-
-    SESSION_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(SESSION_STATE_FILE, "w") as f:
-        json.dump(session, f, indent=2)
-
-    print(f"Started session: {session['id']}")
-    return session["id"]
-
-
 def end_session(summary: Optional[str] = None):
-    """End the current session and save summary."""
+    """End the current session and save summary.
+
+    CLI-compatible wrapper around ml_collector.session.end_session
+    that provides the same output format as the legacy implementation.
+    """
+    if not ML_COLLECTOR_AVAILABLE:
+        print("Warning: ml_data_collector not available")
+        return
+
     session = get_current_session()
     if not session:
         print("No active session")
         return
 
-    session["ended_at"] = datetime.now().isoformat()
-    session["summary"] = summary
+    # Calculate stats from chat_ids before ending
+    session_id = session['id']
+    chat_ids = session.get('chat_ids', [])
 
-    # Save to sessions directory
-    ensure_dirs()
-    SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    # Collect files from all chats in session
+    all_files = set()
+    for chat_id in chat_ids:
+        chat_file = find_chat_file(chat_id)
+        if chat_file and chat_file.exists():
+            try:
+                with open(chat_file, 'r', encoding='utf-8') as f:
+                    chat_data = json.load(f)
+                all_files.update(chat_data.get('files_referenced', []))
+                all_files.update(chat_data.get('files_modified', []))
+            except (json.JSONDecodeError, IOError):
+                continue
 
-    filename = f"{session['started_at'][:10]}_{session['id']}.json"
-    filepath = SESSIONS_DIR / filename
+    # End the session (saves to SESSIONS_DIR)
+    ended_session = ml_end_session(summary)
 
-    with open(filepath, "w") as f:
-        json.dump(session, f, indent=2)
-
-    # Remove current session file
-    SESSION_STATE_FILE.unlink()
-
-    print(f"Ended session: {session['id']}")
-    print(f"  Exchanges: {session['exchanges']}")
-    print(f"  Files: {len(session['files_touched'])}")
-    print(f"  Saved to: {filepath}")
+    if ended_session:
+        print(f"Ended session: {session_id}")
+        print(f"  Exchanges: {len(chat_ids)}")
+        print(f"  Files: {len(all_files)}")
+        # The ml_end_session already saved to SESSIONS_DIR
 
 
 def log_exchange(
@@ -120,11 +104,10 @@ def log_exchange(
     session = get_current_session()
     if not session:
         session_id = start_session()
-        session = get_current_session()
     else:
         session_id = session["id"]
 
-    # Log the chat
+    # Log the chat (this automatically adds to session via add_chat_to_session)
     entry = log_chat(
         query=query,
         response=response,
@@ -134,21 +117,6 @@ def log_exchange(
         tools_used=tools or [],
         user_feedback=feedback,
     )
-
-    # Update session state
-    session["exchanges"] += 1
-    session["files_touched"] = list(set(
-        session["files_touched"] +
-        (files_read or []) +
-        (files_modified or [])
-    ))
-    session["tools_used"] = list(set(
-        session["tools_used"] +
-        (tools or [])
-    ))
-
-    with open(SESSION_STATE_FILE, "w") as f:
-        json.dump(session, f, indent=2)
 
     print(f"Logged exchange: {entry.id}")
 

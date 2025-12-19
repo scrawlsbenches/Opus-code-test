@@ -1,0 +1,41 @@
+Digital Archaeology: Computational Methods in Archaeological Practice
+
+Overview
+
+Digital archaeology encompasses computational approaches to recording, analyzing, visualizing, and disseminating archaeological data. From three-dimensional site documentation to spatial databases to virtual reconstructions, digital technologies have transformed archaeological practice. More than mere tools, these methods raise theoretical questions about representation, accessibility, and the nature of archaeological knowledge in the information age.
+
+The digital turn in archaeology accelerated in the 1990s with widespread computing access and expanded dramatically in the twenty-first century. Geographic Information Systems (GIS), photogrammetry, 3D visualization, and online databases have become standard practice. Emerging technologies—artificial intelligence, virtual reality, linked open data—promise further transformation of how archaeology is conducted and communicated.
+
+Key Methods
+
+Geographic Information Systems (GIS) integrate spatial data with databases for analysis and visualization. Site locations, survey data, remote sensing imagery, and environmental variables are managed in GIS platforms. Spatial analysis examines patterns—site clustering, viewshed visibility, least-cost paths, resource proximity. GIS has become essential infrastructure for regional archaeology.
+
+Photogrammetry creates three-dimensional models from overlapping photographs. Structure-from-Motion (SfM) algorithms generate point clouds from which textured meshes are derived. Photogrammetry enables rapid, affordable documentation of excavations, artifacts, and architecture. Models can be measured, rotated, and examined from any angle.
+
+3D laser scanning captures precise surface geometry. Terrestrial laser scanning (TLS) records architecture and rock art; handheld scanners capture artifacts. LiDAR (Light Detection and Ranging) from aircraft penetrates forest canopy to map terrain. These technologies produce centimeter-accurate documentation increasingly standard in heritage recording.
+
+Databases organize archaeological information for storage, query, and analysis. Relational databases structure information in linked tables. Excavation records, artifact catalogs, and site registers are managed digitally. Database design affects how questions can be asked; data modeling is thus theoretically consequential.
+
+Visualization and modeling present archaeological interpretations spatially and three-dimensionally. Virtual reconstructions of buildings and landscapes show how sites might have appeared. Visualization choices are interpretive decisions—what to show, at what certainty, with what detail. Best practices distinguish evidence from inference.
+
+Computational Analysis
+
+Spatial analysis examines archaeological patterns statistically. Point pattern analysis tests whether site distributions are random, clustered, or regular. Viewshed analysis models visibility from locations. Cost-surface analysis identifies likely routes across terrain. Network analysis examines connections among sites.
+
+Morphometric analysis quantifies artifact shape statistically. Geometric morphometrics captures shape variation independent of size. Applications include pottery profile analysis, lithic tool form, and biological remains. Shape data enable quantitative comparison across assemblages.
+
+Machine learning applies algorithms that learn patterns from data. Image recognition classifies artifacts and detects features in aerial imagery. Predictive modeling identifies high-probability areas for sites. Text mining extracts information from archaeological literature. AI-assisted analysis raises questions about interpretive transparency.
+
+Agent-based modeling simulates past behavior computationally. Virtual agents following specified rules interact with simulated environments. Emergent patterns are compared with archaeological evidence. These models test whether proposed mechanisms could have produced observed outcomes.
+
+Critical Perspectives
+
+Data quality and standardization affect computational results. Inconsistent recording, variable precision, and incomplete coverage propagate into analyses. Documentation of data provenance and uncertainty is essential for responsible digital archaeology.
+
+Access and equity vary in digital archaeology. Expensive equipment and specialized training create barriers. Yet digital methods also democratize—freely available software, online tutorials, and open data enable broader participation. Ensuring equitable access remains a challenge.
+
+Digital preservation concerns the longevity of electronic records. File formats become obsolete; storage media degrade; institutions change. Archaeological projects must plan for long-term digital preservation. Open formats and redundant storage mitigate but do not eliminate risks.
+
+Representation in digital models involves interpretive choices often invisible to users. Presenting reconstructions as authoritative obscures uncertainty. Best practices include transparency about evidence, alternative interpretations, and degrees of confidence. Critical engagement with digital products is essential.
+
+Public engagement through digital platforms reaches audiences beyond specialist communities. Online databases, virtual museums, and interactive visualizations share archaeological findings widely. Social media enables real-time excavation updates. Digital outreach extends archaeology's public impact while raising questions about appropriate simplification and engagement.

@@ -1,0 +1,277 @@
+# Downhill Mountain Biking: Techniques and Equipment
+
+## Introduction
+
+Downhill mountain biking descends technical terrain at speed, combining bike handling skills with courage and fitness. From lift-served bike parks to remote backcountry descents, the discipline pushes the boundaries of what's possible on two wheels.
+
+## Equipment
+
+### Frame Geometry
+
+**Key Measurements:**
+
+**Head Angle:**
+- Downhill: 62-65°
+- Slacker = more stable at speed
+- Steeper = more responsive
+
+**Reach:**
+- Horizontal distance from BB to head tube
+- Longer reach = more room, speed stability
+- 460-500mm typical for DH
+
+**Wheelbase:**
+- Total length between axles
+- Longer = stable, less nimble
+- 1200-1300mm for DH bikes
+
+**Bottom Bracket Height:**
+- Lower = better cornering stability
+- Higher = better rock clearance
+- -20 to +10mm relative to axles
+
+### Suspension
+
+**Fork:**
+- 180-200mm travel
+- Dual crown for strength
+- Compression and rebound adjustment
+- Air or coil spring
+
+**Rear Shock:**
+- 200-250mm rear travel
+- Coil preferred for consistency
+- High-speed/low-speed damping
+- Linkage design varies
+
+**Setup Principles:**
+- Sag: 25-30% of travel
+- Rebound: Fastest without packing
+- Compression: Personal preference
+
+### Wheels and Tires
+
+**Wheel Size:**
+- 27.5": Nimble, accelerates fast
+- 29": Rolls over obstacles, stable
+- Mullet (29/27.5): Combination
+
+**Tires:**
+- Width: 2.4-2.6" typical
+- Casing: DH casing for puncture resistance
+- Compound: Soft = grip, Hard = durability
+- Front: Aggressive knobs
+- Rear: Faster rolling, still grippy
+
+**Pressures:**
+- Lower = more grip, more flats
+- Tubeless required
+- 22-28 psi typical range
+- Inserts for rim protection
+
+### Protective Gear
+
+**Essential:**
+- Full-face helmet (certified)
+- Goggles
+- Knee pads
+- Gloves
+
+**Recommended:**
+- Back protector
+- Neck brace
+- Elbow pads
+- Body armor (chest, shoulders)
+
+## Fundamental Techniques
+
+### Attack Position
+
+**The Ready Position:**
+- Pedals level
+- Knees and elbows bent
+- Weight centered over bike
+- One finger on brakes
+- Eyes looking ahead
+
+**Low Position:**
+- Hips back and down
+- Chest low
+- Absorbing terrain
+- For steep or fast sections
+
+### Braking
+
+**Principles:**
+- Brake before turns, not in them
+- 70% front, 30% rear (varies)
+- Progressive application
+- Avoid skidding (lose control)
+
+**Techniques:**
+- Trail braking: Light brakes into corner
+- Pump for speed: Off brakes in transitions
+- Rear-wheel steering: Intentional slides
+
+### Cornering
+
+**Body Position:**
+- Outside foot down and weighted
+- Inside knee out, pointing into turn
+- Bike leaned, body more upright
+- Weight low and forward
+
+**Line Selection:**
+- Outside-inside-outside (when possible)
+- Late apex for control
+- Look through the turn
+- Adjust for surface conditions
+
+**Surface Adaptation:**
+- Loose: Weight back, wider line
+- Roots/rocks: Pick path carefully
+- Bermed: Use full banking
+- Off-camber: Caution, commitment
+
+### Jumping
+
+**Takeoff:**
+- Compress into lip
+- Extend through jump
+- Bike and body synchronized
+- Don't pull up (let jump lift you)
+
+**In Air:**
+- Stay neutral for small jumps
+- Scrub (push down) to stay low
+- Whip/style for flair
+- Prepare for landing
+
+**Landing:**
+- Match bike angle to slope
+- Both wheels together (ideally)
+- Compress to absorb
+- Drive out of landing
+
+### Drops
+
+**Approach:**
+- Steady speed (not too slow)
+- Attack position
+- Commit mentally
+
+**Execution:**
+- Push bike away at lip
+- Level out in air
+- Spot landing
+- Compress on impact
+
+**Common Errors:**
+- Too slow (nose-dive)
+- Pulling up (loop out)
+- Target fixation
+
+## Trail Features
+
+### Rock Gardens
+
+**Technique:**
+- Stay loose (let bike move)
+- Light grip, heavy feet
+- Pick general line, don't overthink
+- Momentum helps
+
+### Roots
+
+**Wet Roots:**
+- Extremely slippery
+- Cross perpendicular
+- Weight centered
+- Light braking before, not on
+
+### Steep Terrain
+
+**Body Position:**
+- Hips way back
+- One foot forward (dropper position)
+- Controlled braking
+- Look far ahead
+
+**Line Choice:**
+- Ruts can guide
+- Avoid loose off-camber
+- Fall line often safest
+
+### Gap Jumps
+
+**Preparation:**
+- Know your speed requirement
+- Walk the landing first
+- Start with smaller gaps
+- Have an abort option
+
+## Fitness
+
+### Physical Demands
+
+**Grip Strength:**
+- Forearms fatigue first
+- Death grip = faster fatigue
+- Training helps
+
+**Core Stability:**
+- Constant stabilization
+- Bike-body separation
+- Injury prevention
+
+**Leg Strength:**
+- Absorbing impacts
+- Maintaining position
+- Pedaling between features
+
+### Training
+
+**On-Bike:**
+- Volume of descending
+- Skill-specific practice
+- Variety of trails
+
+**Off-Bike:**
+- Grip training (dead hangs)
+- Core work (planks, stability)
+- Leg strength (squats, deadlifts)
+- Cardio for recovery between runs
+
+## Safety
+
+### Risk Management
+
+**Know Your Limits:**
+- Session features before full speed
+- Walk unfamiliar terrain
+- Build up incrementally
+
+**Ride with Others:**
+- Help in crashes
+- Spot features
+- Share knowledge
+
+### Common Injuries
+
+**Prevention:**
+- Proper warm-up
+- Adequate rest
+- Appropriate progression
+- Quality protective gear
+
+**Emergency Preparedness:**
+- First aid knowledge
+- Communication device
+- Know evacuation routes
+
+## References
+
+- Lee, L. "Mastering Mountain Bike Skills" (2017)
+- MTB instructors (PMBIA certification)
+- Pinkbike and Vital MTB communities
+- Professional rider tutorials

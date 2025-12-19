@@ -26,6 +26,15 @@ Options:
     --failfast, -x      Stop on first failure
     --no-auto-install   Do not auto-install missing dependencies
     --check-deps        Only check dependencies, do not run tests
+    --include-optional  Include optional tests (mcp, protobuf, fuzz)
+
+Test Exclusion:
+    By default, optional tests are excluded during development:
+    - MCP server tests (require mcp package)
+    - Protobuf tests (require protobuf package)
+    - Fuzzing tests (require hypothesis package)
+
+    Use --include-optional to run all tests (like CI does).
 
 Dependency Handling:
     By default, this script will attempt to install pytest and coverage
@@ -224,10 +233,14 @@ def print_header(text, char='='):
 
 
 def run_pytest(paths, verbose=False, quiet=False, no_capture=False,
-               failfast=False, no_coverage=False):
+               failfast=False, no_coverage=False, include_optional=False):
     """Run pytest with the given paths and options.
 
     If pytest is not available, falls back to unittest with a warning.
+
+    Args:
+        include_optional: If True, include optional tests (mcp, protobuf, fuzz)
+                         by adding -m "" to override pyproject.toml addopts
     """
     deps = ensure_test_dependencies(auto_install=True, verbose=verbose)
 
@@ -243,6 +256,10 @@ def run_pytest(paths, verbose=False, quiet=False, no_capture=False,
 
     # Add paths
     cmd.extend(paths)
+
+    # Include optional tests if requested (override pyproject.toml addopts)
+    if include_optional:
+        cmd.extend(['-m', ''])
 
     # Add options
     if verbose:
@@ -284,12 +301,18 @@ def run_unittest(paths, verbose=False):
 
 
 def run_category(category, verbose=False, quiet=False, no_capture=False,
-                 failfast=False):
-    """Run a test category."""
+                 failfast=False, include_optional=False):
+    """Run a test category.
+
+    Args:
+        include_optional: If True, include optional tests (mcp, protobuf, fuzz)
+    """
     config = CATEGORIES[category]
 
     print_header(f"Running {category.upper()} Tests: {config['description']}")
     print(f"Expected time: {config['expected_time']}")
+    if include_optional:
+        print("Including optional tests (mcp, protobuf, fuzz)")
 
     start_time = time.time()
 
@@ -311,7 +334,8 @@ def run_category(category, verbose=False, quiet=False, no_capture=False,
         quiet=quiet,
         no_capture=no_capture,
         failfast=failfast,
-        no_coverage=no_coverage
+        no_coverage=no_coverage,
+        include_optional=include_optional
     )
 
     elapsed = time.time() - start_time
@@ -386,6 +410,8 @@ def main():
                         help='Do not auto-install missing dependencies')
     parser.add_argument('--check-deps', action='store_true',
                         help='Only check dependencies, do not run tests')
+    parser.add_argument('--include-optional', '--all', action='store_true',
+                        help='Include optional tests (mcp, protobuf, fuzz) that are excluded by default')
 
     args = parser.parse_args()
 
@@ -432,7 +458,8 @@ def main():
             verbose=args.verbose,
             quiet=args.quiet,
             no_capture=args.no_capture,
-            failfast=args.failfast
+            failfast=args.failfast,
+            include_optional=args.include_optional
         )
         results[category] = result
 

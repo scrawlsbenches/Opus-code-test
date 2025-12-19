@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "session_id": "ac6d",
+  "started_at": "2025-12-18T16:42:20.492424",
+  "saved_at": "2025-12-18T16:42:20.492796",
+  "tasks": [
+    {
+      "id": "T-20251218-164220-ac6d-001",
+      "title": "Create projects directory structure",
+      "status": "pending",
+      "priority": "high",
+      "category": "arch",
+      "description": "Create cortical/projects/ with mcp/, proto/, cli/ subdirectories. Each project gets __init__.py, tests/, requirements.txt",
+      "depends_on": [],
+      "effort": "small",
+      "created_at": "2025-12-18T16:42:20.492481",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251218-164220-ac6d-002",
+      "title": "Move MCP server to projects/mcp",
+      "status": "pending",
+      "priority": "high",
+      "category": "arch",
+      "description": "Move cortical/mcp_server.py to cortical/projects/mcp/server.py. Update imports. Move tests/test_mcp_server.py to cortical/projects/mcp/tests/",
+      "depends_on": [
+        "T-20251218-164220-ac6d-001"
+      ],
+      "effort": "medium",
+      "created_at": "2025-12-18T16:42:20.492496",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251218-164220-ac6d-003",
+      "title": "Move proto to projects/proto",
+      "status": "pending",
+      "priority": "medium",
+      "category": "arch",
+      "description": "Move cortical/proto/ to cortical/projects/proto/. Update imports in any referencing files.",
+      "depends_on": [
+        "T-20251218-164220-ac6d-001"
+      ],
+      "effort": "small",
+      "created_at": "2025-12-18T16:42:20.492504",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251218-164220-ac6d-004",
+      "title": "Update pyproject.toml with project dependencies",
+      "status": "pending",
+      "priority": "high",
+      "category": "arch",
+      "description": "Create optional dependency groups: [mcp], [proto], [cli]. Update [dev] to reference projects. Ensure core has zero deps.",
+      "depends_on": [
+        "T-20251218-164220-ac6d-002",
+        "T-20251218-164220-ac6d-003"
+      ],
+      "effort": "medium",
+      "created_at": "2025-12-18T16:42:20.492514",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251218-164220-ac6d-005",
+      "title": "Update CI for projects isolation",
+      "status": "pending",
+      "priority": "high",
+      "category": "arch",
+      "description": "Update .github/workflows/ci.yml to run core tests always, project tests as separate jobs that can fail independently.",
+      "depends_on": [
+        "T-20251218-164220-ac6d-004"
+      ],
+      "effort": "medium",
+      "created_at": "2025-12-18T16:42:20.492526",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251218-164220-ac6d-006",
+      "title": "Document Projects architecture",
+      "status": "pending",
+      "priority": "high",
+      "category": "docs",
+      "description": "Create docs/projects-architecture.md explaining the pattern. Update CLAUDE.md with Projects section.",
+      "depends_on": [
+        "T-20251218-164220-ac6d-002",
+        "T-20251218-164220-ac6d-003"
+      ],
+      "effort": "medium",
+      "created_at": "2025-12-18T16:42:20.492537",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251218-164220-ac6d-007",
+      "title": "Verify all tests pass after restructure",
+      "status": "pending",
+      "priority": "high",
+      "category": "test",
+      "description": "Run full test suite. Fix any import errors. Ensure coverage is maintained.",
+      "depends_on": [
+        "T-20251218-164220-ac6d-004",
+        "T-20251218-164220-ac6d-005"
+      ],
+      "effort": "medium",
+      "created_at": "2025-12-18T16:42:20.492547",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    },
+    {
+      "id": "T-20251218-164220-ac6d-008",
+      "title": "Create knowledge transfer document",
+      "status": "pending",
+      "priority": "medium",
+      "category": "docs",
+      "description": "Create memory document summarizing the Projects architecture decision and implementation.",
+      "depends_on": [
+        "T-20251218-164220-ac6d-007"
+      ],
+      "effort": "small",
+      "created_at": "2025-12-18T16:42:20.492561",
+      "updated_at": null,
+      "completed_at": null,
+      "context": {},
+      "retrospective": null
+    }
+  ]
+}

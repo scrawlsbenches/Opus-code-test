@@ -1,0 +1,273 @@
+# Woodworking Joinery: Traditional and Modern Techniques
+
+## Introduction
+
+Joinery—the art of connecting wood pieces—is the foundation of fine woodworking. Strong, well-fitted joints create furniture and structures that last generations. Understanding joinery allows woodworkers to choose the right connection for each application.
+
+## Edge Joints
+
+For joining boards edge-to-edge (e.g., table tops, panels).
+
+### Butt Joint (Edge-Glued)
+
+Simplest joint: Flat edge glued to flat edge.
+
+**Preparation:**
+- Joint edges perfectly flat and square
+- Slight spring joint (very slight concave) for clamping pressure at ends
+- Grain orientation alternating to minimize cupping
+
+**Strength:**
+Long-grain to long-grain glue joints are extremely strong—often stronger than the wood itself.
+
+### Tongue and Groove
+
+Machined profile with protruding tongue fitting into groove.
+
+**Benefits:**
+- Alignment during glue-up
+- Increased glue surface
+- Hides gaps from wood movement
+
+**Applications:**
+- Flooring
+- Paneling
+- Table tops
+
+### Biscuit Joint
+
+Compressed beech biscuits in matching slots.
+
+**Process:**
+1. Mark biscuit locations
+2. Cut slots with biscuit joiner
+3. Apply glue to slots and biscuit
+4. Biscuit swells for tight fit
+5. Clamp until dry
+
+**Sizes:**
+- #0: 5/8" × 1-3/4"
+- #10: 3/4" × 2-1/8"
+- #20: 1" × 2-3/8"
+
+### Spline Joint
+
+Thin strip of wood or plywood in matching grooves.
+
+**Variations:**
+- Continuous spline: Full length
+- Loose spline: Mortise-like pockets
+- Cross-grain spline (for miter reinforcement)
+
+## Frame Joints
+
+For connecting rails to stiles (e.g., doors, face frames).
+
+### Mortise and Tenon
+
+The most important structural joint in woodworking.
+
+**Components:**
+- Mortise: Rectangular hole
+- Tenon: Matching projection
+
+**Proportions:**
+- Tenon thickness: 1/3 member thickness
+- Tenon width: Leave 1/8" above and below mortise
+- Tenon length: 2/3 to full mortise member width
+
+**Variations:**
+
+**Through Mortise and Tenon:**
+Tenon passes completely through; visible on far side. Allows wedging.
+
+**Blind Mortise and Tenon:**
+Tenon stops inside mortise; hidden.
+
+**Haunched Tenon:**
+Reduced section fills groove for panel. Prevents twist.
+
+**Twin Tenon:**
+Two smaller tenons for wide rails. Prevents twist.
+
+**Loose Tenon (Domino):**
+Separate tenon glued into mortises in both members. Easier alignment.
+
+### Dowel Joint
+
+Cylindrical dowels align and reinforce butt joints.
+
+**Guidelines:**
+- Dowel diameter: 1/3 to 1/2 member thickness
+- Dowel length: 2× diameter minimum per side
+- Fluted or spiral dowels allow glue escape
+- Chamfered ends ease insertion
+
+**Tools:**
+- Doweling jig for alignment
+- Dowel centers for transfer
+- Brad point bits for clean holes
+
+### Pocket Screw Joint
+
+Angled screw through one member into another.
+
+**Benefits:**
+- Fast assembly
+- Clamping not required
+- Joints can be disassembled
+- Suitable for plywood and MDF
+
+**Best For:**
+- Face frames
+- Cabinet assembly
+- Furniture repairs
+- Not for fine furniture visible surfaces
+
+## Corner Joints
+
+### Box/Finger Joint
+
+Interlocking rectangular fingers.
+
+**Strength:** Excellent—large glue surface area
+
+**Appearance:** Decorative, shows craftsmanship
+
+**Production:**
+- Router table with jig
+- Table saw with dado stack
+- Hand-cut with dovetail saw
+
+### Dovetail Joint
+
+Angled, interlocking pins and tails.
+
+**Types:**
+
+**Through Dovetail:**
+Visible from both sides. Classic drawer back construction.
+
+**Half-Blind Dovetail:**
+Pins hidden from one side. Drawer front construction.
+
+**Full-Blind (Secret) Dovetail:**
+Hidden from both sides. Jewelry boxes, fine furniture.
+
+**Sliding Dovetail:**
+Tapered slot and matching piece. Shelving, drawer dividers.
+
+**Proportions:**
+- Softwood: 1:6 ratio (about 9°)
+- Hardwood: 1:8 ratio (about 7°)
+- Pin width: 1/2 tail spacing or narrower
+
+**Cutting Sequence (hand-cut):**
+1. Mark baseline on all pieces
+2. Lay out and cut tails
+3. Transfer tails to pin board
+4. Cut pins
+5. Fit and adjust
+
+### Miter Joint
+
+45° cuts meeting at corner.
+
+**Weakness:** End grain to end grain—poor glue surface.
+
+**Reinforcement:**
+- Spline (across or with grain)
+- Biscuits
+- Dowels
+- Keys (visible decorative)
+- Lock miter (machined profile)
+
+## Widening Joints
+
+### Dado
+
+Groove cut across grain to receive shelf or partition.
+
+**Types:**
+- Through dado: Full width
+- Stopped dado: Ends before edge
+- Sliding dovetail dado: Mechanical lock
+
+### Rabbet
+
+L-shaped cut along edge.
+
+**Applications:**
+- Back panels in cabinets
+- Glass retention in frames
+- Drawer bottoms
+
+### Groove
+
+Channel cut with grain.
+
+**Applications:**
+- Panel retention in frame and panel
+- Drawer bottom slides
+- Alignment features
+
+## Specialty Joints
+
+### Bridle Joint
+
+Open mortise and tenon, visible from edge.
+
+**Types:**
+- Corner bridle
+- T-bridle
+- Angled bridle (for chair legs)
+
+### Lap Joints
+
+Members overlap with material removed from each.
+
+**Types:**
+- Full lap (cross lap)
+- Half lap (middle, corner, T)
+- Dovetail lap
+
+### Scarf Joint
+
+Joining wood end-to-end for length.
+
+**Types:**
+- Plain scarf (angled cut)
+- Hooked scarf (mechanical lock)
+- Finger scarf (multiple interleaved cuts)
+
+## Joint Selection Factors
+
+| Factor | Consideration |
+|--------|---------------|
+| Strength required | Load, stress direction |
+| Appearance | Visible vs. hidden |
+| Wood movement | Allow for expansion/contraction |
+| Production method | Hand vs. machine |
+| Skill level | Simple vs. complex |
+| Time available | Quick assembly vs. fine work |
+
+## Glue Considerations
+
+**Long Grain to Long Grain:**
+PVA (yellow) glue is excellent; joints stronger than wood.
+
+**End Grain:**
+Poor glue absorption; use mechanical joints or size end grain first.
+
+**Oily Woods:**
+Wipe with solvent before gluing or use epoxy.
+
+**Open Time:**
+Plan complex assemblies; use slow-set glue for intricate joints.
+
+## References
+
+- Korn, P. "Woodworking Basics" (2003)
+- Hack, G. "Classic Hand Tools" (1999)
+- Wearing, R. "The Essential Woodworker" (1988)
+- Fine Woodworking Magazine Archives

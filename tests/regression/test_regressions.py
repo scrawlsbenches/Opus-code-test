@@ -318,3 +318,117 @@ class TestEmptyQueryHandlingRegression:
             small_processor.find_documents_for_query("   \t\n  ", top_n=5)
 
         assert "non-empty" in str(exc_info.value).lower()
+
+
+class TestEdgeCasesRegression:
+    """
+    Agent Delta Task #T-20251217-025242-6b01-018: Edge case regression tests.
+
+    Tests for common edge cases that should be handled gracefully:
+    - Empty corpus queries
+    - Single document corpus
+    - Very long documents
+    - Special characters in queries
+    - Unicode handling
+    """
+
+    def test_empty_corpus_search_returns_empty(self):
+        """Searching an empty corpus should return empty results, not crash."""
+        from cortical import CorticalTextProcessor
+
+        processor = CorticalTextProcessor()
+        # Don't add any documents
+        processor.compute_all()
+
+        results = processor.find_documents_for_query("test query")
+        assert results == []
+
+    def test_single_document_corpus(self):
+        """Single document corpus should work correctly."""
+        from cortical import CorticalTextProcessor
+
+        processor = CorticalTextProcessor()
+        processor.process_document("only_doc", "This is the only document in the corpus.")
+        processor.compute_all()
+
+        results = processor.find_documents_for_query("document")
+        assert len(results) == 1
+        assert results[0][0] == "only_doc"
+
+    def test_very_long_document_handled(self):
+        """Very long documents (>10k words) should be processed without error."""
+        from cortical import CorticalTextProcessor
+
+        processor = CorticalTextProcessor()
+        # Create a very long document (~10k words)
+        long_text = " ".join([f"word{i}" for i in range(10000)])
+        processor.process_document("long_doc", long_text)
+        processor.compute_all()
+
+        # Should complete without error
+        results = processor.find_documents_for_query("word5000")
+        assert len(results) > 0
+
+    def test_special_characters_in_query(self):
+        """Queries with special characters should be handled gracefully."""
+        from cortical import CorticalTextProcessor
+
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "Test document with C++ and Python code.")
+        processor.compute_all()
+
+        # Should not crash with special chars
+        results = processor.find_documents_for_query("C++")
+        # Results may be empty if tokenizer strips special chars, but shouldn't crash
+        assert isinstance(results, list)
+
+    def test_unicode_text_processing(self):
+        """Unicode text (non-ASCII) should be processed correctly."""
+        from cortical import CorticalTextProcessor
+
+        processor = CorticalTextProcessor()
+        processor.process_document("unicode_doc", "Résumé français café naïve Москва 北京")
+        processor.compute_all()
+
+        # Should process without error
+        results = processor.find_documents_for_query("café")
+        assert isinstance(results, list)
+
+    def test_query_with_no_matching_terms(self):
+        """Queries with no matching terms should return empty results, not crash."""
+        from cortical import CorticalTextProcessor
+
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "machine learning neural networks")
+        processor.compute_all()
+
+        # Query for something completely different
+        results = processor.find_documents_for_query("quantum physics")
+        assert results == []
+
+    def test_repeated_identical_documents(self):
+        """Adding identical documents should not cause issues."""
+        from cortical import CorticalTextProcessor
+
+        processor = CorticalTextProcessor()
+        identical_text = "This is identical text."
+        for i in range(5):
+            processor.process_document(f"doc{i}", identical_text)
+        processor.compute_all()
+
+        # Should work without error
+        results = processor.find_documents_for_query("identical")
+        assert len(results) == 5  # All docs should match
+
+    def test_document_with_only_stopwords(self):
+        """Documents containing only stopwords should be handled."""
+        from cortical import CorticalTextProcessor
+
+        processor = CorticalTextProcessor()
+        processor.process_document("stopword_doc", "the a an and or but")
+        processor.process_document("normal_doc", "machine learning algorithms")
+        processor.compute_all()
+
+        # Should not crash when searching
+        results = processor.find_documents_for_query("machine")
+        assert len(results) > 0
