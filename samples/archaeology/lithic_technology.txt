@@ -1,0 +1,41 @@
+Lithic Technology: The Study of Stone Tool Production and Use
+
+Overview
+
+Lithic technology—the study of stone tools and their manufacture—addresses the longest-spanning record of human behavior. Stone tools appear in the archaeological record over three million years ago and remained essential throughout prehistory. Because stone preserves well and knapping produces distinctive products, lithic analysis provides unusually direct access to ancient behavior. Understanding how stone was shaped into tools illuminates cognition, adaptation, and cultural transmission across deep time.
+
+The field encompasses raw material procurement, reduction sequences, tool design, use, maintenance, and discard. Experimental archaeology and ethnoarchaeology provide analogies for interpreting stone tool production. Recent decades have seen increasing integration of technological, behavioral, and cognitive approaches, moving beyond simple typology toward understanding lithic technology as skilled practice embedded in social and ecological contexts.
+
+Key Concepts
+
+Knapping is the process of shaping stone through fracture. Conchoidal fracture occurs when force applied to cryptocrystalline or glassy stone (obsidian, chert, flint) produces predictable cone-shaped fractures. Skilled knappers exploit fracture mechanics to detach flakes of desired size and shape. The core is the mass from which flakes are removed; flakes may be discarded, used as tools, or further modified.
+
+Platform preparation determines fracture outcomes. The striking platform—the surface receiving force—must have appropriate angle, morphology, and edge treatment. Abrading platform edges strengthens them; isolating platforms reduces platform thickness; faceting creates desired angles. These preparation techniques indicate knapper skill and intention.
+
+Reduction strategies follow culturally learned patterns. Bifacial reduction shapes both faces of a stone, producing handaxes, projectile points, and bifacial cores. Blade production employs prepared cores yielding elongated, parallel-sided flakes. Levallois technology prepares cores to produce flakes of predetermined shape. Each strategy involves characteristic gestures, decisions, and skill acquisition.
+
+Debitage analysis studies production debris. Flakes, shatter, and cores accumulate where knapping occurred. Debitage attributes—platform type, dorsal scar pattern, size, cortex coverage—indicate reduction stage and technique. Refitting reconnects detached pieces, reconstructing reduction sequences and identifying post-depositional disturbance.
+
+Use-wear analysis examines microscopic traces of tool use. Edge damage, polish, and striations result from contact with worked materials. High-power microscopy can distinguish plant processing from hide working, bone contact from wood cutting. Use-wear bridges the gap between formal tool classification and actual function.
+
+Residue analysis identifies organic materials adhering to stone surfaces. Blood proteins, plant starch grains, and phytoliths can indicate what tools contacted. Combined with use-wear, residue analysis provides direct evidence of stone tool function.
+
+Technological Traditions
+
+Oldowan technology, appearing around 2.6 million years ago in Africa, represents the earliest stone tools. Simple cores and flakes required basic understanding of fracture mechanics. Oldowan tools were likely multipurpose, used for processing plants and butchering animals. The cognitive and motor requirements of even simple knapping distinguish tool-making hominins from non-human primates.
+
+Acheulean technology, emerging around 1.7 million years ago, is characterized by bifacially worked handaxes and cleavers. These large cutting tools show symmetry and standardization suggesting mental templates. The Acheulean persisted for over a million years across Africa and Eurasia, representing remarkable technological conservatism.
+
+Middle Stone Age and Middle Paleolithic technologies show increased complexity: prepared core techniques, hafting, composite tools, and regional variation. Levallois technology and its variants demonstrate sophisticated planning and understanding of stone properties. These developments coincide with anatomically modern humans in Africa and Neanderthals in Europe.
+
+Upper Paleolithic and Later Stone Age technologies emphasize blade production, projectile technology, and diversification. Microliths—small geometric pieces—served as elements in composite tools. The bow and arrow, spear-thrower, and sophisticated hafting systems extended human reach and efficiency.
+
+Applications
+
+Behavioral interpretation connects lithic evidence to past activities. Tool kits reflect subsistence strategies; debitage distributions map activity areas; raw material transport indicates mobility patterns. Lithic analysis thus contributes to reconstructing settlement systems, economic organization, and landscape use.
+
+Cognitive evolution studies examine what stone tools reveal about ancient minds. The sequence from Oldowan to Upper Paleolithic suggests expanding cognitive capacities—planning, imitation, language, symbolic thought. Debates continue about which developments mark significant cognitive thresholds and what relationship exists between brain evolution and technological change.
+
+Cultural transmission studies investigate how knapping knowledge passed between individuals and generations. Stone tools materialized socially learned traditions. Regional variation in reduction strategies may reflect isolation, identity marking, or functional adaptation. Understanding technological variation illuminates social organization and information exchange.
+
+Raw material sourcing identifies where stone originated. Obsidian, with distinctive chemical signatures, enables precise provenance determination. Chert sourcing is more challenging but progressing through geochemical characterization. Exchange networks, territorial ranges, and procurement strategies emerge from sourcing data.

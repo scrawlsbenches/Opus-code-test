@@ -1,0 +1,35 @@
+Social Contract Theory: Foundations of Political Authority
+
+Overview
+
+Social contract theory explains and justifies political authority through the idea of an agreement among individuals to form a society and establish government. Rather than grounding political obligation in divine right, natural hierarchy, or mere power, contract theory locates legitimacy in the consent of the governed. This powerful idea, developed by Hobbes, Locke, and Rousseau, continues to shape liberal political philosophy and democratic theory.
+
+The social contract is typically hypothetical rather than historical. Theorists do not claim that an actual agreement occurred; rather, they argue that legitimate political institutions are those that would or could be agreed to by rational individuals. This hypothetical approach reveals what principles could command general assent and thus possess normative authority.
+
+Key Concepts
+
+The state of nature describes the human condition before or without political authority. Different theorists characterize it differently, with significant implications. Hobbes famously depicted the state of nature as a war of all against all, where life is "solitary, poor, nasty, brutish, and short." Without common authority to enforce agreements, rational self-interest leads to preemptive violence and generalized insecurity.
+
+Thomas Hobbes argued that the horrors of the state of nature justify nearly absolute sovereignty. Rational individuals would authorize a sovereign with unlimited power to maintain peace—anything is preferable to civil war. The Leviathan, once established, cannot be legitimately resisted; rebellion risks return to anarchy. This provides powerful justification for political authority while troubling those concerned about tyranny.
+
+John Locke envisioned a more benign state of nature governed by natural law and natural rights. Individuals possess rights to life, liberty, and property prior to government. Government's purpose is to protect these pre-political rights more effectively than individuals can themselves. When government violates rather than protects rights, citizens may legitimately resist and reconstitute political authority. This provides foundations for limited government and revolution.
+
+Jean-Jacques Rousseau introduced the concept of the general will—the will of the people as a collective body aiming at the common good rather than particular interests. The social contract creates a collective moral person in which each, by uniting with all, remains as free as before. True freedom consists in obedience to self-prescribed law. Rousseau's democratic theory influenced the French Revolution and subsequent democratic thought.
+
+Consent as the basis of political obligation raises difficult questions. If the contract is hypothetical, how does it bind actual persons who never consented? Locke distinguished express consent (explicit agreement) from tacit consent (implicit in accepting benefits like protection and residing in a territory). Critics argue that tacit consent is unavoidable and therefore cannot ground genuine obligation.
+
+Contemporary contractarianism extends social contract thinking to principles of justice. John Rawls's justice as fairness asks what principles rational individuals would choose behind a "veil of ignorance" that prevents them from knowing their particular circumstances. This original position models impartiality and yields Rawls's two principles: equal basic liberties and the difference principle (inequalities are just only if they benefit the least advantaged).
+
+Contractualism as a moral theory, developed by T.M. Scanlon, grounds morality in what principles no one could reasonably reject. Rather than asking what maximizes welfare, contractualism asks what we owe each other. The test is whether a principle could be justified to each affected person—whether they could accept it as a basis for living together.
+
+Feminist critiques of social contract theory point out that the tradition often excluded women from the contracting parties and assumed a public/private distinction that relegated women's concerns to the non-political realm. Carole Pateman's The Sexual Contract argues that the original contract was simultaneously a fraternal contract among men about access to women. Reconstructing contract theory to include women's perspectives remains an ongoing project.
+
+Applications
+
+Constitutional design applies contract theory to institutional structures. What powers should government possess? How should authority be divided? What rights should be constitutionally protected? Contract theory provides normative guidance for constitution-making, even when actual constitutional processes fall short of ideal deliberation.
+
+International relations theory uses contractarian reasoning to model relations among states. Hobbes's description of the state of nature applies to international anarchy—states in a condition of potential war without common authority. Some argue for an international social contract establishing global governance institutions; others maintain that international relations remain fundamentally competitive.
+
+Global justice extends contractarian thinking beyond national boundaries. Who are the parties to the contract—citizens of particular states or all human beings? Cosmopolitan contractarians argue for global principles of justice; nationalists maintain that special obligations hold among compatriots. The scope of the contract determines the scope of justice obligations.
+
+Contemporary debates apply contract theory to specific issues. What healthcare arrangements would rational contractors choose? What environmental policies? What rules governing artificial intelligence? Contract theory provides a method for addressing novel moral and political questions by asking what principles could command general assent among affected parties reasoning behind appropriate constraints.

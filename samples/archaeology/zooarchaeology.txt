@@ -1,0 +1,41 @@
+Zooarchaeology: The Study of Animal Remains in Archaeological Contexts
+
+Overview
+
+Zooarchaeology, also known as archaeozoology, investigates animal remains from archaeological sites to understand past human-animal relationships. Bones, teeth, shells, and other animal tissues preserve information about ancient diet, subsistence strategies, hunting and herding practices, environmental conditions, and symbolic uses of animals. From the earliest hunting camps to complex urban economies, animal remains illuminate the ecological dimensions of human existence.
+
+The field integrates biological identification with archaeological interpretation. Zooarchaeologists must know osteology, taxonomy, and taphonomy while addressing questions about human behavior. The discipline has expanded beyond simply listing species present to sophisticated analyses of butchery, seasonality, herding practices, and the social dimensions of animal use.
+
+Key Methods
+
+Identification compares archaeological specimens to reference collections of known animals. Diagnostic elements—teeth, horns, characteristic bone morphology—enable species identification. Some elements can be identified to species; others only to genus or family level. Size, age, and sex may be determined from appropriately preserved elements.
+
+Quantification measures the abundance of different taxa. Number of Identified Specimens (NISP) counts identifiable fragments; Minimum Number of Individuals (MNI) estimates the fewest animals represented. Each measure has biases: NISP is inflated by fragmentation; MNI is sensitive to aggregation decisions. Sophisticated approaches address sample size effects and interdependence among measures.
+
+Taphonomy studies processes affecting bone preservation and modification. Weathering, carnivore gnawing, rodent activity, root etching, and trampling alter bones post-depositionally. Distinguishing cultural modifications from natural alterations is essential. Bone surface conditions, fragmentation patterns, and spatial distributions inform taphonomic assessments.
+
+Butchery analysis examines cut marks, chop marks, and fracture patterns indicating how animals were processed. Mark location and orientation reveal skinning, dismemberment, filleting, and marrow extraction. Stone tool cut marks differ from metal knife cuts; systematic recording enables behavioral inference. Element representation—which body parts are present—indicates transport decisions and carcass distribution.
+
+Age and sex determination reconstructs herd demography. Tooth eruption and wear, epiphyseal fusion, and bone morphology indicate age at death. Sexually dimorphic features and specific elements like antlers reveal sex ratios. Kill-off patterns—which animals were slaughtered when—distinguish hunting from herding strategies.
+
+Seasonality assessment determines when animals were killed. Antler cycles, tooth cementum annuli, and migratory species presence indicate season. Seasonality data inform interpretations of site occupation duration, settlement patterns, and scheduling of activities.
+
+Interpretive Frameworks
+
+Optimal foraging theory models subsistence decisions as fitness optimization. Prey choice models predict which animals should be pursued based on return rates and handling costs. Central place foraging addresses how carcasses should be processed and transported. Archaeological patterns are evaluated against model predictions, with deviations indicating non-optimization factors.
+
+Domestication studies investigate the transformation from hunting to herding and farming. Morphological changes—size reduction, horn modification, tooth pathology—accompany domestication. Kill-off patterns shift from prime-age hunting profiles to management profiles with juvenile culling and maintained breeding stock. Geographic origins and spread of domestic animals are traced through zooarchaeological and genetic evidence.
+
+Feasting and ritual use extend beyond subsistence. Animals served in ceremonial contexts, sacrifice, burial offerings, and community feasts. Distinctive patterns—species selection, element representation, context—indicate special rather than mundane use. Symbolic dimensions of human-animal relationships are archaeologically accessible.
+
+Social differentiation may be reflected in differential access to animal products. Elite households might consume more meat or preferred species and cuts. Comparative analysis across contexts within sites can reveal distribution inequalities and social organization.
+
+Applications
+
+Paleoenvironmental reconstruction uses animal assemblages as ecological proxies. Species presence indicates available habitats and climatic conditions. Changes in assemblages over time track environmental transformations. Small animals, especially rodents, are particularly sensitive environmental indicators.
+
+Diet reconstruction integrates faunal data with other evidence. While meat consumption is directly evidenced, the relative contribution of animal foods to diet requires additional analysis. Stable isotopes in human bone and comparisons with plant remains provide broader dietary pictures.
+
+Herding economy studies reconstruct pastoral practices from faunal remains. Milk, wool, traction, and meat represent different animal products requiring different herd management. Secondary products exploitation—using live animals repeatedly—marks economic intensification. Herd composition and kill-off patterns reveal management strategies.
+
+Historical period zooarchaeology addresses urban provisioning, market economies, and colonial introductions. Medieval towns show standardized butchery reflecting professional specialization. Colonial sites document the introduction of European livestock. These applications demonstrate the field's scope beyond prehistoric subsistence.

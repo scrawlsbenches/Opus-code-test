@@ -1,0 +1,35 @@
+Environmental Ethics: Moral Obligations to Nature
+
+Overview
+
+Environmental ethics examines the moral relationship between humans and the natural environment. Traditional ethics focused on obligations among humans; environmental ethics extends moral concern to nonhuman animals, species, ecosystems, and nature as a whole. What moral status do nonhuman entities have? Do we have direct duties to nature or only indirect duties deriving from human interests? These questions have become urgent as environmental crises threaten ecological systems globally.
+
+The field emerged in the 1970s amid growing environmental awareness. It now encompasses diverse theoretical approaches—from extensions of traditional ethics to radical reconceptions of humanity's place in nature. Environmental ethics informs policy debates about conservation, climate change, development, and sustainability while raising fundamental questions about value, obligation, and the proper scope of moral concern.
+
+Key Concepts
+
+Anthropocentrism holds that only humans have intrinsic moral value; nature has value only instrumentally, as it serves human interests. On this view, we should protect the environment because humans depend on ecosystem services, enjoy nature's beauty, and want to preserve resources for future generations. Environmental protection reduces to enlightened human self-interest.
+
+Biocentrism extends moral status to all living things. Paul Taylor's "respect for nature" argues that every organism is a "teleological center of life" pursuing its own good. We have prima facie duties not to harm living things and to respect their inherent worth. Critics question how to weigh competing claims of different organisms and whether individual plants genuinely have a good of their own.
+
+Ecocentrism locates value in ecosystems, species, and ecological wholes rather than individual organisms. Aldo Leopold's land ethic holds that "a thing is right when it tends to preserve the integrity, stability, and beauty of the biotic community." This holistic approach values ecological health above individual welfare, raising concerns about "environmental fascism"—sacrificing individuals for the collective.
+
+Deep ecology, developed by Arne Naess, combines ecological philosophy with radical political critique. It distinguishes shallow ecology (environmental concern for human benefit) from deep ecology (fundamental questioning of human-nature relationships). Deep ecologists advocate "biospheric egalitarianism" and critique the anthropocentric worldview underlying environmental destruction. Self-realization is expanded to include identification with nature.
+
+Animal ethics addresses the moral status of nonhuman animals. Peter Singer's utilitarian argument holds that the capacity to suffer, not species membership, determines moral status. Causing unnecessary animal suffering is wrong regardless of species. Tom Regan's rights-based view attributes inherent value to "subjects-of-a-life"—animals with beliefs, desires, and experiential welfare. Both challenge the moral permissibility of factory farming, animal experimentation, and hunting.
+
+Ecofeminism connects environmental degradation to patterns of domination, particularly the domination of women. Patriarchal structures that subordinate women also subordinate nature; liberation requires transforming these relationships. Different strands emphasize connections between women and nature, critique of dualistic thinking (mind/body, culture/nature), or analysis of intersecting oppressions.
+
+Future generations pose challenges for environmental ethics. Our actions affect people not yet born who cannot represent their interests. Do we have obligations to future generations? If so, what sacrifices are required? Population ethics asks whether we should bring more people into existence and how to weigh present against future well-being.
+
+Environmental justice addresses the distribution of environmental benefits and burdens. Pollution sources, toxic waste sites, and environmental hazards are disproportionately located near poor and minority communities. Environmental justice movements demand fair distribution of environmental quality and meaningful participation in environmental decision-making. Global environmental justice considers obligations between nations with vastly different resources and historical responsibilities.
+
+Applications
+
+Climate change ethics applies general principles to specific challenges. Who should bear the costs of reducing emissions and adapting to change? How much should present generations sacrifice for future ones? How do we value lives in distant places and times? Climate ethics engages with intergenerational justice, global distributive justice, and uncertainty about consequences.
+
+Biodiversity conservation raises questions about what we aim to preserve—species, genetic diversity, ecosystems, wildness—and why. Extinction forecloses possibilities and represents irreversible loss. But how much should we sacrifice for preservation? How do we weigh conservation against development and human livelihoods? Environmental ethics provides frameworks for these difficult choices.
+
+Sustainability attempts to meet present needs without compromising future generations' ability to meet their needs. But sustainability is contested—sustainable development may differ fundamentally from sustainable consumption or sustainable ecosystems. Clarifying what sustainability means and why it matters is a task for environmental ethics.
+
+Rewilding and restoration raise questions about naturalness and human intervention. Should we attempt to restore historical ecosystems? Is a restored ecosystem as valuable as one that developed naturally? These questions probe what we value about nature—wildness, biodiversity, ecological processes, or the absence of human influence.

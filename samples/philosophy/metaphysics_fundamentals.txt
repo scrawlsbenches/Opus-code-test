@@ -1,0 +1,31 @@
+Metaphysics: The Study of Fundamental Reality
+
+Overview
+
+Metaphysics, the branch of philosophy concerned with the nature of reality itself, addresses the most fundamental questions about existence, being, and the structure of the universe. Derived from Aristotle's works that came "after the physics," metaphysics examines what exists beyond the physical world we perceive through our senses. This inquiry predates written philosophy, emerging from humanity's earliest attempts to understand the cosmos, yet continues to engage contemporary philosophers grappling with questions about time, causation, possibility, and the nature of objects.
+
+The scope of metaphysics encompasses several interrelated domains: ontology (the study of being and existence), cosmology (the nature of the universe as a whole), and philosophical theology (questions about transcendent reality). Unlike empirical sciences that investigate particular aspects of reality, metaphysics asks foundational questions that science presupposes but cannot itself answer: Why is there something rather than nothing? What makes an object the same thing over time? Do abstract entities like numbers and properties exist?
+
+Key Concepts
+
+Ontology examines what categories of things exist and how they relate to one another. The fundamental question "What is there?" has generated competing ontological frameworks. Materialists or physicalists argue that only physical matter and its properties ultimately exist—everything, including consciousness, reduces to or supervenes upon physical states. Dualists maintain that reality comprises both physical and non-physical substances, most notably mind and matter. Idealists contend that reality is fundamentally mental or experiential, with physical objects being constructs of perception or thought.
+
+The problem of universals has occupied metaphysicians since Plato distinguished between particular things and the Forms they instantiate. When multiple objects share a property—when several things are all red—what explains this commonality? Realists about universals hold that redness itself exists as an abstract entity that particulars instantiate. Nominalists deny that universals exist, explaining similarity through resemblance relations, predicate use, or tropes (particular property instances). Conceptualists locate universals in the mind as concepts rather than mind-independent entities.
+
+Modality concerns possibility and necessity—what could be otherwise and what must be as it is. Modal metaphysics distinguishes between logical possibility (non-contradiction), metaphysical possibility (how reality could fundamentally be), and nomological possibility (what natural laws permit). Possible worlds semantics, developed by Saul Kripke and others, analyzes modal claims in terms of truth across possible worlds. Actualists maintain that only the actual world exists, while modal realists like David Lewis argue that possible worlds are as real as our own.
+
+The nature of time generates profound metaphysical puzzles. Presentists hold that only the present moment exists—past and future are unreal. Eternalists argue that all times are equally real, with past, present, and future constituting a four-dimensional block universe. Growing block theorists propose that the past and present exist but the future does not yet. The A-theory of time treats temporal passage as objective and fundamental, while the B-theory reduces temporal relations to earlier-than and later-than ordering without genuine passage.
+
+Causation underlies our understanding of explanation, agency, and scientific inquiry. Regularity theories, following Hume, analyze causation as constant conjunction—causes are events regularly followed by their effects. Counterfactual theories define causation in terms of dependence: an event c causes e if, had c not occurred, e would not have occurred either. Process theories emphasize physical connections between causes and effects. Interventionist theories tie causation to manipulation and control.
+
+Personal identity asks what makes a person the same individual over time and what constitutes personal identity at a moment. Psychological continuity theories locate identity in connected memories, personality traits, and mental states. Biological theories ground identity in the continuity of living organisms. Narrative theories emphasize the role of self-conception and life stories. The problem intensifies with thought experiments involving teleportation, brain splitting, and gradual replacement of neural components.
+
+Applications
+
+Metaphysical positions have profound implications for science, ethics, and ordinary life. The interpretation of quantum mechanics raises metaphysical questions about determinism, the nature of measurement, and whether the wave function represents reality or merely our knowledge. The debate between scientific realism and anti-realism concerns whether scientific theories describe mind-independent reality or merely organize experience successfully.
+
+In ethics, metaphysical commitments shape moral theory. If naturalism is true, can objective moral facts exist? Does free will require metaphysical indeterminism, or is compatibilism—the view that freedom is compatible with determinism—defensible? The existence of abstract moral properties and the nature of moral explanation depend on broader metaphysical frameworks.
+
+Questions about personal identity bear on practical concerns: What justifies concern for one's future self? When does a person die? What would resurrection or uploading consciousness require? Legal and medical decisions about competence, responsibility, and end-of-life care implicitly invoke metaphysical assumptions about the conditions of personal persistence.
+
+Contemporary metaphysics increasingly engages with cognitive science, physics, and mathematics. The metaphysics of emergence asks whether complex systems exhibit genuinely novel properties irreducible to their parts. The ontology of mathematical objects—whether numbers exist and if so, how we know them—connects to philosophy of mathematics and epistemology. Metaphysicians examine the nature of laws, dispositions, and natural kinds that figure in scientific explanation.

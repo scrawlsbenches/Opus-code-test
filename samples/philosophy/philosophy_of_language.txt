@@ -1,0 +1,35 @@
+Philosophy of Language: Meaning, Reference, and Communication
+
+Overview
+
+Philosophy of language investigates the nature of meaning, the relationship between language and reality, and how communication is possible. Its central questions include: What does it mean for a word to refer to something? How do sentences convey truth? What role does context play in understanding? How do we accomplish things with words? These questions bear on fundamental issues in metaphysics, epistemology, and philosophy of mind.
+
+The field emerged as a central area of analytic philosophy in the twentieth century, when thinkers from Frege and Russell through Wittgenstein, Quine, and Kripke developed sophisticated theories of meaning and reference. Though closely connected to linguistics, philosophy of language addresses conceptual rather than empirical questions, asking not how particular languages work but what language itself is and how it connects minds to the world.
+
+Key Concepts
+
+Reference concerns how words and expressions pick out objects in the world. Proper names like "Aristotle" refer to particular individuals. Definite descriptions like "the morning star" identify objects through descriptive content. Bertrand Russell's theory of descriptions analyzed descriptions as quantified expressions rather than referring terms, explaining how we can meaningfully use descriptions that fail to refer. Saul Kripke's Naming and Necessity challenged description theories of names, arguing that names are rigid designators referring to the same object in all possible worlds regardless of which descriptions speakers associate with them.
+
+Frege's distinction between sense (Sinn) and reference (Bedeutung) addressed a puzzle: "the morning star is the evening star" seems informative, unlike "the morning star is the morning star," yet both refer to Venus. Frege proposed that expressions have sense—a mode of presentation or cognitive content—as well as reference. Two expressions can have the same reference with different senses, explaining how identity statements can be informative.
+
+Theories of meaning divide broadly into referential and use-based approaches. Referential theories ground meaning in the relationship between words and what they stand for. Truth-conditional semantics, developing from Frege and Tarski, analyzes sentence meaning through conditions under which sentences are true. Use theories, associated with the later Wittgenstein, hold that meaning is constituted by patterns of use—to understand a word is to know how to use it appropriately in various language games.
+
+Speech act theory, developed by J.L. Austin and John Searle, analyzes what we do with words beyond making statements. Austin distinguished locutionary acts (saying something meaningful), illocutionary acts (what we do in saying—promising, warning, ordering), and perlocutionary acts (effects produced by saying—persuading, intimidating). Performative utterances like "I now pronounce you married" do not describe but rather constitute actions when uttered in appropriate circumstances.
+
+The compositionality principle holds that the meaning of a complex expression is determined by the meanings of its parts and how they are combined. This explains how finite beings understand infinitely many novel sentences: knowing word meanings and compositional rules enables understanding sentences never before encountered. Debates continue about the scope and nature of compositional semantics.
+
+Context-dependence creates challenges for semantic theory. Indexical expressions like "I," "here," and "now" shift reference with context. David Kaplan's theory distinguishes character (a function from context to content) from content (what is said in a context). More controversial is the extent of context-dependence beyond obvious indexicals. Contextualists argue that even apparently non-indexical terms depend on context for their semantic values.
+
+Pragmatics studies how context affects interpretation beyond literal meaning. Grice's theory of conversational implicature shows how speakers communicate more than they literally say through shared assumptions about cooperative conversation. His maxims of quantity, quality, relation, and manner characterize rational discourse. Implicatures—meanings conveyed but not literally stated—are cancellable and calculable from context.
+
+The private language argument in Wittgenstein's Philosophical Investigations challenges the possibility of language whose terms refer to private sensations accessible only to the speaker. If words acquire meaning through public criteria of correct use, no purely private language is possible. This argument bears on philosophy of mind, challenging the idea that mental concepts name inner private objects.
+
+Applications
+
+Philosophy of language bears on debates about truth and realism. If meaning is truth conditions, understanding sentences requires grasping what would make them true. Deflationist theories of truth argue that "true" is merely a device of semantic ascent, not a substantial property. Correspondentists maintain that truth involves genuine correspondence to facts. These semantic debates connect to metaphysical questions about the nature of reality.
+
+Legal interpretation employs concepts from philosophy of language. Debates about statutory and constitutional interpretation involve questions about original meaning, speaker's intention, and the role of context. How we understand legal language affects judicial practice and political theory.
+
+Artificial intelligence and computational linguistics engage with philosophical theories of meaning. Natural language processing systems model linguistic competence, raising questions about whether computational approaches capture genuine understanding or merely simulate it. The Chinese Room argument from Searle targets computational theories of mind by way of arguments about language understanding.
+
+Communication ethics depends on how we understand speech acts and meaning. When does misleading language constitute lying? What are the ethics of manipulative rhetoric? Philosophy of language provides frameworks for analyzing truth-telling, deception, and the normative dimensions of communication.
