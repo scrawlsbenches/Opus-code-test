@@ -1,0 +1,31 @@
+Cognitive Market Models: The Intersection of Mind and Markets
+
+Cognitive science provides fundamental insights into how market prediction systems function and fail. The human brain is a type of prediction machine, constantly generating forecasts about future states based on incomplete information. This predictive processing framework applies directly to financial markets, where traders must form beliefs about asset values under uncertainty.
+
+Market prediction is fundamentally a cognitive task that relies on attention allocation, pattern recognition, and belief updating. Traders deploy limited cognitive resources across multiple information streams, exhibiting the same attentional bottlenecks studied in cognitive psychology. The selective attention mechanism determines which market signals receive processing priority, directly influencing trading decisions and prediction accuracy.
+
+Cognitive biases systematically distort market predictions in predictable ways. Confirmation bias causes traders to overweight information that supports existing positions, while availability heuristic leads to overestimation of recent or memorable market events. These cognitive limitations are not mere errors but reflect the brain's adaptive strategies for rapid decision-making under constraints.
+
+Mental models of market dynamics function as internal world models that simulate potential futures. Expert traders develop rich conceptual frameworks that capture market structure, causal relationships between variables, and typical behavior patterns. These mental models consist of connected representations linking economic indicators, company fundamentals, and price movements through learned associations.
+
+The dual-process theory from cognitive science illuminates two distinct modes of market analysis. System 1 thinking enables rapid, intuitive pattern recognition that identifies familiar market configurations automatically. System 2 thinking involves deliberate, analytical reasoning that evaluates complex financial models and statistical relationships. Effective prediction integrates both cognitive systems appropriately.
+
+Working memory limitations constrain the complexity of mental models traders can maintain actively. Humans typically hold seven plus-or-minus-two items in working memory, limiting simultaneous consideration of market factors. This cognitive constraint explains why simple heuristics often outperform complex models in practice—they fit within processing capacity.
+
+Cognitive load theory reveals why information overload degrades prediction performance. When traders face excessive data streams, cognitive resources become depleted, forcing reliance on simplified decision rules or emotional responses. Market prediction systems must manage information presentation to respect cognitive bandwidth limitations.
+
+The prediction error minimization principle from neuroscience provides a unifying framework for understanding market behavior. Brains constantly generate predictions and update beliefs based on prediction errors—the difference between expected and observed outcomes. Markets function similarly, with prices reflecting collective predictions that adjust through surprise signals.
+
+Cognitive embodiment suggests that market predictions incorporate physical and emotional states. Traders' bodily feedback influences risk perception and decision confidence. Stress responses alter time horizons, increasing preference for immediate gains over delayed rewards, which affects prediction timeframes and investment strategies.
+
+Memory systems shape how historical market patterns influence current predictions. Episodic memory stores specific past market events, while semantic memory contains general knowledge about market principles. The interaction between these memory systems determines how traders generalize from experience to novel situations.
+
+Attention economics applies cognitive attention models to market information processing. Attention is a scarce resource that markets compete to capture through salience, novelty, and relevance. Price movements, news announcements, and social media buzz function as attention signals that redirect cognitive focus and influence collective prediction.
+
+Cognitive neuroscience of decision-making under uncertainty directly parallels market prediction challenges. Brain regions like the prefrontal cortex evaluate expected values, while the amygdala processes risk signals. Understanding these neural mechanisms informs the design of prediction systems that complement or compensate for human cognitive architecture.
+
+The predictive coding framework suggests markets implement Bayesian inference at a collective level. Individual predictions serve as priors that market prices update through evidence accumulation. This cognitive model of perception maps directly onto market price discovery mechanisms.
+
+Metacognition—thinking about thinking—enables traders to monitor prediction confidence and recognize when mental models fail. Effective forecasters cultivate metacognitive awareness that distinguishes confident predictions from uncertain guesses, adjusting position sizes accordingly.
+
+Cognitive flexibility allows adaptation when market regimes shift, requiring mental model revision. Traders with higher cognitive flexibility more readily abandon failing strategies and construct alternative explanatory frameworks. This adaptability is crucial when historical patterns break down during structural changes.
