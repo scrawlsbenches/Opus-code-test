@@ -1,27 +1,29 @@
 # Project Handover Plan
 
-**Date:** 2025-12-15
+**Date:** 2025-12-19
 **Role:** Product Owner Onboarding
 **Status:** Active
-**Last Updated:** 2025-12-15 (post-MoE/ML merge)
+**Last Updated:** 2025-12-19 (post-Hubris/WAL merge - 400+ commits)
 
 ---
 
 ## Executive Summary
 
-The Cortical Text Processor is a mature, well-documented Python library for semantic text analysis. With 84% of tasks completed (196/234), comprehensive documentation, a recent security review, BM25 scoring, and new ML/MoE infrastructure, the project is in excellent shape for continued development.
+The Cortical Text Processor is a mature, production-ready Python library for semantic text analysis. With 85% of tasks completed (300/354), comprehensive documentation, a full MoE expert system (Hubris), WAL persistence, and 186 sample documents, this project has evolved into a sophisticated AI-assisted development platform.
 
 ### Key Metrics at Handover
 
 | Metric | Value | Assessment |
 |--------|-------|------------|
-| Tasks Completed | 196/234 (84%) | Excellent progress |
-| Tasks Pending | 31 | Includes coverage + ML tasks |
-| Tasks Deferred | 7 | Intentionally deprioritized |
-| Core Library LOC | ~25,000 | Well-structured |
-| Test Count | 3,150+ | Coverage improvement planned |
-| Documentation Files | 45+ markdown docs | Extensive |
-| Security Issues | 0 critical, 1 medium | Actively mitigated |
+| Tasks Completed | 300/354 (85%) | Excellent progress |
+| Tasks Pending | 41 | Active development |
+| Tasks In Progress | 2 | Parallel work ongoing |
+| Tasks Deferred | 11 | Intentionally deprioritized |
+| Core Library LOC | ~35,000+ | Major expansion |
+| Sample Documents | 186 | Comprehensive corpus |
+| Test Count | 3,500+ | Extensive coverage |
+| Documentation Files | 50+ markdown docs | Extensive |
+| Security Issues | 0 critical | Pickle removed entirely |
 
 ---
 
@@ -29,13 +31,25 @@ The Cortical Text Processor is a mature, well-documented Python library for sema
 
 ### What This Project Does
 
-**Cortical Text Processor** is a zero-dependency Python library implementing brain-inspired algorithms for text analysis:
+**Cortical Text Processor** is a zero-dependency Python library implementing brain-inspired algorithms for text analysis, now with AI-assisted development features:
 
-- **BM25** for document scoring (NEW - replaced TF-IDF as default)
+**Core Algorithms:**
+- **BM25** for document scoring (replaced TF-IDF as default)
 - **PageRank** for term importance
 - **Louvain clustering** for concept discovery
-- **Co-occurrence networks** for semantic connections
-- **Graph-Boosted BM25 (GB-BM25)** for hybrid search (NEW)
+- **Graph-Boosted BM25 (GB-BM25)** for hybrid search
+
+**AI-Assisted Development (Hubris MoE):**
+- **FileExpert** - Predicts which files need modification
+- **TestExpert** - Suggests which tests to run
+- **ErrorDiagnosisExpert** - Diagnoses errors and suggests fixes
+- **RefactorExpert** - Identifies refactoring opportunities
+- **CommandExpert** - Predicts shell commands
+
+**Infrastructure:**
+- **WAL + Snapshots** - Fault-tolerant persistence (LEGACY-133 complete)
+- **Chunked Parallel Processing** - Scalable compute (LEGACY-135 complete)
+- **Book Generation** - Auto-generate documentation from corpus
 
 ### Target Use Cases
 
@@ -68,70 +82,67 @@ This makes it embeddable in constrained environments and eliminates supply chain
 
 | Feature | Task ID | Status |
 |---------|---------|--------|
-| **MoE Index Architecture** | NEW | ✅ Design complete - 3 docs (~3200 lines) |
-| **ML Data Collection** | NEW | ✅ Complete - `scripts/ml_data_collector.py` (4153 LOC) |
-| **Slash Commands** | NEW | ✅ Complete - delegate, sanity-check, ml-log, ml-stats |
-| **Session Hooks** | NEW | ✅ Complete - `.claude/hooks/session_logger.py` |
-| **BM25 scoring (default)** | NEW | ✅ Complete - `cortical/analysis.py` |
-| **Graph-Boosted BM25** | NEW | ✅ Complete - hybrid search |
-| **Benchmark suite** | NEW | ✅ Complete - `scripts/benchmark_scoring.py` |
-| **34.5% faster compute_all()** | NEW | ✅ Complete - optimizations |
-| **Observability hooks** | LEGACY-189 | ✅ Complete - `cortical/observability.py` |
-| **Interactive REPL** | LEGACY-191 | ✅ Complete - `scripts/repl.py` |
+| **Hubris MoE System** | NEW | ✅ 5 experts with credit-based routing |
+| **WAL + Snapshots** | LEGACY-133 | ✅ Fault-tolerant persistence |
+| **Chunked Parallel Processing** | LEGACY-135 | ✅ Scalable compute |
+| **186 Sample Documents** | NEW | ✅ 2x corpus expansion |
+| **Cortical Chronicles Book** | NEW | ✅ Auto-generated documentation |
+| **Pickle Removal** | SEC-* | ✅ Security hardening complete |
+| **CALI Storage** | NEW | ✅ 35x faster ML data storage |
+| **BM25 scoring (default)** | NEW | ✅ Better relevance scoring |
+| **Graph-Boosted BM25** | NEW | ✅ Hybrid search |
+| **40x faster doc_connections** | NEW | ✅ Loop inversion optimization |
 
 ### Known Risks
 
 | Risk | Severity | Status |
 |------|----------|--------|
-| Pickle deserialization | Medium | ✅ Mitigated (HMAC verification, deprecation warning) |
-| Documentation staleness | Low | ✅ Resolved (audit completed, link checker in CI) |
+| Pickle deserialization | N/A | ✅ Removed entirely - JSON only |
+| Documentation staleness | Low | ✅ Resolved (link checker in CI) |
 | No async API | Low | Planned (LEGACY-187) |
+| Hubris cold start | Low | Fallback to heuristics implemented |
 
 ---
 
 ## Part 3: Backlog Analysis
 
-### Current Pending Tasks (31 total)
+### Current Pending Tasks (41 total)
 
-#### Production Readiness (High Priority)
+#### Production Readiness
 | ID | Task | Impact |
 |----|------|--------|
-| LEGACY-133 | WAL + snapshot persistence | Fault-tolerant rebuilds |
 | LEGACY-187 | Async API support | Non-blocking operations |
 | LEGACY-188 | Streaming query results | Large result handling |
 | LEGACY-190 | REST API wrapper (FastAPI) | Service deployment |
+
+#### Hubris MoE Enhancements
+| ID | Task | Impact |
+|----|------|--------|
+| T-*-efba-006 | ErrorDiagnosisExpert improvements | Better debugging |
+| T-*-efba-007 | Episode expert training | Workflow learning |
+| T-*-efba-008 | Expert consolidation pipeline | Unified predictions |
+| T-*-dbf8-005 | Dashboard origin sync indicator | UX improvement |
 
 #### Architecture & Extensibility
 | ID | Task | Impact |
 |----|------|--------|
 | LEGACY-100 | Plugin/extension registry | Extensibility |
-| LEGACY-135 | Chunked parallel processing | Performance at scale |
 | LEGACY-080 | "Learning Mode" for contributors | Onboarding |
 
-#### ML Data Collection (3 NEW investigation tasks)
+#### Book Generation & Documentation
 | ID | Task | Impact |
 |----|------|--------|
-| T-20251215-*-001 | Investigate ML for ephemeral environments | Training data |
-| T-20251215-*-002 | Re-enable git hooks for ML | Automation |
-| T-20251215-*-003 | Design session capture for Claude Code Web | Data collection |
-
-#### Code Coverage Improvement (16 tasks)
-| Module | Current | Target |
-|--------|---------|--------|
-| gaps.py | 9% | >80% |
-| query/ranking.py | 25% | >80% |
-| fluent.py | 25% | >80% |
-| query/search.py | 26% | >80% |
-| (+ 12 more modules) | 25-67% | >80% |
+| T-*-6b01-019 | Book generation improvements | Auto-documentation |
+| T-*-2e92-002 | Hubris book chapter | Knowledge capture |
 
 #### Other Enhancements
 | ID | Task | Impact |
 |----|------|--------|
-| T-20251214-233116-3058-001 | Weight lateral connections by TF-IDF | Better expansion |
-| T-20251214-233143-3058-004 | Security concept group | Code search |
-| T-20251214-174530-6aa8-012 | Director orchestration tracking | Automation |
+| T-*-8400-005 | Refactor index_codebase.py | Maintainability |
+| T-*-6b01-009 | Configurable thresholds | Flexibility |
+| T-*-6b01-013 | Async for large corpus | Scalability |
 
-### Deferred Tasks (7 total)
+### Deferred Tasks (11 total)
 
 | ID | Task | Reason |
 |----|------|--------|
@@ -183,14 +194,14 @@ This makes it embeddable in constrained environments and eliminates supply chain
 ### Essential Reading (Priority Order)
 
 1. **CLAUDE.md** - Complete development guide, patterns, gotchas
-2. **docs/architecture.md** - Module dependencies, data flow
-3. **docs/quickstart.md** - 5-minute tutorial
-4. **docs/moe-index-knowledge-transfer.md** - MoE architecture overview (NEW)
-5. **docs/moe-index-design.md** - MoE technical design (NEW)
-6. **docs/knowledge-transfer-bm25-optimization.md** - BM25 implementation details
-7. **docs/benchmarks.md** - Performance numbers and methodology
-8. **docs/security-knowledge-transfer.md** - Security review findings
-9. **README.md** - Updated use cases and roadmap
+2. **scripts/hubris/README.md** - Hubris MoE system documentation
+3. **docs/architecture.md** - Module dependencies, data flow
+4. **docs/quickstart.md** - 5-minute tutorial
+5. **cortical/wal.py** - WAL persistence implementation
+6. **docs/moe-index-design.md** - MoE architecture design
+7. **docs/knowledge-transfer-bm25-optimization.md** - BM25 implementation
+8. **docs/benchmarks.md** - Performance numbers
+9. **README.md** - Use cases and roadmap
 
 ### Key Commands
 
@@ -230,15 +241,15 @@ python scripts/search_codebase.py "your query"
 
 | Feature | Location | Command |
 |---------|----------|---------|
+| **Hubris MoE CLI** | `scripts/hubris/` | `python -m scripts.hubris.cli predict` |
+| **Hubris Calibration** | `scripts/hubris/` | `python -m scripts.hubris.cli calibrate` |
+| **WAL Persistence** | `cortical/wal.py` | Auto-recovery on load |
+| **Book Generation** | `scripts/generate_book.py` | `python scripts/generate_book.py` |
 | **ML Data Collection** | `scripts/ml_data_collector.py` | `python scripts/ml_data_collector.py stats` |
-| **ML Session Handoff** | `scripts/ml_data_collector.py` | `python scripts/ml_data_collector.py handoff` |
-| **Delegate Command** | `.claude/commands/delegate.md` | `/delegate` in Claude Code |
-| **Sanity Check** | `.claude/commands/sanity-check.md` | `/sanity-check` in Claude Code |
 | **BM25 Scoring** | `cortical/analysis.py` | Default scoring algorithm |
-| **GB-BM25 Search** | `cortical/query/search.py` | `processor.gb_bm25_search(query)` |
-| **Benchmarks** | `scripts/benchmark_scoring.py` | `python scripts/benchmark_scoring.py` |
-| **Observability** | `cortical/observability.py` | `processor.get_metrics()` |
+| **GB-BM25 Search** | `cortical/query/search.py` | `processor.graph_boosted_search(query)` |
 | **REPL Mode** | `scripts/repl.py` | `python scripts/repl.py` |
+| **Repo Showcase** | `scripts/repo_showcase.py` | Full repository analysis |
 
 ### Key Files
 
@@ -278,26 +289,27 @@ python scripts/search_codebase.py "your query"
 
 ## Part 7: What's Different Since Initial Assessment
 
-The project advanced significantly between initial assessment and latest main merge:
+The project has transformed dramatically between initial assessment and current state:
 
 | Metric | Initial | Current | Change |
 |--------|---------|---------|--------|
-| Tasks Completed | 170 | 196 | +26 |
-| Tasks Pending | 26 | 31 | +5 (coverage + ML tasks) |
+| Tasks Completed | 170 | 300 | +130 |
+| Tasks Pending | 26 | 41 | +15 |
+| Sample Documents | 92 | 186 | +94 (2x) |
 | Scoring Algorithm | TF-IDF | BM25 | Major upgrade |
-| compute_all() Speed | baseline | +34.5% faster | Optimized |
-| New Modules | 0 | 2 | +observability, +patterns |
-| New Scripts | 0 | 6 | +repl, +new_memory, +session_handoff, +benchmark_scoring, +ml_data_collector |
-| MoE Architecture | None | Design complete | 3 docs (~3200 LOC) |
-| ML Infrastructure | None | Complete | 4153 LOC collector + hooks |
-| Slash Commands | 2 | 7 | +delegate, +sanity-check, +ml-log, +ml-stats |
+| Persistence | Pickle | WAL + JSON | Fault-tolerant |
+| MoE System | Design only | 5 working experts | Hubris complete |
+| Book Generation | None | Auto-generate | Full system |
+| Security | Medium risk | 0 critical | Pickle removed |
+| Performance | Baseline | 40x faster doc_connections | Optimized |
 
 **Key insights:**
-1. BM25 is now the default scoring algorithm - better term saturation and length normalization
-2. GB-BM25 (Graph-Boosted) provides hybrid search combining BM25 with graph structure
-3. MoE (Mixture of Experts) index architecture designed for next-gen search
-4. ML data collection infrastructure enables project-specific model training
-5. Coverage improvement is tracked priority (16 tasks)
+1. **Hubris MoE is production-ready** - 5 experts with credit-based routing, calibration, and feedback
+2. **WAL persistence eliminates data loss** - Crash recovery via write-ahead logging
+3. **Pickle security risk eliminated** - JSON-only persistence
+4. **186 sample documents** - Comprehensive corpus for training and testing
+5. **Book generation** - Auto-documentation from corpus analysis
+6. **Project evolved from library to platform** - AI-assisted development features
 
 ---
 
@@ -313,5 +325,5 @@ Both are tracked in `tasks/*.json` files. Use `python scripts/task_utils.py` for
 ---
 
 *Document created: 2025-12-15*
-*Last updated: 2025-12-15 (post-MoE/ML merge)*
-*Next review: After Month 1 completion*
+*Last updated: 2025-12-19 (post-Hubris/WAL merge - 400+ commits)*
+*Next review: After Hubris training milestone*
