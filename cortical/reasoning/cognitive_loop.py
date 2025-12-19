@@ -87,9 +87,29 @@ class PhaseContext:
     artifacts_produced: List[str] = field(default_factory=list)
     time_box_minutes: int = 30  # Default time box
 
+    ended_at: Optional[datetime] = None
+    duration_seconds: Optional[float] = None
+
     def add_note(self, note: str) -> None:
         """Add a note to this phase's context."""
         self.notes.append(f"[{datetime.now().isoformat()}] {note}")
+
+    def record_question(self, question: str) -> None:
+        """Record a question raised during this phase."""
+        self.questions_raised.append(question)
+
+    def record_decision(self, decision: str, rationale: str = "") -> None:
+        """Record a decision made during this phase."""
+        self.decisions_made.append({
+            'decision': decision,
+            'rationale': rationale,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    def end_phase(self) -> None:
+        """Mark this phase as ended and calculate duration."""
+        self.ended_at = datetime.now()
+        self.duration_seconds = (self.ended_at - self.started_at).total_seconds()
 
     def elapsed_minutes(self) -> float:
         """Return elapsed time in minutes."""
@@ -261,9 +281,17 @@ class CognitiveLoop:
         self.status = LoopStatus.ACTIVE
         self.current_context().add_note("RESUMED")
 
+    _block_reason: Optional[str] = None
+
+    @property
+    def block_reason(self) -> Optional[str]:
+        """Get the reason why this loop is blocked."""
+        return self._block_reason
+
     def block(self, blocker: str) -> None:
         """Mark loop as blocked on a dependency."""
         self.status = LoopStatus.BLOCKED
+        self._block_reason = blocker
         self.current_context().add_note(f"BLOCKED: {blocker}")
 
     def abandon(self, reason: str) -> None:
@@ -281,6 +309,29 @@ class CognitiveLoop:
     def add_note(self, note: str) -> None:
         """Add a note to the current phase."""
         self.current_context().add_note(note)
+
+    def get_all_contexts(self) -> List[PhaseContext]:
+        """Get all phase contexts for this loop."""
+        return self.phase_contexts.copy()
+
+    def get_summary(self) -> Dict[str, Any]:
+        """
+        Get a summary of this loop's state.
+
+        Returns:
+            Dictionary with id, goal, status, phase info, etc.
+        """
+        return {
+            'id': self.id,
+            'goal': self.goal,
+            'status': self.status.name,
+            'current_phase': self.current_phase.value if self.current_phase else None,
+            'phase_count': len(self.phase_contexts),
+            'transition_count': len(self.transitions),
+            'elapsed_minutes': self.total_elapsed_minutes(),
+            'parent_id': self.parent_id,
+            'child_count': len(self.child_ids),
+        }
 
     def spawn_child(self, goal: str) -> 'CognitiveLoop':
         """
