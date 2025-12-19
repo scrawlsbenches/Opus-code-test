@@ -1,0 +1,37 @@
+Kantian Ethics: Duty, Reason, and Moral Law
+
+Overview
+
+Immanuel Kant's moral philosophy represents the most influential deontological ethical theory, grounding morality in reason rather than consequences, emotions, or divine commands. For Kant, moral law derives from the structure of rational agency itself: we are bound by duties that practical reason imposes on all rational beings. The rightness of actions depends not on outcomes but on whether they conform to principles that could serve as universal laws.
+
+Kant's three major works on ethics—the Groundwork of the Metaphysics of Morals, the Critique of Practical Reason, and the Metaphysics of Morals—developed a sophisticated moral philosophy that continues to shape contemporary ethics. Kantian themes inform human rights discourse, political liberalism, and applied ethics, while sparking ongoing philosophical debate about the foundations and implications of deontological thinking.
+
+Key Concepts
+
+The good will is the only thing good without qualification. Intelligence, courage, and even happiness can be used for evil purposes and thus are not unconditionally good. But a good will—the will to do one's duty because it is duty—retains its moral worth regardless of consequences. Kant famously illustrated this with a shopkeeper who refrains from cheating customers: acting honestly from self-interest has no moral worth, while acting from duty does.
+
+Duty (Pflicht) is the necessity of acting from respect for moral law. Actions have moral worth only when done from duty, not merely in conformity with duty or from inclination. This does not mean that having good desires is bad—Kant values human flourishing—but that the moral worth of action derives from its motivation by duty, not from desires that contingently align with duty.
+
+The categorical imperative provides the supreme principle of morality. Unlike hypothetical imperatives, which command conditionally ("If you want X, do Y"), the categorical imperative commands unconditionally. Kant formulates it several ways:
+
+The Universal Law Formula: "Act only according to that maxim whereby you can at the same time will that it should become a universal law." To test whether an action is permissible, universalize its maxim (the principle on which you act) and ask whether this could be consistently willed as universal practice.
+
+The Humanity Formula: "Act so that you treat humanity, whether in your own person or in that of another, always as an end and never merely as a means." Rational beings have dignity, not price. Using people merely as tools violates their rational nature.
+
+The Kingdom of Ends Formula: "Act according to maxims of a universally legislating member of a merely possible kingdom of ends." We should act as if we were legislators in a community where all rational beings treat each other as ends in themselves.
+
+Autonomy and heteronomy distinguish morally worthy from morally compromised action. An autonomous will gives itself the moral law through reason; a heteronomous will takes its principles from outside—from desire, custom, or external authority. True morality requires autonomy: we are bound only by laws we could rationally give ourselves. This conception grounds human dignity: rational beings are self-governing, not subject to external determination.
+
+Perfect and imperfect duties differ in stringency. Perfect duties (like prohibitions on lying and suicide) admit no exceptions and require specific omissions or actions. Imperfect duties (like developing talents and helping others) command the adoption of ends but allow latitude in how and when to pursue them. Both derive from the categorical imperative but with different modal characteristics.
+
+Applications
+
+Human rights theory draws on Kantian ideas of dignity and respect for persons. The notion that humans have inherent worth and cannot be treated merely as means underlies rights against torture, exploitation, and coercion. Kantian foundations for human rights emphasize the intrinsic value of rational agency rather than consequences of protecting rights.
+
+Political philosophy in the Kantian tradition, developed by John Rawls and others, grounds principles of justice in what free and rational persons could agree to. Rawls's original position operationalizes Kantian impartiality. Political liberalism emphasizes the priority of right over good—just institutions constrain rather than enforce particular conceptions of the good life.
+
+Bioethics applies Kantian principles to medical decisions. Informed consent requirements respect patient autonomy. Prohibitions on treating persons merely as means bear on issues from research ethics to organ markets. Kant's emphasis on rational agency raises questions about the moral status of those with diminished cognitive capacities.
+
+Critiques of Kantian ethics are numerous. Some question whether the categorical imperative yields determinate guidance—couldn't conflicting maxims both be universalizable? Others challenge the priority of duty over happiness and relationships. Virtue ethicists argue that focusing on duty neglects character. Consequentialists contend that ignoring outcomes makes morality irrational. Kantians have developed responses while maintaining the core commitment to rational moral law.
+
+Contemporary Kantian constructivism, developed by Christine Korsgaard and others, grounds moral obligations in the structure of practical reason and reflective endorsement. When we deliberate about what to do, we necessarily commit to principles that survive reflection. This approach updates Kant's rationalism for contemporary philosophy while facing questions about the scope and content of what reason alone can establish.

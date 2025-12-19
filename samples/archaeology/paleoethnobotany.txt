@@ -1,0 +1,45 @@
+Paleoethnobotany: The Archaeology of Ancient Plant Use
+
+Overview
+
+Paleoethnobotany—also called archaeobotany—studies plant remains from archaeological contexts to understand past human-plant relationships. Plants served as food, fuel, fiber, medicine, construction material, and symbolic objects. Documenting ancient plant use illuminates diet, agriculture, environment, and cultural practices. Because plant remains often preserve poorly, specialized recovery and identification methods are essential.
+
+The field developed in the mid-twentieth century as flotation methods enabled systematic recovery of carbonized plant remains. Advances in identification, quantification, and interpretation have established paleoethnobotany as a core archaeological subdiscipline. Contemporary research addresses not only what plants were used but how, why, and with what consequences for human societies and environments.
+
+Key Concepts
+
+Macrobotanical remains are plant parts visible without magnification. Seeds, fruits, nutshell, wood, and plant fibers may preserve through carbonization (charring), desiccation, waterlogging, or mineralization. Each preservation pathway biases the record differently. Carbonized remains dominate most assemblages; waterlogged sites preserve extraordinary botanical diversity.
+
+Microbotanical remains require microscopic observation. Pollen grains indicate vegetation and, on artifacts, plant contact. Phytoliths—silica bodies formed in plant cells—preserve distinctive shapes identifying plant families and genera. Starch grains on tools indicate processing of starchy foods. These microscopic remains survive where macro-remains decay.
+
+Preservation biases affect interpretation. Hard seeds, dense wood, and sturdy nutshell survive carbonization better than leafy greens or fleshy fruits. Waterlogged sites preserve materials destroyed elsewhere. Differential preservation means that recovered remains do not directly reflect past plant use; correction for bias is essential.
+
+Ubiquity and density are common quantification measures. Ubiquity (presence across samples) indicates how commonly a taxon was used or deposited. Density (count per volume of sediment) indicates intensity. Different measures suit different interpretive questions. Sample size affects reliability; small samples may underrepresent diversity.
+
+Recovery Methods
+
+Flotation is the primary recovery technique for carbonized remains. Sediment is mixed with water; lighter plant materials float and are captured in fine mesh. Heavy fractions are also examined. Systematic sampling and consistent processing enable comparative analysis. Flotation revolutionized recovery of small seeds invisible in hand excavation.
+
+Dry and wet sieving recover larger plant parts. Coarse screens during excavation catch nutshell, wood, and other robust materials. Fine-mesh wet sieving recovers intermediate-size materials. These methods complement flotation for comprehensive recovery.
+
+Phytolith and starch extraction applies chemical processing to sediments and artifact surfaces. Density separation concentrates silica bodies. Starch extraction uses water suspension. Microscopic examination identifies taxa. Residue analysis on tools provides direct evidence of plant processing.
+
+Identification relies on reference collections and published keys. Modern specimens of regional flora provide comparative material. Seed morphology, wood anatomy, and phytolith shape enable identification, often to genus or species level. Digital resources increasingly supplement physical collections.
+
+Analytical Frameworks
+
+Agricultural origins research investigates domestication—the evolutionary transformation of plants under human selection. Morphological markers (seed size, rachis structure) distinguish wild from domestic forms. Geographic origins, domestication rates, and dispersal routes are traced through archaeobotanical and genetic evidence. Understanding how and why people began farming addresses fundamental questions about human history.
+
+Subsistence reconstruction integrates botanical evidence with other data to understand ancient foodways. What plants contributed to diet, and in what proportions? How did plant use change seasonally, over time, or between groups? Botanical evidence combines with faunal remains, isotopes, and artifact analysis for comprehensive subsistence pictures.
+
+Environmental reconstruction uses plants as proxies for past conditions. Vegetation composition indicates climate and local conditions. Agricultural weeds reveal field conditions. Fuel wood selection reflects forest composition. Botanical evidence complements geological and faunal environmental indicators.
+
+Cultural practices beyond subsistence include medicine, craft production, ritual, and trade. Fibers for textiles and basketry; plants for dyes; resinous materials for adhesives and incense; psychoactive substances—all leave botanical traces. Contextual interpretation distinguishes utilitarian from ceremonial deposits.
+
+Agricultural Systems
+
+Cultivation practices shaped past landscapes. Field systems, irrigation, terracing, and soil management leave physical and botanical traces. Crop assemblages indicate what was grown together. Agricultural intensification appears in changing crop proportions, new introductions, and weed communities.
+
+Crop processing generates distinctive waste products. Threshing, winnowing, and sieving remove chaff, straw, and weed seeds. These processing byproducts preserve as fuel waste or floor sweepings. Processing stage identification reveals where crops were processed—in fields, at specialized facilities, or within households.
+
+Storage and trade move crops beyond production sites. Granaries, storage pits, and warehouse facilities are identified archaeologically. Exotic crops indicate exchange networks. Botanical evidence traces movement of cultigens and agricultural knowledge.

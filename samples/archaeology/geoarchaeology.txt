@@ -1,0 +1,41 @@
+Geoarchaeology: Earth Sciences Applied to Archaeological Questions
+
+Overview
+
+Geoarchaeology applies geoscience methods—geology, geomorphology, sedimentology, and soil science—to archaeological problems. Sites exist within geological contexts; understanding these contexts is essential for interpreting site formation, preservation, and the landscapes past peoples inhabited. Geoarchaeology provides the environmental frameworks within which human activities occurred and investigates the processes that transformed behavioral residues into archaeological deposits.
+
+The field developed as archaeology increasingly recognized that interpreting artifacts required understanding their depositional contexts. Sediments preserving artifacts underwent complex histories of erosion, deposition, pedogenesis, and disturbance. Geoarchaeological analysis reconstructs these histories, enabling better interpretation of both sites and the environments people occupied.
+
+Key Concepts
+
+Stratigraphy organizes deposits according to the principle of superposition—younger layers overlay older ones in undisturbed sequences. Archaeological stratigraphy is often more complex than geological stratigraphy, with deposits cut, filled, mixed, and redeposited by human and natural processes. Careful stratigraphic observation and recording establish relative chronology and identify formation processes.
+
+Site formation processes transform living behaviors into archaeological deposits. Sedimentation buries materials; erosion removes them. Bioturbation by roots, burrowing animals, and earthworms mixes deposits. Freeze-thaw cycles, shrink-swell clays, and other processes distort and displace artifacts. Understanding formation processes reveals what aspects of behavior the archaeological record actually preserves.
+
+Paleoenvironment reconstruction uses sedimentary, geochemical, and biological evidence to infer past environmental conditions. Sediment texture, mineralogy, and chemistry indicate depositional environments. Pollen, phytoliths, mollusks, and other biological remains record vegetation, climate, and local conditions. Paleoenvironmental data contextualize human adaptations.
+
+Landscape evolution shaped where people could live and how landscapes looked. Rivers migrated, coasts advanced and retreated, dunes formed and stabilized, slopes eroded and accumulated. Reconstructing these changes reveals what settings existed when sites were occupied and explains present-day site distributions.
+
+Methods
+
+Stratigraphic description and interpretation are fundamental. Field observation records deposit color, texture, structure, boundaries, and inclusions. Interpretation identifies depositional environments (colluvial, alluvial, aeolian, anthropogenic), post-depositional modifications, and relationships among units. Harris Matrix diagrams formalize stratigraphic relationships.
+
+Sediment analysis characterizes deposits through laboratory techniques. Particle size analysis (granulometry) indicates energy conditions during deposition. Mineralogy reveals sediment sources. Geochemistry—pH, phosphorus, organic carbon, trace elements—identifies anthropogenic enrichment and environmental conditions. Magnetic susceptibility can indicate burning.
+
+Micromorphology examines undisturbed sediment samples under microscopes. Thin sections prepared from resin-impregnated blocks reveal fabrics, components, and features invisible in the field. Ash layers, floor surfaces, trampling, bioturbation, and chemical precipitates are identified micromorphologically. This technique provides high-resolution analysis of formation processes.
+
+Soil analysis interprets pedogenic processes. Soil horizons, clay translocation, iron mobility, and carbonate accumulation indicate post-depositional conditions. Paleosols (buried soils) mark former ground surfaces and stable landscape intervals. Soil development provides relative chronological information.
+
+Remote sensing methods detect buried features. Ground-penetrating radar (GPR), electrical resistivity, and electromagnetic conductivity map subsurface variations. Coring and trenching verify geophysical anomalies. These techniques guide excavation placement and reveal site structure.
+
+Applications
+
+Site preservation assessment determines what survives and where. Some contexts preserve bone but not plant material; others preserve neither. Sedimentary and chemical environments control preservation. Understanding these conditions enables realistic expectations about recoverable evidence.
+
+Paleoclimate reconstruction informs archaeological interpretation. Were droughts, floods, or sea-level changes contemporaneous with cultural changes? Geoarchaeological records from archaeological sites and surrounding areas document environmental conditions and changes.
+
+Settlement context analysis examines why sites occur where they do. Proximity to water, defensible terrain, access to resources, and transportation routes influenced settlement decisions. Reconstructing paleotopography reveals the landscapes people chose.
+
+Anthropogenic sediments and features show how people modified their environments. Tell mounds accumulated through centuries of construction and destruction. Agricultural terracing, irrigation systems, and urban fills represent massive landscape transformation. Geoarchaeology documents these anthropogenic formations.
+
+Chronology benefits from geoarchaeological analysis. Stratigraphic ordering, paleosol dating, luminescence dating of sediments, and correlation with dated climatic events contribute to site chronology. Geoarchaeology complements artifact-based dating methods.

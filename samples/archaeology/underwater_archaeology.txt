@@ -1,0 +1,37 @@
+Underwater Archaeology: Investigating Submerged Cultural Heritage
+
+Overview
+
+Underwater archaeology applies archaeological principles and methods to sites submerged beneath oceans, lakes, rivers, and wetlands. Shipwrecks, submerged settlements, drowned landscapes, and water-deposited artifacts present unique preservation conditions and research challenges. The anaerobic environments of many underwater sites preserve organic materials—wood, textiles, leather, plant remains—that rarely survive on land, providing extraordinarily detailed windows into past maritime activities and material culture.
+
+The field developed in the mid-twentieth century as diving technology became accessible to researchers. George Bass's excavations at Cape Gelidonya and Yassiada established methodological standards for underwater excavation. Today, underwater archaeology encompasses sites from Paleolithic lakeshores to World War II battlefields, employing technologies from simple dive surveys to remotely operated vehicles exploring the deep ocean.
+
+Key Methods
+
+Survey methods locate and document submerged sites. Side-scan sonar produces acoustic images of the seafloor, revealing anomalies like ship structures. Sub-bottom profilers penetrate sediments to locate buried sites. Magnetometers detect metal—anchors, cannon, modern wrecks. Multi-beam bathymetry creates detailed terrain models. These remote sensing technologies cover large areas efficiently before targeting specific locations for investigation.
+
+Diving provides direct access to shallow sites. SCUBA diving remains fundamental for sites within recreational depth limits (approximately 40 meters). Surface-supplied diving extends working depth and duration. Saturation diving enables extended work at greater depths. Rebreather systems reduce bubbles that can disturb sediments and extend gas supply.
+
+Excavation underwater adapts terrestrial methods to the aquatic environment. Grids establish spatial control; datum points enable three-dimensional recording. Airlift and water dredges remove sediment. Hand tools excavate delicate materials. Artifact positions are recorded through measured drawings, photography, and increasingly, photogrammetry. The challenge of limited visibility, restricted communication, and time constraints underwater requires modified techniques and careful planning.
+
+Recording presents special challenges. Underwater visibility may be meters or centimeters; currents and surge affect stability; cold and depth limit dive time. Traditional measured drawings remain valuable but are supplemented by underwater photography and video documentation. Photogrammetry—creating three-dimensional models from overlapping photographs—has revolutionized underwater recording, enabling highly accurate site documentation efficiently.
+
+Conservation of waterlogged artifacts requires immediate attention after recovery. Organic materials saturated with water will collapse and distort as they dry. Controlled drying, freeze-drying, and consolidation with polyethylene glycol (PEG) preserve waterlogged wood. Metal artifacts require desalination and stabilization. Conservation needs influence excavation decisions—many sites are better left in situ where stable conditions ensure preservation.
+
+Site Types
+
+Shipwrecks represent the most studied underwater sites. Vessels preserved on the seabed provide time capsules of maritime technology, trade goods, and life at sea. Cargo tells of commerce; personal possessions illuminate sailors' lives; hull construction reveals shipbuilding traditions. From Bronze Age merchantmen to Spanish galleons to industrial-era steamships, wrecks span technological and cultural transformations.
+
+Submerged landscapes include shorelines, settlements, and landsurfaces drowned by sea level rise. Paleolithic and Mesolithic sites now lie offshore on continental shelves. The Doggerland region between Britain and Continental Europe was inhabited land until postglacial flooding. These submerged landscapes preserve evidence of human adaptation during major environmental transitions.
+
+Harbors and port facilities document maritime infrastructure. Breakwaters, quays, slipways, and warehouse foundations lie submerged at ancient ports. Changes in sea level and sedimentation have buried or drowned harbor works. Underwater investigation reconstructs port development and maritime commerce.
+
+Sacred sites include deliberate deposits in water—offerings, sacrifices, and ritual depositions. Lakes, springs, rivers, and bogs received human offerings across many cultures. Wetland deposits, though not submerged sensu stricto, share preservation advantages and require similar methodological approaches.
+
+Applications
+
+Maritime history benefits directly from underwater evidence. Ship design evolution, navigation technology, trade routes, and naval warfare are illuminated by wreck investigations. Underwater archaeology provides material evidence complementing historical documentation, sometimes challenging or confirming written accounts.
+
+Heritage management protects underwater cultural heritage from looting, development impacts, and natural deterioration. The UNESCO Convention on the Protection of Underwater Cultural Heritage (2001) establishes international standards. Site recording, monitoring, and management plans balance research access with long-term preservation.
+
+Deep-sea archaeology extends investigation beyond diving depths. Remotely operated vehicles (ROVs) and autonomous underwater vehicles (AUVs) document sites in the deep ocean. The Titanic, ancient wrecks in the Mediterranean, and World War II vessels in the Pacific have been investigated at depths unreachable by divers. These technologies continue advancing, opening new research frontiers.

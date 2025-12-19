@@ -1,0 +1,33 @@
+Utilitarianism and Consequentialism: The Ethics of Outcomes
+
+Overview
+
+Consequentialism holds that actions are right or wrong solely in virtue of their consequences. Utilitarianism, the most influential form of consequentialism, evaluates consequences by their contribution to well-being: the right action produces the greatest good for the greatest number. This approach, developed systematically by Jeremy Bentham and John Stuart Mill, offers a seemingly simple yet powerful framework for moral decision-making while facing persistent philosophical challenges.
+
+The utilitarian tradition has profoundly influenced public policy, economics, and applied ethics. Cost-benefit analysis, welfare economics, and evidence-based policy draw on consequentialist reasoning. Yet utilitarianism's demanding implications—potentially requiring extreme sacrifice, permitting acts that violate individual rights, and challenging common moral intuitions—have generated sustained philosophical debate about its adequacy as a moral theory.
+
+Key Concepts
+
+Classical utilitarianism combines three elements: consequentialism (only outcomes matter morally), welfarism (the relevant outcomes are states of well-being), and aggregationism (overall good is the sum of individual goods). Jeremy Bentham's hedonistic utilitarianism identified well-being with pleasure and the absence of pain, proposing a "felicific calculus" considering intensity, duration, certainty, and other factors. The right action maximizes net pleasure across all affected parties.
+
+John Stuart Mill refined utilitarian theory while addressing objections. Against charges that utilitarianism is a "pig philosophy" valuing only base pleasures, Mill distinguished higher and lower pleasures: "better to be Socrates dissatisfied than a fool satisfied." Those who have experienced both kinds of pleasure prefer the higher. Mill also emphasized the importance of secondary principles (rules prohibiting lying, theft, etc.) derived from and justified by utility, rather than case-by-case calculation.
+
+Preference utilitarianism, influential in economics and contemporary philosophy, replaces pleasure with preference satisfaction as the measure of well-being. What matters is whether people get what they want, regardless of whether satisfaction brings pleasure. This view respects individual judgment about what is good for them and avoids difficulties defining pleasure. However, it faces problems with adaptive preferences (people may prefer what they're conditioned to accept) and objectionable preferences.
+
+Objective list theories of well-being hold that certain things—knowledge, friendship, achievement, health—are intrinsically good regardless of whether they produce pleasure or satisfy preferences. An objective list consequentialism evaluates actions by their production of these goods. This approach can accommodate plural values but requires defending specific lists and explaining why certain items qualify.
+
+Act utilitarianism judges each action by its particular consequences. The right action in each situation is the one that maximizes utility from available options. This direct approach avoids the complexity of rules but seems to permit horrifying acts when they maximize utility and requires impossible calculations about distant effects.
+
+Rule utilitarianism evaluates actions by whether they conform to rules whose general acceptance would maximize utility. We should follow rules against lying, promise-breaking, and violence because general adherence to such rules produces better outcomes than general permission to violate them when individually advantageous. Rule utilitarianism captures moral common sense better but faces collapse objections—shouldn't we break rules when doing so maximizes utility?
+
+Negative utilitarianism focuses on minimizing suffering rather than maximizing happiness. This variation avoids problems with aggregating diverse pleasures and addresses concerns about imposing happiness on others. However, it seems to license eliminating all life to eliminate suffering—a conclusion most reject.
+
+Applications
+
+Public policy analysis routinely employs utilitarian reasoning through cost-benefit analysis. Regulatory decisions about environmental protection, safety standards, and public health weigh costs against benefits measured in economic terms. Critics question whether all values are commensurable in money terms and whether such analysis respects rights and fairness.
+
+Population ethics raises profound challenges for utilitarianism. Should we prefer worlds with more people at lower average happiness or fewer people at higher average? The "repugnant conclusion" (Derek Parfit) notes that total utilitarianism implies that a vast population barely worth living is preferable to a smaller population of flourishing people. Various attempts to avoid this conclusion generate their own paradoxes.
+
+Effective altruism applies utilitarian reasoning to charitable giving, directing resources toward interventions with greatest impact per dollar. This movement has influenced philanthropy, career choice, and advocacy, while prompting debate about whether impartial maximization captures our full moral obligations or ignores special relationships and systemic change.
+
+Critiques of utilitarianism target its demanding implications and its treatment of individuals. Bernard Williams argued that utilitarianism undermines integrity by requiring agents to abandon personal commitments whenever aggregate utility demands it. Rights theorists argue that utility cannot override fundamental individual rights. Egalitarians contend that distribution, not just total utility, matters morally. These objections have prompted modifications to utilitarian theory while pure versions remain philosophically defended.

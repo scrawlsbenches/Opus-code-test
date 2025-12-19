@@ -1,0 +1,35 @@
+Bioethics: Ethics at the Frontiers of Medicine and Biology
+
+Overview
+
+Bioethics applies philosophical analysis to moral questions arising in medicine, biology, and the life sciences. From clinical decisions about individual patients to policy debates about emerging technologies, bioethics provides frameworks for navigating choices where values conflict and stakes are high. The field emerged in the 1960s and 1970s as technological advances in medicine outpaced traditional medical ethics and public scandals exposed research abuses.
+
+Bioethics is inherently interdisciplinary, drawing on moral philosophy, law, medicine, social science, and theology. It addresses questions that range from intimate (Should I refuse treatment?) to global (How should we distribute limited vaccines?). As biotechnology continues advancing—with genetic engineering, artificial intelligence, and enhancement technologies on the horizon—bioethics faces ever-new challenges.
+
+Key Concepts
+
+The four principles of biomedical ethics, developed by Tom Beauchamp and James Childress, provide a widely used framework. Respect for autonomy requires honoring patients' right to make their own informed decisions. Nonmaleficence prohibits causing harm. Beneficence obliges promoting patients' well-being. Justice requires fair distribution of benefits and burdens. These principles often conflict, requiring judgment about which should prevail in particular cases.
+
+Informed consent protects patient autonomy by requiring that interventions be authorized by patients who understand what they are agreeing to. Valid consent requires disclosure of relevant information, patient competence to understand and decide, and voluntariness free from coercion. The doctrine emerged from research ethics scandals (Nuremberg, Tuskegee) and has become central to clinical medicine. Questions persist about how much information is sufficient and how to handle patients with diminished capacity.
+
+Research ethics governs experimentation involving human subjects. The Belmont Report established principles of respect for persons, beneficence, and justice in research. Institutional review boards assess research protocols for compliance. Ongoing issues include the use of placebos, research in developing countries, emergency research, and the appropriate treatment of research subjects.
+
+Beginning-of-life ethics addresses abortion, assisted reproduction, and prenatal decisions. Debates about abortion concern the moral status of the fetus—whether it is a person with rights from conception, acquires moral status gradually, or gains full status only at birth or later. Assisted reproduction raises questions about the status of embryos, gamete donation, surrogacy, and designer babies.
+
+End-of-life ethics examines death, dying, and decisions about treatment. When, if ever, is euthanasia or physician-assisted suicide permissible? What is the moral significance of the distinction between killing and letting die, between withholding and withdrawing treatment? How should we understand and apply concepts of brain death? These questions become urgent as technology enables prolonged life even without consciousness.
+
+Resource allocation poses questions of distributive justice in healthcare. How should scarce resources—organs for transplant, ICU beds, expensive treatments—be distributed? Should allocation maximize health outcomes, prioritize the worst off, give equal chances, or respect first-come-first-served queues? These questions apply at the bedside, to insurance coverage decisions, and to global health policy.
+
+Enhancement versus therapy distinctions may constrain what medicine should do. Treating disease is clearly medicine's purpose; enhancing normal function is more controversial. But the distinction is unclear: Is vaccination prevention or enhancement? Is cognitive enhancement with stimulants different from treating ADHD? As biotechnology advances, questions about permissible enhancement become pressing.
+
+Genetic ethics addresses ethical issues arising from our expanding ability to read and modify genes. Genetic testing raises privacy concerns and questions about genetic discrimination. Genetic engineering of embryos (CRISPR technology) could eliminate genetic diseases but also enables enhancement and design. Germline modification affects future generations who cannot consent. These technologies force reconsideration of ideas about natural human limits.
+
+Applications
+
+Clinical ethics consultation assists healthcare providers and patients navigating difficult moral decisions. Ethics committees and consultants facilitate communication, clarify values, identify options, and sometimes offer recommendations. Case consultation applies ethical frameworks to particular situations, often involving conflicts among family members or between families and medical teams.
+
+Public health ethics extends beyond clinical focus to population health. It addresses paternalistic interventions (seatbelt laws, vaccination mandates), privacy versus surveillance, health disparities, and emergency preparedness. The COVID-19 pandemic highlighted public health ethics issues including lockdowns, vaccine distribution, and restrictions on liberty.
+
+Global bioethics recognizes that ethical issues cross national boundaries. International research exploitation, organ trafficking, access to medicines, and pandemic preparedness require global frameworks. Debates about universal principles versus cultural relativism arise when bioethical norms developed in Western contexts are applied elsewhere.
+
+Emerging technologies—artificial intelligence in medicine, brain-computer interfaces, synthetic biology—present new bioethical challenges. AI raises questions about accountability, bias, and the human-machine relationship in clinical care. Neurointerventions challenge assumptions about personal identity and mental integrity. Synthetic biology's power to create life raises foundational questions about the moral status of artificial organisms.

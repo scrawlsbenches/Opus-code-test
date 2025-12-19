@@ -1,0 +1,55 @@
+Stratigraphic Principles in Archaeology: Reading the Layers of Time
+
+Overview
+
+Stratigraphy—the study of layered deposits—provides the fundamental framework for archaeological interpretation. Understanding how deposits form, how layers relate to one another, and how to read these relationships enables archaeologists to establish chronological sequences and reconstruct site histories. Borrowed from geology but adapted to the complexities of human activity, stratigraphic analysis underlies all excavation and interpretation.
+
+Archaeological stratigraphy differs from geological stratigraphy in important ways. Human activities create, remove, and rearrange deposits in complex patterns. Cultural deposits often contain artifacts, structures, and features that provide additional chronological and interpretive information. The timescales involved—years to millennia rather than millions of years—require different methods and assumptions.
+
+Fundamental Principles
+
+Superposition holds that, in undisturbed sequences, lower deposits are older than upper deposits. This geological principle, articulated by Nicolaus Steno in the seventeenth century, provides the basic logic of stratigraphic dating. Materials buried first lie beneath materials buried later. While simple in principle, recognizing disturbance and complex formation requires careful observation.
+
+Original horizontality states that layers are deposited approximately horizontally. Tilted or folded strata indicate post-depositional deformation. In archaeology, this principle must be applied carefully—deliberate slopes, fills against vertical surfaces, and structural subsidence create non-horizontal deposits.
+
+Lateral continuity means that deposits extend horizontally until they thin, terminate against barriers, or were removed. Identifying the same layer across excavation units requires recognizing that spatially separated exposures may represent continuous deposits. Lateral tracing establishes stratigraphic correlations.
+
+Cross-cutting relationships establish that features cutting through deposits are younger than what they cut. A pit dug through a floor is later than the floor; a wall foundation cutting earlier layers post-dates those layers. These intrusive relationships are fundamental to establishing sequences.
+
+Stratigraphic Concepts
+
+Deposits are the basic units of archaeological stratigraphy—distinct accumulations of sediment with boundaries marking changes in deposition. Each deposit represents an event or episode: occupation surface, fill of a pit, collapse of a wall, natural sedimentation. Deposits are described by color, texture, composition, inclusions, and relationship to adjacent deposits.
+
+Interfaces are the boundaries between deposits or surfaces marking removal. A construction surface, occupation floor, or erosion unconformity is an interface. Edward Harris emphasized that interfaces are as significant as deposits—they represent events (construction, use, erosion) even when no deposit remains.
+
+Features are discrete archaeological elements within or cutting deposits: pits, hearths, walls, postholes, burials. Features have their own fills, construction episodes, and relationships. Recording features within their stratigraphic context is essential.
+
+Phases group related deposits and features into meaningful interpretive units. A phase might represent a building episode, occupation period, or destruction event. Phasing synthesizes stratigraphic observations into historical narrative.
+
+Recording Methods
+
+Stratigraphic excavation removes deposits in reverse order of deposition, proceeding from latest to earliest. Each deposit is excavated completely before proceeding to underlying layers. This approach preserves stratigraphic relationships and enables systematic recording.
+
+Single context recording treats each deposit and interface as a separate unit with its own record sheet. Detailed description, photography, and drawing document each context. Relationships to adjacent contexts are explicitly recorded: "above," "below," "cuts," "cut by," "equals."
+
+The Harris Matrix, developed by Edward Harris, diagrams stratigraphic relationships. Each context is represented by a box; lines connect contexts in superposition; horizontal separations indicate no direct relationship. The matrix abstracts spatial complexity into a logical sequence showing order of deposition and removal.
+
+Section drawing records vertical stratigraphic sequences exposed in excavation walls. Carefully measured and drawn sections show deposit shapes, relationships, and sequences. Sections provide visual documentation complementing verbal descriptions.
+
+Interpretive Applications
+
+Chronological ordering derives from stratigraphic sequences. Relative chronology—what is earlier, what is later—comes directly from superposition and cross-cutting. Absolute dating (radiocarbon, etc.) of specific contexts places sequences in calendar time. Stratigraphic integrity determines dating reliability.
+
+Site formation processes are interpreted through stratigraphic analysis. How did deposits form? What natural and cultural processes created the sequence? Distinguishing primary deposition from redeposition, identifying disturbance, and recognizing truncation enable accurate interpretation.
+
+Activity reconstruction links stratigraphic events to past behavior. Pit digging, floor construction, wall collapse, refuse dumping—each leaves stratigraphic evidence. Patterns in sequences reveal rhythms of activity, changes in site function, and transformation over time.
+
+Phasing and periodization synthesize stratigraphic observations into historical frameworks. Grouping contexts into phases, periods, and epochs organizes complexity into comprehensible narratives. Good phasing respects stratigraphic evidence while enabling interpretation at broader scales.
+
+Challenges
+
+Bioturbation by roots, animals, and earthworms mixes deposits. Recognizing disturbed areas prevents misinterpretation. The degree and nature of bioturbation varies with environment and time.
+
+Complex sites present three-dimensional puzzles. Overlapping structures, repeated reuse, and partial preservation create intricate stratigraphic situations. Urban sites with deep deposits spanning millennia especially challenge stratigraphic analysis.
+
+Natural processes including erosion, flooding, and soil development alter archaeological deposits. Distinguishing cultural from natural stratigraphy requires geomorphological understanding. Some significant events leave no stratigraphic trace.
