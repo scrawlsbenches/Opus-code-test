@@ -46,6 +46,7 @@ class SparkMixin:
         self._spark = None
         self._spark_enabled = False
         self._alignment_loaded = False
+        self._anomaly_detector = None
 
         if spark:
             self.enable_spark()
@@ -415,3 +416,192 @@ class SparkMixin:
         }
 
         return stats
+
+    # =========================================================================
+    # Anomaly Detection Methods
+    # =========================================================================
+
+    def enable_anomaly_detection(
+        self,
+        perplexity_threshold: float = 2.0,
+        unknown_word_threshold: float = 0.5
+    ) -> None:
+        """
+        Enable anomaly detection for query safety.
+
+        Creates an AnomalyDetector that can identify:
+        - Prompt injection attempts
+        - Statistically unusual queries
+        - Queries with high unknown word ratios
+
+        Args:
+            perplexity_threshold: Flag if perplexity > baseline * threshold
+            unknown_word_threshold: Flag if unknown words > threshold
+
+        Raises:
+            RuntimeError: If SparkSLM not enabled (n-gram model required)
+
+        Example:
+            >>> processor = CorticalTextProcessor(spark=True)
+            >>> processor.train_spark()
+            >>> processor.enable_anomaly_detection()
+            >>> processor.calibrate_anomaly_detector(["normal query 1", "normal query 2"])
+        """
+        if not self.spark_enabled:
+            raise RuntimeError("SparkSLM must be enabled first. Call enable_spark().")
+
+        from ..spark import AnomalyDetector
+
+        self._anomaly_detector = AnomalyDetector(
+            ngram_model=self._spark.ngram,
+            perplexity_threshold=perplexity_threshold,
+            unknown_word_threshold=unknown_word_threshold
+        )
+        logger.info("Anomaly detection enabled")
+
+    def calibrate_anomaly_detector(self, normal_queries: List[str]) -> Dict[str, float]:
+        """
+        Calibrate anomaly detector with known-normal queries.
+
+        Establishes baseline perplexity statistics for detecting unusual queries.
+
+        Args:
+            normal_queries: List of queries known to be normal/safe
+
+        Returns:
+            Calibration statistics including baseline perplexity
+
+        Raises:
+            RuntimeError: If anomaly detection not enabled
+
+        Example:
+            >>> stats = processor.calibrate_anomaly_detector([
+            ...     "How do I search for documents?",
+            ...     "Show me the PageRank algorithm",
+            ...     "Find files related to authentication",
+            ... ])
+            >>> print(f"Baseline perplexity: {stats['baseline_perplexity']:.2f}")
+        """
+        if not self._anomaly_detector:
+            raise RuntimeError("Anomaly detection not enabled. Call enable_anomaly_detection() first.")
+
+        return self._anomaly_detector.calibrate(normal_queries)
+
+    def check_query_safety(self, query: str) -> Dict[str, Any]:
+        """
+        Check if a query is safe/normal or potentially anomalous.
+
+        Runs all enabled anomaly detection methods and returns results.
+
+        Args:
+            query: Query to check
+
+        Returns:
+            Dict with:
+            - is_safe: True if query appears normal
+            - is_anomalous: True if query appears suspicious
+            - confidence: Anomaly confidence (0.0-1.0)
+            - reasons: List of reasons if anomalous
+            - metrics: Detailed metrics from each check
+
+        Raises:
+            RuntimeError: If anomaly detection not enabled
+
+        Example:
+            >>> result = processor.check_query_safety("normal search query")
+            >>> if result['is_safe']:
+            ...     # Process normally
+            ...     pass
+            >>> else:
+            ...     print(f"Suspicious query: {result['reasons']}")
+        """
+        if not self._anomaly_detector:
+            raise RuntimeError("Anomaly detection not enabled. Call enable_anomaly_detection() first.")
+
+        result = self._anomaly_detector.check(query)
+
+        return {
+            'is_safe': not result.is_anomalous,
+            'is_anomalous': result.is_anomalous,
+            'confidence': result.confidence,
+            'reasons': result.reasons,
+            'metrics': result.metrics,
+        }
+
+    def check_queries_safety(self, queries: List[str]) -> List[Dict[str, Any]]:
+        """
+        Check multiple queries for safety.
+
+        Args:
+            queries: List of queries to check
+
+        Returns:
+            List of safety check results
+
+        Raises:
+            RuntimeError: If anomaly detection not enabled
+        """
+        return [self.check_query_safety(q) for q in queries]
+
+    def is_query_safe(self, query: str) -> bool:
+        """
+        Quick check if query is safe.
+
+        Convenience method that returns just True/False.
+
+        Args:
+            query: Query to check
+
+        Returns:
+            True if query appears safe, False if anomalous
+
+        Raises:
+            RuntimeError: If anomaly detection not enabled
+
+        Example:
+            >>> if processor.is_query_safe(user_query):
+            ...     results = processor.find_documents_for_query(user_query)
+            ... else:
+            ...     print("Query flagged as potentially unsafe")
+        """
+        result = self.check_query_safety(query)
+        return result['is_safe']
+
+    def get_anomaly_stats(self) -> Dict[str, Any]:
+        """
+        Get anomaly detector statistics.
+
+        Returns:
+            Dict with detector configuration and calibration state
+
+        Raises:
+            RuntimeError: If anomaly detection not enabled
+        """
+        if not self._anomaly_detector:
+            raise RuntimeError("Anomaly detection not enabled.")
+
+        return self._anomaly_detector.get_stats()
+
+    def add_injection_pattern(self, pattern: str) -> None:
+        """
+        Add a custom injection pattern to detect.
+
+        Args:
+            pattern: Regex pattern to match against queries
+
+        Raises:
+            RuntimeError: If anomaly detection not enabled
+
+        Example:
+            >>> processor.add_injection_pattern(r'\\bmalicious_keyword\\b')
+        """
+        if not self._anomaly_detector:
+            raise RuntimeError("Anomaly detection not enabled.")
+
+        self._anomaly_detector.add_injection_pattern(pattern)
+        logger.info(f"Added custom injection pattern")
+
+    @property
+    def anomaly_detection_enabled(self) -> bool:
+        """Check if anomaly detection is enabled."""
+        return self._anomaly_detector is not None

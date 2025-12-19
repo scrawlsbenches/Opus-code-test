@@ -11,6 +11,7 @@ Components:
 - NGramModel: Statistical word prediction based on context
 - AlignmentIndex: User definitions, patterns, and preferences
 - SparkPredictor: Unified facade for first-blitz predictions
+- AnomalyDetector: Statistical and pattern-based anomaly detection
 
 Usage:
     from cortical.spark import SparkPredictor
@@ -36,5 +37,6 @@ Philosophy:
 from .ngram import NGramModel
 from .alignment import AlignmentIndex
 from .predictor import SparkPredictor
+from .anomaly import AnomalyDetector, AnomalyResult
 
-__all__ = ['NGramModel', 'AlignmentIndex', 'SparkPredictor']
+__all__ = ['NGramModel', 'AlignmentIndex', 'SparkPredictor', 'AnomalyDetector', 'AnomalyResult']
