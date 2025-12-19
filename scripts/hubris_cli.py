@@ -3,13 +3,14 @@
 Hubris MoE CLI - Command-line interface for the Mixture of Experts system
 
 Commands:
-    train         - Train all experts from collected data
-    predict       - Get predictions for a task
-    stats         - Show expert statistics
-    leaderboard   - Show expert credit leaderboard
-    evaluate      - Evaluate expert accuracy on recent commits
-    calibration   - Show calibration analysis for predictions
-    suggest-tests - Suggest tests to run for code changes
+    train            - Train all experts from collected data
+    predict          - Get predictions for a task
+    stats            - Show expert statistics
+    leaderboard      - Show expert credit leaderboard
+    evaluate         - Evaluate expert accuracy on recent commits
+    calibration      - Show calibration analysis for predictions
+    suggest-tests    - Suggest tests to run for code changes
+    suggest-refactor - Suggest files that may need refactoring
 
 Examples:
     python scripts/hubris_cli.py train --commits 100
@@ -20,6 +21,8 @@ Examples:
     python scripts/hubris_cli.py calibration --curve
     python scripts/hubris_cli.py suggest-tests --staged
     python scripts/hubris_cli.py suggest-tests --files cortical/query/search.py
+    python scripts/hubris_cli.py suggest-refactor --scan
+    python scripts/hubris_cli.py suggest-refactor --files cortical/analysis.py --verbose
 """
 
 import argparse
@@ -946,6 +949,126 @@ def _get_ece_status(ece: float) -> str:
         return color("[poor]", Colors.RED)
 
 
+def cmd_suggest_refactor(args) -> int:
+    """Suggest files that may benefit from refactoring."""
+    from experts.refactor_expert import RefactorExpert
+
+    print(color("=" * 60, Colors.BOLD))
+    print(color("REFACTORING SUGGESTIONS", Colors.BOLD))
+    print(color("=" * 60, Colors.BOLD))
+
+    # Load or create RefactorExpert
+    refactor_model_path = MODEL_DIR / 'refactor_expert.json'
+
+    if refactor_model_path.exists():
+        print("\nLoading trained RefactorExpert...")
+        expert = RefactorExpert.load(refactor_model_path)
+        print(f"  Trained on {expert.trained_on_commits} refactoring commits")
+    else:
+        print(color("\nNote: No trained model found. Using heuristics only.", Colors.YELLOW))
+        print("  Run 'hubris train' first to learn from commit history.")
+        expert = RefactorExpert()
+
+    # Determine files to analyze
+    if args.files:
+        files_to_analyze = args.files
+        print(f"\nAnalyzing {len(files_to_analyze)} specified files...")
+    elif args.scan:
+        print(f"\nScanning codebase for refactoring candidates...")
+        # Use analyze_codebase for full scan
+        prediction = expert.analyze_codebase(
+            repo_root=args.repo or '.',
+            top_n=args.top
+        )
+        files_to_analyze = None  # Already analyzed
+    else:
+        # Default: analyze recently changed files
+        print("\nAnalyzing recently changed files...")
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['git', 'diff', '--name-only', 'HEAD~10'],
+                capture_output=True, text=True, cwd=args.repo or '.'
+            )
+            files_to_analyze = [f.strip() for f in result.stdout.strip().split('\n') if f.strip()]
+            if not files_to_analyze:
+                print(color("  No recent changes found. Use --scan to analyze entire codebase.", Colors.YELLOW))
+                return 0
+            print(f"  Found {len(files_to_analyze)} recently changed files")
+        except Exception as e:
+            print(color(f"  Could not get git history: {e}", Colors.YELLOW))
+            print("  Use --files or --scan to specify files.")
+            return 1
+
+    # Get predictions
+    if files_to_analyze is not None:
+        prediction = expert.predict({
+            'files': files_to_analyze,
+            'top_n': args.top,
+            'include_heuristics': True,
+            'repo_root': args.repo or '.'
+        })
+
+    if not prediction.items:
+        print(color("\n✓ No significant refactoring candidates found!", Colors.GREEN))
+        return 0
+
+    # Display results
+    print(color(f"\nTop {len(prediction.items)} Refactoring Candidates:", Colors.BOLD))
+    print()
+
+    file_signals = prediction.metadata.get('file_signals', {})
+    signal_icons = {
+        'extract': '📦',   # Split/extract
+        'inline': '🔗',    # Merge/inline
+        'rename': '🏷️',    # Rename
+        'move': '📁',      # Move
+        'dedupe': '🔄',    # Deduplicate
+        'simplify': '✨',  # Simplify
+        'co_refactor': '🔀',  # Co-refactoring pattern
+    }
+
+    for i, (filepath, score) in enumerate(prediction.items, 1):
+        signals = file_signals.get(filepath, [])
+        signal_str = ' '.join(signal_icons.get(s, '•') for s in signals) if signals else ''
+
+        # Color code by score
+        if score > 0.7:
+            score_str = color(f"{score:.2f}", Colors.RED)
+            priority = color("[HIGH]", Colors.RED)
+        elif score > 0.4:
+            score_str = color(f"{score:.2f}", Colors.YELLOW)
+            priority = color("[MED]", Colors.YELLOW)
+        else:
+            score_str = f"{score:.2f}"
+            priority = color("[LOW]", Colors.DIM)
+
+        print(f"  {i:2}. {color(filepath, Colors.CYAN):55} {score_str} {priority} {signal_str}")
+
+        # Show detailed report if verbose
+        if args.verbose and filepath:
+            report = expert.get_file_report(filepath, args.repo or '.')
+            if report.get('recommendations'):
+                for rec in report['recommendations'][:2]:  # Limit to 2 recommendations
+                    print(color(f"      → {rec}", Colors.DIM))
+
+    # Signal summary
+    signal_counts = prediction.metadata.get('signal_counts', {})
+    if signal_counts:
+        print(color("\nSignal Summary:", Colors.BOLD))
+        for signal, count in sorted(signal_counts.items(), key=lambda x: -x[1]):
+            icon = signal_icons.get(signal, '•')
+            print(f"  {icon} {signal}: {count} files")
+
+    # Show scoring sources
+    sources = prediction.metadata.get('scoring_sources', [])
+    if sources:
+        print(color(f"\nScoring based on: {', '.join(sources)}", Colors.DIM))
+
+    print()
+    return 0
+
+
 def cmd_suggest_tests(args) -> int:
     """Suggest tests to run for code changes."""
     import subprocess
@@ -1156,6 +1279,19 @@ Examples:
     suggest_tests_parser.add_argument('--top', '-n', type=int, default=10,
                                      help='Number of suggestions to show (default: 10)')
 
+    # Suggest-refactor command
+    refactor_parser = subparsers.add_parser('suggest-refactor', help='Suggest files that may need refactoring')
+    refactor_parser.add_argument('--files', '-f', nargs='+', type=str,
+                                help='Specific files to analyze')
+    refactor_parser.add_argument('--scan', '-s', action='store_true',
+                                help='Scan entire codebase for candidates')
+    refactor_parser.add_argument('--top', '-n', type=int, default=10,
+                                help='Number of suggestions to show (default: 10)')
+    refactor_parser.add_argument('--repo', '-r', type=str, default='.',
+                                help='Repository root directory (default: current)')
+    refactor_parser.add_argument('--verbose', '-v', action='store_true',
+                                help='Show detailed recommendations')
+
     args = parser.parse_args()
 
     if not args.command:
@@ -1181,6 +1317,8 @@ Examples:
         return cmd_calibration(args)
     elif args.command == 'suggest-tests':
         return cmd_suggest_tests(args)
+    elif args.command == 'suggest-refactor':
+        return cmd_suggest_refactor(args)
     else:
         parser.print_help()
         return 1

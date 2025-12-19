@@ -43,20 +43,22 @@
 ## Sprint 7: RefactorExpert (New Expert Type)
 **Sprint ID:** sprint-007-refactor-expert
 **Epic:** Hubris MoE System (efba)
-**Status:** Available 🟢
+**Status:** Complete ✅
 **Isolation:** `scripts/hubris/experts/refactor_expert.py` (new file)
+**Session:** 0u0mC
 
 ### Goals
-- [ ] Create RefactorExpert class inheriting from MicroExpert
-- [ ] Define refactoring signal types (extract, inline, rename, move)
-- [ ] Train on commit history patterns (commits with "refactor:" prefix)
-- [ ] Add refactoring detection heuristics (duplicate code, long methods)
-- [ ] Register in ExpertConsolidator
-- [ ] Add `suggest-refactor` CLI command
+- [x] Create RefactorExpert class inheriting from MicroExpert
+- [x] Define refactoring signal types (extract, inline, rename, move, dedupe, simplify)
+- [x] Train on commit history patterns (commits with "refactor:" prefix)
+- [x] Add refactoring detection heuristics (file size, function count, nesting depth, imports)
+- [x] Register in ExpertConsolidator
+- [x] Add `suggest-refactor` CLI command
+- [x] Write unit tests (29 tests passing)
 
 ### Key Files (New)
-- `scripts/hubris/experts/refactor_expert.py` - New expert
-- `scripts/hubris/refactor_patterns.py` - Pattern definitions (optional)
+- `scripts/hubris/experts/refactor_expert.py` - New expert (implemented)
+- `tests/hubris/test_refactor_expert.py` - Unit tests (29 tests)
 
 ### Key Files (Modify)
 - `scripts/hubris/expert_consolidator.py` - Register new expert
@@ -394,6 +396,6 @@ Move CLI wrapper to projects/cli if it becomes problematic.
 | Sprint 4 | 1 day | ✅ | Hubris MoE |
 | Sprint 5 | 1 day | ✅ | Hubris MoE |
 | Sprint 6 | - | 🟢 | Hubris MoE |
-| Sprint 7 | - | 🟢 | Hubris MoE |
+| Sprint 7 | 1 day | ✅ | Hubris MoE |
 | Sprint 8 | - | 🟢 | Core |
 | Sprint 9 | 1 day | ✅ | Core (Projects) |
