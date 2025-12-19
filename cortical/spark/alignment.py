@@ -302,6 +302,11 @@ class AlignmentIndex:
         - **topic**: preference
         ```
 
+        Also auto-detects type from filename:
+        - definitions.md -> all entries are definitions
+        - patterns.md -> all entries are patterns
+        - preferences.md -> all entries are preferences
+
         Args:
             path: Path to markdown file
 
@@ -314,25 +319,43 @@ class AlignmentIndex:
         with open(path, 'r') as f:
             content = f.read()
 
+        # Auto-detect default type from filename
+        filename = os.path.basename(path).lower()
+        if 'definition' in filename:
+            default_section = 'definition'
+        elif 'pattern' in filename:
+            default_section = 'pattern'
+        elif 'preference' in filename:
+            default_section = 'preference'
+        elif 'goal' in filename or 'imagine' in filename:
+            default_section = 'goal'
+        else:
+            default_section = None
+
         count = 0
-        current_section = None
+        current_section = default_section  # Start with filename-based default
 
         for line in content.split('\n'):
             line = line.strip()
 
-            # Detect section headers
+            # Detect section headers (can override filename default)
             if line.startswith('## '):
                 section = line[3:].lower()
-                if 'definition' in section:
+                if 'definition' in section or 'concept' in section or 'term' in section:
                     current_section = 'definition'
                 elif 'pattern' in section:
                     current_section = 'pattern'
                 elif 'preference' in section:
                     current_section = 'preference'
-                elif 'goal' in section:
+                elif 'goal' in section or 'imagine' in section or 'dream' in section:
                     current_section = 'goal'
+                elif 'your ' in section:
+                    # "Your Definitions", "Your Patterns" etc - keep current section
+                    pass
                 else:
-                    current_section = None
+                    # Unknown section in definitions file - still treat as definitions
+                    if default_section:
+                        current_section = default_section
                 continue
 
             # Parse entries: "- **key**: value" or "- key: value"
