@@ -175,6 +175,128 @@ class EventLog:
         """Log an edge deletion event."""
         return self.log("edge.delete", src=src, tgt=tgt, type=edge_type)
 
+    # =========================================================================
+    # AGENT HANDOFF EVENTS
+    # =========================================================================
+
+    def log_handoff_initiate(
+        self,
+        handoff_id: str,
+        source_agent: str,
+        target_agent: str,
+        task_id: str,
+        context: Dict[str, Any],
+        instructions: str = "",
+    ) -> Dict:
+        """Log a handoff initiation from one agent to another.
+
+        Args:
+            handoff_id: Unique identifier for this handoff
+            source_agent: Agent initiating the handoff (e.g., "director", "main")
+            target_agent: Agent receiving the work (e.g., "sub-agent-1", "reviewer")
+            task_id: The task being handed off
+            context: Context data for the receiving agent
+            instructions: Specific instructions for the receiving agent
+        """
+        return self.log(
+            "handoff.initiate",
+            handoff_id=handoff_id,
+            source_agent=source_agent,
+            target_agent=target_agent,
+            task_id=task_id,
+            context=context,
+            instructions=instructions,
+        )
+
+    def log_handoff_accept(
+        self,
+        handoff_id: str,
+        agent: str,
+        acknowledgment: str = "",
+    ) -> Dict:
+        """Log an agent accepting a handoff.
+
+        Args:
+            handoff_id: The handoff being accepted
+            agent: Agent accepting the handoff
+            acknowledgment: Optional acknowledgment message
+        """
+        return self.log(
+            "handoff.accept",
+            handoff_id=handoff_id,
+            agent=agent,
+            acknowledgment=acknowledgment,
+        )
+
+    def log_handoff_complete(
+        self,
+        handoff_id: str,
+        agent: str,
+        result: Dict[str, Any],
+        artifacts: Optional[List[str]] = None,
+    ) -> Dict:
+        """Log completion of a handed-off task.
+
+        Args:
+            handoff_id: The handoff being completed
+            agent: Agent completing the work
+            result: Results of the work (success, findings, etc.)
+            artifacts: List of artifacts created (files, commits, etc.)
+        """
+        return self.log(
+            "handoff.complete",
+            handoff_id=handoff_id,
+            agent=agent,
+            result=result,
+            artifacts=artifacts or [],
+        )
+
+    def log_handoff_reject(
+        self,
+        handoff_id: str,
+        agent: str,
+        reason: str,
+        suggestion: str = "",
+    ) -> Dict:
+        """Log an agent rejecting a handoff.
+
+        Args:
+            handoff_id: The handoff being rejected
+            agent: Agent rejecting the handoff
+            reason: Why the handoff was rejected
+            suggestion: Suggested alternative approach
+        """
+        return self.log(
+            "handoff.reject",
+            handoff_id=handoff_id,
+            agent=agent,
+            reason=reason,
+            suggestion=suggestion,
+        )
+
+    def log_handoff_context(
+        self,
+        handoff_id: str,
+        agent: str,
+        context_type: str,
+        data: Dict[str, Any],
+    ) -> Dict:
+        """Log context being passed during a handoff.
+
+        Args:
+            handoff_id: The associated handoff
+            agent: Agent providing the context
+            context_type: Type of context (e.g., "files", "decisions", "blockers")
+            data: The context data
+        """
+        return self.log(
+            "handoff.context",
+            handoff_id=handoff_id,
+            agent=agent,
+            context_type=context_type,
+            data=data,
+        )
+
     @classmethod
     def load_all_events(cls, events_dir: Path) -> List[Dict]:
         """Load and sort all events from all session files."""
@@ -255,6 +377,314 @@ class EventLog:
                 continue
 
         return graph
+
+    @classmethod
+    def compact_events(
+        cls,
+        events_dir: Path,
+        preserve_handoffs: bool = True,
+        preserve_days: int = 7,
+    ) -> Dict[str, Any]:
+        """Compact old events into a single consolidated event file.
+
+        Event compaction works like git gc - it:
+        1. Replays all events to get final state
+        2. Creates node.create events for all current nodes
+        3. Creates edge.create events for all current edges
+        4. Optionally preserves handoff events (for audit trail)
+        5. Preserves recent events (within preserve_days)
+        6. Removes old session files
+
+        Args:
+            events_dir: Directory containing event files
+            preserve_handoffs: Keep handoff events for audit trail
+            preserve_days: Keep events from last N days unchanged
+
+        Returns:
+            Dict with compaction stats
+        """
+        events_dir = Path(events_dir)
+        if not events_dir.exists():
+            return {"error": "Events directory does not exist"}
+
+        # Calculate cutoff timestamp
+        cutoff = datetime.utcnow() - __import__('datetime').timedelta(days=preserve_days)
+        cutoff_str = cutoff.isoformat() + "Z"
+
+        # Load all events
+        all_events = cls.load_all_events(events_dir)
+        if not all_events:
+            return {"status": "nothing_to_compact", "event_count": 0}
+
+        # Separate events into categories
+        old_events = []
+        recent_events = []
+        handoff_events = []
+
+        for event in all_events:
+            ts = event.get("ts", "")
+            event_type = event.get("event", "")
+
+            if event_type.startswith("handoff.") and preserve_handoffs:
+                handoff_events.append(event)
+            elif ts < cutoff_str:
+                old_events.append(event)
+            else:
+                recent_events.append(event)
+
+        if not old_events:
+            return {
+                "status": "nothing_to_compact",
+                "recent_events": len(recent_events),
+                "handoff_events": len(handoff_events),
+            }
+
+        # Rebuild graph from all events (including recent, for accurate final state)
+        final_graph = cls.rebuild_graph_from_events(all_events)
+
+        # Create compaction event log
+        compact_log = cls(
+            events_dir,
+            session_id=f"compact-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        )
+
+        # Write final state as creation events
+        nodes_written = 0
+        edges_written = 0
+
+        for node_id, node in final_graph.nodes.items():
+            compact_log.log_node_create(
+                node_id=node_id,
+                node_type=node.node_type.name if hasattr(node.node_type, 'name') else str(node.node_type),
+                data={
+                    **node.properties,
+                    "title": node.content,
+                }
+            )
+            nodes_written += 1
+
+        # Write edges
+        edges = final_graph.edges
+        if isinstance(edges, dict):
+            edge_list = edges.values()
+        else:
+            edge_list = edges
+
+        for edge in edge_list:
+            src = getattr(edge, 'source_id', edge.get('source_id') if isinstance(edge, dict) else None)
+            tgt = getattr(edge, 'target_id', edge.get('target_id') if isinstance(edge, dict) else None)
+            etype = getattr(edge, 'edge_type', edge.get('edge_type') if isinstance(edge, dict) else None)
+            weight = getattr(edge, 'weight', edge.get('weight', 1.0) if isinstance(edge, dict) else 1.0)
+
+            if src and tgt:
+                compact_log.log_edge_create(
+                    src=src,
+                    tgt=tgt,
+                    edge_type=etype.name if hasattr(etype, 'name') else str(etype),
+                    weight=weight
+                )
+                edges_written += 1
+
+        # Write preserved handoff events to the compact file
+        if handoff_events:
+            for event in handoff_events:
+                with open(compact_log.event_file, "a") as f:
+                    f.write(json.dumps(event, default=str) + "\n")
+
+        # Find and remove old event files (but not the compact file or recent files)
+        files_removed = []
+        compact_filename = compact_log.event_file.name
+
+        for event_file in events_dir.glob("*.jsonl"):
+            if event_file.name == compact_filename:
+                continue
+
+            # Check if file contains only old events
+            try:
+                file_events = []
+                with open(event_file) as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            file_events.append(json.loads(line))
+
+                # If all events in file are old (pre-cutoff), remove it
+                all_old = all(e.get("ts", "9999") < cutoff_str for e in file_events)
+                has_handoffs = any(e.get("event", "").startswith("handoff.") for e in file_events)
+
+                if all_old and not (has_handoffs and preserve_handoffs):
+                    event_file.unlink()
+                    files_removed.append(event_file.name)
+
+            except Exception:
+                continue
+
+        return {
+            "status": "compacted",
+            "nodes_written": nodes_written,
+            "edges_written": edges_written,
+            "handoffs_preserved": len(handoff_events),
+            "files_removed": len(files_removed),
+            "compact_file": compact_filename,
+            "original_event_count": len(all_events),
+            "old_events_consolidated": len(old_events),
+            "recent_events_kept": len(recent_events),
+        }
+
+
+# =============================================================================
+# HANDOFF MANAGER
+# =============================================================================
+
+def generate_handoff_id() -> str:
+    """Generate a unique handoff ID: handoff:H-YYYYMMDD-HHMMSS-XXXX"""
+    now = datetime.now()
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    suffix = os.urandom(2).hex()
+    return f"handoff:H-{timestamp}-{suffix}"
+
+
+class HandoffManager:
+    """Manages agent handoffs using the event log.
+
+    Provides high-level operations for initiating, accepting,
+    completing, and tracking handoffs between agents.
+    """
+
+    def __init__(self, event_log: EventLog):
+        self.event_log = event_log
+        self._active_handoffs: Dict[str, Dict] = {}
+
+    def initiate_handoff(
+        self,
+        source_agent: str,
+        target_agent: str,
+        task_id: str,
+        context: Dict[str, Any],
+        instructions: str = "",
+    ) -> str:
+        """Initiate a handoff to another agent.
+
+        Returns:
+            handoff_id for tracking
+        """
+        handoff_id = generate_handoff_id()
+
+        self.event_log.log_handoff_initiate(
+            handoff_id=handoff_id,
+            source_agent=source_agent,
+            target_agent=target_agent,
+            task_id=task_id,
+            context=context,
+            instructions=instructions,
+        )
+
+        self._active_handoffs[handoff_id] = {
+            "status": "initiated",
+            "source_agent": source_agent,
+            "target_agent": target_agent,
+            "task_id": task_id,
+            "initiated_at": datetime.now().isoformat(),
+        }
+
+        return handoff_id
+
+    def accept_handoff(self, handoff_id: str, agent: str, acknowledgment: str = "") -> bool:
+        """Accept a handoff."""
+        self.event_log.log_handoff_accept(
+            handoff_id=handoff_id,
+            agent=agent,
+            acknowledgment=acknowledgment,
+        )
+
+        if handoff_id in self._active_handoffs:
+            self._active_handoffs[handoff_id]["status"] = "accepted"
+            self._active_handoffs[handoff_id]["accepted_at"] = datetime.now().isoformat()
+
+        return True
+
+    def complete_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        result: Dict[str, Any],
+        artifacts: Optional[List[str]] = None,
+    ) -> bool:
+        """Complete a handoff with results."""
+        self.event_log.log_handoff_complete(
+            handoff_id=handoff_id,
+            agent=agent,
+            result=result,
+            artifacts=artifacts,
+        )
+
+        if handoff_id in self._active_handoffs:
+            self._active_handoffs[handoff_id]["status"] = "completed"
+            self._active_handoffs[handoff_id]["completed_at"] = datetime.now().isoformat()
+            self._active_handoffs[handoff_id]["result"] = result
+
+        return True
+
+    def add_context(
+        self,
+        handoff_id: str,
+        agent: str,
+        context_type: str,
+        data: Dict[str, Any],
+    ) -> bool:
+        """Add context to a handoff."""
+        self.event_log.log_handoff_context(
+            handoff_id=handoff_id,
+            agent=agent,
+            context_type=context_type,
+            data=data,
+        )
+        return True
+
+    @classmethod
+    def load_handoffs_from_events(cls, events: List[Dict]) -> List[Dict[str, Any]]:
+        """Load handoff state from event log.
+
+        Returns list of handoffs with their current state.
+        """
+        handoffs = {}
+
+        for event in events:
+            event_type = event.get("event", "")
+            if not event_type.startswith("handoff."):
+                continue
+
+            handoff_id = event.get("handoff_id")
+            if not handoff_id:
+                continue
+
+            if handoff_id not in handoffs:
+                handoffs[handoff_id] = {"id": handoff_id, "events": []}
+
+            handoffs[handoff_id]["events"].append(event)
+
+            if event_type == "handoff.initiate":
+                handoffs[handoff_id].update({
+                    "status": "initiated",
+                    "source_agent": event.get("source_agent"),
+                    "target_agent": event.get("target_agent"),
+                    "task_id": event.get("task_id"),
+                    "instructions": event.get("instructions"),
+                    "initiated_at": event.get("ts"),
+                })
+            elif event_type == "handoff.accept":
+                handoffs[handoff_id]["status"] = "accepted"
+                handoffs[handoff_id]["accepted_at"] = event.get("ts")
+            elif event_type == "handoff.complete":
+                handoffs[handoff_id]["status"] = "completed"
+                handoffs[handoff_id]["completed_at"] = event.get("ts")
+                handoffs[handoff_id]["result"] = event.get("result")
+            elif event_type == "handoff.reject":
+                handoffs[handoff_id]["status"] = "rejected"
+                handoffs[handoff_id]["rejected_at"] = event.get("ts")
+                handoffs[handoff_id]["reject_reason"] = event.get("reason")
+
+        return list(handoffs.values())
 
 
 # =============================================================================
@@ -1682,6 +2112,155 @@ def cmd_backup_restore(args, manager: GoTProjectManager) -> int:
         return 1
 
 
+def cmd_handoff_initiate(args, manager: GoTProjectManager) -> int:
+    """Initiate a handoff to another agent."""
+    task = manager.get_task(args.task_id)
+    if not task:
+        print(f"Task not found: {args.task_id}")
+        return 1
+
+    handoff_mgr = HandoffManager(manager.event_log)
+    handoff_id = handoff_mgr.initiate_handoff(
+        source_agent=args.source,
+        target_agent=args.target,
+        task_id=args.task_id,
+        context={
+            "task_title": task.content,
+            "task_status": task.properties.get("status"),
+            "task_priority": task.properties.get("priority"),
+        },
+        instructions=args.instructions,
+    )
+
+    print(f"Handoff initiated: {handoff_id}")
+    print(f"  Task: {task.content}")
+    print(f"  From: {args.source} → To: {args.target}")
+    if args.instructions:
+        print(f"  Instructions: {args.instructions}")
+    return 0
+
+
+def cmd_handoff_accept(args, manager: GoTProjectManager) -> int:
+    """Accept a handoff."""
+    handoff_mgr = HandoffManager(manager.event_log)
+    handoff_mgr.accept_handoff(
+        handoff_id=args.handoff_id,
+        agent=args.agent,
+        acknowledgment=args.message,
+    )
+
+    print(f"Handoff accepted: {args.handoff_id}")
+    print(f"  Agent: {args.agent}")
+    return 0
+
+
+def cmd_handoff_complete(args, manager: GoTProjectManager) -> int:
+    """Complete a handoff."""
+    try:
+        result = json.loads(args.result)
+    except json.JSONDecodeError:
+        result = {"message": args.result}
+
+    handoff_mgr = HandoffManager(manager.event_log)
+    handoff_mgr.complete_handoff(
+        handoff_id=args.handoff_id,
+        agent=args.agent,
+        result=result,
+        artifacts=args.artifacts or [],
+    )
+
+    print(f"Handoff completed: {args.handoff_id}")
+    print(f"  Agent: {args.agent}")
+    print(f"  Result: {json.dumps(result, indent=2)}")
+    return 0
+
+
+def cmd_handoff_list(args, manager: GoTProjectManager) -> int:
+    """List handoffs."""
+    events = EventLog.load_all_events(manager.events_dir)
+    handoffs = HandoffManager.load_handoffs_from_events(events)
+
+    if args.status:
+        handoffs = [h for h in handoffs if h.get("status") == args.status]
+
+    if not handoffs:
+        print("No handoffs found.")
+        return 0
+
+    print(f"Handoffs ({len(handoffs)}):\n")
+    for h in handoffs:
+        status = h.get("status", "?")
+        status_icon = {
+            "initiated": "→",
+            "accepted": "✓",
+            "completed": "✓✓",
+            "rejected": "✗",
+        }.get(status, "?")
+
+        print(f"  {status_icon} {h['id']}")
+        print(f"      {h.get('source_agent', '?')} → {h.get('target_agent', '?')}")
+        print(f"      Task: {h.get('task_id', '?')}")
+        print(f"      Status: {status}")
+        if h.get("instructions"):
+            print(f"      Instructions: {h['instructions'][:50]}...")
+        print()
+
+    return 0
+
+
+def cmd_compact(args, manager: GoTProjectManager) -> int:
+    """Compact old events."""
+    preserve_handoffs = not getattr(args, 'no_preserve_handoffs', False)
+    preserve_days = getattr(args, 'preserve_days', 7)
+    dry_run = getattr(args, 'dry_run', False)
+
+    if dry_run:
+        print(f"Dry run - would compact events older than {preserve_days} days")
+        print(f"  Preserve handoffs: {preserve_handoffs}")
+
+        # Load and analyze events
+        events = EventLog.load_all_events(manager.events_dir)
+        cutoff = datetime.utcnow() - __import__('datetime').timedelta(days=preserve_days)
+        cutoff_str = cutoff.isoformat() + "Z"
+
+        old_events = [e for e in events if e.get("ts", "") < cutoff_str]
+        handoff_events = [e for e in events if e.get("event", "").startswith("handoff.")]
+        recent_events = [e for e in events if e.get("ts", "") >= cutoff_str]
+
+        print(f"\nAnalysis:")
+        print(f"  Total events: {len(events)}")
+        print(f"  Old events (would compact): {len(old_events)}")
+        print(f"  Recent events (would keep): {len(recent_events)}")
+        print(f"  Handoff events: {len(handoff_events)}")
+        return 0
+
+    result = EventLog.compact_events(
+        manager.events_dir,
+        preserve_handoffs=preserve_handoffs,
+        preserve_days=preserve_days,
+    )
+
+    if result.get("error"):
+        print(f"Error: {result['error']}")
+        return 1
+
+    if result.get("status") == "nothing_to_compact":
+        print("Nothing to compact - all events are recent.")
+        return 0
+
+    print("Event compaction complete:")
+    print(f"  Nodes written: {result.get('nodes_written', 0)}")
+    print(f"  Edges written: {result.get('edges_written', 0)}")
+    print(f"  Handoffs preserved: {result.get('handoffs_preserved', 0)}")
+    print(f"  Files removed: {result.get('files_removed', 0)}")
+    print(f"  Compact file: {result.get('compact_file', '?')}")
+    print(f"\n  Original events: {result.get('original_event_count', 0)}")
+    print(f"  Old events consolidated: {result.get('old_events_consolidated', 0)}")
+    print(f"  Recent events kept: {result.get('recent_events_kept', 0)}")
+
+    return 0
+
+
 def cmd_sync(args, manager: GoTProjectManager) -> int:
     """Sync GoT state to git-tracked snapshot.
 
@@ -1840,6 +2419,43 @@ def main():
     sync_parser = subparsers.add_parser("sync", help="Sync state to git-tracked snapshot")
     sync_parser.add_argument("--message", "-m", help="Commit message (auto-commits if provided)")
 
+    # Handoff commands (for agent coordination)
+    handoff_parser = subparsers.add_parser("handoff", help="Agent handoff operations")
+    handoff_subparsers = handoff_parser.add_subparsers(dest="handoff_command")
+
+    # handoff initiate
+    handoff_init = handoff_subparsers.add_parser("initiate", help="Initiate a handoff to another agent")
+    handoff_init.add_argument("task_id", help="Task to hand off")
+    handoff_init.add_argument("--target", "-t", required=True, help="Target agent (e.g., 'sub-agent-1')")
+    handoff_init.add_argument("--source", "-s", default="main", help="Source agent (default: main)")
+    handoff_init.add_argument("--instructions", "-i", default="", help="Instructions for target agent")
+
+    # handoff accept
+    handoff_accept = handoff_subparsers.add_parser("accept", help="Accept a handoff")
+    handoff_accept.add_argument("handoff_id", help="Handoff ID to accept")
+    handoff_accept.add_argument("--agent", "-a", required=True, help="Agent accepting")
+    handoff_accept.add_argument("--message", "-m", default="", help="Acknowledgment message")
+
+    # handoff complete
+    handoff_complete = handoff_subparsers.add_parser("complete", help="Complete a handoff")
+    handoff_complete.add_argument("handoff_id", help="Handoff ID to complete")
+    handoff_complete.add_argument("--agent", "-a", required=True, help="Agent completing")
+    handoff_complete.add_argument("--result", "-r", default="{}", help="Result as JSON")
+    handoff_complete.add_argument("--artifacts", nargs="*", help="Artifacts created (files, commits)")
+
+    # handoff list
+    handoff_list = handoff_subparsers.add_parser("list", help="List handoffs")
+    handoff_list.add_argument("--status", choices=["initiated", "accepted", "completed", "rejected"])
+
+    # Compaction command
+    compact_parser = subparsers.add_parser("compact", help="Compact old events into consolidated file")
+    compact_parser.add_argument("--preserve-days", "-d", type=int, default=7,
+                                help="Preserve events from last N days (default: 7)")
+    compact_parser.add_argument("--no-preserve-handoffs", action="store_true",
+                                help="Don't preserve handoff events")
+    compact_parser.add_argument("--dry-run", action="store_true",
+                                help="Show what would be compacted")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -1909,6 +2525,22 @@ def main():
 
     elif args.command == "sync":
         return cmd_sync(args, manager)
+
+    elif args.command == "handoff":
+        if args.handoff_command == "initiate":
+            return cmd_handoff_initiate(args, manager)
+        elif args.handoff_command == "accept":
+            return cmd_handoff_accept(args, manager)
+        elif args.handoff_command == "complete":
+            return cmd_handoff_complete(args, manager)
+        elif args.handoff_command == "list":
+            return cmd_handoff_list(args, manager)
+        else:
+            handoff_parser.print_help()
+            return 1
+
+    elif args.command == "compact":
+        return cmd_compact(args, manager)
 
     else:
         parser.print_help()

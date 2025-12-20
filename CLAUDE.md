@@ -1487,6 +1487,12 @@ python examples/observability_demo.py
 | Check recovery needed | `GraphRecovery(wal_dir).needs_recovery()` |
 | Recover graph | `result = GraphRecovery(wal_dir).recover()` |
 | Git auto-commit | `GitAutoCommitter(repo_path).commit_on_save(path, graph)` |
+| **GoT Handoff Primitives** | |
+| Initiate handoff | `python scripts/got_utils.py handoff initiate TASK_ID --target AGENT --instructions "..."` |
+| Accept handoff | `python scripts/got_utils.py handoff accept HANDOFF_ID --agent AGENT` |
+| Complete handoff | `python scripts/got_utils.py handoff complete HANDOFF_ID --agent AGENT --result JSON` |
+| List handoffs | `python scripts/got_utils.py handoff list [--status STATUS]` |
+| Compact events | `python scripts/got_utils.py compact [--preserve-days N]` |
 | **Performance Tests** | |
 | Run perf tests | `python -m pytest tests/performance/test_graph_persistence_perf.py -v` |
 | Run E2E tests | `python -m pytest tests/integration/test_reasoning_persistence_e2e.py -v` |
