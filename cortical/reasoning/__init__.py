@@ -80,6 +80,11 @@ from .cognitive_loop import (
     LoopStateSerializer,
 )
 
+from .loop_validator import (
+    LoopValidator,
+    ValidationResult,
+)
+
 # =============================================================================
 # PRODUCTION STATE MANAGEMENT
 # =============================================================================
@@ -151,6 +156,7 @@ from .collaboration import (
     CollaborationMode,
     BlockerType,
     ConflictType,
+    AgentStatus,
     # Core classes
     StatusUpdate,
     Blocker,
@@ -159,9 +165,19 @@ from .collaboration import (
     ConflictEvent,
     ActiveWorkHandoff,
     CollaborationManager,
-    # Stub classes
+    AgentResult,
+    AgentSpawner,
+    SequentialSpawner,
+    ConflictDetail,
+    # Parallel coordination
     ParallelCoordinator,
     QuestionBatcher,
+)
+
+from .claude_code_spawner import (
+    ClaudeCodeSpawner,
+    TaskToolConfig,
+    generate_parallel_task_calls,
 )
 
 # =============================================================================
@@ -211,6 +227,8 @@ __all__ = [
     'CognitiveLoopManager',
     'NestedLoopExecutor',
     'LoopStateSerializer',
+    'LoopValidator',
+    'ValidationResult',
 
     # === Production State ===
     'ProductionState',
@@ -253,6 +271,7 @@ __all__ = [
     'CollaborationMode',
     'BlockerType',
     'ConflictType',
+    'AgentStatus',
     'StatusUpdate',
     'Blocker',
     'DisagreementRecord',
@@ -260,8 +279,15 @@ __all__ = [
     'ConflictEvent',
     'ActiveWorkHandoff',
     'CollaborationManager',
+    'AgentResult',
+    'AgentSpawner',
+    'SequentialSpawner',
+    'ConflictDetail',
     'ParallelCoordinator',
     'QuestionBatcher',
+    'ClaudeCodeSpawner',
+    'TaskToolConfig',
+    'generate_parallel_task_calls',
 
     # === Main Workflow ===
     'WorkflowContext',
