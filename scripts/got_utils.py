@@ -98,6 +98,14 @@ def generate_goal_id() -> str:
     return f"goal:G-{timestamp}-{suffix}"
 
 
+def generate_decision_id() -> str:
+    """Generate decision ID: decision:D-YYYYMMDD-HHMMSS-XXXX"""
+    now = datetime.now()
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    suffix = os.urandom(2).hex()
+    return f"decision:D-{timestamp}-{suffix}"
+
+
 def get_current_branch() -> str:
     """Get current git branch name."""
     import subprocess
@@ -297,6 +305,86 @@ class EventLog:
             data=data,
         )
 
+    # =========================================================================
+    # REASONING TRACE EVENTS
+    # =========================================================================
+
+    def log_decision(
+        self,
+        decision_id: str,
+        decision: str,
+        rationale: str,
+        affects: Optional[List[str]] = None,
+        alternatives: Optional[List[str]] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict:
+        """Log a decision with its rationale.
+
+        This creates a trace of WHY something was done, not just WHAT.
+        Future agents can query: "Why was this built this way?"
+
+        Args:
+            decision_id: Unique identifier for this decision
+            decision: What was decided
+            rationale: Why this choice was made
+            affects: List of node IDs affected by this decision (creates JUSTIFIES edges)
+            alternatives: Alternatives that were considered but rejected
+            context: Additional context (file, line, function, etc.)
+        """
+        return self.log(
+            "decision.create",
+            id=decision_id,
+            decision=decision,
+            rationale=rationale,
+            affects=affects or [],
+            alternatives=alternatives or [],
+            context=context or {},
+        )
+
+    def log_decision_supersede(
+        self,
+        new_decision_id: str,
+        old_decision_id: str,
+        reason: str,
+    ) -> Dict:
+        """Log that a new decision supersedes an old one.
+
+        Creates a SUPERSEDES edge for tracking decision evolution.
+        """
+        return self.log(
+            "decision.supersede",
+            new_id=new_decision_id,
+            old_id=old_decision_id,
+            reason=reason,
+        )
+
+    def log_reasoning_step(
+        self,
+        step_type: str,
+        content: str,
+        parent_id: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict:
+        """Log a reasoning step in the thought process.
+
+        Step types: QUESTION, HYPOTHESIS, EVIDENCE, CONCLUSION, ACTION
+
+        Args:
+            step_type: Type of reasoning step
+            content: The content of this step
+            parent_id: ID of parent step (for chained reasoning)
+            context: Additional context
+        """
+        step_id = f"step:{datetime.now().strftime('%Y%m%d-%H%M%S')}-{os.urandom(2).hex()}"
+        return self.log(
+            "reasoning.step",
+            id=step_id,
+            type=step_type,
+            content=content,
+            parent_id=parent_id,
+            context=context or {},
+        )
+
     @classmethod
     def load_all_events(cls, events_dir: Path) -> List[Dict]:
         """Load and sort all events from all session files."""
@@ -356,7 +444,7 @@ class EventLog:
 
                 elif event_type == "edge.create":
                     edge_type_str = event.get("type", "RELATES_TO").upper()
-                    edge_type = EdgeType[edge_type_str] if hasattr(EdgeType, edge_type_str) else EdgeType.RELATES_TO
+                    edge_type = EdgeType[edge_type_str] if hasattr(EdgeType, edge_type_str) else EdgeType.MOTIVATES
                     graph.add_edge(
                         source_id=event["src"],
                         target_id=event["tgt"],
@@ -371,6 +459,46 @@ class EventLog:
                         if (edge.source_id, edge.target_id, edge.edge_type.name) == edge_key:
                             del graph.edges[eid]
                             break
+
+                elif event_type == "decision.create":
+                    # Create decision node and JUSTIFIES edges
+                    decision_id = event["id"]
+                    graph.add_node(
+                        node_id=decision_id,
+                        node_type=NodeType.CONTEXT,  # Use CONTEXT for decisions
+                        content=event.get("decision", ""),
+                        properties={
+                            "type": "decision",
+                            "rationale": event.get("rationale", ""),
+                            "alternatives": event.get("alternatives", []),
+                        },
+                        metadata=event.get("context", {})
+                    )
+                    # Create JUSTIFIES edges to affected nodes
+                    for affected_id in event.get("affects", []):
+                        if affected_id in graph.nodes:
+                            try:
+                                graph.add_edge(
+                                    decision_id, affected_id,
+                                    EdgeType.MOTIVATES,  # JUSTIFIES conceptually
+                                    weight=1.0, confidence=1.0
+                                )
+                            except Exception:
+                                pass
+
+                elif event_type == "decision.supersede":
+                    # Create SUPERSEDES edge (new decision supersedes old)
+                    new_id = event.get("new_id")
+                    old_id = event.get("old_id")
+                    if new_id in graph.nodes and old_id in graph.nodes:
+                        try:
+                            graph.add_edge(
+                                new_id, old_id,
+                                EdgeType.MOTIVATES,  # SUPERSEDES conceptually
+                                weight=1.0, confidence=1.0
+                            )
+                        except Exception:
+                            pass
 
             except Exception:
                 # Skip invalid events
@@ -1305,6 +1433,245 @@ class GoTProjectManager:
         self.wal.log_add_edge(epic_id, sprint_id, EdgeType.CONTAINS)
 
         return True
+
+    # =========================================================================
+    # DECISION & REASONING OPERATIONS
+    # =========================================================================
+
+    def log_decision(
+        self,
+        decision: str,
+        rationale: str,
+        affects: Optional[List[str]] = None,
+        alternatives: Optional[List[str]] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Log a decision with its rationale.
+
+        Creates a decision node and JUSTIFIES edges to affected nodes.
+        Future agents can query: "Why was this built this way?"
+
+        Args:
+            decision: What was decided
+            rationale: Why this choice was made
+            affects: List of node IDs affected (tasks, sprints, etc.)
+            alternatives: Alternatives that were considered
+            context: Additional context (file, line, function)
+
+        Returns:
+            Decision ID
+        """
+        decision_id = generate_decision_id()
+
+        # Create the decision node
+        self.graph.add_node(
+            node_id=decision_id,
+            node_type=NodeType.CONTEXT,
+            content=decision,
+            properties={
+                "type": "decision",
+                "rationale": rationale,
+                "alternatives": alternatives or [],
+            },
+            metadata={
+                "created_at": datetime.now().isoformat(),
+                "branch": self._get_current_branch(),
+                **(context or {}),
+            }
+        )
+
+        # Log to event log
+        self.event_log.log_decision(
+            decision_id=decision_id,
+            decision=decision,
+            rationale=rationale,
+            affects=affects,
+            alternatives=alternatives,
+            context=context,
+        )
+
+        # Create edges to affected nodes
+        for affected_id in (affects or []):
+            if affected_id in self.graph.nodes:
+                self.graph.add_edge(
+                    decision_id, affected_id,
+                    EdgeType.MOTIVATES,
+                    weight=1.0, confidence=1.0
+                )
+                self.event_log.log_edge_create(decision_id, affected_id, "RELATES_TO")
+
+        return decision_id
+
+    def get_decisions(self) -> List[ThoughtNode]:
+        """Get all decision nodes."""
+        decisions = []
+        for node_id, node in self.graph.nodes.items():
+            if node_id.startswith("decision:"):
+                decisions.append(node)
+        return decisions
+
+    def get_decisions_for_task(self, task_id: str) -> List[ThoughtNode]:
+        """Get all decisions that affect a task."""
+        if not task_id.startswith("task:"):
+            task_id = f"task:{task_id}"
+
+        decisions = []
+        edges_to = getattr(self.graph, '_edges_to', {})
+        for edge in edges_to.get(task_id, []):
+            source = self.graph.nodes.get(edge.source_id)
+            if source and edge.source_id.startswith("decision:"):
+                decisions.append(source)
+
+        return decisions
+
+    def why(self, node_id: str) -> List[Dict[str, Any]]:
+        """Query: Why was this node created/modified this way?
+
+        Returns all decisions that affect this node with their rationale.
+        """
+        decisions = self.get_decisions_for_task(node_id)
+        return [
+            {
+                "decision_id": d.id,
+                "decision": d.content,
+                "rationale": d.properties.get("rationale", ""),
+                "alternatives": d.properties.get("alternatives", []),
+                "created_at": d.metadata.get("created_at", ""),
+            }
+            for d in decisions
+        ]
+
+    # =========================================================================
+    # AUTO-EDGE INFERENCE
+    # =========================================================================
+
+    def infer_edges_from_commit(self, commit_message: str, files_changed: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """Infer edges from a commit message.
+
+        Parses commit messages for task references and creates edges:
+        - "task:T-..." references → IMPLEMENTS edge
+        - "depends on task:T-..." → DEPENDS_ON edge
+        - "blocks task:T-..." → BLOCKS edge
+        - "closes task:T-..." → COMPLETES edge (marks task complete)
+
+        Args:
+            commit_message: The commit message to parse
+            files_changed: Optional list of files changed in commit
+
+        Returns:
+            List of edges created
+        """
+        import re
+
+        edges_created = []
+
+        # Find all task references
+        task_refs = re.findall(r'task:T-[\w-]+', commit_message, re.IGNORECASE)
+
+        # Find specific relationship patterns
+        depends_pattern = re.findall(r'depends on (task:T-[\w-]+)', commit_message, re.IGNORECASE)
+        blocks_pattern = re.findall(r'blocks (task:T-[\w-]+)', commit_message, re.IGNORECASE)
+        closes_pattern = re.findall(r'(?:closes?|fixes?|resolves?) (task:T-[\w-]+)', commit_message, re.IGNORECASE)
+
+        # Create a commit node for context
+        commit_id = f"commit:{datetime.now().strftime('%Y%m%d-%H%M%S')}-{os.urandom(2).hex()}"
+        self.graph.add_node(
+            node_id=commit_id,
+            node_type=NodeType.CONTEXT,
+            content=commit_message[:100],
+            properties={
+                "type": "commit",
+                "message": commit_message,
+                "files": files_changed or [],
+            },
+            metadata={"created_at": datetime.now().isoformat()}
+        )
+        self.event_log.log_node_create(commit_id, "CONTEXT", {
+            "type": "commit",
+            "message": commit_message,
+        })
+
+        # Create IMPLEMENTS edges for all referenced tasks
+        for task_id in task_refs:
+            task_id_lower = task_id.lower()
+            # Find the actual task ID (case-insensitive match)
+            actual_id = None
+            for node_id in self.graph.nodes:
+                if node_id.lower() == task_id_lower:
+                    actual_id = node_id
+                    break
+
+            if actual_id:
+                self.graph.add_edge(
+                    commit_id, actual_id,
+                    EdgeType.MOTIVATES,
+                    weight=1.0, confidence=1.0
+                )
+                self.event_log.log_edge_create(commit_id, actual_id, "RELATES_TO")
+                edges_created.append({
+                    "type": "IMPLEMENTS",
+                    "from": commit_id,
+                    "to": actual_id,
+                })
+
+        # Handle dependencies
+        for dep_ref in depends_pattern:
+            dep_id = dep_ref.lower()
+            for node_id in self.graph.nodes:
+                if node_id.lower() == dep_id:
+                    # The first task mentioned depends on this one
+                    if task_refs:
+                        first_task = task_refs[0]
+                        for n_id in self.graph.nodes:
+                            if n_id.lower() == first_task.lower():
+                                self.add_dependency(n_id, node_id)
+                                edges_created.append({
+                                    "type": "DEPENDS_ON",
+                                    "from": n_id,
+                                    "to": node_id,
+                                })
+                                break
+                    break
+
+        # Handle closes/fixes (mark tasks complete)
+        for close_ref in closes_pattern:
+            for node_id in self.graph.nodes:
+                if node_id.lower() == close_ref.lower():
+                    self.complete_task(node_id, retrospective=f"Closed via commit: {commit_message[:50]}")
+                    edges_created.append({
+                        "type": "CLOSES",
+                        "commit": commit_id,
+                        "task": node_id,
+                    })
+                    break
+
+        return edges_created
+
+    def infer_edges_from_recent_commits(self, count: int = 10) -> List[Dict[str, Any]]:
+        """Infer edges from recent git commits.
+
+        Reads the last N commits and creates edges for any task references.
+        """
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                ["git", "log", f"-{count}", "--pretty=format:%H|%s"],
+                capture_output=True, text=True, check=True
+            )
+        except Exception:
+            return []
+
+        all_edges = []
+        for line in result.stdout.strip().split("\n"):
+            if "|" in line:
+                commit_hash, message = line.split("|", 1)
+                edges = self.infer_edges_from_commit(message)
+                for edge in edges:
+                    edge["commit_hash"] = commit_hash[:8]
+                all_edges.extend(edges)
+
+        return all_edges
 
     # =========================================================================
     # QUERY OPERATIONS
@@ -2423,6 +2790,95 @@ def cmd_handoff_list(args, manager: GoTProjectManager) -> int:
     return 0
 
 
+def cmd_decision_log(args, manager: GoTProjectManager) -> int:
+    """Log a decision with rationale."""
+    context = {}
+    if args.file:
+        context["file"] = args.file
+
+    decision_id = manager.log_decision(
+        decision=args.decision,
+        rationale=args.rationale,
+        affects=args.affects,
+        alternatives=args.alternatives,
+        context=context if context else None,
+    )
+
+    print(f"Decision logged: {decision_id}")
+    print(f"  Decision: {args.decision}")
+    print(f"  Rationale: {args.rationale}")
+    if args.affects:
+        print(f"  Affects: {', '.join(args.affects)}")
+    if args.alternatives:
+        print(f"  Alternatives considered: {', '.join(args.alternatives)}")
+    return 0
+
+
+def cmd_decision_list(args, manager: GoTProjectManager) -> int:
+    """List all decisions."""
+    decisions = manager.get_decisions()
+
+    if not decisions:
+        print("No decisions logged yet.")
+        return 0
+
+    print(f"Decisions ({len(decisions)}):\n")
+    for d in decisions:
+        print(f"  {d.id}")
+        print(f"    Decision: {d.content}")
+        print(f"    Rationale: {d.properties.get('rationale', 'N/A')}")
+        if d.properties.get("alternatives"):
+            print(f"    Alternatives: {', '.join(d.properties['alternatives'])}")
+        print()
+
+    return 0
+
+
+def cmd_decision_why(args, manager: GoTProjectManager) -> int:
+    """Query why a task was created/modified."""
+    reasons = manager.why(args.task_id)
+
+    if not reasons:
+        print(f"No decisions found affecting {args.task_id}")
+        return 0
+
+    print(f"Why {args.task_id}?\n")
+    for r in reasons:
+        print(f"  {r['decision_id']}")
+        print(f"    Decision: {r['decision']}")
+        print(f"    Rationale: {r['rationale']}")
+        if r["alternatives"]:
+            print(f"    Alternatives: {', '.join(r['alternatives'])}")
+        print()
+
+    return 0
+
+
+def cmd_infer(args, manager: GoTProjectManager) -> int:
+    """Infer edges from git commits."""
+    if args.message:
+        # Analyze a specific message
+        edges = manager.infer_edges_from_commit(args.message)
+        print(f"Analyzing message: {args.message[:50]}...")
+    else:
+        # Analyze recent commits
+        edges = manager.infer_edges_from_recent_commits(args.commits)
+        print(f"Analyzed last {args.commits} commits")
+
+    if not edges:
+        print("\nNo task references found in commits.")
+        return 0
+
+    print(f"\nEdges inferred ({len(edges)}):\n")
+    for edge in edges:
+        if "commit_hash" in edge:
+            print(f"  [{edge['commit_hash']}] {edge['type']}: {edge.get('from', edge.get('commit', ''))} → {edge.get('to', edge.get('task', ''))}")
+        else:
+            print(f"  {edge['type']}: {edge.get('from', '')} → {edge.get('to', '')}")
+
+    return 0
+
+
 def cmd_query(args, manager: GoTProjectManager) -> int:
     """Run a query against the graph."""
     query_str = " ".join(args.query_string)
@@ -2713,6 +3169,31 @@ def main():
     query_parser = subparsers.add_parser("query", help="Query the graph")
     query_parser.add_argument("query_string", nargs="+", help="Query (e.g., 'what blocks task:T-...')")
 
+    # Decision commands (Reasoning Trace Logger)
+    decision_parser = subparsers.add_parser("decision", help="Log decisions with rationale")
+    decision_subparsers = decision_parser.add_subparsers(dest="decision_command")
+
+    # decision log
+    decision_log = decision_subparsers.add_parser("log", help="Log a decision")
+    decision_log.add_argument("decision", help="What was decided")
+    decision_log.add_argument("--rationale", "-r", required=True, help="Why this choice was made")
+    decision_log.add_argument("--affects", "-a", nargs="+", help="Task IDs affected by this decision")
+    decision_log.add_argument("--alternatives", nargs="+", help="Alternatives considered")
+    decision_log.add_argument("--file", "-f", help="File this decision relates to")
+
+    # decision list
+    decision_list = decision_subparsers.add_parser("list", help="List all decisions")
+
+    # decision why
+    decision_why = decision_subparsers.add_parser("why", help="Ask why a task exists")
+    decision_why.add_argument("task_id", help="Task ID to query")
+
+    # Edge inference commands
+    infer_parser = subparsers.add_parser("infer", help="Infer edges from git history")
+    infer_parser.add_argument("--commits", "-n", type=int, default=10,
+                              help="Number of recent commits to analyze")
+    infer_parser.add_argument("--message", "-m", help="Analyze a specific commit message")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -2801,6 +3282,20 @@ def main():
 
     elif args.command == "query":
         return cmd_query(args, manager)
+
+    elif args.command == "decision":
+        if args.decision_command == "log":
+            return cmd_decision_log(args, manager)
+        elif args.decision_command == "list":
+            return cmd_decision_list(args, manager)
+        elif args.decision_command == "why":
+            return cmd_decision_why(args, manager)
+        else:
+            decision_parser.print_help()
+            return 1
+
+    elif args.command == "infer":
+        return cmd_infer(args, manager)
 
     else:
         parser.print_help()
