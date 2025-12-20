@@ -197,6 +197,15 @@ For multi-step tasks requiring structured thinking, use the reasoning framework:
 ```bash
 # Run the demo to see QAPV cycle, verification, and parallel coordination
 python scripts/reasoning_demo.py --quick
+
+# Run with graph persistence (WAL, snapshots, recovery)
+python scripts/reasoning_demo.py --quick --persist
+
+# Run the graph persistence demo
+python examples/graph_persistence_demo.py
+
+# Validate reasoning + persistence integration
+python scripts/validate_reasoning_persistence.py
 ```
 
 **Key components in `cortical.reasoning`:**
@@ -206,13 +215,22 @@ python scripts/reasoning_demo.py --quick
 - **VerificationManager**: Multi-level testing protocols
 - **CrisisManager**: Failure detection and recovery
 
+**Graph Persistence components:**
+- **GraphWAL**: Write-Ahead Log for durable graph operations
+- **GraphSnapshot**: Point-in-time compressed snapshots
+- **GitAutoCommitter**: Automatic git versioning with protected branch safety
+- **GraphRecovery**: 4-level cascade recovery (WAL → Snapshot → Git → Chunks)
+
 **When to use:**
 - Complex multi-step implementations
 - Tasks requiring explicit decision tracking
 - Parallel agent coordination
 - Structured verification workflows
+- **Crash recovery** for long-running reasoning tasks
 
-**Documentation:** [docs/graph-of-thought.md](docs/graph-of-thought.md)
+**Documentation:**
+- [docs/graph-of-thought.md](docs/graph-of-thought.md) - Reasoning framework
+- [docs/graph-recovery-procedures.md](docs/graph-recovery-procedures.md) - Recovery guide
 
 ---
 
@@ -245,6 +263,7 @@ cortical/
 │   ├── cognitive_loop.py  # QAPV cycle implementation
 │   ├── thought_graph.py   # Graph-based thought representation
 │   ├── graph_of_thought.py # Core data structures (ThoughtNode, ThoughtEdge)
+│   ├── graph_persistence.py  # WAL, snapshots, git integration, recovery (2,012 lines)
 │   ├── verification.py    # Multi-level verification
 │   ├── crisis_manager.py  # Failure detection and recovery
 │   ├── production_state.py # Artifact creation tracking
@@ -300,6 +319,9 @@ cortical/
 | Use reasoning framework | `reasoning/` - QAPV loops, thought graphs, verification |
 | Parallel agent coordination | `reasoning/collaboration.py` - ParallelCoordinator |
 | Crisis management | `reasoning/crisis_manager.py` - failure detection, recovery |
+| Graph persistence (WAL) | `reasoning/graph_persistence.py` - GraphWAL, snapshots |
+| Crash recovery | `reasoning/graph_persistence.py` - GraphRecovery (4-level cascade) |
+| Git auto-versioning | `reasoning/graph_persistence.py` - GitAutoCommitter |
 
 **Key data structures:**
 - `Minicolumn`: Core unit with `lateral_connections`, `typed_connections`, `feedforward_connections`, `feedback_connections`
@@ -1221,6 +1243,23 @@ python examples/observability_demo.py
 | List orchestration plans | `python scripts/orchestration_utils.py list` |
 | Verify batch | `python scripts/verify_batch.py --quick` |
 | View orchestration metrics | From Python: `OrchestrationMetrics().get_summary()` |
+| **Reasoning Framework** | |
+| Reasoning demo | `python scripts/reasoning_demo.py --quick` |
+| Reasoning with persistence | `python scripts/reasoning_demo.py --quick --persist` |
+| Graph persistence demo | `python examples/graph_persistence_demo.py` |
+| Validate persistence | `python scripts/validate_reasoning_persistence.py` |
+| **Graph Persistence API** | |
+| Create GraphWAL | `GraphWAL(wal_dir="/path/to/wal")` |
+| Log node | `wal.log_add_node(node_id, node_type, content)` |
+| Log edge | `wal.log_add_edge(source_id, target_id, edge_type)` |
+| Create snapshot | `wal.create_snapshot(graph, compress=True)` |
+| Load snapshot | `graph = wal.load_snapshot(snapshot_id)` |
+| Check recovery needed | `GraphRecovery(wal_dir).needs_recovery()` |
+| Recover graph | `result = GraphRecovery(wal_dir).recover()` |
+| Git auto-commit | `GitAutoCommitter(repo_path).commit_on_save(path, graph)` |
+| **Performance Tests** | |
+| Run perf tests | `python -m pytest tests/performance/test_graph_persistence_perf.py -v` |
+| Run E2E tests | `python -m pytest tests/integration/test_reasoning_persistence_e2e.py -v` |
 
 ### Orchestration Utilities
 
