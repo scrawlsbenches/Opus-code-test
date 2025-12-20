@@ -526,3 +526,553 @@ class TestEndToEndWorkflow:
 
         assert insight_id is not None
         assert "Caching" in ctx.lessons_learned[0]
+
+
+# =============================================================================
+# NEW COMPREHENSIVE INTEGRATION TESTS
+# =============================================================================
+
+
+class TestFullQAPVCycleIntegration:
+    """
+    Test full QAPV cycle with all components integrated.
+
+    Covers: CognitiveLoop + ProductionManager + VerificationManager
+    """
+
+    def test_qapv_with_cognitive_loop_manager(self):
+        """Test QAPV cycle using CognitiveLoopManager directly."""
+        from cortical.reasoning import CognitiveLoopManager, LoopPhase, LoopStatus
+
+        loop_mgr = CognitiveLoopManager()
+        loop = loop_mgr.create_loop("Implement authentication")
+
+        # Start loop in QUESTION phase
+        loop.start(LoopPhase.QUESTION)
+        assert loop.status == LoopStatus.ACTIVE
+        assert loop.current_phase == LoopPhase.QUESTION
+
+        # Transition through phases
+        loop.transition(LoopPhase.ANSWER, "Questions clarified")
+        assert loop.current_phase == LoopPhase.ANSWER
+
+        loop.transition(LoopPhase.PRODUCE, "Solution designed")
+        assert loop.current_phase == LoopPhase.PRODUCE
+
+        loop.transition(LoopPhase.VERIFY, "Implementation complete")
+        assert loop.current_phase == LoopPhase.VERIFY
+
+        # Complete loop
+        from cortical.reasoning import TerminationReason
+        loop.complete(TerminationReason.SUCCESS)
+        assert loop.status == LoopStatus.COMPLETED
+
+    def test_production_manager_with_verification(self):
+        """Test ProductionManager integrated with VerificationManager."""
+        from cortical.reasoning import (
+            ProductionManager, ProductionState,
+            VerificationManager, VerificationLevel, VerificationPhase,
+            create_drafting_checklist, create_refining_checklist
+        )
+
+        prod_mgr = ProductionManager()
+        ver_mgr = VerificationManager()
+
+        # Create production task
+        task = prod_mgr.create_task(
+            goal="Implement login endpoint",
+            description="REST API for user login"
+        )
+
+        # Transition through states with verification at each stage
+        task.transition_to(ProductionState.DRAFTING, "Starting implementation")
+
+        # DRAFTING verification
+        suite = ver_mgr.create_standard_suite(
+            "drafting_checks",
+            "Quick sanity checks"
+        )
+        drafting_checks = create_drafting_checklist()
+        for check in drafting_checks:
+            suite.add_check(check)
+
+        # Mark checks as passed
+        for check in suite.checks:
+            check.mark_passed("Looks good")
+
+        task.transition_to(ProductionState.REFINING, "Initial draft complete")
+
+        # REFINING verification
+        refining_suite = ver_mgr.create_standard_suite(
+            "refining_checks",
+            "Thorough validation"
+        )
+        refining_checks = create_refining_checklist()
+        for check in refining_checks:
+            refining_suite.add_check(check)
+
+        task.transition_to(ProductionState.FINALIZING, "Refinements complete")
+        task.transition_to(ProductionState.COMPLETE, "All checks passed")
+
+        assert task.state == ProductionState.COMPLETE
+        # COMPLETE is a terminal state
+        assert task.state in [ProductionState.COMPLETE, ProductionState.ABANDONED]
+
+    def test_workflow_coordinates_all_qapv_components(self):
+        """Test that ReasoningWorkflow properly coordinates all QAPV components."""
+        workflow = ReasoningWorkflow()
+        ctx = workflow.start_session("Complex QAPV integration test")
+
+        # Verify context has all components initialized
+        assert ctx.thought_graph is not None
+        assert ctx.current_loop_id is not None
+
+        # Go through full cycle
+        workflow.begin_question_phase(ctx)
+        q1 = workflow.record_question(ctx, "What is the requirement?")
+        q2 = workflow.record_question(ctx, "What are the constraints?")
+
+        workflow.begin_answer_phase(ctx)
+        workflow.record_answer(ctx, q1, "Build a REST API")
+        workflow.record_answer(ctx, q2, "Must be stateless")
+        workflow.record_decision(ctx, "Use JWT tokens", "Standard for stateless auth")
+
+        workflow.begin_production_phase(ctx)
+
+        # Create production chunks
+        chunk1 = workflow.create_production_chunk(
+            ctx,
+            name="auth_endpoint",
+            goal="Create authentication endpoint",
+            files=["auth.py"]
+        )
+        chunk2 = workflow.create_production_chunk(
+            ctx,
+            name="tests",
+            goal="Write integration tests",
+            files=["test_auth.py"]
+        )
+
+        workflow.record_artifact(ctx, "auth.py")
+        workflow.record_artifact(ctx, "test_auth.py")
+
+        workflow.begin_verify_phase(ctx)
+        results = workflow.verify(ctx)
+
+        summary = workflow.complete_session(ctx)
+
+        # Verify complete integration
+        assert len(ctx.questions_answered) >= 2
+        assert len(ctx.decisions_made) >= 1
+        assert len(ctx.artifacts_produced) >= 2
+        assert summary['session_id'] == ctx.session_id
+
+
+class TestCrisisAndRecoveryIntegration:
+    """
+    Test crisis management integrated with recovery procedures.
+
+    Covers: CrisisManager + RecoveryProcedures activation
+    """
+
+    def test_crisis_triggers_recovery_suggestions(self):
+        """Test that crisis events trigger appropriate recovery suggestions."""
+        from cortical.reasoning import (
+            CrisisManager, CrisisLevel, RecoveryAction, RecoveryProcedures
+        )
+
+        crisis_mgr = CrisisManager()
+        recovery = RecoveryProcedures()
+
+        # Test HICCUP level
+        hiccup = crisis_mgr.record_crisis(
+            CrisisLevel.HICCUP,
+            "Minor test failure",
+            context={'test': 'test_login'}
+        )
+        suggestions = recovery.suggest_recovery(hiccup)
+        assert RecoveryAction.CONTINUE in suggestions
+
+        # Test OBSTACLE level
+        obstacle = crisis_mgr.record_crisis(
+            CrisisLevel.OBSTACLE,
+            "Tests failing repeatedly",
+            context={'attempts': 3}
+        )
+        suggestions = recovery.suggest_recovery(obstacle)
+        assert RecoveryAction.ADAPT in suggestions or RecoveryAction.ROLLBACK in suggestions
+
+        # Test WALL level
+        wall = crisis_mgr.record_crisis(
+            CrisisLevel.WALL,
+            "Fundamental assumption proven false",
+            context={'assumption': 'API supports feature X'}
+        )
+        suggestions = recovery.suggest_recovery(wall)
+        assert RecoveryAction.ESCALATE in suggestions
+
+    def test_workflow_crisis_activates_recovery(self):
+        """Test workflow crisis reporting activates recovery procedures."""
+        from cortical.reasoning import CrisisLevel
+
+        workflow = ReasoningWorkflow()
+        ctx = workflow.start_session("Task with crisis")
+
+        workflow.begin_question_phase(ctx)
+        workflow.begin_answer_phase(ctx)
+        workflow.begin_production_phase(ctx)
+
+        # Report a crisis
+        crisis = workflow.report_crisis(
+            ctx,
+            CrisisLevel.OBSTACLE,
+            "Implementation blocked by dependency"
+        )
+
+        assert crisis is not None
+        assert crisis.level == CrisisLevel.OBSTACLE
+
+        # Workflow should track crisis
+        workflow_summary = workflow.get_workflow_summary()
+        assert workflow_summary['crises']['unresolved'] >= 1
+
+    def test_repeated_failure_escalation(self):
+        """Test that repeated failures escalate crisis level."""
+        from cortical.reasoning import (
+            CrisisManager, CrisisLevel, RepeatedFailureTracker
+        )
+
+        crisis_mgr = CrisisManager()
+
+        # Create failure tracker
+        tracker = RepeatedFailureTracker(issue_description="Tests failing")
+
+        # Record multiple attempts
+        tracker.record_attempt(
+            "Wrong import path",
+            "Fixed import",
+            "Still failing"
+        )
+        assert len(tracker.attempts) == 1
+
+        tracker.record_attempt(
+            "Missing dependency",
+            "Installed package",
+            "Still failing"
+        )
+        assert len(tracker.attempts) == 2
+
+        tracker.record_attempt(
+            "API changed",
+            "Updated calls",
+            "Still failing"
+        )
+        assert len(tracker.attempts) == 3
+
+        # After 3 attempts, should recommend escalation
+        assert tracker.should_escalate()
+
+
+class TestParallelCoordinationIntegration:
+    """
+    Test parallel coordination with boundary enforcement.
+
+    Covers: ClaudeCodeSpawner + ParallelCoordinator
+    """
+
+    def test_parallel_coordinator_boundary_validation(self):
+        """Test ParallelCoordinator validates boundaries before spawning."""
+        from cortical.reasoning import (
+            ParallelCoordinator, ParallelWorkBoundary, SequentialSpawner
+        )
+
+        spawner = SequentialSpawner()
+        coordinator = ParallelCoordinator(spawner)
+
+        # Create non-conflicting boundaries
+        boundary1 = ParallelWorkBoundary(
+            agent_id="agent-1",
+            scope_description="Implement auth module"
+        )
+        boundary1.add_file("auth.py", write_access=True)
+        boundary1.add_file("utils.py", write_access=False)
+
+        boundary2 = ParallelWorkBoundary(
+            agent_id="agent-2",
+            scope_description="Implement user module"
+        )
+        boundary2.add_file("user.py", write_access=True)
+        boundary2.add_file("utils.py", write_access=False)
+
+        # Should be able to spawn (different write files)
+        can_spawn, issues = coordinator.can_spawn([boundary1, boundary2])
+        assert can_spawn
+        assert len(issues) == 0
+
+    def test_parallel_coordinator_detects_conflicts(self):
+        """Test ParallelCoordinator detects file conflicts."""
+        from cortical.reasoning import (
+            ParallelCoordinator, ParallelWorkBoundary, SequentialSpawner
+        )
+
+        spawner = SequentialSpawner()
+        coordinator = ParallelCoordinator(spawner)
+
+        # Create conflicting boundaries
+        boundary1 = ParallelWorkBoundary(
+            agent_id="agent-1",
+            scope_description="Refactor module A"
+        )
+        boundary1.add_file("shared.py", write_access=True)
+
+        boundary2 = ParallelWorkBoundary(
+            agent_id="agent-2",
+            scope_description="Refactor module B"
+        )
+        boundary2.add_file("shared.py", write_access=True)  # Conflict!
+
+        # Should detect conflict
+        can_spawn, issues = coordinator.can_spawn([boundary1, boundary2])
+        assert not can_spawn
+        assert len(issues) >= 1
+        assert "conflict" in issues[0].lower()
+
+    def test_claude_code_spawner_task_generation(self):
+        """Test ClaudeCodeSpawner generates proper task configs."""
+        from cortical.reasoning import (
+            ClaudeCodeSpawner, ParallelWorkBoundary
+        )
+
+        spawner = ClaudeCodeSpawner()
+
+        # Create boundary
+        boundary = ParallelWorkBoundary(
+            agent_id="test-agent",
+            scope_description="Implement feature X"
+        )
+        boundary.add_file("feature.py", write_access=True)
+        boundary.add_file("base.py", write_access=False)
+
+        # Prepare agent
+        configs = spawner.prepare_agents([
+            ("Implement feature X", boundary)
+        ])
+
+        assert len(configs) == 1
+        config = configs[0]
+
+        # Verify config structure
+        assert config.agent_id is not None
+        assert "feature x" in config.description.lower()
+        assert "feature.py" in config.prompt
+        assert "base.py" in config.prompt
+
+
+class TestVerificationFailureAnalysisIntegration:
+    """
+    Test verification integrated with failure analysis.
+
+    Covers: VerificationSuite + FailureAnalyzer + RegressionDetector
+    """
+
+    def test_verification_suite_with_failure_analyzer(self):
+        """Test VerificationSuite failures are analyzed by FailureAnalyzer."""
+        from cortical.reasoning import (
+            VerificationManager, VerificationCheck, VerificationLevel,
+            VerificationPhase, VerificationFailure, FailureAnalyzer
+        )
+
+        ver_mgr = VerificationManager()
+        analyzer = FailureAnalyzer()
+
+        # Create suite with checks
+        suite = ver_mgr.create_standard_suite("test_suite", "Test verification")
+
+        check = VerificationCheck(
+            name="import_test",
+            description="Test imports work",
+            level=VerificationLevel.UNIT,
+            phase=VerificationPhase.DRAFTING
+        )
+        suite.add_check(check)
+
+        # Simulate failure
+        check.mark_failed("ImportError: No module named 'nonexistent'")
+
+        # Create failure record
+        failure = VerificationFailure(
+            check=check,
+            observed="ImportError: No module named 'nonexistent'",
+            expected_vs_actual="Expected: import succeeds, Actual: ImportError"
+        )
+
+        # Analyze failure
+        analysis = analyzer.analyze_failure(failure)
+
+        assert 'likely_cause' in analysis
+        assert 'matched_patterns' in analysis
+        assert len(analysis['matched_patterns']) >= 1
+        assert 'import_error' in analysis['matched_patterns']
+
+    def test_regression_detector_tracks_history(self):
+        """Test RegressionDetector tracks verification history."""
+        from cortical.reasoning import (
+            RegressionDetector, VerificationStatus
+        )
+
+        detector = RegressionDetector()
+
+        # Save baseline
+        baseline = {
+            'test_auth': VerificationStatus.PASSED,
+            'test_user': VerificationStatus.PASSED,
+            'test_api': VerificationStatus.PASSED,
+        }
+        detector.save_baseline('main', baseline)
+
+        # Current results with regression
+        current = {
+            'test_auth': VerificationStatus.PASSED,
+            'test_user': VerificationStatus.FAILED,  # Regression!
+            'test_api': VerificationStatus.PASSED,
+        }
+
+        # Detect regressions
+        regressions = detector.detect_regression(current, baseline_name='main')
+
+        assert len(regressions) == 1
+        assert regressions[0]['test_name'] == 'test_user'
+        assert regressions[0]['baseline_status'] == VerificationStatus.PASSED
+        assert regressions[0]['current_status'] == VerificationStatus.FAILED
+
+    def test_workflow_verification_uses_failure_analysis(self):
+        """Test workflow verification integrates failure analysis."""
+        from cortical.reasoning import VerificationLevel
+
+        workflow = ReasoningWorkflow()
+        ctx = workflow.start_session("Test with verification")
+
+        workflow.begin_question_phase(ctx)
+        workflow.begin_answer_phase(ctx)
+        workflow.begin_production_phase(ctx)
+        workflow.record_artifact(ctx, "implementation.py")
+
+        # Begin verify phase
+        workflow.begin_verify_phase(ctx)
+
+        # Verify phase should create verification suite
+        assert ctx.current_verification_suite is not None
+
+
+class TestThoughtGraphCognitiveLoopIntegration:
+    """
+    Test thought graph integration with cognitive loop.
+
+    Covers: ThoughtGraph captures reasoning flow during QAPV phases
+    """
+
+    def test_graph_captures_qapv_flow(self):
+        """Test ThoughtGraph captures complete QAPV reasoning flow."""
+        from cortical.reasoning import NodeType, EdgeType
+
+        workflow = ReasoningWorkflow()
+        ctx = workflow.start_session("Graph integration test")
+
+        # Question phase
+        workflow.begin_question_phase(ctx)
+        q1 = workflow.record_question(ctx, "What is the goal?")
+        q2 = workflow.record_question(ctx, "What are the constraints?")
+
+        # Answer phase
+        workflow.begin_answer_phase(ctx)
+        a1 = workflow.record_answer(ctx, q1, "Build a search feature")
+        a2 = workflow.record_answer(ctx, q2, "Must be fast (<100ms)")
+
+        # Verify graph has nodes
+        question_nodes = ctx.thought_graph.nodes_of_type(NodeType.QUESTION)
+        answer_nodes = ctx.thought_graph.nodes_of_type(NodeType.FACT)  # Answers are stored as FACT nodes
+
+        assert len(question_nodes) >= 2
+        assert len(answer_nodes) >= 2
+
+        # Verify edges exist
+        edges_from_a1 = ctx.thought_graph.get_edges_from(a1)
+        assert len(edges_from_a1) > 0
+
+    def test_graph_visualization_exports(self):
+        """Test ThoughtGraph can export for visualization."""
+        workflow = ReasoningWorkflow()
+        ctx = workflow.start_session("Visualization test")
+
+        workflow.begin_question_phase(ctx)
+        workflow.record_question(ctx, "How to implement?")
+        workflow.begin_answer_phase(ctx)
+        workflow.record_decision(ctx, "Use algorithm X", "Most efficient")
+
+        # Export graph to DOT format
+        dot = ctx.thought_graph.to_dot()
+        assert dot is not None
+        assert len(dot) > 0
+        assert "digraph" in dot  # DOT format starts with digraph
+
+    def test_graph_merges_pattern_graphs(self):
+        """Test merging pattern graphs into workflow graph."""
+        from cortical.reasoning import create_investigation_graph
+
+        workflow = ReasoningWorkflow()
+        ctx = workflow.start_session("Pattern merge test")
+
+        # Create investigation pattern
+        investigation = create_investigation_graph(
+            "Why is performance slow?",
+            initial_hypotheses=[
+                "Database queries too slow",
+                "Frontend rendering bottleneck",
+                "Network latency"
+            ]
+        )
+
+        # Merge into workflow graph
+        initial_count = ctx.thought_graph.node_count()
+
+        for node_id, node in investigation.nodes.items():
+            if not ctx.thought_graph.get_node(node_id):
+                ctx.thought_graph.add_node(
+                    node_id,
+                    node.node_type,
+                    node.content,
+                    properties=node.properties
+                )
+
+        # Graph should have more nodes
+        assert ctx.thought_graph.node_count() > initial_count
+
+    def test_graph_tracks_decision_dependencies(self):
+        """Test graph tracks dependencies between decisions."""
+        from cortical.reasoning import NodeType
+
+        workflow = ReasoningWorkflow()
+        ctx = workflow.start_session("Decision tracking test")
+
+        workflow.begin_question_phase(ctx)
+        workflow.begin_answer_phase(ctx)
+
+        # Record decisions
+        d1 = workflow.record_decision(
+            ctx,
+            "Use PostgreSQL for database",
+            "Need ACID guarantees"
+        )
+
+        d2 = workflow.record_decision(
+            ctx,
+            "Use SQLAlchemy ORM",
+            "Works well with PostgreSQL"
+        )
+
+        # Verify decisions exist in graph
+        decision_nodes = ctx.thought_graph.nodes_of_type(NodeType.DECISION)
+        assert len(decision_nodes) >= 2
+
+        # Verify both decisions are in context
+        assert len(ctx.decisions_made) >= 2

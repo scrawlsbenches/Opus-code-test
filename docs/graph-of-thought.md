@@ -1,1173 +1,1973 @@
 # Graph of Thought: Network-Based Reasoning for Software Development
 
 <!--
-  AUTHOR'S NOTE (for the next developer):
+  AUTHOR'S NOTE:
 
-  This document models thinking as a GRAPH, not a sequence.
+  This document explains how to use Graph of Thought (GoT) for complex reasoning
+  tasks in software development. GoT extends Chain of Thought by representing
+  reasoning as a network rather than a linear sequence.
 
-  The Complex Reasoning Workflow (docs/complex-reasoning-workflow.md) describes
-  PROCESSES - loops, phases, protocols. This document describes STRUCTURES -
-  how ideas connect, cluster, and evolve.
-
-  Think of it this way:
-  - Complex Reasoning Workflow = the VERBS of thinking (question, produce, verify)
-  - Graph of Thought = the NOUNS of thinking (concepts, connections, clusters)
-
-  Use this when you need to:
-  - Understand how different parts of a problem relate
-  - Navigate complex decision spaces
-  - Merge multiple lines of investigation
-  - Avoid losing track of important threads
-  - Communicate the "shape" of a problem to others
-
-  The graph metaphor is powerful because software itself is a graph:
-  modules depend on modules, functions call functions, concepts reference concepts.
-  Thinking about software in graph terms aligns cognition with the domain.
+  Read this when you need to:
+  - Model complex problems with multiple hypotheses
+  - Track dependencies between decisions
+  - Explore multiple solution paths simultaneously
+  - Visualize reasoning structures
+  - Debug your own thought process
 -->
 
-## Preamble: Why Graphs?
+## Table of Contents
 
-Linear thinking is easy to follow but misses connections. Hierarchical thinking (trees) captures structure but forces false exclusivity. **Graph thinking** captures reality: ideas connect in networks, not chains.
-
-```
-LINEAR THINKING:           TREE THINKING:           GRAPH THINKING:
-
-A → B → C → D              A                        A ←──→ B
-                          / \                       ↑ ╲   ╱ ↑
-                         B   C                      │  ╲ ╱  │
-                        / \   \                     │   ╳   │
-                       D   E   F                    │  ╱ ╲  │
-                                                    ↓ ╱   ╲ ↓
-                                                    C ←──→ D
-
-"First A, then B..."    "A contains B and C..."    "A relates to B, C, D
-                                                    in different ways..."
-```
-
-**Key insight:** Real problems have:
-- Multiple entry points (you can start from different angles)
-- Cross-cutting concerns (ideas that touch many areas)
-- Feedback loops (later discoveries change earlier understanding)
-- Emergent clusters (groups of tightly-related concepts)
-
-A graph model captures all of these.
+1. [What is Graph of Thought?](#what-is-graph-of-thought)
+2. [When to Use GoT vs CoT](#when-to-use-got-vs-cot)
+3. [Core Concepts](#core-concepts)
+4. [Node Types Reference](#node-types-reference)
+5. [Edge Types Reference](#edge-types-reference)
+6. [Basic Usage](#basic-usage)
+7. [Pattern Factories](#pattern-factories)
+8. [Complex Examples](#complex-examples)
+9. [Visualization](#visualization)
+10. [Integration with CognitiveLoop](#integration-with-cognitiveloop)
+11. [Advanced Operations](#advanced-operations)
+12. [Best Practices](#best-practices)
 
 ---
 
-## Part 1: The Anatomy of a Thought Graph
+## What is Graph of Thought?
 
-### 1.1 Nodes: Units of Thought
+**Graph of Thought (GoT)** is a reasoning framework that represents thoughts and their relationships as a directed graph. Unlike Chain of Thought (linear sequence), GoT captures:
 
-<!--
-  NODES are the atoms of thinking.
-  They represent discrete concepts, decisions, questions, or facts.
-  The key is making them small enough to be clear but large enough to be meaningful.
--->
+- **Multiple hypotheses** being explored in parallel
+- **Dependencies** between ideas and decisions
+- **Contradictions** and conflicts between options
+- **Emergent clusters** of related concepts
+- **Feedback loops** in reasoning
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         NODE TYPES                                   │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  CONCEPT NODE [C]                                                   │
-│  ├── Represents an idea, pattern, or abstraction                    │
-│  ├── Example: "Dependency Injection", "Event Sourcing"              │
-│  └── Properties: name, definition, examples, counter-examples       │
-│                                                                      │
-│  QUESTION NODE [?]                                                  │
-│  ├── Represents something unknown or uncertain                      │
-│  ├── Example: "How should we handle auth?", "What's the bottleneck?│
-│  └── Properties: question, context, candidate_answers, urgency      │
-│                                                                      │
-│  DECISION NODE [D]                                                  │
-│  ├── Represents a choice point with options                         │
-│  ├── Example: "REST vs GraphQL", "Monolith vs Microservices"        │
-│  └── Properties: options[], criteria[], chosen, rationale           │
-│                                                                      │
-│  FACT NODE [F]                                                      │
-│  ├── Represents verified information                                │
-│  ├── Example: "Response time is 200ms", "Test coverage is 85%"      │
-│  └── Properties: claim, evidence, confidence, source                │
-│                                                                      │
-│  TASK NODE [T]                                                      │
-│  ├── Represents work to be done                                     │
-│  ├── Example: "Implement caching", "Write integration tests"        │
-│  └── Properties: description, status, dependencies, assignee        │
-│                                                                      │
-│  ARTIFACT NODE [A]                                                  │
-│  ├── Represents something created                                   │
-│  ├── Example: "auth.py module", "API documentation"                 │
-│  └── Properties: path, type, version, created_by                    │
-│                                                                      │
-│  INSIGHT NODE [I]                                                   │
-│  ├── Represents a learning or realization                           │
-│  ├── Example: "The bottleneck is in serialization"                  │
-│  └── Properties: insight, how_discovered, implications              │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### 1.2 Edges: Relationships Between Thoughts
-
-<!--
-  EDGES are the connections.
-  They represent HOW thoughts relate, not just THAT they relate.
-  Typed edges are crucial - "relates to" is too vague to be useful.
--->
+### The Core Metaphor
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         EDGE TYPES                                   │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  SEMANTIC EDGES (meaning relationships)                             │
-│  ├── REQUIRES: A requires B to exist/function                       │
-│  ├── ENABLES: A makes B possible                                    │
-│  ├── CONFLICTS: A and B cannot both be true/chosen                  │
-│  ├── SUPPORTS: A provides evidence for B                            │
-│  ├── REFUTES: A provides evidence against B                         │
-│  ├── SIMILAR: A and B share significant properties                  │
-│  ├── CONTRASTS: A and B differ in important ways                    │
-│  └── CONTAINS: A includes B as a component                          │
-│                                                                      │
-│  TEMPORAL EDGES (time relationships)                                │
-│  ├── PRECEDES: A must happen before B                               │
-│  ├── FOLLOWS: A happens after B                                     │
-│  ├── TRIGGERS: A causes B to happen                                 │
-│  └── BLOCKS: A prevents B until resolved                            │
-│                                                                      │
-│  EPISTEMIC EDGES (knowledge relationships)                          │
-│  ├── ANSWERS: A answers question B                                  │
-│  ├── RAISES: A raises question B                                    │
-│  ├── ASSUMES: A depends on B being true                             │
-│  ├── VALIDATES: A confirms B is true                                │
-│  └── INVALIDATES: A proves B is false                               │
-│                                                                      │
-│  PRACTICAL EDGES (work relationships)                               │
-│  ├── IMPLEMENTS: A implements concept/decision B                    │
-│  ├── TESTS: A tests/verifies B                                      │
-│  ├── DOCUMENTS: A documents B                                       │
-│  ├── DEPENDS_ON: A needs B to be complete first                     │
-│  └── PRODUCES: A creates B as output                                │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+Chain of Thought:          Graph of Thought:
+A → B → C → D             A ──┬──► B ──► E
+                          │   │    │
+                          │   └──► C ──► F
+                          │        │
+                          └──────► D ──► G
 ```
 
-**Edge notation:**
-```
-A ──REQUIRES──> B      (directed: A requires B)
-A <──SIMILAR──> B      (undirected: A and B are similar)
-A ──CONFLICTS──X B     (X marks conflict)
-A ═══CRITICAL═══> B    (double line = high importance)
-A ···WEAK···> B        (dotted = tentative/uncertain)
-```
-
-### 1.3 Clusters: Groups of Related Thoughts
-
-<!--
-  CLUSTERS emerge when nodes are densely connected.
-  They represent coherent sub-problems or topic areas.
-  Identifying clusters helps manage complexity.
--->
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     CLUSTER IDENTIFICATION                           │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  A cluster forms when:                                              │
-│  ├── Multiple nodes share many edges                                │
-│  ├── Nodes can be discussed independently of others                 │
-│  ├── There's a unifying concept or purpose                          │
-│  └── Changes to one likely affect others in the group               │
-│                                                                      │
-│  Example: Authentication Cluster                                    │
-│  ┌─────────────────────────────────────────────────┐                │
-│  │  [C] JWT Tokens                                 │                │
-│  │       ↕                                         │                │
-│  │  [D] Token vs Session  ←→  [?] Token Expiry    │                │
-│  │       ↓                                         │                │
-│  │  [T] Implement Auth   ──→  [A] auth.py         │                │
-│  │       ↑                         ↓               │                │
-│  │  [F] "OWASP recommends..."  ──→ [T] Add Tests  │                │
-│  └─────────────────────────────────────────────────┘                │
-│                                                                      │
-│  Cluster properties:                                                │
-│  ├── Name: Authentication                                           │
-│  ├── Core nodes: 7                                                  │
-│  ├── Internal edges: 12                                             │
-│  ├── External edges: 3 (connections to other clusters)              │
-│  └── Coherence: High (most nodes connect to most others)            │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### 1.4 Graph Properties
-
-**Useful metrics for thought graphs:**
-
-| Property | What It Measures | Implication |
-|----------|-----------------|-------------|
-| **Node count** | How many concepts | Complexity indicator |
-| **Edge density** | Connections / possible connections | How interconnected |
-| **Cluster count** | Distinct topic areas | Natural decomposition |
-| **Orphan nodes** | Nodes with no edges | Forgotten or independent |
-| **Hub nodes** | Nodes with many edges | Central concepts |
-| **Bridge nodes** | Connect different clusters | Integration points |
-| **Question ratio** | Question nodes / total | Uncertainty level |
-| **Decision ratio** | Undecided / total decisions | Commitment level |
+Real reasoning isn't linear - it branches, merges, loops back, and forms clusters. GoT makes this explicit.
 
 ---
 
-## Part 2: Graph Operations
+## When to Use GoT vs CoT
 
-<!--
-  OPERATIONS are how you manipulate the graph.
-  These are the verbs that act on the noun-structure.
--->
+### Use Chain of Thought (CoT) when:
+- ✅ Problem has a clear, linear solution path
+- ✅ One hypothesis at a time
+- ✅ Simple cause-effect relationships
+- ✅ Quick, straightforward tasks
 
-### 2.1 Construction Operations
+**Example:** "Implement a function to validate email addresses"
 
-**ADD NODE:**
-```
-Before: [A] ──→ [B]
+### Use Graph of Thought (GoT) when:
+- ✅ Multiple competing hypotheses
+- ✅ Complex dependencies between decisions
+- ✅ Need to explore trade-offs
+- ✅ Debugging with many possible causes
+- ✅ Feature design with multiple options
+- ✅ Reasoning needs to be visualized or shared
 
-Action: Add node C related to A
+**Example:** "Why is the API slow?" (many possible causes, complex dependencies)
 
-After:  [A] ──→ [B]
-         │
-         └──→ [C]
-```
+---
 
-**ADD EDGE:**
-```
-Before: [A]     [B]     [C]
-         │               │
-         └──────────────┘
+## Core Concepts
 
-Action: Add edge B──→C
+### 1. Nodes: Units of Thought
 
-After:  [A]     [B] ──→ [C]
-         │               │
-         └──────────────┘
-```
+Each node represents a discrete piece of reasoning:
 
-**MERGE NODES:**
-```
-Before: [A: "Auth tokens"]    [B: "JWT handling"]
-              │                      │
-         (many similar edges)
+```python
+from cortical.reasoning.graph_of_thought import ThoughtNode, NodeType
 
-Action: Merge A and B (they're really the same concept)
-
-After:  [AB: "Auth tokens (JWT)"]
-              │
-         (combined edges)
-```
-
-**SPLIT NODE:**
-```
-Before: [A: "Database layer"]
-         │
-         └──→ (many diverse connections)
-
-Action: Split A (it's really multiple concepts)
-
-After:  [A1: "Query building"]    [A2: "Connection pooling"]
-              │                          │
-         (subset of edges)         (subset of edges)
+node = ThoughtNode(
+    id="Q1",
+    node_type=NodeType.QUESTION,
+    content="Why is the API slow?",
+    properties={
+        'context': 'Production environment',
+        'urgency': 'high'
+    },
+    metadata={
+        'created': '2025-12-20',
+        'tags': ['performance', 'api']
+    }
+)
 ```
 
-### 2.2 Traversal Operations
+### 2. Edges: Relationships Between Thoughts
 
-**DEPTH-FIRST EXPLORATION:**
-```
-Start at node, follow one path to its end before backtracking.
+Edges represent HOW thoughts relate:
 
-Use when: Deep understanding of one thread needed
-Example: "Let me fully understand authentication before moving on"
+```python
+from cortical.reasoning.graph_of_thought import ThoughtEdge, EdgeType
 
-        [Start]
-            │
-            ▼
-        [Auth] ──→ [Tokens] ──→ [Expiry] ──→ [Refresh]
-                                               │
-                                          (backtrack)
-                                               │
-                      [Sessions] ◄─────────────┘
+edge = ThoughtEdge(
+    source_id="Q1",
+    target_id="H1",
+    edge_type=EdgeType.EXPLORES,
+    weight=0.8,  # Strength of relationship
+    confidence=0.9  # How confident we are in this relationship
+)
 ```
 
-**BREADTH-FIRST EXPLORATION:**
-```
-Start at node, explore all immediate neighbors before going deeper.
+### 3. Clusters: Groups of Related Thoughts
 
-Use when: Survey of related concepts needed
-Example: "What all connects to the API module?"
+Clusters emerge when nodes are densely connected:
 
-Level 0:            [API]
-                   / | \ \
-Level 1:    [Auth] [DB] [Cache] [Logging]
-              │      │      │       │
-Level 2:   [...] [...] [...] [...]
-```
+```python
+from cortical.reasoning.graph_of_thought import ThoughtCluster
 
-**SHORTEST PATH:**
-```
-Find the minimum-hop connection between two nodes.
-
-Use when: Understanding how concepts relate
-Example: "How does user input get to the database?"
-
-[User Input] ──→ [Validation] ──→ [Controller] ──→ [ORM] ──→ [Database]
-             (4 hops - this is the dependency chain)
-```
-
-**CLUSTER HOPPING:**
-```
-Move between clusters via bridge nodes.
-
-Use when: Seeing the big picture across topics
-Example: "How do our clusters relate?"
-
-[Auth Cluster] ═══[User Model]═══ [Data Cluster]
-                       │
-                       │
-               [API Cluster]
-```
-
-### 2.3 Analysis Operations
-
-**FIND CYCLES:**
-```
-Detect circular dependencies or reasoning.
-
-A ──→ B ──→ C ──→ A  (cycle!)
-
-Use when: Checking for circular dependencies
-Warning: Cycles in requirements = deadlock
-         Cycles in reasoning = may need to break with assumption
-```
-
-**FIND ORPHANS:**
-```
-Nodes with no connections.
-
-[A] ──→ [B]     [C] ←── [D]     [E]  ← orphan!
-
-Use when: Identifying forgotten or independent items
-Action: Either connect them or question their relevance
-```
-
-**FIND HUBS:**
-```
-Nodes with many connections (high degree).
-
-         [X]     [Y]
-           \     /
-        [A]─[HUB]─[B]
-           /     \
-         [C]     [D]
-
-Use when: Identifying core concepts
-Warning: Hubs are single points of failure
-Insight: Changes to hubs ripple widely
-```
-
-**FIND BRIDGES:**
-```
-Nodes whose removal would disconnect clusters.
-
-[Cluster A]═══[Bridge]═══[Cluster B]
-
-Use when: Identifying integration points
-Warning: Bridges are bottlenecks and risks
-Insight: May need redundant bridges for resilience
-```
-
-### 2.4 Transformation Operations
-
-**PRUNE:**
-```
-Remove nodes/edges that are no longer relevant.
-
-Before: [A] ──→ [B] ──→ [C]
-              ↘   ↓
-            [X] [Y]  (decided these are out of scope)
-
-After:  [A] ──→ [B] ──→ [C]
-
-Document: Why X and Y were pruned (see Part 3 of complex-reasoning-workflow.md)
-```
-
-**COLLAPSE:**
-```
-Replace a cluster with a single representative node.
-
-Before: ┌───────────────┐
-        │ [A]─[B]─[C]  │
-        │  │   │   │   │
-        │ [D]─[E]─[F]  │
-        └───────────────┘
-              │
-              ▼
-After:  [Auth Cluster]  (treat as single unit for higher-level thinking)
-```
-
-**EXPAND:**
-```
-Replace a collapsed node with its internal structure.
-
-Before: [Auth Cluster] ──→ [Data Cluster]
-
-After:  ┌───────────────┐
-        │ [A]─[B]─[C]  │──→ [Data Cluster]
-        │  │   │   │   │
-        │ [D]─[E]─[F]  │
-        └───────────────┘
-```
-
-**LAYER:**
-```
-Organize nodes into abstraction levels.
-
-Level 3 (Abstract):   [System Design]
-                           │
-Level 2 (Module):     [Auth]────[Data]────[API]
-                        │         │         │
-Level 1 (Component):  [JWT]     [ORM]    [REST]
-                        │         │         │
-Level 0 (Concrete):  [token.py][models.py][routes.py]
+cluster = ThoughtCluster(
+    id="CL1",
+    name="Authentication Issues",
+    node_ids={"Q1", "H1", "H2", "E1"},
+    properties={
+        'internal_edges': 8,
+        'coherence': 0.85
+    }
+)
 ```
 
 ---
 
-## Part 3: Graph Patterns in Software Development
+## Node Types Reference
 
-<!--
-  PATTERNS are recurring graph structures.
-  Recognizing them speeds up understanding and decision-making.
--->
+### Core Types
 
-### 3.1 The Requirements Graph
+#### CONCEPT
+**What:** An idea, pattern, or abstraction
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    REQUIREMENTS GRAPH PATTERN                        │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│              [User Need]                                            │
-│               /   |   \                                             │
-│              /    |    \                                            │
-│       [Req A] [Req B] [Req C]                                       │
-│          |      / \      |                                          │
-│          |     /   \     |                                          │
-│       [Spec] [Spec] [Spec]                                          │
-│          \     |     /                                              │
-│           \    |    /                                               │
-│            [Design]                                                 │
-│               |                                                      │
-│         [Implementation]                                            │
-│                                                                      │
-│  Key edges:                                                         │
-│  ├── User Need ──DECOMPOSES_TO──> Requirements                      │
-│  ├── Requirements ──SPECIFIES──> Specifications                     │
-│  ├── Specifications ──CONSTRAINS──> Design                          │
-│  └── Design ──GUIDES──> Implementation                              │
-│                                                                      │
-│  Traversal: Top-down for implementation, bottom-up for validation   │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+**When to use:** Representing architectural patterns, design principles, or abstract ideas
+
+**Example:**
+```python
+graph.add_node(
+    node_id="C1",
+    node_type=NodeType.CONCEPT,
+    content="Dependency Injection",
+    properties={
+        'definition': 'Pattern for providing dependencies externally',
+        'examples': ['FastAPI dependencies', 'Spring DI']
+    }
+)
 ```
 
-### 3.2 The Investigation Graph
+#### QUESTION
+**What:** Something unknown or uncertain
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    INVESTIGATION GRAPH PATTERN                       │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│               [Initial Question]                                    │
-│                /      |      \                                      │
-│               /       |       \                                     │
-│       [Hypothesis A] [Hypothesis B] [Hypothesis C]                  │
-│            |              |              |                          │
-│       [Evidence]     [Evidence]     [Evidence]                      │
-│            |              X              |                          │
-│       [Supported]    [Refuted]     [Inconclusive]                   │
-│            |                             |                          │
-│            └──────────┬─────────────────┘                           │
-│                       |                                              │
-│                [More Questions]                                      │
-│                       |                                              │
-│                 [Conclusion]                                        │
-│                                                                      │
-│  Key edges:                                                         │
-│  ├── Question ──GENERATES──> Hypotheses                             │
-│  ├── Hypothesis ──PREDICTS──> Expected Evidence                     │
-│  ├── Evidence ──SUPPORTS/REFUTES──> Hypothesis                      │
-│  └── Conclusion ──ANSWERS──> Question                               │
-│                                                                      │
-│  Traversal: Breadth-first to generate hypotheses,                   │
-│             depth-first to test each one                            │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+**When to use:** Starting investigations, identifying gaps in knowledge
+
+**Example:**
+```python
+graph.add_node(
+    node_id="Q1",
+    node_type=NodeType.QUESTION,
+    content="How should we handle authentication?",
+    properties={
+        'context': 'Multi-tenant SaaS application',
+        'urgency': 'blocking development'
+    }
+)
 ```
 
-### 3.3 The Decision Graph
+#### DECISION
+**What:** A choice point with multiple options
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     DECISION GRAPH PATTERN                           │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│               [Decision Point]                                      │
-│                /      |      \                                      │
-│               /       |       \                                     │
-│       [Option A]  [Option B]  [Option C]                            │
-│           |           |           |                                  │
-│      ┌────┴────┐ ┌────┴────┐ ┌────┴────┐                            │
-│      │Pro  Con│ │Pro  Con│ │Pro  Con│                               │
-│      └────┬────┘ └────┬────┘ └────┬────┘                            │
-│           |           |           |                                  │
-│       [Criteria Evaluation]──────┘                                   │
-│               |                                                      │
-│         [Selected: B]                                               │
-│               |                                                      │
-│         [Rationale]                                                 │
-│               |                                                      │
-│      [Implementation Plan]                                          │
-│                                                                      │
-│  Key edges:                                                         │
-│  ├── Decision ──HAS_OPTION──> Option                                │
-│  ├── Option ──HAS_PRO/CON──> Argument                               │
-│  ├── Criteria ──EVALUATES──> Options                                │
-│  ├── Selected ──BECAUSE──> Rationale                                │
-│  └── Selection ──ENABLES──> Implementation                          │
-│                                                                      │
-│  Traversal: Breadth-first to enumerate options,                     │
-│             depth-first to evaluate each                            │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+**When to use:** Architectural decisions, technology choices, design trade-offs
+
+**Example:**
+```python
+graph.add_node(
+    node_id="D1",
+    node_type=NodeType.DECISION,
+    content="Choose authentication method",
+    properties={
+        'options': ['OAuth 2.0', 'JWT', 'Session-based'],
+        'decision_maker': 'Tech lead',
+        'status': 'pending'
+    }
+)
 ```
 
-### 3.4 The Debug Graph
+#### FACT
+**What:** Verified, objective information
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                       DEBUG GRAPH PATTERN                            │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│               [Symptom]                                             │
-│                   |                                                  │
-│           [Reproduce Steps]                                         │
-│                   |                                                  │
-│          [Observed Behavior]                                        │
-│               /       \                                             │
-│              /         \                                            │
-│    [Expected]    [Difference]                                       │
-│                       |                                              │
-│              [Possible Causes]                                      │
-│              /    |    |    \                                       │
-│           [A]   [B]   [C]   [D]                                     │
-│            |     |     X     |                                      │
-│         [Test] [Test]     [Test]                                    │
-│            |     X           |                                      │
-│      [Not It] [ROOT CAUSE!]  |                                      │
-│                   |         [Not It]                                │
-│               [Fix]                                                 │
-│                   |                                                  │
-│             [Verify]                                                │
-│                   |                                                  │
-│             [Resolved]                                              │
-│                                                                      │
-│  Key edges:                                                         │
-│  ├── Symptom ──MANIFESTS_AS──> Observed Behavior                    │
-│  ├── Difference ──SUGGESTS──> Possible Causes                       │
-│  ├── Test ──CONFIRMS/ELIMINATES──> Cause                            │
-│  └── Fix ──RESOLVES──> Root Cause                                   │
-│                                                                      │
-│  Traversal: Likelihood-ordered depth-first on causes                │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+**When to use:** Recording measurements, test results, proven constraints
+
+**Example:**
+```python
+graph.add_node(
+    node_id="F1",
+    node_type=NodeType.FACT,
+    content="API response time is 2.3 seconds",
+    properties={
+        'measurement': 2.3,
+        'unit': 'seconds',
+        'evidence': 'Performance test run #42',
+        'confidence': 1.0
+    }
+)
 ```
 
-### 3.5 The Knowledge Graph
+#### TASK
+**What:** Work to be done
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    KNOWLEDGE GRAPH PATTERN                           │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│       [Concept A]═══SIMILAR═══[Concept B]                           │
-│            │                       │                                 │
-│        CONTAINS                REQUIRES                              │
-│            │                       │                                 │
-│       [Detail 1]              [Prereq]                              │
-│            │                       │                                 │
-│        EXAMPLE                 ENABLES                               │
-│            │                       │                                 │
-│       [Instance]              [Concept C]                           │
-│            │                       │                                 │
-│       DOCUMENTED_IN           IMPLEMENTED_BY                         │
-│            │                       │                                 │
-│       [docs/X.md]             [module.py]                           │
-│                                                                      │
-│  Key relationship types:                                            │
-│  ├── Taxonomic: IS_A, CONTAINS, PART_OF                             │
-│  ├── Semantic: SIMILAR, CONTRASTS, RELATES                          │
-│  ├── Causal: ENABLES, REQUIRES, PREVENTS                            │
-│  └── Referential: DOCUMENTED_IN, IMPLEMENTED_BY, TESTED_BY          │
-│                                                                      │
-│  Use for: Building understanding, finding connections,              │
-│           identifying gaps in knowledge                             │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+**When to use:** Tracking implementation steps, creating work breakdown
+
+**Example:**
+```python
+graph.add_node(
+    node_id="T1",
+    node_type=NodeType.TASK,
+    content="Implement caching layer",
+    properties={
+        'status': 'in_progress',
+        'assignee': 'agent-3',
+        'estimated_hours': 4
+    }
+)
 ```
 
----
+#### ARTIFACT
+**What:** Something created (code, docs, tests)
 
-## Part 4: Practical Graph Templates
+**When to use:** Tracking deliverables, linking code to reasoning
 
-### 4.1 Feature Planning Graph
-
-```markdown
-## Feature Graph: [Feature Name]
-
-### Core Nodes
-
-**Goal:** [What we're trying to achieve]
-**Type:** CONCEPT
-
-**User Story:** [As a... I want... So that...]
-**Type:** REQUIREMENT
-**Edges:** ACHIEVES → Goal
-
-**Acceptance Criteria:**
-1. [Criterion 1] **Type:** FACT (when verified)
-2. [Criterion 2]
-3. [Criterion 3]
-**Edges:** VALIDATES → User Story
-
-### Design Nodes
-
-**Approach:** [High-level approach]
-**Type:** DECISION
-**Options explored:** [A, B, C]
-**Selected:** [B]
-**Edges:** IMPLEMENTS → User Story
-
-**Components:**
-- [Component 1] **Type:** ARTIFACT
-- [Component 2] **Type:** ARTIFACT
-**Edges:** PART_OF → Approach
-
-### Implementation Nodes
-
-**Tasks:**
-- [ ] [Task 1] **Type:** TASK **Edges:** PRODUCES → Component 1
-- [ ] [Task 2] **Type:** TASK **Edges:** PRODUCES → Component 2
-- [ ] [Task 3] **Type:** TASK **Edges:** DEPENDS_ON → Task 1, Task 2
-
-### Open Questions
-
-- [?] [Question 1] **Type:** QUESTION **Edges:** BLOCKS → Task 2
-- [?] [Question 2] **Type:** QUESTION **Edges:** RAISED_BY → Component 1
-
-### Graph Visualization
-
-Goal
-  │
-  └──→ User Story
-         │
-         ├──→ Acceptance Criteria (validates)
-         │
-         └──→ Approach (implements)
-                │
-                ├──→ Component 1 ←── Task 1
-                │         ↑
-                │         └── [?] Question 2
-                │
-                └──→ Component 2 ←── Task 2 ←── [?] Question 1
-                          ↑
-                          └── Task 3 (depends on Task 1 & 2)
+**Example:**
+```python
+graph.add_node(
+    node_id="A1",
+    node_type=NodeType.ARTIFACT,
+    content="auth.py module",
+    properties={
+        'path': 'src/auth.py',
+        'type': 'code',
+        'version': 'v1.0',
+        'lines': 234
+    }
+)
 ```
 
-### 4.2 Bug Investigation Graph
+#### INSIGHT
+**What:** A learning or realization discovered during work
 
-```markdown
-## Bug Graph: [Bug Title]
+**When to use:** Capturing "aha!" moments, documenting learnings
 
-### Symptom Cluster
-
-**Observed:** [What user/test sees]
-**Type:** FACT
-
-**Expected:** [What should happen]
-**Type:** FACT
-**Edges:** CONTRASTS → Observed
-
-**Reproduce:**
-1. [Step 1]
-2. [Step 2]
-3. [Bug manifests]
-**Type:** FACT
-**Edges:** PRODUCES → Observed
-
-### Hypothesis Cluster
-
-**Hypothesis A:** [Potential cause]
-**Type:** QUESTION
-**Prior likelihood:** [High/Medium/Low]
-**Test:** [How to verify]
-**Result:** [Confirmed/Refuted/Inconclusive]
-**Edges:** COULD_EXPLAIN → Observed
-
-**Hypothesis B:** [Potential cause]
-**Type:** QUESTION
-**Prior likelihood:** [High/Medium/Low]
-**Test:** [How to verify]
-**Result:** [Confirmed/Refuted/Inconclusive]
-**Edges:** COULD_EXPLAIN → Observed
-
-### Resolution Cluster
-
-**Root Cause:** [The actual cause]
-**Type:** INSIGHT
-**Edges:** EXPLAINS → Observed, ANSWERS → Hypothesis B
-
-**Fix:** [What we changed]
-**Type:** TASK
-**Edges:** RESOLVES → Root Cause
-
-**Verification:** [How we confirmed fix]
-**Type:** FACT
-**Edges:** VALIDATES → Fix
-
-### Graph Visualization
-
-[Observed] ←─CONTRASTS─→ [Expected]
-     ↑
-     │
-[Reproduce]
-     │
-     └──COULD_EXPLAIN──→ [Hypothesis A] ──TEST──→ [Refuted]
-     │
-     └──COULD_EXPLAIN──→ [Hypothesis B] ──TEST──→ [Confirmed]
-                              │                        │
-                              └────────────────────────┘
-                                         │
-                                   [Root Cause]
-                                         │
-                                       [Fix]
-                                         │
-                                   [Verification]
+**Example:**
+```python
+graph.add_node(
+    node_id="I1",
+    node_type=NodeType.INSIGHT,
+    content="The bottleneck is JSON serialization, not database queries",
+    properties={
+        'how_discovered': 'Profiling revealed 80% time in json.dumps',
+        'implications': ['Should use orjson', 'Cache serialized responses']
+    }
+)
 ```
 
-### 4.3 Architecture Decision Graph
+### Extended Types (for Reasoning Patterns)
 
-```markdown
-## Architecture Decision Graph: [Decision Title]
+#### HYPOTHESIS
+**What:** A proposed explanation to be tested
 
-### Context Cluster
+**When to use:** Bug investigation, performance debugging, root cause analysis
 
-**Problem:** [What architectural challenge we face]
-**Type:** CONCEPT
+**Example:**
+```python
+graph.add_node(
+    node_id="H1",
+    node_type=NodeType.HYPOTHESIS,
+    content="Auth fails because tokens expire too quickly",
+    properties={
+        'testable': True,
+        'test_method': 'Check token TTL in logs',
+        'status': 'testing'
+    }
+)
+```
 
-**Constraints:**
-- [Constraint 1] **Type:** FACT **Edges:** LIMITS → Options
-- [Constraint 2] **Type:** FACT **Edges:** LIMITS → Options
+#### OPTION
+**What:** A specific choice within a decision
 
-**Goals:**
-- [Goal 1] **Type:** CONCEPT **Edges:** EVALUATES → Options
-- [Goal 2] **Type:** CONCEPT **Edges:** EVALUATES → Options
+**When to use:** As children of DECISION nodes, representing alternatives
 
-### Options Cluster
+**Example:**
+```python
+graph.add_node(
+    node_id="OPT1",
+    node_type=NodeType.OPTION,
+    content="Use OAuth 2.0 with Auth0",
+    properties={
+        'pros': ['Industry standard', 'Managed service', 'MFA support'],
+        'cons': ['Monthly cost', 'Vendor lock-in', 'Learning curve'],
+        'estimated_effort': '2 weeks'
+    }
+)
+```
 
-**Option A: [Name]**
-**Type:** DECISION_OPTION
-**Description:** [How it works]
-**Pros:**
-- [Pro 1] **Edges:** SUPPORTS → Option A
-- [Pro 2] **Edges:** SUPPORTS → Option A
-**Cons:**
-- [Con 1] **Edges:** AGAINST → Option A
-**Edges:** SATISFIES/VIOLATES → Constraints, ACHIEVES → Goals
+#### EVIDENCE
+**What:** Data supporting or refuting something
 
-**Option B: [Name]**
-(same structure)
+**When to use:** Backing up hypotheses, supporting decisions with data
 
-**Option C: [Name]**
-(same structure)
+**Example:**
+```python
+graph.add_node(
+    node_id="E1",
+    node_type=NodeType.EVIDENCE,
+    content="Logs show 401 errors every 15 minutes",
+    properties={
+        'valence': 'supports',  # or 'refutes'
+        'source': 'production-logs-2025-12-20.txt',
+        'confidence': 0.95
+    }
+)
+```
 
-### Decision Cluster
+#### OBSERVATION
+**What:** Something noticed during investigation
 
-**Selected:** [Option B]
-**Type:** DECISION
+**When to use:** Recording symptoms, documenting behavior
 
-**Rationale:**
-[Why this option was chosen]
-**Type:** INSIGHT
-**Edges:** JUSTIFIES → Selected
+**Example:**
+```python
+graph.add_node(
+    node_id="OBS1",
+    node_type=NodeType.OBSERVATION,
+    content="Response times spike every day at 3 PM",
+    properties={
+        'frequency': 'daily',
+        'magnitude': '10x normal latency',
+        'reproducible': True
+    }
+)
+```
 
-**Trade-offs accepted:**
-- [Trade-off 1]
-- [Trade-off 2]
+#### GOAL
+**What:** A desired outcome or objective
 
-**Consequences:**
-- [Consequence 1] **Type:** FACT **Edges:** FOLLOWS_FROM → Selected
-- [Consequence 2] **Type:** TASK **Edges:** REQUIRED_BY → Selected
+**When to use:** Feature planning, sprint goals, user needs
 
-### Graph Visualization
+**Example:**
+```python
+graph.add_node(
+    node_id="G1",
+    node_type=NodeType.GOAL,
+    content="Reduce API latency to under 100ms",
+    properties={
+        'current_state': '2.3 seconds',
+        'target_state': '<100ms',
+        'success_metric': 'p95 latency'
+    }
+)
+```
 
-[Problem]
-    │
-    ├──→ [Constraint 1]──┐
-    ├──→ [Constraint 2]──┼──LIMITS──→ [Options]
-    │                    │
-    ├──→ [Goal 1]────────┼──EVALUATES──→ [Option A]
-    └──→ [Goal 2]────────┘              [Option B] ← SELECTED
-                                        [Option C]
-                                             │
-                                        [Rationale]
-                                             │
-                                      [Consequences]
+#### CONTEXT
+**What:** Background information or situational details
+
+**When to use:** User stories, environmental constraints, background
+
+**Example:**
+```python
+graph.add_node(
+    node_id="CTX1",
+    node_type=NodeType.CONTEXT,
+    content="User story: As a developer, I want API docs...",
+    properties={
+        'stakeholder': 'External developers',
+        'priority': 'high',
+        'deadline': '2025-Q1'
+    }
+)
+```
+
+#### CONSTRAINT
+**What:** A limitation or requirement that must be satisfied
+
+**When to use:** Technical limits, business rules, compliance requirements
+
+**Example:**
+```python
+graph.add_node(
+    node_id="CON1",
+    node_type=NodeType.CONSTRAINT,
+    content="Must support IE11 for enterprise customers",
+    properties={
+        'type': 'technical',
+        'source': 'customer contract',
+        'negotiable': False
+    }
+)
+```
+
+#### ACTION
+**What:** A concrete step to take
+
+**When to use:** Implementation steps, next steps, remediation actions
+
+**Example:**
+```python
+graph.add_node(
+    node_id="ACT1",
+    node_type=NodeType.ACTION,
+    content="Add Redis caching layer to endpoints",
+    properties={
+        'difficulty': 'medium',
+        'estimated_time': '4 hours',
+        'blocks': ['T2', 'T3']
+    }
+)
 ```
 
 ---
 
-## Part 5: Graph Navigation Strategies
+## Edge Types Reference
 
-### 5.1 Entry Point Selection
+### Semantic Edges (Meaning Relationships)
 
-<!--
-  WHERE you start exploring affects WHAT you discover.
-  Choose entry points strategically.
--->
-
-**Entry point strategies:**
-
-| Strategy | When to Use | How |
-|----------|-------------|-----|
-| **Start from symptom** | Debugging | Begin at observable problem, trace backward |
-| **Start from goal** | Planning | Begin at desired outcome, decompose backward |
-| **Start from constraint** | Architecture | Begin at hard limits, explore what's possible |
-| **Start from hub** | Understanding | Begin at most-connected node, radiate outward |
-| **Start from orphan** | Cleanup | Begin at disconnected nodes, integrate or prune |
-| **Start from question** | Research | Begin at unknown, seek answers |
-
-### 5.2 Traversal Heuristics
-
-**The "Follow the Energy" Heuristic:**
-```
-When exploring, prioritize paths that:
-1. Have high uncertainty (questions over facts)
-2. Have high impact (hubs over leaves)
-3. Are blocking other work (dependencies)
-4. Are time-sensitive (deadlines approaching)
-
-Don't get lost in interesting-but-irrelevant branches.
+#### REQUIRES
+```python
+# A requires B to exist/function
+graph.add_edge("T1", "T2", EdgeType.REQUIRES)
+# "Implement auth" REQUIRES "Set up database"
 ```
 
-**The "Complete the Cluster" Heuristic:**
-```
-When you enter a cluster:
-1. Identify all nodes in the cluster
-2. Understand internal relationships
-3. Identify edges leaving the cluster
-4. Summarize before leaving
-
-Don't half-understand a topic.
+#### ENABLES
+```python
+# A makes B possible
+graph.add_edge("A1", "T1", EdgeType.ENABLES)
+# "Caching module" ENABLES "Performance optimization task"
 ```
 
-**The "Bridge First" Heuristic:**
-```
-When connecting multiple areas:
-1. Identify bridge nodes between clusters
-2. Understand what crosses each bridge
-3. Ensure bridges are solid before depending on them
-
-Bridges are high-value targets for understanding.
+#### CONFLICTS
+```python
+# A and B cannot both be true/chosen
+graph.add_edge("OPT1", "OPT2", EdgeType.CONFLICTS, bidirectional=True)
+# "Use MySQL" CONFLICTS with "Use PostgreSQL"
 ```
 
-### 5.3 Getting Unstuck
-
-**When lost in the graph:**
-```
-1. ZOOM OUT: Collapse detail, see clusters
-2. FIND HUB: Go to most-connected node
-3. TRACE BACK: How did you get here?
-4. CHECK GOAL: Is current path relevant to objective?
-5. PRUNE: Remove nodes that don't serve the goal
+#### SUPPORTS
+```python
+# A provides evidence for B
+graph.add_edge("E1", "H1", EdgeType.SUPPORTS)
+# "Logs show token expiry" SUPPORTS "Auth fails due to token TTL"
 ```
 
-**When graph is too complex:**
-```
-1. COUNT: How many nodes? How many clusters?
-2. LAYER: Separate into abstraction levels
-3. SCOPE: Define boundaries (what's in/out)
-4. DELEGATE: Assign clusters to different agents/times
-5. SERIALIZE: Convert to sequence for current focus
+#### REFUTES
+```python
+# A provides evidence against B
+graph.add_edge("E2", "H1", EdgeType.REFUTES)
+# "Tokens valid for 24h" REFUTES "Tokens expire too quickly"
 ```
 
-**When connections are unclear:**
-```
-1. EXPLICIT EDGES: Name every relationship
-2. TEST EDGES: "Does A really require B?"
-3. FIND MISSING: "What should connect to this?"
-4. CHALLENGE CYCLES: "Is this circular dependency real?"
-5. VALIDATE: Have someone else check your graph
+#### SIMILAR
+```python
+# A and B share significant properties
+graph.add_edge("C1", "C2", EdgeType.SIMILAR, bidirectional=True)
+# "Factory Pattern" SIMILAR to "Builder Pattern"
 ```
 
----
-
-## Part 6: Graph Collaboration
-
-<!--
-  GRAPHS ARE SHARED ARTIFACTS.
-  Multiple people/agents can contribute to the same graph.
-  This requires coordination.
--->
-
-### 6.1 Collaborative Graph Protocols
-
-**Adding to shared graph:**
-```markdown
-## Proposed Addition
-
-**New node(s):**
-- [Node]: [Type] [Description]
-
-**New edge(s):**
-- [From] ──[Relationship]──> [To]
-
-**Rationale:**
-[Why this should be added]
-
-**Impact:**
-[What existing nodes/edges this affects]
+#### CONTAINS
+```python
+# A includes B as a component
+graph.add_edge("CL1", "T1", EdgeType.CONTAINS)
+# "Authentication cluster" CONTAINS "JWT validation task"
 ```
 
-**Modifying shared graph:**
-```markdown
-## Proposed Modification
-
-**Current state:**
-- [Node/Edge as it exists]
-
-**Proposed change:**
-- [How it should change]
-
-**Rationale:**
-[Why this change]
-
-**Migration:**
-[How to update dependent understanding]
+#### CONTRADICTS
+```python
+# A contradicts B (stronger than REFUTES)
+graph.add_edge("F1", "H1", EdgeType.CONTRADICTS)
+# "Database is fast" CONTRADICTS "Database is the bottleneck"
 ```
 
-**Challenging graph structure:**
-```markdown
-## Graph Challenge
+### Temporal Edges (Time Relationships)
 
-**Target:**
-- [Node/Edge/Cluster being challenged]
-
-**Challenge:**
-[Why current structure may be wrong]
-
-**Evidence:**
-- [Supporting evidence for challenge]
-
-**Proposed alternative:**
-[Different structure]
-
-**Impact if accepted:**
-[What would change]
+#### PRECEDES
+```python
+# A must happen before B
+graph.add_edge("T1", "T2", EdgeType.PRECEDES)
+# "Design schema" PRECEDES "Implement migrations"
 ```
 
-### 6.2 Graph Merging
-
-**When parallel work creates divergent graphs:**
-
-```
-Graph A (Person 1):        Graph B (Person 2):
-
-[X]──→[Y]──→[Z]            [X]──→[Y]──→[Z]
-       │                          │    │
-       └──→[A]                    │    └──→[B]
-                                  └──→[C]
-
-Merge questions:
-1. Is [A] from Graph A valid? Keep/Discard?
-2. Is [B] from Graph B valid? Keep/Discard?
-3. Is [C] from Graph B valid? Keep/Discard?
-4. Any conflicts? [A] and [B] seem similar - merge?
-
-Merged Graph:
-[X]──→[Y]──→[Z]
-       │    │
-       │    └──→[AB] (merged similar nodes)
-       └──→[C]
+#### TRIGGERS
+```python
+# A causes B to happen
+graph.add_edge("E1", "T1", EdgeType.TRIGGERS)
+# "Bug found" TRIGGERS "Create fix task"
 ```
 
-### 6.3 Graph Versioning
+#### BLOCKS
+```python
+# A prevents B until resolved
+graph.add_edge("CON1", "T1", EdgeType.BLOCKS)
+# "Missing API key" BLOCKS "Integration testing"
+```
 
-**Track graph evolution:**
-```markdown
-## Graph Version History
+### Epistemic Edges (Knowledge Relationships)
 
-### v3 (current)
-- Added: [Node X], [Edge Y→Z]
-- Removed: [Node W] (obsolete)
-- Changed: [Node Q] type from QUESTION to FACT
+#### ANSWERS
+```python
+# A answers question B
+graph.add_edge("H1", "Q1", EdgeType.ANSWERS)
+# "Use OAuth" ANSWERS "How to handle auth?"
+```
 
-### v2
-- Major restructure: Split [Big Cluster] into [A] and [B]
-- Added bridge node [Bridge] between clusters
+#### RAISES
+```python
+# A raises question B
+graph.add_edge("OBS1", "Q1", EdgeType.RAISES)
+# "3pm spike" RAISES "Why does traffic spike?"
+```
 
-### v1
-- Initial graph with [N] nodes, [M] edges
+#### EXPLORES
+```python
+# A explores/investigates B
+graph.add_edge("H1", "Q1", EdgeType.EXPLORES)
+# "Test token TTL" EXPLORES "Why auth fails?"
+```
+
+#### OBSERVES
+```python
+# A observes/notices B
+graph.add_edge("T1", "OBS1", EdgeType.OBSERVES)
+# "Performance test" OBSERVES "Latency spike"
+```
+
+#### SUGGESTS
+```python
+# A suggests B as a possibility
+graph.add_edge("OBS1", "H1", EdgeType.SUGGESTS)
+# "401 errors" SUGGESTS "Token expiry issue"
+```
+
+### Practical Edges (Work Relationships)
+
+#### IMPLEMENTS
+```python
+# A implements concept/decision B
+graph.add_edge("A1", "D1", EdgeType.IMPLEMENTS)
+# "auth.py" IMPLEMENTS "OAuth decision"
+```
+
+#### TESTS
+```python
+# A tests/verifies B
+graph.add_edge("A2", "A1", EdgeType.TESTS)
+# "test_auth.py" TESTS "auth.py"
+```
+
+#### DEPENDS_ON
+```python
+# A needs B to be complete first
+graph.add_edge("T2", "T1", EdgeType.DEPENDS_ON)
+# "API endpoints" DEPENDS_ON "Auth middleware"
+```
+
+#### REFINES
+```python
+# A refines/details B
+graph.add_edge("T1", "G1", EdgeType.REFINES)
+# "Specific implementation task" REFINES "High-level goal"
+```
+
+#### MOTIVATES
+```python
+# A motivates/justifies B
+graph.add_edge("G1", "D1", EdgeType.MOTIVATES)
+# "Need speed" MOTIVATES "Caching decision"
+```
+
+### Structural Edges (Organization Relationships)
+
+#### HAS_OPTION
+```python
+# A (decision) has B as an option
+graph.add_edge("D1", "OPT1", EdgeType.HAS_OPTION)
+# "Auth method decision" HAS_OPTION "OAuth"
+```
+
+#### HAS_ASPECT
+```python
+# A has B as an aspect/dimension
+graph.add_edge("C1", "C2", EdgeType.HAS_ASPECT)
+# "API Design" HAS_ASPECT "Error handling"
 ```
 
 ---
 
-## Part 7: Integration with Reasoning Workflow
+## Basic Usage
 
-<!--
-  This document complements complex-reasoning-workflow.md
-  Here's how they connect.
--->
+### Creating a Simple Graph
 
-### 7.1 QAPV Loop as Graph Operations
+```python
+from cortical.reasoning.thought_graph import ThoughtGraph
+from cortical.reasoning.graph_of_thought import NodeType, EdgeType
 
-| QAPV Phase | Graph Operations |
-|------------|------------------|
-| **QUESTION** | Add QUESTION nodes, identify gaps, find orphans |
-| **ANSWER** | Traverse for information, add FACT/INSIGHT nodes, resolve questions |
-| **PRODUCE** | Add TASK/ARTIFACT nodes, connect to requirements, track dependencies |
-| **VERIFY** | Add validation edges, mark questions as answered, prune invalid paths |
+# Create empty graph
+graph = ThoughtGraph()
 
-### 7.2 Decision Trees as Subgraphs
+# Add nodes
+q1 = graph.add_node(
+    node_id="Q1",
+    node_type=NodeType.QUESTION,
+    content="Why is the API slow?"
+)
 
-The decision patterns from complex-reasoning-workflow.md Part 2 are subgraphs:
-- Decision Point = hub node
-- Options = connected nodes
-- Selection = edge weight/highlight
-- Pruned options = removed nodes (documented)
+h1 = graph.add_node(
+    node_id="H1",
+    node_type=NodeType.HYPOTHESIS,
+    content="Database queries are unoptimized"
+)
 
-### 7.3 Knowledge Transfer as Graph Export
+h2 = graph.add_node(
+    node_id="H2",
+    node_type=NodeType.HYPOTHESIS,
+    content="JSON serialization is slow"
+)
 
-The handoff document (complex-reasoning-workflow.md Part 7) is a graph serialization:
-- "What works" = validated ARTIFACT nodes
-- "What's incomplete" = TASK nodes with status
-- "Key decisions" = DECISION nodes with rationale
-- "Questions for successor" = unresolved QUESTION nodes
+# Add relationships
+graph.add_edge("Q1", "H1", EdgeType.EXPLORES, weight=0.6)
+graph.add_edge("Q1", "H2", EdgeType.EXPLORES, weight=0.8)
+
+# Query the graph
+hypotheses = graph.nodes_of_type(NodeType.HYPOTHESIS)
+print(f"Found {len(hypotheses)} hypotheses to investigate")
+
+# Traverse from question
+path = graph.bfs("Q1")
+print(f"BFS traversal: {path}")
+```
+
+### Adding Evidence
+
+```python
+# Add evidence for hypothesis
+e1 = graph.add_node(
+    node_id="E1",
+    node_type=NodeType.EVIDENCE,
+    content="Profiling shows 80% time in json.dumps",
+    properties={'confidence': 0.95}
+)
+
+# Link evidence to hypothesis
+graph.add_edge("E1", "H2", EdgeType.SUPPORTS, weight=0.9)
+
+# This evidence refutes the other hypothesis
+graph.add_edge("E1", "H1", EdgeType.REFUTES, weight=0.7)
+```
+
+### Making Decisions Based on Evidence
+
+```python
+# Create decision node
+d1 = graph.add_node(
+    node_id="D1",
+    node_type=NodeType.DECISION,
+    content="Choose JSON serialization library",
+    properties={'status': 'decided', 'chosen': 'orjson'}
+)
+
+# Evidence motivates the decision
+graph.add_edge("E1", "D1", EdgeType.MOTIVATES)
+
+# Create options
+opt1 = graph.add_node(
+    node_id="OPT1",
+    node_type=NodeType.OPTION,
+    content="Use orjson (5x faster)",
+    properties={'chosen': True}
+)
+
+graph.add_edge("D1", "OPT1", EdgeType.HAS_OPTION)
+```
 
 ---
 
-## Part 8: Quick Reference
+## Pattern Factories
 
-### Node Type Symbols
-```
-[C] = Concept      [?] = Question    [D] = Decision
-[F] = Fact         [T] = Task        [A] = Artifact
-[I] = Insight
-```
+Pre-structured graphs for common reasoning workflows.
 
-### Edge Type Symbols
-```
-──→     Directed relationship
-←──→    Bidirectional
-══→     Critical/strong
-···→    Tentative/weak
-──X     Conflict
-```
+### Investigation Pattern
 
-### Common Operations
-```
-ADD:     Create new node/edge
-REMOVE:  Delete node/edge (document why)
-MERGE:   Combine similar nodes
-SPLIT:   Separate overloaded node
-PRUNE:   Remove irrelevant subgraph
-COLLAPSE: Summarize cluster as single node
-EXPAND:  Show cluster internal structure
-LAYER:   Organize by abstraction level
-```
+**Use when:** Exploring a question with multiple hypotheses
 
-### Traversal Commands
-```
-DFS(node):     Explore depth-first from node
-BFS(node):     Explore breadth-first from node
-PATH(a, b):    Find connections between a and b
-CLUSTER(node): Find all nodes in same cluster
-HUBS():        Find most-connected nodes
-ORPHANS():     Find disconnected nodes
-BRIDGES():     Find cluster connectors
+```python
+from cortical.reasoning.thought_patterns import create_investigation_graph
+
+graph = create_investigation_graph(
+    question="Why are users getting logged out randomly?",
+    initial_hypotheses=[
+        "Session timeout is too short",
+        "Redis connection issues",
+        "Cookie domain mismatch"
+    ]
+)
+
+# Graph structure:
+# Question (root)
+# ├── Hypothesis 1
+# ├── Hypothesis 2
+# └── Hypothesis 3
+
+# Add evidence to test hypotheses
+graph.add_node("E1", NodeType.EVIDENCE, "Session TTL is 24 hours")
+graph.add_edge("E1", list(graph.nodes.keys())[1], EdgeType.REFUTES)
+
+# Visualize
+print(graph.to_ascii())
 ```
 
-### Graph Health Checks
+### Decision Pattern
+
+**Use when:** Making a decision with multiple options
+
+```python
+from cortical.reasoning.thought_patterns import create_decision_graph
+
+graph = create_decision_graph(
+    decision="Choose database for new microservice",
+    options=["PostgreSQL", "MongoDB", "DynamoDB"]
+)
+
+# Graph structure:
+# Decision (root)
+# ├── Option 1
+# │   ├── Pro (placeholder)
+# │   └── Con (placeholder)
+# ├── Option 2
+# │   ├── Pro (placeholder)
+# │   └── Con (placeholder)
+# └── Option 3
+#     ├── Pro (placeholder)
+#     └── Con (placeholder)
+
+# Replace placeholders with real evidence
+nodes = list(graph.nodes.values())
+for node in nodes:
+    if node.metadata.get('placeholder'):
+        # Update with real data
+        if 'PostgreSQL' in node.content:
+            if node.metadata.get('valence') == 'positive':
+                node.content = "ACID compliant, proven at scale"
+            else:
+                node.content = "Harder to scale horizontally"
 ```
-☑ No orphan nodes (or orphans are intentional)
-☑ No unexplained cycles
-☑ All QUESTION nodes have investigation status
-☑ All DECISION nodes have rationale
-☑ Clusters are cohesive (internal edges > external)
-☑ Bridges are documented
-☑ Graph is navigable from multiple entry points
+
+### Debug Pattern
+
+**Use when:** Debugging a problem with unknown cause
+
+```python
+from cortical.reasoning.thought_patterns import create_debug_graph
+
+graph = create_debug_graph(
+    symptom="Application crashes on startup in production"
+)
+
+# Graph structure:
+# Symptom (root)
+# ├── Observation 1 (placeholder)
+# ├── Observation 2 (placeholder)
+# └── Observation 3 (placeholder)
+#     ├── Possible cause 1 (placeholder)
+#     ├── Possible cause 2 (placeholder)
+#     └── Possible cause 3 (placeholder)
+
+# Fill in observations
+obs_nodes = graph.nodes_of_type(NodeType.OBSERVATION)
+for obs in obs_nodes:
+    if obs.metadata.get('placeholder'):
+        # Update based on investigation
+        pass
+```
+
+### Feature Planning Pattern
+
+**Use when:** Planning a new feature from goal to tasks
+
+```python
+from cortical.reasoning.thought_patterns import create_feature_graph
+
+graph = create_feature_graph(
+    goal="Add real-time notifications to dashboard",
+    user_story="As a user, I want to see updates without refreshing"
+)
+
+# Graph structure:
+# Goal (root)
+# └── User story
+#     ├── Task 1 (placeholder)
+#     ├── Task 2 (placeholder)
+#     └── Task 3 (placeholder)
+
+# Replace task placeholders
+task_nodes = graph.nodes_of_type(NodeType.ACTION)
+tasks = [
+    "Set up WebSocket server",
+    "Implement client-side listener",
+    "Add notification UI component"
+]
+for task_node, task_content in zip(task_nodes, tasks):
+    task_node.content = task_content
+    task_node.metadata['placeholder'] = False
+```
+
+### Requirements Analysis Pattern
+
+**Use when:** Breaking down user needs into requirements
+
+```python
+from cortical.reasoning.thought_patterns import create_requirements_graph
+
+graph = create_requirements_graph(
+    user_need="Users need to export data in multiple formats"
+)
+
+# Graph structure:
+# User need (root)
+# ├── Requirement 1 (placeholder)
+# │   └── Specification 1 (placeholder)
+# │       └── Design 1 (placeholder)
+# ├── Requirement 2 (placeholder)
+# │   └── Specification 2 (placeholder)
+# │       └── Design 2 (placeholder)
+# └── Requirement 3 (placeholder)
+#     └── Specification 3 (placeholder)
+#         └── Design 3 (placeholder)
+```
+
+### Analysis Pattern
+
+**Use when:** Analyzing a topic from multiple angles
+
+```python
+from cortical.reasoning.thought_patterns import create_analysis_graph
+
+graph = create_analysis_graph(
+    topic="API Performance Bottlenecks",
+    aspects=["Database", "Network", "Serialization", "Caching"]
+)
+
+# Graph structure:
+# Topic (root)
+# ├── Aspect 1
+# │   ├── Finding 1 (placeholder)
+# │   └── Finding 2 (placeholder)
+# ├── Aspect 2
+# │   ├── Finding 1 (placeholder)
+# │   └── Finding 2 (placeholder)
+# └── ...
+```
+
+### Dynamic Pattern Selection
+
+```python
+from cortical.reasoning.thought_patterns import create_pattern_graph
+
+# Automatically choose pattern by name
+graph = create_pattern_graph(
+    "investigation",
+    question="Why is deployment failing?"
+)
+
+# Or for decision-making
+graph = create_pattern_graph(
+    "decision",
+    decision="Choose CI/CD platform",
+    options=["GitHub Actions", "GitLab CI", "Jenkins"]
+)
 ```
 
 ---
 
-## Closing Thoughts
+## Complex Examples
 
-<!--
-  FOR THE NEXT DEVELOPER:
+### Example 1: Multi-Step Bug Investigation
 
-  Graphs are maps of thought territory.
-  Like any map, they simplify reality.
-  Like any map, they become outdated.
-  Like any map, they're more useful when shared.
+**Scenario:** Users report intermittent 500 errors in production.
 
-  The value isn't in the graph itself - it's in the
-  clarity that comes from making connections explicit.
+```python
+from cortical.reasoning.thought_graph import ThoughtGraph
+from cortical.reasoning.graph_of_thought import NodeType, EdgeType
 
-  When you find your graph doesn't match reality,
-  update the graph. That's how knowledge grows.
--->
+graph = ThoughtGraph()
 
-A thought graph is a living model of understanding. It grows as you learn, shrinks as you prune, and restructures as you gain insight. The goal isn't a perfect graph - it's a useful one.
+# 1. Start with the symptom
+symptom = graph.add_node(
+    "SYM1",
+    NodeType.OBSERVATION,
+    "Users get 500 errors intermittently",
+    properties={'frequency': '~5% of requests', 'reproducible': False}
+)
+
+# 2. Initial observations from logs
+obs1 = graph.add_node(
+    "OBS1",
+    NodeType.OBSERVATION,
+    "Errors occur during peak traffic (2-4 PM)",
+    properties={'pattern': 'time-based'}
+)
+
+obs2 = graph.add_node(
+    "OBS2",
+    NodeType.OBSERVATION,
+    "Database connection pool shows exhaustion warnings",
+    properties={'log_source': 'app.log'}
+)
+
+graph.add_edge("SYM1", "OBS1", EdgeType.OBSERVES)
+graph.add_edge("SYM1", "OBS2", EdgeType.OBSERVES)
+
+# 3. Form hypotheses based on observations
+h1 = graph.add_node(
+    "H1",
+    NodeType.HYPOTHESIS,
+    "Connection pool size is too small for peak load"
+)
+
+h2 = graph.add_node(
+    "H2",
+    NodeType.HYPOTHESIS,
+    "Connections are leaking (not being returned)"
+)
+
+graph.add_edge("OBS2", "H1", EdgeType.SUGGESTS, weight=0.8)
+graph.add_edge("OBS2", "H2", EdgeType.SUGGESTS, weight=0.7)
+
+# 4. Gather evidence
+e1 = graph.add_node(
+    "E1",
+    NodeType.EVIDENCE,
+    "Pool size is 10, peak concurrency is 50",
+    properties={'confidence': 1.0}
+)
+
+e2 = graph.add_node(
+    "E2",
+    NodeType.EVIDENCE,
+    "Code review shows missing connection.close() in error handler",
+    properties={'confidence': 1.0}
+)
+
+graph.add_edge("E1", "H1", EdgeType.SUPPORTS, weight=0.9)
+graph.add_edge("E2", "H2", EdgeType.SUPPORTS, weight=1.0)
+
+# 5. Realize BOTH hypotheses are true (not mutually exclusive)
+insight = graph.add_node(
+    "I1",
+    NodeType.INSIGHT,
+    "Two separate issues: pool too small AND connection leaks",
+    properties={'implications': ['Need to fix both', 'Pool size masks leak']}
+)
+
+graph.add_edge("H1", "I1", EdgeType.SUPPORTS)
+graph.add_edge("H2", "I1", EdgeType.SUPPORTS)
+
+# 6. Create action items
+action1 = graph.add_node(
+    "ACT1",
+    NodeType.ACTION,
+    "Increase pool size to 100",
+    properties={'priority': 'high', 'estimated_time': '5 min'}
+)
+
+action2 = graph.add_node(
+    "ACT2",
+    NodeType.ACTION,
+    "Add connection.close() to all error handlers",
+    properties={'priority': 'critical', 'estimated_time': '2 hours'}
+)
+
+graph.add_edge("I1", "ACT1", EdgeType.MOTIVATES)
+graph.add_edge("I1", "ACT2", EdgeType.MOTIVATES)
+
+# Actions have a dependency relationship
+graph.add_edge("ACT1", "ACT2", EdgeType.PRECEDES, weight=0.5)
+
+# 7. Visualize the reasoning
+print(graph.to_ascii("SYM1"))
+print("\n" + "="*70 + "\n")
+print(graph.to_mermaid())
+```
+
+**Output (ASCII):**
+```
+[OBSERVATION] Users get 500 errors intermittently
+├── [OBSERVATION] Errors occur during peak traffic (2-4 PM) (observes)
+└── [OBSERVATION] Database connection pool shows exhaustion... (observes)
+    ├── [HYPOTHESIS] Connection pool size is too small... (suggests) [0.80]
+    │   └── [EVIDENCE] Pool size is 10, peak concurrency is 50 (supports) [0.90]
+    │       └── [INSIGHT] Two separate issues: pool too small AND... (supports)
+    │           ├── [ACTION] Increase pool size to 100 (motivates)
+    │           └── [ACTION] Add connection.close() to all error... (motivates)
+    └── [HYPOTHESIS] Connections are leaking (not being returned) (suggests) [0.70]
+        └── [EVIDENCE] Code review shows missing connection.close()... (supports) [1.00]
+```
+
+### Example 2: Feature Design with Trade-offs
+
+**Scenario:** Designing a caching strategy with competing concerns.
+
+```python
+graph = ThoughtGraph()
+
+# Goal
+goal = graph.add_node(
+    "G1",
+    NodeType.GOAL,
+    "Reduce API latency by 80%",
+    properties={'current': '2.5s', 'target': '500ms'}
+)
+
+# Decision point
+decision = graph.add_node(
+    "D1",
+    NodeType.DECISION,
+    "Choose caching strategy"
+)
+
+graph.add_edge("G1", "D1", EdgeType.MOTIVATES)
+
+# Option 1: Client-side caching
+opt1 = graph.add_node(
+    "OPT1",
+    NodeType.OPTION,
+    "Client-side caching (browser cache)"
+)
+graph.add_edge("D1", "OPT1", EdgeType.HAS_OPTION)
+
+pro1a = graph.add_node(
+    "PRO1A",
+    NodeType.EVIDENCE,
+    "Zero server load",
+    metadata={'valence': 'positive'}
+)
+pro1b = graph.add_node(
+    "PRO1B",
+    NodeType.EVIDENCE,
+    "Instant for repeat requests",
+    metadata={'valence': 'positive'}
+)
+con1a = graph.add_node(
+    "CON1A",
+    NodeType.EVIDENCE,
+    "Stale data risk if not invalidated",
+    metadata={'valence': 'negative'}
+)
+con1b = graph.add_node(
+    "CON1B",
+    NodeType.EVIDENCE,
+    "No benefit for new users",
+    metadata={'valence': 'negative'}
+)
+
+graph.add_edge("PRO1A", "OPT1", EdgeType.SUPPORTS)
+graph.add_edge("PRO1B", "OPT1", EdgeType.SUPPORTS)
+graph.add_edge("CON1A", "OPT1", EdgeType.CONTRADICTS)
+graph.add_edge("CON1B", "OPT1", EdgeType.CONTRADICTS)
+
+# Option 2: Server-side caching (Redis)
+opt2 = graph.add_node(
+    "OPT2",
+    NodeType.OPTION,
+    "Server-side Redis cache"
+)
+graph.add_edge("D1", "OPT2", EdgeType.HAS_OPTION)
+
+pro2a = graph.add_node(
+    "PRO2A",
+    NodeType.EVIDENCE,
+    "Shared across all users",
+    metadata={'valence': 'positive'}
+)
+pro2b = graph.add_node(
+    "PRO2B",
+    NodeType.EVIDENCE,
+    "Fine-grained TTL control",
+    metadata={'valence': 'positive'}
+)
+con2a = graph.add_node(
+    "CON2A",
+    NodeType.EVIDENCE,
+    "Operational complexity (Redis cluster)",
+    metadata={'valence': 'negative'}
+)
+con2b = graph.add_node(
+    "CON2B",
+    NodeType.EVIDENCE,
+    "Cache invalidation is hard",
+    metadata={'valence': 'negative'}
+)
+
+graph.add_edge("PRO2A", "OPT2", EdgeType.SUPPORTS)
+graph.add_edge("PRO2B", "OPT2", EdgeType.SUPPORTS)
+graph.add_edge("CON2A", "OPT2", EdgeType.CONTRADICTS)
+graph.add_edge("CON2B", "OPT2", EdgeType.CONTRADICTS)
+
+# Option 3: Hybrid approach
+opt3 = graph.add_node(
+    "OPT3",
+    NodeType.OPTION,
+    "Hybrid: Redis + CDN for static assets"
+)
+graph.add_edge("D1", "OPT3", EdgeType.HAS_OPTION)
+
+# Hybrid combines aspects of both
+graph.add_edge("OPT3", "OPT1", EdgeType.CONTAINS)
+graph.add_edge("OPT3", "OPT2", EdgeType.CONTAINS)
+
+# Constraints influence the decision
+constraint1 = graph.add_node(
+    "CON1",
+    NodeType.CONSTRAINT,
+    "Budget: Max $500/month for infrastructure",
+    properties={'type': 'financial', 'hard_limit': True}
+)
+
+constraint2 = graph.add_node(
+    "CON2",
+    NodeType.CONSTRAINT,
+    "Must support offline mode for mobile app",
+    properties={'type': 'functional', 'hard_limit': True}
+)
+
+graph.add_edge("CON1", "OPT2", EdgeType.BLOCKS)
+graph.add_edge("CON2", "OPT1", EdgeType.REQUIRES)
+
+# Make the decision
+decision.properties['chosen'] = 'OPT3'
+decision.properties['rationale'] = 'Hybrid satisfies both constraints'
+
+# Implementation tasks
+task1 = graph.add_node(
+    "T1",
+    NodeType.TASK,
+    "Set up CloudFront CDN for static assets",
+    properties={'priority': 'high'}
+)
+task2 = graph.add_node(
+    "T2",
+    NodeType.TASK,
+    "Implement Redis caching for API responses",
+    properties={'priority': 'high'}
+)
+task3 = graph.add_node(
+    "T3",
+    NodeType.TASK,
+    "Add cache-control headers to browser",
+    properties={'priority': 'medium'}
+)
+
+graph.add_edge("OPT3", "T1", EdgeType.REQUIRES)
+graph.add_edge("OPT3", "T2", EdgeType.REQUIRES)
+graph.add_edge("OPT3", "T3", EdgeType.REQUIRES)
+
+# Visualize decision tree
+print(graph.to_mermaid())
+```
+
+### Example 3: Knowledge Gap Analysis
+
+**Scenario:** Identifying what we don't know before starting work.
+
+```python
+graph = ThoughtGraph()
+
+# The task
+task = graph.add_node(
+    "T1",
+    NodeType.TASK,
+    "Migrate from REST to GraphQL"
+)
+
+# Questions we need to answer first
+q1 = graph.add_node(
+    "Q1",
+    NodeType.QUESTION,
+    "What are our query patterns?",
+    properties={'status': 'unanswered', 'blocking': True}
+)
+
+q2 = graph.add_node(
+    "Q2",
+    NodeType.QUESTION,
+    "How will this affect mobile app?",
+    properties={'status': 'unanswered', 'blocking': True}
+)
+
+q3 = graph.add_node(
+    "Q3",
+    NodeType.QUESTION,
+    "Do we have GraphQL expertise on the team?",
+    properties={'status': 'unanswered', 'blocking': False}
+)
+
+graph.add_edge("Q1", "T1", EdgeType.BLOCKS)
+graph.add_edge("Q2", "T1", EdgeType.BLOCKS)
+graph.add_edge("Q3", "T1", EdgeType.RAISES)
+
+# Actions to answer questions
+a1 = graph.add_node(
+    "A1",
+    NodeType.ACTION,
+    "Analyze API access logs for common query patterns"
+)
+a2 = graph.add_node(
+    "A2",
+    NodeType.ACTION,
+    "Spike: Build GraphQL prototype with mobile client"
+)
+a3 = graph.add_node(
+    "A3",
+    NodeType.ACTION,
+    "Survey team GraphQL experience"
+)
+
+graph.add_edge("A1", "Q1", EdgeType.ANSWERS)
+graph.add_edge("A2", "Q2", EdgeType.ANSWERS)
+graph.add_edge("A3", "Q3", EdgeType.ANSWERS)
+
+# Find all blocking questions
+blocking_questions = [
+    node for node in graph.nodes.values()
+    if node.node_type == NodeType.QUESTION
+    and node.properties.get('blocking')
+]
+
+print(f"Must answer {len(blocking_questions)} questions before starting:")
+for q in blocking_questions:
+    print(f"  - {q.content}")
+```
+
+---
+
+## Visualization
+
+### Mermaid Diagrams (Markdown-Compatible)
+
+Perfect for GitHub README, PR descriptions, documentation.
+
+```python
+mermaid = graph.to_mermaid()
+print(mermaid)
+```
+
+**Output:**
+```mermaid
+graph TD
+    Q1[Why is the API slow?]
+    H1((Database queries are unoptimized))
+    H2((JSON serialization is slow))
+    E1>Profiling shows 80% time in json.dumps]
+    Q1 -->|explores| H1
+    Q1 -->|explores| H2
+    E1 -->|supports| H2
+    E1 -->|refutes| H1
+```
+
+**Rendered in GitHub:**
+- QUESTIONs are boxes `[text]`
+- HYPOTHESESs are double circles `((text))`
+- EVIDENCE nodes are asymmetric `>text]`
+- DECISIONs are diamonds `{text}`
+- Edges show relationship types
+
+### DOT Format (Graphviz)
+
+For high-quality diagrams with more control.
+
+```python
+dot = graph.to_dot()
+
+# Save to file
+with open('reasoning.dot', 'w') as f:
+    f.write(dot)
+
+# Render with Graphviz
+# dot -Tpng reasoning.dot -o reasoning.png
+# dot -Tsvg reasoning.dot -o reasoning.svg
+```
+
+**Features:**
+- Color-coded by node type
+- Different shapes for different types
+- Dashed lines for low-confidence edges
+- Bidirectional arrows for symmetric relations
+
+### ASCII Tree (Terminal)
+
+For quick visualization in CLI or logs.
+
+```python
+# Auto-detect root
+ascii_tree = graph.to_ascii()
+print(ascii_tree)
+
+# Or specify root
+ascii_tree = graph.to_ascii(root_id="Q1", max_depth=5)
+print(ascii_tree)
+```
+
+**Output:**
+```
+[QUESTION] Why is the API slow?
+├── [HYPOTHESIS] Database queries are unoptimized (explores)
+│   └── [EVIDENCE] Profiling shows 20% DB time (refutes) [0.70]
+└── [HYPOTHESIS] JSON serialization is slow (explores)
+    └── [EVIDENCE] Profiling shows 80% time in json.dumps (supports) [0.90]
+        └── [DECISION] Choose orjson for serialization
+
+[2 node(s) not shown: D1, ACT1...]
+```
+
+### Exporting for External Tools
+
+```python
+# Export to JSON for custom visualization
+import json
+
+graph_data = {
+    'nodes': [
+        {
+            'id': node.id,
+            'type': node.node_type.value,
+            'content': node.content,
+            'properties': node.properties,
+            'metadata': node.metadata
+        }
+        for node in graph.nodes.values()
+    ],
+    'edges': [
+        {
+            'source': edge.source_id,
+            'target': edge.target_id,
+            'type': edge.edge_type.value,
+            'weight': edge.weight,
+            'confidence': edge.confidence,
+            'bidirectional': edge.bidirectional
+        }
+        for edge in graph.edges
+    ]
+}
+
+with open('graph.json', 'w') as f:
+    json.dump(graph_data, f, indent=2)
+```
+
+---
+
+## Integration with CognitiveLoop
+
+Graph of Thought integrates naturally with the QAPV (Question-Answer-Produce-Verify) loop from `docs/complex-reasoning-workflow.md`.
+
+### Mapping QAPV to Graph Nodes
+
+```python
+# QUESTION phase → QUESTION nodes
+question_node = graph.add_node(
+    "Q1",
+    NodeType.QUESTION,
+    "What's the root cause?"
+)
+
+# ANSWER phase → HYPOTHESIS + EVIDENCE nodes
+hypothesis_node = graph.add_node(
+    "H1",
+    NodeType.HYPOTHESIS,
+    "Database is the bottleneck"
+)
+
+evidence_node = graph.add_node(
+    "E1",
+    NodeType.EVIDENCE,
+    "Profiling confirms DB time is 80%"
+)
+
+graph.add_edge("Q1", "H1", EdgeType.EXPLORES)
+graph.add_edge("E1", "H1", EdgeType.SUPPORTS)
+
+# PRODUCE phase → TASK + ARTIFACT nodes
+task_node = graph.add_node(
+    "T1",
+    NodeType.TASK,
+    "Optimize slow queries"
+)
+
+artifact_node = graph.add_node(
+    "A1",
+    NodeType.ARTIFACT,
+    "queries.py with query optimizations",
+    properties={'path': 'src/queries.py'}
+)
+
+graph.add_edge("H1", "T1", EdgeType.MOTIVATES)
+graph.add_edge("T1", "A1", EdgeType.IMPLEMENTS)
+
+# VERIFY phase → TEST artifacts + OBSERVATION nodes
+test_node = graph.add_node(
+    "A2",
+    NodeType.ARTIFACT,
+    "test_queries.py",
+    properties={'path': 'tests/test_queries.py'}
+)
+
+observation_node = graph.add_node(
+    "OBS1",
+    NodeType.OBSERVATION,
+    "Response time reduced to 200ms"
+)
+
+graph.add_edge("A2", "A1", EdgeType.TESTS)
+graph.add_edge("A2", "OBS1", EdgeType.OBSERVES)
+
+# INSIGHT from the loop
+insight_node = graph.add_node(
+    "I1",
+    NodeType.INSIGHT,
+    "N+1 query pattern was the issue, fixed with eager loading"
+)
+
+graph.add_edge("OBS1", "I1", EdgeType.SUGGESTS)
+```
+
+### Tracking Multiple Loop Iterations
+
+```python
+# First iteration: Initial hypothesis
+h1_v1 = graph.add_node(
+    "H1_v1",
+    NodeType.HYPOTHESIS,
+    "Slow because of large payloads",
+    metadata={'iteration': 1}
+)
+
+e1 = graph.add_node(
+    "E1",
+    NodeType.EVIDENCE,
+    "Payload size is only 2KB"
+)
+
+graph.add_edge("E1", "H1_v1", EdgeType.REFUTES)
+
+# Second iteration: Revised hypothesis
+h1_v2 = graph.add_node(
+    "H1_v2",
+    NodeType.HYPOTHESIS,
+    "Slow because of blocking I/O",
+    metadata={'iteration': 2}
+)
+
+graph.add_edge("H1_v1", "H1_v2", EdgeType.REFINES)
+
+e2 = graph.add_node(
+    "E2",
+    NodeType.EVIDENCE,
+    "Profiling shows thread blocking on file I/O"
+)
+
+graph.add_edge("E2", "H1_v2", EdgeType.SUPPORTS)
+
+# This captures the learning process!
+```
+
+### Branching and Pruning
+
+The workflow document discusses branching (exploring multiple options) and pruning (abandoning paths). GoT makes this explicit:
+
+```python
+# Explore multiple branches
+for i, approach in enumerate(["Approach A", "Approach B", "Approach C"]):
+    option = graph.add_node(
+        f"OPT{i+1}",
+        NodeType.OPTION,
+        approach,
+        properties={'status': 'exploring'}
+    )
+    graph.add_edge("D1", option, EdgeType.HAS_OPTION)
+
+# Prune a branch (document WHY)
+opt_a = graph.get_node("OPT1")
+opt_a.properties['status'] = 'pruned'
+opt_a.properties['pruned_reason'] = 'Requires skills not available'
+opt_a.metadata['pruned_date'] = '2025-12-20'
+
+# Choose the winning branch
+opt_b = graph.get_node("OPT2")
+opt_b.properties['status'] = 'chosen'
+```
+
+### Crisis Management Integration
+
+Part 13 of the workflow covers crisis management. GoT can represent crisis states:
+
+```python
+# Crisis: Repeated verification failure
+crisis = graph.add_node(
+    "CRISIS1",
+    NodeType.OBSERVATION,
+    "Tests failing after 4 fix attempts",
+    properties={'severity': 'level_3', 'action': 'escalate'}
+)
+
+# Document what was tried
+for i, attempt in enumerate([
+    "Fixed null check",
+    "Added error handling",
+    "Reverted to previous version",
+    "Tried alternative approach"
+]):
+    attempt_node = graph.add_node(
+        f"ATTEMPT{i+1}",
+        NodeType.ACTION,
+        attempt,
+        properties={'result': 'failed'}
+    )
+    graph.add_edge("CRISIS1", attempt_node, EdgeType.TRIGGERS)
+
+# Create escalation artifact
+escalation = graph.add_node(
+    "ESC1",
+    NodeType.ARTIFACT,
+    "Escalation document with all attempts",
+    properties={'type': 'escalation', 'status': 'sent_to_human'}
+)
+
+graph.add_edge("CRISIS1", escalation, EdgeType.MOTIVATES)
+```
+
+---
+
+## Advanced Operations
+
+### Graph Traversal
+
+```python
+# Depth-first search from a question
+path = graph.dfs("Q1")
+print(f"DFS order: {path}")
+
+# Breadth-first search (finds shortest path)
+path = graph.bfs("Q1")
+print(f"BFS order: {path}")
+
+# Find shortest path between two nodes
+path = graph.shortest_path("Q1", "I1")
+if path:
+    print(f"Reasoning chain: {' → '.join(path)}")
+```
+
+### Graph Analysis
+
+```python
+# Find cycles (feedback loops in reasoning)
+cycles = graph.find_cycles()
+if cycles:
+    print("Warning: Circular reasoning detected:")
+    for cycle in cycles:
+        print(f"  {' → '.join(cycle)}")
+
+# Find orphan nodes (disconnected ideas)
+orphans = graph.find_orphans()
+if orphans:
+    print("Disconnected thoughts (should these be linked?):")
+    for orphan_id in orphans:
+        node = graph.get_node(orphan_id)
+        print(f"  {node.content}")
+
+# Find hub nodes (central concepts)
+hubs = graph.find_hubs(top_n=5)
+print("Most connected concepts:")
+for node_id, degree in hubs:
+    node = graph.get_node(node_id)
+    print(f"  {node.content} ({degree} connections)")
+
+# Find bridge nodes (critical to reasoning)
+bridges = graph.find_bridges()
+print("Critical nodes (removal would disconnect graph):")
+for bridge_id in bridges:
+    node = graph.get_node(bridge_id)
+    print(f"  {node.content}")
+```
+
+### Node Merging
+
+Useful when you realize two nodes are actually the same:
+
+```python
+# Duplicate hypotheses discovered
+h1 = graph.get_node("H1")  # "Token TTL is too short"
+h2 = graph.get_node("H2")  # "Tokens expire too quickly"
+
+# Merge them
+merged = graph.merge_nodes("H1", "H2", merged_id="H_MERGED")
+
+# All edges from H1 and H2 now point to H_MERGED
+```
+
+### Node Splitting
+
+When you realize a node is actually two distinct ideas:
+
+```python
+# Complex hypothesis that's actually two separate issues
+h1 = graph.get_node("H1")  # "Database AND serialization are slow"
+
+# Split into two focused hypotheses
+h1a, h1b = graph.split_node(
+    "H1",
+    split_id1="H1A",
+    split_id2="H1B",
+    content1="Database queries are slow",
+    content2="JSON serialization is slow"
+)
+
+# Edges are duplicated to both (then prune as needed)
+```
+
+### Clustering
+
+Group related nodes for better organization:
+
+```python
+# Create a cluster for authentication-related nodes
+auth_cluster = graph.add_cluster(
+    cluster_id="CL_AUTH",
+    name="Authentication Issues",
+    node_ids={"Q1", "H1", "H2", "E1", "E2"}
+)
+
+# Check which cluster a node belongs to
+cluster = graph.get_cluster("Q1")
+print(f"Node Q1 is in cluster: {cluster.name}")
+
+# Collapse cluster to simplify view
+representative = graph.collapse_cluster("CL_AUTH")
+print(f"Cluster collapsed to: {representative.content}")
+
+# Later, expand it back
+restored_nodes = graph.expand_cluster("CL_AUTH")
+```
+
+### Filtering by Type
+
+```python
+# Get all questions that need answering
+questions = graph.nodes_of_type(NodeType.QUESTION)
+unanswered = [
+    q for q in questions
+    if q.properties.get('status') != 'answered'
+]
+
+print(f"{len(unanswered)} questions still need answers")
+
+# Get all tasks
+tasks = graph.nodes_of_type(NodeType.TASK)
+pending_tasks = [
+    t for t in tasks
+    if t.properties.get('status') in ['pending', 'in_progress']
+]
+
+print(f"{len(pending_tasks)} tasks remaining")
+```
+
+### Edge Queries
+
+```python
+# Find all evidence supporting a hypothesis
+h1 = graph.get_node("H1")
+supporting_edges = [
+    e for e in graph.get_edges_to("H1")
+    if e.edge_type == EdgeType.SUPPORTS
+]
+
+print(f"Found {len(supporting_edges)} pieces of supporting evidence")
+
+# Find contradictory evidence
+refuting_edges = [
+    e for e in graph.get_edges_to("H1")
+    if e.edge_type in [EdgeType.REFUTES, EdgeType.CONTRADICTS]
+]
+
+print(f"Found {len(refuting_edges)} pieces of contradicting evidence")
+
+# Calculate confidence score
+support_weight = sum(e.weight for e in supporting_edges)
+refute_weight = sum(e.weight for e in refuting_edges)
+confidence = support_weight / (support_weight + refute_weight) if support_weight + refute_weight > 0 else 0.5
+
+print(f"Hypothesis confidence: {confidence:.2f}")
+```
+
+---
+
+## Best Practices
+
+### 1. Start Simple, Grow Organically
+
+```python
+# DON'T create the entire graph upfront
+# DO add nodes as you discover them
+
+# Start with question
+graph.add_node("Q1", NodeType.QUESTION, "Why is X slow?")
+
+# Add hypotheses as you think of them
+graph.add_node("H1", NodeType.HYPOTHESIS, "Database is slow")
+graph.add_edge("Q1", "H1", EdgeType.EXPLORES)
+
+# Add evidence as you gather it
+graph.add_node("E1", NodeType.EVIDENCE, "Profiling shows DB time")
+graph.add_edge("E1", "H1", EdgeType.SUPPORTS)
+```
+
+### 2. Use Properties for Structured Data
+
+```python
+# GOOD: Properties for machine-readable data
+graph.add_node(
+    "T1",
+    NodeType.TASK,
+    "Optimize query",
+    properties={
+        'status': 'in_progress',
+        'priority': 'high',
+        'estimated_hours': 4,
+        'assignee': 'agent-2'
+    }
+)
+
+# Content for human-readable description
+# Properties for structured metadata
+```
+
+### 3. Set Edge Weights Meaningfully
+
+```python
+# Weight represents strength of relationship
+graph.add_edge("E1", "H1", EdgeType.SUPPORTS, weight=0.9)  # Strong support
+graph.add_edge("E2", "H1", EdgeType.SUPPORTS, weight=0.3)  # Weak support
+
+# Confidence represents certainty in the relationship
+graph.add_edge("E3", "H2", EdgeType.SUPPORTS,
+               weight=0.8,      # Strong support
+               confidence=0.5)  # But we're not sure if E3 is reliable
+```
+
+### 4. Document Pruned Branches
+
+```python
+# When you abandon a path, document WHY
+option_a = graph.get_node("OPT_A")
+option_a.properties['status'] = 'pruned'
+option_a.properties['pruned_reason'] = 'Requires 3rd party API with monthly fees'
+option_a.properties['pruned_date'] = '2025-12-20'
+option_a.properties['reconsider_if'] = 'Budget increases or free alternative found'
+```
+
+### 5. Use Visualization Early and Often
+
+```python
+# After adding significant nodes, visualize to check structure
+print(graph.to_ascii())
+
+# Check for disconnected nodes
+orphans = graph.find_orphans()
+if orphans:
+    print(f"Warning: {len(orphans)} disconnected nodes")
+
+# Check for unexpected cycles
+cycles = graph.find_cycles()
+if cycles:
+    print("Circular dependencies found!")
+```
+
+### 6. Link Artifacts to Reasoning
+
+```python
+# GOOD: Connect code to the reasoning that created it
+decision = graph.add_node("D1", NodeType.DECISION, "Use Redis for caching")
+task = graph.add_node("T1", NodeType.TASK, "Implement Redis cache")
+artifact = graph.add_node(
+    "A1",
+    NodeType.ARTIFACT,
+    "cache.py Redis implementation",
+    properties={'path': 'src/cache.py', 'lines': 156}
+)
+
+graph.add_edge("D1", "T1", EdgeType.MOTIVATES)
+graph.add_edge("T1", "A1", EdgeType.IMPLEMENTS)
+
+# Now you can trace: Why does cache.py exist? → Follow edges back to decision
+```
+
+### 7. Regular Graph Health Checks
+
+```python
+def health_check(graph: ThoughtGraph):
+    """Check graph for common issues."""
+    issues = []
+
+    # Check for orphans
+    orphans = graph.find_orphans()
+    if orphans:
+        issues.append(f"{len(orphans)} disconnected nodes")
+
+    # Check for unanswered questions
+    questions = graph.nodes_of_type(NodeType.QUESTION)
+    unanswered = [
+        q for q in questions
+        if not any(
+            e.edge_type == EdgeType.ANSWERS
+            for e in graph.get_edges_to(q.id)
+        )
+    ]
+    if unanswered:
+        issues.append(f"{len(unanswered)} unanswered questions")
+
+    # Check for decisions without chosen option
+    decisions = graph.nodes_of_type(NodeType.DECISION)
+    pending = [
+        d for d in decisions
+        if not d.properties.get('chosen')
+    ]
+    if pending:
+        issues.append(f"{len(pending)} undecided decisions")
+
+    # Check for tasks without artifacts
+    tasks = graph.nodes_of_type(NodeType.TASK)
+    completed = [
+        t for t in tasks
+        if t.properties.get('status') == 'completed'
+    ]
+    without_artifacts = [
+        t for t in completed
+        if not any(
+            e.edge_type == EdgeType.IMPLEMENTS
+            for e in graph.get_edges_from(t.id)
+        )
+    ]
+    if without_artifacts:
+        issues.append(f"{len(without_artifacts)} completed tasks without artifacts")
+
+    return issues
+
+# Run periodically
+issues = health_check(graph)
+if issues:
+    print("Graph health issues:")
+    for issue in issues:
+        print(f"  ⚠️  {issue}")
+```
+
+### 8. Export for Knowledge Transfer
+
+```python
+# When handing off work, export the reasoning graph
+import json
+
+def export_for_handoff(graph: ThoughtGraph, filename: str):
+    """Export graph with all context for next developer."""
+    data = {
+        'metadata': {
+            'created': '2025-12-20',
+            'purpose': 'Performance debugging session',
+            'status': 'in_progress'
+        },
+        'summary': {
+            'nodes': graph.node_count(),
+            'edges': graph.edge_count(),
+            'questions': len(graph.nodes_of_type(NodeType.QUESTION)),
+            'decisions': len(graph.nodes_of_type(NodeType.DECISION)),
+            'insights': len(graph.nodes_of_type(NodeType.INSIGHT))
+        },
+        'mermaid': graph.to_mermaid(),
+        'graph': {
+            'nodes': [
+                {
+                    'id': n.id,
+                    'type': n.node_type.value,
+                    'content': n.content,
+                    'properties': n.properties,
+                    'metadata': n.metadata
+                }
+                for n in graph.nodes.values()
+            ],
+            'edges': [
+                {
+                    'from': e.source_id,
+                    'to': e.target_id,
+                    'type': e.edge_type.value,
+                    'weight': e.weight,
+                    'confidence': e.confidence
+                }
+                for e in graph.edges
+            ]
+        }
+    }
+
+    with open(filename, 'w') as f:
+        json.dump(data, f, indent=2)
+
+export_for_handoff(graph, 'reasoning_handoff.json')
+```
+
+---
+
+## Summary
+
+**Graph of Thought is powerful when:**
+- You need to track multiple hypotheses
+- Dependencies between ideas matter
+- Reasoning needs to be shared or visualized
+- Problems are complex with many moving parts
 
 **Key principles:**
-1. **Explicit > Implicit**: Name nodes and edges
-2. **Structure > Sequence**: Capture connections, not just order
-3. **Evolving > Fixed**: Update as understanding changes
-4. **Shared > Private**: Graphs enable collaboration
-5. **Useful > Complete**: Serve the goal, not the model
+1. Nodes = discrete units of thought (questions, hypotheses, evidence, etc.)
+2. Edges = relationships (supports, refutes, depends on, etc.)
+3. Visualize early, visualize often
+4. Document pruned paths (save future effort)
+5. Link code artifacts to reasoning (traceability)
+6. Use graph analysis to spot patterns (cycles, orphans, hubs)
 
-Use this alongside the Complex Reasoning Workflow. The workflow tells you **how to think**; the graph shows you **what you're thinking about**.
+**When NOT to use GoT:**
+- Simple, linear problems → Use Chain of Thought
+- Quick tasks with obvious solutions → Just do it
+- When visualization overhead > benefit → Keep it simple
 
----
-
-*"The map is not the territory, but a good map makes the territory navigable."*
-
----
-
-## Document Summary
-
-| Part | Title | Focus |
-|------|-------|-------|
-| 1 | Anatomy of a Thought Graph | Nodes, edges, clusters, properties |
-| 2 | Graph Operations | Construction, traversal, analysis, transformation |
-| 3 | Graph Patterns | Requirements, investigation, decision, debug, knowledge |
-| 4 | Practical Templates | Feature planning, bug investigation, architecture decision |
-| 5 | Navigation Strategies | Entry points, traversal heuristics, getting unstuck |
-| 6 | Graph Collaboration | Protocols, merging, versioning |
-| 7 | Integration | Connection to QAPV workflow |
-| 8 | Quick Reference | Symbols, operations, health checks |
+**Integration with existing workflow:**
+- Maps naturally to QAPV loop (Question → Answer → Produce → Verify)
+- Supports crisis management (track failed attempts)
+- Enables knowledge transfer (export reasoning for next developer)
+- Complements task system (nodes can reference task IDs)
 
 ---
 
-*Created: 2025-12-19*
-*Version: 1.0*
-*Companion to: docs/complex-reasoning-workflow.md*
-*Status: Living document - update as patterns evolve*
+**Next steps:**
+1. Try the examples in this document
+2. Create your first investigation graph
+3. Visualize with `to_mermaid()` or `to_ascii()`
+4. Integrate with CognitiveLoop for complex tasks
+5. Export and share reasoning with team
+
+**Related documentation:**
+- `docs/complex-reasoning-workflow.md` - Full QAPV loop architecture
+- `cortical/reasoning/graph_of_thought.py` - Data structure source
+- `cortical/reasoning/thought_graph.py` - Graph operations
+- `cortical/reasoning/thought_patterns.py` - Pattern factories
+
+---
+
+*Created: 2025-12-20*
+*Version: 2.0*
+*Status: Complete - ready for use*
