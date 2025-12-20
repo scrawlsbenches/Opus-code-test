@@ -384,6 +384,44 @@ Create expert for dependency update recommendations.
 ## Sprint 14: CLI Project Migration
 Move CLI wrapper to projects/cli if it becomes problematic.
 
+## Sprint 15: GoT Project Management System
+**Priority:** High - Foundational infrastructure for multi-agent coordination
+
+Transition from file-based task/sprint/epic management to Graph of Thought.
+This enables intelligent cross-branch, cross-session, cross-thread coordination.
+
+### Goals
+- [ ] Define GoT project management schema (node types, properties, conventions)
+- [ ] Create got_utils.py CLI (task/sprint/epic CRUD operations)
+- [ ] Add slash commands: /got-task, /got-sprint, /got-epic
+- [ ] Migrate tasks/*.json → GoT with full history preservation
+- [ ] Migrate CURRENT_SPRINT.md → GoT structure
+- [ ] Integrate with book generation (GoTChapterGenerator)
+- [ ] Add backup/recovery mechanisms for GoT state
+- [ ] Run parallel validation (both systems) before deprecation
+- [ ] Create cognitive-state skill integration
+
+### Key Design Decisions
+- Tasks = TASK nodes with status in properties
+- Sprints = GOAL nodes containing TASK nodes via CONTAINS edge
+- Epics = GOAL nodes containing Sprint GOAL nodes via CONTAINS edge
+- Dependencies = DEPENDS_ON edges between TASK nodes
+- Blockers = BLOCKS edges with blocking reason in metadata
+- Cross-branch state = CONTEXT nodes with branch property
+
+### Success Criteria
+- Full task lifecycle manageable through GoT CLI
+- Zero data loss from migration
+- Graph queries replace file searches
+- Book sources DECISION/INSIGHT nodes from GoT
+- Recovery from any failure state within 30 seconds
+
+### Backup Plan
+If GoT proves insufficient:
+- Keep file-based system as authoritative source
+- GoT becomes read-only view/cache of file state
+- Sync mechanism maintains consistency
+
 ---
 
 # Stats
