@@ -39,6 +39,7 @@ from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery
 GOT_DIR = PROJECT_ROOT / ".got"
 WAL_DIR = GOT_DIR / "wal"
 SNAPSHOTS_DIR = GOT_DIR / "snapshots"
+EVENTS_DIR = GOT_DIR / "events"  # Git-tracked event logs (source of truth)
 TASKS_DIR = PROJECT_ROOT / "tasks"
 
 # Status values
@@ -97,6 +98,165 @@ def generate_goal_id() -> str:
     return f"goal:G-{timestamp}-{suffix}"
 
 
+def get_current_branch() -> str:
+    """Get current git branch name."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True, text=True, check=True
+        )
+        return result.stdout.strip()
+    except Exception:
+        return "unknown"
+
+
+def generate_session_id() -> str:
+    """Generate a unique session ID."""
+    now = datetime.now()
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    suffix = os.urandom(2).hex()
+    return f"{timestamp}-{suffix}"
+
+
+# =============================================================================
+# EVENT LOGGING (Source of Truth for Cross-Branch Coordination)
+# =============================================================================
+
+class EventLog:
+    """
+    Append-only event log for merge-friendly persistence.
+
+    Each session writes to a unique file, enabling conflict-free merges.
+    The graph state is rebuilt from all event files on startup.
+    """
+
+    def __init__(self, events_dir: Path, session_id: Optional[str] = None):
+        self.events_dir = Path(events_dir)
+        self.events_dir.mkdir(parents=True, exist_ok=True)
+
+        # Each session gets a unique event file
+        self.session_id = session_id or generate_session_id()
+        self.branch = get_current_branch()
+        self.event_file = self.events_dir / f"{self.session_id}.jsonl"
+
+    def log(self, event_type: str, **data) -> Dict[str, Any]:
+        """Append an event to the session log."""
+        event = {
+            "ts": datetime.utcnow().isoformat() + "Z",
+            "event": event_type,
+            "meta": {
+                "branch": self.branch,
+                "session": self.session_id,
+            },
+            **data
+        }
+        with open(self.event_file, "a") as f:
+            f.write(json.dumps(event, default=str) + "\n")
+        return event
+
+    def log_node_create(self, node_id: str, node_type: str, data: Dict) -> Dict:
+        """Log a node creation event."""
+        return self.log("node.create", id=node_id, type=node_type, data=data)
+
+    def log_node_update(self, node_id: str, changes: Dict) -> Dict:
+        """Log a node update event."""
+        return self.log("node.update", id=node_id, changes=changes)
+
+    def log_node_delete(self, node_id: str) -> Dict:
+        """Log a node deletion event."""
+        return self.log("node.delete", id=node_id)
+
+    def log_edge_create(self, src: str, tgt: str, edge_type: str, weight: float = 1.0) -> Dict:
+        """Log an edge creation event."""
+        return self.log("edge.create", src=src, tgt=tgt, type=edge_type, weight=weight)
+
+    def log_edge_delete(self, src: str, tgt: str, edge_type: str) -> Dict:
+        """Log an edge deletion event."""
+        return self.log("edge.delete", src=src, tgt=tgt, type=edge_type)
+
+    @classmethod
+    def load_all_events(cls, events_dir: Path) -> List[Dict]:
+        """Load and sort all events from all session files."""
+        events_dir = Path(events_dir)
+        if not events_dir.exists():
+            return []
+
+        all_events = []
+        for event_file in events_dir.glob("*.jsonl"):
+            try:
+                with open(event_file) as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            try:
+                                all_events.append(json.loads(line))
+                            except json.JSONDecodeError:
+                                continue
+            except Exception:
+                continue
+
+        # Sort by timestamp for deterministic replay
+        all_events.sort(key=lambda e: e.get("ts", ""))
+        return all_events
+
+    @classmethod
+    def rebuild_graph_from_events(cls, events: List[Dict]) -> ThoughtGraph:
+        """Rebuild a ThoughtGraph from events (event sourcing)."""
+        graph = ThoughtGraph()
+
+        for event in events:
+            event_type = event.get("event", "")
+
+            try:
+                if event_type == "node.create":
+                    node_type_str = event.get("type", "TASK").upper()
+                    node_type = NodeType[node_type_str] if hasattr(NodeType, node_type_str) else NodeType.TASK
+                    graph.add_node(
+                        node_id=event["id"],
+                        node_type=node_type,
+                        content=event.get("data", {}).get("title", ""),
+                        properties=event.get("data", {}),
+                        metadata=event.get("meta", {})
+                    )
+
+                elif event_type == "node.update":
+                    node_id = event["id"]
+                    changes = event.get("changes", {})
+                    if node_id in graph.nodes:
+                        for key, value in changes.items():
+                            graph.nodes[node_id].properties[key] = value
+
+                elif event_type == "node.delete":
+                    node_id = event["id"]
+                    if node_id in graph.nodes:
+                        del graph.nodes[node_id]
+
+                elif event_type == "edge.create":
+                    edge_type_str = event.get("type", "RELATES_TO").upper()
+                    edge_type = EdgeType[edge_type_str] if hasattr(EdgeType, edge_type_str) else EdgeType.RELATES_TO
+                    graph.add_edge(
+                        source_id=event["src"],
+                        target_id=event["tgt"],
+                        edge_type=edge_type,
+                        weight=event.get("weight", 1.0)
+                    )
+
+                elif event_type == "edge.delete":
+                    # Find and remove the edge
+                    edge_key = (event["src"], event["tgt"], event.get("type", ""))
+                    for eid, edge in list(graph.edges.items()):
+                        if (edge.source_id, edge.target_id, edge.edge_type.name) == edge_key:
+                            del graph.edges[eid]
+                            break
+
+            except Exception:
+                # Skip invalid events
+                continue
+
+        return graph
+
+
 # =============================================================================
 # GRAPH MANAGER
 # =============================================================================
@@ -105,20 +265,26 @@ class GoTProjectManager:
     """
     Manages project artifacts (tasks, sprints, epics) in a ThoughtGraph.
 
-    Provides CRUD operations with persistence via GraphWAL.
+    Uses event-sourced persistence for merge-friendly cross-branch coordination.
+    Each session writes to a unique event file, enabling conflict-free merges.
     """
 
     def __init__(self, got_dir: Path = GOT_DIR):
         self.got_dir = Path(got_dir)
         self.wal_dir = self.got_dir / "wal"
         self.snapshots_dir = self.got_dir / "snapshots"
+        self.events_dir = self.got_dir / "events"
 
         # Ensure directories exist
         self.got_dir.mkdir(parents=True, exist_ok=True)
         self.wal_dir.mkdir(parents=True, exist_ok=True)
         self.snapshots_dir.mkdir(parents=True, exist_ok=True)
+        self.events_dir.mkdir(parents=True, exist_ok=True)
 
-        # Initialize graph and WAL
+        # Initialize event log (each session gets unique file)
+        self.event_log = EventLog(self.events_dir)
+
+        # Initialize graph and WAL (WAL for crash recovery)
         self.graph = ThoughtGraph()
         self.wal = GraphWAL(str(self.wal_dir))
 
@@ -126,24 +292,39 @@ class GoTProjectManager:
         self._load_state()
 
     def _load_state(self) -> None:
-        """Load graph state from WAL/snapshots.
+        """Load graph state with event-sourced priority.
 
         Recovery order (for environment resilience):
-        1. WAL snapshots (local, most recent) - .got/wal/snapshots/
-        2. WAL recovery (crash recovery)
-        3. Git-tracked snapshots (survives clone) - .got/snapshots/
-        4. Empty graph (fresh start)
+        1. Events (git-tracked, source of truth) - .got/events/*.jsonl
+        2. WAL snapshots (local cache) - .got/wal/snapshots/
+        3. Git-tracked snapshots (backup) - .got/snapshots/
+        4. WAL recovery (crash recovery)
+        5. Empty graph (fresh start)
         """
-        # 1. Try loading from WAL snapshot directly (most common case)
+        # 1. Try loading from events (source of truth)
+        events = EventLog.load_all_events(self.events_dir)
+        if events:
+            self.graph = EventLog.rebuild_graph_from_events(events)
+            return
+
+        # 2. Try loading from WAL snapshot (local cache)
         try:
-            snapshot = self.wal.load_snapshot()  # None = load latest
+            snapshot = self.wal.load_snapshot()
             if snapshot:
                 self.graph = snapshot
                 return
         except Exception:
             pass
 
-        # 2. If no WAL snapshot, try WAL recovery
+        # 3. Try git-tracked snapshots (survives clone)
+        try:
+            self._load_from_git_tracked_snapshot()
+            if len(self.graph.nodes) > 0:
+                return
+        except Exception:
+            pass
+
+        # 4. Try WAL recovery (crash recovery)
         try:
             recovery = GraphRecovery(
                 wal_dir=str(self.wal_dir),
@@ -158,15 +339,7 @@ class GoTProjectManager:
         except Exception:
             pass
 
-        # 3. Try git-tracked snapshots (fresh clone scenario)
-        try:
-            self._load_from_git_tracked_snapshot()
-            if len(self.graph.nodes) > 0:
-                return
-        except Exception:
-            pass
-
-        # 4. Start with empty graph if all else fails
+        # 5. Start with empty graph (fresh start)
 
     def _load_from_git_tracked_snapshot(self) -> None:
         """Load from git-tracked snapshot (survives fresh clone)."""
@@ -291,7 +464,10 @@ class GoTProjectManager:
             metadata=metadata,
         )
 
-        # Log to WAL
+        # Log to event log (source of truth for cross-branch coordination)
+        self.event_log.log_node_create(task_id, "TASK", {**properties, "title": title})
+
+        # Also log to WAL for crash recovery
         self.wal.log_add_node(task_id, NodeType.TASK, title, properties, metadata)
 
         # Add to sprint if specified
@@ -369,10 +545,16 @@ class GoTProjectManager:
         task.properties["status"] = status
         task.metadata["updated_at"] = datetime.now().isoformat()
 
+        changes = {"status": status, "updated_at": task.metadata["updated_at"]}
+
         if status == STATUS_COMPLETED:
             task.metadata["completed_at"] = datetime.now().isoformat()
+            changes["completed_at"] = task.metadata["completed_at"]
 
-        # Log update
+        # Log to event log (source of truth)
+        self.event_log.log_node_update(task_id, changes)
+
+        # Log to WAL for crash recovery
         self.wal.log_update_node(task_id, task.properties, task.metadata)
 
         return True
@@ -497,6 +679,9 @@ class GoTProjectManager:
             properties=properties,
             metadata=metadata,
         )
+
+        # Log to event log (source of truth)
+        self.event_log.log_node_create(sprint_id, "GOAL", {**properties, "name": name})
 
         self.wal.log_add_node(sprint_id, NodeType.GOAL, name, properties, metadata)
 
@@ -1131,6 +1316,88 @@ def cmd_migrate(args, manager: GoTProjectManager) -> int:
     return 0
 
 
+def cmd_migrate_events(args, manager: GoTProjectManager) -> int:
+    """Migrate existing snapshot to event-sourced format.
+
+    This creates event log entries from the current graph state,
+    enabling merge-friendly cross-branch coordination.
+    """
+    import gzip
+
+    dry_run = getattr(args, 'dry_run', False)
+
+    # Check if events already exist
+    existing_events = EventLog.load_all_events(manager.events_dir)
+    if existing_events and not getattr(args, 'force', False):
+        print(f"Events already exist ({len(existing_events)} events).")
+        print("Use --force to migrate anyway (will append, not replace).")
+        return 1
+
+    # Create migration event log
+    migration_log = EventLog(
+        manager.events_dir,
+        session_id=f"migration-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    )
+
+    nodes_migrated = 0
+    edges_migrated = 0
+
+    # Migrate all nodes
+    for node_id, node in manager.graph.nodes.items():
+        if dry_run:
+            print(f"  Would migrate node: {node_id}")
+        else:
+            migration_log.log_node_create(
+                node_id=node_id,
+                node_type=node.node_type.name if hasattr(node.node_type, 'name') else str(node.node_type),
+                data={
+                    **node.properties,
+                    "title": node.content,
+                }
+            )
+        nodes_migrated += 1
+
+    # Migrate all edges
+    edges = manager.graph.edges
+    if isinstance(edges, dict):
+        edge_list = edges.values()
+    else:
+        edge_list = edges
+
+    for edge in edge_list:
+        if dry_run:
+            src = getattr(edge, 'source_id', edge.get('source_id', '?') if isinstance(edge, dict) else '?')
+            tgt = getattr(edge, 'target_id', edge.get('target_id', '?') if isinstance(edge, dict) else '?')
+            print(f"  Would migrate edge: {src} -> {tgt}")
+        else:
+            src = getattr(edge, 'source_id', edge.get('source_id') if isinstance(edge, dict) else None)
+            tgt = getattr(edge, 'target_id', edge.get('target_id') if isinstance(edge, dict) else None)
+            etype = getattr(edge, 'edge_type', edge.get('edge_type') if isinstance(edge, dict) else None)
+            weight = getattr(edge, 'weight', edge.get('weight', 1.0) if isinstance(edge, dict) else 1.0)
+
+            if src and tgt:
+                migration_log.log_edge_create(
+                    src=src,
+                    tgt=tgt,
+                    edge_type=etype.name if hasattr(etype, 'name') else str(etype),
+                    weight=weight
+                )
+        edges_migrated += 1
+
+    if dry_run:
+        print(f"\nDry run complete:")
+    else:
+        print(f"\nMigration complete:")
+
+    print(f"  Nodes: {nodes_migrated}")
+    print(f"  Edges: {edges_migrated}")
+    print(f"  Event file: {migration_log.event_file}")
+    print(f"\nEvents are now the source of truth.")
+    print("Commit .got/events/ to make this survive across environments.")
+
+    return 0
+
+
 def cmd_export(args, manager: GoTProjectManager) -> int:
     """Export graph."""
     output = getattr(args, 'output', None)
@@ -1514,6 +1781,12 @@ def main():
     migrate_parser = subparsers.add_parser("migrate", help="Migrate from files")
     migrate_parser.add_argument("--dry-run", action="store_true", help="Don't actually migrate")
 
+    # Migrate to events command (convert snapshot to event-sourced format)
+    migrate_events_parser = subparsers.add_parser("migrate-events",
+        help="Convert snapshot to event-sourced format for cross-branch coordination")
+    migrate_events_parser.add_argument("--dry-run", action="store_true", help="Show what would be migrated")
+    migrate_events_parser.add_argument("--force", "-f", action="store_true", help="Migrate even if events exist")
+
     # Export command
     export_parser = subparsers.add_parser("export", help="Export graph")
     export_parser.add_argument("--output", "-o", help="Output file")
@@ -1592,6 +1865,9 @@ def main():
 
     elif args.command == "migrate":
         return cmd_migrate(args, manager)
+
+    elif args.command == "migrate-events":
+        return cmd_migrate_events(args, manager)
 
     elif args.command == "export":
         return cmd_export(args, manager)

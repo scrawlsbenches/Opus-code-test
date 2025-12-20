@@ -134,7 +134,8 @@ corpus_dev/
 
 # Graph of Thought - Tiered persistence (mirrors .git-ml strategy)
 # TRACKED IN GIT (source of truth for project coordination):
-#   - .got/snapshots/       - Compressed graph snapshots (portable state)
+#   - .got/events/          - Append-only event logs (TRUE source of truth)
+#   - .got/snapshots/       - Compressed graph snapshots (cache, can rebuild)
 #   - .got/tracked/         - Exported task/sprint/epic state
 # LOCAL ONLY (transient recovery data):
 #   - .got/wal/             - Write-ahead logs (crash recovery only)
@@ -142,7 +143,8 @@ corpus_dev/
 .got/wal/
 .got/chunks/
 
-# Ensure snapshots directory is tracked (negate parent ignore)
+# Ensure git-tracked directories are not ignored
 !.got/
+!.got/events/
 !.got/snapshots/
 !.got/tracked/
