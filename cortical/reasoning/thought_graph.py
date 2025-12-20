@@ -878,3 +878,331 @@ class ThoughtGraph:
     def cluster_count(self) -> int:
         """Return the number of clusters in the graph."""
         return len(self.clusters)
+
+    # =========================================================================
+    # VISUALIZATION OPERATIONS
+    # =========================================================================
+
+    def to_mermaid(self) -> str:
+        """
+        Export graph to Mermaid diagram format.
+
+        Mermaid is a markdown-compatible diagram format that can be rendered
+        in many tools (GitHub, GitLab, VS Code, etc.).
+
+        Node types are rendered with different shapes:
+        - QUESTION: [Question text]
+        - HYPOTHESIS: ((Hypothesis text))
+        - DECISION: {Decision text}
+        - EVIDENCE: >Evidence text]
+        - CONCEPT: ([Concept text])
+        - FACT: [[Fact text]]
+        - TASK: [/Task text/]
+        - ARTIFACT: [(Artifact text)]
+        - INSIGHT: [\\Insight text\\]
+        - Others: (Other text)
+
+        Returns:
+            Mermaid diagram as a string
+
+        Example:
+            >>> graph = ThoughtGraph()
+            >>> graph.add_node("Q1", NodeType.QUESTION, "What auth?")
+            >>> graph.add_node("H1", NodeType.HYPOTHESIS, "Use JWT")
+            >>> graph.add_edge("Q1", "H1", EdgeType.EXPLORES)
+            >>> print(graph.to_mermaid())
+            graph TD
+                Q1[What auth?]
+                H1((Use JWT))
+                Q1 -->|explores| H1
+        """
+        if not self.nodes:
+            return "graph TD\n    empty[Empty Graph]"
+
+        lines = ["graph TD"]
+
+        # Add nodes with type-specific shapes
+        for node_id, node in self.nodes.items():
+            # Escape special characters and truncate long content
+            content = node.content.replace('"', "'").replace("\n", " ")
+            if len(content) > 50:
+                content = content[:47] + "..."
+
+            # Choose shape based on node type
+            if node.node_type == NodeType.QUESTION:
+                shape = f"[{content}]"
+            elif node.node_type == NodeType.HYPOTHESIS:
+                shape = f"(({content}))"
+            elif node.node_type == NodeType.DECISION:
+                shape = f"{{{content}}}"
+            elif node.node_type == NodeType.EVIDENCE:
+                shape = f">{content}]"
+            elif node.node_type == NodeType.CONCEPT:
+                shape = f"([{content}])"
+            elif node.node_type == NodeType.FACT:
+                shape = f"[[{content}]]"
+            elif node.node_type == NodeType.TASK:
+                shape = f"[/{content}/]"
+            elif node.node_type == NodeType.ARTIFACT:
+                shape = f"[({content})]"
+            elif node.node_type == NodeType.INSIGHT:
+                shape = f"[\\{content}\\]"
+            else:
+                shape = f"({content})"
+
+            lines.append(f"    {node_id}{shape}")
+
+        # Add edges with labels (track to avoid duplicates from bidirectional)
+        # When bidirectional=True, the graph creates two edges: forward (bidirectional=True)
+        # and reverse (bidirectional=False). We only want to show the forward one.
+        seen_edges = set()
+        for edge in self.edges:
+            # Create a normalized key for this edge
+            edge_key = tuple(sorted([edge.source_id, edge.target_id])) + (edge.edge_type,)
+
+            # Skip if we've already seen this edge pair
+            if edge_key in seen_edges:
+                continue
+
+            # Mark this edge pair as seen
+            seen_edges.add(edge_key)
+
+            edge_label = edge.edge_type.value.replace("_", " ")
+
+            # Add weight if meaningful (not default)
+            if edge.weight != 1.0:
+                edge_label += f" ({edge.weight:.2f})"
+
+            arrow = "<-->" if edge.bidirectional else "-->"
+            lines.append(f"    {edge.source_id} {arrow}|{edge_label}| {edge.target_id}")
+
+        return "\n".join(lines)
+
+    def to_dot(self) -> str:
+        """
+        Export graph to DOT format (Graphviz).
+
+        DOT format can be rendered using Graphviz tools to create
+        high-quality graph visualizations.
+
+        Node types are rendered with different shapes and colors:
+        - QUESTION: box (lightblue)
+        - HYPOTHESIS: ellipse (lightgreen)
+        - DECISION: diamond (lightyellow)
+        - EVIDENCE: note (lightcyan)
+        - CONCEPT: hexagon (lightpink)
+        - FACT: rectangle (lightgray)
+        - Others: oval (white)
+
+        Returns:
+            DOT format string
+
+        Example:
+            >>> graph = ThoughtGraph()
+            >>> graph.add_node("Q1", NodeType.QUESTION, "What auth?")
+            >>> graph.add_node("H1", NodeType.HYPOTHESIS, "Use JWT")
+            >>> graph.add_edge("Q1", "H1", EdgeType.EXPLORES, weight=0.8)
+            >>> print(graph.to_dot())
+            digraph ThoughtGraph {
+                ...
+            }
+        """
+        if not self.nodes:
+            return "digraph ThoughtGraph {\n    empty [label=\"Empty Graph\" shape=plaintext]\n}"
+
+        lines = ["digraph ThoughtGraph {"]
+        lines.append("    rankdir=TB;")
+        lines.append("    node [fontname=\"Arial\"];")
+        lines.append("    edge [fontname=\"Arial\"];")
+        lines.append("")
+
+        # Add nodes with type-specific styling
+        for node_id, node in self.nodes.items():
+            # Escape special characters
+            content = node.content.replace('"', '\\"').replace("\n", "\\n")
+            if len(content) > 50:
+                content = content[:47] + "..."
+
+            label = f"{node.node_type.value.capitalize()}: {content}"
+
+            # Choose shape and color based on node type
+            if node.node_type == NodeType.QUESTION:
+                shape, color = "box", "lightblue"
+            elif node.node_type == NodeType.HYPOTHESIS:
+                shape, color = "ellipse", "lightgreen"
+            elif node.node_type == NodeType.DECISION:
+                shape, color = "diamond", "lightyellow"
+            elif node.node_type == NodeType.EVIDENCE:
+                shape, color = "note", "lightcyan"
+            elif node.node_type == NodeType.CONCEPT:
+                shape, color = "hexagon", "lightpink"
+            elif node.node_type == NodeType.FACT:
+                shape, color = "rectangle", "lightgray"
+            elif node.node_type == NodeType.TASK:
+                shape, color = "folder", "wheat"
+            elif node.node_type == NodeType.ARTIFACT:
+                shape, color = "component", "lightsalmon"
+            elif node.node_type == NodeType.INSIGHT:
+                shape, color = "star", "gold"
+            else:
+                shape, color = "oval", "white"
+
+            lines.append(
+                f'    {node_id} [label="{label}" shape={shape} '
+                f'fillcolor={color} style=filled];'
+            )
+
+        lines.append("")
+
+        # Add edges
+        for edge in self.edges:
+            # Skip reverse edges from bidirectional to avoid duplicates
+            if edge.bidirectional and edge.source_id > edge.target_id:
+                continue
+
+            edge_label = edge.edge_type.value.replace("_", " ")
+
+            # Add weight if meaningful
+            if edge.weight != 1.0:
+                edge_label += f"\\n({edge.weight:.2f})"
+
+            # Bidirectional edges use different arrow style
+            arrow_attrs = []
+            if edge.bidirectional:
+                arrow_attrs.append("dir=both")
+            if edge.confidence < 1.0:
+                arrow_attrs.append(f"style=dashed")
+
+            attrs_str = f" [{', '.join(arrow_attrs)}]" if arrow_attrs else ""
+
+            lines.append(
+                f'    {edge.source_id} -> {edge.target_id} '
+                f'[label="{edge_label}"]{attrs_str};'
+            )
+
+        lines.append("}")
+        return "\n".join(lines)
+
+    def to_ascii(self, root_id: Optional[str] = None, max_depth: int = 10) -> str:
+        """
+        Generate ASCII tree representation for terminal display.
+
+        Creates a text-based tree visualization suitable for terminal output.
+        If no root is specified, uses the first node with no incoming edges,
+        or the first node if all nodes have incoming edges.
+
+        Args:
+            root_id: Optional root node ID. If None, auto-detects a root.
+            max_depth: Maximum depth to traverse (prevents infinite loops)
+
+        Returns:
+            ASCII tree as a string
+
+        Example:
+            >>> graph = ThoughtGraph()
+            >>> graph.add_node("Q1", NodeType.QUESTION, "What auth?")
+            >>> graph.add_node("H1", NodeType.HYPOTHESIS, "Use JWT")
+            >>> graph.add_node("E1", NodeType.EVIDENCE, "Team has experience")
+            >>> graph.add_edge("Q1", "H1", EdgeType.EXPLORES)
+            >>> graph.add_edge("H1", "E1", EdgeType.SUPPORTS)
+            >>> print(graph.to_ascii())
+            [QUESTION] What auth?
+            └── [HYPOTHESIS] Use JWT
+                └── [EVIDENCE] Team has experience
+
+        Raises:
+            ValueError: If specified root_id doesn't exist
+        """
+        if not self.nodes:
+            return "[Empty Graph]"
+
+        # Auto-detect root if not specified
+        if root_id is None:
+            # Find nodes with no incoming edges
+            root_candidates = [
+                node_id for node_id in self.nodes
+                if not self._edges_to.get(node_id)
+            ]
+
+            if root_candidates:
+                root_id = root_candidates[0]
+            else:
+                # All nodes have incoming edges; use first node
+                root_id = next(iter(self.nodes))
+
+        if root_id not in self.nodes:
+            raise ValueError(f"Root node {root_id} not found")
+
+        lines = []
+        visited = set()
+
+        def render_tree(node_id: str, prefix: str = "", depth: int = 0, is_root: bool = False):
+            """Recursively render tree from node."""
+            if depth > max_depth or node_id in visited:
+                return
+
+            visited.add(node_id)
+            node = self.nodes[node_id]
+
+            # Format node content
+            content = node.content.replace("\n", " ")
+            if len(content) > 60:
+                content = content[:57] + "..."
+
+            node_type_str = node.node_type.value.upper()
+
+            # Only show node header for root
+            if is_root:
+                lines.append(f"{prefix}[{node_type_str}] {content}")
+
+            # Get children (nodes this node points to)
+            children = self.get_neighbors(node_id)
+
+            # Render children
+            for i, child_id in enumerate(children):
+                # Skip if child already visited or would exceed max depth
+                if child_id in visited or depth + 1 > max_depth:
+                    continue
+
+                is_last = i == len(children) - 1
+
+                # Choose prefix characters
+                if is_last:
+                    child_prefix = prefix + "└── "
+                    continuation = prefix + "    "
+                else:
+                    child_prefix = prefix + "├── "
+                    continuation = prefix + "│   "
+
+                # Get edge info
+                edge_info = ""
+                for edge in self._edges_from.get(node_id, []):
+                    if edge.target_id == child_id:
+                        edge_info = f" ({edge.edge_type.value})"
+                        if edge.weight != 1.0:
+                            edge_info += f" [{edge.weight:.2f}]"
+                        break
+
+                # Render child
+                child_node = self.nodes[child_id]
+                child_content = child_node.content.replace("\n", " ")
+                if len(child_content) > 60:
+                    child_content = child_content[:57] + "..."
+
+                child_type_str = child_node.node_type.value.upper()
+                lines.append(
+                    f"{child_prefix}[{child_type_str}] {child_content}{edge_info}"
+                )
+
+                # Render deeper levels recursively
+                render_tree(child_id, continuation, depth + 1, is_root=False)
+
+        render_tree(root_id, is_root=True)
+
+        # Add note about unvisited nodes if any
+        unvisited = set(self.nodes.keys()) - visited
+        if unvisited:
+            lines.append("")
+            lines.append(f"[{len(unvisited)} node(s) not shown: {', '.join(sorted(unvisited)[:5])}...]")
+
+        return "\n".join(lines)
