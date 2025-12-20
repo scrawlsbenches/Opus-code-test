@@ -3,7 +3,10 @@ Extended unit tests for CrisisManager module.
 """
 
 import pytest
-from cortical.reasoning import (
+import tempfile
+import os
+from datetime import datetime, timedelta
+from cortical.reasoning.crisis_manager import (
     CrisisLevel,
     RecoveryAction,
     CrisisEvent,
@@ -12,6 +15,8 @@ from cortical.reasoning import (
     ScopeCreepDetector,
     BlockedDependency,
     CrisisManager,
+    RecoveryProcedures,
+    CrisisPredictor,
 )
 
 
@@ -371,3 +376,164 @@ class TestCrisisManager:
 
         lessons = manager.get_lessons_learned()
         assert "Always validate input" in lessons
+
+class TestRecoveryProcedures:
+    """Tests for RecoveryProcedures class."""
+
+    def test_create_recovery_procedures(self):
+        """Test creating recovery procedures instance."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            recovery = RecoveryProcedures(memory_path=tmpdir)
+            assert recovery is not None
+
+    def test_suggest_recovery_hiccup(self):
+        """Test recovery suggestions for HICCUP level crisis."""
+        recovery = RecoveryProcedures()
+        event = CrisisEvent(level=CrisisLevel.HICCUP, description="Minor error")
+        suggestions = recovery.suggest_recovery(event)
+        assert RecoveryAction.CONTINUE in suggestions
+
+    def test_suggest_recovery_obstacle(self):
+        """Test recovery suggestions for OBSTACLE level crisis."""
+        recovery = RecoveryProcedures()
+        event = CrisisEvent(level=CrisisLevel.OBSTACLE, description="Blocking issue")
+        suggestions = recovery.suggest_recovery(event)
+        assert RecoveryAction.ADAPT in suggestions
+        assert RecoveryAction.ROLLBACK in suggestions
+
+    def test_suggest_recovery_wall(self):
+        """Test recovery suggestions for WALL level crisis."""
+        recovery = RecoveryProcedures()
+        event = CrisisEvent(level=CrisisLevel.WALL, description="Major problem")
+        suggestions = recovery.suggest_recovery(event)
+        assert RecoveryAction.ESCALATE in suggestions
+
+    def test_suggest_recovery_crisis(self):
+        """Test recovery suggestions for CRISIS level."""
+        recovery = RecoveryProcedures()
+        event = CrisisEvent(level=CrisisLevel.CRISIS, description="Critical failure")
+        suggestions = recovery.suggest_recovery(event)
+        assert RecoveryAction.STOP in suggestions
+
+    def test_execute_recovery_continue(self):
+        """Test executing CONTINUE action."""
+        recovery = RecoveryProcedures()
+        result = recovery.execute_recovery(RecoveryAction.CONTINUE, {})
+        assert result is True
+
+    def test_escalate_hiccup(self):
+        """Test escalating HICCUP to OBSTACLE."""
+        recovery = RecoveryProcedures()
+        event = CrisisEvent(level=CrisisLevel.HICCUP, description="Minor")
+        new_level = recovery.escalate(event)
+        assert new_level == CrisisLevel.OBSTACLE
+
+    def test_escalate_wall(self):
+        """Test escalating WALL to CRISIS."""
+        recovery = RecoveryProcedures()
+        event = CrisisEvent(level=CrisisLevel.WALL, description="Problem")
+        new_level = recovery.escalate(event)
+        assert new_level == CrisisLevel.CRISIS
+
+    def test_record_outcome(self):
+        """Test recording recovery outcome."""
+        recovery = RecoveryProcedures()
+        recovery.record_outcome(RecoveryAction.CONTINUE, success=True)
+        assert len(recovery._outcome_history) == 1
+
+    def test_get_outcome_statistics(self):
+        """Test getting outcome statistics."""
+        recovery = RecoveryProcedures()
+        recovery.record_outcome(RecoveryAction.CONTINUE, success=True)
+        recovery.record_outcome(RecoveryAction.CONTINUE, success=False)
+        stats = recovery.get_outcome_statistics()
+        assert 'CONTINUE' in stats
+        assert stats['CONTINUE']['total'] == 2
+
+    def test_create_recovery_memory(self):
+        """Test creating recovery memory document."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            recovery = RecoveryProcedures(memory_path=tmpdir)
+            file_path = recovery.create_recovery_memory(
+                crisis="Test failure",
+                actions=["Analyzed logs"],
+                lessons=["Need better validation"]
+            )
+            assert os.path.exists(file_path)
+
+
+class TestCrisisPredictor:
+    """Tests for CrisisPredictor class."""
+
+    def test_create_predictor(self):
+        """Test creating crisis predictor."""
+        predictor = CrisisPredictor()
+        assert predictor is not None
+
+    def test_analyze_patterns_empty(self):
+        """Test pattern analysis with no events."""
+        predictor = CrisisPredictor()
+        patterns = predictor.analyze_patterns([])
+        assert patterns == []
+
+    def test_analyze_patterns_repeated_failures(self):
+        """Test detecting repeated failure pattern."""
+        events = [
+            CrisisEvent(level=CrisisLevel.HICCUP, description="test failure"),
+            CrisisEvent(level=CrisisLevel.HICCUP, description="test failure"),
+        ]
+        predictor = CrisisPredictor()
+        patterns = predictor.analyze_patterns(events)
+        assert any("Repeated" in p for p in patterns)
+
+    def test_predict_risk_no_factors(self):
+        """Test risk prediction with no risk factors."""
+        predictor = CrisisPredictor()
+        risk = predictor.predict_risk({})
+        assert risk == 0.0
+
+    def test_predict_risk_repeated_failures(self):
+        """Test risk prediction with repeated failures."""
+        predictor = CrisisPredictor()
+        risk = predictor.predict_risk({'repeated_failures': 3})
+        assert risk >= 0.4
+
+    def test_predict_risk_high_complexity(self):
+        """Test risk prediction with high complexity."""
+        predictor = CrisisPredictor()
+        risk = predictor.predict_risk({'complexity': 'high'})
+        assert risk >= 0.25
+
+    def test_predict_risk_multiple_factors(self):
+        """Test risk prediction with multiple factors."""
+        predictor = CrisisPredictor()
+        risk = predictor.predict_risk({
+            'repeated_failures': 3,
+            'complexity': 'high',
+        })
+        assert risk > 0.5
+
+    def test_suggest_prevention_empty(self):
+        """Test prevention suggestions with no risk factors."""
+        predictor = CrisisPredictor()
+        suggestions = predictor.suggest_prevention([])
+        assert suggestions == []
+
+    def test_suggest_prevention_repeated_failures(self):
+        """Test prevention for repeated failures."""
+        predictor = CrisisPredictor()
+        suggestions = predictor.suggest_prevention(['repeated_failures'])
+        assert len(suggestions) > 0
+
+    def test_get_similar_past_crises_empty(self):
+        """Test finding similar crises with empty history."""
+        predictor = CrisisPredictor()
+        similar = predictor.get_similar_past_crises({'task': 'test'})
+        assert similar == []
+
+    def test_calculate_similarity_identical(self):
+        """Test similarity with identical contexts."""
+        predictor = CrisisPredictor()
+        context = {'task': 'test', 'file': 'a.py'}
+        sim = predictor._calculate_similarity(context, context)
+        assert sim == 1.0

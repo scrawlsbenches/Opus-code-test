@@ -579,6 +579,84 @@ class RecoveryProcedures:
         self._git_available = shutil.which('git') is not None
         self._recovery_log: List[Dict[str, Any]] = []
         self._memory_path = memory_path or 'samples/memories/'
+        self._outcome_history: List[Dict[str, Any]] = []
+
+    def suggest_recovery(self, crisis: CrisisEvent) -> List[RecoveryAction]:
+        """Suggest recovery actions based on crisis level."""
+        suggestions = []
+        if crisis.level == CrisisLevel.HICCUP:
+            suggestions.append(RecoveryAction.CONTINUE)
+        elif crisis.level == CrisisLevel.OBSTACLE:
+            suggestions.append(RecoveryAction.ADAPT)
+            suggestions.append(RecoveryAction.ROLLBACK)
+        elif crisis.level == CrisisLevel.WALL:
+            suggestions.append(RecoveryAction.ESCALATE)
+            suggestions.append(RecoveryAction.PARTIAL_RECOVER)
+        elif crisis.level == CrisisLevel.CRISIS:
+            suggestions.append(RecoveryAction.STOP)
+            suggestions.append(RecoveryAction.ESCALATE)
+        return suggestions
+
+    def execute_recovery(self, action: RecoveryAction, context: Dict[str, Any]) -> bool:
+        """Execute a recovery action."""
+        try:
+            if action in (RecoveryAction.CONTINUE, RecoveryAction.STOP,
+                         RecoveryAction.ESCALATE, RecoveryAction.ADAPT):
+                return True
+            elif action == RecoveryAction.ROLLBACK:
+                checkpoint = context.get('checkpoint', '')
+                if not checkpoint:
+                    checkpoint = self.get_last_good_commit()
+                if checkpoint:
+                    result = self.full_rollback(checkpoint, context.get('description', ''))
+                    return result.get('success', False)
+                return False
+            elif action == RecoveryAction.PARTIAL_RECOVER:
+                working = context.get('working_files', [])
+                broken = context.get('broken_files', [])
+                if working or broken:
+                    result = self.partial_recovery(working, broken)
+                    return result.get('success', False)
+                return False
+            return False
+        except Exception:
+            return False
+
+    def escalate(self, crisis: CrisisEvent) -> CrisisLevel:
+        """Escalate crisis to next level."""
+        escalation_map = {
+            CrisisLevel.HICCUP: CrisisLevel.OBSTACLE,
+            CrisisLevel.OBSTACLE: CrisisLevel.WALL,
+            CrisisLevel.WALL: CrisisLevel.CRISIS,
+            CrisisLevel.CRISIS: CrisisLevel.CRISIS,
+        }
+        return escalation_map[crisis.level]
+
+    def record_outcome(self, action: RecoveryAction, success: bool, context: Optional[Dict[str, Any]] = None) -> None:
+        """Record recovery outcome."""
+        self._outcome_history.append({
+            'action': action.name,
+            'success': success,
+            'timestamp': datetime.now(),
+            'context': context or {},
+        })
+
+    def get_outcome_statistics(self) -> Dict[str, Any]:
+        """Get outcome statistics."""
+        if not self._outcome_history:
+            return {}
+        stats = {}
+        for action in RecoveryAction:
+            outcomes = [o for o in self._outcome_history if o['action'] == action.name]
+            if outcomes:
+                successes = sum(1 for o in outcomes if o['success'])
+                stats[action.name] = {
+                    'total': len(outcomes),
+                    'successes': successes,
+                    'failures': len(outcomes) - successes,
+                    'success_rate': successes / len(outcomes),
+                }
+        return stats
 
     def _run_git(self, *args: str, **kwargs) -> subprocess.CompletedProcess:
         """
@@ -1055,61 +1133,113 @@ Consider the following to prevent similar crises:
 
 
 class CrisisPredictor:
-    """
-    STUB: ML-based crisis prediction to prevent issues before they occur.
+    """Crisis prediction using heuristic-based risk scoring."""
 
-    Full Implementation Would:
-    --------------------------
-    1. Feature extraction from ongoing work:
-       - Time spent in each phase
-       - Number of iterations
-       - File modification patterns
-       - Comment marker density
+    def __init__(self, crisis_history: Optional[List[CrisisEvent]] = None):
+        """Initialize crisis predictor."""
+        self._history = crisis_history or []
 
-    2. Pattern matching against historical crises:
-       - Similar time patterns
-       - Similar scope patterns
-       - Similar failure sequences
+    def analyze_patterns(self, events: List[CrisisEvent]) -> List[str]:
+        """Find patterns in crisis history."""
+        patterns = []
+        if not events:
+            return patterns
+        from collections import Counter
+        descriptions = [e.description.lower() for e in events]
+        desc_counts = Counter(descriptions)
+        for desc, count in desc_counts.items():
+            if count >= 2:
+                patterns.append(f"Repeated: {desc} ({count} times)")
+        if len(events) >= 3:
+            levels = [e.level.value for e in events[-3:]]
+            if levels == sorted(levels):
+                patterns.append("Escalating severity detected")
+        unresolved = sum(1 for e in events if e.resolved_at is None)
+        if unresolved >= 3:
+            patterns.append(f"Accumulating unresolved crises ({unresolved})")
+        return patterns
 
-    3. Risk scoring:
-       - Probability of escalation
-       - Expected time to crisis
-       - Recommended preventive action
+    def predict_risk(self, context: Dict[str, Any]) -> float:
+        """Predict crisis risk level."""
+        risk = 0.0
+        repeated_failures = context.get('repeated_failures', 0)
+        if repeated_failures >= 3:
+            risk += 0.4
+        elif repeated_failures == 2:
+            risk += 0.2
+        elif repeated_failures == 1:
+            risk += 0.1
+        if context.get('time_pressure', False):
+            risk += 0.15
+        complexity = context.get('complexity', 'low')
+        if complexity == 'high':
+            risk += 0.25
+        elif complexity == 'medium':
+            risk += 0.1
+        scope_additions = context.get('scope_additions', 0)
+        if scope_additions >= 3:
+            risk += 0.2
+        elif scope_additions >= 1:
+            risk += 0.1
+        if context.get('unexpected_files', 0) >= 3:
+            risk += 0.15
+        if context.get('new_concepts', 0) >= 2:
+            risk += 0.15
+        time_overrun = context.get('time_overrun_factor', 1.0)
+        if time_overrun >= 2.0:
+            risk += 0.2
+        elif time_overrun >= 1.5:
+            risk += 0.1
+        active_blockers = context.get('active_blockers', 0)
+        if active_blockers >= 2:
+            risk += 0.2
+        elif active_blockers == 1:
+            risk += 0.1
+        return min(risk, 1.0)
 
-    4. Proactive alerts:
-       - "You're approaching the pattern that led to crisis X"
-       - "Consider: [preventive action]"
-
-    Training Data:
-    --------------
-    - Historical crisis events with context
-    - Successful recovery patterns
-    - Scope creep progression sequences
-    - Failure escalation timelines
-    """
-
-    def predict_risk(self, current_context: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        STUB: Predict crisis risk from current context.
-
-        Returns:
-            {'risk_level': float, 'likely_type': CrisisLevel, 'suggestions': list}
-        """
-        return {
-            'risk_level': 0.2,  # Low risk placeholder
-            'likely_type': CrisisLevel.HICCUP,
-            'suggestions': [
-                'Continue monitoring',
-                'Consider time-boxing current phase',
-            ],
-            'note': 'STUB: Would use ML model for prediction',
+    def suggest_prevention(self, risk_factors: List[str]) -> List[str]:
+        """Suggest preventive measures."""
+        suggestions = []
+        prevention_map = {
+            'repeated_failures': ['Stop and analyze root cause', 'Consider alternative approach'],
+            'time_pressure': ['Reduce scope to essentials', 'Time-box remaining work'],
+            'high_complexity': ['Break into smaller steps', 'Prototype complex parts first'],
+            'scope_creep': ['Return to original scope', 'Create follow-up tasks'],
+            'unexpected_files': ['Review why files are needed', 'Document rationale'],
+            'new_concepts': ['Allocate learning time', 'Find working examples'],
+            'time_overrun': ['Re-estimate work', 'Consider partial delivery'],
+            'active_blockers': ['Find workarounds', 'Escalate blocker resolution'],
         }
+        for factor in risk_factors:
+            if factor in prevention_map:
+                suggestions.extend(prevention_map[factor])
+        if len(risk_factors) >= 3:
+            suggestions.append('Consider pausing for planning session')
+        seen = set()
+        unique = []
+        for s in suggestions:
+            if s not in seen:
+                seen.add(s)
+                unique.append(s)
+        return unique
 
-    def get_similar_past_crises(self, context: Dict[str, Any]) -> List[CrisisEvent]:
-        """
-        STUB: Find historically similar crises.
+    def get_similar_past_crises(self, context: Dict[str, Any], max_results: int = 5) -> List[CrisisEvent]:
+        """Find similar past crises."""
+        if not self._history:
+            return []
+        scored = [(self._calculate_similarity(context, e.context), e) for e in self._history]
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [e for score, e in scored[:max_results] if score > 0]
 
-        Returns:
-            List of similar past CrisisEvent instances
-        """
-        return []  # Would query historical data
+    def _calculate_similarity(self, context1: Dict[str, Any], context2: Dict[str, Any]) -> float:
+        """Calculate similarity between contexts."""
+        if not context1 or not context2:
+            return 0.0
+        keys1, keys2 = set(context1.keys()), set(context2.keys())
+        common = keys1 & keys2
+        if not common:
+            return 0.0
+        key_sim = len(common) / len(keys1 | keys2)
+        value_matches = sum(1 for k in common if context1[k] == context2[k])
+        value_sim = value_matches / len(common) if common else 0.0
+        return 0.4 * key_sim + 0.6 * value_sim
