@@ -190,6 +190,30 @@ python scripts/search_codebase.py "expand query"  # Find specific code
 # Then read specific line ranges as needed
 ```
 
+### Complex Reasoning Framework (Optional)
+
+For multi-step tasks requiring structured thinking, use the reasoning framework:
+
+```bash
+# Run the demo to see QAPV cycle, verification, and parallel coordination
+python scripts/reasoning_demo.py --quick
+```
+
+**Key components in `cortical.reasoning`:**
+- **CognitiveLoop**: QAPV phases (Question → Answer → Produce → Verify)
+- **ThoughtGraph**: Graph-based thought representation with typed edges
+- **ParallelCoordinator**: Spawn parallel sub-agents with boundary isolation
+- **VerificationManager**: Multi-level testing protocols
+- **CrisisManager**: Failure detection and recovery
+
+**When to use:**
+- Complex multi-step implementations
+- Tasks requiring explicit decision tracking
+- Parallel agent coordination
+- Structured verification workflows
+
+**Documentation:** [docs/graph-of-thought.md](docs/graph-of-thought.md)
+
 ---
 
 ## Architecture Map
@@ -215,6 +239,17 @@ cortical/
 │   ├── definitions.py # Definition search
 │   ├── ranking.py    # Multi-stage ranking
 │   └── analogy.py    # Analogy completion
+├── reasoning/        # Graph of Thought reasoning framework
+│   ├── __init__.py   # Re-exports all components
+│   ├── workflow.py   # ReasoningWorkflow orchestrator
+│   ├── cognitive_loop.py  # QAPV cycle implementation
+│   ├── thought_graph.py   # Graph-based thought representation
+│   ├── graph_of_thought.py # Core data structures (ThoughtNode, ThoughtEdge)
+│   ├── verification.py    # Multi-level verification
+│   ├── crisis_manager.py  # Failure detection and recovery
+│   ├── production_state.py # Artifact creation tracking
+│   ├── collaboration.py   # Parallel agent coordination
+│   └── claude_code_spawner.py  # Production agent spawning
 ├── analysis.py       # Graph algorithms: PageRank, TF-IDF, clustering (1,123 lines)
 ├── semantics.py      # Relation extraction, inheritance, retrofitting (915 lines)
 ├── persistence.py    # Save/load with full state preservation (606 lines)
@@ -262,6 +297,9 @@ cortical/
 | Add fingerprinting | `fingerprint.py` - semantic fingerprints |
 | Modify chunk storage | `chunk_index.py` - git-friendly indexing |
 | Add observability features | `observability.py` - timing, metrics, traces |
+| Use reasoning framework | `reasoning/` - QAPV loops, thought graphs, verification |
+| Parallel agent coordination | `reasoning/collaboration.py` - ParallelCoordinator |
+| Crisis management | `reasoning/crisis_manager.py` - failure detection, recovery |
 
 **Key data structures:**
 - `Minicolumn`: Core unit with `lateral_connections`, `typed_connections`, `feedforward_connections`, `feedback_connections`
