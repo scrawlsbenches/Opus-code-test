@@ -197,6 +197,33 @@ from .graph_persistence import (
 )
 
 # =============================================================================
+# CONTEXT POOL (Multi-Agent Coordination)
+# =============================================================================
+
+from .context_pool import (
+    ContextFinding,
+    ContextPool,
+    ConflictResolutionStrategy,
+)
+
+# =============================================================================
+# AGENT REJECTION PROTOCOL
+# =============================================================================
+
+from .rejection_protocol import (
+    # Enums
+    RejectionReason,
+    DecisionType,
+    # Core classes
+    TaskRejection,
+    RejectionValidator,
+    RejectionDecision,
+    # GoT integration
+    log_rejection_to_got,
+    analyze_rejection_patterns,
+)
+
+# =============================================================================
 # MAIN WORKFLOW ORCHESTRATOR
 # =============================================================================
 
@@ -312,6 +339,20 @@ __all__ = [
     'GraphRecovery',
     'GraphRecoveryResult',
     'GraphSnapshot',
+
+    # === Context Pool ===
+    'ContextFinding',
+    'ContextPool',
+    'ConflictResolutionStrategy',
+
+    # === Agent Rejection Protocol ===
+    'RejectionReason',
+    'DecisionType',
+    'TaskRejection',
+    'RejectionValidator',
+    'RejectionDecision',
+    'log_rejection_to_got',
+    'analyze_rejection_patterns',
 
     # === Main Workflow ===
     'WorkflowContext',

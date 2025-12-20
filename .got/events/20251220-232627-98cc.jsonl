@@ -1,0 +1,1 @@
+{"ts": "2025-12-20T23:26:28.028624Z", "event": "node.create", "meta": {"branch": "claude/code-review-history-ckKBt", "session": "20251220-232627-98cc"}, "id": "task:T-20251220-232627-a2b5", "type": "TASK", "data": {"title": "Stress test task 13 - Documentation update", "status": "pending", "priority": "medium", "category": "feature", "description": ""}}
