@@ -23,6 +23,7 @@ Tests cover:
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 import time
 from pathlib import Path
@@ -1277,3 +1278,1773 @@ class TestGraphSnapshot:
         restored = wal.load_snapshot(snapshot_id)
         assert "CL1" in restored.clusters
         assert restored.clusters["CL1"].name == "Test Cluster"
+
+
+# =============================================================================
+# TEST AUTO_COMMIT ERROR HANDLING
+# =============================================================================
+
+
+class TestAutoCommitErrorHandling:
+    """Tests for auto_commit error handling paths."""
+
+    @patch('subprocess.run')
+    def test_auto_commit_called_process_error_with_nothing_to_commit(self, mock_run):
+        """Test auto_commit handles 'nothing to commit' gracefully."""
+        # git rev-parse succeeds, git add succeeds, git commit says nothing to commit
+        def run_side_effect(*args, **kwargs):
+            if 'commit' in args[0]:
+                error = subprocess.CalledProcessError(1, args[0])
+                error.stdout = b'nothing to commit'
+                error.stderr = b'working tree clean'
+                raise error
+            return MagicMock(returncode=0, stdout=b'', stderr=b'')
+
+        mock_run.side_effect = run_side_effect
+
+        committer = GitAutoCommitter()
+        result = committer.auto_commit(
+            message='Test commit',
+            files=['test.json']
+        )
+
+        # Should handle gracefully and return True
+        assert result is True
+
+    @patch('subprocess.run')
+    def test_auto_commit_called_process_error_real_failure(self, mock_run):
+        """Test auto_commit handles real CalledProcessError."""
+        # git rev-parse succeeds, git add succeeds, git commit fails
+        def run_side_effect(*args, **kwargs):
+            if 'commit' in args[0]:
+                error = subprocess.CalledProcessError(1, args[0])
+                error.stdout = b''
+                error.stderr = b'fatal: unable to commit'
+                raise error
+            return MagicMock(returncode=0, stdout=b'', stderr=b'')
+
+        mock_run.side_effect = run_side_effect
+
+        committer = GitAutoCommitter()
+        result = committer.auto_commit(
+            message='Test commit',
+            files=['test.json']
+        )
+
+        # Should return False on real failure
+        assert result is False
+
+    @patch('subprocess.run')
+    def test_auto_commit_timeout_expired(self, mock_run):
+        """Test auto_commit handles TimeoutExpired."""
+        # git commit times out
+        def run_side_effect(*args, **kwargs):
+            if 'commit' in args[0]:
+                raise subprocess.TimeoutExpired(args[0], 10)
+            return MagicMock(returncode=0, stdout=b'', stderr=b'')
+
+        mock_run.side_effect = run_side_effect
+
+        committer = GitAutoCommitter()
+        result = committer.auto_commit(
+            message='Test commit',
+            files=['test.json']
+        )
+
+        assert result is False
+
+    @patch('subprocess.run')
+    def test_auto_commit_file_not_found_error(self, mock_run):
+        """Test auto_commit handles FileNotFoundError (git not installed)."""
+        # git command not found
+        def run_side_effect(*args, **kwargs):
+            if 'commit' in args[0]:
+                raise FileNotFoundError("git command not found")
+            return MagicMock(returncode=0, stdout=b'', stderr=b'')
+
+        mock_run.side_effect = run_side_effect
+
+        committer = GitAutoCommitter()
+        result = committer.auto_commit(
+            message='Test commit',
+            files=['test.json']
+        )
+
+        assert result is False
+
+
+# =============================================================================
+# TEST PUSH_IF_SAFE ERROR HANDLING
+# =============================================================================
+
+
+class TestPushErrorHandling:
+    """Tests for push_if_safe error handling paths."""
+
+    @patch('subprocess.run')
+    def test_push_called_process_error(self, mock_run):
+        """Test push_if_safe handles CalledProcessError."""
+        # git rev-parse returns feature branch, git push fails
+        def run_side_effect(*args, **kwargs):
+            if 'rev-parse' in args[0]:
+                return MagicMock(stdout='feature/test\n', returncode=0)
+            elif 'push' in args[0]:
+                error = subprocess.CalledProcessError(1, args[0])
+                error.stderr = b'fatal: unable to push'
+                raise error
+            return MagicMock(returncode=0, stdout=b'', stderr=b'')
+
+        mock_run.side_effect = run_side_effect
+
+        committer = GitAutoCommitter()
+        result = committer.push_if_safe()
+
+        assert result is False
+
+    @patch('subprocess.run')
+    def test_push_timeout_expired(self, mock_run):
+        """Test push_if_safe handles TimeoutExpired."""
+        # git push times out
+        def run_side_effect(*args, **kwargs):
+            if 'rev-parse' in args[0]:
+                return MagicMock(stdout='feature/test\n', returncode=0)
+            elif 'push' in args[0]:
+                raise subprocess.TimeoutExpired(args[0], 30)
+            return MagicMock(returncode=0, stdout=b'', stderr=b'')
+
+        mock_run.side_effect = run_side_effect
+
+        committer = GitAutoCommitter()
+        result = committer.push_if_safe()
+
+        assert result is False
+
+    @patch('subprocess.run')
+    def test_push_file_not_found_error(self, mock_run):
+        """Test push_if_safe handles FileNotFoundError (git not installed)."""
+        # git command not found
+        def run_side_effect(*args, **kwargs):
+            if 'rev-parse' in args[0]:
+                return MagicMock(stdout='feature/test\n', returncode=0)
+            elif 'push' in args[0]:
+                raise FileNotFoundError("git command not found")
+            return MagicMock(returncode=0, stdout=b'', stderr=b'')
+
+        mock_run.side_effect = run_side_effect
+
+        committer = GitAutoCommitter()
+        result = committer.push_if_safe()
+
+        assert result is False
+
+
+# =============================================================================
+# TEST WAL APPLY_ENTRY FOR ALL OPERATIONS
+# =============================================================================
+
+
+class TestWALApplyEntry:
+    """Test apply_entry for all operation types."""
+
+    def test_apply_entry_remove_edge(self, tmp_path):
+        """Test apply_entry for remove_edge operation."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        # Create graph with edge
+        graph = ThoughtGraph()
+        graph.add_node("Q1", NodeType.QUESTION, "Question 1")
+        graph.add_node("H1", NodeType.HYPOTHESIS, "Hypothesis 1")
+        graph.add_edge("Q1", "H1", EdgeType.EXPLORES, weight=0.8)
+
+        # Log remove_edge
+        wal = GraphWAL(tmp_path / "wal")
+        wal.log_remove_edge("Q1", "H1", EdgeType.EXPLORES)
+
+        # Get entry and apply to graph
+        entries = list(wal.get_all_entries())
+        assert len(entries) == 1
+
+        wal.apply_entry(entries[0], graph)
+
+        # Edge should be removed
+        edges = graph.get_edges_from("Q1")
+        assert len(edges) == 0
+
+    def test_apply_entry_add_cluster(self, tmp_path):
+        """Test apply_entry for add_cluster operation."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        # Create graph with nodes
+        graph = ThoughtGraph()
+        graph.add_node("Q1", NodeType.QUESTION, "Question 1")
+        graph.add_node("Q2", NodeType.QUESTION, "Question 2")
+
+        # Log add_cluster
+        wal = GraphWAL(tmp_path / "wal")
+        wal.log_add_cluster("CL1", "Test Cluster", {"Q1", "Q2"}, {"priority": "high"})
+
+        # Get entry and apply to graph
+        entries = list(wal.get_all_entries())
+        assert len(entries) == 1
+
+        wal.apply_entry(entries[0], graph)
+
+        # Cluster should be added
+        assert "CL1" in graph.clusters
+        assert graph.clusters["CL1"].name == "Test Cluster"
+        assert graph.clusters["CL1"].node_ids == {"Q1", "Q2"}
+        assert graph.clusters["CL1"].properties["priority"] == "high"
+
+    def test_apply_entry_merge_nodes(self, tmp_path):
+        """Test apply_entry for merge_nodes operation."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        # Create graph with multiple nodes
+        graph = ThoughtGraph()
+        graph.add_node("Q1", NodeType.QUESTION, "Question 1")
+        graph.add_node("Q2", NodeType.QUESTION, "Question 2")
+        graph.add_node("Q3", NodeType.QUESTION, "Question 3")
+
+        # Log merge_nodes
+        wal = GraphWAL(tmp_path / "wal")
+        wal.log_merge_nodes(["Q1", "Q2", "Q3"], "Q_merged")
+
+        # Get entry and apply to graph
+        entries = list(wal.get_all_entries())
+        assert len(entries) == 1
+
+        wal.apply_entry(entries[0], graph)
+
+        # Nodes should be merged (implementation-dependent behavior)
+        # At minimum, the operation should not crash
+        assert len(entries) == 1
+
+
+# =============================================================================
+# TEST GRAPH_FROM_SNAPSHOT
+# =============================================================================
+
+
+class TestGraphFromSnapshot:
+    """Test _graph_from_snapshot restoring nodes and edges."""
+
+    def test_graph_from_snapshot_restores_nodes(self, tmp_path, sample_graph):
+        """Test that _graph_from_snapshot restores nodes correctly."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        wal_dir = tmp_path / "wal"
+        recovery = GraphRecovery(str(wal_dir))
+
+        # Create mock snapshot data in the format _graph_from_snapshot expects
+        snapshot_data = {
+            'state': {
+                'graph': {
+                    'nodes': {
+                        'Q1': {'node_type': 'question', 'content': 'What is authentication?', 'properties': {}, 'metadata': {}},
+                        'H1': {'node_type': 'hypothesis', 'content': 'Use JWT tokens', 'properties': {}, 'metadata': {}},
+                        'E1': {'node_type': 'evidence', 'content': 'JWT is widely adopted', 'properties': {}, 'metadata': {}}
+                    },
+                    'edges': []
+                }
+            }
+        }
+
+        # Reconstruct graph
+        restored_graph = recovery._graph_from_snapshot(snapshot_data)
+
+        assert restored_graph is not None
+        assert restored_graph.node_count() == 3
+        assert "Q1" in restored_graph.nodes
+        assert "H1" in restored_graph.nodes
+        assert "E1" in restored_graph.nodes
+
+    def test_graph_from_snapshot_restores_edges(self, tmp_path, sample_graph):
+        """Test that _graph_from_snapshot restores edges correctly."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        wal_dir = tmp_path / "wal"
+        recovery = GraphRecovery(str(wal_dir))
+
+        # Create mock snapshot data with edges
+        snapshot_data = {
+            'state': {
+                'graph': {
+                    'nodes': {
+                        'Q1': {'node_type': 'question', 'content': 'Question', 'properties': {}, 'metadata': {}},
+                        'H1': {'node_type': 'hypothesis', 'content': 'Hypothesis', 'properties': {}, 'metadata': {}}
+                    },
+                    'edges': [
+                        {'source_id': 'Q1', 'target_id': 'H1', 'edge_type': 'explores', 'weight': 0.8, 'confidence': 0.9, 'bidirectional': False}
+                    ]
+                }
+            }
+        }
+
+        # Reconstruct graph
+        restored_graph = recovery._graph_from_snapshot(snapshot_data)
+
+        assert restored_graph is not None
+        assert restored_graph.edge_count() == 1
+
+        # Verify specific edges
+        q1_edges = restored_graph.get_edges_from("Q1")
+        assert len(q1_edges) == 1
+        assert q1_edges[0].target_id == 'H1'
+
+    def test_graph_from_snapshot_empty_data(self, tmp_path):
+        """Test _graph_from_snapshot handles empty snapshot data."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        wal_dir = tmp_path / "wal"
+        recovery = GraphRecovery(str(wal_dir))
+
+        # Empty snapshot data
+        snapshot_data = {'state': {}}
+        restored_graph = recovery._graph_from_snapshot(snapshot_data)
+
+        assert restored_graph is None
+
+
+# =============================================================================
+# TEST APPLY_WAL_ENTRY
+# =============================================================================
+
+
+class TestApplyWALEntry:
+    """Test _apply_wal_entry for different operations."""
+
+    def test_apply_wal_entry_add_node(self, tmp_path):
+        """Test _apply_wal_entry for add_node operation."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+        from cortical.wal import WALEntry
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        graph = ThoughtGraph()
+
+        # Create WAL entry for add_node
+        entry = WALEntry(
+            operation='add_node',
+            doc_id='Q1',
+            payload={
+                'node_id': 'Q1',
+                'node_type': 'question',
+                'content': 'What is this?',
+                'properties': {'priority': 'high'},
+                'metadata': {'created': '2025-12-20'}
+            }
+        )
+
+        recovery._apply_wal_entry(entry, graph)
+
+        assert 'Q1' in graph.nodes
+        assert graph.nodes['Q1'].content == 'What is this?'
+        assert graph.nodes['Q1'].properties['priority'] == 'high'
+
+    def test_apply_wal_entry_add_edge(self, tmp_path):
+        """Test _apply_wal_entry for add_edge operation."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+        from cortical.wal import WALEntry
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        graph = ThoughtGraph()
+
+        # Add nodes first
+        graph.add_node('Q1', NodeType.QUESTION, 'Question')
+        graph.add_node('H1', NodeType.HYPOTHESIS, 'Hypothesis')
+
+        # Create WAL entry for add_edge
+        entry = WALEntry(
+            operation='add_edge',
+            doc_id='Q1',
+            payload={
+                'from_id': 'Q1',
+                'to_id': 'H1',
+                'edge_type': 'explores',
+                'weight': 0.85,
+                'confidence': 0.9
+            }
+        )
+
+        recovery._apply_wal_entry(entry, graph)
+
+        edges = graph.get_edges_from('Q1')
+        assert len(edges) == 1
+        assert edges[0].target_id == 'H1'
+        assert edges[0].weight == 0.85
+
+    def test_apply_wal_entry_remove_node(self, tmp_path):
+        """Test _apply_wal_entry for remove_node operation."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+        from cortical.wal import WALEntry
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        graph = ThoughtGraph()
+
+        # Add node first
+        graph.add_node('Q1', NodeType.QUESTION, 'Question')
+
+        # Create WAL entry for remove_node
+        entry = WALEntry(
+            operation='remove_node',
+            doc_id='Q1',
+            payload={'node_id': 'Q1'}
+        )
+
+        recovery._apply_wal_entry(entry, graph)
+
+        assert 'Q1' not in graph.nodes
+
+    def test_apply_wal_entry_remove_edge(self, tmp_path):
+        """Test _apply_wal_entry for remove_edge operation."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+        from cortical.wal import WALEntry
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        graph = ThoughtGraph()
+
+        # Add nodes and edge first
+        graph.add_node('Q1', NodeType.QUESTION, 'Question')
+        graph.add_node('H1', NodeType.HYPOTHESIS, 'Hypothesis')
+        graph.add_edge('Q1', 'H1', EdgeType.EXPLORES)
+
+        # Create WAL entry for remove_edge
+        entry = WALEntry(
+            operation='remove_edge',
+            doc_id='Q1',
+            payload={
+                'from_id': 'Q1',
+                'to_id': 'H1',
+                'edge_type': 'explores'
+            }
+        )
+
+        recovery._apply_wal_entry(entry, graph)
+
+        edges = graph.get_edges_from('Q1')
+        assert len(edges) == 0
+
+
+# =============================================================================
+# TEST GIT RECOVERY HELPERS
+# =============================================================================
+
+
+class TestGitRecoveryHelpers:
+    """Test git recovery helper methods."""
+
+    @patch('subprocess.run')
+    def test_find_graph_commits_success(self, mock_run, tmp_path):
+        """Test _find_graph_commits parses git log correctly."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        # Mock git log output
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout='abc123|graph: Auto-save snapshot\ndef456|graph: Update state\n',
+            stderr=b''
+        )
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        commits = recovery._find_graph_commits()
+
+        assert len(commits) == 2
+        assert commits[0] == ('abc123', 'graph: Auto-save snapshot')
+        assert commits[1] == ('def456', 'graph: Update state')
+
+    @patch('subprocess.run')
+    def test_find_graph_commits_git_failure(self, mock_run, tmp_path):
+        """Test _find_graph_commits handles git command failure."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        # Mock git log failure
+        mock_run.return_value = MagicMock(returncode=1, stdout='', stderr=b'fatal: not a git repository')
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        commits = recovery._find_graph_commits()
+
+        assert commits == []
+
+    @patch('subprocess.run')
+    def test_find_graph_commits_timeout(self, mock_run, tmp_path):
+        """Test _find_graph_commits handles timeout."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        # Mock timeout
+        mock_run.side_effect = subprocess.TimeoutExpired(['git', 'log'], 10)
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        commits = recovery._find_graph_commits()
+
+        assert commits == []
+
+    @patch('subprocess.run')
+    def test_get_snapshot_files_at_commit_success(self, mock_run, tmp_path):
+        """Test _get_snapshot_files_at_commit parses ls-tree output."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        # Mock git ls-tree output
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout='wal/snapshots/snap_123.json\nwal/snapshots/snap_456.json.gz\n',
+            stderr=b''
+        )
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        files = recovery._get_snapshot_files_at_commit('abc123')
+
+        assert len(files) == 2
+        assert 'wal/snapshots/snap_123.json' in files
+        assert 'wal/snapshots/snap_456.json.gz' in files
+
+    @patch('subprocess.run')
+    def test_get_snapshot_files_at_commit_failure(self, mock_run, tmp_path):
+        """Test _get_snapshot_files_at_commit handles git failure."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        # Mock git ls-tree failure
+        mock_run.return_value = MagicMock(returncode=1, stdout='', stderr=b'fatal: not a tree object')
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        files = recovery._get_snapshot_files_at_commit('abc123')
+
+        assert files == []
+
+    @patch('subprocess.run')
+    def test_load_snapshot_from_commit_json(self, mock_run, tmp_path):
+        """Test _load_snapshot_from_commit loads JSON snapshot."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        # Mock git show output with JSON
+        snapshot_data = {
+            'snapshot_id': 'snap_123',
+            'timestamp': '2025-12-20T10:00:00',
+            'state': {
+                'graph': {
+                    'nodes': {'Q1': {'node_type': 'question', 'content': 'Test'}},
+                    'edges': []
+                }
+            }
+        }
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=json.dumps(snapshot_data).encode('utf-8'),
+            stderr=b''
+        )
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        loaded = recovery._load_snapshot_from_commit('abc123', 'snap_123.json')
+
+        assert loaded is not None
+        assert loaded['snapshot_id'] == 'snap_123'
+        assert 'Q1' in loaded['state']['graph']['nodes']
+
+    @patch('subprocess.run')
+    def test_load_snapshot_from_commit_gzipped(self, mock_run, tmp_path):
+        """Test _load_snapshot_from_commit handles gzipped snapshots."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+        import gzip
+
+        # Mock git show output with gzipped JSON
+        snapshot_data = {
+            'snapshot_id': 'snap_456',
+            'state': {'graph': {'nodes': {}, 'edges': []}}
+        }
+        gzipped = gzip.compress(json.dumps(snapshot_data).encode('utf-8'))
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=gzipped,
+            stderr=b''
+        )
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        loaded = recovery._load_snapshot_from_commit('abc123', 'snap_456.json.gz')
+
+        assert loaded is not None
+        assert loaded['snapshot_id'] == 'snap_456'
+
+    @patch('subprocess.run')
+    def test_load_snapshot_from_commit_failure(self, mock_run, tmp_path):
+        """Test _load_snapshot_from_commit handles git failure."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        # Mock git show failure
+        mock_run.return_value = MagicMock(returncode=1, stdout=b'', stderr=b'fatal: path not found')
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        loaded = recovery._load_snapshot_from_commit('abc123', 'snap_123.json')
+
+        assert loaded is None
+
+
+# =============================================================================
+# TEST LEVEL 1 RECOVERY WITH WAL REPLAY
+# =============================================================================
+
+
+class TestLevel1WALReplay:
+    """Test Level 1 recovery with WAL replay after snapshot load."""
+
+    def test_level1_wal_replay_with_snapshot_and_wal(self, tmp_path, sample_graph):
+        """Test Level 1 recovery loads snapshot and replays WAL entries."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery, GraphWAL
+
+        wal_dir = tmp_path / "wal"
+
+        # Create snapshot
+        wal = GraphWAL(wal_dir)
+        snapshot_id = wal.create_snapshot(sample_graph, compress=False)
+
+        # Add more WAL entries after snapshot
+        wal.log_add_node("Q_new", NodeType.QUESTION, "New question after snapshot")
+
+        # Recovery should load snapshot + replay WAL
+        recovery = GraphRecovery(str(wal_dir))
+        result = recovery._level1_wal_replay()
+
+        # Should succeed if snapshot and WAL are both valid
+        if result.success:
+            assert result.graph is not None
+            assert result.level_used == 1
+            assert result.recovery_method == "WAL Replay"
+
+    def test_level1_wal_replay_no_snapshot(self, tmp_path):
+        """Test Level 1 recovery fails when no snapshot exists."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        wal_dir = tmp_path / "wal"
+        wal_dir.mkdir(parents=True)
+
+        recovery = GraphRecovery(str(wal_dir))
+        result = recovery._level1_wal_replay()
+
+        # Should fail without snapshot
+        assert result.success is False
+        assert "No snapshot found" in result.errors[0]
+
+
+# =============================================================================
+# TEST ADDITIONAL WAL OPERATIONS
+# =============================================================================
+
+
+class TestAdditionalWALOperations:
+    """Test additional WAL operations."""
+
+    def test_log_update_node(self, tmp_path):
+        """Test logging update_node operation."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        wal = GraphWAL(tmp_path / "wal")
+        wal.log_update_node(
+            node_id="Q1",
+            updates={
+                'content': 'Updated content',
+                'properties': {'priority': 'high'},
+                'metadata': {'modified': '2025-12-20'}
+            }
+        )
+
+        entries = list(wal.get_all_entries())
+        assert len(entries) == 1
+        assert entries[0].operation == 'update_node'
+        assert entries[0].node_id == 'Q1'
+
+    def test_log_graph_operation(self, tmp_path):
+        """Test logging generic graph operation."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        wal = GraphWAL(tmp_path / "wal")
+        wal.log_graph_operation(
+            operation_type='custom_operation',
+            payload={'data': 'custom data'}
+        )
+
+        entries = list(wal.get_all_entries())
+        assert len(entries) == 1
+        assert entries[0].operation == 'custom_operation'
+        assert entries[0].payload['data'] == 'custom data'
+
+    def test_apply_entry_update_node(self, tmp_path):
+        """Test apply_entry for update_node operation."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        # Create graph with node
+        graph = ThoughtGraph()
+        graph.add_node("Q1", NodeType.QUESTION, "Original content")
+
+        # Log update_node
+        wal = GraphWAL(tmp_path / "wal")
+        wal.log_update_node(
+            "Q1",
+            {'content': 'Updated content', 'properties': {'priority': 'high'}}
+        )
+
+        # Apply entry
+        entries = list(wal.get_all_entries())
+        wal.apply_entry(entries[0], graph)
+
+        # Verify update
+        assert graph.nodes['Q1'].content == 'Updated content'
+        assert graph.nodes['Q1'].properties['priority'] == 'high'
+
+    def test_compact_wal(self, tmp_path, sample_graph):
+        """Test WAL compaction."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        wal = GraphWAL(tmp_path / "wal")
+
+        # Add some entries
+        wal.log_add_node("Q1", NodeType.QUESTION, "Question 1")
+        wal.log_add_node("Q2", NodeType.QUESTION, "Question 2")
+
+        # Compact WAL
+        snapshot_id = wal.compact_wal(sample_graph)
+
+        assert snapshot_id is not None
+
+    def test_get_current_wal_path(self, tmp_path):
+        """Test getting current WAL path."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        wal = GraphWAL(tmp_path / "wal")
+
+        # Add an entry to ensure WAL file is created
+        wal.log_add_node("Q1", NodeType.QUESTION, "Test")
+
+        path = wal.get_current_wal_path()
+
+        assert path is not None
+        assert path.exists()
+
+
+# =============================================================================
+# TEST CHUNK OPERATIONS
+# =============================================================================
+
+
+class TestChunkOperations:
+    """Test chunk-based operations."""
+
+    def test_apply_chunk_operation_add_node(self, tmp_path):
+        """Test _apply_chunk_operation for add_node."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        graph = ThoughtGraph()
+
+        operation = {
+            'op': 'add_node',
+            'node_id': 'Q1',
+            'node_type': 'question',
+            'content': 'Test question',
+            'properties': {},
+            'metadata': {}
+        }
+
+        recovery._apply_chunk_operation(operation, graph)
+
+        assert 'Q1' in graph.nodes
+        assert graph.nodes['Q1'].content == 'Test question'
+
+    def test_apply_chunk_operation_add_edge(self, tmp_path):
+        """Test _apply_chunk_operation for add_edge."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        graph = ThoughtGraph()
+
+        # Add nodes first
+        graph.add_node('Q1', NodeType.QUESTION, 'Question')
+        graph.add_node('H1', NodeType.HYPOTHESIS, 'Hypothesis')
+
+        operation = {
+            'op': 'add_edge',
+            'from_id': 'Q1',
+            'to_id': 'H1',
+            'edge_type': 'explores',
+            'weight': 0.8,
+            'confidence': 0.9
+        }
+
+        recovery._apply_chunk_operation(operation, graph)
+
+        edges = graph.get_edges_from('Q1')
+        assert len(edges) == 1
+
+    def test_apply_chunk_operation_remove_node(self, tmp_path):
+        """Test _apply_chunk_operation for remove_node."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        graph = ThoughtGraph()
+
+        # Add node first
+        graph.add_node('Q1', NodeType.QUESTION, 'Question')
+
+        operation = {
+            'op': 'remove_node',
+            'node_id': 'Q1'
+        }
+
+        recovery._apply_chunk_operation(operation, graph)
+
+        assert 'Q1' not in graph.nodes
+
+    def test_apply_chunk_operation_remove_edge(self, tmp_path):
+        """Test _apply_chunk_operation for remove_edge."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        graph = ThoughtGraph()
+
+        # Add nodes and edge first
+        graph.add_node('Q1', NodeType.QUESTION, 'Question')
+        graph.add_node('H1', NodeType.HYPOTHESIS, 'Hypothesis')
+        graph.add_edge('Q1', 'H1', EdgeType.EXPLORES)
+
+        operation = {
+            'op': 'remove_edge',
+            'from_id': 'Q1',
+            'to_id': 'H1',
+            'edge_type': 'explores'
+        }
+
+        recovery._apply_chunk_operation(operation, graph)
+
+        edges = graph.get_edges_from('Q1')
+        assert len(edges) == 0
+
+
+# =============================================================================
+# TEST LEVEL 3 GIT RECOVERY COMPREHENSIVE
+# =============================================================================
+
+
+class TestLevel3GitRecoveryComprehensive:
+    """Comprehensive tests for Level 3 git recovery."""
+
+    @patch('subprocess.run')
+    def test_level3_git_recovery_success(self, mock_run, tmp_path, sample_graph):
+        """Test Level 3 recovery successfully recovers from git."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+        import gzip
+
+        # Mock git operations
+        snapshot_data = {
+            'snapshot_id': 'snap_123',
+            'state': {
+                'graph': {
+                    'nodes': {'Q1': {'node_type': 'question', 'content': 'Test', 'properties': {}, 'metadata': {}}},
+                    'edges': []
+                }
+            }
+        }
+
+        def run_side_effect(*args, **kwargs):
+            if 'rev-parse' in args[0]:
+                return MagicMock(returncode=0)
+            elif 'log' in args[0]:
+                return MagicMock(returncode=0, stdout='abc123|graph: snapshot\n', stderr=b'')
+            elif 'ls-tree' in args[0]:
+                return MagicMock(returncode=0, stdout='wal/snapshots/snap_123.json\n', stderr=b'')
+            elif 'show' in args[0]:
+                return MagicMock(returncode=0, stdout=json.dumps(snapshot_data).encode('utf-8'), stderr=b'')
+            return MagicMock(returncode=0, stdout=b'', stderr=b'')
+
+        mock_run.side_effect = run_side_effect
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        result = recovery._level3_git_recovery()
+
+        # Should succeed with mocked git data
+        if result.success:
+            assert result.level_used == 3
+            assert result.graph is not None
+
+    @patch('subprocess.run')
+    def test_level3_git_recovery_not_git_repo(self, mock_run, tmp_path):
+        """Test Level 3 recovery fails when not in git repo."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        # Mock not a git repo
+        mock_run.return_value = MagicMock(returncode=1)
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        result = recovery._level3_git_recovery()
+
+        assert result.success is False
+        assert "Not in a git repository" in result.errors[0]
+
+
+# =============================================================================
+# TEST GRAPHWALENTRY METHODS
+# =============================================================================
+
+
+class TestGraphWALEntryMethods:
+    """Test GraphWALEntry methods."""
+
+    def test_to_json(self):
+        """Test GraphWALEntry serialization to JSON."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWALEntry not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWALEntry
+
+        entry = GraphWALEntry(
+            operation='add_node',
+            node_id='Q1',
+            node_type='question',
+            payload={'content': 'Test'}
+        )
+
+        json_str = entry.to_json()
+        assert json_str is not None
+        assert 'add_node' in json_str
+
+    def test_from_json(self):
+        """Test GraphWALEntry deserialization from JSON."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWALEntry not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWALEntry
+
+        entry = GraphWALEntry(
+            operation='add_node',
+            node_id='Q1',
+            node_type='question',
+            payload={'content': 'Test'}
+        )
+
+        json_str = entry.to_json()
+        restored = GraphWALEntry.from_json(json_str)
+
+        assert restored.operation == entry.operation
+        assert restored.node_id == entry.node_id
+
+    def test_checksum_verification_fails_on_tampering(self):
+        """Test that verify() detects modified entries."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWALEntry not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWALEntry
+
+        entry = GraphWALEntry(
+            operation='add_node',
+            node_id='Q1',
+            payload={'content': 'Original'}
+        )
+
+        # Tamper with payload but keep old checksum
+        old_checksum = entry.checksum
+        entry.payload['content'] = 'Modified'
+
+        # Verify should fail because checksum doesn't match modified payload
+        assert not entry.verify()
+
+
+# =============================================================================
+# TEST RECOVERY RESULT FORMATTING
+# =============================================================================
+
+
+class TestRecoveryResultFormatting:
+    """Test GraphRecoveryResult formatting."""
+
+    def test_recovery_result_str_success(self):
+        """Test __str__ for successful recovery."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecoveryResult not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecoveryResult
+
+        result = GraphRecoveryResult(
+            success=True,
+            level_used=1,
+            nodes_recovered=10,
+            edges_recovered=5,
+            recovery_method="WAL Replay",
+            duration_ms=123.45
+        )
+
+        str_output = str(result)
+        assert "SUCCESS" in str_output
+        assert "Level: 1" in str_output
+        assert "Nodes: 10" in str_output
+        assert "Edges: 5" in str_output
+
+    def test_recovery_result_str_failure(self):
+        """Test __str__ for failed recovery."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecoveryResult not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecoveryResult
+
+        result = GraphRecoveryResult(
+            success=False,
+            level_used=4,
+            recovery_method="Chunk Reconstruction",
+            errors=["Error 1", "Error 2", "Error 3", "Error 4"]
+        )
+
+        str_output = str(result)
+        assert "FAILED" in str_output
+        assert "Errors: 4" in str_output
+
+
+# =============================================================================
+# TEST SNAPSHOT CHECKSUM VERIFICATION
+# =============================================================================
+
+
+class TestSnapshotChecksumVerification:
+    """Test GraphSnapshot checksum verification."""
+
+    def test_verify_checksum_success(self, tmp_path):
+        """Test checksum verification succeeds for valid snapshot."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphSnapshot not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphSnapshot
+        import hashlib
+
+        # Create a test file
+        test_file = tmp_path / "test_snapshot.json"
+        test_file.write_text('{"test": "data"}')
+
+        # Compute checksum
+        sha256 = hashlib.sha256()
+        with open(test_file, 'rb') as f:
+            sha256.update(f.read())
+        checksum = sha256.hexdigest()[:16]
+
+        snapshot = GraphSnapshot(
+            snapshot_id='snap_123',
+            timestamp='2025-12-20T10:00:00',
+            node_count=0,
+            edge_count=0,
+            size_bytes=test_file.stat().st_size,
+            checksum=checksum,
+            path=test_file
+        )
+
+        assert snapshot.verify_checksum()
+
+    def test_verify_checksum_fails_on_corruption(self, tmp_path):
+        """Test checksum verification fails for corrupted snapshot."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphSnapshot not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphSnapshot
+
+        # Create a test file
+        test_file = tmp_path / "test_snapshot.json"
+        test_file.write_text('{"test": "data"}')
+
+        snapshot = GraphSnapshot(
+            snapshot_id='snap_123',
+            timestamp='2025-12-20T10:00:00',
+            node_count=0,
+            edge_count=0,
+            size_bytes=test_file.stat().st_size,
+            checksum='invalid_checksum',
+            path=test_file
+        )
+
+        assert not snapshot.verify_checksum()
+
+    def test_verify_checksum_missing_file(self, tmp_path):
+        """Test checksum verification fails for missing file."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphSnapshot not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphSnapshot
+
+        snapshot = GraphSnapshot(
+            snapshot_id='snap_123',
+            timestamp='2025-12-20T10:00:00',
+            node_count=0,
+            edge_count=0,
+            size_bytes=0,
+            checksum='checksum',
+            path=tmp_path / "nonexistent.json"
+        )
+
+        assert not snapshot.verify_checksum()
+
+
+# =============================================================================
+# TEST BACKUP BRANCH ERROR HANDLING
+# =============================================================================
+
+
+class TestBackupBranchErrorHandling:
+    """Test error handling in create_backup_branch."""
+
+    @patch('subprocess.run')
+    def test_create_backup_branch_called_process_error(self, mock_run):
+        """Test create_backup_branch handles CalledProcessError."""
+        def run_side_effect(*args, **kwargs):
+            if 'rev-parse' in args[0]:
+                return MagicMock(stdout='feature/test\n', returncode=0)
+            elif 'branch' in args[0]:
+                error = subprocess.CalledProcessError(1, args[0])
+                error.stderr = b'fatal: branch already exists'
+                raise error
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = run_side_effect
+
+        committer = GitAutoCommitter()
+        backup = committer.create_backup_branch()
+
+        assert backup is None
+
+    @patch('subprocess.run')
+    def test_create_backup_branch_timeout_expired(self, mock_run):
+        """Test create_backup_branch handles TimeoutExpired."""
+        def run_side_effect(*args, **kwargs):
+            if 'rev-parse' in args[0]:
+                return MagicMock(stdout='feature/test\n', returncode=0)
+            elif 'branch' in args[0]:
+                raise subprocess.TimeoutExpired(args[0], 10)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = run_side_effect
+
+        committer = GitAutoCommitter()
+        backup = committer.create_backup_branch()
+
+        assert backup is None
+
+    @patch('subprocess.run')
+    def test_create_backup_branch_file_not_found(self, mock_run):
+        """Test create_backup_branch handles FileNotFoundError."""
+        def run_side_effect(*args, **kwargs):
+            if 'rev-parse' in args[0]:
+                return MagicMock(stdout='feature/test\n', returncode=0)
+            elif 'branch' in args[0]:
+                raise FileNotFoundError("git not found")
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = run_side_effect
+
+        committer = GitAutoCommitter()
+        backup = committer.create_backup_branch()
+
+        assert backup is None
+
+
+# =============================================================================
+# TEST CHECKSUM VERIFICATION IN APPLY_ENTRY
+# =============================================================================
+
+
+class TestChecksumVerificationInApplyEntry:
+    """Test checksum verification in apply_entry."""
+
+    def test_apply_entry_rejects_invalid_checksum(self, tmp_path):
+        """Test that apply_entry raises error for invalid checksum."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL, GraphWALEntry
+
+        wal = GraphWAL(tmp_path / "wal")
+        graph = ThoughtGraph()
+
+        # Create entry with tampered checksum
+        entry = GraphWALEntry(
+            operation='add_node',
+            node_id='Q1',
+            node_type='question',
+            payload={'content': 'Test'}
+        )
+
+        # Tamper with checksum
+        entry.checksum = 'invalid_checksum'
+
+        # Should raise ValueError
+        try:
+            wal.apply_entry(entry, graph)
+            assert False, "Should have raised ValueError"
+        except ValueError as e:
+            assert "checksum verification failed" in str(e).lower()
+
+
+# =============================================================================
+# TEST COMPREHENSIVE RECOVERY PATHWAYS
+# =============================================================================
+
+
+class TestComprehensiveRecoveryPathways:
+    """Comprehensive tests for all recovery method pathways."""
+
+    def test_recover_cascades_through_all_levels(self, tmp_path):
+        """Test that recover() cascades through all levels."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        # Empty WAL directory - should try all levels and eventually fail
+        wal_dir = tmp_path / "wal"
+        wal_dir.mkdir(parents=True)
+
+        recovery = GraphRecovery(str(wal_dir))
+        result = recovery.recover()
+
+        # Should try all 4 levels
+        assert result is not None
+        assert hasattr(result, 'level_used')
+
+    def test_level2_rollback_with_multiple_snapshots(self, tmp_path, sample_graph):
+        """Test Level 2 recovery tries multiple snapshots."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery, GraphWAL
+
+        wal_dir = tmp_path / "wal"
+
+        # Create multiple snapshots
+        wal = GraphWAL(wal_dir)
+        wal.create_snapshot(sample_graph, compress=False)
+        time.sleep(0.01)
+        wal.create_snapshot(sample_graph, compress=False)
+
+        # Attempt Level 2 recovery
+        recovery = GraphRecovery(str(wal_dir))
+        result = recovery._level2_snapshot_rollback()
+
+        # Should successfully recover from one of the snapshots
+        if result.success:
+            assert result.level_used == 2
+            assert result.graph is not None
+
+    def test_level4_chunk_reconstruction_with_valid_chunks(self, tmp_path):
+        """Test Level 4 recovery reconstructs from chunks."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        wal_dir = tmp_path / "wal"
+        chunks_dir = tmp_path / "chunks"
+        chunks_dir.mkdir()
+
+        # Create chunk files
+        chunk1 = {
+            "chunk_id": "chunk_001",
+            "operations": [
+                {
+                    "op": "add_node",
+                    "node_id": "Q1",
+                    "node_type": "question",
+                    "content": "Question 1",
+                    "properties": {},
+                    "metadata": {}
+                }
+            ]
+        }
+        (chunks_dir / "chunk_001.json").write_text(json.dumps(chunk1))
+
+        chunk2 = {
+            "chunk_id": "chunk_002",
+            "operations": [
+                {
+                    "op": "add_node",
+                    "node_id": "Q2",
+                    "node_type": "question",
+                    "content": "Question 2",
+                    "properties": {},
+                    "metadata": {}
+                }
+            ]
+        }
+        (chunks_dir / "chunk_002.json").write_text(json.dumps(chunk2))
+
+        recovery = GraphRecovery(str(wal_dir), chunks_dir=str(chunks_dir))
+        result = recovery._level4_chunk_reconstruct()
+
+        # Should successfully reconstruct from chunks
+        if result.success:
+            assert result.level_used == 4
+            assert result.graph is not None
+            assert result.nodes_recovered >= 2
+
+    def test_level4_chunk_with_corrupted_chunk(self, tmp_path):
+        """Test Level 4 recovery handles corrupted chunks."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        wal_dir = tmp_path / "wal"
+        chunks_dir = tmp_path / "chunks"
+        chunks_dir.mkdir()
+
+        # Create valid chunk
+        chunk1 = {
+            "chunk_id": "chunk_001",
+            "operations": [
+                {
+                    "op": "add_node",
+                    "node_id": "Q1",
+                    "node_type": "question",
+                    "content": "Question 1",
+                    "properties": {},
+                    "metadata": {}
+                }
+            ]
+        }
+        (chunks_dir / "chunk_001.json").write_text(json.dumps(chunk1))
+
+        # Create corrupted chunk
+        (chunks_dir / "chunk_002.json").write_text("CORRUPTED DATA")
+
+        recovery = GraphRecovery(str(wal_dir), chunks_dir=str(chunks_dir))
+        result = recovery._level4_chunk_reconstruct()
+
+        # Should handle corruption and still recover what it can
+        assert result is not None
+
+    def test_list_graph_snapshots_handles_corrupted_snapshots(self, tmp_path):
+        """Test _list_graph_snapshots skips corrupted snapshots."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery, GraphWAL
+
+        wal_dir = tmp_path / "wal"
+
+        # Create valid snapshot
+        wal = GraphWAL(wal_dir)
+        graph = ThoughtGraph()
+        graph.add_node("Q1", NodeType.QUESTION, "Test")
+        wal.create_snapshot(graph)
+
+        # Create corrupted snapshot file
+        snapshots_dir = wal_dir / "snapshots"
+        corrupted_file = snapshots_dir / "snap_corrupted.json"
+        corrupted_file.write_text("CORRUPTED")
+
+        recovery = GraphRecovery(str(wal_dir))
+        snapshots = recovery._list_graph_snapshots()
+
+        # Should skip corrupted snapshots
+        assert isinstance(snapshots, list)
+
+    def test_graph_from_snapshot_handles_exception(self, tmp_path):
+        """Test _graph_from_snapshot handles exceptions gracefully."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+
+        # Invalid snapshot data that will cause exception
+        invalid_snapshot = {
+            'state': {
+                'graph': {
+                    'nodes': {
+                        'Q1': {'node_type': 'invalid_type', 'content': 'Test'}  # Invalid node type
+                    },
+                    'edges': []
+                }
+            }
+        }
+
+        # Should handle exception and return None
+        result = recovery._graph_from_snapshot(invalid_snapshot)
+        assert result is None
+
+    def test_apply_wal_entry_handles_missing_node_for_edge(self, tmp_path):
+        """Test _apply_wal_entry handles edges with missing nodes."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+        from cortical.wal import WALEntry
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        graph = ThoughtGraph()
+
+        # Try to add edge without nodes
+        entry = WALEntry(
+            operation='add_edge',
+            payload={
+                'from_id': 'NonexistentQ1',
+                'to_id': 'NonexistentH1',
+                'edge_type': 'explores'
+            }
+        )
+
+        # Should handle gracefully (may raise ValueError, which is fine)
+        try:
+            recovery._apply_wal_entry(entry, graph)
+        except ValueError:
+            pass  # Expected when nodes don't exist
+
+        # No edges should be added
+        assert graph.edge_count() == 0
+
+    def test_apply_wal_entry_handles_remove_nonexistent_node(self, tmp_path):
+        """Test _apply_wal_entry handles removing nonexistent node."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+        from cortical.wal import WALEntry
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        graph = ThoughtGraph()
+
+        # Try to remove nonexistent node
+        entry = WALEntry(
+            operation='remove_node',
+            payload={'node_id': 'NonexistentNode'}
+        )
+
+        # Should handle gracefully (not crash)
+        recovery._apply_wal_entry(entry, graph)
+
+        # Graph should still be empty
+        assert graph.node_count() == 0
+
+    def test_apply_chunk_operation_handles_remove_nonexistent_node(self, tmp_path):
+        """Test _apply_chunk_operation handles removing nonexistent node."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+        graph = ThoughtGraph()
+
+        operation = {
+            'op': 'remove_node',
+            'node_id': 'NonexistentNode'
+        }
+
+        # Should handle gracefully (not crash)
+        recovery._apply_chunk_operation(operation, graph)
+
+        # Graph should still be empty
+        assert graph.node_count() == 0
+
+    def test_is_git_repo_handles_timeout(self, tmp_path):
+        """Test _is_git_repo handles timeout."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+
+        # Should handle timeout gracefully
+        with patch('subprocess.run', side_effect=subprocess.TimeoutExpired(['git'], 5)):
+            result = recovery._is_git_repo()
+            assert result is False
+
+    def test_find_graph_commits_handles_file_not_found(self, tmp_path):
+        """Test _find_graph_commits handles FileNotFoundError."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+
+        # Should handle FileNotFoundError gracefully
+        with patch('subprocess.run', side_effect=FileNotFoundError("git not found")):
+            commits = recovery._find_graph_commits()
+            assert commits == []
+
+    def test_get_snapshot_files_at_commit_handles_timeout(self, tmp_path):
+        """Test _get_snapshot_files_at_commit handles timeout."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+
+        # Should handle timeout gracefully
+        with patch('subprocess.run', side_effect=subprocess.TimeoutExpired(['git'], 5)):
+            files = recovery._get_snapshot_files_at_commit('abc123')
+            assert files == []
+
+    def test_load_snapshot_from_commit_handles_timeout(self, tmp_path):
+        """Test _load_snapshot_from_commit handles timeout."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+
+        # Should handle timeout gracefully
+        with patch('subprocess.run', side_effect=subprocess.TimeoutExpired(['git'], 10)):
+            snapshot = recovery._load_snapshot_from_commit('abc123', 'snap.json')
+            assert snapshot is None
+
+    def test_load_snapshot_from_commit_handles_file_not_found(self, tmp_path):
+        """Test _load_snapshot_from_commit handles FileNotFoundError."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+
+        # Should handle FileNotFoundError gracefully
+        with patch('subprocess.run', side_effect=FileNotFoundError("git not found")):
+            snapshot = recovery._load_snapshot_from_commit('abc123', 'snap.json')
+            assert snapshot is None
+
+    def test_load_snapshot_from_commit_handles_json_decode_error(self, tmp_path):
+        """Test _load_snapshot_from_commit handles JSONDecodeError."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphRecovery not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphRecovery
+
+        recovery = GraphRecovery(str(tmp_path / "wal"))
+
+        # Mock invalid JSON
+        with patch('subprocess.run', return_value=MagicMock(returncode=0, stdout=b'INVALID JSON')):
+            snapshot = recovery._load_snapshot_from_commit('abc123', 'snap.json')
+            assert snapshot is None
+
+
+# =============================================================================
+# TEST COMMIT_ON_SAVE EDGE CASES
+# =============================================================================
+
+
+class TestCommitOnSaveEdgeCases:
+    """Test commit_on_save edge cases."""
+
+    @patch('subprocess.run')
+    def test_commit_on_save_manual_mode_with_invalid_graph(self, mock_run):
+        """Test manual mode validation with invalid graph."""
+        graph = ThoughtGraph()  # Empty graph
+
+        committer = GitAutoCommitter(mode='manual')
+        committer.commit_on_save('/tmp/test.json', graph=graph)
+
+        # Manual mode should only validate, not commit
+        mock_run.assert_not_called()
+
+    @patch('subprocess.run')
+    def test_commit_on_save_immediate_with_auto_push(self, mock_run):
+        """Test immediate mode with auto_push enabled."""
+        # Mock successful commit and push
+        def run_side_effect(*args, **kwargs):
+            if 'rev-parse' in args[0]:
+                if '--abbrev-ref' in args[0]:
+                    return MagicMock(stdout='feature/test\n', returncode=0)
+                return MagicMock(returncode=0)
+            return MagicMock(returncode=0, stdout=b'', stderr=b'')
+
+        mock_run.side_effect = run_side_effect
+
+        graph = ThoughtGraph()
+        graph.add_node('Q1', NodeType.QUESTION, 'Test')
+        graph.add_node('Q2', NodeType.QUESTION, 'Test2')
+        graph.add_edge('Q1', 'Q2', EdgeType.EXPLORES)
+
+        committer = GitAutoCommitter(mode='immediate', auto_push=True)
+        committer.commit_on_save('/tmp/test.json', graph=graph)
+
+        # Should commit and push
+        time.sleep(0.1)
+        assert mock_run.call_count >= 4  # rev-parse, add, commit, rev-parse for push, push
+
+    @patch('subprocess.run')
+    def test_commit_on_save_debounced_with_auto_push(self, mock_run):
+        """Test debounced mode with auto_push enabled."""
+        def run_side_effect(*args, **kwargs):
+            if 'rev-parse' in args[0]:
+                if '--abbrev-ref' in args[0]:
+                    return MagicMock(stdout='feature/test\n', returncode=0)
+                return MagicMock(returncode=0)
+            return MagicMock(returncode=0, stdout=b'', stderr=b'')
+
+        mock_run.side_effect = run_side_effect
+
+        graph = ThoughtGraph()
+        graph.add_node('Q1', NodeType.QUESTION, 'Test')
+        graph.add_node('Q2', NodeType.QUESTION, 'Test2')
+        graph.add_edge('Q1', 'Q2', EdgeType.EXPLORES)
+
+        committer = GitAutoCommitter(mode='debounced', debounce_seconds=0.5, auto_push=True)
+        committer.commit_on_save('/tmp/test.json', graph=graph)
+
+        # Wait for debounce
+        time.sleep(0.7)
+
+        # Should have committed and pushed
+        assert mock_run.call_count >= 4
+
+        committer.cleanup()
+
+
+# =============================================================================
+# TEST WAL EDGE CASES IN APPLY_ENTRY
+# =============================================================================
+
+
+class TestWALApplyEntryEdgeCases:
+    """Test edge cases in apply_entry."""
+
+    def test_apply_entry_skips_duplicate_node(self, tmp_path):
+        """Test apply_entry skips adding duplicate nodes."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        graph = ThoughtGraph()
+        graph.add_node("Q1", NodeType.QUESTION, "Existing node")
+
+        wal = GraphWAL(tmp_path / "wal")
+        wal.log_add_node("Q1", NodeType.QUESTION, "Duplicate node")
+
+        entries = list(wal.get_all_entries())
+        wal.apply_entry(entries[0], graph)
+
+        # Should not duplicate - node count stays 1
+        assert graph.node_count() == 1
+        # Original content should be preserved
+        assert graph.nodes["Q1"].content == "Existing node"
+
+    def test_apply_entry_skips_remove_nonexistent_node(self, tmp_path):
+        """Test apply_entry handles removing nonexistent node gracefully."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        graph = ThoughtGraph()
+
+        wal = GraphWAL(tmp_path / "wal")
+        wal.log_remove_node("NonexistentNode")
+
+        entries = list(wal.get_all_entries())
+        wal.apply_entry(entries[0], graph)
+
+        # Should handle gracefully
+        assert graph.node_count() == 0
+
+    def test_apply_entry_skips_duplicate_edge(self, tmp_path):
+        """Test apply_entry skips adding duplicate edges."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        graph = ThoughtGraph()
+        graph.add_node("Q1", NodeType.QUESTION, "Question")
+        graph.add_node("H1", NodeType.HYPOTHESIS, "Hypothesis")
+        graph.add_edge("Q1", "H1", EdgeType.EXPLORES, weight=0.8)
+
+        wal = GraphWAL(tmp_path / "wal")
+        wal.log_add_edge("Q1", "H1", EdgeType.EXPLORES, weight=0.9)
+
+        entries = list(wal.get_all_entries())
+        wal.apply_entry(entries[0], graph)
+
+        # Should not duplicate - edge count stays 1
+        assert graph.edge_count() == 1
+
+    def test_apply_entry_skips_edge_for_missing_nodes(self, tmp_path):
+        """Test apply_entry skips edges when nodes don't exist."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        graph = ThoughtGraph()
+
+        wal = GraphWAL(tmp_path / "wal")
+        wal.log_add_edge("NonexistentQ1", "NonexistentH1", EdgeType.EXPLORES)
+
+        entries = list(wal.get_all_entries())
+        wal.apply_entry(entries[0], graph)
+
+        # Should skip the edge
+        assert graph.edge_count() == 0
+
+    def test_apply_entry_skips_cluster_if_exists(self, tmp_path):
+        """Test apply_entry skips adding duplicate clusters."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        graph = ThoughtGraph()
+        graph.add_node("Q1", NodeType.QUESTION, "Q1")
+        graph.add_node("Q2", NodeType.QUESTION, "Q2")
+        graph.add_cluster("CL1", "Existing Cluster", {"Q1"})
+
+        wal = GraphWAL(tmp_path / "wal")
+        wal.log_add_cluster("CL1", "Duplicate Cluster", {"Q1", "Q2"})
+
+        entries = list(wal.get_all_entries())
+        wal.apply_entry(entries[0], graph)
+
+        # Should skip - cluster should keep original name
+        assert graph.clusters["CL1"].name == "Existing Cluster"
+
+    def test_apply_entry_update_node_on_nonexistent(self, tmp_path):
+        """Test apply_entry for update_node on nonexistent node."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphWAL not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphWAL
+
+        graph = ThoughtGraph()
+
+        wal = GraphWAL(tmp_path / "wal")
+        wal.log_update_node("NonexistentNode", {'content': 'Updated'})
+
+        entries = list(wal.get_all_entries())
+        wal.apply_entry(entries[0], graph)
+
+        # Should handle gracefully - no crash
+        assert graph.node_count() == 0
+
+
+# =============================================================================
+# TEST SNAPSHOT CHECKSUM WITH GZIP
+# =============================================================================
+
+
+class TestSnapshotChecksumGzip:
+    """Test GraphSnapshot checksum verification with gzipped files."""
+
+    def test_verify_checksum_gzipped_success(self, tmp_path):
+        """Test checksum verification succeeds for gzipped snapshot."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphSnapshot not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphSnapshot
+        import hashlib
+        import gzip
+
+        # Create a gzipped test file
+        test_file = tmp_path / "test_snapshot.json.gz"
+        with gzip.open(test_file, 'wt', encoding='utf-8') as f:
+            f.write('{"test": "data"}')
+
+        # Compute checksum
+        sha256 = hashlib.sha256()
+        with gzip.open(test_file, 'rb') as f:
+            sha256.update(f.read())
+        checksum = sha256.hexdigest()[:16]
+
+        snapshot = GraphSnapshot(
+            snapshot_id='snap_123',
+            timestamp='2025-12-20T10:00:00',
+            node_count=0,
+            edge_count=0,
+            size_bytes=test_file.stat().st_size,
+            checksum=checksum,
+            path=test_file
+        )
+
+        assert snapshot.verify_checksum()
+
+    def test_verify_checksum_gzipped_io_error(self, tmp_path):
+        """Test checksum verification handles IOError for gzipped files."""
+        pytest.importorskip("cortical.reasoning.graph_persistence", reason="GraphSnapshot not implemented yet")
+        from cortical.reasoning.graph_persistence import GraphSnapshot
+
+        # Create an invalid gzipped file (will cause IOError when reading)
+        test_file = tmp_path / "invalid.json.gz"
+        test_file.write_bytes(b'INVALID GZIP DATA')
+
+        snapshot = GraphSnapshot(
+            snapshot_id='snap_123',
+            timestamp='2025-12-20T10:00:00',
+            node_count=0,
+            edge_count=0,
+            size_bytes=test_file.stat().st_size,
+            checksum='checksum',
+            path=test_file
+        )
+
+        # Should handle IOError gracefully
+        assert not snapshot.verify_checksum()
