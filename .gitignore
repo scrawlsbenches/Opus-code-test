@@ -131,3 +131,4 @@ cortical/proto/__pycache__/
 samples/memories/\[DRAFT\]-*
 .git-ml/current_session.json
 corpus_dev/
+.got/
