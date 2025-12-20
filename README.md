@@ -82,7 +82,48 @@ This library provides a biologically-inspired approach to text processing, organ
 - **Gap Detection**: Find weak spots and isolated documents in your corpus
 - **Query Expansion**: Smart retrieval with synonym handling and semantic relations
 - **RAG System Support**: Chunk-level passage retrieval, document metadata, and multi-stage ranking
+- **Reasoning Framework**: Graph of Thought with QAPV cognitive loops for complex multi-step tasks
 - **Zero Dependencies**: Pure Python, no pip installs required
+
+## Reasoning Framework (New)
+
+The `cortical.reasoning` package provides a Graph of Thought framework for complex multi-step reasoning tasks:
+
+```python
+from cortical.reasoning import ReasoningWorkflow, CognitiveLoop, ThoughtGraph
+
+# Create a reasoning workflow
+workflow = ReasoningWorkflow()
+ctx = workflow.start_session("Implement authentication feature")
+
+# QAPV cognitive loop: Question → Answer → Produce → Verify
+workflow.begin_question_phase(ctx)
+workflow.record_question(ctx, "What auth method? OAuth, JWT, or session?")
+workflow.record_question(ctx, "Need MFA support?")
+
+workflow.begin_answer_phase(ctx)
+workflow.record_decision(ctx, "Use JWT", rationale="Stateless, scales well")
+
+workflow.begin_produce_phase(ctx)
+# Implementation happens here...
+
+workflow.begin_verify_phase(ctx)
+# Run verification suite...
+```
+
+**Key components:**
+- **ThoughtGraph**: Graph-based thought representation with nodes (observations, hypotheses, decisions) and typed edges
+- **CognitiveLoop**: Structured QAPV phases with state persistence and validation
+- **ParallelCoordinator**: Spawn and coordinate parallel sub-agents with boundary isolation
+- **VerificationManager**: Multi-level testing (unit → integration → E2E → acceptance)
+- **CrisisManager**: Failure detection, escalation, and recovery procedures
+
+**Run the demo:**
+```bash
+python scripts/reasoning_demo.py --quick
+```
+
+**Documentation:** [docs/graph-of-thought.md](docs/graph-of-thought.md)
 
 ## Use Cases & When to Use
 
