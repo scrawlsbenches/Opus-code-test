@@ -1493,6 +1493,14 @@ python examples/observability_demo.py
 | Complete handoff | `python scripts/got_utils.py handoff complete HANDOFF_ID --agent AGENT --result JSON` |
 | List handoffs | `python scripts/got_utils.py handoff list [--status STATUS]` |
 | Compact events | `python scripts/got_utils.py compact [--preserve-days N]` |
+| **GoT Query Language** | |
+| What blocks task | `python scripts/got_utils.py query "what blocks TASK_ID"` |
+| What depends on | `python scripts/got_utils.py query "what depends on TASK_ID"` |
+| Find path | `python scripts/got_utils.py query "path from ID1 to ID2"` |
+| All relationships | `python scripts/got_utils.py query "relationships TASK_ID"` |
+| Active tasks | `python scripts/got_utils.py query "active tasks"` |
+| Pending tasks | `python scripts/got_utils.py query "pending tasks"` |
+| Blocked tasks | `python scripts/got_utils.py query "blocked tasks"` |
 | **Performance Tests** | |
 | Run perf tests | `python -m pytest tests/performance/test_graph_persistence_perf.py -v` |
 | Run E2E tests | `python -m pytest tests/integration/test_reasoning_persistence_e2e.py -v` |
