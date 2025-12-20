@@ -989,9 +989,19 @@ class GoTProjectManager:
         description: str = "",
         sprint_id: Optional[str] = None,
         depends_on: Optional[List[str]] = None,
+        blocks: Optional[List[str]] = None,
     ) -> str:
         """
         Create a new task.
+
+        Args:
+            title: Task title
+            priority: Task priority (low, medium, high, critical)
+            category: Task category (feature, bugfix, etc.)
+            description: Detailed task description
+            sprint_id: Sprint ID to add task to
+            depends_on: List of task IDs this task depends on
+            blocks: List of task IDs this task blocks
 
         Returns:
             Task ID
@@ -1032,10 +1042,21 @@ class GoTProjectManager:
         if sprint_id:
             self._add_task_to_sprint(task_id, sprint_id)
 
-        # Add dependencies
+        # Add dependencies (edges from this task TO dependency tasks)
         if depends_on:
             for dep_id in depends_on:
-                self.add_dependency(task_id, dep_id)
+                if self.add_dependency(task_id, dep_id):
+                    print(f"  Added dependency: {task_id} depends on {dep_id}")
+                else:
+                    print(f"  Warning: Could not add dependency to {dep_id} (task not found)")
+
+        # Add blocks (edges from this task TO blocked tasks)
+        if blocks:
+            for blocked_id in blocks:
+                if self.add_blocks(task_id, blocked_id):
+                    print(f"  Added blocks: {task_id} blocks {blocked_id}")
+                else:
+                    print(f"  Warning: Could not add blocks to {blocked_id} (task not found)")
 
         return task_id
 
@@ -1195,7 +1216,15 @@ class GoTProjectManager:
         return True
 
     def add_dependency(self, task_id: str, depends_on_id: str) -> bool:
-        """Add dependency between tasks."""
+        """Add dependency between tasks.
+
+        Args:
+            task_id: The task that depends on another task
+            depends_on_id: The task that task_id depends on
+
+        Returns:
+            True if edge was created, False if either task not found
+        """
         if not task_id.startswith("task:"):
             task_id = f"task:{task_id}"
         if not depends_on_id.startswith("task:"):
@@ -1208,7 +1237,35 @@ class GoTProjectManager:
             task_id, depends_on_id, EdgeType.DEPENDS_ON,
             weight=1.0, confidence=1.0
         )
+        self.event_log.log_edge_create(task_id, depends_on_id, "DEPENDS_ON")
         self.wal.log_add_edge(task_id, depends_on_id, EdgeType.DEPENDS_ON)
+
+        return True
+
+    def add_blocks(self, task_id: str, blocked_id: str) -> bool:
+        """Add blocking relationship between tasks.
+
+        Args:
+            task_id: The task that blocks another task
+            blocked_id: The task that is blocked by task_id
+
+        Returns:
+            True if edge was created, False if either task not found
+        """
+        if not task_id.startswith("task:"):
+            task_id = f"task:{task_id}"
+        if not blocked_id.startswith("task:"):
+            blocked_id = f"task:{blocked_id}"
+
+        if task_id not in self.graph.nodes or blocked_id not in self.graph.nodes:
+            return False
+
+        self.graph.add_edge(
+            task_id, blocked_id, EdgeType.BLOCKS,
+            weight=1.0, confidence=1.0
+        )
+        self.event_log.log_edge_create(task_id, blocked_id, "BLOCKS")
+        self.wal.log_add_edge(task_id, blocked_id, EdgeType.BLOCKS)
 
         return True
 
@@ -2170,6 +2227,7 @@ def cmd_task_create(args, manager: GoTProjectManager) -> int:
         description=getattr(args, 'description', ''),
         sprint_id=getattr(args, 'sprint', None),
         depends_on=getattr(args, 'depends', None),
+        blocks=getattr(args, 'blocks', None),
     )
 
     manager.save()
@@ -2326,6 +2384,24 @@ def cmd_stats(args, manager: GoTProjectManager) -> int:
         print(f"  {status}: {count}")
 
     return 0
+
+
+def cmd_dashboard(args, manager: GoTProjectManager) -> int:
+    """Show comprehensive metrics dashboard."""
+    # Import dashboard module
+    try:
+        from scripts.got_dashboard import render_dashboard
+        dashboard = render_dashboard(manager)
+        print(dashboard)
+        return 0
+    except ImportError as e:
+        print(f"Error: Could not import dashboard module: {e}")
+        return 1
+    except Exception as e:
+        print(f"Error rendering dashboard: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
 
 
 def cmd_migrate(args, manager: GoTProjectManager) -> int:
@@ -3038,7 +3114,8 @@ def main():
     create_parser.add_argument("--category", "-c", choices=VALID_CATEGORIES, default="feature")
     create_parser.add_argument("--description", "-d", default="")
     create_parser.add_argument("--sprint", "-s", help="Sprint ID")
-    create_parser.add_argument("--depends", nargs="+", help="Dependency task IDs")
+    create_parser.add_argument("--depends-on", "--depends", nargs="+", dest="depends", help="Task IDs this task depends on")
+    create_parser.add_argument("--blocks", nargs="+", help="Task IDs this task blocks")
 
     # task list
     list_parser = task_subparsers.add_parser("list", help="List tasks")
@@ -3086,6 +3163,7 @@ def main():
     subparsers.add_parser("blocked", help="Show blocked tasks")
     subparsers.add_parser("active", help="Show active tasks")
     subparsers.add_parser("stats", help="Show statistics")
+    subparsers.add_parser("dashboard", help="Show comprehensive metrics dashboard")
 
     # Migration commands
     migrate_parser = subparsers.add_parser("migrate", help="Migrate from files")
@@ -3238,6 +3316,9 @@ def main():
 
     elif args.command == "stats":
         return cmd_stats(args, manager)
+
+    elif args.command == "dashboard":
+        return cmd_dashboard(args, manager)
 
     elif args.command == "migrate":
         return cmd_migrate(args, manager)
