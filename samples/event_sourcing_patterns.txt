@@ -1,19 +1,55 @@
-Event Sourcing Patterns and CQRS
+Event Sourcing Patterns in Software Development
 
-Event sourcing persists application state as sequences of immutable events rather than current state snapshots. Each event records something that happened in the domain. Replaying events reconstructs current state. This pattern provides complete audit trails and enables temporal queries.
+Event sourcing is an architectural pattern where application state is stored as a sequence of
+immutable events rather than current values. Each event represents a fact that happened at a
+specific point in time. The current state is derived by replaying events from the beginning.
 
-Events capture intent and context beyond mere data changes. OrderPlaced differs meaningfully from directly setting order status. Rich events enable better debugging and analytics. Event schemas should remain stable as systems evolve. The relationship to domain-driven design shows how domain events form the foundation of event sourcing.
+Core Concepts
 
-Event stores append events to streams identified by aggregate identifiers. Streams provide natural partitioning for concurrent access. Optimistic concurrency uses stream version numbers. Projections transform event streams into read-optimized views.
+The event log is an append-only data structure that records every state change. Events are
+immutable once written, ensuring a complete audit trail. The log serves as the single source
+of truth, with derived views computed through projection.
 
-Command Query Responsibility Segregation separates read and write models. Commands modify state through event generation. Queries read from optimized projections. Different models serve different use cases optimally. This separation enables independent scaling and optimization.
+Event types follow a naming convention that describes what happened: task.created,
+decision.made, handoff.initiated. Each event includes a timestamp, unique identifier, and
+payload containing the relevant data. Events are causally ordered, meaning later events
+may reference earlier ones.
 
-Projections build read models from event streams. Multiple projections serve different query needs. Rebuilding projections replays all events to incorporate schema changes. Projection positions track which events have been processed.
+State reconstruction involves replaying events from the beginning or from a snapshot.
+Snapshots are periodic captures of computed state that reduce replay time. The combination
+of snapshots and event replay enables point-in-time recovery to any moment in history.
 
-Eventual consistency characterizes event-sourced systems. Write operations complete when events persist. Read models update asynchronously as projections process events. Applications design for eventual consistency rather than immediate reflection. This pattern integrates with the asynchronous communication patterns in the microservices architecture document.
+Append-Only Log Benefits
 
-Snapshots optimize event replay for aggregates with long event histories. Periodic snapshots capture state at known positions. Replay loads snapshot then applies subsequent events. Snapshot strategies balance storage cost against replay performance.
+Immutability prevents data corruption from concurrent writes. The append-only constraint
+simplifies conflict resolution in distributed systems. Multiple processes can safely write
+to the log without coordination beyond ordering.
 
-Event versioning handles schema evolution. Upcasters transform old event formats to current schemas. Weakly-typed events store data as maps rather than strongly-typed objects. Versioned event types enable gradual migration.
+Event logs naturally support branching workflows. Different branches maintain their own
+event streams that can later merge. Merge conflicts are detected by comparing event
+histories rather than final states.
 
-Saga patterns coordinate transactions across multiple aggregates or services. Events trigger saga steps. Compensating actions undo previous steps if later steps fail. Choreographed sagas use events directly while orchestrated sagas centralize coordination logic. For database considerations underlying event stores, refer to the database design patterns document.
+Temporal queries become possible with event sourcing. Questions like "what was the state
+at time T" or "what changed between T1 and T2" are answered by replaying subsets of events.
+This enables debugging, auditing, and understanding system evolution.
+
+Projection and Views
+
+Projections transform event streams into useful data structures. A task list projection
+maintains the current set of active tasks by processing task.created and task.completed
+events. A dependency graph projection builds relationships from depends_on events.
+
+Multiple projections can exist over the same event stream. Each projection optimizes for
+different query patterns. Views are eventually consistent, updating as new events arrive.
+
+Recovery and Durability
+
+Write-ahead logging ensures events persist before acknowledgment. Crashed processes
+recover by replaying events not yet reflected in projections. The combination of WAL
+and periodic snapshots provides crash-consistent state.
+
+Real-World Applications
+
+Event sourcing powers task management systems where understanding history matters.
+The Graph of Thought architecture uses events to persist reasoning across sessions.
+Agent coordination relies on handoff events to transfer work between processes.

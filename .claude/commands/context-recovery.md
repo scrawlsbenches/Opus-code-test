@@ -45,6 +45,19 @@ echo "=== IN-PROGRESS TASKS ===" && \
 python scripts/task_utils.py list --status in_progress 2>/dev/null || echo "Task system not available"
 ```
 
+### Step 4b: Graph of Thought State Recovery
+
+```bash
+echo "=== GOT STATE ===" && \
+python scripts/got_utils.py stats 2>/dev/null && \
+echo "" && \
+echo "=== RECENT DECISIONS ===" && \
+python scripts/got_utils.py decision list 2>/dev/null | head -10 && \
+echo "" && \
+echo "=== PENDING HANDOFFS ===" && \
+python scripts/got_utils.py handoff list --status pending 2>/dev/null | head -5
+```
+
 ### Step 5: Recent Memory Recovery
 
 ```bash
@@ -91,8 +104,10 @@ Generate a **Cognitive State Report** with this structure:
 
 3. **Reasoning State:**
    - Active cognitive loops: [if any]
-   - Recent decisions: [from memories]
+   - Recent decisions: [from memories and GoT]
    - Pending questions: [if any]
+   - GoT graph: [node count, edge count, pending handoffs]
+   - Blocked tasks: [from GoT query "blocked tasks"]
 
 ### What Remains Unclear
 

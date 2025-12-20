@@ -1,0 +1,64 @@
+Agent Coordination Strategies for Parallel Task Execution
+
+Multi-agent systems require coordination strategies to divide work, prevent conflicts,
+and aggregate results. Effective coordination maximizes parallelism while maintaining
+consistency. Different strategies suit different workload characteristics.
+
+Handoff Protocols
+
+Handoff transfers responsibility for a task between agents. The initiating agent creates
+a handoff record with task context, current state, and continuation instructions. The
+receiving agent accepts the handoff, acknowledging responsibility.
+
+Three-phase handoff provides atomic transfer: initiate, accept, complete. The initiator
+proposes the handoff with required context. The receiver examines the context and either
+accepts or rejects. On acceptance, the receiver owns the task until completion.
+
+Parallel Execution Patterns
+
+Scatter-gather distributes independent subtasks across agents, then collects results.
+A director agent decomposes the main task, spawns workers in parallel, and synthesizes
+their outputs. Works well for embarrassingly parallel problems like testing or search.
+
+Pipeline patterns sequence agents where each processes output from the previous. Research
+agents produce findings, implementation agents consume findings, verification agents
+validate implementations. Dependencies flow forward through the pipeline.
+
+Boundary isolation assigns each agent exclusive ownership of specific files or resources.
+Agents can read shared context but only write to owned resources. Conflict detection
+identifies any boundary violations after execution.
+
+Task Dependency Graphs
+
+Dependency graphs model which tasks must complete before others can start. Edges represent
+data flow or logical prerequisites. Topological sort identifies execution order respecting
+dependencies.
+
+Automatic dependency inference analyzes task descriptions to suggest relationships.
+Patterns like "implement X that uses Y" imply Y must exist first. Commit message parsing
+extracts explicit references like "depends on task:T-123".
+
+Director Orchestration
+
+Director agents coordinate without doing implementation work. They decompose tasks,
+assign agents, monitor progress, and adapt plans. Director overhead is justified by
+improved parallelism and quality.
+
+Batch composition groups independent tasks for parallel execution. Directors analyze
+dependencies to maximize batch sizes. Verification gates between batches catch errors
+early.
+
+Replanning responds to unexpected outcomes. Failed tasks may need different approaches.
+New information may change priorities. Directors maintain awareness to adjust plans
+dynamically.
+
+Failure Handling
+
+Timeout detection identifies stalled agents. Configurable timeouts reflect expected
+task duration. Exceeded timeouts trigger recovery procedures.
+
+Retry strategies range from immediate retry to exponential backoff. Transient failures
+often succeed on retry. Persistent failures need escalation or alternative approaches.
+
+Checkpointing saves intermediate state for recovery. Long-running agents checkpoint
+periodically. Recovery resumes from latest checkpoint rather than restarting completely.
