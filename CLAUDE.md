@@ -69,6 +69,236 @@ When you see "neural" or "cortical" in this codebase, remember: these are metaph
 
 ---
 
+## Cognitive Continuity & Cross-Branch Collaboration
+
+This section defines how to maintain cognitive coherence across sessions, branches, and context windows using Graph of Thought (GoT) as the underlying reasoning structure.
+
+### The Problem
+
+Claude operates across:
+- **Multiple sessions** - Context resets between conversations
+- **Multiple branches** - Parallel work streams with different states
+- **Context windows** - Limited memory requiring state externalization
+
+Without explicit structures, this leads to:
+- Lost reasoning chains
+- Conflicting understanding of system state
+- Inability to resume complex tasks
+- Silent failures that confuse users
+
+### The Solution: Externalized Cognitive State
+
+Use these systems to maintain continuity:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    COGNITIVE STATE HIERARCHY                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  1. BRANCH STATE (.branch-state/)                                    │
+│     └── What work is happening on which branch                       │
+│                                                                       │
+│  2. THOUGHT GRAPH (GoT via cortical/reasoning/)                      │
+│     └── Network of questions, decisions, hypotheses                  │
+│                                                                       │
+│  3. TASK STATE (tasks/*.json)                                        │
+│     └── What needs to be done, what's complete                       │
+│                                                                       │
+│  4. MEMORY STATE (samples/memories/)                                 │
+│     └── Learnings, decisions, insights                               │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Cross-Branch Workflow
+
+When working across branches:
+
+**1. Before Switching Branches**
+```bash
+# Save current cognitive state
+git add -A && git commit -m "checkpoint: Pre-branch-switch state"
+git push -u origin $(git branch --show-current)
+
+# Document what you were doing
+python scripts/new_memory.py "Branch checkpoint: $(git branch --show-current)" --decision
+```
+
+**2. When Pulling/Merging Another Branch**
+```bash
+# First, understand the topology
+git log --oneline HEAD..origin/other-branch | head -10  # What's incoming
+git log --oneline origin/other-branch..HEAD | head -10  # What's unique here
+
+# Check for reasoning state files
+git diff HEAD...origin/other-branch --stat | grep -E "(tasks/|memories/|.branch-state/)"
+
+# Then merge with full awareness
+git merge origin/other-branch --no-ff
+```
+
+**3. Track Branch Relationships in GoT**
+```python
+from cortical.reasoning import ThoughtGraph, NodeType, EdgeType
+
+graph = ThoughtGraph()
+
+# Model branches as contexts
+graph.add_node("branch:main", NodeType.CONTEXT, "Production-ready code")
+graph.add_node("branch:feature-x", NodeType.CONTEXT, "Implementing feature X")
+graph.add_node("branch:debug-y", NodeType.CONTEXT, "Debugging issue Y")
+
+# Model dependencies
+graph.add_edge("branch:feature-x", "branch:main", EdgeType.DEPENDS_ON)
+graph.add_edge("branch:debug-y", "branch:feature-x", EdgeType.REQUIRES)
+```
+
+### Cognitive Breakdown Detection
+
+Recognize these signs of cognitive breakdown:
+
+| Signal | Meaning | Response |
+|--------|---------|----------|
+| Repeating same failed approach | **Loop detected** | Stop, analyze, replan |
+| Contradicting earlier statements | **State confusion** | Re-read context, reconcile |
+| Making changes without reading | **Premature action** | Read first, then act |
+| Asking questions already answered | **Context loss** | Check memories, task history |
+| Generating placeholder content | **Uncertainty masked** | Admit uncertainty, ask for help |
+
+### Automated Recovery Process
+
+When breakdown is detected, follow this recovery protocol:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     RECOVERY PROTOCOL                                │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  1. DETECT                                                           │
+│     └── Identify the breakdown type (loop, confusion, loss)          │
+│                                                                       │
+│  2. STOP                                                             │
+│     └── Halt current action immediately                              │
+│     └── Do not attempt to "push through"                             │
+│                                                                       │
+│  3. DIAGNOSE                                                         │
+│     └── What was I trying to do?                                     │
+│     └── What state am I in now?                                      │
+│     └── What information am I missing?                               │
+│                                                                       │
+│  4. INFORM USER                                                      │
+│     └── State clearly: "I've detected [BREAKDOWN TYPE]"              │
+│     └── Explain: "I was attempting [ACTION] but [PROBLEM]"           │
+│     └── Request: "I need [SPECIFIC INFORMATION] to proceed"          │
+│                                                                       │
+│  5. RECOVER                                                          │
+│     └── If possible: Load state from files/memories                  │
+│     └── If not: Ask user for context restoration                     │
+│     └── Document the recovery in a memory entry                      │
+│                                                                       │
+│  6. VERIFY                                                           │
+│     └── Confirm recovered state is consistent                        │
+│     └── Run sanity checks before resuming                            │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Recovery Commands
+
+Use these to restore cognitive state:
+
+```bash
+# Check what branch you're on and its state
+git branch -vv && cat .branch-state/active/*.json 2>/dev/null
+
+# See recent work context
+git log --oneline -10 && python scripts/task_utils.py list --status in_progress
+
+# Read recent memories for context
+ls -t samples/memories/*.md | head -5 | xargs head -30
+
+# Run context recovery command
+# (see /context-recovery slash command)
+```
+
+### Communication Standards During Recovery
+
+When communicating with the user during cognitive issues:
+
+**DO:**
+```
+"I've detected that I may be confused about the current branch state.
+
+What I understand:
+- I'm on branch: claude/feature-x
+- Last action: Attempted to merge from branch Y
+
+What's unclear:
+- Whether the merge completed successfully
+- The current state of file Z
+
+What I need:
+- Confirmation of merge status
+- Current contents of file Z if it differs from my understanding
+
+Proceeding to verify by running: git status && git log -1"
+```
+
+**DON'T:**
+```
+"Let me try that again..."
+"I'll just make this change..."
+"Something went wrong, but I'll fix it..."
+```
+
+### GoT Integration for Reasoning Persistence
+
+Use the reasoning framework to persist complex thought processes:
+
+```python
+from cortical.reasoning import CognitiveLoop, LoopPhase
+
+# Create a loop for complex task
+loop = CognitiveLoop(goal="Implement authentication feature")
+
+# Progress through phases with explicit state
+loop.start()
+loop.add_note("QUESTION phase: Clarifying requirements")
+loop.record_question("What auth method is preferred?")
+loop.record_decision("Use JWT based on user input", rationale="User confirmed JWT preference")
+
+# Serialize for persistence across sessions
+state = loop.serialize()
+# Save to .git-ml/ or memory file for next session
+
+# Later session can restore
+restored_loop = CognitiveLoop.deserialize(state)
+# Continue from where we left off
+```
+
+### Backup Plans
+
+Always have backup plans:
+
+| Primary Approach | Backup Plan | Fallback |
+|------------------|-------------|----------|
+| Read state from `.branch-state/` | Check git log for context | Ask user |
+| Load GoT from saved state | Reconstruct from task files | Start fresh with explicit acknowledgment |
+| Use incremental changes | Full recompute | Manual verification |
+| Parallel agent coordination | Sequential execution | Single agent with checkpoints |
+
+### Quick Reference: Cognitive Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/context-recovery` | Restore cognitive state from available sources |
+| `python scripts/task_utils.py list --status in_progress` | See active work |
+| `git log --oneline -5` | Recent actions context |
+| `cat .branch-state/active/*.json` | Branch state |
+| `python scripts/reasoning_demo.py --quick` | Verify reasoning system works |
+
+---
+
 ## Project Overview
 
 **Cortical Text Processor** is a zero-dependency Python library for hierarchical text analysis. It organizes text through 4 layers inspired by visual cortex organization:
