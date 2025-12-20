@@ -1057,6 +1057,252 @@ def cmd_export(args, manager: GoTProjectManager) -> int:
 
 
 # =============================================================================
+# BACKUP COMMANDS
+# =============================================================================
+
+
+def cmd_backup_create(args, manager: GoTProjectManager) -> int:
+    """Create a backup snapshot."""
+    compress = getattr(args, 'compress', True)
+
+    try:
+        snapshot_id = manager.wal.create_snapshot(manager.graph, compress=compress)
+        print(f"Snapshot created: {snapshot_id}")
+
+        # Show snapshot info
+        snapshots_dir = manager.got_dir / "wal" / "snapshots"
+        snapshot_files = list(snapshots_dir.glob(f"*{snapshot_id}*"))
+        if snapshot_files:
+            size = snapshot_files[0].stat().st_size
+            print(f"  Size: {size / 1024:.1f} KB")
+            print(f"  Compressed: {compress}")
+        return 0
+    except Exception as e:
+        print(f"Error creating snapshot: {e}")
+        return 1
+
+
+def cmd_backup_list(args, manager: GoTProjectManager) -> int:
+    """List available snapshots."""
+    limit = getattr(args, 'limit', 10)
+
+    snapshots_dir = manager.got_dir / "wal" / "snapshots"
+    if not snapshots_dir.exists():
+        print("No snapshots found.")
+        return 0
+
+    # Find all snapshot files
+    import gzip
+    snapshots = []
+    for snap_file in sorted(snapshots_dir.glob("snap_*.json*"), reverse=True):
+        try:
+            size = snap_file.stat().st_size
+            is_compressed = snap_file.suffix == ".gz"
+
+            # Extract timestamp from filename
+            name = snap_file.stem
+            if name.endswith(".json"):
+                name = name[:-5]
+            parts = name.split("_")
+            if len(parts) >= 3:
+                timestamp = f"{parts[1][:4]}-{parts[1][4:6]}-{parts[1][6:8]} "
+                timestamp += f"{parts[2][:2]}:{parts[2][2:4]}:{parts[2][4:6]}"
+            else:
+                timestamp = "unknown"
+
+            # Try to get node count
+            node_count = "?"
+            try:
+                if is_compressed:
+                    with gzip.open(snap_file, 'rt') as f:
+                        data = json.load(f)
+                else:
+                    with open(snap_file) as f:
+                        data = json.load(f)
+                state = data.get("state", data)
+                nodes = state.get("nodes", {})
+                node_count = len(nodes)
+            except Exception:
+                pass
+
+            snapshots.append({
+                "file": snap_file.name,
+                "timestamp": timestamp,
+                "size": size,
+                "compressed": is_compressed,
+                "nodes": node_count
+            })
+        except Exception:
+            continue
+
+    if not snapshots:
+        print("No snapshots found.")
+        return 0
+
+    print(f"Available Snapshots ({len(snapshots)} total):\n")
+    print(f"{'Timestamp':<20} {'Nodes':<8} {'Size':<10} {'File'}")
+    print("-" * 70)
+
+    for snap in snapshots[:limit]:
+        size_str = f"{snap['size'] / 1024:.1f} KB"
+        print(f"{snap['timestamp']:<20} {str(snap['nodes']):<8} {size_str:<10} {snap['file']}")
+
+    if len(snapshots) > limit:
+        print(f"\n... and {len(snapshots) - limit} more")
+
+    return 0
+
+
+def cmd_backup_verify(args, manager: GoTProjectManager) -> int:
+    """Verify snapshot integrity."""
+    snapshot_id = getattr(args, 'snapshot_id', None)
+
+    snapshots_dir = manager.got_dir / "wal" / "snapshots"
+    if not snapshots_dir.exists():
+        print("No snapshots found.")
+        return 1
+
+    # Find the snapshot to verify
+    import gzip
+    if snapshot_id:
+        files = list(snapshots_dir.glob(f"*{snapshot_id}*"))
+    else:
+        files = sorted(snapshots_dir.glob("snap_*.json*"), reverse=True)
+
+    if not files:
+        print(f"Snapshot not found: {snapshot_id or '(latest)'}")
+        return 1
+
+    snap_file = files[0]
+    print(f"Verifying: {snap_file.name}")
+
+    try:
+        # Load and parse
+        if snap_file.suffix == ".gz":
+            with gzip.open(snap_file, 'rt') as f:
+                data = json.load(f)
+        else:
+            with open(snap_file) as f:
+                data = json.load(f)
+
+        # Check required fields
+        required = ["snapshot_id", "timestamp", "state"]
+        missing = [r for r in required if r not in data]
+        if missing:
+            print(f"  ✗ Missing fields: {missing}")
+            return 1
+
+        # Check state structure
+        state = data.get("state", {})
+        nodes = state.get("nodes", {})
+        edges = state.get("edges", {})
+
+        print(f"  ✓ Valid JSON structure")
+        print(f"  ✓ Snapshot ID: {data.get('snapshot_id', 'missing')}")
+        print(f"  ✓ Timestamp: {data.get('timestamp', 'missing')}")
+        print(f"  ✓ Nodes: {len(nodes)}")
+        print(f"  ✓ Edges: {len(edges)}")
+
+        # Verify node structure
+        invalid_nodes = 0
+        for node_id, node in nodes.items():
+            if not isinstance(node, dict) or "node_type" not in node:
+                invalid_nodes += 1
+        if invalid_nodes:
+            print(f"  ⚠ Invalid nodes: {invalid_nodes}")
+        else:
+            print(f"  ✓ All nodes valid")
+
+        print("\nSnapshot verification: PASSED")
+        return 0
+
+    except json.JSONDecodeError as e:
+        print(f"  ✗ Invalid JSON: {e}")
+        return 1
+    except Exception as e:
+        print(f"  ✗ Error: {e}")
+        return 1
+
+
+def cmd_backup_restore(args, manager: GoTProjectManager) -> int:
+    """Restore from a snapshot."""
+    snapshot_id = args.snapshot_id
+    force = getattr(args, 'force', False)
+
+    snapshots_dir = manager.got_dir / "wal" / "snapshots"
+    if not snapshots_dir.exists():
+        print("No snapshots found.")
+        return 1
+
+    # Find the snapshot
+    files = list(snapshots_dir.glob(f"*{snapshot_id}*"))
+    if not files:
+        print(f"Snapshot not found: {snapshot_id}")
+        return 1
+
+    snap_file = files[0]
+
+    # Confirm unless forced
+    if not force:
+        print(f"About to restore from: {snap_file.name}")
+        print("This will overwrite the current graph state.")
+        response = input("Continue? [y/N]: ").strip().lower()
+        if response != 'y':
+            print("Restore cancelled.")
+            return 0
+
+    try:
+        # Load snapshot
+        import gzip
+        if snap_file.suffix == ".gz":
+            with gzip.open(snap_file, 'rt') as f:
+                data = json.load(f)
+        else:
+            with open(snap_file) as f:
+                data = json.load(f)
+
+        state = data.get("state", {})
+        nodes = state.get("nodes", {})
+
+        # Rebuild graph
+        manager.graph = ThoughtGraph()
+        for node_id, node in nodes.items():
+            manager.graph.add_node(
+                node_id=node_id,
+                node_type=NodeType[node.get("node_type", "TASK").upper()],
+                content=node.get("content", ""),
+                properties=node.get("properties", {}),
+                metadata=node.get("metadata", {})
+            )
+
+        # Restore edges
+        edges = state.get("edges", {})
+        for edge_id, edge in edges.items():
+            try:
+                manager.graph.add_edge(
+                    source_id=edge.get("source_id"),
+                    target_id=edge.get("target_id"),
+                    edge_type=EdgeType[edge.get("edge_type", "RELATES_TO").upper()],
+                    weight=edge.get("weight", 1.0),
+                    metadata=edge.get("metadata", {})
+                )
+            except Exception:
+                pass  # Skip invalid edges
+
+        # Save the restored state
+        manager._save_state()
+
+        print(f"Restored from: {snap_file.name}")
+        print(f"  Nodes: {len(nodes)}")
+        print(f"  Edges: {len(edges)}")
+        return 0
+
+    except Exception as e:
+        print(f"Error restoring: {e}")
+        return 1
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
@@ -1136,6 +1382,29 @@ def main():
     export_parser = subparsers.add_parser("export", help="Export graph")
     export_parser.add_argument("--output", "-o", help="Output file")
 
+    # Backup commands
+    backup_parser = subparsers.add_parser("backup", help="Backup and recovery")
+    backup_subparsers = backup_parser.add_subparsers(dest="backup_command")
+
+    # backup create
+    backup_create = backup_subparsers.add_parser("create", help="Create a snapshot")
+    backup_create.add_argument("--compress", "-c", action="store_true", default=True,
+                               help="Compress snapshot (default: true)")
+
+    # backup list
+    backup_list = backup_subparsers.add_parser("list", help="List available snapshots")
+    backup_list.add_argument("--limit", "-n", type=int, default=10, help="Number to show")
+
+    # backup verify
+    backup_verify = backup_subparsers.add_parser("verify", help="Verify snapshot integrity")
+    backup_verify.add_argument("snapshot_id", nargs="?", help="Snapshot ID (default: latest)")
+
+    # backup restore
+    backup_restore = backup_subparsers.add_parser("restore", help="Restore from snapshot")
+    backup_restore.add_argument("snapshot_id", help="Snapshot ID to restore")
+    backup_restore.add_argument("--force", "-f", action="store_true",
+                                help="Force restore without confirmation")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -1186,6 +1455,19 @@ def main():
 
     elif args.command == "export":
         return cmd_export(args, manager)
+
+    elif args.command == "backup":
+        if args.backup_command == "create":
+            return cmd_backup_create(args, manager)
+        elif args.backup_command == "list":
+            return cmd_backup_list(args, manager)
+        elif args.backup_command == "verify":
+            return cmd_backup_verify(args, manager)
+        elif args.backup_command == "restore":
+            return cmd_backup_restore(args, manager)
+        else:
+            backup_parser.print_help()
+            return 1
 
     else:
         parser.print_help()
