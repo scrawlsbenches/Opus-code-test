@@ -126,8 +126,15 @@ class GoTProjectManager:
         self._load_state()
 
     def _load_state(self) -> None:
-        """Load graph state from WAL/snapshots."""
-        # First, try loading from snapshot directly (most common case)
+        """Load graph state from WAL/snapshots.
+
+        Recovery order (for environment resilience):
+        1. WAL snapshots (local, most recent) - .got/wal/snapshots/
+        2. WAL recovery (crash recovery)
+        3. Git-tracked snapshots (survives clone) - .got/snapshots/
+        4. Empty graph (fresh start)
+        """
+        # 1. Try loading from WAL snapshot directly (most common case)
         try:
             snapshot = self.wal.load_snapshot()  # None = load latest
             if snapshot:
@@ -136,7 +143,7 @@ class GoTProjectManager:
         except Exception:
             pass
 
-        # If no snapshot, try recovery
+        # 2. If no WAL snapshot, try WAL recovery
         try:
             recovery = GraphRecovery(
                 wal_dir=str(self.wal_dir),
@@ -147,9 +154,93 @@ class GoTProjectManager:
                 result = recovery.recover()
                 if result.success and result.graph:
                     self.graph = result.graph
+                    return
         except Exception:
-            # Start with empty graph if all else fails
             pass
+
+        # 3. Try git-tracked snapshots (fresh clone scenario)
+        try:
+            self._load_from_git_tracked_snapshot()
+            if len(self.graph.nodes) > 0:
+                return
+        except Exception:
+            pass
+
+        # 4. Start with empty graph if all else fails
+
+    def _load_from_git_tracked_snapshot(self) -> None:
+        """Load from git-tracked snapshot (survives fresh clone)."""
+        import gzip
+
+        # Find latest snapshot in git-tracked directory
+        snapshots = sorted(self.snapshots_dir.glob("*.json.gz"), reverse=True)
+        if not snapshots:
+            snapshots = sorted(self.snapshots_dir.glob("*.json"), reverse=True)
+        if not snapshots:
+            return
+
+        snap_file = snapshots[0]
+        try:
+            if snap_file.suffix == ".gz":
+                with gzip.open(snap_file, 'rt') as f:
+                    data = json.load(f)
+            else:
+                with open(snap_file) as f:
+                    data = json.load(f)
+
+            state = data.get("state", data)
+            nodes = state.get("nodes", {})
+
+            # Rebuild graph
+            self.graph = ThoughtGraph()
+            for node_id, node in nodes.items():
+                self.graph.add_node(
+                    node_id=node_id,
+                    node_type=NodeType[node.get("node_type", "task").upper()],
+                    content=node.get("content", ""),
+                    properties=node.get("properties", {}),
+                    metadata=node.get("metadata", {})
+                )
+
+            # Restore edges
+            edges = state.get("edges", {})
+            for edge_id, edge in edges.items():
+                try:
+                    self.graph.add_edge(
+                        source_id=edge.get("source_id"),
+                        target_id=edge.get("target_id"),
+                        edge_type=EdgeType[edge.get("edge_type", "RELATES_TO").upper()],
+                        weight=edge.get("weight", 1.0),
+                        metadata=edge.get("metadata", {})
+                    )
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def sync_to_git(self) -> str:
+        """Sync current state to git-tracked snapshot.
+
+        Call this before committing to ensure state survives clone.
+        Returns the snapshot filename.
+        """
+        import gzip
+        import shutil
+
+        # First, create a fresh WAL snapshot
+        snapshot_id = self.wal.create_snapshot(self.graph, compress=True)
+
+        # Find and copy to git-tracked directory
+        wal_snapshots = self.wal_dir / "snapshots"
+        source_files = list(wal_snapshots.glob(f"*{snapshot_id}*"))
+
+        if source_files:
+            source = source_files[0]
+            dest = self.snapshots_dir / source.name
+            shutil.copy2(source, dest)
+            return source.name
+
+        return snapshot_id
 
     def save(self) -> None:
         """Save current graph state."""
@@ -1302,6 +1393,51 @@ def cmd_backup_restore(args, manager: GoTProjectManager) -> int:
         return 1
 
 
+def cmd_sync(args, manager: GoTProjectManager) -> int:
+    """Sync GoT state to git-tracked snapshot.
+
+    This is CRITICAL for environment resilience:
+    - Ensures state survives fresh git clone
+    - Enables cross-branch/cross-agent coordination
+    - Should be run before committing
+    """
+    import subprocess
+
+    try:
+        # Sync to git-tracked location
+        snapshot_name = manager.sync_to_git()
+        print(f"Synced to git-tracked snapshot: {snapshot_name}")
+
+        # Show stats
+        stats = manager.get_stats()
+        print(f"  Tasks: {stats['total_tasks']}")
+        print(f"  Sprints: {stats['total_sprints']}")
+
+        # Auto-commit if message provided
+        message = getattr(args, 'message', None)
+        if message:
+            snapshot_path = manager.snapshots_dir / snapshot_name
+            try:
+                subprocess.run(
+                    ["git", "add", str(snapshot_path)],
+                    check=True, capture_output=True
+                )
+                subprocess.run(
+                    ["git", "commit", "-m", f"got: {message}"],
+                    check=True, capture_output=True
+                )
+                print(f"  Committed: got: {message}")
+            except subprocess.CalledProcessError as e:
+                print(f"  Warning: Git commit failed: {e}")
+
+        print("\nTo persist across environments, commit .got/snapshots/")
+        return 0
+
+    except Exception as e:
+        print(f"Error syncing: {e}")
+        return 1
+
+
 # =============================================================================
 # MAIN
 # =============================================================================
@@ -1405,6 +1541,10 @@ def main():
     backup_restore.add_argument("--force", "-f", action="store_true",
                                 help="Force restore without confirmation")
 
+    # Sync command (critical for environment resilience)
+    sync_parser = subparsers.add_parser("sync", help="Sync state to git-tracked snapshot")
+    sync_parser.add_argument("--message", "-m", help="Commit message (auto-commits if provided)")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -1468,6 +1608,9 @@ def main():
         else:
             backup_parser.print_help()
             return 1
+
+    elif args.command == "sync":
+        return cmd_sync(args, manager)
 
     else:
         parser.print_help()
