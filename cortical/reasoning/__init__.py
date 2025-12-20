@@ -181,6 +181,22 @@ from .claude_code_spawner import (
 )
 
 # =============================================================================
+# GRAPH PERSISTENCE
+# =============================================================================
+
+from .graph_persistence import (
+    # Git integration
+    GitAutoCommitter,
+    # WAL (Write-Ahead Log)
+    GraphWAL,
+    GraphWALEntry,
+    # Recovery
+    GraphRecovery,
+    GraphRecoveryResult,
+    GraphSnapshot,
+)
+
+# =============================================================================
 # MAIN WORKFLOW ORCHESTRATOR
 # =============================================================================
 
@@ -288,6 +304,14 @@ __all__ = [
     'ClaudeCodeSpawner',
     'TaskToolConfig',
     'generate_parallel_task_calls',
+
+    # === Graph Persistence ===
+    'GitAutoCommitter',
+    'GraphWAL',
+    'GraphWALEntry',
+    'GraphRecovery',
+    'GraphRecoveryResult',
+    'GraphSnapshot',
 
     # === Main Workflow ===
     'WorkflowContext',

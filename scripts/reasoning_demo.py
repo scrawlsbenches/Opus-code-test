@@ -8,11 +8,14 @@ Shows the QAPV cycle, verification, failure analysis, and parallel coordination.
 Usage:
     python scripts/reasoning_demo.py
     python scripts/reasoning_demo.py --quick  # Non-interactive
+    python scripts/reasoning_demo.py --persist  # With graph persistence
 """
 
 import sys
 import time
+import tempfile
 from datetime import datetime
+from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, '.')
@@ -39,6 +42,12 @@ from cortical.reasoning.collaboration import (
     SequentialSpawner,
     AgentResult,
     AgentStatus,
+)
+from cortical.reasoning import (
+    ThoughtGraph,
+    NodeType,
+    EdgeType,
+    GraphWAL,
 )
 
 
@@ -335,9 +344,65 @@ def demo_parallel_coordination() -> None:
         print(f"    [{status}] {agent_id}: {result.output[:40]}...")
 
 
+def demo_graph_persistence() -> None:
+    """Demonstrate graph persistence with WAL logging."""
+    print_header("6. GRAPH PERSISTENCE (WAL)")
+
+    # Create temporary WAL directory
+    with tempfile.TemporaryDirectory() as tmpdir:
+        wal_dir = Path(tmpdir) / "demo_wal"
+
+        print_step("Initializing GraphWAL")
+        graph_wal = GraphWAL(str(wal_dir))
+
+        print_step("Creating ThoughtGraph with reasoning nodes")
+        graph = ThoughtGraph()
+
+        # Add nodes with WAL logging
+        print_step("Adding QUESTION node (with WAL)")
+        graph_wal.log_add_node(
+            "Q1", NodeType.QUESTION,
+            "What verification strategy should we use?",
+            properties={'priority': 'high'}
+        )
+        graph.add_node("Q1", NodeType.QUESTION, "What verification strategy should we use?")
+
+        # Add hypothesis nodes
+        print_step("Adding HYPOTHESIS nodes (with WAL)")
+        graph_wal.log_add_node("H1", NodeType.HYPOTHESIS, "Use multi-level verification")
+        graph.add_node("H1", NodeType.HYPOTHESIS, "Use multi-level verification")
+
+        graph_wal.log_add_node("H2", NodeType.HYPOTHESIS, "Focus on unit tests only")
+        graph.add_node("H2", NodeType.HYPOTHESIS, "Focus on unit tests only")
+
+        # Add edges
+        print_step("Adding edges (with WAL)")
+        graph_wal.log_add_edge("Q1", "H1", EdgeType.EXPLORES, weight=0.9)
+        graph.add_edge("Q1", "H1", EdgeType.EXPLORES, weight=0.9)
+
+        graph_wal.log_add_edge("Q1", "H2", EdgeType.EXPLORES, weight=0.5)
+        graph.add_edge("Q1", "H2", EdgeType.EXPLORES, weight=0.5)
+
+        print(f"\n  Graph: {graph.node_count()} nodes, {graph.edge_count()} edges")
+        print(f"  WAL entries: {graph_wal.get_entry_count()}")
+
+        # Create snapshot
+        print_step("Creating snapshot")
+        snapshot_id = graph_wal.create_snapshot(graph, compress=True)
+        print(f"  Snapshot ID: {snapshot_id}")
+
+        # Simulate recovery
+        print_step("Simulating crash recovery")
+        loaded_graph = graph_wal.load_snapshot(snapshot_id)
+        if loaded_graph:
+            print(f"  ✓ Recovered: {loaded_graph.node_count()} nodes, {loaded_graph.edge_count()} edges")
+        else:
+            print("  ✗ Recovery failed")
+
+
 def demo_full_workflow() -> None:
     """Demonstrate a complete reasoning workflow."""
-    print_header("6. COMPLETE WORKFLOW INTEGRATION")
+    print_header("7. COMPLETE WORKFLOW INTEGRATION")
 
     print("Simulating a complete feature implementation workflow:")
     print()
@@ -409,14 +474,19 @@ def demo_full_workflow() -> None:
 def main():
     """Run all demos."""
     quick_mode = "--quick" in sys.argv
+    persist_mode = "--persist" in sys.argv
 
     print("\n" + "="*60)
     print("  REASONING FRAMEWORK DEMO")
     print("  Graph of Thought + QAPV Cycle")
+    if persist_mode:
+        print("  (With Graph Persistence)")
     print("="*60)
 
     if not quick_mode:
         print("\nThis demo shows the key components of the reasoning framework.")
+        if persist_mode:
+            print("(--persist mode: includes GraphWAL demonstration)")
         print("Press Enter to continue through each section...")
         input()
 
@@ -427,8 +497,14 @@ def main():
         demo_failure_analysis,
         demo_regression_detection,
         demo_parallel_coordination,
-        demo_full_workflow,
     ]
+
+    # Add persistence demo if requested
+    if persist_mode:
+        demos.append(demo_graph_persistence)
+
+    # Always run full workflow at the end
+    demos.append(demo_full_workflow)
 
     for demo in demos:
         demo()
@@ -442,6 +518,10 @@ def main():
     print("  - Regression detection and flaky test identification")
     print("  - Parallel agent coordination with boundary isolation")
     print("  - Full state serialization for persistence")
+    if persist_mode:
+        print("  - Write-ahead logging (WAL) for crash recovery")
+        print("  - Snapshot-based checkpointing")
+        print("  - Multi-level cascading recovery")
     print()
     print("All 98 behavioral tests validate these workflows.")
     print()
