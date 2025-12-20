@@ -555,7 +555,7 @@ class GoTProjectManager:
         self.event_log.log_node_update(task_id, changes)
 
         # Log to WAL for crash recovery
-        self.wal.log_update_node(task_id, task.properties, task.metadata)
+        self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
 
         return True
 
@@ -577,10 +577,21 @@ class GoTProjectManager:
         task.metadata["updated_at"] = datetime.now().isoformat()
         task.metadata["completed_at"] = datetime.now().isoformat()
 
+        changes = {
+            "status": STATUS_COMPLETED,
+            "updated_at": task.metadata["updated_at"],
+            "completed_at": task.metadata["completed_at"],
+        }
+
         if retrospective:
             task.properties["retrospective"] = retrospective
+            changes["retrospective"] = retrospective
 
-        self.wal.log_update_node(task_id, task.properties, task.metadata)
+        # Log to event log (source of truth)
+        self.event_log.log_node_update(task_id, changes)
+
+        # Log to WAL for crash recovery
+        self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
 
         return True
 
@@ -599,7 +610,17 @@ class GoTProjectManager:
         task.properties["blocked_reason"] = reason
         task.metadata["updated_at"] = datetime.now().isoformat()
 
-        self.wal.log_update_node(task_id, task.properties, task.metadata)
+        changes = {
+            "status": STATUS_BLOCKED,
+            "blocked_reason": reason,
+            "updated_at": task.metadata["updated_at"],
+        }
+
+        # Log to event log (source of truth)
+        self.event_log.log_node_update(task_id, changes)
+
+        # Log to WAL for crash recovery
+        self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
 
         # Add blocking edge if blocker specified
         if blocker_id:
@@ -610,6 +631,7 @@ class GoTProjectManager:
                     blocker_id, task_id, EdgeType.BLOCKS,
                     weight=1.0, confidence=1.0
                 )
+                self.event_log.log_edge_create(blocker_id, task_id, "BLOCKS")
                 self.wal.log_add_edge(blocker_id, task_id, EdgeType.BLOCKS)
 
         return True
