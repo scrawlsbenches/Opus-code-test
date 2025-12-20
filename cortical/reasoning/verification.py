@@ -492,7 +492,10 @@ class VerificationManager:
         for handler in self._on_failure:
             try:
                 handler(check, failure)
-            except Exception:
+            except Exception:  # noqa: S110
+                # Broad exception catch is intentional: handlers are user-provided
+                # callbacks and we don't know what they might raise. We must not
+                # let a failing handler break verification failure recording.
                 pass
 
         return failure
