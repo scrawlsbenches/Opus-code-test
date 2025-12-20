@@ -639,40 +639,81 @@ class TestCollaborationManager:
 
 
 class TestParallelCoordinator:
-    """Tests for ParallelCoordinator stub class."""
+    """Tests for ParallelCoordinator class."""
 
-    def test_spawn_parallel(self):
-        """Test spawning parallel agents (stub)."""
-        coordinator = ParallelCoordinator()
-        result = coordinator.spawn_parallel(
-            tasks=[{"goal": "Task 1"}, {"goal": "Task 2"}],
-            boundaries=[]
+    def test_spawn_agents(self):
+        """Test spawning parallel agents."""
+        from cortical.reasoning.collaboration import SequentialSpawner
+
+        spawner = SequentialSpawner()
+        coordinator = ParallelCoordinator(spawner)
+
+        b1 = ParallelWorkBoundary(
+            agent_id="agent1",
+            scope_description="Task 1",
+            files_owned={"a.py"}
+        )
+        b2 = ParallelWorkBoundary(
+            agent_id="agent2",
+            scope_description="Task 2",
+            files_owned={"b.py"}
         )
 
-        assert 'agents' in result
-        assert len(result['agents']) == 2
-        assert 'note' in result
-
-    def test_wait_for_completion(self):
-        """Test waiting for completion (stub)."""
-        coordinator = ParallelCoordinator()
-        result = coordinator.wait_for_completion(
-            agent_ids=["agent_0", "agent_1"],
-            timeout_minutes=30
+        agent_ids = coordinator.spawn_agents(
+            tasks=["Task 1", "Task 2"],
+            boundaries=[b1, b2]
         )
 
-        assert 'completed' in result
-        assert result['completed'] == ["agent_0", "agent_1"]
-        assert result['failed'] == []
+        assert len(agent_ids) == 2
+        assert agent_ids[0] != agent_ids[1]
 
-    def test_merge_results(self):
-        """Test merging results (stub)."""
-        coordinator = ParallelCoordinator()
-        result = coordinator.merge_results(["agent_0"])
+    def test_collect_results(self):
+        """Test collecting results from agents."""
+        from cortical.reasoning.collaboration import SequentialSpawner
 
-        assert 'merged_files' in result
-        assert 'conflicts' in result
-        assert result['commit_ready'] is True
+        spawner = SequentialSpawner()
+        coordinator = ParallelCoordinator(spawner)
+
+        b1 = ParallelWorkBoundary(
+            agent_id="agent1",
+            scope_description="Task 1",
+            files_owned={"a.py"}
+        )
+
+        agent_ids = coordinator.spawn_agents(["Task 1"], [b1])
+        results = coordinator.collect_results(agent_ids)
+
+        assert len(results) == 1
+        assert agent_ids[0] in results
+        assert results[agent_ids[0]].success()
+
+    def test_detect_conflicts(self):
+        """Test detecting conflicts between agent results."""
+        from cortical.reasoning.collaboration import SequentialSpawner, AgentResult, AgentStatus
+
+        spawner = SequentialSpawner()
+        coordinator = ParallelCoordinator(spawner)
+
+        # Simulate results with overlapping file modifications
+        results = {
+            "agent1": AgentResult(
+                agent_id="agent1",
+                status=AgentStatus.COMPLETED,
+                task_description="Task 1",
+                files_modified=["shared.py"]
+            ),
+            "agent2": AgentResult(
+                agent_id="agent2",
+                status=AgentStatus.COMPLETED,
+                task_description="Task 2",
+                files_modified=["shared.py"]
+            ),
+        }
+
+        conflicts = coordinator.detect_conflicts(results)
+
+        assert len(conflicts) == 1
+        assert "shared.py" in conflicts[0].files_affected
 
 
 class TestQuestionBatcher:

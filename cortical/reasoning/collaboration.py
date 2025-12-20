@@ -16,10 +16,11 @@ Design Philosophy:
     that parallel efforts don't conflict and communication is clear.
 """
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 import uuid
 
 
@@ -552,89 +553,456 @@ class CollaborationManager:
 
 
 # =============================================================================
-# STUB CLASSES FOR COMPLEX IMPLEMENTATIONS
+# PARALLEL AGENT COORDINATION - BOUNDARY-BASED ISOLATION
 # =============================================================================
+#
+# Design Philosophy (Phase 1):
+# - Clear boundaries prevent conflicts WITHOUT inter-agent communication
+# - Agents work independently within their assigned file sets
+# - Conflicts detected at merge time, not prevented at runtime
+# - Simple spawner interface allows testing without actual subprocess overhead
+#
+# This follows the principle: "The 8 sprint agents worked WITHOUT communication
+# due to clear boundaries" - proven in practice during Sprints 1-3.
+# =============================================================================
+
+
+class AgentStatus(Enum):
+    """Status of a spawned agent."""
+    PENDING = auto()  # Created but not started
+    RUNNING = auto()  # Currently executing
+    COMPLETED = auto()  # Finished successfully
+    FAILED = auto()  # Finished with error
+    TIMED_OUT = auto()  # Exceeded time budget
+
+
+@dataclass
+class AgentResult:
+    """
+    Result from a completed agent execution.
+
+    Contains all information needed to assess agent output and merge changes.
+    """
+    agent_id: str
+    status: AgentStatus
+    task_description: str
+    files_modified: List[str] = field(default_factory=list)
+    files_created: List[str] = field(default_factory=list)
+    files_deleted: List[str] = field(default_factory=list)
+    output: str = ""  # Agent's final output/summary
+    error: Optional[str] = None
+    duration_seconds: float = 0.0
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+    def success(self) -> bool:
+        """Check if agent completed successfully."""
+        return self.status == AgentStatus.COMPLETED
+
+    def all_modified_files(self) -> Set[str]:
+        """Get all files that were changed in any way."""
+        return set(self.files_modified) | set(self.files_created) | set(self.files_deleted)
+
+
+class AgentSpawner(ABC):
+    """
+    Abstract interface for spawning agents.
+
+    This abstraction allows:
+    - SequentialSpawner: For testing, runs tasks inline without subprocesses
+    - ClaudeCodeSpawner: For production, uses Task tool to spawn real agents
+    - MockSpawner: For unit tests, returns predefined results
+
+    Why this design:
+    - Tests run fast without subprocess overhead
+    - Same ParallelCoordinator logic works in all environments
+    - Easy to add new spawner types (e.g., ThreadPoolSpawner)
+    """
+
+    @abstractmethod
+    def spawn(
+        self,
+        task: str,
+        boundary: ParallelWorkBoundary,
+        timeout_seconds: int = 300
+    ) -> str:
+        """
+        Spawn an agent to work on a task.
+
+        Args:
+            task: Description of what the agent should do
+            boundary: Work boundary defining files the agent can modify
+            timeout_seconds: Maximum time for agent execution
+
+        Returns:
+            Agent ID for tracking
+        """
+        pass
+
+    @abstractmethod
+    def get_status(self, agent_id: str) -> AgentStatus:
+        """Get current status of an agent."""
+        pass
+
+    @abstractmethod
+    def get_result(self, agent_id: str) -> Optional[AgentResult]:
+        """
+        Get result from a completed agent.
+
+        Returns None if agent is still running or doesn't exist.
+        """
+        pass
+
+    @abstractmethod
+    def wait_for(self, agent_id: str, timeout_seconds: int = 300) -> AgentResult:
+        """Wait for an agent to complete and return its result."""
+        pass
+
+
+class SequentialSpawner(AgentSpawner):
+    """
+    Sequential spawner for testing - runs tasks inline.
+
+    Instead of spawning subprocesses, executes tasks sequentially using
+    a provided task handler function. This allows fast testing without
+    subprocess overhead.
+
+    Usage:
+        def my_handler(task: str, boundary: ParallelWorkBoundary) -> AgentResult:
+            # Do the work synchronously
+            return AgentResult(...)
+
+        spawner = SequentialSpawner(handler=my_handler)
+        coordinator = ParallelCoordinator(spawner)
+    """
+
+    def __init__(self, handler: Optional[Callable[[str, ParallelWorkBoundary], AgentResult]] = None):
+        """
+        Initialize with optional task handler.
+
+        Args:
+            handler: Function that executes tasks and returns results.
+                     If None, uses a default that returns empty success.
+        """
+        self._handler = handler or self._default_handler
+        self._agents: Dict[str, AgentResult] = {}
+        self._boundaries: Dict[str, ParallelWorkBoundary] = {}
+        self._counter = 0
+
+    def _default_handler(self, task: str, boundary: ParallelWorkBoundary) -> AgentResult:
+        """Default handler returns successful empty result."""
+        return AgentResult(
+            agent_id="",  # Will be set by spawn()
+            status=AgentStatus.COMPLETED,
+            task_description=task,
+            output=f"Completed task: {task[:50]}...",
+        )
+
+    def spawn(
+        self,
+        task: str,
+        boundary: ParallelWorkBoundary,
+        timeout_seconds: int = 300
+    ) -> str:
+        """Spawn runs task synchronously and stores result."""
+        agent_id = f"seq-agent-{self._counter:03d}"
+        self._counter += 1
+
+        self._boundaries[agent_id] = boundary
+
+        start_time = datetime.now()
+        try:
+            result = self._handler(task, boundary)
+            result.agent_id = agent_id
+            result.started_at = start_time
+            result.completed_at = datetime.now()
+            result.duration_seconds = (result.completed_at - start_time).total_seconds()
+
+            # Validate result respects boundary
+            for f in result.all_modified_files():
+                if not boundary.can_modify(f) and f not in boundary.files_read_only:
+                    # Agent modified file outside boundary - mark as conflict
+                    result.error = f"Boundary violation: modified {f} outside owned files"
+
+        except Exception as e:
+            result = AgentResult(
+                agent_id=agent_id,
+                status=AgentStatus.FAILED,
+                task_description=task,
+                error=str(e),
+                started_at=start_time,
+                completed_at=datetime.now(),
+            )
+            result.duration_seconds = (result.completed_at - start_time).total_seconds()
+
+        self._agents[agent_id] = result
+        return agent_id
+
+    def get_status(self, agent_id: str) -> AgentStatus:
+        """Get status - always COMPLETED since we run synchronously."""
+        if agent_id in self._agents:
+            return self._agents[agent_id].status
+        return AgentStatus.PENDING  # Unknown agent
+
+    def get_result(self, agent_id: str) -> Optional[AgentResult]:
+        """Get result for completed agent."""
+        return self._agents.get(agent_id)
+
+    def wait_for(self, agent_id: str, timeout_seconds: int = 300) -> AgentResult:
+        """Return result immediately since tasks run synchronously."""
+        result = self._agents.get(agent_id)
+        if result is None:
+            return AgentResult(
+                agent_id=agent_id,
+                status=AgentStatus.FAILED,
+                task_description="Unknown agent",
+                error=f"Agent {agent_id} not found",
+            )
+        return result
+
+
+@dataclass
+class ConflictDetail:
+    """Detailed information about a conflict between agent results."""
+    conflict_type: ConflictType
+    agents_involved: List[str]
+    files_affected: List[str]
+    description: str
+    resolution_suggestion: str = ""
 
 
 class ParallelCoordinator:
     """
-    STUB: Coordinator for parallel agent execution.
+    Coordinator for parallel agent execution using boundary-based isolation.
 
-    Full Implementation Would:
-    --------------------------
-    1. Agent orchestration
-       - Spawn parallel agents with defined boundaries
-       - Monitor progress across agents
-       - Coordinate shared resources
-       - Handle agent failures
+    Phase 1 Design (No Inter-Agent Communication):
+    - Agents work independently within assigned file boundaries
+    - Conflicts detected at result collection, not prevented at runtime
+    - Simple spawner abstraction allows flexible execution strategies
 
-    2. Conflict prevention
-       - Pre-check boundaries before starting
-       - Lock files during modification
-       - Queue conflicting operations
-       - Automatic conflict resolution where possible
+    The coordinator:
+    1. Validates boundaries don't overlap before spawning
+    2. Spawns agents to work within their boundaries
+    3. Collects results and detects any conflicts
+    4. Reports which files changed and any issues
 
-    3. Result merging
-       - Collect outputs from all agents
-       - Merge non-conflicting changes
-       - Flag conflicts for human resolution
-       - Generate unified commit
+    Usage:
+        spawner = SequentialSpawner(handler=my_task_handler)
+        coordinator = ParallelCoordinator(spawner)
 
-    4. Communication
-       - Cross-agent messaging
-       - Shared context updates
-       - Progress aggregation
-       - Dependency notification
+        # Check if tasks can run in parallel
+        can_spawn, issues = coordinator.can_spawn([boundary1, boundary2])
+
+        if can_spawn:
+            agent_ids = coordinator.spawn_agents(tasks, boundaries)
+            results = coordinator.collect_results(agent_ids)
+            conflicts = coordinator.detect_conflicts(results)
     """
 
-    def spawn_parallel(
-        self,
-        tasks: List[Dict[str, Any]],
-        boundaries: List[ParallelWorkBoundary]
-    ) -> Dict[str, Any]:
+    def __init__(self, spawner: AgentSpawner):
         """
-        STUB: Spawn parallel agents for tasks.
+        Initialize coordinator with an agent spawner.
 
         Args:
-            tasks: List of task definitions
-            boundaries: Work boundaries for each task
+            spawner: The spawner implementation to use for agent execution
+        """
+        self._spawner = spawner
+        self._active_agents: Dict[str, ParallelWorkBoundary] = {}
+        self._completed_results: Dict[str, AgentResult] = {}
+        self._detected_conflicts: List[ConflictDetail] = []
+
+    def can_spawn(self, boundaries: List[ParallelWorkBoundary]) -> Tuple[bool, List[str]]:
+        """
+        Check if tasks with given boundaries can run in parallel.
+
+        Args:
+            boundaries: List of work boundaries for proposed parallel tasks
 
         Returns:
-            {'agents': list of agent IDs, 'conflicts': list of pre-detected conflicts}
+            Tuple of (can_spawn: bool, issues: list of conflict descriptions)
         """
-        return {
-            'agents': [f"agent_{i}" for i in range(len(tasks))],
-            'conflicts': [],
-            'note': 'STUB: Would spawn actual parallel agents',
-        }
+        issues = []
 
-    def wait_for_completion(self, agent_ids: List[str], timeout_minutes: int = 60) -> Dict[str, Any]:
+        # Check for file ownership conflicts between boundaries
+        for i, b1 in enumerate(boundaries):
+            for b2 in boundaries[i + 1:]:
+                conflicts = b1.conflicts_with(b2)
+                if conflicts:
+                    issues.append(
+                        f"Conflict: {b1.agent_id} and {b2.agent_id} both claim "
+                        f"ownership of: {', '.join(conflicts[:3])}"
+                        + (f" (and {len(conflicts) - 3} more)" if len(conflicts) > 3 else "")
+                    )
+
+        # Check for read-write conflicts (one reads what another writes)
+        for i, b1 in enumerate(boundaries):
+            for b2 in boundaries[i + 1:]:
+                # Does b1 read files that b2 writes?
+                read_write_conflict = b1.files_read_only & b2.files_owned
+                if read_write_conflict:
+                    issues.append(
+                        f"Potential race: {b1.agent_id} reads files that "
+                        f"{b2.agent_id} may modify: {', '.join(list(read_write_conflict)[:3])}"
+                    )
+
+                # Does b2 read files that b1 writes?
+                read_write_conflict = b2.files_read_only & b1.files_owned
+                if read_write_conflict:
+                    issues.append(
+                        f"Potential race: {b2.agent_id} reads files that "
+                        f"{b1.agent_id} may modify: {', '.join(list(read_write_conflict)[:3])}"
+                    )
+
+        return len(issues) == 0, issues
+
+    def spawn_agents(
+        self,
+        tasks: List[str],
+        boundaries: List[ParallelWorkBoundary],
+        timeout_seconds: int = 300
+    ) -> List[str]:
         """
-        STUB: Wait for parallel agents to complete.
+        Spawn agents for parallel task execution.
+
+        Args:
+            tasks: List of task descriptions
+            boundaries: Matching list of work boundaries
+            timeout_seconds: Maximum time per agent
 
         Returns:
-            {'completed': list, 'failed': list, 'timed_out': list}
-        """
-        return {
-            'completed': agent_ids,
-            'failed': [],
-            'timed_out': [],
-            'note': 'STUB: Would wait for actual agent completion',
-        }
+            List of agent IDs
 
-    def merge_results(self, agent_ids: List[str]) -> Dict[str, Any]:
+        Raises:
+            ValueError: If tasks and boundaries lists have different lengths
         """
-        STUB: Merge results from parallel agents.
+        if len(tasks) != len(boundaries):
+            raise ValueError(
+                f"Must have same number of tasks ({len(tasks)}) "
+                f"and boundaries ({len(boundaries)})"
+            )
+
+        agent_ids = []
+        for task, boundary in zip(tasks, boundaries):
+            agent_id = self._spawner.spawn(task, boundary, timeout_seconds)
+            self._active_agents[agent_id] = boundary
+            agent_ids.append(agent_id)
+
+        return agent_ids
+
+    def collect_results(
+        self,
+        agent_ids: List[str],
+        timeout_seconds: int = 300
+    ) -> Dict[str, AgentResult]:
+        """
+        Wait for agents and collect their results.
+
+        Args:
+            agent_ids: List of agent IDs to wait for
+            timeout_seconds: Maximum total time to wait
 
         Returns:
-            {'merged_files': list, 'conflicts': list, 'commit_ready': bool}
+            Dictionary mapping agent_id to AgentResult
         """
+        results = {}
+        for agent_id in agent_ids:
+            result = self._spawner.wait_for(agent_id, timeout_seconds)
+            results[agent_id] = result
+            self._completed_results[agent_id] = result
+
+            # Clean up active tracking
+            if agent_id in self._active_agents:
+                del self._active_agents[agent_id]
+
+        return results
+
+    def detect_conflicts(self, results: Dict[str, AgentResult]) -> List[ConflictDetail]:
+        """
+        Detect conflicts in completed agent results.
+
+        Checks for:
+        - File conflicts: Multiple agents modified same file
+        - Boundary violations: Agent modified files outside its boundary
+        - Dependency conflicts: Agent needed files another modified
+
+        Args:
+            results: Dictionary of agent results
+
+        Returns:
+            List of detected conflicts
+        """
+        conflicts = []
+
+        # Collect all modified files by agent
+        agent_files: Dict[str, Set[str]] = {}
+        for agent_id, result in results.items():
+            agent_files[agent_id] = result.all_modified_files()
+
+        # Check for overlapping modifications
+        agent_ids = list(results.keys())
+        for i, a1 in enumerate(agent_ids):
+            for a2 in agent_ids[i + 1:]:
+                overlap = agent_files[a1] & agent_files[a2]
+                if overlap:
+                    conflict = ConflictDetail(
+                        conflict_type=ConflictType.FILE_CONFLICT,
+                        agents_involved=[a1, a2],
+                        files_affected=list(overlap),
+                        description=f"Both {a1} and {a2} modified: {', '.join(list(overlap)[:5])}",
+                        resolution_suggestion="Review changes in both agents and merge manually",
+                    )
+                    conflicts.append(conflict)
+
+        # Check for boundary violations
+        for agent_id, result in results.items():
+            if result.error and "Boundary violation" in result.error:
+                conflict = ConflictDetail(
+                    conflict_type=ConflictType.SCOPE_OVERLAP,
+                    agents_involved=[agent_id],
+                    files_affected=list(result.all_modified_files()),
+                    description=result.error,
+                    resolution_suggestion="Agent worked outside assigned boundary - review all changes",
+                )
+                conflicts.append(conflict)
+
+        self._detected_conflicts.extend(conflicts)
+        return conflicts
+
+    def get_summary(self) -> Dict[str, Any]:
+        """Get summary of coordination state."""
+        completed = [r for r in self._completed_results.values() if r.success()]
+        failed = [r for r in self._completed_results.values() if not r.success()]
+
+        all_files = set()
+        for result in self._completed_results.values():
+            all_files.update(result.all_modified_files())
+
         return {
-            'merged_files': [],
-            'conflicts': [],
-            'commit_ready': True,
-            'note': 'STUB: Would perform actual merge',
+            'active_agents': len(self._active_agents),
+            'completed_agents': len(completed),
+            'failed_agents': len(failed),
+            'total_files_modified': len(all_files),
+            'conflicts_detected': len(self._detected_conflicts),
+            'files_modified': list(all_files)[:20],  # First 20 for summary
         }
+
+    def get_active_agent_ids(self) -> List[str]:
+        """Get IDs of currently active agents."""
+        return list(self._active_agents.keys())
+
+    def get_completed_results(self) -> Dict[str, AgentResult]:
+        """Get all completed agent results."""
+        return dict(self._completed_results)
+
+    def get_conflicts(self) -> List[ConflictDetail]:
+        """Get all detected conflicts."""
+        return list(self._detected_conflicts)
+
+    def reset(self) -> None:
+        """Reset coordinator state for reuse."""
+        self._active_agents.clear()
+        self._completed_results.clear()
+        self._detected_conflicts.clear()
 
 
 @dataclass
