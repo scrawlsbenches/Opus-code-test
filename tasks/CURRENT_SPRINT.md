@@ -395,7 +395,33 @@ Move CLI wrapper to projects/cli if it becomes problematic.
 | Sprint 3 | 3 days | ✅ | Hubris MoE |
 | Sprint 4 | 1 day | ✅ | Hubris MoE |
 | Sprint 5 | 1 day | ✅ | Hubris MoE |
-| Sprint 6 | - | 🟢 | Hubris MoE |
+| Sprint 6 | 1 day | ✅ | Hubris MoE |
 | Sprint 7 | 1 day | ✅ | Hubris MoE |
 | Sprint 8 | - | 🟢 | Core |
 | Sprint 9 | 1 day | ✅ | Core (Projects) |
+
+---
+
+# Blocked/Deferred Backlog
+
+Items that are intentionally deferred or blocked on external dependencies.
+
+## Deferred Tasks
+
+| Task ID | Description | Reason | Unblock Condition |
+|---------|-------------|--------|-------------------|
+| T-d0b7-004 | Chunk storage compression | Low priority, git already compresses | Performance profiling shows need |
+| LEGACY-190 | REST API wrapper | Scope creep risk | Clear use case emerges |
+| LEGACY-191 | Interactive REPL mode | Nice-to-have | User demand |
+
+## Resolved Blockers
+
+| Task ID | Was Blocked On | Resolution |
+|---------|----------------|------------|
+| LEGACY-133 | WAL implementation | Implemented in graph_persistence.py (2025-12-20) |
+
+## Notes
+
+- Use `deferred` status in task JSON files for backlog items
+- Review deferred items monthly for relevance
+- Move to active sprint when unblock condition is met
