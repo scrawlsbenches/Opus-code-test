@@ -1,0 +1,1 @@
+{"ts": "2025-12-20T21:24:25.331118Z", "event": "node.create", "meta": {"branch": "claude/code-review-history-ckKBt", "session": "20251220-212425-6374"}, "id": "task:T-20251220-212425-2366", "type": "TASK", "data": {"title": "Auto-include GoT context in sub-agent prompts", "status": "pending", "priority": "medium", "category": "devex", "description": ""}}

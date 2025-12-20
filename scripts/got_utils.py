@@ -1362,6 +1362,221 @@ class GoTProjectManager:
         traverse(task_id, [], 0)
         return chains
 
+    def what_blocks(self, task_id: str) -> List[ThoughtNode]:
+        """Query: What tasks are blocking this task?
+
+        Follows BLOCKS edges pointing TO this task.
+        """
+        if not task_id.startswith("task:"):
+            task_id = f"task:{task_id}"
+
+        blockers = []
+        # Check _edges_to for edges pointing to this task
+        edges_to = getattr(self.graph, '_edges_to', {})
+        for edge in edges_to.get(task_id, []):
+            if edge.edge_type == EdgeType.BLOCKS:
+                blocker = self.graph.nodes.get(edge.source_id)
+                if blocker:
+                    blockers.append(blocker)
+
+        return blockers
+
+    def what_depends_on(self, task_id: str) -> List[ThoughtNode]:
+        """Query: What tasks depend on this task?
+
+        Follows DEPENDS_ON edges pointing TO this task
+        (i.e., other tasks that have this task as a dependency).
+        """
+        if not task_id.startswith("task:"):
+            task_id = f"task:{task_id}"
+
+        dependents = []
+        # Check _edges_to for edges pointing to this task
+        edges_to = getattr(self.graph, '_edges_to', {})
+        for edge in edges_to.get(task_id, []):
+            if edge.edge_type == EdgeType.DEPENDS_ON:
+                dependent = self.graph.nodes.get(edge.source_id)
+                if dependent:
+                    dependents.append(dependent)
+
+        return dependents
+
+    def find_path(
+        self,
+        from_id: str,
+        to_id: str,
+        max_depth: int = 10,
+    ) -> Optional[List[ThoughtNode]]:
+        """Query: Find a path between two nodes.
+
+        Uses BFS to find shortest path following any edge type.
+        Returns None if no path exists.
+        """
+        from collections import deque
+
+        if from_id not in self.graph.nodes or to_id not in self.graph.nodes:
+            return None
+
+        if from_id == to_id:
+            return [self.graph.nodes[from_id]]
+
+        # BFS
+        queue = deque([(from_id, [from_id])])
+        visited = {from_id}
+
+        while queue:
+            current_id, path = queue.popleft()
+
+            if len(path) > max_depth:
+                continue
+
+            # Get outgoing edges
+            edges_from = self.graph._edges_from.get(current_id, [])
+            for edge in edges_from:
+                next_id = edge.target_id
+                if next_id == to_id:
+                    return [self.graph.nodes[nid] for nid in path + [next_id]]
+                if next_id not in visited:
+                    visited.add(next_id)
+                    queue.append((next_id, path + [next_id]))
+
+        return None
+
+    def get_all_relationships(self, task_id: str) -> Dict[str, List[ThoughtNode]]:
+        """Query: Get all relationships for a task.
+
+        Returns dict with keys:
+        - 'blocks': Tasks this task blocks
+        - 'blocked_by': Tasks blocking this task
+        - 'depends_on': Tasks this task depends on
+        - 'depended_by': Tasks depending on this task
+        - 'in_sprint': Sprint containing this task
+        """
+        if not task_id.startswith("task:"):
+            task_id = f"task:{task_id}"
+
+        result = {
+            'blocks': [],
+            'blocked_by': [],
+            'depends_on': [],
+            'depended_by': [],
+            'in_sprint': [],
+        }
+
+        # Outgoing edges (from this task)
+        edges_from = self.graph._edges_from.get(task_id, [])
+        for edge in edges_from:
+            target = self.graph.nodes.get(edge.target_id)
+            if not target:
+                continue
+            if edge.edge_type == EdgeType.BLOCKS:
+                result['blocks'].append(target)
+            elif edge.edge_type == EdgeType.DEPENDS_ON:
+                result['depends_on'].append(target)
+
+        # Incoming edges (to this task)
+        edges_to = getattr(self.graph, '_edges_to', {})
+        for edge in edges_to.get(task_id, []):
+            source = self.graph.nodes.get(edge.source_id)
+            if not source:
+                continue
+            if edge.edge_type == EdgeType.BLOCKS:
+                result['blocked_by'].append(source)
+            elif edge.edge_type == EdgeType.DEPENDS_ON:
+                result['depended_by'].append(source)
+            elif edge.edge_type == EdgeType.CONTAINS:
+                result['in_sprint'].append(source)
+
+        return result
+
+    def query(self, query_str: str) -> List[Dict[str, Any]]:
+        """Simple query language for the graph.
+
+        Supported queries:
+        - "what blocks <task_id>"
+        - "what depends on <task_id>"
+        - "path from <id1> to <id2>"
+        - "relationships <task_id>"
+        - "blocked tasks"
+        - "active tasks"
+        - "pending tasks"
+
+        Returns list of result dicts.
+        """
+        query_str = query_str.strip().lower()
+        results = []
+
+        if query_str.startswith("what blocks "):
+            task_id = query_str[12:].strip()
+            for node in self.what_blocks(task_id):
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "status": node.properties.get("status"),
+                    "relation": "blocks",
+                })
+
+        elif query_str.startswith("what depends on "):
+            task_id = query_str[16:].strip()
+            for node in self.what_depends_on(task_id):
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "status": node.properties.get("status"),
+                    "relation": "depends_on",
+                })
+
+        elif query_str.startswith("path from "):
+            # Parse "path from X to Y"
+            parts = query_str[10:].split(" to ")
+            if len(parts) == 2:
+                from_id, to_id = parts[0].strip(), parts[1].strip()
+                path = self.find_path(from_id, to_id)
+                if path:
+                    for i, node in enumerate(path):
+                        results.append({
+                            "step": i,
+                            "id": node.id,
+                            "title": node.content,
+                        })
+
+        elif query_str.startswith("relationships "):
+            task_id = query_str[14:].strip()
+            rels = self.get_all_relationships(task_id)
+            for rel_type, nodes in rels.items():
+                for node in nodes:
+                    results.append({
+                        "relation": rel_type,
+                        "id": node.id,
+                        "title": node.content,
+                    })
+
+        elif query_str == "blocked tasks":
+            for node, reason in self.get_blocked_tasks():
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "reason": reason,
+                })
+
+        elif query_str == "active tasks":
+            for node in self.get_active_tasks():
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "priority": node.properties.get("priority"),
+                })
+
+        elif query_str == "pending tasks":
+            for node in self.list_tasks(status=STATUS_PENDING):
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "priority": node.properties.get("priority"),
+                })
+
+        return results
+
     # =========================================================================
     # UTILITY METHODS
     # =========================================================================
@@ -2208,6 +2423,44 @@ def cmd_handoff_list(args, manager: GoTProjectManager) -> int:
     return 0
 
 
+def cmd_query(args, manager: GoTProjectManager) -> int:
+    """Run a query against the graph."""
+    query_str = " ".join(args.query_string)
+
+    print(f"Query: {query_str}\n")
+
+    results = manager.query(query_str)
+
+    if not results:
+        print("No results found.")
+        return 0
+
+    print(f"Results ({len(results)}):\n")
+    for r in results:
+        if "step" in r:
+            # Path query
+            print(f"  [{r['step']}] {r['id']}: {r['title']}")
+        elif "relation" in r:
+            # Relationship query
+            print(f"  {r['relation']}: {r['id']}")
+            if r.get('title'):
+                print(f"      {r['title']}")
+        elif "reason" in r:
+            # Blocked tasks
+            print(f"  {r['id']}: {r['title']}")
+            print(f"      Reason: {r['reason']}")
+        else:
+            # Generic result
+            print(f"  {r['id']}: {r.get('title', '')}")
+            if r.get('priority'):
+                print(f"      Priority: {r['priority']}")
+            if r.get('status'):
+                print(f"      Status: {r['status']}")
+        print()
+
+    return 0
+
+
 def cmd_compact(args, manager: GoTProjectManager) -> int:
     """Compact old events."""
     preserve_handoffs = not getattr(args, 'no_preserve_handoffs', False)
@@ -2456,6 +2709,10 @@ def main():
     compact_parser.add_argument("--dry-run", action="store_true",
                                 help="Show what would be compacted")
 
+    # Query command
+    query_parser = subparsers.add_parser("query", help="Query the graph")
+    query_parser.add_argument("query_string", nargs="+", help="Query (e.g., 'what blocks task:T-...')")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -2541,6 +2798,9 @@ def main():
 
     elif args.command == "compact":
         return cmd_compact(args, manager)
+
+    elif args.command == "query":
+        return cmd_query(args, manager)
 
     else:
         parser.print_help()
