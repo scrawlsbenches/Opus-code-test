@@ -2959,6 +2959,93 @@ def cmd_infer(args, manager: GoTProjectManager) -> int:
     return 0
 
 
+def cmd_validate(args, manager: GoTProjectManager) -> int:
+    """Validate graph health and report issues."""
+    print("=" * 60)
+    print("GoT VALIDATION REPORT")
+    print("=" * 60)
+
+    issues = []
+    warnings = []
+
+    # Count nodes and edges
+    total_nodes = len(manager.graph.nodes)
+    total_edges = len(manager.graph.edges)
+
+    # Count tasks by status
+    tasks = [n for n in manager.graph.nodes.values() if n.node_type == NodeType.TASK]
+    task_count = len(tasks)
+
+    # Check for orphan nodes (no edges)
+    nodes_with_edges = set()
+    for edge in manager.graph.edges:
+        nodes_with_edges.add(edge.source_id)
+        nodes_with_edges.add(edge.target_id)
+
+    orphan_count = total_nodes - len(nodes_with_edges)
+    orphan_rate = orphan_count / max(total_nodes, 1) * 100
+
+    # Load events and compare
+    events = EventLog.load_all_events(manager.events_dir)
+    event_edge_count = sum(1 for e in events if e.get('event') == 'edge.create')
+    event_node_count = sum(1 for e in events if e.get('event') == 'node.create')
+
+    # Check for edge loss (the bug we fixed)
+    edge_loss_rate = 0
+    if event_edge_count > 0:
+        edge_loss_rate = (1 - total_edges / event_edge_count) * 100
+        if edge_loss_rate > 10:
+            issues.append(f"EDGE LOSS: {edge_loss_rate:.1f}% of edges from events not in graph ({total_edges}/{event_edge_count})")
+        elif edge_loss_rate > 0:
+            warnings.append(f"Minor edge loss: {edge_loss_rate:.1f}% ({total_edges}/{event_edge_count})")
+
+    # Check orphan rate
+    if orphan_rate > 50:
+        issues.append(f"HIGH ORPHAN RATE: {orphan_rate:.1f}% of nodes have no edges")
+    elif orphan_rate > 25:
+        warnings.append(f"Moderate orphan rate: {orphan_rate:.1f}%")
+
+    # Check edge density
+    edge_density = total_edges / max(total_nodes, 1)
+    if edge_density < 0.1:
+        warnings.append(f"Low edge density: {edge_density:.2f} edges/node")
+
+    # Print stats
+    print(f"\n📊 STATISTICS")
+    print(f"   Nodes: {total_nodes}")
+    print(f"   Tasks: {task_count}")
+    print(f"   Edges: {total_edges}")
+    print(f"   Edge density: {edge_density:.2f} edges/node")
+    print(f"   Orphan nodes: {orphan_count} ({orphan_rate:.1f}%)")
+
+    print(f"\n📁 EVENT LOG")
+    print(f"   Node events: {event_node_count}")
+    print(f"   Edge events: {event_edge_count}")
+    if edge_loss_rate > 0:
+        print(f"   Edge rebuild rate: {100 - edge_loss_rate:.1f}%")
+    else:
+        print(f"   Edge rebuild rate: 100%")
+
+    # Print issues
+    if issues:
+        print(f"\n❌ ISSUES ({len(issues)})")
+        for issue in issues:
+            print(f"   • {issue}")
+
+    if warnings:
+        print(f"\n⚠️  WARNINGS ({len(warnings)})")
+        for warning in warnings:
+            print(f"   • {warning}")
+
+    if not issues and not warnings:
+        print(f"\n✅ HEALTHY - No issues detected")
+
+    print()
+
+    # Return non-zero if critical issues
+    return 1 if issues else 0
+
+
 def cmd_query(args, manager: GoTProjectManager) -> int:
     """Run a query against the graph."""
     query_str = " ".join(args.query_string)
@@ -3270,6 +3357,9 @@ def main():
     decision_why = decision_subparsers.add_parser("why", help="Ask why a task exists")
     decision_why.add_argument("task_id", help="Task ID to query")
 
+    # Validation command
+    validate_parser = subparsers.add_parser("validate", help="Validate graph health")
+
     # Edge inference commands
     infer_parser = subparsers.add_parser("infer", help="Infer edges from git history")
     infer_parser.add_argument("--commits", "-n", type=int, default=10,
@@ -3381,6 +3471,9 @@ def main():
 
     elif args.command == "infer":
         return cmd_infer(args, manager)
+
+    elif args.command == "validate":
+        return cmd_validate(args, manager)
 
     else:
         parser.print_help()
