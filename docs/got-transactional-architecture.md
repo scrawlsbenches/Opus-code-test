@@ -1,7 +1,6 @@
 # GoT Transactional Architecture Design
 
 **Status:** Draft
-**Author:** Claude Agent
 **Date:** 2025-12-21
 **Task:** Design ACID-compliant transaction layer for Graph of Thought
 
@@ -9,749 +8,887 @@
 
 ## Executive Summary
 
-This document describes a transactional architecture for the Graph of Thought (GoT) system that provides:
+This document describes a transactional architecture for the Graph of Thought (GoT) system that provides ACID guarantees for multi-agent concurrent access.
 
-- **Atomicity**: All-or-nothing operations with rollback on failure
-- **Consistency**: Invariants are always maintained
-- **Isolation**: Concurrent transactions don't see each other's uncommitted changes
-- **Durability**: Committed data survives crashes
+**Key Insight:** Git is for **synchronization between agents**, not for transaction isolation. The transaction layer must be self-contained with its own durability guarantees. Git becomes the "transport layer" for sharing state between agents working in different sessions or repositories.
 
-**Key Insight:** Git IS our database. We leverage git's existing guarantees (content-addressed storage, atomic commits, checksums, history) rather than reinventing them.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│   AGENT A (local)          AGENT B (local)         AGENT C     │
+│   ┌─────────────┐          ┌─────────────┐      ┌─────────────┐│
+│   │ Transaction │          │ Transaction │      │ Transaction ││
+│   │   Layer     │          │   Layer     │      │   Layer     ││
+│   └──────┬──────┘          └──────┬──────┘      └──────┬──────┘│
+│          │                        │                    │        │
+│          ▼                        ▼                    ▼        │
+│   ┌─────────────┐          ┌─────────────┐      ┌─────────────┐│
+│   │ Local State │          │ Local State │      │ Local State ││
+│   │ (.got/)     │          │ (.got/)     │      │ (.got/)     ││
+│   └──────┬──────┘          └──────┬──────┘      └──────┬──────┘│
+│          │                        │                    │        │
+│          └────────────┬───────────┴────────────────────┘        │
+│                       │                                         │
+│                       ▼                                         │
+│              ┌─────────────────┐                                │
+│              │   GIT SYNC      │  ← Periodic sync, NOT in       │
+│              │   (push/pull)   │    transaction path            │
+│              └─────────────────┘                                │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Table of Contents
 
 1. [Design Principles](#design-principles)
-2. [Architecture Overview](#architecture-overview)
-3. [Transaction Lifecycle](#transaction-lifecycle)
-4. [MVCC: Snapshot Isolation](#mvcc-snapshot-isolation)
-5. [Optimistic Locking](#optimistic-locking)
-6. [Write-Ahead Log (WAL)](#write-ahead-log-wal)
+2. [Architecture Layers](#architecture-layers)
+3. [Transaction Layer](#transaction-layer)
+4. [Storage Layer](#storage-layer)
+5. [Sync Layer (Git)](#sync-layer-git)
+6. [Conflict Resolution](#conflict-resolution)
 7. [Recovery Procedures](#recovery-procedures)
-8. [Conflict Resolution](#conflict-resolution)
-9. [API Design](#api-design)
-10. [File Structure](#file-structure)
+8. [API Design](#api-design)
+9. [User Stories](#user-stories)
+10. [Edge Cases](#edge-cases)
 11. [Implementation Plan](#implementation-plan)
-12. [Failure Scenarios](#failure-scenarios)
 
 ---
 
 ## Design Principles
 
-### 1. Git as Durability Layer
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      APPLICATION LAYER                          │
-│  (GoTProjectManager, Tasks, Decisions, Edges)                   │
-├─────────────────────────────────────────────────────────────────┤
-│                    TRANSACTION LAYER                            │
-│  (Begin, Read, Write, Commit, Rollback)                         │
-├─────────────────────────────────────────────────────────────────┤
-│                         WAL LAYER                               │
-│  (Checksums, Fsync, Redo/Undo Log)                              │
-├─────────────────────────────────────────────────────────────────┤
-│                      GIT STORAGE LAYER                          │
-│  (Atomic commits, Content-addressed, Immutable history)         │
-└─────────────────────────────────────────────────────────────────┘
-```
+### 1. Separation of Concerns
 
-### 2. Zero External Dependencies
-- Pure Python implementation
-- Uses only git (already required for the project)
-- No SQLite, no Redis, no external services
+| Layer | Responsibility | Git Involvement |
+|-------|---------------|-----------------|
+| Transaction | ACID guarantees, isolation, atomicity | **None** |
+| Storage | Durability, checksums, versioning | **None** |
+| Sync | Collaboration, sharing, history | **Yes** |
 
-### 3. Agent-First Design
-- Claude Agents are primary users
-- Operations must be idempotent where possible
-- Clear error messages for conflict resolution
-- Automatic recovery from common failures
+### 2. Local-First Architecture
+
+Each agent works on **local state** with full ACID guarantees. Synchronization with other agents is a **separate, explicit operation** that happens outside the transaction path.
+
+### 3. Explicit Over Implicit
+
+- No automatic git commits during transactions
+- No git commands in hot path
+- Sync is user/agent-initiated
+- Conflicts are surfaced, not hidden
 
 ### 4. Fail-Safe Defaults
-- Uncommitted transactions are automatically rolled back on crash
-- Corrupted data is detected and rejected (never silently accepted)
-- Recovery always leaves system in consistent state
+
+- Uncommitted transactions are rolled back on crash
+- Corrupted data is detected and rejected
+- Sync conflicts block until resolved (no silent data loss)
 
 ---
 
-## Architecture Overview
-
-### Core Components
+## Architecture Layers
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                                                                 │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
-│  │ Transaction │    │ Transaction │    │ Transaction │         │
-│  │     T1      │    │     T2      │    │     T3      │         │
-│  │ (Agent A)   │    │ (Agent B)   │    │ (Agent C)   │         │
-│  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘         │
-│         │                  │                  │                 │
-│         ▼                  ▼                  ▼                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │              TRANSACTION MANAGER                         │   │
-│  │  - Assigns transaction IDs                               │   │
-│  │  - Tracks active transactions                            │   │
-│  │  - Coordinates commits                                   │   │
-│  │  - Detects conflicts                                     │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                            │                                    │
-│                            ▼                                    │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                    WAL MANAGER                           │   │
-│  │  - Logs operations before execution                      │   │
-│  │  - Checksums all entries                                 │   │
-│  │  - Fsync for durability                                  │   │
-│  │  - Supports redo/undo                                    │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                            │                                    │
-│                            ▼                                    │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                   GIT BACKEND                            │   │
-│  │  - Atomic commits                                        │   │
-│  │  - Content-addressed storage                             │   │
-│  │  - Branch-based isolation                                │   │
-│  │  - Merge-based conflict resolution                       │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
+│                    APPLICATION LAYER                             │
+│  GoTProjectManager, Tasks, Decisions, Edges                      │
+│  - Business logic                                                │
+│  - No knowledge of transactions or sync                          │
+├─────────────────────────────────────────────────────────────────┤
+│                    TRANSACTION LAYER                             │
+│  TransactionManager, Transaction, WAL                            │
+│  - Begin/Commit/Rollback                                         │
+│  - ProcessLock for mutual exclusion                              │
+│  - Snapshot isolation via version files                          │
+│  - NO GIT COMMANDS                                               │
+├─────────────────────────────────────────────────────────────────┤
+│                    STORAGE LAYER                                 │
+│  VersionedStore, EntityFile, WALManager                          │
+│  - Atomic file writes                                            │
+│  - Checksums on all data                                         │
+│  - Fsync for durability                                          │
+│  - NO GIT COMMANDS                                               │
+├─────────────────────────────────────────────────────────────────┤
+│                    SYNC LAYER (SEPARATE PROCESS)                 │
+│  SyncManager                                                     │
+│  - git add/commit/push/pull                                      │
+│  - Merge conflict detection                                      │
+│  - Called explicitly, never automatically                        │
+│  - Runs OUTSIDE transactions                                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### State Machine
-
-```
-                    ┌──────────┐
-                    │  BEGIN   │
-                    └────┬─────┘
-                         │
-                         ▼
-              ┌──────────────────────┐
-              │       ACTIVE         │◄─────────────┐
-              │  (read/write ops)    │              │
-              └──────────┬───────────┘              │
-                         │                          │
-            ┌────────────┼────────────┐             │
-            │            │            │             │
-            ▼            ▼            ▼             │
-      ┌──────────┐ ┌──────────┐ ┌──────────┐       │
-      │ PREPARE  │ │ ROLLBACK │ │  ABORT   │       │
-      │ COMMIT   │ │(explicit)│ │ (crash)  │       │
-      └────┬─────┘ └────┬─────┘ └────┬─────┘       │
-           │            │            │              │
-           ▼            │            │              │
-    ┌─────────────┐     │            │              │
-    │  VALIDATE   │     │            │              │
-    │ (conflicts?)│     │            │              │
-    └──────┬──────┘     │            │              │
-           │            │            │              │
-     ┌─────┴─────┐      │            │              │
-     │           │      │            │              │
-     ▼           ▼      ▼            ▼              │
-┌─────────┐ ┌─────────────────────────────┐        │
-│COMMITTED│ │         ROLLED BACK         │        │
-│(durable)│ │  (changes discarded)        │        │
-└─────────┘ └─────────────────────────────┘        │
-                         │                          │
-                         │      RETRY               │
-                         └──────────────────────────┘
-```
-
 ---
 
-## Transaction Lifecycle
+## Transaction Layer
 
-### 1. Begin Transaction
+### ProcessLock (Already Implemented)
 
-```python
-def begin(self, isolation_level: str = "snapshot") -> Transaction:
-    """
-    Start a new transaction.
-
-    Args:
-        isolation_level: "snapshot" (default) or "serializable"
-
-    Returns:
-        Transaction object with unique ID and base snapshot
-    """
-    tx_id = generate_transaction_id()  # TX-YYYYMMDD-HHMMSS-XXXX
-
-    # Record the snapshot point (current git HEAD)
-    base_commit = git_get_head()
-
-    # Create transaction record
-    tx = Transaction(
-        id=tx_id,
-        base_commit=base_commit,
-        isolation_level=isolation_level,
-        state=TransactionState.ACTIVE,
-        started_at=datetime.now(),
-        operations=[],  # Buffered operations
-        read_set={},    # Keys read (for conflict detection)
-        write_set={},   # Keys written (pending changes)
-    )
-
-    # Write transaction record to WAL (survives crash)
-    self.wal.log_tx_begin(tx)
-
-    # Register as active transaction
-    self.active_transactions[tx_id] = tx
-
-    return tx
-```
-
-### 2. Read Operations (Snapshot Isolation)
+We already have `ProcessLock` for mutual exclusion. This prevents concurrent writes from multiple processes on the same machine.
 
 ```python
-def read(self, tx: Transaction, key: str) -> Optional[Any]:
-    """
-    Read a value within a transaction.
-
-    Provides snapshot isolation: reads see the database state
-    as of transaction start, plus any writes made within this transaction.
-    """
-    # First check our own pending writes
-    if key in tx.write_set:
-        return tx.write_set[key]
-
-    # Read from our snapshot (base_commit)
-    value = self.read_at_commit(key, tx.base_commit)
-
-    # Track what we read (for serializable isolation conflict detection)
-    tx.read_set[key] = hash(value) if value else None
-
-    return value
+class ProcessLock:
+    """File-based lock for process-safe operations."""
+    # Already implemented in scripts/got_utils.py
+    # Uses fcntl.flock() with PID tracking and stale detection
 ```
 
-### 3. Write Operations (Buffered)
+### Transaction Object
 
 ```python
-def write(self, tx: Transaction, key: str, value: Any) -> None:
-    """
-    Write a value within a transaction.
+@dataclass
+class Transaction:
+    id: str                          # TX-YYYYMMDD-HHMMSS-XXXX
+    state: TransactionState          # ACTIVE, PREPARING, COMMITTED, ABORTED
+    started_at: datetime
+    snapshot_version: int            # Version at transaction start
+    operations: List[Operation]      # Buffered operations
+    write_set: Dict[str, Entity]     # Pending writes
+    read_set: Dict[str, int]         # Keys read → versions (for conflict detection)
 
-    Writes are buffered until commit. Other transactions
-    cannot see these changes until commit succeeds.
-    """
-    if tx.state != TransactionState.ACTIVE:
-        raise TransactionError(f"Transaction {tx.id} is not active")
-
-    # Create undo record (for rollback)
-    old_value = self.read(tx, key)
-
-    # Log to WAL before buffering (crash recovery)
-    self.wal.log_write(tx.id, key, old_value, value)
-
-    # Buffer the write
-    tx.write_set[key] = value
-    tx.operations.append(WriteOp(key=key, old=old_value, new=value))
+class TransactionState(Enum):
+    ACTIVE = "active"
+    PREPARING = "preparing"
+    COMMITTED = "committed"
+    ABORTED = "aborted"
+    ROLLED_BACK = "rolled_back"
 ```
 
-### 4. Commit (Optimistic Validation)
+### Transaction Manager
 
 ```python
-def commit(self, tx: Transaction) -> CommitResult:
+class TransactionManager:
     """
-    Attempt to commit a transaction.
+    Manages transactions with ACID guarantees.
 
-    Uses optimistic concurrency control:
-    1. Validate no conflicts with concurrent commits
-    2. Apply changes atomically via git commit
-    3. Return success or conflict details
+    Thread-safety: Uses ProcessLock for all mutations.
+    No git commands are executed by this class.
     """
-    if tx.state != TransactionState.ACTIVE:
-        raise TransactionError(f"Transaction {tx.id} is not active")
-
-    # Phase 1: PREPARE
-    tx.state = TransactionState.PREPARING
-    self.wal.log_tx_prepare(tx.id)
-
-    # Phase 2: VALIDATE (optimistic lock check)
-    current_head = git_get_head()
-
-    if current_head != tx.base_commit:
-        # Someone else committed. Check for actual conflicts.
-        conflicts = self.detect_conflicts(tx, current_head)
-
-        if conflicts:
-            # Cannot auto-merge, return conflict info
-            tx.state = TransactionState.ABORTED
-            self.wal.log_tx_abort(tx.id, reason="conflict")
-            return CommitResult(
-                success=False,
-                reason="conflict",
-                conflicts=conflicts,
-                suggestion=self.suggest_resolution(conflicts)
-            )
-
-        # No conflicts, can fast-forward or merge
-        tx.base_commit = current_head
-
-    # Phase 3: APPLY (atomic git commit)
-    try:
-        # Write all changes to files
-        for key, value in tx.write_set.items():
-            self.write_to_file(key, value)
-
-        # Atomic git commit
-        commit_sha = self.git_commit(
-            message=f"Transaction {tx.id}",
-            files=list(tx.write_set.keys())
-        )
-
-        # Fsync the commit
-        self.fsync_git_objects()
-
-        # Phase 4: FINALIZE
-        tx.state = TransactionState.COMMITTED
-        tx.commit_sha = commit_sha
-        self.wal.log_tx_commit(tx.id, commit_sha)
-
-        # Cleanup
-        del self.active_transactions[tx.id]
-
-        return CommitResult(
-            success=True,
-            commit_sha=commit_sha,
-            version=self.increment_version()
-        )
-
-    except Exception as e:
-        # Commit failed, rollback
-        tx.state = TransactionState.ABORTED
-        self.wal.log_tx_abort(tx.id, reason=str(e))
-        self.rollback_files(tx)
-        raise
-```
-
-### 5. Rollback
-
-```python
-def rollback(self, tx: Transaction, reason: str = "explicit") -> None:
-    """
-    Abort a transaction and discard all changes.
-    """
-    if tx.state == TransactionState.COMMITTED:
-        raise TransactionError("Cannot rollback committed transaction")
-
-    # Log the rollback
-    self.wal.log_tx_rollback(tx.id, reason)
-
-    # Discard buffered writes (they were never applied)
-    tx.write_set.clear()
-    tx.operations.clear()
-
-    # Mark as rolled back
-    tx.state = TransactionState.ROLLED_BACK
-
-    # Cleanup
-    if tx.id in self.active_transactions:
-        del self.active_transactions[tx.id]
-```
-
----
-
-## MVCC: Snapshot Isolation
-
-### Concept
-
-Each transaction sees a consistent snapshot of the database as of its start time. Concurrent transactions don't see each other's uncommitted changes.
-
-```
-Timeline:
-─────────────────────────────────────────────────────────────────►
-
-T1: begin()──read(A)──────────────write(A)──commit()
-              │                      │
-              ▼                      ▼
-         sees A=1               writes A=2
-
-T2:      begin()───read(A)────────────────────read(A)──commit()
-                     │                          │
-                     ▼                          ▼
-                sees A=1                   sees A=1 (snapshot!)
-                (T1 not committed)         (T1 committed but after T2 started)
-```
-
-### Implementation Using Git
-
-```python
-class SnapshotReader:
-    """Read from a specific git commit (snapshot)."""
-
-    def __init__(self, commit_sha: str):
-        self.commit_sha = commit_sha
-        self._cache = {}
-
-    def read(self, path: str) -> Optional[bytes]:
-        """Read file contents at this snapshot."""
-        if path in self._cache:
-            return self._cache[path]
-
-        try:
-            # Use git show to read file at specific commit
-            result = subprocess.run(
-                ["git", "show", f"{self.commit_sha}:{path}"],
-                capture_output=True,
-                check=True
-            )
-            content = result.stdout
-            self._cache[path] = content
-            return content
-        except subprocess.CalledProcessError:
-            # File doesn't exist at this commit
-            return None
-
-    def list_files(self, pattern: str = "*") -> List[str]:
-        """List files matching pattern at this snapshot."""
-        result = subprocess.run(
-            ["git", "ls-tree", "-r", "--name-only", self.commit_sha],
-            capture_output=True,
-            text=True
-        )
-        files = result.stdout.strip().split('\n')
-        return [f for f in files if fnmatch(f, pattern)]
-```
-
-### Snapshot Registry
-
-```python
-class SnapshotRegistry:
-    """Track active snapshots to prevent garbage collection."""
 
     def __init__(self, got_dir: Path):
-        self.snapshots_file = got_dir / "active_snapshots.json"
-        self._snapshots: Dict[str, SnapshotInfo] = {}
+        self.got_dir = Path(got_dir)
+        self.store = VersionedStore(got_dir / "entities")
+        self.wal = WALManager(got_dir / "wal")
+        self.lock = ProcessLock(got_dir / ".got.lock", reentrant=True)
+        self.active_tx: Dict[str, Transaction] = {}
 
-    def register(self, tx_id: str, commit_sha: str) -> None:
-        """Register a snapshot as in-use."""
-        self._snapshots[tx_id] = SnapshotInfo(
-            commit_sha=commit_sha,
-            registered_at=datetime.now().isoformat(),
-            tx_id=tx_id
-        )
-        self._persist()
+        # Run recovery on init
+        self._recover_on_startup()
 
-    def release(self, tx_id: str) -> None:
-        """Release a snapshot (transaction completed)."""
-        if tx_id in self._snapshots:
-            del self._snapshots[tx_id]
-            self._persist()
+    def begin(self) -> Transaction:
+        """Start a new transaction."""
+        with self.lock:
+            tx_id = generate_transaction_id()
+            snapshot_version = self.store.current_version()
 
-    def get_protected_commits(self) -> Set[str]:
-        """Get commits that should not be garbage collected."""
-        return {s.commit_sha for s in self._snapshots.values()}
-```
+            tx = Transaction(
+                id=tx_id,
+                state=TransactionState.ACTIVE,
+                started_at=datetime.now(),
+                snapshot_version=snapshot_version,
+                operations=[],
+                write_set={},
+                read_set={}
+            )
 
----
+            # Log to WAL (survives crash)
+            self.wal.log_tx_begin(tx_id, snapshot_version)
 
-## Optimistic Locking
+            self.active_tx[tx_id] = tx
+            return tx
 
-### Version Numbers
+    def read(self, tx: Transaction, entity_id: str) -> Optional[Entity]:
+        """
+        Read an entity within a transaction.
 
-Each entity (task, decision, edge) carries a version number that increments on every modification.
+        Provides snapshot isolation:
+        - Reads see state as of transaction start
+        - Plus any writes made within this transaction
+        """
+        # Check our pending writes first
+        if entity_id in tx.write_set:
+            return tx.write_set[entity_id]
 
-```python
-@dataclass
-class VersionedEntity:
-    """Base class for all versioned entities."""
-    id: str
-    version: int  # Monotonically increasing
-    data: Dict[str, Any]
-    checksum: str  # SHA256 of serialized data
+        # Read from snapshot version
+        entity = self.store.read_at_version(entity_id, tx.snapshot_version)
 
-    def increment_version(self) -> 'VersionedEntity':
-        return VersionedEntity(
-            id=self.id,
-            version=self.version + 1,
-            data=self.data,
-            checksum=self.compute_checksum()
-        )
+        # Track what we read (for conflict detection)
+        if entity:
+            tx.read_set[entity_id] = entity.version
 
-    def compute_checksum(self) -> str:
-        content = json.dumps(self.data, sort_keys=True)
-        return hashlib.sha256(content.encode()).hexdigest()[:16]
-```
+        return entity
 
-### Conflict Detection
+    def write(self, tx: Transaction, entity: Entity) -> None:
+        """
+        Write an entity within a transaction.
 
-```python
-def detect_conflicts(
-    self,
-    tx: Transaction,
-    current_head: str
-) -> List[Conflict]:
-    """
-    Detect conflicts between transaction and commits since base.
+        Writes are buffered until commit.
+        Other transactions cannot see these changes.
+        """
+        if tx.state != TransactionState.ACTIVE:
+            raise TransactionError(f"Transaction {tx.id} is not active")
 
-    A conflict exists when:
-    1. Transaction wrote to a key that was modified by another commit
-    2. Transaction read a key that was modified (serializable only)
-    """
-    conflicts = []
+        # Get old value for undo
+        old_entity = self.read(tx, entity.id)
 
-    # Get all commits between our base and current head
-    commits_since = git_log(f"{tx.base_commit}..{current_head}")
+        # Log to WAL before buffering
+        self.wal.log_write(tx.id, entity.id, old_entity, entity)
 
-    for commit in commits_since:
-        # Get files modified in this commit
-        modified_files = git_diff_files(commit.parent, commit.sha)
+        # Buffer the write
+        tx.write_set[entity.id] = entity
+        tx.operations.append(WriteOp(
+            entity_id=entity.id,
+            old_version=old_entity.version if old_entity else 0,
+            new_version=entity.version
+        ))
 
-        for path in modified_files:
-            # Check write-write conflict
-            if path in tx.write_set:
-                conflicts.append(Conflict(
-                    type=ConflictType.WRITE_WRITE,
-                    key=path,
-                    our_value=tx.write_set[path],
-                    their_value=self.read_at_commit(path, current_head),
-                    their_commit=commit.sha,
-                    their_author=commit.author
-                ))
+    def commit(self, tx: Transaction) -> CommitResult:
+        """
+        Commit a transaction.
 
-            # Check read-write conflict (serializable isolation)
-            if tx.isolation_level == "serializable" and path in tx.read_set:
-                current_hash = hash(self.read_at_commit(path, current_head))
-                if current_hash != tx.read_set[path]:
+        Uses optimistic locking:
+        1. Acquire lock
+        2. Check for conflicts (version mismatches)
+        3. Apply all writes atomically
+        4. Release lock
+        """
+        with self.lock:
+            if tx.state != TransactionState.ACTIVE:
+                raise TransactionError(f"Transaction {tx.id} is not active")
+
+            # Phase 1: PREPARE
+            tx.state = TransactionState.PREPARING
+            self.wal.log_tx_prepare(tx.id)
+
+            # Phase 2: VALIDATE (optimistic lock check)
+            conflicts = self._detect_conflicts(tx)
+            if conflicts:
+                tx.state = TransactionState.ABORTED
+                self.wal.log_tx_abort(tx.id, "conflict")
+                del self.active_tx[tx.id]
+                return CommitResult(
+                    success=False,
+                    reason="conflict",
+                    conflicts=conflicts
+                )
+
+            # Phase 3: APPLY (atomic write)
+            try:
+                new_version = self.store.apply_writes(tx.write_set)
+
+                # Phase 4: FINALIZE
+                tx.state = TransactionState.COMMITTED
+                self.wal.log_tx_commit(tx.id, new_version)
+
+                del self.active_tx[tx.id]
+
+                return CommitResult(
+                    success=True,
+                    version=new_version
+                )
+
+            except Exception as e:
+                tx.state = TransactionState.ABORTED
+                self.wal.log_tx_abort(tx.id, str(e))
+                raise
+
+    def rollback(self, tx: Transaction, reason: str = "explicit") -> None:
+        """Abort a transaction and discard all changes."""
+        with self.lock:
+            if tx.state == TransactionState.COMMITTED:
+                raise TransactionError("Cannot rollback committed transaction")
+
+            self.wal.log_tx_rollback(tx.id, reason)
+            tx.write_set.clear()
+            tx.operations.clear()
+            tx.state = TransactionState.ROLLED_BACK
+
+            if tx.id in self.active_tx:
+                del self.active_tx[tx.id]
+
+    def _detect_conflicts(self, tx: Transaction) -> List[Conflict]:
+        """Detect conflicts between transaction and current state."""
+        conflicts = []
+
+        for entity_id, entity in tx.write_set.items():
+            current = self.store.read(entity_id)
+
+            if current is None:
+                # Creating new entity, check it doesn't exist now
+                if self.store.exists(entity_id):
                     conflicts.append(Conflict(
-                        type=ConflictType.READ_WRITE,
-                        key=path,
-                        read_version=tx.read_set[path],
-                        current_version=current_hash,
-                        their_commit=commit.sha
+                        type=ConflictType.CREATE_EXISTS,
+                        entity_id=entity_id,
+                        message=f"Entity {entity_id} was created by another transaction"
+                    ))
+            else:
+                # Updating existing, check version hasn't changed
+                expected_version = tx.read_set.get(entity_id, 0)
+                if current.version != expected_version:
+                    conflicts.append(Conflict(
+                        type=ConflictType.VERSION_MISMATCH,
+                        entity_id=entity_id,
+                        expected_version=expected_version,
+                        actual_version=current.version,
+                        message=f"Entity {entity_id} was modified by another transaction"
                     ))
 
-    return conflicts
-```
+        return conflicts
 
-### Compare-and-Swap Semantics
+    def _recover_on_startup(self) -> None:
+        """Recover from crash by replaying/rolling back incomplete transactions."""
+        incomplete = self.wal.get_incomplete_transactions()
 
-```python
-def cas_update(
-    self,
-    tx: Transaction,
-    key: str,
-    expected_version: int,
-    new_value: Any
-) -> bool:
-    """
-    Compare-and-swap update within a transaction.
-
-    Only succeeds if current version matches expected.
-    """
-    current = self.read(tx, key)
-
-    if current is None:
-        if expected_version != 0:
-            return False  # Expected existing, got nothing
-    elif current.version != expected_version:
-        return False  # Version mismatch
-
-    # Version matches, apply update
-    new_entity = VersionedEntity(
-        id=key,
-        version=expected_version + 1,
-        data=new_value,
-        checksum=compute_checksum(new_value)
-    )
-
-    self.write(tx, key, new_entity)
-    return True
+        for tx_record in incomplete:
+            if tx_record.state == "PREPARING":
+                # Crash during commit - rollback
+                self.wal.log_tx_rollback(tx_record.id, "crash_recovery")
+                logger.info(f"Rolled back incomplete transaction: {tx_record.id}")
+            elif tx_record.state == "ACTIVE":
+                # Crash during transaction - discard (writes were buffered)
+                self.wal.log_tx_rollback(tx_record.id, "crash_recovery")
+                logger.info(f"Discarded active transaction: {tx_record.id}")
 ```
 
 ---
 
-## Write-Ahead Log (WAL)
+## Storage Layer
 
-### WAL Entry Format
+### Versioned Store
 
 ```python
-@dataclass
-class WALEntry:
-    """Single entry in the write-ahead log."""
-    sequence: int           # Monotonic sequence number
-    timestamp: str          # ISO format timestamp
-    tx_id: str              # Transaction ID
-    operation: str          # Operation type
-    data: Dict[str, Any]    # Operation-specific data
-    checksum: str           # SHA256 of above fields
+class VersionedStore:
+    """
+    File-based storage with versioning and checksums.
 
-    def serialize(self) -> bytes:
-        """Serialize to bytes with length prefix."""
-        content = json.dumps({
-            'seq': self.sequence,
-            'ts': self.timestamp,
-            'tx': self.tx_id,
-            'op': self.operation,
-            'data': self.data,
-            'checksum': self.checksum
-        }, separators=(',', ':'))
-        encoded = content.encode('utf-8')
-        # Length-prefixed format: [4-byte length][content]
-        return struct.pack('>I', len(encoded)) + encoded
+    Each entity is stored as a JSON file with:
+    - Version number (monotonic)
+    - Checksum (SHA256)
+    - Timestamp
 
-    @classmethod
-    def deserialize(cls, data: bytes) -> 'WALEntry':
-        """Deserialize and verify checksum."""
-        length = struct.unpack('>I', data[:4])[0]
-        content = json.loads(data[4:4+length].decode('utf-8'))
+    The store maintains a global version counter that increments
+    on every successful commit.
+    """
 
-        # Verify checksum
-        expected = cls.compute_checksum(
-            content['seq'], content['ts'], content['tx'],
-            content['op'], content['data']
-        )
-        if content['checksum'] != expected:
-            raise CorruptedWALError(f"Checksum mismatch at seq {content['seq']}")
+    def __init__(self, store_dir: Path):
+        self.store_dir = Path(store_dir)
+        self.store_dir.mkdir(parents=True, exist_ok=True)
+        self.version_file = self.store_dir / "_version.json"
+        self._current_version = self._load_version()
 
-        return cls(**content)
+    def current_version(self) -> int:
+        """Get current global version."""
+        return self._current_version
 
-    @staticmethod
-    def compute_checksum(seq, ts, tx, op, data) -> str:
-        content = f"{seq}|{ts}|{tx}|{op}|{json.dumps(data, sort_keys=True)}"
-        return hashlib.sha256(content.encode()).hexdigest()[:16]
+    def read(self, entity_id: str) -> Optional[Entity]:
+        """Read current version of an entity."""
+        path = self._entity_path(entity_id)
+        if not path.exists():
+            return None
+
+        data = self._read_and_verify(path)
+        return Entity.from_dict(data)
+
+    def read_at_version(self, entity_id: str, version: int) -> Optional[Entity]:
+        """
+        Read entity as it was at a specific global version.
+
+        Uses version history stored with each entity.
+        """
+        entity = self.read(entity_id)
+        if entity is None:
+            return None
+
+        # If entity was created after the snapshot, it doesn't exist
+        if entity.created_at_version > version:
+            return None
+
+        # If entity hasn't changed since snapshot, return current
+        if entity.version <= version:
+            return entity
+
+        # Need to find historical version
+        history_path = self._history_path(entity_id)
+        if history_path.exists():
+            history = json.loads(history_path.read_text())
+            for entry in reversed(history):
+                if entry['version'] <= version:
+                    return Entity.from_dict(entry['data'])
+
+        return None
+
+    def apply_writes(self, write_set: Dict[str, Entity]) -> int:
+        """
+        Atomically apply a set of writes.
+
+        Uses atomic file operations:
+        1. Write to temp files
+        2. Fsync all temp files
+        3. Rename temp files to final (atomic on POSIX)
+        4. Update version counter
+        5. Fsync version file
+        """
+        if not write_set:
+            return self._current_version
+
+        new_version = self._current_version + 1
+        temp_files = []
+
+        try:
+            # Phase 1: Write to temp files
+            for entity_id, entity in write_set.items():
+                entity.version = new_version
+                entity.updated_at = datetime.now().isoformat()
+                entity.checksum = entity.compute_checksum()
+
+                # Save current to history before overwriting
+                self._save_to_history(entity_id)
+
+                temp_path = self._entity_path(entity_id).with_suffix('.tmp')
+                self._write_with_checksum(temp_path, entity.to_dict())
+                temp_files.append((temp_path, self._entity_path(entity_id)))
+
+            # Phase 2: Fsync all temp files
+            for temp_path, _ in temp_files:
+                self._fsync_file(temp_path)
+
+            # Phase 3: Atomic rename
+            for temp_path, final_path in temp_files:
+                temp_path.rename(final_path)
+
+            # Phase 4: Update version
+            self._current_version = new_version
+            self._save_version()
+
+            return new_version
+
+        except Exception:
+            # Cleanup temp files on failure
+            for temp_path, _ in temp_files:
+                if temp_path.exists():
+                    temp_path.unlink()
+            raise
+
+    def _write_with_checksum(self, path: Path, data: dict) -> None:
+        """Write JSON with embedded checksum."""
+        content = json.dumps(data, indent=2, sort_keys=True)
+        checksum = hashlib.sha256(content.encode()).hexdigest()[:16]
+
+        wrapper = {
+            '_checksum': checksum,
+            '_written_at': datetime.now().isoformat(),
+            'data': data
+        }
+
+        path.write_text(json.dumps(wrapper, indent=2))
+
+    def _read_and_verify(self, path: Path) -> dict:
+        """Read JSON and verify checksum."""
+        wrapper = json.loads(path.read_text())
+
+        content = json.dumps(wrapper['data'], indent=2, sort_keys=True)
+        expected = hashlib.sha256(content.encode()).hexdigest()[:16]
+
+        if wrapper['_checksum'] != expected:
+            raise CorruptionError(f"Checksum mismatch in {path}")
+
+        return wrapper['data']
+
+    def _fsync_file(self, path: Path) -> None:
+        """Ensure file is durably written to disk."""
+        fd = os.open(str(path), os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
 ```
 
-### WAL Operations
+### WAL Manager
 
 ```python
 class WALManager:
-    """Manages the write-ahead log with fsync guarantees."""
+    """
+    Write-Ahead Log for crash recovery.
+
+    All operations are logged BEFORE they are applied.
+    On crash, incomplete transactions can be rolled back.
+    """
 
     def __init__(self, wal_dir: Path):
-        self.wal_dir = wal_dir
-        self.current_file = wal_dir / "current.wal"
+        self.wal_dir = Path(wal_dir)
+        self.wal_dir.mkdir(parents=True, exist_ok=True)
+        self.current_file = self.wal_dir / "current.wal"
         self.sequence = self._load_sequence()
-        self._fd = None
 
     def log(self, tx_id: str, operation: str, data: Dict) -> int:
-        """
-        Append entry to WAL with fsync.
-
-        Returns sequence number.
-        """
+        """Append entry to WAL with fsync."""
         self.sequence += 1
 
-        entry = WALEntry(
-            sequence=self.sequence,
-            timestamp=datetime.now().isoformat(),
-            tx_id=tx_id,
-            operation=operation,
-            data=data,
-            checksum=WALEntry.compute_checksum(
-                self.sequence,
-                datetime.now().isoformat(),
-                tx_id, operation, data
-            )
-        )
+        entry = {
+            'seq': self.sequence,
+            'ts': datetime.now().isoformat(),
+            'tx': tx_id,
+            'op': operation,
+            'data': data
+        }
 
-        # Write with fsync
-        serialized = entry.serialize()
+        # Add checksum
+        content = json.dumps(entry, sort_keys=True)
+        entry['checksum'] = hashlib.sha256(content.encode()).hexdigest()[:16]
 
-        with open(self.current_file, 'ab') as f:
-            f.write(serialized)
+        # Append with fsync
+        line = json.dumps(entry) + '\n'
+
+        with open(self.current_file, 'a') as f:
+            f.write(line)
             f.flush()
-            os.fsync(f.fileno())  # CRITICAL: ensure on disk
+            os.fsync(f.fileno())
 
         return self.sequence
 
-    # Convenience methods for specific operations
-    def log_tx_begin(self, tx: Transaction) -> int:
-        return self.log(tx.id, "TX_BEGIN", {
-            'base_commit': tx.base_commit,
-            'isolation': tx.isolation_level
-        })
+    def log_tx_begin(self, tx_id: str, snapshot_version: int) -> int:
+        return self.log(tx_id, "TX_BEGIN", {'snapshot': snapshot_version})
 
-    def log_write(self, tx_id: str, key: str, old: Any, new: Any) -> int:
+    def log_write(self, tx_id: str, entity_id: str, old: Entity, new: Entity) -> int:
         return self.log(tx_id, "WRITE", {
-            'key': key,
-            'old': self._serialize_value(old),
-            'new': self._serialize_value(new)
+            'entity_id': entity_id,
+            'old_version': old.version if old else 0,
+            'new_version': new.version
         })
 
     def log_tx_prepare(self, tx_id: str) -> int:
         return self.log(tx_id, "TX_PREPARE", {})
 
-    def log_tx_commit(self, tx_id: str, commit_sha: str) -> int:
-        return self.log(tx_id, "TX_COMMIT", {'commit_sha': commit_sha})
+    def log_tx_commit(self, tx_id: str, version: int) -> int:
+        return self.log(tx_id, "TX_COMMIT", {'version': version})
 
     def log_tx_abort(self, tx_id: str, reason: str) -> int:
         return self.log(tx_id, "TX_ABORT", {'reason': reason})
 
     def log_tx_rollback(self, tx_id: str, reason: str) -> int:
         return self.log(tx_id, "TX_ROLLBACK", {'reason': reason})
+
+    def get_incomplete_transactions(self) -> List[WALTransaction]:
+        """Find transactions that didn't complete (for recovery)."""
+        transactions = {}
+
+        for entry in self._read_all():
+            tx_id = entry['tx']
+            op = entry['op']
+
+            if tx_id not in transactions:
+                transactions[tx_id] = WALTransaction(tx_id)
+
+            tx = transactions[tx_id]
+
+            if op == 'TX_BEGIN':
+                tx.state = 'ACTIVE'
+            elif op == 'TX_PREPARE':
+                tx.state = 'PREPARING'
+            elif op in ('TX_COMMIT', 'TX_ABORT', 'TX_ROLLBACK'):
+                tx.state = 'COMPLETE'
+
+        # Return incomplete ones
+        return [tx for tx in transactions.values() if tx.state != 'COMPLETE']
+
+    def truncate(self) -> None:
+        """Truncate WAL after successful checkpoint."""
+        # Archive current WAL
+        if self.current_file.exists():
+            archive_name = f"wal_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+            self.current_file.rename(self.wal_dir / "archive" / archive_name)
+
+        # Reset sequence
+        self.sequence = 0
+        self._save_sequence()
 ```
 
-### WAL Recovery
+---
+
+## Sync Layer (Git)
+
+### Separation from Transactions
+
+**Critical:** The sync layer is completely separate from the transaction layer. Git operations NEVER occur during a transaction.
 
 ```python
-class WALRecovery:
-    """Recover from WAL after crash."""
+class SyncManager:
+    """
+    Handles synchronization with git.
 
-    def __init__(self, wal_manager: WALManager):
-        self.wal = wal_manager
+    This class is ONLY called explicitly by agents when they want to
+    sync with others. It is NEVER called automatically during transactions.
 
-    def recover(self) -> RecoveryResult:
+    Workflow:
+    1. Agent completes local work (multiple transactions)
+    2. Agent explicitly calls sync.push() to share
+    3. Agent explicitly calls sync.pull() to get others' changes
+    4. Conflicts are detected and must be resolved before continuing
+    """
+
+    def __init__(self, repo_dir: Path, got_dir: Path):
+        self.repo_dir = Path(repo_dir)
+        self.got_dir = Path(got_dir)
+        self.tx_manager = TransactionManager(got_dir)
+
+    def push(self, message: str = None) -> PushResult:
         """
-        Recover system state from WAL.
+        Push local changes to git.
 
-        Algorithm:
-        1. Read all WAL entries
-        2. Group by transaction
-        3. For each transaction:
-           - If COMMITTED: verify git commit exists (already durable)
-           - If PREPARED but not COMMITTED: rollback (crash during commit)
-           - If ACTIVE: rollback (crash during transaction)
+        Prerequisites:
+        - No active transactions
+        - All local changes committed (to transaction layer)
+
+        Steps:
+        1. Verify no active transactions
+        2. Stage .got/ directory
+        3. Git commit
+        4. Git push
         """
-        entries = self.wal.read_all()
-        transactions = self._group_by_transaction(entries)
+        # Verify no active transactions
+        if self.tx_manager.active_tx:
+            raise SyncError("Cannot push with active transactions")
 
-        result = RecoveryResult()
+        # Stage and commit
+        subprocess.run(
+            ["git", "add", str(self.got_dir)],
+            cwd=self.repo_dir,
+            check=True
+        )
 
-        for tx_id, tx_entries in transactions.items():
-            final_state = self._determine_final_state(tx_entries)
+        if message is None:
+            message = f"GoT sync: {datetime.now().isoformat()}"
 
-            if final_state == "COMMITTED":
-                # Verify the commit exists in git
-                commit_sha = self._get_commit_sha(tx_entries)
-                if self._verify_git_commit(commit_sha):
-                    result.committed.append(tx_id)
-                else:
-                    # Commit claimed but not in git - corruption!
-                    result.corrupted.append(tx_id)
+        result = subprocess.run(
+            ["git", "commit", "-m", message],
+            cwd=self.repo_dir,
+            capture_output=True,
+            text=True
+        )
 
-            elif final_state == "PREPARED":
-                # Crash during commit - rollback
-                self._undo_transaction(tx_entries)
-                result.rolled_back.append(tx_id)
+        if result.returncode != 0 and "nothing to commit" not in result.stdout:
+            raise SyncError(f"Git commit failed: {result.stderr}")
 
-            elif final_state == "ACTIVE":
-                # Crash during transaction - rollback
-                # Writes were only buffered, nothing to undo in git
-                result.rolled_back.append(tx_id)
+        # Push
+        result = subprocess.run(
+            ["git", "push"],
+            cwd=self.repo_dir,
+            capture_output=True,
+            text=True
+        )
 
-            elif final_state in ("ABORTED", "ROLLED_BACK"):
-                # Already handled
-                result.already_handled.append(tx_id)
+        if result.returncode != 0:
+            if "rejected" in result.stderr:
+                return PushResult(
+                    success=False,
+                    reason="rejected",
+                    message="Remote has changes. Pull first."
+                )
+            raise SyncError(f"Git push failed: {result.stderr}")
 
-        # Truncate WAL after successful recovery
-        self.wal.truncate_before(result.min_safe_sequence)
+        return PushResult(success=True)
 
-        return result
+    def pull(self) -> PullResult:
+        """
+        Pull remote changes.
 
-    def _undo_transaction(self, entries: List[WALEntry]) -> None:
-        """Undo writes from a failed transaction."""
-        # Process in reverse order
-        writes = [e for e in entries if e.operation == "WRITE"]
+        Prerequisites:
+        - No active transactions
 
-        for entry in reversed(writes):
-            key = entry.data['key']
-            old_value = entry.data['old']
+        Steps:
+        1. Verify no active transactions
+        2. Git fetch
+        3. Check for conflicts
+        4. If no conflicts: git merge
+        5. If conflicts: return conflict info (don't auto-resolve)
+        """
+        # Verify no active transactions
+        if self.tx_manager.active_tx:
+            raise SyncError("Cannot pull with active transactions")
 
-            # Restore old value
-            if old_value is None:
-                self._delete_file(key)
+        # Fetch
+        subprocess.run(
+            ["git", "fetch"],
+            cwd=self.repo_dir,
+            check=True
+        )
+
+        # Check for conflicts
+        result = subprocess.run(
+            ["git", "diff", "--name-only", "HEAD", "FETCH_HEAD"],
+            cwd=self.repo_dir,
+            capture_output=True,
+            text=True
+        )
+
+        changed_files = [f for f in result.stdout.strip().split('\n') if f]
+        got_conflicts = [f for f in changed_files if f.startswith('.got/')]
+
+        if not got_conflicts:
+            # No conflicts in .got/, safe to merge
+            subprocess.run(
+                ["git", "merge", "FETCH_HEAD"],
+                cwd=self.repo_dir,
+                check=True
+            )
+            return PullResult(success=True, merged_files=changed_files)
+
+        # Check for actual content conflicts vs just different versions
+        conflicts = self._detect_content_conflicts(got_conflicts)
+
+        if conflicts:
+            return PullResult(
+                success=False,
+                reason="conflict",
+                conflicts=conflicts,
+                message="Conflicts detected. Resolve before continuing."
+            )
+
+        # No real conflicts, can merge
+        subprocess.run(
+            ["git", "merge", "FETCH_HEAD"],
+            cwd=self.repo_dir,
+            check=True
+        )
+
+        # Reload transaction manager to pick up new state
+        self.tx_manager._recover_on_startup()
+
+        return PullResult(success=True, merged_files=changed_files)
+
+    def _detect_content_conflicts(self, files: List[str]) -> List[SyncConflict]:
+        """Detect actual content conflicts in entity files."""
+        conflicts = []
+
+        for file in files:
+            if not file.endswith('.json'):
+                continue
+
+            # Get our version and their version
+            ours = self._read_at_ref(file, "HEAD")
+            theirs = self._read_at_ref(file, "FETCH_HEAD")
+
+            if ours is None and theirs is None:
+                continue
+
+            if ours is None:
+                # They created, we don't have - no conflict
+                continue
+
+            if theirs is None:
+                # We have, they deleted - potential conflict
+                conflicts.append(SyncConflict(
+                    file=file,
+                    type=SyncConflictType.DELETE_MODIFY,
+                    ours=ours,
+                    theirs=None
+                ))
+                continue
+
+            # Both have versions - check if they're the same
+            if ours == theirs:
+                continue  # Identical, no conflict
+
+            # Check if one is strictly newer
+            ours_data = json.loads(ours)
+            theirs_data = json.loads(theirs)
+
+            ours_version = ours_data.get('data', {}).get('version', 0)
+            theirs_version = theirs_data.get('data', {}).get('version', 0)
+
+            if ours_version > theirs_version:
+                # Ours is newer, keep ours (their change is stale)
+                continue
+            elif theirs_version > ours_version:
+                # Theirs is newer, take theirs
+                continue
             else:
-                self._write_file(key, old_value)
+                # Same version but different content - true conflict
+                conflicts.append(SyncConflict(
+                    file=file,
+                    type=SyncConflictType.MODIFY_MODIFY,
+                    ours=ours,
+                    theirs=theirs
+                ))
+
+        return conflicts
+```
+
+### Conflict Resolution
+
+```python
+class ConflictResolver:
+    """Resolve sync conflicts between agents."""
+
+    def resolve(self, conflict: SyncConflict, strategy: str) -> None:
+        """
+        Resolve a conflict with the specified strategy.
+
+        Strategies:
+        - "ours": Keep our version
+        - "theirs": Keep their version
+        - "merge": Attempt automatic merge
+        - "manual": Write conflict markers for manual resolution
+        """
+        if strategy == "ours":
+            # Keep our file as-is
+            pass
+
+        elif strategy == "theirs":
+            # Replace our file with theirs
+            content = self.sync._read_at_ref(conflict.file, "FETCH_HEAD")
+            Path(conflict.file).write_text(content)
+
+        elif strategy == "merge":
+            merged = self._attempt_merge(conflict)
+            if merged.success:
+                Path(conflict.file).write_text(merged.content)
+            else:
+                raise ConflictError(f"Cannot auto-merge {conflict.file}: {merged.reason}")
+
+        elif strategy == "manual":
+            self._write_conflict_markers(conflict)
+
+    def _attempt_merge(self, conflict: SyncConflict) -> MergeResult:
+        """Attempt to merge two versions of an entity."""
+        ours = json.loads(conflict.ours)['data']
+        theirs = json.loads(conflict.theirs)['data']
+
+        # Find common base (if available from git)
+        base = self._get_common_base(conflict.file)
+
+        if base:
+            base_data = json.loads(base)['data']
+            return self._three_way_merge(base_data, ours, theirs)
+        else:
+            return self._two_way_merge(ours, theirs)
+
+    def _three_way_merge(self, base: dict, ours: dict, theirs: dict) -> MergeResult:
+        """Three-way merge using common ancestor."""
+        result = {}
+        all_keys = set(base.keys()) | set(ours.keys()) | set(theirs.keys())
+
+        for key in all_keys:
+            base_val = base.get(key)
+            ours_val = ours.get(key)
+            theirs_val = theirs.get(key)
+
+            if ours_val == theirs_val:
+                # Both made same change (or no change)
+                result[key] = ours_val
+            elif ours_val == base_val:
+                # We didn't change, they did - take theirs
+                result[key] = theirs_val
+            elif theirs_val == base_val:
+                # They didn't change, we did - take ours
+                result[key] = ours_val
+            else:
+                # Both changed differently - conflict
+                return MergeResult(
+                    success=False,
+                    reason=f"Conflicting changes to field '{key}'"
+                )
+
+        return MergeResult(success=True, data=result)
 ```
 
 ---
@@ -761,630 +898,518 @@ class WALRecovery:
 ### Startup Recovery
 
 ```python
-def startup_recovery(got_dir: Path) -> None:
+def startup_recovery(got_dir: Path) -> RecoveryReport:
     """
     Run on every startup to ensure consistent state.
 
     This is idempotent - safe to run multiple times.
     """
-    # 1. Check for incomplete transactions in WAL
+    report = RecoveryReport()
+
+    # 1. Verify storage integrity
+    store = VersionedStore(got_dir / "entities")
+    corruption = store.verify_integrity()
+    if corruption:
+        report.add_error("Storage corruption detected", corruption)
+        raise CorruptionError(corruption)
+
+    # 2. Recover incomplete transactions from WAL
     wal = WALManager(got_dir / "wal")
-    recovery = WALRecovery(wal)
-    result = recovery.recover()
+    incomplete = wal.get_incomplete_transactions()
 
-    if result.corrupted:
-        raise CorruptionError(
-            f"Corrupted transactions found: {result.corrupted}. "
-            "Manual intervention required."
-        )
+    for tx in incomplete:
+        if tx.state in ('ACTIVE', 'PREPARING'):
+            # Roll back incomplete transaction
+            wal.log_tx_rollback(tx.id, "crash_recovery")
+            report.add_rolled_back(tx.id)
 
-    logger.info(
-        f"Recovery complete: "
-        f"{len(result.committed)} committed, "
-        f"{len(result.rolled_back)} rolled back"
-    )
-
-    # 2. Verify git state matches expected
-    verify_git_integrity(got_dir)
-
-    # 3. Rebuild in-memory graph from git state
-    rebuild_graph_from_git(got_dir)
-
-    # 4. Clear stale transaction files
-    cleanup_stale_transactions(got_dir)
-```
-
-### Corruption Detection
-
-```python
-def verify_integrity(got_dir: Path) -> IntegrityReport:
-    """
-    Comprehensive integrity check.
-
-    Checks:
-    1. All files have valid checksums
-    2. All referenced commits exist
-    3. Version numbers are monotonic
-    4. No orphaned transactions
-    """
-    report = IntegrityReport()
-
-    # Check each entity file
-    for entity_file in (got_dir / "entities").glob("*.json"):
-        try:
-            entity = load_entity(entity_file)
-
-            # Verify checksum
-            expected = entity.compute_checksum()
-            if entity.checksum != expected:
-                report.add_error(
-                    entity_file,
-                    f"Checksum mismatch: expected {expected}, got {entity.checksum}"
-                )
-
-            # Verify version is positive
-            if entity.version < 1:
-                report.add_error(entity_file, f"Invalid version: {entity.version}")
-
-        except json.JSONDecodeError as e:
-            report.add_error(entity_file, f"JSON parse error: {e}")
-        except Exception as e:
-            report.add_error(entity_file, f"Unexpected error: {e}")
-
-    # Check WAL integrity
-    wal = WALManager(got_dir / "wal")
-    for entry in wal.read_all():
-        try:
-            entry.verify_checksum()
-        except ChecksumError as e:
-            report.add_error("wal", f"WAL entry {entry.sequence}: {e}")
+    # 3. Truncate WAL if all transactions complete
+    if not incomplete:
+        wal.truncate()
 
     return report
 ```
 
----
-
-## Conflict Resolution
-
-### Automatic Resolution Strategies
+### Corruption Recovery
 
 ```python
-class ConflictResolver:
-    """Resolve conflicts between concurrent transactions."""
+def recover_from_corruption(got_dir: Path) -> None:
+    """
+    Attempt to recover from corruption.
 
-    def resolve(self, conflict: Conflict) -> Resolution:
-        """
-        Attempt automatic resolution.
+    Strategy:
+    1. Try to recover from WAL
+    2. If WAL is corrupted, try to recover from git history
+    3. If git is corrupted, restore from last known good backup
+    """
+    store = VersionedStore(got_dir / "entities")
+    wal = WALManager(got_dir / "wal")
 
-        Strategies:
-        1. Last-write-wins (for independent fields)
-        2. Merge (for additive changes)
-        3. Manual (for true conflicts)
-        """
-        if conflict.type == ConflictType.WRITE_WRITE:
-            return self._resolve_write_write(conflict)
-        elif conflict.type == ConflictType.READ_WRITE:
-            return self._resolve_read_write(conflict)
-        else:
-            return Resolution(strategy="manual", reason="Unknown conflict type")
+    # Try WAL recovery
+    try:
+        wal.verify_integrity()
+        wal.replay_to_store(store)
+        return
+    except CorruptionError:
+        logger.warning("WAL corrupted, trying git recovery")
 
-    def _resolve_write_write(self, conflict: Conflict) -> Resolution:
-        """Resolve write-write conflict."""
-        our = conflict.our_value
-        their = conflict.their_value
-        base = conflict.base_value
-
-        # If we're adding a field they didn't touch, merge
-        if isinstance(our, dict) and isinstance(their, dict):
-            our_keys = set(our.keys()) - set(base.keys())
-            their_keys = set(their.keys()) - set(base.keys())
-
-            if not our_keys & their_keys:
-                # No overlapping new keys, can merge
-                merged = {**base, **their, **our}
-                return Resolution(
-                    strategy="merge",
-                    result=merged,
-                    description="Merged non-overlapping changes"
-                )
-
-        # Check if changes are identical (no real conflict)
-        if our == their:
-            return Resolution(
-                strategy="no_conflict",
-                result=our,
-                description="Both made identical changes"
-            )
-
-        # True conflict - needs manual resolution
-        return Resolution(
-            strategy="manual",
-            reason="Conflicting changes to same field",
-            our_value=our,
-            their_value=their,
-            suggestion=self._suggest_resolution(conflict)
+    # Try git recovery
+    try:
+        # Find last good commit
+        result = subprocess.run(
+            ["git", "log", "--oneline", "-20", "--", str(got_dir)],
+            capture_output=True,
+            text=True
         )
 
-    def _suggest_resolution(self, conflict: Conflict) -> str:
-        """Generate helpful suggestion for manual resolution."""
-        return (
-            f"Conflict on {conflict.key}:\n"
-            f"  Your change: {json.dumps(conflict.our_value, indent=2)}\n"
-            f"  Their change: {json.dumps(conflict.their_value, indent=2)}\n"
-            f"  (by {conflict.their_author} in {conflict.their_commit[:8]})\n"
-            f"\n"
-            f"Options:\n"
-            f"  1. Retry with --force to overwrite their changes\n"
-            f"  2. Abort and merge manually\n"
-            f"  3. Use 'got conflict resolve {conflict.key}' for interactive merge"
-        )
-```
+        for line in result.stdout.strip().split('\n'):
+            commit_sha = line.split()[0]
+            if verify_commit_integrity(commit_sha, got_dir):
+                restore_from_commit(commit_sha, got_dir)
+                return
 
-### Conflict UI for Agents
+        raise CorruptionError("No valid commit found in recent history")
 
-```python
-def cmd_conflict_resolve(key: str, strategy: str = "interactive") -> None:
-    """
-    Resolve a conflict.
-
-    Strategies:
-    - interactive: Show diff and ask for resolution
-    - ours: Keep our changes
-    - theirs: Keep their changes
-    - merge: Attempt automatic merge
-    """
-    conflict = load_pending_conflict(key)
-
-    if strategy == "interactive":
-        print(f"Conflict on {key}:")
-        print(f"\n=== BASE ===")
-        print(json.dumps(conflict.base_value, indent=2))
-        print(f"\n=== OURS ===")
-        print(json.dumps(conflict.our_value, indent=2))
-        print(f"\n=== THEIRS ({conflict.their_author}) ===")
-        print(json.dumps(conflict.their_value, indent=2))
-        print(f"\nChoose resolution: [o]urs, [t]heirs, [m]erge, [a]bort")
-        # ... handle input
-
-    elif strategy == "ours":
-        apply_resolution(key, conflict.our_value)
-
-    elif strategy == "theirs":
-        apply_resolution(key, conflict.their_value)
-
-    elif strategy == "merge":
-        merged = attempt_merge(conflict)
-        if merged.success:
-            apply_resolution(key, merged.result)
-        else:
-            print(f"Automatic merge failed: {merged.reason}")
-            print("Use 'got conflict resolve --interactive' for manual merge")
+    except Exception as e:
+        logger.error(f"Git recovery failed: {e}")
+        raise CorruptionError("Cannot recover. Restore from backup.")
 ```
 
 ---
 
 ## API Design
 
-### High-Level Transaction API
+### High-Level API
 
 ```python
 class GoTTransactionalManager:
     """
     Main API for transactional GoT operations.
 
-    Example usage:
-
-        manager = GoTTransactionalManager(got_dir=".got")
+    Usage:
+        manager = GoTTransactionalManager(".got")
 
         # Explicit transaction
         with manager.transaction() as tx:
             task = tx.create_task("Implement feature X")
-            tx.add_dependency(task.id, other_task.id)
-            # Commit happens automatically at end of 'with' block
-            # Rollback happens automatically if exception raised
+            tx.add_dependency(task.id, other_task_id)
+            # Auto-commit on success, auto-rollback on exception
 
-        # Auto-transaction (each operation is its own transaction)
-        manager.auto.create_task("Quick task")
+        # Sync with others (separate from transactions)
+        manager.sync.pull()
+        manager.sync.push("Completed feature X")
     """
 
-    def __init__(self, got_dir: Path):
+    def __init__(self, got_dir: str = ".got"):
         self.got_dir = Path(got_dir)
-        self.tx_manager = TransactionManager(got_dir)
-        self.wal = WALManager(got_dir / "wal")
-        self.auto = AutoTransactionProxy(self)
-
-        # Run startup recovery
-        startup_recovery(got_dir)
+        self.tx_manager = TransactionManager(self.got_dir)
+        self.sync = SyncManager(Path.cwd(), self.got_dir)
 
     @contextmanager
-    def transaction(
-        self,
-        isolation: str = "snapshot",
-        retry_on_conflict: int = 3
-    ) -> Generator[TransactionContext, None, None]:
-        """
-        Start a transaction with automatic commit/rollback.
+    def transaction(self) -> Generator[TransactionContext, None, None]:
+        """Start a transaction with auto-commit/rollback."""
+        tx = self.tx_manager.begin()
+        ctx = TransactionContext(self.tx_manager, tx)
 
-        Args:
-            isolation: "snapshot" or "serializable"
-            retry_on_conflict: Number of automatic retries on conflict
-        """
-        attempts = 0
+        try:
+            yield ctx
+            result = self.tx_manager.commit(tx)
 
-        while attempts <= retry_on_conflict:
-            tx = self.tx_manager.begin(isolation)
-            ctx = TransactionContext(self, tx)
+            if not result.success:
+                raise ConflictError(result.conflicts)
 
-            try:
-                yield ctx
+        except Exception:
+            self.tx_manager.rollback(tx)
+            raise
 
-                # Attempt commit
-                result = self.tx_manager.commit(tx)
-
-                if result.success:
-                    return  # Success!
-
-                elif result.reason == "conflict":
-                    attempts += 1
-                    if attempts <= retry_on_conflict:
-                        logger.info(
-                            f"Conflict detected, retrying ({attempts}/{retry_on_conflict})"
-                        )
-                        continue
-                    else:
-                        raise ConflictError(result.conflicts)
-                else:
-                    raise CommitError(result.reason)
-
-            except Exception as e:
-                self.tx_manager.rollback(tx, reason=str(e))
-                raise
-
-    def read_snapshot(self, commit: Optional[str] = None) -> SnapshotReader:
-        """
-        Get a read-only snapshot of the database.
-
-        Args:
-            commit: Specific commit SHA, or None for current HEAD
-        """
-        if commit is None:
-            commit = git_get_head()
-        return SnapshotReader(commit)
+    def read_only(self) -> ReadOnlyContext:
+        """Get read-only access to current state."""
+        return ReadOnlyContext(self.tx_manager.store)
 ```
 
 ### Transaction Context
 
 ```python
 class TransactionContext:
-    """
-    Context object passed to transaction block.
+    """Operations available within a transaction."""
 
-    Provides task/decision/edge operations within the transaction.
-    """
-
-    def __init__(self, manager: GoTTransactionalManager, tx: Transaction):
-        self._manager = manager
+    def __init__(self, tx_manager: TransactionManager, tx: Transaction):
+        self._tx_manager = tx_manager
         self._tx = tx
 
-    # Task operations
-    def create_task(
-        self,
-        title: str,
-        priority: str = "medium",
-        category: str = "feature",
-        **kwargs
-    ) -> Task:
-        """Create a task within this transaction."""
+    def create_task(self, title: str, **kwargs) -> Task:
         task_id = generate_task_id()
         task = Task(
             id=task_id,
             version=1,
             title=title,
-            priority=priority,
-            category=category,
             status="pending",
             created_at=datetime.now().isoformat(),
             **kwargs
         )
-
-        self._manager.tx_manager.write(
-            self._tx,
-            f"tasks/{task_id}.json",
-            task.to_versioned_entity()
-        )
-
+        self._tx_manager.write(self._tx, task.to_entity())
         return task
 
     def get_task(self, task_id: str) -> Optional[Task]:
-        """Read a task within this transaction (snapshot isolation)."""
-        entity = self._manager.tx_manager.read(
-            self._tx,
-            f"tasks/{task_id}.json"
-        )
-        return Task.from_versioned_entity(entity) if entity else None
+        entity = self._tx_manager.read(self._tx, f"tasks/{task_id}")
+        return Task.from_entity(entity) if entity else None
 
-    def update_task(
-        self,
-        task_id: str,
-        expected_version: int,
-        **changes
-    ) -> bool:
-        """
-        Update a task with optimistic locking.
-
-        Returns False if version mismatch (someone else modified).
-        """
+    def update_task(self, task_id: str, **changes) -> Task:
         task = self.get_task(task_id)
         if task is None:
-            return False
+            raise NotFoundError(f"Task {task_id} not found")
 
-        if task.version != expected_version:
-            return False  # Optimistic lock failed
-
-        # Apply changes
         updated = task.copy(
-            version=expected_version + 1,
+            version=task.version + 1,
             **changes
         )
+        self._tx_manager.write(self._tx, updated.to_entity())
+        return updated
 
-        self._manager.tx_manager.write(
-            self._tx,
-            f"tasks/{task_id}.json",
-            updated.to_versioned_entity()
+    def delete_task(self, task_id: str) -> None:
+        task = self.get_task(task_id)
+        if task is None:
+            raise NotFoundError(f"Task {task_id} not found")
+
+        # Mark as deleted (soft delete)
+        deleted = task.copy(
+            version=task.version + 1,
+            deleted=True,
+            deleted_at=datetime.now().isoformat()
         )
+        self._tx_manager.write(self._tx, deleted.to_entity())
 
-        return True
-
-    # Decision operations
-    def log_decision(
-        self,
-        decision: str,
-        rationale: str,
-        affects: List[str] = None,
-        **kwargs
-    ) -> Decision:
-        """Log a decision within this transaction."""
-        decision_id = generate_decision_id()
-        dec = Decision(
-            id=decision_id,
-            version=1,
-            decision=decision,
-            rationale=rationale,
-            affects=affects or [],
-            created_at=datetime.now().isoformat(),
-            **kwargs
-        )
-
-        self._manager.tx_manager.write(
-            self._tx,
-            f"decisions/{decision_id}.json",
-            dec.to_versioned_entity()
-        )
-
-        # Create edges to affected entities
-        for affected_id in (affects or []):
-            self.add_edge(decision_id, affected_id, "MOTIVATES")
-
-        return dec
-
-    # Edge operations
-    def add_edge(
-        self,
-        source_id: str,
-        target_id: str,
-        edge_type: str,
-        **properties
-    ) -> Edge:
-        """Add an edge within this transaction."""
-        edge_id = f"{source_id}--{edge_type}-->{target_id}"
-        edge = Edge(
-            id=edge_id,
-            version=1,
-            source_id=source_id,
-            target_id=target_id,
-            edge_type=edge_type,
-            created_at=datetime.now().isoformat(),
-            **properties
-        )
-
-        self._manager.tx_manager.write(
-            self._tx,
-            f"edges/{edge_id}.json",
-            edge.to_versioned_entity()
-        )
-
-        return edge
+    # Similar methods for decisions, edges, etc.
 ```
 
 ---
 
-## File Structure
+## User Stories
+
+### Story 1: Single Agent Creates Tasks
 
 ```
-.got/
-├── config.json                 # GoT configuration
-├── HEAD                        # Current version pointer (git commit SHA)
-│
-├── wal/                        # Write-Ahead Log
-│   ├── current.wal             # Active WAL file (binary, checksummed)
-│   ├── archive/                # Archived WAL segments
-│   │   ├── 0001.wal
-│   │   └── 0002.wal
-│   └── sequence               # Current sequence number
-│
-├── transactions/               # Active transaction state
-│   └── TX-20251221-120000-a1b2.json
-│
-├── snapshots/                  # Named snapshots for recovery
-│   ├── registry.json           # Active snapshot registry
-│   └── refs/                   # Snapshot references
-│       └── pre-migration-v2    # Named snapshot
-│
-├── entities/                   # Current state (git-tracked)
-│   ├── tasks/
-│   │   ├── T-20251221-001.json
-│   │   └── T-20251221-002.json
-│   ├── decisions/
-│   │   └── D-20251221-001.json
-│   ├── edges/
-│   │   └── T-001--DEPENDS_ON-->T-002.json
-│   └── sprints/
-│       └── S-2025-W51.json
-│
-├── indices/                    # Derived indices (rebuilt from entities)
-│   ├── by-status.json          # Tasks grouped by status
-│   ├── by-priority.json        # Tasks grouped by priority
-│   └── graph.json              # Full graph structure
-│
-└── events/                     # Append-only event log (legacy compatibility)
-    └── 20251221-session.jsonl
+AS an agent
+I WANT to create multiple tasks atomically
+SO THAT either all are created or none are
+
+GIVEN I start a transaction
+WHEN I create Task A, Task B, and Task C
+AND I commit the transaction
+THEN all three tasks exist
+AND they all have the same version number
+
+GIVEN I start a transaction
+WHEN I create Task A, Task B
+AND an error occurs creating Task C
+THEN no tasks are created
+AND the system state is unchanged
+```
+
+### Story 2: Two Agents Work Concurrently
+
+```
+AS two agents working on the same repository
+I WANT my changes to not corrupt the other's work
+SO THAT we can work in parallel safely
+
+GIVEN Agent A and Agent B both have local copies
+WHEN Agent A creates Task X and commits
+AND Agent B creates Task Y and commits
+AND Agent A pushes
+AND Agent B pushes
+THEN Agent B gets a "pull first" error
+WHEN Agent B pulls
+THEN Agent B sees both Task X and Task Y
+WHEN Agent B pushes
+THEN both agents can pull and see both tasks
+```
+
+### Story 3: Conflicting Updates
+
+```
+AS two agents updating the same task
+I WANT conflicts to be detected and surfaced
+SO THAT I can resolve them explicitly
+
+GIVEN Task T exists with version 1
+WHEN Agent A updates T.status to "in_progress"
+AND Agent B updates T.status to "completed"
+AND Agent A pushes first
+THEN Agent B's push fails with "pull first"
+WHEN Agent B pulls
+THEN Agent B sees a conflict on Task T
+AND Agent B must resolve (choose ours, theirs, or merge)
+AND Agent B can then push
+```
+
+### Story 4: Crash Recovery
+
+```
+AS an agent that crashed mid-transaction
+I WANT my incomplete work to be rolled back
+SO THAT the system is not left in an inconsistent state
+
+GIVEN I start a transaction
+AND I create Task A
+AND I update Task B
+WHEN my process crashes before commit
+AND I restart
+THEN Task A does not exist
+AND Task B is unchanged
+AND I can start a new transaction
+```
+
+### Story 5: Sub-Agent Coordination
+
+```
+AS a director agent coordinating sub-agents
+I WANT sub-agents to work independently
+SO THAT they don't block each other
+
+GIVEN I spawn 3 sub-agents to work on different features
+WHEN each sub-agent creates tasks in their own transactions
+THEN sub-agents don't wait for each other
+WHEN I collect their results
+AND push all changes
+THEN all tasks from all sub-agents are persisted
+```
+
+---
+
+## Edge Cases
+
+### Edge Case Matrix
+
+| Scenario | Expected Behavior | Handling |
+|----------|-------------------|----------|
+| Two agents create same task ID | Second commit fails with conflict | Use UUIDs to prevent |
+| Power loss during WAL write | Partial entry detected by checksum | Truncate at last valid entry |
+| Power loss during commit | PREPARING state in WAL | Rollback on recovery |
+| Corrupted entity file | Checksum mismatch detected | Recover from history |
+| Corrupted WAL | Checksum mismatch detected | Recover from git |
+| Git push rejected | Return error, don't retry | User must pull first |
+| Git merge conflict | Don't auto-resolve | Surface to user |
+| Process killed with lock held | PID no longer exists | Steal lock after timeout |
+| Same process double-acquires lock | Reentrant lock allows | Already implemented |
+| Transaction timeout | No implicit timeout | Agent must manage |
+| Very large transaction | Memory pressure | Limit write set size |
+| Read-only agent | No transactions needed | Use read_only() API |
+
+### Handling Each Edge Case
+
+```python
+# 1. UUID collision prevention
+def generate_task_id() -> str:
+    """Generate collision-resistant task ID."""
+    timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+    random_part = secrets.token_hex(4)  # 8 chars, 32 bits of entropy
+    return f"T-{timestamp}-{random_part}"
+
+# 2. WAL truncation on corruption
+def find_last_valid_wal_entry(wal_path: Path) -> int:
+    """Find byte offset of last valid entry."""
+    valid_offset = 0
+
+    with open(wal_path, 'rb') as f:
+        while True:
+            offset = f.tell()
+            line = f.readline()
+            if not line:
+                break
+
+            try:
+                entry = json.loads(line)
+                verify_checksum(entry)
+                valid_offset = f.tell()
+            except (json.JSONDecodeError, ChecksumError):
+                break
+
+    return valid_offset
+
+# 3. Commit atomicity
+def atomic_commit(store: VersionedStore, writes: Dict) -> int:
+    """Atomic commit using temp files and rename."""
+    # Write to .tmp files
+    # Fsync .tmp files
+    # Rename .tmp to final (atomic on POSIX)
+    # Fsync directory
+    # Update version file
+    # Fsync version file
+    pass
+
+# 4. Entity recovery from git
+def recover_entity_from_git(entity_id: str, got_dir: Path) -> Entity:
+    """Recover entity from git history."""
+    # Binary search through git history for last valid version
+    commits = get_git_commits_for_file(f"{got_dir}/entities/{entity_id}.json")
+
+    for commit in commits:
+        try:
+            content = git_show(commit, f"{got_dir}/entities/{entity_id}.json")
+            entity = parse_and_verify(content)
+            return entity
+        except (CorruptionError, json.JSONDecodeError):
+            continue
+
+    raise CorruptionError(f"Cannot recover {entity_id}")
+
+# 5. Conflict detection
+def detect_write_write_conflict(ours: Entity, theirs: Entity, base: Entity) -> bool:
+    """Detect if there's a true conflict."""
+    if ours.version == theirs.version and ours.checksum != theirs.checksum:
+        return True  # Same version, different content = conflict
+    return False
+```
+
+### Testing Edge Cases
+
+```python
+class TestEdgeCases:
+    """Tests for edge cases. All must pass."""
+
+    def test_concurrent_creates_different_ids(self):
+        """Two agents creating tasks get different IDs."""
+        id1 = generate_task_id()
+        id2 = generate_task_id()
+        assert id1 != id2
+
+    def test_wal_corruption_detected(self):
+        """Corrupted WAL entry is detected."""
+        wal = WALManager(tmp_path)
+        wal.log("tx1", "OP", {"key": "value"})
+
+        # Corrupt the file
+        with open(wal.current_file, 'r+') as f:
+            f.seek(10)
+            f.write("GARBAGE")
+
+        with pytest.raises(CorruptionError):
+            wal.verify_integrity()
+
+    def test_crash_during_commit_rolls_back(self):
+        """Incomplete commit is rolled back on restart."""
+        tx = manager.begin()
+        manager.write(tx, task.to_entity())
+
+        # Simulate crash by writing PREPARE to WAL but not COMMIT
+        manager.wal.log_tx_prepare(tx.id)
+
+        # "Restart"
+        new_manager = TransactionManager(got_dir)
+
+        # Task should not exist
+        assert new_manager.store.read(task.id) is None
+
+    def test_checksum_mismatch_rejected(self):
+        """File with wrong checksum is rejected."""
+        store = VersionedStore(tmp_path)
+
+        # Write valid entity
+        store.write(task.to_entity())
+
+        # Corrupt the file
+        path = store._entity_path(task.id)
+        data = json.loads(path.read_text())
+        data['_checksum'] = 'invalid'
+        path.write_text(json.dumps(data))
+
+        with pytest.raises(CorruptionError):
+            store.read(task.id)
+
+    def test_stale_lock_recovered(self):
+        """Lock from dead process is recovered."""
+        lock = ProcessLock(tmp_path / "test.lock")
+
+        # Write lock file with non-existent PID
+        lock.lock_path.write_text("99999999\n1234567890")
+
+        # Should be able to acquire
+        assert lock.acquire(timeout=0.1) is True
 ```
 
 ---
 
 ## Implementation Plan
 
-### Phase 1: Foundation (Week 1)
+### Phase 1: Storage Layer (3-4 days)
+- [ ] VersionedStore with checksums
+- [ ] Atomic file operations (write-tmp-fsync-rename)
+- [ ] Version history per entity
+- [ ] Integrity verification
+- [ ] Unit tests for all operations
 
-1. **WAL Implementation**
-   - [ ] WALEntry with checksums
-   - [ ] WALManager with fsync
-   - [ ] WAL recovery on startup
-   - [ ] Unit tests for WAL
+### Phase 2: WAL Layer (2-3 days)
+- [ ] WALManager with checksummed entries
+- [ ] Fsync on every write
+- [ ] Recovery: find incomplete transactions
+- [ ] Truncation and archiving
+- [ ] Unit tests including corruption scenarios
 
-2. **Version Numbers**
-   - [ ] VersionedEntity base class
-   - [ ] Checksum computation
-   - [ ] Version increment logic
+### Phase 3: Transaction Layer (3-4 days)
+- [ ] Transaction object and state machine
+- [ ] TransactionManager: begin/commit/rollback
+- [ ] Snapshot isolation (read at version)
+- [ ] Conflict detection
+- [ ] Integration with ProcessLock
+- [ ] Unit tests for all transaction scenarios
 
-### Phase 2: Transactions (Week 2)
+### Phase 4: High-Level API (2-3 days)
+- [ ] GoTTransactionalManager
+- [ ] TransactionContext with typed methods
+- [ ] ReadOnlyContext
+- [ ] Context manager support
+- [ ] Integration tests
 
-3. **Transaction Manager**
-   - [ ] Begin/commit/rollback
-   - [ ] Transaction state machine
-   - [ ] Active transaction tracking
+### Phase 5: Sync Layer (2-3 days)
+- [ ] SyncManager: push/pull
+- [ ] Conflict detection
+- [ ] ConflictResolver strategies
+- [ ] Integration tests with git
 
-4. **Snapshot Isolation**
-   - [ ] SnapshotReader using git
-   - [ ] Read-your-writes within transaction
-   - [ ] Snapshot registry
-
-### Phase 3: Conflict Handling (Week 3)
-
-5. **Optimistic Locking**
-   - [ ] Conflict detection
-   - [ ] Version comparison
-   - [ ] CAS operations
-
-6. **Conflict Resolution**
-   - [ ] Automatic merge strategies
-   - [ ] Conflict UI for agents
-   - [ ] Retry logic
-
-### Phase 4: Integration (Week 4)
-
-7. **High-Level API**
-   - [ ] GoTTransactionalManager
-   - [ ] TransactionContext
-   - [ ] Auto-transaction proxy
-
-8. **Migration**
-   - [ ] Migrate existing entities to versioned format
-   - [ ] Backward compatibility layer
-   - [ ] Documentation
+### Phase 6: Migration (1-2 days)
+- [ ] Migrate existing .got/ data to new format
+- [ ] Backward compatibility (if needed)
+- [ ] Verification that old data is preserved
 
 ---
 
-## Failure Scenarios
+## Appendix: File Format
 
-### Scenario 1: Crash During Commit
+### Entity File Format
 
-```
-Timeline:
-1. Transaction T1 calls commit()
-2. WAL logs TX_PREPARE
-3. Files written to disk
-4. CRASH before git commit
-
-Recovery:
-1. Startup reads WAL
-2. Finds T1 in PREPARED state
-3. No TX_COMMIT entry
-4. Rolls back T1 (undoes file changes)
-5. Logs TX_ROLLBACK to WAL
-```
-
-### Scenario 2: Concurrent Modification
-
-```
-Timeline:
-1. Agent A: begin() → base_commit = abc123
-2. Agent B: begin() → base_commit = abc123
-3. Agent B: update_task(T1) → writes to buffer
-4. Agent B: commit() → SUCCESS, HEAD = def456
-5. Agent A: update_task(T1) → writes to buffer
-6. Agent A: commit() → CONFLICT (HEAD != base_commit)
-
-Resolution:
-- Agent A sees conflict details
-- Can retry (auto-rebase on new HEAD)
-- Or abort and let user decide
+```json
+{
+  "_checksum": "a1b2c3d4e5f6",
+  "_written_at": "2025-12-21T12:00:00",
+  "data": {
+    "id": "T-20251221-120000-a1b2",
+    "version": 3,
+    "type": "task",
+    "title": "Implement feature X",
+    "status": "in_progress",
+    "priority": "high",
+    "created_at": "2025-12-21T10:00:00",
+    "updated_at": "2025-12-21T12:00:00"
+  }
+}
 ```
 
-### Scenario 3: Corrupted WAL
+### WAL Entry Format
 
-```
-Timeline:
-1. Transaction T1 writes to WAL
-2. Power failure corrupts WAL mid-write
-3. System restarts
-
-Recovery:
-1. WAL reader finds checksum mismatch
-2. Truncates WAL at last valid entry
-3. Any transaction after truncation point is lost
-4. System starts in consistent state
+```json
+{"seq":1,"ts":"2025-12-21T12:00:00","tx":"TX-20251221-120000-a1b2","op":"TX_BEGIN","data":{"snapshot":42},"checksum":"f1e2d3c4"}
+{"seq":2,"ts":"2025-12-21T12:00:01","tx":"TX-20251221-120000-a1b2","op":"WRITE","data":{"entity_id":"T-123","old_version":0,"new_version":1},"checksum":"b5a4c3d2"}
+{"seq":3,"ts":"2025-12-21T12:00:02","tx":"TX-20251221-120000-a1b2","op":"TX_PREPARE","data":{},"checksum":"e1f2a3b4"}
+{"seq":4,"ts":"2025-12-21T12:00:03","tx":"TX-20251221-120000-a1b2","op":"TX_COMMIT","data":{"version":43},"checksum":"c5d6e7f8"}
 ```
 
-### Scenario 4: Git Repository Corruption
+### Version File Format
 
+```json
+{
+  "current_version": 43,
+  "last_commit_at": "2025-12-21T12:00:03",
+  "checksum": "a1b2c3d4"
+}
 ```
-Timeline:
-1. Git objects corrupted (disk error)
-2. WAL references commit that doesn't exist
-
-Recovery:
-1. Integrity check detects missing commit
-2. Falls back to last known good snapshot
-3. Replays WAL entries after snapshot
-4. Reports data loss (if any)
-```
-
----
-
-## Open Questions
-
-1. **WAL Compaction**: When to compact the WAL? After N transactions? After M megabytes?
-
-2. **Snapshot Retention**: How long to keep old snapshots? Git will garbage collect unreferenced commits.
-
-3. **Lock Timeout**: What's a reasonable timeout for optimistic lock retries?
-
-4. **Serializable vs Snapshot**: Do we need serializable isolation, or is snapshot sufficient for our use cases?
-
-5. **Event Log Migration**: How to migrate existing event log to new versioned entity format?
-
----
-
-## Conclusion
-
-This architecture provides:
-
-- **Atomicity**: Transactions commit or rollback completely
-- **Consistency**: Version numbers and checksums ensure data integrity
-- **Isolation**: Snapshot isolation via git commits
-- **Durability**: WAL with fsync + git commits
-
-By leveraging git as our storage layer, we get content-addressed storage, atomic commits, and history tracking without external dependencies. The transaction layer adds the safety guarantees needed for multi-agent concurrent access.
-
-The design prioritizes **correctness over performance** - we'd rather be slow and correct than fast and corrupt. For our use case (Claude Agents with ~seconds between operations), this tradeoff is appropriate.
