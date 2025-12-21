@@ -458,11 +458,33 @@ class EventLog:
         return all_events
 
     @classmethod
-    def rebuild_graph_from_events(cls, events: List[Dict]) -> ThoughtGraph:
-        """Rebuild a ThoughtGraph from events (event sourcing)."""
+    def rebuild_graph_from_events(cls, events: List[Dict], with_telemetry: bool = False):
+        """Rebuild a ThoughtGraph from events (event sourcing).
+
+        Args:
+            events: List of event dictionaries to replay
+            with_telemetry: If True, return dict with 'graph' and 'telemetry' keys
+
+        Returns:
+            ThoughtGraph if with_telemetry=False (default, backward compatible)
+            Dict with 'graph' and 'telemetry' if with_telemetry=True
+        """
         graph = ThoughtGraph()
         errors = []
         event_num = 0
+
+        # Telemetry counters
+        telemetry = {
+            "node_create_events": 0,
+            "nodes_created": 0,
+            "edge_create_events": 0,
+            "edges_created": 0,
+            "edges_skipped": 0,
+            "errors": 0,
+            "validation_passed": True,
+            "validation_errors": [],
+            "summary": "",
+        }
 
         for event in events:
             event_num += 1
@@ -470,6 +492,7 @@ class EventLog:
 
             try:
                 if event_type == "node.create":
+                    telemetry["node_create_events"] += 1
                     try:
                         node_type_str = event.get("type", "TASK").upper()
                         node_type = NodeType[node_type_str] if hasattr(NodeType, node_type_str) else NodeType.TASK
@@ -480,14 +503,17 @@ class EventLog:
                             properties=event.get("data", {}),
                             metadata=event.get("meta", {})
                         )
+                        telemetry["nodes_created"] += 1
                     except KeyError as e:
                         error_msg = f"Event {event_num}: Missing required field for node.create: {e}"
                         logger.error(error_msg)
                         errors.append(error_msg)
+                        telemetry["errors"] += 1
                     except Exception as e:
                         error_msg = f"Event {event_num}: Failed to create node: {e}"
                         logger.error(error_msg)
                         errors.append(error_msg)
+                        telemetry["errors"] += 1
 
                 elif event_type == "node.update":
                     node_id = event["id"]
@@ -526,6 +552,7 @@ class EventLog:
                         logger.warning(f"Event {event_num}: Cannot delete non-existent node {node_id}")
 
                 elif event_type == "edge.create":
+                    telemetry["edge_create_events"] += 1
                     try:
                         edge_type_str = event.get("type", "RELATES_TO").upper()
                         # Use try/except for EdgeType lookup since hasattr doesn't work correctly with enums
@@ -545,6 +572,7 @@ class EventLog:
 
                         # Create edges for each source-target combination
                         edges_created = 0
+                        edges_skipped_this_event = 0
                         for src_id in src_ids:
                             # Try ID normalization for source
                             actual_src = src_id
@@ -556,6 +584,7 @@ class EventLog:
 
                             if actual_src not in graph.nodes:
                                 logger.warning(f"Event {event_num}: Skipping edge - source node {src_id} does not exist")
+                                edges_skipped_this_event += len(tgt_ids)
                                 continue
 
                             for tgt_id in tgt_ids:
@@ -569,6 +598,7 @@ class EventLog:
 
                                 if actual_tgt not in graph.nodes:
                                     logger.warning(f"Event {event_num}: Skipping edge - target node {tgt_id} does not exist")
+                                    edges_skipped_this_event += 1
                                     continue
 
                                 graph.add_edge(
@@ -579,20 +609,26 @@ class EventLog:
                                 )
                                 edges_created += 1
 
+                        telemetry["edges_created"] += edges_created
+                        telemetry["edges_skipped"] += edges_skipped_this_event
+
                         if edges_created == 0 and len(src_ids) == 1 and len(tgt_ids) == 1:
                             # Log error only if it was a simple edge that failed (not comma-split)
                             error_msg = f"Event {event_num}: Cannot create edge - nodes not found"
                             logger.error(error_msg)
                             errors.append(error_msg)
+                            telemetry["errors"] += 1
 
                     except KeyError as e:
                         error_msg = f"Event {event_num}: Missing required field for edge.create: {e}"
                         logger.error(error_msg)
                         errors.append(error_msg)
+                        telemetry["errors"] += 1
                     except Exception as e:
                         error_msg = f"Event {event_num}: Failed to create edge: {e}"
                         logger.error(error_msg)
                         errors.append(error_msg)
+                        telemetry["errors"] += 1
 
                 elif event_type == "edge.delete":
                     # Find and remove the edge
@@ -701,6 +737,31 @@ class EventLog:
 
         if errors:
             logger.warning(f"Graph rebuild completed with {len(errors)} error(s)")
+
+        # Finalize telemetry
+        if telemetry["edges_skipped"] > 0:
+            telemetry["validation_passed"] = False
+            telemetry["validation_errors"].append(
+                f"Skipped {telemetry['edges_skipped']} edge(s) due to missing nodes"
+            )
+
+        if telemetry["errors"] > 0:
+            telemetry["validation_passed"] = False
+            telemetry["validation_errors"].append(
+                f"Encountered {telemetry['errors']} error(s) during rebuild"
+            )
+
+        # Generate summary
+        telemetry["summary"] = (
+            f"Rebuilt graph: {telemetry['nodes_created']} nodes created "
+            f"({telemetry['node_create_events']} events), "
+            f"{telemetry['edges_created']} edges created "
+            f"({telemetry['edge_create_events']} events), "
+            f"{telemetry['edges_skipped']} edges skipped"
+        )
+
+        if with_telemetry:
+            return {"graph": graph, "telemetry": telemetry}
 
         return graph
 
