@@ -2411,6 +2411,69 @@ def cmd_task_list(args, manager: GoTProjectManager) -> int:
     return 0
 
 
+def cmd_task_show(args, manager: GoTProjectManager) -> int:
+    """Show details of a specific task."""
+    task_id = args.task_id
+
+    # Try to get task (with ID normalization)
+    task = manager.get_task(task_id)
+
+    # If not found, try with/without task: prefix
+    if task is None:
+        if task_id.startswith("task:"):
+            task = manager.get_task(task_id[5:])
+        else:
+            task = manager.get_task(f"task:{task_id}")
+
+    if task is None:
+        print(f"Task not found: {task_id}")
+        return 1
+
+    # Display task details
+    print("=" * 60)
+    print(f"TASK: {task.id}")
+    print("=" * 60)
+    print(f"Title:    {task.content}")
+    print(f"Status:   {task.properties.get('status', 'unknown')}")
+    print(f"Priority: {task.properties.get('priority', 'unknown')}")
+    print(f"Category: {task.properties.get('category', 'unknown')}")
+
+    if task.properties.get('description'):
+        print(f"\nDescription:\n  {task.properties['description']}")
+
+    if task.properties.get('retrospective'):
+        print(f"\nRetrospective:\n  {task.properties['retrospective']}")
+
+    if task.properties.get('blocked_reason'):
+        print(f"\nBlocked Reason:\n  {task.properties['blocked_reason']}")
+
+    # Show timestamps
+    print("\nTimestamps:")
+    if task.metadata.get('created_at'):
+        print(f"  Created:   {task.metadata['created_at']}")
+    if task.metadata.get('updated_at'):
+        print(f"  Updated:   {task.metadata['updated_at']}")
+    if task.metadata.get('completed_at'):
+        print(f"  Completed: {task.metadata['completed_at']}")
+
+    # Show dependencies
+    deps = manager.get_task_dependencies(task.id)
+    if deps:
+        print(f"\nDepends On ({len(deps)}):")
+        for dep in deps:
+            print(f"  - {dep.id}: {dep.content}")
+
+    # Show what depends on this task
+    dependents = manager.what_depends_on(task.id)
+    if dependents:
+        print(f"\nBlocks ({len(dependents)}):")
+        for dep in dependents:
+            print(f"  - {dep.id}: {dep.content}")
+
+    print("=" * 60)
+    return 0
+
+
 def cmd_task_start(args, manager: GoTProjectManager) -> int:
     """Start a task."""
     if manager.start_task(args.task_id):
@@ -3370,6 +3433,10 @@ def main():
     list_parser.add_argument("--blocked", action="store_true", help="Show only blocked")
     list_parser.add_argument("--json", action="store_true", help="Output as JSON")
 
+    # task show
+    show_parser = task_subparsers.add_parser("show", help="Show task details")
+    show_parser.add_argument("task_id", help="Task ID to display")
+
     # task start
     start_parser = task_subparsers.add_parser("start", help="Start a task")
     start_parser.add_argument("task_id", help="Task ID")
@@ -3534,6 +3601,8 @@ def main():
             return cmd_task_create(args, manager)
         elif args.task_command == "list":
             return cmd_task_list(args, manager)
+        elif args.task_command == "show":
+            return cmd_task_show(args, manager)
         elif args.task_command == "start":
             return cmd_task_start(args, manager)
         elif args.task_command == "complete":
