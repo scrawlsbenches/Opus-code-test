@@ -643,7 +643,7 @@ class EventLog:
                     decision_id = event["id"]
                     graph.add_node(
                         node_id=decision_id,
-                        node_type=NodeType.CONTEXT,  # Use CONTEXT for decisions
+                        node_type=NodeType.DECISION,  # Fixed: was incorrectly CONTEXT
                         content=event.get("decision", ""),
                         properties={
                             "type": "decision",

@@ -1524,5 +1524,92 @@ class TestRebuildTelemetry:
         assert "edges" in telemetry["summary"].lower(), "Summary should mention edges"
 
 
+class TestDecisionNodeType:
+    """
+    Unit tests for decision node type handling in rebuild_graph_from_events.
+
+    Bug fix: Decisions were being created with NodeType.CONTEXT instead of
+    NodeType.DECISION, causing the dashboard to show "Decisions: 0" despite
+    19 decision events in the event log.
+    """
+
+    def test_decision_create_uses_decision_nodetype(self, temp_got_dir):
+        """decision.create events should create nodes with NodeType.DECISION."""
+        events = [
+            {
+                "ts": "2025-01-01T00:00:00Z",
+                "event": "decision.create",
+                "id": "decision:D-001",
+                "decision": "Use TDD for all changes",
+                "rationale": "Improves code quality",
+                "affects": [],
+                "alternatives": [],
+            }
+        ]
+
+        graph = EventLog.rebuild_graph_from_events(events)
+
+        assert "decision:D-001" in graph.nodes, "Decision node should exist"
+        node = graph.nodes["decision:D-001"]
+        assert node.node_type == NodeType.DECISION, \
+            f"Node type should be DECISION, got {node.node_type}"
+
+    def test_decision_count_in_rebuilt_graph(self, temp_got_dir):
+        """Multiple decisions should all have NodeType.DECISION."""
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "decision.create", "id": "decision:D-001",
+             "decision": "Decision 1", "rationale": "Reason 1", "affects": [], "alternatives": []},
+            {"ts": "2025-01-01T00:00:01Z", "event": "decision.create", "id": "decision:D-002",
+             "decision": "Decision 2", "rationale": "Reason 2", "affects": [], "alternatives": []},
+            {"ts": "2025-01-01T00:00:02Z", "event": "decision.create", "id": "decision:D-003",
+             "decision": "Decision 3", "rationale": "Reason 3", "affects": [], "alternatives": []},
+        ]
+
+        graph = EventLog.rebuild_graph_from_events(events)
+
+        decision_nodes = [n for n in graph.nodes.values() if n.node_type == NodeType.DECISION]
+        assert len(decision_nodes) == 3, f"Should have 3 DECISION nodes, got {len(decision_nodes)}"
+
+    def test_decision_affects_creates_motivates_edges(self, temp_got_dir):
+        """Decisions with 'affects' should create MOTIVATES edges."""
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001",
+             "type": "TASK", "data": {"title": "Task 1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "decision.create", "id": "decision:D-001",
+             "decision": "Choose approach A", "rationale": "Faster",
+             "affects": ["task:T-001"], "alternatives": []},
+        ]
+
+        graph = EventLog.rebuild_graph_from_events(events)
+
+        # Decision should exist with correct type
+        assert graph.nodes["decision:D-001"].node_type == NodeType.DECISION
+
+        # Should have MOTIVATES edge from decision to task
+        motivates_edges = [e for e in graph.edges
+                          if e.source_id == "decision:D-001" and e.edge_type == EdgeType.MOTIVATES]
+        assert len(motivates_edges) == 1, "Should have 1 MOTIVATES edge"
+        assert motivates_edges[0].target_id == "task:T-001"
+
+    def test_decision_content_preserved(self, temp_got_dir):
+        """Decision content and rationale should be preserved in node."""
+        events = [
+            {
+                "ts": "2025-01-01T00:00:00Z",
+                "event": "decision.create",
+                "id": "decision:D-001",
+                "decision": "Use event sourcing",
+                "rationale": "Better for concurrency",
+                "affects": [],
+                "alternatives": ["Use CRUD", "Use state machine"],
+            }
+        ]
+
+        graph = EventLog.rebuild_graph_from_events(events)
+        node = graph.nodes["decision:D-001"]
+
+        assert "event sourcing" in node.content.lower(), "Decision content should be in node"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
