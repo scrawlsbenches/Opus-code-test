@@ -171,13 +171,19 @@ class GoTMigrator:
 
             # Write in single transaction for atomicity
             with manager.transaction() as tx:
-                # Write tasks
+                # Write tasks (deduplicate by ID since we store by both original and clean ID)
+                seen_tasks = set()
                 for task in self.tasks.values():
-                    tx.write(task)
+                    if task.id not in seen_tasks:
+                        tx.write(task)
+                        seen_tasks.add(task.id)
 
-                # Write decisions
+                # Write decisions (deduplicate by ID)
+                seen_decisions = set()
                 for decision in self.decisions.values():
-                    tx.write(decision)
+                    if decision.id not in seen_decisions:
+                        tx.write(decision)
+                        seen_decisions.add(decision.id)
 
                 # Write edges
                 for edge in self.edges.values():
@@ -331,10 +337,14 @@ class GoTMigrator:
         # Convert based on node type
         if node_type == "TASK" or node_id.startswith("task:"):
             task = self._convert_to_task(node_id, data, event.get("ts"))
+            # Store by both original and clean ID for update lookups
             self.tasks[node_id] = task
+            self.tasks[task.id] = task
         elif node_type == "DECISION" or node_id.startswith("decision:"):
             decision = self._convert_to_decision(node_id, data, event.get("ts"))
+            # Store by both original and clean ID for update lookups
             self.decisions[node_id] = decision
+            self.decisions[decision.id] = decision
 
     def _process_node_update(self, event: Dict[str, Any]) -> None:
         """Process node.update event."""
@@ -453,8 +463,11 @@ class GoTMigrator:
         raw_status = data.get("status", "pending")
         status = status_mapping.get(raw_status, raw_status)
 
+        # Strip 'task:' prefix if present
+        clean_id = node_id.replace("task:", "") if node_id.startswith("task:") else node_id
+
         return Task(
-            id=node_id,
+            id=clean_id,
             title=data.get("title", ""),
             status=status,
             priority=data.get("priority", "medium"),
@@ -472,8 +485,11 @@ class GoTMigrator:
         timestamp: Optional[str] = None
     ) -> Decision:
         """Convert node data to Decision entity."""
+        # Strip 'decision:' prefix if present
+        clean_id = node_id.replace("decision:", "") if node_id.startswith("decision:") else node_id
+
         return Decision(
-            id=node_id,
+            id=clean_id,
             title=data.get("title", ""),
             rationale=data.get("rationale", ""),
             affects=data.get("affects", []),
