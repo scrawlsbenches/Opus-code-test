@@ -999,6 +999,71 @@ Key defaults to know:
 - Features for future users come after current users are protected
 - Documentation debt compounds - write it while context is fresh
 
+### Test-Driven Development (TDD) Workflow
+
+> **⚠️ IMPORTANT: Use TDD for all code changes to important systems.**
+
+This project uses Test-Driven Development. The workflow is:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     TDD WORKFLOW                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  1. RED: Write failing tests first                                   │
+│     └── Capture expected behavior before implementation              │
+│                                                                       │
+│  2. GREEN: Implement minimal code to pass tests                      │
+│     └── Focus on making tests pass, not perfection                   │
+│                                                                       │
+│  3. REFACTOR: Convert behavioral → unit tests, clean up              │
+│     └── Delete temp behavioral tests, keep permanent unit tests      │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Two types of tests:**
+
+| Type | Purpose | Data Creation | When to Use |
+|------|---------|---------------|-------------|
+| **Behavioral** | Explore/debug, capture "what should happen" | May create real data | During bug investigation, then DELETE |
+| **Unit** | Permanent protection, document API contract | Mocks only, no data | Keep forever after feature is working |
+
+**TDD Process:**
+
+1. **When fixing a bug:**
+   - Write behavioral tests that reproduce the bug
+   - Run tests to confirm they fail (RED)
+   - Implement the fix
+   - Run tests to confirm they pass (GREEN)
+   - Convert behavioral tests to unit tests (REFACTOR)
+   - Delete behavioral tests that create data
+
+2. **When adding a feature:**
+   - Write behavioral tests for expected behavior
+   - Implement until tests pass
+   - Convert to unit tests with mocks
+   - Delete temporary behavioral tests
+
+3. **Cleanup requirement:**
+   - Behavioral tests that use `got_manager` with real ops must be converted
+   - Unit tests use `mock_manager` - no cleanup needed
+   - Check for test data pollution: `python scripts/got_utils.py validate`
+
+**Example pattern:**
+
+```python
+# BEHAVIORAL (temporary - for debugging)
+def test_delete_task_with_deps(self, got_manager):  # Uses real manager
+    task_id = got_manager.create_task(...)  # Creates real data!
+    ...
+
+# UNIT (permanent - keeps forever)
+def test_delete_task_with_deps(self, mock_manager, mock_args):  # Mocked
+    mock_manager.get_task.return_value = mock_task  # No real data
+    ...
+```
+
 ### Before Writing Code
 
 1. **Read the relevant module** - understand existing patterns

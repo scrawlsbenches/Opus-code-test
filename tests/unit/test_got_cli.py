@@ -37,6 +37,7 @@ from got_utils import (
     cmd_task_start,
     cmd_task_complete,
     cmd_task_block,
+    cmd_task_delete,
     cmd_decision_log,
     cmd_decision_list,
     cmd_decision_why,
@@ -53,6 +54,10 @@ from got_utils import (
     generate_task_id,
     generate_sprint_id,
     generate_decision_id,
+    STATUS_PENDING,
+    STATUS_IN_PROGRESS,
+    STATUS_COMPLETED,
+    STATUS_BLOCKED,
 )
 
 
@@ -533,6 +538,179 @@ class TestTaskBlock:
             "Depends on other task",
             "task:T-001"
         )
+
+
+class TestTaskDelete:
+    """
+    Unit tests for task delete command - isolated with mocks.
+
+    Converted from behavioral tests to avoid data creation.
+    Tests the transactional safety checks of delete_task.
+    """
+
+    def test_delete_standalone_task(self, mock_manager, mock_args):
+        """Delete a task with no dependencies."""
+        mock_args.task_id = "T-001"
+        mock_args.force = False
+
+        # Mock: task exists with no dependents
+        task_node = ThoughtNode(
+            id="task:T-001",
+            node_type=NodeType.TASK,
+            content="Standalone task",
+            properties={"status": STATUS_PENDING},
+            metadata={}
+        )
+        mock_manager.get_task.return_value = task_node
+        mock_manager.what_depends_on.return_value = []
+        mock_manager.delete_task.return_value = True
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_delete(mock_args, mock_manager)
+
+        assert result == 0
+        mock_manager.delete_task.assert_called_once_with("T-001", force=False)
+        output = captured.getvalue()
+        assert "Deleted" in output
+
+    def test_delete_nonexistent_task_fails(self, mock_manager, mock_args):
+        """Delete returns error for nonexistent task."""
+        mock_args.task_id = "T-NONEXISTENT"
+        mock_args.force = False
+
+        mock_manager.get_task.return_value = None
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_delete(mock_args, mock_manager)
+
+        assert result == 1
+        output = captured.getvalue()
+        assert "not found" in output
+
+    def test_delete_with_dependents_fails_without_force(self, mock_manager, mock_args):
+        """Delete fails when task has dependents and no --force."""
+        mock_args.task_id = "T-001"
+        mock_args.force = False
+
+        # Mock: task exists with dependents
+        task_node = ThoughtNode(
+            id="task:T-001",
+            node_type=NodeType.TASK,
+            content="Prerequisite task",
+            properties={"status": STATUS_PENDING},
+            metadata={}
+        )
+        dependent_node = ThoughtNode(
+            id="task:T-002",
+            node_type=NodeType.TASK,
+            content="Depends on T-001",
+            properties={},
+            metadata={}
+        )
+        mock_manager.get_task.return_value = task_node
+        mock_manager.what_depends_on.return_value = [dependent_node]
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_delete(mock_args, mock_manager)
+
+        assert result == 1
+        output = captured.getvalue()
+        assert "Cannot delete" in output or "depend" in output.lower()
+        # delete_task should NOT have been called
+        mock_manager.delete_task.assert_not_called()
+
+    def test_delete_with_force_succeeds(self, mock_manager, mock_args):
+        """Force delete bypasses dependency check."""
+        mock_args.task_id = "T-001"
+        mock_args.force = True
+
+        task_node = ThoughtNode(
+            id="task:T-001",
+            node_type=NodeType.TASK,
+            content="Task to force delete",
+            properties={"status": STATUS_PENDING},
+            metadata={}
+        )
+        mock_manager.get_task.return_value = task_node
+        mock_manager.delete_task.return_value = True
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_delete(mock_args, mock_manager)
+
+        assert result == 0
+        mock_manager.delete_task.assert_called_once_with("T-001", force=True)
+
+    def test_delete_in_progress_fails_without_force(self, mock_manager, mock_args):
+        """Delete fails for in-progress task without --force."""
+        mock_args.task_id = "T-001"
+        mock_args.force = False
+
+        task_node = ThoughtNode(
+            id="task:T-001",
+            node_type=NodeType.TASK,
+            content="In-progress task",
+            properties={"status": STATUS_IN_PROGRESS},
+            metadata={}
+        )
+        mock_manager.get_task.return_value = task_node
+        mock_manager.what_depends_on.return_value = []
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_delete(mock_args, mock_manager)
+
+        assert result == 1
+        output = captured.getvalue()
+        assert "in progress" in output.lower() or "Cannot delete" in output
+
+    def test_delete_completed_task_allowed(self, mock_manager, mock_args):
+        """Completed tasks can be deleted without --force."""
+        mock_args.task_id = "T-001"
+        mock_args.force = False
+
+        task_node = ThoughtNode(
+            id="task:T-001",
+            node_type=NodeType.TASK,
+            content="Completed task",
+            properties={"status": STATUS_COMPLETED},
+            metadata={}
+        )
+        mock_manager.get_task.return_value = task_node
+        mock_manager.what_depends_on.return_value = []
+        mock_manager.delete_task.return_value = True
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_delete(mock_args, mock_manager)
+
+        assert result == 0
+        mock_manager.delete_task.assert_called_once()
+
+    def test_delete_shows_force_hint(self, mock_manager, mock_args):
+        """When blocked, shows hint about --force."""
+        mock_args.task_id = "T-001"
+        mock_args.force = False
+
+        task_node = ThoughtNode(
+            id="task:T-001",
+            node_type=NodeType.TASK,
+            content="Task with deps",
+            properties={"status": STATUS_PENDING},
+            metadata={}
+        )
+        dependent_node = ThoughtNode(
+            id="task:T-002",
+            node_type=NodeType.TASK,
+            content="Dependent",
+            properties={},
+            metadata={}
+        )
+        mock_manager.get_task.return_value = task_node
+        mock_manager.what_depends_on.return_value = [dependent_node]
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_delete(mock_args, mock_manager)
+
+        output = captured.getvalue()
+        assert "--force" in output
 
 
 # =============================================================================
