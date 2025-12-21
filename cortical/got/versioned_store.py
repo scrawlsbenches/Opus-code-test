@@ -16,6 +16,7 @@ from typing import Dict, Optional
 from .types import Entity, Task, Decision, Edge
 from .errors import CorruptionError
 from .checksums import compute_checksum
+from .config import DurabilityMode
 
 
 class VersionedStore:
@@ -39,15 +40,17 @@ class VersionedStore:
                 {entity_id}.jsonl     # Historical snapshots
     """
 
-    def __init__(self, store_dir: Path):
+    def __init__(self, store_dir: Path, durability: DurabilityMode = DurabilityMode.BALANCED):
         """
         Initialize store, creating directory structure if needed.
 
         Args:
             store_dir: Directory path for storing entities
+            durability: Durability mode controlling fsync behavior
         """
         self.store_dir = Path(store_dir)
         self.store_dir.mkdir(parents=True, exist_ok=True)
+        self.durability = durability
         self.history_dir = self.store_dir / "_history"
         self.history_dir.mkdir(exist_ok=True)
         self._version = self._load_version()
@@ -196,7 +199,7 @@ class VersionedStore:
                 self._write_with_checksum(temp_path, entity.to_dict())
                 temp_files.append((temp_path, self._entity_path(entity_id)))
 
-            # Step 2: Fsync all temp files
+            # Step 2: Fsync all temp files (respects durability mode)
             for temp_path, _ in temp_files:
                 self._fsync_file(temp_path)
 
@@ -324,8 +327,28 @@ class VersionedStore:
         Args:
             path: File path to sync
         """
+        # Skip fsync if RELAXED mode
+        if self.durability == DurabilityMode.RELAXED:
+            return
+
         with open(path, 'r+', encoding='utf-8') as f:
             os.fsync(f.fileno())
+
+    def fsync_all(self) -> None:
+        """
+        Force fsync of all entity files and version file.
+
+        Used by BALANCED mode to sync on transaction commit.
+        """
+        # Fsync all entity files
+        for entity_file in self.store_dir.glob("*.json"):
+            if entity_file.name != "_version.json":
+                self._fsync_file(entity_file)
+
+        # Fsync version file
+        version_path = self.store_dir / "_version.json"
+        if version_path.exists():
+            self._fsync_file(version_path)
 
     def _save_to_history(self, entity_id: str, global_version: int) -> None:
         """
@@ -371,7 +394,7 @@ class VersionedStore:
         return data.get("version", 0)
 
     def _save_version(self) -> None:
-        """Save global version to _version.json with fsync."""
+        """Save global version to _version.json."""
         version_path = self.store_dir / "_version.json"
         data = {"version": self._version}
 
@@ -380,7 +403,7 @@ class VersionedStore:
         with open(temp_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, sort_keys=True)
 
-        # Fsync
+        # Fsync (respects durability mode)
         self._fsync_file(temp_path)
 
         # Rename (atomic on POSIX)

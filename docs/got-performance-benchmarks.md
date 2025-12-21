@@ -6,9 +6,78 @@
 
 ## Executive Summary
 
-The GoT transactional system prioritizes **reliability over speed**. The `fsync` calls that ensure data durability account for 74.5% of execution time. This is intentional - we trade throughput for guaranteed crash recovery.
+The GoT transactional system now supports **three durability modes** to balance reliability vs performance:
 
-## Benchmark Results
+| Mode | Use Case | Speedup vs PARANOID |
+|------|----------|---------------------|
+| **PARANOID** | Debugging, critical data | Baseline |
+| **BALANCED** | Normal operation (default) | 2-2.5x |
+| **RELAXED** | Maximum performance | 6-10x |
+
+## Durability Modes Comparison
+
+### Latency (milliseconds)
+
+| Operation | PARANOID | BALANCED | RELAXED |
+|-----------|----------|----------|---------|
+| Create task (avg) | 33.78 | 17.24 | 5.71 |
+| Create task (min) | 30.82 | 16.06 | 5.06 |
+| Create task (max) | 35.99 | 19.90 | 6.99 |
+| Read task (avg) | 10.72 | 0.84 | 0.96 |
+| Transaction (5 ops) | 67.11 | 36.46 | 9.30 |
+| Bulk 100 tasks | 909.16 | 383.73 | 94.24 |
+| Per-task in bulk | 9.09 | 3.84 | 0.94 |
+
+### Throughput (ops/second)
+
+| Operation | PARANOID | BALANCED | RELAXED |
+|-----------|----------|----------|---------|
+| Single creates | 29.6 | 58.0 | 175.2 |
+| Bulk creates | 110.0 | 260.6 | 1061.2 |
+| Reads | 93.3 | 1193.2 | 1046.7 |
+
+### Speedup vs PARANOID
+
+| Operation | PARANOID | BALANCED | RELAXED |
+|-----------|----------|----------|---------|
+| Single creates | 1.0x | **2.0x** | **5.9x** |
+| Bulk 100 tasks | 1.0x | **2.4x** | **9.6x** |
+| Reads | 1.0x | **12.8x** | **11.2x** |
+
+## Mode Selection Guide
+
+### PARANOID Mode
+```python
+manager = GoTManager(".got", durability=DurabilityMode.PARANOID)
+```
+- fsync on EVERY operation (WAL entry, entity file, version file)
+- **Use when:** Debugging reliability issues, untrusted environment, critical data
+- **Guarantees:** Zero data loss even on power failure mid-operation
+- **Performance:** ~30 ops/s single, ~110 ops/s bulk
+
+### BALANCED Mode (Default)
+```python
+manager = GoTManager(".got", durability=DurabilityMode.BALANCED)
+# OR simply:
+manager = GoTManager(".got")  # Defaults to BALANCED
+```
+- fsync only on transaction COMMIT
+- **Use when:** Normal operation, confident in system stability
+- **Guarantees:** Committed transactions survive power loss
+- **Risk:** Uncommitted transaction might lose WAL entries (rolled back anyway)
+- **Performance:** ~58 ops/s single, ~261 ops/s bulk
+
+### RELAXED Mode
+```python
+manager = GoTManager(".got", durability=DurabilityMode.RELAXED)
+```
+- No fsync calls, rely on OS buffer cache
+- **Use when:** Maximum performance, acceptable risk, frequent git saves
+- **Guarantees:** Survives process crash (data in kernel buffer)
+- **Risk:** Power loss within OS flush window (~5-30s) loses uncommitted data
+- **Performance:** ~175 ops/s single, ~1061 ops/s bulk
+
+## Legacy Benchmark Results (PARANOID Mode)
 
 ### Operation Latencies
 
@@ -25,7 +94,7 @@ The GoT transactional system prioritizes **reliability over speed**. The `fsync`
 | Integrity check | 5.06 | - | - | Checksum verification |
 | Bulk 100 tasks | 877.61 | - | - | All in single TX |
 
-### Throughput
+### Throughput (PARANOID)
 
 | Mode | Operations/Second |
 |------|-------------------|

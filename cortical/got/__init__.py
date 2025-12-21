@@ -71,6 +71,11 @@ from .conflict import (
     SyncConflict,
 )
 
+from .config import (
+    DurabilityMode,
+    GoTConfig,
+)
+
 from .api import (
     GoTManager,
     TransactionContext,
@@ -122,6 +127,9 @@ __all__ = [
     'ConflictResolver',
     'ConflictStrategy',
     'SyncConflict',
+    # Configuration
+    'DurabilityMode',
+    'GoTConfig',
     # High-level API
     'GoTManager',
     'TransactionContext',

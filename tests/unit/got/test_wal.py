@@ -44,8 +44,9 @@ class TestWALManager:
         assert entry['seq'] == seq
 
     def test_fsync_called_on_every_log(self, tmp_path):
-        """Verify that os.fsync is called on every log operation."""
-        wal = WALManager(tmp_path)
+        """Verify that os.fsync is called on every log operation in PARANOID mode."""
+        from cortical.got.config import DurabilityMode
+        wal = WALManager(tmp_path, durability=DurabilityMode.PARANOID)
 
         with patch('os.fsync') as mock_fsync:
             wal.log("TX-001", "TX_BEGIN", {"snapshot": 5})

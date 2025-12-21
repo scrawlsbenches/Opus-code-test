@@ -266,8 +266,9 @@ class TestVersionedStoreAtomicity:
         assert store.current_version() == 2  # Only incremented once for batch
 
     def test_fsync_called_on_write(self, tmp_path):
-        """Mock os.fsync, verify it's called during write."""
-        store = VersionedStore(tmp_path)
+        """Mock os.fsync, verify it's called during write in PARANOID mode."""
+        from cortical.got.config import DurabilityMode
+        store = VersionedStore(tmp_path, durability=DurabilityMode.PARANOID)
         task = Task(id="T16", title="Fsync Test", status="pending", priority="medium")
 
         with patch('os.fsync') as mock_fsync:

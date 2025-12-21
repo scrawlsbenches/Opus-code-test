@@ -25,6 +25,7 @@ from .errors import TransactionError, ConflictError
 from .versioned_store import VersionedStore
 from .wal import WALManager
 from .transaction import Transaction, TransactionState, generate_transaction_id
+from .config import DurabilityMode
 
 logger = logging.getLogger(__name__)
 
@@ -289,7 +290,7 @@ class TransactionManager:
     - Durability: WAL + fsync before commit
     """
 
-    def __init__(self, got_dir: Path):
+    def __init__(self, got_dir: Path, durability: DurabilityMode = DurabilityMode.BALANCED):
         """
         Initialize transaction manager.
 
@@ -301,13 +302,15 @@ class TransactionManager:
 
         Args:
             got_dir: Base directory for GoT storage
+            durability: Durability mode controlling fsync behavior
         """
         self.got_dir = Path(got_dir)
         self.got_dir.mkdir(parents=True, exist_ok=True)
+        self.durability = durability
 
-        # Initialize storage and WAL
-        self.store = VersionedStore(self.got_dir / "entities")
-        self.wal = WALManager(self.got_dir / "wal")
+        # Initialize storage and WAL with durability mode
+        self.store = VersionedStore(self.got_dir / "entities", durability=durability)
+        self.wal = WALManager(self.got_dir / "wal", durability=durability)
 
         # Process lock for mutual exclusion
         self.lock = ProcessLock(self.got_dir / ".got.lock", reentrant=True)
@@ -466,6 +469,11 @@ class TransactionManager:
             # Mark committed
             tx.state = TransactionState.COMMITTED
             self.wal.log_tx_commit(tx.id, new_version)
+
+            # For BALANCED mode, fsync WAL and store now
+            if self.durability == DurabilityMode.BALANCED:
+                self.wal.fsync_now()
+                self.store.fsync_all()
 
             # Remove from active transactions
             self._active_tx.pop(tx.id, None)

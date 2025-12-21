@@ -15,6 +15,7 @@ from typing import Dict, List, Any, Optional
 
 from .checksums import compute_checksum
 from .errors import CorruptionError
+from .config import DurabilityMode
 
 
 class WALManager:
@@ -33,15 +34,17 @@ class WALManager:
                 TIMESTAMP.wal
     """
 
-    def __init__(self, wal_dir: Path):
+    def __init__(self, wal_dir: Path, durability: DurabilityMode = DurabilityMode.BALANCED):
         """
         Initialize WAL, creating directory if needed.
 
         Args:
             wal_dir: Directory path for WAL files
+            durability: Durability mode controlling fsync behavior
         """
         self.wal_dir = Path(wal_dir)
         self.wal_dir.mkdir(parents=True, exist_ok=True)
+        self.durability = durability
 
         # Create archived directory
         self.archive_dir = self.wal_dir / "archived"
@@ -67,7 +70,9 @@ class WALManager:
         with open(self.seq_file, 'w', encoding='utf-8') as f:
             json.dump({'seq': self._sequence}, f)
             f.flush()
-            os.fsync(f.fileno())
+            # Only fsync if PARANOID mode
+            if self.durability == DurabilityMode.PARANOID:
+                os.fsync(f.fileno())
 
     def _next_seq(self) -> int:
         """Get next sequence number and persist it."""
@@ -102,11 +107,13 @@ class WALManager:
         checksum = compute_checksum(entry)
         entry['checksum'] = checksum
 
-        # Append to WAL file with fsync
+        # Append to WAL file
         with open(self.wal_file, 'a', encoding='utf-8') as f:
             f.write(json.dumps(entry, separators=(',', ':')) + '\n')
             f.flush()
-            os.fsync(f.fileno())
+            # Only fsync if PARANOID mode
+            if self.durability == DurabilityMode.PARANOID:
+                os.fsync(f.fileno())
 
         return seq
 
@@ -270,6 +277,22 @@ class WALManager:
 
         # Return transactions still in ACTIVE or PREPARING state
         return list(transactions.values())
+
+    def fsync_now(self) -> None:
+        """
+        Force fsync of WAL file and sequence file.
+
+        Used by BALANCED mode to sync on transaction commit.
+        """
+        # Fsync WAL file if it exists
+        if self.wal_file.exists():
+            with open(self.wal_file, 'r+', encoding='utf-8') as f:
+                os.fsync(f.fileno())
+
+        # Fsync sequence file
+        if self.seq_file.exists():
+            with open(self.seq_file, 'r+', encoding='utf-8') as f:
+                os.fsync(f.fileno())
 
     def truncate(self, archive: bool = True) -> Optional[Path]:
         """

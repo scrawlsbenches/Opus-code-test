@@ -32,6 +32,7 @@ from .recovery import RecoveryManager, RecoveryResult
 from .types import Task, Decision, Edge, Entity
 from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
+from .config import DurabilityMode
 
 logger = logging.getLogger(__name__)
 
@@ -82,17 +83,22 @@ class GoTManager:
         # Auto-commits on success, rolls back on exception
     """
 
-    def __init__(self, got_dir: Path):
+    def __init__(self, got_dir: Path, durability: DurabilityMode = DurabilityMode.BALANCED):
         """
         Initialize GoT manager with directory.
 
         Args:
             got_dir: Base directory for GoT storage
+            durability: Durability mode controlling fsync behavior (default: BALANCED)
         """
         self.got_dir = Path(got_dir)
-        self.tx_manager = TransactionManager(self.got_dir)
+        self.durability = durability
+        self.tx_manager = TransactionManager(self.got_dir, durability=durability)
         self._sync_manager = None  # Lazy initialization
         self._recovery_manager = None  # Lazy initialization
+
+        # Log durability mode at debug level
+        logger.debug(f"GoTManager initialized with durability mode: {durability.value}")
 
     @property
     def sync_manager(self) -> SyncManager:
