@@ -1645,6 +1645,66 @@ class TransactionalGoTAdapter:
         dependents = self._manager.get_dependents(clean_id)
         return [self._tx_task_to_node(t) for t in dependents]
 
+    def get_task_dependencies(self, task_id: str) -> List[ThoughtNode]:
+        """Get all tasks this task depends on."""
+        clean_id = self._strip_prefix(task_id)
+        try:
+            # Tasks that block this task are tasks this task depends on
+            deps = self._manager.get_blockers(clean_id)
+            return [self._tx_task_to_node(t) for t in deps if t]
+        except Exception as e:
+            logger.error(f"Failed to get dependencies for {task_id}: {e}")
+            return []
+
+    def get_active_tasks(self) -> List[ThoughtNode]:
+        """Get all in-progress tasks."""
+        try:
+            tasks = self._manager.find_tasks(status="in_progress")
+            return [self._tx_task_to_node(t) for t in tasks]
+        except Exception as e:
+            logger.error(f"Failed to get active tasks: {e}")
+            return []
+
+    def get_blocked_tasks(self) -> List[Tuple[ThoughtNode, Optional[str]]]:
+        """Get all blocked tasks with their blocking reasons."""
+        try:
+            tasks = self._manager.find_tasks(status="blocked")
+            result = []
+            for task in tasks:
+                node = self._tx_task_to_node(task)
+                reason = task.properties.get("blocked_reason", "No reason given")
+                result.append((node, reason))
+            return result
+        except Exception as e:
+            logger.error(f"Failed to get blocked tasks: {e}")
+            return []
+
+    def what_blocks(self, task_id: str) -> List[ThoughtNode]:
+        """Get tasks blocking this task.
+
+        Follows BLOCKS edges pointing to this task.
+        """
+        clean_id = self._strip_prefix(task_id)
+        try:
+            blockers = self._manager.get_blockers(clean_id)
+            return [self._tx_task_to_node(t) for t in blockers if t]
+        except Exception as e:
+            logger.error(f"Failed to get blockers for {task_id}: {e}")
+            return []
+
+    def what_depends_on(self, task_id: str) -> List[ThoughtNode]:
+        """Get tasks that depend on this task.
+
+        Follows DEPENDS_ON edges pointing to this task.
+        """
+        clean_id = self._strip_prefix(task_id)
+        try:
+            dependents = self._manager.get_dependents(clean_id)
+            return [self._tx_task_to_node(t) for t in dependents if t]
+        except Exception as e:
+            logger.error(f"Failed to get dependents for {task_id}: {e}")
+            return []
+
     def list_all_tasks(self) -> List[ThoughtNode]:
         """List all tasks."""
         return self.list_tasks()
@@ -1673,6 +1733,277 @@ class TransactionalGoTAdapter:
         except Exception as e:
             logger.debug(f"Could not determine git branch: {e}")
             return "unknown"
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get graph statistics."""
+        try:
+            all_tasks = self._manager.list_all_tasks()
+
+            # Count tasks by status
+            by_status = {}
+            for task in all_tasks:
+                status = task.status
+                by_status[status] = by_status.get(status, 0) + 1
+
+            # Count edges
+            entities_dir = self._manager.got_dir / "entities"
+            edge_count = 0
+            if entities_dir.exists():
+                edge_count = len(list(entities_dir.glob("E-*.json")))
+
+            return {
+                "total_tasks": len(all_tasks),
+                "tasks_by_status": by_status,
+                "total_edges": edge_count,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get stats: {e}")
+            return {
+                "total_tasks": 0,
+                "tasks_by_status": {},
+                "total_edges": 0,
+            }
+
+    def get_all_relationships(self, task_id: str) -> Dict[str, List[ThoughtNode]]:
+        """Get all relationships for a task.
+
+        Returns dict with keys:
+        - 'blocks': Tasks this task blocks
+        - 'blocked_by': Tasks blocking this task
+        - 'depends_on': Tasks this task depends on
+        - 'depended_by': Tasks depending on this task
+        """
+        clean_id = self._strip_prefix(task_id)
+
+        result = {
+            'blocks': [],
+            'blocked_by': [],
+            'depends_on': [],
+            'depended_by': [],
+        }
+
+        try:
+            # Get edges for this task
+            outgoing, incoming = self._manager.get_edges_for_task(clean_id)
+
+            # Process outgoing edges
+            for edge in outgoing:
+                target_task = self._manager.get_task(edge.target_id)
+                if target_task:
+                    target_node = self._tx_task_to_node(target_task)
+                    if edge.edge_type == "blocks":
+                        result['blocks'].append(target_node)
+                    elif edge.edge_type == "depends_on":
+                        result['depends_on'].append(target_node)
+
+            # Process incoming edges
+            for edge in incoming:
+                source_task = self._manager.get_task(edge.source_id)
+                if source_task:
+                    source_node = self._tx_task_to_node(source_task)
+                    if edge.edge_type == "blocks":
+                        result['blocked_by'].append(source_node)
+                    elif edge.edge_type == "depends_on":
+                        result['depended_by'].append(source_node)
+
+        except Exception as e:
+            logger.error(f"Failed to get relationships for {task_id}: {e}")
+
+        return result
+
+    def get_dependency_chain(
+        self,
+        task_id: str,
+        max_depth: int = 10,
+    ) -> List[List[ThoughtNode]]:
+        """Get full dependency chain for a task.
+
+        Returns list of dependency chains (each chain is a path from task to leaf).
+        Uses recursive traversal following DEPENDS_ON edges.
+        """
+        clean_id = self._strip_prefix(task_id)
+
+        chains = []
+        visited = set()
+
+        def traverse(node_id: str, chain: List[ThoughtNode], depth: int):
+            if depth > max_depth or node_id in visited:
+                return
+
+            visited.add(node_id)
+            task = self._manager.get_task(node_id)
+            if not task:
+                return
+
+            node = self._tx_task_to_node(task)
+            new_chain = chain + [node]
+
+            # Get dependencies
+            try:
+                outgoing, _ = self._manager.get_edges_for_task(node_id)
+                deps = []
+                for edge in outgoing:
+                    if edge.edge_type == "depends_on":
+                        dep_task = self._manager.get_task(edge.target_id)
+                        if dep_task:
+                            deps.append(self._tx_task_to_node(dep_task))
+
+                if not deps:
+                    chains.append(new_chain)
+                else:
+                    for dep in deps:
+                        dep_id = self._strip_prefix(dep.id)
+                        traverse(dep_id, new_chain, depth + 1)
+            except Exception as e:
+                logger.error(f"Error traversing dependencies for {node_id}: {e}")
+                chains.append(new_chain)
+
+        try:
+            traverse(clean_id, [], 0)
+        except Exception as e:
+            logger.error(f"Failed to get dependency chain for {task_id}: {e}")
+
+        return chains
+
+    def find_path(
+        self,
+        from_id: str,
+        to_id: str,
+        max_depth: int = 10,
+    ) -> Optional[List[ThoughtNode]]:
+        """Find shortest path between two nodes using BFS.
+
+        Follows any edge type to find a path.
+        Returns None if no path exists.
+        """
+        from collections import deque
+
+        clean_from = self._strip_prefix(from_id)
+        clean_to = self._strip_prefix(to_id)
+
+        # Check if both nodes exist
+        from_task = self._manager.get_task(clean_from)
+        to_task = self._manager.get_task(clean_to)
+
+        if not from_task or not to_task:
+            return None
+
+        if clean_from == clean_to:
+            return [self._tx_task_to_node(from_task)]
+
+        try:
+            # BFS
+            queue = deque([(clean_from, [clean_from])])
+            visited = {clean_from}
+
+            while queue:
+                current_id, path = queue.popleft()
+
+                if len(path) > max_depth:
+                    continue
+
+                # Get outgoing edges
+                outgoing, _ = self._manager.get_edges_for_task(current_id)
+                for edge in outgoing:
+                    next_id = edge.target_id
+                    if next_id == clean_to:
+                        # Found the target, construct node path
+                        result_path = []
+                        for task_id in path + [next_id]:
+                            task = self._manager.get_task(task_id)
+                            if task:
+                                result_path.append(self._tx_task_to_node(task))
+                        return result_path
+
+                    if next_id not in visited:
+                        visited.add(next_id)
+                        queue.append((next_id, path + [next_id]))
+
+        except Exception as e:
+            logger.error(f"Failed to find path from {from_id} to {to_id}: {e}")
+
+        return None
+
+    def export_graph(self, output_path: Optional[Path] = None) -> Dict[str, Any]:
+        """Export graph to JSON format.
+
+        Args:
+            output_path: Optional path to write JSON file
+
+        Returns:
+            Dict with 'nodes', 'edges', 'stats', and 'exported_at'
+        """
+        try:
+            # Get all tasks
+            all_tasks = self._manager.list_all_tasks()
+
+            nodes = []
+            for task in all_tasks:
+                nodes.append({
+                    "id": f"task:{task.id}",
+                    "type": "task",
+                    "content": task.title,
+                    "properties": {
+                        "title": task.title,
+                        "status": task.status,
+                        "priority": task.priority,
+                        "description": task.description,
+                        **task.properties,
+                    },
+                    "metadata": {
+                        "created_at": task.created_at,
+                        "updated_at": task.modified_at,
+                        **task.metadata,
+                    },
+                })
+
+            # Get all edges
+            edges = []
+            entities_dir = self._manager.got_dir / "entities"
+            if entities_dir.exists():
+                for edge_file in entities_dir.glob("E-*.json"):
+                    try:
+                        with open(edge_file, 'r', encoding='utf-8') as f:
+                            wrapper = json.load(f)
+                            edge_data = wrapper.get("data", {})
+                            edges.append({
+                                "source": f"task:{edge_data.get('source_id', '')}",
+                                "target": f"task:{edge_data.get('target_id', '')}",
+                                "type": edge_data.get("edge_type", ""),
+                                "weight": edge_data.get("weight", 1.0),
+                            })
+                    except Exception as e:
+                        logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+                        continue
+
+            data = {
+                "exported_at": datetime.now().isoformat(),
+                "nodes": nodes,
+                "edges": edges,
+                "stats": {
+                    "node_count": len(nodes),
+                    "edge_count": len(edges),
+                }
+            }
+
+            if output_path:
+                with open(output_path, 'w') as f:
+                    json.dump(data, f, indent=2)
+
+            return data
+
+        except Exception as e:
+            logger.error(f"Failed to export graph: {e}")
+            return {
+                "exported_at": datetime.now().isoformat(),
+                "nodes": [],
+                "edges": [],
+                "stats": {
+                    "node_count": 0,
+                    "edge_count": 0,
+                },
+                "error": str(e),
+            }
 
     # Stub methods for compatibility (not implemented in TX backend yet)
     def create_decision(self, *args, **kwargs) -> str:
@@ -1704,6 +2035,145 @@ class TransactionalGoTAdapter:
 
     def list_handoffs(self, *args, **kwargs) -> List:
         return []
+
+    def get_sprint_tasks(self, sprint_id: str) -> List[ThoughtNode]:
+        """Get all tasks in a sprint.
+
+        Note: Sprint support is limited in TX backend.
+        Returns empty list with warning.
+        """
+        logger.warning("Sprint support limited in TX backend - returning empty list")
+        return []
+
+    def get_sprint_progress(self, sprint_id: str) -> Dict[str, Any]:
+        """Get sprint progress statistics.
+
+        Note: Sprint support is limited in TX backend.
+        Returns empty progress dict.
+        """
+        logger.warning("Sprint support limited in TX backend - returning empty progress")
+        return {
+            "total_tasks": 0,
+            "by_status": {},
+            "completed": 0,
+            "progress_percent": 0.0,
+        }
+
+    def get_next_task(self) -> Optional[Dict[str, Any]]:
+        """Get the next task to work on.
+
+        Selection criteria:
+        1. Status must be 'pending' (not in_progress, completed, or blocked)
+        2. Highest priority first (critical > high > medium > low)
+        3. Oldest task within same priority
+
+        Returns:
+            Dict with 'id', 'title', 'priority', 'category' or None if no tasks available
+        """
+        # Get pending tasks
+        pending_tasks = self.list_tasks(status=STATUS_PENDING)
+
+        if not pending_tasks:
+            return None
+
+        # Sort by priority (critical > high > medium > low)
+        priority_order = {
+            PRIORITY_CRITICAL: 0,
+            PRIORITY_HIGH: 1,
+            PRIORITY_MEDIUM: 2,
+            PRIORITY_LOW: 3,
+        }
+
+        def sort_key(task: ThoughtNode) -> Tuple[int, str]:
+            priority = task.properties.get("priority", PRIORITY_MEDIUM)
+            created_at = task.metadata.get("created_at", "")
+            return (priority_order.get(priority, 99), created_at)
+
+        sorted_tasks = sorted(pending_tasks, key=sort_key)
+
+        if sorted_tasks:
+            next_task = sorted_tasks[0]
+            return {
+                "id": next_task.id,
+                "title": next_task.content,
+                "priority": next_task.properties.get("priority", PRIORITY_MEDIUM),
+                "category": next_task.properties.get("category", "general"),
+            }
+
+        return None
+
+    def query(self, query_str: str) -> List[Dict[str, Any]]:
+        """Simple query language for the graph.
+
+        Supported queries:
+        - "what blocks <task_id>"
+        - "what depends on <task_id>"
+        - "blocked tasks"
+        - "active tasks"
+        - "pending tasks"
+        - "relationships <task_id>"
+
+        Returns list of result dicts.
+        """
+        query_str = query_str.strip().lower()
+        results = []
+
+        if query_str.startswith("what blocks "):
+            task_id = query_str[12:].strip()
+            for node in self.what_blocks(task_id):
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "status": node.properties.get("status"),
+                    "relation": "blocks",
+                })
+
+        elif query_str.startswith("what depends on "):
+            task_id = query_str[16:].strip()
+            for node in self.what_depends_on(task_id):
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "status": node.properties.get("status"),
+                    "relation": "depends_on",
+                })
+
+        elif query_str == "blocked tasks":
+            for node, reason in self.get_blocked_tasks():
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "reason": reason,
+                })
+
+        elif query_str == "active tasks":
+            for node in self.get_active_tasks():
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "priority": node.properties.get("priority"),
+                })
+
+        elif query_str == "pending tasks":
+            for node in self.list_tasks(status=STATUS_PENDING):
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "priority": node.properties.get("priority"),
+                })
+
+        elif query_str.startswith("relationships "):
+            task_id = query_str[14:].strip()
+            rels = self.get_all_relationships(task_id)
+            for rel_type, nodes in rels.items():
+                for node in nodes:
+                    results.append({
+                        "relation": rel_type,
+                        "id": node.id,
+                        "title": node.content,
+                    })
+
+        return results
 
     def sync_to_git(self) -> str:
         """Sync to git (no-op for TX backend, state is already persistent)."""
