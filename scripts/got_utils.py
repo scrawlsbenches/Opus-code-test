@@ -21,6 +21,7 @@ import os
 import re
 import sys
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -219,6 +220,241 @@ def generate_task_title_from_commit(commit_message: str) -> str:
     if match:
         return match.group(2).strip()
     return message
+
+
+# =============================================================================
+# PROCESS-SAFE LOCKING
+# =============================================================================
+
+class ProcessLock:
+    """
+    Process-safe file-based lock with stale lock detection.
+
+    Features:
+    - Works across processes (not just threads)
+    - Detects and recovers from stale locks (dead processes)
+    - Timeout support to prevent deadlocks
+    - Context manager support
+    - Reentrant option for same-process re-acquisition
+
+    Usage:
+        lock = ProcessLock("/path/to/.lock")
+        with lock:
+            # Critical section
+            pass
+
+        # Or explicit:
+        if lock.acquire(timeout=5.0):
+            try:
+                # Critical section
+            finally:
+                lock.release()
+    """
+
+    def __init__(
+        self,
+        lock_path: Path,
+        stale_timeout: float = 3600.0,  # 1 hour default
+        reentrant: bool = False,
+    ):
+        """
+        Initialize process lock.
+
+        Args:
+            lock_path: Path to the lock file
+            stale_timeout: Seconds after which a lock is considered stale
+            reentrant: If True, same process can acquire multiple times
+        """
+        self.lock_path = Path(lock_path)
+        self.stale_timeout = stale_timeout
+        self.reentrant = reentrant
+        self._held = False
+        self._acquire_count = 0
+        self._fd = None
+
+    def acquire(self, timeout: Optional[float] = None) -> bool:
+        """
+        Acquire the lock.
+
+        Args:
+            timeout: Max seconds to wait (None=block forever, 0=non-blocking)
+
+        Returns:
+            True if lock acquired, False if timeout
+        """
+        import fcntl
+
+        # Handle reentrant case
+        if self._held and self.reentrant:
+            self._acquire_count += 1
+            return True
+
+        start_time = time.time()
+        poll_interval = 0.05  # 50ms
+
+        while True:
+            # Try to acquire
+            if self._try_acquire():
+                self._held = True
+                self._acquire_count = 1
+                return True
+
+            # Check for stale lock
+            if self._is_stale_lock():
+                self._break_stale_lock()
+                continue
+
+            # Check timeout
+            if timeout is not None:
+                elapsed = time.time() - start_time
+                if elapsed >= timeout:
+                    return False
+
+            # Wait before retry
+            if timeout == 0:
+                return False
+
+            remaining = None
+            if timeout is not None:
+                remaining = timeout - (time.time() - start_time)
+                if remaining <= 0:
+                    return False
+
+            time.sleep(min(poll_interval, remaining) if remaining else poll_interval)
+
+    def _try_acquire(self) -> bool:
+        """Attempt to acquire the lock file."""
+        import fcntl
+
+        try:
+            # Create parent directory if needed
+            self.lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Open or create lock file
+            self._fd = os.open(
+                str(self.lock_path),
+                os.O_CREAT | os.O_RDWR,
+                0o644
+            )
+
+            # Try exclusive lock (non-blocking)
+            try:
+                fcntl.flock(self._fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except (IOError, OSError):
+                os.close(self._fd)
+                self._fd = None
+                return False
+
+            # Write PID and timestamp
+            os.ftruncate(self._fd, 0)
+            os.lseek(self._fd, 0, os.SEEK_SET)
+            lock_info = f"{os.getpid()}\n{time.time()}\n"
+            os.write(self._fd, lock_info.encode())
+            os.fsync(self._fd)
+
+            return True
+
+        except Exception as e:
+            if self._fd is not None:
+                try:
+                    os.close(self._fd)
+                except:
+                    pass
+                self._fd = None
+            return False
+
+    def _is_stale_lock(self) -> bool:
+        """Check if the existing lock is stale."""
+        if not self.lock_path.exists():
+            return False
+
+        try:
+            content = self.lock_path.read_text().strip()
+            lines = content.split('\n')
+
+            if len(lines) < 2:
+                return True  # Corrupted, treat as stale
+
+            pid = int(lines[0])
+            timestamp = float(lines[1])
+
+            # Check if process is dead
+            if not self._process_exists(pid):
+                return True
+
+            # Check if lock is too old
+            if time.time() - timestamp > self.stale_timeout:
+                return True
+
+            return False
+
+        except (ValueError, IndexError, OSError):
+            # Corrupted lock file, treat as stale
+            return True
+
+    def _process_exists(self, pid: int) -> bool:
+        """Check if a process with given PID exists."""
+        try:
+            os.kill(pid, 0)  # Signal 0 doesn't kill, just checks
+            return True
+        except OSError:
+            return False
+
+    def _break_stale_lock(self) -> None:
+        """Remove a stale lock file."""
+        try:
+            self.lock_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    def release(self) -> None:
+        """Release the lock."""
+        import fcntl
+
+        if not self._held:
+            return
+
+        if self.reentrant and self._acquire_count > 1:
+            self._acquire_count -= 1
+            return
+
+        self._held = False
+        self._acquire_count = 0
+
+        if self._fd is not None:
+            try:
+                fcntl.flock(self._fd, fcntl.LOCK_UN)
+                os.close(self._fd)
+            except:
+                pass
+            self._fd = None
+
+        # Clean up lock file
+        try:
+            self.lock_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    def is_locked(self) -> bool:
+        """Check if lock is currently held by this instance."""
+        return self._held
+
+    def __enter__(self):
+        """Context manager entry."""
+        acquired = self.acquire()
+        if not acquired:
+            raise TimeoutError(f"Could not acquire lock: {self.lock_path}")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        self.release()
+        return False
+
+    def __del__(self):
+        """Ensure lock is released on garbage collection."""
+        if self._held:
+            self.release()
 
 
 # =============================================================================
@@ -1187,6 +1423,13 @@ class GoTProjectManager:
         self.snapshots_dir.mkdir(parents=True, exist_ok=True)
         self.events_dir.mkdir(parents=True, exist_ok=True)
 
+        # Process-safe lock for graph mutations
+        self._lock = ProcessLock(
+            self.got_dir / ".got.lock",
+            stale_timeout=3600.0,  # 1 hour
+            reentrant=True,  # Allow nested operations
+        )
+
         # Initialize event log (each session gets unique file)
         self.event_log = EventLog(self.events_dir)
 
@@ -1354,59 +1597,60 @@ class GoTProjectManager:
         Returns:
             Task ID
         """
-        task_id = generate_task_id()
+        with self._lock:
+            task_id = generate_task_id()
 
-        properties = {
-            "title": title,
-            "status": STATUS_PENDING,
-            "priority": priority,
-            "category": category,
-            "description": description,
-        }
+            properties = {
+                "title": title,
+                "status": STATUS_PENDING,
+                "priority": priority,
+                "category": category,
+                "description": description,
+            }
 
-        metadata = {
-            "created_at": datetime.now().isoformat(),
-            "updated_at": None,
-            "session_id": os.environ.get("CLAUDE_SESSION_ID", "unknown"),
-            "branch": self._get_current_branch(),
-        }
+            metadata = {
+                "created_at": datetime.now().isoformat(),
+                "updated_at": None,
+                "session_id": os.environ.get("CLAUDE_SESSION_ID", "unknown"),
+                "branch": self._get_current_branch(),
+            }
 
-        # Create task node
-        self.graph.add_node(
-            node_id=task_id,
-            node_type=NodeType.TASK,
-            content=title,
-            properties=properties,
-            metadata=metadata,
-        )
+            # Create task node
+            self.graph.add_node(
+                node_id=task_id,
+                node_type=NodeType.TASK,
+                content=title,
+                properties=properties,
+                metadata=metadata,
+            )
 
-        # Log to event log (source of truth for cross-branch coordination)
-        self.event_log.log_node_create(task_id, "TASK", {**properties, "title": title})
+            # Log to event log (source of truth for cross-branch coordination)
+            self.event_log.log_node_create(task_id, "TASK", {**properties, "title": title})
 
-        # Also log to WAL for crash recovery
-        self.wal.log_add_node(task_id, NodeType.TASK, title, properties, metadata)
+            # Also log to WAL for crash recovery
+            self.wal.log_add_node(task_id, NodeType.TASK, title, properties, metadata)
 
-        # Add to sprint if specified
-        if sprint_id:
-            self._add_task_to_sprint(task_id, sprint_id)
+            # Add to sprint if specified
+            if sprint_id:
+                self._add_task_to_sprint(task_id, sprint_id)
 
-        # Add dependencies (edges from this task TO dependency tasks)
-        if depends_on:
-            for dep_id in depends_on:
-                if self.add_dependency(task_id, dep_id):
-                    print(f"  Added dependency: {task_id} depends on {dep_id}")
-                else:
-                    print(f"  Warning: Could not add dependency to {dep_id} (task not found)")
+            # Add dependencies (edges from this task TO dependency tasks)
+            if depends_on:
+                for dep_id in depends_on:
+                    if self.add_dependency(task_id, dep_id):
+                        print(f"  Added dependency: {task_id} depends on {dep_id}")
+                    else:
+                        print(f"  Warning: Could not add dependency to {dep_id} (task not found)")
 
-        # Add blocks (edges from this task TO blocked tasks)
-        if blocks:
-            for blocked_id in blocks:
-                if self.add_blocks(task_id, blocked_id):
-                    print(f"  Added blocks: {task_id} blocks {blocked_id}")
-                else:
-                    print(f"  Warning: Could not add blocks to {blocked_id} (task not found)")
+            # Add blocks (edges from this task TO blocked tasks)
+            if blocks:
+                for blocked_id in blocks:
+                    if self.add_blocks(task_id, blocked_id):
+                        print(f"  Added blocks: {task_id} blocks {blocked_id}")
+                    else:
+                        print(f"  Warning: Could not add blocks to {blocked_id} (task not found)")
 
-        return task_id
+            return task_id
 
     def get_task(self, task_id: str) -> Optional[ThoughtNode]:
         """Get a task by ID."""
@@ -1503,29 +1747,30 @@ class GoTProjectManager:
 
     def update_task_status(self, task_id: str, status: str) -> bool:
         """Update task status."""
-        task = self.get_task(task_id)
-        if not task:
-            return False
+        with self._lock:
+            task = self.get_task(task_id)
+            if not task:
+                return False
 
-        if status not in VALID_STATUSES:
-            raise ValueError(f"Invalid status: {status}")
+            if status not in VALID_STATUSES:
+                raise ValueError(f"Invalid status: {status}")
 
-        task.properties["status"] = status
-        task.metadata["updated_at"] = datetime.now().isoformat()
+            task.properties["status"] = status
+            task.metadata["updated_at"] = datetime.now().isoformat()
 
-        changes = {"status": status, "updated_at": task.metadata["updated_at"]}
+            changes = {"status": status, "updated_at": task.metadata["updated_at"]}
 
-        if status == STATUS_COMPLETED:
-            task.metadata["completed_at"] = datetime.now().isoformat()
-            changes["completed_at"] = task.metadata["completed_at"]
+            if status == STATUS_COMPLETED:
+                task.metadata["completed_at"] = datetime.now().isoformat()
+                changes["completed_at"] = task.metadata["completed_at"]
 
-        # Log to event log (source of truth)
-        self.event_log.log_node_update(task_id, changes)
+            # Log to event log (source of truth)
+            self.event_log.log_node_update(task_id, changes)
 
-        # Log to WAL for crash recovery
-        self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
+            # Log to WAL for crash recovery
+            self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
 
-        return True
+            return True
 
     def start_task(self, task_id: str) -> bool:
         """Mark task as in progress."""
@@ -1537,31 +1782,32 @@ class GoTProjectManager:
         retrospective: Optional[str] = None,
     ) -> bool:
         """Complete a task with optional retrospective."""
-        task = self.get_task(task_id)
-        if not task:
-            return False
+        with self._lock:
+            task = self.get_task(task_id)
+            if not task:
+                return False
 
-        task.properties["status"] = STATUS_COMPLETED
-        task.metadata["updated_at"] = datetime.now().isoformat()
-        task.metadata["completed_at"] = datetime.now().isoformat()
+            task.properties["status"] = STATUS_COMPLETED
+            task.metadata["updated_at"] = datetime.now().isoformat()
+            task.metadata["completed_at"] = datetime.now().isoformat()
 
-        changes = {
-            "status": STATUS_COMPLETED,
-            "updated_at": task.metadata["updated_at"],
-            "completed_at": task.metadata["completed_at"],
-        }
+            changes = {
+                "status": STATUS_COMPLETED,
+                "updated_at": task.metadata["updated_at"],
+                "completed_at": task.metadata["completed_at"],
+            }
 
-        if retrospective:
-            task.properties["retrospective"] = retrospective
-            changes["retrospective"] = retrospective
+            if retrospective:
+                task.properties["retrospective"] = retrospective
+                changes["retrospective"] = retrospective
 
-        # Log to event log (source of truth)
-        self.event_log.log_node_update(task_id, changes)
+            # Log to event log (source of truth)
+            self.event_log.log_node_update(task_id, changes)
 
-        # Log to WAL for crash recovery
-        self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
+            # Log to WAL for crash recovery
+            self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
 
-        return True
+            return True
 
     def block_task(
         self,
