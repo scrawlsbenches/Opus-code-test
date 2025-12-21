@@ -257,7 +257,8 @@ class DashboardMetrics:
 
         for task in tasks:
             if task.properties.get("status") == "completed":
-                completed_at_str = task.properties.get("completed_at")
+                # Check both metadata and properties for completed_at
+                completed_at_str = task.metadata.get("completed_at") or task.properties.get("completed_at")
                 if completed_at_str:
                     try:
                         if "Z" in completed_at_str:
@@ -281,7 +282,8 @@ class DashboardMetrics:
         for task in tasks:
             if task.properties.get("status") == "completed":
                 created_at_str = task.metadata.get("created_at") or task.properties.get("created_at")
-                completed_at_str = task.properties.get("completed_at")
+                # Check both metadata and properties for completed_at
+                completed_at_str = task.metadata.get("completed_at") or task.properties.get("completed_at")
 
                 if created_at_str and completed_at_str:
                     try:

@@ -358,11 +358,15 @@ class GoTMigrator:
 
     def _process_node_update(self, event: Dict[str, Any]) -> None:
         """Process node.update event."""
-        node_id = event.get("id")
-        updates = event.get("updates", {})
+        raw_node_id = event.get("id")
+        # Events use "changes" not "updates"
+        updates = event.get("changes", event.get("updates", {}))
 
-        if not node_id:
+        if not raw_node_id:
             return
+
+        # Strip prefix from node ID for lookup
+        node_id = self._strip_id_prefix(raw_node_id)
 
         # Update existing entity
         if node_id in self.tasks:
@@ -526,8 +530,17 @@ class GoTMigrator:
 
     def _apply_updates(self, entity: Entity, updates: Dict[str, Any]) -> None:
         """Apply updates to an entity."""
+        # Fields that should go into metadata
+        metadata_fields = {"completed_at", "started_at", "updated_at", "created_at"}
+        # Fields that should go into properties
+        property_fields = {"retrospective", "notes", "sprint_id"}
+
         for key, value in updates.items():
-            if hasattr(entity, key):
+            if key in metadata_fields:
+                entity.metadata[key] = value
+            elif key in property_fields:
+                entity.properties[key] = value
+            elif hasattr(entity, key):
                 setattr(entity, key, value)
 
 
