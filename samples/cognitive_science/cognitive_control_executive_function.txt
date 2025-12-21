@@ -1,0 +1,53 @@
+Cognitive Control and Executive Function
+
+Cognitive control, also called executive function, refers to the set of mental processes that enable goal-directed behavior by regulating thoughts, emotions, and actions. Executive function encompasses abilities including inhibition, working memory updating, task switching, and planning that are essential for adaptive, flexible behavior.
+
+The prefrontal cortex, particularly the dorsolateral and ventrolateral regions, is critical for cognitive control. Patients with prefrontal damage show impaired planning, difficulty inhibiting inappropriate responses, and perseveration on incorrect strategies despite feedback. The prefrontal cortex exerts top-down control over posterior and subcortical regions to implement task-relevant processing.
+
+The unity and diversity framework proposes that executive functions are both related and separable. A common executive function factor underlies general control abilities, while specific factors capture distinct abilities like updating, shifting, and inhibition. This structure explains why executive function measures correlate while also showing dissociable patterns of development and neural substrates.
+
+Inhibitory control involves suppressing prepotent or automatic responses to enable appropriate behavior. The Stroop task measures inhibition by requiring naming ink colors while ignoring conflicting color words. Saying "red" when the word GREEN is printed in red ink requires inhibiting the automatic word reading response.
+
+The anterior cingulate cortex monitors for response conflict, detecting situations where multiple response tendencies compete. Conflict detection signals the need for increased cognitive control, recruiting dorsolateral prefrontal cortex to enhance task-relevant processing and suppress irrelevant responses. This monitoring system enables adaptive control adjustments.
+
+Working memory updating involves maintaining and refreshing task-relevant information while discarding outdated information. The n-back task requires monitoring a sequence and responding when the current item matches the item n steps back. Performance requires continuously updating working memory contents while inhibiting no-longer-relevant items.
+
+Task switching demonstrates cognitive flexibility, the ability to shift between different task sets or mental sets. Switch trials show slower responses and more errors than repeat trials, reflecting the time cost of reconfiguring task sets. The task switching cost varies with preparation time, suggesting that advance preparation can reduce switching demands.
+
+Goal maintenance involves actively maintaining task goals in working memory to guide behavior over time. Patients with prefrontal damage and individuals with low working memory capacity show particular difficulty with goal maintenance, especially when goals must be maintained across delays or interference.
+
+Planning and problem-solving require constructing action sequences to achieve goals. The Tower of Hanoi task measures planning ability through a puzzle requiring moving disks between pegs while following specific rules. Effective planning involves mental simulation of action consequences and selection of optimal sequences.
+
+Dual-task performance reveals executive function limitations. When two demanding tasks are performed concurrently, performance typically declines because both tasks compete for limited executive control resources. The psychological refractory period demonstrates that central processing stages cannot fully overlap, creating a bottleneck in dual-task situations.
+
+Cognitive control develops substantially during childhood and adolescence, paralleling prefrontal cortex maturation. Young children show limited inhibitory control and cognitive flexibility, improving gradually through adolescence. The protracted development of executive function explains why adolescents still show impulse control difficulties despite advanced reasoning abilities.
+
+The Wisconsin Card Sorting Test assesses cognitive flexibility by requiring participants to sort cards according to changing rules. Perseverative errors, continuing to use old rules despite feedback, indicate impaired cognitive flexibility. This test is sensitive to prefrontal dysfunction and shows developmental improvements through adolescence.
+
+Response inhibition can be measured with stop-signal and go/no-go tasks. The stop-signal task requires executing responses to most stimuli but inhibiting responses when a stop signal appears. Stop-signal reaction time, the estimated time needed to inhibit responses, indexes inhibitory control efficiency.
+
+Set-shifting costs demonstrate the need to overcome proactive interference from previous task sets. Even when people have time to prepare for a task switch, residual activation from the previous task set can interfere with performance, showing that reconfiguring cognitive control settings is not instantaneous.
+
+Individual differences in executive function predict important life outcomes including academic achievement, health behaviors, and financial stability. Children with better executive function show greater school readiness and achievement. Adults with stronger executive function make better health decisions and show more effective self-regulation.
+
+ADHD (Attention-Deficit/Hyperactivity Disorder) involves executive function deficits, particularly in response inhibition, working memory, and sustained attention. These deficits contribute to impulsivity, distractibility, and difficulty maintaining goal-directed behavior. Stimulant medications improve executive function in ADHD partly through enhancing prefrontal dopamine and norepinephrine signaling.
+
+The role of dopamine in cognitive control is well-established. Dopamine in prefrontal cortex supports working memory maintenance and cognitive flexibility. The balance between dopamine D1 and D2 receptor activation regulates the stability versus flexibility of working memory representations.
+
+Cognitive control training programs aim to improve executive function through practice. Working memory training, inhibition training, and cognitive flexibility training show improvements on trained tasks, though far transfer to untrained abilities remains controversial. Some meta-analyses suggest modest benefits, while others question training effectiveness.
+
+Mindfulness meditation enhances cognitive control through practice sustaining attention and inhibiting mind-wandering. Regular meditation practice is associated with improved attention, working memory, and emotional regulation. Neural changes include increased prefrontal activation and altered connectivity between prefrontal and default mode network regions.
+
+Age-related decline in executive function is one of the most prominent cognitive changes in older adulthood. Older adults show reduced inhibitory control, cognitive flexibility, and working memory compared to younger adults, though individual differences are substantial and some functions are better preserved than others.
+
+The hierarchical control framework proposes that prefrontal cortex is organized hierarchically, with rostral regions representing more abstract goals and caudal regions implementing specific control processes. This organization enables flexible control at multiple levels of abstraction.
+
+Proactive versus reactive control represent different temporal dynamics of cognitive control. Proactive control involves sustained maintenance of goal-relevant information to prevent interference before it occurs. Reactive control mobilizes attention to resolve interference after it arises. These modes involve partially distinct neural mechanisms and show different developmental trajectories.
+
+Emotion regulation can be viewed as a form of cognitive control applied to emotional responses. Reappraisal and suppression of emotional expression require executive function resources, and individual differences in executive function predict emotion regulation effectiveness.
+
+The exploration-exploitation tradeoff in decision-making involves executive control to balance trying new options (exploration) against choosing known good options (exploitation). Prefrontal cortex, particularly frontopolar regions, is involved in managing this tradeoff and adjusting exploration based on environmental demands.
+
+Understanding cognitive control and executive function has applications across education, clinical psychology, organizational behavior, and human factors. Educational interventions promoting executive function may improve academic outcomes. Clinical treatments targeting executive dysfunction may improve outcomes in ADHD, addiction, and other disorders.
+
+Research continues investigating neural mechanisms, computational principles, development, training, and real-world applications of cognitive control, revealing how the brain implements flexible, goal-directed behavior in complex, changing environments.

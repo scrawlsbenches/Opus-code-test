@@ -1,0 +1,87 @@
+Knowledge Management: Preserving and Amplifying Organizational Intelligence
+
+Knowledge management is the systematic process of creating, capturing, organizing,
+storing, and sharing knowledge within an organization. This discipline recognizes
+that knowledge is a type of organizational asset that requires deliberate stewardship
+to maintain its value and accessibility over time.
+
+The fundamental challenge of knowledge management is that knowledge exists in two
+forms: explicit and tacit. Explicit knowledge consists of information that can be
+readily articulated, documented, and transferred. Tacit knowledge, by contrast,
+resides in people's minds and is difficult to formalize or communicate directly.
+Effective knowledge management addresses both forms.
+
+Organizations that neglect knowledge management experience knowledge loss when team
+members leave or change roles. This loss causes productivity declines, repeated
+mistakes, and reinvention of solutions to previously solved problems. The cumulative
+cost of knowledge loss can be substantial, particularly in knowledge-intensive fields.
+
+A knowledge management system consists of several interconnected components. The
+capture component gathers knowledge as it is created or discovered. The organization
+component structures this knowledge for efficient retrieval. The storage component
+preserves knowledge over time. The sharing component makes knowledge accessible to
+those who need it. Each component plays a critical role in the overall system.
+
+Documentation is a type of explicit knowledge management that transforms tacit
+understanding into written form. Well-crafted documentation enables knowledge transfer
+across time and space, allowing future team members to benefit from past insights.
+The act of documentation itself often clarifies thinking and reveals gaps in
+understanding.
+
+Knowledge bases are a type of centralized repository that aggregates organizational
+knowledge in a searchable format. These systems cause knowledge to become more
+discoverable and accessible than when it resides only in individual minds or scattered
+documents. The effectiveness of a knowledge base depends on both its content quality
+and its organizational structure.
+
+The practice of knowledge management requires creating a culture that values knowledge
+sharing. When organizations reward knowledge hoarding or fail to allocate time for
+documentation, knowledge management initiatives falter. Conversely, when sharing
+knowledge is recognized and rewarded, it becomes embedded in the organizational
+workflow.
+
+Communities of practice are a type of knowledge management structure that brings
+together people with shared interests or expertise. These communities facilitate
+knowledge exchange through regular interactions, shared artifacts, and collaborative
+problem-solving. The informal nature of communities of practice complements formal
+documentation systems.
+
+Knowledge management faces the challenge of keeping information current. Outdated
+knowledge can be worse than no knowledge, as it causes people to make decisions based
+on obsolete information. This challenge requires ongoing maintenance and curation of
+knowledge repositories.
+
+Search and retrieval capabilities are critical components of effective knowledge
+management. If knowledge exists but cannot be found when needed, it provides little
+value. Advanced search techniques, including semantic search and query expansion,
+improve the discoverability of relevant knowledge.
+
+Metadata plays a crucial role in knowledge organization. By tagging knowledge artifacts
+with categories, dates, authors, and relationships, metadata enables more sophisticated
+retrieval and navigation. This structured information causes unstructured content to
+become more manageable and useful.
+
+The relationship between knowledge management and learning is fundamental. Knowledge
+management systems serve as external memory that augments human cognition. This
+augmentation allows organizations to accumulate learning over time rather than
+repeatedly relearning the same lessons.
+
+Knowledge graphs represent an advanced form of knowledge management that captures
+not just information but also the relationships between concepts. These graphs enable
+more sophisticated reasoning and inference, allowing systems to answer questions that
+require connecting multiple pieces of knowledge.
+
+Version control is a type of knowledge management practice that preserves the evolution
+of knowledge artifacts over time. This historical record enables understanding of how
+knowledge developed and provides the ability to recover from errors or explore
+alternative approaches.
+
+The practice of knowledge management consists of both top-down and bottom-up
+approaches. Top-down approaches involve formal systems and processes mandated by
+leadership. Bottom-up approaches emerge organically from practitioners who document
+and share their work. The most effective knowledge management combines both approaches.
+
+Related concepts include documentation practices, organizational memory, learning
+organizations, information retrieval, and decision support systems. These practices
+work together to ensure that knowledge flows effectively through the organization
+and accumulates value over time.

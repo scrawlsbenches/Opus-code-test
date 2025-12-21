@@ -1,0 +1,53 @@
+Distributed Cognition
+
+Distributed cognition is a theoretical framework proposing that cognitive processes are not confined to individual minds but are distributed across people, artifacts, and time. This perspective extends cognitive analysis beyond the individual brain to encompass the broader system including tools, social partners, and environmental structures that participate in cognitive tasks.
+
+Edwin Hutchins pioneered distributed cognition through studies of ship navigation, showing that successful navigation emerges from coordination among multiple crew members using various instruments and representations. No single individual holds all necessary knowledge; instead, cognition is distributed across the navigation team and their tools.
+
+The cognitive system, from a distributed cognition perspective, includes internal processes in individual minds plus external representations and structures. A pilot using instruments is a cognitive system where altitude information exists in the altimeter, speed in the airspeed indicator, and integration across these distributed representations occurs through coordinated perception and action.
+
+External representations offload cognitive processing to the environment. Writing a shopping list distributes memory across mind and paper, reducing working memory demands. Calculators distribute arithmetic processing to external devices. These external resources become integrated into cognitive systems, expanding functional cognitive capacity beyond internal limitations.
+
+Cognitive artifacts are human-made objects that maintain, display, or operate upon information to serve representational functions. Maps, diagrams, charts, and computer interfaces are cognitive artifacts that shape how information is processed. The design of these artifacts influences what cognitive operations are easy or difficult.
+
+Representational state refers to the state of a cognitive system, including both internal mental states and external representational states. In navigation, representational state includes the navigator's knowledge, positions marked on charts, instrument readings, and communication between crew members. Task completion requires propagating information across these representations.
+
+Information flow in distributed cognitive systems crosses boundaries between internal and external representations and between individuals. Successful system performance depends on appropriate information propagation. Errors often result from failures in information propagation, such as when critical information fails to reach the person who needs it.
+
+The coordination of action among multiple agents is central to distributed cognition. Air traffic control involves coordination between controllers, pilots, and automated systems, with successful outcomes depending on effective communication and shared understanding of the situation. Breakdowns in coordination can lead to errors and accidents.
+
+Cultural transmission of knowledge exemplifies distributed cognition across time. Practices, tools, and representations developed by previous generations shape current cognitive work. Mathematical notation systems, for instance, are cultural artifacts that structure mathematical thinking, making some operations easy and others difficult.
+
+Transactive memory systems describe how groups distribute memory across members. In long-term couples or work teams, individuals specialize in different knowledge domains, knowing who knows what rather than storing all information individually. This social distribution of memory increases collective capacity.
+
+Cognitive ethnography is the primary methodological approach in distributed cognition research. Researchers observe cognitive systems in natural settings, documenting how people and artifacts coordinate to accomplish tasks. This reveals emergent properties of cognitive systems not visible when studying individuals in isolation.
+
+The cognitive properties of groups can differ from individual cognitive properties. A research team may be capable of projects beyond any individual member's abilities. Group cognition emerges from interaction between members and shared external representations like documents, models, and databases.
+
+Joint attention and common ground enable distributed cognition in collaborative tasks. Successful collaboration requires establishing shared focus and mutual knowledge. Pointing, gesture, gaze, and language are used to establish and maintain joint attention, enabling coordinated action toward shared goals.
+
+Situated learning emphasizes that learning occurs through participation in distributed cognitive systems. Apprentices learn by engaging with expert practitioners in authentic activities, gradually taking on more responsibility within the distributed cognitive system. Learning involves becoming effectively coordinated with tools and social partners.
+
+The design of work environments and tools profoundly affects distributed cognitive system performance. Well-designed cockpit layouts support effective scanning and information integration, while poor designs create coordination challenges. User interface design is fundamentally about supporting distributed cognition across humans and computers.
+
+Cognitive load in distributed systems differs from individual cognitive load. External resources can reduce individual cognitive load, but coordination itself imposes load. Effective system design balances internal processing demands with coordination costs.
+
+Shared mental models support team coordination by enabling members to anticipate each other's needs and actions. When team members have compatible models of the task, equipment, and team, they can coordinate implicitly without extensive communication. Training often aims to develop shared mental models.
+
+The telephone as a cognitive artifact illustrates distribution across time and space. Phone conversations extend individual cognition by creating a shared auditory channel connecting geographically separated individuals. The technology enables cognitive coordination impossible without it.
+
+Scientific laboratories exemplify complex distributed cognitive systems. Instruments generate data, representations on screens and printouts make patterns visible, scientists coordinate interpretations, and inscriptions carry knowledge across time and space. Scientific progress emerges from this distributed system, not solely from individual genius.
+
+Computer-supported cooperative work examines how technology mediates distributed cognition in collaborative tasks. Email, shared documents, video conferencing, and specialized collaboration tools create infrastructure for distributed cognitive work. Design choices affect what collaborations are supported or impeded.
+
+The extended mind thesis, proposed by Andy Clark and David Chalmers, argues that cognitive processes can literally extend beyond the brain to include external resources. If a person habitually uses a notebook for memory, the notebook may genuinely be part of their cognitive system, not merely a tool used by their internal cognition.
+
+Social cognition itself is often distributed. Understanding complex social situations may require perspective-taking distributed across conversations with different people, each providing partial information. Social knowledge is distributed across community members rather than fully possessed by individuals.
+
+Knowledge systems like libraries and databases represent cultural distributed cognition. These external memory systems store far more information than any individual could retain, organized through classification systems that structure knowledge access. Effective use requires knowing how to query and navigate these distributed knowledge structures.
+
+Educational technology increasingly supports distributed cognition. Online learning platforms distribute instruction across human instructors, peer learners, automated systems, and multimedia resources. Effective learning environments coordinate these distributed resources to support student cognition.
+
+Distributed cognition has practical implications for system design, training, and error analysis. Analyzing cognitive systems rather than individuals reveals design opportunities and failure modes invisible in traditional cognitive analyses. This approach informs human factors engineering, organizational design, and technology development.
+
+Future research continues investigating how cognition is distributed across brain, body, tools, and social partners, revealing that the unit of cognitive analysis often extends far beyond the individual mind to encompass the broader sociotechnical systems in which cognitive work occurs.

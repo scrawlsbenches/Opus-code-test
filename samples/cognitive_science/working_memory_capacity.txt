@@ -1,0 +1,39 @@
+Working Memory Capacity
+
+Working memory is a cognitive system responsible for temporarily holding and manipulating information during complex cognitive tasks. Working memory capacity refers to the limited amount of information that can be actively maintained and processed at any given moment. This capacity constraint has profound implications for learning, reasoning, and problem-solving.
+
+Alan Baddeley's influential model of working memory proposes a multi-component architecture consisting of the central executive, phonological loop, visuospatial sketchpad, and episodic buffer. The central executive functions as an attentional control system that coordinates the subsidiary storage systems and manages cognitive resources.
+
+The phonological loop is responsible for storing verbal and acoustic information through active rehearsal. This component of working memory has a limited capacity of approximately two seconds worth of speech or around seven items, though this varies with individual differences. The phonological loop consists of a phonological store that holds auditory information and an articulatory rehearsal process that refreshes decaying memory traces.
+
+The visuospatial sketchpad maintains visual and spatial information in working memory. Like the phonological loop, the visuospatial sketchpad has limited capacity and is used for tasks such as mental imagery, spatial navigation, and visual problem-solving. These two systems can operate relatively independently, allowing for simultaneous processing of verbal and visual information.
+
+The episodic buffer, added later to Baddeley's model, integrates information from the phonological loop, visuospatial sketchpad, and long-term memory into coherent episodes. This component addresses how working memory interfaces with long-term memory and creates unified representations from multiple sources.
+
+Working memory capacity is typically measured using span tasks, where participants must remember and recall sequences of items. The classic digit span task assesses phonological loop capacity, while spatial span tasks measure visuospatial working memory. Complex span tasks that require both storage and processing provide better predictions of higher-order cognitive abilities.
+
+Individual differences in working memory capacity are substantial and correlate strongly with fluid intelligence, academic achievement, and reading comprehension. People with higher working memory capacity can maintain more information active simultaneously and show better resistance to distraction and interference.
+
+Chunking is a powerful strategy for overcoming working memory capacity limitations. By grouping individual items into meaningful units, chunking allows more information to be held within the same capacity constraints. For example, the sequence "FBI CIA NASA" is easier to remember as three chunks than as nine individual letters.
+
+Cognitive load theory, which builds upon working memory research, distinguishes between intrinsic, extraneous, and germane cognitive load. Working memory capacity constraints mean that instructional design must carefully manage these different types of load to optimize learning.
+
+Working memory capacity declines with age, particularly the functioning of the central executive. Older adults show reduced ability to inhibit irrelevant information and switch between tasks, though they may compensate through greater use of long-term memory and accumulated knowledge.
+
+The prefrontal cortex plays a critical role in working memory, particularly in executive control and manipulation of information. Neuroimaging studies show sustained activation in prefrontal regions during working memory tasks, with activation levels increasing with memory load up to capacity limits.
+
+Dopamine neurotransmission in prefrontal cortex strongly influences working memory performance. Both too little and too much dopamine can impair working memory, suggesting an inverted-U relationship between dopamine levels and working memory capacity.
+
+Training programs aimed at expanding working memory capacity have shown mixed results. While performance on trained tasks improves, transfer to untrained tasks and general cognitive abilities remains controversial. Some studies suggest that working memory training may improve attentional control rather than expanding fundamental capacity.
+
+Working memory and attention are closely intertwined, with attention determining what information enters working memory and working memory guiding the focus of attention. This bidirectional relationship suggests that working memory capacity limitations may partly reflect attentional constraints.
+
+The relationship between working memory and long-term memory is complex and bidirectional. Long-term memory knowledge can enhance working memory performance through chunking and meaningful encoding, while working memory processes are essential for encoding new information into long-term memory.
+
+Dual-task interference demonstrates working memory capacity limitations. When people attempt to perform two demanding tasks simultaneously, performance typically suffers because both tasks compete for limited working memory resources. However, tasks that rely on different working memory components show less interference than tasks using the same component.
+
+Working memory capacity constraints have important implications for education and instruction. Teachers must be mindful of the limited capacity of students' working memory when presenting new information, using strategies like worked examples and reducing extraneous cognitive load to maximize learning effectiveness.
+
+The concept of working memory capacity continues to evolve, with current research exploring whether capacity limitations reflect storage constraints, attentional limitations, or interference from competing representations. Understanding these fundamental limits remains central to cognitive psychology and has applications across education, clinical psychology, and human factors.
+
+Working memory serves as a mental workspace where information from perception and long-term memory is actively maintained and transformed. This dynamic interplay between temporary storage and active processing makes working memory essential for virtually all complex cognitive activities.
