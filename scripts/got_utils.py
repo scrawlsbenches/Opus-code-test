@@ -1044,11 +1044,21 @@ class EventLog:
                         telemetry["errors"] += 1
 
                 elif event_type == "edge.delete":
-                    # Find and remove the edge
+                    # Find and remove the edge from the list
                     edge_key = (event["src"], event["tgt"], event.get("type", ""))
-                    for eid, edge in list(graph.edges.items()):
+                    for i, edge in enumerate(graph.edges):
                         if (edge.source_id, edge.target_id, edge.edge_type.name) == edge_key:
-                            del graph.edges[eid]
+                            # Remove from main list
+                            graph.edges.pop(i)
+                            # Also remove from edge indices
+                            if edge.source_id in graph._edges_from:
+                                graph._edges_from[edge.source_id] = [
+                                    e for e in graph._edges_from[edge.source_id] if e != edge
+                                ]
+                            if edge.target_id in graph._edges_to:
+                                graph._edges_to[edge.target_id] = [
+                                    e for e in graph._edges_to[edge.target_id] if e != edge
+                                ]
                             break
 
                 elif event_type == "decision.create":
@@ -1880,10 +1890,17 @@ class TransactionalGoTAdapter:
             if entities_dir.exists():
                 edge_count = len(list(entities_dir.glob("E-*.json")))
 
+            # Count sprints and epics (not yet fully supported in TX backend)
+            sprints = self.list_sprints()
+            # list_epics doesn't exist on adapter yet, so default to empty
+            epics = getattr(self, 'list_epics', lambda: [])()
+
             return {
                 "total_tasks": len(all_tasks),
                 "tasks_by_status": by_status,
                 "total_edges": edge_count,
+                "total_sprints": len(sprints),
+                "total_epics": len(epics),
             }
         except Exception as e:
             logger.error(f"Failed to get stats: {e}")
@@ -1891,6 +1908,8 @@ class TransactionalGoTAdapter:
                 "total_tasks": 0,
                 "tasks_by_status": {},
                 "total_edges": 0,
+                "total_sprints": 0,
+                "total_epics": 0,
             }
 
     def get_all_relationships(self, task_id: str) -> Dict[str, List[ThoughtNode]]:
@@ -2151,6 +2170,9 @@ class TransactionalGoTAdapter:
         return None
 
     def list_sprints(self, *args, **kwargs) -> List:
+        return []
+
+    def list_epics(self, *args, **kwargs) -> List:
         return []
 
     def initiate_handoff(self, *args, **kwargs) -> str:
