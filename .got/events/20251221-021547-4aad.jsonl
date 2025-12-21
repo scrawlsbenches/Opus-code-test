@@ -1,0 +1,1 @@
+{"ts": "2025-12-21T02:15:47.900708Z", "event": "node.create", "meta": {"branch": "claude/test-task-workflow-gRXq7", "session": "20251221-021547-4aad"}, "id": "task:T-20251221-021547-f8e6", "type": "TASK", "data": {"title": "Investigate decision command failure - Exit code 2", "status": "pending", "priority": "high", "category": "bugfix", "description": ""}}

@@ -505,7 +505,8 @@ class ComputeMixin:
             with open(temp_progress_file, 'w', encoding='utf-8') as f:
                 json.dump(progress_data, f, indent=2, ensure_ascii=False)
             temp_progress_file.replace(progress_file)
-        except Exception:
+        except OSError:
+            # Clean up temp file on I/O errors (permissions, disk full, etc.)
             if temp_progress_file.exists():
                 temp_progress_file.unlink()
             raise

@@ -44,6 +44,7 @@ from .diff import (
     compare_documents,
     what_changed
 )
+from .async_api import AsyncProcessor
 # Pickle support removed - JSON-only persistence now
 
 # MCP Server support (optional import) - now in cortical.projects.mcp
@@ -85,6 +86,8 @@ __all__ = [
     "compare_processors",
     "compare_documents",
     "what_changed",
+    # Async API
+    "AsyncProcessor",
 ]
 
 # Add MCP exports if available

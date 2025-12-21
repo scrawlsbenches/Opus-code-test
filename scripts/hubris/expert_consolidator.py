@@ -30,6 +30,7 @@ from experts.file_expert import FileExpert
 from experts.test_expert import TestExpert
 from experts.error_expert import ErrorDiagnosisExpert
 from experts.episode_expert import EpisodeExpert
+from experts.refactor_expert import RefactorExpert
 
 
 class ExpertConsolidator:
@@ -54,6 +55,7 @@ class ExpertConsolidator:
         'test': TestExpert,
         'error': ErrorDiagnosisExpert,
         'episode': EpisodeExpert,
+        'refactor': RefactorExpert,
     }
 
     def __init__(self, model_dir: Optional[Path] = None):
@@ -188,6 +190,20 @@ class ExpertConsolidator:
             except Exception as e:
                 print(f"Error training ErrorDiagnosisExpert: {e}")
                 results['error'] = False
+
+        # Train RefactorExpert on commits (filters for refactor: commits internally)
+        if commits and 'refactor' in self.EXPERT_CLASSES:
+            try:
+                if 'refactor' not in self.experts:
+                    self.experts['refactor'] = RefactorExpert()
+
+                self.experts['refactor'].train(commits)
+                refactor_count = self.experts['refactor'].trained_on_commits
+                results['refactor'] = refactor_count > 0
+                print(f"Trained RefactorExpert on {refactor_count} refactoring commits")
+            except Exception as e:
+                print(f"Error training RefactorExpert: {e}")
+                results['refactor'] = False
 
         return results
 

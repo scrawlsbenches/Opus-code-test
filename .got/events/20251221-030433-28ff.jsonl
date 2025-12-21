@@ -1,0 +1,1 @@
+{"ts": "2025-12-21T03:04:34.051011Z", "event": "node.create", "meta": {"branch": "claude/test-task-workflow-gRXq7", "session": "20251221-030433-28ff"}, "id": "task:T-20251221-030434-3529", "type": "TASK", "data": {"title": "Test Task 1", "status": "pending", "priority": "high", "category": "feature", "description": ""}}

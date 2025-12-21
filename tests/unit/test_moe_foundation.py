@@ -979,12 +979,13 @@ class TestExpertConsolidator(unittest.TestCase):
         consolidator = ExpertConsolidator()
         consolidator.create_all_experts()
 
-        # Should have all 4 expert types
-        self.assertEqual(len(consolidator.experts), 4)
+        # Should have all 5 expert types
+        self.assertEqual(len(consolidator.experts), 5)
         self.assertIn('file', consolidator.experts)
         self.assertIn('test', consolidator.experts)
         self.assertIn('error', consolidator.experts)
         self.assertIn('episode', consolidator.experts)
+        self.assertIn('refactor', consolidator.experts)
 
     def test_consolidate_training(self):
         """Test training all experts with appropriate data."""
@@ -1102,8 +1103,9 @@ class TestExpertConsolidator(unittest.TestCase):
         stats = consolidator.get_training_stats()
 
         # Should have stats for all experts
-        self.assertEqual(len(stats), 4)
+        self.assertEqual(len(stats), 5)
         self.assertIn('file', stats)
+        self.assertIn('refactor', stats)
         self.assertIn('version', stats['file'])
         self.assertIn('created_at', stats['file'])
 

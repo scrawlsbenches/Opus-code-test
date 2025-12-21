@@ -1,0 +1,1 @@
+{"ts": "2025-12-21T02:00:47.937831Z", "event": "node.create", "meta": {"branch": "claude/test-task-workflow-gRXq7", "session": "20251221-020047-45b6"}, "id": "task:T-20251221-020047-0c52", "type": "TASK", "data": {"title": "Add error logging in rebuild_graph_from_events for silent failures", "status": "pending", "priority": "high", "category": "bugfix", "description": ""}}
