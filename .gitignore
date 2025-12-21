@@ -131,3 +131,20 @@ cortical/proto/__pycache__/
 samples/memories/\[DRAFT\]-*
 .git-ml/current_session.json
 corpus_dev/
+
+# Graph of Thought - Tiered persistence (mirrors .git-ml strategy)
+# TRACKED IN GIT (source of truth for project coordination):
+#   - .got/events/          - Append-only event logs (TRUE source of truth)
+#   - .got/snapshots/       - Compressed graph snapshots (cache, can rebuild)
+#   - .got/tracked/         - Exported task/sprint/epic state
+# LOCAL ONLY (transient recovery data):
+#   - .got/wal/             - Write-ahead logs (crash recovery only)
+#   - .got/chunks/          - Chunk-based storage (local cache)
+.got/wal/
+.got/chunks/
+
+# Ensure git-tracked directories are not ignored
+!.got/
+!.got/events/
+!.got/snapshots/
+!.got/tracked/

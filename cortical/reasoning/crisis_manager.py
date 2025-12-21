@@ -395,7 +395,10 @@ class CrisisManager:
         for handler in self._on_crisis:
             try:
                 handler(event)
-            except Exception:
+            except Exception:  # noqa: S110
+                # Broad exception catch is intentional: handlers are user-provided
+                # callbacks and we don't know what they might raise. We must not
+                # let a failing handler break crisis reporting.
                 pass
 
         # Auto-escalate CRISIS level
@@ -403,7 +406,10 @@ class CrisisManager:
             for handler in self._on_escalation:
                 try:
                     handler(event)
-                except Exception:
+                except Exception:  # noqa: S110
+                    # Broad exception catch is intentional: handlers are user-provided
+                    # callbacks and we don't know what they might raise. We must not
+                    # let a failing handler break crisis escalation.
                     pass
 
         return event
@@ -619,7 +625,11 @@ class RecoveryProcedures:
                     return result.get('success', False)
                 return False
             return False
-        except Exception:
+        except (RuntimeError, subprocess.CalledProcessError, AttributeError, TypeError):
+            # Recovery action failed due to:
+            # - RuntimeError: Git not available
+            # - CalledProcessError: Git command failed
+            # - AttributeError/TypeError: Unexpected result structure
             return False
 
     def escalate(self, crisis: CrisisEvent) -> CrisisLevel:

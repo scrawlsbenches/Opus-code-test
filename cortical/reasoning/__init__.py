@@ -76,13 +76,24 @@ from .cognitive_loop import (
     CognitiveLoop,
     CognitiveLoopManager,
     # Stub classes (for extension)
-    NestedLoopExecutor,
     LoopStateSerializer,
+)
+
+from .nested_loop import (
+    NestedLoopExecutor,
+    LoopContext,
 )
 
 from .loop_validator import (
     LoopValidator,
     ValidationResult,
+)
+
+from .qapv_verification import (
+    QAPVAnomaly,
+    TransitionEvent,
+    AnomalyReport,
+    QAPVVerifier,
 )
 
 # =============================================================================
@@ -178,6 +189,11 @@ from .claude_code_spawner import (
     ClaudeCodeSpawner,
     TaskToolConfig,
     generate_parallel_task_calls,
+    # Subprocess spawning
+    SubprocessClaudeCodeSpawner,
+    SpawnResult,
+    SpawnHandle,
+    SpawnMetrics,
 )
 
 # =============================================================================
@@ -194,6 +210,60 @@ from .graph_persistence import (
     GraphRecovery,
     GraphRecoveryResult,
     GraphSnapshot,
+)
+
+# =============================================================================
+# CONTEXT POOL (Multi-Agent Coordination)
+# =============================================================================
+
+from .context_pool import (
+    ContextFinding,
+    ContextPool,
+    ConflictResolutionStrategy,
+)
+
+# =============================================================================
+# AGENT REJECTION PROTOCOL
+# =============================================================================
+
+from .rejection_protocol import (
+    # Enums
+    RejectionReason,
+    DecisionType,
+    # Core classes
+    TaskRejection,
+    RejectionValidator,
+    RejectionDecision,
+    # GoT integration
+    log_rejection_to_got,
+    analyze_rejection_patterns,
+)
+
+# =============================================================================
+# PUB/SUB MESSAGING SYSTEM
+# =============================================================================
+
+from .pubsub import (
+    # Enums
+    MessageStatus,
+    # Core classes
+    Message,
+    Subscription,
+    PubSubBroker,
+    # Helper functions
+    create_topic_filter,
+    create_payload_filter,
+)
+
+# =============================================================================
+# METRICS AND OBSERVABILITY
+# =============================================================================
+
+from .metrics import (
+    PhaseMetrics,
+    ReasoningMetrics,
+    MetricsContextManager,
+    create_loop_metrics_handler,
 )
 
 # =============================================================================
@@ -242,9 +312,14 @@ __all__ = [
     'CognitiveLoop',
     'CognitiveLoopManager',
     'NestedLoopExecutor',
+    'LoopContext',
     'LoopStateSerializer',
     'LoopValidator',
     'ValidationResult',
+    'QAPVAnomaly',
+    'TransitionEvent',
+    'AnomalyReport',
+    'QAPVVerifier',
 
     # === Production State ===
     'ProductionState',
@@ -304,6 +379,10 @@ __all__ = [
     'ClaudeCodeSpawner',
     'TaskToolConfig',
     'generate_parallel_task_calls',
+    'SubprocessClaudeCodeSpawner',
+    'SpawnResult',
+    'SpawnHandle',
+    'SpawnMetrics',
 
     # === Graph Persistence ===
     'GitAutoCommitter',
@@ -312,6 +391,34 @@ __all__ = [
     'GraphRecovery',
     'GraphRecoveryResult',
     'GraphSnapshot',
+
+    # === Context Pool ===
+    'ContextFinding',
+    'ContextPool',
+    'ConflictResolutionStrategy',
+
+    # === Agent Rejection Protocol ===
+    'RejectionReason',
+    'DecisionType',
+    'TaskRejection',
+    'RejectionValidator',
+    'RejectionDecision',
+    'log_rejection_to_got',
+    'analyze_rejection_patterns',
+
+    # === Pub/Sub Messaging ===
+    'MessageStatus',
+    'Message',
+    'Subscription',
+    'PubSubBroker',
+    'create_topic_filter',
+    'create_payload_filter',
+
+    # === Metrics and Observability ===
+    'PhaseMetrics',
+    'ReasoningMetrics',
+    'MetricsContextManager',
+    'create_loop_metrics_handler',
 
     # === Main Workflow ===
     'WorkflowContext',

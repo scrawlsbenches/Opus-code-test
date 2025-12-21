@@ -1,0 +1,63 @@
+Reasoning Trace Logging for Decision Provenance
+
+Complex reasoning systems must track not only what decisions were made, but why they were made and what alternatives were considered. Reasoning trace logging captures the complete provenance of decisions, enabling post-hoc analysis, debugging, and knowledge transfer across reasoning sessions.
+
+Decision Logging with Rationale
+
+Every significant decision point generates a trace entry recording the question asked, alternatives considered, chosen option, and rationale for the choice. This transforms opaque reasoning into transparent, auditable processes. When debugging why a system made a particular choice, trace logs reveal the context and justification at decision time.
+
+Structured decision entries contain four essential components:
+- Question: What needed to be decided
+- Alternatives: Options considered, with evaluation criteria
+- Choice: Selected option with confidence level
+- Rationale: Reasoning process leading to the choice
+
+This structure supports both human review and automated analysis. Pattern detection identifies recurring decision types. Confidence tracking reveals which decisions need validation or have high uncertainty.
+
+Temporal Context Preservation
+
+Decisions exist in temporal context - earlier choices constrain later options. Trace logs preserve this ordering, enabling reconstruction of reasoning chains. Each entry timestamps its creation, establishing a total ordering across distributed reasoning processes.
+
+Causal dependencies link related decisions. When Decision B builds on Decision A, the trace records this dependency explicitly. Graph representations of these dependencies reveal reasoning structure - sequential chains for linear reasoning, tree structures for exploring alternatives, or directed acyclic graphs for complex dependencies.
+
+Integration with Event Sourcing
+
+Reasoning traces implement event sourcing patterns. Each decision becomes an immutable event in an append-only log. Current reasoning state derives from replaying trace events. This provides natural audit trails and enables temporal queries about reasoning state at any historical point.
+
+Write-ahead logging ensures trace durability. Decisions first write to the trace log, then update in-memory reasoning structures. If failures occur, replaying the trace log reconstructs the complete reasoning state. This separates durability concerns from performance optimization of in-memory structures.
+
+Auto-Edge Inference from Traces
+
+Trace logs enable automatic inference of reasoning graph edges. When Decision B references concepts from Decision A, the system infers a dependency edge. Git commit analysis extends this - commits modifying related files suggest conceptual connections. The trace log combined with version control provides rich signals for graph construction.
+
+Relationship types emerge from trace patterns:
+- DEPENDS_ON: Decision B requires Decision A's result
+- CONTRADICTS: Decision B invalidates Decision A
+- REFINES: Decision B elaborates on Decision A
+- VALIDATES: Decision B confirms Decision A
+
+Automated inference bootstraps graph structure from unstructured traces. Human annotations then refine the automatically generated graph.
+
+Query and Analysis
+
+Trace logs support retrospective analysis queries:
+- "What led to decision X?" - Traverse dependency edges backward
+- "What depended on decision Y?" - Traverse forward from a decision
+- "What alternatives were considered for Z?" - Extract alternative lists
+- "Which decisions have low confidence?" - Filter by confidence threshold
+
+These queries transform opaque reasoning into searchable knowledge bases. New reasoning sessions query previous traces to avoid repeating work or learn from past successes and failures.
+
+Multi-Agent Coordination
+
+In multi-agent systems, trace logs synchronize understanding across agents. Agent A's decision log becomes input to Agent B's reasoning. Handoff protocols transfer not just current state but complete reasoning history, enabling seamless continuation.
+
+Trace log merging combines reasoning from parallel agents. When agents work independently then converge, their trace logs merge by timestamp ordering. Conflict detection identifies contradictory decisions requiring resolution. The merged trace provides a complete history of distributed reasoning.
+
+Performance and Storage
+
+Trace logging adds overhead to decision-making processes. Asynchronous logging amortizes this cost - decisions write to in-memory buffers, background threads flush to durable storage. This maintains low latency for the critical reasoning path.
+
+Log compaction manages storage growth. After reasoning completes, compress related traces into summary form. Retain key decisions and final rationale while eliminating intermediate exploration. Snapshot final reasoning state, using traces primarily for audit and debugging rather than operational reconstruction.
+
+The reasoning trace log transforms ephemeral thought processes into persistent, analyzable artifacts. This enables continuous improvement of reasoning systems through empirical analysis of decision patterns and outcomes.

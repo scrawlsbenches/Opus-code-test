@@ -1,0 +1,1 @@
+{"ts": "2025-12-20T21:47:45.660093Z", "event": "node.create", "meta": {"branch": "claude/code-review-history-ckKBt", "session": "20251220-214745-582e"}, "id": "task:T-20251220-214745-ed0e", "type": "TASK", "data": {"title": "Behavioral tests for GoT workflow", "status": "pending", "priority": "high", "category": "test", "description": ""}}

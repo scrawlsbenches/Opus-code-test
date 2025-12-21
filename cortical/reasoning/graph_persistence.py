@@ -1802,7 +1802,12 @@ class GraphRecovery:
 
             return graph
 
-        except Exception:
+        except (KeyError, TypeError, AttributeError, ValueError) as e:
+            # Failed to reconstruct graph from snapshot data due to:
+            # - KeyError: Missing expected keys in snapshot dict
+            # - TypeError: Invalid types for NodeType/EdgeType enum values
+            # - ValueError: Invalid enum values (e.g., 'invalid_type' for NodeType)
+            # - AttributeError: Missing methods/attributes during reconstruction
             return None
 
     def _apply_wal_entry(self, entry: WALEntry, graph: ThoughtGraph) -> None:

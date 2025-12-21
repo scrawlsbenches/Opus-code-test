@@ -376,8 +376,11 @@ class ProductionManager:
         for handler in self._state_change_handlers:
             try:
                 handler(task, old_state, new_state)
-            except Exception:
-                pass  # Don't fail on handler errors
+            except Exception:  # noqa: S110
+                # Broad exception catch is intentional: handlers are user-provided
+                # callbacks and we don't know what they might raise. We must not
+                # let a failing handler break state transition tracking.
+                pass
 
     def get_summary(self) -> Dict[str, Any]:
         """Get aggregate summary of all tasks."""
