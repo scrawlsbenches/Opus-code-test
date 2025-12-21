@@ -33,6 +33,7 @@ from got_utils import (
     GoTProjectManager,
     cmd_task_create,
     cmd_task_list,
+    cmd_task_show,
     cmd_task_start,
     cmd_task_complete,
     cmd_task_block,
@@ -274,6 +275,182 @@ class TestTaskStart:
         assert result == 1
         assert "not found" in captured.getvalue()
         mock_manager.save.assert_not_called()
+
+
+class TestTaskShow:
+    """Tests for task show command - isolated unit tests."""
+
+    def test_show_existing_task(self, mock_manager, mock_args):
+        """Show details of an existing task."""
+        mock_args.task_id = "task:T-001"
+
+        # Create a mock task node
+        task_node = ThoughtNode(
+            id="task:T-001",
+            node_type=NodeType.TASK,
+            content="Fix authentication bug",
+            properties={
+                "status": "in_progress",
+                "priority": "high",
+                "category": "bugfix",
+                "description": "Users cannot login"
+            },
+            metadata={
+                "created_at": "2025-12-20T10:00:00Z",
+                "updated_at": "2025-12-20T11:00:00Z"
+            }
+        )
+        mock_manager.get_task.return_value = task_node
+        mock_manager.get_task_dependencies.return_value = []
+        mock_manager.what_depends_on.return_value = []
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_show(mock_args, mock_manager)
+
+        assert result == 0
+        output = captured.getvalue()
+        assert "task:T-001" in output
+        assert "Fix authentication bug" in output
+        assert "in_progress" in output
+        assert "high" in output
+
+    def test_show_nonexistent_task(self, mock_manager, mock_args):
+        """Show returns error for nonexistent task."""
+        mock_args.task_id = "T-NONEXISTENT"
+        mock_manager.get_task.return_value = None
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_show(mock_args, mock_manager)
+
+        assert result == 1
+        assert "not found" in captured.getvalue()
+
+    def test_show_task_with_dependencies(self, mock_manager, mock_args):
+        """Show displays task dependencies."""
+        mock_args.task_id = "task:T-002"
+
+        # Main task
+        task_node = ThoughtNode(
+            id="task:T-002",
+            node_type=NodeType.TASK,
+            content="Implement feature",
+            properties={"status": "pending", "priority": "medium", "category": "feature"},
+            metadata={}
+        )
+
+        # Dependency
+        dep_node = ThoughtNode(
+            id="task:T-001",
+            node_type=NodeType.TASK,
+            content="Design database schema",
+            properties={},
+            metadata={}
+        )
+
+        mock_manager.get_task.return_value = task_node
+        mock_manager.get_task_dependencies.return_value = [dep_node]
+        mock_manager.what_depends_on.return_value = []
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_show(mock_args, mock_manager)
+
+        assert result == 0
+        output = captured.getvalue()
+        assert "Depends On" in output
+        assert "task:T-001" in output
+        assert "Design database schema" in output
+
+    def test_show_task_with_dependents(self, mock_manager, mock_args):
+        """Show displays tasks that depend on this one."""
+        mock_args.task_id = "task:T-001"
+
+        # Main task
+        task_node = ThoughtNode(
+            id="task:T-001",
+            node_type=NodeType.TASK,
+            content="Core library",
+            properties={"status": "completed", "priority": "high", "category": "feature"},
+            metadata={}
+        )
+
+        # Dependent task
+        dependent_node = ThoughtNode(
+            id="task:T-002",
+            node_type=NodeType.TASK,
+            content="Build on core",
+            properties={},
+            metadata={}
+        )
+
+        mock_manager.get_task.return_value = task_node
+        mock_manager.get_task_dependencies.return_value = []
+        mock_manager.what_depends_on.return_value = [dependent_node]
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_show(mock_args, mock_manager)
+
+        assert result == 0
+        output = captured.getvalue()
+        assert "Blocks" in output
+        assert "task:T-002" in output
+        assert "Build on core" in output
+
+    def test_show_with_id_normalization_bare_id(self, mock_manager, mock_args):
+        """Show normalizes bare task ID (without task: prefix)."""
+        mock_args.task_id = "T-20251220-001"
+
+        # First call with bare ID returns None
+        # Second call with prefixed ID returns the task
+        task_node = ThoughtNode(
+            id="task:T-20251220-001",
+            node_type=NodeType.TASK,
+            content="Test task",
+            properties={"status": "pending", "priority": "low", "category": "feature"},
+            metadata={}
+        )
+
+        # get_task returns None for bare ID, then task for prefixed ID
+        mock_manager.get_task.side_effect = [None, task_node]
+        mock_manager.get_task_dependencies.return_value = []
+        mock_manager.what_depends_on.return_value = []
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_show(mock_args, mock_manager)
+
+        assert result == 0
+        # Verify it tried with prefix after bare ID failed
+        calls = mock_manager.get_task.call_args_list
+        assert len(calls) == 2
+        assert calls[0][0][0] == "T-20251220-001"
+        assert calls[1][0][0] == "task:T-20251220-001"
+
+    def test_show_with_retrospective(self, mock_manager, mock_args):
+        """Show displays retrospective if present."""
+        mock_args.task_id = "task:T-001"
+
+        task_node = ThoughtNode(
+            id="task:T-001",
+            node_type=NodeType.TASK,
+            content="Completed task",
+            properties={
+                "status": "completed",
+                "priority": "high",
+                "category": "bugfix",
+                "retrospective": "Fixed by updating dependency"
+            },
+            metadata={"completed_at": "2025-12-20T15:00:00Z"}
+        )
+        mock_manager.get_task.return_value = task_node
+        mock_manager.get_task_dependencies.return_value = []
+        mock_manager.what_depends_on.return_value = []
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_task_show(mock_args, mock_manager)
+
+        assert result == 0
+        output = captured.getvalue()
+        assert "Retrospective" in output
+        assert "Fixed by updating dependency" in output
 
 
 class TestTaskComplete:
