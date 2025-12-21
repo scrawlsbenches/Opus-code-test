@@ -16,8 +16,10 @@ See docs/got-cli-spec.md for complete command reference.
 
 import argparse
 import json
+import logging
 import os
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -30,6 +32,9 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from cortical.reasoning.thought_graph import ThoughtGraph
 from cortical.reasoning.graph_of_thought import NodeType, EdgeType, ThoughtNode
 from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -131,6 +136,48 @@ def generate_session_id() -> str:
 # EVENT LOGGING (Source of Truth for Cross-Branch Coordination)
 # =============================================================================
 
+def atomic_append(filepath: str, content: str) -> None:
+    """
+    Append content to file atomically to prevent partial writes.
+
+    Writes to a temporary file first, then appends atomically to the target.
+    This prevents corruption if the process is interrupted during write.
+
+    Args:
+        filepath: Path to the file to append to
+        content: Content to append (should include newline if needed)
+    """
+    filepath = Path(filepath)
+    dir_path = filepath.parent
+
+    # Write content to temp file in same directory (for atomic operations)
+    fd, tmp_path = tempfile.mkstemp(dir=dir_path, suffix='.tmp', text=True)
+    try:
+        # Write and flush to temp file
+        with os.fdopen(fd, 'w') as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+
+        # Append from temp file to target file
+        with open(tmp_path, 'r') as src:
+            data = src.read()
+            with open(filepath, 'a') as dst:
+                dst.write(data)
+                dst.flush()
+                os.fsync(dst.fileno())
+
+        # Clean up temp file
+        os.unlink(tmp_path)
+    except Exception:
+        # Clean up temp file on failure
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+        raise
+
+
 class EventLog:
     """
     Append-only event log for merge-friendly persistence.
@@ -159,8 +206,8 @@ class EventLog:
             },
             **data
         }
-        with open(self.event_file, "a") as f:
-            f.write(json.dumps(event, default=str) + "\n")
+        # Use atomic append to prevent partial writes
+        atomic_append(self.event_file, json.dumps(event, default=str) + "\n")
         return event
 
     def log_node_create(self, node_id: str, node_type: str, data: Dict) -> Dict:
@@ -414,21 +461,33 @@ class EventLog:
     def rebuild_graph_from_events(cls, events: List[Dict]) -> ThoughtGraph:
         """Rebuild a ThoughtGraph from events (event sourcing)."""
         graph = ThoughtGraph()
+        errors = []
+        event_num = 0
 
         for event in events:
+            event_num += 1
             event_type = event.get("event", "")
 
             try:
                 if event_type == "node.create":
-                    node_type_str = event.get("type", "TASK").upper()
-                    node_type = NodeType[node_type_str] if hasattr(NodeType, node_type_str) else NodeType.TASK
-                    graph.add_node(
-                        node_id=event["id"],
-                        node_type=node_type,
-                        content=event.get("data", {}).get("title", ""),
-                        properties=event.get("data", {}),
-                        metadata=event.get("meta", {})
-                    )
+                    try:
+                        node_type_str = event.get("type", "TASK").upper()
+                        node_type = NodeType[node_type_str] if hasattr(NodeType, node_type_str) else NodeType.TASK
+                        graph.add_node(
+                            node_id=event["id"],
+                            node_type=node_type,
+                            content=event.get("data", {}).get("title", ""),
+                            properties=event.get("data", {}),
+                            metadata=event.get("meta", {})
+                        )
+                    except KeyError as e:
+                        error_msg = f"Event {event_num}: Missing required field for node.create: {e}"
+                        logger.error(error_msg)
+                        errors.append(error_msg)
+                    except Exception as e:
+                        error_msg = f"Event {event_num}: Failed to create node: {e}"
+                        logger.error(error_msg)
+                        errors.append(error_msg)
 
                 elif event_type == "node.update":
                     node_id = event["id"]
@@ -436,25 +495,54 @@ class EventLog:
                     if node_id in graph.nodes:
                         for key, value in changes.items():
                             graph.nodes[node_id].properties[key] = value
+                    else:
+                        logger.warning(f"Event {event_num}: Cannot update non-existent node {node_id}")
 
                 elif event_type == "node.delete":
                     node_id = event["id"]
                     if node_id in graph.nodes:
                         del graph.nodes[node_id]
+                    else:
+                        logger.warning(f"Event {event_num}: Cannot delete non-existent node {node_id}")
 
                 elif event_type == "edge.create":
-                    edge_type_str = event.get("type", "RELATES_TO").upper()
-                    # Use try/except for EdgeType lookup since hasattr doesn't work correctly with enums
                     try:
-                        edge_type = EdgeType[edge_type_str]
-                    except KeyError:
-                        edge_type = EdgeType.MOTIVATES
-                    graph.add_edge(
-                        from_id=event["src"],  # Fixed: was source_id
-                        to_id=event["tgt"],    # Fixed: was target_id
-                        edge_type=edge_type,
-                        weight=event.get("weight", 1.0)
-                    )
+                        edge_type_str = event.get("type", "RELATES_TO").upper()
+                        # Use try/except for EdgeType lookup since hasattr doesn't work correctly with enums
+                        try:
+                            edge_type = EdgeType[edge_type_str]
+                        except KeyError:
+                            edge_type = EdgeType.MOTIVATES
+
+                        src_id = event["src"]
+                        tgt_id = event["tgt"]
+
+                        # Check if both nodes exist
+                        if src_id not in graph.nodes:
+                            error_msg = f"Event {event_num}: Cannot create edge - source node {src_id} does not exist"
+                            logger.error(error_msg)
+                            errors.append(error_msg)
+                            continue
+                        if tgt_id not in graph.nodes:
+                            error_msg = f"Event {event_num}: Cannot create edge - target node {tgt_id} does not exist"
+                            logger.error(error_msg)
+                            errors.append(error_msg)
+                            continue
+
+                        graph.add_edge(
+                            from_id=src_id,  # Fixed: was source_id
+                            to_id=tgt_id,    # Fixed: was target_id
+                            edge_type=edge_type,
+                            weight=event.get("weight", 1.0)
+                        )
+                    except KeyError as e:
+                        error_msg = f"Event {event_num}: Missing required field for edge.create: {e}"
+                        logger.error(error_msg)
+                        errors.append(error_msg)
+                    except Exception as e:
+                        error_msg = f"Event {event_num}: Failed to create edge: {e}"
+                        logger.error(error_msg)
+                        errors.append(error_msg)
 
                 elif event_type == "edge.delete":
                     # Find and remove the edge
@@ -487,8 +575,10 @@ class EventLog:
                                     EdgeType.MOTIVATES,  # JUSTIFIES conceptually
                                     weight=1.0, confidence=1.0
                                 )
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logger.warning(f"Event {event_num}: Failed to create JUSTIFIES edge to {affected_id}: {e}")
+                        else:
+                            logger.warning(f"Event {event_num}: Cannot create edge to non-existent node {affected_id}")
 
                 elif event_type == "decision.supersede":
                     # Create SUPERSEDES edge (new decision supersedes old)
@@ -501,12 +591,29 @@ class EventLog:
                                 EdgeType.MOTIVATES,  # SUPERSEDES conceptually
                                 weight=1.0, confidence=1.0
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.warning(f"Event {event_num}: Failed to create SUPERSEDES edge: {e}")
+                    else:
+                        missing_nodes = []
+                        if new_id not in graph.nodes:
+                            missing_nodes.append(f"new_id={new_id}")
+                        if old_id not in graph.nodes:
+                            missing_nodes.append(f"old_id={old_id}")
+                        logger.warning(f"Event {event_num}: Cannot create SUPERSEDES edge - missing nodes: {', '.join(missing_nodes)}")
 
-            except Exception:
-                # Skip invalid events
+                elif event_type == "":
+                    logger.warning(f"Event {event_num}: Empty event type")
+                else:
+                    logger.warning(f"Event {event_num}: Unknown event type '{event_type}'")
+
+            except Exception as e:
+                error_msg = f"Event {event_num}: Unexpected error processing event type '{event_type}': {e}"
+                logger.error(error_msg)
+                errors.append(error_msg)
                 continue
+
+        if errors:
+            logger.warning(f"Graph rebuild completed with {len(errors)} error(s)")
 
         return graph
 
@@ -620,8 +727,8 @@ class EventLog:
         # Write preserved handoff events to the compact file
         if handoff_events:
             for event in handoff_events:
-                with open(compact_log.event_file, "a") as f:
-                    f.write(json.dumps(event, default=str) + "\n")
+                # Use atomic append to prevent partial writes
+                atomic_append(compact_log.event_file, json.dumps(event, default=str) + "\n")
 
         # Find and remove old event files (but not the compact file or recent files)
         files_removed = []
