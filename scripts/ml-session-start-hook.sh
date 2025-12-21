@@ -161,4 +161,69 @@ else
 fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# ============================================================
+# GoT (Graph of Thought) Context - Critical for session continuity
+# ============================================================
+echo ""
+echo "🧠 GoT Context (Task & Decision Tracking)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Run GoT validation (quick health check)
+got_validate=$(python3 scripts/got_utils.py validate 2>&1)
+got_exit=$?
+
+if [[ $got_exit -eq 0 ]]; then
+    echo "   ✅ GoT healthy"
+else
+    echo "   ⚠️  GoT issues detected - run 'python scripts/got_utils.py validate'"
+fi
+
+# Show task summary
+task_stats=$(python3 scripts/got_utils.py dashboard 2>/dev/null | grep -E "Tasks:|Completion:" | head -2)
+echo "$task_stats" | while read line; do
+    echo "   $line"
+done
+
+# Show in-progress tasks
+echo ""
+echo "   📌 In Progress:"
+in_progress=$(python3 scripts/got_utils.py task list --status in_progress 2>/dev/null | grep "T-" | head -3)
+if [[ -n "$in_progress" ]]; then
+    echo "$in_progress" | while read line; do
+        echo "      $line"
+    done
+else
+    echo "      (none)"
+fi
+
+# Show high priority pending tasks
+echo ""
+echo "   🔥 High Priority Pending:"
+high_priority=$(python3 scripts/got_utils.py task list --status pending --priority high 2>/dev/null | grep "T-" | head -3)
+if [[ -n "$high_priority" ]]; then
+    echo "$high_priority" | while read line; do
+        echo "      $line"
+    done
+else
+    echo "      (none)"
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Point to recent knowledge transfer docs
+echo ""
+echo "📚 Recent Knowledge Transfer Docs:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+recent_transfers=$(ls -t samples/memories/*knowledge-transfer*.md samples/memories/*session*.md 2>/dev/null | head -3)
+if [[ -n "$recent_transfers" ]]; then
+    echo "$recent_transfers" | while read file; do
+        basename "$file"
+    done
+else
+    echo "   (none found)"
+fi
+echo ""
+echo "   💡 Tip: Read these to restore context from previous sessions"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
 exit 0

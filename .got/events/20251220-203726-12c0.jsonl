@@ -1,0 +1,1 @@
+{"ts": "2025-12-20T20:37:26.960585Z", "event": "node.create", "meta": {"branch": "claude/code-review-history-ckKBt", "session": "20251220-203726-12c0"}, "id": "task:T-20251220-203726-4101", "type": "TASK", "data": {"title": "Create /got-resume slash command for session continuity", "status": "pending", "priority": "high", "category": "feature", "description": ""}}

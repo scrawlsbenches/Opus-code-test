@@ -1,0 +1,1 @@
+{"ts": "2025-12-21T01:46:54.650091Z", "event": "node.create", "meta": {"branch": "claude/test-task-workflow-gRXq7", "session": "20251221-014654-2bce"}, "id": "task:T-20251221-014654-d4b7", "type": "TASK", "data": {"title": "Fix edge rebuild parameter mismatch bug", "status": "pending", "priority": "critical", "category": "bugfix", "description": ""}}

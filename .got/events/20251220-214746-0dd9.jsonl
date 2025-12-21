@@ -1,0 +1,1 @@
+{"ts": "2025-12-20T21:47:46.280358Z", "event": "node.create", "meta": {"branch": "claude/code-review-history-ckKBt", "session": "20251220-214746-0dd9"}, "id": "task:T-20251220-214746-cadd", "type": "TASK", "data": {"title": "Sub-agent context injection hook", "status": "pending", "priority": "medium", "category": "feature", "description": ""}}

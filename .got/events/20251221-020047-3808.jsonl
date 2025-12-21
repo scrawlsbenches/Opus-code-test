@@ -1,0 +1,1 @@
+{"ts": "2025-12-21T02:00:47.563058Z", "event": "node.create", "meta": {"branch": "claude/test-task-workflow-gRXq7", "session": "20251221-020047-3808"}, "id": "task:T-20251221-020047-843a", "type": "TASK", "data": {"title": "Implement atomic save wrapper for graph+events sync", "status": "pending", "priority": "high", "category": "arch", "description": ""}}

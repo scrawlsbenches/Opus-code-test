@@ -3311,7 +3311,7 @@ POST_COMMIT_SNIPPET = '''
 
 # Skip ML-only commits to prevent infinite loop
 COMMIT_MSG=$(git log -1 --format=%s HEAD 2>/dev/null)
-if [[ "$COMMIT_MSG" == "data: ML tracking data"* ]] || [[ "$COMMIT_MSG" == "data: ML"* ]]; then
+if [[ "$COMMIT_MSG" == "ml:"* ]] || [[ "$COMMIT_MSG" == "data: ML"* ]] || [[ "$COMMIT_MSG" == "chore: ML"* ]]; then
     exit 0
 fi
 

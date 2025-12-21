@@ -28,26 +28,34 @@ try:
     from cortical.projects.mcp import CorticalMCPServer as _CorticalMCPServer
     from cortical.projects.mcp import main as _main
 
-    # Wrapper to show deprecation warning on first use
-    class CorticalMCPServer(_CorticalMCPServer):
-        """Deprecated: Use cortical.projects.mcp.CorticalMCPServer instead."""
-        def __init__(self, *args, **kwargs):
+    # Check if we got the actual class or the error function
+    # (projects gracefully degrade to functions when deps are missing)
+    if isinstance(_CorticalMCPServer, type):
+        # We have the real class - create wrapper with deprecation warning
+        class CorticalMCPServer(_CorticalMCPServer):
+            """Deprecated: Use cortical.projects.mcp.CorticalMCPServer instead."""
+            def __init__(self, *args, **kwargs):
+                _warn_deprecated()
+                super().__init__(*args, **kwargs)
+
+        def main(*args, **kwargs):
+            """Deprecated: Use cortical.projects.mcp.main instead."""
             _warn_deprecated()
-            super().__init__(*args, **kwargs)
+            return _main(*args, **kwargs)
 
-    def main(*args, **kwargs):
-        """Deprecated: Use cortical.projects.mcp.main instead."""
-        _warn_deprecated()
-        return _main(*args, **kwargs)
-
-    def create_mcp_server(*args, **kwargs):
-        """Deprecated: Use cortical.projects.mcp.CorticalMCPServer instead."""
-        _warn_deprecated()
-        return _CorticalMCPServer(*args, **kwargs)
+        def create_mcp_server(*args, **kwargs):
+            """Deprecated: Use cortical.projects.mcp.CorticalMCPServer instead."""
+            _warn_deprecated()
+            return _CorticalMCPServer(*args, **kwargs)
+    else:
+        # We got the error function - just re-export it
+        CorticalMCPServer = _CorticalMCPServer
+        main = _main
+        create_mcp_server = _CorticalMCPServer
 
     __all__ = ['CorticalMCPServer', 'main', 'create_mcp_server']
 except ImportError:
-    # MCP dependencies not installed
+    # MCP project itself couldn't be imported
     def _missing(*args, **kwargs):
         raise ImportError(
             "MCP dependencies not installed. "

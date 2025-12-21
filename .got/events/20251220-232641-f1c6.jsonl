@@ -1,0 +1,1 @@
+{"ts": "2025-12-20T23:26:41.486605Z", "event": "decision.create", "meta": {"branch": "claude/code-review-history-ckKBt", "session": "20251220-232641-f1c6"}, "id": "decision:D-20251220-232641-4c18", "decision": "Stress test decision 9", "rationale": "Testing system under load", "affects": [], "alternatives": [], "context": {}}

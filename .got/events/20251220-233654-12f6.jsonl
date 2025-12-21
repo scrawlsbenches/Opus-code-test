@@ -1,0 +1,1 @@
+{"ts": "2025-12-20T23:36:54.432341Z", "event": "node.create", "meta": {"branch": "claude/code-review-history-ckKBt", "session": "20251220-233654-12f6"}, "id": "task:T-20251220-233654-c18e", "type": "TASK", "data": {"title": "Foundation Task", "status": "pending", "priority": "high", "category": "feature", "description": "Base task for testing dependencies"}}
