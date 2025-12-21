@@ -547,7 +547,7 @@ class ThoughtGraph:
         # For each node, check if removing it increases connected components
         original_components = self._count_connected_components()
 
-        for node_id in self.nodes:
+        for node_id in list(self.nodes.keys()):
             # Temporarily remove node
             node = self.nodes[node_id]
             edges_from = self._edges_from.get(node_id, []).copy()
