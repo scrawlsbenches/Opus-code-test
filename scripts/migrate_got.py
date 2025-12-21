@@ -322,6 +322,8 @@ class GoTMigrator:
             self._process_node_update(event)
         elif event_type == "edge.create":
             self._process_edge_create(event)
+        elif event_type == "edge.delete":
+            self._process_edge_delete(event)
         # Skip handoff events - not part of core entities
 
     def _process_wal_entry(self, entry: Dict[str, Any]) -> None:
@@ -388,10 +390,13 @@ class GoTMigrator:
 
     def _process_edge_create(self, event: Dict[str, Any]) -> None:
         """Process edge.create event."""
+        # Events have src/tgt/type at top level, not nested in data
+        # Check both formats for compatibility
         edge_data = event.get("data", {})
-        source_id = edge_data.get("source_id") or edge_data.get("from")
-        target_id = edge_data.get("target_id") or edge_data.get("to")
-        edge_type = edge_data.get("edge_type") or edge_data.get("type")
+        source_id = event.get("src") or edge_data.get("source_id") or edge_data.get("from")
+        target_id = event.get("tgt") or edge_data.get("target_id") or edge_data.get("to")
+        edge_type = event.get("type") or edge_data.get("edge_type") or edge_data.get("type")
+        weight = event.get("weight", edge_data.get("weight", 1.0))
 
         if not (source_id and target_id and edge_type):
             return
@@ -404,11 +409,37 @@ class GoTMigrator:
             id="",  # Auto-generated
             source_id=clean_source,
             target_id=clean_target,
-            edge_type=edge_type,
-            weight=edge_data.get("weight", 1.0),
+            edge_type=edge_type.lower(),  # Normalize to lowercase
+            weight=weight,
             confidence=edge_data.get("confidence", 1.0)
         )
         self.edges[edge.id] = edge
+
+    def _process_edge_delete(self, event: Dict[str, Any]) -> None:
+        """Process edge.delete event."""
+        # Events have src/tgt/type at top level
+        source_id = event.get("src")
+        target_id = event.get("tgt")
+        edge_type = event.get("type")
+
+        if not (source_id and target_id):
+            return
+
+        # Strip prefixes
+        clean_source = self._strip_id_prefix(source_id)
+        clean_target = self._strip_id_prefix(target_id)
+
+        # Find and remove matching edge
+        edge_id_to_delete = None
+        for edge_id, edge in self.edges.items():
+            if (edge.source_id == clean_source and
+                edge.target_id == clean_target and
+                (edge_type is None or edge.edge_type.lower() == edge_type.lower())):
+                edge_id_to_delete = edge_id
+                break
+
+        if edge_id_to_delete:
+            del self.edges[edge_id_to_delete]
 
     def _process_wal_node(self, entry: Dict[str, Any]) -> None:
         """Process WAL add_node entry."""
