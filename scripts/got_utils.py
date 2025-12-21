@@ -1508,13 +1508,51 @@ class TransactionalGoTAdapter:
         self._manager = TxGoTManager(self.got_dir, durability=DurabilityMode.BALANCED)
 
         # Compatibility attributes (some commands access these directly)
-        self.graph = ThoughtGraph()
+        self._graph = None  # Lazy-loaded graph for compatibility
         self.events_dir = self.got_dir / "events"  # Not used but needed for compat
         self.wal_dir = self.got_dir / "wal"
         self.snapshots_dir = self.got_dir / "snapshots"
 
         # Ensure directories exist
         self.events_dir.mkdir(parents=True, exist_ok=True)
+
+    @property
+    def graph(self) -> ThoughtGraph:
+        """Lazy-load graph from transactional store for compatibility."""
+        if self._graph is None:
+            self._graph = self._build_graph_from_store()
+        return self._graph
+
+    def _build_graph_from_store(self) -> ThoughtGraph:
+        """Build ThoughtGraph from transactional store entities."""
+        graph = ThoughtGraph()
+        try:
+            # Add all tasks as nodes
+            for task in self._manager.list_all_tasks():
+                node = self._tx_task_to_node(task)
+                graph.nodes[node.id] = node
+
+            # Add all edges
+            entities_dir = self.got_dir / "entities"
+            if entities_dir.exists():
+                for edge_file in entities_dir.glob("E-*.json"):
+                    try:
+                        with open(edge_file, 'r') as f:
+                            wrapper = json.load(f)
+                        data = wrapper.get("data", {})
+                        if data.get("entity_type") == "edge":
+                            edge = ThoughtEdge(
+                                source_id=data.get("source_id", ""),
+                                target_id=data.get("target_id", ""),
+                                edge_type=EdgeType[data.get("edge_type", "RELATED_TO")],
+                                weight=data.get("weight", 1.0),
+                            )
+                            graph.edges.append(edge)
+                    except Exception:
+                        pass  # Skip invalid edge files
+        except Exception as e:
+            logger.error(f"Failed to build graph from store: {e}")
+        return graph
 
     def _strip_prefix(self, node_id: str) -> str:
         """Strip task:/decision: prefix from ID (legacy - maintains compatibility with old prefixed IDs)."""
