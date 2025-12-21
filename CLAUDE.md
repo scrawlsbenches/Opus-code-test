@@ -42,7 +42,7 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 > ```
 >
 > **Known coverage debt (acknowledged, not blocking):**
-> - `cortical/query/analogy.py` (3%), `cortical/mcp_server.py` (4%), `cortical/gaps.py` (9%)
+> - `cortical/query/analogy.py` (3%), `cortical/gaps.py` (9%)
 > - `cortical/cli_wrapper.py` (0% - CLI entry point), `cortical/types.py` (0% - type aliases)
 > - Full list: `samples/memories/2025-12-17-session-coverage-and-workflow-analysis.md`
 >
@@ -348,7 +348,7 @@ pip install -e ".[dev]"
 pip install -r requirements.txt
 ```
 
-This installs: `coverage`, `pytest`, `mcp`, `pyyaml`
+This installs: `coverage`, `pytest`, `pyyaml`
 
 ### Step 3: Collect Baseline Coverage (REQUIRED before development)
 
@@ -373,7 +373,6 @@ python -m coverage report --include="cortical/*" | tail -1
 |-------|----------|
 | `ModuleNotFoundError: No module named 'pytest'` | Run `pip install pytest` |
 | `ModuleNotFoundError: No module named 'coverage'` | Run `pip install coverage` |
-| `No module named 'mcp'` | Run `pip install mcp` (optional, for MCP tests) |
 | Tests timing out | Use `--timeout=60` flag with pytest |
 
 > **Note:** The library itself has zero runtime dependencies. Dev dependencies are only needed for testing and coverage reporting.
@@ -1070,7 +1069,6 @@ Tests requiring optional dependencies are excluded by default during development
 | Marker | Tests | Dependency |
 |--------|-------|------------|
 | `optional` | All optional tests | (meta-marker) |
-| `mcp` | MCP server tests | `mcp>=1.0` |
 | `protobuf` | Serialization tests | `protobuf>=4.0` |
 | `fuzz` | Property-based tests | `hypothesis>=6.0` |
 | `slow` | Long-running tests | (none) |
