@@ -18,6 +18,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 import tempfile
 from datetime import datetime
@@ -130,6 +131,94 @@ def generate_session_id() -> str:
     timestamp = now.strftime("%Y%m%d-%H%M%S")
     suffix = os.urandom(2).hex()
     return f"{timestamp}-{suffix}"
+
+
+# =============================================================================
+# AUTO-TASK HOOK UTILITIES
+# =============================================================================
+
+# Pattern for GoT task IDs: T-YYYYMMDD-HHMMSS-XXXX
+TASK_ID_PATTERN = re.compile(r'T-\d{8}-\d{6}-[a-f0-9]{4}', re.IGNORECASE)
+
+# Conventional commit type prefixes
+COMMIT_TYPE_PATTERN = re.compile(r'^(\w+):\s*(.+)$')
+
+# Map commit types to GoT categories
+COMMIT_TYPE_TO_CATEGORY = {
+    'fix': 'bugfix',
+    'feat': 'feature',
+    'docs': 'docs',
+    'refactor': 'refactor',
+    'test': 'testing',
+    'chore': 'chore',
+    'style': 'chore',
+    'perf': 'performance',
+    'ci': 'chore',
+    'build': 'chore',
+}
+
+
+def has_task_reference(commit_message: str) -> bool:
+    """
+    Check if a commit message contains a GoT task reference.
+
+    Args:
+        commit_message: The git commit message
+
+    Returns:
+        True if a valid task ID pattern (T-YYYYMMDD-HHMMSS-XXXX) is found
+    """
+    return bool(TASK_ID_PATTERN.search(commit_message))
+
+
+def extract_commit_type(commit_message: str) -> Optional[str]:
+    """
+    Extract the conventional commit type prefix from a commit message.
+
+    Args:
+        commit_message: The git commit message
+
+    Returns:
+        The commit type (fix, feat, docs, etc.) or None if not found
+    """
+    match = COMMIT_TYPE_PATTERN.match(commit_message.strip())
+    if match:
+        return match.group(1).lower()
+    return None
+
+
+def suggest_task_category(commit_type: Optional[str]) -> str:
+    """
+    Suggest a GoT task category based on the commit type.
+
+    Args:
+        commit_type: The conventional commit type (fix, feat, etc.)
+
+    Returns:
+        The suggested category for a GoT task
+    """
+    if commit_type is None:
+        return 'general'
+    return COMMIT_TYPE_TO_CATEGORY.get(commit_type.lower(), 'general')
+
+
+def generate_task_title_from_commit(commit_message: str) -> str:
+    """
+    Generate a task title from a commit message.
+
+    Strips the conventional commit prefix if present.
+
+    Args:
+        commit_message: The git commit message
+
+    Returns:
+        A clean title suitable for a GoT task
+    """
+    message = commit_message.strip()
+    match = COMMIT_TYPE_PATTERN.match(message)
+    if match:
+        return match.group(2).strip()
+    return message
 
 
 # =============================================================================

@@ -1611,5 +1611,86 @@ class TestDecisionNodeType:
         assert "event sourcing" in node.content.lower(), "Decision content should be in node"
 
 
+class TestAutoTaskHook:
+    """
+    Unit tests for auto-task creation hook functionality.
+
+    Task T-20251221-020101-afc4: Add auto-task creation hook.
+    When committing without a task reference, prompt to create a GoT task.
+    """
+
+    def test_detect_task_reference_in_commit_message(self):
+        """Commit message with task ID should be detected."""
+        from got_utils import has_task_reference
+
+        # Standard format with task prefix
+        assert has_task_reference("fix: T-20251221-123456-abcd Fixed bug") is True
+        assert has_task_reference("feat: Implement feature (T-20251220-111111-1111)") is True
+        assert has_task_reference("[T-20251219-000000-0000] chore: cleanup") is True
+
+    def test_detect_task_reference_case_insensitive(self):
+        """Task reference detection should be case insensitive."""
+        from got_utils import has_task_reference
+
+        assert has_task_reference("fix: t-20251221-123456-abcd lowercase") is True
+
+    def test_no_task_reference_detected(self):
+        """Commit message without task ID should return False."""
+        from got_utils import has_task_reference
+
+        assert has_task_reference("fix: Fixed a bug") is False
+        assert has_task_reference("chore: Update dependencies") is False
+        assert has_task_reference("feat: Add new feature") is False
+
+    def test_malformed_task_reference_not_detected(self):
+        """Malformed task IDs should not be detected."""
+        from got_utils import has_task_reference
+
+        # Too short
+        assert has_task_reference("fix: T-2025-123") is False
+        # Missing segments
+        assert has_task_reference("fix: T-20251221-abcd") is False
+        # Wrong prefix
+        assert has_task_reference("fix: X-20251221-123456-abcd") is False
+
+    def test_extract_commit_type_for_task_category(self):
+        """Extract commit type prefix to suggest task category."""
+        from got_utils import extract_commit_type
+
+        assert extract_commit_type("fix: Fixed something") == "fix"
+        assert extract_commit_type("feat: Added feature") == "feat"
+        assert extract_commit_type("chore: Cleanup") == "chore"
+        assert extract_commit_type("docs: Updated readme") == "docs"
+        assert extract_commit_type("refactor: Improved code") == "refactor"
+        assert extract_commit_type("test: Added tests") == "test"
+
+    def test_extract_commit_type_no_prefix(self):
+        """Commit without conventional prefix should return None."""
+        from got_utils import extract_commit_type
+
+        assert extract_commit_type("Just a plain message") is None
+        assert extract_commit_type("Updated something") is None
+
+    def test_suggest_task_category_from_commit_type(self):
+        """Map commit type to GoT task category."""
+        from got_utils import suggest_task_category
+
+        assert suggest_task_category("fix") == "bugfix"
+        assert suggest_task_category("feat") == "feature"
+        assert suggest_task_category("docs") == "docs"
+        assert suggest_task_category("refactor") == "refactor"
+        assert suggest_task_category("test") == "testing"
+        assert suggest_task_category("chore") == "chore"
+        assert suggest_task_category(None) == "general"
+
+    def test_generate_task_title_from_commit(self):
+        """Generate a task title from commit message."""
+        from got_utils import generate_task_title_from_commit
+
+        assert generate_task_title_from_commit("fix: Fixed login bug") == "Fixed login bug"
+        assert generate_task_title_from_commit("feat: Add user auth") == "Add user auth"
+        assert generate_task_title_from_commit("Plain message") == "Plain message"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
