@@ -492,16 +492,36 @@ class EventLog:
                 elif event_type == "node.update":
                     node_id = event["id"]
                     changes = event.get("changes", {})
-                    if node_id in graph.nodes:
+
+                    # Normalize ID - try with and without task: prefix
+                    actual_id = node_id
+                    if node_id not in graph.nodes:
+                        # Try with task: prefix if it looks like a task ID
+                        if node_id.startswith("T-") and f"task:{node_id}" in graph.nodes:
+                            actual_id = f"task:{node_id}"
+                        # Try without task: prefix
+                        elif node_id.startswith("task:") and node_id[5:] in graph.nodes:
+                            actual_id = node_id[5:]
+
+                    if actual_id in graph.nodes:
                         for key, value in changes.items():
-                            graph.nodes[node_id].properties[key] = value
+                            graph.nodes[actual_id].properties[key] = value
                     else:
                         logger.warning(f"Event {event_num}: Cannot update non-existent node {node_id}")
 
                 elif event_type == "node.delete":
                     node_id = event["id"]
-                    if node_id in graph.nodes:
-                        del graph.nodes[node_id]
+
+                    # Normalize ID - same as node.update
+                    actual_id = node_id
+                    if node_id not in graph.nodes:
+                        if node_id.startswith("T-") and f"task:{node_id}" in graph.nodes:
+                            actual_id = f"task:{node_id}"
+                        elif node_id.startswith("task:") and node_id[5:] in graph.nodes:
+                            actual_id = node_id[5:]
+
+                    if actual_id in graph.nodes:
+                        del graph.nodes[actual_id]
                     else:
                         logger.warning(f"Event {event_num}: Cannot delete non-existent node {node_id}")
 
