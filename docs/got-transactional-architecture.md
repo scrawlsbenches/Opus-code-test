@@ -83,6 +83,70 @@ Each agent works on **local state** with full ACID guarantees. Synchronization w
 - Corrupted data is detected and rejected
 - Sync conflicts block until resolved (no silent data loss)
 
+### 5. Text-Only Storage (Critical for Recovery)
+
+**All data stored in Git MUST be human-readable text (JSON).**
+
+Why:
+- **Manual recovery**: When edge cases we didn't anticipate occur, humans can read/edit JSON directly
+- **Git diff/merge**: Text diffs are meaningful; binary diffs are opaque
+- **Debugging**: Can inspect state without loading into Python
+- **Corruption repair**: Can fix individual fields without understanding entire schema
+- **Future-proof**: JSON is universal; pickle/binary formats break across versions
+
+Rules:
+- NO binary serialization (no pickle, no msgpack, no protobuf)
+- NO base64-encoded blobs inside JSON
+- All files are valid JSON, one object per file or newline-delimited (JSONL for logs)
+- Checksums are hex strings, not binary
+- Timestamps are ISO 8601 strings
+- IDs are human-readable strings with timestamps
+
+```json
+// GOOD: Human can read and fix this
+{
+  "id": "T-20251221-120000-a1b2",
+  "version": 3,
+  "title": "Implement feature X",
+  "status": "in_progress"
+}
+
+// BAD: Human cannot recover this
+"\x80\x04\x95\x1a\x00\x00\x00..."
+```
+
+### 6. Small, Focused Modules
+
+No monolithic files. Each module has ONE responsibility.
+
+```
+cortical/got/                    # New package for transactional GoT
+├── __init__.py                  # Public API exports
+├── types.py                     # Entity, Task, Decision, Edge dataclasses (~100 lines)
+├── transaction.py               # Transaction, TransactionState (~150 lines)
+├── tx_manager.py                # TransactionManager (~200 lines)
+├── versioned_store.py           # VersionedStore (~200 lines)
+├── wal.py                       # WALManager (~150 lines)
+├── sync.py                      # SyncManager (~200 lines)
+├── conflict.py                  # ConflictResolver (~150 lines)
+├── recovery.py                  # Recovery procedures (~100 lines)
+├── checksums.py                 # Checksum utilities (~50 lines)
+└── errors.py                    # Exception classes (~50 lines)
+
+tests/unit/got/                  # Matching test structure
+├── test_types.py
+├── test_transaction.py
+├── test_tx_manager.py
+├── test_versioned_store.py
+├── test_wal.py
+├── test_sync.py
+├── test_conflict.py
+├── test_recovery.py
+└── test_checksums.py
+```
+
+Target: **No file exceeds 250 lines**. If it does, split it.
+
 ---
 
 ## Architecture Layers
