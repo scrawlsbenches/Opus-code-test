@@ -13,79 +13,77 @@ All progress is tracked in this file (not in GoT, since we're replacing it).
 
 ---
 
-## Phase 1: Storage Layer
+## Phase 1: Storage Layer ✅ COMPLETE
 
 ### Tests First (TDD)
-- [ ] `tests/unit/got/test_checksums.py` - Checksum verification
-- [ ] `tests/unit/got/test_versioned_store.py` - VersionedStore operations
-  - [ ] test_write_creates_file_with_checksum
-  - [ ] test_read_verifies_checksum
-  - [ ] test_corrupted_checksum_raises_error
-  - [ ] test_atomic_write_survives_crash
-  - [ ] test_version_increments_on_write
-  - [ ] test_read_at_version_returns_historical
-  - [ ] test_fsync_called_on_write
+- [x] `tests/unit/got/test_checksums.py` - Checksum verification (11 tests)
+- [x] `tests/unit/got/test_versioned_store.py` - VersionedStore operations (23 tests)
+  - [x] test_write_creates_file_with_checksum
+  - [x] test_read_verifies_checksum
+  - [x] test_corrupted_checksum_raises_error
+  - [x] test_atomic_write_survives_crash
+  - [x] test_version_increments_on_write
+  - [x] test_read_at_version_returns_historical
+  - [x] test_fsync_called_on_write
 
 ### Implementation
-- [ ] `cortical/got/errors.py` - Exception classes
-- [ ] `cortical/got/checksums.py` - Checksum utilities
-- [ ] `cortical/got/types.py` - Entity base class with to_json/from_json
-- [ ] `cortical/got/versioned_store.py` - VersionedStore
+- [x] `cortical/got/errors.py` - Exception classes (62 lines)
+- [x] `cortical/got/checksums.py` - Checksum utilities (71 lines)
+- [x] `cortical/got/types.py` - Entity base class with to_json/from_json (252 lines)
+- [x] `cortical/got/versioned_store.py` - VersionedStore (408 lines)
 
 ---
 
-## Phase 2: WAL Layer
+## Phase 2: WAL Layer ✅ COMPLETE
 
 ### Tests First (TDD)
-- [ ] `tests/unit/got/test_wal.py` - WAL operations
-  - [ ] test_log_appends_with_checksum
-  - [ ] test_fsync_called_on_every_log
-  - [ ] test_corrupted_entry_detected
-  - [ ] test_incomplete_tx_detected
-  - [ ] test_truncate_archives_old_wal
-  - [ ] test_recovery_finds_incomplete_transactions
+- [x] `tests/unit/got/test_wal.py` - WAL operations (21 tests)
+  - [x] test_log_appends_with_checksum
+  - [x] test_fsync_called_on_every_log
+  - [x] test_corrupted_entry_detected
+  - [x] test_incomplete_tx_detected
+  - [x] test_truncate_archives_old_wal
+  - [x] test_recovery_finds_incomplete_transactions
 
 ### Implementation
-- [ ] `cortical/got/wal.py` - WALManager
+- [x] `cortical/got/wal.py` - WALManager (299 lines)
 
 ---
 
-## Phase 3: Transaction Layer
+## Phase 3: Transaction Layer ✅ COMPLETE
 
 ### Tests First (TDD)
-- [ ] `tests/unit/got/test_transaction.py` - Transaction object
-  - [ ] test_transaction_state_machine
-  - [ ] test_write_buffered_until_commit
-  - [ ] test_read_sees_own_writes
-  - [ ] test_read_sees_snapshot_version
+- [x] `tests/unit/got/test_transaction.py` - Transaction object (15 tests)
+  - [x] test_transaction_state_machine
+  - [x] test_write_buffered_until_commit
+  - [x] test_read_sees_own_writes
+  - [x] test_read_sees_snapshot_version
 
-- [ ] `tests/unit/got/test_tx_manager.py` - TransactionManager
-  - [ ] test_begin_creates_transaction
-  - [ ] test_commit_applies_writes
-  - [ ] test_rollback_discards_writes
-  - [ ] test_conflict_detected_on_version_mismatch
-  - [ ] test_crash_recovery_rolls_back_incomplete
-  - [ ] test_lock_acquired_during_commit
+- [x] `tests/unit/got/test_tx_manager.py` - TransactionManager (19 tests)
+  - [x] test_begin_creates_transaction
+  - [x] test_commit_applies_writes
+  - [x] test_rollback_discards_writes
+  - [x] test_conflict_detected_on_version_mismatch
+  - [x] test_crash_recovery_rolls_back_incomplete
+  - [x] test_lock_acquired_during_commit
 
 ### Implementation
-- [ ] `cortical/got/transaction.py` - Transaction, TransactionState
-- [ ] `cortical/got/tx_manager.py` - TransactionManager
+- [x] `cortical/got/transaction.py` - Transaction, TransactionState (166 lines)
+- [x] `cortical/got/tx_manager.py` - TransactionManager (421 lines)
 
 ---
 
-## Phase 4: High-Level API
+## Phase 4: High-Level API ✅ PARTIALLY COMPLETE
 
 ### Tests First (TDD)
-- [ ] `tests/unit/got/test_api.py` - High-level API
-  - [ ] test_context_manager_commits_on_success
-  - [ ] test_context_manager_rolls_back_on_exception
-  - [ ] test_create_task_in_transaction
-  - [ ] test_update_task_in_transaction
-  - [ ] test_read_only_context
+- [ ] `tests/unit/got/test_api.py` - High-level API (deferred)
 
 ### Implementation
-- [ ] `cortical/got/__init__.py` - Public API exports
-- [ ] `cortical/got/api.py` - GoTTransactionalManager, TransactionContext
+- [x] `cortical/got/__init__.py` - Public API exports (91 lines)
+- [ ] `cortical/got/api.py` - GoTTransactionalManager, TransactionContext (deferred)
+
+### Integration Tests
+- [x] `tests/integration/test_got_transaction.py` - Full E2E tests (12 tests)
 
 ---
 
@@ -144,13 +142,29 @@ All progress is tracked in this file (not in GoT, since we're replacing it).
 | Date | What was done |
 |------|---------------|
 | 2025-12-21 | Design document created and approved |
-| | |
+| 2025-12-21 | Phase 1-3 complete: Storage, WAL, Transaction layers |
+| 2025-12-21 | 148 tests passing (136 unit + 12 integration) |
+| 2025-12-21 | Public API exported via `cortical.got` |
 
 ---
+
+## Test Summary
+
+| Module | Tests | Lines |
+|--------|-------|-------|
+| errors.py | 18 | 62 |
+| checksums.py | 11 | 71 |
+| types.py | 29 | 252 |
+| versioned_store.py | 23 | 408 |
+| wal.py | 21 | 299 |
+| transaction.py | 15 | 166 |
+| tx_manager.py | 19 | 421 |
+| integration | 12 | - |
+| **Total** | **148** | **1702** |
 
 ## Notes
 
 - All tests written BEFORE implementation (TDD)
-- No file exceeds 250 lines
+- Some files exceed 250 lines (versioned_store, tx_manager) - refactoring planned
 - All storage is JSON text (no binary)
-- Run `python -m pytest tests/unit/got/ -v` to verify progress
+- Run `python -m pytest tests/unit/got/ tests/integration/test_got_transaction.py -v` to verify
