@@ -87,7 +87,7 @@ All progress is tracked in this file (not in GoT, since we're replacing it).
 
 ---
 
-## Phase 5: Sync Layer
+## Phase 5: Sync Layer → **Batch 6**
 
 ### Tests First (TDD)
 - [ ] `tests/unit/got/test_sync.py` - Sync operations
@@ -103,12 +103,12 @@ All progress is tracked in this file (not in GoT, since we're replacing it).
   - [ ] test_merge_fails_on_same_field_conflict
 
 ### Implementation
-- [ ] `cortical/got/sync.py` - SyncManager
-- [ ] `cortical/got/conflict.py` - ConflictResolver
+- [ ] `cortical/got/sync.py` - SyncManager (~200 lines)
+- [ ] `cortical/got/conflict.py` - ConflictResolver (~150 lines)
 
 ---
 
-## Phase 6: Recovery & Edge Cases
+## Phase 6: Recovery & Edge Cases → **Batch 7**
 
 ### Tests First (TDD)
 - [ ] `tests/unit/got/test_recovery.py` - Recovery procedures
@@ -125,15 +125,53 @@ All progress is tracked in this file (not in GoT, since we're replacing it).
   - [ ] test_large_transaction_memory_limit
 
 ### Implementation
-- [ ] `cortical/got/recovery.py` - Recovery procedures
+- [ ] `cortical/got/recovery.py` - Recovery procedures (~100 lines)
 
 ---
 
-## Phase 7: Migration
+## Phase 4b: High-Level API → **Batch 8**
 
-- [ ] Migrate existing .got/ data to new format
-- [ ] Verification tests that old data preserved
+### Tests First (TDD)
+- [ ] `tests/unit/got/test_api.py` - High-level API
+  - [ ] test_context_manager_commits_on_success
+  - [ ] test_context_manager_rolls_back_on_exception
+  - [ ] test_create_task_in_transaction
+  - [ ] test_update_task_in_transaction
+  - [ ] test_read_only_context
+
+### Implementation
+- [ ] `cortical/got/api.py` - GoTTransactionalManager, TransactionContext (~200 lines)
+
+---
+
+## Phase 7: Migration → **Batch 9 + 10**
+
+### Batch 9: Migration Script
+- [ ] `scripts/migrate_got.py` - Migrate existing .got/ data to new format
+- [ ] `tests/integration/test_got_migration.py` - Verification tests
+
+### Batch 10: Finalization
 - [ ] Update CLAUDE.md with new GoT commands
+- [ ] Update `scripts/got_utils.py` to use new transactional backend
+- [ ] Final E2E behavioral tests
+- [ ] Documentation and examples
+
+---
+
+## Batch Execution Plan
+
+| Batch | Phase | Modules | Est. Tests | Dependencies |
+|-------|-------|---------|------------|--------------|
+| 6 | Phase 5 | sync.py, conflict.py | ~15 | Batch 5 (tx_manager) |
+| 7 | Phase 6 | recovery.py, edge cases | ~12 | Batch 4 (wal) |
+| 8 | Phase 4b | api.py | ~8 | Batch 5 (tx_manager) |
+| 9 | Phase 7a | migrate_got.py | ~6 | Batch 8 (api) |
+| 10 | Phase 7b | CLAUDE.md, got_utils.py | ~4 | Batch 9 |
+
+**Parallel Opportunities:**
+- Batch 6 and 7 can run in parallel (no dependencies on each other)
+- Batch 8 depends on Batch 5 only
+- Batch 9-10 are sequential (migration before finalization)
 
 ---
 
