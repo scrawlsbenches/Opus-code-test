@@ -444,10 +444,14 @@ class EventLog:
 
                 elif event_type == "edge.create":
                     edge_type_str = event.get("type", "RELATES_TO").upper()
-                    edge_type = EdgeType[edge_type_str] if hasattr(EdgeType, edge_type_str) else EdgeType.MOTIVATES
+                    # Use try/except for EdgeType lookup since hasattr doesn't work correctly with enums
+                    try:
+                        edge_type = EdgeType[edge_type_str]
+                    except KeyError:
+                        edge_type = EdgeType.MOTIVATES
                     graph.add_edge(
-                        source_id=event["src"],
-                        target_id=event["tgt"],
+                        from_id=event["src"],  # Fixed: was source_id
+                        to_id=event["tgt"],    # Fixed: was target_id
                         edge_type=edge_type,
                         weight=event.get("weight", 1.0)
                     )

@@ -909,6 +909,23 @@ Key defaults to know:
 
 ## Development Workflow
 
+### Work Priority Order
+
+> **⚠️ CRITICAL: Follow this priority order for all work:**
+
+| Priority | Type | Rule |
+|----------|------|------|
+| 1 | **Security Issues** | Fix security vulnerabilities BEFORE any other code work. No exceptions. |
+| 2 | **Bugs** | Fix bugs BEFORE working on new features. Stability over velocity. |
+| 3 | **Features** | New functionality only after security and bugs are addressed. |
+| 4 | **Documentation** | Update docs AS YOU WORK, not after. Every code change = doc update. |
+
+**Why this order:**
+- Security issues can expose users to harm - they cannot wait
+- Bugs in existing code affect current users - fix them first
+- Features for future users come after current users are protected
+- Documentation debt compounds - write it while context is fresh
+
 ### Before Writing Code
 
 1. **Read the relevant module** - understand existing patterns
