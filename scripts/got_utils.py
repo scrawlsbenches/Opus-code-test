@@ -1532,9 +1532,35 @@ class TransactionalGoTAdapter:
                 node = self._tx_task_to_node(task)
                 graph.nodes[node.id] = node
 
-            # Add all edges
+            # Add all decisions and edges from entity files
             entities_dir = self.got_dir / "entities"
             if entities_dir.exists():
+                # Load decisions (D-*.json)
+                for decision_file in entities_dir.glob("D-*.json"):
+                    try:
+                        with open(decision_file, 'r') as f:
+                            wrapper = json.load(f)
+                        data = wrapper.get("data", {})
+                        if data.get("entity_type") == "decision":
+                            node = ThoughtNode(
+                                id=data.get("id", ""),
+                                node_type=NodeType.DECISION,
+                                content=data.get("title", ""),
+                                properties={
+                                    "rationale": data.get("rationale", ""),
+                                    "affects": data.get("affects", []),
+                                    **data.get("properties", {}),
+                                },
+                                metadata={
+                                    "created_at": data.get("created_at", ""),
+                                    "modified_at": data.get("modified_at", ""),
+                                },
+                            )
+                            graph.nodes[node.id] = node
+                    except Exception as e:
+                        logger.debug(f"Skipping decision file {decision_file}: {e}")
+
+                # Load edges (E-*.json)
                 for edge_file in entities_dir.glob("E-*.json"):
                     try:
                         with open(edge_file, 'r') as f:

@@ -324,7 +324,9 @@ class GoTMigrator:
             self._process_edge_create(event)
         elif event_type == "edge.delete":
             self._process_edge_delete(event)
-        # Skip handoff events - not part of core entities
+        elif event_type == "decision.create":
+            self._process_decision_create(event)
+        # Handoff events are tracked separately in handoffs dict, not as entities
 
     def _process_wal_entry(self, entry: Dict[str, Any]) -> None:
         """Process a single WAL entry and update entity state."""
@@ -387,6 +389,29 @@ class GoTMigrator:
         if node_id.startswith("decision:"):
             return node_id[9:]  # len("decision:") = 9
         return node_id
+
+    def _process_decision_create(self, event: Dict[str, Any]) -> None:
+        """Process decision.create event."""
+        raw_id = event.get("id")
+        if not raw_id:
+            return
+
+        decision_id = self._strip_id_prefix(raw_id)
+        timestamp = event.get("ts")
+
+        decision = Decision(
+            id=decision_id,
+            title=event.get("decision", ""),
+            rationale=event.get("rationale", ""),
+            affects=[self._strip_id_prefix(a) for a in event.get("affects", [])],
+            properties={
+                "alternatives": event.get("alternatives", []),
+                "context": event.get("context", {}),
+            },
+            created_at=timestamp or datetime.now(timezone.utc).isoformat(),
+            modified_at=timestamp or datetime.now(timezone.utc).isoformat()
+        )
+        self.decisions[decision_id] = decision
 
     def _process_edge_create(self, event: Dict[str, Any]) -> None:
         """Process edge.create event."""
