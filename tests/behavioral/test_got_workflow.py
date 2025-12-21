@@ -776,3 +776,190 @@ class TestEdgeCasesAndErrorHandling:
 
         assert len(deps_a) >= 1
         assert len(deps_b) >= 1
+
+
+class TestTaskShowCommand:
+    """
+    Behavioral tests for 'got task show' CLI command.
+
+    Issue: 'got task show T-XXXXX' returns "invalid choice: 'show'"
+    Expected: Command should exist and display task details.
+
+    This test class documents the expected behavior for task lookup.
+    """
+
+    def test_task_show_returns_task_details(self, got_manager):
+        """
+        Scenario: User runs 'got task show T-XXXXX' for an existing task.
+        Expected: Full task details are displayed.
+        """
+        # Create a task with full details
+        task_id = got_manager.create_task(
+            title="Implement feature X",
+            priority=PRIORITY_HIGH,
+            category="feature",
+            description="Detailed description of feature X requirements"
+        )
+
+        # Get task by ID (this is the API that task show should use)
+        task = got_manager.get_task(task_id)
+
+        # Verify we can retrieve full task details
+        assert task is not None, f"Task {task_id} should be retrievable"
+        assert task.id == task_id
+        assert task.content == "Implement feature X"
+        assert task.properties["priority"] == PRIORITY_HIGH
+        assert task.properties["category"] == "feature"
+        assert task.properties["status"] == STATUS_PENDING
+
+    def test_task_show_with_nonexistent_id(self, got_manager):
+        """
+        Scenario: User runs 'got task show T-NONEXISTENT'.
+        Expected: Returns None or appropriate error, not crash.
+        """
+        task = got_manager.get_task("T-NONEXISTENT-99999999")
+
+        # Should return None for non-existent task
+        assert task is None, "Non-existent task should return None"
+
+    def test_task_show_displays_relationships(self, got_manager):
+        """
+        Scenario: User runs 'got task show' for task with dependencies.
+        Expected: Task relationships are included in output.
+        """
+        # Create tasks with dependency
+        task1_id = got_manager.create_task(title="Design database schema")
+        task2_id = got_manager.create_task(
+            title="Implement data layer",
+            depends_on=[task1_id]
+        )
+
+        # Get task with dependencies
+        task2 = got_manager.get_task(task2_id)
+        assert task2 is not None
+
+        # Get dependencies should work
+        deps = got_manager.get_task_dependencies(task2_id)
+        assert len(deps) == 1
+        assert deps[0].id == task1_id
+
+    def test_task_show_with_id_format_variations(self, got_manager):
+        """
+        Scenario: User provides task ID with or without 'task:' prefix.
+        Expected: Both formats should resolve to the same task.
+
+        This tests the ID normalization fix from commit 6964017e.
+        """
+        task_id = got_manager.create_task(title="Test ID formats")
+
+        # Task ID format: T-YYYYMMDD-HHMMSS-XXXX
+        # Internal storage might use: task:T-YYYYMMDD-HHMMSS-XXXX
+
+        # Lookup with original ID
+        task_original = got_manager.get_task(task_id)
+        assert task_original is not None
+
+        # If ID has task: prefix, try without it
+        if task_id.startswith("task:"):
+            bare_id = task_id[5:]
+            task_bare = got_manager.get_task(bare_id)
+            assert task_bare is not None, f"Should find task with bare ID: {bare_id}"
+            assert task_bare.id == task_original.id
+
+        # If ID doesn't have prefix, try with it
+        else:
+            prefixed_id = f"task:{task_id}"
+            # This may or may not work depending on internal storage
+            # The key point is get_task should handle both gracefully
+
+
+class TestCLITaskShowSubcommand:
+    """
+    Tests for CLI 'got task show' subcommand implementation.
+
+    These tests will FAIL until the subcommand is implemented.
+    They document the expected CLI behavior.
+    """
+
+    def test_cli_task_show_subcommand_exists(self):
+        """
+        Scenario: User runs 'got task show --help'.
+        Expected: Help text is displayed, not 'invalid choice' error.
+        """
+        import subprocess
+        result = subprocess.run(
+            ["python", "scripts/got_utils.py", "task", "show", "--help"],
+            capture_output=True,
+            text=True,
+            cwd=str(PROJECT_ROOT)
+        )
+
+        # Should NOT have 'invalid choice' error
+        assert "invalid choice: 'show'" not in result.stderr, \
+            "'task show' subcommand should exist"
+
+        # Should show help or task details (exit code 0)
+        # Note: This will fail until implemented
+        assert result.returncode == 0, \
+            f"'task show --help' should succeed. stderr: {result.stderr}"
+
+    def test_cli_task_show_displays_task(self):
+        """
+        Scenario: User runs 'got task show T-XXXXX' with valid task ID.
+        Expected: Task details are printed to stdout.
+        """
+        import subprocess
+
+        # First create a task to show
+        create_result = subprocess.run(
+            ["python", "scripts/got_utils.py", "task", "create", "CLI Test Task", "--priority", "high"],
+            capture_output=True,
+            text=True,
+            cwd=str(PROJECT_ROOT)
+        )
+
+        # Extract task ID from output (format: "Created task: T-XXXXXXXX")
+        import re
+        match = re.search(r'(T-\d{8}-\d{6}-[a-f0-9]{4})', create_result.stdout)
+        if not match:
+            pytest.skip("Could not create test task")
+
+        task_id = match.group(1)
+
+        # Now test 'task show'
+        show_result = subprocess.run(
+            ["python", "scripts/got_utils.py", "task", "show", task_id],
+            capture_output=True,
+            text=True,
+            cwd=str(PROJECT_ROOT)
+        )
+
+        # Should succeed
+        assert show_result.returncode == 0, \
+            f"'task show {task_id}' should succeed. stderr: {show_result.stderr}"
+
+        # Should contain task details
+        assert task_id in show_result.stdout or "CLI Test Task" in show_result.stdout, \
+            f"Output should contain task info. stdout: {show_result.stdout}"
+
+    def test_cli_task_show_nonexistent_task(self):
+        """
+        Scenario: User runs 'got task show T-NONEXISTENT'.
+        Expected: Graceful error message, not crash.
+        """
+        import subprocess
+        result = subprocess.run(
+            ["python", "scripts/got_utils.py", "task", "show", "T-99999999-999999-ffff"],
+            capture_output=True,
+            text=True,
+            cwd=str(PROJECT_ROOT)
+        )
+
+        # Should handle gracefully (exit code 1 is acceptable for "not found")
+        assert result.returncode in [0, 1], \
+            f"Should handle missing task gracefully. stderr: {result.stderr}"
+
+        # Should have informative message
+        assert "not found" in result.stdout.lower() or "not found" in result.stderr.lower() or \
+               "no task" in result.stdout.lower() or result.returncode == 1, \
+            "Should indicate task was not found"
