@@ -1517,6 +1517,7 @@ class TransactionalGoTAdapter:
                     self._manager.add_dependency(task.id, clean_dep)
                     print(f"  Added dependency: {task.id} depends on {clean_dep}")
                 except Exception as e:
+                    logger.warning(f"Could not add dependency from {task.id} to {clean_dep}: {e}")
                     print(f"  Warning: Could not add dependency to {clean_dep}: {e}")
 
         # Add blocks
@@ -1527,6 +1528,7 @@ class TransactionalGoTAdapter:
                     self._manager.add_blocks(task.id, clean_blocked)
                     print(f"  Added blocks: {task.id} blocks {clean_blocked}")
                 except Exception as e:
+                    logger.warning(f"Could not add blocks edge from {task.id} to {clean_blocked}: {e}")
                     print(f"  Warning: Could not add blocks to {clean_blocked}: {e}")
 
         return f"task:{task.id}"
@@ -1580,7 +1582,14 @@ class TransactionalGoTAdapter:
         """Complete a task."""
         updates = {"status": "completed"}
         if retrospective:
-            updates["properties"] = {"retrospective": retrospective}
+            # Get current task to merge properties (don't overwrite!)
+            task = self.get_task(task_id)
+            if not task:
+                return False
+            # Copy existing properties and add/update retrospective
+            merged_properties = dict(task.properties) if task.properties else {}
+            merged_properties["retrospective"] = retrospective
+            updates["properties"] = merged_properties
         return self.update_task(task_id, **updates)
 
     def block_task(self, task_id: str, reason: str = "", blocked_by: Optional[str] = None) -> bool:
@@ -1603,7 +1612,11 @@ class TransactionalGoTAdapter:
         try:
             self._manager.add_dependency(clean_task, clean_dep)
             return True
-        except Exception:
+        except AttributeError as e:
+            logger.error(f"Method not implemented: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to add dependency from {clean_task} to {clean_dep}: {e}")
             return False
 
     def add_blocks(self, task_id: str, blocks_id: str) -> bool:
@@ -1613,7 +1626,11 @@ class TransactionalGoTAdapter:
         try:
             self._manager.add_blocks(clean_task, clean_blocked)
             return True
-        except Exception:
+        except AttributeError as e:
+            logger.error(f"Method not implemented: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to add blocks edge from {clean_task} to {clean_blocked}: {e}")
             return False
 
     def get_blockers(self, task_id: str) -> List[ThoughtNode]:
@@ -1653,7 +1670,8 @@ class TransactionalGoTAdapter:
                 capture_output=True, text=True, check=True
             )
             return result.stdout.strip()
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Could not determine git branch: {e}")
             return "unknown"
 
     # Stub methods for compatibility (not implemented in TX backend yet)

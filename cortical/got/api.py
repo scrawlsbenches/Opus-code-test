@@ -249,6 +249,82 @@ class GoTManager:
             edge = tx.add_edge(source_id, target_id, edge_type, weight=weight)
         return edge
 
+    def add_dependency(self, task_id: str, depends_on_id: str) -> Edge:
+        """
+        Add a dependency edge between tasks.
+
+        Args:
+            task_id: Task that depends on another
+            depends_on_id: Task that is depended on
+
+        Returns:
+            Created Edge object
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        return self.add_edge(task_id, depends_on_id, "DEPENDS_ON")
+
+    def add_blocks(self, blocker_id: str, blocked_id: str) -> Edge:
+        """
+        Add a blocking edge between tasks.
+
+        Args:
+            blocker_id: Task that blocks another
+            blocked_id: Task that is blocked
+
+        Returns:
+            Created Edge object
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        return self.add_edge(blocker_id, blocked_id, "BLOCKS")
+
+    def delete_task(self, task_id: str, force: bool = False) -> None:
+        """
+        Delete a task and all its connected edges.
+
+        Args:
+            task_id: Task identifier to delete
+            force: If False, raise error if task has dependents
+
+        Raises:
+            TransactionError: If task has dependents (and force=False) or task not found
+        """
+        # Check if task exists
+        task = self.get_task(task_id)
+        if task is None:
+            raise TransactionError(f"Task not found: {task_id}")
+
+        # Check for dependents unless force is True
+        if not force:
+            dependents = self.get_dependents(task_id)
+            if dependents:
+                dependent_ids = [dep.id for dep in dependents]
+                raise TransactionError(
+                    f"Cannot delete task {task_id}: has dependents {dependent_ids}. "
+                    "Use force=True to override."
+                )
+
+        # Get all edges connected to this task
+        outgoing, incoming = self.get_edges_for_task(task_id)
+        all_edges = outgoing + incoming
+
+        # Delete task and all connected edges in a transaction
+        entities_dir = self.got_dir / "entities"
+        task_file = entities_dir / f"{task_id}.json"
+
+        # Delete the task entity file
+        if task_file.exists():
+            task_file.unlink()
+
+        # Delete all connected edge files
+        for edge in all_edges:
+            edge_file = entities_dir / f"{edge.id}.json"
+            if edge_file.exists():
+                edge_file.unlink()
+
     def sync(self) -> SyncResult:
         """
         Sync with remote (push/pull).
