@@ -534,27 +534,57 @@ class EventLog:
                         except KeyError:
                             edge_type = EdgeType.MOTIVATES
 
-                        src_id = event["src"]
-                        tgt_id = event["tgt"]
+                        src_raw = event["src"]
+                        tgt_raw = event["tgt"]
+                        weight = event.get("weight", 1.0)
 
-                        # Check if both nodes exist
-                        if src_id not in graph.nodes:
-                            error_msg = f"Event {event_num}: Cannot create edge - source node {src_id} does not exist"
+                        # Handle comma-concatenated IDs (malformed data fix)
+                        # Split on comma and trim whitespace from each ID
+                        src_ids = [s.strip() for s in src_raw.split(",")]
+                        tgt_ids = [t.strip() for t in tgt_raw.split(",")]
+
+                        # Create edges for each source-target combination
+                        edges_created = 0
+                        for src_id in src_ids:
+                            # Try ID normalization for source
+                            actual_src = src_id
+                            if src_id not in graph.nodes:
+                                if src_id.startswith("T-") and f"task:{src_id}" in graph.nodes:
+                                    actual_src = f"task:{src_id}"
+                                elif src_id.startswith("task:") and src_id[5:] in graph.nodes:
+                                    actual_src = src_id[5:]
+
+                            if actual_src not in graph.nodes:
+                                logger.warning(f"Event {event_num}: Skipping edge - source node {src_id} does not exist")
+                                continue
+
+                            for tgt_id in tgt_ids:
+                                # Try ID normalization for target
+                                actual_tgt = tgt_id
+                                if tgt_id not in graph.nodes:
+                                    if tgt_id.startswith("T-") and f"task:{tgt_id}" in graph.nodes:
+                                        actual_tgt = f"task:{tgt_id}"
+                                    elif tgt_id.startswith("task:") and tgt_id[5:] in graph.nodes:
+                                        actual_tgt = tgt_id[5:]
+
+                                if actual_tgt not in graph.nodes:
+                                    logger.warning(f"Event {event_num}: Skipping edge - target node {tgt_id} does not exist")
+                                    continue
+
+                                graph.add_edge(
+                                    from_id=actual_src,
+                                    to_id=actual_tgt,
+                                    edge_type=edge_type,
+                                    weight=weight
+                                )
+                                edges_created += 1
+
+                        if edges_created == 0 and len(src_ids) == 1 and len(tgt_ids) == 1:
+                            # Log error only if it was a simple edge that failed (not comma-split)
+                            error_msg = f"Event {event_num}: Cannot create edge - nodes not found"
                             logger.error(error_msg)
                             errors.append(error_msg)
-                            continue
-                        if tgt_id not in graph.nodes:
-                            error_msg = f"Event {event_num}: Cannot create edge - target node {tgt_id} does not exist"
-                            logger.error(error_msg)
-                            errors.append(error_msg)
-                            continue
 
-                        graph.add_edge(
-                            from_id=src_id,  # Fixed: was source_id
-                            to_id=tgt_id,    # Fixed: was target_id
-                            edge_type=edge_type,
-                            weight=event.get("weight", 1.0)
-                        )
                     except KeyError as e:
                         error_msg = f"Event {event_num}: Missing required field for edge.create: {e}"
                         logger.error(error_msg)
@@ -587,18 +617,29 @@ class EventLog:
                         metadata=event.get("context", {})
                     )
                     # Create JUSTIFIES edges to affected nodes
-                    for affected_id in event.get("affects", []):
-                        if affected_id in graph.nodes:
-                            try:
-                                graph.add_edge(
-                                    decision_id, affected_id,
-                                    EdgeType.MOTIVATES,  # JUSTIFIES conceptually
-                                    weight=1.0, confidence=1.0
-                                )
-                            except Exception as e:
-                                logger.warning(f"Event {event_num}: Failed to create JUSTIFIES edge to {affected_id}: {e}")
-                        else:
-                            logger.warning(f"Event {event_num}: Cannot create edge to non-existent node {affected_id}")
+                    for affected_raw in event.get("affects", []):
+                        # Handle comma-concatenated IDs (malformed data fix)
+                        affected_ids = [a.strip() for a in affected_raw.split(",")]
+                        for affected_id in affected_ids:
+                            # Try ID normalization
+                            actual_id = affected_id
+                            if affected_id not in graph.nodes:
+                                if affected_id.startswith("T-") and f"task:{affected_id}" in graph.nodes:
+                                    actual_id = f"task:{affected_id}"
+                                elif affected_id.startswith("task:") and affected_id[5:] in graph.nodes:
+                                    actual_id = affected_id[5:]
+
+                            if actual_id in graph.nodes:
+                                try:
+                                    graph.add_edge(
+                                        decision_id, actual_id,
+                                        EdgeType.MOTIVATES,  # JUSTIFIES conceptually
+                                        weight=1.0, confidence=1.0
+                                    )
+                                except Exception as e:
+                                    logger.warning(f"Event {event_num}: Failed to create JUSTIFIES edge to {affected_id}: {e}")
+                            else:
+                                logger.warning(f"Event {event_num}: Cannot create edge to non-existent node {affected_id}")
 
                 elif event_type == "decision.supersede":
                     # Create SUPERSEDES edge (new decision supersedes old)

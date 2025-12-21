@@ -345,6 +345,235 @@ class TestThoughtGraphAddEdge:
             graph.add_edge(from_id="n1", to_id="n2", edge_type=EdgeType.DEPENDS_ON)
 
 
+class TestMalformedEdgeData:
+    """
+    Regression tests for malformed edge data with comma-concatenated IDs.
+
+    Bug: Some edge.create events have target IDs like:
+        "task:T-20251220-231129-81b3,task:T-20251220-231159-7d31"
+    Instead of being two separate edges.
+
+    Expected behavior: Parse comma-separated IDs and create multiple edges.
+    """
+
+    def test_comma_concatenated_target_creates_multiple_edges(self, tmp_path):
+        """
+        Scenario: edge.create has comma-separated target IDs.
+        Expected: Create separate edges for each target.
+        """
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Source"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "Target 1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:02Z", "event": "node.create", "id": "task:T-003", "type": "TASK", "data": {"title": "Target 2"}, "meta": {}},
+            {
+                "ts": "2025-01-01T00:00:03Z",
+                "event": "edge.create",
+                "src": "task:T-001",
+                "tgt": "task:T-002,task:T-003",  # Malformed: comma-concatenated
+                "type": "DEPENDS_ON",
+                "weight": 1.0
+            }
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Should create 2 edges (one for each target)
+        assert len(graph.edges) == 2, f"Should create 2 edges, got {len(graph.edges)}"
+
+        # Verify both edges exist
+        edge_targets = {e.target_id for e in graph.edges}
+        assert "task:T-002" in edge_targets, "Edge to T-002 should exist"
+        assert "task:T-003" in edge_targets, "Edge to T-003 should exist"
+
+    def test_comma_concatenated_source_creates_multiple_edges(self, tmp_path):
+        """
+        Scenario: edge.create has comma-separated source IDs.
+        Expected: Create separate edges for each source.
+        """
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Source 1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "Source 2"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:02Z", "event": "node.create", "id": "task:T-003", "type": "TASK", "data": {"title": "Target"}, "meta": {}},
+            {
+                "ts": "2025-01-01T00:00:03Z",
+                "event": "edge.create",
+                "src": "task:T-001,task:T-002",  # Malformed: comma-concatenated sources
+                "tgt": "task:T-003",
+                "type": "BLOCKS",
+                "weight": 0.8
+            }
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Should create 2 edges (one from each source)
+        assert len(graph.edges) == 2, f"Should create 2 edges, got {len(graph.edges)}"
+
+        # Verify both edges exist
+        edge_sources = {e.source_id for e in graph.edges}
+        assert "task:T-001" in edge_sources, "Edge from T-001 should exist"
+        assert "task:T-002" in edge_sources, "Edge from T-002 should exist"
+
+    def test_both_source_and_target_comma_concatenated(self, tmp_path):
+        """
+        Scenario: edge.create has comma-separated source AND target IDs.
+        Expected: Create edges for all source-target combinations (cartesian product).
+        """
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "S1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "S2"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:02Z", "event": "node.create", "id": "task:T-003", "type": "TASK", "data": {"title": "T1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:03Z", "event": "node.create", "id": "task:T-004", "type": "TASK", "data": {"title": "T2"}, "meta": {}},
+            {
+                "ts": "2025-01-01T00:00:04Z",
+                "event": "edge.create",
+                "src": "task:T-001,task:T-002",  # 2 sources
+                "tgt": "task:T-003,task:T-004",  # 2 targets
+                "type": "SIMILAR",
+                "weight": 0.5
+            }
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Should create 4 edges (2x2 cartesian product)
+        assert len(graph.edges) == 4, f"Should create 4 edges (2x2), got {len(graph.edges)}"
+
+    def test_comma_concatenated_with_missing_node_skips_that_edge(self, tmp_path):
+        """
+        Scenario: Comma-separated IDs include a non-existent node.
+        Expected: Create edges for valid nodes, skip invalid ones.
+        """
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Source"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "Valid Target"}, "meta": {}},
+            # task:T-003 NOT created (missing)
+            {
+                "ts": "2025-01-01T00:00:02Z",
+                "event": "edge.create",
+                "src": "task:T-001",
+                "tgt": "task:T-002,task:T-003",  # T-003 doesn't exist
+                "type": "DEPENDS_ON",
+                "weight": 1.0
+            }
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Should create 1 edge (only to T-002, skip T-003)
+        assert len(graph.edges) == 1, f"Should create 1 edge, got {len(graph.edges)}"
+        assert graph.edges[0].target_id == "task:T-002"
+
+    def test_real_world_malformed_edge_from_production(self, tmp_path):
+        """
+        Scenario: Real edge from production data with comma-concatenated IDs.
+        This is the actual format from Event 266.
+        """
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        # Create all the nodes that should exist
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-20251220-source", "type": "TASK", "data": {"title": "Source Task"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-20251220-231129-81b3", "type": "TASK", "data": {"title": "Target 1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:02Z", "event": "node.create", "id": "task:T-20251220-231159-7d31", "type": "TASK", "data": {"title": "Target 2"}, "meta": {}},
+            {
+                "ts": "2025-01-01T00:00:03Z",
+                "event": "edge.create",
+                "src": "task:T-20251220-source",
+                # Real production format: comma-concatenated full task IDs
+                "tgt": "task:T-20251220-231129-81b3,task:T-20251220-231159-7d31",
+                "type": "DEPENDS_ON",
+                "weight": 1.0
+            }
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Should create 2 edges
+        assert len(graph.edges) == 2, f"Should create 2 edges from comma-separated targets, got {len(graph.edges)}"
+
+        # Verify edge targets
+        edge_targets = {e.target_id for e in graph.edges}
+        assert "task:T-20251220-231129-81b3" in edge_targets
+        assert "task:T-20251220-231159-7d31" in edge_targets
+
+    def test_edge_with_spaces_around_comma(self, tmp_path):
+        """
+        Scenario: Comma-separated IDs have spaces around comma.
+        Expected: Trim whitespace and create edges correctly.
+        """
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "S"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "T1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:02Z", "event": "node.create", "id": "task:T-003", "type": "TASK", "data": {"title": "T2"}, "meta": {}},
+            {
+                "ts": "2025-01-01T00:00:03Z",
+                "event": "edge.create",
+                "src": "task:T-001",
+                "tgt": "task:T-002 , task:T-003",  # Spaces around comma
+                "type": "DEPENDS_ON",
+                "weight": 1.0
+            }
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Should create 2 edges with trimmed IDs
+        assert len(graph.edges) == 2, f"Should handle spaces around comma, got {len(graph.edges)} edges"
+
+
 class TestNodeIdNormalization:
     """
     Regression tests for ID normalization in node.update and node.delete.
