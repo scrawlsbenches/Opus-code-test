@@ -1,0 +1,3 @@
+{"ts": "2025-12-21T11:29:55.879686Z", "event": "edge.delete", "meta": {"branch": "claude/test-task-workflow-gRXq7", "session": "20251221-112955-da27"}, "src": "task:T-20251221-030557-d7f4", "tgt": "task:T-20251221-030441-ab81", "type": "BLOCKS"}
+{"ts": "2025-12-21T11:29:55.887858Z", "event": "edge.delete", "meta": {"branch": "claude/test-task-workflow-gRXq7", "session": "20251221-112955-da27"}, "src": "task:T-20251221-030613-196f", "tgt": "task:T-20251221-030557-d7f4", "type": "BLOCKS"}
+{"ts": "2025-12-21T11:29:55.894257Z", "event": "node.delete", "meta": {"branch": "claude/test-task-workflow-gRXq7", "session": "20251221-112955-da27"}, "id": "task:T-20251221-030557-d7f4"}

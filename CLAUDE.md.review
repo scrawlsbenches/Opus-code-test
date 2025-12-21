@@ -1,5 +1,78 @@
 # CLAUDE.md - Cortical Text Processor Development Guide
 
+---
+
+## 🚀 Quick Session Start (READ THIS FIRST)
+
+**New session? Start here to restore context fast.**
+
+### 1. Check GoT State (30 seconds)
+```bash
+python scripts/got_utils.py validate      # Health check
+python scripts/got_utils.py task list --status in_progress  # What's active?
+```
+
+### 2. Read Recent Knowledge Transfer (2 minutes)
+```bash
+ls -t samples/memories/*knowledge-transfer*.md | head -1 | xargs cat
+```
+**Most recent:** `samples/memories/2025-12-21-session-knowledge-transfer.md`
+
+### 3. What is GoT?
+GoT (Graph of Thought) is our task and decision tracking system:
+- **Tasks**: Work items with IDs like `T-20251221-014654-d4b7`
+- **Decisions**: Logged choices with rationale
+- **Edges**: Relationships (DEPENDS_ON, BLOCKS, SIMILAR, etc.)
+- **Events**: Append-only log for persistence
+
+**Key commands:**
+| Command | Purpose |
+|---------|---------|
+| `python scripts/got_utils.py dashboard` | Overview of all tasks |
+| `python scripts/got_utils.py task create "Title" --priority high` | Create task |
+| `python scripts/got_utils.py task start T-XXX` | Start working on task |
+| `python scripts/got_utils.py task complete T-XXX` | Mark complete |
+| `python scripts/got_utils.py task show T-XXX` | Show task details |
+| `python scripts/got_utils.py task delete T-XXX [--force]` | Delete task (transactional) |
+| `python scripts/got_utils.py decision log "Decision" --rationale "Why"` | Log decision |
+| `python scripts/got_utils.py validate` | Health check |
+
+> **⚠️ NEVER delete GoT files directly!**
+>
+> GoT data in `.got/` is **transactional and event-sourced**. Direct file deletion:
+> - Breaks the event log (events reference deleted nodes)
+> - Corrupts dependency tracking
+> - Leaves orphaned edges and broken relationships
+>
+> **Always use `got task delete` command** which:
+> - Verifies preconditions (no dependents, not blocking others)
+> - Cleans up related edges
+> - Logs the deletion as an event for audit trail
+> - Supports `--force` for overriding safety checks
+
+### 4. Critical Bugs Fixed (Don't Reintroduce!)
+- **Edge rebuild**: Use `from_id`/`to_id`, NOT `source_id`/`target_id` in `add_edge()`
+- **EdgeType lookup**: Use `EdgeType[name]` with try/except, NOT `hasattr()`
+- **Priority executor**: Skip query echo line when parsing blockers
+
+### 5. Work Priority Order
+1. **Security** → 2. **Bugs** → 3. **Features** → 4. **Documentation**
+
+### 6. Using Sub-Agents (Preserve Your Context!)
+
+**Delegate mechanical work, keep decisions in main context.**
+
+| Situation | Agent Type | Example |
+|-----------|-----------|---------|
+| "Where is X?" | `Explore` (quick) | Find implementation patterns |
+| "How does X work?" | `Explore` (thorough) | Understand full system flow |
+| "Implement feature X" | `general-purpose` | Write tests, implement features |
+| "How should we build X?" | `Plan` | Architecture decisions |
+
+**Full guide:** `docs/sub-agent-utilization-plan.md`
+
+---
+
 ## Persona & Working Philosophy
 
 You are a **senior computational neuroscience engineer** with deep expertise in:
@@ -32,7 +105,7 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 - Write tests for the bug before writing the fix
 
 > **⚠️ CODE COVERAGE POLICY:**
-> - **Current baseline:** 61% (as of 2025-12-17)
+> - **Current baseline:** 89% (as of 2025-12-21)
 > - **Target:** Improve incrementally, never regress on modified files
 > - **Reality:** Some modules have low coverage (see debt list below)
 >
@@ -42,7 +115,7 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 > ```
 >
 > **Known coverage debt (acknowledged, not blocking):**
-> - `cortical/query/analogy.py` (3%), `cortical/mcp_server.py` (4%), `cortical/gaps.py` (9%)
+> - `cortical/query/analogy.py` (3%), `cortical/gaps.py` (9%)
 > - `cortical/cli_wrapper.py` (0% - CLI entry point), `cortical/types.py` (0% - type aliases)
 > - Full list: `samples/memories/2025-12-17-session-coverage-and-workflow-analysis.md`
 >
@@ -321,22 +394,59 @@ Layer 3 (DOCUMENTS) → Full documents          [IT analogy: objects]
 
 ## Development Environment Setup
 
-**Before running tests with coverage**, install dev dependencies:
+> **⚠️ CRITICAL: Before any software development, you MUST have pytest and coverage installed and collect baseline coverage results.**
+
+### Step 1: Check if Dependencies Are Installed
 
 ```bash
-# Option 1: Install as editable package with dev deps (recommended)
+# Check if pytest is installed
+python -c "import pytest; print(f'pytest OK: {pytest.__version__}')" 2>/dev/null || echo "❌ pytest NOT installed"
+
+# Check if coverage is installed
+python -c "import coverage; print(f'coverage OK: {coverage.__version__}')" 2>/dev/null || echo "❌ coverage NOT installed"
+```
+
+### Step 2: Install Missing Dependencies
+
+**If pytest or coverage are NOT installed**, install them:
+
+```bash
+# Quick install (minimum required)
+pip install pytest coverage
+
+# OR: Install as editable package with all dev deps (recommended)
 pip install -e ".[dev]"
 
-# Option 2: Install from requirements.txt
+# OR: Install from requirements.txt
 pip install -r requirements.txt
 ```
 
-This installs: `coverage`, `pytest`, `mcp`, `pyyaml`
+This installs: `coverage`, `pytest`, `pyyaml`
 
-**Verify installation:**
+### Step 3: Collect Baseline Coverage (REQUIRED before development)
+
+**Before making any code changes**, run coverage to establish baseline:
+
 ```bash
-python -c "import coverage; print('coverage OK')"
+# Run tests with coverage collection
+python -m coverage run -m pytest tests/ -q
+
+# View coverage report
+python -m coverage report --include="cortical/*"
+
+# Check current coverage percentage
+python -m coverage report --include="cortical/*" | tail -1
 ```
+
+**Expected output:** Coverage should be ~89% or higher (current baseline as of 2025-12-21).
+
+### Troubleshooting
+
+| Error | Solution |
+|-------|----------|
+| `ModuleNotFoundError: No module named 'pytest'` | Run `pip install pytest` |
+| `ModuleNotFoundError: No module named 'coverage'` | Run `pip install coverage` |
+| Tests timing out | Use `--timeout=60` flag with pytest |
 
 > **Note:** The library itself has zero runtime dependencies. Dev dependencies are only needed for testing and coverage reporting.
 
@@ -872,6 +982,88 @@ Key defaults to know:
 
 ## Development Workflow
 
+### Work Priority Order
+
+> **⚠️ CRITICAL: Follow this priority order for all work:**
+
+| Priority | Type | Rule |
+|----------|------|------|
+| 1 | **Security Issues** | Fix security vulnerabilities BEFORE any other code work. No exceptions. |
+| 2 | **Bugs** | Fix bugs BEFORE working on new features. Stability over velocity. |
+| 3 | **Features** | New functionality only after security and bugs are addressed. |
+| 4 | **Documentation** | Update docs AS YOU WORK, not after. Every code change = doc update. |
+
+**Why this order:**
+- Security issues can expose users to harm - they cannot wait
+- Bugs in existing code affect current users - fix them first
+- Features for future users come after current users are protected
+- Documentation debt compounds - write it while context is fresh
+
+### Test-Driven Development (TDD) Workflow
+
+> **⚠️ IMPORTANT: Use TDD for all code changes to important systems.**
+
+This project uses Test-Driven Development. The workflow is:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     TDD WORKFLOW                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  1. RED: Write failing tests first                                   │
+│     └── Capture expected behavior before implementation              │
+│                                                                       │
+│  2. GREEN: Implement minimal code to pass tests                      │
+│     └── Focus on making tests pass, not perfection                   │
+│                                                                       │
+│  3. REFACTOR: Convert behavioral → unit tests, clean up              │
+│     └── Delete temp behavioral tests, keep permanent unit tests      │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Two types of tests:**
+
+| Type | Purpose | Data Creation | When to Use |
+|------|---------|---------------|-------------|
+| **Behavioral** | Explore/debug, capture "what should happen" | May create real data | During bug investigation, then DELETE |
+| **Unit** | Permanent protection, document API contract | Mocks only, no data | Keep forever after feature is working |
+
+**TDD Process:**
+
+1. **When fixing a bug:**
+   - Write behavioral tests that reproduce the bug
+   - Run tests to confirm they fail (RED)
+   - Implement the fix
+   - Run tests to confirm they pass (GREEN)
+   - Convert behavioral tests to unit tests (REFACTOR)
+   - Delete behavioral tests that create data
+
+2. **When adding a feature:**
+   - Write behavioral tests for expected behavior
+   - Implement until tests pass
+   - Convert to unit tests with mocks
+   - Delete temporary behavioral tests
+
+3. **Cleanup requirement:**
+   - Behavioral tests that use `got_manager` with real ops must be converted
+   - Unit tests use `mock_manager` - no cleanup needed
+   - Check for test data pollution: `python scripts/got_utils.py validate`
+
+**Example pattern:**
+
+```python
+# BEHAVIORAL (temporary - for debugging)
+def test_delete_task_with_deps(self, got_manager):  # Uses real manager
+    task_id = got_manager.create_task(...)  # Creates real data!
+    ...
+
+# UNIT (permanent - keeps forever)
+def test_delete_task_with_deps(self, mock_manager, mock_args):  # Mocked
+    mock_manager.get_task.return_value = mock_task  # No real data
+    ...
+```
+
 ### Before Writing Code
 
 1. **Read the relevant module** - understand existing patterns
@@ -1032,7 +1224,6 @@ Tests requiring optional dependencies are excluded by default during development
 | Marker | Tests | Dependency |
 |--------|-------|------------|
 | `optional` | All optional tests | (meta-marker) |
-| `mcp` | MCP server tests | `mcp>=1.0` |
 | `protobuf` | Serialization tests | `protobuf>=4.0` |
 | `fuzz` | Property-based tests | `hypothesis>=6.0` |
 | `slow` | Long-running tests | (none) |

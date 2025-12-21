@@ -1,0 +1,1 @@
+{"ts": "2025-12-21T11:43:19.290879Z", "event": "node.update", "meta": {"branch": "claude/test-task-workflow-gRXq7", "session": "20251221-114319-a8a7"}, "id": "T-20251220-194437-ba0b", "changes": {"status": "blocked", "blocked_reason": "OWNER: External team. Not for this agent. Hubris model integration is separate workstream.", "updated_at": "2025-12-21T11:43:19.290863"}}

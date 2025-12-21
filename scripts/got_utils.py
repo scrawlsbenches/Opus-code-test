@@ -16,11 +16,15 @@ See docs/got-cli-spec.md for complete command reference.
 
 import argparse
 import json
+import logging
 import os
+import re
 import sys
+import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass, field, asdict
 
 # Add project root to path
@@ -28,8 +32,25 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from cortical.reasoning.thought_graph import ThoughtGraph
-from cortical.reasoning.graph_of_thought import NodeType, EdgeType, ThoughtNode
+from cortical.reasoning.graph_of_thought import NodeType, EdgeType, ThoughtNode, ThoughtEdge
 from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery
+
+# Import transactional backend (new)
+try:
+    from cortical.got.api import GoTManager as TxGoTManager
+    from cortical.got.types import Task as TxTask, Decision as TxDecision, Edge as TxEdge
+    from cortical.got.config import DurabilityMode
+    TX_BACKEND_AVAILABLE = True
+except ImportError:
+    TX_BACKEND_AVAILABLE = False
+    TxGoTManager = None
+    TxTask = None
+    TxDecision = None
+    TxEdge = None
+    DurabilityMode = None
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -37,10 +58,19 @@ from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery
 # =============================================================================
 
 GOT_DIR = PROJECT_ROOT / ".got"
+GOT_TX_DIR = PROJECT_ROOT / ".got-tx"  # Transactional backend directory
 WAL_DIR = GOT_DIR / "wal"
 SNAPSHOTS_DIR = GOT_DIR / "snapshots"
 EVENTS_DIR = GOT_DIR / "events"  # Git-tracked event logs (source of truth)
 TASKS_DIR = PROJECT_ROOT / "tasks"
+
+# Backend selection (environment variable or auto-detect)
+# Set GOT_USE_TX=1 to force transactional backend
+# Set GOT_USE_TX=0 to force event-sourced backend
+USE_TX_BACKEND = os.environ.get("GOT_USE_TX", "").lower() in ("1", "true", "yes")
+if not USE_TX_BACKEND and TX_BACKEND_AVAILABLE:
+    # Auto-detect: if .got-tx exists and has entities, use it
+    USE_TX_BACKEND = (GOT_TX_DIR / "entities").exists()
 
 # Status values
 STATUS_PENDING = "pending"
@@ -128,8 +158,438 @@ def generate_session_id() -> str:
 
 
 # =============================================================================
+# AUTO-TASK HOOK UTILITIES
+# =============================================================================
+
+# Pattern for GoT task IDs: T-YYYYMMDD-HHMMSS-XXXX
+TASK_ID_PATTERN = re.compile(r'T-\d{8}-\d{6}-[a-f0-9]{4}', re.IGNORECASE)
+
+# Conventional commit type prefixes
+COMMIT_TYPE_PATTERN = re.compile(r'^(\w+):\s*(.+)$')
+
+# Map commit types to GoT categories
+COMMIT_TYPE_TO_CATEGORY = {
+    'fix': 'bugfix',
+    'feat': 'feature',
+    'docs': 'docs',
+    'refactor': 'refactor',
+    'test': 'testing',
+    'chore': 'chore',
+    'style': 'chore',
+    'perf': 'performance',
+    'ci': 'chore',
+    'build': 'chore',
+}
+
+
+def has_task_reference(commit_message: str) -> bool:
+    """
+    Check if a commit message contains a GoT task reference.
+
+    Args:
+        commit_message: The git commit message
+
+    Returns:
+        True if a valid task ID pattern (T-YYYYMMDD-HHMMSS-XXXX) is found
+    """
+    return bool(TASK_ID_PATTERN.search(commit_message))
+
+
+def extract_commit_type(commit_message: str) -> Optional[str]:
+    """
+    Extract the conventional commit type prefix from a commit message.
+
+    Args:
+        commit_message: The git commit message
+
+    Returns:
+        The commit type (fix, feat, docs, etc.) or None if not found
+    """
+    match = COMMIT_TYPE_PATTERN.match(commit_message.strip())
+    if match:
+        return match.group(1).lower()
+    return None
+
+
+def suggest_task_category(commit_type: Optional[str]) -> str:
+    """
+    Suggest a GoT task category based on the commit type.
+
+    Args:
+        commit_type: The conventional commit type (fix, feat, etc.)
+
+    Returns:
+        The suggested category for a GoT task
+    """
+    if commit_type is None:
+        return 'general'
+    return COMMIT_TYPE_TO_CATEGORY.get(commit_type.lower(), 'general')
+
+
+def generate_task_title_from_commit(commit_message: str) -> str:
+    """
+    Generate a task title from a commit message.
+
+    Strips the conventional commit prefix if present.
+
+    Args:
+        commit_message: The git commit message
+
+    Returns:
+        A clean title suitable for a GoT task
+    """
+    message = commit_message.strip()
+    match = COMMIT_TYPE_PATTERN.match(message)
+    if match:
+        return match.group(2).strip()
+    return message
+
+
+# =============================================================================
+# BACKEND FACTORY
+# =============================================================================
+
+class GoTBackendFactory:
+    """Factory for creating GoT backend instances."""
+
+    @staticmethod
+    def create(
+        backend: Optional[str] = None,
+        got_dir: Optional[Path] = None,
+    ) -> "Union[GoTProjectManager, TransactionalGoTAdapter]":
+        """
+        Create appropriate GoT backend.
+
+        Args:
+            backend: "transactional", "event-sourced", or None for auto-detect
+            got_dir: Override default directory
+
+        Returns:
+            Backend instance
+
+        Raises:
+            ValueError: If invalid backend specified
+        """
+        # Auto-detect if not specified
+        if backend is None:
+            backend = GoTBackendFactory._detect_backend()
+
+        backend = backend.lower()
+
+        if backend == "transactional":
+            if not TX_BACKEND_AVAILABLE:
+                raise ValueError("Transactional backend not available")
+            return TransactionalGoTAdapter(got_dir or GOT_TX_DIR)
+        elif backend in ("event-sourced", "event_sourced", "events"):
+            return GoTProjectManager(got_dir or GOT_DIR)
+        else:
+            raise ValueError(f"Invalid backend: {backend}. Use 'transactional' or 'event-sourced'")
+
+    @staticmethod
+    def _detect_backend() -> str:
+        """Auto-detect which backend to use."""
+        # Check environment variable
+        env_backend = os.environ.get("GOT_BACKEND", "").lower()
+        if env_backend in ("transactional", "tx"):
+            return "transactional"
+        if env_backend in ("event-sourced", "events"):
+            return "event-sourced"
+
+        # Check if transactional store exists
+        if TX_BACKEND_AVAILABLE and (GOT_TX_DIR / "entities").exists():
+            return "transactional"
+
+        return "event-sourced"
+
+    @staticmethod
+    def get_available_backends() -> List[str]:
+        """Get list of available backends."""
+        backends = ["event-sourced"]
+        if TX_BACKEND_AVAILABLE:
+            backends.append("transactional")
+        return backends
+
+
+# =============================================================================
+# PROCESS-SAFE LOCKING
+# =============================================================================
+
+class ProcessLock:
+    """
+    Process-safe file-based lock with stale lock detection.
+
+    Features:
+    - Works across processes (not just threads)
+    - Detects and recovers from stale locks (dead processes)
+    - Timeout support to prevent deadlocks
+    - Context manager support
+    - Reentrant option for same-process re-acquisition
+
+    Usage:
+        lock = ProcessLock("/path/to/.lock")
+        with lock:
+            # Critical section
+            pass
+
+        # Or explicit:
+        if lock.acquire(timeout=5.0):
+            try:
+                # Critical section
+            finally:
+                lock.release()
+    """
+
+    def __init__(
+        self,
+        lock_path: Path,
+        stale_timeout: float = 3600.0,  # 1 hour default
+        reentrant: bool = False,
+    ):
+        """
+        Initialize process lock.
+
+        Args:
+            lock_path: Path to the lock file
+            stale_timeout: Seconds after which a lock is considered stale
+            reentrant: If True, same process can acquire multiple times
+        """
+        self.lock_path = Path(lock_path)
+        self.stale_timeout = stale_timeout
+        self.reentrant = reentrant
+        self._held = False
+        self._acquire_count = 0
+        self._fd = None
+
+    def acquire(self, timeout: Optional[float] = None) -> bool:
+        """
+        Acquire the lock.
+
+        Args:
+            timeout: Max seconds to wait (None=block forever, 0=non-blocking)
+
+        Returns:
+            True if lock acquired, False if timeout
+        """
+        import fcntl
+
+        # Handle reentrant case
+        if self._held and self.reentrant:
+            self._acquire_count += 1
+            return True
+
+        start_time = time.time()
+        poll_interval = 0.05  # 50ms
+
+        while True:
+            # Try to acquire
+            if self._try_acquire():
+                self._held = True
+                self._acquire_count = 1
+                return True
+
+            # Check for stale lock
+            if self._is_stale_lock():
+                self._break_stale_lock()
+                continue
+
+            # Check timeout
+            if timeout is not None:
+                elapsed = time.time() - start_time
+                if elapsed >= timeout:
+                    return False
+
+            # Wait before retry
+            if timeout == 0:
+                return False
+
+            remaining = None
+            if timeout is not None:
+                remaining = timeout - (time.time() - start_time)
+                if remaining <= 0:
+                    return False
+
+            time.sleep(min(poll_interval, remaining) if remaining else poll_interval)
+
+    def _try_acquire(self) -> bool:
+        """Attempt to acquire the lock file."""
+        import fcntl
+
+        try:
+            # Create parent directory if needed
+            self.lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Open or create lock file
+            self._fd = os.open(
+                str(self.lock_path),
+                os.O_CREAT | os.O_RDWR,
+                0o644
+            )
+
+            # Try exclusive lock (non-blocking)
+            try:
+                fcntl.flock(self._fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except (IOError, OSError):
+                os.close(self._fd)
+                self._fd = None
+                return False
+
+            # Write PID and timestamp
+            os.ftruncate(self._fd, 0)
+            os.lseek(self._fd, 0, os.SEEK_SET)
+            lock_info = f"{os.getpid()}\n{time.time()}\n"
+            os.write(self._fd, lock_info.encode())
+            os.fsync(self._fd)
+
+            return True
+
+        except Exception as e:
+            if self._fd is not None:
+                try:
+                    os.close(self._fd)
+                except:
+                    pass
+                self._fd = None
+            return False
+
+    def _is_stale_lock(self) -> bool:
+        """Check if the existing lock is stale."""
+        if not self.lock_path.exists():
+            return False
+
+        try:
+            content = self.lock_path.read_text().strip()
+            lines = content.split('\n')
+
+            if len(lines) < 2:
+                return True  # Corrupted, treat as stale
+
+            pid = int(lines[0])
+            timestamp = float(lines[1])
+
+            # Check if process is dead
+            if not self._process_exists(pid):
+                return True
+
+            # Check if lock is too old
+            if time.time() - timestamp > self.stale_timeout:
+                return True
+
+            return False
+
+        except (ValueError, IndexError, OSError):
+            # Corrupted lock file, treat as stale
+            return True
+
+    def _process_exists(self, pid: int) -> bool:
+        """Check if a process with given PID exists."""
+        try:
+            os.kill(pid, 0)  # Signal 0 doesn't kill, just checks
+            return True
+        except OSError:
+            return False
+
+    def _break_stale_lock(self) -> None:
+        """Remove a stale lock file."""
+        try:
+            self.lock_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    def release(self) -> None:
+        """Release the lock."""
+        import fcntl
+
+        if not self._held:
+            return
+
+        if self.reentrant and self._acquire_count > 1:
+            self._acquire_count -= 1
+            return
+
+        self._held = False
+        self._acquire_count = 0
+
+        if self._fd is not None:
+            try:
+                fcntl.flock(self._fd, fcntl.LOCK_UN)
+                os.close(self._fd)
+            except:
+                pass
+            self._fd = None
+
+        # Clean up lock file
+        try:
+            self.lock_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    def is_locked(self) -> bool:
+        """Check if lock is currently held by this instance."""
+        return self._held
+
+    def __enter__(self):
+        """Context manager entry."""
+        acquired = self.acquire()
+        if not acquired:
+            raise TimeoutError(f"Could not acquire lock: {self.lock_path}")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        self.release()
+        return False
+
+    def __del__(self):
+        """Ensure lock is released on garbage collection."""
+        if self._held:
+            self.release()
+
+
+# =============================================================================
 # EVENT LOGGING (Source of Truth for Cross-Branch Coordination)
 # =============================================================================
+
+def atomic_append(filepath: str, content: str) -> None:
+    """
+    Append content to file atomically to prevent partial writes.
+
+    Writes to a temporary file first, then appends atomically to the target.
+    This prevents corruption if the process is interrupted during write.
+
+    Args:
+        filepath: Path to the file to append to
+        content: Content to append (should include newline if needed)
+    """
+    filepath = Path(filepath)
+    dir_path = filepath.parent
+
+    # Write content to temp file in same directory (for atomic operations)
+    fd, tmp_path = tempfile.mkstemp(dir=dir_path, suffix='.tmp', text=True)
+    try:
+        # Write and flush to temp file
+        with os.fdopen(fd, 'w') as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+
+        # Append from temp file to target file
+        with open(tmp_path, 'r') as src:
+            data = src.read()
+            with open(filepath, 'a') as dst:
+                dst.write(data)
+                dst.flush()
+                os.fsync(dst.fileno())
+
+        # Clean up temp file
+        os.unlink(tmp_path)
+    except Exception:
+        # Clean up temp file on failure
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+        raise
+
 
 class EventLog:
     """
@@ -159,8 +619,8 @@ class EventLog:
             },
             **data
         }
-        with open(self.event_file, "a") as f:
-            f.write(json.dumps(event, default=str) + "\n")
+        # Use atomic append to prevent partial writes
+        atomic_append(self.event_file, json.dumps(event, default=str) + "\n")
         return event
 
     def log_node_create(self, node_id: str, node_type: str, data: Dict) -> Dict:
@@ -411,46 +871,177 @@ class EventLog:
         return all_events
 
     @classmethod
-    def rebuild_graph_from_events(cls, events: List[Dict]) -> ThoughtGraph:
-        """Rebuild a ThoughtGraph from events (event sourcing)."""
+    def rebuild_graph_from_events(cls, events: List[Dict], with_telemetry: bool = False):
+        """Rebuild a ThoughtGraph from events (event sourcing).
+
+        Args:
+            events: List of event dictionaries to replay
+            with_telemetry: If True, return dict with 'graph' and 'telemetry' keys
+
+        Returns:
+            ThoughtGraph if with_telemetry=False (default, backward compatible)
+            Dict with 'graph' and 'telemetry' if with_telemetry=True
+        """
         graph = ThoughtGraph()
+        errors = []
+        event_num = 0
+
+        # Telemetry counters
+        telemetry = {
+            "node_create_events": 0,
+            "nodes_created": 0,
+            "edge_create_events": 0,
+            "edges_created": 0,
+            "edges_skipped": 0,
+            "errors": 0,
+            "validation_passed": True,
+            "validation_errors": [],
+            "summary": "",
+        }
 
         for event in events:
+            event_num += 1
             event_type = event.get("event", "")
 
             try:
                 if event_type == "node.create":
-                    node_type_str = event.get("type", "TASK").upper()
-                    node_type = NodeType[node_type_str] if hasattr(NodeType, node_type_str) else NodeType.TASK
-                    graph.add_node(
-                        node_id=event["id"],
-                        node_type=node_type,
-                        content=event.get("data", {}).get("title", ""),
-                        properties=event.get("data", {}),
-                        metadata=event.get("meta", {})
-                    )
+                    telemetry["node_create_events"] += 1
+                    try:
+                        node_type_str = event.get("type", "TASK").upper()
+                        node_type = NodeType[node_type_str] if hasattr(NodeType, node_type_str) else NodeType.TASK
+                        graph.add_node(
+                            node_id=event["id"],
+                            node_type=node_type,
+                            content=event.get("data", {}).get("title", ""),
+                            properties=event.get("data", {}),
+                            metadata=event.get("meta", {})
+                        )
+                        telemetry["nodes_created"] += 1
+                    except KeyError as e:
+                        error_msg = f"Event {event_num}: Missing required field for node.create: {e}"
+                        logger.error(error_msg)
+                        errors.append(error_msg)
+                        telemetry["errors"] += 1
+                    except Exception as e:
+                        error_msg = f"Event {event_num}: Failed to create node: {e}"
+                        logger.error(error_msg)
+                        errors.append(error_msg)
+                        telemetry["errors"] += 1
 
                 elif event_type == "node.update":
                     node_id = event["id"]
                     changes = event.get("changes", {})
-                    if node_id in graph.nodes:
+
+                    # Normalize ID - try with and without task: prefix
+                    actual_id = node_id
+                    if node_id not in graph.nodes:
+                        # Try with task: prefix if it looks like a task ID
+                        if node_id.startswith("T-") and f"task:{node_id}" in graph.nodes:
+                            actual_id = f"task:{node_id}"
+                        # Try without task: prefix
+                        elif node_id.startswith("task:") and node_id[5:] in graph.nodes:
+                            actual_id = node_id[5:]
+
+                    if actual_id in graph.nodes:
                         for key, value in changes.items():
-                            graph.nodes[node_id].properties[key] = value
+                            graph.nodes[actual_id].properties[key] = value
+                    else:
+                        logger.warning(f"Event {event_num}: Cannot update non-existent node {node_id}")
 
                 elif event_type == "node.delete":
                     node_id = event["id"]
-                    if node_id in graph.nodes:
-                        del graph.nodes[node_id]
+
+                    # Normalize ID - same as node.update
+                    actual_id = node_id
+                    if node_id not in graph.nodes:
+                        if node_id.startswith("T-") and f"task:{node_id}" in graph.nodes:
+                            actual_id = f"task:{node_id}"
+                        elif node_id.startswith("task:") and node_id[5:] in graph.nodes:
+                            actual_id = node_id[5:]
+
+                    if actual_id in graph.nodes:
+                        del graph.nodes[actual_id]
+                    else:
+                        logger.warning(f"Event {event_num}: Cannot delete non-existent node {node_id}")
 
                 elif event_type == "edge.create":
-                    edge_type_str = event.get("type", "RELATES_TO").upper()
-                    edge_type = EdgeType[edge_type_str] if hasattr(EdgeType, edge_type_str) else EdgeType.MOTIVATES
-                    graph.add_edge(
-                        source_id=event["src"],
-                        target_id=event["tgt"],
-                        edge_type=edge_type,
-                        weight=event.get("weight", 1.0)
-                    )
+                    telemetry["edge_create_events"] += 1
+                    try:
+                        edge_type_str = event.get("type", "RELATES_TO").upper()
+                        # Use try/except for EdgeType lookup since hasattr doesn't work correctly with enums
+                        try:
+                            edge_type = EdgeType[edge_type_str]
+                        except KeyError:
+                            edge_type = EdgeType.MOTIVATES
+
+                        src_raw = event["src"]
+                        tgt_raw = event["tgt"]
+                        weight = event.get("weight", 1.0)
+
+                        # Handle comma-concatenated IDs (malformed data fix)
+                        # Split on comma and trim whitespace from each ID
+                        src_ids = [s.strip() for s in src_raw.split(",")]
+                        tgt_ids = [t.strip() for t in tgt_raw.split(",")]
+
+                        # Create edges for each source-target combination
+                        edges_created = 0
+                        edges_skipped_this_event = 0
+                        for src_id in src_ids:
+                            # Try ID normalization for source
+                            actual_src = src_id
+                            if src_id not in graph.nodes:
+                                if src_id.startswith("T-") and f"task:{src_id}" in graph.nodes:
+                                    actual_src = f"task:{src_id}"
+                                elif src_id.startswith("task:") and src_id[5:] in graph.nodes:
+                                    actual_src = src_id[5:]
+
+                            if actual_src not in graph.nodes:
+                                logger.warning(f"Event {event_num}: Skipping edge - source node {src_id} does not exist")
+                                edges_skipped_this_event += len(tgt_ids)
+                                continue
+
+                            for tgt_id in tgt_ids:
+                                # Try ID normalization for target
+                                actual_tgt = tgt_id
+                                if tgt_id not in graph.nodes:
+                                    if tgt_id.startswith("T-") and f"task:{tgt_id}" in graph.nodes:
+                                        actual_tgt = f"task:{tgt_id}"
+                                    elif tgt_id.startswith("task:") and tgt_id[5:] in graph.nodes:
+                                        actual_tgt = tgt_id[5:]
+
+                                if actual_tgt not in graph.nodes:
+                                    logger.warning(f"Event {event_num}: Skipping edge - target node {tgt_id} does not exist")
+                                    edges_skipped_this_event += 1
+                                    continue
+
+                                graph.add_edge(
+                                    from_id=actual_src,
+                                    to_id=actual_tgt,
+                                    edge_type=edge_type,
+                                    weight=weight
+                                )
+                                edges_created += 1
+
+                        telemetry["edges_created"] += edges_created
+                        telemetry["edges_skipped"] += edges_skipped_this_event
+
+                        if edges_created == 0 and len(src_ids) == 1 and len(tgt_ids) == 1:
+                            # Log error only if it was a simple edge that failed (not comma-split)
+                            error_msg = f"Event {event_num}: Cannot create edge - nodes not found"
+                            logger.error(error_msg)
+                            errors.append(error_msg)
+                            telemetry["errors"] += 1
+
+                    except KeyError as e:
+                        error_msg = f"Event {event_num}: Missing required field for edge.create: {e}"
+                        logger.error(error_msg)
+                        errors.append(error_msg)
+                        telemetry["errors"] += 1
+                    except Exception as e:
+                        error_msg = f"Event {event_num}: Failed to create edge: {e}"
+                        logger.error(error_msg)
+                        errors.append(error_msg)
+                        telemetry["errors"] += 1
 
                 elif event_type == "edge.delete":
                     # Find and remove the edge
@@ -465,7 +1056,7 @@ class EventLog:
                     decision_id = event["id"]
                     graph.add_node(
                         node_id=decision_id,
-                        node_type=NodeType.CONTEXT,  # Use CONTEXT for decisions
+                        node_type=NodeType.DECISION,  # Fixed: was incorrectly CONTEXT
                         content=event.get("decision", ""),
                         properties={
                             "type": "decision",
@@ -475,16 +1066,29 @@ class EventLog:
                         metadata=event.get("context", {})
                     )
                     # Create JUSTIFIES edges to affected nodes
-                    for affected_id in event.get("affects", []):
-                        if affected_id in graph.nodes:
-                            try:
-                                graph.add_edge(
-                                    decision_id, affected_id,
-                                    EdgeType.MOTIVATES,  # JUSTIFIES conceptually
-                                    weight=1.0, confidence=1.0
-                                )
-                            except Exception:
-                                pass
+                    for affected_raw in event.get("affects", []):
+                        # Handle comma-concatenated IDs (malformed data fix)
+                        affected_ids = [a.strip() for a in affected_raw.split(",")]
+                        for affected_id in affected_ids:
+                            # Try ID normalization
+                            actual_id = affected_id
+                            if affected_id not in graph.nodes:
+                                if affected_id.startswith("T-") and f"task:{affected_id}" in graph.nodes:
+                                    actual_id = f"task:{affected_id}"
+                                elif affected_id.startswith("task:") and affected_id[5:] in graph.nodes:
+                                    actual_id = affected_id[5:]
+
+                            if actual_id in graph.nodes:
+                                try:
+                                    graph.add_edge(
+                                        decision_id, actual_id,
+                                        EdgeType.MOTIVATES,  # JUSTIFIES conceptually
+                                        weight=1.0, confidence=1.0
+                                    )
+                                except Exception as e:
+                                    logger.warning(f"Event {event_num}: Failed to create JUSTIFIES edge to {affected_id}: {e}")
+                            else:
+                                logger.warning(f"Event {event_num}: Cannot create edge to non-existent node {affected_id}")
 
                 elif event_type == "decision.supersede":
                     # Create SUPERSEDES edge (new decision supersedes old)
@@ -497,12 +1101,80 @@ class EventLog:
                                 EdgeType.MOTIVATES,  # SUPERSEDES conceptually
                                 weight=1.0, confidence=1.0
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.warning(f"Event {event_num}: Failed to create SUPERSEDES edge: {e}")
+                    else:
+                        missing_nodes = []
+                        if new_id not in graph.nodes:
+                            missing_nodes.append(f"new_id={new_id}")
+                        if old_id not in graph.nodes:
+                            missing_nodes.append(f"old_id={old_id}")
+                        logger.warning(f"Event {event_num}: Cannot create SUPERSEDES edge - missing nodes: {', '.join(missing_nodes)}")
 
-            except Exception:
-                # Skip invalid events
+                elif event_type == "handoff.initiate":
+                    # Handoff events don't create graph nodes - they're just logged
+                    # But we should acknowledge them to prevent "unknown event type" warnings
+                    handoff_id = event.get("handoff_id") or event.get("id")
+                    if handoff_id:
+                        logger.debug(f"Handoff initiated: {handoff_id}")
+
+                elif event_type == "handoff.accept":
+                    handoff_id = event.get("handoff_id") or event.get("id")
+                    if handoff_id:
+                        logger.debug(f"Handoff accepted: {handoff_id}")
+
+                elif event_type == "handoff.complete":
+                    handoff_id = event.get("handoff_id") or event.get("id")
+                    if handoff_id:
+                        logger.debug(f"Handoff completed: {handoff_id}")
+
+                elif event_type == "handoff.reject":
+                    handoff_id = event.get("handoff_id") or event.get("id")
+                    if handoff_id:
+                        logger.debug(f"Handoff rejected: {handoff_id}")
+
+                elif event_type == "handoff.context":
+                    # Context additions during handoff - just acknowledge
+                    pass
+
+                elif event_type == "":
+                    logger.warning(f"Event {event_num}: Empty event type")
+                else:
+                    logger.warning(f"Event {event_num}: Unknown event type '{event_type}'")
+
+            except Exception as e:
+                error_msg = f"Event {event_num}: Unexpected error processing event type '{event_type}': {e}"
+                logger.error(error_msg)
+                errors.append(error_msg)
                 continue
+
+        if errors:
+            logger.warning(f"Graph rebuild completed with {len(errors)} error(s)")
+
+        # Finalize telemetry
+        if telemetry["edges_skipped"] > 0:
+            telemetry["validation_passed"] = False
+            telemetry["validation_errors"].append(
+                f"Skipped {telemetry['edges_skipped']} edge(s) due to missing nodes"
+            )
+
+        if telemetry["errors"] > 0:
+            telemetry["validation_passed"] = False
+            telemetry["validation_errors"].append(
+                f"Encountered {telemetry['errors']} error(s) during rebuild"
+            )
+
+        # Generate summary
+        telemetry["summary"] = (
+            f"Rebuilt graph: {telemetry['nodes_created']} nodes created "
+            f"({telemetry['node_create_events']} events), "
+            f"{telemetry['edges_created']} edges created "
+            f"({telemetry['edge_create_events']} events), "
+            f"{telemetry['edges_skipped']} edges skipped"
+        )
+
+        if with_telemetry:
+            return {"graph": graph, "telemetry": telemetry}
 
         return graph
 
@@ -616,8 +1288,8 @@ class EventLog:
         # Write preserved handoff events to the compact file
         if handoff_events:
             for event in handoff_events:
-                with open(compact_log.event_file, "a") as f:
-                    f.write(json.dumps(event, default=str) + "\n")
+                # Use atomic append to prevent partial writes
+                atomic_append(compact_log.event_file, json.dumps(event, default=str) + "\n")
 
         # Find and remove old event files (but not the compact file or recent files)
         files_removed = []
@@ -816,7 +1488,829 @@ class HandoffManager:
 
 
 # =============================================================================
-# GRAPH MANAGER
+# TRANSACTIONAL ADAPTER (New Backend)
+# =============================================================================
+
+class TransactionalGoTAdapter:
+    """
+    Adapter that wraps the transactional GoTManager to provide
+    the same interface as GoTProjectManager.
+
+    This enables seamless switching between event-sourced and
+    transactional backends without changing command handlers.
+    """
+
+    def __init__(self, got_dir: Path = GOT_TX_DIR):
+        if not TX_BACKEND_AVAILABLE:
+            raise RuntimeError("Transactional backend not available")
+
+        self.got_dir = Path(got_dir)
+        self._manager = TxGoTManager(self.got_dir, durability=DurabilityMode.BALANCED)
+
+        # Compatibility attributes (some commands access these directly)
+        self._graph = None  # Lazy-loaded graph for compatibility
+        self.events_dir = self.got_dir / "events"  # Not used but needed for compat
+        self.wal_dir = self.got_dir / "wal"
+        self.snapshots_dir = self.got_dir / "snapshots"
+
+        # Ensure directories exist
+        self.events_dir.mkdir(parents=True, exist_ok=True)
+
+    @property
+    def graph(self) -> ThoughtGraph:
+        """Lazy-load graph from transactional store for compatibility."""
+        if self._graph is None:
+            self._graph = self._build_graph_from_store()
+        return self._graph
+
+    def _build_graph_from_store(self) -> ThoughtGraph:
+        """Build ThoughtGraph from transactional store entities."""
+        graph = ThoughtGraph()
+        try:
+            # Add all tasks as nodes
+            for task in self._manager.list_all_tasks():
+                node = self._tx_task_to_node(task)
+                graph.nodes[node.id] = node
+
+            # Add all decisions and edges from entity files
+            entities_dir = self.got_dir / "entities"
+            if entities_dir.exists():
+                # Load decisions (D-*.json)
+                for decision_file in entities_dir.glob("D-*.json"):
+                    try:
+                        with open(decision_file, 'r') as f:
+                            wrapper = json.load(f)
+                        data = wrapper.get("data", {})
+                        if data.get("entity_type") == "decision":
+                            node = ThoughtNode(
+                                id=data.get("id", ""),
+                                node_type=NodeType.DECISION,
+                                content=data.get("title", ""),
+                                properties={
+                                    "rationale": data.get("rationale", ""),
+                                    "affects": data.get("affects", []),
+                                    **data.get("properties", {}),
+                                },
+                                metadata={
+                                    "created_at": data.get("created_at", ""),
+                                    "modified_at": data.get("modified_at", ""),
+                                },
+                            )
+                            graph.nodes[node.id] = node
+                    except Exception as e:
+                        logger.debug(f"Skipping decision file {decision_file}: {e}")
+
+                # Load edges (E-*.json)
+                for edge_file in entities_dir.glob("E-*.json"):
+                    try:
+                        with open(edge_file, 'r') as f:
+                            wrapper = json.load(f)
+                        data = wrapper.get("data", {})
+                        if data.get("entity_type") == "edge":
+                            # Edge types are stored lowercase but EdgeType enum uses uppercase
+                            edge_type_str = data.get("edge_type", "related_to").upper()
+                            edge = ThoughtEdge(
+                                source_id=data.get("source_id", ""),
+                                target_id=data.get("target_id", ""),
+                                edge_type=EdgeType[edge_type_str],
+                                weight=data.get("weight", 1.0),
+                            )
+                            graph.edges.append(edge)
+                    except Exception as e:
+                        logger.debug(f"Skipping edge file {edge_file}: {e}")
+        except Exception as e:
+            logger.error(f"Failed to build graph from store: {e}")
+        return graph
+
+    def _strip_prefix(self, node_id: str) -> str:
+        """Strip task:/decision: prefix from ID (legacy - maintains compatibility with old prefixed IDs)."""
+        if node_id.startswith("task:"):
+            return node_id[5:]
+        if node_id.startswith("decision:"):
+            return node_id[9:]
+        return node_id
+
+    def _add_prefix(self, node_id: str, prefix: str = "task:") -> str:
+        """Add prefix to ID (legacy - now returns ID unchanged)."""
+        return node_id  # No longer adding prefixes
+
+    def _tx_task_to_node(self, task: "TxTask") -> ThoughtNode:
+        """Convert TxTask to ThoughtNode for compatibility."""
+        return ThoughtNode(
+            id=task.id,
+            node_type=NodeType.TASK,
+            content=task.title,
+            properties={
+                "title": task.title,
+                "status": task.status,
+                "priority": task.priority,
+                "category": task.properties.get("category", ""),
+                "description": task.description,
+                "retrospective": task.properties.get("retrospective", ""),
+                **task.properties,
+            },
+            metadata={
+                "created_at": task.created_at,
+                "updated_at": task.modified_at,
+                **task.metadata,
+            },
+        )
+
+    def create_task(
+        self,
+        title: str,
+        priority: str = "medium",
+        category: str = "feature",
+        description: str = "",
+        sprint_id: Optional[str] = None,
+        depends_on: Optional[List[str]] = None,
+        blocks: Optional[List[str]] = None,
+    ) -> str:
+        """Create a new task."""
+        task = self._manager.create_task(
+            title=title,
+            priority=priority,
+            description=description,
+            properties={"category": category},
+            metadata={
+                "session_id": os.environ.get("CLAUDE_SESSION_ID", "unknown"),
+                "branch": self._get_current_branch(),
+            },
+        )
+
+        # Add dependencies
+        if depends_on:
+            for dep_id in depends_on:
+                clean_dep = self._strip_prefix(dep_id)
+                try:
+                    self._manager.add_dependency(task.id, clean_dep)
+                    print(f"  Added dependency: {task.id} depends on {clean_dep}")
+                except Exception as e:
+                    logger.warning(f"Could not add dependency from {task.id} to {clean_dep}: {e}")
+                    print(f"  Warning: Could not add dependency to {clean_dep}: {e}")
+
+        # Add blocks
+        if blocks:
+            for blocked_id in blocks:
+                clean_blocked = self._strip_prefix(blocked_id)
+                try:
+                    self._manager.add_blocks(task.id, clean_blocked)
+                    print(f"  Added blocks: {task.id} blocks {clean_blocked}")
+                except Exception as e:
+                    logger.warning(f"Could not add blocks edge from {task.id} to {clean_blocked}: {e}")
+                    print(f"  Warning: Could not add blocks to {clean_blocked}: {e}")
+
+        return task.id
+
+    def get_task(self, task_id: str) -> Optional[ThoughtNode]:
+        """Get a task by ID."""
+        clean_id = self._strip_prefix(task_id)
+        with self._manager.transaction(read_only=True) as tx:
+            task = tx.get_task(clean_id)
+            if task:
+                return self._tx_task_to_node(task)
+        return None
+
+    def list_tasks(
+        self,
+        status: Optional[str] = None,
+        priority: Optional[str] = None,
+        category: Optional[str] = None,
+        sprint_id: Optional[str] = None,
+        blocked_only: bool = False,
+    ) -> List[ThoughtNode]:
+        """List tasks with optional filters."""
+        tasks = self._manager.find_tasks(status=status, priority=priority)
+
+        # Apply additional filters
+        result = []
+        for task in tasks:
+            # Filter by category if specified
+            if category and task.properties.get("category") != category:
+                continue
+
+            result.append(self._tx_task_to_node(task))
+
+        return result
+
+    def update_task(self, task_id: str, **updates) -> bool:
+        """Update a task."""
+        clean_id = self._strip_prefix(task_id)
+        try:
+            self._manager.update_task(clean_id, **updates)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update task {clean_id}: {e}")
+            return False
+
+    def start_task(self, task_id: str) -> bool:
+        """Start a task (set status to in_progress)."""
+        return self.update_task(task_id, status="in_progress")
+
+    def complete_task(self, task_id: str, retrospective: str = "") -> bool:
+        """Complete a task."""
+        updates = {"status": "completed"}
+        if retrospective:
+            # Get current task to merge properties (don't overwrite!)
+            task = self.get_task(task_id)
+            if not task:
+                return False
+            # Copy existing properties and add/update retrospective
+            merged_properties = dict(task.properties) if task.properties else {}
+            merged_properties["retrospective"] = retrospective
+            updates["properties"] = merged_properties
+        return self.update_task(task_id, **updates)
+
+    def block_task(self, task_id: str, reason: str = "", blocked_by: Optional[str] = None) -> bool:
+        """Block a task."""
+        return self.update_task(task_id, status="blocked")
+
+    def delete_task(self, task_id: str, force: bool = False) -> Tuple[bool, str]:
+        """Delete a task."""
+        clean_id = self._strip_prefix(task_id)
+        try:
+            self._manager.delete_task(clean_id, force=force)
+            return True, f"Task {task_id} deleted"
+        except Exception as e:
+            return False, str(e)
+
+    def add_dependency(self, task_id: str, depends_on_id: str) -> bool:
+        """Add a dependency edge."""
+        clean_task = self._strip_prefix(task_id)
+        clean_dep = self._strip_prefix(depends_on_id)
+        try:
+            self._manager.add_dependency(clean_task, clean_dep)
+            return True
+        except AttributeError as e:
+            logger.error(f"Method not implemented: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to add dependency from {clean_task} to {clean_dep}: {e}")
+            return False
+
+    def add_blocks(self, task_id: str, blocks_id: str) -> bool:
+        """Add a blocks edge."""
+        clean_task = self._strip_prefix(task_id)
+        clean_blocked = self._strip_prefix(blocks_id)
+        try:
+            self._manager.add_blocks(clean_task, clean_blocked)
+            return True
+        except AttributeError as e:
+            logger.error(f"Method not implemented: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to add blocks edge from {clean_task} to {clean_blocked}: {e}")
+            return False
+
+    def get_blockers(self, task_id: str) -> List[ThoughtNode]:
+        """Get tasks that block this task."""
+        clean_id = self._strip_prefix(task_id)
+        blockers = self._manager.get_blockers(clean_id)
+        return [self._tx_task_to_node(t) for t in blockers]
+
+    def get_dependents(self, task_id: str) -> List[ThoughtNode]:
+        """Get tasks that depend on this task."""
+        clean_id = self._strip_prefix(task_id)
+        dependents = self._manager.get_dependents(clean_id)
+        return [self._tx_task_to_node(t) for t in dependents]
+
+    def get_task_dependencies(self, task_id: str) -> List[ThoughtNode]:
+        """Get all tasks this task depends on."""
+        clean_id = self._strip_prefix(task_id)
+        try:
+            # Tasks that block this task are tasks this task depends on
+            deps = self._manager.get_blockers(clean_id)
+            return [self._tx_task_to_node(t) for t in deps if t]
+        except Exception as e:
+            logger.error(f"Failed to get dependencies for {task_id}: {e}")
+            return []
+
+    def get_active_tasks(self) -> List[ThoughtNode]:
+        """Get all in-progress tasks."""
+        try:
+            tasks = self._manager.find_tasks(status="in_progress")
+            return [self._tx_task_to_node(t) for t in tasks]
+        except Exception as e:
+            logger.error(f"Failed to get active tasks: {e}")
+            return []
+
+    def get_blocked_tasks(self) -> List[Tuple[ThoughtNode, Optional[str]]]:
+        """Get all blocked tasks with their blocking reasons."""
+        try:
+            tasks = self._manager.find_tasks(status="blocked")
+            result = []
+            for task in tasks:
+                node = self._tx_task_to_node(task)
+                reason = task.properties.get("blocked_reason", "No reason given")
+                result.append((node, reason))
+            return result
+        except Exception as e:
+            logger.error(f"Failed to get blocked tasks: {e}")
+            return []
+
+    def what_blocks(self, task_id: str) -> List[ThoughtNode]:
+        """Get tasks blocking this task.
+
+        Follows BLOCKS edges pointing to this task.
+        """
+        clean_id = self._strip_prefix(task_id)
+        try:
+            blockers = self._manager.get_blockers(clean_id)
+            return [self._tx_task_to_node(t) for t in blockers if t]
+        except Exception as e:
+            logger.error(f"Failed to get blockers for {task_id}: {e}")
+            return []
+
+    def what_depends_on(self, task_id: str) -> List[ThoughtNode]:
+        """Get tasks that depend on this task.
+
+        Follows DEPENDS_ON edges pointing to this task.
+        """
+        clean_id = self._strip_prefix(task_id)
+        try:
+            dependents = self._manager.get_dependents(clean_id)
+            return [self._tx_task_to_node(t) for t in dependents if t]
+        except Exception as e:
+            logger.error(f"Failed to get dependents for {task_id}: {e}")
+            return []
+
+    def list_all_tasks(self) -> List[ThoughtNode]:
+        """List all tasks."""
+        return self.list_tasks()
+
+    def validate(self) -> List[str]:
+        """Validate the GoT state."""
+        issues = []
+        try:
+            # Basic validation
+            tasks = self._manager.list_all_tasks()
+            if not tasks:
+                issues.append("No tasks found")
+        except Exception as e:
+            issues.append(f"Validation error: {e}")
+        return issues
+
+    def _get_current_branch(self) -> str:
+        """Get current git branch name."""
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                capture_output=True, text=True, check=True
+            )
+            return result.stdout.strip()
+        except Exception as e:
+            logger.debug(f"Could not determine git branch: {e}")
+            return "unknown"
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get graph statistics."""
+        try:
+            all_tasks = self._manager.list_all_tasks()
+
+            # Count tasks by status
+            by_status = {}
+            for task in all_tasks:
+                status = task.status
+                by_status[status] = by_status.get(status, 0) + 1
+
+            # Count edges
+            entities_dir = self._manager.got_dir / "entities"
+            edge_count = 0
+            if entities_dir.exists():
+                edge_count = len(list(entities_dir.glob("E-*.json")))
+
+            return {
+                "total_tasks": len(all_tasks),
+                "tasks_by_status": by_status,
+                "total_edges": edge_count,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get stats: {e}")
+            return {
+                "total_tasks": 0,
+                "tasks_by_status": {},
+                "total_edges": 0,
+            }
+
+    def get_all_relationships(self, task_id: str) -> Dict[str, List[ThoughtNode]]:
+        """Get all relationships for a task.
+
+        Returns dict with keys:
+        - 'blocks': Tasks this task blocks
+        - 'blocked_by': Tasks blocking this task
+        - 'depends_on': Tasks this task depends on
+        - 'depended_by': Tasks depending on this task
+        """
+        clean_id = self._strip_prefix(task_id)
+
+        result = {
+            'blocks': [],
+            'blocked_by': [],
+            'depends_on': [],
+            'depended_by': [],
+        }
+
+        try:
+            # Get edges for this task
+            outgoing, incoming = self._manager.get_edges_for_task(clean_id)
+
+            # Process outgoing edges
+            for edge in outgoing:
+                target_task = self._manager.get_task(edge.target_id)
+                if target_task:
+                    target_node = self._tx_task_to_node(target_task)
+                    if edge.edge_type == "blocks":
+                        result['blocks'].append(target_node)
+                    elif edge.edge_type == "depends_on":
+                        result['depends_on'].append(target_node)
+
+            # Process incoming edges
+            for edge in incoming:
+                source_task = self._manager.get_task(edge.source_id)
+                if source_task:
+                    source_node = self._tx_task_to_node(source_task)
+                    if edge.edge_type == "blocks":
+                        result['blocked_by'].append(source_node)
+                    elif edge.edge_type == "depends_on":
+                        result['depended_by'].append(source_node)
+
+        except Exception as e:
+            logger.error(f"Failed to get relationships for {task_id}: {e}")
+
+        return result
+
+    def get_dependency_chain(
+        self,
+        task_id: str,
+        max_depth: int = 10,
+    ) -> List[List[ThoughtNode]]:
+        """Get full dependency chain for a task.
+
+        Returns list of dependency chains (each chain is a path from task to leaf).
+        Uses recursive traversal following DEPENDS_ON edges.
+        """
+        clean_id = self._strip_prefix(task_id)
+
+        chains = []
+        visited = set()
+
+        def traverse(node_id: str, chain: List[ThoughtNode], depth: int):
+            if depth > max_depth or node_id in visited:
+                return
+
+            visited.add(node_id)
+            task = self._manager.get_task(node_id)
+            if not task:
+                return
+
+            node = self._tx_task_to_node(task)
+            new_chain = chain + [node]
+
+            # Get dependencies
+            try:
+                outgoing, _ = self._manager.get_edges_for_task(node_id)
+                deps = []
+                for edge in outgoing:
+                    if edge.edge_type == "depends_on":
+                        dep_task = self._manager.get_task(edge.target_id)
+                        if dep_task:
+                            deps.append(self._tx_task_to_node(dep_task))
+
+                if not deps:
+                    chains.append(new_chain)
+                else:
+                    for dep in deps:
+                        dep_id = self._strip_prefix(dep.id)
+                        traverse(dep_id, new_chain, depth + 1)
+            except Exception as e:
+                logger.error(f"Error traversing dependencies for {node_id}: {e}")
+                chains.append(new_chain)
+
+        try:
+            traverse(clean_id, [], 0)
+        except Exception as e:
+            logger.error(f"Failed to get dependency chain for {task_id}: {e}")
+
+        return chains
+
+    def find_path(
+        self,
+        from_id: str,
+        to_id: str,
+        max_depth: int = 10,
+    ) -> Optional[List[ThoughtNode]]:
+        """Find shortest path between two nodes using BFS.
+
+        Follows any edge type to find a path.
+        Returns None if no path exists.
+        """
+        from collections import deque
+
+        clean_from = self._strip_prefix(from_id)
+        clean_to = self._strip_prefix(to_id)
+
+        # Check if both nodes exist
+        from_task = self._manager.get_task(clean_from)
+        to_task = self._manager.get_task(clean_to)
+
+        if not from_task or not to_task:
+            return None
+
+        if clean_from == clean_to:
+            return [self._tx_task_to_node(from_task)]
+
+        try:
+            # BFS
+            queue = deque([(clean_from, [clean_from])])
+            visited = {clean_from}
+
+            while queue:
+                current_id, path = queue.popleft()
+
+                if len(path) > max_depth:
+                    continue
+
+                # Get outgoing edges
+                outgoing, _ = self._manager.get_edges_for_task(current_id)
+                for edge in outgoing:
+                    next_id = edge.target_id
+                    if next_id == clean_to:
+                        # Found the target, construct node path
+                        result_path = []
+                        for task_id in path + [next_id]:
+                            task = self._manager.get_task(task_id)
+                            if task:
+                                result_path.append(self._tx_task_to_node(task))
+                        return result_path
+
+                    if next_id not in visited:
+                        visited.add(next_id)
+                        queue.append((next_id, path + [next_id]))
+
+        except Exception as e:
+            logger.error(f"Failed to find path from {from_id} to {to_id}: {e}")
+
+        return None
+
+    def export_graph(self, output_path: Optional[Path] = None) -> Dict[str, Any]:
+        """Export graph to JSON format.
+
+        Args:
+            output_path: Optional path to write JSON file
+
+        Returns:
+            Dict with 'nodes', 'edges', 'stats', and 'exported_at'
+        """
+        try:
+            # Get all tasks
+            all_tasks = self._manager.list_all_tasks()
+
+            nodes = []
+            for task in all_tasks:
+                nodes.append({
+                    "id": task.id,
+                    "type": "task",
+                    "content": task.title,
+                    "properties": {
+                        "title": task.title,
+                        "status": task.status,
+                        "priority": task.priority,
+                        "description": task.description,
+                        **task.properties,
+                    },
+                    "metadata": {
+                        "created_at": task.created_at,
+                        "updated_at": task.modified_at,
+                        **task.metadata,
+                    },
+                })
+
+            # Get all edges
+            edges = []
+            entities_dir = self._manager.got_dir / "entities"
+            if entities_dir.exists():
+                for edge_file in entities_dir.glob("E-*.json"):
+                    try:
+                        with open(edge_file, 'r', encoding='utf-8') as f:
+                            wrapper = json.load(f)
+                            edge_data = wrapper.get("data", {})
+                            edges.append({
+                                "source": edge_data.get('source_id', ''),
+                                "target": edge_data.get('target_id', ''),
+                                "type": edge_data.get("edge_type", ""),
+                                "weight": edge_data.get("weight", 1.0),
+                            })
+                    except Exception as e:
+                        logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+                        continue
+
+            data = {
+                "exported_at": datetime.now().isoformat(),
+                "nodes": nodes,
+                "edges": edges,
+                "stats": {
+                    "node_count": len(nodes),
+                    "edge_count": len(edges),
+                }
+            }
+
+            if output_path:
+                with open(output_path, 'w') as f:
+                    json.dump(data, f, indent=2)
+
+            return data
+
+        except Exception as e:
+            logger.error(f"Failed to export graph: {e}")
+            return {
+                "exported_at": datetime.now().isoformat(),
+                "nodes": [],
+                "edges": [],
+                "stats": {
+                    "node_count": 0,
+                    "edge_count": 0,
+                },
+                "error": str(e),
+            }
+
+    # Stub methods for compatibility (not implemented in TX backend yet)
+    def create_decision(self, *args, **kwargs) -> str:
+        raise NotImplementedError("Decisions not yet implemented in TX backend")
+
+    def list_decisions(self, *args, **kwargs) -> List:
+        return []
+
+    def get_decisions_for_task(self, *args, **kwargs) -> List:
+        return []
+
+    def create_sprint(self, *args, **kwargs) -> str:
+        raise NotImplementedError("Sprints not yet implemented in TX backend")
+
+    def get_current_sprint(self, *args, **kwargs):
+        return None
+
+    def list_sprints(self, *args, **kwargs) -> List:
+        return []
+
+    def initiate_handoff(self, *args, **kwargs) -> str:
+        raise NotImplementedError("Handoffs not yet implemented in TX backend")
+
+    def accept_handoff(self, *args, **kwargs) -> bool:
+        raise NotImplementedError("Handoffs not yet implemented in TX backend")
+
+    def complete_handoff(self, *args, **kwargs) -> bool:
+        raise NotImplementedError("Handoffs not yet implemented in TX backend")
+
+    def list_handoffs(self, *args, **kwargs) -> List:
+        return []
+
+    def get_sprint_tasks(self, sprint_id: str) -> List[ThoughtNode]:
+        """Get all tasks in a sprint.
+
+        Note: Sprint support is limited in TX backend.
+        Returns empty list with warning.
+        """
+        logger.warning("Sprint support limited in TX backend - returning empty list")
+        return []
+
+    def get_sprint_progress(self, sprint_id: str) -> Dict[str, Any]:
+        """Get sprint progress statistics.
+
+        Note: Sprint support is limited in TX backend.
+        Returns empty progress dict.
+        """
+        logger.warning("Sprint support limited in TX backend - returning empty progress")
+        return {
+            "total_tasks": 0,
+            "by_status": {},
+            "completed": 0,
+            "progress_percent": 0.0,
+        }
+
+    def get_next_task(self) -> Optional[Dict[str, Any]]:
+        """Get the next task to work on.
+
+        Selection criteria:
+        1. Status must be 'pending' (not in_progress, completed, or blocked)
+        2. Highest priority first (critical > high > medium > low)
+        3. Oldest task within same priority
+
+        Returns:
+            Dict with 'id', 'title', 'priority', 'category' or None if no tasks available
+        """
+        # Get pending tasks
+        pending_tasks = self.list_tasks(status=STATUS_PENDING)
+
+        if not pending_tasks:
+            return None
+
+        # Sort by priority (critical > high > medium > low)
+        priority_order = {
+            PRIORITY_CRITICAL: 0,
+            PRIORITY_HIGH: 1,
+            PRIORITY_MEDIUM: 2,
+            PRIORITY_LOW: 3,
+        }
+
+        def sort_key(task: ThoughtNode) -> Tuple[int, str]:
+            priority = task.properties.get("priority", PRIORITY_MEDIUM)
+            created_at = task.metadata.get("created_at", "")
+            return (priority_order.get(priority, 99), created_at)
+
+        sorted_tasks = sorted(pending_tasks, key=sort_key)
+
+        if sorted_tasks:
+            next_task = sorted_tasks[0]
+            return {
+                "id": next_task.id,
+                "title": next_task.content,
+                "priority": next_task.properties.get("priority", PRIORITY_MEDIUM),
+                "category": next_task.properties.get("category", "general"),
+            }
+
+        return None
+
+    def query(self, query_str: str) -> List[Dict[str, Any]]:
+        """Simple query language for the graph.
+
+        Supported queries:
+        - "what blocks <task_id>"
+        - "what depends on <task_id>"
+        - "blocked tasks"
+        - "active tasks"
+        - "pending tasks"
+        - "relationships <task_id>"
+
+        Returns list of result dicts.
+        """
+        query_str = query_str.strip().lower()
+        results = []
+
+        if query_str.startswith("what blocks "):
+            task_id = query_str[12:].strip()
+            for node in self.what_blocks(task_id):
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "status": node.properties.get("status"),
+                    "relation": "blocks",
+                })
+
+        elif query_str.startswith("what depends on "):
+            task_id = query_str[16:].strip()
+            for node in self.what_depends_on(task_id):
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "status": node.properties.get("status"),
+                    "relation": "depends_on",
+                })
+
+        elif query_str == "blocked tasks":
+            for node, reason in self.get_blocked_tasks():
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "reason": reason,
+                })
+
+        elif query_str == "active tasks":
+            for node in self.get_active_tasks():
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "priority": node.properties.get("priority"),
+                })
+
+        elif query_str == "pending tasks":
+            for node in self.list_tasks(status=STATUS_PENDING):
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "priority": node.properties.get("priority"),
+                })
+
+        elif query_str.startswith("relationships "):
+            task_id = query_str[14:].strip()
+            rels = self.get_all_relationships(task_id)
+            for rel_type, nodes in rels.items():
+                for node in nodes:
+                    results.append({
+                        "relation": rel_type,
+                        "id": node.id,
+                        "title": node.content,
+                    })
+
+        return results
+
+    def sync_to_git(self) -> str:
+        """Sync to git (no-op for TX backend, state is already persistent)."""
+        return ""
+
+
+# =============================================================================
+# GRAPH MANAGER (Event-Sourced Backend)
 # =============================================================================
 
 class GoTProjectManager:
@@ -838,6 +2332,13 @@ class GoTProjectManager:
         self.wal_dir.mkdir(parents=True, exist_ok=True)
         self.snapshots_dir.mkdir(parents=True, exist_ok=True)
         self.events_dir.mkdir(parents=True, exist_ok=True)
+
+        # Process-safe lock for graph mutations
+        self._lock = ProcessLock(
+            self.got_dir / ".got.lock",
+            stale_timeout=3600.0,  # 1 hour
+            reentrant=True,  # Allow nested operations
+        )
 
         # Initialize event log (each session gets unique file)
         self.event_log = EventLog(self.events_dir)
@@ -1006,59 +2507,60 @@ class GoTProjectManager:
         Returns:
             Task ID
         """
-        task_id = generate_task_id()
+        with self._lock:
+            task_id = generate_task_id()
 
-        properties = {
-            "title": title,
-            "status": STATUS_PENDING,
-            "priority": priority,
-            "category": category,
-            "description": description,
-        }
+            properties = {
+                "title": title,
+                "status": STATUS_PENDING,
+                "priority": priority,
+                "category": category,
+                "description": description,
+            }
 
-        metadata = {
-            "created_at": datetime.now().isoformat(),
-            "updated_at": None,
-            "session_id": os.environ.get("CLAUDE_SESSION_ID", "unknown"),
-            "branch": self._get_current_branch(),
-        }
+            metadata = {
+                "created_at": datetime.now().isoformat(),
+                "updated_at": None,
+                "session_id": os.environ.get("CLAUDE_SESSION_ID", "unknown"),
+                "branch": self._get_current_branch(),
+            }
 
-        # Create task node
-        self.graph.add_node(
-            node_id=task_id,
-            node_type=NodeType.TASK,
-            content=title,
-            properties=properties,
-            metadata=metadata,
-        )
+            # Create task node
+            self.graph.add_node(
+                node_id=task_id,
+                node_type=NodeType.TASK,
+                content=title,
+                properties=properties,
+                metadata=metadata,
+            )
 
-        # Log to event log (source of truth for cross-branch coordination)
-        self.event_log.log_node_create(task_id, "TASK", {**properties, "title": title})
+            # Log to event log (source of truth for cross-branch coordination)
+            self.event_log.log_node_create(task_id, "TASK", {**properties, "title": title})
 
-        # Also log to WAL for crash recovery
-        self.wal.log_add_node(task_id, NodeType.TASK, title, properties, metadata)
+            # Also log to WAL for crash recovery
+            self.wal.log_add_node(task_id, NodeType.TASK, title, properties, metadata)
 
-        # Add to sprint if specified
-        if sprint_id:
-            self._add_task_to_sprint(task_id, sprint_id)
+            # Add to sprint if specified
+            if sprint_id:
+                self._add_task_to_sprint(task_id, sprint_id)
 
-        # Add dependencies (edges from this task TO dependency tasks)
-        if depends_on:
-            for dep_id in depends_on:
-                if self.add_dependency(task_id, dep_id):
-                    print(f"  Added dependency: {task_id} depends on {dep_id}")
-                else:
-                    print(f"  Warning: Could not add dependency to {dep_id} (task not found)")
+            # Add dependencies (edges from this task TO dependency tasks)
+            if depends_on:
+                for dep_id in depends_on:
+                    if self.add_dependency(task_id, dep_id):
+                        print(f"  Added dependency: {task_id} depends on {dep_id}")
+                    else:
+                        print(f"  Warning: Could not add dependency to {dep_id} (task not found)")
 
-        # Add blocks (edges from this task TO blocked tasks)
-        if blocks:
-            for blocked_id in blocks:
-                if self.add_blocks(task_id, blocked_id):
-                    print(f"  Added blocks: {task_id} blocks {blocked_id}")
-                else:
-                    print(f"  Warning: Could not add blocks to {blocked_id} (task not found)")
+            # Add blocks (edges from this task TO blocked tasks)
+            if blocks:
+                for blocked_id in blocks:
+                    if self.add_blocks(task_id, blocked_id):
+                        print(f"  Added blocks: {task_id} blocks {blocked_id}")
+                    else:
+                        print(f"  Warning: Could not add blocks to {blocked_id} (task not found)")
 
-        return task_id
+            return task_id
 
     def get_task(self, task_id: str) -> Optional[ThoughtNode]:
         """Get a task by ID."""
@@ -1112,31 +2614,73 @@ class GoTProjectManager:
 
         return tasks
 
+    def get_next_task(self) -> Optional[Dict[str, Any]]:
+        """
+        Get the next task to work on.
+
+        Selection criteria:
+        1. Status must be 'pending' (not in_progress, completed, or blocked)
+        2. Highest priority first (critical > high > medium > low)
+        3. Oldest task within same priority
+
+        Returns:
+            Dict with 'id', 'title', 'priority', 'category' or None if no tasks available
+        """
+        # Get pending tasks sorted by priority and age
+        pending_tasks = self.list_tasks(status=STATUS_PENDING)
+
+        # Filter out blocked tasks (status=pending but have BLOCKS edges pointing to them)
+        unblocked_tasks = []
+        for task in pending_tasks:
+            is_blocked = False
+            for edge in self.graph.edges:
+                if edge.target_id == task.id and edge.edge_type == EdgeType.BLOCKS:
+                    # Check if the blocker is still pending/in_progress
+                    blocker = self.graph.nodes.get(edge.source_id)
+                    if blocker and blocker.properties.get("status") not in [STATUS_COMPLETED]:
+                        is_blocked = True
+                        break
+            if not is_blocked:
+                unblocked_tasks.append(task)
+
+        if not unblocked_tasks:
+            return None
+
+        # Return the first (highest priority, oldest) task
+        next_task = unblocked_tasks[0]
+        return {
+            "id": next_task.id,
+            "title": next_task.content,
+            "priority": next_task.properties.get("priority", PRIORITY_MEDIUM),
+            "category": next_task.properties.get("category", "general"),
+        }
+
     def update_task_status(self, task_id: str, status: str) -> bool:
         """Update task status."""
-        task = self.get_task(task_id)
-        if not task:
-            return False
+        with self._lock:
+            task = self.get_task(task_id)
+            if not task:
+                return False
 
-        if status not in VALID_STATUSES:
-            raise ValueError(f"Invalid status: {status}")
+            if status not in VALID_STATUSES:
+                raise ValueError(f"Invalid status: {status}")
 
-        task.properties["status"] = status
-        task.metadata["updated_at"] = datetime.now().isoformat()
+            task.properties["status"] = status
+            task.metadata["updated_at"] = datetime.now().isoformat()
 
-        changes = {"status": status, "updated_at": task.metadata["updated_at"]}
+            changes = {"status": status, "updated_at": task.metadata["updated_at"]}
 
-        if status == STATUS_COMPLETED:
-            task.metadata["completed_at"] = datetime.now().isoformat()
-            changes["completed_at"] = task.metadata["completed_at"]
+            if status == STATUS_COMPLETED:
+                task.metadata["completed_at"] = datetime.now().isoformat()
+                changes["completed_at"] = task.metadata["completed_at"]
 
-        # Log to event log (source of truth)
-        self.event_log.log_node_update(task_id, changes)
+            # Log to event log (source of truth)
+            self.event_log.log_node_update(task_id, changes)
 
-        # Log to WAL for crash recovery
-        self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
+            # Log to WAL for crash recovery
+            self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
 
-        return True
+            return True
 
     def start_task(self, task_id: str) -> bool:
         """Mark task as in progress."""
@@ -1148,31 +2692,32 @@ class GoTProjectManager:
         retrospective: Optional[str] = None,
     ) -> bool:
         """Complete a task with optional retrospective."""
-        task = self.get_task(task_id)
-        if not task:
-            return False
+        with self._lock:
+            task = self.get_task(task_id)
+            if not task:
+                return False
 
-        task.properties["status"] = STATUS_COMPLETED
-        task.metadata["updated_at"] = datetime.now().isoformat()
-        task.metadata["completed_at"] = datetime.now().isoformat()
+            task.properties["status"] = STATUS_COMPLETED
+            task.metadata["updated_at"] = datetime.now().isoformat()
+            task.metadata["completed_at"] = datetime.now().isoformat()
 
-        changes = {
-            "status": STATUS_COMPLETED,
-            "updated_at": task.metadata["updated_at"],
-            "completed_at": task.metadata["completed_at"],
-        }
+            changes = {
+                "status": STATUS_COMPLETED,
+                "updated_at": task.metadata["updated_at"],
+                "completed_at": task.metadata["completed_at"],
+            }
 
-        if retrospective:
-            task.properties["retrospective"] = retrospective
-            changes["retrospective"] = retrospective
+            if retrospective:
+                task.properties["retrospective"] = retrospective
+                changes["retrospective"] = retrospective
 
-        # Log to event log (source of truth)
-        self.event_log.log_node_update(task_id, changes)
+            # Log to event log (source of truth)
+            self.event_log.log_node_update(task_id, changes)
 
-        # Log to WAL for crash recovery
-        self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
+            # Log to WAL for crash recovery
+            self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
 
-        return True
+            return True
 
     def block_task(
         self,
@@ -1181,39 +2726,131 @@ class GoTProjectManager:
         blocker_id: Optional[str] = None,
     ) -> bool:
         """Block a task with reason."""
-        task = self.get_task(task_id)
-        if not task:
-            return False
+        with self._lock:
+            task = self.get_task(task_id)
+            if not task:
+                return False
 
-        task.properties["status"] = STATUS_BLOCKED
-        task.properties["blocked_reason"] = reason
-        task.metadata["updated_at"] = datetime.now().isoformat()
+            task.properties["status"] = STATUS_BLOCKED
+            task.properties["blocked_reason"] = reason
+            task.metadata["updated_at"] = datetime.now().isoformat()
 
-        changes = {
-            "status": STATUS_BLOCKED,
-            "blocked_reason": reason,
-            "updated_at": task.metadata["updated_at"],
-        }
+            changes = {
+                "status": STATUS_BLOCKED,
+                "blocked_reason": reason,
+                "updated_at": task.metadata["updated_at"],
+            }
 
-        # Log to event log (source of truth)
-        self.event_log.log_node_update(task_id, changes)
+            # Log to event log (source of truth)
+            self.event_log.log_node_update(task_id, changes)
 
-        # Log to WAL for crash recovery
-        self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
+            # Log to WAL for crash recovery
+            self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
 
-        # Add blocking edge if blocker specified
-        if blocker_id:
-            if not blocker_id.startswith("task:"):
-                blocker_id = f"task:{blocker_id}"
-            if blocker_id in self.graph.nodes:
-                self.graph.add_edge(
-                    blocker_id, task_id, EdgeType.BLOCKS,
-                    weight=1.0, confidence=1.0
+            # Add blocking edge if blocker specified
+            if blocker_id:
+                if not blocker_id.startswith("task:"):
+                    blocker_id = f"task:{blocker_id}"
+                if blocker_id in self.graph.nodes:
+                    self.graph.add_edge(
+                        blocker_id, task_id, EdgeType.BLOCKS,
+                        weight=1.0, confidence=1.0
+                    )
+                    self.event_log.log_edge_create(blocker_id, task_id, "BLOCKS")
+                    self.wal.log_add_edge(blocker_id, task_id, EdgeType.BLOCKS)
+
+            return True
+
+    def delete_task(
+        self,
+        task_id: str,
+        force: bool = False,
+    ) -> bool:
+        """Delete a task with transactional safety checks.
+
+        TRANSACTIONAL: This method verifies pre-conditions before deletion:
+        - Task must exist
+        - Without --force: fails if task has dependents, blocks others, or is in progress
+        - With --force: removes edges and deletes the task
+
+        Args:
+            task_id: The task ID to delete
+            force: If True, bypass safety checks and force deletion
+
+        Returns:
+            True if deleted, False if deletion blocked or task not found
+        """
+        with self._lock:
+            # Normalize task ID
+            if not task_id.startswith("task:"):
+                task_id = f"task:{task_id}"
+
+            # Transactional check 1: Task must exist
+            task = self.get_task(task_id)
+            if not task:
+                logger.warning(f"Cannot delete non-existent task: {task_id}")
+                return False
+
+            # Get task status
+            status = task.properties.get("status", STATUS_PENDING)
+
+            if not force:
+                # Transactional check 2: Task should not have dependents
+                dependents = self.what_depends_on(task_id)
+                if dependents:
+                    dependent_ids = [d.id for d in dependents]
+                    logger.warning(
+                        f"Cannot delete task {task_id}: {len(dependents)} task(s) depend on it: "
+                        f"{', '.join(dependent_ids[:3])}{'...' if len(dependents) > 3 else ''}"
+                    )
+                    return False
+
+                # Transactional check 3: Task should not block others
+                # Find tasks that this task blocks
+                blocked_tasks = []
+                for edge in self.graph.edges:
+                    if edge.source_id == task_id and edge.edge_type == EdgeType.BLOCKS:
+                        blocked_tasks.append(edge.target_id)
+                if blocked_tasks:
+                    logger.warning(
+                        f"Cannot delete task {task_id}: it blocks {len(blocked_tasks)} task(s): "
+                        f"{', '.join(blocked_tasks[:3])}{'...' if len(blocked_tasks) > 3 else ''}"
+                    )
+                    return False
+
+                # Transactional check 4: Task should not be in progress
+                if status == STATUS_IN_PROGRESS:
+                    logger.warning(
+                        f"Cannot delete in-progress task {task_id}. Use --force to override."
+                    )
+                    return False
+
+            # Remove edges to/from this task
+            edges_to_remove = []
+            for edge in self.graph.edges:
+                if edge.source_id == task_id or edge.target_id == task_id:
+                    edges_to_remove.append(edge)
+
+            for edge in edges_to_remove:
+                # Log edge deletion
+                self.event_log.log_edge_delete(
+                    edge.source_id, edge.target_id, edge.edge_type.name
                 )
-                self.event_log.log_edge_create(blocker_id, task_id, "BLOCKS")
-                self.wal.log_add_edge(blocker_id, task_id, EdgeType.BLOCKS)
+                # Remove from graph
+                self.graph.edges.remove(edge)
 
-        return True
+            # Remove the task from graph
+            if task_id in self.graph.nodes:
+                del self.graph.nodes[task_id]
+
+            # Log the deletion (source of truth)
+            self.event_log.log_node_delete(task_id)
+
+            # Log to WAL for crash recovery
+            self.wal.log_remove_node(task_id)
+
+            logger.info(f"Deleted task: {task_id}")
+            return True
 
     def add_dependency(self, task_id: str, depends_on_id: str) -> bool:
         """Add dependency between tasks.
@@ -1225,22 +2862,23 @@ class GoTProjectManager:
         Returns:
             True if edge was created, False if either task not found
         """
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
-        if not depends_on_id.startswith("task:"):
-            depends_on_id = f"task:{depends_on_id}"
+        with self._lock:
+            if not task_id.startswith("task:"):
+                task_id = f"task:{task_id}"
+            if not depends_on_id.startswith("task:"):
+                depends_on_id = f"task:{depends_on_id}"
 
-        if task_id not in self.graph.nodes or depends_on_id not in self.graph.nodes:
-            return False
+            if task_id not in self.graph.nodes or depends_on_id not in self.graph.nodes:
+                return False
 
-        self.graph.add_edge(
-            task_id, depends_on_id, EdgeType.DEPENDS_ON,
-            weight=1.0, confidence=1.0
-        )
-        self.event_log.log_edge_create(task_id, depends_on_id, "DEPENDS_ON")
-        self.wal.log_add_edge(task_id, depends_on_id, EdgeType.DEPENDS_ON)
+            self.graph.add_edge(
+                task_id, depends_on_id, EdgeType.DEPENDS_ON,
+                weight=1.0, confidence=1.0
+            )
+            self.event_log.log_edge_create(task_id, depends_on_id, "DEPENDS_ON")
+            self.wal.log_add_edge(task_id, depends_on_id, EdgeType.DEPENDS_ON)
 
-        return True
+            return True
 
     def add_blocks(self, task_id: str, blocked_id: str) -> bool:
         """Add blocking relationship between tasks.
@@ -1252,22 +2890,23 @@ class GoTProjectManager:
         Returns:
             True if edge was created, False if either task not found
         """
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
-        if not blocked_id.startswith("task:"):
-            blocked_id = f"task:{blocked_id}"
+        with self._lock:
+            if not task_id.startswith("task:"):
+                task_id = f"task:{task_id}"
+            if not blocked_id.startswith("task:"):
+                blocked_id = f"task:{blocked_id}"
 
-        if task_id not in self.graph.nodes or blocked_id not in self.graph.nodes:
-            return False
+            if task_id not in self.graph.nodes or blocked_id not in self.graph.nodes:
+                return False
 
-        self.graph.add_edge(
-            task_id, blocked_id, EdgeType.BLOCKS,
-            weight=1.0, confidence=1.0
-        )
-        self.event_log.log_edge_create(task_id, blocked_id, "BLOCKS")
-        self.wal.log_add_edge(task_id, blocked_id, EdgeType.BLOCKS)
+            self.graph.add_edge(
+                task_id, blocked_id, EdgeType.BLOCKS,
+                weight=1.0, confidence=1.0
+            )
+            self.event_log.log_edge_create(task_id, blocked_id, "BLOCKS")
+            self.wal.log_add_edge(task_id, blocked_id, EdgeType.BLOCKS)
 
-        return True
+            return True
 
     def get_task_dependencies(self, task_id: str) -> List[ThoughtNode]:
         """Get all tasks this task depends on."""
@@ -1518,46 +3157,47 @@ class GoTProjectManager:
         Returns:
             Decision ID
         """
-        decision_id = generate_decision_id()
+        with self._lock:
+            decision_id = generate_decision_id()
 
-        # Create the decision node
-        self.graph.add_node(
-            node_id=decision_id,
-            node_type=NodeType.CONTEXT,
-            content=decision,
-            properties={
-                "type": "decision",
-                "rationale": rationale,
-                "alternatives": alternatives or [],
-            },
-            metadata={
-                "created_at": datetime.now().isoformat(),
-                "branch": self._get_current_branch(),
-                **(context or {}),
-            }
-        )
+            # Create the decision node
+            self.graph.add_node(
+                node_id=decision_id,
+                node_type=NodeType.CONTEXT,
+                content=decision,
+                properties={
+                    "type": "decision",
+                    "rationale": rationale,
+                    "alternatives": alternatives or [],
+                },
+                metadata={
+                    "created_at": datetime.now().isoformat(),
+                    "branch": self._get_current_branch(),
+                    **(context or {}),
+                }
+            )
 
-        # Log to event log
-        self.event_log.log_decision(
-            decision_id=decision_id,
-            decision=decision,
-            rationale=rationale,
-            affects=affects,
-            alternatives=alternatives,
-            context=context,
-        )
+            # Log to event log
+            self.event_log.log_decision(
+                decision_id=decision_id,
+                decision=decision,
+                rationale=rationale,
+                affects=affects,
+                alternatives=alternatives,
+                context=context,
+            )
 
-        # Create edges to affected nodes
-        for affected_id in (affects or []):
-            if affected_id in self.graph.nodes:
-                self.graph.add_edge(
-                    decision_id, affected_id,
-                    EdgeType.MOTIVATES,
-                    weight=1.0, confidence=1.0
-                )
-                self.event_log.log_edge_create(decision_id, affected_id, "RELATES_TO")
+            # Create edges to affected nodes
+            for affected_id in (affects or []):
+                if affected_id in self.graph.nodes:
+                    self.graph.add_edge(
+                        decision_id, affected_id,
+                        EdgeType.MOTIVATES,
+                        weight=1.0, confidence=1.0
+                    )
+                    self.event_log.log_edge_create(decision_id, affected_id, "RELATES_TO")
 
-        return decision_id
+            return decision_id
 
     def get_decisions(self) -> List[ThoughtNode]:
         """Get all decision nodes."""
@@ -2254,6 +3894,95 @@ def cmd_task_list(args, manager: GoTProjectManager) -> int:
     return 0
 
 
+def cmd_task_next(args, manager: GoTProjectManager) -> int:
+    """Get the next task to work on."""
+    result = manager.get_next_task()
+
+    if result is None:
+        print("No pending tasks available.")
+        return 0
+
+    # Format output
+    print(f"Next task: {result['id']}")
+    print(f"  Title:    {result['title']}")
+    print(f"  Priority: {result['priority']}")
+    print(f"  Category: {result['category']}")
+
+    # If --start flag, also start the task
+    if getattr(args, 'start', False):
+        task_id = result['id']
+        if task_id.startswith("task:"):
+            task_id = task_id[5:]
+        success = manager.start_task(task_id)
+        if success:
+            print(f"\nStarted: {result['id']}")
+
+    return 0
+
+
+def cmd_task_show(args, manager: GoTProjectManager) -> int:
+    """Show details of a specific task."""
+    task_id = args.task_id
+
+    # Try to get task (with ID normalization)
+    task = manager.get_task(task_id)
+
+    # If not found, try with/without task: prefix
+    if task is None:
+        if task_id.startswith("task:"):
+            task = manager.get_task(task_id[5:])
+        else:
+            task = manager.get_task(f"task:{task_id}")
+
+    if task is None:
+        print(f"Task not found: {task_id}")
+        return 1
+
+    # Display task details
+    print("=" * 60)
+    print(f"TASK: {task.id}")
+    print("=" * 60)
+    print(f"Title:    {task.content}")
+    print(f"Status:   {task.properties.get('status', 'unknown')}")
+    print(f"Priority: {task.properties.get('priority', 'unknown')}")
+    print(f"Category: {task.properties.get('category', 'unknown')}")
+
+    if task.properties.get('description'):
+        print(f"\nDescription:\n  {task.properties['description']}")
+
+    if task.properties.get('retrospective'):
+        print(f"\nRetrospective:\n  {task.properties['retrospective']}")
+
+    if task.properties.get('blocked_reason'):
+        print(f"\nBlocked Reason:\n  {task.properties['blocked_reason']}")
+
+    # Show timestamps
+    print("\nTimestamps:")
+    if task.metadata.get('created_at'):
+        print(f"  Created:   {task.metadata['created_at']}")
+    if task.metadata.get('updated_at'):
+        print(f"  Updated:   {task.metadata['updated_at']}")
+    if task.metadata.get('completed_at'):
+        print(f"  Completed: {task.metadata['completed_at']}")
+
+    # Show dependencies
+    deps = manager.get_task_dependencies(task.id)
+    if deps:
+        print(f"\nDepends On ({len(deps)}):")
+        for dep in deps:
+            print(f"  - {dep.id}: {dep.content}")
+
+    # Show what depends on this task
+    dependents = manager.what_depends_on(task.id)
+    if dependents:
+        print(f"\nBlocks ({len(dependents)}):")
+        for dep in dependents:
+            print(f"  - {dep.id}: {dep.content}")
+
+    print("=" * 60)
+    return 0
+
+
 def cmd_task_start(args, manager: GoTProjectManager) -> int:
     """Start a task."""
     if manager.start_task(args.task_id):
@@ -2284,6 +4013,57 @@ def cmd_task_block(args, manager: GoTProjectManager) -> int:
         return 0
     else:
         print(f"Task not found: {args.task_id}")
+        return 1
+
+
+def cmd_task_delete(args, manager: GoTProjectManager) -> int:
+    """Delete a task with transactional safety checks.
+
+    TRANSACTIONAL: Verifies pre-conditions before deletion.
+    - Task must exist
+    - Without --force: fails if task has dependents, blocks others, or is in progress
+    - With --force: removes edges and deletes the task
+    """
+    task_id = args.task_id
+    force = getattr(args, 'force', False)
+
+    # Get task info before deletion for display
+    task = manager.get_task(task_id)
+    if not task:
+        print(f"Task not found: {task_id}")
+        return 1
+
+    # Show what we're about to do
+    task_title = task.content
+    task_status = task.properties.get("status", "unknown")
+
+    if not force:
+        # Show warnings about what might block deletion
+        dependents = manager.what_depends_on(task_id if task_id.startswith("task:") else f"task:{task_id}")
+        if dependents:
+            print(f"⚠️  Cannot delete: {len(dependents)} task(s) depend on this task:")
+            for d in dependents[:5]:
+                print(f"    - {d.id}: {d.content}")
+            if len(dependents) > 5:
+                print(f"    ... and {len(dependents) - 5} more")
+            print("\nUse --force to delete anyway (will orphan dependent tasks)")
+            return 1
+
+        if task_status == STATUS_IN_PROGRESS:
+            print(f"⚠️  Cannot delete: task is in progress")
+            print("Use --force to delete anyway")
+            return 1
+
+    # Attempt deletion
+    if manager.delete_task(task_id, force=force):
+        manager.save()
+        print(f"🗑️  Deleted: {task_id}")
+        print(f"   Title: {task_title}")
+        if force:
+            print("   (forced deletion)")
+        return 0
+    else:
+        print(f"Failed to delete: {task_id}")
         return 1
 
 
@@ -2955,6 +4735,93 @@ def cmd_infer(args, manager: GoTProjectManager) -> int:
     return 0
 
 
+def cmd_validate(args, manager: GoTProjectManager) -> int:
+    """Validate graph health and report issues."""
+    print("=" * 60)
+    print("GoT VALIDATION REPORT")
+    print("=" * 60)
+
+    issues = []
+    warnings = []
+
+    # Count nodes and edges
+    total_nodes = len(manager.graph.nodes)
+    total_edges = len(manager.graph.edges)
+
+    # Count tasks by status
+    tasks = [n for n in manager.graph.nodes.values() if n.node_type == NodeType.TASK]
+    task_count = len(tasks)
+
+    # Check for orphan nodes (no edges)
+    nodes_with_edges = set()
+    for edge in manager.graph.edges:
+        nodes_with_edges.add(edge.source_id)
+        nodes_with_edges.add(edge.target_id)
+
+    orphan_count = total_nodes - len(nodes_with_edges)
+    orphan_rate = orphan_count / max(total_nodes, 1) * 100
+
+    # Load events and compare
+    events = EventLog.load_all_events(manager.events_dir)
+    event_edge_count = sum(1 for e in events if e.get('event') == 'edge.create')
+    event_node_count = sum(1 for e in events if e.get('event') == 'node.create')
+
+    # Check for edge loss (the bug we fixed)
+    edge_loss_rate = 0
+    if event_edge_count > 0:
+        edge_loss_rate = (1 - total_edges / event_edge_count) * 100
+        if edge_loss_rate > 10:
+            issues.append(f"EDGE LOSS: {edge_loss_rate:.1f}% of edges from events not in graph ({total_edges}/{event_edge_count})")
+        elif edge_loss_rate > 0:
+            warnings.append(f"Minor edge loss: {edge_loss_rate:.1f}% ({total_edges}/{event_edge_count})")
+
+    # Check orphan rate
+    if orphan_rate > 50:
+        issues.append(f"HIGH ORPHAN RATE: {orphan_rate:.1f}% of nodes have no edges")
+    elif orphan_rate > 25:
+        warnings.append(f"Moderate orphan rate: {orphan_rate:.1f}%")
+
+    # Check edge density
+    edge_density = total_edges / max(total_nodes, 1)
+    if edge_density < 0.1:
+        warnings.append(f"Low edge density: {edge_density:.2f} edges/node")
+
+    # Print stats
+    print(f"\n📊 STATISTICS")
+    print(f"   Nodes: {total_nodes}")
+    print(f"   Tasks: {task_count}")
+    print(f"   Edges: {total_edges}")
+    print(f"   Edge density: {edge_density:.2f} edges/node")
+    print(f"   Orphan nodes: {orphan_count} ({orphan_rate:.1f}%)")
+
+    print(f"\n📁 EVENT LOG")
+    print(f"   Node events: {event_node_count}")
+    print(f"   Edge events: {event_edge_count}")
+    if edge_loss_rate > 0:
+        print(f"   Edge rebuild rate: {100 - edge_loss_rate:.1f}%")
+    else:
+        print(f"   Edge rebuild rate: 100%")
+
+    # Print issues
+    if issues:
+        print(f"\n❌ ISSUES ({len(issues)})")
+        for issue in issues:
+            print(f"   • {issue}")
+
+    if warnings:
+        print(f"\n⚠️  WARNINGS ({len(warnings)})")
+        for warning in warnings:
+            print(f"   • {warning}")
+
+    if not issues and not warnings:
+        print(f"\n✅ HEALTHY - No issues detected")
+
+    print()
+
+    # Return non-zero if critical issues
+    return 1 if issues else 0
+
+
 def cmd_query(args, manager: GoTProjectManager) -> int:
     """Run a query against the graph."""
     query_str = " ".join(args.query_string)
@@ -3101,6 +4968,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
+    # Global options
+    parser.add_argument(
+        "--backend",
+        choices=["transactional", "event-sourced"],
+        help="Override backend selection (default: auto-detect)"
+    )
+
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # Task commands
@@ -3126,6 +5000,15 @@ def main():
     list_parser.add_argument("--blocked", action="store_true", help="Show only blocked")
     list_parser.add_argument("--json", action="store_true", help="Output as JSON")
 
+    # task show
+    show_parser = task_subparsers.add_parser("show", help="Show task details")
+    show_parser.add_argument("task_id", help="Task ID to display")
+
+    # task next
+    next_parser = task_subparsers.add_parser("next", help="Get the next task to work on")
+    next_parser.add_argument("--start", "-s", action="store_true",
+                             help="Also start the task after selecting it")
+
     # task start
     start_parser = task_subparsers.add_parser("start", help="Start a task")
     start_parser.add_argument("task_id", help="Task ID")
@@ -3140,6 +5023,12 @@ def main():
     block_parser.add_argument("task_id", help="Task ID")
     block_parser.add_argument("--reason", "-r", required=True, help="Block reason")
     block_parser.add_argument("--blocker", "-b", help="Blocking task ID")
+
+    # task delete
+    delete_parser = task_subparsers.add_parser("delete", help="Delete a task (transactional)")
+    delete_parser.add_argument("task_id", help="Task ID to delete")
+    delete_parser.add_argument("--force", "-f", action="store_true",
+                               help="Force delete even if task has dependencies or is in progress")
 
     # Sprint commands
     sprint_parser = subparsers.add_parser("sprint", help="Sprint operations")
@@ -3266,6 +5155,9 @@ def main():
     decision_why = decision_subparsers.add_parser("why", help="Ask why a task exists")
     decision_why.add_argument("task_id", help="Task ID to query")
 
+    # Validation command
+    validate_parser = subparsers.add_parser("validate", help="Validate graph health")
+
     # Edge inference commands
     infer_parser = subparsers.add_parser("infer", help="Infer edges from git history")
     infer_parser.add_argument("--commits", "-n", type=int, default=10,
@@ -3278,8 +5170,17 @@ def main():
         parser.print_help()
         return 1
 
-    # Initialize manager
-    manager = GoTProjectManager()
+    # Initialize manager using factory
+    try:
+        backend = getattr(args, 'backend', None)
+        manager = GoTBackendFactory.create(backend=backend)
+        if os.environ.get("GOT_DEBUG"):
+            backend_type = "transactional" if isinstance(manager, TransactionalGoTAdapter) else "event-sourced"
+            backend_dir = GOT_TX_DIR if backend_type == "transactional" else GOT_DIR
+            print(f"[DEBUG] Using {backend_type} backend at {backend_dir}", file=sys.stderr)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
     # Route commands
     if args.command == "task":
@@ -3287,12 +5188,18 @@ def main():
             return cmd_task_create(args, manager)
         elif args.task_command == "list":
             return cmd_task_list(args, manager)
+        elif args.task_command == "show":
+            return cmd_task_show(args, manager)
+        elif args.task_command == "next":
+            return cmd_task_next(args, manager)
         elif args.task_command == "start":
             return cmd_task_start(args, manager)
         elif args.task_command == "complete":
             return cmd_task_complete(args, manager)
         elif args.task_command == "block":
             return cmd_task_block(args, manager)
+        elif args.task_command == "delete":
+            return cmd_task_delete(args, manager)
         else:
             task_parser.print_help()
             return 1
@@ -3377,6 +5284,9 @@ def main():
 
     elif args.command == "infer":
         return cmd_infer(args, manager)
+
+    elif args.command == "validate":
+        return cmd_validate(args, manager)
 
     else:
         parser.print_help()

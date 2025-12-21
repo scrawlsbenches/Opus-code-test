@@ -148,3 +148,7 @@ corpus_dev/
 !.got/events/
 !.got/snapshots/
 !.got/tracked/
+
+# GoT migration artifacts
+.got-backup-*/
+.got-tx/

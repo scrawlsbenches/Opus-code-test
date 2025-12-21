@@ -1,0 +1,1 @@
+{"ts": "2025-12-21T02:16:58.612788Z", "event": "decision.create", "meta": {"branch": "claude/test-task-workflow-gRXq7", "session": "20251221-021658-0983"}, "id": "decision:D-20251221-021658-96e1", "decision": "test decision", "rationale": "test rationale", "affects": [], "alternatives": [], "context": {}}
