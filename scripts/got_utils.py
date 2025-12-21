@@ -32,7 +32,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from cortical.reasoning.thought_graph import ThoughtGraph
-from cortical.reasoning.graph_of_thought import NodeType, EdgeType, ThoughtNode
+from cortical.reasoning.graph_of_thought import NodeType, EdgeType, ThoughtNode, ThoughtEdge
 from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery
 
 # Import transactional backend (new)
@@ -1541,15 +1541,17 @@ class TransactionalGoTAdapter:
                             wrapper = json.load(f)
                         data = wrapper.get("data", {})
                         if data.get("entity_type") == "edge":
+                            # Edge types are stored lowercase but EdgeType enum uses uppercase
+                            edge_type_str = data.get("edge_type", "related_to").upper()
                             edge = ThoughtEdge(
                                 source_id=data.get("source_id", ""),
                                 target_id=data.get("target_id", ""),
-                                edge_type=EdgeType[data.get("edge_type", "RELATED_TO")],
+                                edge_type=EdgeType[edge_type_str],
                                 weight=data.get("weight", 1.0),
                             )
                             graph.edges.append(edge)
-                    except Exception:
-                        pass  # Skip invalid edge files
+                    except Exception as e:
+                        logger.debug(f"Skipping edge file {edge_file}: {e}")
         except Exception as e:
             logger.error(f"Failed to build graph from store: {e}")
         return graph
