@@ -1,0 +1,55 @@
+Schemas and Mental Models
+
+Schemas are cognitive structures that represent knowledge about concepts, objects, situations, and events. These organized knowledge structures guide perception, memory, and reasoning by providing frameworks for interpreting new information and generating expectations. Understanding schemas reveals how prior knowledge shapes cognitive processing and learning.
+
+The concept of schemas was introduced by psychologist Frederic Bartlett in the 1930s through his studies of memory for stories. Bartlett showed that people's memory reconstructions reflected their existing cultural schemas, with unfamiliar elements transformed to fit more familiar patterns. This demonstrated that memory is reconstructive rather than reproductive.
+
+Mental models are specific types of schemas that represent how systems work, enabling prediction and explanation. When you understand how a thermostat works, you have a mental model that allows you to predict temperature changes and diagnose problems. Mental models support reasoning about novel situations by simulating system behavior.
+
+Schemas contain slots for typical features of categories or situations. A restaurant schema includes slots for ordering, eating, and paying. These slots have default values representing typical instances, but can be filled with specific values for particular episodes. This structure enables both generalization and specificity.
+
+Script theory, developed by Roger Schank and Robert Abelson, describes schemas for stereotyped event sequences. A restaurant script specifies the standard sequence: entering, being seated, ordering, eating, paying, and leaving. Scripts guide behavior in familiar situations and help interpret narratives by filling in unstated information.
+
+Assimilation and accommodation, concepts from Piaget's theory, describe how schemas change through experience. Assimilation involves interpreting new information in terms of existing schemas. Accommodation involves modifying schemas when new information doesn't fit existing structures. Learning requires balancing these processes.
+
+Schema-consistent information is generally processed more easily and remembered better than schema-inconsistent information. When reading about a professor, schema-consistent behaviors like lecturing are processed fluently. However, highly distinctive schema-inconsistent information can also be well-remembered because it receives additional processing to reconcile it with expectations.
+
+False memories often reflect schema-based reconstruction. In the Deese-Roediger-McDermott paradigm, people study words related to a theme (bed, rest, tired) and later falsely remember the unstudied theme word (sleep). Schemas generate expected items that can be misattributed to actual experience.
+
+Expertise involves acquiring rich, well-organized schemas in a domain. Expert schemas allow rapid pattern recognition and efficient problem-solving. Chess masters, for example, have extensive schemas for board positions that enable them to quickly identify strong moves and remember complex positions better than novices.
+
+The schema induction problem addresses how schemas are initially formed from individual experiences. Computational models suggest that schemas emerge through extraction of regularities across multiple episodes. With sufficient similar experiences, abstract schemas are induced through comparison and generalization processes.
+
+Mental models can be incomplete or incorrect, leading to systematic errors in reasoning and problem-solving. Naive physics models, for example, often include misconceptions like believing that heavier objects fall faster than lighter ones. These incorrect mental models persist despite instruction because they are supported by everyday experiences.
+
+Multiple representation systems may support different types of schemas. Spatial schemas may rely on visual and motor representations, while abstract schemas may be represented more symbolically. The representational format influences what inferences are easy or difficult to draw from schemas.
+
+Schema violations capture attention and drive learning. When expectations based on schemas are violated, surprise and increased attention result, promoting encoding of the unexpected information and potential schema revision. This explains enhanced memory for unexpected information in stories.
+
+Cultural schemas organize culture-specific knowledge about social roles, situations, and values. These schemas vary across cultures and influence perception, memory, and reasoning. Cross-cultural differences in cognition often reflect different cultural schemas rather than different cognitive processes.
+
+Situation models, schemas representing specific described or experienced situations, are constructed during language comprehension. Readers build mental representations of characters, locations, goals, and events that go beyond the explicit text. Situation models support inference generation and memory for meaning rather than exact wording.
+
+Transfer of learning is facilitated when learners form abstract schemas that apply across specific problems. Successful transfer requires recognizing structural similarities between source and target problems despite surface differences. Schema abstraction through comparison of multiple examples promotes transferable learning.
+
+Schema rigidity can impair flexible thinking. Functional fixedness, difficulty seeing novel uses for familiar objects, reflects rigid schema activation. A screwdriver is so strongly associated with its typical function that using it to stir paint requires overcoming schema-based constraints on its possible uses.
+
+Personal schemas about the self organize autobiographical knowledge and guide self-relevant processing. Self-schemas influence what information is attended to, how it is interpreted, and what is remembered. Individuals attend to and remember self-schema-consistent information preferentially.
+
+Stereotypes are schemas about social groups that influence perception and judgment. While schemas are necessary for efficient processing, stereotypes can lead to biased or incorrect judgments when applied inappropriately. Stereotype activation can occur automatically, though controlled processes can counteract stereotypical judgments.
+
+Schema theory has important educational implications. Teaching should activate relevant prior knowledge schemas before presenting new information. When appropriate schemas don't exist, instruction should first build foundational schemas. Providing multiple examples helps learners induce appropriate abstract schemas.
+
+Cognitive Load Theory recognizes that schema acquisition reduces cognitive load by chunking information into single units. As schemas become more sophisticated through learning, material that initially overwhelmed working memory capacity becomes manageable because it can be processed as integrated schemas rather than separate elements.
+
+Updating schemas requires overcoming confirmation bias, the tendency to interpret new information as confirming existing schemas. Effective schema revision requires attending to disconfirming evidence and being willing to accommodate rather than assimilate when warranted.
+
+The distinction between episodic and semantic memory relates to schemas. Episodic memory stores specific experiences, while semantic memory contains generalized knowledge often organized into schemas. Schemas may emerge through abstraction across multiple episodes, transitioning from episodic to semantic representation.
+
+Category-based induction uses schemas about categories to make inferences about category members. Knowing that something is a bird allows inference of properties like having wings and laying eggs based on bird schemas. The strength of inductive inferences depends on category typicality and diversity.
+
+Mental models in reasoning about physical systems often involve spatial representations that can be mentally simulated. Imagining gears turning or liquids flowing through pipes involves running mental simulations based on internalized models of mechanical and fluid systems.
+
+Understanding schemas and mental models illuminates how knowledge is organized, applied, and updated. These cognitive structures enable efficient processing and adaptive behavior while also creating biases and errors when applied inappropriately. Education and expertise development can be understood as progressive schema acquisition and refinement.
+
+Current research investigates computational mechanisms of schema formation, neural substrates of different schema types, and methods to promote schema abstraction and flexible application across domains.

@@ -1,0 +1,49 @@
+Dual Process Theory
+
+Dual process theory proposes that human cognition operates through two distinct types of processing systems. System 1 is fast, automatic, effortless, and operates largely outside conscious awareness. System 2 is slow, controlled, effortful, and operates through conscious deliberation. Understanding the interplay between these systems helps explain reasoning, judgment, decision-making, and behavioral patterns.
+
+Daniel Kahneman popularized dual process theory in his book "Thinking, Fast and Slow," synthesizing decades of research on cognitive biases and heuristics. System 1 processes generate intuitive judgments automatically, while System 2 can override these intuitions through deliberate reasoning, though it often fails to do so.
+
+Automaticity characterizes System 1 processing. Automatic processes are triggered by environmental cues without intention, operate efficiently with minimal attentional resources, and are difficult to control or inhibit. Reading words is automatic for literate adults - you cannot choose not to read words you see in your language.
+
+System 2 processes require working memory resources and executive control. When working memory is taxed or depleted, people increasingly rely on System 1 processing. Cognitive load thus determines the balance between intuitive and deliberative processing, explaining why fatigue and stress lead to more reliance on heuristics.
+
+Heuristics are mental shortcuts that allow quick judgments with minimal cognitive effort. The availability heuristic judges frequency or probability based on how easily examples come to mind. After hearing news reports of airplane crashes, people overestimate the danger of flying because such vivid events are highly available in memory.
+
+The representativeness heuristic judges probability based on similarity to prototypes. When told "Steve is shy and withdrawn, with little interest in people or reality," people judge that Steve is more likely to be a librarian than a farmer, despite farmers being far more numerous. This neglect of base rates reflects System 1's focus on similarity over statistics.
+
+Anchoring effects demonstrate System 1's susceptibility to irrelevant information. When asked whether Gandhi died before or after age 140, then estimating his actual age at death, people give higher estimates than if first asked about age 40. Even obviously absurd anchors influence subsequent numerical judgments.
+
+Confirmation bias, the tendency to seek and interpret information in ways that confirm preexisting beliefs, reflects System 1's preference for coherent narratives over critical evaluation. System 2 can counteract confirmation bias through deliberate consideration of alternative hypotheses, but often fails to do so.
+
+The cognitive reflection test measures the tendency to override System 1 intuitions with System 2 deliberation. The classic problem "A bat and ball cost $1.10 total. The bat costs $1 more than the ball. How much does the ball cost?" elicits the intuitive but incorrect answer of 10 cents. The correct answer of 5 cents requires System 2 to override System 1's quick response.
+
+Dual process theory helps explain moral judgment. Emotionally charged moral dilemmas elicit strong System 1 responses, while abstract moral principles engage System 2 reasoning. The tension between these systems explains why people's moral judgments can vary depending on how scenarios are framed.
+
+Implicit attitudes, measured by response time tasks like the Implicit Association Test, reflect System 1 associations that may differ from explicit System 2 beliefs. People who explicitly endorse egalitarian values may still show implicit biases, demonstrating dissociation between automatic and controlled processes.
+
+The dual process account of reasoning distinguishes between belief-based and logic-based responding. System 1 evaluates conclusions based on believability, while System 2 can evaluate logical validity independent of content. Logical reasoning often fails when System 2 does not adequately supervise System 1.
+
+Neuroimaging studies provide evidence for distinct neural systems supporting dual processes. Intuitive judgments activate ventromedial prefrontal cortex and limbic regions associated with emotional processing. Deliberative reasoning activates dorsolateral prefrontal cortex and parietal cortex associated with executive control and working memory.
+
+Individual differences in cognitive reflection and need for cognition predict reliance on System 1 versus System 2 processing. People high in cognitive reflection are more likely to detect and correct intuitive errors, while those low in need for cognition prefer to minimize effortful thinking.
+
+The development of System 2 capabilities extends through childhood and adolescence, paralleling prefrontal cortex maturation. Young children show limited ability to override prepotent responses and rely heavily on intuitive processing. Education cultivates System 2 skills like critical thinking and logical reasoning.
+
+Expertise can shift processing from System 2 to System 1 through practice and automatization. Expert chess players' intuitive pattern recognition reflects System 1 processes that developed through extensive deliberate practice. This demonstrates that System 1 is not inherently inferior but becomes efficient through experience.
+
+Critics of dual process theory question whether two systems are necessary or whether a single system with varying processing parameters could explain the same phenomena. Others argue for multiple systems rather than just two. Despite debates about details, the distinction between automatic and controlled processing remains influential.
+
+The default-interventionist model proposes that System 1 generates initial responses that System 2 may or may not override. This contrasts with parallel-competitive models where both systems operate simultaneously and the stronger response wins. Evidence exists for both models in different contexts.
+
+Ego depletion refers to the temporary reduction in self-control following prior exertion of control, suggesting that System 2 resources are limited and can be depleted. However, recent research questions the robustness and interpretation of ego depletion effects.
+
+The relationship between emotion and cognition in dual process theory is complex. While System 1 is associated with emotional, intuitive responses and System 2 with rational deliberation, emotions can both interfere with and enhance reasoning depending on context.
+
+Nudging and choice architecture leverage dual process theory to influence behavior. By changing how options are presented, policymakers can guide System 1 processing toward beneficial choices without restricting freedom of choice. Default options exploit System 1's tendency toward inaction.
+
+Understanding dual process theory illuminates the tension between intuition and reason in human cognition. While System 1 enables rapid, efficient responses suited to many situations, it also produces systematic biases. System 2 can correct these biases but requires effort and often fails to engage.
+
+Applications of dual process theory span education, public policy, marketing, and clinical psychology. Teaching critical thinking involves training System 2 to monitor and override System 1 when appropriate. Cognitive behavioral therapy helps patients identify and challenge automatic thoughts using deliberative reasoning.
+
+The interplay between automatic and controlled processing shapes virtually all aspects of cognition and behavior. Recognizing when we are relying on intuition versus deliberation, and knowing when each is appropriate, represents an important metacognitive skill that dual process theory helps us understand and develop.

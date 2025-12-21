@@ -1,0 +1,1 @@
+{"ts": "2025-12-20T23:42:47.122945Z", "event": "node.create", "meta": {"branch": "claude/code-review-history-ckKBt", "session": "20251220-234247-9f4a"}, "id": "task:T-20251220-234247-0d47", "type": "TASK", "data": {"title": "API Design", "status": "pending", "priority": "high", "category": "feature", "description": ""}}

@@ -1,373 +1,214 @@
-# Test Selection Calibration Metrics - Implementation Summary
+# Implementation Summary: Commits Behind Origin Indicator
 
-**Sprint 6, Goal 4: Create test selection accuracy metrics**
+## Task
+**T-20251220-194437-f898** - Add 'commits behind origin' indicator to GoT dashboard
 
-## What Was Implemented
+## Overview
+Added a comprehensive origin tracking feature to the GoT dashboard that shows how many commits the local branch is behind/ahead of its upstream origin, helping users know when to pull changes.
 
-### 1. Core TestCalibrationTracker Module
-**File**: `/home/user/Opus-code-test/scripts/hubris/test_calibration_tracker.py`
+## Files Modified
 
-A complete test selection calibration system that tracks how accurately TestExpert predicts which tests should be run.
+### 1. `/home/user/Opus-code-test/scripts/got_dashboard.py`
 
-**Key Components**:
-- `TestPrediction` - Records test selection predictions
-- `TestOutcome` - Records actual test execution results
-- `TestCalibrationRecord` - Matched prediction-outcome pairs for analysis
-- `TestCalibrationMetrics` - Aggregate accuracy metrics
-- `TestCalibrationTracker` - Main tracker class with recording and analysis
+#### New Function: `get_commits_behind_origin()`
+- **Location**: Lines 462-596 in `DashboardMetrics` class
+- **Features**:
+  - Fetches from origin with 10-second timeout
+  - Checks upstream tracking configuration
+  - Calculates ahead/behind counts using `git rev-list --left-right --count`
+  - Tracks last fetch time from `.git/FETCH_HEAD`
+  - Returns structured dict with status, counts, and message
 
-**Metrics Implemented**:
-1. **Precision@5**: Of top 5 suggestions, how many were relevant?
-2. **Recall**: Of tests that failed, what fraction did we suggest?
-3. **Hit Rate**: Did we catch at least one failing test?
-4. **MRR (Mean Reciprocal Rank)**: Average rank of first failing test
-5. **False Alarm Rate**: Fraction of suggested tests that didn't fail
-6. **Coverage**: Fraction of all failures caught across predictions
+- **Status Values**:
+  - `up-to-date`: Branch is synced with origin
+  - `behind`: Branch is behind origin
+  - `ahead`: Branch is ahead of origin
+  - `diverged`: Branch has diverged (both ahead and behind)
+  - `no-upstream`: No upstream tracking configured
+  - `error`: Git error or network timeout
 
-**Status Classification**:
-- Excellent: Hit rate ≥ 0.95, Precision@5 ≥ 0.8
-- Good: Hit rate ≥ 0.85, Precision@5 ≥ 0.6
-- Acceptable: Hit rate ≥ 0.70, Precision@5 ≥ 0.4
-- Needs Attention: Hit rate ≥ 0.50
-- Poor: Hit rate < 0.50
+- **Error Handling**:
+  - Network timeouts (10s max)
+  - No upstream configured
+  - Git command failures
+  - Unparseable output
+  - Generic exceptions
 
-### 2. CLI Integration
-**File**: `/home/user/Opus-code-test/scripts/hubris_cli.py`
+#### Modified Function: `get_git_integration_status()`
+- **Location**: Lines 598-679
+- **Change**: Added call to `get_commits_behind_origin()` and includes result in return dict as `origin_status`
 
-Added `--tests` flag to the `calibration` command:
+#### Modified Function: `render_git_integration_section()`
+- **Location**: Lines 837-924
+- **Changes**:
+  - Added origin status display with visual indicators
+  - Shows last fetch time when available
+  - Displays warning with tip when ≥5 commits behind
+  - Color-coded status indicators:
+    - ✓ Green (up-to-date)
+    - ↑ Cyan (ahead)
+    - ↓ Yellow (behind, <5 commits)
+    - ⚠️ Red (behind, ≥5 commits)
+    - ⇅ Yellow (diverged)
+    - ⓘ Dim (no upstream)
+    - ✗ Dim (error)
 
+### 2. `/home/user/Opus-code-test/tests/unit/test_got_dashboard.py` (NEW)
+- **13 comprehensive tests** covering:
+  - Up-to-date scenario
+  - Behind origin (3 commits)
+  - Ahead of origin (2 commits)
+  - Diverged scenario (5 ahead, 3 behind)
+  - No upstream configured
+  - Network timeout handling
+  - Git error handling
+  - Last fetch time calculation
+  - Singular/plural grammar ("1 commit" vs "2 commits")
+  - Integration with `get_git_integration_status()`
+  - Rendering with warning (≥5 behind)
+  - Rendering up-to-date
+  - Rendering no upstream
+
+### 3. `/home/user/Opus-code-test/examples/got_dashboard_origin_demo.py` (NEW)
+- **Demo script** showcasing all possible status states
+- Visual examples of each scenario
+
+## Test Results
+```
+============================= test session starts ==============================
+collected 13 items
+
+tests/unit/test_got_dashboard.py::TestGetCommitsBehindOrigin::test_ahead_of_origin PASSED
+tests/unit/test_got_dashboard.py::TestGetCommitsBehindOrigin::test_behind_origin PASSED
+tests/unit/test_got_dashboard.py::TestGetCommitsBehindOrigin::test_diverged PASSED
+tests/unit/test_got_dashboard.py::TestGetCommitsBehindOrigin::test_git_error PASSED
+tests/unit/test_got_dashboard.py::TestGetCommitsBehindOrigin::test_last_fetch_time PASSED
+tests/unit/test_got_dashboard.py::TestGetCommitsBehindOrigin::test_network_timeout PASSED
+tests/unit/test_got_dashboard.py::TestGetCommitsBehindOrigin::test_no_upstream_configured PASSED
+tests/unit/test_got_dashboard.py::TestGetCommitsBehindOrigin::test_single_commit_grammar PASSED
+tests/unit/test_got_dashboard.py::TestGetCommitsBehindOrigin::test_up_to_date PASSED
+tests/unit/test_got_dashboard.py::TestGitIntegrationStatus::test_integration_includes_origin_status PASSED
+tests/unit/test_got_dashboard.py::TestDashboardRendering::test_render_handles_no_upstream PASSED
+tests/unit/test_got_dashboard.py::TestDashboardRendering::test_render_shows_origin_warning PASSED
+tests/unit/test_got_dashboard.py::TestDashboardRendering::test_render_shows_up_to_date PASSED
+
+============================== 13 passed in 0.37s
+```
+
+## Example Dashboard Output
+
+### Up-to-date
+```
+│ Current Branch: main                                                               │
+│ Origin Status: ✓ Up-to-date with origin/main                                 │
+│ Last Fetch: 2m ago                                                             │
+```
+
+### Behind (minor)
+```
+│ Current Branch: feature-branch                                                     │
+│ Origin Status: ↓ Behind origin/feature-branch by 3 commits                   │
+│ Last Fetch: 10m ago                                                            │
+```
+
+### Behind (significant - with warning)
+```
+│ Current Branch: feature-branch                                                     │
+│ Origin Status: ⚠️ Behind origin/feature-branch by 10 commits                 │
+│ Last Fetch: 1h ago                                                             │
+│                                                                              │
+│ ⚠️  Tip: Run git pull to sync with origin                                 │
+```
+
+### Ahead
+```
+│ Current Branch: feature-branch                                                     │
+│ Origin Status: ↑ Ahead of origin/feature-branch by 5 commits                 │
+│ Last Fetch: 5m ago                                                             │
+```
+
+### Diverged
+```
+│ Current Branch: feature-branch                                                     │
+│ Origin Status: ⇅ Diverged from origin/feature-branch: +5 -3                  │
+│ Last Fetch: 15m ago                                                            │
+```
+
+### No Upstream
+```
+│ Current Branch: local-only-branch                                                  │
+│ Origin Status: ⓘ Branch 'local-only-branch' has no upstream configured            │
+```
+
+### Error
+```
+│ Current Branch: feature-branch                                                     │
+│ Origin Status: ✗ Network timeout during fetch                                │
+```
+
+## Implementation Details
+
+### Git Commands Used
+1. `git fetch --quiet` - Update refs from origin (with 10s timeout)
+2. `git rev-parse --abbrev-ref HEAD` - Get current branch name
+3. `git rev-parse --abbrev-ref @{upstream}` - Check upstream tracking
+4. `git rev-list --left-right --count HEAD...@{upstream}` - Get ahead/behind counts
+
+### Design Decisions
+
+1. **Automatic fetch**: The dashboard fetches on every run to ensure fresh data
+   - Uses `--quiet` flag to suppress output
+   - 10-second timeout to prevent hanging
+   - Graceful degradation on network errors
+
+2. **Warning threshold**: Shows red warning icon and tip when ≥5 commits behind
+   - Balances between being helpful and avoiding noise
+   - Users working on long-running branches won't see false alarms
+
+3. **Visual indicators**: Different icons for each status
+   - Makes status immediately recognizable at a glance
+   - Color-coding provides additional context
+
+4. **Last fetch time**: Helps users understand data freshness
+   - Only shown when `.git/FETCH_HEAD` exists
+   - Human-readable format (just now, 5m ago, 1h ago, 2d ago)
+
+5. **Error handling**: Comprehensive error cases
+   - Network timeouts
+   - No upstream configured
+   - Git command failures
+   - All errors return structured dict (never crash)
+
+## Demo
+Run the demo to see all status states:
 ```bash
-# View test selection calibration
-python scripts/hubris_cli.py calibration --tests
-
-# JSON output
-python scripts/hubris_cli.py calibration --tests --json
+python examples/got_dashboard_origin_demo.py
 ```
 
-**Routing Logic**:
-- Default (`calibration`): File prediction calibration (existing)
-- With `--tests` flag: Test selection calibration (new)
-
-### 3. Demo Script
-**File**: `/home/user/Opus-code-test/scripts/hubris/test_calibration_demo.py`
-
-Interactive demo showing 3 scenarios:
-1. Good prediction - catches most failures
-2. Poor prediction - misses failures
-3. Partial success - catches some failures
-
-Run with: `python scripts/hubris/test_calibration_demo.py`
-
-### 4. Unit Tests
-**File**: `/home/user/Opus-code-test/tests/unit/test_test_calibration.py`
-
-Comprehensive test suite with 10 tests covering:
-- Recording predictions and outcomes
-- Metric calculations (Precision@5, Recall, Hit Rate, MRR)
-- Edge cases (no failures, invalid confidence)
-- Data persistence
-- Status classification
-
-**All tests pass**: ✓ 10/10
-
-### 5. Documentation
-**File**: `/home/user/Opus-code-test/docs/test-calibration-metrics.md`
-
-Complete documentation including:
-- Metric definitions with formulas
-- Usage examples (recording predictions/outcomes)
-- Interpretation guidelines
-- Status thresholds
-- Common issues and solutions
-- Integration with Git hooks and CI/CD
-- API reference
-
-## Data Storage
-
-All data stored in `.git-ml/predictions/` (gitignored):
-
-```
-.git-ml/predictions/
-├── test_predictions.jsonl   # Test selection predictions
-├── test_outcomes.jsonl       # Test execution results
-└── test_calibration.jsonl    # Matched pairs for analysis
-```
-
-## API Usage
-
-### Recording a Prediction
-
-```python
-from test_calibration_tracker import TestCalibrationTracker
-
-tracker = TestCalibrationTracker()
-
-prediction = tracker.record_prediction(
-    prediction_id="pred_12345",
-    suggested_tests=[
-        "tests/test_auth.py::test_login",
-        "tests/test_auth.py::test_logout",
-        "tests/test_session.py::test_create"
-    ],
-    confidence=0.85,
-    changed_files=["cortical/auth.py", "cortical/session.py"],
-    metadata={"commit_message": "Add authentication"}
-)
-```
-
-### Recording an Outcome
-
-```python
-outcome = tracker.record_outcome(
-    prediction_id="pred_12345",
-    tests_run=["tests/test_auth.py::test_login", ...],
-    tests_failed=["tests/test_auth.py::test_login"],
-    tests_passed=["tests/test_auth.py::test_logout", ...],
-    metadata={"ci_run": "12345", "duration_seconds": 45}
-)
-```
-
-### Viewing Metrics
-
-```python
-# Load all data
-tracker.load_all()
-
-# Get metrics
-metrics = tracker.get_metrics()
-print(f"Hit Rate: {metrics.hit_rate:.3f}")
-print(f"Status: {metrics.get_status()}")
-
-# Full report
-print(tracker.format_report())
-```
-
-## CLI Output Example
-
-```
-======================================================================
-TEST SELECTION CALIBRATION ANALYSIS
-======================================================================
-
-Loaded 3 calibration records.
-
-Predictions recorded:  3
-Outcomes recorded:     3
-Calibration records:   3
-
-TEST SELECTION METRICS:
-
-  Precision@5:      1.000  (of top 5 suggestions, how many relevant?)
-  Recall:           0.500  (of failures, what % did we catch?)
-  Hit Rate:         0.667  (% predictions catching at least one failure)
-  MRR:              0.667  (rank of first failure in suggestions)
-  False Alarm Rate: 0.783  (suggested tests that didn't fail)
-  Coverage:         0.500  (% of all failures caught)
-
-Status: NEEDS_ATTENTION
-
-RECOMMENDATIONS:
-  ⚠️  Low hit rate - many test failures not predicted. Consider expanding test selection coverage.
-  ℹ️  High false alarm rate - suggested tests mostly pass. This wastes CI time. Improve relevance filtering.
-
-METRIC INTERPRETATION:
-  Good thresholds:
-    • Precision@5 ≥ 0.7  (most suggestions are useful)
-    • Recall ≥ 0.8       (catch most failures)
-    • Hit Rate ≥ 0.85    (rarely miss failures entirely)
-    • MRR ≥ 0.5          (failures ranked in top 2 on average)
-    • Coverage ≥ 0.9     (catch 90%+ of all failures)
-```
-
-## Cold Start Behavior
-
-When no data exists, shows helpful guidance:
-
-```
-No test calibration data available yet.
-Test calibration tracks how well TestExpert predicts which tests to run.
-
-To generate test calibration data:
-  1. Record test predictions via TestCalibrationTracker.record_prediction()
-  2. Run tests and record outcomes via TestCalibrationTracker.record_outcome()
-  3. Re-run this command
-```
-
-## Key Design Decisions
-
-### 1. Separate from File Prediction Calibration
-- File predictions and test predictions have different semantics
-- File prediction: accuracy of which files will change
-- Test prediction: accuracy of which tests will fail
-- Keeping them separate allows focused optimization
-
-### 2. Precision@5 Instead of Precision@K
-- Most CI systems run a limited set of "quick tests" first
-- Top 5 is a realistic constraint for fast feedback
-- Can be extended with `@K` variants if needed
-
-### 3. Hit Rate as Primary Metric
-- Critical metric: "Did we catch ANY failure?"
-- High hit rate prevents "completely missed" scenarios
-- Complements recall (which measures how many we caught)
-
-### 4. False Alarm Rate for CI Efficiency
-- Tracks wasted CI resources (tests that didn't need to run)
-- Helps balance coverage vs efficiency
-- Important for large test suites where CI time matters
-
-### 5. Atomic File Writes
-- All JSONL files use atomic writes (temp + rename)
-- Prevents corruption from crashes or interrupts
-- Safe for concurrent access from parallel processes
-
-## Testing Coverage
-
-- ✓ Prediction recording
-- ✓ Outcome recording
-- ✓ Precision@5 calculation
-- ✓ Recall calculation
-- ✓ Hit rate calculation
-- ✓ MRR calculation
-- ✓ No failures scenario (perfect recall)
-- ✓ Status classification
-- ✓ Data persistence
-- ✓ Validation (invalid confidence)
-
-## Next Steps (Future Work)
-
-### 1. Integration with TestExpert
-Connect to actual TestExpert predictions when they're implemented:
-
-```python
-# In TestExpert
-predictions = test_expert.predict(changed_files)
-tracker.record_prediction(
-    prediction_id=pred_id,
-    suggested_tests=predictions,
-    confidence=test_expert.confidence,
-    changed_files=changed_files
-)
-```
-
-### 2. CI Integration
-Add hooks to record outcomes automatically:
-
+## Testing
+Run the test suite:
 ```bash
-# .github/workflows/test.yml
-- name: Record test outcome
-  if: always()
-  run: python scripts/record_test_outcome.py --junit-xml results.xml
+python -m pytest tests/unit/test_got_dashboard.py -v
 ```
 
-### 3. Historical Trend Analysis
-Track calibration quality over time:
-- Weekly/monthly trends
-- Degradation detection
-- Automatic alerts when metrics drop
+## Requirements Met
 
-### 4. Per-Expert Calibration
-Track calibration for different test selection strategies:
-- File-based expert
-- History-based expert
-- Dependency-based expert
+✅ Add function to get commits behind count
+✅ Display in dashboard under Git Integration section
+✅ Show warning if significantly behind (5+ commits)
+✅ Handle offline/no-remote gracefully
+✅ Comprehensive tests for all scenarios
+✅ Visual indicators with icons and colors
+✅ Last fetch time tracking
+✅ Grammar correctness (1 commit vs 2 commits)
 
-### 5. Confidence Calibration
-Similar to file predictions, track whether test selection confidence matches actual accuracy.
+## Additional Features
 
-## Files Created/Modified
-
-### New Files
-1. `scripts/hubris/test_calibration_tracker.py` (560 lines)
-2. `scripts/hubris/test_calibration_demo.py` (200 lines)
-3. `tests/unit/test_test_calibration.py` (290 lines)
-4. `docs/test-calibration-metrics.md` (450 lines)
-
-### Modified Files
-1. `scripts/hubris_cli.py`
-   - Added import for `TestCalibrationTracker`
-   - Added routing logic in `cmd_calibration()`
-   - Added new `cmd_calibration_tests()` function
-   - Added `--tests` flag to calibration parser
-
-**Total**: ~1,500 lines of implementation + tests + documentation
-
-## Verification
-
-### Run Demo
-```bash
-python scripts/hubris/test_calibration_demo.py
-```
-
-### Run Tests
-```bash
-python -m unittest tests.unit.test_test_calibration -v
-# Result: 10 tests, all passing
-```
-
-### Check CLI
-```bash
-# Cold start (no data)
-python scripts/hubris_cli.py calibration --tests
-
-# With data (after running demo)
-python scripts/hubris_cli.py calibration --tests
-python scripts/hubris_cli.py calibration --tests --json
-```
-
-### Verify File Calibration Still Works
-```bash
-# Should show existing file prediction calibration
-python scripts/hubris_cli.py calibration
-```
-
-## Success Criteria Met
-
-✓ **Defined "accurate" for test selection**
-  - Precision@5: relevance of suggestions
-  - Recall: fraction of failures caught
-  - Hit Rate: at least one failure caught
-
-✓ **Created test-specific metrics in calibration system**
-  - Extends existing calibration patterns
-  - Separate storage in `.git-ml/predictions/test_*.jsonl`
-
-✓ **Added `--tests` flag to calibration command**
-  - Routes to test calibration when present
-  - Maintains backward compatibility with file calibration
-
-✓ **Data structures for predictions and outcomes**
-  - `TestPrediction` and `TestOutcome` dataclasses
-  - Validation, serialization, persistence
-
-✓ **Metric calculation with good/bad thresholds**
-  - Status classification (excellent → poor)
-  - Actionable recommendations
-  - Color-coded CLI output
-
-✓ **Cold start handling**
-  - Graceful behavior with no data
-  - Clear instructions for getting started
-
-✓ **Comprehensive testing**
-  - 10 unit tests, all passing
-  - Edge cases covered
-  - Demo script for visualization
-
-✓ **Documentation**
-  - Complete metric definitions
-  - Usage examples
-  - Integration patterns
-  - Best practices
-
-## Impact
-
-This implementation provides the **foundation for TestExpert quality monitoring**. Once TestExpert is actively making predictions, this calibration system will:
-
-1. **Detect prediction quality issues** early
-2. **Guide algorithm improvements** with specific metrics
-3. **Build confidence** through transparent measurement
-4. **Enable A/B testing** of different test selection strategies
-5. **Track improvement** over time as the system learns
-
-The metrics are interpretable, actionable, and follow the same patterns as the existing file prediction calibration, making them easy to adopt.
+Beyond the requirements, also implemented:
+- Ahead of origin indicator
+- Diverged state indicator
+- Last fetch time display
+- Automatic fetch on dashboard run
+- Network timeout protection
+- Demo script showcasing all states
+- 13 comprehensive unit tests

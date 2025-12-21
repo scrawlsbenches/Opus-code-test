@@ -1,0 +1,78 @@
+Graph of Thought Architecture for Structured Reasoning
+
+Graph of Thought represents complex reasoning as a network of connected nodes rather
+than linear chains. Nodes capture individual thoughts: questions, hypotheses, decisions,
+observations, and actions. Edges encode relationships between thoughts: support,
+contradiction, dependency, and refinement.
+
+Node Types in Reasoning Graphs
+
+Question nodes represent uncertainty or information needs. Questions drive exploration
+and research. Answering a question may generate more questions, hypotheses, or decisions.
+
+Hypothesis nodes propose explanations or predictions. Multiple hypotheses may address
+the same question. Evidence supports or refutes hypotheses. Hypotheses evolve through
+refinement as understanding grows.
+
+Decision nodes record choices and their rationale. Decisions reference the context that
+informed them, alternatives considered, and expected consequences. Traceability from
+decisions to affected work enables impact analysis.
+
+Observation nodes capture facts discovered during exploration. Observations may support
+or contradict existing hypotheses. Unexpected observations trigger new questions.
+
+Action nodes represent tasks to perform or already completed. Actions depend on decisions
+and may generate observations. Completed actions produce results that inform future
+reasoning.
+
+Edge Types and Semantics
+
+SUPPORTS edges indicate positive evidence. An observation supporting a hypothesis
+increases confidence. Multiple independent supports strengthen conclusions.
+
+CONTRADICTS edges mark inconsistencies. Contradictions require resolution through
+investigation, revision, or acknowledgment of uncertainty.
+
+DEPENDS_ON edges express prerequisites. Actions depend on prior decisions. Conclusions
+depend on supporting evidence. Dependency chains reveal critical paths.
+
+MOTIVATES edges link decisions to resulting work. Understanding why work was undertaken
+requires tracing motivating decisions. Motivates edges enable "why" queries.
+
+BLOCKS edges identify impediments. Blocked tasks cannot proceed until blockers resolve.
+Blockers propagate through dependency chains, affecting downstream work.
+
+Query and Navigation
+
+Path finding identifies connections between distant nodes. How does decision D affect
+task T? Traverse edges from D toward T, following dependency and motivation links.
+
+Blocking analysis finds what prevents progress. Query "what blocks task:T-456" returns
+all transitive blockers. Resolution requires addressing each blocker.
+
+Impact analysis identifies affected downstream work. Changing decision D affects all
+tasks motivated by D. Graph traversal reveals full scope of changes.
+
+Persistence and Recovery
+
+Event sourcing persists graph operations as events. Node additions, edge creations,
+and property updates are logged. Graph state reconstructs by replaying events.
+
+Snapshots capture complete graph state periodically. Recovery loads latest snapshot
+then replays subsequent events. Balances replay time against storage overhead.
+
+Multi-Agent Collaboration
+
+Shared graphs enable coordinated reasoning. Multiple agents contribute observations,
+propose hypotheses, and make decisions. The graph provides shared understanding.
+
+Boundary isolation prevents conflicts during parallel work. Each agent owns specific
+subgraphs. Read access to full graph enables informed decisions.
+
+Applications
+
+Software development benefits from decision traceability. Why was this architecture
+chosen? The graph answers through edge traversal from current code to motivating decisions.
+
+Complex problem solving involves exploration and backtracking. The graph preserves
+paths not taken. Revisiting earlier decision points becomes feasible without memory loss.

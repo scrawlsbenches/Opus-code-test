@@ -372,6 +372,377 @@ class BookBuilder:
             return generator.generate(dry_run=dry_run, verbose=self.verbose)
 
 
+# =============================================================================
+# GoT-BASED PROJECT MANAGEMENT CHAPTER GENERATOR
+# =============================================================================
+
+GOT_DIR = Path(__file__).parent.parent / ".got"
+
+
+class GoTChapterGenerator(ChapterGenerator):
+    """Generate roadmap chapters from Graph of Thought project management data.
+
+    Reads from .got/ directory (managed by scripts/got_utils.py) and generates:
+    - 05-future/index.md - Roadmap overview
+    - 05-future/sprints.md - Sprint details and status
+    - 05-future/tasks.md - Task backlog organized by status/priority
+    - 05-future/epics.md - Epic overview (if any)
+    """
+
+    def __init__(self, book_dir: Path = BOOK_DIR, got_dir: Path = GOT_DIR):
+        super().__init__(book_dir)
+        self.got_dir = got_dir
+
+    @property
+    def name(self) -> str:
+        return "future"
+
+    @property
+    def output_dir(self) -> str:
+        return "05-future"
+
+    def _load_got_data(self) -> Dict[str, Any]:
+        """Load GoT project management data from snapshots."""
+        data = {"tasks": [], "sprints": [], "epics": [], "loaded": False}
+
+        # Check both locations: GraphWAL snapshots and direct snapshots
+        snapshots_dir = self.got_dir / "wal" / "snapshots"
+        if not snapshots_dir.exists():
+            snapshots_dir = self.got_dir / "snapshots"
+        if not snapshots_dir.exists():
+            return data
+
+        # Find the latest snapshot
+        snapshots = sorted(snapshots_dir.glob("*.json"), reverse=True)
+        if not snapshots:
+            # Try .json.gz compressed snapshots
+            snapshots = sorted(snapshots_dir.glob("*.json.gz"), reverse=True)
+
+        if not snapshots:
+            return data
+
+        try:
+            import gzip
+            snapshot_path = snapshots[0]
+
+            if snapshot_path.suffix == ".gz":
+                with gzip.open(snapshot_path, 'rt') as f:
+                    snapshot = json.load(f)
+            else:
+                with open(snapshot_path) as f:
+                    snapshot = json.load(f)
+
+            # Extract nodes by type - they may be in 'state' or at top level
+            state = snapshot.get("state", snapshot)
+            nodes = state.get("nodes", {})
+
+            # Handle both list and dict formats
+            node_list = nodes.values() if isinstance(nodes, dict) else nodes
+
+            for node in node_list:
+                node_type = node.get("node_type", "").lower()
+                if node_type == "task":
+                    data["tasks"].append(node)
+                elif node_type in ("goal", "sprint"):
+                    # Goals/sprints
+                    data["sprints"].append(node)
+                elif node_type in ("context", "epic"):
+                    # Contexts can be epics
+                    data["epics"].append(node)
+
+            data["loaded"] = True
+            data["snapshot_path"] = str(snapshot_path)
+
+        except Exception as e:
+            data["error"] = str(e)
+
+        return data
+
+    def _generate_roadmap_index(self, data: Dict[str, Any], dry_run: bool) -> Optional[Path]:
+        """Generate the main roadmap index page."""
+        tasks = data.get("tasks", [])
+        sprints = data.get("sprints", [])
+
+        # Count by status
+        status_counts = defaultdict(int)
+        for task in tasks:
+            props = task.get("properties", {})
+            status = props.get("status", "pending")
+            status_counts[status] += 1
+
+        # Count by priority
+        priority_counts = defaultdict(int)
+        for task in tasks:
+            props = task.get("properties", {})
+            priority = props.get("priority", "medium")
+            priority_counts[priority] += 1
+
+        content = self.generate_frontmatter(
+            title="Project Roadmap",
+            tags=["roadmap", "planning", "future", "got"],
+            source_files=[".got/snapshots/"]
+        )
+
+        content += "# Project Roadmap\n\n"
+        content += "> *Auto-generated from Graph of Thought project management data*\n\n"
+
+        # Summary statistics
+        content += "## Overview\n\n"
+        content += f"| Metric | Value |\n"
+        content += f"|--------|-------|\n"
+        content += f"| Total Tasks | {len(tasks)} |\n"
+        content += f"| Active Sprints | {len([s for s in sprints if s.get('properties', {}).get('status') != 'completed'])} |\n"
+        content += f"| Completed Tasks | {status_counts.get('completed', 0)} |\n"
+        content += f"| In Progress | {status_counts.get('in_progress', 0)} |\n"
+        content += f"| Pending | {status_counts.get('pending', 0)} |\n"
+
+        # Priority breakdown
+        content += "\n## Priority Distribution\n\n"
+        content += "| Priority | Count |\n"
+        content += "|----------|-------|\n"
+        for priority in ["critical", "high", "medium", "low"]:
+            if priority_counts[priority] > 0:
+                content += f"| {priority.title()} | {priority_counts[priority]} |\n"
+
+        # Quick links
+        content += "\n## Chapters\n\n"
+        content += "- **[Sprints](sprints.md)** - Sprint status and planning\n"
+        content += "- **[Tasks](tasks.md)** - Full task backlog\n"
+        if data.get("epics"):
+            content += "- **[Epics](epics.md)** - Epic-level features\n"
+
+        # Recent activity (in_progress tasks)
+        in_progress = [t for t in tasks if t.get("properties", {}).get("status") == "in_progress"]
+        if in_progress:
+            content += "\n## Currently In Progress\n\n"
+            for task in in_progress[:5]:
+                props = task.get("properties", {})
+                title = props.get("title", task.get("content", "Untitled"))
+                task_id = props.get("task_id", task.get("id", ""))[:20]
+                content += f"- **{title}** (`{task_id}`)\n"
+
+        return self.write_chapter("index.md", content, dry_run=dry_run)
+
+    def _generate_sprints_chapter(self, data: Dict[str, Any], dry_run: bool) -> Optional[Path]:
+        """Generate sprint details chapter."""
+        sprints = data.get("sprints", [])
+        tasks = data.get("tasks", [])
+
+        content = self.generate_frontmatter(
+            title="Sprint Planning",
+            tags=["sprints", "planning", "agile", "got"],
+            source_files=[".got/snapshots/"]
+        )
+
+        content += "# Sprint Planning\n\n"
+
+        if not sprints:
+            content += "*No sprints defined yet. Use `python scripts/got_utils.py sprint create` to create one.*\n"
+        else:
+            for sprint in sprints:
+                props = sprint.get("properties", {})
+                sprint_id = props.get("sprint_id", sprint.get("id", ""))
+                sprint_name = props.get("name", sprint.get("content", "Sprint"))
+                status = props.get("status", "active")
+
+                content += f"## {sprint_name}\n\n"
+                content += f"**ID:** `{sprint_id}`\n"
+                content += f"**Status:** {status}\n\n"
+
+                # Sprint goals
+                goals = props.get("goals", [])
+                if goals:
+                    content += "### Goals\n\n"
+                    for goal in goals:
+                        content += f"- {goal}\n"
+                    content += "\n"
+
+                # Tasks in this sprint (by checking edges or properties)
+                sprint_tasks = [t for t in tasks
+                               if t.get("properties", {}).get("sprint_id") == sprint_id]
+
+                if sprint_tasks:
+                    content += "### Tasks\n\n"
+                    content += "| Task | Status | Priority |\n"
+                    content += "|------|--------|----------|\n"
+                    for task in sprint_tasks:
+                        t_props = task.get("properties", {})
+                        title = t_props.get("title", task.get("content", ""))[:40]
+                        t_status = t_props.get("status", "pending")
+                        t_priority = t_props.get("priority", "medium")
+                        content += f"| {title} | {t_status} | {t_priority} |\n"
+                    content += "\n"
+
+        return self.write_chapter("sprints.md", content, dry_run=dry_run)
+
+    def _generate_tasks_chapter(self, data: Dict[str, Any], dry_run: bool) -> Optional[Path]:
+        """Generate full task backlog chapter."""
+        tasks = data.get("tasks", [])
+
+        content = self.generate_frontmatter(
+            title="Task Backlog",
+            tags=["tasks", "backlog", "planning", "got"],
+            source_files=[".got/snapshots/"]
+        )
+
+        content += "# Task Backlog\n\n"
+        content += f"*Total: {len(tasks)} tasks*\n\n"
+
+        # Group by status
+        by_status = defaultdict(list)
+        for task in tasks:
+            props = task.get("properties", {})
+            status = props.get("status", "pending")
+            by_status[status].append(task)
+
+        # Order: in_progress, pending, deferred, completed
+        status_order = ["in_progress", "pending", "blocked", "deferred", "completed"]
+
+        for status in status_order:
+            status_tasks = by_status.get(status, [])
+            if not status_tasks:
+                continue
+
+            content += f"## {status.replace('_', ' ').title()} ({len(status_tasks)})\n\n"
+
+            # Sort by priority within status
+            priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+            status_tasks.sort(key=lambda t: priority_order.get(
+                t.get("properties", {}).get("priority", "medium"), 2
+            ))
+
+            for task in status_tasks[:50]:  # Limit to 50 per status
+                props = task.get("properties", {})
+                title = props.get("title", task.get("content", "Untitled"))
+                task_id = props.get("task_id", task.get("id", ""))
+                priority = props.get("priority", "medium")
+                category = props.get("category", "")
+
+                content += f"### {title}\n\n"
+                content += f"- **ID:** `{task_id}`\n"
+                content += f"- **Priority:** {priority}\n"
+                if category:
+                    content += f"- **Category:** {category}\n"
+
+                # Description if available
+                description = props.get("description", "")
+                if description and len(description) > 10:
+                    content += f"\n{description[:500]}\n"
+
+                content += "\n"
+
+            if len(status_tasks) > 50:
+                content += f"*... and {len(status_tasks) - 50} more {status} tasks*\n\n"
+
+        return self.write_chapter("tasks.md", content, dry_run=dry_run)
+
+    def _generate_epics_chapter(self, data: Dict[str, Any], dry_run: bool) -> Optional[Path]:
+        """Generate epics overview chapter."""
+        epics = data.get("epics", [])
+
+        if not epics:
+            return None  # Skip if no epics
+
+        content = self.generate_frontmatter(
+            title="Epic Features",
+            tags=["epics", "features", "planning", "got"],
+            source_files=[".got/snapshots/"]
+        )
+
+        content += "# Epic Features\n\n"
+        content += "*Large-scale features spanning multiple sprints*\n\n"
+
+        for epic in epics:
+            props = epic.get("properties", {})
+            title = props.get("title", epic.get("content", "Epic"))
+            epic_id = epic.get("id", "")
+            status = props.get("status", "planned")
+
+            content += f"## {title}\n\n"
+            content += f"**ID:** `{epic_id}`\n"
+            content += f"**Status:** {status}\n\n"
+
+            description = props.get("description", "")
+            if description:
+                content += f"{description}\n\n"
+
+        return self.write_chapter("epics.md", content, dry_run=dry_run)
+
+    def generate(self, dry_run: bool = False, verbose: bool = False) -> Dict[str, Any]:
+        """Generate all future/roadmap chapters from GoT data."""
+        errors = []
+
+        # Load GoT data
+        data = self._load_got_data()
+
+        if not data.get("loaded"):
+            # Fall back to placeholder if no GoT data
+            if verbose:
+                print(f"  No GoT data found in {self.got_dir}, generating placeholder")
+
+            content = self.generate_frontmatter(
+                title="Project Roadmap",
+                tags=["roadmap", "future", "planning"],
+                source_files=["(GoT not initialized)"]
+            )
+            content += "# Project Roadmap\n\n"
+            content += "*Graph of Thought project management not yet initialized.*\n\n"
+            content += "To set up GoT-based project management:\n\n"
+            content += "```bash\n"
+            content += "# Create initial sprint\n"
+            content += "python scripts/got_utils.py sprint create --name 'Sprint 1' --goals 'Goal 1' 'Goal 2'\n\n"
+            content += "# Create tasks\n"
+            content += "python scripts/got_utils.py task create 'Task title' --priority high\n\n"
+            content += "# View stats\n"
+            content += "python scripts/got_utils.py stats\n"
+            content += "```\n"
+
+            self.write_chapter("index.md", content, dry_run=dry_run)
+
+            return {
+                "files": [str(f) for f in self.generated_files],
+                "stats": {"placeholder": True, "got_available": False},
+                "errors": []
+            }
+
+        if verbose:
+            print(f"  Loaded GoT data: {len(data.get('tasks', []))} tasks, "
+                  f"{len(data.get('sprints', []))} sprints")
+
+        # Generate all chapters
+        try:
+            self._generate_roadmap_index(data, dry_run)
+        except Exception as e:
+            errors.append(f"Error generating index: {e}")
+
+        try:
+            self._generate_sprints_chapter(data, dry_run)
+        except Exception as e:
+            errors.append(f"Error generating sprints: {e}")
+
+        try:
+            self._generate_tasks_chapter(data, dry_run)
+        except Exception as e:
+            errors.append(f"Error generating tasks: {e}")
+
+        try:
+            if data.get("epics"):
+                self._generate_epics_chapter(data, dry_run)
+        except Exception as e:
+            errors.append(f"Error generating epics: {e}")
+
+        return {
+            "files": [str(f) for f in self.generated_files],
+            "stats": {
+                "tasks": len(data.get("tasks", [])),
+                "sprints": len(data.get("sprints", [])),
+                "epics": len(data.get("epics", [])),
+                "got_available": True
+            },
+            "errors": errors
+        }
+
+
 # Placeholder generators (to be implemented in Wave 2)
 class PlaceholderGenerator(ChapterGenerator):
     """Placeholder generator for testing the framework."""
@@ -5089,8 +5460,8 @@ Examples:
     # Register ML Intelligence Exchange generator (before future)
     builder.register_generator(MLIntelligenceGenerator(book_dir=args.output))
 
-    # Register placeholder generators (will be replaced with real ones)
-    builder.register_generator(PlaceholderGenerator("future", "05-future"))
+    # Register GoT-based roadmap generator (replaced PlaceholderGenerator)
+    builder.register_generator(GoTChapterGenerator(book_dir=args.output))
 
     # List mode
     if args.list:

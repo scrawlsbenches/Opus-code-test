@@ -1,0 +1,614 @@
+"""
+Unit tests for SparkSLM integration with CorticalTextProcessor.
+
+Tests the SparkMixin methods that connect SparkSLM to the main processor.
+"""
+
+import os
+import tempfile
+import unittest
+
+from cortical import CorticalTextProcessor
+
+
+class TestSparkMixinBasic(unittest.TestCase):
+    """Test basic SparkMixin functionality."""
+
+    def test_spark_disabled_by_default(self):
+        """Verify spark is disabled by default."""
+        p = CorticalTextProcessor()
+        self.assertFalse(p.spark_enabled)
+
+    def test_spark_enabled_in_constructor(self):
+        """Test enabling spark via constructor."""
+        p = CorticalTextProcessor(spark=True)
+        self.assertTrue(p.spark_enabled)
+
+    def test_enable_spark_method(self):
+        """Test enabling spark via method call."""
+        p = CorticalTextProcessor()
+        self.assertFalse(p.spark_enabled)
+        p.enable_spark()
+        self.assertTrue(p.spark_enabled)
+
+    def test_disable_spark(self):
+        """Test disabling spark."""
+        p = CorticalTextProcessor(spark=True)
+        self.assertTrue(p.spark_enabled)
+        p.disable_spark()
+        self.assertFalse(p.spark_enabled)
+
+    def test_enable_spark_custom_order(self):
+        """Test enabling spark with custom n-gram order."""
+        p = CorticalTextProcessor()
+        p.enable_spark(ngram_order=4)
+        self.assertTrue(p.spark_enabled)
+        stats = p.get_spark_stats()
+        self.assertEqual(stats['ngram_order'], 4)
+
+
+class TestSparkMixinTraining(unittest.TestCase):
+    """Test SparkMixin training functionality."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor(spark=True)
+        self.processor.process_document(
+            'doc1', 'Neural networks process information quickly.')
+        self.processor.process_document(
+            'doc2', 'Machine learning uses neural networks for training models.')
+        self.processor.process_document(
+            'doc3', 'Deep learning is a subset of machine learning.')
+        self.processor.compute_all()
+
+    def test_train_spark(self):
+        """Test training spark on corpus."""
+        stats = self.processor.train_spark()
+        self.assertIn('documents', stats)
+        self.assertIn('tokens', stats)
+        self.assertEqual(stats['documents'], 3)
+        self.assertGreater(stats['tokens'], 0)
+
+    def test_train_spark_min_length_filter(self):
+        """Test training with minimum document length filter."""
+        # Add a short document
+        self.processor.process_document('short', 'Hi')
+
+        # Train with high minimum length - should exclude short doc
+        stats = self.processor.train_spark(min_doc_length=20)
+        self.assertEqual(stats['documents'], 3)
+
+    def test_train_spark_requires_enabled(self):
+        """Test that training requires spark to be enabled."""
+        p = CorticalTextProcessor()
+        with self.assertRaises(RuntimeError):
+            p.train_spark()
+
+
+class TestSparkMixinPriming(unittest.TestCase):
+    """Test SparkMixin priming functionality."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor(spark=True)
+        self.processor.process_document(
+            'doc1', 'Neural networks process information quickly.')
+        self.processor.process_document(
+            'doc2', 'Machine learning uses neural networks for training.')
+        self.processor.compute_all()
+        self.processor.train_spark()
+
+    def test_prime_query(self):
+        """Test query priming."""
+        hints = self.processor.prime_query('neural')
+        self.assertIsInstance(hints, dict)
+        self.assertIn('completions', hints)
+        self.assertIn('alignment', hints)
+        self.assertIn('keywords', hints)
+
+    def test_prime_query_requires_enabled(self):
+        """Test that priming requires spark to be enabled."""
+        p = CorticalTextProcessor()
+        with self.assertRaises(RuntimeError):
+            p.prime_query('test')
+
+    def test_complete_query(self):
+        """Test query completion."""
+        completed = self.processor.complete_query('neural')
+        self.assertIsInstance(completed, str)
+        self.assertTrue(completed.startswith('neural'))
+
+
+class TestSparkMixinAlignment(unittest.TestCase):
+    """Test SparkMixin alignment functionality."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor(spark=True)
+
+    def test_load_alignment_from_directory(self):
+        """Test loading alignment from samples/alignment directory."""
+        if not os.path.exists('samples/alignment'):
+            self.skipTest('samples/alignment directory not found')
+
+        count = self.processor.load_alignment('samples/alignment')
+        self.assertGreater(count, 0)
+
+    def test_get_alignment_context(self):
+        """Test getting alignment context for a term."""
+        if not os.path.exists('samples/alignment'):
+            self.skipTest('samples/alignment directory not found')
+
+        self.processor.load_alignment('samples/alignment')
+        ctx = self.processor.get_alignment_context('spark')
+        self.assertIsInstance(ctx, list)
+        self.assertGreater(len(ctx), 0)
+        self.assertEqual(ctx[0]['key'], 'spark')
+        self.assertEqual(ctx[0]['type'], 'definition')
+
+    def test_get_alignment_context_empty(self):
+        """Test getting alignment context for unknown term."""
+        ctx = self.processor.get_alignment_context('nonexistent_term_xyz')
+        self.assertEqual(ctx, [])
+
+    def test_get_alignment_summary(self):
+        """Test getting alignment summary."""
+        if not os.path.exists('samples/alignment'):
+            self.skipTest('samples/alignment directory not found')
+
+        self.processor.load_alignment('samples/alignment')
+        summary = self.processor.get_alignment_summary()
+        self.assertIsInstance(summary, str)
+        self.assertIn('Alignment', summary)
+
+
+class TestSparkMixinExpansion(unittest.TestCase):
+    """Test SparkMixin query expansion with spark."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor(spark=True)
+        self.processor.process_document(
+            'doc1', 'Neural networks process information quickly.')
+        self.processor.process_document(
+            'doc2', 'Machine learning uses neural networks for training.')
+        self.processor.compute_all()
+        self.processor.train_spark()
+
+    def test_expand_query_with_spark(self):
+        """Test query expansion with spark priming."""
+        expanded = self.processor.expand_query_with_spark('neural')
+        self.assertIsInstance(expanded, dict)
+        self.assertGreater(len(expanded), 0)
+
+    def test_expand_query_with_spark_boost(self):
+        """Test query expansion with custom spark boost."""
+        expanded = self.processor.expand_query_with_spark(
+            'neural', spark_boost=0.5)
+        self.assertIsInstance(expanded, dict)
+
+
+class TestSparkMixinPersistence(unittest.TestCase):
+    """Test SparkMixin save/load functionality."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor(spark=True)
+        self.processor.process_document('doc1', 'Test document content.')
+        self.processor.compute_all()
+        self.processor.train_spark()
+
+    def test_save_and_load_spark(self):
+        """Test saving and loading spark state."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            spark_path = os.path.join(tmpdir, 'spark_state')
+
+            # Save
+            self.processor.save_spark(spark_path)
+            self.assertTrue(os.path.exists(spark_path))
+
+            # Load into new processor
+            p2 = CorticalTextProcessor(spark=True)
+            p2.load_spark(spark_path)
+            self.assertTrue(p2.spark_enabled)
+
+            stats = p2.get_spark_stats()
+            self.assertGreater(stats['vocabulary_size'], 0)
+
+
+class TestSparkMixinStats(unittest.TestCase):
+    """Test SparkMixin statistics."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor(spark=True)
+        self.processor.process_document('doc1', 'Test document content.')
+        self.processor.compute_all()
+        self.processor.train_spark()
+
+    def test_get_spark_stats(self):
+        """Test getting spark statistics."""
+        stats = self.processor.get_spark_stats()
+        self.assertTrue(stats['enabled'])
+        self.assertEqual(stats['ngram_order'], 3)
+        self.assertIn('vocabulary_size', stats)
+        self.assertIn('alignment_breakdown', stats)
+        self.assertIn('context_count', stats)
+
+    def test_get_spark_stats_requires_enabled(self):
+        """Test that stats require spark to be enabled."""
+        p = CorticalTextProcessor()
+        with self.assertRaises(RuntimeError):
+            p.get_spark_stats()
+
+
+class TestSparkMixinBackwardsCompatibility(unittest.TestCase):
+    """Test that processor works normally without spark."""
+
+    def test_basic_operations_without_spark(self):
+        """Test that all basic operations work without spark."""
+        p = CorticalTextProcessor()
+        p.process_document('doc1', 'Test document.')
+        p.compute_all()
+        results = p.find_documents_for_query('test')
+        self.assertGreater(len(results), 0)
+
+    def test_expand_query_without_spark(self):
+        """Test that regular expand_query works without spark."""
+        p = CorticalTextProcessor()
+        p.process_document('doc1', 'Neural networks process data.')
+        p.compute_all()
+        expanded = p.expand_query('neural')
+        self.assertIsInstance(expanded, dict)
+
+
+class TestSparkMixinSuggester(unittest.TestCase):
+    """Test suggester integration with processor."""
+
+    def test_suggester_disabled_by_default(self):
+        """Verify suggester is disabled by default."""
+        p = CorticalTextProcessor(spark=True)
+        self.assertFalse(p.suggester_enabled)
+
+    def test_enable_suggester(self):
+        """Test enabling suggester."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        self.assertTrue(p.suggester_enabled)
+
+    def test_enable_suggester_with_params(self):
+        """Test enabling suggester with custom parameters."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester(min_frequency=5, min_confidence=0.7)
+        self.assertTrue(p.suggester_enabled)
+
+    def test_observe_query(self):
+        """Test observing a query."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        p.observe_query_for_suggestions("test query", success=True)
+        stats = p.get_suggester_stats()
+        self.assertEqual(stats['total_observations'], 1)
+
+    def test_observe_query_with_context(self):
+        """Test observing query with context."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        p.observe_query_for_suggestions(
+            "test query",
+            success=True,
+            context={'result_count': 5}
+        )
+        stats = p.get_suggester_stats()
+        self.assertEqual(stats['total_observations'], 1)
+
+    def test_observe_choice(self):
+        """Test observing a choice."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        p.observe_choice_for_suggestions("style", "A", ["B", "C"])
+        stats = p.get_suggester_stats()
+        self.assertEqual(stats['total_observations'], 1)
+
+    def test_get_suggestions_empty(self):
+        """Test getting suggestions when empty."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        suggestions = p.get_suggestions()
+        self.assertEqual(len(suggestions['definitions']), 0)
+        self.assertEqual(len(suggestions['patterns']), 0)
+        self.assertEqual(len(suggestions['preferences']), 0)
+
+    def test_get_definition_suggestions(self):
+        """Test getting definition suggestions."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester(min_frequency=2, min_confidence=0.3)
+        for _ in range(5):
+            p.observe_query_for_suggestions("minicolumn activation")
+        definitions = p.get_definition_suggestions()
+        self.assertIsInstance(definitions, list)
+
+    def test_get_pattern_suggestions(self):
+        """Test getting pattern suggestions."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester(min_frequency=2, min_confidence=0.3)
+        for _ in range(5):
+            p.observe_query_for_suggestions("how do I search?")
+        patterns = p.get_pattern_suggestions()
+        self.assertIsInstance(patterns, list)
+
+    def test_get_preference_suggestions(self):
+        """Test getting preference suggestions."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester(min_frequency=2, min_confidence=0.3)
+        for _ in range(8):
+            p.observe_choice_for_suggestions("style", "A", ["B"])
+        for _ in range(2):
+            p.observe_choice_for_suggestions("style", "B", ["A"])
+        preferences = p.get_preference_suggestions()
+        self.assertIsInstance(preferences, list)
+
+    def test_export_suggestions_markdown(self):
+        """Test exporting suggestions as markdown."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        md = p.export_suggestions_markdown()
+        self.assertIn("Suggested Alignment Entries", md)
+
+    def test_add_known_term(self):
+        """Test adding a known term."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        p.add_known_term_to_suggester("neural")
+        stats = p.get_suggester_stats()
+        self.assertEqual(stats['known_terms'], 1)
+
+    def test_clear_suggester(self):
+        """Test clearing suggester observations."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        p.observe_query_for_suggestions("test query")
+        p.clear_suggester()
+        stats = p.get_suggester_stats()
+        self.assertEqual(stats['total_observations'], 0)
+
+    def test_suggester_stats(self):
+        """Test getting suggester statistics."""
+        p = CorticalTextProcessor(spark=True)
+        p.enable_suggester()
+        stats = p.get_suggester_stats()
+        self.assertIn('total_observations', stats)
+        self.assertIn('unique_terms', stats)
+        self.assertIn('success_rate', stats)
+
+    def test_suggester_requires_enabled(self):
+        """Test that suggester methods require it to be enabled."""
+        p = CorticalTextProcessor(spark=True)
+        with self.assertRaises(RuntimeError):
+            p.observe_query_for_suggestions("test")
+        with self.assertRaises(RuntimeError):
+            p.get_suggestions()
+        with self.assertRaises(RuntimeError):
+            p.export_suggestions_markdown()
+
+    def test_integration_workflow(self):
+        """Test full suggester workflow."""
+        p = CorticalTextProcessor(spark=True)
+        p.process_document('doc1', 'Neural networks process data efficiently.')
+        p.compute_all()
+        p.train_spark()
+        p.enable_suggester()
+
+        # Observe some queries
+        for _ in range(5):
+            p.observe_query_for_suggestions("minicolumn connections", success=True)
+            p.observe_query_for_suggestions("how do I search?", success=True)
+
+        # Get suggestions
+        suggestions = p.get_suggestions()
+        self.assertIsInstance(suggestions['definitions'], list)
+        self.assertIsInstance(suggestions['patterns'], list)
+
+        # Export markdown
+        md = p.export_suggestions_markdown()
+        self.assertIn("Suggested Alignment Entries", md)
+
+
+class TestSparkMixinTransfer(unittest.TestCase):
+    """Test transfer learning integration with processor."""
+
+    def setUp(self):
+        self.processor = CorticalTextProcessor(spark=True)
+        self.processor.process_document('doc1', 'def function return value for item in list')
+        self.processor.compute_all()
+        self.processor.train_spark()
+
+    def test_analyze_vocabulary(self):
+        """Test vocabulary analysis."""
+        analysis = self.processor.analyze_vocabulary()
+        self.assertIn('total_terms', analysis)
+        self.assertIn('programming_terms', analysis)
+        self.assertIn('programming_ratio', analysis)
+
+    def test_analyze_vocabulary_requires_spark(self):
+        """Test analyze_vocabulary requires spark enabled."""
+        p = CorticalTextProcessor()
+        with self.assertRaises(RuntimeError):
+            p.analyze_vocabulary()
+
+    def test_export_portable_model(self):
+        """Test exporting portable model."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "portable")
+            stats = self.processor.export_portable_model(path, project_name="test")
+            self.assertIn('ngram_order', stats)
+            self.assertIn('vocab_size', stats)
+            self.assertTrue(os.path.exists(os.path.join(path, 'portable_model.json')))
+
+    def test_import_base_model(self):
+        """Test importing base model."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # First export
+            path = os.path.join(tmpdir, "portable")
+            self.processor.export_portable_model(path)
+
+            # Then import into new processor
+            p2 = CorticalTextProcessor(spark=True)
+            p2.process_document('doc1', 'custom project terms here')
+            p2.compute_all()
+            p2.train_spark()
+
+            metrics = p2.import_base_model(path, blend_weight=0.3)
+            self.assertIn('vocabulary_overlap', metrics)
+            self.assertIn('ngram_coverage', metrics)
+
+    def test_measure_transfer_effectiveness(self):
+        """Test measuring transfer effectiveness."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "portable")
+            self.processor.export_portable_model(path)
+
+            # Measure on another processor
+            p2 = CorticalTextProcessor(spark=True)
+            p2.process_document('doc1', 'different content here')
+            p2.compute_all()
+            p2.train_spark()
+
+            metrics = p2.measure_transfer_effectiveness(path)
+            self.assertIn('vocabulary_overlap', metrics)
+            self.assertIn('summary', metrics)
+
+    def test_get_transferable_vocabulary(self):
+        """Test getting transferable vocabulary."""
+        vocab = self.processor.get_transferable_vocabulary()
+        self.assertIsInstance(vocab, list)
+
+    def test_calculate_vocabulary_overlap(self):
+        """Test calculating vocabulary overlap."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "portable")
+            self.processor.export_portable_model(path)
+
+            overlap = self.processor.calculate_vocabulary_overlap(path)
+            self.assertGreaterEqual(overlap, 0.0)
+            self.assertLessEqual(overlap, 1.0)
+
+
+class TestQualityIntegration(unittest.TestCase):
+    """Test quality evaluation integration with processor."""
+
+    def setUp(self):
+        """Set up processor with trained spark model."""
+        self.processor = CorticalTextProcessor(spark=True)
+        # Add documents with predictable patterns
+        for i in range(10):
+            self.processor.process_document(
+                f'doc{i}',
+                'the quick brown fox jumps over the lazy dog'
+            )
+            self.processor.process_document(
+                f'doc{i}_alt',
+                'a quick brown cat chases the mouse'
+            )
+        self.processor.compute_all()
+        self.processor.train_spark()
+
+    def test_evaluate_prediction_quality(self):
+        """Test prediction quality evaluation."""
+        metrics = self.processor.evaluate_prediction_quality()
+
+        self.assertIn('accuracy_at_1', metrics)
+        self.assertIn('accuracy_at_5', metrics)
+        self.assertIn('accuracy_at_10', metrics)
+        self.assertIn('mean_reciprocal_rank', metrics)
+        self.assertIn('perplexity', metrics)
+        self.assertIn('coverage', metrics)
+
+    def test_evaluate_prediction_quality_custom_texts(self):
+        """Test prediction quality with custom test texts."""
+        test_texts = ['the quick brown fox jumps']
+        metrics = self.processor.evaluate_prediction_quality(test_texts=test_texts)
+
+        self.assertIsInstance(metrics, dict)
+        self.assertGreaterEqual(metrics['accuracy_at_1'], 0.0)
+
+    def test_cross_validate_predictions(self):
+        """Test cross-validation of predictions."""
+        # Need at least 2 documents per fold
+        cv = self.processor.cross_validate_predictions(folds=2)
+
+        self.assertIn('folds', cv)
+        self.assertIn('mean_accuracy_at_5', cv)
+        self.assertIn('std_accuracy_at_5', cv)
+        self.assertIn('mean_perplexity', cv)
+        self.assertEqual(len(cv['folds']), 2)
+
+    def test_measure_perplexity_stability(self):
+        """Test perplexity stability measurement."""
+        stability = self.processor.measure_perplexity_stability(runs=3)
+
+        self.assertIn('mean', stability)
+        self.assertIn('std', stability)
+        self.assertIn('min', stability)
+        self.assertIn('max', stability)
+        self.assertIn('is_stable', stability)
+
+    def test_measure_perplexity_stability_custom_texts(self):
+        """Test perplexity stability with custom texts."""
+        test_texts = ['the quick brown fox jumps over the lazy dog']
+        stability = self.processor.measure_perplexity_stability(
+            test_texts=test_texts,
+            runs=2
+        )
+
+        self.assertIn('mean', stability)
+        self.assertTrue(stability['is_stable'])
+
+    def test_generate_quality_report(self):
+        """Test quality report generation."""
+        report = self.processor.generate_quality_report()
+
+        self.assertIsInstance(report, str)
+        self.assertIn('Quality Report', report)
+        self.assertIn('Prediction Quality', report)
+        self.assertIn('Accuracy', report)
+
+    def test_generate_quality_report_has_validation(self):
+        """Test quality report includes roadmap validation."""
+        report = self.processor.generate_quality_report()
+
+        self.assertIn('Roadmap Validation', report)
+
+    def test_compare_search_quality(self):
+        """Test search quality comparison."""
+        queries = ['quick fox']
+        relevance = {'quick fox': {'doc0', 'doc1'}}
+
+        comparison = self.processor.compare_search_quality(
+            queries=queries,
+            relevance=relevance,
+            k=5
+        )
+
+        self.assertIn('baseline', comparison)
+        self.assertIn('with_spark', comparison)
+        self.assertIn('precision_improvement', comparison)
+        self.assertIn('recall_improvement', comparison)
+
+    def test_quality_methods_require_spark(self):
+        """Test quality methods raise error without spark."""
+        processor = CorticalTextProcessor()
+
+        with self.assertRaises(RuntimeError):
+            processor.evaluate_prediction_quality()
+
+        with self.assertRaises(RuntimeError):
+            processor.cross_validate_predictions()
+
+        with self.assertRaises(RuntimeError):
+            processor.measure_perplexity_stability()
+
+        with self.assertRaises(RuntimeError):
+            processor.generate_quality_report()
+
+
+if __name__ == '__main__':
+    unittest.main()

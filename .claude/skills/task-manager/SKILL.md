@@ -120,6 +120,43 @@ python scripts/index_codebase.py --incremental
 
 See the `corpus-indexer` skill for more details.
 
+## Graph of Thought (GoT) Integration
+
+The task manager integrates with GoT for advanced task tracking:
+
+```bash
+# Create task with edge relationships
+python scripts/got_utils.py task create "Implement feature" --depends-on task:T-xxx --blocks task:T-yyy
+
+# View prioritized task list
+python scripts/got_priority_executor.py list
+
+# Get next recommended task
+python scripts/got_priority_executor.py next
+
+# Generate execution plan
+python scripts/got_priority_executor.py plan
+
+# Break down complex task
+python scripts/got_priority_executor.py breakdown T-20251220-123456-abcd
+```
+
+### Priority Scoring
+
+Tasks are scored based on user preferences:
+- **Success (50%)**: Can it be completed? (Higher for tests, docs; lower for architecture)
+- **Performance (30%)**: Will it speed up work? (Higher for refactors, arch decisions)
+- **Importance (20%)**: How critical? (Based on priority level)
+
+### When to Use GoT vs Basic Tasks
+
+| Use Case | Tool |
+|----------|------|
+| Simple task tracking | `scripts/task_utils.py` |
+| Task dependencies/blocking | `scripts/got_utils.py` |
+| Priority-based execution | `scripts/got_priority_executor.py` |
+| Dashboard visibility | `python scripts/got_utils.py dashboard` |
+
 ## Tips
 
 1. **Create session at workflow start** - all tasks share session suffix
@@ -127,6 +164,8 @@ See the `corpus-indexer` skill for more details.
 3. **Consolidate weekly** - merge sessions, resolve duplicates
 4. **Use context field** - add file/method references for quick navigation
 5. **Index after task creation** - keeps task directory searchable
+6. **Use GoT for complex workflows** - track dependencies and blockers
+7. **Run priority executor before starting work** - get recommended next task
 
 ## Security Model
 
