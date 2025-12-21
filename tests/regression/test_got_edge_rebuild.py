@@ -758,3 +758,243 @@ class TestNodeIdNormalization:
         assert len(graph.nodes) == 1
         node = graph.nodes["task:T-20251220-004"]
         assert node.properties.get("count") == 3, "All updates should be applied"
+
+
+class TestEdgeDeleteEvent:
+    """
+    Regression tests for edge.delete event handling.
+
+    Bug: edge.delete used graph.edges.items() but graph.edges is a List, not Dict.
+    Error: 'list' object has no attribute 'items'
+
+    Fix: Iterate with enumerate() and use pop() to remove from list.
+    """
+
+    def test_edge_delete_removes_edge(self, tmp_path):
+        """Test that edge.delete correctly removes an edge from the graph."""
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "n1", "type": "TASK", "data": {"title": "N1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "n2", "type": "TASK", "data": {"title": "N2"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:02Z", "event": "edge.create", "src": "n1", "tgt": "n2", "type": "DEPENDS_ON", "weight": 1.0},
+            {"ts": "2025-01-01T00:00:03Z", "event": "edge.delete", "src": "n1", "tgt": "n2", "type": "DEPENDS_ON"},
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Edge should be deleted
+        assert len(graph.edges) == 0, "Edge should be removed after edge.delete"
+        assert len(graph.nodes) == 2, "Nodes should still exist"
+
+    def test_edge_delete_removes_only_matching_edge(self, tmp_path):
+        """Test that edge.delete only removes the matching edge, not others."""
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "n1", "type": "TASK", "data": {"title": "N1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "n2", "type": "TASK", "data": {"title": "N2"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:02Z", "event": "node.create", "id": "n3", "type": "TASK", "data": {"title": "N3"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:03Z", "event": "edge.create", "src": "n1", "tgt": "n2", "type": "DEPENDS_ON", "weight": 1.0},
+            {"ts": "2025-01-01T00:00:04Z", "event": "edge.create", "src": "n2", "tgt": "n3", "type": "BLOCKS", "weight": 0.8},
+            {"ts": "2025-01-01T00:00:05Z", "event": "edge.create", "src": "n1", "tgt": "n3", "type": "SIMILAR", "weight": 0.5},
+            # Delete only the DEPENDS_ON edge
+            {"ts": "2025-01-01T00:00:06Z", "event": "edge.delete", "src": "n1", "tgt": "n2", "type": "DEPENDS_ON"},
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Only DEPENDS_ON edge should be deleted
+        assert len(graph.edges) == 2, "Only one edge should be deleted"
+
+        edge_types = {(e.source_id, e.target_id, e.edge_type.name) for e in graph.edges}
+        assert ("n1", "n2", "DEPENDS_ON") not in edge_types, "DEPENDS_ON edge should be deleted"
+        assert ("n2", "n3", "BLOCKS") in edge_types, "BLOCKS edge should remain"
+        assert ("n1", "n3", "SIMILAR") in edge_types, "SIMILAR edge should remain"
+
+    def test_edge_delete_updates_edge_indices(self, tmp_path):
+        """Test that edge.delete updates the internal edge indices."""
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "n1", "type": "TASK", "data": {"title": "N1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "n2", "type": "TASK", "data": {"title": "N2"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:02Z", "event": "edge.create", "src": "n1", "tgt": "n2", "type": "DEPENDS_ON", "weight": 1.0},
+            {"ts": "2025-01-01T00:00:03Z", "event": "edge.delete", "src": "n1", "tgt": "n2", "type": "DEPENDS_ON"},
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Check that edge indices are also updated
+        assert len(graph._edges_from.get("n1", [])) == 0, "_edges_from should be empty"
+        assert len(graph._edges_to.get("n2", [])) == 0, "_edges_to should be empty"
+
+    def test_edge_delete_nonexistent_is_silent(self, tmp_path):
+        """Test that deleting a non-existent edge doesn't crash."""
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "n1", "type": "TASK", "data": {"title": "N1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "n2", "type": "TASK", "data": {"title": "N2"}, "meta": {}},
+            # Delete an edge that was never created
+            {"ts": "2025-01-01T00:00:02Z", "event": "edge.delete", "src": "n1", "tgt": "n2", "type": "DEPENDS_ON"},
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        # Should not crash
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        assert len(graph.edges) == 0, "No edges should exist"
+        assert len(graph.nodes) == 2, "Nodes should still exist"
+
+    def test_multiple_edge_deletes(self, tmp_path):
+        """Test multiple edge.delete events in sequence."""
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "n1", "type": "TASK", "data": {"title": "N1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "n2", "type": "TASK", "data": {"title": "N2"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:02Z", "event": "node.create", "id": "n3", "type": "TASK", "data": {"title": "N3"}, "meta": {}},
+            # Create 3 edges
+            {"ts": "2025-01-01T00:00:03Z", "event": "edge.create", "src": "n1", "tgt": "n2", "type": "DEPENDS_ON", "weight": 1.0},
+            {"ts": "2025-01-01T00:00:04Z", "event": "edge.create", "src": "n2", "tgt": "n3", "type": "BLOCKS", "weight": 0.8},
+            {"ts": "2025-01-01T00:00:05Z", "event": "edge.create", "src": "n1", "tgt": "n3", "type": "SIMILAR", "weight": 0.5},
+            # Delete all 3 edges
+            {"ts": "2025-01-01T00:00:06Z", "event": "edge.delete", "src": "n1", "tgt": "n2", "type": "DEPENDS_ON"},
+            {"ts": "2025-01-01T00:00:07Z", "event": "edge.delete", "src": "n2", "tgt": "n3", "type": "BLOCKS"},
+            {"ts": "2025-01-01T00:00:08Z", "event": "edge.delete", "src": "n1", "tgt": "n3", "type": "SIMILAR"},
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # All edges should be deleted
+        assert len(graph.edges) == 0, "All edges should be deleted"
+
+    def test_edge_create_after_delete(self, tmp_path):
+        """Test that edges can be recreated after deletion."""
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "n1", "type": "TASK", "data": {"title": "N1"}, "meta": {}},
+            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "n2", "type": "TASK", "data": {"title": "N2"}, "meta": {}},
+            # Create, delete, recreate
+            {"ts": "2025-01-01T00:00:02Z", "event": "edge.create", "src": "n1", "tgt": "n2", "type": "DEPENDS_ON", "weight": 1.0},
+            {"ts": "2025-01-01T00:00:03Z", "event": "edge.delete", "src": "n1", "tgt": "n2", "type": "DEPENDS_ON"},
+            {"ts": "2025-01-01T00:00:04Z", "event": "edge.create", "src": "n1", "tgt": "n2", "type": "BLOCKS", "weight": 0.9},
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Should have the BLOCKS edge, not DEPENDS_ON
+        assert len(graph.edges) == 1, "Should have 1 edge after recreation"
+        assert graph.edges[0].edge_type == EdgeType.BLOCKS, "Edge should be BLOCKS type"
+
+
+class TestBackendStatsConsistency:
+    """
+    Regression tests for get_stats() returning consistent fields across backends.
+
+    Bug: TransactionalGoTAdapter.get_stats() was missing 'total_sprints' and 'total_epics'.
+    Error: KeyError: 'total_sprints'
+
+    Fix: Added total_sprints and total_epics to TransactionalGoTAdapter.get_stats().
+    """
+
+    def test_event_sourced_stats_has_all_fields(self, tmp_path):
+        """Test that event-sourced backend stats has all required fields."""
+        # This test uses the GoTProjectManager directly
+        from scripts.got_utils import GoTProjectManager, GOT_DIR
+
+        # Create a temporary manager
+        manager = GoTProjectManager(got_dir=tmp_path / ".got")
+
+        stats = manager.get_stats()
+
+        # Verify all required fields exist
+        required_fields = ["total_tasks", "tasks_by_status", "total_edges", "total_sprints", "total_epics"]
+        for field in required_fields:
+            assert field in stats, f"Stats should contain '{field}'"
+
+    def test_transactional_stats_has_all_fields(self, tmp_path):
+        """Test that transactional backend stats has all required fields."""
+        # Skip if TX backend not available
+        try:
+            from scripts.got_utils import TransactionalGoTAdapter, TX_BACKEND_AVAILABLE
+            if not TX_BACKEND_AVAILABLE:
+                pytest.skip("Transactional backend not available")
+        except ImportError:
+            pytest.skip("Transactional backend not available")
+
+        # Create a temporary adapter with path
+        adapter = TransactionalGoTAdapter(got_dir=tmp_path / ".got-tx")
+
+        stats = adapter.get_stats()
+
+        # Verify all required fields exist
+        required_fields = ["total_tasks", "tasks_by_status", "total_edges", "total_sprints", "total_epics"]
+        for field in required_fields:
+            assert field in stats, f"Stats should contain '{field}'"
+
+    def test_stats_fields_match_between_backends(self, tmp_path):
+        """Test that both backends return the same stat fields."""
+        from scripts.got_utils import GoTProjectManager
+
+        # Skip TX test if not available
+        try:
+            from scripts.got_utils import TransactionalGoTAdapter, TX_BACKEND_AVAILABLE
+            if not TX_BACKEND_AVAILABLE:
+                pytest.skip("Transactional backend not available")
+        except ImportError:
+            pytest.skip("Transactional backend not available")
+
+        # Get stats from both backends
+        es_manager = GoTProjectManager(got_dir=tmp_path / ".got")
+        es_stats = es_manager.get_stats()
+
+        tx_adapter = TransactionalGoTAdapter(got_dir=tmp_path / ".got-tx")
+        tx_stats = tx_adapter.get_stats()
+
+        # Both should have the same keys
+        assert set(es_stats.keys()) == set(tx_stats.keys()), \
+            f"Stats keys should match. ES: {es_stats.keys()}, TX: {tx_stats.keys()}"
