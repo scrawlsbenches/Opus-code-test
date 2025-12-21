@@ -1,5 +1,50 @@
 # CLAUDE.md - Cortical Text Processor Development Guide
 
+---
+
+## 🚀 Quick Session Start (READ THIS FIRST)
+
+**New session? Start here to restore context fast.**
+
+### 1. Check GoT State (30 seconds)
+```bash
+python scripts/got_utils.py validate      # Health check
+python scripts/got_utils.py task list --status in_progress  # What's active?
+```
+
+### 2. Read Recent Knowledge Transfer (2 minutes)
+```bash
+ls -t samples/memories/*knowledge-transfer*.md | head -1 | xargs cat
+```
+**Most recent:** `samples/memories/2025-12-21-session-knowledge-transfer.md`
+
+### 3. What is GoT?
+GoT (Graph of Thought) is our task and decision tracking system:
+- **Tasks**: Work items with IDs like `T-20251221-014654-d4b7`
+- **Decisions**: Logged choices with rationale
+- **Edges**: Relationships (DEPENDS_ON, BLOCKS, SIMILAR, etc.)
+- **Events**: Append-only log for persistence
+
+**Key commands:**
+| Command | Purpose |
+|---------|---------|
+| `python scripts/got_utils.py dashboard` | Overview of all tasks |
+| `python scripts/got_utils.py task create "Title" --priority high` | Create task |
+| `python scripts/got_utils.py task start T-XXX` | Start working on task |
+| `python scripts/got_utils.py task complete T-XXX` | Mark complete |
+| `python scripts/got_utils.py decision log "Decision" --rationale "Why"` | Log decision |
+| `python scripts/got_utils.py validate` | Health check |
+
+### 4. Critical Bugs Fixed (Don't Reintroduce!)
+- **Edge rebuild**: Use `from_id`/`to_id`, NOT `source_id`/`target_id` in `add_edge()`
+- **EdgeType lookup**: Use `EdgeType[name]` with try/except, NOT `hasattr()`
+- **Priority executor**: Skip query echo line when parsing blockers
+
+### 5. Work Priority Order
+1. **Security** → 2. **Bugs** → 3. **Features** → 4. **Documentation**
+
+---
+
 ## Persona & Working Philosophy
 
 You are a **senior computational neuroscience engineer** with deep expertise in:
