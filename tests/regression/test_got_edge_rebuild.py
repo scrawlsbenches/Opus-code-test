@@ -343,3 +343,189 @@ class TestThoughtGraphAddEdge:
 
         with pytest.raises(ValueError, match="not found"):
             graph.add_edge(from_id="n1", to_id="n2", edge_type=EdgeType.DEPENDS_ON)
+
+
+class TestNodeIdNormalization:
+    """
+    Regression tests for ID normalization in node.update and node.delete.
+
+    Bug: node.create used "task:T-XXX" format, but node.update used "T-XXX"
+    format without the prefix, causing "Cannot update non-existent node" errors.
+
+    Fix: Added ID normalization to try both formats when looking up nodes.
+    """
+
+    def test_node_update_with_prefix_mismatch(self, tmp_path):
+        """Test that node.update works when ID format differs from node.create."""
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        # Simulate the bug: node.create uses task: prefix, node.update doesn't
+        events = [
+            {
+                "ts": "2025-01-01T00:00:00Z",
+                "event": "node.create",
+                "id": "task:T-20251220-001",  # WITH prefix
+                "type": "TASK",
+                "data": {"title": "Original Title", "status": "pending"},
+                "meta": {}
+            },
+            {
+                "ts": "2025-01-01T00:00:01Z",
+                "event": "node.update",
+                "id": "T-20251220-001",  # WITHOUT prefix (the bug)
+                "changes": {"status": "completed", "title": "Updated Title"}
+            }
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Verify the update was applied despite ID format mismatch
+        assert len(graph.nodes) == 1, "Should have 1 node"
+        node = graph.nodes["task:T-20251220-001"]
+        assert node.properties.get("status") == "completed", "Status should be updated"
+        assert node.properties.get("title") == "Updated Title", "Title should be updated"
+
+    def test_node_update_with_reverse_prefix_mismatch(self, tmp_path):
+        """Test update when node.create lacks prefix but node.update has it."""
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {
+                "ts": "2025-01-01T00:00:00Z",
+                "event": "node.create",
+                "id": "T-20251220-002",  # WITHOUT prefix
+                "type": "TASK",
+                "data": {"title": "Task", "priority": "low"},
+                "meta": {}
+            },
+            {
+                "ts": "2025-01-01T00:00:01Z",
+                "event": "node.update",
+                "id": "task:T-20251220-002",  # WITH prefix
+                "changes": {"priority": "high"}
+            }
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Verify the update was applied
+        assert len(graph.nodes) == 1
+        node = graph.nodes["T-20251220-002"]
+        assert node.properties.get("priority") == "high"
+
+    def test_node_delete_with_prefix_mismatch(self, tmp_path):
+        """Test that node.delete works when ID format differs from node.create."""
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {
+                "ts": "2025-01-01T00:00:00Z",
+                "event": "node.create",
+                "id": "task:T-20251220-003",  # WITH prefix
+                "type": "TASK",
+                "data": {"title": "To Delete"},
+                "meta": {}
+            },
+            {
+                "ts": "2025-01-01T00:00:01Z",
+                "event": "node.delete",
+                "id": "T-20251220-003"  # WITHOUT prefix
+            }
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        # Verify the node was deleted despite ID format mismatch
+        assert len(graph.nodes) == 0, "Node should be deleted"
+
+    def test_node_update_still_warns_for_truly_missing_node(self, tmp_path):
+        """Test that warning is still logged for actually non-existent nodes."""
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {
+                "ts": "2025-01-01T00:00:00Z",
+                "event": "node.update",
+                "id": "T-NONEXISTENT",  # Node was never created
+                "changes": {"status": "completed"}
+            }
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        # This should not crash, just log a warning
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        assert len(graph.nodes) == 0, "No nodes should exist"
+
+    def test_multiple_updates_with_mixed_formats(self, tmp_path):
+        """Test multiple updates with alternating ID formats."""
+        events_dir = tmp_path / "events"
+        events_dir.mkdir()
+
+        events = [
+            {
+                "ts": "2025-01-01T00:00:00Z",
+                "event": "node.create",
+                "id": "task:T-20251220-004",
+                "type": "TASK",
+                "data": {"title": "Task", "count": 0},
+                "meta": {}
+            },
+            {
+                "ts": "2025-01-01T00:00:01Z",
+                "event": "node.update",
+                "id": "T-20251220-004",  # No prefix
+                "changes": {"count": 1}
+            },
+            {
+                "ts": "2025-01-01T00:00:02Z",
+                "event": "node.update",
+                "id": "task:T-20251220-004",  # With prefix
+                "changes": {"count": 2}
+            },
+            {
+                "ts": "2025-01-01T00:00:03Z",
+                "event": "node.update",
+                "id": "T-20251220-004",  # No prefix again
+                "changes": {"count": 3}
+            }
+        ]
+
+        event_file = events_dir / "test.jsonl"
+        with open(event_file, "w") as f:
+            for e in events:
+                f.write(json.dumps(e) + "\n")
+
+        loaded_events = EventLog.load_all_events(events_dir)
+        graph = EventLog.rebuild_graph_from_events(loaded_events)
+
+        assert len(graph.nodes) == 1
+        node = graph.nodes["task:T-20251220-004"]
+        assert node.properties.get("count") == 3, "All updates should be applied"
