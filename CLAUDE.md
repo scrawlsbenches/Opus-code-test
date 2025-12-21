@@ -32,7 +32,7 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 - Write tests for the bug before writing the fix
 
 > **⚠️ CODE COVERAGE POLICY:**
-> - **Current baseline:** 61% (as of 2025-12-17)
+> - **Current baseline:** 89% (as of 2025-12-21)
 > - **Target:** Improve incrementally, never regress on modified files
 > - **Reality:** Some modules have low coverage (see debt list below)
 >
@@ -321,22 +321,60 @@ Layer 3 (DOCUMENTS) → Full documents          [IT analogy: objects]
 
 ## Development Environment Setup
 
-**Before running tests with coverage**, install dev dependencies:
+> **⚠️ CRITICAL: Before any software development, you MUST have pytest and coverage installed and collect baseline coverage results.**
+
+### Step 1: Check if Dependencies Are Installed
 
 ```bash
-# Option 1: Install as editable package with dev deps (recommended)
+# Check if pytest is installed
+python -c "import pytest; print(f'pytest OK: {pytest.__version__}')" 2>/dev/null || echo "❌ pytest NOT installed"
+
+# Check if coverage is installed
+python -c "import coverage; print(f'coverage OK: {coverage.__version__}')" 2>/dev/null || echo "❌ coverage NOT installed"
+```
+
+### Step 2: Install Missing Dependencies
+
+**If pytest or coverage are NOT installed**, install them:
+
+```bash
+# Quick install (minimum required)
+pip install pytest coverage
+
+# OR: Install as editable package with all dev deps (recommended)
 pip install -e ".[dev]"
 
-# Option 2: Install from requirements.txt
+# OR: Install from requirements.txt
 pip install -r requirements.txt
 ```
 
 This installs: `coverage`, `pytest`, `mcp`, `pyyaml`
 
-**Verify installation:**
+### Step 3: Collect Baseline Coverage (REQUIRED before development)
+
+**Before making any code changes**, run coverage to establish baseline:
+
 ```bash
-python -c "import coverage; print('coverage OK')"
+# Run tests with coverage collection
+python -m coverage run -m pytest tests/ -q
+
+# View coverage report
+python -m coverage report --include="cortical/*"
+
+# Check current coverage percentage
+python -m coverage report --include="cortical/*" | tail -1
 ```
+
+**Expected output:** Coverage should be ~89% or higher (current baseline as of 2025-12-21).
+
+### Troubleshooting
+
+| Error | Solution |
+|-------|----------|
+| `ModuleNotFoundError: No module named 'pytest'` | Run `pip install pytest` |
+| `ModuleNotFoundError: No module named 'coverage'` | Run `pip install coverage` |
+| `No module named 'mcp'` | Run `pip install mcp` (optional, for MCP tests) |
+| Tests timing out | Use `--timeout=60` flag with pytest |
 
 > **Note:** The library itself has zero runtime dependencies. Dev dependencies are only needed for testing and coverage reporting.
 
