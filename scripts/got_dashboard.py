@@ -683,6 +683,24 @@ class DashboardMetrics:
 # DASHBOARD RENDERING
 # =============================================================================
 
+
+def render_header_summary(overview: Dict[str, Any], health: Dict[str, Any]) -> str:
+    """Render a single-line summary for the dashboard header.
+
+    Args:
+        overview: Overview stats dict with 'total_nodes', 'total_edges'
+        health: Health stats dict with 'orphan_count'
+
+    Returns:
+        Single-line summary string like "50 nodes | 100 edges | 5 orphans"
+    """
+    nodes = overview.get('total_nodes', 0)
+    edges = overview.get('total_edges', 0)
+    orphans = health.get('orphan_count', 0)
+
+    return f"{nodes} nodes | {edges} edges | {orphans} orphans"
+
+
 def render_overview_section(stats: Dict[str, Any], width: int = 80) -> List[str]:
     """Render overview section."""
     lines = []
@@ -948,6 +966,9 @@ def render_dashboard(manager) -> str:
     lines.append(colorize("=" * 80, Colors.BOLD))
     lines.append(colorize("                          GoT DASHBOARD", Colors.BOLD + Colors.BRIGHT_CYAN))
     lines.append(colorize(f"                        {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", Colors.DIM))
+    # Quick summary line with key stats
+    summary = render_header_summary(overview, health)
+    lines.append(colorize(f"                    {summary}", Colors.DIM))
     lines.append(colorize("=" * 80, Colors.BOLD))
     lines.append("")
 

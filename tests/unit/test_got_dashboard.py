@@ -384,5 +384,54 @@ class TestDashboardRendering(unittest.TestCase):
         self.assertIn('no upstream configured', rendered)
 
 
+class TestDashboardHeaderStats(unittest.TestCase):
+    """
+    Unit tests for dashboard header displaying edge count and orphan count.
+
+    Task T-20251221-020101-6913: Show edge count and orphan count in header.
+    Tests the render_header_summary function directly.
+    """
+
+    def test_header_summary_contains_edge_count(self):
+        """Header summary should include edge count."""
+        from scripts.got_dashboard import render_header_summary
+
+        overview = {'total_nodes': 100, 'total_edges': 250}
+        health = {'orphan_count': 15}
+
+        summary = render_header_summary(overview, health)
+
+        self.assertIn('250', summary, "Summary should show edge count")
+        self.assertIn('edge', summary.lower(), "Summary should mention edges")
+
+    def test_header_summary_contains_orphan_count(self):
+        """Header summary should include orphan count."""
+        from scripts.got_dashboard import render_header_summary
+
+        overview = {'total_nodes': 100, 'total_edges': 250}
+        health = {'orphan_count': 35}
+
+        summary = render_header_summary(overview, health)
+
+        self.assertIn('35', summary, "Summary should show orphan count")
+        self.assertIn('orphan', summary.lower(), "Summary should mention orphans")
+
+    def test_header_summary_format(self):
+        """Header summary should be concise and readable."""
+        from scripts.got_dashboard import render_header_summary
+
+        overview = {'total_nodes': 50, 'total_edges': 100}
+        health = {'orphan_count': 5}
+
+        summary = render_header_summary(overview, health)
+
+        # Should be a single line
+        self.assertEqual(summary.count('\n'), 0, "Summary should be a single line")
+        # Should contain key numbers
+        self.assertIn('50', summary, "Should show node count")
+        self.assertIn('100', summary, "Should show edge count")
+        self.assertIn('5', summary, "Should show orphan count")
+
+
 if __name__ == '__main__':
     unittest.main()
