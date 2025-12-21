@@ -1692,5 +1692,97 @@ class TestAutoTaskHook:
         assert generate_task_title_from_commit("Plain message") == "Plain message"
 
 
+class TestTaskNextCommand:
+    """
+    Unit tests for 'got task next' command.
+
+    Task T-20251221-112230-db4a: Add 'got task next' command.
+    Picks highest priority pending task that isn't blocked.
+    """
+
+    def test_next_returns_highest_priority_pending(self, temp_got_dir):
+        """Should return high priority task before medium/low."""
+        manager = GoTProjectManager(got_dir=temp_got_dir)
+
+        # Create tasks with different priorities
+        low_id = manager.create_task("Low priority task", priority="low")
+        medium_id = manager.create_task("Medium priority task", priority="medium")
+        high_id = manager.create_task("High priority task", priority="high")
+
+        result = manager.get_next_task()
+
+        assert result is not None, "Should return a task"
+        assert result["id"] == f"task:{high_id}" or result["id"] == high_id
+        assert "High priority" in result["title"]
+
+    def test_next_skips_in_progress_tasks(self, temp_got_dir):
+        """Should skip tasks that are already in progress."""
+        manager = GoTProjectManager(got_dir=temp_got_dir)
+
+        high_id = manager.create_task("In progress task", priority="high")
+        manager.start_task(high_id)
+        medium_id = manager.create_task("Pending task", priority="medium")
+
+        result = manager.get_next_task()
+
+        assert result is not None
+        assert "Pending task" in result["title"]
+
+    def test_next_skips_completed_tasks(self, temp_got_dir):
+        """Should skip completed tasks."""
+        manager = GoTProjectManager(got_dir=temp_got_dir)
+
+        high_id = manager.create_task("Completed task", priority="high")
+        manager.start_task(high_id)
+        manager.complete_task(high_id)
+        medium_id = manager.create_task("Pending task", priority="medium")
+
+        result = manager.get_next_task()
+
+        assert result is not None
+        assert "Pending task" in result["title"]
+
+    def test_next_skips_blocked_tasks(self, temp_got_dir):
+        """Should skip tasks that are blocked."""
+        manager = GoTProjectManager(got_dir=temp_got_dir)
+
+        blocker_id = manager.create_task("Blocker task", priority="high")
+        blocked_id = manager.create_task("Blocked task", priority="high")
+        manager.block_task(blocked_id, reason="Depends on blocker", blocker_id=blocker_id)
+
+        unblocked_id = manager.create_task("Unblocked task", priority="medium")
+
+        result = manager.get_next_task()
+
+        assert result is not None
+        # Should return either the blocker (unblocked high) or unblocked medium
+        assert "Blocked task" not in result["title"]
+
+    def test_next_returns_none_when_no_pending(self, temp_got_dir):
+        """Should return None when no pending tasks exist."""
+        manager = GoTProjectManager(got_dir=temp_got_dir)
+
+        # Create and complete a task
+        task_id = manager.create_task("Done task", priority="high")
+        manager.start_task(task_id)
+        manager.complete_task(task_id)
+
+        result = manager.get_next_task()
+
+        assert result is None
+
+    def test_next_returns_oldest_within_same_priority(self, temp_got_dir):
+        """When priority is equal, should return oldest task first."""
+        manager = GoTProjectManager(got_dir=temp_got_dir)
+
+        first_id = manager.create_task("First high task", priority="high")
+        second_id = manager.create_task("Second high task", priority="high")
+
+        result = manager.get_next_task()
+
+        assert result is not None
+        assert "First high" in result["title"]
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

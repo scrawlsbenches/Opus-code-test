@@ -1460,6 +1460,47 @@ class GoTProjectManager:
 
         return tasks
 
+    def get_next_task(self) -> Optional[Dict[str, Any]]:
+        """
+        Get the next task to work on.
+
+        Selection criteria:
+        1. Status must be 'pending' (not in_progress, completed, or blocked)
+        2. Highest priority first (critical > high > medium > low)
+        3. Oldest task within same priority
+
+        Returns:
+            Dict with 'id', 'title', 'priority', 'category' or None if no tasks available
+        """
+        # Get pending tasks sorted by priority and age
+        pending_tasks = self.list_tasks(status=STATUS_PENDING)
+
+        # Filter out blocked tasks (status=pending but have BLOCKS edges pointing to them)
+        unblocked_tasks = []
+        for task in pending_tasks:
+            is_blocked = False
+            for edge in self.graph.edges:
+                if edge.target_id == task.id and edge.edge_type == EdgeType.BLOCKS:
+                    # Check if the blocker is still pending/in_progress
+                    blocker = self.graph.nodes.get(edge.source_id)
+                    if blocker and blocker.properties.get("status") not in [STATUS_COMPLETED]:
+                        is_blocked = True
+                        break
+            if not is_blocked:
+                unblocked_tasks.append(task)
+
+        if not unblocked_tasks:
+            return None
+
+        # Return the first (highest priority, oldest) task
+        next_task = unblocked_tasks[0]
+        return {
+            "id": next_task.id,
+            "title": next_task.content,
+            "priority": next_task.properties.get("priority", PRIORITY_MEDIUM),
+            "category": next_task.properties.get("category", "general"),
+        }
+
     def update_task_status(self, task_id: str, status: str) -> bool:
         """Update task status."""
         task = self.get_task(task_id)
@@ -2692,6 +2733,32 @@ def cmd_task_list(args, manager: GoTProjectManager) -> int:
     return 0
 
 
+def cmd_task_next(args, manager: GoTProjectManager) -> int:
+    """Get the next task to work on."""
+    result = manager.get_next_task()
+
+    if result is None:
+        print("No pending tasks available.")
+        return 0
+
+    # Format output
+    print(f"Next task: {result['id']}")
+    print(f"  Title:    {result['title']}")
+    print(f"  Priority: {result['priority']}")
+    print(f"  Category: {result['category']}")
+
+    # If --start flag, also start the task
+    if getattr(args, 'start', False):
+        task_id = result['id']
+        if task_id.startswith("task:"):
+            task_id = task_id[5:]
+        success = manager.start_task(task_id)
+        if success:
+            print(f"\nStarted: {result['id']}")
+
+    return 0
+
+
 def cmd_task_show(args, manager: GoTProjectManager) -> int:
     """Show details of a specific task."""
     task_id = args.task_id
@@ -3769,6 +3836,11 @@ def main():
     show_parser = task_subparsers.add_parser("show", help="Show task details")
     show_parser.add_argument("task_id", help="Task ID to display")
 
+    # task next
+    next_parser = task_subparsers.add_parser("next", help="Get the next task to work on")
+    next_parser.add_argument("--start", "-s", action="store_true",
+                             help="Also start the task after selecting it")
+
     # task start
     start_parser = task_subparsers.add_parser("start", help="Start a task")
     start_parser.add_argument("task_id", help="Task ID")
@@ -3941,6 +4013,8 @@ def main():
             return cmd_task_list(args, manager)
         elif args.task_command == "show":
             return cmd_task_show(args, manager)
+        elif args.task_command == "next":
+            return cmd_task_next(args, manager)
         elif args.task_command == "start":
             return cmd_task_start(args, manager)
         elif args.task_command == "complete":
