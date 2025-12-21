@@ -76,8 +76,12 @@ from .cognitive_loop import (
     CognitiveLoop,
     CognitiveLoopManager,
     # Stub classes (for extension)
-    NestedLoopExecutor,
     LoopStateSerializer,
+)
+
+from .nested_loop import (
+    NestedLoopExecutor,
+    LoopContext,
 )
 
 from .loop_validator import (
@@ -290,6 +294,7 @@ __all__ = [
     'CognitiveLoop',
     'CognitiveLoopManager',
     'NestedLoopExecutor',
+    'LoopContext',
     'LoopStateSerializer',
     'LoopValidator',
     'ValidationResult',

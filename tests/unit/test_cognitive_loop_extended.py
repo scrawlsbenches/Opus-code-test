@@ -525,63 +525,64 @@ class TestCognitiveLoopAdditional:
 
 
 class TestNestedLoopExecutor:
-    """Tests for NestedLoopExecutor stub class."""
+    """Tests for NestedLoopExecutor full implementation."""
 
     def test_create_executor(self):
         """Test creating executor."""
-        manager = CognitiveLoopManager()
-        executor = NestedLoopExecutor(manager)
+        executor = NestedLoopExecutor(max_depth=5)
 
         assert executor is not None
+        assert executor._max_depth == 5
 
-    def test_execute_with_nesting(self):
-        """Test executing a loop with nesting (stub implementation)."""
-        manager = CognitiveLoopManager()
-        executor = NestedLoopExecutor(manager)
-        loop = manager.create_loop("Test loop")
-        loop.start(LoopPhase.QUESTION)
+    def test_start_root_and_spawn_child(self):
+        """Test starting a root loop and spawning a child."""
+        executor = NestedLoopExecutor(max_depth=5)
+        root = executor.start_root("Test loop")
 
-        # Execute (stub just returns SUCCESS)
-        result = executor.execute_with_nesting(loop, max_depth=5)
+        assert root is not None
+        assert executor.get_loop(root).status == LoopStatus.ACTIVE
 
-        assert result == TerminationReason.SUCCESS
-        # Should have added a note
-        ctx = loop.current_context()
-        assert any("NestedLoopExecutor" in note for note in ctx.notes)
+        # Spawn a child
+        child = executor.spawn_child(root, "Subtask")
+        assert child is not None
+        assert executor.get_context(child).depth == 1
+        assert executor.get_context(child).parent_id == root
 
-    def test_should_spawn_child(self):
-        """Test heuristic for spawning child loops."""
-        manager = CognitiveLoopManager()
-        executor = NestedLoopExecutor(manager)
+        # Parent should be paused
+        assert executor.get_loop(root).status == LoopStatus.PAUSED
 
-        # Create context with few questions (should not spawn)
-        ctx = PhaseContext(phase=LoopPhase.QUESTION, started_at=datetime.now())
-        ctx.record_question("Q1")
-        ctx.record_question("Q2")
+    def test_complete_child_resumes_parent(self):
+        """Test that completing a child resumes the parent."""
+        executor = NestedLoopExecutor(max_depth=5)
+        root = executor.start_root("Test loop")
+        child = executor.spawn_child(root, "Subtask")
 
-        assert not executor.should_spawn_child(ctx)
+        # Parent should be paused
+        assert executor.get_loop(root).status == LoopStatus.PAUSED
 
-        # Add more questions (should spawn)
-        ctx.record_question("Q3")
-        ctx.record_question("Q4")
+        # Complete child
+        executor.complete(child, {"result": "done"})
 
-        assert executor.should_spawn_child(ctx)
+        # Parent should be resumed
+        assert executor.get_loop(root).status == LoopStatus.ACTIVE
 
-    def test_suggest_child_goals(self):
-        """Test suggesting child loop goals from context."""
-        manager = CognitiveLoopManager()
-        executor = NestedLoopExecutor(manager)
+        # Result should be in parent's context
+        root_context = executor.get_context(root)
+        assert child in root_context.child_results
+        assert root_context.child_results[child]["result"] == "done"
 
-        ctx = PhaseContext(phase=LoopPhase.QUESTION, started_at=datetime.now())
-        ctx.record_question("How to implement auth?")
-        ctx.record_question("How to handle errors?")
-        ctx.record_question("How to test this?")
+    def test_depth_enforcement(self):
+        """Test that max depth is enforced."""
+        executor = NestedLoopExecutor(max_depth=2)
+        root = executor.start_root("Root")
+        child1 = executor.spawn_child(root, "Child 1")
 
-        goals = executor.suggest_child_goals(ctx)
-
-        # Should return up to 3 questions
-        assert len(goals) <= 3
-        assert "How to implement auth?" in goals
+        # Should not be able to spawn at depth 2 (max is 2, so max depth is 1)
+        try:
+            child2 = executor.spawn_child(child1, "Child 2")
+            assert False, "Should have raised RecursionError"
+        except RecursionError:
+            pass  # Expected
 
 
 class TestLoopStateSerializer:
