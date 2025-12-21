@@ -41,14 +41,14 @@ def generate_task_id() -> str:
     """
     Generate unique task ID.
 
-    Format: T-YYYYMMDD-HHMMSS-XXXX where XXXX is random hex.
+    Format: T-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
 
     Returns:
         Task ID string
     """
     now = datetime.now(timezone.utc)
     timestamp = now.strftime("%Y%m%d-%H%M%S")
-    random_suffix = secrets.token_hex(2)  # 4 hex chars
+    random_suffix = secrets.token_hex(4)  # 8 hex chars (~4 billion values)
     return f"T-{timestamp}-{random_suffix}"
 
 
@@ -56,14 +56,14 @@ def generate_decision_id() -> str:
     """
     Generate unique decision ID.
 
-    Format: D-YYYYMMDD-HHMMSS-XXXX where XXXX is random hex.
+    Format: D-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
 
     Returns:
         Decision ID string
     """
     now = datetime.now(timezone.utc)
     timestamp = now.strftime("%Y%m%d-%H%M%S")
-    random_suffix = secrets.token_hex(2)  # 4 hex chars
+    random_suffix = secrets.token_hex(4)  # 8 hex chars (~4 billion values)
     return f"D-{timestamp}-{random_suffix}"
 
 

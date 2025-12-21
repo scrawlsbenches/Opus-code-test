@@ -46,7 +46,7 @@ class TestGenerateTransactionId:
         assert parts[2].isdigit()
 
         # Random suffix should be 4 hex chars
-        assert len(parts[3]) == 4
+        assert len(parts[3]) == 8  # XXXXXXXX hex
         int(parts[3], 16)  # Should parse as hex
 
     def test_generate_transaction_id_unique(self):

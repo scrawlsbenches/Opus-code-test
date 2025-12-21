@@ -27,14 +27,14 @@ def generate_transaction_id() -> str:
     """
     Generate unique transaction ID.
 
-    Format: TX-YYYYMMDD-HHMMSS-XXXX where XXXX is random hex.
+    Format: TX-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
 
     Returns:
         Transaction ID string
     """
     now = datetime.now(timezone.utc)
     timestamp = now.strftime("%Y%m%d-%H%M%S")
-    random_suffix = secrets.token_hex(2)  # 4 hex chars
+    random_suffix = secrets.token_hex(4)  # 8 hex chars (~4 billion values)
     return f"TX-{timestamp}-{random_suffix}"
 
 

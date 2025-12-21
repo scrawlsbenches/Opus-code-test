@@ -202,7 +202,7 @@ class TestHelperFunctions:
         assert len(parts) == 4
         assert len(parts[1]) == 8  # YYYYMMDD
         assert len(parts[2]) == 6  # HHMMSS
-        assert len(parts[3]) == 4  # XXXX hex
+        assert len(parts[3]) == 8  # XXXXXXXX hex
 
     def test_generate_decision_id_format(self):
         """Decision ID has correct format D-YYYYMMDD-HHMMSS-XXXX."""
@@ -212,7 +212,7 @@ class TestHelperFunctions:
         assert len(parts) == 4
         assert len(parts[1]) == 8  # YYYYMMDD
         assert len(parts[2]) == 6  # HHMMSS
-        assert len(parts[3]) == 4  # XXXX hex
+        assert len(parts[3]) == 8  # XXXXXXXX hex
 
     def test_generate_task_id_uniqueness(self):
         """Generated task IDs are unique."""
