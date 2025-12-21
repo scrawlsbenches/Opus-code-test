@@ -1816,39 +1816,40 @@ class GoTProjectManager:
         blocker_id: Optional[str] = None,
     ) -> bool:
         """Block a task with reason."""
-        task = self.get_task(task_id)
-        if not task:
-            return False
+        with self._lock:
+            task = self.get_task(task_id)
+            if not task:
+                return False
 
-        task.properties["status"] = STATUS_BLOCKED
-        task.properties["blocked_reason"] = reason
-        task.metadata["updated_at"] = datetime.now().isoformat()
+            task.properties["status"] = STATUS_BLOCKED
+            task.properties["blocked_reason"] = reason
+            task.metadata["updated_at"] = datetime.now().isoformat()
 
-        changes = {
-            "status": STATUS_BLOCKED,
-            "blocked_reason": reason,
-            "updated_at": task.metadata["updated_at"],
-        }
+            changes = {
+                "status": STATUS_BLOCKED,
+                "blocked_reason": reason,
+                "updated_at": task.metadata["updated_at"],
+            }
 
-        # Log to event log (source of truth)
-        self.event_log.log_node_update(task_id, changes)
+            # Log to event log (source of truth)
+            self.event_log.log_node_update(task_id, changes)
 
-        # Log to WAL for crash recovery
-        self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
+            # Log to WAL for crash recovery
+            self.wal.log_update_node(task_id, {**task.properties, "_meta": task.metadata})
 
-        # Add blocking edge if blocker specified
-        if blocker_id:
-            if not blocker_id.startswith("task:"):
-                blocker_id = f"task:{blocker_id}"
-            if blocker_id in self.graph.nodes:
-                self.graph.add_edge(
-                    blocker_id, task_id, EdgeType.BLOCKS,
-                    weight=1.0, confidence=1.0
-                )
-                self.event_log.log_edge_create(blocker_id, task_id, "BLOCKS")
-                self.wal.log_add_edge(blocker_id, task_id, EdgeType.BLOCKS)
+            # Add blocking edge if blocker specified
+            if blocker_id:
+                if not blocker_id.startswith("task:"):
+                    blocker_id = f"task:{blocker_id}"
+                if blocker_id in self.graph.nodes:
+                    self.graph.add_edge(
+                        blocker_id, task_id, EdgeType.BLOCKS,
+                        weight=1.0, confidence=1.0
+                    )
+                    self.event_log.log_edge_create(blocker_id, task_id, "BLOCKS")
+                    self.wal.log_add_edge(blocker_id, task_id, EdgeType.BLOCKS)
 
-        return True
+            return True
 
     def delete_task(
         self,
@@ -1869,76 +1870,77 @@ class GoTProjectManager:
         Returns:
             True if deleted, False if deletion blocked or task not found
         """
-        # Normalize task ID
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
+        with self._lock:
+            # Normalize task ID
+            if not task_id.startswith("task:"):
+                task_id = f"task:{task_id}"
 
-        # Transactional check 1: Task must exist
-        task = self.get_task(task_id)
-        if not task:
-            logger.warning(f"Cannot delete non-existent task: {task_id}")
-            return False
-
-        # Get task status
-        status = task.properties.get("status", STATUS_PENDING)
-
-        if not force:
-            # Transactional check 2: Task should not have dependents
-            dependents = self.what_depends_on(task_id)
-            if dependents:
-                dependent_ids = [d.id for d in dependents]
-                logger.warning(
-                    f"Cannot delete task {task_id}: {len(dependents)} task(s) depend on it: "
-                    f"{', '.join(dependent_ids[:3])}{'...' if len(dependents) > 3 else ''}"
-                )
+            # Transactional check 1: Task must exist
+            task = self.get_task(task_id)
+            if not task:
+                logger.warning(f"Cannot delete non-existent task: {task_id}")
                 return False
 
-            # Transactional check 3: Task should not block others
-            # Find tasks that this task blocks
-            blocked_tasks = []
+            # Get task status
+            status = task.properties.get("status", STATUS_PENDING)
+
+            if not force:
+                # Transactional check 2: Task should not have dependents
+                dependents = self.what_depends_on(task_id)
+                if dependents:
+                    dependent_ids = [d.id for d in dependents]
+                    logger.warning(
+                        f"Cannot delete task {task_id}: {len(dependents)} task(s) depend on it: "
+                        f"{', '.join(dependent_ids[:3])}{'...' if len(dependents) > 3 else ''}"
+                    )
+                    return False
+
+                # Transactional check 3: Task should not block others
+                # Find tasks that this task blocks
+                blocked_tasks = []
+                for edge in self.graph.edges:
+                    if edge.source_id == task_id and edge.edge_type == EdgeType.BLOCKS:
+                        blocked_tasks.append(edge.target_id)
+                if blocked_tasks:
+                    logger.warning(
+                        f"Cannot delete task {task_id}: it blocks {len(blocked_tasks)} task(s): "
+                        f"{', '.join(blocked_tasks[:3])}{'...' if len(blocked_tasks) > 3 else ''}"
+                    )
+                    return False
+
+                # Transactional check 4: Task should not be in progress
+                if status == STATUS_IN_PROGRESS:
+                    logger.warning(
+                        f"Cannot delete in-progress task {task_id}. Use --force to override."
+                    )
+                    return False
+
+            # Remove edges to/from this task
+            edges_to_remove = []
             for edge in self.graph.edges:
-                if edge.source_id == task_id and edge.edge_type == EdgeType.BLOCKS:
-                    blocked_tasks.append(edge.target_id)
-            if blocked_tasks:
-                logger.warning(
-                    f"Cannot delete task {task_id}: it blocks {len(blocked_tasks)} task(s): "
-                    f"{', '.join(blocked_tasks[:3])}{'...' if len(blocked_tasks) > 3 else ''}"
+                if edge.source_id == task_id or edge.target_id == task_id:
+                    edges_to_remove.append(edge)
+
+            for edge in edges_to_remove:
+                # Log edge deletion
+                self.event_log.log_edge_delete(
+                    edge.source_id, edge.target_id, edge.edge_type.name
                 )
-                return False
+                # Remove from graph
+                self.graph.edges.remove(edge)
 
-            # Transactional check 4: Task should not be in progress
-            if status == STATUS_IN_PROGRESS:
-                logger.warning(
-                    f"Cannot delete in-progress task {task_id}. Use --force to override."
-                )
-                return False
+            # Remove the task from graph
+            if task_id in self.graph.nodes:
+                del self.graph.nodes[task_id]
 
-        # Remove edges to/from this task
-        edges_to_remove = []
-        for edge in self.graph.edges:
-            if edge.source_id == task_id or edge.target_id == task_id:
-                edges_to_remove.append(edge)
+            # Log the deletion (source of truth)
+            self.event_log.log_node_delete(task_id)
 
-        for edge in edges_to_remove:
-            # Log edge deletion
-            self.event_log.log_edge_delete(
-                edge.source_id, edge.target_id, edge.edge_type.name
-            )
-            # Remove from graph
-            self.graph.edges.remove(edge)
+            # Log to WAL for crash recovery
+            self.wal.log_remove_node(task_id)
 
-        # Remove the task from graph
-        if task_id in self.graph.nodes:
-            del self.graph.nodes[task_id]
-
-        # Log the deletion (source of truth)
-        self.event_log.log_node_delete(task_id)
-
-        # Log to WAL for crash recovery
-        self.wal.log_remove_node(task_id)
-
-        logger.info(f"Deleted task: {task_id}")
-        return True
+            logger.info(f"Deleted task: {task_id}")
+            return True
 
     def add_dependency(self, task_id: str, depends_on_id: str) -> bool:
         """Add dependency between tasks.
@@ -1950,22 +1952,23 @@ class GoTProjectManager:
         Returns:
             True if edge was created, False if either task not found
         """
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
-        if not depends_on_id.startswith("task:"):
-            depends_on_id = f"task:{depends_on_id}"
+        with self._lock:
+            if not task_id.startswith("task:"):
+                task_id = f"task:{task_id}"
+            if not depends_on_id.startswith("task:"):
+                depends_on_id = f"task:{depends_on_id}"
 
-        if task_id not in self.graph.nodes or depends_on_id not in self.graph.nodes:
-            return False
+            if task_id not in self.graph.nodes or depends_on_id not in self.graph.nodes:
+                return False
 
-        self.graph.add_edge(
-            task_id, depends_on_id, EdgeType.DEPENDS_ON,
-            weight=1.0, confidence=1.0
-        )
-        self.event_log.log_edge_create(task_id, depends_on_id, "DEPENDS_ON")
-        self.wal.log_add_edge(task_id, depends_on_id, EdgeType.DEPENDS_ON)
+            self.graph.add_edge(
+                task_id, depends_on_id, EdgeType.DEPENDS_ON,
+                weight=1.0, confidence=1.0
+            )
+            self.event_log.log_edge_create(task_id, depends_on_id, "DEPENDS_ON")
+            self.wal.log_add_edge(task_id, depends_on_id, EdgeType.DEPENDS_ON)
 
-        return True
+            return True
 
     def add_blocks(self, task_id: str, blocked_id: str) -> bool:
         """Add blocking relationship between tasks.
@@ -1977,22 +1980,23 @@ class GoTProjectManager:
         Returns:
             True if edge was created, False if either task not found
         """
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
-        if not blocked_id.startswith("task:"):
-            blocked_id = f"task:{blocked_id}"
+        with self._lock:
+            if not task_id.startswith("task:"):
+                task_id = f"task:{task_id}"
+            if not blocked_id.startswith("task:"):
+                blocked_id = f"task:{blocked_id}"
 
-        if task_id not in self.graph.nodes or blocked_id not in self.graph.nodes:
-            return False
+            if task_id not in self.graph.nodes or blocked_id not in self.graph.nodes:
+                return False
 
-        self.graph.add_edge(
-            task_id, blocked_id, EdgeType.BLOCKS,
-            weight=1.0, confidence=1.0
-        )
-        self.event_log.log_edge_create(task_id, blocked_id, "BLOCKS")
-        self.wal.log_add_edge(task_id, blocked_id, EdgeType.BLOCKS)
+            self.graph.add_edge(
+                task_id, blocked_id, EdgeType.BLOCKS,
+                weight=1.0, confidence=1.0
+            )
+            self.event_log.log_edge_create(task_id, blocked_id, "BLOCKS")
+            self.wal.log_add_edge(task_id, blocked_id, EdgeType.BLOCKS)
 
-        return True
+            return True
 
     def get_task_dependencies(self, task_id: str) -> List[ThoughtNode]:
         """Get all tasks this task depends on."""
@@ -2243,46 +2247,47 @@ class GoTProjectManager:
         Returns:
             Decision ID
         """
-        decision_id = generate_decision_id()
+        with self._lock:
+            decision_id = generate_decision_id()
 
-        # Create the decision node
-        self.graph.add_node(
-            node_id=decision_id,
-            node_type=NodeType.CONTEXT,
-            content=decision,
-            properties={
-                "type": "decision",
-                "rationale": rationale,
-                "alternatives": alternatives or [],
-            },
-            metadata={
-                "created_at": datetime.now().isoformat(),
-                "branch": self._get_current_branch(),
-                **(context or {}),
-            }
-        )
+            # Create the decision node
+            self.graph.add_node(
+                node_id=decision_id,
+                node_type=NodeType.CONTEXT,
+                content=decision,
+                properties={
+                    "type": "decision",
+                    "rationale": rationale,
+                    "alternatives": alternatives or [],
+                },
+                metadata={
+                    "created_at": datetime.now().isoformat(),
+                    "branch": self._get_current_branch(),
+                    **(context or {}),
+                }
+            )
 
-        # Log to event log
-        self.event_log.log_decision(
-            decision_id=decision_id,
-            decision=decision,
-            rationale=rationale,
-            affects=affects,
-            alternatives=alternatives,
-            context=context,
-        )
+            # Log to event log
+            self.event_log.log_decision(
+                decision_id=decision_id,
+                decision=decision,
+                rationale=rationale,
+                affects=affects,
+                alternatives=alternatives,
+                context=context,
+            )
 
-        # Create edges to affected nodes
-        for affected_id in (affects or []):
-            if affected_id in self.graph.nodes:
-                self.graph.add_edge(
-                    decision_id, affected_id,
-                    EdgeType.MOTIVATES,
-                    weight=1.0, confidence=1.0
-                )
-                self.event_log.log_edge_create(decision_id, affected_id, "RELATES_TO")
+            # Create edges to affected nodes
+            for affected_id in (affects or []):
+                if affected_id in self.graph.nodes:
+                    self.graph.add_edge(
+                        decision_id, affected_id,
+                        EdgeType.MOTIVATES,
+                        weight=1.0, confidence=1.0
+                    )
+                    self.event_log.log_edge_create(decision_id, affected_id, "RELATES_TO")
 
-        return decision_id
+            return decision_id
 
     def get_decisions(self) -> List[ThoughtNode]:
         """Get all decision nodes."""
