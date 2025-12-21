@@ -89,6 +89,13 @@ from .loop_validator import (
     ValidationResult,
 )
 
+from .qapv_verification import (
+    QAPVAnomaly,
+    TransitionEvent,
+    AnomalyReport,
+    QAPVVerifier,
+)
+
 # =============================================================================
 # PRODUCTION STATE MANAGEMENT
 # =============================================================================
@@ -249,6 +256,17 @@ from .pubsub import (
 )
 
 # =============================================================================
+# METRICS AND OBSERVABILITY
+# =============================================================================
+
+from .metrics import (
+    PhaseMetrics,
+    ReasoningMetrics,
+    MetricsContextManager,
+    create_loop_metrics_handler,
+)
+
+# =============================================================================
 # MAIN WORKFLOW ORCHESTRATOR
 # =============================================================================
 
@@ -298,6 +316,10 @@ __all__ = [
     'LoopStateSerializer',
     'LoopValidator',
     'ValidationResult',
+    'QAPVAnomaly',
+    'TransitionEvent',
+    'AnomalyReport',
+    'QAPVVerifier',
 
     # === Production State ===
     'ProductionState',
@@ -391,6 +413,12 @@ __all__ = [
     'PubSubBroker',
     'create_topic_filter',
     'create_payload_filter',
+
+    # === Metrics and Observability ===
+    'PhaseMetrics',
+    'ReasoningMetrics',
+    'MetricsContextManager',
+    'create_loop_metrics_handler',
 
     # === Main Workflow ===
     'WorkflowContext',

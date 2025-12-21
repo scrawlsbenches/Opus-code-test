@@ -459,6 +459,142 @@ class DashboardMetrics:
             "agent_stats": dict(agent_stats),
         }
 
+    def get_commits_behind_origin(self) -> Dict[str, Any]:
+        """Get how many commits local branch is behind origin.
+
+        Returns:
+            Dict with:
+            - behind_count: int - commits behind origin
+            - ahead_count: int - commits ahead of origin
+            - status: str - 'up-to-date', 'behind', 'ahead', 'diverged', 'no-upstream', 'error'
+            - message: str - human-readable status
+            - last_fetch: str - time since last fetch (if available)
+        """
+        try:
+            # Fetch to update refs (quick, no merge)
+            # Use --quiet to suppress output
+            fetch_result = subprocess.run(
+                ["git", "fetch", "--quiet"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                cwd=PROJECT_ROOT
+            )
+
+            # Get current branch
+            branch = subprocess.run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                capture_output=True, text=True, check=True, cwd=PROJECT_ROOT
+            ).stdout.strip()
+
+            # Check if upstream is configured
+            try:
+                upstream = subprocess.run(
+                    ["git", "rev-parse", "--abbrev-ref", "@{upstream}"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    cwd=PROJECT_ROOT
+                ).stdout.strip()
+            except subprocess.CalledProcessError:
+                return {
+                    "behind_count": 0,
+                    "ahead_count": 0,
+                    "status": "no-upstream",
+                    "message": f"Branch '{branch}' has no upstream configured",
+                    "last_fetch": None,
+                }
+
+            # Get behind/ahead counts
+            # Format: "ahead\tbehind"
+            result = subprocess.run(
+                ["git", "rev-list", "--left-right", "--count", "HEAD...@{upstream}"],
+                capture_output=True,
+                text=True,
+                check=True,
+                cwd=PROJECT_ROOT
+            )
+
+            # Parse "ahead\tbehind"
+            parts = result.stdout.strip().split()
+            if len(parts) != 2:
+                return {
+                    "behind_count": 0,
+                    "ahead_count": 0,
+                    "status": "error",
+                    "message": "Could not parse git output",
+                    "last_fetch": None,
+                }
+
+            ahead, behind = map(int, parts)
+
+            # Determine status
+            if ahead == 0 and behind == 0:
+                status = "up-to-date"
+                message = f"Up-to-date with {upstream}"
+            elif ahead > 0 and behind == 0:
+                status = "ahead"
+                message = f"Ahead of {upstream} by {ahead} commit{'s' if ahead != 1 else ''}"
+            elif ahead == 0 and behind > 0:
+                status = "behind"
+                message = f"Behind {upstream} by {behind} commit{'s' if behind != 1 else ''}"
+            else:
+                status = "diverged"
+                message = f"Diverged from {upstream}: +{ahead} -{behind}"
+
+            # Try to get last fetch time
+            last_fetch = None
+            try:
+                fetch_head = PROJECT_ROOT / ".git" / "FETCH_HEAD"
+                if fetch_head.exists():
+                    mtime = fetch_head.stat().st_mtime
+                    fetch_time = datetime.fromtimestamp(mtime)
+                    delta = datetime.now() - fetch_time
+
+                    if delta.days > 0:
+                        last_fetch = f"{delta.days}d ago"
+                    elif delta.seconds >= 3600:
+                        last_fetch = f"{delta.seconds // 3600}h ago"
+                    elif delta.seconds >= 60:
+                        last_fetch = f"{delta.seconds // 60}m ago"
+                    else:
+                        last_fetch = "just now"
+            except Exception:
+                pass
+
+            return {
+                "behind_count": behind,
+                "ahead_count": ahead,
+                "status": status,
+                "message": message,
+                "last_fetch": last_fetch,
+            }
+
+        except subprocess.TimeoutExpired:
+            return {
+                "behind_count": 0,
+                "ahead_count": 0,
+                "status": "error",
+                "message": "Network timeout during fetch",
+                "last_fetch": None,
+            }
+        except subprocess.CalledProcessError as e:
+            return {
+                "behind_count": 0,
+                "ahead_count": 0,
+                "status": "error",
+                "message": f"Git error: {e.stderr.strip() if e.stderr else 'unknown'}",
+                "last_fetch": None,
+            }
+        except Exception as e:
+            return {
+                "behind_count": 0,
+                "ahead_count": 0,
+                "status": "error",
+                "message": f"Unexpected error: {str(e)}",
+                "last_fetch": None,
+            }
+
     def get_git_integration_status(self) -> Dict[str, Any]:
         """Get git integration status."""
         try:
@@ -517,12 +653,16 @@ class DashboardMetrics:
                 if "task:" in line.lower() or "T-" in line:
                     commits_with_tasks.append(line)
 
+            # Check commits behind origin
+            origin_status = self.get_commits_behind_origin()
+
             return {
                 "branch": branch,
                 "is_main": is_main,
                 "drift": drift,
                 "uncommitted_files": uncommitted_files,
                 "recent_task_commits": commits_with_tasks[:5],
+                "origin_status": origin_status,
             }
         except Exception as e:
             return {
@@ -531,6 +671,10 @@ class DashboardMetrics:
                 "drift": None,
                 "uncommitted_files": 0,
                 "recent_task_commits": [],
+                "origin_status": {
+                    "status": "error",
+                    "message": str(e),
+                },
                 "error": str(e),
             }
 
@@ -701,21 +845,69 @@ def render_git_integration_section(stats: Dict[str, Any], width: int = 80) -> Li
 
     # Current branch
     branch_color = Colors.GREEN if stats['is_main'] else Colors.YELLOW
-    lines.append(f"│ {bold('Current Branch:')} {colorize(stats['branch'], branch_color):>15}                                  │")
+    lines.append(f"│ {bold('Current Branch:')} {colorize(stats['branch'], branch_color):<50}                 │")
 
-    # Branch drift
+    # Origin sync status
+    origin_status = stats.get('origin_status', {})
+    if origin_status:
+        status_type = origin_status.get('status', 'error')
+        message = origin_status.get('message', 'Unknown')
+        behind_count = origin_status.get('behind_count', 0)
+        ahead_count = origin_status.get('ahead_count', 0)
+        last_fetch = origin_status.get('last_fetch')
+
+        # Determine color and warning icon
+        if status_type == 'up-to-date':
+            status_color = Colors.GREEN
+            icon = "✓"
+        elif status_type == 'ahead':
+            status_color = Colors.CYAN
+            icon = "↑"
+        elif status_type == 'behind':
+            # Warn if significantly behind
+            if behind_count >= 5:
+                status_color = Colors.RED
+                icon = "⚠️"
+            else:
+                status_color = Colors.YELLOW
+                icon = "↓"
+        elif status_type == 'diverged':
+            status_color = Colors.YELLOW
+            icon = "⇅"
+        elif status_type == 'no-upstream':
+            status_color = Colors.DIM
+            icon = "ⓘ"
+        else:  # error
+            status_color = Colors.DIM
+            icon = "✗"
+
+        # Display status line
+        status_line = f"{icon} {message}"
+        lines.append(f"│ {bold('Origin Status:')} {colorize(status_line, status_color):<50}            │")
+
+        # Show last fetch time if available
+        if last_fetch:
+            lines.append(f"│ {bold('Last Fetch:')} {colorize(last_fetch, Colors.DIM):<50}                 │")
+
+        # Add helpful tip if significantly behind
+        if status_type == 'behind' and behind_count >= 5:
+            lines.append(f"│                                                                              │")
+            lines.append(f"│ {colorize('⚠️  Tip: Run git pull to sync with origin', Colors.YELLOW):<68}      │")
+
+    # Branch drift from main
     if stats['drift']:
         ahead = stats['drift']['ahead']
         behind = stats['drift']['behind']
 
-        drift_status = f"+{ahead} -{behind}"
+        drift_status = f"+{ahead} -{behind} from main"
         drift_color = Colors.YELLOW if ahead > 0 or behind > 0 else Colors.GREEN
 
-        lines.append(f"│ {bold('Branch Drift:')} {colorize(drift_status, drift_color):>15}                                      │")
+        lines.append(f"│ {bold('Branch Drift:')} {colorize(drift_status, drift_color):<50}            │")
 
     # Uncommitted changes
     uncommitted_color = Colors.YELLOW if stats['uncommitted_files'] > 0 else Colors.GREEN
-    lines.append(f"│ {bold('Uncommitted Files:')} {colorize(str(stats['uncommitted_files']), uncommitted_color):>15}                                │")
+    uncommitted_status = f"{stats['uncommitted_files']} file{'s' if stats['uncommitted_files'] != 1 else ''}"
+    lines.append(f"│ {bold('Uncommitted:')} {colorize(uncommitted_status, uncommitted_color):<50}               │")
 
     lines.append(f"│                                                                              │")
 
