@@ -138,12 +138,6 @@ class CommitResult:
     reason: Optional[str] = None  # Failure reason
 
 
-@dataclass
-class RecoveryResult:
-    """Result of crash recovery operation."""
-
-    recovered_count: int
-    rolled_back_txs: List[str] = field(default_factory=list)
 
 
 class TransactionManager:
@@ -364,29 +358,20 @@ class TransactionManager:
         # Remove from active
         self._active_tx.pop(tx.id, None)
 
-    def recover(self) -> RecoveryResult:
+    def recover(self):
         """
         Recover from crash.
 
         Finds incomplete transactions from WAL and rolls them back.
+        Uses RecoveryManager for comprehensive recovery.
 
         Returns:
-            RecoveryResult with count of recovered transactions
+            RecoveryResult with detailed recovery information
         """
-        incomplete = self.wal.get_incomplete_transactions()
+        from .recovery import RecoveryManager
 
-        rolled_back = []
-        for tx_info in incomplete:
-            tx_id = tx_info["tx_id"]
-
-            # Log rollback
-            self.wal.log_tx_rollback(tx_id, "crash_recovery")
-            rolled_back.append(tx_id)
-
-        return RecoveryResult(
-            recovered_count=len(rolled_back),
-            rolled_back_txs=rolled_back
-        )
+        recovery_mgr = RecoveryManager(self.got_dir)
+        return recovery_mgr.recover()
 
     def _detect_conflicts(self, tx: Transaction) -> List[Conflict]:
         """

@@ -87,60 +87,60 @@ All progress is tracked in this file (not in GoT, since we're replacing it).
 
 ---
 
-## Phase 5: Sync Layer → **Batch 6**
+## Phase 5: Sync Layer ✅ COMPLETE
 
 ### Tests First (TDD)
-- [ ] `tests/unit/got/test_sync.py` - Sync operations
-  - [ ] test_push_fails_with_active_transaction
-  - [ ] test_pull_fails_with_active_transaction
-  - [ ] test_push_rejected_returns_pull_first
-  - [ ] test_conflict_detected_on_version_mismatch
+- [x] `tests/unit/got/test_sync.py` - Sync operations (20 tests)
+  - [x] test_push_fails_with_active_transaction
+  - [x] test_pull_fails_with_active_transaction
+  - [x] test_push_rejected_returns_pull_first
+  - [x] test_conflict_detected_on_version_mismatch
 
-- [ ] `tests/unit/got/test_conflict.py` - Conflict resolution
-  - [ ] test_ours_strategy_keeps_local
-  - [ ] test_theirs_strategy_takes_remote
-  - [ ] test_merge_strategy_combines_non_overlapping
-  - [ ] test_merge_fails_on_same_field_conflict
+- [x] `tests/unit/got/test_conflict.py` - Conflict resolution (15 tests)
+  - [x] test_ours_strategy_keeps_local
+  - [x] test_theirs_strategy_takes_remote
+  - [x] test_merge_strategy_combines_non_overlapping
+  - [x] test_merge_fails_on_same_field_conflict
 
 ### Implementation
-- [ ] `cortical/got/sync.py` - SyncManager (~200 lines)
-- [ ] `cortical/got/conflict.py` - ConflictResolver (~150 lines)
+- [x] `cortical/got/sync.py` - SyncManager (338 lines)
+- [x] `cortical/got/conflict.py` - ConflictResolver (247 lines)
 
 ---
 
-## Phase 6: Recovery & Edge Cases → **Batch 7**
+## Phase 6: Recovery & Edge Cases ✅ COMPLETE
 
 ### Tests First (TDD)
-- [ ] `tests/unit/got/test_recovery.py` - Recovery procedures
-  - [ ] test_startup_recovery_rolls_back_incomplete
-  - [ ] test_corrupted_entity_detected
-  - [ ] test_corrupted_wal_detected
-  - [ ] test_recovery_from_git_history
+- [x] `tests/unit/got/test_recovery.py` - Recovery procedures (8 tests)
+  - [x] test_startup_recovery_rolls_back_incomplete
+  - [x] test_corrupted_entity_detected
+  - [x] test_corrupted_wal_detected
+  - [x] test_recovery_from_git_history
 
-- [ ] `tests/unit/got/test_edge_cases.py` - Edge cases from design
-  - [ ] test_power_loss_during_wal_write
-  - [ ] test_power_loss_during_commit
-  - [ ] test_stale_lock_recovered
-  - [ ] test_concurrent_creates_different_ids
-  - [ ] test_large_transaction_memory_limit
+- [x] `tests/unit/got/test_edge_cases.py` - Edge cases from design (11 tests)
+  - [x] test_power_loss_during_wal_write
+  - [x] test_power_loss_during_commit
+  - [x] test_stale_lock_recovered
+  - [x] test_concurrent_creates_different_ids
+  - [x] test_large_transaction_memory_limit
 
 ### Implementation
-- [ ] `cortical/got/recovery.py` - Recovery procedures (~100 lines)
+- [x] `cortical/got/recovery.py` - Recovery procedures (259 lines)
 
 ---
 
-## Phase 4b: High-Level API → **Batch 8**
+## Phase 4b: High-Level API ✅ COMPLETE
 
 ### Tests First (TDD)
-- [ ] `tests/unit/got/test_api.py` - High-level API
-  - [ ] test_context_manager_commits_on_success
-  - [ ] test_context_manager_rolls_back_on_exception
-  - [ ] test_create_task_in_transaction
-  - [ ] test_update_task_in_transaction
-  - [ ] test_read_only_context
+- [x] `tests/unit/got/test_api.py` - High-level API (17 tests)
+  - [x] test_context_manager_commits_on_success
+  - [x] test_context_manager_rolls_back_on_exception
+  - [x] test_create_task_in_transaction
+  - [x] test_update_task_in_transaction
+  - [x] test_read_only_context
 
 ### Implementation
-- [ ] `cortical/got/api.py` - GoTTransactionalManager, TransactionContext (~200 lines)
+- [x] `cortical/got/api.py` - GoTManager, TransactionContext (454 lines)
 
 ---
 
@@ -183,6 +183,10 @@ All progress is tracked in this file (not in GoT, since we're replacing it).
 | 2025-12-21 | Phase 1-3 complete: Storage, WAL, Transaction layers |
 | 2025-12-21 | 148 tests passing (136 unit + 12 integration) |
 | 2025-12-21 | Public API exported via `cortical.got` |
+| 2025-12-21 | Phase 5 complete: Sync layer with conflict resolution (35 tests) |
+| 2025-12-21 | Phase 6 complete: Recovery and edge cases (19 tests) |
+| 2025-12-21 | Phase 4b complete: High-level API (17 tests) |
+| 2025-12-21 | **All phases complete: 219 tests passing (207 unit + 12 integration)** |
 
 ---
 
@@ -197,8 +201,13 @@ All progress is tracked in this file (not in GoT, since we're replacing it).
 | wal.py | 21 | 299 |
 | transaction.py | 15 | 166 |
 | tx_manager.py | 19 | 421 |
+| sync.py | 20 | 338 |
+| conflict.py | 15 | 247 |
+| recovery.py | 8 | 259 |
+| api.py | 17 | 454 |
+| edge_cases.py | 11 | - |
 | integration | 12 | - |
-| **Total** | **148** | **1702** |
+| **Total** | **219** | **2977** |
 
 ## Notes
 

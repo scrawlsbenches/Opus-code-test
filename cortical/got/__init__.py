@@ -50,8 +50,31 @@ from .tx_manager import (
     TransactionManager,
     CommitResult,
     Conflict,
-    RecoveryResult,
     ProcessLock,
+)
+
+from .recovery import (
+    RecoveryManager,
+    RecoveryResult,
+)
+
+from .sync import (
+    SyncManager,
+    SyncResult,
+    SyncStatus,
+)
+
+from .conflict import (
+    ConflictResolver,
+    ConflictStrategy,
+    SyncConflict,
+)
+
+from .api import (
+    GoTManager,
+    TransactionContext,
+    generate_task_id,
+    generate_decision_id,
 )
 
 __all__ = [
@@ -85,6 +108,21 @@ __all__ = [
     'TransactionManager',
     'CommitResult',
     'Conflict',
-    'RecoveryResult',
     'ProcessLock',
+    # Recovery
+    'RecoveryManager',
+    'RecoveryResult',
+    # Sync
+    'SyncManager',
+    'SyncResult',
+    'SyncStatus',
+    # Conflict Resolution
+    'ConflictResolver',
+    'ConflictStrategy',
+    'SyncConflict',
+    # High-level API
+    'GoTManager',
+    'TransactionContext',
+    'generate_task_id',
+    'generate_decision_id',
 ]
