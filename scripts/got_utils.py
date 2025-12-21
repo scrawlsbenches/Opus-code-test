@@ -601,6 +601,32 @@ class EventLog:
                             missing_nodes.append(f"old_id={old_id}")
                         logger.warning(f"Event {event_num}: Cannot create SUPERSEDES edge - missing nodes: {', '.join(missing_nodes)}")
 
+                elif event_type == "handoff.initiate":
+                    # Handoff events don't create graph nodes - they're just logged
+                    # But we should acknowledge them to prevent "unknown event type" warnings
+                    handoff_id = event.get("handoff_id") or event.get("id")
+                    if handoff_id:
+                        logger.debug(f"Handoff initiated: {handoff_id}")
+
+                elif event_type == "handoff.accept":
+                    handoff_id = event.get("handoff_id") or event.get("id")
+                    if handoff_id:
+                        logger.debug(f"Handoff accepted: {handoff_id}")
+
+                elif event_type == "handoff.complete":
+                    handoff_id = event.get("handoff_id") or event.get("id")
+                    if handoff_id:
+                        logger.debug(f"Handoff completed: {handoff_id}")
+
+                elif event_type == "handoff.reject":
+                    handoff_id = event.get("handoff_id") or event.get("id")
+                    if handoff_id:
+                        logger.debug(f"Handoff rejected: {handoff_id}")
+
+                elif event_type == "handoff.context":
+                    # Context additions during handoff - just acknowledge
+                    pass
+
                 elif event_type == "":
                     logger.warning(f"Event {event_num}: Empty event type")
                 else:

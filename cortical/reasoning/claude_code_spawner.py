@@ -804,7 +804,8 @@ class SubprocessClaudeCodeSpawner(AgentSpawner):
                 f.write(prompt)
             self._temp_files.add(path_obj)
             return path_obj
-        except Exception:
+        except (OSError, UnicodeEncodeError) as e:
+            # Clean up temp file on failure, then re-raise
             path_obj.unlink(missing_ok=True)
             raise
 
@@ -1216,5 +1217,7 @@ STATUS: SUCCESS or FAILURE
         """Cleanup on deletion."""
         try:
             self.cleanup()
-        except Exception:
-            pass  # Ignore errors during cleanup
+        except OSError:
+            # Ignore file/process errors during cleanup - can occur during
+            # interpreter shutdown when resources may already be released
+            pass
