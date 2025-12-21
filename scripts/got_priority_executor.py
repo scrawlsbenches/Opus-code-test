@@ -119,13 +119,15 @@ def get_blockers(task_id: str) -> List[str]:
             capture_output=True, text=True, timeout=10
         )
         # Parse blocker IDs from output
+        # Skip first line (query echo) and exclude the task's own ID
         blockers = []
-        for line in result.stdout.split('\n'):
+        lines = result.stdout.split('\n')
+        for line in lines[1:]:  # Skip query echo line
             if 'T-' in line:
                 # Extract task ID
                 import re
                 match = re.search(r'T-\d{8}-\d{6}-[a-f0-9]{4}', line)
-                if match:
+                if match and match.group() != task_id:  # Exclude self
                     blockers.append(match.group())
         return blockers
     except subprocess.TimeoutExpired:
