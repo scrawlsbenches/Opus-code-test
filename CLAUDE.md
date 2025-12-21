@@ -43,6 +43,19 @@ GoT (Graph of Thought) is our task and decision tracking system:
 ### 5. Work Priority Order
 1. **Security** → 2. **Bugs** → 3. **Features** → 4. **Documentation**
 
+### 6. Using Sub-Agents (Preserve Your Context!)
+
+**Delegate mechanical work, keep decisions in main context.**
+
+| Situation | Agent Type | Example |
+|-----------|-----------|---------|
+| "Where is X?" | `Explore` (quick) | Find implementation patterns |
+| "How does X work?" | `Explore` (thorough) | Understand full system flow |
+| "Implement feature X" | `general-purpose` | Write tests, implement features |
+| "How should we build X?" | `Plan` | Architecture decisions |
+
+**Full guide:** `docs/sub-agent-utilization-plan.md`
+
 ---
 
 ## Persona & Working Philosophy
