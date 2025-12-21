@@ -32,8 +32,23 @@ GoT (Graph of Thought) is our task and decision tracking system:
 | `python scripts/got_utils.py task create "Title" --priority high` | Create task |
 | `python scripts/got_utils.py task start T-XXX` | Start working on task |
 | `python scripts/got_utils.py task complete T-XXX` | Mark complete |
+| `python scripts/got_utils.py task show T-XXX` | Show task details |
+| `python scripts/got_utils.py task delete T-XXX [--force]` | Delete task (transactional) |
 | `python scripts/got_utils.py decision log "Decision" --rationale "Why"` | Log decision |
 | `python scripts/got_utils.py validate` | Health check |
+
+> **⚠️ NEVER delete GoT files directly!**
+>
+> GoT data in `.got/` is **transactional and event-sourced**. Direct file deletion:
+> - Breaks the event log (events reference deleted nodes)
+> - Corrupts dependency tracking
+> - Leaves orphaned edges and broken relationships
+>
+> **Always use `got task delete` command** which:
+> - Verifies preconditions (no dependents, not blocking others)
+> - Cleans up related edges
+> - Logs the deletion as an event for audit trail
+> - Supports `--force` for overriding safety checks
 
 ### 4. Critical Bugs Fixed (Don't Reintroduce!)
 - **Edge rebuild**: Use `from_id`/`to_id`, NOT `source_id`/`target_id` in `add_edge()`

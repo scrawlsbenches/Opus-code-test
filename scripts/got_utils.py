@@ -1413,6 +1413,96 @@ class GoTProjectManager:
 
         return True
 
+    def delete_task(
+        self,
+        task_id: str,
+        force: bool = False,
+    ) -> bool:
+        """Delete a task with transactional safety checks.
+
+        TRANSACTIONAL: This method verifies pre-conditions before deletion:
+        - Task must exist
+        - Without --force: fails if task has dependents, blocks others, or is in progress
+        - With --force: removes edges and deletes the task
+
+        Args:
+            task_id: The task ID to delete
+            force: If True, bypass safety checks and force deletion
+
+        Returns:
+            True if deleted, False if deletion blocked or task not found
+        """
+        # Normalize task ID
+        if not task_id.startswith("task:"):
+            task_id = f"task:{task_id}"
+
+        # Transactional check 1: Task must exist
+        task = self.get_task(task_id)
+        if not task:
+            logger.warning(f"Cannot delete non-existent task: {task_id}")
+            return False
+
+        # Get task status
+        status = task.properties.get("status", STATUS_PENDING)
+
+        if not force:
+            # Transactional check 2: Task should not have dependents
+            dependents = self.what_depends_on(task_id)
+            if dependents:
+                dependent_ids = [d.id for d in dependents]
+                logger.warning(
+                    f"Cannot delete task {task_id}: {len(dependents)} task(s) depend on it: "
+                    f"{', '.join(dependent_ids[:3])}{'...' if len(dependents) > 3 else ''}"
+                )
+                return False
+
+            # Transactional check 3: Task should not block others
+            # Find tasks that this task blocks
+            blocked_tasks = []
+            for edge in self.graph.edges:
+                if edge.source_id == task_id and edge.edge_type == EdgeType.BLOCKS:
+                    blocked_tasks.append(edge.target_id)
+            if blocked_tasks:
+                logger.warning(
+                    f"Cannot delete task {task_id}: it blocks {len(blocked_tasks)} task(s): "
+                    f"{', '.join(blocked_tasks[:3])}{'...' if len(blocked_tasks) > 3 else ''}"
+                )
+                return False
+
+            # Transactional check 4: Task should not be in progress
+            if status == STATUS_IN_PROGRESS:
+                logger.warning(
+                    f"Cannot delete in-progress task {task_id}. Use --force to override."
+                )
+                return False
+
+        # Remove edges to/from this task
+        edges_to_remove = []
+        for edge in self.graph.edges:
+            if edge.source_id == task_id or edge.target_id == task_id:
+                edges_to_remove.append(edge)
+
+        for edge in edges_to_remove:
+            # Log edge deletion
+            self.event_log.log_edge_delete(
+                edge.source_id, edge.target_id, edge.edge_type.name
+            )
+            # Remove from graph
+            self.graph.edges.remove(edge)
+
+        # Remove the task from graph
+        if task_id in self.graph.nodes:
+            del self.graph.nodes[task_id]
+
+        # Log the deletion (source of truth)
+        self.event_log.log_node_delete(task_id)
+
+        # Log to WAL for crash recovery
+        self.wal.log_remove_node(task_id)
+
+        logger.info(f"Deleted task: {task_id}")
+        return True
+
     def add_dependency(self, task_id: str, depends_on_id: str) -> bool:
         """Add dependency between tasks.
 
@@ -2548,6 +2638,57 @@ def cmd_task_block(args, manager: GoTProjectManager) -> int:
         return 1
 
 
+def cmd_task_delete(args, manager: GoTProjectManager) -> int:
+    """Delete a task with transactional safety checks.
+
+    TRANSACTIONAL: Verifies pre-conditions before deletion.
+    - Task must exist
+    - Without --force: fails if task has dependents, blocks others, or is in progress
+    - With --force: removes edges and deletes the task
+    """
+    task_id = args.task_id
+    force = getattr(args, 'force', False)
+
+    # Get task info before deletion for display
+    task = manager.get_task(task_id)
+    if not task:
+        print(f"Task not found: {task_id}")
+        return 1
+
+    # Show what we're about to do
+    task_title = task.content
+    task_status = task.properties.get("status", "unknown")
+
+    if not force:
+        # Show warnings about what might block deletion
+        dependents = manager.what_depends_on(task_id if task_id.startswith("task:") else f"task:{task_id}")
+        if dependents:
+            print(f"⚠️  Cannot delete: {len(dependents)} task(s) depend on this task:")
+            for d in dependents[:5]:
+                print(f"    - {d.id}: {d.content}")
+            if len(dependents) > 5:
+                print(f"    ... and {len(dependents) - 5} more")
+            print("\nUse --force to delete anyway (will orphan dependent tasks)")
+            return 1
+
+        if task_status == STATUS_IN_PROGRESS:
+            print(f"⚠️  Cannot delete: task is in progress")
+            print("Use --force to delete anyway")
+            return 1
+
+    # Attempt deletion
+    if manager.delete_task(task_id, force=force):
+        manager.save()
+        print(f"🗑️  Deleted: {task_id}")
+        print(f"   Title: {task_title}")
+        if force:
+            print("   (forced deletion)")
+        return 0
+    else:
+        print(f"Failed to delete: {task_id}")
+        return 1
+
+
 def cmd_sprint_create(args, manager: GoTProjectManager) -> int:
     """Create a sprint."""
     sprint_id = manager.create_sprint(
@@ -3493,6 +3634,12 @@ def main():
     block_parser.add_argument("--reason", "-r", required=True, help="Block reason")
     block_parser.add_argument("--blocker", "-b", help="Blocking task ID")
 
+    # task delete
+    delete_parser = task_subparsers.add_parser("delete", help="Delete a task (transactional)")
+    delete_parser.add_argument("task_id", help="Task ID to delete")
+    delete_parser.add_argument("--force", "-f", action="store_true",
+                               help="Force delete even if task has dependencies or is in progress")
+
     # Sprint commands
     sprint_parser = subparsers.add_parser("sprint", help="Sprint operations")
     sprint_subparsers = sprint_parser.add_subparsers(dest="sprint_command")
@@ -3650,6 +3797,8 @@ def main():
             return cmd_task_complete(args, manager)
         elif args.task_command == "block":
             return cmd_task_block(args, manager)
+        elif args.task_command == "delete":
+            return cmd_task_delete(args, manager)
         else:
             task_parser.print_help()
             return 1

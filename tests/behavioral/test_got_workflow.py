@@ -873,3 +873,211 @@ class TestTaskShowCommand:
             # The key point is get_task should handle both gracefully
 
 
+class TestTaskDeleteCommand:
+    """
+    Behavioral tests for 'got task delete' CLI command.
+
+    Delete must be TRANSACTIONAL:
+    - Verify task exists before deletion
+    - Check for dependencies (tasks that depend on this one)
+    - Check for blocking relationships
+    - Fail with clear error if unexpected state
+    - Log deletion as an event for audit trail
+    """
+
+    def test_delete_standalone_task(self, got_manager):
+        """
+        Scenario: User deletes a task with no dependencies.
+        Expected: Task is removed, deletion is logged.
+        """
+        # Create standalone task
+        task_id = got_manager.create_task(
+            title="Standalone task to delete",
+            priority=PRIORITY_LOW,
+            category="feature"
+        )
+
+        # Verify it exists
+        task = got_manager.get_task(task_id)
+        assert task is not None
+
+        # Delete it
+        success = got_manager.delete_task(task_id)
+        assert success is True
+
+        # Verify it's gone
+        task_after = got_manager.get_task(task_id)
+        assert task_after is None
+
+    def test_delete_nonexistent_task_fails(self, got_manager):
+        """
+        Scenario: User tries to delete a task that doesn't exist.
+        Expected: Returns False with error (transactional: verify before act).
+        """
+        success = got_manager.delete_task("T-NONEXISTENT-99999999")
+        assert success is False
+
+    def test_delete_task_with_dependents_fails_without_force(self, got_manager):
+        """
+        Scenario: User tries to delete a task that other tasks depend on.
+        Expected: Fails to protect dependent tasks.
+        """
+        # Create prerequisite task
+        prereq_id = got_manager.create_task(
+            title="Prerequisites task",
+            priority=PRIORITY_HIGH
+        )
+
+        # Create dependent task
+        dependent_id = got_manager.create_task(
+            title="Depends on prereq",
+            priority=PRIORITY_MEDIUM,
+            depends_on=[prereq_id]
+        )
+
+        # Try to delete prereq (should fail without force)
+        success = got_manager.delete_task(prereq_id, force=False)
+        assert success is False, "Should not delete task with dependents without --force"
+
+        # Prereq should still exist
+        task = got_manager.get_task(prereq_id)
+        assert task is not None
+
+    def test_delete_task_with_dependents_succeeds_with_force(self, got_manager):
+        """
+        Scenario: User force-deletes a task that has dependents.
+        Expected: Task is deleted, dependent relationships are cleaned up.
+        """
+        # Create prerequisite task
+        prereq_id = got_manager.create_task(
+            title="Prerequisites to force delete",
+            priority=PRIORITY_HIGH
+        )
+
+        # Create dependent task
+        dependent_id = got_manager.create_task(
+            title="Depends on prereq (will be orphaned)",
+            priority=PRIORITY_MEDIUM,
+            depends_on=[prereq_id]
+        )
+
+        # Force delete prereq
+        success = got_manager.delete_task(prereq_id, force=True)
+        assert success is True
+
+        # Prereq should be gone
+        task = got_manager.get_task(prereq_id)
+        assert task is None
+
+        # Dependent task should still exist (just orphaned)
+        dependent = got_manager.get_task(dependent_id)
+        assert dependent is not None
+
+    def test_delete_task_that_blocks_others_fails_without_force(self, got_manager):
+        """
+        Scenario: User tries to delete a task that blocks other tasks.
+        Expected: Fails to prevent confusion about blocked status.
+        """
+        # Create blocker task
+        blocker_id = got_manager.create_task(
+            title="Security audit (blocker)",
+            priority=PRIORITY_HIGH
+        )
+
+        # Create blocked task
+        blocked_id = got_manager.create_task(
+            title="Release (blocked by audit)",
+            priority=PRIORITY_MEDIUM
+        )
+        got_manager.block_task(blocked_id, "Waiting for security audit", blocker_id=blocker_id)
+
+        # Try to delete blocker (should fail without force)
+        success = got_manager.delete_task(blocker_id, force=False)
+        assert success is False, "Should not delete task that blocks others without --force"
+
+        # Blocker should still exist
+        task = got_manager.get_task(blocker_id)
+        assert task is not None
+
+    def test_delete_completed_task_allowed(self, got_manager):
+        """
+        Scenario: User deletes a completed task (cleanup).
+        Expected: Allowed (completed tasks are safe to remove).
+        """
+        # Create and complete task
+        task_id = got_manager.create_task(title="Completed task")
+        got_manager.start_task(task_id)
+        got_manager.complete_task(task_id, "All done")
+
+        # Delete it
+        success = got_manager.delete_task(task_id)
+        assert success is True
+
+        # Verify it's gone
+        task = got_manager.get_task(task_id)
+        assert task is None
+
+    def test_delete_in_progress_task_requires_force(self, got_manager):
+        """
+        Scenario: User tries to delete an in-progress task.
+        Expected: Fails without --force (protect active work).
+        """
+        # Create and start task
+        task_id = got_manager.create_task(title="In-progress task")
+        got_manager.start_task(task_id)
+
+        # Try to delete (should fail without force)
+        success = got_manager.delete_task(task_id, force=False)
+        assert success is False, "Should not delete in-progress task without --force"
+
+        # Task should still exist
+        task = got_manager.get_task(task_id)
+        assert task is not None
+
+    def test_delete_logs_event(self, got_manager, temp_got_dir):
+        """
+        Scenario: User deletes a task.
+        Expected: Deletion is logged as an event (audit trail).
+        """
+        # Create task
+        task_id = got_manager.create_task(title="Task for event logging test")
+
+        # Delete it
+        got_manager.delete_task(task_id)
+
+        # Check event log
+        events_dir = temp_got_dir / ".got" / "events"
+        if events_dir.exists():
+            from scripts.got_utils import EventLog
+            all_events = EventLog.load_all_events(events_dir)
+
+            # Find delete event
+            delete_events = [e for e in all_events if e.get("event") == "node.delete"]
+            matching = [e for e in delete_events if e.get("id") == task_id]
+            assert len(matching) >= 1, "Deletion should be logged as an event"
+
+    def test_delete_removes_edges(self, got_manager):
+        """
+        Scenario: User deletes a task with edges.
+        Expected: Edges to/from the task are also removed.
+        """
+        # Create tasks with relationships
+        task1_id = got_manager.create_task(title="Task 1")
+        task2_id = got_manager.create_task(title="Task 2", depends_on=[task1_id])
+        task3_id = got_manager.create_task(title="Task 3", depends_on=[task2_id])
+
+        # Force delete task2 (middle of chain)
+        success = got_manager.delete_task(task2_id, force=True)
+        assert success is True
+
+        # Task1 and Task3 should still exist
+        assert got_manager.get_task(task1_id) is not None
+        assert got_manager.get_task(task3_id) is not None
+
+        # Task3 should no longer have task2 as a dependency
+        # (edge cleanup should have happened)
+        deps = got_manager.get_task_dependencies(task3_id)
+        dep_ids = [d.id for d in deps]
+        assert task2_id not in dep_ids, "Edges to deleted task should be removed"
+
+
