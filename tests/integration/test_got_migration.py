@@ -192,19 +192,19 @@ class TestGoTMigration:
         result = migrator.migrate()
         assert result.success
 
-        # Read back the migrated task
+        # Read back the migrated task (migration strips 'task:' prefix)
         manager = GoTManager(target_dir)
-        task = manager.get_task("task:T-20251221-100000-0001")
+        task = manager.get_task("T-20251221-100000-0001")
 
         assert task is not None
-        assert task.id == "task:T-20251221-100000-0001"
+        assert task.id == "T-20251221-100000-0001"
         assert task.title == "Test task 1"
         assert task.status == "pending"
         assert task.priority == "high"
         assert task.description == "Test description"
 
-        # Check WAL task
-        wal_task = manager.get_task("task:T-20251221-100300-0002")
+        # Check WAL task (migration strips 'task:' prefix)
+        wal_task = manager.get_task("T-20251221-100300-0002")
         assert wal_task is not None
         assert wal_task.title == "WAL task"
         assert wal_task.status == "in_progress"
@@ -322,9 +322,9 @@ class TestGoTMigration:
         result = migrator.migrate()
         assert result.success
 
-        # Verify update was applied
+        # Verify update was applied (migration strips 'task:' prefix)
         manager = GoTManager(target_dir)
-        task = manager.get_task("task:T-TEST-001")
+        task = manager.get_task("T-TEST-001")
 
         assert task is not None
         assert task.title == "Updated title"
@@ -414,14 +414,14 @@ class TestGoTMigration:
         result = migrator.migrate()
         assert result.success
 
-        # Verify status mappings
+        # Verify status mappings (migration strips 'task:' prefix)
         manager = GoTManager(target_dir)
 
-        task1 = manager.get_task("task:T-TEST-001")
+        task1 = manager.get_task("T-TEST-001")
         assert task1.status == "pending"  # deferred → pending
 
-        task2 = manager.get_task("task:T-TEST-002")
+        task2 = manager.get_task("T-TEST-002")
         assert task2.status == "blocked"  # cancelled → blocked
 
-        task3 = manager.get_task("task:T-TEST-003")
+        task3 = manager.get_task("T-TEST-003")
         assert task3.status == "completed"  # done → completed

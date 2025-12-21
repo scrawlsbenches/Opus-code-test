@@ -114,9 +114,13 @@ class GoTMigrator:
         self._parse_events()
         self._parse_wal()
 
+        # Count unique entities (we store by both original and clean ID, so dedupe)
+        unique_tasks = {task.id: task for task in self.tasks.values()}
+        unique_decisions = {dec.id: dec for dec in self.decisions.values()}
+
         return MigrationAnalysis(
-            tasks=len(self.tasks),
-            decisions=len(self.decisions),
+            tasks=len(unique_tasks),
+            decisions=len(unique_decisions),
             edges=len(self.edges),
             events=event_count,
             wal_entries=wal_count,
@@ -147,8 +151,11 @@ class GoTMigrator:
         print("Parsing WAL...")
         self._parse_wal()
 
-        tasks_migrated = len(self.tasks)
-        decisions_migrated = len(self.decisions)
+        # Count unique entities (we store by both original and clean ID, so dedupe by task.id)
+        unique_tasks = {task.id: task for task in self.tasks.values()}
+        unique_decisions = {dec.id: dec for dec in self.decisions.values()}
+        tasks_migrated = len(unique_tasks)
+        decisions_migrated = len(unique_decisions)
         edges_migrated = len(self.edges)
 
         print(f"Found {tasks_migrated} tasks, {decisions_migrated} decisions, {edges_migrated} edges")
@@ -231,15 +238,18 @@ class GoTMigrator:
         print("Verifying migration...")
         manager = GoTManager(self.target_dir)
 
+        # Get unique tasks by clean ID (deduplicate since we store by both prefixed and clean IDs)
+        unique_tasks = {task.id: task for task in self.tasks.values()}
+
         # Verify task count
         with manager.transaction(read_only=True) as tx:
-            for task_id in self.tasks.keys():
+            for task_id, task in unique_tasks.items():
                 migrated_task = tx.get_task(task_id)
                 if migrated_task is None:
                     self.warnings.append(f"Task not found in migrated store: {task_id}")
                     return False
 
-        print("Verification passed")
+        print(f"Verification passed - {len(unique_tasks)} unique tasks verified")
         return True
 
     def _count_events(self) -> int:
@@ -364,6 +374,14 @@ class GoTMigrator:
             self._apply_updates(decision, updates)
             decision.bump_version()
 
+    def _strip_id_prefix(self, node_id: str) -> str:
+        """Strip 'task:' or 'decision:' prefix from node ID."""
+        if node_id.startswith("task:"):
+            return node_id[5:]  # len("task:") = 5
+        if node_id.startswith("decision:"):
+            return node_id[9:]  # len("decision:") = 9
+        return node_id
+
     def _process_edge_create(self, event: Dict[str, Any]) -> None:
         """Process edge.create event."""
         edge_data = event.get("data", {})
@@ -374,10 +392,14 @@ class GoTMigrator:
         if not (source_id and target_id and edge_type):
             return
 
+        # Strip prefixes from source and target IDs
+        clean_source = self._strip_id_prefix(source_id)
+        clean_target = self._strip_id_prefix(target_id)
+
         edge = Edge(
             id="",  # Auto-generated
-            source_id=source_id,
-            target_id=target_id,
+            source_id=clean_source,
+            target_id=clean_target,
             edge_type=edge_type,
             weight=edge_data.get("weight", 1.0),
             confidence=edge_data.get("confidence", 1.0)
@@ -437,10 +459,14 @@ class GoTMigrator:
         if not (source_id and target_id and edge_type):
             return
 
+        # Strip prefixes from source and target IDs
+        clean_source = self._strip_id_prefix(source_id)
+        clean_target = self._strip_id_prefix(target_id)
+
         edge = Edge(
             id="",  # Auto-generated
-            source_id=source_id,
-            target_id=target_id,
+            source_id=clean_source,
+            target_id=clean_target,
             edge_type=edge_type,
             weight=payload.get("weight", 1.0),
             confidence=payload.get("confidence", 1.0)

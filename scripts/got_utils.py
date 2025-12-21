@@ -35,6 +35,20 @@ from cortical.reasoning.thought_graph import ThoughtGraph
 from cortical.reasoning.graph_of_thought import NodeType, EdgeType, ThoughtNode
 from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery
 
+# Import transactional backend (new)
+try:
+    from cortical.got.api import GoTManager as TxGoTManager
+    from cortical.got.types import Task as TxTask, Decision as TxDecision, Edge as TxEdge
+    from cortical.got.config import DurabilityMode
+    TX_BACKEND_AVAILABLE = True
+except ImportError:
+    TX_BACKEND_AVAILABLE = False
+    TxGoTManager = None
+    TxTask = None
+    TxDecision = None
+    TxEdge = None
+    DurabilityMode = None
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -44,10 +58,19 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 GOT_DIR = PROJECT_ROOT / ".got"
+GOT_TX_DIR = PROJECT_ROOT / ".got-tx"  # Transactional backend directory
 WAL_DIR = GOT_DIR / "wal"
 SNAPSHOTS_DIR = GOT_DIR / "snapshots"
 EVENTS_DIR = GOT_DIR / "events"  # Git-tracked event logs (source of truth)
 TASKS_DIR = PROJECT_ROOT / "tasks"
+
+# Backend selection (environment variable or auto-detect)
+# Set GOT_USE_TX=1 to force transactional backend
+# Set GOT_USE_TX=0 to force event-sourced backend
+USE_TX_BACKEND = os.environ.get("GOT_USE_TX", "").lower() in ("1", "true", "yes")
+if not USE_TX_BACKEND and TX_BACKEND_AVAILABLE:
+    # Auto-detect: if .got-tx exists and has entities, use it
+    USE_TX_BACKEND = (GOT_TX_DIR / "entities").exists()
 
 # Status values
 STATUS_PENDING = "pending"
@@ -1400,7 +1423,277 @@ class HandoffManager:
 
 
 # =============================================================================
-# GRAPH MANAGER
+# TRANSACTIONAL ADAPTER (New Backend)
+# =============================================================================
+
+class TransactionalGoTAdapter:
+    """
+    Adapter that wraps the transactional GoTManager to provide
+    the same interface as GoTProjectManager.
+
+    This enables seamless switching between event-sourced and
+    transactional backends without changing command handlers.
+    """
+
+    def __init__(self, got_dir: Path = GOT_TX_DIR):
+        if not TX_BACKEND_AVAILABLE:
+            raise RuntimeError("Transactional backend not available")
+
+        self.got_dir = Path(got_dir)
+        self._manager = TxGoTManager(self.got_dir, durability=DurabilityMode.BALANCED)
+
+        # Compatibility attributes (some commands access these directly)
+        self.graph = ThoughtGraph()
+        self.events_dir = self.got_dir / "events"  # Not used but needed for compat
+        self.wal_dir = self.got_dir / "wal"
+        self.snapshots_dir = self.got_dir / "snapshots"
+
+        # Ensure directories exist
+        self.events_dir.mkdir(parents=True, exist_ok=True)
+
+    def _strip_prefix(self, node_id: str) -> str:
+        """Strip task:/decision: prefix from ID."""
+        if node_id.startswith("task:"):
+            return node_id[5:]
+        if node_id.startswith("decision:"):
+            return node_id[9:]
+        return node_id
+
+    def _add_prefix(self, node_id: str, prefix: str = "task:") -> str:
+        """Add prefix to ID if not present."""
+        if not node_id.startswith(prefix):
+            return f"{prefix}{node_id}"
+        return node_id
+
+    def _tx_task_to_node(self, task: "TxTask") -> ThoughtNode:
+        """Convert TxTask to ThoughtNode for compatibility."""
+        return ThoughtNode(
+            id=f"task:{task.id}",
+            node_type=NodeType.TASK,
+            content=task.title,
+            properties={
+                "title": task.title,
+                "status": task.status,
+                "priority": task.priority,
+                "category": task.properties.get("category", ""),
+                "description": task.description,
+                "retrospective": task.properties.get("retrospective", ""),
+                **task.properties,
+            },
+            metadata={
+                "created_at": task.created_at,
+                "updated_at": task.modified_at,
+                **task.metadata,
+            },
+        )
+
+    def create_task(
+        self,
+        title: str,
+        priority: str = "medium",
+        category: str = "feature",
+        description: str = "",
+        sprint_id: Optional[str] = None,
+        depends_on: Optional[List[str]] = None,
+        blocks: Optional[List[str]] = None,
+    ) -> str:
+        """Create a new task."""
+        task = self._manager.create_task(
+            title=title,
+            priority=priority,
+            description=description,
+            properties={"category": category},
+            metadata={
+                "session_id": os.environ.get("CLAUDE_SESSION_ID", "unknown"),
+                "branch": self._get_current_branch(),
+            },
+        )
+
+        # Add dependencies
+        if depends_on:
+            for dep_id in depends_on:
+                clean_dep = self._strip_prefix(dep_id)
+                try:
+                    self._manager.add_dependency(task.id, clean_dep)
+                    print(f"  Added dependency: {task.id} depends on {clean_dep}")
+                except Exception as e:
+                    print(f"  Warning: Could not add dependency to {clean_dep}: {e}")
+
+        # Add blocks
+        if blocks:
+            for blocked_id in blocks:
+                clean_blocked = self._strip_prefix(blocked_id)
+                try:
+                    self._manager.add_blocks(task.id, clean_blocked)
+                    print(f"  Added blocks: {task.id} blocks {clean_blocked}")
+                except Exception as e:
+                    print(f"  Warning: Could not add blocks to {clean_blocked}: {e}")
+
+        return f"task:{task.id}"
+
+    def get_task(self, task_id: str) -> Optional[ThoughtNode]:
+        """Get a task by ID."""
+        clean_id = self._strip_prefix(task_id)
+        with self._manager.transaction(read_only=True) as tx:
+            task = tx.get_task(clean_id)
+            if task:
+                return self._tx_task_to_node(task)
+        return None
+
+    def list_tasks(
+        self,
+        status: Optional[str] = None,
+        priority: Optional[str] = None,
+        category: Optional[str] = None,
+        sprint_id: Optional[str] = None,
+        blocked_only: bool = False,
+    ) -> List[ThoughtNode]:
+        """List tasks with optional filters."""
+        tasks = self._manager.find_tasks(status=status, priority=priority)
+
+        # Apply additional filters
+        result = []
+        for task in tasks:
+            # Filter by category if specified
+            if category and task.properties.get("category") != category:
+                continue
+
+            result.append(self._tx_task_to_node(task))
+
+        return result
+
+    def update_task(self, task_id: str, **updates) -> bool:
+        """Update a task."""
+        clean_id = self._strip_prefix(task_id)
+        try:
+            self._manager.update_task(clean_id, **updates)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update task {clean_id}: {e}")
+            return False
+
+    def start_task(self, task_id: str) -> bool:
+        """Start a task (set status to in_progress)."""
+        return self.update_task(task_id, status="in_progress")
+
+    def complete_task(self, task_id: str, retrospective: str = "") -> bool:
+        """Complete a task."""
+        updates = {"status": "completed"}
+        if retrospective:
+            updates["properties"] = {"retrospective": retrospective}
+        return self.update_task(task_id, **updates)
+
+    def block_task(self, task_id: str, reason: str = "", blocked_by: Optional[str] = None) -> bool:
+        """Block a task."""
+        return self.update_task(task_id, status="blocked")
+
+    def delete_task(self, task_id: str, force: bool = False) -> Tuple[bool, str]:
+        """Delete a task."""
+        clean_id = self._strip_prefix(task_id)
+        try:
+            self._manager.delete_task(clean_id, force=force)
+            return True, f"Task {task_id} deleted"
+        except Exception as e:
+            return False, str(e)
+
+    def add_dependency(self, task_id: str, depends_on_id: str) -> bool:
+        """Add a dependency edge."""
+        clean_task = self._strip_prefix(task_id)
+        clean_dep = self._strip_prefix(depends_on_id)
+        try:
+            self._manager.add_dependency(clean_task, clean_dep)
+            return True
+        except Exception:
+            return False
+
+    def add_blocks(self, task_id: str, blocks_id: str) -> bool:
+        """Add a blocks edge."""
+        clean_task = self._strip_prefix(task_id)
+        clean_blocked = self._strip_prefix(blocks_id)
+        try:
+            self._manager.add_blocks(clean_task, clean_blocked)
+            return True
+        except Exception:
+            return False
+
+    def get_blockers(self, task_id: str) -> List[ThoughtNode]:
+        """Get tasks that block this task."""
+        clean_id = self._strip_prefix(task_id)
+        blockers = self._manager.get_blockers(clean_id)
+        return [self._tx_task_to_node(t) for t in blockers]
+
+    def get_dependents(self, task_id: str) -> List[ThoughtNode]:
+        """Get tasks that depend on this task."""
+        clean_id = self._strip_prefix(task_id)
+        dependents = self._manager.get_dependents(clean_id)
+        return [self._tx_task_to_node(t) for t in dependents]
+
+    def list_all_tasks(self) -> List[ThoughtNode]:
+        """List all tasks."""
+        return self.list_tasks()
+
+    def validate(self) -> List[str]:
+        """Validate the GoT state."""
+        issues = []
+        try:
+            # Basic validation
+            tasks = self._manager.list_all_tasks()
+            if not tasks:
+                issues.append("No tasks found")
+        except Exception as e:
+            issues.append(f"Validation error: {e}")
+        return issues
+
+    def _get_current_branch(self) -> str:
+        """Get current git branch name."""
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                capture_output=True, text=True, check=True
+            )
+            return result.stdout.strip()
+        except Exception:
+            return "unknown"
+
+    # Stub methods for compatibility (not implemented in TX backend yet)
+    def create_decision(self, *args, **kwargs) -> str:
+        raise NotImplementedError("Decisions not yet implemented in TX backend")
+
+    def list_decisions(self, *args, **kwargs) -> List:
+        return []
+
+    def get_decisions_for_task(self, *args, **kwargs) -> List:
+        return []
+
+    def create_sprint(self, *args, **kwargs) -> str:
+        raise NotImplementedError("Sprints not yet implemented in TX backend")
+
+    def get_current_sprint(self, *args, **kwargs):
+        return None
+
+    def list_sprints(self, *args, **kwargs) -> List:
+        return []
+
+    def initiate_handoff(self, *args, **kwargs) -> str:
+        raise NotImplementedError("Handoffs not yet implemented in TX backend")
+
+    def accept_handoff(self, *args, **kwargs) -> bool:
+        raise NotImplementedError("Handoffs not yet implemented in TX backend")
+
+    def complete_handoff(self, *args, **kwargs) -> bool:
+        raise NotImplementedError("Handoffs not yet implemented in TX backend")
+
+    def list_handoffs(self, *args, **kwargs) -> List:
+        return []
+
+    def sync_to_git(self) -> str:
+        """Sync to git (no-op for TX backend, state is already persistent)."""
+        return ""
+
+
+# =============================================================================
+# GRAPH MANAGER (Event-Sourced Backend)
 # =============================================================================
 
 class GoTProjectManager:
@@ -4253,8 +4546,18 @@ def main():
         parser.print_help()
         return 1
 
-    # Initialize manager
-    manager = GoTProjectManager()
+    # Initialize manager (use transactional backend if available)
+    if USE_TX_BACKEND and TX_BACKEND_AVAILABLE:
+        try:
+            manager = TransactionalGoTAdapter(GOT_TX_DIR)
+            if os.environ.get("GOT_DEBUG"):
+                print(f"[DEBUG] Using transactional backend at {GOT_TX_DIR}", file=sys.stderr)
+        except Exception as e:
+            print(f"Warning: Failed to initialize transactional backend: {e}", file=sys.stderr)
+            print("Falling back to event-sourced backend", file=sys.stderr)
+            manager = GoTProjectManager()
+    else:
+        manager = GoTProjectManager()
 
     # Route commands
     if args.command == "task":
