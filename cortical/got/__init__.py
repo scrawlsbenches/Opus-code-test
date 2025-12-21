@@ -83,6 +83,8 @@ from .api import (
     generate_decision_id,
 )
 
+from .protocol import GoTBackend
+
 __all__ = [
     # Errors
     'GoTError',
@@ -135,4 +137,6 @@ __all__ = [
     'TransactionContext',
     'generate_task_id',
     'generate_decision_id',
+    # Protocol
+    'GoTBackend',
 ]

@@ -24,7 +24,7 @@ import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass, field, asdict
 
 # Add project root to path
@@ -243,6 +243,71 @@ def generate_task_title_from_commit(commit_message: str) -> str:
     if match:
         return match.group(2).strip()
     return message
+
+
+# =============================================================================
+# BACKEND FACTORY
+# =============================================================================
+
+class GoTBackendFactory:
+    """Factory for creating GoT backend instances."""
+
+    @staticmethod
+    def create(
+        backend: Optional[str] = None,
+        got_dir: Optional[Path] = None,
+    ) -> "Union[GoTProjectManager, TransactionalGoTAdapter]":
+        """
+        Create appropriate GoT backend.
+
+        Args:
+            backend: "transactional", "event-sourced", or None for auto-detect
+            got_dir: Override default directory
+
+        Returns:
+            Backend instance
+
+        Raises:
+            ValueError: If invalid backend specified
+        """
+        # Auto-detect if not specified
+        if backend is None:
+            backend = GoTBackendFactory._detect_backend()
+
+        backend = backend.lower()
+
+        if backend == "transactional":
+            if not TX_BACKEND_AVAILABLE:
+                raise ValueError("Transactional backend not available")
+            return TransactionalGoTAdapter(got_dir or GOT_TX_DIR)
+        elif backend in ("event-sourced", "event_sourced", "events"):
+            return GoTProjectManager(got_dir or GOT_DIR)
+        else:
+            raise ValueError(f"Invalid backend: {backend}. Use 'transactional' or 'event-sourced'")
+
+    @staticmethod
+    def _detect_backend() -> str:
+        """Auto-detect which backend to use."""
+        # Check environment variable
+        env_backend = os.environ.get("GOT_BACKEND", "").lower()
+        if env_backend in ("transactional", "tx"):
+            return "transactional"
+        if env_backend in ("event-sourced", "events"):
+            return "event-sourced"
+
+        # Check if transactional store exists
+        if TX_BACKEND_AVAILABLE and (GOT_TX_DIR / "entities").exists():
+            return "transactional"
+
+        return "event-sourced"
+
+    @staticmethod
+    def get_available_backends() -> List[str]:
+        """Get list of available backends."""
+        backends = ["event-sourced"]
+        if TX_BACKEND_AVAILABLE:
+            backends.append("transactional")
+        return backends
 
 
 # =============================================================================
@@ -1452,7 +1517,7 @@ class TransactionalGoTAdapter:
         self.events_dir.mkdir(parents=True, exist_ok=True)
 
     def _strip_prefix(self, node_id: str) -> str:
-        """Strip task:/decision: prefix from ID."""
+        """Strip task:/decision: prefix from ID (legacy - maintains compatibility with old prefixed IDs)."""
         if node_id.startswith("task:"):
             return node_id[5:]
         if node_id.startswith("decision:"):
@@ -1460,15 +1525,13 @@ class TransactionalGoTAdapter:
         return node_id
 
     def _add_prefix(self, node_id: str, prefix: str = "task:") -> str:
-        """Add prefix to ID if not present."""
-        if not node_id.startswith(prefix):
-            return f"{prefix}{node_id}"
-        return node_id
+        """Add prefix to ID (legacy - now returns ID unchanged)."""
+        return node_id  # No longer adding prefixes
 
     def _tx_task_to_node(self, task: "TxTask") -> ThoughtNode:
         """Convert TxTask to ThoughtNode for compatibility."""
         return ThoughtNode(
-            id=f"task:{task.id}",
+            id=task.id,
             node_type=NodeType.TASK,
             content=task.title,
             properties={
@@ -1531,7 +1594,7 @@ class TransactionalGoTAdapter:
                     logger.warning(f"Could not add blocks edge from {task.id} to {clean_blocked}: {e}")
                     print(f"  Warning: Could not add blocks to {clean_blocked}: {e}")
 
-        return f"task:{task.id}"
+        return task.id
 
     def get_task(self, task_id: str) -> Optional[ThoughtNode]:
         """Get a task by ID."""
@@ -1940,7 +2003,7 @@ class TransactionalGoTAdapter:
             nodes = []
             for task in all_tasks:
                 nodes.append({
-                    "id": f"task:{task.id}",
+                    "id": task.id,
                     "type": "task",
                     "content": task.title,
                     "properties": {
@@ -1967,8 +2030,8 @@ class TransactionalGoTAdapter:
                             wrapper = json.load(f)
                             edge_data = wrapper.get("data", {})
                             edges.append({
-                                "source": f"task:{edge_data.get('source_id', '')}",
-                                "target": f"task:{edge_data.get('target_id', '')}",
+                                "source": edge_data.get('source_id', ''),
+                                "target": edge_data.get('target_id', ''),
                                 "type": edge_data.get("edge_type", ""),
                                 "weight": edge_data.get("weight", 1.0),
                             })
@@ -4839,6 +4902,13 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
+    # Global options
+    parser.add_argument(
+        "--backend",
+        choices=["transactional", "event-sourced"],
+        help="Override backend selection (default: auto-detect)"
+    )
+
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # Task commands
@@ -5034,18 +5104,17 @@ def main():
         parser.print_help()
         return 1
 
-    # Initialize manager (use transactional backend if available)
-    if USE_TX_BACKEND and TX_BACKEND_AVAILABLE:
-        try:
-            manager = TransactionalGoTAdapter(GOT_TX_DIR)
-            if os.environ.get("GOT_DEBUG"):
-                print(f"[DEBUG] Using transactional backend at {GOT_TX_DIR}", file=sys.stderr)
-        except Exception as e:
-            print(f"Warning: Failed to initialize transactional backend: {e}", file=sys.stderr)
-            print("Falling back to event-sourced backend", file=sys.stderr)
-            manager = GoTProjectManager()
-    else:
-        manager = GoTProjectManager()
+    # Initialize manager using factory
+    try:
+        backend = getattr(args, 'backend', None)
+        manager = GoTBackendFactory.create(backend=backend)
+        if os.environ.get("GOT_DEBUG"):
+            backend_type = "transactional" if isinstance(manager, TransactionalGoTAdapter) else "event-sourced"
+            backend_dir = GOT_TX_DIR if backend_type == "transactional" else GOT_DIR
+            print(f"[DEBUG] Using {backend_type} backend at {backend_dir}", file=sys.stderr)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
     # Route commands
     if args.command == "task":
