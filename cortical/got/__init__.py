@@ -56,6 +56,7 @@ from .tx_manager import (
 from .recovery import (
     RecoveryManager,
     RecoveryResult,
+    RepairResult,
 )
 
 from .sync import (
@@ -112,6 +113,7 @@ __all__ = [
     # Recovery
     'RecoveryManager',
     'RecoveryResult',
+    'RepairResult',
     # Sync
     'SyncManager',
     'SyncResult',

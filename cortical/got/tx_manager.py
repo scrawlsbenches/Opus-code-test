@@ -10,9 +10,12 @@ Orchestrates begin/commit/rollback with:
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 import sys
 import threading
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -22,6 +25,8 @@ from .errors import TransactionError, ConflictError
 from .versioned_store import VersionedStore
 from .wal import WALManager
 from .transaction import Transaction, TransactionState, generate_transaction_id
+
+logger = logging.getLogger(__name__)
 
 
 # Platform detection for file locking
@@ -53,10 +58,11 @@ class ProcessLock:
 
     def acquire(self, timeout: Optional[float] = None) -> bool:
         """
-        Acquire the lock.
+        Acquire the lock with timeout and stale lock recovery.
 
         Args:
-            timeout: Timeout in seconds (ignored for now, future enhancement)
+            timeout: Timeout in seconds. If None, single non-blocking attempt.
+                    If provided, retry with exponential backoff until timeout.
 
         Returns:
             True if lock acquired, False otherwise
@@ -70,20 +76,153 @@ class ProcessLock:
             # Create lock file if needed
             self.lock_path.parent.mkdir(parents=True, exist_ok=True)
 
+            # Timeout=None: single attempt (backward compatible)
+            if timeout is None:
+                return self._try_acquire_once()
+
+            # Timeout specified: retry with exponential backoff
+            start_time = time.time()
+            backoff_ms = 10  # Start with 10ms
+            max_backoff_ms = 500  # Cap at 500ms
+
+            while True:
+                # Try to acquire
+                if self._try_acquire_once():
+                    return True
+
+                # Check if timeout exceeded
+                elapsed = time.time() - start_time
+                if elapsed >= timeout:
+                    return False
+
+                # Exponential backoff, capped at max_backoff
+                sleep_time = min(backoff_ms / 1000.0, timeout - elapsed)
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+
+                # Double backoff for next iteration, cap at max
+                backoff_ms = min(backoff_ms * 2, max_backoff_ms)
+
+                # Check again if we've exceeded timeout after sleep
+                if time.time() - start_time >= timeout:
+                    return False
+
+    def _try_acquire_once(self) -> bool:
+        """
+        Try to acquire lock once (non-blocking).
+
+        Returns:
+            True if lock acquired, False otherwise
+        """
+        try:
             # Open file for locking
-            self._fd = open(self.lock_path, 'w')
+            self._fd = open(self.lock_path, 'r+' if self.lock_path.exists() else 'w+')
 
             # Platform-specific locking
             if sys.platform != 'win32':
                 try:
                     fcntl.flock(self._fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                 except (IOError, OSError):
+                    # Lock held by another process - check if stale
                     self._fd.close()
                     self._fd = None
-                    return False
+
+                    if self._is_stale_lock():
+                        logger.warning(
+                            f"Detected stale lock at {self.lock_path}, recovering..."
+                        )
+                        # Remove stale lock file and retry
+                        try:
+                            self.lock_path.unlink(missing_ok=True)
+                        except Exception as e:
+                            logger.error(f"Failed to remove stale lock: {e}")
+                            return False
+
+                        # Retry acquisition after removing stale lock
+                        try:
+                            self._fd = open(self.lock_path, 'w+')
+                            if sys.platform != 'win32':
+                                fcntl.flock(self._fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        except (IOError, OSError):
+                            if self._fd:
+                                self._fd.close()
+                                self._fd = None
+                            return False
+                    else:
+                        return False
+
+            # Successfully acquired - write holder info
+            try:
+                holder_info = {
+                    "pid": os.getpid(),
+                    "acquired_at": time.time()
+                }
+                self._fd.seek(0)
+                self._fd.truncate()
+                json.dump(holder_info, self._fd)
+                self._fd.flush()
+                os.fsync(self._fd.fileno())
+            except Exception as e:
+                logger.error(f"Failed to write lock holder info: {e}")
+                # Don't fail the lock acquisition if we can't write metadata
 
             self._lock_count = 1
             return True
+
+        except Exception as e:
+            # Catch all other exceptions and return False
+            logger.error(f"Unexpected error in lock acquisition: {e}")
+            if self._fd:
+                try:
+                    self._fd.close()
+                except Exception:
+                    pass
+                self._fd = None
+            return False
+
+    def _is_stale_lock(self) -> bool:
+        """
+        Check if lock file is stale (held by dead process).
+
+        Returns:
+            True if lock is stale and can be stolen, False otherwise
+        """
+        try:
+            # Read lock file to get holder PID
+            if not self.lock_path.exists():
+                return False
+
+            with open(self.lock_path, 'r') as f:
+                content = f.read().strip()
+                if not content:
+                    # Empty lock file - consider stale
+                    return True
+
+                holder_info = json.loads(content)
+                holder_pid = holder_info.get("pid")
+
+                if holder_pid is None:
+                    # No PID in lock file - consider stale
+                    return True
+
+                # Check if process is still alive
+                try:
+                    # os.kill(pid, 0) doesn't send signal, just checks if process exists
+                    os.kill(holder_pid, 0)
+                    # Process exists - lock is not stale
+                    return False
+                except OSError:
+                    # Process doesn't exist - lock is stale
+                    return True
+
+        except json.JSONDecodeError:
+            # Invalid JSON - consider stale
+            logger.warning(f"Lock file {self.lock_path} has invalid JSON")
+            return True
+        except Exception as e:
+            # Any other error - don't assume stale
+            logger.error(f"Error checking stale lock: {e}")
+            return False
 
     def release(self) -> None:
         """Release the lock."""

@@ -405,3 +405,218 @@ class TestProcessLock:
             assert lock._lock_count == 1
 
         assert lock._lock_count == 0
+
+    def test_lock_timeout_success(self, tmp_path):
+        """Test lock acquired within timeout."""
+        import threading
+        import time
+        from cortical.got.tx_manager import ProcessLock
+
+        lock_path = tmp_path / "timeout_test.lock"
+        lock1 = ProcessLock(lock_path, reentrant=False)
+        lock2 = ProcessLock(lock_path, reentrant=False)
+
+        # Lock1 acquires
+        assert lock1.acquire() is True
+
+        # Function to release lock1 after 0.2 seconds
+        def release_after_delay():
+            time.sleep(0.2)
+            lock1.release()
+
+        thread = threading.Thread(target=release_after_delay)
+        thread.start()
+
+        # Lock2 should acquire within 1 second timeout
+        start = time.time()
+        assert lock2.acquire(timeout=1.0) is True
+        elapsed = time.time() - start
+
+        # Should have waited approximately 0.2 seconds
+        assert 0.15 < elapsed < 0.4
+
+        lock2.release()
+        thread.join()
+
+    def test_lock_timeout_expired(self, tmp_path):
+        """Test lock not acquired when timeout expires."""
+        import time
+        from cortical.got.tx_manager import ProcessLock
+
+        lock_path = tmp_path / "timeout_expired.lock"
+        lock1 = ProcessLock(lock_path, reentrant=False)
+        lock2 = ProcessLock(lock_path, reentrant=False)
+
+        # Lock1 acquires and holds
+        assert lock1.acquire() is True
+
+        # Lock2 tries with short timeout (should fail)
+        start = time.time()
+        assert lock2.acquire(timeout=0.1) is False
+        elapsed = time.time() - start
+
+        # Should have waited approximately the timeout duration
+        assert 0.08 < elapsed < 0.2
+
+        lock1.release()
+
+    def test_lock_stale_recovery(self, tmp_path):
+        """Test stale lock from dead PID is recovered."""
+        import json
+        import os
+        from cortical.got.tx_manager import ProcessLock
+
+        lock_path = tmp_path / "stale.lock"
+
+        # Create a lock file with a fake (likely dead) PID
+        fake_pid = 999999  # Very unlikely to exist
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(lock_path, 'w') as f:
+            json.dump({"pid": fake_pid, "acquired_at": 0.0}, f)
+
+        # Try to acquire - should detect stale lock and steal it
+        lock = ProcessLock(lock_path, reentrant=False)
+        assert lock.acquire() is True
+
+        # Verify holder info was updated with current PID
+        with open(lock_path, 'r') as f:
+            holder_info = json.load(f)
+            assert holder_info["pid"] == os.getpid()
+
+        lock.release()
+
+    def test_lock_backoff_pattern(self, tmp_path):
+        """Test exponential backoff timing pattern."""
+        import time
+        from cortical.got.tx_manager import ProcessLock
+
+        lock_path = tmp_path / "backoff.lock"
+        lock1 = ProcessLock(lock_path, reentrant=False)
+        lock2 = ProcessLock(lock_path, reentrant=False)
+
+        # Lock1 acquires and holds
+        assert lock1.acquire() is True
+
+        # Lock2 tries with timeout - measure time
+        start = time.time()
+        result = lock2.acquire(timeout=0.3)
+        elapsed = time.time() - start
+
+        # Should fail (lock1 still holds)
+        assert result is False
+
+        # Should have retried multiple times with backoff
+        # Expected backoff: 10ms, 20ms, 40ms, 80ms, 160ms...
+        # In 0.3 seconds, should have several attempts
+        # Total time should be close to timeout
+        assert 0.25 < elapsed < 0.4
+
+        lock1.release()
+
+    def test_lock_writes_holder_info(self, tmp_path):
+        """Test that lock file contains PID and timestamp."""
+        import json
+        import os
+        import time
+        from cortical.got.tx_manager import ProcessLock
+
+        lock_path = tmp_path / "holder_info.lock"
+        lock = ProcessLock(lock_path)
+
+        before_time = time.time()
+        assert lock.acquire() is True
+        after_time = time.time()
+
+        # Read lock file
+        assert lock_path.exists()
+        with open(lock_path, 'r') as f:
+            holder_info = json.load(f)
+
+        # Verify structure
+        assert "pid" in holder_info
+        assert "acquired_at" in holder_info
+
+        # Verify values
+        assert holder_info["pid"] == os.getpid()
+        assert before_time <= holder_info["acquired_at"] <= after_time
+
+        lock.release()
+
+    def test_lock_no_timeout_backward_compatible(self, tmp_path):
+        """Test that timeout=None preserves original behavior."""
+        from cortical.got.tx_manager import ProcessLock
+
+        lock_path = tmp_path / "no_timeout.lock"
+        lock1 = ProcessLock(lock_path, reentrant=False)
+        lock2 = ProcessLock(lock_path, reentrant=False)
+
+        # Lock1 acquires
+        assert lock1.acquire() is True
+
+        # Lock2 with no timeout should fail immediately (non-blocking)
+        import time
+        start = time.time()
+        assert lock2.acquire(timeout=None) is False
+        elapsed = time.time() - start
+
+        # Should be nearly instant (< 10ms)
+        assert elapsed < 0.01
+
+        lock1.release()
+
+    def test_lock_handles_empty_lock_file(self, tmp_path):
+        """Test that empty lock file is considered stale."""
+        from cortical.got.tx_manager import ProcessLock
+
+        lock_path = tmp_path / "empty.lock"
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create empty lock file
+        lock_path.touch()
+
+        # Should be able to acquire (empty file = stale)
+        lock = ProcessLock(lock_path)
+        assert lock.acquire() is True
+
+        lock.release()
+
+    def test_lock_handles_invalid_json(self, tmp_path):
+        """Test that invalid JSON in lock file is considered stale."""
+        from cortical.got.tx_manager import ProcessLock
+
+        lock_path = tmp_path / "invalid.lock"
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create lock file with invalid JSON
+        with open(lock_path, 'w') as f:
+            f.write("not valid json {{{")
+
+        # Should be able to acquire (invalid JSON = stale)
+        lock = ProcessLock(lock_path)
+        assert lock.acquire() is True
+
+        lock.release()
+
+    def test_lock_reentrant_with_timeout(self, tmp_path):
+        """Test that reentrant lock works with timeout parameter."""
+        from cortical.got.tx_manager import ProcessLock
+
+        lock_path = tmp_path / "reentrant_timeout.lock"
+        lock = ProcessLock(lock_path, reentrant=True)
+
+        # First acquire
+        assert lock.acquire(timeout=1.0) is True
+        assert lock._lock_count == 1
+
+        # Second acquire (reentrant) - should succeed immediately
+        import time
+        start = time.time()
+        assert lock.acquire(timeout=1.0) is True
+        elapsed = time.time() - start
+
+        # Should be instant (no waiting for timeout)
+        assert elapsed < 0.01
+        assert lock._lock_count == 2
+
+        lock.release()
+        lock.release()

@@ -196,3 +196,191 @@ class TestRecovery:
         # Should be able to add actions
         result.add_action("Custom action")
         assert "Custom action" in result.actions_taken
+
+
+class TestOrphanRepair:
+    """Test orphan entity detection and repair."""
+
+    def _create_orphan_file(self, entities_dir, entity_id, title="Orphaned", corrupted=False):
+        """Helper to create an orphan entity file with correct format."""
+        from cortical.got.checksums import compute_checksum
+        from datetime import datetime, timezone
+
+        orphan_file = entities_dir / f"{entity_id}.json"
+
+        orphan_entity_data = {
+            "id": entity_id,
+            "title": title,
+            "entity_type": "task",
+            "status": "pending",
+            "priority": "medium",
+            "description": "",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "modified_at": datetime.now(timezone.utc).isoformat(),
+            "version": 1,
+            "metadata": {},
+            "properties": {}
+        }
+
+        orphan_wrapper = {
+            "_checksum": compute_checksum(orphan_entity_data) if not corrupted else "invalid_checksum",
+            "_written_at": datetime.now(timezone.utc).isoformat(),
+            "data": orphan_entity_data
+        }
+
+        with open(orphan_file, 'w', encoding='utf-8') as f:
+            json.dump(orphan_wrapper, f)
+
+        return orphan_file
+
+    def test_detect_orphaned_entities(self, tmp_path):
+        """Test detection of orphaned entities."""
+        # Create transaction manager and write a task
+        tm = TransactionManager(tmp_path)
+        tx = tm.begin()
+        task = Task(id="T-normal", title="Normal task")
+        tm.write(tx, task)
+        tm.commit(tx)
+
+        # Create an orphaned entity by directly writing to disk
+        entities_dir = tmp_path / "entities"
+        self._create_orphan_file(entities_dir, "T-orphan", "Orphaned task")
+
+        # Detect orphans
+        recovery_mgr = RecoveryManager(tmp_path)
+        orphaned = recovery_mgr.detect_orphaned_entities()
+
+        # Should detect the orphan
+        assert "T-orphan" in orphaned
+        assert "T-normal" not in orphaned
+
+    def test_repair_orphans_delete(self, tmp_path):
+        """Test that orphan files are deleted with 'delete' strategy."""
+        # Create an orphaned entity
+        entities_dir = tmp_path / "entities"
+        entities_dir.mkdir(parents=True, exist_ok=True)
+
+        orphan_file = self._create_orphan_file(entities_dir, "T-orphan")
+
+        # Create WAL directory (empty WAL)
+        wal_dir = tmp_path / "wal"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+        (wal_dir / "current.wal").touch()
+
+        # Repair orphans
+        recovery_mgr = RecoveryManager(tmp_path)
+        result = recovery_mgr.repair_orphans(strategy='delete')
+
+        # Should have deleted the orphan
+        assert result.success is True
+        assert result.repaired_count == 1
+        assert "T-orphan" in result.repaired_entities
+        assert not orphan_file.exists()
+
+    def test_repair_orphans_adopt(self, tmp_path):
+        """Test that orphan files are added to WAL with 'adopt' strategy."""
+        # Create an orphaned entity
+        entities_dir = tmp_path / "entities"
+        entities_dir.mkdir(parents=True, exist_ok=True)
+
+        orphan_file = self._create_orphan_file(entities_dir, "T-orphan")
+
+        # Create WAL directory
+        wal_dir = tmp_path / "wal"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+        wal_file = wal_dir / "current.wal"
+        wal_file.touch()
+
+        # Repair orphans with adopt strategy
+        recovery_mgr = RecoveryManager(tmp_path)
+        result = recovery_mgr.repair_orphans(strategy='adopt')
+
+        # Should have adopted the orphan
+        assert result.success is True
+        assert result.repaired_count == 1
+        assert "T-orphan" in result.repaired_entities
+        assert orphan_file.exists()  # File should still exist
+
+        # Check that WAL entry was added
+        with open(wal_file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        assert len(lines) == 1
+        entry = json.loads(lines[0])
+        assert entry["op"] == "ADOPTED"
+        assert entry["entity_id"] == "T-orphan"
+        assert entry["reason"] == "orphan_recovery"
+
+    def test_repair_corrupted_orphan(self, tmp_path):
+        """Test that corrupted orphan is deleted with error logged."""
+        # Create a corrupted orphaned entity
+        entities_dir = tmp_path / "entities"
+        entities_dir.mkdir(parents=True, exist_ok=True)
+
+        orphan_file = self._create_orphan_file(entities_dir, "T-corrupted-orphan", corrupted=True)
+
+        # Create WAL directory
+        wal_dir = tmp_path / "wal"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+        (wal_dir / "current.wal").touch()
+
+        # Try to adopt the corrupted orphan
+        recovery_mgr = RecoveryManager(tmp_path)
+        result = recovery_mgr.repair_orphans(strategy='adopt')
+
+        # Should have deleted the corrupted orphan and logged error
+        assert result.repaired_count == 1
+        assert "T-corrupted-orphan" in result.repaired_entities
+        assert not orphan_file.exists()
+        assert len(result.errors) == 1
+        assert "corrupted" in result.errors[0].lower()
+
+    def test_recovery_repairs_orphans(self, tmp_path):
+        """Test that full recovery includes orphan repair."""
+        # Create an orphaned entity
+        entities_dir = tmp_path / "entities"
+        entities_dir.mkdir(parents=True, exist_ok=True)
+
+        orphan_file = self._create_orphan_file(entities_dir, "T-orphan")
+
+        # Create WAL directory
+        wal_dir = tmp_path / "wal"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+        (wal_dir / "current.wal").touch()
+
+        # Run full recovery
+        recovery_mgr = RecoveryManager(tmp_path)
+        result = recovery_mgr.recover()
+
+        # Should have repaired the orphan
+        assert any("orphaned entity" in action.lower() for action in result.actions_taken)
+        assert any("T-orphan" in action for action in result.actions_taken)
+        assert not orphan_file.exists()
+
+    def test_repair_orphans_invalid_strategy(self, tmp_path):
+        """Test that invalid strategy raises ValueError."""
+        recovery_mgr = RecoveryManager(tmp_path)
+
+        with pytest.raises(ValueError) as exc_info:
+            recovery_mgr.repair_orphans(strategy='invalid')
+
+        assert "Invalid strategy" in str(exc_info.value)
+
+    def test_repair_orphans_no_orphans(self, tmp_path):
+        """Test that repair with no orphans returns empty result."""
+        # Create a normal committed task
+        tm = TransactionManager(tmp_path)
+        tx = tm.begin()
+        task = Task(id="T-normal", title="Normal")
+        tm.write(tx, task)
+        tm.commit(tx)
+
+        # Repair orphans
+        recovery_mgr = RecoveryManager(tmp_path)
+        result = recovery_mgr.repair_orphans(strategy='delete')
+
+        # Should have nothing to repair
+        assert result.success is True
+        assert result.repaired_count == 0
+        assert len(result.repaired_entities) == 0
+        assert len(result.errors) == 0

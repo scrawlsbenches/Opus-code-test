@@ -19,17 +19,21 @@ Example:
 
 from __future__ import annotations
 
+import json
+import logging
 import secrets
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from .tx_manager import TransactionManager, CommitResult
 from .sync import SyncManager, SyncResult
 from .recovery import RecoveryManager, RecoveryResult
 from .types import Task, Decision, Edge, Entity
 from .transaction import Transaction
-from .errors import TransactionError
+from .errors import TransactionError, CorruptionError
+
+logger = logging.getLogger(__name__)
 
 
 def generate_task_id() -> str:
@@ -256,6 +260,213 @@ class GoTManager:
             RecoveryResult with recovery details
         """
         return self.recovery_manager.recover()
+
+    def find_tasks(
+        self,
+        status: Optional[str] = None,
+        priority: Optional[str] = None,
+        title_contains: Optional[str] = None
+    ) -> List[Task]:
+        """
+        Find tasks matching criteria. Scans disk (no in-memory cache).
+
+        Args:
+            status: Filter by status ('pending', 'in_progress', 'completed', etc.)
+            priority: Filter by priority ('low', 'medium', 'high', 'critical')
+            title_contains: Filter by substring in title (case-insensitive)
+
+        Returns:
+            List of matching Task objects
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        tasks = []
+        for entity_file in entities_dir.glob("T-*.json"):
+            try:
+                task = self._read_task_file(entity_file)
+                if task is None:
+                    continue
+
+                # Apply filters
+                if status is not None and task.status != status:
+                    continue
+                if priority is not None and task.priority != priority:
+                    continue
+                if title_contains is not None and title_contains.lower() not in task.title.lower():
+                    continue
+
+                tasks.append(task)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted task file {entity_file}: {e}")
+                continue
+
+        return tasks
+
+    def get_blockers(self, task_id: str) -> List[Task]:
+        """
+        Get all tasks that block the given task (have BLOCKS edge pointing to it).
+
+        Args:
+            task_id: The task being blocked
+
+        Returns:
+            List of blocking Task objects
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        # Find all BLOCKS edges pointing to this task
+        blocker_ids = []
+        for edge_file in entities_dir.glob("E-*.json"):
+            try:
+                edge = self._read_edge_file(edge_file)
+                if edge is None:
+                    continue
+
+                if edge.edge_type == "BLOCKS" and edge.target_id == task_id:
+                    blocker_ids.append(edge.source_id)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+                continue
+
+        # Load the blocker tasks
+        blockers = []
+        for blocker_id in blocker_ids:
+            task = self.get_task(blocker_id)
+            if task is not None:
+                blockers.append(task)
+
+        return blockers
+
+    def get_dependents(self, task_id: str) -> List[Task]:
+        """
+        Get all tasks that depend on the given task (have DEPENDS_ON edge pointing to it).
+
+        Args:
+            task_id: The task being depended on
+
+        Returns:
+            List of dependent Task objects
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        # Find all DEPENDS_ON edges pointing to this task
+        dependent_ids = []
+        for edge_file in entities_dir.glob("E-*.json"):
+            try:
+                edge = self._read_edge_file(edge_file)
+                if edge is None:
+                    continue
+
+                if edge.edge_type == "DEPENDS_ON" and edge.target_id == task_id:
+                    dependent_ids.append(edge.source_id)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+                continue
+
+        # Load the dependent tasks
+        dependents = []
+        for dependent_id in dependent_ids:
+            task = self.get_task(dependent_id)
+            if task is not None:
+                dependents.append(task)
+
+        return dependents
+
+    def list_all_tasks(self) -> List[Task]:
+        """
+        List all tasks in the store. Use sparingly - scans entire store.
+
+        Returns:
+            List of all Task objects
+        """
+        return self.find_tasks()
+
+    def get_edges_for_task(self, task_id: str) -> Tuple[List[Edge], List[Edge]]:
+        """
+        Get all edges connected to a task.
+
+        Args:
+            task_id: Task to query
+
+        Returns:
+            Tuple of (outgoing_edges, incoming_edges)
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return ([], [])
+
+        outgoing = []
+        incoming = []
+
+        for edge_file in entities_dir.glob("E-*.json"):
+            try:
+                edge = self._read_edge_file(edge_file)
+                if edge is None:
+                    continue
+
+                if edge.source_id == task_id:
+                    outgoing.append(edge)
+                elif edge.target_id == task_id:
+                    incoming.append(edge)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+                continue
+
+        return (outgoing, incoming)
+
+    def _read_task_file(self, path: Path) -> Optional[Task]:
+        """
+        Read and parse a task file.
+
+        Args:
+            path: Path to task JSON file
+
+        Returns:
+            Task object or None if not a task
+
+        Raises:
+            CorruptionError: If checksum verification fails
+            json.JSONDecodeError: If file is not valid JSON
+            KeyError: If required fields are missing
+        """
+        with open(path, 'r', encoding='utf-8') as f:
+            wrapper = json.load(f)
+
+        data = wrapper.get("data", {})
+        if data.get("entity_type") != "task":
+            return None
+
+        return Task.from_dict(data)
+
+    def _read_edge_file(self, path: Path) -> Optional[Edge]:
+        """
+        Read and parse an edge file.
+
+        Args:
+            path: Path to edge JSON file
+
+        Returns:
+            Edge object or None if not an edge
+
+        Raises:
+            CorruptionError: If checksum verification fails
+            json.JSONDecodeError: If file is not valid JSON
+            KeyError: If required fields are missing
+        """
+        with open(path, 'r', encoding='utf-8') as f:
+            wrapper = json.load(f)
+
+        data = wrapper.get("data", {})
+        if data.get("entity_type") != "edge":
+            return None
+
+        return Edge.from_dict(data)
 
 
 class TransactionContext:

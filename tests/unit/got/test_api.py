@@ -278,3 +278,213 @@ class TestErrorHandling:
             with manager.transaction() as tx:
                 tx.create_task("Test")
                 raise ValueError("Test error")
+
+
+class TestQueryAPI:
+    """Tests for GoTManager query API methods."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Provide GoTManager instance."""
+        return GoTManager(tmp_path / ".got")
+
+    def test_find_tasks_by_status(self, manager):
+        """find_tasks filters by status correctly."""
+        # Create tasks with different statuses
+        task1 = manager.create_task("Task 1", status="pending")
+        task2 = manager.create_task("Task 2", status="in_progress")
+        task3 = manager.create_task("Task 3", status="pending")
+
+        # Find pending tasks
+        pending = manager.find_tasks(status="pending")
+        assert len(pending) == 2
+        pending_ids = {t.id for t in pending}
+        assert task1.id in pending_ids
+        assert task3.id in pending_ids
+
+        # Find in_progress tasks
+        in_progress = manager.find_tasks(status="in_progress")
+        assert len(in_progress) == 1
+        assert in_progress[0].id == task2.id
+
+    def test_find_tasks_by_priority(self, manager):
+        """find_tasks filters by priority correctly."""
+        # Create tasks with different priorities
+        task1 = manager.create_task("Task 1", priority="low")
+        task2 = manager.create_task("Task 2", priority="high")
+        task3 = manager.create_task("Task 3", priority="high")
+
+        # Find high priority tasks
+        high = manager.find_tasks(priority="high")
+        assert len(high) == 2
+        high_ids = {t.id for t in high}
+        assert task2.id in high_ids
+        assert task3.id in high_ids
+
+        # Find low priority tasks
+        low = manager.find_tasks(priority="low")
+        assert len(low) == 1
+        assert low[0].id == task1.id
+
+    def test_find_tasks_by_title(self, manager):
+        """find_tasks filters by title substring (case-insensitive)."""
+        # Create tasks with different titles
+        task1 = manager.create_task("Implement authentication")
+        task2 = manager.create_task("Fix bug in database")
+        task3 = manager.create_task("Implement authorization")
+
+        # Find tasks with "implement" in title
+        implement_tasks = manager.find_tasks(title_contains="implement")
+        assert len(implement_tasks) == 2
+        implement_ids = {t.id for t in implement_tasks}
+        assert task1.id in implement_ids
+        assert task3.id in implement_ids
+
+        # Case-insensitive search
+        auth_tasks = manager.find_tasks(title_contains="AUTH")
+        assert len(auth_tasks) == 2
+
+    def test_find_tasks_combined_filters(self, manager):
+        """find_tasks with multiple filters works correctly."""
+        # Create tasks
+        task1 = manager.create_task("Fix auth bug", status="pending", priority="high")
+        task2 = manager.create_task("Fix database bug", status="pending", priority="low")
+        task3 = manager.create_task("Implement auth", status="in_progress", priority="high")
+
+        # Find high priority, pending, with "auth" in title
+        results = manager.find_tasks(status="pending", priority="high", title_contains="auth")
+        assert len(results) == 1
+        assert results[0].id == task1.id
+
+    def test_find_tasks_empty_results(self, manager):
+        """find_tasks returns empty list when no matches."""
+        manager.create_task("Task 1", status="pending")
+
+        results = manager.find_tasks(status="completed")
+        assert results == []
+
+    def test_find_tasks_no_filters(self, manager):
+        """find_tasks with no filters returns all tasks."""
+        task1 = manager.create_task("Task 1")
+        task2 = manager.create_task("Task 2")
+
+        all_tasks = manager.find_tasks()
+        assert len(all_tasks) == 2
+        task_ids = {t.id for t in all_tasks}
+        assert task1.id in task_ids
+        assert task2.id in task_ids
+
+    def test_get_blockers(self, manager):
+        """get_blockers returns tasks that block the given task."""
+        # Create tasks
+        task1 = manager.create_task("Task 1")
+        task2 = manager.create_task("Task 2")
+        task3 = manager.create_task("Task 3")
+        blocked_task = manager.create_task("Blocked task")
+
+        # Create BLOCKS edges
+        manager.add_edge(task1.id, blocked_task.id, "BLOCKS")
+        manager.add_edge(task2.id, blocked_task.id, "BLOCKS")
+
+        # Get blockers
+        blockers = manager.get_blockers(blocked_task.id)
+        assert len(blockers) == 2
+        blocker_ids = {t.id for t in blockers}
+        assert task1.id in blocker_ids
+        assert task2.id in blocker_ids
+        assert task3.id not in blocker_ids
+
+    def test_get_blockers_empty(self, manager):
+        """get_blockers returns empty list when no blockers."""
+        task = manager.create_task("Task 1")
+
+        blockers = manager.get_blockers(task.id)
+        assert blockers == []
+
+    def test_get_dependents(self, manager):
+        """get_dependents returns tasks that depend on the given task."""
+        # Create tasks
+        dependency = manager.create_task("Dependency task")
+        task1 = manager.create_task("Task 1")
+        task2 = manager.create_task("Task 2")
+        task3 = manager.create_task("Task 3")
+
+        # Create DEPENDS_ON edges
+        manager.add_edge(task1.id, dependency.id, "DEPENDS_ON")
+        manager.add_edge(task2.id, dependency.id, "DEPENDS_ON")
+
+        # Get dependents
+        dependents = manager.get_dependents(dependency.id)
+        assert len(dependents) == 2
+        dependent_ids = {t.id for t in dependents}
+        assert task1.id in dependent_ids
+        assert task2.id in dependent_ids
+        assert task3.id not in dependent_ids
+
+    def test_get_dependents_empty(self, manager):
+        """get_dependents returns empty list when no dependents."""
+        task = manager.create_task("Task 1")
+
+        dependents = manager.get_dependents(task.id)
+        assert dependents == []
+
+    def test_list_all_tasks(self, manager):
+        """list_all_tasks returns all tasks in the store."""
+        task1 = manager.create_task("Task 1", status="pending")
+        task2 = manager.create_task("Task 2", status="completed")
+        task3 = manager.create_task("Task 3", status="in_progress")
+
+        all_tasks = manager.list_all_tasks()
+        assert len(all_tasks) == 3
+        task_ids = {t.id for t in all_tasks}
+        assert task1.id in task_ids
+        assert task2.id in task_ids
+        assert task3.id in task_ids
+
+    def test_list_all_tasks_empty(self, manager):
+        """list_all_tasks returns empty list when no tasks."""
+        all_tasks = manager.list_all_tasks()
+        assert all_tasks == []
+
+    def test_get_edges_for_task(self, manager):
+        """get_edges_for_task returns outgoing and incoming edges."""
+        # Create tasks
+        task1 = manager.create_task("Task 1")
+        task2 = manager.create_task("Task 2")
+        task3 = manager.create_task("Task 3")
+
+        # Create edges
+        edge1 = manager.add_edge(task1.id, task2.id, "DEPENDS_ON")
+        edge2 = manager.add_edge(task3.id, task1.id, "BLOCKS")
+
+        # Get edges for task1
+        outgoing, incoming = manager.get_edges_for_task(task1.id)
+
+        # Verify outgoing
+        assert len(outgoing) == 1
+        assert outgoing[0].id == edge1.id
+        assert outgoing[0].source_id == task1.id
+        assert outgoing[0].target_id == task2.id
+
+        # Verify incoming
+        assert len(incoming) == 1
+        assert incoming[0].id == edge2.id
+        assert incoming[0].source_id == task3.id
+        assert incoming[0].target_id == task1.id
+
+    def test_get_edges_for_task_empty(self, manager):
+        """get_edges_for_task returns empty tuples when no edges."""
+        task = manager.create_task("Task 1")
+
+        outgoing, incoming = manager.get_edges_for_task(task.id)
+        assert outgoing == []
+        assert incoming == []
+
+    def test_query_handles_missing_entities_dir(self, manager):
+        """Query methods handle missing entities directory gracefully."""
+        # Don't create any tasks - entities dir won't exist
+        assert manager.find_tasks() == []
+        assert manager.get_blockers("T-test") == []
+        assert manager.get_dependents("T-test") == []
+        assert manager.list_all_tasks() == []
+        assert manager.get_edges_for_task("T-test") == ([], [])
