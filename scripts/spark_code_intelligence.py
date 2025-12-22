@@ -26,7 +26,6 @@ Usage:
 import ast
 import json
 import os
-import pickle
 import re
 import sys
 import time
@@ -230,6 +229,33 @@ class FunctionInfo:
             return f"{self.class_name}.{self.name}"
         return self.name
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to JSON-serializable dict."""
+        return {
+            'name': self.name,
+            'file_path': self.file_path,
+            'lineno': self.lineno,
+            'args': self.args,
+            'decorators': self.decorators,
+            'class_name': self.class_name,
+            'docstring': self.docstring,
+            'calls': self.calls,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'FunctionInfo':
+        """Create from dict."""
+        return cls(
+            name=data['name'],
+            file_path=data['file_path'],
+            lineno=data['lineno'],
+            args=data['args'],
+            decorators=data['decorators'],
+            class_name=data.get('class_name'),
+            docstring=data.get('docstring'),
+            calls=data.get('calls', []),
+        )
+
 
 @dataclass
 class ClassInfo:
@@ -243,6 +269,33 @@ class ClassInfo:
     decorators: List[str]
     docstring: Optional[str] = None
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to JSON-serializable dict."""
+        return {
+            'name': self.name,
+            'file_path': self.file_path,
+            'lineno': self.lineno,
+            'bases': self.bases,
+            'methods': self.methods,
+            'attributes': list(self.attributes),  # Set -> list for JSON
+            'decorators': self.decorators,
+            'docstring': self.docstring,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ClassInfo':
+        """Create from dict."""
+        return cls(
+            name=data['name'],
+            file_path=data['file_path'],
+            lineno=data['lineno'],
+            bases=data['bases'],
+            methods=data['methods'],
+            attributes=set(data['attributes']),  # list -> Set
+            decorators=data['decorators'],
+            docstring=data.get('docstring'),
+        )
+
 
 @dataclass
 class ImportInfo:
@@ -252,6 +305,27 @@ class ImportInfo:
     file_path: str
     lineno: int
     is_from: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to JSON-serializable dict."""
+        return {
+            'module': self.module,
+            'names': self.names,
+            'file_path': self.file_path,
+            'lineno': self.lineno,
+            'is_from': self.is_from,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ImportInfo':
+        """Create from dict."""
+        return cls(
+            module=data['module'],
+            names=data['names'],
+            file_path=data['file_path'],
+            lineno=data['lineno'],
+            is_from=data.get('is_from', False),
+        )
 
 
 class ASTIndex:
@@ -607,7 +681,7 @@ class SparkCodeIntelligence:
     - Anomaly detection
     """
 
-    MODEL_FILE = ".spark_intelligence_model.pkl"
+    MODEL_FILE = ".spark_intelligence_model.json"
 
     def __init__(self, root_dir: Path = None):
         """
@@ -692,14 +766,15 @@ class SparkCodeIntelligence:
         return self
 
     def save(self, path: str = None) -> None:
-        """Save trained model to disk."""
+        """Save trained model to JSON (git-friendly format)."""
         path = path or self.MODEL_FILE
 
         data = {
+            'version': 1,  # Schema version for future compatibility
             'ast_index': {
-                'functions': self.ast_index.functions,
-                'classes': self.ast_index.classes,
-                'imports': self.ast_index.imports,
+                'functions': {k: v.to_dict() for k, v in self.ast_index.functions.items()},
+                'classes': {k: v.to_dict() for k, v in self.ast_index.classes.items()},
+                'imports': [imp.to_dict() for imp in self.ast_index.imports],
                 'call_graph': {k: list(v) for k, v in self.ast_index.call_graph.items()},
                 'reverse_call_graph': {k: list(v) for k, v in self.ast_index.reverse_call_graph.items()},
                 'inheritance': {k: list(v) for k, v in self.ast_index.inheritance.items()},
@@ -722,23 +797,32 @@ class SparkCodeIntelligence:
             'training_time': self.training_time,
         }
 
-        with open(path, 'wb') as f:
-            pickle.dump(data, f)
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
 
     def load(self, path: str = None) -> 'SparkCodeIntelligence':
-        """Load trained model from disk."""
+        """Load trained model from JSON."""
         path = path or self.MODEL_FILE
 
         if not os.path.exists(path):
             raise FileNotFoundError(f"Model not found: {path}")
 
-        with open(path, 'rb') as f:
-            data = pickle.load(f)
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
 
-        # Restore AST index
-        self.ast_index.functions = data['ast_index']['functions']
-        self.ast_index.classes = data['ast_index']['classes']
-        self.ast_index.imports = data['ast_index']['imports']
+        # Restore AST index - convert dicts back to dataclasses
+        self.ast_index.functions = {
+            k: FunctionInfo.from_dict(v)
+            for k, v in data['ast_index']['functions'].items()
+        }
+        self.ast_index.classes = {
+            k: ClassInfo.from_dict(v)
+            for k, v in data['ast_index']['classes'].items()
+        }
+        self.ast_index.imports = [
+            ImportInfo.from_dict(imp)
+            for imp in data['ast_index']['imports']
+        ]
         self.ast_index.call_graph = defaultdict(set, {k: set(v) for k, v in data['ast_index']['call_graph'].items()})
         self.ast_index.reverse_call_graph = defaultdict(set, {k: set(v) for k, v in data['ast_index']['reverse_call_graph'].items()})
         self.ast_index.inheritance = defaultdict(set, {k: set(v) for k, v in data['ast_index']['inheritance'].items()})
