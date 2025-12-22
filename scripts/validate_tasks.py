@@ -263,8 +263,11 @@ def main():
             print(f"❌ Tasks directory not found: {tasks_dir}")
         return 1
 
-    # Find all JSON files
-    task_files = list(tasks_dir.glob('*.json'))
+    # Find all JSON files that match task file naming pattern
+    # Task files: YYYY-MM-DD_HH-MM-SS_XXXX.json (e.g., 2025-12-16_09-02-06_f0ff.json)
+    # Skip: roadmap_state.json, CURRENT_SPRINT.md, etc.
+    task_file_pattern = re.compile(r'^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_[a-f0-9]+\.json$')
+    task_files = [f for f in tasks_dir.glob('*.json') if task_file_pattern.match(f.name)]
 
     if not task_files:
         if args.json:
