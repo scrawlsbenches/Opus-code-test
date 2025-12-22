@@ -69,6 +69,28 @@ GoT (Graph of Thought) is our task and decision tracking system:
 | "Implement feature X" | `general-purpose` | Write tests, implement features |
 | "How should we build X?" | `Plan` | Architecture decisions |
 
+**Parallel Execution Pattern (Proven Effective):**
+
+When facing multiple independent mechanical tasks, spawn sub-agents in parallel:
+
+```
+Main Agent (keeps context):
+├── Task 1: Complex work requiring full context (do this yourself)
+├── Task 2: Complex work requiring decisions (do this yourself)
+└── Spawn parallel sub-agents for mechanical tasks:
+    ├── Sub-agent A: "Consolidate checksums.py - move compute_checksum to cortical/utils/"
+    ├── Sub-agent B: "Consolidate query/utils.py - extract shared scoring helpers"
+    ├── Sub-agent C: "Consolidate persistence.py - extract atomic_save_json"
+    └── Sub-agent D: "Consolidate text.py - move slugify to cortical/utils/"
+```
+
+**Key insights from practice:**
+- Sub-agents work best for **well-defined mechanical tasks** with clear specifications
+- Main agent should handle **context-heavy decisions** that require understanding broader implications
+- Provide explicit input/output specs to sub-agents (e.g., "create file X with function Y from file Z")
+- Wait for all sub-agents to complete before proceeding to dependent work
+- Review sub-agent outputs for integration issues before committing
+
 **Full guide:** `docs/sub-agent-utilization-plan.md`
 
 ---
@@ -874,6 +896,21 @@ if processor.is_stale(processor.COMP_PAGERANK):
 # CORRECT - ensure freshness
 if processor.is_stale(processor.COMP_PAGERANK):
     processor.compute_importance()
+```
+
+**❌ DON'T create custom ID generation - use canonical module:**
+```python
+# WRONG - custom ID patterns scattered across codebase
+import uuid
+task_id = f"task-{uuid.uuid4().hex[:8]}"
+# or
+from datetime import datetime
+plan_id = f"plan-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+# CORRECT - use canonical ID generation
+from cortical.utils.id_generation import generate_task_id, generate_plan_id
+task_id = generate_task_id()   # T-20251222-093045-a1b2c3d4
+plan_id = generate_plan_id()   # OP-20251222-093045-e5f6g7h8
 ```
 
 ### Changing Validation Logic (IMPORTANT!)
