@@ -102,6 +102,44 @@ Main Agent (keeps context):
 - Wait for all sub-agents to complete before proceeding to dependent work
 - Review sub-agent outputs for integration issues before committing
 
+> **⚠️ CRITICAL: Sub-Agent Persistence Issue**
+>
+> Sub-agents may work in isolated contexts. Their file changes can fail to persist even when they report success.
+>
+> **Always verify after sub-agent completion:**
+> ```bash
+> git status                    # Check if files actually changed
+> git diff path/to/file.py     # Verify the actual changes
+> ```
+>
+> **If changes didn't persist:**
+> 1. Apply changes manually in main agent context
+> 2. The sub-agent's report contains the correct implementation details
+> 3. Consider storing diffs with task metadata for recovery
+>
+> **Observed in session QkbsL (2025-12-22):** Implementation agents reported success with verification output, but `git status` showed no file changes. Main agent had to manually apply identical changes.
+
+**Sub-agent delegation language:**
+```
+## Task: [Clear action verb] [specific thing]
+
+### File to modify
+`/absolute/path/to/file.py`
+
+### Changes needed
+1. [Specific change with line numbers if known]
+2. [Exact code to add/modify]
+
+### Verification
+After making changes, run:
+[specific command to verify]
+
+### DO NOT
+- Create new files (unless specified)
+- Modify other files
+- [Other constraints]
+```
+
 **Full guide:** `docs/sub-agent-utilization-plan.md`
 
 ---
