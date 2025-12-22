@@ -1,0 +1,47 @@
+Social Cognition and Theory of Mind
+
+Social cognition encompasses the cognitive processes involved in perceiving, interpreting, and responding to the social world. A central component of social cognition is theory of mind, the ability to attribute mental states such as beliefs, desires, intentions, and emotions to oneself and others.
+
+Theory of mind allows individuals to understand that others have perspectives, knowledge, and beliefs different from their own. This capacity is fundamental to social interaction, communication, and the ability to predict others' behavior. Without theory of mind, social life as we know it would be impossible.
+
+The false belief task is a classic measure of theory of mind development in children. In the standard version, a child watches as an object is moved from one location to another while a story character is absent. To pass the test, the child must recognize that the character will falsely believe the object is in its original location because they did not witness the move.
+
+Children typically begin to pass false belief tasks around age four, marking a significant milestone in theory of mind development. However, recent research using implicit measures suggests that even infants show some sensitivity to others' false beliefs, though explicit understanding develops later.
+
+The neural basis of theory of mind involves a distributed network including the temporoparietal junction, medial prefrontal cortex, superior temporal sulcus, and temporal poles. The temporoparietal junction is particularly important for representing others' beliefs and perspectives, showing increased activation when people reason about mental states versus physical states.
+
+Autism spectrum disorder is characterized by difficulties in social cognition and theory of mind. Individuals with autism often struggle to interpret social cues, understand implied meanings, and predict others' behavior based on mental state attribution. The theory of mind deficit hypothesis of autism suggests these social challenges stem from impaired mentalizing abilities.
+
+However, the relationship between autism and theory of mind is complex. Many autistic individuals can pass standard theory of mind tests, though they may still experience social difficulties. Alternative accounts emphasize differences in social motivation, sensory processing, or executive function rather than a core theory of mind deficit.
+
+Mindreading, another term for theory of mind, can operate through different mechanisms. Simulation theory suggests that people understand others by using their own mind as a model, simulating what they would think or feel in the other person's situation. Theory-theory proposes that people use an implicit folk psychology, a theory-like understanding of how minds work, to infer others' mental states.
+
+The intentional stance, described by philosopher Daniel Dennett, involves treating entities as rational agents with beliefs and desires. People readily adopt the intentional stance toward other humans, and even extend it to animals, computers, or abstract entities, suggesting a strong cognitive bias toward mental state attribution.
+
+Social perception involves rapidly extracting information about others' emotions, intentions, and traits from facial expressions, body language, and vocal tone. The superior temporal sulcus specializes in processing biological motion and dynamic facial expressions, providing critical input to theory of mind reasoning.
+
+Empathy is closely related to theory of mind but involves sharing or resonating with others' emotional states rather than simply representing their mental states. Cognitive empathy overlaps substantially with theory of mind, while affective empathy involves emotional contagion and concern for others' wellbeing.
+
+Mirror neurons, discovered in macaque monkeys and subsequently in humans, fire both when performing an action and when observing another individual perform that action. Some researchers propose that mirror neurons provide a neural basis for simulation, allowing direct matching between observed and executed actions that could support action understanding and empathy.
+
+Cultural factors influence social cognition and theory of mind. Western cultures tend to emphasize individual mental states and psychological explanations, while East Asian cultures place more emphasis on contextual and relational factors. These cultural differences affect performance on some theory of mind tasks and the attributions people make for behavior.
+
+The developmental trajectory of social cognition extends beyond early childhood. Adolescents show continued improvement in complex theory of mind abilities, such as understanding sarcasm, irony, and social faux pas. Advanced mentalizing abilities correlate with maturation of the social brain network during adolescence.
+
+Perspective-taking ability, the capacity to represent another person's viewpoint, is foundational to theory of mind. Perspective-taking can be cognitive, focusing on thoughts and knowledge, or affective, focusing on emotions and feelings. Both types of perspective-taking improve with development and social experience.
+
+Social cognitive deficits occur in various psychiatric and neurological conditions beyond autism. Schizophrenia often involves impaired theory of mind and social perception, contributing to social difficulties. Frontotemporal dementia can severely impair social cognition while leaving other cognitive abilities relatively intact.
+
+The relationship between language and theory of mind is bidirectional. Language provides tools for expressing and reasoning about mental states, and conversational experience promotes theory of mind development. Deaf children born to hearing parents often show delayed theory of mind development, potentially due to reduced conversational access to mental state talk.
+
+Explicit and implicit mentalizing may involve partially distinct processes. Explicit mentalizing requires conscious, deliberate reasoning about mental states, engaging prefrontal regions. Implicit mentalizing operates more automatically, perhaps relying more on posterior superior temporal regions.
+
+The ability to represent nested mental states, such as "I think that she believes that he wants," becomes more sophisticated with development. Adults can typically handle four or five levels of mental state embedding, though everyday social situations rarely demand such complexity.
+
+Social cognition research has practical applications in education, clinical intervention, and organizational settings. Training programs can improve theory of mind abilities in clinical populations, and understanding social cognitive development informs educational practices.
+
+The mirror test assesses whether animals recognize themselves in a mirror, demonstrating self-awareness. While not exactly theory of mind, self-recognition is considered a prerequisite for attributing mental states, as it requires distinguishing self from other. Great apes, dolphins, and elephants pass the mirror test, suggesting some capacity for self-other distinction.
+
+Joint attention, where two individuals share focus on an object or event, is a developmental precursor to theory of mind. Infants begin to follow others' gaze and establish joint attention around nine months, laying groundwork for understanding that others have perceptual access to different information.
+
+Understanding social cognition and theory of mind reveals how humans navigate the complex social world by building models of others' minds. This capacity for mentalizing underlies cooperation, competition, communication, and the rich social interactions that define human society.

@@ -1,0 +1,41 @@
+Cognitive Load Theory
+
+Cognitive load theory is an instructional design framework based on our understanding of working memory architecture and its limitations. The theory was developed by John Sweller and colleagues to optimize learning by managing the cognitive demands placed on working memory during instruction.
+
+The theory distinguishes between three types of cognitive load: intrinsic load, extraneous load, and germane load. Intrinsic cognitive load is determined by the inherent complexity of the material being learned and the learner's prior knowledge. Complex material with many interacting elements imposes higher intrinsic load than simpler material with fewer interconnections.
+
+Element interactivity is a key concept in understanding intrinsic cognitive load. When elements must be processed simultaneously to understand the material, element interactivity is high, resulting in greater intrinsic load. For example, learning grammar rules in a foreign language involves high element interactivity because words, syntax, and meaning must be processed together.
+
+Extraneous cognitive load refers to the load imposed by the manner in which information is presented to learners. Poor instructional design can create unnecessary cognitive load that does not contribute to learning. Extraneous load should be minimized to free working memory resources for processing intrinsic load and engaging in germane processing.
+
+The split-attention effect demonstrates how extraneous load can be created when learners must mentally integrate information from multiple sources. When diagrams and explanatory text are physically separated, learners must hold one source in working memory while searching for related information in the other source, imposing extraneous cognitive load.
+
+The redundancy effect occurs when the same information is presented in multiple forms unnecessarily. For instance, presenting identical information in both text and narration creates redundant processing demands without adding learning value. Eliminating such redundancy reduces extraneous cognitive load and improves learning efficiency.
+
+Germane cognitive load refers to the working memory resources devoted to schema construction and automation. Unlike extraneous load, germane load is beneficial because it contributes directly to learning. Instructional designs should reduce extraneous load while promoting germane load through activities that encourage deep processing and schema development.
+
+Schemas are cognitive structures that organize knowledge in long-term memory and allow multiple elements to be processed as a single unit in working memory. As learners develop expertise, they acquire increasingly sophisticated schemas that reduce the effective cognitive load of complex material. This expertise reversal effect means that instructional techniques helpful for novices may become redundant or even harmful for experts.
+
+The worked example effect illustrates how cognitive load principles can improve instruction. For novice learners, studying worked examples imposes less cognitive load than solving equivalent problems, because they can focus on understanding the solution steps rather than searching for solutions. However, as expertise develops, worked examples become less effective and practice problems become more beneficial.
+
+The modality effect shows that working memory capacity can be effectively expanded by presenting information across different sensory modalities. Combining visual diagrams with spoken narration uses both the visuospatial sketchpad and phonological loop, whereas presenting diagrams with written text competes for visuospatial resources, creating a split-attention effect.
+
+Cognitive load theory has important implications for multimedia learning. The multimedia principle states that people learn better from words and pictures than from words alone, but only when cognitive load is properly managed. Coherent integration of visual and verbal information reduces the need to build mental connections, decreasing extraneous cognitive load.
+
+The transient information effect addresses the challenges of learning from transient presentations like animations or spoken explanations. Transient information disappears quickly, requiring learners to hold it in working memory while processing new information. Providing permanent records or allowing learner control over pacing can reduce the cognitive load associated with transient information.
+
+Cognitive load theory recognizes that working memory limitations can be ameliorated through long-term memory. Expertise consists largely of extensive schemas stored in long-term memory that can be brought into working memory as single units, effectively expanding working memory capacity for domain-specific tasks.
+
+The guidance fading effect suggests that instructional support should be gradually reduced as learners develop expertise. Initially, high levels of guidance reduce cognitive load for novices, but as schemas develop, this guidance becomes redundant and should be faded to encourage independent problem-solving.
+
+Individual differences in working memory capacity influence optimal cognitive load management. Learners with higher working memory capacity may cope better with higher cognitive load, while those with lower capacity benefit more from load-reducing instructional techniques. However, even high-capacity learners benefit from well-designed instruction that minimizes extraneous load.
+
+Cognitive load can be measured through subjective ratings, where learners report their perceived mental effort, or through objective measures such as dual-task performance, reaction times, or physiological indicators like pupil dilation. Each measurement approach has advantages and limitations in assessing the cognitive demands of learning tasks.
+
+The theory has been applied across diverse educational contexts, from mathematics and science education to training for complex technical and medical procedures. Cognitive load principles inform the design of textbooks, e-learning systems, and simulation-based training programs.
+
+Recent extensions of cognitive load theory address collaborative learning, where cognitive load is distributed across multiple learners, and the role of motivation in load management. The biological primary and secondary knowledge distinction suggests that cognitive load principles apply primarily to biologically secondary knowledge that humans are not evolutionarily prepared to learn.
+
+Critics of cognitive load theory have questioned whether the three types of load can be distinguished empirically and whether cognitive load can be measured reliably. However, the extensive evidence base for specific effects derived from the theory supports its validity and practical utility.
+
+Understanding cognitive load theory enables instructors and instructional designers to create more effective learning experiences by aligning instructional methods with the cognitive architecture of human memory. By carefully managing intrinsic, extraneous, and germane load, instruction can optimize the use of limited working memory resources to promote schema acquisition and the development of expertise.

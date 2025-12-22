@@ -1,0 +1,43 @@
+Embodied Decision Making: Physical and Intuitive Aspects of Judgment
+
+Embodied cognition theory proposes that thinking is fundamentally grounded in bodily experience and sensorimotor interaction with environments. Decision making is not purely abstract symbol manipulation but involves physical sensations, motor planning, and emotional feelings that shape judgment. Understanding these embodied aspects reveals why rational choice models incompletely describe human behavior and suggests design principles for human-AI interaction.
+
+Somatic markers are bodily signals that guide decision making through emotional feelings associated with different options. The somatic marker hypothesis suggests that physiological responses to contemplated actions—gut feelings, tension, excitement—provide rapid valuations that focus deliberation productively. Ignoring these embodied signals often leads to poor choices despite logical analysis.
+
+Interoception—sensing internal bodily states like heartbeat, breathing, and arousal—influences risk perception and time preferences. Traders whose interoceptive accuracy is higher show different risk attitudes and market timing. These visceral signals convey information about physiological arousal that cognitive systems interpret as decision-relevant uncertainty or opportunity.
+
+The Iowa Gambling Task demonstrates embodied learning that precedes conscious awareness. Skin conductance responses show bodily recognition of risky decks before subjects can verbally articulate which decks are disadvantageous. This anticipatory physiological guidance illustrates embodied knowledge that informs decisions pre-consciously.
+
+Motor imagery activates similar brain regions as actual movement, suggesting that imagining actions involves embodied simulation. When evaluating plans, mentally simulating physical execution provides grounded predictions about feasibility and outcomes. This embodied rehearsal differs from abstract reasoning by engaging sensorimotor systems.
+
+Approach-avoidance dynamics manifest physically through postural shifts toward desirable stimuli and away from threats. These motor tendencies influence decisions by creating embodied momentum toward or away from options. Physical approach facilitates positive evaluation while avoidance fosters negative assessment through sensorimotor feedback.
+
+Cognitive offloading distributes decision making across external tools and environmental structure. Rather than maintaining all information internally, people arrange physical spaces to support memory and computation. This extended cognition treats environment as part of the cognitive system, transforming decision making from internal processing to world-engaged action.
+
+Haptic feedback in interfaces provides tactile information that shapes decision confidence and speed. Physical button presses feel more commit-worthy than touchscreen taps, affecting purchase decisions and agreement rates. These embodied interaction differences reveal that decision mechanisms integrate multisensory physical experience.
+
+The effort heuristic judges value based on physical exertion required to obtain outcomes. Items demanding more labor or difficulty feel more valuable, even when objectively identical to easily obtained alternatives. This embodied valuation links physical investment to perceived worth through proprioceptive feedback.
+
+Embodied metaphors structure abstract thinking through physical grounding. Concepts like "grasping ideas," "weighing options," and "balancing considerations" recruit sensorimotor systems for literal physical actions. These embodied framings influence decisions by activating associated motor programs and spatial reasoning.
+
+Stress responses alter decision making through physiological arousal that shifts cognitive strategy. Elevated cortisol and heart rate promote reflexive System 1 thinking over deliberate System 2 analysis. This embodied state change adaptively prioritizes speed over accuracy under threat, but can impair complex decisions.
+
+Physical fatigue depletes decision quality through ego depletion and glucose depletion in the brain. Making repeated choices exhausts bodily resources, reducing subsequent self-control and increasing impulsive decisions. This embodied limitation reveals that decision making consumes physical energy, not just cognitive capacity.
+
+Gesture facilitates thinking by externalizing ideas through hand movements that reduce cognitive load. People gesture when explaining complex concepts or solving spatial problems, suggesting that these motor actions support internal reasoning. Restricting gesture impairs problem-solving performance, demonstrating functional roles beyond communication.
+
+Affordances—action possibilities that objects offer to embodied agents—shape available choice options. A chair affords sitting, a hammer affords striking. Decision making occurs within affordance spaces defined by bodily capabilities and environmental features. This ecological perspective grounds choices in physical interaction potential.
+
+Embodied priming influences decisions through subtle physical manipulations. Holding warm beverages increases perceived interpersonal warmth and prosocial decisions. Physical cleanliness affects moral judgments. These effects show that incidental bodily states leak into ostensibly abstract reasoning.
+
+Time pressure creates physiological arousal that shifts decision strategies toward heuristics and emotion-driven choices. The embodied stress response allocates resources to rapid action rather than careful deliberation. Understanding these physiological dynamics explains systematic decision biases under temporal constraint.
+
+Physical pain and discomfort narrow decision focus to immediate relief, increasing present bias and risk-taking for escape. These somatic experiences hijack attention and valuation, overriding longer-term interests. Pain management thus serves cognitive as well as physical comfort functions.
+
+The mere exposure effect shows that repeated physical encounters with stimuli increase positive evaluation. This embodied familiarity breeds affection through reduced physiological arousal and processing fluency. Decisions favor familiar options partly through this comfort response.
+
+Breathing patterns influence emotional states and decision making. Slow breathing activates parasympathetic relaxation responses that support deliberate reasoning. Rapid breathing maintains arousal that facilitates quick reactive choices. Respiratory control offers embodied regulation of decision modes.
+
+Virtual embodiment in avatars and robots extends physical presence into digital and mechanical systems. Operating remote bodies creates new affordance spaces and sensorimotor feedback loops that influence decisions. This technological embodiment demonstrates that physical grounding extends beyond biological bodies.
+
+The body acts as a constraint that situates decisions within physical reality. Biological needs, spatial location, and temporal finitude provide grounding that prevents purely abstract reasoning from losing contact with practical concerns. Embodied constraints force pragmatic satisficing over impossible optimization.
