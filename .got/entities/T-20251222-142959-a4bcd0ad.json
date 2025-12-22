@@ -1,0 +1,19 @@
+{
+  "_checksum": "6a12a0c88ec67f72",
+  "_written_at": "2025-12-22T14:29:59.498901+00:00",
+  "data": {
+    "created_at": "2025-12-22T14:29:59.491728+00:00",
+    "description": "Clean removal of legacy event-sourced backend after migration to TX. Steps: 1) Add why() method to TX adapter, 2) Remove EventLog class (~763 lines), 3) Remove GoTProjectManager class (~1473 lines), 4) Update CLI type hints, 5) Archive/delete obsolete tests",
+    "entity_type": "task",
+    "id": "T-20251222-142959-a4bcd0ad",
+    "metadata": {},
+    "modified_at": "2025-12-22T14:29:59.498849+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Remove GoTProjectManager and event-sourced backend",
+    "version": 2
+  }
+}

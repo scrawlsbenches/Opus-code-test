@@ -1891,15 +1891,132 @@ class TransactionalGoTAdapter:
                 "error": str(e),
             }
 
-    # Stub methods for compatibility (not implemented in TX backend yet)
-    def create_decision(self, *args, **kwargs) -> str:
-        raise NotImplementedError("Decisions not yet implemented in TX backend")
+    # Decision methods
+    def create_decision(
+        self,
+        content: str,
+        rationale: str = "",
+        task_id: Optional[str] = None,
+        alternatives: Optional[List[str]] = None,
+    ) -> str:
+        """Create a decision using TX backend."""
+        affects = [task_id] if task_id else []
+        decision = self._manager.create_decision(
+            title=content,
+            rationale=rationale,
+            affects=affects,
+            alternatives=alternatives or [],
+        )
+        return decision.id
 
-    def list_decisions(self, *args, **kwargs) -> List:
-        return []
+    def list_decisions(self) -> List[ThoughtNode]:
+        """List all decisions from TX backend."""
+        from cortical.got.types import Decision
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
 
-    def get_decisions_for_task(self, *args, **kwargs) -> List:
-        return []
+        decisions = []
+        for entity_file in entities_dir.glob("D-*.json"):
+            try:
+                with open(entity_file, 'r') as f:
+                    wrapper = json.load(f)
+                data = wrapper.get("data", wrapper)
+                if data.get("entity_type") == "decision":
+                    decision = Decision.from_dict(data)
+                    node = ThoughtNode(
+                        id=decision.id,
+                        node_type=NodeType.DECISION,
+                        content=decision.title,
+                        properties={
+                            "rationale": decision.rationale,
+                            "affects": decision.affects,
+                            "alternatives": decision.properties.get("alternatives", []),
+                        },
+                        metadata={
+                            "created_at": decision.created_at,
+                            "modified_at": decision.modified_at,
+                        },
+                    )
+                    decisions.append(node)
+            except Exception:
+                continue
+        return decisions
+
+    def get_decisions_for_task(self, task_id: str) -> List[ThoughtNode]:
+        """Get decisions affecting a specific task."""
+        all_decisions = self.list_decisions()
+        return [d for d in all_decisions if task_id in d.properties.get("affects", [])]
+
+    def why(self, task_id: str) -> List[Dict[str, Any]]:
+        """Query: Why was this task created/modified this way?
+
+        Returns all decisions that affect this task with their rationale.
+        """
+        decisions = self.get_decisions_for_task(task_id)
+        return [
+            {
+                "decision_id": d.id,
+                "decision": d.content,
+                "rationale": d.properties.get("rationale", ""),
+                "alternatives": d.properties.get("alternatives", []),
+                "created_at": d.metadata.get("created_at", ""),
+            }
+            for d in decisions
+        ]
+
+    def log_decision(
+        self,
+        decision: str,
+        rationale: str,
+        affects: Optional[List[str]] = None,
+        alternatives: Optional[List[str]] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Log a decision with its rationale.
+
+        Creates a decision node and JUSTIFIES edges to affected nodes.
+        Future agents can query: "Why was this built this way?"
+
+        Args:
+            decision: What was decided
+            rationale: Why this choice was made
+            affects: List of node IDs affected (tasks, sprints, etc.)
+            alternatives: Alternatives that were considered
+            context: Additional context (file, line, function)
+
+        Returns:
+            Decision ID
+        """
+        # Build properties dict with alternatives and context
+        props: Dict[str, Any] = {}
+        if alternatives:
+            props["alternatives"] = alternatives
+        if context:
+            props["context"] = context
+
+        # Create decision via TX backend
+        decision_entity = self._manager.create_decision(
+            title=decision,
+            rationale=rationale,
+            affects=affects or [],
+            properties=props,
+        )
+
+        # Create JUSTIFIES edges to affected nodes
+        if affects:
+            for affected_id in affects:
+                try:
+                    self._manager.add_edge(
+                        source_id=decision_entity.id,
+                        target_id=affected_id,
+                        edge_type="JUSTIFIES",
+                    )
+                except Exception:
+                    # Skip if target doesn't exist
+                    pass
+
+        return decision_entity.id
 
     def create_sprint(
         self,

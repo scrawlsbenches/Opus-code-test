@@ -239,3 +239,182 @@ class TestTransactionalGoTAdapterSprint:
         assert current is not None
         assert current.content == "Current Sprint"
         assert current.properties.get("status") == "in_progress"
+
+
+class TestTransactionalGoTAdapterDecisions:
+    """Tests for decision-related methods in TransactionalGoTAdapter."""
+
+    @pytest.fixture
+    def adapter(self, tmp_path):
+        """Create adapter with temporary directory."""
+        got_dir = tmp_path / ".got"
+        return TransactionalGoTAdapter(got_dir)
+
+    def test_log_decision_basic(self, adapter):
+        """Log a basic decision."""
+        decision_id = adapter.log_decision(
+            decision="Use TX backend",
+            rationale="ACID guarantees needed",
+        )
+
+        assert decision_id is not None
+        assert decision_id.startswith("D-")
+
+    def test_log_decision_with_affects(self, adapter):
+        """Log decision with affected tasks."""
+        # Create a task first
+        task_id = adapter.create_task("Test Task")
+
+        # Log decision affecting that task
+        decision_id = adapter.log_decision(
+            decision="Prioritize this task",
+            rationale="Customer request",
+            affects=[task_id],
+        )
+
+        assert decision_id is not None
+
+        # Verify the decision is linked via why()
+        reasons = adapter.why(task_id)
+        assert len(reasons) == 1
+        assert reasons[0]["decision_id"] == decision_id
+        assert reasons[0]["decision"] == "Prioritize this task"
+        assert reasons[0]["rationale"] == "Customer request"
+
+    def test_log_decision_with_alternatives(self, adapter):
+        """Log decision with alternatives considered."""
+        decision_id = adapter.log_decision(
+            decision="Use JSON storage",
+            rationale="Human-readable and git-friendly",
+            alternatives=["SQLite", "Pickle", "YAML"],
+        )
+
+        assert decision_id is not None
+
+        # Verify alternatives are stored
+        decisions = adapter.list_decisions()
+        decision = next(d for d in decisions if d.id == decision_id)
+        assert "SQLite" in decision.properties.get("alternatives", [])
+
+    def test_log_decision_with_context(self, adapter):
+        """Log decision with context metadata."""
+        decision_id = adapter.log_decision(
+            decision="Add validation",
+            rationale="Prevent invalid data",
+            context={"file": "api.py", "line": 123},
+        )
+
+        assert decision_id is not None
+
+    def test_list_decisions_empty(self, adapter):
+        """List decisions when none exist."""
+        decisions = adapter.list_decisions()
+        assert decisions == []
+
+    def test_list_decisions_multiple(self, adapter):
+        """List multiple decisions."""
+        id1 = adapter.log_decision("Decision 1", "Reason 1")
+        id2 = adapter.log_decision("Decision 2", "Reason 2")
+        id3 = adapter.log_decision("Decision 3", "Reason 3")
+
+        decisions = adapter.list_decisions()
+
+        assert len(decisions) == 3
+        decision_ids = [d.id for d in decisions]
+        assert id1 in decision_ids
+        assert id2 in decision_ids
+        assert id3 in decision_ids
+
+    def test_get_decisions_for_task(self, adapter):
+        """Get only decisions affecting a specific task."""
+        # Create two tasks
+        task1_id = adapter.create_task("Task 1")
+        task2_id = adapter.create_task("Task 2")
+
+        # Log decisions affecting different tasks
+        adapter.log_decision("For task 1", "Reason", affects=[task1_id])
+        adapter.log_decision("For task 2", "Reason", affects=[task2_id])
+        adapter.log_decision("For both", "Reason", affects=[task1_id, task2_id])
+
+        # Get decisions for task 1
+        task1_decisions = adapter.get_decisions_for_task(task1_id)
+        assert len(task1_decisions) == 2
+        contents = [d.content for d in task1_decisions]
+        assert "For task 1" in contents
+        assert "For both" in contents
+
+        # Get decisions for task 2
+        task2_decisions = adapter.get_decisions_for_task(task2_id)
+        assert len(task2_decisions) == 2
+        contents = [d.content for d in task2_decisions]
+        assert "For task 2" in contents
+        assert "For both" in contents
+
+    def test_why_no_decisions(self, adapter):
+        """Query why for task with no decisions."""
+        task_id = adapter.create_task("New Task")
+        reasons = adapter.why(task_id)
+        assert reasons == []
+
+    def test_why_multiple_decisions(self, adapter):
+        """Query why for task with multiple decisions."""
+        task_id = adapter.create_task("Important Task")
+
+        # Log multiple decisions
+        adapter.log_decision(
+            decision="Created for customer X",
+            rationale="Customer request",
+            affects=[task_id],
+        )
+        adapter.log_decision(
+            decision="Set to high priority",
+            rationale="Revenue impact",
+            affects=[task_id],
+            alternatives=["medium", "low"],
+        )
+
+        # Query why
+        reasons = adapter.why(task_id)
+
+        assert len(reasons) == 2
+        decisions = [r["decision"] for r in reasons]
+        assert "Created for customer X" in decisions
+        assert "Set to high priority" in decisions
+
+        # Check structure of why response
+        for reason in reasons:
+            assert "decision_id" in reason
+            assert "decision" in reason
+            assert "rationale" in reason
+            assert "alternatives" in reason
+            assert "created_at" in reason
+
+    def test_why_returns_rationale(self, adapter):
+        """Verify why returns full rationale."""
+        task_id = adapter.create_task("Task with rationale")
+
+        adapter.log_decision(
+            decision="Complex decision",
+            rationale="This is a detailed rationale explaining why this decision was made.",
+            affects=[task_id],
+        )
+
+        reasons = adapter.why(task_id)
+        assert len(reasons) == 1
+        assert "detailed rationale" in reasons[0]["rationale"]
+
+    def test_why_returns_alternatives(self, adapter):
+        """Verify why returns alternatives considered."""
+        task_id = adapter.create_task("Task with alternatives")
+
+        adapter.log_decision(
+            decision="Chose option A",
+            rationale="Best fit",
+            affects=[task_id],
+            alternatives=["Option B", "Option C", "Option D"],
+        )
+
+        reasons = adapter.why(task_id)
+        assert len(reasons) == 1
+        assert len(reasons[0]["alternatives"]) == 3
+        assert "Option B" in reasons[0]["alternatives"]
