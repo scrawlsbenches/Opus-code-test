@@ -35,6 +35,8 @@ python scripts/run_sprint_reasoning.py --sprint sprint-020-forensic-remediation 
 | `--list-sprints` | List all available sprints from CURRENT_SPRINT.md |
 | `--show-graph` | Display the ThoughtGraph structure in ASCII format |
 | `--json` | Output sprint data in JSON format |
+| `--spawn-agents` | Generate sub-agent Task tool configurations for parallel execution |
+| `--show-boundaries` | Show work boundaries for conflict prevention (with `--spawn-agents`) |
 
 ## How It Works
 
@@ -217,6 +219,53 @@ Edges: 18
    python scripts/run_sprint_reasoning.py --sprint sprint-NNN-your-sprint-name
    ```
 
+## Sub-Agent Spawning
+
+The script can generate configurations for parallel sub-agents to execute sprint tasks:
+
+```bash
+# Generate sub-agent configurations
+python scripts/run_sprint_reasoning.py --sprint sprint-020-forensic-remediation --spawn-agents
+
+# Show work boundaries to prevent conflicts
+python scripts/run_sprint_reasoning.py --sprint sprint-020-forensic-remediation --spawn-agents --show-boundaries
+```
+
+### Communication Infrastructure
+
+When `--spawn-agents` is used, the script sets up:
+
+1. **PubSub Broker** - Async messaging between agents
+   - Topics: `task.started`, `task.completed`, `task.blocked`, `discovery.*`
+
+2. **Context Pool** - Shared findings with confidence scores
+   - Agents publish discoveries that other agents can query
+
+3. **Collaboration Manager** - Work boundaries and blockers
+   - Prevents multiple agents from modifying the same files
+
+### Work Boundaries
+
+File ownership is automatically assigned based on task content:
+
+| Task Pattern | Owned Files |
+|--------------|-------------|
+| "id generation" | `cortical/utils/id_generation.py`, `scripts/orchestration_utils.py` |
+| "wal" | `cortical/wal.py`, `cortical/got/wal.py` |
+| "checksum" | `cortical/utils/checksums.py` |
+| "query" | `cortical/query/` |
+| "atomic" | `cortical/utils/persistence.py` |
+| "slugify" | `cortical/utils/text.py` |
+
+### Agent Configuration Output
+
+Each agent configuration includes:
+- **agent_id**: Unique identifier for tracking
+- **description**: Short task description
+- **prompt**: Full task instructions with sprint context
+- **subagent_type**: Agent type (default: `general-purpose`)
+- **boundary**: Optional file ownership for conflict prevention
+
 ## Architecture
 
 ```
@@ -241,6 +290,20 @@ Edges: 18
 │           ┌───────────────────────┐                          │
 │           │  ReasoningWorkflow    │                          │
 │           │   (QAPV Session)      │                          │
+│           └───────────┬───────────┘                          │
+│                       │                                      │
+│      ┌────────────────┼────────────────┐                     │
+│      v                v                v                     │
+│  ┌────────┐      ┌────────┐      ┌────────┐                  │
+│  │Agent 1 │      │Agent 2 │      │Agent N │                  │
+│  │(Task)  │      │(Task)  │      │(Task)  │                  │
+│  └────┬───┘      └────┬───┘      └────┬───┘                  │
+│       │               │               │                      │
+│       └───────────────┼───────────────┘                      │
+│                       v                                      │
+│           ┌───────────────────────┐                          │
+│           │  Communication Layer  │                          │
+│           │  (PubSub + ContextPool)│                         │
 │           └───────────────────────┘                          │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘

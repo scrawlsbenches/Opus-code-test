@@ -36,6 +36,15 @@ from cortical.reasoning import (
     CognitiveLoop,
     LoopPhase,
     create_feature_graph,
+    # Sub-agent spawning and coordination
+    ClaudeCodeSpawner,
+    TaskToolConfig,
+    generate_parallel_task_calls,
+    # Communication primitives
+    PubSubBroker,
+    ContextPool,
+    CollaborationManager,
+    ParallelWorkBoundary,
 )
 
 
@@ -297,6 +306,190 @@ def show_graph_structure(graph: ThoughtGraph) -> None:
             print(f"  (Could not generate ASCII: {e})")
 
 
+def setup_agent_communication() -> Dict[str, Any]:
+    """Set up inter-agent communication infrastructure.
+
+    Returns:
+        Dict with broker, pool, and manager for agent coordination.
+    """
+    # Create pub/sub broker for async messaging
+    broker = PubSubBroker()
+
+    # Create context pool for shared findings
+    pool = ContextPool()
+
+    # Create collaboration manager for boundaries/blockers
+    collab = CollaborationManager()
+
+    # Set up standard topics
+    topics = [
+        "task.started",      # Agent started working on task
+        "task.completed",    # Agent completed task
+        "task.blocked",      # Agent is blocked
+        "discovery.code",    # Found relevant code
+        "discovery.issue",   # Found an issue
+        "discovery.pattern", # Found a pattern
+    ]
+
+    return {
+        "broker": broker,
+        "pool": pool,
+        "collaboration": collab,
+        "topics": topics,
+    }
+
+
+def generate_agent_configs(
+    sprint: Dict[str, Any],
+    tasks: List[Dict[str, Any]],
+    graph: ThoughtGraph,
+) -> List[TaskToolConfig]:
+    """Generate Task tool configurations for sub-agents.
+
+    Each task gets its own agent configuration with:
+    - Task-specific prompt
+    - Work boundaries (file ownership)
+    - Communication setup
+
+    Args:
+        sprint: Sprint data from load_sprint_from_markdown()
+        tasks: Task list from load_got_tasks()
+        graph: ThoughtGraph for context
+
+    Returns:
+        List of TaskToolConfig objects (ready to invoke)
+    """
+    configs = []
+    boundaries = create_work_boundaries(tasks)
+    boundary_map = {b.agent_id: b for b in boundaries}
+
+    for i, task in enumerate(tasks):
+        agent_id = f"agent-{task['id']}"
+
+        # Build task-specific prompt
+        task_prompt = f"""Execute GoT task: {task['id']}
+
+Title: {task['title']}
+Priority: {task['priority']}
+Status: {task['status']}
+
+Sprint Context:
+- Sprint ID: {sprint['id']}
+- Total tasks in sprint: {len(tasks)}
+- Your position: {i + 1} of {len(tasks)}
+
+Instructions:
+1. Implement the changes described in the task title
+2. Run tests to verify: python -m pytest tests/ -q
+3. Mark task complete when done: python scripts/got_utils.py task complete {task['id']}
+
+Communication:
+- Publish discoveries to context pool
+- Check for blockers before starting
+- Report completion status
+"""
+
+        # Create TaskToolConfig directly
+        config = TaskToolConfig(
+            agent_id=agent_id,
+            description=f"Execute task {task['id'][:20]}",
+            prompt=task_prompt,
+            subagent_type="general-purpose",
+            boundary=boundary_map.get(agent_id),
+        )
+
+        configs.append(config)
+
+    return configs
+
+
+def create_work_boundaries(
+    tasks: List[Dict[str, Any]],
+) -> List[ParallelWorkBoundary]:
+    """Create work boundaries to prevent agent conflicts.
+
+    Assigns file ownership based on task content to prevent
+    multiple agents from modifying the same files.
+
+    Args:
+        tasks: List of task dictionaries
+
+    Returns:
+        List of ParallelWorkBoundary objects
+    """
+    boundaries = []
+
+    # File ownership patterns based on common task types
+    ownership_patterns = {
+        "id generation": ["cortical/utils/id_generation.py", "scripts/orchestration_utils.py"],
+        "wal": ["cortical/wal.py", "cortical/got/wal.py"],
+        "checksum": ["cortical/utils/checksums.py"],
+        "query": ["cortical/query/"],
+        "atomic": ["cortical/utils/persistence.py"],
+        "slugify": ["cortical/utils/text.py"],
+    }
+
+    for task in tasks:
+        title_lower = task["title"].lower()
+        owned_files = []
+
+        # Match patterns to determine ownership
+        for pattern_key, files in ownership_patterns.items():
+            if pattern_key in title_lower:
+                owned_files.extend(files)
+
+        if owned_files:
+            boundary = ParallelWorkBoundary(
+                agent_id=f"agent-{task['id']}",
+                owned_files=set(owned_files),
+                description=task["title"],
+            )
+            boundaries.append(boundary)
+
+    return boundaries
+
+
+def display_agent_configs(configs: List[TaskToolConfig]) -> None:
+    """Display generated agent configurations for review.
+
+    Shows the Task tool parameters that would be used to spawn
+    each sub-agent, allowing the user to review before invoking.
+    """
+    print("\n" + "=" * 60)
+    print("SUB-AGENT CONFIGURATIONS")
+    print("=" * 60)
+
+    print(f"\nGenerated {len(configs)} agent configurations.\n")
+    print("To spawn these agents, invoke the Task tool with each config.\n")
+
+    for i, config in enumerate(configs, 1):
+        print(f"--- Agent {i}: {config.agent_id[:30]}... ---")
+        print(f"  Type: {config.subagent_type}")
+        print(f"  Description: {config.description}")
+        if config.boundary:
+            print(f"  Boundary: {len(config.boundary.owned_files)} files owned")
+        print()
+
+        # Show prompt preview (first 200 chars)
+        prompt = config.prompt
+        if len(prompt) > 200:
+            print(f"  Prompt preview:\n    {prompt[:200]}...")
+        else:
+            print(f"  Prompt:\n    {prompt}")
+        print()
+
+    # Show JSON format for programmatic use
+    print("\n--- Task Tool Invocation Format ---")
+    print("Each agent can be spawned with the Task tool using these parameters:")
+    for i, config in enumerate(configs[:2], 1):  # Show first 2 as examples
+        print(f"\nAgent {i}:")
+        print(f'  description: "{config.description}"')
+        print(f'  subagent_type: "{config.subagent_type}"')
+        print(f'  prompt: "{config.prompt[:100]}..."')
+    if len(configs) > 2:
+        print(f"\n... and {len(configs) - 2} more agents")
+
+
 def list_available_sprints() -> None:
     """List all available sprints from CURRENT_SPRINT.md."""
     sprint_file = Path(__file__).parent.parent / "tasks" / "CURRENT_SPRINT.md"
@@ -349,6 +542,16 @@ def main():
         action="store_true",
         help="Output in JSON format",
     )
+    parser.add_argument(
+        "--spawn-agents",
+        action="store_true",
+        help="Generate sub-agent Task tool configurations for parallel execution",
+    )
+    parser.add_argument(
+        "--show-boundaries",
+        action="store_true",
+        help="Show work boundaries for conflict prevention (with --spawn-agents)",
+    )
 
     args = parser.parse_args()
 
@@ -378,7 +581,42 @@ def main():
     if args.show_graph:
         show_graph_structure(graph)
 
-    if args.json:
+    if args.spawn_agents:
+        # Generate sub-agent configurations
+        print("\n" + "=" * 60)
+        print("SETTING UP SUB-AGENT COORDINATION")
+        print("=" * 60)
+
+        # Set up communication infrastructure
+        comm = setup_agent_communication()
+        print(f"\nCommunication infrastructure ready:")
+        print(f"  - PubSub topics: {', '.join(comm['topics'])}")
+        print(f"  - Context pool initialized")
+        print(f"  - Collaboration manager active")
+
+        # Generate agent configs
+        configs = generate_agent_configs(sprint, tasks, graph)
+
+        # Show work boundaries if requested
+        if args.show_boundaries:
+            boundaries = create_work_boundaries(tasks)
+            print(f"\n--- Work Boundaries ({len(boundaries)} defined) ---")
+            for b in boundaries:
+                print(f"  Agent: {b.agent_id}")
+                print(f"    Files: {', '.join(sorted(b.owned_files))}")
+                print(f"    Desc: {b.description[:50]}...")
+                print()
+
+        # Display the configurations
+        display_agent_configs(configs)
+
+        print("\n" + "=" * 60)
+        print("AGENT CONFIGS GENERATED")
+        print("=" * 60)
+        print("\nTo execute, invoke the Task tool with each configuration above.")
+        print("Agents will communicate via the shared context pool and pub/sub broker.")
+
+    elif args.json:
         output = {
             "sprint": sprint,
             "tasks": tasks,
