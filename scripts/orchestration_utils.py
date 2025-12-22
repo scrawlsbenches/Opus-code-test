@@ -60,13 +60,16 @@ Usage:
 
 import json
 import os
-import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
 from cortical.utils.persistence import atomic_write_json
+from cortical.utils.id_generation import (
+    generate_plan_id,
+    generate_execution_id,
+)
 
 
 # Directory structure for orchestration data
@@ -74,42 +77,6 @@ ORCHESTRATION_DIR = Path(".claude/orchestration")
 PLANS_DIR = ORCHESTRATION_DIR / "plans"
 EXECUTIONS_DIR = ORCHESTRATION_DIR / "executions"
 METRICS_FILE = ORCHESTRATION_DIR / "metrics.jsonl"
-
-
-def generate_plan_id() -> str:
-    """
-    Generate unique orchestration plan ID.
-
-    Returns:
-        Plan ID in format OP-YYYYMMDD-HHMMSS-XXXXXXXX
-
-    Example:
-        >>> generate_plan_id()
-        'OP-20251215-143052-a1b2c3d4'
-    """
-    now = datetime.now()
-    date_str = now.strftime("%Y%m%d")
-    time_str = now.strftime("%H%M%S")
-    suffix = uuid.uuid4().hex[:8]  # 8 chars = 4 billion possibilities
-    return f"OP-{date_str}-{time_str}-{suffix}"
-
-
-def generate_execution_id() -> str:
-    """
-    Generate unique execution ID.
-
-    Returns:
-        Execution ID in format EX-YYYYMMDD-HHMMSS-XXXXXXXX
-
-    Example:
-        >>> generate_execution_id()
-        'EX-20251215-143100-b2c3d4e5'
-    """
-    now = datetime.now()
-    date_str = now.strftime("%Y%m%d")
-    time_str = now.strftime("%H%M%S")
-    suffix = uuid.uuid4().hex[:8]  # 8 chars = 4 billion possibilities
-    return f"EX-{date_str}-{time_str}-{suffix}"
 
 
 @dataclass

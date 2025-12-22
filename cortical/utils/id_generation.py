@@ -2,7 +2,7 @@
 Canonical ID generation utilities for all GoT and task systems.
 
 All IDs use format: {PREFIX}-YYYYMMDD-HHMMSS-XXXXXXXX
-- PREFIX: T (task), D (decision), E (edge), S (sprint), G (goal)
+- PREFIX: T (task), D (decision), E (edge), S (sprint), G (goal), OP (plan), EX (execution)
 - Timestamp: UTC timezone for consistency
 - Suffix: 8 hex characters (4 bytes = ~4 billion unique values)
 
@@ -10,6 +10,7 @@ This is the single source of truth for ID generation across:
 - cortical/got/api.py (GoT transaction system)
 - scripts/got_utils.py (CLI utilities)
 - scripts/task_utils.py (task management)
+- scripts/orchestration_utils.py (orchestration plans)
 
 Examples:
     >>> generate_task_id()
@@ -20,6 +21,9 @@ Examples:
 
     >>> generate_sprint_id(number=5)
     'S-005'
+
+    >>> generate_plan_id()
+    'OP-20251222-143052-a1b2c3d4'
 
     >>> normalize_id('task:T-20251222-143052-a1b2c3d4')
     'T-20251222-143052-a1b2c3d4'
@@ -155,3 +159,77 @@ def normalize_id(id_str: str) -> str:
         if id_str.startswith(prefix):
             return id_str[len(prefix):]
     return id_str
+
+
+def generate_plan_id() -> str:
+    """
+    Generate unique orchestration plan ID.
+
+    Format: OP-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
+
+    Returns:
+        Plan ID string (e.g., 'OP-20251222-143052-a1b2c3d4')
+
+    Note:
+        - Uses UTC timezone for consistency
+        - Random suffix provides ~4 billion unique values
+    """
+    now = datetime.now(timezone.utc)
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    suffix = secrets.token_hex(4)  # 8 hex chars
+    return f"OP-{timestamp}-{suffix}"
+
+
+def generate_execution_id() -> str:
+    """
+    Generate unique execution ID.
+
+    Format: EX-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
+
+    Returns:
+        Execution ID string (e.g., 'EX-20251222-143100-b2c3d4e5')
+
+    Note:
+        - Uses UTC timezone for consistency
+        - Random suffix provides ~4 billion unique values
+    """
+    now = datetime.now(timezone.utc)
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    suffix = secrets.token_hex(4)  # 8 hex chars
+    return f"EX-{timestamp}-{suffix}"
+
+
+def generate_session_id() -> str:
+    """
+    Generate a short session ID (4 hex chars).
+
+    Used for distinguishing concurrent sessions/processes.
+
+    Returns:
+        Session ID string (e.g., 'a1b2')
+
+    Note:
+        Short format (4 chars) for human readability in logs.
+    """
+    return secrets.token_hex(2)  # 4 hex chars
+
+
+def generate_short_id(prefix: str = "") -> str:
+    """
+    Generate a short unique ID (8 hex chars).
+
+    Format: [PREFIX-]XXXXXXXX where XXXXXXXX is random hex.
+
+    Args:
+        prefix: Optional prefix to add (e.g., 'T' for task)
+
+    Returns:
+        Short ID string (e.g., 'a1b2c3d4' or 'T-a1b2c3d4')
+
+    Note:
+        Use for cases where timestamp is not needed.
+    """
+    suffix = secrets.token_hex(4)  # 8 hex chars
+    if prefix:
+        return f"{prefix}-{suffix}"
+    return suffix

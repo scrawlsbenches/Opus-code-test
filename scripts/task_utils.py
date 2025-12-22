@@ -37,25 +37,23 @@ Usage:
 import json
 import os
 import sys
-import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
 # Import canonical ID generation (use as internal implementation)
-from cortical.utils.id_generation import generate_task_id as _generate_task_id
+from cortical.utils.id_generation import (
+    generate_task_id as _generate_task_id,
+    generate_session_id,
+    generate_short_id,
+)
 from cortical.utils.text import slugify
 from cortical.utils.persistence import atomic_write_json
 
 
 # Directory for per-session task files
 DEFAULT_TASKS_DIR = "tasks"
-
-
-def generate_session_id() -> str:
-    """Generate a short session ID (4 hex chars)."""
-    return uuid.uuid4().hex[:4]
 
 
 def generate_task_id(session_id: Optional[str] = None) -> str:
@@ -105,7 +103,7 @@ def generate_short_task_id() -> str:
         >>> generate_short_task_id()
         'T-a1b2c3d4'
     """
-    return f"T-{uuid.uuid4().hex[:8]}"
+    return generate_short_id(prefix="T")
 
 
 

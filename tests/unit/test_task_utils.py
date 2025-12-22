@@ -29,13 +29,13 @@ class TestTaskIdGeneration(unittest.TestCase):
     def test_generate_task_id_format(self):
         """Task ID should have correct format."""
         task_id = generate_task_id()
-        # Format: T-YYYYMMDD-HHMMSSffffff-XXXX (with microseconds)
+        # Format: T-YYYYMMDD-HHMMSS-XXXXXXXX (canonical format)
         self.assertTrue(task_id.startswith("T-"))
         parts = task_id.split("-")
         self.assertEqual(len(parts), 4)
         self.assertEqual(len(parts[1]), 8)  # YYYYMMDD
-        self.assertEqual(len(parts[2]), 12)  # HHMMSSffffff (with microseconds)
-        self.assertEqual(len(parts[3]), 4)  # session suffix
+        self.assertEqual(len(parts[2]), 6)  # HHMMSS (canonical, no microseconds)
+        self.assertEqual(len(parts[3]), 8)  # hex suffix (8 chars)
 
     def test_generate_task_id_with_session(self):
         """Task ID should use provided session suffix."""
