@@ -463,3 +463,235 @@ class Handoff(Entity):
             reject_reason=data.get("reject_reason", ""),
             properties=data.get("properties", {}),
         )
+
+
+@dataclass
+class ClaudeMdLayer(Entity):
+    """
+    CLAUDE.md layer content entity.
+
+    Stores markdown content for a specific layer of the CLAUDE.md file,
+    with freshness tracking and inclusion rules for context-aware generation.
+    """
+
+    # Core fields
+    layer_type: str = ""          # "core", "operational", "contextual", "persona", "ephemeral"
+    layer_number: int = 0         # 0-4
+    section_id: str = ""          # e.g., "architecture", "query-module"
+    title: str = ""               # Human-readable title
+    content: str = ""             # Markdown content
+
+    # Freshness tracking
+    freshness_status: str = "fresh"  # "fresh", "stale", "regenerating"
+    freshness_decay_days: int = 0    # 0 = never decay
+    last_regenerated: str = ""       # ISO 8601 timestamp
+    regeneration_trigger: str = ""   # What caused last regeneration
+
+    # Inclusion rules
+    inclusion_rule: str = "always"   # "always", "context", "user_pref"
+    context_modules: List[str] = field(default_factory=list)  # For context-based inclusion
+    context_branches: List[str] = field(default_factory=list)  # Branch patterns
+
+    # Versioning
+    content_hash: str = ""        # SHA256 of content (first 16 chars)
+    version_number: int = 1       # Content version
+
+    # Metadata
+    properties: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Validate layer fields after initialization."""
+        self.entity_type = "claudemd_layer"
+
+        # Validate layer_type
+        valid_layer_types = {"core", "operational", "contextual", "persona", "ephemeral", ""}
+        if self.layer_type and self.layer_type not in valid_layer_types:
+            raise ValidationError(
+                f"Invalid layer_type '{self.layer_type}'",
+                valid_types=list(valid_layer_types - {""})
+            )
+
+        # Validate freshness_status
+        valid_freshness = {"fresh", "stale", "regenerating"}
+        if self.freshness_status not in valid_freshness:
+            raise ValidationError(
+                f"Invalid freshness_status '{self.freshness_status}'",
+                valid_statuses=list(valid_freshness)
+            )
+
+        # Validate inclusion_rule
+        valid_inclusion = {"always", "context", "user_pref"}
+        if self.inclusion_rule not in valid_inclusion:
+            raise ValidationError(
+                f"Invalid inclusion_rule '{self.inclusion_rule}'",
+                valid_rules=list(valid_inclusion)
+            )
+
+        # Validate layer_number
+        if not (0 <= self.layer_number <= 4):
+            raise ValidationError(
+                f"Invalid layer_number {self.layer_number}, must be 0-4",
+                layer_number=self.layer_number
+            )
+
+    def compute_content_hash(self) -> str:
+        """Compute hash of content for change detection."""
+        import hashlib
+        return hashlib.sha256(self.content.encode()).hexdigest()[:16]
+
+    def is_stale(self, current_date: datetime = None) -> bool:
+        """Check if layer content is stale based on decay rules."""
+        if self.freshness_decay_days == 0:
+            return False  # Never decays
+        if not self.last_regenerated:
+            return True
+        from datetime import timedelta
+        current = current_date or datetime.now(timezone.utc)
+        # Parse ISO timestamp
+        if isinstance(self.last_regenerated, str):
+            regen_date = datetime.fromisoformat(self.last_regenerated.replace('Z', '+00:00'))
+        else:
+            regen_date = self.last_regenerated
+        return (current - regen_date).days > self.freshness_decay_days
+
+    def mark_stale(self, reason: str = "") -> None:
+        """Mark layer as needing regeneration."""
+        self.freshness_status = "stale"
+        if reason:
+            self.regeneration_trigger = reason
+        self.bump_version()
+
+    def mark_fresh(self) -> None:
+        """Mark layer as freshly regenerated."""
+        self.freshness_status = "fresh"
+        self.last_regenerated = datetime.now(timezone.utc).isoformat()
+        self.content_hash = self.compute_content_hash()
+        self.bump_version()
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize layer to dictionary."""
+        result = super().to_dict()
+        result.update({
+            "layer_type": self.layer_type,
+            "layer_number": self.layer_number,
+            "section_id": self.section_id,
+            "title": self.title,
+            "content": self.content,
+            "freshness_status": self.freshness_status,
+            "freshness_decay_days": self.freshness_decay_days,
+            "last_regenerated": self.last_regenerated,
+            "regeneration_trigger": self.regeneration_trigger,
+            "inclusion_rule": self.inclusion_rule,
+            "context_modules": self.context_modules,
+            "context_branches": self.context_branches,
+            "content_hash": self.content_hash,
+            "version_number": self.version_number,
+            "properties": self.properties,
+            "metadata": self.metadata,
+        })
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ClaudeMdLayer":
+        """Deserialize layer from dictionary."""
+        return cls(
+            id=data["id"],
+            entity_type=data.get("entity_type", "claudemd_layer"),
+            version=data.get("version", 1),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            modified_at=data.get("modified_at", datetime.now(timezone.utc).isoformat()),
+            layer_type=data.get("layer_type", ""),
+            layer_number=data.get("layer_number", 0),
+            section_id=data.get("section_id", ""),
+            title=data.get("title", ""),
+            content=data.get("content", ""),
+            freshness_status=data.get("freshness_status", "fresh"),
+            freshness_decay_days=data.get("freshness_decay_days", 0),
+            last_regenerated=data.get("last_regenerated", ""),
+            regeneration_trigger=data.get("regeneration_trigger", ""),
+            inclusion_rule=data.get("inclusion_rule", "always"),
+            context_modules=data.get("context_modules", []),
+            context_branches=data.get("context_branches", []),
+            content_hash=data.get("content_hash", ""),
+            version_number=data.get("version_number", 1),
+            properties=data.get("properties", {}),
+            metadata=data.get("metadata", {}),
+        )
+
+
+@dataclass
+class ClaudeMdVersion(Entity):
+    """
+    Version snapshot for CLAUDE.md layer evolution tracking.
+
+    Stores a point-in-time snapshot of layer content with change metadata,
+    enabling persona versioning and rollback capabilities.
+    """
+
+    layer_id: str = ""            # Reference to ClaudeMdLayer
+    version_number: int = 1       # Version number (increments per layer)
+    content_snapshot: str = ""    # Full content at this version
+    content_hash: str = ""        # Hash of content_snapshot
+
+    # Change tracking
+    change_rationale: str = ""    # Why this version was created
+    changed_by: str = ""          # Agent/user who made change
+    changed_sections: List[str] = field(default_factory=list)  # Section IDs changed
+
+    # Diff info
+    additions: int = 0            # Lines added
+    deletions: int = 0            # Lines removed
+
+    properties: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Set entity type and auto-generate ID if needed."""
+        self.entity_type = "claudemd_version"
+
+        # Auto-generate ID if not provided
+        if not self.id and self.layer_id:
+            self.id = f"CMV-{self.layer_id}-v{self.version_number}"
+
+    def compute_content_hash(self) -> str:
+        """Compute hash of snapshot content."""
+        import hashlib
+        return hashlib.sha256(self.content_snapshot.encode()).hexdigest()[:16]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize version to dictionary."""
+        result = super().to_dict()
+        result.update({
+            "layer_id": self.layer_id,
+            "version_number": self.version_number,
+            "content_snapshot": self.content_snapshot,
+            "content_hash": self.content_hash,
+            "change_rationale": self.change_rationale,
+            "changed_by": self.changed_by,
+            "changed_sections": self.changed_sections,
+            "additions": self.additions,
+            "deletions": self.deletions,
+            "properties": self.properties,
+        })
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ClaudeMdVersion":
+        """Deserialize version from dictionary."""
+        return cls(
+            id=data.get("id", ""),  # Allow empty for auto-generation
+            entity_type=data.get("entity_type", "claudemd_version"),
+            version=data.get("version", 1),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            modified_at=data.get("modified_at", datetime.now(timezone.utc).isoformat()),
+            layer_id=data.get("layer_id", ""),
+            version_number=data.get("version_number", 1),
+            content_snapshot=data.get("content_snapshot", ""),
+            content_hash=data.get("content_hash", ""),
+            change_rationale=data.get("change_rationale", ""),
+            changed_by=data.get("changed_by", ""),
+            changed_sections=data.get("changed_sections", []),
+            additions=data.get("additions", 0),
+            deletions=data.get("deletions", 0),
+            properties=data.get("properties", {}),
+        )
