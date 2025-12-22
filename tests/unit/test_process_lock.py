@@ -22,7 +22,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-# Add scripts to path
+# Add scripts to path for GoTProjectManager imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
 
 
@@ -31,7 +31,7 @@ class TestProcessLockBasics:
 
     def test_lock_creates_lock_file(self, tmp_path):
         """Acquiring lock should create a .lock file."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock = ProcessLock(lock_path)
@@ -41,7 +41,7 @@ class TestProcessLockBasics:
 
     def test_lock_contains_pid(self, tmp_path):
         """Lock file should contain the current process PID."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock = ProcessLock(lock_path)
@@ -52,7 +52,7 @@ class TestProcessLockBasics:
 
     def test_lock_released_after_context(self, tmp_path):
         """Lock should be released after context manager exits."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock = ProcessLock(lock_path)
@@ -68,7 +68,7 @@ class TestProcessLockBasics:
 
     def test_explicit_acquire_release(self, tmp_path):
         """Test explicit acquire() and release() methods."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock = ProcessLock(lock_path)
@@ -86,7 +86,7 @@ class TestProcessLockTimeout:
 
     def test_acquire_with_timeout_success(self, tmp_path):
         """Should acquire lock within timeout."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock = ProcessLock(lock_path)
@@ -97,7 +97,7 @@ class TestProcessLockTimeout:
 
     def test_acquire_fails_when_locked(self, tmp_path):
         """Should fail to acquire when already locked by same process."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock1 = ProcessLock(lock_path)
@@ -113,7 +113,7 @@ class TestProcessLockTimeout:
 
     def test_timeout_zero_is_non_blocking(self, tmp_path):
         """Timeout of 0 should be non-blocking."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock1 = ProcessLock(lock_path)
@@ -136,7 +136,7 @@ class TestStaleLockRecovery:
 
     def test_detects_stale_lock_from_dead_process(self, tmp_path):
         """Should detect and recover from lock held by dead process."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
 
@@ -152,7 +152,7 @@ class TestStaleLockRecovery:
 
     def test_stale_lock_threshold(self, tmp_path):
         """Lock older than threshold should be considered stale."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
 
@@ -168,7 +168,7 @@ class TestStaleLockRecovery:
 
     def test_valid_lock_not_stolen(self, tmp_path):
         """Should not steal lock from live process with recent timestamp."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock1 = ProcessLock(lock_path)
@@ -187,7 +187,7 @@ class TestProcessLockReentrancy:
 
     def test_same_process_can_reacquire(self, tmp_path):
         """Same process should be able to acquire lock multiple times."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock = ProcessLock(lock_path, reentrant=True)
@@ -206,7 +206,7 @@ class TestProcessLockErrorHandling:
 
     def test_release_without_acquire_is_safe(self, tmp_path):
         """Releasing unheld lock should not raise."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock = ProcessLock(lock_path)
@@ -216,7 +216,7 @@ class TestProcessLockErrorHandling:
 
     def test_context_manager_releases_on_exception(self, tmp_path):
         """Lock should be released even if exception occurs."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock = ProcessLock(lock_path)
@@ -235,7 +235,7 @@ class TestProcessLockErrorHandling:
 
     def test_handles_corrupted_lock_file(self, tmp_path):
         """Should handle corrupted lock file gracefully."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock_path.write_text("corrupted garbage data")
@@ -281,7 +281,7 @@ class TestMultiProcessSafety:
 
     def test_subprocess_respects_lock(self, tmp_path):
         """Subprocess should wait for lock held by parent."""
-        from got_utils import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock = ProcessLock(lock_path)
@@ -295,7 +295,7 @@ class TestMultiProcessSafety:
                     f"""
 import sys
 sys.path.insert(0, 'scripts')
-from got_utils import ProcessLock
+from cortical.utils.locking import ProcessLock
 lock = ProcessLock('{lock_path}')
 acquired = lock.acquire(timeout=0.5)
 print('acquired' if acquired else 'blocked')

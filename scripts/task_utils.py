@@ -43,6 +43,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+# Import canonical ID generation (use as internal implementation)
+from cortical.utils.id_generation import generate_task_id as _generate_task_id
+
 
 # Directory for per-session task files
 DEFAULT_TASKS_DIR = "tasks"
@@ -57,24 +60,36 @@ def generate_task_id(session_id: Optional[str] = None) -> str:
     """
     Generate a unique, merge-friendly task ID.
 
+    This is a backward-compatibility wrapper that adds session_id support
+    to the canonical ID generation function. New code should prefer the
+    canonical function from cortical.utils.id_generation.
+
     Args:
-        session_id: Optional session suffix. If None, generates random suffix.
+        session_id: Optional session suffix. If None, uses canonical generation.
 
     Returns:
-        Task ID in format T-YYYYMMDD-HHMMSSffffff-XXXX (with microseconds)
+        Task ID in format T-YYYYMMDD-HHMMSS-XXXXXXXX
 
     Example:
         >>> generate_task_id()
-        'T-20251213-143052123456-a1b2'
+        'T-20251213-143052-a1b2c3d4'
         >>> generate_task_id("test")
         'T-20251213-143052123456-test'
+
+    Note:
+        When session_id is provided, uses legacy format with microseconds
+        for backward compatibility with existing session files.
     """
-    now = datetime.now()
-    date_str = now.strftime("%Y%m%d")
-    # Include microseconds to avoid collisions in tight loops
-    time_str = now.strftime("%H%M%S%f")
-    suffix = session_id or generate_session_id()
-    return f"T-{date_str}-{time_str}-{suffix}"
+    if session_id:
+        # Legacy format for backward compatibility with session files
+        now = datetime.now()
+        date_str = now.strftime("%Y%m%d")
+        # Include microseconds to avoid collisions in tight loops
+        time_str = now.strftime("%H%M%S%f")
+        return f"T-{date_str}-{time_str}-{session_id}"
+
+    # Use canonical ID generation
+    return _generate_task_id()
 
 
 def generate_short_task_id() -> str:

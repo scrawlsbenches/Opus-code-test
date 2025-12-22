@@ -31,6 +31,14 @@ from dataclasses import dataclass, field, asdict
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from cortical.utils.id_generation import (
+    generate_task_id,
+    generate_decision_id,
+    generate_sprint_id,
+    generate_goal_id,
+    normalize_id,
+)
+from cortical.utils.locking import ProcessLock
 from cortical.reasoning.thought_graph import ThoughtGraph
 from cortical.reasoning.graph_of_thought import NodeType, EdgeType, ThoughtNode, ThoughtEdge
 from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery
@@ -99,41 +107,13 @@ VALID_CATEGORIES = ["arch", "feature", "bugfix", "test", "docs", "refactor",
 # ID GENERATION
 # =============================================================================
 
-def generate_task_id() -> str:
-    """Generate unique task ID: task:T-YYYYMMDD-HHMMSS-XXXX"""
-    now = datetime.now()
-    timestamp = now.strftime("%Y%m%d-%H%M%S")
-    suffix = os.urandom(2).hex()
-    return f"task:T-{timestamp}-{suffix}"
-
-
-def generate_sprint_id(number: Optional[int] = None) -> str:
-    """Generate sprint ID: sprint:S-NNN or sprint:YYYY-MM"""
-    if number:
-        return f"sprint:S-{number:03d}"
-    return f"sprint:{datetime.now().strftime('%Y-%m')}"
-
+# ID generation functions now imported from cortical.utils.id_generation
+# (canonical source for all ID generation across the codebase)
 
 def generate_epic_id(name: str) -> str:
     """Generate epic ID: epic:E-XXXX"""
     suffix = os.urandom(2).hex()
     return f"epic:E-{suffix}"
-
-
-def generate_goal_id() -> str:
-    """Generate goal ID: goal:G-YYYYMMDD-XXXX"""
-    now = datetime.now()
-    timestamp = now.strftime("%Y%m%d")
-    suffix = os.urandom(2).hex()
-    return f"goal:G-{timestamp}-{suffix}"
-
-
-def generate_decision_id() -> str:
-    """Generate decision ID: decision:D-YYYYMMDD-HHMMSS-XXXX"""
-    now = datetime.now()
-    timestamp = now.strftime("%Y%m%d-%H%M%S")
-    suffix = os.urandom(2).hex()
-    return f"decision:D-{timestamp}-{suffix}"
 
 
 def get_current_branch() -> str:
@@ -308,241 +288,6 @@ class GoTBackendFactory:
         if TX_BACKEND_AVAILABLE:
             backends.append("transactional")
         return backends
-
-
-# =============================================================================
-# PROCESS-SAFE LOCKING
-# =============================================================================
-
-class ProcessLock:
-    """
-    Process-safe file-based lock with stale lock detection.
-
-    Features:
-    - Works across processes (not just threads)
-    - Detects and recovers from stale locks (dead processes)
-    - Timeout support to prevent deadlocks
-    - Context manager support
-    - Reentrant option for same-process re-acquisition
-
-    Usage:
-        lock = ProcessLock("/path/to/.lock")
-        with lock:
-            # Critical section
-            pass
-
-        # Or explicit:
-        if lock.acquire(timeout=5.0):
-            try:
-                # Critical section
-            finally:
-                lock.release()
-    """
-
-    def __init__(
-        self,
-        lock_path: Path,
-        stale_timeout: float = 3600.0,  # 1 hour default
-        reentrant: bool = False,
-    ):
-        """
-        Initialize process lock.
-
-        Args:
-            lock_path: Path to the lock file
-            stale_timeout: Seconds after which a lock is considered stale
-            reentrant: If True, same process can acquire multiple times
-        """
-        self.lock_path = Path(lock_path)
-        self.stale_timeout = stale_timeout
-        self.reentrant = reentrant
-        self._held = False
-        self._acquire_count = 0
-        self._fd = None
-
-    def acquire(self, timeout: Optional[float] = None) -> bool:
-        """
-        Acquire the lock.
-
-        Args:
-            timeout: Max seconds to wait (None=block forever, 0=non-blocking)
-
-        Returns:
-            True if lock acquired, False if timeout
-        """
-        import fcntl
-
-        # Handle reentrant case
-        if self._held and self.reentrant:
-            self._acquire_count += 1
-            return True
-
-        start_time = time.time()
-        poll_interval = 0.05  # 50ms
-
-        while True:
-            # Try to acquire
-            if self._try_acquire():
-                self._held = True
-                self._acquire_count = 1
-                return True
-
-            # Check for stale lock
-            if self._is_stale_lock():
-                self._break_stale_lock()
-                continue
-
-            # Check timeout
-            if timeout is not None:
-                elapsed = time.time() - start_time
-                if elapsed >= timeout:
-                    return False
-
-            # Wait before retry
-            if timeout == 0:
-                return False
-
-            remaining = None
-            if timeout is not None:
-                remaining = timeout - (time.time() - start_time)
-                if remaining <= 0:
-                    return False
-
-            time.sleep(min(poll_interval, remaining) if remaining else poll_interval)
-
-    def _try_acquire(self) -> bool:
-        """Attempt to acquire the lock file."""
-        import fcntl
-
-        try:
-            # Create parent directory if needed
-            self.lock_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Open or create lock file
-            self._fd = os.open(
-                str(self.lock_path),
-                os.O_CREAT | os.O_RDWR,
-                0o644
-            )
-
-            # Try exclusive lock (non-blocking)
-            try:
-                fcntl.flock(self._fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except (IOError, OSError):
-                os.close(self._fd)
-                self._fd = None
-                return False
-
-            # Write PID and timestamp
-            os.ftruncate(self._fd, 0)
-            os.lseek(self._fd, 0, os.SEEK_SET)
-            lock_info = f"{os.getpid()}\n{time.time()}\n"
-            os.write(self._fd, lock_info.encode())
-            os.fsync(self._fd)
-
-            return True
-
-        except Exception as e:
-            if self._fd is not None:
-                try:
-                    os.close(self._fd)
-                except:
-                    pass
-                self._fd = None
-            return False
-
-    def _is_stale_lock(self) -> bool:
-        """Check if the existing lock is stale."""
-        if not self.lock_path.exists():
-            return False
-
-        try:
-            content = self.lock_path.read_text().strip()
-            lines = content.split('\n')
-
-            if len(lines) < 2:
-                return True  # Corrupted, treat as stale
-
-            pid = int(lines[0])
-            timestamp = float(lines[1])
-
-            # Check if process is dead
-            if not self._process_exists(pid):
-                return True
-
-            # Check if lock is too old
-            if time.time() - timestamp > self.stale_timeout:
-                return True
-
-            return False
-
-        except (ValueError, IndexError, OSError):
-            # Corrupted lock file, treat as stale
-            return True
-
-    def _process_exists(self, pid: int) -> bool:
-        """Check if a process with given PID exists."""
-        try:
-            os.kill(pid, 0)  # Signal 0 doesn't kill, just checks
-            return True
-        except OSError:
-            return False
-
-    def _break_stale_lock(self) -> None:
-        """Remove a stale lock file."""
-        try:
-            self.lock_path.unlink(missing_ok=True)
-        except OSError:
-            pass
-
-    def release(self) -> None:
-        """Release the lock."""
-        import fcntl
-
-        if not self._held:
-            return
-
-        if self.reentrant and self._acquire_count > 1:
-            self._acquire_count -= 1
-            return
-
-        self._held = False
-        self._acquire_count = 0
-
-        if self._fd is not None:
-            try:
-                fcntl.flock(self._fd, fcntl.LOCK_UN)
-                os.close(self._fd)
-            except:
-                pass
-            self._fd = None
-
-        # Clean up lock file
-        try:
-            self.lock_path.unlink(missing_ok=True)
-        except OSError:
-            pass
-
-    def is_locked(self) -> bool:
-        """Check if lock is currently held by this instance."""
-        return self._held
-
-    def __enter__(self):
-        """Context manager entry."""
-        acquired = self.acquire()
-        if not acquired:
-            raise TimeoutError(f"Could not acquire lock: {self.lock_path}")
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit."""
-        self.release()
-        return False
-
-    def __del__(self):
-        """Ensure lock is released on garbage collection."""
-        if self._held:
-            self.release()
 
 
 # =============================================================================
@@ -4785,17 +4530,23 @@ def cmd_validate(args, manager: GoTProjectManager) -> int:
 
     # Load events and compare
     events = EventLog.load_all_events(manager.events_dir)
-    event_edge_count = sum(1 for e in events if e.get('event') == 'edge.create')
+    event_edge_creates = sum(1 for e in events if e.get('event') == 'edge.create')
+    event_edge_deletes = sum(1 for e in events if e.get('event') == 'edge.delete')
     event_node_count = sum(1 for e in events if e.get('event') == 'node.create')
+    expected_edges = event_edge_creates - event_edge_deletes
 
-    # Check for edge loss (the bug we fixed)
-    edge_loss_rate = 0
-    if event_edge_count > 0:
-        edge_loss_rate = (1 - total_edges / event_edge_count) * 100
-        if edge_loss_rate > 10:
-            issues.append(f"EDGE LOSS: {edge_loss_rate:.1f}% of edges from events not in graph ({total_edges}/{event_edge_count})")
-        elif edge_loss_rate > 0:
-            warnings.append(f"Minor edge loss: {edge_loss_rate:.1f}% ({total_edges}/{event_edge_count})")
+    # Check for edge discrepancy
+    edge_discrepancy = 0
+    if expected_edges > 0:
+        edge_discrepancy = ((total_edges - expected_edges) / expected_edges) * 100
+        if abs(edge_discrepancy) > 10:
+            issues.append(f"EDGE DISCREPANCY: {edge_discrepancy:+.1f}% ({total_edges} actual vs {expected_edges} expected)")
+        elif abs(edge_discrepancy) > 0:
+            # Only warn if there's a significant discrepancy
+            if edge_discrepancy < -5:
+                warnings.append(f"Minor edge loss: {-edge_discrepancy:.1f}% ({total_edges}/{expected_edges})")
+            elif edge_discrepancy > 5:
+                warnings.append(f"Edge surplus: {edge_discrepancy:.1f}% ({total_edges}/{expected_edges})")
 
     # Check orphan rate
     if orphan_rate > 50:
@@ -4818,11 +4569,13 @@ def cmd_validate(args, manager: GoTProjectManager) -> int:
 
     print(f"\n📁 EVENT LOG")
     print(f"   Node events: {event_node_count}")
-    print(f"   Edge events: {event_edge_count}")
-    if edge_loss_rate > 0:
-        print(f"   Edge rebuild rate: {100 - edge_loss_rate:.1f}%")
+    print(f"   Edge create events: {event_edge_creates}")
+    print(f"   Edge delete events: {event_edge_deletes}")
+    print(f"   Expected edges: {expected_edges}")
+    if expected_edges > 0 and total_edges != expected_edges:
+        print(f"   Edge accuracy: {100 - abs(edge_discrepancy):.1f}%")
     else:
-        print(f"   Edge rebuild rate: 100%")
+        print(f"   Edge accuracy: 100%")
 
     # Print issues
     if issues:
