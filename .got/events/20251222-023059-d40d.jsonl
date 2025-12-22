@@ -1,0 +1,1 @@
+{"ts": "2025-12-22T02:30:59.278722Z", "event": "node.create", "meta": {"branch": "claude/review-coverage-and-code-dOcbe", "session": "20251222-023059-d40d"}, "id": "T-20251222-023059-8a277ebd", "type": "TASK", "data": {"title": "Consolidate duplicate code patterns (ID generation, ProcessLock)", "status": "pending", "priority": "high", "category": "refactor", "description": ""}}
