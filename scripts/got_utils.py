@@ -22,6 +22,7 @@ import re
 import sys
 import tempfile
 import time
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -2223,9 +2224,21 @@ class GoTProjectManager:
 
     Uses event-sourced persistence for merge-friendly cross-branch coordination.
     Each session writes to a unique event file, enabling conflict-free merges.
+
+    .. deprecated::
+        This class uses the legacy event-sourced backend. Consider using the
+        transactional backend (TransactionalGoTAdapter) instead, which is now
+        the default. Set GOT_USE_LEGACY=1 only if you need event-sourcing features.
     """
 
     def __init__(self, got_dir: Path = GOT_DIR):
+        warnings.warn(
+            "GoTProjectManager uses the legacy event-sourced backend. "
+            "The transactional backend (TransactionalGoTAdapter) is now recommended. "
+            "Set GOT_USE_LEGACY=1 only if you specifically need event-sourcing.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.got_dir = Path(got_dir)
         self.wal_dir = self.got_dir / "wal"
         self.snapshots_dir = self.got_dir / "snapshots"

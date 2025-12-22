@@ -2,6 +2,11 @@
 """
 GoT Dashboard - Comprehensive metrics and health indicators
 
+.. deprecated::
+    This dashboard uses the legacy event-sourced backend (GoTProjectManager).
+    The transactional backend is now the default. Use 'python scripts/got_utils.py dashboard'
+    for the recommended dashboard experience.
+
 Displays visual dashboard showing:
 - Overview stats (tasks, edges, completion rate)
 - Velocity metrics (tasks completed, avg completion time)
@@ -994,6 +999,16 @@ def render_dashboard(manager) -> str:
 
 def main():
     """Main entry point."""
+    import warnings
+
+    # Emit deprecation warning
+    warnings.warn(
+        "got_dashboard.py uses the legacy event-sourced backend. "
+        "Consider using 'python scripts/got_utils.py dashboard' instead.",
+        DeprecationWarning,
+        stacklevel=1,
+    )
+
     # Import here to avoid circular imports
     from scripts.got_utils import GoTProjectManager
 
