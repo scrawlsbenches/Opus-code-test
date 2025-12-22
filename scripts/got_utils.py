@@ -23,7 +23,7 @@ import sys
 import tempfile
 import time
 import warnings
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass, field, asdict
@@ -36,6 +36,7 @@ from cortical.utils.id_generation import (
     generate_task_id,
     generate_decision_id,
     generate_sprint_id,
+    generate_epic_id,
     generate_goal_id,
     normalize_id,
 )
@@ -66,7 +67,8 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # =============================================================================
 
-GOT_DIR = PROJECT_ROOT / ".got"  # Single directory for all GoT data
+# Allow GOT_DIR to be overridden via environment variable (for testing)
+GOT_DIR = Path(os.environ.get("GOT_DIR", PROJECT_ROOT / ".got"))
 WAL_DIR = GOT_DIR / "wal"
 SNAPSHOTS_DIR = GOT_DIR / "snapshots"
 EVENTS_DIR = GOT_DIR / "events"  # Git-tracked event logs (legacy, still read)
@@ -105,11 +107,6 @@ VALID_CATEGORIES = ["arch", "feature", "bugfix", "test", "docs", "refactor",
 
 # ID generation functions now imported from cortical.utils.id_generation
 # (canonical source for all ID generation across the codebase)
-
-def generate_epic_id(name: str) -> str:
-    """Generate epic ID: epic:E-XXXX"""
-    suffix = os.urandom(2).hex()
-    return f"epic:E-{suffix}"
 
 
 def get_current_branch() -> str:
@@ -1945,20 +1942,25 @@ class TransactionalGoTAdapter:
         sprint = self._manager.get_sprint(sprint_id)
         if sprint is None:
             return None
+        # Merge sprint.properties into the node properties
+        props = {
+            "name": sprint.title,
+            "status": sprint.status,
+            "number": sprint.number,
+            "epic_id": sprint.epic_id,
+            "session_id": sprint.session_id,
+            "isolation": sprint.isolation,
+            "goals": sprint.goals,
+            "notes": sprint.notes,
+        }
+        # Include custom properties (like claimed_by, claimed_at)
+        props.update(sprint.properties)
+
         return ThoughtNode(
             id=sprint.id,
             node_type=NodeType.GOAL,
             content=sprint.title,
-            properties={
-                "name": sprint.title,
-                "status": sprint.status,
-                "number": sprint.number,
-                "epic_id": sprint.epic_id,
-                "session_id": sprint.session_id,
-                "isolation": sprint.isolation,
-                "goals": sprint.goals,
-                "notes": sprint.notes,
-            },
+            properties=props,
             metadata={
                 "created_at": sprint.created_at,
                 "modified_at": sprint.modified_at,
@@ -1970,16 +1972,21 @@ class TransactionalGoTAdapter:
         sprints = self._manager.list_sprints(status=status, epic_id=epic_id)
         result = []
         for sprint in sprints:
+            # Merge sprint.properties into the node properties
+            props = {
+                "name": sprint.title,
+                "status": sprint.status,
+                "number": sprint.number,
+                "epic_id": sprint.epic_id,
+            }
+            # Include custom properties (like claimed_by, claimed_at)
+            props.update(sprint.properties)
+
             node = ThoughtNode(
                 id=sprint.id,
                 node_type=NodeType.GOAL,
                 content=sprint.title,
-                properties={
-                    "name": sprint.title,
-                    "status": sprint.status,
-                    "number": sprint.number,
-                    "epic_id": sprint.epic_id,
-                },
+                properties=props,
                 metadata={
                     "created_at": sprint.created_at,
                     "modified_at": sprint.modified_at,
@@ -1987,6 +1994,71 @@ class TransactionalGoTAdapter:
             )
             result.append(node)
         return result
+
+    def update_sprint(self, sprint_id: str, **updates) -> ThoughtNode:
+        """Update a sprint."""
+        sprint = self._manager.update_sprint(sprint_id, **updates)
+        # Convert to ThoughtNode
+        props = {
+            "name": sprint.title,
+            "status": sprint.status,
+            "number": sprint.number,
+            "epic_id": sprint.epic_id,
+        }
+        props.update(sprint.properties)
+
+        return ThoughtNode(
+            id=sprint.id,
+            node_type=NodeType.GOAL,
+            content=sprint.title,
+            properties=props,
+            metadata={
+                "created_at": sprint.created_at,
+                "modified_at": sprint.modified_at,
+            },
+        )
+
+    def claim_sprint(self, sprint_id: str, agent: str) -> ThoughtNode:
+        """Claim a sprint for an agent."""
+        sprint = self._manager.get_sprint(sprint_id)
+        if not sprint:
+            raise ValueError(f"Sprint not found: {sprint_id}")
+
+        # Check if already claimed by different agent
+        current_owner = sprint.properties.get("claimed_by")
+        if current_owner and current_owner != agent:
+            raise ValueError(f"Sprint already claimed by {current_owner}")
+
+        # Update sprint with claim
+        return self.update_sprint(
+            sprint_id,
+            properties={
+                **sprint.properties,
+                "claimed_by": agent,
+                "claimed_at": datetime.now(timezone.utc).isoformat()
+            }
+        )
+
+    def release_sprint(self, sprint_id: str, agent: str) -> ThoughtNode:
+        """Release a sprint claim."""
+        sprint = self._manager.get_sprint(sprint_id)
+        if not sprint:
+            raise ValueError(f"Sprint not found: {sprint_id}")
+
+        # Verify the agent owns the claim
+        current_owner = sprint.properties.get("claimed_by")
+        if current_owner != agent:
+            raise ValueError(f"Sprint not claimed by {agent}")
+
+        # Clear claim
+        new_props = dict(sprint.properties)
+        new_props.pop("claimed_by", None)
+        new_props.pop("claimed_at", None)
+
+        return self.update_sprint(
+            sprint_id,
+            properties=new_props
+        )
 
     def list_epics(self, status: Optional[str] = None) -> List[ThoughtNode]:
         """List epics from TX backend."""
@@ -3100,7 +3172,7 @@ class GoTProjectManager:
     def create_epic(self, name: str, epic_id: Optional[str] = None) -> str:
         """Create a new epic."""
         if not epic_id:
-            epic_id = generate_epic_id(name)
+            epic_id = f"epic:{generate_epic_id()}"
         elif not epic_id.startswith("epic:"):
             epic_id = f"epic:{epic_id}"
 
@@ -3910,11 +3982,22 @@ def format_sprint_status(sprint: ThoughtNode, progress: Dict[str, Any]) -> str:
         f"Sprint: {sprint.content}",
         f"ID: {sprint.id}",
         f"Status: {sprint.properties.get('status', 'unknown')}",
+    ]
+
+    # Show claimed status if present
+    claimed_by = sprint.properties.get('claimed_by')
+    if claimed_by:
+        lines.append(f"Claimed by: {claimed_by}")
+        claimed_at = sprint.properties.get('claimed_at')
+        if claimed_at:
+            lines.append(f"Claimed at: {claimed_at}")
+
+    lines.extend([
         "",
         f"Progress: {progress['completed']}/{progress['total_tasks']} tasks ({progress['progress_percent']:.1f}%)",
         "",
         "By Status:",
-    ]
+    ])
 
     for status, count in progress.get("by_status", {}).items():
         lines.append(f"  {status}: {count}")
@@ -4161,7 +4244,14 @@ def cmd_sprint_list(args, manager: GoTProjectManager) -> int:
     for sprint in sprints:
         progress = manager.get_sprint_progress(sprint.id)
         status = sprint.properties.get("status", "?")
-        print(f"{sprint.id}: {sprint.content} [{status}] - {progress['progress_percent']:.0f}% complete")
+        claimed_by = sprint.properties.get("claimed_by", "")
+
+        # Build status line
+        status_line = f"{sprint.id}: {sprint.content} [{status}] - {progress['progress_percent']:.0f}% complete"
+        if claimed_by:
+            status_line += f" (claimed by {claimed_by})"
+
+        print(status_line)
 
     return 0
 
@@ -4205,6 +4295,84 @@ def cmd_sprint_complete(args, manager: GoTProjectManager) -> int:
     manager.save()
     print(f"Completed: {sprint.id}")
     print(f"  Title: {sprint.content}")
+    return 0
+
+
+def cmd_sprint_claim(args, manager: GoTProjectManager) -> int:
+    """Claim a sprint."""
+    try:
+        sprint = manager.claim_sprint(args.sprint_id, args.agent)
+        manager.save()
+        print(f"Claimed: {sprint.id}")
+        print(f"  Agent: {args.agent}")
+        return 0
+    except ValueError as e:
+        print(f"Error: {e}")
+        return 1
+
+
+def cmd_sprint_release(args, manager: GoTProjectManager) -> int:
+    """Release a sprint claim."""
+    try:
+        sprint = manager.release_sprint(args.sprint_id, args.agent)
+        manager.save()
+        print(f"Released: {sprint.id}")
+        return 0
+    except ValueError as e:
+        print(f"Error: {e}")
+        return 1
+
+
+def cmd_epic_create(args, manager: GoTProjectManager) -> int:
+    """Create an epic."""
+    epic_id = manager.create_epic(
+        name=args.name,
+        epic_id=getattr(args, 'epic_id', None),
+    )
+
+    manager.save()
+    print(f"Created: {epic_id}")
+    return 0
+
+
+def cmd_epic_list(args, manager: GoTProjectManager) -> int:
+    """List epics."""
+    epics = manager.list_epics(
+        status=getattr(args, 'status', None),
+    )
+
+    if not epics:
+        print("No epics found.")
+        return 0
+
+    for epic in epics:
+        status = epic.properties.get("status", "?")
+        phase = epic.properties.get("phase", "?")
+        print(f"{epic.id}: {epic.content} [{status}] - Phase: {phase}")
+
+    return 0
+
+
+def cmd_epic_show(args, manager: GoTProjectManager) -> int:
+    """Show epic details."""
+    epic = manager.get_epic(args.epic_id)
+
+    if not epic:
+        print(f"Epic not found: {args.epic_id}")
+        return 1
+
+    print(f"Epic: {epic.id}")
+    print(f"  Name: {epic.content}")
+    print(f"  Status: {epic.properties.get('status', '?')}")
+    print(f"  Phase: {epic.properties.get('phase', '?')}")
+
+    # Show associated sprints
+    sprints = manager.list_sprints(epic_id=epic.id)
+    if sprints:
+        print(f"  Sprints ({len(sprints)}):")
+        for sprint in sprints:
+            print(f"    - {sprint.id}: {sprint.content}")
+
     return 0
 
 
@@ -5150,6 +5318,33 @@ def main():
     sprint_complete = sprint_subparsers.add_parser("complete", help="Complete a sprint")
     sprint_complete.add_argument("sprint_id", help="Sprint ID to complete")
 
+    # sprint claim
+    sprint_claim = sprint_subparsers.add_parser("claim", help="Claim sprint for an agent")
+    sprint_claim.add_argument("sprint_id", help="Sprint ID to claim")
+    sprint_claim.add_argument("--agent", required=True, help="Agent name")
+
+    # sprint release
+    sprint_release = sprint_subparsers.add_parser("release", help="Release sprint claim")
+    sprint_release.add_argument("sprint_id", help="Sprint ID to release")
+    sprint_release.add_argument("--agent", required=True, help="Agent name")
+
+    # Epic commands
+    epic_parser = subparsers.add_parser("epic", help="Epic operations")
+    epic_subparsers = epic_parser.add_subparsers(dest="epic_command")
+
+    # epic create
+    epic_create = epic_subparsers.add_parser("create", help="Create an epic")
+    epic_create.add_argument("name", help="Epic name")
+    epic_create.add_argument("--id", dest="epic_id", help="Custom epic ID")
+
+    # epic list
+    epic_list = epic_subparsers.add_parser("list", help="List epics")
+    epic_list.add_argument("--status", help="Filter by status")
+
+    # epic show
+    epic_show = epic_subparsers.add_parser("show", help="Show epic details")
+    epic_show.add_argument("epic_id", help="Epic ID to display")
+
     # Query commands
     subparsers.add_parser("blocked", help="Show blocked tasks")
     subparsers.add_parser("active", help="Show active tasks")
@@ -5317,8 +5512,23 @@ def main():
             return cmd_sprint_start(args, manager)
         elif args.sprint_command == "complete":
             return cmd_sprint_complete(args, manager)
+        elif args.sprint_command == "claim":
+            return cmd_sprint_claim(args, manager)
+        elif args.sprint_command == "release":
+            return cmd_sprint_release(args, manager)
         else:
             sprint_parser.print_help()
+            return 1
+
+    elif args.command == "epic":
+        if args.epic_command == "create":
+            return cmd_epic_create(args, manager)
+        elif args.epic_command == "list":
+            return cmd_epic_list(args, manager)
+        elif args.epic_command == "show":
+            return cmd_epic_show(args, manager)
+        else:
+            epic_parser.print_help()
             return 1
 
     elif args.command == "blocked":

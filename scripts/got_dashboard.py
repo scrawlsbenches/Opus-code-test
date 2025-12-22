@@ -2,11 +2,6 @@
 """
 GoT Dashboard - Comprehensive metrics and health indicators
 
-.. deprecated::
-    This dashboard uses the legacy event-sourced backend (GoTProjectManager).
-    The transactional backend is now the default. Use 'python scripts/got_utils.py dashboard'
-    for the recommended dashboard experience.
-
 Displays visual dashboard showing:
 - Overview stats (tasks, edges, completion rate)
 - Velocity metrics (tasks completed, avg completion time)
@@ -213,20 +208,17 @@ class DashboardMetrics:
     """Collect and compute dashboard metrics from GoT graph."""
 
     def __init__(self, manager):
-        """Initialize with a GoTProjectManager instance."""
+        """Initialize with a TransactionalGoTAdapter instance."""
         self.manager = manager
-        self.graph = manager.graph
 
     def get_overview_stats(self) -> Dict[str, Any]:
         """Get overview statistics."""
-        tasks = [n for n in self.graph.nodes.values() if n.node_type == NodeType.TASK]
-        edges = self.graph.edges  # edges is a list, not a dict
-        decisions = [n for n in self.graph.nodes.values() if n.node_type == NodeType.DECISION]
+        tasks = self.manager.list_tasks()
+        edges = self.manager.graph.edges  # Use graph property for edges
+        decisions = self.manager.list_decisions()
 
-        # Count handoffs from events
-        from scripts.got_utils import EventLog, HandoffManager
-        events = EventLog.load_all_events(self.manager.events_dir)
-        handoffs = HandoffManager.load_handoffs_from_events(events)
+        # Count handoffs using adapter method
+        handoffs = self.manager.list_handoffs()
 
         # Task completion rate
         completed_tasks = [t for t in tasks if t.properties.get("status") == "completed"]
@@ -234,7 +226,8 @@ class DashboardMetrics:
         completion_rate = (len(completed_tasks) / total_tasks * 100) if total_tasks > 0 else 0
 
         # Edge density (edges per node)
-        total_nodes = len(self.graph.nodes)
+        # Total nodes = tasks + decisions (+ other node types if any)
+        total_nodes = len(tasks) + len(decisions)
         edge_density = len(edges) / total_nodes if total_nodes > 0 else 0
 
         return {
@@ -250,7 +243,7 @@ class DashboardMetrics:
 
     def get_velocity_metrics(self) -> Dict[str, Any]:
         """Get velocity and throughput metrics."""
-        tasks = [n for n in self.graph.nodes.values() if n.node_type == NodeType.TASK]
+        tasks = self.manager.list_tasks()
 
         now = datetime.now()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -333,7 +326,7 @@ class DashboardMetrics:
 
     def get_health_indicators(self) -> Dict[str, Any]:
         """Get health indicators."""
-        tasks = [n for n in self.graph.nodes.values() if n.node_type == NodeType.TASK]
+        tasks = self.manager.list_tasks()
 
         # Blocked tasks
         blocked_tasks = [t for t in tasks if t.properties.get("status") == "blocked"]
@@ -363,11 +356,13 @@ class DashboardMetrics:
                         pass
 
         # Orphan nodes (no edges)
+        # Get all nodes and edges through the adapter's graph property
+        graph = self.manager.graph
         orphan_nodes = []
-        for node in self.graph.nodes.values():
+        for node in graph.nodes.values():
             # Check if node has any edges
             has_edges = False
-            for edge in self.graph.edges:  # edges is a list
+            for edge in graph.edges:  # edges is a list
                 if edge.source_id == node.id or edge.target_id == node.id:
                     has_edges = True
                     break
@@ -386,9 +381,7 @@ class DashboardMetrics:
 
     def get_agent_performance(self) -> Dict[str, Any]:
         """Get agent performance metrics from handoffs."""
-        from scripts.got_utils import EventLog, HandoffManager
-        events = EventLog.load_all_events(self.manager.events_dir)
-        handoffs = HandoffManager.load_handoffs_from_events(events)
+        handoffs = self.manager.list_handoffs()
 
         if not handoffs:
             return {
@@ -999,20 +992,10 @@ def render_dashboard(manager) -> str:
 
 def main():
     """Main entry point."""
-    import warnings
-
-    # Emit deprecation warning
-    warnings.warn(
-        "got_dashboard.py uses the legacy event-sourced backend. "
-        "Consider using 'python scripts/got_utils.py dashboard' instead.",
-        DeprecationWarning,
-        stacklevel=1,
-    )
-
     # Import here to avoid circular imports
-    from scripts.got_utils import GoTProjectManager
+    from scripts.got_utils import TransactionalGoTAdapter
 
-    manager = GoTProjectManager()
+    manager = TransactionalGoTAdapter()
     dashboard = render_dashboard(manager)
     print(dashboard)
     return 0

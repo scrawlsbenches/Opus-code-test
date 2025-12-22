@@ -13,7 +13,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
-from .types import Entity, Task, Decision, Edge
+from .types import Entity, Task, Decision, Edge, Sprint, Epic, Handoff
 from .errors import CorruptionError
 from cortical.utils.checksums import compute_checksum
 from .config import DurabilityMode
@@ -427,5 +427,11 @@ class VersionedStore:
             return Decision.from_dict(data)
         elif entity_type == "edge":
             return Edge.from_dict(data)
+        elif entity_type == "sprint":
+            return Sprint.from_dict(data)
+        elif entity_type == "epic":
+            return Epic.from_dict(data)
+        elif entity_type == "handoff":
+            return Handoff.from_dict(data)
         else:
             return Entity.from_dict(data)
