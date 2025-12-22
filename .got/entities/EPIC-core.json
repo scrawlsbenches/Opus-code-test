@@ -1,0 +1,20 @@
+{
+  "_checksum": "6d8c0e76cf5e9c4e",
+  "_written_at": "2025-12-22T11:19:54.697683+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:19:54.693450+00:00",
+    "entity_type": "epic",
+    "id": "EPIC-core",
+    "metadata": {},
+    "modified_at": "2025-12-22T11:19:54.697646+00:00",
+    "phase": 1,
+    "phases": [],
+    "properties": {
+      "short_id": "core",
+      "started": ""
+    },
+    "status": "active",
+    "title": "Cortical Core",
+    "version": 2
+  }
+}

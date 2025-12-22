@@ -1,0 +1,24 @@
+{
+  "_checksum": "df896facdf7d99a7",
+  "_written_at": "2025-12-22T11:19:54.883180+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:19:54.878576+00:00",
+    "entity_type": "sprint",
+    "epic_id": "EPIC-efba",
+    "goals": [],
+    "id": "S-sprint-004",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2025-12-22T11:19:54.883148+00:00",
+    "notes": [],
+    "number": 4,
+    "properties": {
+      "epic_name": "Hubris MoE System",
+      "sprint_id": "sprint-004"
+    },
+    "session_id": "",
+    "status": "completed",
+    "title": "Sprint 4: Meta-Learning (Complete \u2705)",
+    "version": 2
+  }
+}

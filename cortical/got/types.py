@@ -187,6 +187,132 @@ class Decision(Entity):
 
 
 @dataclass
+class Sprint(Entity):
+    """
+    Sprint entity for time-boxed work periods.
+
+    Sprints organize work into fixed time periods with goals, isolation,
+    and session tracking. Each sprint can belong to an epic.
+    """
+
+    title: str = ""
+    status: str = "available"
+    epic_id: str = ""
+    number: int = 0
+    session_id: str = ""
+    isolation: List[str] = field(default_factory=list)
+    goals: List[Dict[str, Any]] = field(default_factory=list)
+    notes: List[str] = field(default_factory=list)
+    properties: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Validate sprint fields after initialization."""
+        self.entity_type = "sprint"
+        valid_statuses = {"available", "in_progress", "completed", "blocked"}
+        if self.status not in valid_statuses:
+            raise ValidationError(
+                f"Invalid status '{self.status}'",
+                valid_statuses=list(valid_statuses)
+            )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize sprint to dictionary."""
+        result = super().to_dict()
+        result.update({
+            "title": self.title,
+            "status": self.status,
+            "epic_id": self.epic_id,
+            "number": self.number,
+            "session_id": self.session_id,
+            "isolation": self.isolation,
+            "goals": self.goals,
+            "notes": self.notes,
+            "properties": self.properties,
+            "metadata": self.metadata,
+        })
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> Sprint:
+        """Deserialize sprint from dictionary."""
+        return cls(
+            id=data["id"],
+            entity_type=data.get("entity_type", "sprint"),
+            version=data.get("version", 1),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            modified_at=data.get("modified_at", datetime.now(timezone.utc).isoformat()),
+            title=data.get("title", ""),
+            status=data.get("status", "available"),
+            epic_id=data.get("epic_id", ""),
+            number=data.get("number", 0),
+            session_id=data.get("session_id", ""),
+            isolation=data.get("isolation", []),
+            goals=data.get("goals", []),
+            notes=data.get("notes", []),
+            properties=data.get("properties", {}),
+            metadata=data.get("metadata", {}),
+        )
+
+
+@dataclass
+class Epic(Entity):
+    """
+    Epic entity for large initiatives spanning multiple sprints.
+
+    Epics organize work into high-level goals with phases, tracking
+    progress across multiple sprints and work periods.
+    """
+
+    title: str = ""
+    status: str = "active"
+    phase: int = 1
+    phases: List[Dict[str, Any]] = field(default_factory=list)
+    properties: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Validate epic fields after initialization."""
+        self.entity_type = "epic"
+        valid_statuses = {"active", "completed", "on_hold"}
+        if self.status not in valid_statuses:
+            raise ValidationError(
+                f"Invalid status '{self.status}'",
+                valid_statuses=list(valid_statuses)
+            )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize epic to dictionary."""
+        result = super().to_dict()
+        result.update({
+            "title": self.title,
+            "status": self.status,
+            "phase": self.phase,
+            "phases": self.phases,
+            "properties": self.properties,
+            "metadata": self.metadata,
+        })
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> Epic:
+        """Deserialize epic from dictionary."""
+        return cls(
+            id=data["id"],
+            entity_type=data.get("entity_type", "epic"),
+            version=data.get("version", 1),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            modified_at=data.get("modified_at", datetime.now(timezone.utc).isoformat()),
+            title=data.get("title", ""),
+            status=data.get("status", "active"),
+            phase=data.get("phase", 1),
+            phases=data.get("phases", []),
+            properties=data.get("properties", {}),
+            metadata=data.get("metadata", {}),
+        )
+
+
+@dataclass
 class Edge(Entity):
     """
     Edge entity representing a relationship between two entities.
@@ -249,4 +375,91 @@ class Edge(Entity):
             edge_type=data.get("edge_type", ""),
             weight=data.get("weight", 1.0),
             confidence=data.get("confidence", 1.0),
+        )
+
+
+@dataclass
+class Handoff(Entity):
+    """
+    Handoff entity representing an agent-to-agent work transfer.
+
+    Handoffs track the lifecycle of transferring work from one agent to
+    another, including context, instructions, and completion status.
+
+    Status lifecycle: initiated → accepted → completed
+                                ↘ rejected
+    """
+
+    source_agent: str = ""
+    target_agent: str = ""
+    task_id: str = ""
+    status: str = "initiated"
+    instructions: str = ""
+    context: Dict[str, Any] = field(default_factory=dict)
+    result: Dict[str, Any] = field(default_factory=dict)
+    artifacts: List[str] = field(default_factory=list)
+    initiated_at: str = ""
+    accepted_at: str = ""
+    completed_at: str = ""
+    rejected_at: str = ""
+    reject_reason: str = ""
+    properties: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Validate handoff fields after initialization."""
+        self.entity_type = "handoff"
+        valid_statuses = {"initiated", "accepted", "completed", "rejected"}
+        if self.status not in valid_statuses:
+            raise ValidationError(
+                f"Invalid status '{self.status}'",
+                valid_statuses=list(valid_statuses)
+            )
+        # Auto-set initiated_at if not provided
+        if not self.initiated_at:
+            self.initiated_at = datetime.now(timezone.utc).isoformat()
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize handoff to dictionary."""
+        result = super().to_dict()
+        result.update({
+            "source_agent": self.source_agent,
+            "target_agent": self.target_agent,
+            "task_id": self.task_id,
+            "status": self.status,
+            "instructions": self.instructions,
+            "context": self.context,
+            "result": self.result,
+            "artifacts": self.artifacts,
+            "initiated_at": self.initiated_at,
+            "accepted_at": self.accepted_at,
+            "completed_at": self.completed_at,
+            "rejected_at": self.rejected_at,
+            "reject_reason": self.reject_reason,
+            "properties": self.properties,
+        })
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Handoff":
+        """Deserialize handoff from dictionary."""
+        return cls(
+            id=data["id"],
+            entity_type=data.get("entity_type", "handoff"),
+            version=data.get("version", 1),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            modified_at=data.get("modified_at", datetime.now(timezone.utc).isoformat()),
+            source_agent=data.get("source_agent", ""),
+            target_agent=data.get("target_agent", ""),
+            task_id=data.get("task_id", ""),
+            status=data.get("status", "initiated"),
+            instructions=data.get("instructions", ""),
+            context=data.get("context", {}),
+            result=data.get("result", {}),
+            artifacts=data.get("artifacts", []),
+            initiated_at=data.get("initiated_at", ""),
+            accepted_at=data.get("accepted_at", ""),
+            completed_at=data.get("completed_at", ""),
+            rejected_at=data.get("rejected_at", ""),
+            reject_reason=data.get("reject_reason", ""),
+            properties=data.get("properties", {}),
         )

@@ -943,10 +943,9 @@ class TestBackendStatsConsistency:
 
     def test_event_sourced_stats_has_all_fields(self, tmp_path):
         """Test that event-sourced backend stats has all required fields."""
-        # This test uses the GoTProjectManager directly
+        # This test uses the GoTProjectManager directly (deprecation warning handled globally)
         from scripts.got_utils import GoTProjectManager, GOT_DIR
 
-        # Create a temporary manager
         manager = GoTProjectManager(got_dir=tmp_path / ".got")
 
         stats = manager.get_stats()
@@ -988,7 +987,7 @@ class TestBackendStatsConsistency:
         except ImportError:
             pytest.skip("Transactional backend not available")
 
-        # Get stats from both backends
+        # Get stats from both backends (deprecation warning handled globally)
         es_manager = GoTProjectManager(got_dir=tmp_path / ".got")
         es_stats = es_manager.get_stats()
 

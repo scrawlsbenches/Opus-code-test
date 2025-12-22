@@ -1,0 +1,16 @@
+{
+  "_checksum": "84f6b7c720403570",
+  "_written_at": "2025-12-22T11:19:54.801970+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2025-12-22T11:19:54.795773+00:00",
+    "edge_type": "PART_OF",
+    "entity_type": "edge",
+    "id": "E-S-sprint-008-core-performance-EPIC-core-PART_OF",
+    "modified_at": "2025-12-22T11:19:54.801943+00:00",
+    "source_id": "S-sprint-008-core-performance",
+    "target_id": "EPIC-core",
+    "version": 2,
+    "weight": 1.0
+  }
+}

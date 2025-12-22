@@ -23,13 +23,19 @@ import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
-from cortical.utils.id_generation import generate_task_id, generate_decision_id
+from cortical.utils.id_generation import (
+    generate_task_id,
+    generate_decision_id,
+    generate_sprint_id,
+    generate_epic_id,
+    generate_handoff_id,
+)
 from .tx_manager import TransactionManager, CommitResult
 from .sync import SyncManager, SyncResult
 from .recovery import RecoveryManager, RecoveryResult
-from .types import Task, Decision, Edge, Entity
+from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff
 from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
 from .config import DurabilityMode
@@ -298,6 +304,318 @@ class GoTManager:
             if edge_file.exists():
                 edge_file.unlink()
 
+    # Sprint management methods
+    def create_sprint(
+        self,
+        title: str,
+        number: Optional[int] = None,
+        epic_id: str = "",
+        **properties
+    ) -> Sprint:
+        """
+        Create a sprint in a single-operation transaction.
+
+        Args:
+            title: Sprint title
+            number: Optional sprint number (used for ID generation)
+            epic_id: Optional epic ID this sprint belongs to
+            **properties: Additional sprint properties
+
+        Returns:
+            Created Sprint object
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        with self.transaction() as tx:
+            sprint = tx.create_sprint(
+                title=title,
+                number=number,
+                epic_id=epic_id,
+                **properties
+            )
+        return sprint
+
+    def get_sprint(self, sprint_id: str) -> Optional[Sprint]:
+        """
+        Get a sprint by ID (read-only).
+
+        Args:
+            sprint_id: Sprint identifier
+
+        Returns:
+            Sprint object or None if not found
+        """
+        with self.transaction(read_only=True) as tx:
+            sprint = tx.get_sprint(sprint_id)
+        return sprint
+
+    def update_sprint(self, sprint_id: str, **updates) -> Sprint:
+        """
+        Update a sprint in a single-operation transaction.
+
+        Args:
+            sprint_id: Sprint identifier
+            **updates: Fields to update (status, title, goals, etc.)
+
+        Returns:
+            Updated Sprint object
+
+        Raises:
+            TransactionError: If commit fails or sprint not found
+        """
+        with self.transaction() as tx:
+            sprint = tx.update_sprint(sprint_id, **updates)
+        return sprint
+
+    def list_sprints(
+        self,
+        status: Optional[str] = None,
+        epic_id: Optional[str] = None
+    ) -> List[Sprint]:
+        """
+        List sprints, optionally filtered by status or epic.
+
+        Args:
+            status: Filter by status ('available', 'in_progress', 'completed', etc.)
+            epic_id: Filter by epic ID
+
+        Returns:
+            List of matching Sprint objects
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        sprints = []
+        for entity_file in entities_dir.glob("S-*.json"):
+            try:
+                sprint = self._read_sprint_file(entity_file)
+                if sprint is None:
+                    continue
+
+                # Apply filters
+                if status is not None and sprint.status != status:
+                    continue
+                if epic_id is not None and sprint.epic_id != epic_id:
+                    continue
+
+                sprints.append(sprint)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted sprint file {entity_file}: {e}")
+                continue
+
+        return sprints
+
+    def get_current_sprint(self) -> Optional[Sprint]:
+        """
+        Get the currently active (in_progress) sprint.
+
+        Returns:
+            Sprint object or None if no sprint is in progress
+        """
+        sprints = self.list_sprints(status="in_progress")
+        return sprints[0] if sprints else None
+
+    def add_task_to_sprint(self, task_id: str, sprint_id: str) -> Edge:
+        """
+        Add a task to a sprint via CONTAINS edge.
+
+        Args:
+            task_id: Task identifier
+            sprint_id: Sprint identifier
+
+        Returns:
+            Created Edge object
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        return self.add_edge(sprint_id, task_id, "CONTAINS")
+
+    def get_sprint_tasks(self, sprint_id: str) -> List[Task]:
+        """
+        Get all tasks in a sprint.
+
+        Args:
+            sprint_id: Sprint identifier
+
+        Returns:
+            List of Task objects in the sprint
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        # Find all CONTAINS edges from sprint to tasks
+        task_ids = []
+        for edge_file in entities_dir.glob("E-*.json"):
+            try:
+                edge = self._read_edge_file(edge_file)
+                if edge is None:
+                    continue
+
+                if edge.edge_type == "CONTAINS" and edge.source_id == sprint_id:
+                    task_ids.append(edge.target_id)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+                continue
+
+        # Load the tasks
+        tasks = []
+        for task_id in task_ids:
+            task = self.get_task(task_id)
+            if task is not None:
+                tasks.append(task)
+
+        return tasks
+
+    def get_sprint_progress(self, sprint_id: str) -> dict:
+        """
+        Get sprint progress statistics.
+
+        Args:
+            sprint_id: Sprint identifier
+
+        Returns:
+            Dictionary with progress statistics
+        """
+        tasks = self.get_sprint_tasks(sprint_id)
+
+        total = len(tasks)
+        if total == 0:
+            return {
+                "total": 0,
+                "completed": 0,
+                "in_progress": 0,
+                "pending": 0,
+                "blocked": 0,
+                "completion_rate": 0.0
+            }
+
+        status_counts = {
+            "completed": sum(1 for t in tasks if t.status == "completed"),
+            "in_progress": sum(1 for t in tasks if t.status == "in_progress"),
+            "pending": sum(1 for t in tasks if t.status == "pending"),
+            "blocked": sum(1 for t in tasks if t.status == "blocked"),
+        }
+
+        return {
+            "total": total,
+            **status_counts,
+            "completion_rate": status_counts["completed"] / total if total > 0 else 0.0
+        }
+
+    # Epic management methods
+    def create_epic(
+        self,
+        title: str,
+        epic_id: Optional[str] = None,
+        **properties
+    ) -> Epic:
+        """
+        Create an epic in a single-operation transaction.
+
+        Args:
+            title: Epic title
+            epic_id: Optional custom epic ID (auto-generated if not provided)
+            **properties: Additional epic properties
+
+        Returns:
+            Created Epic object
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        with self.transaction() as tx:
+            epic = tx.create_epic(
+                title=title,
+                epic_id=epic_id,
+                **properties
+            )
+        return epic
+
+    def get_epic(self, epic_id: str) -> Optional[Epic]:
+        """
+        Get an epic by ID (read-only).
+
+        Args:
+            epic_id: Epic identifier
+
+        Returns:
+            Epic object or None if not found
+        """
+        with self.transaction(read_only=True) as tx:
+            epic = tx.get_epic(epic_id)
+        return epic
+
+    def update_epic(self, epic_id: str, **updates) -> Epic:
+        """
+        Update an epic in a single-operation transaction.
+
+        Args:
+            epic_id: Epic identifier
+            **updates: Fields to update (status, title, phase, etc.)
+
+        Returns:
+            Updated Epic object
+
+        Raises:
+            TransactionError: If commit fails or epic not found
+        """
+        with self.transaction() as tx:
+            epic = tx.update_epic(epic_id, **updates)
+        return epic
+
+    def list_epics(self, status: Optional[str] = None) -> List[Epic]:
+        """
+        List epics, optionally filtered by status.
+
+        Args:
+            status: Filter by status ('active', 'completed', 'on_hold')
+
+        Returns:
+            List of matching Epic objects
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        epics = []
+        for entity_file in entities_dir.glob("E-*.json"):
+            try:
+                # Check if this is an epic (not an edge)
+                epic = self._read_epic_file(entity_file)
+                if epic is None:
+                    continue
+
+                # Apply filter
+                if status is not None and epic.status != status:
+                    continue
+
+                epics.append(epic)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted epic file {entity_file}: {e}")
+                continue
+
+        return epics
+
+    def add_sprint_to_epic(self, sprint_id: str, epic_id: str) -> Edge:
+        """
+        Add a sprint to an epic via CONTAINS edge.
+
+        Args:
+            sprint_id: Sprint identifier
+            epic_id: Epic identifier
+
+        Returns:
+            Created Edge object
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        return self.add_edge(epic_id, sprint_id, "CONTAINS")
+
     def sync(self) -> SyncResult:
         """
         Sync with remote (push/pull).
@@ -523,6 +841,259 @@ class GoTManager:
 
         return Edge.from_dict(data)
 
+    def _read_sprint_file(self, path: Path) -> Optional[Sprint]:
+        """
+        Read and parse a sprint file.
+
+        Args:
+            path: Path to sprint JSON file
+
+        Returns:
+            Sprint object or None if not a sprint
+
+        Raises:
+            CorruptionError: If checksum verification fails
+            json.JSONDecodeError: If file is not valid JSON
+            KeyError: If required fields are missing
+        """
+        with open(path, 'r', encoding='utf-8') as f:
+            wrapper = json.load(f)
+
+        data = wrapper.get("data", {})
+        if data.get("entity_type") != "sprint":
+            return None
+
+        return Sprint.from_dict(data)
+
+    def _read_epic_file(self, path: Path) -> Optional[Epic]:
+        """
+        Read and parse an epic file.
+
+        Args:
+            path: Path to epic JSON file
+
+        Returns:
+            Epic object or None if not an epic
+
+        Raises:
+            CorruptionError: If checksum verification fails
+            json.JSONDecodeError: If file is not valid JSON
+            KeyError: If required fields are missing
+        """
+        with open(path, 'r', encoding='utf-8') as f:
+            wrapper = json.load(f)
+
+        data = wrapper.get("data", {})
+        if data.get("entity_type") != "epic":
+            return None
+
+        return Epic.from_dict(data)
+
+    def _read_handoff_file(self, path: Path) -> Optional[Handoff]:
+        """
+        Read and parse a handoff file.
+
+        Args:
+            path: Path to handoff JSON file
+
+        Returns:
+            Handoff object or None if not a handoff
+
+        Raises:
+            CorruptionError: If checksum verification fails
+            json.JSONDecodeError: If file is not valid JSON
+            KeyError: If required fields are missing
+        """
+        with open(path, 'r', encoding='utf-8') as f:
+            wrapper = json.load(f)
+
+        data = wrapper.get("data", {})
+        if data.get("entity_type") != "handoff":
+            return None
+
+        return Handoff.from_dict(data)
+
+    # Handoff management methods
+    def initiate_handoff(
+        self,
+        source_agent: str,
+        target_agent: str,
+        task_id: str,
+        instructions: str = "",
+        context: Optional[Dict[str, Any]] = None,
+        handoff_id: Optional[str] = None,
+    ) -> Handoff:
+        """
+        Initiate a handoff to another agent.
+
+        Args:
+            source_agent: Agent initiating the handoff
+            target_agent: Agent receiving the handoff
+            task_id: Task being handed off
+            instructions: Instructions for the target agent
+            context: Additional context data
+            handoff_id: Optional custom handoff ID (auto-generated if not provided)
+
+        Returns:
+            Created Handoff object
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        with self.transaction() as tx:
+            handoff = tx.initiate_handoff(
+                source_agent=source_agent,
+                target_agent=target_agent,
+                task_id=task_id,
+                instructions=instructions,
+                context=context or {},
+                handoff_id=handoff_id,
+            )
+        return handoff
+
+    def accept_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        acknowledgment: str = ""
+    ) -> Handoff:
+        """
+        Accept a handoff.
+
+        Args:
+            handoff_id: Handoff identifier
+            agent: Agent accepting the handoff
+            acknowledgment: Optional acknowledgment message
+
+        Returns:
+            Updated Handoff object
+
+        Raises:
+            TransactionError: If commit fails or handoff not found
+            NotFoundError: If handoff doesn't exist
+        """
+        with self.transaction() as tx:
+            handoff = tx.accept_handoff(handoff_id, agent, acknowledgment)
+        return handoff
+
+    def complete_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        result: Optional[Dict[str, Any]] = None,
+        artifacts: Optional[List[str]] = None,
+    ) -> Handoff:
+        """
+        Complete a handoff with results.
+
+        Args:
+            handoff_id: Handoff identifier
+            agent: Agent completing the handoff
+            result: Result data
+            artifacts: List of artifact paths/identifiers
+
+        Returns:
+            Updated Handoff object
+
+        Raises:
+            TransactionError: If commit fails or handoff not found
+            NotFoundError: If handoff doesn't exist
+        """
+        with self.transaction() as tx:
+            handoff = tx.complete_handoff(
+                handoff_id, agent, result or {}, artifacts or []
+            )
+        return handoff
+
+    def reject_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        reason: str = ""
+    ) -> Handoff:
+        """
+        Reject a handoff.
+
+        Args:
+            handoff_id: Handoff identifier
+            agent: Agent rejecting the handoff
+            reason: Rejection reason
+
+        Returns:
+            Updated Handoff object
+
+        Raises:
+            TransactionError: If commit fails or handoff not found
+            NotFoundError: If handoff doesn't exist
+        """
+        with self.transaction() as tx:
+            handoff = tx.reject_handoff(handoff_id, agent, reason)
+        return handoff
+
+    def get_handoff(self, handoff_id: str) -> Optional[Handoff]:
+        """
+        Get a handoff by ID (read-only).
+
+        Args:
+            handoff_id: Handoff identifier
+
+        Returns:
+            Handoff object or None if not found
+        """
+        entities_dir = self.got_dir / "entities"
+        handoff_file = entities_dir / f"{handoff_id}.json"
+        if not handoff_file.exists():
+            return None
+
+        try:
+            return self._read_handoff_file(handoff_file)
+        except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+            logger.warning(f"Error reading handoff file {handoff_file}: {e}")
+            return None
+
+    def list_handoffs(
+        self,
+        status: Optional[str] = None,
+        target_agent: Optional[str] = None,
+        source_agent: Optional[str] = None,
+    ) -> List[Handoff]:
+        """
+        List handoffs, optionally filtered.
+
+        Args:
+            status: Filter by status ('initiated', 'accepted', 'completed', 'rejected')
+            target_agent: Filter by target agent
+            source_agent: Filter by source agent
+
+        Returns:
+            List of matching Handoff objects
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        handoffs = []
+        for entity_file in entities_dir.glob("H-*.json"):
+            try:
+                handoff = self._read_handoff_file(entity_file)
+                if handoff is None:
+                    continue
+
+                # Apply filters
+                if status is not None and handoff.status != status:
+                    continue
+                if target_agent is not None and handoff.target_agent != target_agent:
+                    continue
+                if source_agent is not None and handoff.source_agent != source_agent:
+                    continue
+
+                handoffs.append(handoff)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted handoff file {entity_file}: {e}")
+                continue
+
+        return handoffs
+
 
 class TransactionContext:
     """
@@ -697,6 +1268,309 @@ class TransactionContext:
         )
         self.tx_manager.write(self.tx, edge)
         return edge
+
+    def create_sprint(self, title: str, **kwargs) -> Sprint:
+        """
+        Create sprint within transaction.
+
+        Args:
+            title: Sprint title
+            **kwargs: Additional sprint fields (number, epic_id, status, etc.)
+
+        Returns:
+            Created Sprint object
+        """
+        number = kwargs.get("number")
+        sprint_id = generate_sprint_id(number=number)
+        sprint = Sprint(
+            id=sprint_id,
+            title=title,
+            number=kwargs.get("number", 0),
+            status=kwargs.get("status", "available"),
+            epic_id=kwargs.get("epic_id", ""),
+            session_id=kwargs.get("session_id", ""),
+            isolation=kwargs.get("isolation", []),
+            goals=kwargs.get("goals", []),
+            notes=kwargs.get("notes", []),
+            properties=kwargs.get("properties", {}),
+            metadata=kwargs.get("metadata", {}),
+        )
+        self.tx_manager.write(self.tx, sprint)
+        return sprint
+
+    def update_sprint(self, sprint_id: str, **updates) -> Sprint:
+        """
+        Update sprint within transaction.
+
+        Args:
+            sprint_id: Sprint identifier
+            **updates: Fields to update
+
+        Returns:
+            Updated Sprint object
+
+        Raises:
+            TransactionError: If sprint not found
+        """
+        sprint = self.get_sprint(sprint_id)
+        if sprint is None:
+            raise TransactionError(f"Sprint not found: {sprint_id}")
+
+        # Apply updates
+        for key, value in updates.items():
+            if hasattr(sprint, key):
+                setattr(sprint, key, value)
+
+        # Bump version
+        sprint.bump_version()
+
+        # Write back
+        self.tx_manager.write(self.tx, sprint)
+        return sprint
+
+    def get_sprint(self, sprint_id: str) -> Optional[Sprint]:
+        """
+        Get sprint within transaction (sees own writes).
+
+        Args:
+            sprint_id: Sprint identifier
+
+        Returns:
+            Sprint object or None if not found
+        """
+        entity = self.tx_manager.read(self.tx, sprint_id)
+        if entity is None:
+            return None
+        if not isinstance(entity, Sprint):
+            return None
+        return entity
+
+    def create_epic(self, title: str, **kwargs) -> Epic:
+        """
+        Create epic within transaction.
+
+        Args:
+            title: Epic title
+            **kwargs: Additional epic fields (epic_id, status, phase, etc.)
+
+        Returns:
+            Created Epic object
+        """
+        epic_id = kwargs.get("epic_id") or generate_epic_id()
+        epic = Epic(
+            id=epic_id,
+            title=title,
+            status=kwargs.get("status", "active"),
+            phase=kwargs.get("phase", 1),
+            phases=kwargs.get("phases", []),
+            properties=kwargs.get("properties", {}),
+            metadata=kwargs.get("metadata", {}),
+        )
+        self.tx_manager.write(self.tx, epic)
+        return epic
+
+    def update_epic(self, epic_id: str, **updates) -> Epic:
+        """
+        Update epic within transaction.
+
+        Args:
+            epic_id: Epic identifier
+            **updates: Fields to update
+
+        Returns:
+            Updated Epic object
+
+        Raises:
+            TransactionError: If epic not found
+        """
+        epic = self.get_epic(epic_id)
+        if epic is None:
+            raise TransactionError(f"Epic not found: {epic_id}")
+
+        # Apply updates
+        for key, value in updates.items():
+            if hasattr(epic, key):
+                setattr(epic, key, value)
+
+        # Bump version
+        epic.bump_version()
+
+        # Write back
+        self.tx_manager.write(self.tx, epic)
+        return epic
+
+    def get_epic(self, epic_id: str) -> Optional[Epic]:
+        """
+        Get epic within transaction (sees own writes).
+
+        Args:
+            epic_id: Epic identifier
+
+        Returns:
+            Epic object or None if not found
+        """
+        entity = self.tx_manager.read(self.tx, epic_id)
+        if entity is None:
+            return None
+        if not isinstance(entity, Epic):
+            return None
+        return entity
+
+    # Handoff operations
+    def initiate_handoff(
+        self,
+        source_agent: str,
+        target_agent: str,
+        task_id: str,
+        instructions: str = "",
+        context: Optional[Dict[str, Any]] = None,
+        handoff_id: Optional[str] = None,
+    ) -> Handoff:
+        """
+        Initiate a handoff within transaction.
+
+        Args:
+            source_agent: Agent initiating the handoff
+            target_agent: Agent receiving the handoff
+            task_id: Task being handed off
+            instructions: Instructions for the target agent
+            context: Additional context data
+            handoff_id: Optional custom handoff ID (auto-generated if not provided)
+
+        Returns:
+            Created Handoff object
+        """
+        if handoff_id is None:
+            handoff_id = generate_handoff_id()
+
+        handoff = Handoff(
+            id=handoff_id,
+            source_agent=source_agent,
+            target_agent=target_agent,
+            task_id=task_id,
+            status="initiated",
+            instructions=instructions,
+            context=context or {},
+        )
+        self.tx_manager.write(self.tx, handoff)
+        return handoff
+
+    def accept_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        acknowledgment: str = ""
+    ) -> Handoff:
+        """
+        Accept a handoff within transaction.
+
+        Args:
+            handoff_id: Handoff identifier
+            agent: Agent accepting the handoff
+            acknowledgment: Optional acknowledgment message
+
+        Returns:
+            Updated Handoff object
+
+        Raises:
+            TransactionError: If handoff not found
+        """
+        handoff = self.get_handoff(handoff_id)
+        if handoff is None:
+            raise TransactionError(f"Handoff not found: {handoff_id}")
+
+        handoff.status = "accepted"
+        handoff.accepted_at = datetime.now(timezone.utc).isoformat()
+        if acknowledgment:
+            handoff.properties["acknowledgment"] = acknowledgment
+        handoff.bump_version()
+
+        self.tx_manager.write(self.tx, handoff)
+        return handoff
+
+    def complete_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        result: Dict[str, Any],
+        artifacts: List[str],
+    ) -> Handoff:
+        """
+        Complete a handoff within transaction.
+
+        Args:
+            handoff_id: Handoff identifier
+            agent: Agent completing the handoff
+            result: Result data
+            artifacts: List of artifact paths/identifiers
+
+        Returns:
+            Updated Handoff object
+
+        Raises:
+            TransactionError: If handoff not found
+        """
+        handoff = self.get_handoff(handoff_id)
+        if handoff is None:
+            raise TransactionError(f"Handoff not found: {handoff_id}")
+
+        handoff.status = "completed"
+        handoff.completed_at = datetime.now(timezone.utc).isoformat()
+        handoff.result = result
+        handoff.artifacts = artifacts
+        handoff.bump_version()
+
+        self.tx_manager.write(self.tx, handoff)
+        return handoff
+
+    def reject_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        reason: str = ""
+    ) -> Handoff:
+        """
+        Reject a handoff within transaction.
+
+        Args:
+            handoff_id: Handoff identifier
+            agent: Agent rejecting the handoff
+            reason: Rejection reason
+
+        Returns:
+            Updated Handoff object
+
+        Raises:
+            TransactionError: If handoff not found
+        """
+        handoff = self.get_handoff(handoff_id)
+        if handoff is None:
+            raise TransactionError(f"Handoff not found: {handoff_id}")
+
+        handoff.status = "rejected"
+        handoff.rejected_at = datetime.now(timezone.utc).isoformat()
+        handoff.reject_reason = reason
+        handoff.bump_version()
+
+        self.tx_manager.write(self.tx, handoff)
+        return handoff
+
+    def get_handoff(self, handoff_id: str) -> Optional[Handoff]:
+        """
+        Get handoff within transaction (sees own writes).
+
+        Args:
+            handoff_id: Handoff identifier
+
+        Returns:
+            Handoff object or None if not found
+        """
+        entity = self.tx_manager.read(self.tx, handoff_id)
+        if entity is None:
+            return None
+        if not isinstance(entity, Handoff):
+            return None
+        return entity
 
     def read(self, entity_id: str) -> Optional[Entity]:
         """

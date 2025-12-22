@@ -108,6 +108,8 @@ filterwarnings = [
     "error",
     # Allow our intentional pickle deprecation warnings (SEC-008)
     "ignore:Pickle format is deprecated:DeprecationWarning",
+    # Allow GoTProjectManager deprecation (legacy backend tests intentionally use it)
+    "ignore:GoTProjectManager uses the legacy event-sourced backend:DeprecationWarning",
     # Hubris TestExpert and related classes have __init__ but aren't test classes
     "ignore:cannot collect test class.*TestExpert.*:pytest.PytestCollectionWarning",
     "ignore:cannot collect test class.*TestPrediction.*:pytest.PytestCollectionWarning",

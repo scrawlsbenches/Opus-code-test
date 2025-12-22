@@ -1,0 +1,24 @@
+{
+  "_checksum": "22c97ed80cd9ecb0",
+  "_written_at": "2025-12-22T11:19:55.069496+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:19:55.065295+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [],
+    "id": "S-sprint-013",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2025-12-22T11:19:55.069460+00:00",
+    "notes": [],
+    "number": 13,
+    "properties": {
+      "epic_name": "",
+      "sprint_id": "sprint-013"
+    },
+    "session_id": "",
+    "status": "available",
+    "title": "Sprint 13: DependencyExpert",
+    "version": 2
+  }
+}

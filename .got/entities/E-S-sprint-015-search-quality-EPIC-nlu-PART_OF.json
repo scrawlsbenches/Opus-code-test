@@ -1,0 +1,16 @@
+{
+  "_checksum": "d8b05ecfc784968e",
+  "_written_at": "2025-12-22T11:19:55.120166+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2025-12-22T11:19:55.114468+00:00",
+    "edge_type": "PART_OF",
+    "entity_type": "edge",
+    "id": "E-S-sprint-015-search-quality-EPIC-nlu-PART_OF",
+    "modified_at": "2025-12-22T11:19:55.120134+00:00",
+    "source_id": "S-sprint-015-search-quality",
+    "target_id": "EPIC-nlu",
+    "version": 2,
+    "weight": 1.0
+  }
+}

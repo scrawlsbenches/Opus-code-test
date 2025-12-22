@@ -1,0 +1,52 @@
+{
+  "_checksum": "d6a3ade4eb043c59",
+  "_written_at": "2025-12-22T11:19:55.119009+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:19:55.113866+00:00",
+    "entity_type": "sprint",
+    "epic_id": "EPIC-nlu",
+    "goals": [
+      {
+        "completed": true,
+        "text": "Enable code stop word filtering by default in `find_documents_for_query()` (already true)"
+      },
+      {
+        "completed": true,
+        "text": "Weight lateral expansion by TF-IDF, not raw co-occurrence count (133e8aab)"
+      },
+      {
+        "completed": true,
+        "text": "Apply test file penalty (0.8) by default in basic search (already 0.8)"
+      },
+      {
+        "completed": true,
+        "text": "Add security concept group to `code_concepts.py` (already exists)"
+      },
+      {
+        "completed": true,
+        "text": "Add domain-specific concept groups (ML, database, frontend) (b183eb8d)"
+      },
+      {
+        "completed": true,
+        "text": "Update tests for new default behaviors (11 new tests)"
+      }
+    ],
+    "id": "S-sprint-015-search-quality",
+    "isolation": [
+      "cortical/query/",
+      "cortical/code_concepts.py"
+    ],
+    "metadata": {},
+    "modified_at": "2025-12-22T11:19:55.118969+00:00",
+    "notes": [],
+    "number": 15,
+    "properties": {
+      "epic_name": "NLU Enhancement",
+      "sprint_id": "sprint-015-search-quality"
+    },
+    "session_id": "dOcbe",
+    "status": "completed",
+    "title": "Sprint 15: Search Quality Fundamentals",
+    "version": 2
+  }
+}

@@ -22,7 +22,8 @@ import re
 import sys
 import tempfile
 import time
-from datetime import datetime
+import warnings
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass, field, asdict
@@ -35,6 +36,7 @@ from cortical.utils.id_generation import (
     generate_task_id,
     generate_decision_id,
     generate_sprint_id,
+    generate_epic_id,
     generate_goal_id,
     normalize_id,
 )
@@ -65,20 +67,16 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # =============================================================================
 
-GOT_DIR = PROJECT_ROOT / ".got"
-GOT_TX_DIR = PROJECT_ROOT / ".got-tx"  # Transactional backend directory
+# Allow GOT_DIR to be overridden via environment variable (for testing)
+GOT_DIR = Path(os.environ.get("GOT_DIR", PROJECT_ROOT / ".got"))
 WAL_DIR = GOT_DIR / "wal"
 SNAPSHOTS_DIR = GOT_DIR / "snapshots"
-EVENTS_DIR = GOT_DIR / "events"  # Git-tracked event logs (source of truth)
+EVENTS_DIR = GOT_DIR / "events"  # Git-tracked event logs (legacy, still read)
 TASKS_DIR = PROJECT_ROOT / "tasks"
 
-# Backend selection (environment variable or auto-detect)
-# Set GOT_USE_TX=1 to force transactional backend
-# Set GOT_USE_TX=0 to force event-sourced backend
-USE_TX_BACKEND = os.environ.get("GOT_USE_TX", "").lower() in ("1", "true", "yes")
-if not USE_TX_BACKEND and TX_BACKEND_AVAILABLE:
-    # Auto-detect: if .got-tx exists and has entities, use it
-    USE_TX_BACKEND = (GOT_TX_DIR / "entities").exists()
+# Backend selection: TX backend is now the DEFAULT when available
+# Set GOT_USE_LEGACY=1 to force event-sourced backend (for debugging only)
+USE_TX_BACKEND = TX_BACKEND_AVAILABLE and os.environ.get("GOT_USE_LEGACY", "").lower() not in ("1", "true", "yes")
 
 # Status values
 STATUS_PENDING = "pending"
@@ -109,11 +107,6 @@ VALID_CATEGORIES = ["arch", "feature", "bugfix", "test", "docs", "refactor",
 
 # ID generation functions now imported from cortical.utils.id_generation
 # (canonical source for all ID generation across the codebase)
-
-def generate_epic_id(name: str) -> str:
-    """Generate epic ID: epic:E-XXXX"""
-    suffix = os.urandom(2).hex()
-    return f"epic:E-{suffix}"
 
 
 def get_current_branch() -> str:
@@ -230,64 +223,36 @@ def generate_task_title_from_commit(commit_message: str) -> str:
 # =============================================================================
 
 class GoTBackendFactory:
-    """Factory for creating GoT backend instances."""
+    """Factory for creating GoT backend instances (transactional only)."""
 
     @staticmethod
     def create(
         backend: Optional[str] = None,
         got_dir: Optional[Path] = None,
-    ) -> "Union[GoTProjectManager, TransactionalGoTAdapter]":
+    ) -> "TransactionalGoTAdapter":
         """
-        Create appropriate GoT backend.
+        Create transactional GoT backend.
 
         Args:
-            backend: "transactional", "event-sourced", or None for auto-detect
+            backend: Ignored (kept for compatibility), always uses transactional
             got_dir: Override default directory
 
         Returns:
-            Backend instance
+            TransactionalGoTAdapter instance
 
         Raises:
-            ValueError: If invalid backend specified
+            RuntimeError: If transactional backend not available
         """
-        # Auto-detect if not specified
-        if backend is None:
-            backend = GoTBackendFactory._detect_backend()
-
-        backend = backend.lower()
-
-        if backend == "transactional":
-            if not TX_BACKEND_AVAILABLE:
-                raise ValueError("Transactional backend not available")
-            return TransactionalGoTAdapter(got_dir or GOT_TX_DIR)
-        elif backend in ("event-sourced", "event_sourced", "events"):
-            return GoTProjectManager(got_dir or GOT_DIR)
-        else:
-            raise ValueError(f"Invalid backend: {backend}. Use 'transactional' or 'event-sourced'")
-
-    @staticmethod
-    def _detect_backend() -> str:
-        """Auto-detect which backend to use."""
-        # Check environment variable
-        env_backend = os.environ.get("GOT_BACKEND", "").lower()
-        if env_backend in ("transactional", "tx"):
-            return "transactional"
-        if env_backend in ("event-sourced", "events"):
-            return "event-sourced"
-
-        # Check if transactional store exists
-        if TX_BACKEND_AVAILABLE and (GOT_TX_DIR / "entities").exists():
-            return "transactional"
-
-        return "event-sourced"
+        if not TX_BACKEND_AVAILABLE:
+            raise RuntimeError("Transactional backend not available")
+        return TransactionalGoTAdapter(got_dir or GOT_DIR)
 
     @staticmethod
     def get_available_backends() -> List[str]:
-        """Get list of available backends."""
-        backends = ["event-sourced"]
+        """Get list of available backends (transactional only)."""
         if TX_BACKEND_AVAILABLE:
-            backends.append("transactional")
-        return backends
+            return ["transactional"]
+        return []
 
 
 # =============================================================================
@@ -1255,7 +1220,7 @@ class TransactionalGoTAdapter:
     transactional backends without changing command handlers.
     """
 
-    def __init__(self, got_dir: Path = GOT_TX_DIR):
+    def __init__(self, got_dir: Path = GOT_DIR):
         if not TX_BACKEND_AVAILABLE:
             raise RuntimeError("Transactional backend not available")
 
@@ -1898,61 +1863,560 @@ class TransactionalGoTAdapter:
                 "error": str(e),
             }
 
-    # Stub methods for compatibility (not implemented in TX backend yet)
-    def create_decision(self, *args, **kwargs) -> str:
-        raise NotImplementedError("Decisions not yet implemented in TX backend")
+    # Decision methods
+    def create_decision(
+        self,
+        content: str,
+        rationale: str = "",
+        task_id: Optional[str] = None,
+        alternatives: Optional[List[str]] = None,
+    ) -> str:
+        """Create a decision using TX backend."""
+        affects = [task_id] if task_id else []
+        decision = self._manager.create_decision(
+            title=content,
+            rationale=rationale,
+            affects=affects,
+            alternatives=alternatives or [],
+        )
+        return decision.id
 
-    def list_decisions(self, *args, **kwargs) -> List:
-        return []
+    def list_decisions(self) -> List[ThoughtNode]:
+        """List all decisions from TX backend."""
+        from cortical.got.types import Decision
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
 
-    def get_decisions_for_task(self, *args, **kwargs) -> List:
-        return []
+        decisions = []
+        for entity_file in entities_dir.glob("D-*.json"):
+            try:
+                with open(entity_file, 'r') as f:
+                    wrapper = json.load(f)
+                data = wrapper.get("data", wrapper)
+                if data.get("entity_type") == "decision":
+                    decision = Decision.from_dict(data)
+                    node = ThoughtNode(
+                        id=decision.id,
+                        node_type=NodeType.DECISION,
+                        content=decision.title,
+                        properties={
+                            "rationale": decision.rationale,
+                            "affects": decision.affects,
+                            "alternatives": decision.properties.get("alternatives", []),
+                        },
+                        metadata={
+                            "created_at": decision.created_at,
+                            "modified_at": decision.modified_at,
+                        },
+                    )
+                    decisions.append(node)
+            except Exception:
+                continue
+        return decisions
 
-    def create_sprint(self, *args, **kwargs) -> str:
-        raise NotImplementedError("Sprints not yet implemented in TX backend")
+    def get_decisions_for_task(self, task_id: str) -> List[ThoughtNode]:
+        """Get decisions affecting a specific task."""
+        all_decisions = self.list_decisions()
+        return [d for d in all_decisions if task_id in d.properties.get("affects", [])]
 
-    def get_current_sprint(self, *args, **kwargs):
-        return None
+    def why(self, task_id: str) -> List[Dict[str, Any]]:
+        """Query: Why was this task created/modified this way?
 
-    def list_sprints(self, *args, **kwargs) -> List:
-        return []
+        Returns all decisions that affect this task with their rationale.
+        """
+        decisions = self.get_decisions_for_task(task_id)
+        return [
+            {
+                "decision_id": d.id,
+                "decision": d.content,
+                "rationale": d.properties.get("rationale", ""),
+                "alternatives": d.properties.get("alternatives", []),
+                "created_at": d.metadata.get("created_at", ""),
+            }
+            for d in decisions
+        ]
 
-    def list_epics(self, *args, **kwargs) -> List:
-        return []
+    def log_decision(
+        self,
+        decision: str,
+        rationale: str,
+        affects: Optional[List[str]] = None,
+        alternatives: Optional[List[str]] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Log a decision with its rationale.
 
-    def initiate_handoff(self, *args, **kwargs) -> str:
-        raise NotImplementedError("Handoffs not yet implemented in TX backend")
+        Creates a decision node and JUSTIFIES edges to affected nodes.
+        Future agents can query: "Why was this built this way?"
 
-    def accept_handoff(self, *args, **kwargs) -> bool:
-        raise NotImplementedError("Handoffs not yet implemented in TX backend")
+        Args:
+            decision: What was decided
+            rationale: Why this choice was made
+            affects: List of node IDs affected (tasks, sprints, etc.)
+            alternatives: Alternatives that were considered
+            context: Additional context (file, line, function)
 
-    def complete_handoff(self, *args, **kwargs) -> bool:
-        raise NotImplementedError("Handoffs not yet implemented in TX backend")
+        Returns:
+            Decision ID
+        """
+        # Build properties dict with alternatives and context
+        props: Dict[str, Any] = {}
+        if alternatives:
+            props["alternatives"] = alternatives
+        if context:
+            props["context"] = context
 
-    def list_handoffs(self, *args, **kwargs) -> List:
-        return []
+        # Create decision via TX backend
+        decision_entity = self._manager.create_decision(
+            title=decision,
+            rationale=rationale,
+            affects=affects or [],
+            properties=props,
+        )
+
+        # Create JUSTIFIES edges to affected nodes
+        if affects:
+            for affected_id in affects:
+                try:
+                    self._manager.add_edge(
+                        source_id=decision_entity.id,
+                        target_id=affected_id,
+                        edge_type="JUSTIFIES",
+                    )
+                except Exception:
+                    # Skip if target doesn't exist
+                    pass
+
+        return decision_entity.id
+
+    def create_sprint(
+        self,
+        name: str,
+        number: Optional[int] = None,
+        epic_id: Optional[str] = None,
+    ) -> str:
+        """Create a new sprint using TX backend."""
+        sprint = self._manager.create_sprint(
+            title=name,
+            number=number,
+            epic_id=epic_id or "",
+        )
+        return sprint.id
+
+    def get_current_sprint(self) -> Optional[ThoughtNode]:
+        """Get the currently active sprint."""
+        sprint = self._manager.get_current_sprint()
+        if sprint is None:
+            return None
+        # Convert to ThoughtNode for compatibility
+        return ThoughtNode(
+            id=sprint.id,
+            node_type=NodeType.GOAL,
+            content=sprint.title,
+            properties={
+                "name": sprint.title,
+                "status": sprint.status,
+                "number": sprint.number,
+                "epic_id": sprint.epic_id,
+            },
+            metadata={
+                "created_at": sprint.created_at,
+                "modified_at": sprint.modified_at,
+            },
+        )
+
+    def get_sprint(self, sprint_id: str) -> Optional[ThoughtNode]:
+        """Get a sprint by ID."""
+        sprint = self._manager.get_sprint(sprint_id)
+        if sprint is None:
+            return None
+        # Merge sprint.properties into the node properties
+        props = {
+            "name": sprint.title,
+            "status": sprint.status,
+            "number": sprint.number,
+            "epic_id": sprint.epic_id,
+            "session_id": sprint.session_id,
+            "isolation": sprint.isolation,
+            "goals": sprint.goals,
+            "notes": sprint.notes,
+        }
+        # Include custom properties (like claimed_by, claimed_at)
+        props.update(sprint.properties)
+
+        return ThoughtNode(
+            id=sprint.id,
+            node_type=NodeType.GOAL,
+            content=sprint.title,
+            properties=props,
+            metadata={
+                "created_at": sprint.created_at,
+                "modified_at": sprint.modified_at,
+            },
+        )
+
+    def list_sprints(self, status: Optional[str] = None, epic_id: Optional[str] = None) -> List[ThoughtNode]:
+        """List sprints from TX backend."""
+        sprints = self._manager.list_sprints(status=status, epic_id=epic_id)
+        result = []
+        for sprint in sprints:
+            # Merge sprint.properties into the node properties
+            props = {
+                "name": sprint.title,
+                "status": sprint.status,
+                "number": sprint.number,
+                "epic_id": sprint.epic_id,
+            }
+            # Include custom properties (like claimed_by, claimed_at)
+            props.update(sprint.properties)
+
+            node = ThoughtNode(
+                id=sprint.id,
+                node_type=NodeType.GOAL,
+                content=sprint.title,
+                properties=props,
+                metadata={
+                    "created_at": sprint.created_at,
+                    "modified_at": sprint.modified_at,
+                },
+            )
+            result.append(node)
+        return result
+
+    def update_sprint(self, sprint_id: str, **updates) -> ThoughtNode:
+        """Update a sprint."""
+        sprint = self._manager.update_sprint(sprint_id, **updates)
+        # Convert to ThoughtNode
+        props = {
+            "name": sprint.title,
+            "status": sprint.status,
+            "number": sprint.number,
+            "epic_id": sprint.epic_id,
+        }
+        props.update(sprint.properties)
+
+        return ThoughtNode(
+            id=sprint.id,
+            node_type=NodeType.GOAL,
+            content=sprint.title,
+            properties=props,
+            metadata={
+                "created_at": sprint.created_at,
+                "modified_at": sprint.modified_at,
+            },
+        )
+
+    def claim_sprint(self, sprint_id: str, agent: str) -> ThoughtNode:
+        """Claim a sprint for an agent."""
+        sprint = self._manager.get_sprint(sprint_id)
+        if not sprint:
+            raise ValueError(f"Sprint not found: {sprint_id}")
+
+        # Check if already claimed by different agent
+        current_owner = sprint.properties.get("claimed_by")
+        if current_owner and current_owner != agent:
+            raise ValueError(f"Sprint already claimed by {current_owner}")
+
+        # Update sprint with claim
+        return self.update_sprint(
+            sprint_id,
+            properties={
+                **sprint.properties,
+                "claimed_by": agent,
+                "claimed_at": datetime.now(timezone.utc).isoformat()
+            }
+        )
+
+    def release_sprint(self, sprint_id: str, agent: str) -> ThoughtNode:
+        """Release a sprint claim."""
+        sprint = self._manager.get_sprint(sprint_id)
+        if not sprint:
+            raise ValueError(f"Sprint not found: {sprint_id}")
+
+        # Verify the agent owns the claim
+        current_owner = sprint.properties.get("claimed_by")
+        if current_owner != agent:
+            raise ValueError(f"Sprint not claimed by {agent}")
+
+        # Clear claim
+        new_props = dict(sprint.properties)
+        new_props.pop("claimed_by", None)
+        new_props.pop("claimed_at", None)
+
+        return self.update_sprint(
+            sprint_id,
+            properties=new_props
+        )
+
+    def add_sprint_goal(self, sprint_id: str, description: str) -> bool:
+        """Add a goal to a sprint."""
+        sprint = self._manager.get_sprint(sprint_id)
+        if not sprint:
+            return False
+
+        goals = list(sprint.goals)  # Copy existing goals
+        goals.append({"description": description, "completed": False})
+
+        self._manager.update_sprint(sprint_id, goals=goals)
+        return True
+
+    def list_sprint_goals(self, sprint_id: str) -> List[Dict]:
+        """List goals for a sprint."""
+        sprint = self._manager.get_sprint(sprint_id)
+        if not sprint:
+            return []
+        return sprint.goals
+
+    def complete_sprint_goal(self, sprint_id: str, goal_index: int) -> bool:
+        """Mark a goal as complete by index."""
+        sprint = self._manager.get_sprint(sprint_id)
+        if not sprint:
+            return False
+
+        goals = list(sprint.goals)
+        if goal_index < 0 or goal_index >= len(goals):
+            return False
+
+        goals[goal_index]["completed"] = True
+        self._manager.update_sprint(sprint_id, goals=goals)
+        return True
+
+    def link_task_to_sprint(self, sprint_id: str, task_id: str) -> bool:
+        """Link a task to a sprint via CONTAINS edge."""
+        # Verify both exist
+        sprint = self._manager.get_sprint(sprint_id)
+        task = self._manager.get_task(task_id)
+        if not sprint or not task:
+            return False
+
+        # Create CONTAINS edge from sprint to task
+        self._manager.add_task_to_sprint(task_id, sprint_id)
+        return True
+
+    def unlink_task_from_sprint(self, sprint_id: str, task_id: str) -> bool:
+        """Remove task from sprint by deleting the CONTAINS edge."""
+        # Find the CONTAINS edge
+        entities_dir = self._manager.got_dir / "entities"
+        if not entities_dir.exists():
+            return False
+
+        for edge_file in entities_dir.glob("E-*.json"):
+            try:
+                with open(edge_file, 'r', encoding='utf-8') as f:
+                    wrapper = json.load(f)
+                data = wrapper.get("data", {})
+
+                if (data.get("entity_type") == "edge" and
+                    data.get("source_id") == sprint_id and
+                    data.get("target_id") == task_id and
+                    data.get("edge_type") == "CONTAINS"):
+                    # Delete the edge file
+                    edge_file.unlink()
+                    return True
+            except (json.JSONDecodeError, KeyError, OSError):
+                continue
+
+        return False
+
+    def list_epics(self, status: Optional[str] = None) -> List[ThoughtNode]:
+        """List epics from TX backend."""
+        epics = self._manager.list_epics(status=status)
+        result = []
+        for epic in epics:
+            node = ThoughtNode(
+                id=epic.id,
+                node_type=NodeType.GOAL,
+                content=epic.title,
+                properties={
+                    "name": epic.title,
+                    "status": epic.status,
+                    "phase": epic.phase,
+                },
+                metadata={
+                    "created_at": epic.created_at,
+                    "modified_at": epic.modified_at,
+                },
+            )
+            result.append(node)
+        return result
+
+    def create_epic(self, name: str, epic_id: Optional[str] = None) -> str:
+        """Create a new epic using TX backend."""
+        epic = self._manager.create_epic(title=name, epic_id=epic_id)
+        return epic.id
+
+    def get_epic(self, epic_id: str) -> Optional[ThoughtNode]:
+        """Get an epic by ID."""
+        epic = self._manager.get_epic(epic_id)
+        if epic is None:
+            return None
+        return ThoughtNode(
+            id=epic.id,
+            node_type=NodeType.GOAL,
+            content=epic.title,
+            properties={
+                "name": epic.title,
+                "status": epic.status,
+                "phase": epic.phase,
+                "phases": epic.phases,
+            },
+            metadata={
+                "created_at": epic.created_at,
+                "modified_at": epic.modified_at,
+            },
+        )
+
+    def initiate_handoff(
+        self,
+        source_agent: str,
+        target_agent: str,
+        task_id: str,
+        context: Dict[str, Any],
+        instructions: str = "",
+    ) -> str:
+        """Initiate a handoff using TX backend."""
+        handoff = self._manager.initiate_handoff(
+            source_agent=source_agent,
+            target_agent=target_agent,
+            task_id=task_id,
+            instructions=instructions,
+            context=context,
+        )
+        return handoff.id
+
+    def accept_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        acknowledgment: str = "",
+    ) -> bool:
+        """Accept a handoff using TX backend."""
+        try:
+            self._manager.accept_handoff(handoff_id, agent, acknowledgment)
+            return True
+        except Exception:
+            return False
+
+    def complete_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        result: Dict[str, Any],
+        artifacts: Optional[List[str]] = None,
+    ) -> bool:
+        """Complete a handoff using TX backend."""
+        try:
+            self._manager.complete_handoff(
+                handoff_id, agent, result, artifacts or []
+            )
+            return True
+        except Exception:
+            return False
+
+    def reject_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        reason: str = "",
+    ) -> bool:
+        """Reject a handoff using TX backend."""
+        try:
+            self._manager.reject_handoff(handoff_id, agent, reason)
+            return True
+        except Exception:
+            return False
+
+    def get_handoff(self, handoff_id: str) -> Optional[Dict[str, Any]]:
+        """Get a handoff by ID using TX backend."""
+        handoff = self._manager.get_handoff(handoff_id)
+        if handoff is None:
+            return None
+        return {
+            "id": handoff.id,
+            "source_agent": handoff.source_agent,
+            "target_agent": handoff.target_agent,
+            "task_id": handoff.task_id,
+            "status": handoff.status,
+            "instructions": handoff.instructions,
+            "context": handoff.context,
+            "result": handoff.result,
+            "artifacts": handoff.artifacts,
+            "initiated_at": handoff.initiated_at,
+            "accepted_at": handoff.accepted_at,
+            "completed_at": handoff.completed_at,
+            "rejected_at": handoff.rejected_at,
+            "reject_reason": handoff.reject_reason,
+        }
+
+    def list_handoffs(
+        self,
+        status: Optional[str] = None,
+        target_agent: Optional[str] = None,
+        source_agent: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """List handoffs using TX backend."""
+        handoffs = self._manager.list_handoffs(
+            status=status,
+            target_agent=target_agent,
+            source_agent=source_agent,
+        )
+        return [
+            {
+                "id": h.id,
+                "source_agent": h.source_agent,
+                "target_agent": h.target_agent,
+                "task_id": h.task_id,
+                "status": h.status,
+                "instructions": h.instructions,
+                "initiated_at": h.initiated_at,
+            }
+            for h in handoffs
+        ]
+
+    def save(self) -> None:
+        """No-op for TX backend - transactions auto-commit."""
+        pass  # TX backend auto-saves on transaction commit
 
     def get_sprint_tasks(self, sprint_id: str) -> List[ThoughtNode]:
-        """Get all tasks in a sprint.
-
-        Note: Sprint support is limited in TX backend.
-        Returns empty list with warning.
-        """
-        logger.warning("Sprint support limited in TX backend - returning empty list")
-        return []
+        """Get all tasks in a sprint using TX backend."""
+        tasks = self._manager.get_sprint_tasks(sprint_id)
+        result = []
+        for task in tasks:
+            node = ThoughtNode(
+                id=task.id,
+                node_type=NodeType.TASK,
+                content=task.title,
+                properties={
+                    "title": task.title,
+                    "status": task.status,
+                    "priority": task.priority,
+                    "description": task.description,
+                    **task.properties,
+                },
+                metadata={
+                    "created_at": task.created_at,
+                    "modified_at": task.modified_at,
+                    **task.metadata,
+                },
+            )
+            result.append(node)
+        return result
 
     def get_sprint_progress(self, sprint_id: str) -> Dict[str, Any]:
-        """Get sprint progress statistics.
-
-        Note: Sprint support is limited in TX backend.
-        Returns empty progress dict.
-        """
-        logger.warning("Sprint support limited in TX backend - returning empty progress")
+        """Get sprint progress statistics using TX backend."""
+        progress = self._manager.get_sprint_progress(sprint_id)
+        # Normalize keys to match expected format
         return {
-            "total_tasks": 0,
-            "by_status": {},
-            "completed": 0,
-            "progress_percent": 0.0,
+            "total_tasks": progress.get("total", 0),
+            "by_status": {
+                "completed": progress.get("completed", 0),
+                "in_progress": progress.get("in_progress", 0),
+                "pending": progress.get("pending", 0),
+                "blocked": progress.get("blocked", 0),
+            },
+            "completed": progress.get("completed", 0),
+            "progress_percent": progress.get("completion_rate", 0.0) * 100,
         }
 
     def get_next_task(self) -> Optional[Dict[str, Any]]:
@@ -2086,9 +2550,21 @@ class GoTProjectManager:
 
     Uses event-sourced persistence for merge-friendly cross-branch coordination.
     Each session writes to a unique event file, enabling conflict-free merges.
+
+    .. deprecated::
+        This class uses the legacy event-sourced backend. Consider using the
+        transactional backend (TransactionalGoTAdapter) instead, which is now
+        the default. Set GOT_USE_LEGACY=1 only if you need event-sourcing features.
     """
 
     def __init__(self, got_dir: Path = GOT_DIR):
+        warnings.warn(
+            "GoTProjectManager uses the legacy event-sourced backend. "
+            "The transactional backend (TransactionalGoTAdapter) is now recommended. "
+            "Set GOT_USE_LEGACY=1 only if you specifically need event-sourcing.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.got_dir = Path(got_dir)
         self.wal_dir = self.got_dir / "wal"
         self.snapshots_dir = self.got_dir / "snapshots"
@@ -2855,7 +3331,7 @@ class GoTProjectManager:
     def create_epic(self, name: str, epic_id: Optional[str] = None) -> str:
         """Create a new epic."""
         if not epic_id:
-            epic_id = generate_epic_id(name)
+            epic_id = f"epic:{generate_epic_id()}"
         elif not epic_id.startswith("epic:"):
             epic_id = f"epic:{epic_id}"
 
@@ -3587,7 +4063,7 @@ class TaskMigrator:
                 results["errors"].append(f"File {task_file.name}: {e}")
 
         if not dry_run:
-            self.manager.save()
+            self._manager.save()
 
         return results
 
@@ -3602,7 +4078,7 @@ class TaskMigrator:
             status = STATUS_PENDING
 
         # Create task in graph
-        task_id = self.manager.create_task(
+        task_id = self._manager.create_task(
             title=title,
             priority=task_data.get("priority", PRIORITY_MEDIUM),
             category=task_data.get("category", "feature"),
@@ -3610,7 +4086,7 @@ class TaskMigrator:
         )
 
         # Update status
-        task = self.manager.get_task(task_id)
+        task = self._manager.get_task(task_id)
         if task:
             task.properties["status"] = status
             task.properties["legacy_id"] = old_id
@@ -3665,11 +4141,22 @@ def format_sprint_status(sprint: ThoughtNode, progress: Dict[str, Any]) -> str:
         f"Sprint: {sprint.content}",
         f"ID: {sprint.id}",
         f"Status: {sprint.properties.get('status', 'unknown')}",
+    ]
+
+    # Show claimed status if present
+    claimed_by = sprint.properties.get('claimed_by')
+    if claimed_by:
+        lines.append(f"Claimed by: {claimed_by}")
+        claimed_at = sprint.properties.get('claimed_at')
+        if claimed_at:
+            lines.append(f"Claimed at: {claimed_at}")
+
+    lines.extend([
         "",
         f"Progress: {progress['completed']}/{progress['total_tasks']} tasks ({progress['progress_percent']:.1f}%)",
         "",
         "By Status:",
-    ]
+    ])
 
     for status, count in progress.get("by_status", {}).items():
         lines.append(f"  {status}: {count}")
@@ -3916,7 +4403,14 @@ def cmd_sprint_list(args, manager: GoTProjectManager) -> int:
     for sprint in sprints:
         progress = manager.get_sprint_progress(sprint.id)
         status = sprint.properties.get("status", "?")
-        print(f"{sprint.id}: {sprint.content} [{status}] - {progress['progress_percent']:.0f}% complete")
+        claimed_by = sprint.properties.get("claimed_by", "")
+
+        # Build status line
+        status_line = f"{sprint.id}: {sprint.content} [{status}] - {progress['progress_percent']:.0f}% complete"
+        if claimed_by:
+            status_line += f" (claimed by {claimed_by})"
+
+        print(status_line)
 
     return 0
 
@@ -3941,6 +4435,173 @@ def cmd_sprint_status(args, manager: GoTProjectManager) -> int:
         progress = manager.get_sprint_progress(sprint.id)
         print(format_sprint_status(sprint, progress))
         print()
+
+    return 0
+
+
+def cmd_sprint_start(args, manager: GoTProjectManager) -> int:
+    """Start a sprint."""
+    sprint = manager.update_sprint(args.sprint_id, status="in_progress")
+    manager.save()
+    print(f"Started: {sprint.id}")
+    print(f"  Title: {sprint.content}")
+    return 0
+
+
+def cmd_sprint_complete(args, manager: GoTProjectManager) -> int:
+    """Complete a sprint."""
+    sprint = manager.update_sprint(args.sprint_id, status="completed")
+    manager.save()
+    print(f"Completed: {sprint.id}")
+    print(f"  Title: {sprint.content}")
+    return 0
+
+
+def cmd_sprint_claim(args, manager: GoTProjectManager) -> int:
+    """Claim a sprint."""
+    try:
+        sprint = manager.claim_sprint(args.sprint_id, args.agent)
+        manager.save()
+        print(f"Claimed: {sprint.id}")
+        print(f"  Agent: {args.agent}")
+        return 0
+    except ValueError as e:
+        print(f"Error: {e}")
+        return 1
+
+
+def cmd_sprint_release(args, manager: GoTProjectManager) -> int:
+    """Release a sprint claim."""
+    try:
+        sprint = manager.release_sprint(args.sprint_id, args.agent)
+        manager.save()
+        print(f"Released: {sprint.id}")
+        return 0
+    except ValueError as e:
+        print(f"Error: {e}")
+        return 1
+
+
+def cmd_sprint_goal_add(args, manager: GoTProjectManager) -> int:
+    """Add a goal to sprint."""
+    if manager.add_sprint_goal(args.sprint_id, args.description):
+        manager.save()
+        print(f"Added goal to {args.sprint_id}: {args.description}")
+        return 0
+    else:
+        print(f"Sprint not found: {args.sprint_id}")
+        return 1
+
+
+def cmd_sprint_goal_list(args, manager: GoTProjectManager) -> int:
+    """List sprint goals."""
+    goals = manager.list_sprint_goals(args.sprint_id)
+    if not goals:
+        print(f"No goals for sprint {args.sprint_id}")
+        return 0
+    print(f"Goals for {args.sprint_id}:")
+    for i, goal in enumerate(goals):
+        status = "✓" if goal.get("completed") else " "
+        print(f"  [{i}] [{status}] {goal.get('description', '')}")
+    return 0
+
+
+def cmd_sprint_goal_complete(args, manager: GoTProjectManager) -> int:
+    """Mark a goal as complete."""
+    if manager.complete_sprint_goal(args.sprint_id, args.index):
+        manager.save()
+        print(f"Completed goal {args.index} in {args.sprint_id}")
+        return 0
+    else:
+        print(f"Failed - check sprint ID and goal index")
+        return 1
+
+
+def cmd_sprint_link(args, manager: GoTProjectManager) -> int:
+    """Link a task to a sprint."""
+    if manager.link_task_to_sprint(args.sprint_id, args.task_id):
+        manager.save()
+        print(f"Linked task {args.task_id} to sprint {args.sprint_id}")
+        return 0
+    else:
+        print(f"Failed to link - check that both IDs exist")
+        return 1
+
+
+def cmd_sprint_unlink(args, manager: GoTProjectManager) -> int:
+    """Unlink a task from a sprint."""
+    if manager.unlink_task_from_sprint(args.sprint_id, args.task_id):
+        manager.save()
+        print(f"Unlinked task {args.task_id} from sprint {args.sprint_id}")
+        return 0
+    else:
+        print(f"No link found between {args.sprint_id} and {args.task_id}")
+        return 1
+
+
+def cmd_sprint_tasks(args, manager: GoTProjectManager) -> int:
+    """List tasks in a sprint."""
+    tasks = manager.get_sprint_tasks(args.sprint_id)
+    if not tasks:
+        print(f"No tasks in sprint {args.sprint_id}")
+        return 0
+    print(f"Tasks in {args.sprint_id}:")
+    for task in tasks:
+        status = task.properties.get("status", "unknown")
+        priority = task.properties.get("priority", "medium")
+        print(f"  {task.id}: {task.content} [status={status}, priority={priority}]")
+    return 0
+
+
+def cmd_epic_create(args, manager: GoTProjectManager) -> int:
+    """Create an epic."""
+    epic_id = manager.create_epic(
+        name=args.name,
+        epic_id=getattr(args, 'epic_id', None),
+    )
+
+    manager.save()
+    print(f"Created: {epic_id}")
+    return 0
+
+
+def cmd_epic_list(args, manager: GoTProjectManager) -> int:
+    """List epics."""
+    epics = manager.list_epics(
+        status=getattr(args, 'status', None),
+    )
+
+    if not epics:
+        print("No epics found.")
+        return 0
+
+    for epic in epics:
+        status = epic.properties.get("status", "?")
+        phase = epic.properties.get("phase", "?")
+        print(f"{epic.id}: {epic.content} [{status}] - Phase: {phase}")
+
+    return 0
+
+
+def cmd_epic_show(args, manager: GoTProjectManager) -> int:
+    """Show epic details."""
+    epic = manager.get_epic(args.epic_id)
+
+    if not epic:
+        print(f"Epic not found: {args.epic_id}")
+        return 1
+
+    print(f"Epic: {epic.id}")
+    print(f"  Name: {epic.content}")
+    print(f"  Status: {epic.properties.get('status', '?')}")
+    print(f"  Phase: {epic.properties.get('phase', '?')}")
+
+    # Show associated sprints
+    sprints = manager.list_sprints(epic_id=epic.id)
+    if sprints:
+        print(f"  Sprints ({len(sprints)}):")
+        for sprint in sprints:
+            print(f"    - {sprint.id}: {sprint.content}")
 
     return 0
 
@@ -4879,6 +5540,79 @@ def main():
     sprint_status = sprint_subparsers.add_parser("status", help="Show sprint status")
     sprint_status.add_argument("sprint_id", nargs="?", help="Sprint ID (optional)")
 
+    # sprint start
+    sprint_start = sprint_subparsers.add_parser("start", help="Start a sprint")
+    sprint_start.add_argument("sprint_id", help="Sprint ID to start")
+
+    # sprint complete
+    sprint_complete = sprint_subparsers.add_parser("complete", help="Complete a sprint")
+    sprint_complete.add_argument("sprint_id", help="Sprint ID to complete")
+
+    # sprint claim
+    sprint_claim = sprint_subparsers.add_parser("claim", help="Claim sprint for an agent")
+    sprint_claim.add_argument("sprint_id", help="Sprint ID to claim")
+    sprint_claim.add_argument("--agent", required=True, help="Agent name")
+
+    # sprint release
+    sprint_release = sprint_subparsers.add_parser("release", help="Release sprint claim")
+    sprint_release.add_argument("sprint_id", help="Sprint ID to release")
+    sprint_release.add_argument("--agent", required=True, help="Agent name")
+
+    # sprint goal
+    goal_parser = sprint_subparsers.add_parser("goal", help="Manage sprint goals")
+    goal_subparsers = goal_parser.add_subparsers(dest="goal_action")
+
+    # goal add
+    goal_add = goal_subparsers.add_parser("add", help="Add a goal")
+    goal_add.add_argument("sprint_id", help="Sprint ID")
+    goal_add.add_argument("description", help="Goal description")
+    goal_add.set_defaults(func=cmd_sprint_goal_add)
+
+    # goal list
+    goal_list = goal_subparsers.add_parser("list", help="List goals")
+    goal_list.add_argument("sprint_id", help="Sprint ID")
+    goal_list.set_defaults(func=cmd_sprint_goal_list)
+
+    # goal complete
+    goal_complete = goal_subparsers.add_parser("complete", help="Mark goal complete")
+    goal_complete.add_argument("sprint_id", help="Sprint ID")
+    goal_complete.add_argument("index", type=int, help="Goal index (0-based)")
+    goal_complete.set_defaults(func=cmd_sprint_goal_complete)
+
+    # sprint link
+    sprint_link = sprint_subparsers.add_parser("link", help="Link a task to sprint")
+    sprint_link.add_argument("sprint_id", help="Sprint ID")
+    sprint_link.add_argument("task_id", help="Task ID to link")
+    sprint_link.set_defaults(func=cmd_sprint_link)
+
+    # sprint unlink
+    sprint_unlink = sprint_subparsers.add_parser("unlink", help="Unlink task from sprint")
+    sprint_unlink.add_argument("sprint_id", help="Sprint ID")
+    sprint_unlink.add_argument("task_id", help="Task ID to unlink")
+    sprint_unlink.set_defaults(func=cmd_sprint_unlink)
+
+    # sprint tasks
+    sprint_tasks = sprint_subparsers.add_parser("tasks", help="List tasks in sprint")
+    sprint_tasks.add_argument("sprint_id", help="Sprint ID")
+    sprint_tasks.set_defaults(func=cmd_sprint_tasks)
+
+    # Epic commands
+    epic_parser = subparsers.add_parser("epic", help="Epic operations")
+    epic_subparsers = epic_parser.add_subparsers(dest="epic_command")
+
+    # epic create
+    epic_create = epic_subparsers.add_parser("create", help="Create an epic")
+    epic_create.add_argument("name", help="Epic name")
+    epic_create.add_argument("--id", dest="epic_id", help="Custom epic ID")
+
+    # epic list
+    epic_list = epic_subparsers.add_parser("list", help="List epics")
+    epic_list.add_argument("--status", help="Filter by status")
+
+    # epic show
+    epic_show = epic_subparsers.add_parser("show", help="Show epic details")
+    epic_show.add_argument("epic_id", help="Epic ID to display")
+
     # Query commands
     subparsers.add_parser("blocked", help="Show blocked tasks")
     subparsers.add_parser("active", help="Show active tasks")
@@ -5007,7 +5741,7 @@ def main():
         manager = GoTBackendFactory.create(backend=backend)
         if os.environ.get("GOT_DEBUG"):
             backend_type = "transactional" if isinstance(manager, TransactionalGoTAdapter) else "event-sourced"
-            backend_dir = GOT_TX_DIR if backend_type == "transactional" else GOT_DIR
+            backend_dir = GOT_DIR if backend_type == "transactional" else GOT_DIR
             print(f"[DEBUG] Using {backend_type} backend at {backend_dir}", file=sys.stderr)
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -5042,8 +5776,43 @@ def main():
             return cmd_sprint_list(args, manager)
         elif args.sprint_command == "status":
             return cmd_sprint_status(args, manager)
+        elif args.sprint_command == "start":
+            return cmd_sprint_start(args, manager)
+        elif args.sprint_command == "complete":
+            return cmd_sprint_complete(args, manager)
+        elif args.sprint_command == "claim":
+            return cmd_sprint_claim(args, manager)
+        elif args.sprint_command == "release":
+            return cmd_sprint_release(args, manager)
+        elif args.sprint_command == "goal":
+            if args.goal_action == "add":
+                return cmd_sprint_goal_add(args, manager)
+            elif args.goal_action == "list":
+                return cmd_sprint_goal_list(args, manager)
+            elif args.goal_action == "complete":
+                return cmd_sprint_goal_complete(args, manager)
+            else:
+                goal_parser.print_help()
+                return 1
+        elif args.sprint_command == "link":
+            return cmd_sprint_link(args, manager)
+        elif args.sprint_command == "unlink":
+            return cmd_sprint_unlink(args, manager)
+        elif args.sprint_command == "tasks":
+            return cmd_sprint_tasks(args, manager)
         else:
             sprint_parser.print_help()
+            return 1
+
+    elif args.command == "epic":
+        if args.epic_command == "create":
+            return cmd_epic_create(args, manager)
+        elif args.epic_command == "list":
+            return cmd_epic_list(args, manager)
+        elif args.epic_command == "show":
+            return cmd_epic_show(args, manager)
+        else:
+            epic_parser.print_help()
             return 1
 
     elif args.command == "blocked":

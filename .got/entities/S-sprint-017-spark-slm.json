@@ -1,0 +1,79 @@
+{
+  "_checksum": "602a58241bf323bb",
+  "_written_at": "2025-12-22T13:37:10.748901+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:19:55.171411+00:00",
+    "entity_type": "sprint",
+    "epic_id": "EPIC-nlu",
+    "goals": [
+      {
+        "completed": true,
+        "text": "Create `cortical/spark/` package structure"
+      },
+      {
+        "completed": true,
+        "text": "Implement N-gram model (bigram/trigram) with Laplace smoothing"
+      },
+      {
+        "completed": true,
+        "text": "Implement AlignmentIndex for definitions/patterns/preferences"
+      },
+      {
+        "completed": true,
+        "text": "Create SparkPredictor facade class"
+      },
+      {
+        "completed": true,
+        "text": "Load alignment from markdown files"
+      },
+      {
+        "completed": true,
+        "text": "Implement AnomalyDetector for prompt injection (already implemented)"
+      },
+      {
+        "completed": true,
+        "text": "Write unit tests (1140673f - 29 tests, 92% coverage)"
+      },
+      {
+        "completed": false,
+        "text": "Integrate with query expansion as optional primer"
+      },
+      {
+        "completed": false,
+        "text": "Add training script for SparkSLM"
+      },
+      {
+        "completed": false,
+        "text": "Benchmark speed and accuracy"
+      },
+      {
+        "completed": false,
+        "text": "Documentation and examples"
+      },
+      {
+        "completed": true,
+        "description": "Implement n-gram model"
+      },
+      {
+        "completed": false,
+        "description": "Add statistical predictor tests"
+      }
+    ],
+    "id": "S-sprint-017-spark-slm",
+    "isolation": [
+      "cortical/spark/` (new package)"
+    ],
+    "metadata": {},
+    "modified_at": "2025-12-22T13:37:10.748793+00:00",
+    "notes": [],
+    "number": 17,
+    "properties": {
+      "epic_name": "NLU Enhancement",
+      "sprint_id": "sprint-017-spark-slm"
+    },
+    "session_id": "1Z3rd",
+    "status": "in_progress",
+    "title": "Sprint 17: SparkSLM - Statistical First-Blitz Predictor",
+    "version": 8
+  }
+}

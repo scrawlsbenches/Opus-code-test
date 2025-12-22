@@ -1,0 +1,55 @@
+{
+  "_checksum": "e205ba909cfe5b22",
+  "_written_at": "2025-12-22T11:19:55.207163+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:19:55.201749+00:00",
+    "entity_type": "sprint",
+    "epic_id": "EPIC-nlu",
+    "goals": [
+      {
+        "completed": false,
+        "text": "Create `cortical/reasoning/` package"
+      },
+      {
+        "completed": false,
+        "text": "Implement procedural inference engine"
+      },
+      {
+        "completed": false,
+        "text": "Implement learned pattern store"
+      },
+      {
+        "completed": false,
+        "text": "Create reasoning API: `why(A, B)` \u2192 explanation chain"
+      },
+      {
+        "completed": false,
+        "text": "Implement feedback loop for learning"
+      },
+      {
+        "completed": false,
+        "text": "Add graph traversal for \"path from A to B\""
+      },
+      {
+        "completed": false,
+        "text": "Integrate with search for reasoning-enhanced results"
+      }
+    ],
+    "id": "S-sprint-018-reasoning",
+    "isolation": [
+      "cortical/reasoning/` (new package)"
+    ],
+    "metadata": {},
+    "modified_at": "2025-12-22T11:19:55.207112+00:00",
+    "notes": [],
+    "number": 18,
+    "properties": {
+      "epic_name": "NLU Enhancement",
+      "sprint_id": "sprint-018-reasoning"
+    },
+    "session_id": "",
+    "status": "available",
+    "title": "Sprint 18: Procedural + Learned Reasoning",
+    "version": 2
+  }
+}

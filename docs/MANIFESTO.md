@@ -10,13 +10,13 @@
 Ship code that works. Document what matters. Let git history tell the story.
 
 **Learning from outcomes over planning in isolation**
-The Hubris system embodies this: predictions earn credibility through results, not claims.
+Predictions earn credibility through results, not claims. Calibration matters.
 
 **Parallel progress over sequential perfection**
-Multiple threads, multiple sprints, multiple experts. Isolation enables velocity.
+Multiple threads, multiple agents, clear boundaries. Isolation enables velocity.
 
 **Measured confidence over blind certainty**
-Calibration tracking exists for a reason. Know when you don't know.
+Know when you don't know. Acknowledge uncertainty explicitly.
 
 ---
 
@@ -29,16 +29,16 @@ The obvious culprit is often innocent. Measure, then act.
 Coverage isn't bureaucracy—it's confidence. Don't regress what you touch.
 
 ### 3. Isolate to Parallelize
-Sprints with non-overlapping files can run concurrently without conflict.
+Work with non-overlapping scope can run concurrently without conflict.
 
 ### 4. Credit Earned, Not Assumed
-Experts start equal. Performance determines influence. Hubris is earned.
+Performance determines influence. Trust is earned through results.
 
 ### 5. Cold Start Is Not Failure
 New systems lack data. Acknowledge it clearly. Provide fallbacks gracefully.
 
 ### 6. Document Decisions, Not Just Code
-Why matters more than what. ADRs capture context that code cannot.
+Why matters more than what. Context that code cannot capture must be recorded.
 
 ### 7. Dog-Food Everything
 Use the system to build the system. Real usage reveals what tests miss.
@@ -48,28 +48,30 @@ Say "I don't know" when uncertain. Correct course based on evidence.
 
 ---
 
-## For Parallel Threads
+## For Parallel Work
 
 ```
-Each thread picks a sprint.
-Each sprint owns its files.
-Shared files get careful edits.
+Each agent picks a task.
+Each task owns its scope.
+Shared files get careful coordination.
 Merge conflicts become rare.
 ```
 
-**Sprint Status Protocol:**
-- 🟢 Available → Pick it up
-- 🟡 In Progress → Someone's on it
-- ✅ Complete → Move on
-- 🔴 Blocked → Fix the blocker first
+**Work is tracked in GoT (Graph of Thought):**
+```bash
+python scripts/got_utils.py task list        # See available work
+python scripts/got_utils.py task start ID    # Claim a task
+python scripts/got_utils.py task complete ID # Mark done
+python scripts/got_utils.py sprint status    # Current sprint focus
+```
 
 ---
 
 ## The Hubris Paradox
 
-The system is named for excessive confidence, yet teaches humility:
+The system teaches calibration through experience:
 
-- Overconfident predictions lose credits
+- Overconfident predictions lose credibility
 - Underconfident predictions miss opportunities
 - Well-calibrated predictions earn trust
 
@@ -80,7 +82,6 @@ The system is named for excessive confidence, yet teaches humility:
 ## Signed
 
 ```
-Cortical Text Processor Team
-Sprint 5 Complete | Sprints 6-8 Ready
-December 2025
+Cortical Text Processor
+Living Document — Updated as we learn
 ```

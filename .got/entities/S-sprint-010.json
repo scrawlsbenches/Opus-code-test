@@ -1,0 +1,24 @@
+{
+  "_checksum": "e08de82401670293",
+  "_written_at": "2025-12-22T11:19:54.995090+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:19:54.990730+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [],
+    "id": "S-sprint-010",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2025-12-22T11:19:54.995053+00:00",
+    "notes": [],
+    "number": 10,
+    "properties": {
+      "epic_name": "",
+      "sprint_id": "sprint-010"
+    },
+    "session_id": "",
+    "status": "available",
+    "title": "Sprint 10: DocumentationExpert",
+    "version": 2
+  }
+}

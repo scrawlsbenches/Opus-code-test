@@ -1,0 +1,16 @@
+{
+  "_checksum": "31752caa27a26bd4",
+  "_written_at": "2025-12-22T11:19:55.207703+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2025-12-22T11:19:55.202428+00:00",
+    "edge_type": "PART_OF",
+    "entity_type": "edge",
+    "id": "E-S-sprint-018-reasoning-EPIC-nlu-PART_OF",
+    "modified_at": "2025-12-22T11:19:55.207670+00:00",
+    "source_id": "S-sprint-018-reasoning",
+    "target_id": "EPIC-nlu",
+    "version": 2,
+    "weight": 1.0
+  }
+}

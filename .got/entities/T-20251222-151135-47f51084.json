@@ -1,0 +1,19 @@
+{
+  "_checksum": "a13089f3336c8143",
+  "_written_at": "2025-12-22T15:11:35.424427+00:00",
+  "data": {
+    "created_at": "2025-12-22T15:11:35.409108+00:00",
+    "description": "## Problem\nWe added a global filterwarnings exception in pyproject.toml to prevent CI failures:\n\n```toml\n\"ignore:GoTProjectManager uses the legacy event-sourced backend:DeprecationWarning\",\n```\n\nThis masks the deprecation warning, preventing us from treating warnings as errors for this case.\n\n## Root Cause\nTests intentionally use GoTProjectManager for regression testing of the legacy backend.\nUntil GoTProjectManager is removed, we need this exception.\n\n## Solution\nAfter completing T-20251222-145525-445df343 (Remove deprecated EventLog and GoTProjectManager):\n\n1. Remove the filterwarnings exception from pyproject.toml line 111-112\n2. Delete or update any remaining tests that use GoTProjectManager\n3. Verify CI passes with warnings-as-errors for all code\n\n## Files to Modify\n- pyproject.toml: Remove the ignore line for GoTProjectManager deprecation\n\n## Dependency\nBlocked by: T-20251222-145525-445df343 (Remove deprecated EventLog and GoTProjectManager classes)\n\n## Verification\nAfter removal, run:\n```bash\npython -m pytest tests/ -W error\n```\nShould pass without any deprecation warning exceptions needed for GoT code.",
+    "entity_type": "task",
+    "id": "T-20251222-151135-47f51084",
+    "metadata": {},
+    "modified_at": "2025-12-22T15:11:35.424360+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "debt"
+    },
+    "status": "pending",
+    "title": "Remove filterwarnings exception after GoTProjectManager cleanup",
+    "version": 2
+  }
+}

@@ -16,16 +16,18 @@ python scripts/got_utils.py task list --status in_progress  # What's active?
 ```bash
 ls -t samples/memories/*knowledge-transfer*.md | head -1 | xargs cat
 ```
-**Most recent:** `samples/memories/2025-12-22-session-dOcbe-knowledge-transfer.md`
+**Most recent:** `samples/memories/2025-12-22-session-knowledge-transfer-got-migration.md`
 
 ### 3. What is GoT?
-GoT (Graph of Thought) is our task and decision tracking system:
+GoT (Graph of Thought) is our task, sprint, and decision tracking system:
 - **Tasks**: Work items with IDs like `T-20251221-014654-d4b7`
+- **Sprints**: Time-boxed work periods with IDs like `S-sprint-017-spark-slm`
+- **Epics**: Large initiatives spanning multiple sprints (e.g., `EPIC-nlu`)
 - **Decisions**: Logged choices with rationale
-- **Edges**: Relationships (DEPENDS_ON, BLOCKS, SIMILAR, etc.)
-- **Events**: Append-only log for persistence
+- **Handoffs**: Agent-to-agent work transfers with IDs like `H-20251222-093045-a1b2c3d4`
+- **Edges**: Relationships (DEPENDS_ON, BLOCKS, CONTAINS, etc.)
 
-**Key commands:**
+**Task commands:**
 | Command | Purpose |
 |---------|---------|
 | `python scripts/got_utils.py dashboard` | Overview of all tasks |
@@ -36,6 +38,15 @@ GoT (Graph of Thought) is our task and decision tracking system:
 | `python scripts/got_utils.py task delete T-XXX [--force]` | Delete task (transactional) |
 | `python scripts/got_utils.py decision log "Decision" --rationale "Why"` | Log decision |
 | `python scripts/got_utils.py validate` | Health check |
+
+**Sprint commands:**
+| Command | Purpose |
+|---------|---------|
+| `python scripts/got_utils.py sprint list` | List all sprints with status |
+| `python scripts/got_utils.py sprint status` | Show current/active sprint |
+| `python scripts/got_utils.py sprint create "Title" --number N` | Create a new sprint |
+
+> **Note:** Sprint data is stored in `.got/entities/`. The file `tasks/CURRENT_SPRINT.md` is deprecated and kept for historical reference only.
 
 > **⚠️ NEVER delete GoT files directly!**
 >
@@ -483,19 +494,18 @@ python -m coverage report --include="cortical/*" | tail -1
 Before diving into code, understand what's being worked on:
 
 ```bash
-# View current sprint status and goals
-python scripts/task_utils.py sprint status
+# View current sprint status
+python scripts/got_utils.py sprint status
 
-# Or read the file directly
-cat tasks/CURRENT_SPRINT.md
+# List all sprints
+python scripts/got_utils.py sprint list
 ```
 
 **What sprint tracking provides:**
 - Current sprint ID and epic context
 - Active goals and their completion status
-- Recently completed work in this sprint
-- Blocked items that need attention
-- Strategic notes and decisions
+- Sprint status (available, in_progress, completed)
+- Related tasks via CONTAINS edges
 
 This helps you understand the current development focus and avoid duplicate work.
 
@@ -634,7 +644,7 @@ cortical/
 │   └── claude_code_spawner.py  # Production agent spawning
 ├── got/              # Graph of Thought task/decision tracking
 │   ├── __init__.py   # Re-exports GoTManager
-│   ├── manager.py    # GoTManager - task/decision/edge CRUD operations
+│   ├── manager.py    # GoTManager - task/decision/edge/sprint/epic/handoff CRUD operations
 │   ├── wal.py        # Transaction WAL using TransactionWALEntry from cortical/wal.py
 │   └── query.py      # GoT query language ("what blocks X", "path from A to B")
 ├── spark/            # Statistical Language Model for quick predictions
@@ -707,6 +717,7 @@ cortical/
 | Crash recovery | `reasoning/graph_persistence.py` - GraphRecovery (4-level cascade) |
 | Git auto-versioning | `reasoning/graph_persistence.py` - GitAutoCommitter |
 | GoT task/decision tracking | `got/` - GoTManager, WAL, query language |
+| Manage agent handoffs | `got/` - GoTManager handoff methods (initiate, accept, complete, reject) |
 | Generate unique IDs | `utils/id_generation.py` - generate_task_id, generate_plan_id, etc. |
 | Compute checksums | `utils/checksums.py` - compute_checksum() |
 | Atomic file saves | `utils/persistence.py` - atomic_save() |
@@ -1835,9 +1846,9 @@ python examples/observability_demo.py
 | Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
 | Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
 | Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
-| View sprint status | `python scripts/task_utils.py sprint status` |
-| Mark sprint goal complete | `python scripts/task_utils.py sprint complete "goal text"` |
-| Add sprint note | `python scripts/task_utils.py sprint note "note text"` |
+| View sprint status | `python scripts/got_utils.py sprint status` |
+| List all sprints | `python scripts/got_utils.py sprint list` |
+| Create sprint | `python scripts/got_utils.py sprint create "Title" --number N` |
 | Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
 | List orchestration plans | `python scripts/orchestration_utils.py list` |
 | Verify batch | `python scripts/verify_batch.py --quick` |
