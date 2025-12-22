@@ -223,64 +223,36 @@ def generate_task_title_from_commit(commit_message: str) -> str:
 # =============================================================================
 
 class GoTBackendFactory:
-    """Factory for creating GoT backend instances."""
+    """Factory for creating GoT backend instances (transactional only)."""
 
     @staticmethod
     def create(
         backend: Optional[str] = None,
         got_dir: Optional[Path] = None,
-    ) -> "Union[GoTProjectManager, TransactionalGoTAdapter]":
+    ) -> "TransactionalGoTAdapter":
         """
-        Create appropriate GoT backend.
+        Create transactional GoT backend.
 
         Args:
-            backend: "transactional", "event-sourced", or None for auto-detect
+            backend: Ignored (kept for compatibility), always uses transactional
             got_dir: Override default directory
 
         Returns:
-            Backend instance
+            TransactionalGoTAdapter instance
 
         Raises:
-            ValueError: If invalid backend specified
+            RuntimeError: If transactional backend not available
         """
-        # Auto-detect if not specified
-        if backend is None:
-            backend = GoTBackendFactory._detect_backend()
-
-        backend = backend.lower()
-
-        if backend == "transactional":
-            if not TX_BACKEND_AVAILABLE:
-                raise ValueError("Transactional backend not available")
-            return TransactionalGoTAdapter(got_dir or GOT_DIR)
-        elif backend in ("event-sourced", "event_sourced", "events"):
-            return GoTProjectManager(got_dir or GOT_DIR)
-        else:
-            raise ValueError(f"Invalid backend: {backend}. Use 'transactional' or 'event-sourced'")
-
-    @staticmethod
-    def _detect_backend() -> str:
-        """Auto-detect which backend to use."""
-        # Check environment variable
-        env_backend = os.environ.get("GOT_BACKEND", "").lower()
-        if env_backend in ("transactional", "tx"):
-            return "transactional"
-        if env_backend in ("event-sourced", "events"):
-            return "event-sourced"
-
-        # Check if transactional store exists
-        if TX_BACKEND_AVAILABLE and (GOT_DIR / "entities").exists():
-            return "transactional"
-
-        return "event-sourced"
+        if not TX_BACKEND_AVAILABLE:
+            raise RuntimeError("Transactional backend not available")
+        return TransactionalGoTAdapter(got_dir or GOT_DIR)
 
     @staticmethod
     def get_available_backends() -> List[str]:
-        """Get list of available backends."""
-        backends = ["event-sourced"]
+        """Get list of available backends (transactional only)."""
         if TX_BACKEND_AVAILABLE:
-            backends.append("transactional")
-        return backends
+            return ["transactional"]
+        return []
 
 
 # =============================================================================
