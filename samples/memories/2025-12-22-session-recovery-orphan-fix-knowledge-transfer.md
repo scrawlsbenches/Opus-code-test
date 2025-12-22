@@ -101,17 +101,27 @@ This is intentional - ADOPTED is not a transaction, just a tracking marker.
 | File | Changes |
 |------|---------|
 | `cortical/got/recovery.py` | Changed strategy 'delete' → 'adopt', updated log messages |
-| `tests/unit/got/test_recovery.py` | Updated test to expect adopt behavior |
+| `tests/unit/got/test_recovery.py` | Updated test to expect adopt behavior, added 4 edge case tests |
+
+## Edge Case Tests Added
+
+New `TestOrphanRepairEdgeCases` class with 4 tests:
+
+1. **`test_fresh_clone_no_wal_file`** - Simulates fresh git clone (entities exist, no WAL)
+2. **`test_multiple_recovery_runs_idempotent`** - Verifies no WAL bloat on repeated runs
+3. **`test_adopted_entries_pass_wal_integrity`** - Validates ADOPTED checksums pass verification
+4. **`test_wal_truncated_entities_readopted`** - Tests re-adoption after WAL truncation
 
 ## Commits
 
 1. `8d474f80` - fix(got): Change orphan repair strategy from 'delete' to 'adopt'
 2. `9fb42c77` - test(got): Update orphan repair test for 'adopt' strategy
+3. `babd473f` - test(got): Add edge case tests for orphan repair adopt strategy
 
 ## Test Results
 
-- 325 GoT tests pass
-- Dashboard now shows: 22 nodes, 5 edges (previously 0)
+- 329 GoT tests pass
+- Dashboard now shows: 23 nodes, 5 edges (previously 0)
 
 ## Related Tasks
 
