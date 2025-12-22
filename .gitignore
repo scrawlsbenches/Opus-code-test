@@ -152,3 +152,4 @@ corpus_dev/
 # GoT migration artifacts
 .got-backup-*/
 .got-tx/
+.got/.got.lock

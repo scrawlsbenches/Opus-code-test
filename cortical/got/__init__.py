@@ -22,7 +22,7 @@ from .errors import (
     ValidationError,
 )
 
-from .checksums import (
+from cortical.utils.checksums import (
     compute_checksum,
     verify_checksum,
     compute_file_checksum,

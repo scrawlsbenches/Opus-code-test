@@ -2,7 +2,7 @@
   "version": 1,
   "session_id": "53ec",
   "started_at": "2025-12-18T19:21:31.440992",
-  "saved_at": "2025-12-18T20:55:00.000000",
+  "saved_at": "2025-12-22T10:53:56.443119",
   "tasks": [
     {
       "id": "T-20251218-192131-53ec-001",
@@ -10,7 +10,7 @@
       "status": "completed",
       "priority": "medium",
       "category": "feature",
-      "description": "Create CommandExpert class following MicroExpert pattern. Template-based predictions (no ML). Parse .git-ml/actions/ for python -c patterns. Build keyword→command mappings.",
+      "description": "Create CommandExpert class following MicroExpert pattern. Template-based predictions (no ML). Parse .git-ml/actions/ for python -c patterns. Build keyword\u2192command mappings.",
       "depends_on": [],
       "effort": "medium",
       "created_at": "2025-12-18T19:21:31.441407",
@@ -38,7 +38,7 @@
       "status": "deferred",
       "priority": "low",
       "category": "feature",
-      "description": "Wire feedback loop for command success/failure. Learn context→command patterns. Add confidence calibration. Target: >65% accuracy, ECE <0.15.",
+      "description": "Wire feedback loop for command success/failure. Learn context\u2192command patterns. Add confidence calibration. Target: >65% accuracy, ECE <0.15.",
       "depends_on": [
         "T-20251218-192131-53ec-001",
         "T-20251218-204918-53ec-002"
@@ -89,7 +89,7 @@
       "depends_on": [],
       "effort": "ongoing",
       "created_at": "2025-12-18T20:49:18.586603",
-      "updated_at": "2025-12-18T20:55:00.000000",
+      "updated_at": "2025-12-22T10:53:56.443060",
       "completed_at": null,
       "context": {
         "files": [
@@ -103,11 +103,32 @@
           "estimated_ready_date": "2026-02-07"
         },
         "milestones": [
-          {"target": 100, "metric": "unique_commands", "status": "pending", "label": "Basic pattern matching"},
-          {"target": 500, "metric": "unique_commands", "status": "pending", "label": "Useful predictions"},
-          {"target": 10, "metric": "python_c_patterns", "status": "pending", "label": "Python -c viable"},
-          {"target": 50, "metric": "python_c_patterns", "status": "pending", "label": "Python -c useful"}
-        ]
+          {
+            "target": 100,
+            "metric": "unique_commands",
+            "status": "pending",
+            "label": "Basic pattern matching"
+          },
+          {
+            "target": 500,
+            "metric": "unique_commands",
+            "status": "pending",
+            "label": "Useful predictions"
+          },
+          {
+            "target": 10,
+            "metric": "python_c_patterns",
+            "status": "pending",
+            "label": "Python -c viable"
+          },
+          {
+            "target": 50,
+            "metric": "python_c_patterns",
+            "status": "pending",
+            "label": "Python -c useful"
+          }
+        ],
+        "recovery_note_2025_12_22": "Tracking task for ML data collection milestones. Not blocking recovery. This is intentionally long-running - monitors command pattern accumulation. Status: ONGOING tracking, no action needed during recovery."
       },
       "retrospective": null
     }

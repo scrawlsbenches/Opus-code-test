@@ -15,7 +15,7 @@ from typing import Dict, Optional
 
 from .types import Entity, Task, Decision, Edge
 from .errors import CorruptionError
-from .checksums import compute_checksum
+from cortical.utils.checksums import compute_checksum
 from .config import DurabilityMode
 
 

@@ -10,7 +10,8 @@ from dataclasses import dataclass, asdict
 from typing import List, Dict, Optional, Callable, Tuple, Any
 from pathlib import Path
 from collections import defaultdict
-import hashlib
+
+from cortical.utils.checksums import compute_bytes_checksum
 
 
 @dataclass(frozen=True)
@@ -312,7 +313,7 @@ class ContextPool:
         """Generate unique ID for a finding."""
         timestamp = time.time()
         data = f"{topic}:{content}:{source_agent}:{timestamp}"
-        return hashlib.sha256(data.encode()).hexdigest()[:16]
+        return compute_bytes_checksum(data.encode(), truncate=16)
 
     def _handle_conflict(
         self,

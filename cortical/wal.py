@@ -25,7 +25,6 @@ Usage:
 Author: Cortical Text Processor Team
 """
 
-import hashlib
 import json
 import gzip
 import shutil
@@ -36,48 +35,55 @@ from typing import Any, Dict, Iterator, List, Optional, Set, Tuple
 import os
 import tempfile
 
+from cortical.utils.checksums import compute_checksum
+
 
 # ==============================================================================
 # DATA CLASSES
 # ==============================================================================
 
 @dataclass
-class WALEntry:
-    """A single entry in the Write-Ahead Log."""
+class BaseWALEntry:
+    """
+    Base class for all WAL entries.
 
-    operation: str  # add_document, remove_document, compute_phase, mark_stale, mark_fresh
+    Provides common fields and checksum functionality that can be extended
+    by specialized entry types (document-oriented, transaction-oriented, etc.).
+
+    Fields:
+        operation: The operation type (e.g., 'add_document', 'TX_BEGIN')
+        timestamp: ISO format timestamp
+        payload: Operation-specific data
+        checksum: SHA256 checksum for integrity verification
+    """
+
+    operation: str
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
-    doc_id: Optional[str] = None
-    phase: Optional[str] = None
-    reason: Optional[str] = None
-    affected_computations: List[str] = field(default_factory=list)
     payload: Dict[str, Any] = field(default_factory=dict)
     checksum: str = ""
 
-    def __post_init__(self):
-        """Compute checksum if not provided."""
-        if not self.checksum:
-            self.checksum = self._compute_checksum()
+    def _get_checksum_data(self) -> Dict[str, Any]:
+        """
+        Get the data to include in checksum computation.
+
+        Override in subclasses to include additional fields.
+        """
+        return {
+            'operation': self.operation,
+            'timestamp': self.timestamp,
+            'payload': self.payload,
+        }
 
     def _compute_checksum(self) -> str:
         """Compute SHA256 checksum of entry content."""
-        content = json.dumps({
-            'operation': self.operation,
-            'timestamp': self.timestamp,
-            'doc_id': self.doc_id,
-            'phase': self.phase,
-            'reason': self.reason,
-            'affected_computations': self.affected_computations,
-            'payload': self.payload,
-        }, sort_keys=True)
-        return hashlib.sha256(content.encode()).hexdigest()[:16]
+        return compute_checksum(self._get_checksum_data(), truncate=16)
 
     def to_json(self) -> str:
         """Serialize to JSON string."""
         return json.dumps(asdict(self))
 
     @classmethod
-    def from_json(cls, json_str: str) -> 'WALEntry':
+    def from_json(cls, json_str: str) -> 'BaseWALEntry':
         """Deserialize from JSON string."""
         data = json.loads(json_str)
         return cls(**data)
@@ -86,6 +92,98 @@ class WALEntry:
         """Verify checksum matches content."""
         expected = self._compute_checksum()
         return self.checksum == expected
+
+
+@dataclass
+class WALEntry(BaseWALEntry):
+    """A single entry in the Write-Ahead Log for document operations."""
+
+    # Document-specific fields
+    doc_id: Optional[str] = None
+    phase: Optional[str] = None
+    reason: Optional[str] = None
+    affected_computations: List[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        """Compute checksum if not provided."""
+        if not self.checksum:
+            self.checksum = self._compute_checksum()
+
+    def _get_checksum_data(self) -> Dict[str, Any]:
+        """Include document-specific fields in checksum."""
+        return {
+            'operation': self.operation,
+            'timestamp': self.timestamp,
+            'doc_id': self.doc_id,
+            'phase': self.phase,
+            'reason': self.reason,
+            'affected_computations': self.affected_computations,
+            'payload': self.payload,
+        }
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'WALEntry':
+        """Deserialize from JSON string."""
+        data = json.loads(json_str)
+        return cls(**data)
+
+
+@dataclass
+class TransactionWALEntry(BaseWALEntry):
+    """
+    WAL entry for transaction-based systems (e.g., GoT).
+
+    Used by transaction managers that need to track:
+    - Transaction boundaries (BEGIN, PREPARE, COMMIT, ABORT)
+    - Write operations within transactions
+    - Rollback information
+
+    Fields:
+        seq: Sequence number for ordering
+        tx_id: Transaction identifier
+        operation: TX_BEGIN, TX_PREPARE, TX_COMMIT, TX_ABORT, TX_ROLLBACK, WRITE
+    """
+
+    seq: int = 0
+    tx_id: str = ""
+
+    def __post_init__(self):
+        """Compute checksum if not provided."""
+        if not self.checksum:
+            self.checksum = self._compute_checksum()
+
+    def _get_checksum_data(self) -> Dict[str, Any]:
+        """Include transaction-specific fields in checksum."""
+        return {
+            'seq': self.seq,
+            'ts': self.timestamp,
+            'tx': self.tx_id,
+            'op': self.operation,
+            'data': self.payload,
+        }
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return {
+            'seq': self.seq,
+            'ts': self.timestamp,
+            'tx': self.tx_id,
+            'op': self.operation,
+            'data': self.payload,
+            'checksum': self.checksum,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'TransactionWALEntry':
+        """Create from dictionary."""
+        return cls(
+            seq=data.get('seq', 0),
+            timestamp=data.get('ts', ''),
+            tx_id=data.get('tx', ''),
+            operation=data.get('op', ''),
+            payload=data.get('data', {}),
+            checksum=data.get('checksum', ''),
+        )
 
 
 @dataclass

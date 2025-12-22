@@ -41,6 +41,7 @@ from threading import Timer
 from typing import Any, Dict, Iterator, List, Optional, Set
 
 from cortical.wal import WALWriter, WALEntry, SnapshotManager
+from cortical.utils.checksums import compute_checksum
 from .thought_graph import ThoughtGraph
 from .graph_of_thought import NodeType, EdgeType, ThoughtNode, ThoughtEdge
 
@@ -463,7 +464,7 @@ class GraphWALEntry:
         Returns:
             First 16 characters of hex digest
         """
-        content = json.dumps({
+        data = {
             'operation': self.operation,
             'timestamp': self.timestamp,
             'node_id': self.node_id,
@@ -473,8 +474,8 @@ class GraphWALEntry:
             'target_id': self.target_id,
             'cluster_id': self.cluster_id,
             'payload': self.payload,
-        }, sort_keys=True)
-        return hashlib.sha256(content.encode()).hexdigest()[:16]
+        }
+        return compute_checksum(data, truncate=16)
 
     def to_json(self) -> str:
         """

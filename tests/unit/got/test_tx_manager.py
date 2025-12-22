@@ -363,7 +363,7 @@ class TestProcessLock:
 
     def test_lock_acquire_release(self, tmp_path):
         """Test basic lock acquire and release."""
-        from cortical.got.tx_manager import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock = ProcessLock(lock_path)
@@ -378,7 +378,7 @@ class TestProcessLock:
 
     def test_lock_reentrant(self, tmp_path):
         """Test reentrant lock allows multiple acquires."""
-        from cortical.got.tx_manager import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock = ProcessLock(lock_path, reentrant=True)
@@ -396,7 +396,7 @@ class TestProcessLock:
 
     def test_lock_context_manager(self, tmp_path):
         """Test lock as context manager."""
-        from cortical.got.tx_manager import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "test.lock"
         lock = ProcessLock(lock_path)
@@ -410,7 +410,7 @@ class TestProcessLock:
         """Test lock acquired within timeout."""
         import threading
         import time
-        from cortical.got.tx_manager import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "timeout_test.lock"
         lock1 = ProcessLock(lock_path, reentrant=False)
@@ -441,7 +441,7 @@ class TestProcessLock:
     def test_lock_timeout_expired(self, tmp_path):
         """Test lock not acquired when timeout expires."""
         import time
-        from cortical.got.tx_manager import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "timeout_expired.lock"
         lock1 = ProcessLock(lock_path, reentrant=False)
@@ -464,7 +464,7 @@ class TestProcessLock:
         """Test stale lock from dead PID is recovered."""
         import json
         import os
-        from cortical.got.tx_manager import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "stale.lock"
 
@@ -488,7 +488,7 @@ class TestProcessLock:
     def test_lock_backoff_pattern(self, tmp_path):
         """Test exponential backoff timing pattern."""
         import time
-        from cortical.got.tx_manager import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "backoff.lock"
         lock1 = ProcessLock(lock_path, reentrant=False)
@@ -518,7 +518,7 @@ class TestProcessLock:
         import json
         import os
         import time
-        from cortical.got.tx_manager import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "holder_info.lock"
         lock = ProcessLock(lock_path)
@@ -544,7 +544,7 @@ class TestProcessLock:
 
     def test_lock_no_timeout_backward_compatible(self, tmp_path):
         """Test that timeout=None preserves original behavior."""
-        from cortical.got.tx_manager import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "no_timeout.lock"
         lock1 = ProcessLock(lock_path, reentrant=False)
@@ -566,7 +566,7 @@ class TestProcessLock:
 
     def test_lock_handles_empty_lock_file(self, tmp_path):
         """Test that empty lock file is considered stale."""
-        from cortical.got.tx_manager import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "empty.lock"
         lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -582,7 +582,7 @@ class TestProcessLock:
 
     def test_lock_handles_invalid_json(self, tmp_path):
         """Test that invalid JSON in lock file is considered stale."""
-        from cortical.got.tx_manager import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "invalid.lock"
         lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -599,7 +599,7 @@ class TestProcessLock:
 
     def test_lock_reentrant_with_timeout(self, tmp_path):
         """Test that reentrant lock works with timeout parameter."""
-        from cortical.got.tx_manager import ProcessLock
+        from cortical.utils.locking import ProcessLock
 
         lock_path = tmp_path / "reentrant_timeout.lock"
         lock = ProcessLock(lock_path, reentrant=True)

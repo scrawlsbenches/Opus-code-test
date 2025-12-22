@@ -137,6 +137,24 @@ CODE_CONCEPT_GROUPS: Dict[str, FrozenSet[str]] = {
         'handler', 'callback', 'hook', 'trigger', 'notify', 'observe',
         'broadcast', 'signal', 'message', 'channel'
     ]),
+
+    # Machine learning and AI
+    'ml': frozenset([
+        'model', 'train', 'training', 'predict', 'prediction', 'inference',
+        'dataset', 'feature', 'label', 'epoch', 'batch', 'loss', 'accuracy',
+        'embedding', 'vector', 'tensor', 'neural', 'network', 'layer',
+        'optimizer', 'gradient', 'weight', 'bias', 'activation', 'forward',
+        'backward', 'backprop', 'classify', 'regression', 'cluster'
+    ]),
+
+    # Frontend and UI
+    'frontend': frozenset([
+        'component', 'render', 'view', 'template', 'style', 'css', 'html',
+        'dom', 'element', 'widget', 'layout', 'responsive', 'animation',
+        'click', 'hover', 'focus', 'blur', 'input', 'form', 'submit',
+        'state', 'props', 'hook', 'effect', 'ref', 'context', 'router',
+        'page', 'screen', 'modal', 'dialog', 'button', 'dropdown'
+    ]),
 }
 
 # Build reverse index: term -> list of concept groups it belongs to

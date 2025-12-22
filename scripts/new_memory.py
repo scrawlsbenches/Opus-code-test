@@ -35,8 +35,11 @@ from pathlib import Path
 
 # Add scripts to path
 sys.path.insert(0, str(Path(__file__).parent))
+# Add parent to path for cortical imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from task_utils import generate_session_id
+from cortical.utils.text import slugify
 
 
 # Directories for memories and decisions
@@ -60,18 +63,6 @@ def get_git_author() -> str:
     return "Unknown"
 
 
-def slugify(text: str) -> str:
-    """Convert text to URL-friendly slug."""
-    # Simple slugification: lowercase, replace spaces with hyphens
-    slug = text.lower().strip()
-    slug = slug.replace(" ", "-")
-    # Remove non-alphanumeric except hyphens
-    slug = "".join(c for c in slug if c.isalnum() or c == "-")
-    # Remove duplicate hyphens
-    while "--" in slug:
-        slug = slug.replace("--", "-")
-    # Truncate to reasonable length
-    return slug[:50]
 
 
 def generate_memory_filename(title: str, is_decision: bool = False) -> str:

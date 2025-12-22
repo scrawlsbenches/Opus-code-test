@@ -37,44 +37,64 @@ Usage:
 import json
 import os
 import sys
-import uuid
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
+
+# Add project root to path for cortical imports
+_PROJECT_ROOT = Path(__file__).parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+# Import canonical ID generation (use as internal implementation)
+from cortical.utils.id_generation import (
+    generate_task_id as _generate_task_id,
+    generate_session_id,
+    generate_short_id,
+)
+from cortical.utils.text import slugify
+from cortical.utils.persistence import atomic_write_json
 
 
 # Directory for per-session task files
 DEFAULT_TASKS_DIR = "tasks"
 
 
-def generate_session_id() -> str:
-    """Generate a short session ID (4 hex chars)."""
-    return uuid.uuid4().hex[:4]
-
-
 def generate_task_id(session_id: Optional[str] = None) -> str:
     """
     Generate a unique, merge-friendly task ID.
 
+    This is a backward-compatibility wrapper that adds session_id support
+    to the canonical ID generation function. New code should prefer the
+    canonical function from cortical.utils.id_generation.
+
     Args:
-        session_id: Optional session suffix. If None, generates random suffix.
+        session_id: Optional session suffix. If None, uses canonical generation.
 
     Returns:
-        Task ID in format T-YYYYMMDD-HHMMSSffffff-XXXX (with microseconds)
+        Task ID in format T-YYYYMMDD-HHMMSS-XXXXXXXX
 
     Example:
         >>> generate_task_id()
-        'T-20251213-143052123456-a1b2'
+        'T-20251213-143052-a1b2c3d4'
         >>> generate_task_id("test")
         'T-20251213-143052123456-test'
+
+    Note:
+        When session_id is provided, uses legacy format with microseconds
+        for backward compatibility with existing session files.
     """
-    now = datetime.now()
-    date_str = now.strftime("%Y%m%d")
-    # Include microseconds to avoid collisions in tight loops
-    time_str = now.strftime("%H%M%S%f")
-    suffix = session_id or generate_session_id()
-    return f"T-{date_str}-{time_str}-{suffix}"
+    if session_id:
+        # Legacy format for backward compatibility with session files
+        now = datetime.now()
+        date_str = now.strftime("%Y%m%d")
+        # Include microseconds to avoid collisions in tight loops
+        time_str = now.strftime("%H%M%S%f")
+        return f"T-{date_str}-{time_str}-{session_id}"
+
+    # Use canonical ID generation
+    return _generate_task_id()
 
 
 def generate_short_task_id() -> str:
@@ -88,29 +108,9 @@ def generate_short_task_id() -> str:
         >>> generate_short_task_id()
         'T-a1b2c3d4'
     """
-    return f"T-{uuid.uuid4().hex[:8]}"
+    return generate_short_id(prefix="T")
 
 
-def slugify(text: str) -> str:
-    """
-    Convert text to URL-friendly slug.
-
-    Args:
-        text: Text to convert to slug
-
-    Returns:
-        Slugified text (lowercase, hyphens, alphanumeric only)
-    """
-    # Simple slugification: lowercase, replace spaces with hyphens
-    slug = text.lower().strip()
-    slug = slug.replace(" ", "-")
-    # Remove non-alphanumeric except hyphens
-    slug = "".join(c for c in slug if c.isalnum() or c == "-")
-    # Remove duplicate hyphens
-    while "--" in slug:
-        slug = slug.replace("--", "-")
-    # Truncate to reasonable length
-    return slug[:50]
 
 
 def generate_memory_from_task(task: dict) -> str:
@@ -526,7 +526,6 @@ class TaskSession:
         dir_path.mkdir(parents=True, exist_ok=True)
 
         filepath = dir_path / self.get_filename()
-        temp_filepath = filepath.with_suffix('.json.tmp')
 
         data = {
             "version": 1,
@@ -536,21 +535,7 @@ class TaskSession:
             "tasks": [t.to_dict() for t in self.tasks]
         }
 
-        try:
-            # Write to temp file first
-            with open(temp_filepath, 'w') as f:
-                json.dump(data, f, indent=2)
-                f.flush()
-                os.fsync(f.fileno())  # Ensure data is on disk
-
-            # Atomic rename (on POSIX systems)
-            temp_filepath.rename(filepath)
-        except Exception:
-            # Clean up temp file on failure
-            if temp_filepath.exists():
-                temp_filepath.unlink()
-            raise
-
+        atomic_write_json(filepath, data)
         return filepath
 
     @classmethod

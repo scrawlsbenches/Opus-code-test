@@ -17,7 +17,7 @@ from typing import List
 from .tx_manager import TransactionManager
 from .versioned_store import VersionedStore
 from .wal import WALManager
-from .checksums import compute_checksum, verify_checksum
+from cortical.utils.checksums import compute_checksum, verify_checksum
 from .errors import CorruptionError
 
 

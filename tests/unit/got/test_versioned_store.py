@@ -14,7 +14,7 @@ import pytest
 from cortical.got.versioned_store import VersionedStore
 from cortical.got.types import Task, Decision, Edge, Entity
 from cortical.got.errors import CorruptionError
-from cortical.got.checksums import compute_checksum
+from cortical.utils.checksums import compute_checksum
 
 
 class TestVersionedStoreBasics:

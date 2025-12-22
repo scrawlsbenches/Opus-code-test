@@ -14,7 +14,7 @@ from cortical.got import (
     CorruptionError,
 )
 from cortical.got.recovery import RecoveryManager, RecoveryResult
-from cortical.got.checksums import compute_checksum
+from cortical.utils.checksums import compute_checksum
 
 
 class TestRecovery:
@@ -203,7 +203,7 @@ class TestOrphanRepair:
 
     def _create_orphan_file(self, entities_dir, entity_id, title="Orphaned", corrupted=False):
         """Helper to create an orphan entity file with correct format."""
-        from cortical.got.checksums import compute_checksum
+        from cortical.utils.checksums import compute_checksum
         from datetime import datetime, timezone
 
         orphan_file = entities_dir / f"{entity_id}.json"

@@ -21,11 +21,11 @@ from __future__ import annotations
 
 import json
 import logging
-import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+from cortical.utils.id_generation import generate_task_id, generate_decision_id
 from .tx_manager import TransactionManager, CommitResult
 from .sync import SyncManager, SyncResult
 from .recovery import RecoveryManager, RecoveryResult
@@ -36,35 +36,8 @@ from .config import DurabilityMode
 
 logger = logging.getLogger(__name__)
 
-
-def generate_task_id() -> str:
-    """
-    Generate unique task ID.
-
-    Format: T-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
-
-    Returns:
-        Task ID string
-    """
-    now = datetime.now(timezone.utc)
-    timestamp = now.strftime("%Y%m%d-%H%M%S")
-    random_suffix = secrets.token_hex(4)  # 8 hex chars (~4 billion values)
-    return f"T-{timestamp}-{random_suffix}"
-
-
-def generate_decision_id() -> str:
-    """
-    Generate unique decision ID.
-
-    Format: D-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
-
-    Returns:
-        Decision ID string
-    """
-    now = datetime.now(timezone.utc)
-    timestamp = now.strftime("%Y%m%d-%H%M%S")
-    random_suffix = secrets.token_hex(4)  # 8 hex chars (~4 billion values)
-    return f"D-{timestamp}-{random_suffix}"
+# ID generation functions are imported from cortical.utils.id_generation
+# (canonical source for all ID generation across the codebase)
 
 
 class GoTManager:

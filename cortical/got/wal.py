@@ -3,6 +3,14 @@ Write-Ahead Log for GoT transactional system.
 
 Provides crash recovery by logging all operations BEFORE they are applied.
 Uses JSONL format with checksums and fsync for durability.
+
+This module uses the shared TransactionWALEntry from cortical.wal for entry
+representation, ensuring consistent checksum computation and serialization
+across all WAL implementations in the system.
+
+See also:
+    - cortical.wal: Base WAL infrastructure (BaseWALEntry, TransactionWALEntry)
+    - cortical.utils.checksums: Shared checksum utilities
 """
 
 from __future__ import annotations
@@ -13,9 +21,14 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
 
-from .checksums import compute_checksum
+from cortical.wal import TransactionWALEntry
+from cortical.utils.checksums import compute_checksum
 from .errors import CorruptionError
 from .config import DurabilityMode
+
+
+# Re-export for convenience
+__all__ = ['WALManager', 'TransactionWALEntry']
 
 
 class WALManager:
@@ -94,22 +107,18 @@ class WALManager:
         """
         seq = self._next_seq()
 
-        # Create entry without checksum
-        entry = {
-            'seq': seq,
-            'ts': datetime.now(timezone.utc).isoformat(),
-            'tx': tx_id,
-            'op': operation,
-            'data': data
-        }
+        # Create entry using shared TransactionWALEntry
+        entry = TransactionWALEntry(
+            seq=seq,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            tx_id=tx_id,
+            operation=operation,
+            payload=data,
+        )
 
-        # Compute checksum of entry without checksum field
-        checksum = compute_checksum(entry)
-        entry['checksum'] = checksum
-
-        # Append to WAL file
+        # Append to WAL file using entry's serialization
         with open(self.wal_file, 'a', encoding='utf-8') as f:
-            f.write(json.dumps(entry, separators=(',', ':')) + '\n')
+            f.write(json.dumps(entry.to_dict(), separators=(',', ':')) + '\n')
             f.flush()
             # Only fsync if PARANOID mode
             if self.durability == DurabilityMode.PARANOID:
@@ -207,7 +216,8 @@ class WALManager:
         Skips entries with corrupted checksums.
 
         Returns:
-            List of valid entries in sequence order
+            List of valid entries in sequence order (as dictionaries for
+            backward compatibility; use replay_entries() for typed entries)
         """
         if not self.wal_file.exists():
             return []
@@ -220,25 +230,55 @@ class WALManager:
                     continue
 
                 try:
-                    entry = json.loads(line)
+                    data = json.loads(line)
                 except json.JSONDecodeError:
                     # Skip corrupted JSON
                     continue
 
-                # Verify checksum
-                if 'checksum' not in entry:
-                    # Skip entries without checksum
-                    continue
+                # Parse into TransactionWALEntry for verification
+                entry = TransactionWALEntry.from_dict(data)
 
-                expected_checksum = entry.pop('checksum')
-                actual_checksum = compute_checksum(entry)
-
-                if actual_checksum != expected_checksum:
+                if not entry.verify():
                     # Skip corrupted entry
                     continue
 
-                # Restore checksum field for caller
-                entry['checksum'] = expected_checksum
+                # Return as dictionary for backward compatibility
+                entries.append(entry.to_dict())
+
+        return entries
+
+    def replay_entries(self) -> List[TransactionWALEntry]:
+        """
+        Read all WAL entries as typed TransactionWALEntry objects.
+
+        Skips entries with corrupted checksums.
+
+        Returns:
+            List of valid TransactionWALEntry objects in sequence order
+        """
+        if not self.wal_file.exists():
+            return []
+
+        entries = []
+        with open(self.wal_file, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                if not line:
+                    continue
+
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    # Skip corrupted JSON
+                    continue
+
+                # Parse into TransactionWALEntry for verification
+                entry = TransactionWALEntry.from_dict(data)
+
+                if not entry.verify():
+                    # Skip corrupted entry
+                    continue
+
                 entries.append(entry)
 
         return entries

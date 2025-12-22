@@ -594,3 +594,171 @@ class TestSecurityConceptGroup:
         # Related terms should be from security or logging
         for term in related:
             assert term in security_terms or term in logging_terms
+
+
+# =============================================================================
+# ML CONCEPT GROUP TESTS
+# =============================================================================
+
+
+class TestMLConceptGroup:
+    """Tests for the machine learning (ml) concept group."""
+
+    def test_ml_in_concept_groups(self):
+        """Test that 'ml' is in the list of concept groups."""
+        groups = list_concept_groups()
+        assert 'ml' in groups
+
+    def test_get_ml_group_terms(self):
+        """Test that get_group_terms('ml') returns expected ML terms."""
+        terms = get_group_terms('ml')
+
+        # Verify it's non-empty
+        assert len(terms) > 0
+
+        # Verify specific expected terms are present
+        expected_terms = [
+            'model', 'train', 'training', 'predict', 'prediction', 'inference',
+            'dataset', 'feature', 'label', 'epoch', 'batch', 'loss', 'accuracy',
+            'embedding', 'vector', 'tensor', 'neural', 'network', 'layer',
+            'optimizer', 'gradient', 'weight', 'bias', 'activation', 'forward',
+            'backward', 'backprop', 'classify', 'regression', 'cluster'
+        ]
+
+        for term in expected_terms:
+            assert term in terms, f"Expected term '{term}' not found in ml group"
+
+        # Verify all terms are sorted
+        assert terms == sorted(terms)
+
+    def test_get_related_terms_train(self):
+        """Test that get_related_terms('train') returns ML-related terms."""
+        related = get_related_terms('train', max_terms=10)
+
+        # Should get other ML terms
+        assert len(related) > 0
+
+        # Verify 'train' is not in its own related terms
+        assert 'train' not in related
+
+        # Related terms should include other ML terms
+        ml_terms = CODE_CONCEPT_GROUPS['ml']
+        for term in related:
+            assert term in ml_terms
+
+    def test_get_concept_group_for_ml_terms(self):
+        """Test that ML terms map back to the 'ml' group."""
+        ml_terms = ['model', 'train', 'predict', 'embedding', 'gradient']
+
+        for term in ml_terms:
+            groups = get_concept_group(term)
+            assert 'ml' in groups, f"Term '{term}' should belong to 'ml' group"
+
+    def test_expand_ml_concepts(self):
+        """Test expansion with ML-related terms."""
+        expanded = expand_code_concepts(['train', 'predict'], max_expansions_per_term=5)
+
+        # Should have expansions from ml group
+        assert len(expanded) > 0
+
+        # Input terms should not be in expansion
+        assert 'train' not in expanded
+        assert 'predict' not in expanded
+
+        # Expanded terms should be from ml group
+        ml_terms = CODE_CONCEPT_GROUPS['ml']
+        for term in expanded.keys():
+            assert term in ml_terms
+
+
+# =============================================================================
+# FRONTEND CONCEPT GROUP TESTS
+# =============================================================================
+
+
+class TestFrontendConceptGroup:
+    """Tests for the frontend concept group."""
+
+    def test_frontend_in_concept_groups(self):
+        """Test that 'frontend' is in the list of concept groups."""
+        groups = list_concept_groups()
+        assert 'frontend' in groups
+
+    def test_get_frontend_group_terms(self):
+        """Test that get_group_terms('frontend') returns expected frontend terms."""
+        terms = get_group_terms('frontend')
+
+        # Verify it's non-empty
+        assert len(terms) > 0
+
+        # Verify specific expected terms are present
+        expected_terms = [
+            'component', 'render', 'view', 'template', 'style', 'css', 'html',
+            'dom', 'element', 'widget', 'layout', 'responsive', 'animation',
+            'click', 'hover', 'focus', 'blur', 'input', 'form', 'submit',
+            'state', 'props', 'hook', 'effect', 'ref', 'context', 'router',
+            'page', 'screen', 'modal', 'dialog', 'button', 'dropdown'
+        ]
+
+        for term in expected_terms:
+            assert term in terms, f"Expected term '{term}' not found in frontend group"
+
+        # Verify all terms are sorted
+        assert terms == sorted(terms)
+
+    def test_get_related_terms_component(self):
+        """Test that get_related_terms('component') returns frontend-related terms."""
+        related = get_related_terms('component', max_terms=10)
+
+        # Should get other frontend terms
+        assert len(related) > 0
+
+        # Verify 'component' is not in its own related terms
+        assert 'component' not in related
+
+        # Related terms should be from frontend group
+        frontend_terms = CODE_CONCEPT_GROUPS['frontend']
+        for term in related:
+            assert term in frontend_terms
+
+    def test_get_concept_group_for_frontend_terms(self):
+        """Test that frontend terms map back to the 'frontend' group."""
+        frontend_terms = ['component', 'render', 'state', 'props', 'router']
+
+        for term in frontend_terms:
+            groups = get_concept_group(term)
+            assert 'frontend' in groups, f"Term '{term}' should belong to 'frontend' group"
+
+    def test_expand_frontend_concepts(self):
+        """Test expansion with frontend-related terms."""
+        expanded = expand_code_concepts(['component', 'render'], max_expansions_per_term=5)
+
+        # Should have expansions from frontend group
+        assert len(expanded) > 0
+
+        # Input terms should not be in expansion
+        assert 'component' not in expanded
+        assert 'render' not in expanded
+
+        # Expanded terms should be from frontend group
+        frontend_terms = CODE_CONCEPT_GROUPS['frontend']
+        for term in expanded.keys():
+            assert term in frontend_terms
+
+    def test_frontend_group_overlap_with_events(self):
+        """Test that 'hook' appears in both frontend and events groups."""
+        # 'hook' should be in both frontend and events
+        groups = get_concept_group('hook')
+        assert 'frontend' in groups
+        assert 'events' in groups
+
+        # Get related terms for 'hook' - should get terms from both groups
+        related = get_related_terms('hook', max_terms=10)
+        assert len(related) > 0
+
+        frontend_terms = CODE_CONCEPT_GROUPS['frontend']
+        events_terms = CODE_CONCEPT_GROUPS['events']
+
+        # Some related terms should be from frontend or events
+        for term in related:
+            assert term in frontend_terms or term in events_terms

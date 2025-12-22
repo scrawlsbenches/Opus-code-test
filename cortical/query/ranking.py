@@ -19,6 +19,7 @@ from ..constants import DOC_TYPE_BOOSTS, CONCEPTUAL_KEYWORDS, IMPLEMENTATION_KEY
 
 from .expansion import get_expanded_query_terms
 from .search import find_documents_for_query
+from .utils import get_tfidf_score, normalize_scores
 
 
 # Constants imported from cortical/constants.py
@@ -305,13 +306,11 @@ def multi_stage_rank(
         col = layer0.get_minicolumn(term)
         if col:
             for doc_id in col.document_ids:
-                tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
+                tfidf = get_tfidf_score(col, doc_id)
                 doc_tfidf_scores[doc_id] += tfidf * term_weight
 
     # Normalize TF-IDF scores
-    max_tfidf = max(doc_tfidf_scores.values()) if doc_tfidf_scores else 1.0
-    for doc_id in doc_tfidf_scores:
-        doc_tfidf_scores[doc_id] /= max_tfidf if max_tfidf > 0 else 1.0
+    doc_tfidf_scores = normalize_scores(dict(doc_tfidf_scores))
 
     # Combine concept and TF-IDF scores for document ranking
     combined_doc_scores: Dict[str, float] = {}
@@ -444,13 +443,11 @@ def multi_stage_rank_documents(
         col = layer0.get_minicolumn(term)
         if col:
             for doc_id in col.document_ids:
-                tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
+                tfidf = get_tfidf_score(col, doc_id)
                 doc_tfidf_scores[doc_id] += tfidf * term_weight
 
     # Normalize TF-IDF
-    max_tfidf = max(doc_tfidf_scores.values()) if doc_tfidf_scores else 1.0
-    for doc_id in doc_tfidf_scores:
-        doc_tfidf_scores[doc_id] /= max_tfidf if max_tfidf > 0 else 1.0
+    doc_tfidf_scores = normalize_scores(dict(doc_tfidf_scores))
 
     # Combine scores
     results: List[Tuple[str, float, Dict[str, float]]] = []

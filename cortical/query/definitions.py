@@ -14,6 +14,8 @@ This module handles:
 from typing import Dict, List, Tuple, Optional, TypedDict, Any
 import re
 
+from .utils import is_test_file
+
 
 # Patterns for detecting definition queries
 DEFINITION_QUERY_PATTERNS = [
@@ -277,37 +279,6 @@ def apply_definition_boost(
     # Re-sort by boosted scores
     boosted_passages.sort(key=lambda x: x[4], reverse=True)
     return boosted_passages
-
-
-def is_test_file(doc_id: str) -> bool:
-    """
-    Detect if a document ID represents a test file.
-
-    Checks for common test file patterns:
-    - Path contains 'tests/' or 'test/'
-    - Filename starts with 'test_' or ends with '_test.py'
-    - Path contains 'mock' or 'fixture'
-
-    Args:
-        doc_id: Document identifier (typically a file path)
-
-    Returns:
-        True if the document appears to be a test file
-    """
-    doc_lower = doc_id.lower()
-
-    # Check path components
-    if '/tests/' in doc_lower or '/test/' in doc_lower:
-        return True
-
-    # Check filename patterns
-    filename = doc_lower.split('/')[-1] if '/' in doc_lower else doc_lower
-    if filename.startswith('test_') or filename.endswith('_test.py'):
-        return True
-    if 'mock' in filename or 'fixture' in filename:
-        return True
-
-    return False
 
 
 def boost_definition_documents(

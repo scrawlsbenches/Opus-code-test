@@ -31,6 +31,14 @@ from dataclasses import dataclass, field, asdict
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from cortical.utils.id_generation import (
+    generate_task_id,
+    generate_decision_id,
+    generate_sprint_id,
+    generate_goal_id,
+    normalize_id,
+)
+from cortical.utils.locking import ProcessLock
 from cortical.reasoning.thought_graph import ThoughtGraph
 from cortical.reasoning.graph_of_thought import NodeType, EdgeType, ThoughtNode, ThoughtEdge
 from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery
@@ -99,41 +107,13 @@ VALID_CATEGORIES = ["arch", "feature", "bugfix", "test", "docs", "refactor",
 # ID GENERATION
 # =============================================================================
 
-def generate_task_id() -> str:
-    """Generate unique task ID: task:T-YYYYMMDD-HHMMSS-XXXX"""
-    now = datetime.now()
-    timestamp = now.strftime("%Y%m%d-%H%M%S")
-    suffix = os.urandom(2).hex()
-    return f"task:T-{timestamp}-{suffix}"
-
-
-def generate_sprint_id(number: Optional[int] = None) -> str:
-    """Generate sprint ID: sprint:S-NNN or sprint:YYYY-MM"""
-    if number:
-        return f"sprint:S-{number:03d}"
-    return f"sprint:{datetime.now().strftime('%Y-%m')}"
-
+# ID generation functions now imported from cortical.utils.id_generation
+# (canonical source for all ID generation across the codebase)
 
 def generate_epic_id(name: str) -> str:
     """Generate epic ID: epic:E-XXXX"""
     suffix = os.urandom(2).hex()
     return f"epic:E-{suffix}"
-
-
-def generate_goal_id() -> str:
-    """Generate goal ID: goal:G-YYYYMMDD-XXXX"""
-    now = datetime.now()
-    timestamp = now.strftime("%Y%m%d")
-    suffix = os.urandom(2).hex()
-    return f"goal:G-{timestamp}-{suffix}"
-
-
-def generate_decision_id() -> str:
-    """Generate decision ID: decision:D-YYYYMMDD-HHMMSS-XXXX"""
-    now = datetime.now()
-    timestamp = now.strftime("%Y%m%d-%H%M%S")
-    suffix = os.urandom(2).hex()
-    return f"decision:D-{timestamp}-{suffix}"
 
 
 def get_current_branch() -> str:
@@ -308,241 +288,6 @@ class GoTBackendFactory:
         if TX_BACKEND_AVAILABLE:
             backends.append("transactional")
         return backends
-
-
-# =============================================================================
-# PROCESS-SAFE LOCKING
-# =============================================================================
-
-class ProcessLock:
-    """
-    Process-safe file-based lock with stale lock detection.
-
-    Features:
-    - Works across processes (not just threads)
-    - Detects and recovers from stale locks (dead processes)
-    - Timeout support to prevent deadlocks
-    - Context manager support
-    - Reentrant option for same-process re-acquisition
-
-    Usage:
-        lock = ProcessLock("/path/to/.lock")
-        with lock:
-            # Critical section
-            pass
-
-        # Or explicit:
-        if lock.acquire(timeout=5.0):
-            try:
-                # Critical section
-            finally:
-                lock.release()
-    """
-
-    def __init__(
-        self,
-        lock_path: Path,
-        stale_timeout: float = 3600.0,  # 1 hour default
-        reentrant: bool = False,
-    ):
-        """
-        Initialize process lock.
-
-        Args:
-            lock_path: Path to the lock file
-            stale_timeout: Seconds after which a lock is considered stale
-            reentrant: If True, same process can acquire multiple times
-        """
-        self.lock_path = Path(lock_path)
-        self.stale_timeout = stale_timeout
-        self.reentrant = reentrant
-        self._held = False
-        self._acquire_count = 0
-        self._fd = None
-
-    def acquire(self, timeout: Optional[float] = None) -> bool:
-        """
-        Acquire the lock.
-
-        Args:
-            timeout: Max seconds to wait (None=block forever, 0=non-blocking)
-
-        Returns:
-            True if lock acquired, False if timeout
-        """
-        import fcntl
-
-        # Handle reentrant case
-        if self._held and self.reentrant:
-            self._acquire_count += 1
-            return True
-
-        start_time = time.time()
-        poll_interval = 0.05  # 50ms
-
-        while True:
-            # Try to acquire
-            if self._try_acquire():
-                self._held = True
-                self._acquire_count = 1
-                return True
-
-            # Check for stale lock
-            if self._is_stale_lock():
-                self._break_stale_lock()
-                continue
-
-            # Check timeout
-            if timeout is not None:
-                elapsed = time.time() - start_time
-                if elapsed >= timeout:
-                    return False
-
-            # Wait before retry
-            if timeout == 0:
-                return False
-
-            remaining = None
-            if timeout is not None:
-                remaining = timeout - (time.time() - start_time)
-                if remaining <= 0:
-                    return False
-
-            time.sleep(min(poll_interval, remaining) if remaining else poll_interval)
-
-    def _try_acquire(self) -> bool:
-        """Attempt to acquire the lock file."""
-        import fcntl
-
-        try:
-            # Create parent directory if needed
-            self.lock_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Open or create lock file
-            self._fd = os.open(
-                str(self.lock_path),
-                os.O_CREAT | os.O_RDWR,
-                0o644
-            )
-
-            # Try exclusive lock (non-blocking)
-            try:
-                fcntl.flock(self._fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except (IOError, OSError):
-                os.close(self._fd)
-                self._fd = None
-                return False
-
-            # Write PID and timestamp
-            os.ftruncate(self._fd, 0)
-            os.lseek(self._fd, 0, os.SEEK_SET)
-            lock_info = f"{os.getpid()}\n{time.time()}\n"
-            os.write(self._fd, lock_info.encode())
-            os.fsync(self._fd)
-
-            return True
-
-        except Exception as e:
-            if self._fd is not None:
-                try:
-                    os.close(self._fd)
-                except:
-                    pass
-                self._fd = None
-            return False
-
-    def _is_stale_lock(self) -> bool:
-        """Check if the existing lock is stale."""
-        if not self.lock_path.exists():
-            return False
-
-        try:
-            content = self.lock_path.read_text().strip()
-            lines = content.split('\n')
-
-            if len(lines) < 2:
-                return True  # Corrupted, treat as stale
-
-            pid = int(lines[0])
-            timestamp = float(lines[1])
-
-            # Check if process is dead
-            if not self._process_exists(pid):
-                return True
-
-            # Check if lock is too old
-            if time.time() - timestamp > self.stale_timeout:
-                return True
-
-            return False
-
-        except (ValueError, IndexError, OSError):
-            # Corrupted lock file, treat as stale
-            return True
-
-    def _process_exists(self, pid: int) -> bool:
-        """Check if a process with given PID exists."""
-        try:
-            os.kill(pid, 0)  # Signal 0 doesn't kill, just checks
-            return True
-        except OSError:
-            return False
-
-    def _break_stale_lock(self) -> None:
-        """Remove a stale lock file."""
-        try:
-            self.lock_path.unlink(missing_ok=True)
-        except OSError:
-            pass
-
-    def release(self) -> None:
-        """Release the lock."""
-        import fcntl
-
-        if not self._held:
-            return
-
-        if self.reentrant and self._acquire_count > 1:
-            self._acquire_count -= 1
-            return
-
-        self._held = False
-        self._acquire_count = 0
-
-        if self._fd is not None:
-            try:
-                fcntl.flock(self._fd, fcntl.LOCK_UN)
-                os.close(self._fd)
-            except:
-                pass
-            self._fd = None
-
-        # Clean up lock file
-        try:
-            self.lock_path.unlink(missing_ok=True)
-        except OSError:
-            pass
-
-    def is_locked(self) -> bool:
-        """Check if lock is currently held by this instance."""
-        return self._held
-
-    def __enter__(self):
-        """Context manager entry."""
-        acquired = self.acquire()
-        if not acquired:
-            raise TimeoutError(f"Could not acquire lock: {self.lock_path}")
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit."""
-        self.release()
-        return False
-
-    def __del__(self):
-        """Ensure lock is released on garbage collection."""
-        if self._held:
-            self.release()
 
 
 # =============================================================================
@@ -2586,9 +2331,16 @@ class GoTProjectManager:
 
     def get_task(self, task_id: str) -> Optional[ThoughtNode]:
         """Get a task by ID."""
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
-        return self.graph.nodes.get(task_id)
+        # Try direct lookup first (task IDs are like T-20251222-...)
+        node = self.graph.nodes.get(task_id)
+        if node and node.node_type == NodeType.TASK:
+            return node
+        # Legacy support: try with task: prefix stripped if present
+        if task_id.startswith("task:"):
+            node = self.graph.nodes.get(task_id[5:])
+            if node and node.node_type == NodeType.TASK:
+                return node
+        return None
 
     def list_tasks(
         self,
@@ -2771,8 +2523,9 @@ class GoTProjectManager:
 
             # Add blocking edge if blocker specified
             if blocker_id:
-                if not blocker_id.startswith("task:"):
-                    blocker_id = f"task:{blocker_id}"
+                # Strip legacy task: prefix
+                if blocker_id.startswith("task:"):
+                    blocker_id = blocker_id[5:]
                 if blocker_id in self.graph.nodes:
                     self.graph.add_edge(
                         blocker_id, task_id, EdgeType.BLOCKS,
@@ -2803,9 +2556,9 @@ class GoTProjectManager:
             True if deleted, False if deletion blocked or task not found
         """
         with self._lock:
-            # Normalize task ID
-            if not task_id.startswith("task:"):
-                task_id = f"task:{task_id}"
+            # Strip legacy task: prefix
+            if task_id.startswith("task:"):
+                task_id = task_id[5:]
 
             # Transactional check 1: Task must exist
             task = self.get_task(task_id)
@@ -2885,10 +2638,11 @@ class GoTProjectManager:
             True if edge was created, False if either task not found
         """
         with self._lock:
-            if not task_id.startswith("task:"):
-                task_id = f"task:{task_id}"
-            if not depends_on_id.startswith("task:"):
-                depends_on_id = f"task:{depends_on_id}"
+            # Strip any legacy task: prefix
+            if task_id.startswith("task:"):
+                task_id = task_id[5:]
+            if depends_on_id.startswith("task:"):
+                depends_on_id = depends_on_id[5:]
 
             if task_id not in self.graph.nodes or depends_on_id not in self.graph.nodes:
                 return False
@@ -2913,10 +2667,11 @@ class GoTProjectManager:
             True if edge was created, False if either task not found
         """
         with self._lock:
-            if not task_id.startswith("task:"):
-                task_id = f"task:{task_id}"
-            if not blocked_id.startswith("task:"):
-                blocked_id = f"task:{blocked_id}"
+            # Strip any legacy task: prefix
+            if task_id.startswith("task:"):
+                task_id = task_id[5:]
+            if blocked_id.startswith("task:"):
+                blocked_id = blocked_id[5:]
 
             if task_id not in self.graph.nodes or blocked_id not in self.graph.nodes:
                 return False
@@ -2932,8 +2687,9 @@ class GoTProjectManager:
 
     def get_task_dependencies(self, task_id: str) -> List[ThoughtNode]:
         """Get all tasks this task depends on."""
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
+        # Strip legacy task: prefix
+        if task_id.startswith("task:"):
+            task_id = task_id[5:]
 
         deps = []
         edges = self.graph._edges_from.get(task_id, [])
@@ -2991,9 +2747,13 @@ class GoTProjectManager:
 
     def get_sprint(self, sprint_id: str) -> Optional[ThoughtNode]:
         """Get sprint by ID."""
-        if not sprint_id.startswith("sprint:"):
-            sprint_id = f"sprint:{sprint_id}"
-        return self.graph.nodes.get(sprint_id)
+        # Strip legacy sprint: prefix if present
+        if sprint_id.startswith("sprint:"):
+            sprint_id = sprint_id[7:]
+        node = self.graph.nodes.get(sprint_id)
+        if node and node.node_type == NodeType.GOAL:
+            return node
+        return None
 
     def list_sprints(
         self,
@@ -3004,7 +2764,10 @@ class GoTProjectManager:
         sprints = []
 
         for node_id, node in self.graph.nodes.items():
-            if not node_id.startswith("sprint:"):
+            # Sprint IDs start with S- (e.g., S-005, S-2025-12)
+            if not node_id.startswith("S-"):
+                continue
+            if node.node_type != NodeType.GOAL:
                 continue
 
             if status and node.properties.get("status") != status:
@@ -3022,8 +2785,9 @@ class GoTProjectManager:
 
     def get_sprint_tasks(self, sprint_id: str) -> List[ThoughtNode]:
         """Get all tasks in a sprint."""
-        if not sprint_id.startswith("sprint:"):
-            sprint_id = f"sprint:{sprint_id}"
+        # Strip legacy sprint: prefix if present
+        if sprint_id.startswith("sprint:"):
+            sprint_id = sprint_id[7:]
 
         tasks = []
         edges = self.graph._edges_from.get(sprint_id, [])
@@ -3057,8 +2821,9 @@ class GoTProjectManager:
 
     def _add_task_to_sprint(self, task_id: str, sprint_id: str) -> bool:
         """Add task to sprint via CONTAINS edge."""
-        if not sprint_id.startswith("sprint:"):
-            sprint_id = f"sprint:{sprint_id}"
+        # Strip legacy sprint: prefix if present
+        if sprint_id.startswith("sprint:"):
+            sprint_id = sprint_id[7:]
 
         if sprint_id not in self.graph.nodes:
             return False
@@ -3073,8 +2838,9 @@ class GoTProjectManager:
 
     def _task_in_sprint(self, task_id: str, sprint_id: str) -> bool:
         """Check if task is in sprint."""
-        if not sprint_id.startswith("sprint:"):
-            sprint_id = f"sprint:{sprint_id}"
+        # Strip legacy sprint: prefix if present
+        if sprint_id.startswith("sprint:"):
+            sprint_id = sprint_id[7:]
 
         edges = self.graph._edges_from.get(sprint_id, [])
         for edge in edges:
@@ -3231,8 +2997,9 @@ class GoTProjectManager:
 
     def get_decisions_for_task(self, task_id: str) -> List[ThoughtNode]:
         """Get all decisions that affect a task."""
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
+        # Strip legacy task: prefix
+        if task_id.startswith("task:"):
+            task_id = task_id[5:]
 
         decisions = []
         edges_to = getattr(self.graph, '_edges_to', {})
@@ -3421,8 +3188,9 @@ class GoTProjectManager:
         max_depth: int = 10,
     ) -> List[List[ThoughtNode]]:
         """Get full dependency chain for a task."""
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
+        # Strip legacy task: prefix
+        if task_id.startswith("task:"):
+            task_id = task_id[5:]
 
         chains = []
         visited = set()
@@ -3453,13 +3221,21 @@ class GoTProjectManager:
 
         Follows BLOCKS edges pointing TO this task.
         """
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
+        # Try to find edges with the ID as-is first, then try stripped version
+        edges_to = getattr(self.graph, '_edges_to', {})
+
+        # Try original ID first
+        edges = edges_to.get(task_id, [])
+
+        # If no edges and ID has task: prefix, try stripped version
+        if not edges and task_id.startswith("task:"):
+            edges = edges_to.get(task_id[5:], [])
+        # If no edges and ID doesn't have prefix, try with prefix
+        elif not edges and not task_id.startswith("task:"):
+            edges = edges_to.get(f"task:{task_id}", [])
 
         blockers = []
-        # Check _edges_to for edges pointing to this task
-        edges_to = getattr(self.graph, '_edges_to', {})
-        for edge in edges_to.get(task_id, []):
+        for edge in edges:
             if edge.edge_type == EdgeType.BLOCKS:
                 blocker = self.graph.nodes.get(edge.source_id)
                 if blocker:
@@ -3473,13 +3249,21 @@ class GoTProjectManager:
         Follows DEPENDS_ON edges pointing TO this task
         (i.e., other tasks that have this task as a dependency).
         """
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
+        # Try to find edges with the ID as-is first, then try other formats
+        edges_to = getattr(self.graph, '_edges_to', {})
+
+        # Try original ID first
+        edges = edges_to.get(task_id, [])
+
+        # If no edges and ID has task: prefix, try stripped version
+        if not edges and task_id.startswith("task:"):
+            edges = edges_to.get(task_id[5:], [])
+        # If no edges and ID doesn't have prefix, try with prefix
+        elif not edges and not task_id.startswith("task:"):
+            edges = edges_to.get(f"task:{task_id}", [])
 
         dependents = []
-        # Check _edges_to for edges pointing to this task
-        edges_to = getattr(self.graph, '_edges_to', {})
-        for edge in edges_to.get(task_id, []):
+        for edge in edges:
             if edge.edge_type == EdgeType.DEPENDS_ON:
                 dependent = self.graph.nodes.get(edge.source_id)
                 if dependent:
@@ -3538,9 +3322,6 @@ class GoTProjectManager:
         - 'depended_by': Tasks depending on this task
         - 'in_sprint': Sprint containing this task
         """
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
-
         result = {
             'blocks': [],
             'blocked_by': [],
@@ -3549,9 +3330,30 @@ class GoTProjectManager:
             'in_sprint': [],
         }
 
+        # Try to find edges with different ID formats
+        def get_edges_from(node_id):
+            edges = self.graph._edges_from.get(node_id, [])
+            if edges:
+                return edges
+            # Try alternate formats
+            if node_id.startswith("task:"):
+                return self.graph._edges_from.get(node_id[5:], [])
+            else:
+                return self.graph._edges_from.get(f"task:{node_id}", [])
+
+        def get_edges_to(node_id):
+            edges_to = getattr(self.graph, '_edges_to', {})
+            edges = edges_to.get(node_id, [])
+            if edges:
+                return edges
+            # Try alternate formats
+            if node_id.startswith("task:"):
+                return edges_to.get(node_id[5:], [])
+            else:
+                return edges_to.get(f"task:{node_id}", [])
+
         # Outgoing edges (from this task)
-        edges_from = self.graph._edges_from.get(task_id, [])
-        for edge in edges_from:
+        for edge in get_edges_from(task_id):
             target = self.graph.nodes.get(edge.target_id)
             if not target:
                 continue
@@ -3561,8 +3363,7 @@ class GoTProjectManager:
                 result['depends_on'].append(target)
 
         # Incoming edges (to this task)
-        edges_to = getattr(self.graph, '_edges_to', {})
-        for edge in edges_to.get(task_id, []):
+        for edge in get_edges_to(task_id):
             source = self.graph.nodes.get(edge.source_id)
             if not source:
                 continue
@@ -4785,17 +4586,23 @@ def cmd_validate(args, manager: GoTProjectManager) -> int:
 
     # Load events and compare
     events = EventLog.load_all_events(manager.events_dir)
-    event_edge_count = sum(1 for e in events if e.get('event') == 'edge.create')
+    event_edge_creates = sum(1 for e in events if e.get('event') == 'edge.create')
+    event_edge_deletes = sum(1 for e in events if e.get('event') == 'edge.delete')
     event_node_count = sum(1 for e in events if e.get('event') == 'node.create')
+    expected_edges = event_edge_creates - event_edge_deletes
 
-    # Check for edge loss (the bug we fixed)
-    edge_loss_rate = 0
-    if event_edge_count > 0:
-        edge_loss_rate = (1 - total_edges / event_edge_count) * 100
-        if edge_loss_rate > 10:
-            issues.append(f"EDGE LOSS: {edge_loss_rate:.1f}% of edges from events not in graph ({total_edges}/{event_edge_count})")
-        elif edge_loss_rate > 0:
-            warnings.append(f"Minor edge loss: {edge_loss_rate:.1f}% ({total_edges}/{event_edge_count})")
+    # Check for edge discrepancy
+    edge_discrepancy = 0
+    if expected_edges > 0:
+        edge_discrepancy = ((total_edges - expected_edges) / expected_edges) * 100
+        if abs(edge_discrepancy) > 10:
+            issues.append(f"EDGE DISCREPANCY: {edge_discrepancy:+.1f}% ({total_edges} actual vs {expected_edges} expected)")
+        elif abs(edge_discrepancy) > 0:
+            # Only warn if there's a significant discrepancy
+            if edge_discrepancy < -5:
+                warnings.append(f"Minor edge loss: {-edge_discrepancy:.1f}% ({total_edges}/{expected_edges})")
+            elif edge_discrepancy > 5:
+                warnings.append(f"Edge surplus: {edge_discrepancy:.1f}% ({total_edges}/{expected_edges})")
 
     # Check orphan rate
     if orphan_rate > 50:
@@ -4818,11 +4625,13 @@ def cmd_validate(args, manager: GoTProjectManager) -> int:
 
     print(f"\n📁 EVENT LOG")
     print(f"   Node events: {event_node_count}")
-    print(f"   Edge events: {event_edge_count}")
-    if edge_loss_rate > 0:
-        print(f"   Edge rebuild rate: {100 - edge_loss_rate:.1f}%")
+    print(f"   Edge create events: {event_edge_creates}")
+    print(f"   Edge delete events: {event_edge_deletes}")
+    print(f"   Expected edges: {expected_edges}")
+    if expected_edges > 0 and total_edges != expected_edges:
+        print(f"   Edge accuracy: {100 - abs(edge_discrepancy):.1f}%")
     else:
-        print(f"   Edge rebuild rate: 100%")
+        print(f"   Edge accuracy: 100%")
 
     # Print issues
     if issues:

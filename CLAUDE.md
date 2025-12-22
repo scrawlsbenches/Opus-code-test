@@ -16,7 +16,7 @@ python scripts/got_utils.py task list --status in_progress  # What's active?
 ```bash
 ls -t samples/memories/*knowledge-transfer*.md | head -1 | xargs cat
 ```
-**Most recent:** `samples/memories/2025-12-21-session-knowledge-transfer.md`
+**Most recent:** `samples/memories/2025-12-22-session-dOcbe-knowledge-transfer.md`
 
 ### 3. What is GoT?
 GoT (Graph of Thought) is our task and decision tracking system:
@@ -68,6 +68,28 @@ GoT (Graph of Thought) is our task and decision tracking system:
 | "How does X work?" | `Explore` (thorough) | Understand full system flow |
 | "Implement feature X" | `general-purpose` | Write tests, implement features |
 | "How should we build X?" | `Plan` | Architecture decisions |
+
+**Parallel Execution Pattern (Proven Effective):**
+
+When facing multiple independent mechanical tasks, spawn sub-agents in parallel:
+
+```
+Main Agent (keeps context):
+├── Task 1: Complex work requiring full context (do this yourself)
+├── Task 2: Complex work requiring decisions (do this yourself)
+└── Spawn parallel sub-agents for mechanical tasks:
+    ├── Sub-agent A: "Consolidate checksums.py - move compute_checksum to cortical/utils/"
+    ├── Sub-agent B: "Consolidate query/utils.py - extract shared scoring helpers"
+    ├── Sub-agent C: "Consolidate persistence.py - extract atomic_save_json"
+    └── Sub-agent D: "Consolidate text.py - move slugify to cortical/utils/"
+```
+
+**Key insights from practice:**
+- Sub-agents work best for **well-defined mechanical tasks** with clear specifications
+- Main agent should handle **context-heavy decisions** that require understanding broader implications
+- Provide explicit input/output specs to sub-agents (e.g., "create file X with function Y from file Z")
+- Wait for all sub-agents to complete before proceeding to dependent work
+- Review sub-agent outputs for integration issues before committing
 
 **Full guide:** `docs/sub-agent-utilization-plan.md`
 
@@ -589,14 +611,15 @@ cortical/
 │   └── persistence_api.py # Save/load/export methods (~200 lines)
 ├── query/            # Search, retrieval, query expansion (split into 8 modules)
 │   ├── __init__.py   # Re-exports public API
-│   ├── expansion.py  # Query expansion
+│   ├── expansion.py  # Query expansion (TF-IDF weighted lateral expansion)
 │   ├── search.py     # Document search
 │   ├── passages.py   # Passage retrieval
 │   ├── chunking.py   # Text chunking
 │   ├── intent.py     # Intent-based queries
 │   ├── definitions.py # Definition search
 │   ├── ranking.py    # Multi-stage ranking
-│   └── analogy.py    # Analogy completion
+│   ├── analogy.py    # Analogy completion
+│   └── utils.py      # Shared query scoring helpers (TF-IDF utilities)
 ├── reasoning/        # Graph of Thought reasoning framework
 │   ├── __init__.py   # Re-exports all components
 │   ├── workflow.py   # ReasoningWorkflow orchestrator
@@ -609,6 +632,27 @@ cortical/
 │   ├── production_state.py # Artifact creation tracking
 │   ├── collaboration.py   # Parallel agent coordination
 │   └── claude_code_spawner.py  # Production agent spawning
+├── got/              # Graph of Thought task/decision tracking
+│   ├── __init__.py   # Re-exports GoTManager
+│   ├── manager.py    # GoTManager - task/decision/edge CRUD operations
+│   ├── wal.py        # Transaction WAL using TransactionWALEntry from cortical/wal.py
+│   └── query.py      # GoT query language ("what blocks X", "path from A to B")
+├── spark/            # Statistical Language Model for quick predictions
+│   ├── __init__.py   # Re-exports SparkPredictor, NGramModel, AnomalyDetector
+│   ├── ngram.py      # N-gram language model (bigram/trigram)
+│   ├── alignment.py  # AlignmentIndex for definitions/patterns from markdown
+│   ├── predictor.py  # SparkPredictor facade class
+│   ├── anomaly.py    # AnomalyDetector for prompt injection detection
+│   ├── quality.py    # Quality scoring utilities
+│   ├── suggester.py  # Term suggestion utilities
+│   └── transfer.py   # Knowledge transfer utilities
+├── utils/            # Shared utility modules (canonical implementations)
+│   ├── __init__.py   # Re-exports all utilities
+│   ├── id_generation.py  # Canonical ID generation (generate_task_id, generate_plan_id, etc.)
+│   ├── checksums.py  # Unified checksum computation (compute_checksum)
+│   ├── persistence.py # Atomic save utilities (atomic_save)
+│   └── text.py       # Text processing utilities (slugify)
+├── wal.py            # Base WAL entry classes (BaseWALEntry, TransactionWALEntry)
 ├── analysis.py       # Graph algorithms: PageRank, TF-IDF, clustering (1,123 lines)
 ├── semantics.py      # Relation extraction, inheritance, retrofitting (915 lines)
 ├── persistence.py    # Save/load with full state preservation (606 lines)
@@ -619,7 +663,7 @@ cortical/
 ├── fingerprint.py    # Semantic fingerprinting and similarity (315 lines)
 ├── observability.py  # Timing, metrics collection, and trace context (374 lines)
 ├── layers.py         # HierarchicalLayer with O(1) ID lookups via _id_index (294 lines)
-├── code_concepts.py  # Programming concept synonyms for code search (249 lines)
+├── code_concepts.py  # Programming concept synonyms for code search (includes ML, frontend, security groups)
 ├── gaps.py           # Knowledge gap detection and anomaly analysis (245 lines)
 └── embeddings.py     # Graph embeddings (adjacency, spectral, random walk) (209 lines)
 ```
@@ -662,6 +706,15 @@ cortical/
 | Graph persistence (WAL) | `reasoning/graph_persistence.py` - GraphWAL, snapshots |
 | Crash recovery | `reasoning/graph_persistence.py` - GraphRecovery (4-level cascade) |
 | Git auto-versioning | `reasoning/graph_persistence.py` - GitAutoCommitter |
+| GoT task/decision tracking | `got/` - GoTManager, WAL, query language |
+| Generate unique IDs | `utils/id_generation.py` - generate_task_id, generate_plan_id, etc. |
+| Compute checksums | `utils/checksums.py` - compute_checksum() |
+| Atomic file saves | `utils/persistence.py` - atomic_save() |
+| Text utilities (slugify) | `utils/text.py` - slugify() |
+| WAL entry base classes | `wal.py` - BaseWALEntry, TransactionWALEntry |
+| Prompt injection detection | `spark/anomaly.py` - AnomalyDetector |
+| N-gram predictions | `spark/ngram.py` - NGramModel |
+| SparkSLM facade | `spark/predictor.py` - SparkPredictor |
 
 **Key data structures:**
 - `Minicolumn`: Core unit with `lateral_connections`, `typed_connections`, `feedforward_connections`, `feedback_connections`
@@ -776,6 +829,21 @@ python -m pytest tests/regression/ -v    # Regression tests
 
 5. **Minicolumn IDs follow pattern**: `L{layer}_{content}` (e.g., `L0_neural`, `L1_neural networks`)
 
+6. **Lateral expansion uses TF-IDF weighting for selection** (from `query/expansion.py`):
+   ```python
+   # Selection score = co-occurrence * (TF-IDF + 0.1)
+   # This prevents ubiquitous terms from dominating expansions
+   selection_score = cooccur_weight * (neighbor.tfidf + 0.1)
+   # But returned expansion weight is pure co-occurrence
+   ```
+
+7. **Canonical ID generation** - Always use `cortical/utils/id_generation.py`:
+   ```python
+   from cortical.utils.id_generation import generate_task_id, generate_plan_id
+   # Format: {PREFIX}-YYYYMMDD-HHMMSS-{8-char-hex}
+   # Example: T-20251222-093045-a1b2c3d4
+   ```
+
 ### Common Mistakes to Avoid
 
 **❌ DON'T iterate to find by ID:**
@@ -828,6 +896,21 @@ if processor.is_stale(processor.COMP_PAGERANK):
 # CORRECT - ensure freshness
 if processor.is_stale(processor.COMP_PAGERANK):
     processor.compute_importance()
+```
+
+**❌ DON'T create custom ID generation - use canonical module:**
+```python
+# WRONG - custom ID patterns scattered across codebase
+import uuid
+task_id = f"task-{uuid.uuid4().hex[:8]}"
+# or
+from datetime import datetime
+plan_id = f"plan-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+# CORRECT - use canonical ID generation
+from cortical.utils.id_generation import generate_task_id, generate_plan_id
+task_id = generate_task_id()   # T-20251222-093045-a1b2c3d4
+plan_id = generate_plan_id()   # OP-20251222-093045-e5f6g7h8
 ```
 
 ### Changing Validation Logic (IMPORTANT!)
@@ -1381,6 +1464,28 @@ coverage run -m pytest tests/
 2. Add new tests to the appropriate stage (smoke, unit, integration, etc.)
 3. Never add duplicate test runners in the coverage-report job
 4. When in doubt, run locally first: `time python -m pytest tests/ -v`
+
+**Scripts called from CI must add project root to sys.path:**
+
+Scripts in `scripts/` that import from `cortical` need path setup because CI runs them directly without installing the package:
+
+```python
+# At the top of the script, BEFORE any cortical imports:
+import sys
+from pathlib import Path
+
+_PROJECT_ROOT = Path(__file__).parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+# Now cortical imports will work
+from cortical.utils.id_generation import generate_task_id
+```
+
+**Scripts currently called from CI:**
+- `ci_task_report.py` → imports `task_utils.py` → imports from `cortical.utils`
+- `ml_data_collector.py` → handles missing cortical gracefully (try/except)
+- `validate_tasks.py`, `resolve_wiki_links.py` → no cortical imports
 
 ---
 

@@ -31,7 +31,6 @@ Usage:
     layers, documents, metadata, embeddings, relations = loader.load_all()
 """
 
-import hashlib
 import json
 import os
 import logging
@@ -42,6 +41,7 @@ from typing import Dict, List, Optional, Any, Tuple, Set
 
 from .layers import CorticalLayer, HierarchicalLayer
 from .minicolumn import Minicolumn
+from .utils.checksums import compute_bytes_checksum
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,7 @@ class StateManifest:
         Returns:
             True if checksum changed, False if same
         """
-        new_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()[:16]
+        new_hash = compute_bytes_checksum(content.encode('utf-8'), truncate=16)
         old_hash = self.checksums.get(component)
         self.checksums[component] = new_hash
         self.updated_at = datetime.now().isoformat()
@@ -503,7 +503,7 @@ class StateLoader:
         with open(filepath, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        actual = hashlib.sha256(content.encode('utf-8')).hexdigest()[:16]
+        actual = compute_bytes_checksum(content.encode('utf-8'), truncate=16)
         return actual == expected
 
     def load_layer(self, level: int) -> HierarchicalLayer:

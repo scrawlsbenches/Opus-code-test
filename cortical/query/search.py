@@ -20,6 +20,7 @@ from ..tokenizer import Tokenizer
 from ..code_concepts import get_related_terms
 
 from .expansion import expand_query, get_expanded_query_terms
+from .utils import get_tfidf_score, is_test_file
 
 
 def _apply_document_name_boost(
@@ -128,7 +129,7 @@ def find_documents_for_query(
         col = layer0.get_minicolumn(term)
         if col:
             for doc_id in col.document_ids:
-                tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
+                tfidf = get_tfidf_score(col, doc_id)
                 doc_scores[doc_id] += tfidf * term_weight
 
     # Boost documents whose name matches query terms
@@ -139,11 +140,7 @@ def find_documents_for_query(
     # Apply test file penalty to reduce test file ranking
     if test_file_penalty < 1.0:
         for doc_id in list(doc_scores.keys()):
-            # Detect test files by path patterns
-            if (doc_id.startswith('tests/') or
-                doc_id.startswith('test_') or
-                '/test_' in doc_id or
-                '/tests/' in doc_id):
+            if is_test_file(doc_id):
                 doc_scores[doc_id] *= test_file_penalty
 
     sorted_docs = sorted(doc_scores.items(), key=lambda x: -x[1])
@@ -248,7 +245,7 @@ def fast_find_documents(
         for token in tokens:
             col = layer0.get_minicolumn(token)
             if col and doc_id in col.document_ids:
-                tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
+                tfidf = get_tfidf_score(col, doc_id)
                 score += tfidf
 
         # Boost by match coverage
@@ -291,7 +288,7 @@ def build_document_index(
         term_index: Dict[str, float] = {}
 
         for doc_id in col.document_ids:
-            tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
+            tfidf = get_tfidf_score(col, doc_id)
             term_index[doc_id] = tfidf
 
         if term_index:
