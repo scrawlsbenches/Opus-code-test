@@ -1,19 +1,22 @@
 {
-  "_checksum": "7b0236dc43bc31ca",
-  "_written_at": "2025-12-22T19:32:30.677995+00:00",
+  "_checksum": "6f0ead76661fd827",
+  "_written_at": "2025-12-22T19:54:13.961477+00:00",
   "data": {
     "created_at": "2025-12-22T19:32:30.671149+00:00",
     "description": "## Problem\nGoT state changes (task completions, edge creation) can be lost if not committed to git.\n\n## Proposal\nAuto-commit .got/ directory changes after significant operations:\n- Task completion\n- Decision logging\n- Edge creation\n- Sprint state changes\n\n## Safety Verification Needed\n1. Is .got/ always safe to auto-commit? (Yes - it's our data, not code)\n2. Could auto-commits conflict with manual commits? (Use separate commit messages)\n3. Should auto-commits be squashable? (Yes - use consistent prefix)\n4. What about branch conflicts? (GoT files use unique IDs, should merge cleanly)\n\n## Implementation\n1. Add post-operation hook in GoTManager\n2. Use git add .got/ && git commit -m \"chore(got): Auto-save state\"\n3. Make configurable (enable/disable via env var or config)\n4. Consider batching commits (every N operations or time-based)\n\n## Recommendation\nSafe to implement - GoT uses entity files with unique IDs, designed for merge-friendly operation.",
     "entity_type": "task",
     "id": "T-20251222-193230-9cd4cbf4",
-    "metadata": {},
-    "modified_at": "2025-12-22T19:32:30.677927+00:00",
+    "metadata": {
+      "started_at": "2025-12-22T19:54:13.953135+00:00",
+      "updated_at": "2025-12-22T19:54:13.953145+00:00"
+    },
+    "modified_at": "2025-12-22T19:54:13.961428+00:00",
     "priority": "medium",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "Auto-commit GoT changes for durability",
-    "version": 2
+    "version": 4
   }
 }
