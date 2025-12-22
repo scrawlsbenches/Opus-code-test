@@ -2060,6 +2060,76 @@ class TransactionalGoTAdapter:
             properties=new_props
         )
 
+    def add_sprint_goal(self, sprint_id: str, description: str) -> bool:
+        """Add a goal to a sprint."""
+        sprint = self._manager.get_sprint(sprint_id)
+        if not sprint:
+            return False
+
+        goals = list(sprint.goals)  # Copy existing goals
+        goals.append({"description": description, "completed": False})
+
+        self._manager.update_sprint(sprint_id, goals=goals)
+        return True
+
+    def list_sprint_goals(self, sprint_id: str) -> List[Dict]:
+        """List goals for a sprint."""
+        sprint = self._manager.get_sprint(sprint_id)
+        if not sprint:
+            return []
+        return sprint.goals
+
+    def complete_sprint_goal(self, sprint_id: str, goal_index: int) -> bool:
+        """Mark a goal as complete by index."""
+        sprint = self._manager.get_sprint(sprint_id)
+        if not sprint:
+            return False
+
+        goals = list(sprint.goals)
+        if goal_index < 0 or goal_index >= len(goals):
+            return False
+
+        goals[goal_index]["completed"] = True
+        self._manager.update_sprint(sprint_id, goals=goals)
+        return True
+
+    def link_task_to_sprint(self, sprint_id: str, task_id: str) -> bool:
+        """Link a task to a sprint via CONTAINS edge."""
+        # Verify both exist
+        sprint = self._manager.get_sprint(sprint_id)
+        task = self._manager.get_task(task_id)
+        if not sprint or not task:
+            return False
+
+        # Create CONTAINS edge from sprint to task
+        self._manager.add_task_to_sprint(task_id, sprint_id)
+        return True
+
+    def unlink_task_from_sprint(self, sprint_id: str, task_id: str) -> bool:
+        """Remove task from sprint by deleting the CONTAINS edge."""
+        # Find the CONTAINS edge
+        entities_dir = self._manager.got_dir / "entities"
+        if not entities_dir.exists():
+            return False
+
+        for edge_file in entities_dir.glob("E-*.json"):
+            try:
+                with open(edge_file, 'r', encoding='utf-8') as f:
+                    wrapper = json.load(f)
+                data = wrapper.get("data", {})
+
+                if (data.get("entity_type") == "edge" and
+                    data.get("source_id") == sprint_id and
+                    data.get("target_id") == task_id and
+                    data.get("edge_type") == "CONTAINS"):
+                    # Delete the edge file
+                    edge_file.unlink()
+                    return True
+            except (json.JSONDecodeError, KeyError, OSError):
+                continue
+
+        return False
+
     def list_epics(self, status: Optional[str] = None) -> List[ThoughtNode]:
         """List epics from TX backend."""
         epics = self._manager.list_epics(status=status)
@@ -4323,6 +4393,77 @@ def cmd_sprint_release(args, manager: GoTProjectManager) -> int:
         return 1
 
 
+def cmd_sprint_goal_add(args, manager: GoTProjectManager) -> int:
+    """Add a goal to sprint."""
+    if manager.add_sprint_goal(args.sprint_id, args.description):
+        manager.save()
+        print(f"Added goal to {args.sprint_id}: {args.description}")
+        return 0
+    else:
+        print(f"Sprint not found: {args.sprint_id}")
+        return 1
+
+
+def cmd_sprint_goal_list(args, manager: GoTProjectManager) -> int:
+    """List sprint goals."""
+    goals = manager.list_sprint_goals(args.sprint_id)
+    if not goals:
+        print(f"No goals for sprint {args.sprint_id}")
+        return 0
+    print(f"Goals for {args.sprint_id}:")
+    for i, goal in enumerate(goals):
+        status = "✓" if goal.get("completed") else " "
+        print(f"  [{i}] [{status}] {goal.get('description', '')}")
+    return 0
+
+
+def cmd_sprint_goal_complete(args, manager: GoTProjectManager) -> int:
+    """Mark a goal as complete."""
+    if manager.complete_sprint_goal(args.sprint_id, args.index):
+        manager.save()
+        print(f"Completed goal {args.index} in {args.sprint_id}")
+        return 0
+    else:
+        print(f"Failed - check sprint ID and goal index")
+        return 1
+
+
+def cmd_sprint_link(args, manager: GoTProjectManager) -> int:
+    """Link a task to a sprint."""
+    if manager.link_task_to_sprint(args.sprint_id, args.task_id):
+        manager.save()
+        print(f"Linked task {args.task_id} to sprint {args.sprint_id}")
+        return 0
+    else:
+        print(f"Failed to link - check that both IDs exist")
+        return 1
+
+
+def cmd_sprint_unlink(args, manager: GoTProjectManager) -> int:
+    """Unlink a task from a sprint."""
+    if manager.unlink_task_from_sprint(args.sprint_id, args.task_id):
+        manager.save()
+        print(f"Unlinked task {args.task_id} from sprint {args.sprint_id}")
+        return 0
+    else:
+        print(f"No link found between {args.sprint_id} and {args.task_id}")
+        return 1
+
+
+def cmd_sprint_tasks(args, manager: GoTProjectManager) -> int:
+    """List tasks in a sprint."""
+    tasks = manager.get_sprint_tasks(args.sprint_id)
+    if not tasks:
+        print(f"No tasks in sprint {args.sprint_id}")
+        return 0
+    print(f"Tasks in {args.sprint_id}:")
+    for task in tasks:
+        status = task.properties.get("status", "unknown")
+        priority = task.properties.get("priority", "medium")
+        print(f"  {task.id}: {task.content} [status={status}, priority={priority}]")
+    return 0
+
+
 def cmd_epic_create(args, manager: GoTProjectManager) -> int:
     """Create an epic."""
     epic_id = manager.create_epic(
@@ -5328,6 +5469,44 @@ def main():
     sprint_release.add_argument("sprint_id", help="Sprint ID to release")
     sprint_release.add_argument("--agent", required=True, help="Agent name")
 
+    # sprint goal
+    goal_parser = sprint_subparsers.add_parser("goal", help="Manage sprint goals")
+    goal_subparsers = goal_parser.add_subparsers(dest="goal_action")
+
+    # goal add
+    goal_add = goal_subparsers.add_parser("add", help="Add a goal")
+    goal_add.add_argument("sprint_id", help="Sprint ID")
+    goal_add.add_argument("description", help="Goal description")
+    goal_add.set_defaults(func=cmd_sprint_goal_add)
+
+    # goal list
+    goal_list = goal_subparsers.add_parser("list", help="List goals")
+    goal_list.add_argument("sprint_id", help="Sprint ID")
+    goal_list.set_defaults(func=cmd_sprint_goal_list)
+
+    # goal complete
+    goal_complete = goal_subparsers.add_parser("complete", help="Mark goal complete")
+    goal_complete.add_argument("sprint_id", help="Sprint ID")
+    goal_complete.add_argument("index", type=int, help="Goal index (0-based)")
+    goal_complete.set_defaults(func=cmd_sprint_goal_complete)
+
+    # sprint link
+    sprint_link = sprint_subparsers.add_parser("link", help="Link a task to sprint")
+    sprint_link.add_argument("sprint_id", help="Sprint ID")
+    sprint_link.add_argument("task_id", help="Task ID to link")
+    sprint_link.set_defaults(func=cmd_sprint_link)
+
+    # sprint unlink
+    sprint_unlink = sprint_subparsers.add_parser("unlink", help="Unlink task from sprint")
+    sprint_unlink.add_argument("sprint_id", help="Sprint ID")
+    sprint_unlink.add_argument("task_id", help="Task ID to unlink")
+    sprint_unlink.set_defaults(func=cmd_sprint_unlink)
+
+    # sprint tasks
+    sprint_tasks = sprint_subparsers.add_parser("tasks", help="List tasks in sprint")
+    sprint_tasks.add_argument("sprint_id", help="Sprint ID")
+    sprint_tasks.set_defaults(func=cmd_sprint_tasks)
+
     # Epic commands
     epic_parser = subparsers.add_parser("epic", help="Epic operations")
     epic_subparsers = epic_parser.add_subparsers(dest="epic_command")
@@ -5516,6 +5695,22 @@ def main():
             return cmd_sprint_claim(args, manager)
         elif args.sprint_command == "release":
             return cmd_sprint_release(args, manager)
+        elif args.sprint_command == "goal":
+            if args.goal_action == "add":
+                return cmd_sprint_goal_add(args, manager)
+            elif args.goal_action == "list":
+                return cmd_sprint_goal_list(args, manager)
+            elif args.goal_action == "complete":
+                return cmd_sprint_goal_complete(args, manager)
+            else:
+                goal_parser.print_help()
+                return 1
+        elif args.sprint_command == "link":
+            return cmd_sprint_link(args, manager)
+        elif args.sprint_command == "unlink":
+            return cmd_sprint_unlink(args, manager)
+        elif args.sprint_command == "tasks":
+            return cmd_sprint_tasks(args, manager)
         else:
             sprint_parser.print_help()
             return 1
