@@ -13,7 +13,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
 
-from .checksums import compute_checksum
+from cortical.utils.checksums import compute_checksum
 from .errors import CorruptionError
 from .config import DurabilityMode
 

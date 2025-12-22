@@ -33,6 +33,7 @@ from .chunking import (
     CODE_BOUNDARY_PATTERN,
     find_code_boundaries,
 )
+from .utils import get_tfidf_score
 
 
 def find_passages_for_query(
@@ -287,7 +288,7 @@ def find_documents_batch(
             col = layer0.get_minicolumn(term)
             if col:
                 for doc_id in col.document_ids:
-                    tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf)
+                    tfidf = get_tfidf_score(col, doc_id)
                     doc_scores[doc_id] += tfidf * term_weight
 
         sorted_docs = sorted(doc_scores.items(), key=lambda x: -x[1])

@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 from cortical.got.wal import WALManager
-from cortical.got.checksums import compute_checksum
+from cortical.utils.checksums import compute_checksum
 
 
 class TestWALManager:

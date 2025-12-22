@@ -45,6 +45,8 @@ from typing import Dict, List, Optional, Any
 
 # Import canonical ID generation (use as internal implementation)
 from cortical.utils.id_generation import generate_task_id as _generate_task_id
+from cortical.utils.text import slugify
+from cortical.utils.persistence import atomic_write_json
 
 
 # Directory for per-session task files
@@ -106,26 +108,6 @@ def generate_short_task_id() -> str:
     return f"T-{uuid.uuid4().hex[:8]}"
 
 
-def slugify(text: str) -> str:
-    """
-    Convert text to URL-friendly slug.
-
-    Args:
-        text: Text to convert to slug
-
-    Returns:
-        Slugified text (lowercase, hyphens, alphanumeric only)
-    """
-    # Simple slugification: lowercase, replace spaces with hyphens
-    slug = text.lower().strip()
-    slug = slug.replace(" ", "-")
-    # Remove non-alphanumeric except hyphens
-    slug = "".join(c for c in slug if c.isalnum() or c == "-")
-    # Remove duplicate hyphens
-    while "--" in slug:
-        slug = slug.replace("--", "-")
-    # Truncate to reasonable length
-    return slug[:50]
 
 
 def generate_memory_from_task(task: dict) -> str:
@@ -541,7 +523,6 @@ class TaskSession:
         dir_path.mkdir(parents=True, exist_ok=True)
 
         filepath = dir_path / self.get_filename()
-        temp_filepath = filepath.with_suffix('.json.tmp')
 
         data = {
             "version": 1,
@@ -551,21 +532,7 @@ class TaskSession:
             "tasks": [t.to_dict() for t in self.tasks]
         }
 
-        try:
-            # Write to temp file first
-            with open(temp_filepath, 'w') as f:
-                json.dump(data, f, indent=2)
-                f.flush()
-                os.fsync(f.fileno())  # Ensure data is on disk
-
-            # Atomic rename (on POSIX systems)
-            temp_filepath.rename(filepath)
-        except Exception:
-            # Clean up temp file on failure
-            if temp_filepath.exists():
-                temp_filepath.unlink()
-            raise
-
+        atomic_write_json(filepath, data)
         return filepath
 
     @classmethod

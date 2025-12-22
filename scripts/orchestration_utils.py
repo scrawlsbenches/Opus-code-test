@@ -66,6 +66,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+from cortical.utils.persistence import atomic_write_json
+
 
 # Directory structure for orchestration data
 ORCHESTRATION_DIR = Path(".claude/orchestration")
@@ -381,8 +383,6 @@ class OrchestrationPlan:
             PLANS_DIR.mkdir(parents=True, exist_ok=True)
             path = PLANS_DIR / f"{self.plan_id}.json"
 
-        temp_path = path.with_suffix('.json.tmp')
-
         data = {
             "version": 1,
             "schema": "orchestration_plan",
@@ -390,21 +390,7 @@ class OrchestrationPlan:
             "plan": self.to_dict()
         }
 
-        try:
-            # Write to temp file first
-            with open(temp_path, 'w') as f:
-                json.dump(data, f, indent=2)
-                f.flush()
-                os.fsync(f.fileno())  # Ensure data is on disk
-
-            # Atomic rename (on POSIX systems)
-            temp_path.rename(path)
-        except Exception:
-            # Clean up temp file on failure
-            if temp_path.exists():
-                temp_path.unlink()
-            raise
-
+        atomic_write_json(path, data)
         return path
 
     @classmethod
@@ -788,8 +774,6 @@ class ExecutionTracker:
             EXECUTIONS_DIR.mkdir(parents=True, exist_ok=True)
             path = EXECUTIONS_DIR / f"{self.plan_id}_execution.json"
 
-        temp_path = path.with_suffix('.json.tmp')
-
         data = {
             "version": 1,
             "schema": "execution_tracker",
@@ -797,21 +781,7 @@ class ExecutionTracker:
             "execution": self.to_dict()
         }
 
-        try:
-            # Write to temp file first
-            with open(temp_path, 'w') as f:
-                json.dump(data, f, indent=2)
-                f.flush()
-                os.fsync(f.fileno())  # Ensure data is on disk
-
-            # Atomic rename (on POSIX systems)
-            temp_path.rename(path)
-        except Exception:
-            # Clean up temp file on failure
-            if temp_path.exists():
-                temp_path.unlink()
-            raise
-
+        atomic_write_json(path, data)
         return path
 
     @classmethod

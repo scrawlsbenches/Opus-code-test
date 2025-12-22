@@ -1,11 +1,14 @@
 """
-Tests for GoT checksum utilities.
+Tests for checksum utilities.
+
+Note: Tests updated to import from cortical.utils.checksums (the new location)
+instead of cortical.got.checksums (deprecated).
 """
 
 import json
 import pytest
 from pathlib import Path
-from cortical.got.checksums import (
+from cortical.utils.checksums import (
     compute_checksum,
     verify_checksum,
     compute_file_checksum,

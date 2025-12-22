@@ -25,7 +25,6 @@ Usage:
 Author: Cortical Text Processor Team
 """
 
-import hashlib
 import json
 import gzip
 import shutil
@@ -35,6 +34,8 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Set, Tuple
 import os
 import tempfile
+
+from cortical.utils.checksums import compute_checksum
 
 
 # ==============================================================================
@@ -61,7 +62,7 @@ class WALEntry:
 
     def _compute_checksum(self) -> str:
         """Compute SHA256 checksum of entry content."""
-        content = json.dumps({
+        data = {
             'operation': self.operation,
             'timestamp': self.timestamp,
             'doc_id': self.doc_id,
@@ -69,8 +70,8 @@ class WALEntry:
             'reason': self.reason,
             'affected_computations': self.affected_computations,
             'payload': self.payload,
-        }, sort_keys=True)
-        return hashlib.sha256(content.encode()).hexdigest()[:16]
+        }
+        return compute_checksum(data, truncate=16)
 
     def to_json(self) -> str:
         """Serialize to JSON string."""

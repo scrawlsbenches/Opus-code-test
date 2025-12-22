@@ -1,19 +1,32 @@
 """
 Checksum utilities for GoT transactional system.
 
+DEPRECATED: This module is deprecated. Import from cortical.utils.checksums instead.
+
 Provides functions for computing and verifying SHA256 checksums of JSON data
 to ensure data integrity in the event log and snapshots.
+
+This module now re-exports from cortical.utils.checksums for backward compatibility.
 """
 
-import hashlib
-import json
+import warnings
 from pathlib import Path
 from typing import Dict, Any
+
+# Re-export from centralized location
+from cortical.utils.checksums import (
+    compute_checksum as _compute_checksum,
+    verify_checksum as _verify_checksum,
+    compute_file_checksum as _compute_file_checksum,
+    verify_file_checksum as _verify_file_checksum,
+)
 
 
 def compute_checksum(data: Dict[str, Any]) -> str:
     """
     Compute SHA256 checksum of JSON data.
+
+    DEPRECATED: Use cortical.utils.checksums.compute_checksum instead.
 
     Args:
         data: Dictionary to compute checksum for
@@ -21,14 +34,19 @@ def compute_checksum(data: Dict[str, Any]) -> str:
     Returns:
         First 16 characters of hex digest (64 bits of entropy)
     """
-    json_str = json.dumps(data, sort_keys=True, separators=(',', ':'))
-    hash_obj = hashlib.sha256(json_str.encode('utf-8'))
-    return hash_obj.hexdigest()[:16]
+    warnings.warn(
+        "cortical.got.checksums is deprecated. Use cortical.utils.checksums instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _compute_checksum(data, truncate=16)
 
 
 def verify_checksum(data: Dict[str, Any], expected: str) -> bool:
     """
     Verify that data matches expected checksum.
+
+    DEPRECATED: Use cortical.utils.checksums.verify_checksum instead.
 
     Args:
         data: Dictionary to verify
@@ -37,13 +55,19 @@ def verify_checksum(data: Dict[str, Any], expected: str) -> bool:
     Returns:
         True if checksum matches, False otherwise
     """
-    actual = compute_checksum(data)
-    return actual == expected
+    warnings.warn(
+        "cortical.got.checksums is deprecated. Use cortical.utils.checksums instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _verify_checksum(data, expected, truncate=16)
 
 
 def compute_file_checksum(path: Path) -> str:
     """
     Compute checksum of JSON file contents.
+
+    DEPRECATED: Use cortical.utils.checksums.compute_file_checksum instead.
 
     Args:
         path: Path to JSON file
@@ -51,14 +75,19 @@ def compute_file_checksum(path: Path) -> str:
     Returns:
         First 16 characters of hex digest
     """
-    with open(path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    return compute_checksum(data)
+    warnings.warn(
+        "cortical.got.checksums is deprecated. Use cortical.utils.checksums instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _compute_file_checksum(path, truncate=16)
 
 
 def verify_file_checksum(path: Path, expected: str) -> bool:
     """
     Verify that file contents match expected checksum.
+
+    DEPRECATED: Use cortical.utils.checksums.verify_file_checksum instead.
 
     Args:
         path: Path to JSON file
@@ -67,5 +96,9 @@ def verify_file_checksum(path: Path, expected: str) -> bool:
     Returns:
         True if checksum matches, False otherwise
     """
-    actual = compute_file_checksum(path)
-    return actual == expected
+    warnings.warn(
+        "cortical.got.checksums is deprecated. Use cortical.utils.checksums instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return _verify_file_checksum(path, expected, truncate=16)

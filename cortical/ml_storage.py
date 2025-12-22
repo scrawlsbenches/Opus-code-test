@@ -112,6 +112,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Generator, Iterator, List, Optional, Set, Tuple, Union
 
+from cortical.utils.checksums import compute_bytes_checksum
+
 
 # Storage format version
 CALI_VERSION = 2  # v2: Session-based git-friendly storage
@@ -616,7 +618,7 @@ class ObjectStore:
 
     def _hash_content(self, content: bytes) -> str:
         """Compute SHA-256 hash of content."""
-        return hashlib.sha256(content).hexdigest()
+        return compute_bytes_checksum(content, truncate=0)  # Full hash (64 chars)
 
     def _object_path(self, content_hash: str) -> Path:
         """Get path for object by hash."""

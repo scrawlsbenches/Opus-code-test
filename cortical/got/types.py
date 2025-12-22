@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 
-from .checksums import compute_checksum
+from cortical.utils.checksums import compute_checksum
 from .errors import ValidationError
 
 

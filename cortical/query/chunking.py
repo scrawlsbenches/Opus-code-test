@@ -15,6 +15,7 @@ import re
 
 from ..layers import HierarchicalLayer
 from ..tokenizer import Tokenizer
+from .utils import get_tfidf_score
 
 if TYPE_CHECKING:
     from ..minicolumn import Minicolumn
@@ -284,7 +285,7 @@ def score_chunk_fast(
         if term in token_counts and term in term_cols:
             col = term_cols[term]
             # Use per-document TF-IDF if available, otherwise global
-            tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf) if doc_id else col.tfidf
+            tfidf = get_tfidf_score(col, doc_id)
             # Weight by occurrence in chunk and query weight
             score += tfidf * token_counts[term] * term_weight
 
@@ -327,7 +328,7 @@ def score_chunk(
             col = layer0.get_minicolumn(term)
             if col:
                 # Use per-document TF-IDF if available, otherwise global
-                tfidf = col.tfidf_per_doc.get(doc_id, col.tfidf) if doc_id else col.tfidf
+                tfidf = get_tfidf_score(col, doc_id)
                 # Weight by occurrence in chunk and query weight
                 score += tfidf * token_counts[term] * term_weight
 

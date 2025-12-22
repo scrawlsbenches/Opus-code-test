@@ -110,6 +110,12 @@ from .analogy import (
     complete_analogy_simple,
 )
 
+# Utility functions
+from .utils import (
+    get_tfidf_score,
+    normalize_scores,
+)
+
 
 __all__ = [
     # Intent
@@ -173,4 +179,7 @@ __all__ = [
     'find_terms_with_relation',
     'complete_analogy',
     'complete_analogy_simple',
+    # Utilities
+    'get_tfidf_score',
+    'normalize_scores',
 ]
