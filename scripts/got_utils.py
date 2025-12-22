@@ -43,7 +43,7 @@ from cortical.utils.id_generation import (
 from cortical.utils.locking import ProcessLock
 from cortical.reasoning.thought_graph import ThoughtGraph
 from cortical.reasoning.graph_of_thought import NodeType, EdgeType, ThoughtNode, ThoughtEdge
-from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery
+from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery, GitAutoCommitter
 
 # Import transactional backend (new)
 try:
@@ -99,6 +99,109 @@ VALID_PRIORITIES = [PRIORITY_CRITICAL, PRIORITY_HIGH, PRIORITY_MEDIUM, PRIORITY_
 # Category values
 VALID_CATEGORIES = ["arch", "feature", "bugfix", "test", "docs", "refactor",
                     "debt", "devex", "security", "performance", "optimization"]
+
+# Auto-commit configuration
+# Set GOT_AUTO_COMMIT=1 to enable automatic commits after GoT mutations
+GOT_AUTO_COMMIT_ENABLED = os.environ.get("GOT_AUTO_COMMIT", "").lower() in ("1", "true", "yes")
+
+# Commands that mutate GoT state (should trigger auto-commit)
+MUTATING_COMMANDS = {
+    "task": {"create", "start", "complete", "block", "delete", "depends"},
+    "sprint": {"create", "start", "complete", "claim", "release", "link", "unlink", "goal"},
+    "epic": {"create"},
+    "decision": {"log"},
+    "handoff": {"initiate", "accept", "complete"},
+    "compact": True,  # Always mutating
+    "migrate": True,
+    "migrate-events": True,
+}
+
+# Global auto-committer instance (initialized lazily)
+_got_auto_committer: Optional[GitAutoCommitter] = None
+
+
+def _get_auto_committer() -> Optional[GitAutoCommitter]:
+    """Get or create the auto-committer instance."""
+    global _got_auto_committer
+    if not GOT_AUTO_COMMIT_ENABLED:
+        return None
+    if _got_auto_committer is None:
+        _got_auto_committer = GitAutoCommitter(
+            mode='debounced',
+            debounce_seconds=2,  # Wait 2s for batch operations
+            auto_push=False,  # Don't auto-push, just commit
+            repo_path=str(PROJECT_ROOT),
+        )
+    return _got_auto_committer
+
+
+def got_auto_commit(command: str, subcommand: Optional[str] = None) -> bool:
+    """
+    Auto-commit .got/ changes if enabled and command was mutating.
+
+    Args:
+        command: Main command (e.g., "task", "sprint")
+        subcommand: Subcommand (e.g., "create", "complete")
+
+    Returns:
+        True if commit was triggered, False otherwise
+    """
+    if not GOT_AUTO_COMMIT_ENABLED:
+        return False
+
+    # Check if this command mutates state
+    cmd_config = MUTATING_COMMANDS.get(command)
+    if cmd_config is None:
+        return False
+    if isinstance(cmd_config, set) and subcommand not in cmd_config:
+        return False
+
+    try:
+        # Build commit message
+        if subcommand:
+            msg = f"chore(got): Auto-save after {command} {subcommand}"
+        else:
+            msg = f"chore(got): Auto-save after {command}"
+
+        # Use direct git commands for .got/ directory
+        import subprocess
+
+        # Add all .got/ changes
+        subprocess.run(
+            ['git', 'add', str(GOT_DIR)],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            timeout=10
+        )
+
+        # Check if there are staged changes
+        result = subprocess.run(
+            ['git', 'diff', '--cached', '--quiet'],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True
+        )
+
+        if result.returncode == 0:
+            # No changes to commit
+            return False
+
+        # Commit
+        subprocess.run(
+            ['git', 'commit', '-m', msg],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            check=True,
+            timeout=10
+        )
+
+        logger.info(f"[GoT Auto-commit] {msg}")
+        return True
+    except subprocess.CalledProcessError as e:
+        logger.debug(f"Auto-commit failed: {e}")
+        return False
+    except Exception as e:
+        logger.debug(f"Auto-commit error: {e}")
+        return False
 
 
 # =============================================================================
@@ -6004,5 +6107,36 @@ def main():
         return 1
 
 
+def _run_with_auto_commit():
+    """Run main() and trigger auto-commit on success."""
+    # Parse args early to know the command
+    import sys
+    args_copy = sys.argv[1:]
+
+    # Extract command and subcommand for auto-commit
+    command = None
+    subcommand = None
+    for i, arg in enumerate(args_copy):
+        if not arg.startswith('-'):
+            if command is None:
+                command = arg
+            elif subcommand is None:
+                subcommand = arg
+                break
+
+    # Run main
+    result = main()
+
+    # Trigger auto-commit on success
+    if result == 0 and command:
+        got_auto_commit(command, subcommand)
+
+    # Cleanup auto-committer
+    if _got_auto_committer is not None:
+        _got_auto_committer.cleanup()
+
+    return result
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_run_with_auto_commit())

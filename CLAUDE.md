@@ -118,6 +118,8 @@ Main Agent (keeps context):
 > 3. Consider storing diffs with task metadata for recovery
 >
 > **Observed in session QkbsL (2025-12-22):** Implementation agents reported success with verification output, but `git status` showed no file changes. Main agent had to manually apply identical changes.
+>
+> **Investigation update (same session):** Issue could not be reproduced in controlled testing - both new and existing file modifications persisted correctly. Root cause unclear (possibly transient, timing-related, or session-specific). **The warning remains as defensive practice** - always verify changes when using sub-agents for critical work.
 
 **Sub-agent delegation language:**
 ```
