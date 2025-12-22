@@ -1,0 +1,1 @@
+{"ts": "2025-12-22T01:22:58.370430Z", "event": "node.update", "meta": {"branch": "claude/code-review-documentation-DNtzq", "session": "manual-fix"}, "id": "task:T-20251220-194437-de2c", "changes": {"status": {"old": "in_progress", "new": "pending"}, "note": "Task not actively worked - resetting to pending per review"}}

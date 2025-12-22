@@ -165,6 +165,53 @@ class TestBridgeOpportunitiesExactRange:
             for bridge in bridges:
                 assert len(bridge['shared_terms']) <= 5, "Should limit to 5 shared terms (line 135)"
 
+    def test_bridge_exact_coverage_lines_130_131(self):
+        """
+        COVERAGE TEST: Ensure lines 130-131 are executed.
+
+        Creates two documents with TF-IDF values tuned to produce similarity
+        exactly in the bridge range (0.005, 0.03), guaranteeing lines 130-131
+        are hit (shared term computation and bridge_opportunities.append).
+        """
+        # Create two docs with 1 shared term and 3 unique terms each
+        # Cosine similarity with shared=0.2, unique=1.0:
+        # sim = (0.2*0.2) / (sqrt(0.04+1+1+1) * sqrt(0.04+1+1+1))
+        #     = 0.04 / 3.04 ≈ 0.0132 (in bridge range 0.005-0.03) ✓
+        layers = MockLayers.multi_document_corpus({
+            "doc1": ["bridge_term", "doc1_term1", "doc1_term2", "doc1_term3"],
+            "doc2": ["bridge_term", "doc2_term1", "doc2_term2", "doc2_term3"]
+        })
+        layer0 = layers[MockLayers.TOKENS]
+
+        # Set TF-IDF to hit exact similarity range
+        for col in layer0.minicolumns.values():
+            if col.content == "bridge_term":
+                # Shared term with lower weight
+                col.tfidf = 0.2
+                col.tfidf_per_doc = {doc: 0.2 for doc in col.document_ids}
+            else:
+                # Unique terms with higher weight
+                col.tfidf = 1.0
+                col.tfidf_per_doc = {doc: 1.0 for doc in col.document_ids}
+
+        documents = {"doc1": "text1", "doc2": "text2"}
+        result = analyze_knowledge_gaps(layers, documents)
+
+        bridges = result['bridge_opportunities']
+
+        # ASSERT: Bridge opportunities must be non-empty (lines 130-131 executed)
+        assert len(bridges) > 0, "Should detect bridge opportunity in range (0.005, 0.03)"
+
+        # VERIFY: shared_terms field is populated (line 131)
+        bridge = bridges[0]
+        assert 'shared_terms' in bridge, "Line 131 should set shared_terms field"
+        assert isinstance(bridge['shared_terms'], list), "shared_terms should be a list"
+        assert 'bridge_term' in bridge['shared_terms'], "shared_terms should contain 'bridge_term'"
+
+        # VERIFY: similarity is in bridge range
+        assert BRIDGE_SIMILARITY_MIN < bridge['similarity'] < BRIDGE_SIMILARITY_MAX, \
+            f"Similarity {bridge['similarity']} should be in range ({BRIDGE_SIMILARITY_MIN}, {BRIDGE_SIMILARITY_MAX})"
+
 
 # =============================================================================
 # INTEGRATION TESTS WITH REAL PROCESSOR
