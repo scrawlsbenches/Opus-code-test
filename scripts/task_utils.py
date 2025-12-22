@@ -42,6 +42,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+# Add project root to path for cortical imports
+_PROJECT_ROOT = Path(__file__).parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 # Import canonical ID generation (use as internal implementation)
 from cortical.utils.id_generation import (
     generate_task_id as _generate_task_id,
