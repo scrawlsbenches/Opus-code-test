@@ -1,0 +1,1 @@
+{"ts": "2025-12-22T10:43:52.203194Z", "event": "node.create", "meta": {"branch": "claude/review-coverage-and-code-dOcbe", "session": "20251222-104352-f53b"}, "id": "T-20251222-104352-8ae4287a", "type": "TASK", "data": {"title": "Add sys.path setup to orchestration_utils.py for cortical imports", "status": "pending", "priority": "low", "category": "bugfix", "description": ""}}
