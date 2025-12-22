@@ -16,7 +16,7 @@ python scripts/got_utils.py task list --status in_progress  # What's active?
 ```bash
 ls -t samples/memories/*knowledge-transfer*.md | head -1 | xargs cat
 ```
-**Most recent:** `samples/memories/2025-12-21-session-knowledge-transfer.md`
+**Most recent:** `samples/memories/2025-12-22-session-dOcbe-knowledge-transfer.md`
 
 ### 3. What is GoT?
 GoT (Graph of Thought) is our task and decision tracking system:
