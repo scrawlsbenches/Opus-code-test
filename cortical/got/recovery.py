@@ -159,11 +159,13 @@ class RecoveryManager:
                 result.add_action(f"  - TX {tx_id}: rolled back due to incomplete state")
 
         # Step 3: Repair orphaned entities
-        repair_result = self.repair_orphans(strategy='delete')
+        # Use 'adopt' strategy to preserve git-tracked files that lack WAL entries
+        # (files committed to git don't have WAL records, so 'delete' would wipe them)
+        repair_result = self.repair_orphans(strategy='adopt')
         if repair_result.repaired_count > 0:
-            result.add_action(f"Repaired {repair_result.repaired_count} orphaned entity/entities")
+            result.add_action(f"Adopted {repair_result.repaired_count} orphaned entity/entities")
             for entity_id in repair_result.repaired_entities:
-                result.add_action(f"  - Entity {entity_id}: removed orphaned file")
+                result.add_action(f"  - Entity {entity_id}: adopted into WAL")
 
         if repair_result.errors:
             result.success = False
