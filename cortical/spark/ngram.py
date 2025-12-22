@@ -60,6 +60,9 @@ class NGramModel:
         self.total_tokens = 0
         self.total_documents = 0
 
+        # Cached fallback (populated after training to avoid O(n) scan)
+        self._cached_frequent_words: Optional[List[Tuple[str, float]]] = None
+
     def _tokenize(self, text: str) -> List[str]:
         """Simple whitespace tokenization with lowercasing."""
         # Lowercase and split on whitespace/punctuation
@@ -104,6 +107,8 @@ class NGramModel:
                 self.counts[context][word] += 1
                 self.context_totals[context] += 1
 
+        # Invalidate cache (will be rebuilt on first fallback or finalize())
+        self._cached_frequent_words = None
         return self
 
     def train_on_tokens(self, token_lists: Iterable[List[str]]) -> 'NGramModel':
@@ -128,7 +133,39 @@ class NGramModel:
                 self.counts[context][word] += 1
                 self.context_totals[context] += 1
 
+        # Invalidate cache
+        self._cached_frequent_words = None
         return self
+
+    def finalize(self) -> 'NGramModel':
+        """
+        Finalize model after training - builds caches for fast fallback.
+
+        Call this after training to pre-compute the fallback word list,
+        avoiding O(n) scan on first unknown context lookup.
+
+        Returns:
+            self for method chaining
+        """
+        self._build_frequent_words_cache()
+        return self
+
+    def _build_frequent_words_cache(self, max_words: int = 100) -> None:
+        """Build cached list of most frequent words."""
+        total_counts: Counter = Counter()
+        for context_counts in self.counts.values():
+            for word, count in context_counts.items():
+                if word not in (self.START, self.END):
+                    total_counts[word] += count
+
+        total = sum(total_counts.values())
+        if total == 0:
+            self._cached_frequent_words = []
+        else:
+            self._cached_frequent_words = [
+                (word, count / total)
+                for word, count in total_counts.most_common(max_words)
+            ]
 
     def probability(self, word: str, context: List[str]) -> float:
         """
@@ -225,18 +262,12 @@ class NGramModel:
         return result
 
     def _most_frequent_words(self, top_k: int) -> List[Tuple[str, float]]:
-        """Get most frequent words across all contexts."""
-        total_counts: Counter = Counter()
-        for context_counts in self.counts.values():
-            for word, count in context_counts.items():
-                if word not in (self.START, self.END):
-                    total_counts[word] += count
+        """Get most frequent words across all contexts (uses cache for O(1) lookup)."""
+        # Build cache lazily if not already built
+        if self._cached_frequent_words is None:
+            self._build_frequent_words_cache(max_words=max(top_k, 100))
 
-        total = sum(total_counts.values())
-        if total == 0:
-            return []
-
-        return [(word, count / total) for word, count in total_counts.most_common(top_k)]
+        return self._cached_frequent_words[:top_k]
 
     def perplexity(self, text: str) -> float:
         """
