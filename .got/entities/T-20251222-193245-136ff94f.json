@@ -1,19 +1,23 @@
 {
-  "_checksum": "5f57f560c9e61cd3",
-  "_written_at": "2025-12-22T19:32:45.526209+00:00",
+  "_checksum": "1f7cbb121339277c",
+  "_written_at": "2025-12-22T19:43:22.904119+00:00",
   "data": {
     "created_at": "2025-12-22T19:32:45.519245+00:00",
     "description": "## Problem\nNo guidance in CLAUDE.md for reliable sub-agent delegation patterns.\n\n## Proposed Additions\n1. Sub-agent verification protocol (always verify file changes persisted)\n2. When to use sub-agents vs direct work\n3. Language patterns for clear delegation\n4. Recovery procedures when sub-agent changes don't persist\n5. Director pattern documentation with parallel execution\n\n## Key Points to Document\n- Sub-agents may work in isolated contexts\n- Always verify state changes after sub-agent returns\n- Don't trust success reports for critical state changes\n- Use explicit file paths and line numbers in delegation\n- Consider storing diffs for recovery",
     "entity_type": "task",
     "id": "T-20251222-193245-136ff94f",
-    "metadata": {},
-    "modified_at": "2025-12-22T19:32:45.526171+00:00",
+    "metadata": {
+      "completed_at": "2025-12-22T19:43:22.894304+00:00",
+      "updated_at": "2025-12-22T19:43:22.894310+00:00"
+    },
+    "modified_at": "2025-12-22T19:43:22.904057+00:00",
     "priority": "medium",
     "properties": {
-      "category": "docs"
+      "category": "docs",
+      "retrospective": "Already implemented in commit 48351c06. Added critical warning, verification steps, recovery procedures, and delegation template to CLAUDE.md section 6 (Using Sub-Agents)."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Add sub-agent best practices to CLAUDE.md",
-    "version": 2
+    "version": 4
   }
 }
