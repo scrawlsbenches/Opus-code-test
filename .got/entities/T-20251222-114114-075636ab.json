@@ -1,0 +1,19 @@
+{
+  "_checksum": "d33fcf935c07ad6b",
+  "_written_at": "2025-12-22T11:41:14.471561+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:41:14.465246+00:00",
+    "description": "CLI commands to mark individual sprint goals as complete",
+    "entity_type": "task",
+    "id": "T-20251222-114114-075636ab",
+    "metadata": {},
+    "modified_at": "2025-12-22T11:41:14.471527+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add sprint goal tracking CLI",
+    "version": 2
+  }
+}

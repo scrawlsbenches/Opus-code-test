@@ -1,0 +1,19 @@
+{
+  "_checksum": "d9576b43af21698a",
+  "_written_at": "2025-12-22T11:41:19.535796+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:41:19.530490+00:00",
+    "description": "Add deprecation warnings to event-sourced backend, update any remaining code to use TX backend",
+    "entity_type": "task",
+    "id": "T-20251222-114119-ac7a3859",
+    "metadata": {},
+    "modified_at": "2025-12-22T11:41:19.535712+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Deprecate event-sourced GoT backend",
+    "version": 2
+  }
+}

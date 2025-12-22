@@ -2047,6 +2047,10 @@ class TransactionalGoTAdapter:
     def list_handoffs(self, *args, **kwargs) -> List:
         return []
 
+    def save(self) -> None:
+        """No-op for TX backend - transactions auto-commit."""
+        pass  # TX backend auto-saves on transaction commit
+
     def get_sprint_tasks(self, sprint_id: str) -> List[ThoughtNode]:
         """Get all tasks in a sprint using TX backend."""
         tasks = self._manager.get_sprint_tasks(sprint_id)

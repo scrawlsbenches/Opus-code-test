@@ -1,0 +1,19 @@
+{
+  "_checksum": "c34414d0bd03cbe5",
+  "_written_at": "2025-12-22T11:42:03.883999+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:42:03.877343+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251222-114203-6991f2c8",
+    "metadata": {},
+    "modified_at": "2025-12-22T11:42:03.883952+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add task-to-sprint linking CLI",
+    "version": 2
+  }
+}

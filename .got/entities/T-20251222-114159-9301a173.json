@@ -1,0 +1,19 @@
+{
+  "_checksum": "81bcb10a4cecbe60",
+  "_written_at": "2025-12-22T11:41:59.370763+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:41:59.365254+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251222-114159-9301a173",
+    "metadata": {},
+    "modified_at": "2025-12-22T11:41:59.370706+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add sprint complete command to CLI",
+    "version": 2
+  }
+}
