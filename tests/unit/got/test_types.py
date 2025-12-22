@@ -1,14 +1,14 @@
 """
 Unit tests for GoT types module.
 
-Tests Entity, Task, Decision, Edge, Sprint, and Epic classes for serialization,
+Tests Entity, Task, Decision, Edge, Sprint, Epic, and Handoff classes for serialization,
 validation, versioning, and checksum computation.
 """
 
 import pytest
 from datetime import datetime, timezone
 
-from cortical.got.types import Entity, Task, Decision, Edge, Sprint, Epic
+from cortical.got.types import Entity, Task, Decision, Edge, Sprint, Epic, Handoff
 from cortical.got.errors import ValidationError
 
 
@@ -649,3 +649,130 @@ class TestEpic:
         for status in valid_statuses:
             epic = Epic(id=f"E-{status}", title="Test", status=status)
             assert epic.status == status
+
+
+class TestHandoff:
+    """Test Handoff entity functionality."""
+
+    def test_handoff_creation(self):
+        """Test basic handoff creation."""
+        handoff = Handoff(id="H-001", source_agent="agent-a", target_agent="agent-b")
+        assert handoff.id == "H-001"
+        assert handoff.source_agent == "agent-a"
+        assert handoff.target_agent == "agent-b"
+        assert handoff.status == "initiated"
+        assert handoff.entity_type == "handoff"
+
+    def test_handoff_with_all_fields(self):
+        """Test handoff with all fields populated."""
+        handoff = Handoff(
+            id="H-002",
+            source_agent="agent-a",
+            target_agent="agent-b",
+            task_id="T-001",
+            status="accepted",
+            instructions="Complete this task",
+            context={"priority": "high"},
+            result={"completed": True},
+            artifacts=["file1.py", "file2.py"],
+            initiated_at="2025-12-22T10:00:00Z",
+            accepted_at="2025-12-22T10:05:00Z",
+            properties={"custom": "value"},
+        )
+        assert handoff.source_agent == "agent-a"
+        assert handoff.target_agent == "agent-b"
+        assert handoff.task_id == "T-001"
+        assert handoff.status == "accepted"
+        assert handoff.instructions == "Complete this task"
+        assert handoff.context == {"priority": "high"}
+        assert handoff.result == {"completed": True}
+        assert handoff.artifacts == ["file1.py", "file2.py"]
+        assert handoff.accepted_at == "2025-12-22T10:05:00Z"
+        assert handoff.properties == {"custom": "value"}
+
+    def test_handoff_to_dict(self):
+        """Test handoff serialization to dictionary."""
+        handoff = Handoff(
+            id="H-003",
+            source_agent="agent-a",
+            target_agent="agent-b",
+            task_id="T-001",
+            instructions="Do the thing",
+        )
+        data = handoff.to_dict()
+
+        assert data["id"] == "H-003"
+        assert data["source_agent"] == "agent-a"
+        assert data["target_agent"] == "agent-b"
+        assert data["task_id"] == "T-001"
+        assert data["status"] == "initiated"
+        assert data["instructions"] == "Do the thing"
+        assert data["entity_type"] == "handoff"
+
+    def test_handoff_from_dict(self):
+        """Test handoff deserialization from dictionary."""
+        data = {
+            "id": "H-004",
+            "entity_type": "handoff",
+            "source_agent": "agent-a",
+            "target_agent": "agent-b",
+            "task_id": "T-002",
+            "status": "completed",
+            "instructions": "Finish it",
+            "result": {"status": "success"},
+            "artifacts": ["output.txt"],
+            "completed_at": "2025-12-22T11:00:00Z",
+        }
+
+        handoff = Handoff.from_dict(data)
+        assert handoff.id == "H-004"
+        assert handoff.source_agent == "agent-a"
+        assert handoff.target_agent == "agent-b"
+        assert handoff.status == "completed"
+        assert handoff.result == {"status": "success"}
+        assert handoff.artifacts == ["output.txt"]
+        assert handoff.completed_at == "2025-12-22T11:00:00Z"
+
+    def test_handoff_roundtrip(self):
+        """Test handoff serialization roundtrip."""
+        handoff1 = Handoff(
+            id="H-005",
+            source_agent="agent-a",
+            target_agent="agent-b",
+            task_id="T-003",
+            status="rejected",
+            reject_reason="Not enough context",
+        )
+        data = handoff1.to_dict()
+        handoff2 = Handoff.from_dict(data)
+
+        assert handoff1.id == handoff2.id
+        assert handoff1.source_agent == handoff2.source_agent
+        assert handoff1.target_agent == handoff2.target_agent
+        assert handoff1.status == handoff2.status
+        assert handoff1.reject_reason == handoff2.reject_reason
+
+    def test_handoff_invalid_status(self):
+        """Test that invalid status raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            Handoff(id="H-001", source_agent="a", target_agent="b", status="invalid")
+        assert "Invalid status" in str(exc_info.value)
+
+    def test_handoff_all_valid_statuses(self):
+        """Test all valid handoff statuses."""
+        valid_statuses = ["initiated", "accepted", "completed", "rejected"]
+        for status in valid_statuses:
+            handoff = Handoff(
+                id=f"H-{status}",
+                source_agent="a",
+                target_agent="b",
+                status=status
+            )
+            assert handoff.status == status
+
+    def test_handoff_auto_initiated_at(self):
+        """Test that initiated_at is auto-set if not provided."""
+        handoff = Handoff(id="H-auto", source_agent="a", target_agent="b")
+        assert handoff.initiated_at != ""
+        # Should be a valid ISO timestamp
+        assert "T" in handoff.initiated_at

@@ -30,11 +30,12 @@ from cortical.utils.id_generation import (
     generate_decision_id,
     generate_sprint_id,
     generate_epic_id,
+    generate_handoff_id,
 )
 from .tx_manager import TransactionManager, CommitResult
 from .sync import SyncManager, SyncResult
 from .recovery import RecoveryManager, RecoveryResult
-from .types import Task, Decision, Edge, Entity, Sprint, Epic
+from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff
 from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
 from .config import DurabilityMode
@@ -888,6 +889,211 @@ class GoTManager:
 
         return Epic.from_dict(data)
 
+    def _read_handoff_file(self, path: Path) -> Optional[Handoff]:
+        """
+        Read and parse a handoff file.
+
+        Args:
+            path: Path to handoff JSON file
+
+        Returns:
+            Handoff object or None if not a handoff
+
+        Raises:
+            CorruptionError: If checksum verification fails
+            json.JSONDecodeError: If file is not valid JSON
+            KeyError: If required fields are missing
+        """
+        with open(path, 'r', encoding='utf-8') as f:
+            wrapper = json.load(f)
+
+        data = wrapper.get("data", {})
+        if data.get("entity_type") != "handoff":
+            return None
+
+        return Handoff.from_dict(data)
+
+    # Handoff management methods
+    def initiate_handoff(
+        self,
+        source_agent: str,
+        target_agent: str,
+        task_id: str,
+        instructions: str = "",
+        context: Optional[Dict[str, Any]] = None,
+        handoff_id: Optional[str] = None,
+    ) -> Handoff:
+        """
+        Initiate a handoff to another agent.
+
+        Args:
+            source_agent: Agent initiating the handoff
+            target_agent: Agent receiving the handoff
+            task_id: Task being handed off
+            instructions: Instructions for the target agent
+            context: Additional context data
+            handoff_id: Optional custom handoff ID (auto-generated if not provided)
+
+        Returns:
+            Created Handoff object
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        with self.transaction() as tx:
+            handoff = tx.initiate_handoff(
+                source_agent=source_agent,
+                target_agent=target_agent,
+                task_id=task_id,
+                instructions=instructions,
+                context=context or {},
+                handoff_id=handoff_id,
+            )
+        return handoff
+
+    def accept_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        acknowledgment: str = ""
+    ) -> Handoff:
+        """
+        Accept a handoff.
+
+        Args:
+            handoff_id: Handoff identifier
+            agent: Agent accepting the handoff
+            acknowledgment: Optional acknowledgment message
+
+        Returns:
+            Updated Handoff object
+
+        Raises:
+            TransactionError: If commit fails or handoff not found
+            NotFoundError: If handoff doesn't exist
+        """
+        with self.transaction() as tx:
+            handoff = tx.accept_handoff(handoff_id, agent, acknowledgment)
+        return handoff
+
+    def complete_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        result: Optional[Dict[str, Any]] = None,
+        artifacts: Optional[List[str]] = None,
+    ) -> Handoff:
+        """
+        Complete a handoff with results.
+
+        Args:
+            handoff_id: Handoff identifier
+            agent: Agent completing the handoff
+            result: Result data
+            artifacts: List of artifact paths/identifiers
+
+        Returns:
+            Updated Handoff object
+
+        Raises:
+            TransactionError: If commit fails or handoff not found
+            NotFoundError: If handoff doesn't exist
+        """
+        with self.transaction() as tx:
+            handoff = tx.complete_handoff(
+                handoff_id, agent, result or {}, artifacts or []
+            )
+        return handoff
+
+    def reject_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        reason: str = ""
+    ) -> Handoff:
+        """
+        Reject a handoff.
+
+        Args:
+            handoff_id: Handoff identifier
+            agent: Agent rejecting the handoff
+            reason: Rejection reason
+
+        Returns:
+            Updated Handoff object
+
+        Raises:
+            TransactionError: If commit fails or handoff not found
+            NotFoundError: If handoff doesn't exist
+        """
+        with self.transaction() as tx:
+            handoff = tx.reject_handoff(handoff_id, agent, reason)
+        return handoff
+
+    def get_handoff(self, handoff_id: str) -> Optional[Handoff]:
+        """
+        Get a handoff by ID (read-only).
+
+        Args:
+            handoff_id: Handoff identifier
+
+        Returns:
+            Handoff object or None if not found
+        """
+        entities_dir = self.got_dir / "entities"
+        handoff_file = entities_dir / f"{handoff_id}.json"
+        if not handoff_file.exists():
+            return None
+
+        try:
+            return self._read_handoff_file(handoff_file)
+        except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+            logger.warning(f"Error reading handoff file {handoff_file}: {e}")
+            return None
+
+    def list_handoffs(
+        self,
+        status: Optional[str] = None,
+        target_agent: Optional[str] = None,
+        source_agent: Optional[str] = None,
+    ) -> List[Handoff]:
+        """
+        List handoffs, optionally filtered.
+
+        Args:
+            status: Filter by status ('initiated', 'accepted', 'completed', 'rejected')
+            target_agent: Filter by target agent
+            source_agent: Filter by source agent
+
+        Returns:
+            List of matching Handoff objects
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        handoffs = []
+        for entity_file in entities_dir.glob("H-*.json"):
+            try:
+                handoff = self._read_handoff_file(entity_file)
+                if handoff is None:
+                    continue
+
+                # Apply filters
+                if status is not None and handoff.status != status:
+                    continue
+                if target_agent is not None and handoff.target_agent != target_agent:
+                    continue
+                if source_agent is not None and handoff.source_agent != source_agent:
+                    continue
+
+                handoffs.append(handoff)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted handoff file {entity_file}: {e}")
+                continue
+
+        return handoffs
+
 
 class TransactionContext:
     """
@@ -1207,6 +1413,162 @@ class TransactionContext:
         if entity is None:
             return None
         if not isinstance(entity, Epic):
+            return None
+        return entity
+
+    # Handoff operations
+    def initiate_handoff(
+        self,
+        source_agent: str,
+        target_agent: str,
+        task_id: str,
+        instructions: str = "",
+        context: Optional[Dict[str, Any]] = None,
+        handoff_id: Optional[str] = None,
+    ) -> Handoff:
+        """
+        Initiate a handoff within transaction.
+
+        Args:
+            source_agent: Agent initiating the handoff
+            target_agent: Agent receiving the handoff
+            task_id: Task being handed off
+            instructions: Instructions for the target agent
+            context: Additional context data
+            handoff_id: Optional custom handoff ID (auto-generated if not provided)
+
+        Returns:
+            Created Handoff object
+        """
+        if handoff_id is None:
+            handoff_id = generate_handoff_id()
+
+        handoff = Handoff(
+            id=handoff_id,
+            source_agent=source_agent,
+            target_agent=target_agent,
+            task_id=task_id,
+            status="initiated",
+            instructions=instructions,
+            context=context or {},
+        )
+        self.tx_manager.write(self.tx, handoff)
+        return handoff
+
+    def accept_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        acknowledgment: str = ""
+    ) -> Handoff:
+        """
+        Accept a handoff within transaction.
+
+        Args:
+            handoff_id: Handoff identifier
+            agent: Agent accepting the handoff
+            acknowledgment: Optional acknowledgment message
+
+        Returns:
+            Updated Handoff object
+
+        Raises:
+            TransactionError: If handoff not found
+        """
+        handoff = self.get_handoff(handoff_id)
+        if handoff is None:
+            raise TransactionError(f"Handoff not found: {handoff_id}")
+
+        handoff.status = "accepted"
+        handoff.accepted_at = datetime.now(timezone.utc).isoformat()
+        if acknowledgment:
+            handoff.properties["acknowledgment"] = acknowledgment
+        handoff.bump_version()
+
+        self.tx_manager.write(self.tx, handoff)
+        return handoff
+
+    def complete_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        result: Dict[str, Any],
+        artifacts: List[str],
+    ) -> Handoff:
+        """
+        Complete a handoff within transaction.
+
+        Args:
+            handoff_id: Handoff identifier
+            agent: Agent completing the handoff
+            result: Result data
+            artifacts: List of artifact paths/identifiers
+
+        Returns:
+            Updated Handoff object
+
+        Raises:
+            TransactionError: If handoff not found
+        """
+        handoff = self.get_handoff(handoff_id)
+        if handoff is None:
+            raise TransactionError(f"Handoff not found: {handoff_id}")
+
+        handoff.status = "completed"
+        handoff.completed_at = datetime.now(timezone.utc).isoformat()
+        handoff.result = result
+        handoff.artifacts = artifacts
+        handoff.bump_version()
+
+        self.tx_manager.write(self.tx, handoff)
+        return handoff
+
+    def reject_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        reason: str = ""
+    ) -> Handoff:
+        """
+        Reject a handoff within transaction.
+
+        Args:
+            handoff_id: Handoff identifier
+            agent: Agent rejecting the handoff
+            reason: Rejection reason
+
+        Returns:
+            Updated Handoff object
+
+        Raises:
+            TransactionError: If handoff not found
+        """
+        handoff = self.get_handoff(handoff_id)
+        if handoff is None:
+            raise TransactionError(f"Handoff not found: {handoff_id}")
+
+        handoff.status = "rejected"
+        handoff.rejected_at = datetime.now(timezone.utc).isoformat()
+        handoff.reject_reason = reason
+        handoff.bump_version()
+
+        self.tx_manager.write(self.tx, handoff)
+        return handoff
+
+    def get_handoff(self, handoff_id: str) -> Optional[Handoff]:
+        """
+        Get handoff within transaction (sees own writes).
+
+        Args:
+            handoff_id: Handoff identifier
+
+        Returns:
+            Handoff object or None if not found
+        """
+        entity = self.tx_manager.read(self.tx, handoff_id)
+        if entity is None:
+            return None
+        if not isinstance(entity, Handoff):
             return None
         return entity
 

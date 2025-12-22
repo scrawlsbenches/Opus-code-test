@@ -2,7 +2,8 @@
 Canonical ID generation utilities for all GoT and task systems.
 
 All IDs use format: {PREFIX}-YYYYMMDD-HHMMSS-XXXXXXXX
-- PREFIX: T (task), D (decision), E (edge), S (sprint), G (goal), OP (plan), EX (execution)
+- PREFIX: T (task), D (decision), E (edge), S (sprint), G (goal), H (handoff),
+          OP (plan), EX (execution)
 - Timestamp: UTC timezone for consistency
 - Suffix: 8 hex characters (4 bytes = ~4 billion unique values)
 
@@ -18,6 +19,9 @@ Examples:
 
     >>> generate_decision_id()
     'D-20251222-143052-e5f6g7h8'
+
+    >>> generate_handoff_id()
+    'H-20251222-143052-u1v2w3x4'
 
     >>> generate_sprint_id(number=5)
     'S-005'
@@ -136,6 +140,26 @@ def generate_epic_id() -> str:
     return f"E-{timestamp}-{suffix}"
 
 
+def generate_handoff_id() -> str:
+    """
+    Generate unique handoff ID.
+
+    Format: H-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
+
+    Returns:
+        Handoff ID string (e.g., 'H-20251222-143052-u1v2w3x4')
+
+    Note:
+        - Uses UTC timezone for consistency
+        - Random suffix provides ~4 billion unique values
+        - No 'handoff:' prefix (that's legacy format)
+    """
+    now = datetime.now(timezone.utc)
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    suffix = secrets.token_hex(4)  # 8 hex chars
+    return f"H-{timestamp}-{suffix}"
+
+
 def generate_goal_id() -> str:
     """
     Generate goal ID.
@@ -175,7 +199,7 @@ def normalize_id(id_str: str) -> str:
         >>> normalize_id('T-20251222-143052-a1b2c3d4')
         'T-20251222-143052-a1b2c3d4'
     """
-    for prefix in ('task:', 'decision:', 'edge:', 'sprint:', 'epic:', 'goal:'):
+    for prefix in ('task:', 'decision:', 'edge:', 'sprint:', 'epic:', 'goal:', 'handoff:'):
         if id_str.startswith(prefix):
             return id_str[len(prefix):]
     return id_str

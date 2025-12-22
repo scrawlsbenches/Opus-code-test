@@ -376,3 +376,90 @@ class Edge(Entity):
             weight=data.get("weight", 1.0),
             confidence=data.get("confidence", 1.0),
         )
+
+
+@dataclass
+class Handoff(Entity):
+    """
+    Handoff entity representing an agent-to-agent work transfer.
+
+    Handoffs track the lifecycle of transferring work from one agent to
+    another, including context, instructions, and completion status.
+
+    Status lifecycle: initiated → accepted → completed
+                                ↘ rejected
+    """
+
+    source_agent: str = ""
+    target_agent: str = ""
+    task_id: str = ""
+    status: str = "initiated"
+    instructions: str = ""
+    context: Dict[str, Any] = field(default_factory=dict)
+    result: Dict[str, Any] = field(default_factory=dict)
+    artifacts: List[str] = field(default_factory=list)
+    initiated_at: str = ""
+    accepted_at: str = ""
+    completed_at: str = ""
+    rejected_at: str = ""
+    reject_reason: str = ""
+    properties: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Validate handoff fields after initialization."""
+        self.entity_type = "handoff"
+        valid_statuses = {"initiated", "accepted", "completed", "rejected"}
+        if self.status not in valid_statuses:
+            raise ValidationError(
+                f"Invalid status '{self.status}'",
+                valid_statuses=list(valid_statuses)
+            )
+        # Auto-set initiated_at if not provided
+        if not self.initiated_at:
+            self.initiated_at = datetime.now(timezone.utc).isoformat()
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize handoff to dictionary."""
+        result = super().to_dict()
+        result.update({
+            "source_agent": self.source_agent,
+            "target_agent": self.target_agent,
+            "task_id": self.task_id,
+            "status": self.status,
+            "instructions": self.instructions,
+            "context": self.context,
+            "result": self.result,
+            "artifacts": self.artifacts,
+            "initiated_at": self.initiated_at,
+            "accepted_at": self.accepted_at,
+            "completed_at": self.completed_at,
+            "rejected_at": self.rejected_at,
+            "reject_reason": self.reject_reason,
+            "properties": self.properties,
+        })
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Handoff":
+        """Deserialize handoff from dictionary."""
+        return cls(
+            id=data["id"],
+            entity_type=data.get("entity_type", "handoff"),
+            version=data.get("version", 1),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            modified_at=data.get("modified_at", datetime.now(timezone.utc).isoformat()),
+            source_agent=data.get("source_agent", ""),
+            target_agent=data.get("target_agent", ""),
+            task_id=data.get("task_id", ""),
+            status=data.get("status", "initiated"),
+            instructions=data.get("instructions", ""),
+            context=data.get("context", {}),
+            result=data.get("result", {}),
+            artifacts=data.get("artifacts", []),
+            initiated_at=data.get("initiated_at", ""),
+            accepted_at=data.get("accepted_at", ""),
+            completed_at=data.get("completed_at", ""),
+            rejected_at=data.get("rejected_at", ""),
+            reject_reason=data.get("reject_reason", ""),
+            properties=data.get("properties", {}),
+        )

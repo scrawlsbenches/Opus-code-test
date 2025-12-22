@@ -2036,17 +2036,112 @@ class TransactionalGoTAdapter:
             },
         )
 
-    def initiate_handoff(self, *args, **kwargs) -> str:
-        raise NotImplementedError("Handoffs not yet implemented in TX backend")
+    def initiate_handoff(
+        self,
+        source_agent: str,
+        target_agent: str,
+        task_id: str,
+        context: Dict[str, Any],
+        instructions: str = "",
+    ) -> str:
+        """Initiate a handoff using TX backend."""
+        handoff = self._manager.initiate_handoff(
+            source_agent=source_agent,
+            target_agent=target_agent,
+            task_id=task_id,
+            instructions=instructions,
+            context=context,
+        )
+        return handoff.id
 
-    def accept_handoff(self, *args, **kwargs) -> bool:
-        raise NotImplementedError("Handoffs not yet implemented in TX backend")
+    def accept_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        acknowledgment: str = "",
+    ) -> bool:
+        """Accept a handoff using TX backend."""
+        try:
+            self._manager.accept_handoff(handoff_id, agent, acknowledgment)
+            return True
+        except Exception:
+            return False
 
-    def complete_handoff(self, *args, **kwargs) -> bool:
-        raise NotImplementedError("Handoffs not yet implemented in TX backend")
+    def complete_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        result: Dict[str, Any],
+        artifacts: Optional[List[str]] = None,
+    ) -> bool:
+        """Complete a handoff using TX backend."""
+        try:
+            self._manager.complete_handoff(
+                handoff_id, agent, result, artifacts or []
+            )
+            return True
+        except Exception:
+            return False
 
-    def list_handoffs(self, *args, **kwargs) -> List:
-        return []
+    def reject_handoff(
+        self,
+        handoff_id: str,
+        agent: str,
+        reason: str = "",
+    ) -> bool:
+        """Reject a handoff using TX backend."""
+        try:
+            self._manager.reject_handoff(handoff_id, agent, reason)
+            return True
+        except Exception:
+            return False
+
+    def get_handoff(self, handoff_id: str) -> Optional[Dict[str, Any]]:
+        """Get a handoff by ID using TX backend."""
+        handoff = self._manager.get_handoff(handoff_id)
+        if handoff is None:
+            return None
+        return {
+            "id": handoff.id,
+            "source_agent": handoff.source_agent,
+            "target_agent": handoff.target_agent,
+            "task_id": handoff.task_id,
+            "status": handoff.status,
+            "instructions": handoff.instructions,
+            "context": handoff.context,
+            "result": handoff.result,
+            "artifacts": handoff.artifacts,
+            "initiated_at": handoff.initiated_at,
+            "accepted_at": handoff.accepted_at,
+            "completed_at": handoff.completed_at,
+            "rejected_at": handoff.rejected_at,
+            "reject_reason": handoff.reject_reason,
+        }
+
+    def list_handoffs(
+        self,
+        status: Optional[str] = None,
+        target_agent: Optional[str] = None,
+        source_agent: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """List handoffs using TX backend."""
+        handoffs = self._manager.list_handoffs(
+            status=status,
+            target_agent=target_agent,
+            source_agent=source_agent,
+        )
+        return [
+            {
+                "id": h.id,
+                "source_agent": h.source_agent,
+                "target_agent": h.target_agent,
+                "task_id": h.task_id,
+                "status": h.status,
+                "instructions": h.instructions,
+                "initiated_at": h.initiated_at,
+            }
+            for h in handoffs
+        ]
 
     def save(self) -> None:
         """No-op for TX backend - transactions auto-commit."""
