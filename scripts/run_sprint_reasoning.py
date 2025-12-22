@@ -88,9 +88,16 @@ def load_sprint_from_markdown(sprint_id: str) -> Optional[Dict[str, Any]]:
             "completed": completed,
         })
 
-    # Extract GoT task IDs
-    task_pattern = r"(T-\d{8}-\d{6}-[a-f0-9]{8})"
-    sprint["got_tasks"] = re.findall(task_pattern, sprint_section)
+    # Extract GoT task IDs with their descriptions
+    # Pattern: - T-XXXXXXXX-XXXXXX-XXXXXXXX: Description
+    task_pattern = r"- (T-\d{8}-\d{6}-[a-f0-9]{8}): (.+)"
+    sprint["got_tasks"] = []
+    for match in re.finditer(task_pattern, sprint_section):
+        task_id, title = match.groups()
+        sprint["got_tasks"].append({
+            "id": task_id,
+            "title": title.strip(),
+        })
 
     return sprint
 
@@ -101,8 +108,8 @@ def load_got_tasks(task_ids: List[str]) -> List[Dict[str, Any]]:
 
     # Import GoT utilities
     try:
-        from scripts.got_utils import create_manager
-        manager = create_manager()
+        from scripts.got_utils import GoTBackendFactory
+        manager = GoTBackendFactory.create()
 
         for task_id in task_ids:
             try:
@@ -441,8 +448,8 @@ def create_work_boundaries(
         if owned_files:
             boundary = ParallelWorkBoundary(
                 agent_id=f"agent-{task['id']}",
-                owned_files=set(owned_files),
-                description=task["title"],
+                scope_description=task["title"],
+                files_owned=set(owned_files),
             )
             boundaries.append(boundary)
 
@@ -467,7 +474,7 @@ def display_agent_configs(configs: List[TaskToolConfig]) -> None:
         print(f"  Type: {config.subagent_type}")
         print(f"  Description: {config.description}")
         if config.boundary:
-            print(f"  Boundary: {len(config.boundary.owned_files)} files owned")
+            print(f"  Boundary: {len(config.boundary.files_owned)} files owned")
         print()
 
         # Show prompt preview (first 200 chars)
@@ -571,9 +578,23 @@ def main():
     if not sprint:
         sys.exit(1)
 
-    # Load GoT tasks
-    tasks = load_got_tasks(sprint.get("got_tasks", []))
-    print(f"Loaded {len(tasks)} tasks from GoT")
+    # Load GoT tasks - use parsed data from sprint file if available
+    sprint_tasks = sprint.get("got_tasks", [])
+    if sprint_tasks and isinstance(sprint_tasks[0], dict):
+        # Tasks already parsed from sprint file with titles
+        tasks = []
+        for t in sprint_tasks:
+            tasks.append({
+                "id": t["id"],
+                "title": t["title"],
+                "status": "pending",  # Default, could be enriched from GoT
+                "priority": "medium",
+            })
+        print(f"Loaded {len(tasks)} tasks from sprint file")
+    else:
+        # Fallback to loading from GoT (legacy format with just IDs)
+        tasks = load_got_tasks(sprint_tasks)
+        print(f"Loaded {len(tasks)} tasks from GoT")
 
     # Create thought graph
     graph = create_sprint_graph(sprint, tasks)
@@ -603,8 +624,8 @@ def main():
             print(f"\n--- Work Boundaries ({len(boundaries)} defined) ---")
             for b in boundaries:
                 print(f"  Agent: {b.agent_id}")
-                print(f"    Files: {', '.join(sorted(b.owned_files))}")
-                print(f"    Desc: {b.description[:50]}...")
+                print(f"    Files: {', '.join(sorted(b.files_owned))}")
+                print(f"    Desc: {b.scope_description[:50]}...")
                 print()
 
         # Display the configurations
