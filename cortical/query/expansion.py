@@ -161,16 +161,24 @@ def expand_query(
         for token in list(expanded.keys()):
             col = layer0.get_minicolumn(token)
             if col:
+                # Weight neighbors by TF-IDF * co-occurrence, not just co-occurrence
+                # This prioritizes distinctive terms over common ones
+                neighbors_with_scores = []
+                for neighbor_id, cooccur_weight in col.lateral_connections.items():
+                    neighbor = layer0.get_by_id(neighbor_id)
+                    if neighbor:
+                        # Combine TF-IDF distinctiveness with co-occurrence strength
+                        selection_score = cooccur_weight * (neighbor.tfidf + 0.1)
+                        neighbors_with_scores.append((neighbor, cooccur_weight, selection_score))
+
                 sorted_neighbors = sorted(
-                    col.lateral_connections.items(),
-                    key=lambda x: x[1],
+                    neighbors_with_scores,
+                    key=lambda x: x[2],  # Sort by TF-IDF-weighted score
                     reverse=True
                 )[:5]
 
-                for neighbor_id, weight in sorted_neighbors:
-                    # Use O(1) ID lookup instead of linear search
-                    neighbor = layer0.get_by_id(neighbor_id)
-                    if neighbor and neighbor.content not in expanded:
+                for neighbor, weight, _ in sorted_neighbors:
+                    if neighbor.content not in expanded:
                         # Combine TF-IDF (distinctiveness) and PageRank (importance)
                         # tfidf_weight controls the balance between the two
                         term_score = (neighbor.tfidf * tfidf_weight +
