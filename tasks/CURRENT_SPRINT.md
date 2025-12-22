@@ -759,3 +759,68 @@ Sprint 19 (Samples) ─────────┘
 
 Sprint 15 and 19 can run in parallel. Sprint 16 depends on both. Sprint 17 and 18 are sequential.
 
+
+---
+
+## Sprint 20: Forensic Remediation
+**Sprint ID:** sprint-020-forensic-remediation
+**Epic:** Code Quality (quality)
+**Status:** Available 🟢
+**Session:** dOcbe
+**Isolation:** `cortical/utils/`, `cortical/got/`, `cortical/query/`
+
+### Context
+Forensic analysis (2025-12-22) identified code duplication and inconsistencies from rapid development. This sprint implements the remediation plan.
+
+### Goals
+- [ ] Complete ID generation migration to canonical module
+- [ ] Consolidate WAL implementations (got/wal.py → cortical/wal.py)
+- [ ] Create cortical/utils/checksums.py (consolidate 6+ duplicates)
+- [ ] Create query/utils.py for shared TF-IDF scoring helper
+- [ ] Extract atomic save pattern to cortical/utils/persistence.py
+- [ ] Extract slugify to cortical/utils/text.py
+- [ ] Update all consumers to use shared modules
+- [ ] Verify tests pass after each consolidation
+
+### GoT Task IDs
+- T-20251222-025531-e6e222a1: Complete ID generation migration
+- T-20251222-025532-82118171: Consolidate WAL implementations
+- T-20251222-025532-6888ab23: Create checksums.py
+- T-20251222-025533-0821607f: Create query/utils.py
+- T-20251222-025533-657a6b25: Extract atomic save pattern
+- T-20251222-025534-56657a93: Extract slugify utility
+
+### Key Files (New)
+- `cortical/utils/checksums.py` - Unified checksum computation
+- `cortical/utils/persistence.py` - Atomic save utilities
+- `cortical/utils/text.py` - Text processing utilities
+- `cortical/query/utils.py` - Shared query scoring helpers
+
+### Key Files (Modify)
+- `cortical/got/wal.py` - Refactor to use cortical/wal.py
+- `scripts/orchestration_utils.py` - Use canonical ID generation
+- `scripts/new_memory.py` - Use canonical ID generation
+- 6+ files for checksum consolidation
+
+### Success Criteria
+- Zero duplicate implementations of core utilities
+- All tests pass (7,361+)
+- Coverage maintained at 88%+
+- GoT validation shows healthy state
+
+### Estimated Effort
+| Task | Hours | Lines Saved |
+|------|-------|-------------|
+| ID migration | 2 | ~50 |
+| WAL consolidation | 8 | ~300 |
+| Checksum utility | 2 | ~100 |
+| query/utils.py | 4 | ~200 |
+| Atomic save utility | 1 | ~138 |
+| Slugify utility | 0.5 | ~20 |
+| **Total** | **17.5** | **~808** |
+
+### Notes
+- Reference: docs/CONSOLIDATED_FORENSIC_REPORT.md
+- Each consolidation should be a separate commit
+- Run tests after each change to catch regressions early
+

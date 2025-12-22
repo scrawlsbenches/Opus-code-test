@@ -1,0 +1,1 @@
+{"ts": "2025-12-22T02:55:34.333485Z", "event": "node.create", "meta": {"branch": "claude/review-coverage-and-code-dOcbe", "session": "20251222-025534-675e"}, "id": "T-20251222-025534-56657a93", "type": "TASK", "data": {"title": "Extract slugify to cortical/utils/text.py", "status": "pending", "priority": "low", "category": "refactor", "description": ""}}

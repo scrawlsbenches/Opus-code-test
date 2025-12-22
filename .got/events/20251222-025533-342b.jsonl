@@ -1,0 +1,1 @@
+{"ts": "2025-12-22T02:55:33.847666Z", "event": "node.create", "meta": {"branch": "claude/review-coverage-and-code-dOcbe", "session": "20251222-025533-342b"}, "id": "T-20251222-025533-657a6b25", "type": "TASK", "data": {"title": "Extract atomic save pattern to cortical/utils/persistence.py", "status": "pending", "priority": "low", "category": "refactor", "description": ""}}

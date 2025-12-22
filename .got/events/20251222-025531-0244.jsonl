@@ -1,0 +1,1 @@
+{"ts": "2025-12-22T02:55:31.950952Z", "event": "node.create", "meta": {"branch": "claude/review-coverage-and-code-dOcbe", "session": "20251222-025531-0244"}, "id": "T-20251222-025531-e6e222a1", "type": "TASK", "data": {"title": "Complete ID generation migration to canonical module", "status": "pending", "priority": "high", "category": "refactor", "description": ""}}
