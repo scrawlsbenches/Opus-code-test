@@ -2331,9 +2331,16 @@ class GoTProjectManager:
 
     def get_task(self, task_id: str) -> Optional[ThoughtNode]:
         """Get a task by ID."""
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
-        return self.graph.nodes.get(task_id)
+        # Try direct lookup first (task IDs are like T-20251222-...)
+        node = self.graph.nodes.get(task_id)
+        if node and node.node_type == NodeType.TASK:
+            return node
+        # Legacy support: try with task: prefix stripped if present
+        if task_id.startswith("task:"):
+            node = self.graph.nodes.get(task_id[5:])
+            if node and node.node_type == NodeType.TASK:
+                return node
+        return None
 
     def list_tasks(
         self,
@@ -2516,8 +2523,9 @@ class GoTProjectManager:
 
             # Add blocking edge if blocker specified
             if blocker_id:
-                if not blocker_id.startswith("task:"):
-                    blocker_id = f"task:{blocker_id}"
+                # Strip legacy task: prefix
+                if blocker_id.startswith("task:"):
+                    blocker_id = blocker_id[5:]
                 if blocker_id in self.graph.nodes:
                     self.graph.add_edge(
                         blocker_id, task_id, EdgeType.BLOCKS,
@@ -2548,9 +2556,9 @@ class GoTProjectManager:
             True if deleted, False if deletion blocked or task not found
         """
         with self._lock:
-            # Normalize task ID
-            if not task_id.startswith("task:"):
-                task_id = f"task:{task_id}"
+            # Strip legacy task: prefix
+            if task_id.startswith("task:"):
+                task_id = task_id[5:]
 
             # Transactional check 1: Task must exist
             task = self.get_task(task_id)
@@ -2630,10 +2638,11 @@ class GoTProjectManager:
             True if edge was created, False if either task not found
         """
         with self._lock:
-            if not task_id.startswith("task:"):
-                task_id = f"task:{task_id}"
-            if not depends_on_id.startswith("task:"):
-                depends_on_id = f"task:{depends_on_id}"
+            # Strip any legacy task: prefix
+            if task_id.startswith("task:"):
+                task_id = task_id[5:]
+            if depends_on_id.startswith("task:"):
+                depends_on_id = depends_on_id[5:]
 
             if task_id not in self.graph.nodes or depends_on_id not in self.graph.nodes:
                 return False
@@ -2658,10 +2667,11 @@ class GoTProjectManager:
             True if edge was created, False if either task not found
         """
         with self._lock:
-            if not task_id.startswith("task:"):
-                task_id = f"task:{task_id}"
-            if not blocked_id.startswith("task:"):
-                blocked_id = f"task:{blocked_id}"
+            # Strip any legacy task: prefix
+            if task_id.startswith("task:"):
+                task_id = task_id[5:]
+            if blocked_id.startswith("task:"):
+                blocked_id = blocked_id[5:]
 
             if task_id not in self.graph.nodes or blocked_id not in self.graph.nodes:
                 return False
@@ -2677,8 +2687,9 @@ class GoTProjectManager:
 
     def get_task_dependencies(self, task_id: str) -> List[ThoughtNode]:
         """Get all tasks this task depends on."""
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
+        # Strip legacy task: prefix
+        if task_id.startswith("task:"):
+            task_id = task_id[5:]
 
         deps = []
         edges = self.graph._edges_from.get(task_id, [])
@@ -2736,9 +2747,13 @@ class GoTProjectManager:
 
     def get_sprint(self, sprint_id: str) -> Optional[ThoughtNode]:
         """Get sprint by ID."""
-        if not sprint_id.startswith("sprint:"):
-            sprint_id = f"sprint:{sprint_id}"
-        return self.graph.nodes.get(sprint_id)
+        # Strip legacy sprint: prefix if present
+        if sprint_id.startswith("sprint:"):
+            sprint_id = sprint_id[7:]
+        node = self.graph.nodes.get(sprint_id)
+        if node and node.node_type == NodeType.GOAL:
+            return node
+        return None
 
     def list_sprints(
         self,
@@ -2749,7 +2764,10 @@ class GoTProjectManager:
         sprints = []
 
         for node_id, node in self.graph.nodes.items():
-            if not node_id.startswith("sprint:"):
+            # Sprint IDs start with S- (e.g., S-005, S-2025-12)
+            if not node_id.startswith("S-"):
+                continue
+            if node.node_type != NodeType.GOAL:
                 continue
 
             if status and node.properties.get("status") != status:
@@ -2767,8 +2785,9 @@ class GoTProjectManager:
 
     def get_sprint_tasks(self, sprint_id: str) -> List[ThoughtNode]:
         """Get all tasks in a sprint."""
-        if not sprint_id.startswith("sprint:"):
-            sprint_id = f"sprint:{sprint_id}"
+        # Strip legacy sprint: prefix if present
+        if sprint_id.startswith("sprint:"):
+            sprint_id = sprint_id[7:]
 
         tasks = []
         edges = self.graph._edges_from.get(sprint_id, [])
@@ -2802,8 +2821,9 @@ class GoTProjectManager:
 
     def _add_task_to_sprint(self, task_id: str, sprint_id: str) -> bool:
         """Add task to sprint via CONTAINS edge."""
-        if not sprint_id.startswith("sprint:"):
-            sprint_id = f"sprint:{sprint_id}"
+        # Strip legacy sprint: prefix if present
+        if sprint_id.startswith("sprint:"):
+            sprint_id = sprint_id[7:]
 
         if sprint_id not in self.graph.nodes:
             return False
@@ -2818,8 +2838,9 @@ class GoTProjectManager:
 
     def _task_in_sprint(self, task_id: str, sprint_id: str) -> bool:
         """Check if task is in sprint."""
-        if not sprint_id.startswith("sprint:"):
-            sprint_id = f"sprint:{sprint_id}"
+        # Strip legacy sprint: prefix if present
+        if sprint_id.startswith("sprint:"):
+            sprint_id = sprint_id[7:]
 
         edges = self.graph._edges_from.get(sprint_id, [])
         for edge in edges:
@@ -2976,8 +2997,9 @@ class GoTProjectManager:
 
     def get_decisions_for_task(self, task_id: str) -> List[ThoughtNode]:
         """Get all decisions that affect a task."""
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
+        # Strip legacy task: prefix
+        if task_id.startswith("task:"):
+            task_id = task_id[5:]
 
         decisions = []
         edges_to = getattr(self.graph, '_edges_to', {})
@@ -3166,8 +3188,9 @@ class GoTProjectManager:
         max_depth: int = 10,
     ) -> List[List[ThoughtNode]]:
         """Get full dependency chain for a task."""
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
+        # Strip legacy task: prefix
+        if task_id.startswith("task:"):
+            task_id = task_id[5:]
 
         chains = []
         visited = set()
@@ -3198,13 +3221,21 @@ class GoTProjectManager:
 
         Follows BLOCKS edges pointing TO this task.
         """
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
+        # Try to find edges with the ID as-is first, then try stripped version
+        edges_to = getattr(self.graph, '_edges_to', {})
+
+        # Try original ID first
+        edges = edges_to.get(task_id, [])
+
+        # If no edges and ID has task: prefix, try stripped version
+        if not edges and task_id.startswith("task:"):
+            edges = edges_to.get(task_id[5:], [])
+        # If no edges and ID doesn't have prefix, try with prefix
+        elif not edges and not task_id.startswith("task:"):
+            edges = edges_to.get(f"task:{task_id}", [])
 
         blockers = []
-        # Check _edges_to for edges pointing to this task
-        edges_to = getattr(self.graph, '_edges_to', {})
-        for edge in edges_to.get(task_id, []):
+        for edge in edges:
             if edge.edge_type == EdgeType.BLOCKS:
                 blocker = self.graph.nodes.get(edge.source_id)
                 if blocker:
@@ -3218,13 +3249,21 @@ class GoTProjectManager:
         Follows DEPENDS_ON edges pointing TO this task
         (i.e., other tasks that have this task as a dependency).
         """
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
+        # Try to find edges with the ID as-is first, then try other formats
+        edges_to = getattr(self.graph, '_edges_to', {})
+
+        # Try original ID first
+        edges = edges_to.get(task_id, [])
+
+        # If no edges and ID has task: prefix, try stripped version
+        if not edges and task_id.startswith("task:"):
+            edges = edges_to.get(task_id[5:], [])
+        # If no edges and ID doesn't have prefix, try with prefix
+        elif not edges and not task_id.startswith("task:"):
+            edges = edges_to.get(f"task:{task_id}", [])
 
         dependents = []
-        # Check _edges_to for edges pointing to this task
-        edges_to = getattr(self.graph, '_edges_to', {})
-        for edge in edges_to.get(task_id, []):
+        for edge in edges:
             if edge.edge_type == EdgeType.DEPENDS_ON:
                 dependent = self.graph.nodes.get(edge.source_id)
                 if dependent:
@@ -3283,9 +3322,6 @@ class GoTProjectManager:
         - 'depended_by': Tasks depending on this task
         - 'in_sprint': Sprint containing this task
         """
-        if not task_id.startswith("task:"):
-            task_id = f"task:{task_id}"
-
         result = {
             'blocks': [],
             'blocked_by': [],
@@ -3294,9 +3330,30 @@ class GoTProjectManager:
             'in_sprint': [],
         }
 
+        # Try to find edges with different ID formats
+        def get_edges_from(node_id):
+            edges = self.graph._edges_from.get(node_id, [])
+            if edges:
+                return edges
+            # Try alternate formats
+            if node_id.startswith("task:"):
+                return self.graph._edges_from.get(node_id[5:], [])
+            else:
+                return self.graph._edges_from.get(f"task:{node_id}", [])
+
+        def get_edges_to(node_id):
+            edges_to = getattr(self.graph, '_edges_to', {})
+            edges = edges_to.get(node_id, [])
+            if edges:
+                return edges
+            # Try alternate formats
+            if node_id.startswith("task:"):
+                return edges_to.get(node_id[5:], [])
+            else:
+                return edges_to.get(f"task:{node_id}", [])
+
         # Outgoing edges (from this task)
-        edges_from = self.graph._edges_from.get(task_id, [])
-        for edge in edges_from:
+        for edge in get_edges_from(task_id):
             target = self.graph.nodes.get(edge.target_id)
             if not target:
                 continue
@@ -3306,8 +3363,7 @@ class GoTProjectManager:
                 result['depends_on'].append(target)
 
         # Incoming edges (to this task)
-        edges_to = getattr(self.graph, '_edges_to', {})
-        for edge in edges_to.get(task_id, []):
+        for edge in get_edges_to(task_id):
             source = self.graph.nodes.get(edge.source_id)
             if not source:
                 continue
