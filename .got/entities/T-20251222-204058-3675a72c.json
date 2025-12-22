@@ -1,0 +1,19 @@
+{
+  "_checksum": "d5bdfc7290ad9306",
+  "_written_at": "2025-12-22T21:14:57.643068+00:00",
+  "data": {
+    "created_at": "2025-12-22T20:40:58.456130+00:00",
+    "description": "Epic for implementing layered, context-aware CLAUDE.md generation using Graph of Thought. Includes versioning, persona customization, and knowledge freshness tracking.",
+    "entity_type": "task",
+    "id": "T-20251222-204058-3675a72c",
+    "metadata": {},
+    "modified_at": "2025-12-22T21:14:57.643030+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "EPIC: Auto-Generate CLAUDE.md from GoT",
+    "version": 4
+  }
+}
