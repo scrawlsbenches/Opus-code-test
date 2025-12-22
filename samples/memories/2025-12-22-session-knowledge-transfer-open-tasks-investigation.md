@@ -3,11 +3,11 @@
 **Date:** 2025-12-22
 **Session ID:** QkbsL
 **Branch:** claude/investigate-open-tasks-QkbsL
-**Tags:** `got`, `edgetype`, `velocity-metrics`, `cli`, `director-pattern`
+**Tags:** `got`, `edgetype`, `velocity-metrics`, `cli`, `director-pattern`, `auto-commit`, `environment-resilience`
 
 ## Summary
 
-This session investigated and resolved open tasks in the GoT system using a director pattern with parallel sub-agents. Five tasks were completed, significantly improving edge loading and enabling velocity metrics in the dashboard.
+This session investigated and resolved open tasks in the GoT system using a director pattern with parallel sub-agents. Six tasks were completed, significantly improving edge loading, enabling velocity metrics in the dashboard, and adding environment resilience via auto-commit/push.
 
 ## Key Accomplishments
 
@@ -74,6 +74,23 @@ Scoring algorithm:
 
 Verified previous fix was in place - `cortical/got/recovery.py:164` uses `strategy='adopt'` to preserve git-tracked entity files.
 
+### 6. GoT Auto-Commit & Auto-Push (Environment Resilience) ✅
+**Task:** T-20251222-193230-9cd4cbf4
+
+**Problem:** GoT state changes could be lost if environment resets before manual commit/push.
+
+**Solution:** Implemented automatic commit and push after mutating GoT operations:
+- `GOT_AUTO_COMMIT=1` - Commits `.got/` after mutations
+- `GOT_AUTO_PUSH=1` - Pushes after commit (only to `claude/*` branches)
+
+**Safety features in `scripts/got_utils.py` lines 107-293:**
+- Protected branches: `main`, `master`, `prod`, `production`, `release`
+- Only pushes to `claude/*` branches (per-session unique, safe)
+- Network retries with exponential backoff (2s, 4s)
+- Failures logged but never block operations
+
+**Result:** Environment resilience - GoT state persists to remote on every mutation.
+
 ## Deferred Tasks
 
 | Task | Reason |
@@ -109,7 +126,8 @@ Director (main agent - context keeper):
 | File | Changes |
 |------|---------|
 | `cortical/reasoning/graph_of_thought.py` | +4 lines: JUSTIFIES, PART_OF edge types |
-| `scripts/got_utils.py` | +125 lines: timestamps, task depends, sprint suggest |
+| `scripts/got_utils.py` | +200 lines: timestamps, task depends, sprint suggest, auto-commit/push |
+| `CLAUDE.md` | +22 lines: Auto-commit/push documentation, sub-agent warning |
 
 ## Commits
 

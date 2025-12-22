@@ -61,6 +61,28 @@ GoT (Graph of Thought) is our task, sprint, and decision tracking system:
 > - Logs the deletion as an event for audit trail
 > - Supports `--force` for overriding safety checks
 
+**GoT Auto-Commit & Auto-Push (Environment Resilience):**
+
+| Variable | Effect | Safety |
+|----------|--------|--------|
+| `GOT_AUTO_COMMIT=1` | Commits `.got/` after mutating operations | Always safe |
+| `GOT_AUTO_PUSH=1` | Pushes after commit (requires auto-commit) | Only `claude/*` branches |
+
+```bash
+# Enable for session (recommended for agent work)
+export GOT_AUTO_COMMIT=1
+export GOT_AUTO_PUSH=1
+
+# Or per-command
+GOT_AUTO_COMMIT=1 GOT_AUTO_PUSH=1 python scripts/got_utils.py task complete T-XXX
+```
+
+**Safety features:**
+- Auto-push ONLY works on `claude/*` branches (never main/master)
+- Protected branches: `main`, `master`, `prod`, `production`, `release`
+- Network errors retry up to 3 times with exponential backoff
+- Failures are logged but never block operations
+
 ### 4. Critical Bugs Fixed (Don't Reintroduce!)
 - **Edge rebuild**: Use `from_id`/`to_id`, NOT `source_id`/`target_id` in `add_edge()`
 - **EdgeType lookup**: Use `EdgeType[name]` with try/except, NOT `hasattr()`

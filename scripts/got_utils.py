@@ -104,6 +104,14 @@ VALID_CATEGORIES = ["arch", "feature", "bugfix", "test", "docs", "refactor",
 # Set GOT_AUTO_COMMIT=1 to enable automatic commits after GoT mutations
 GOT_AUTO_COMMIT_ENABLED = os.environ.get("GOT_AUTO_COMMIT", "").lower() in ("1", "true", "yes")
 
+# Auto-push configuration (for environment resilience)
+# Set GOT_AUTO_PUSH=1 to enable automatic push after auto-commit
+# SAFETY: Only pushes to claude/* branches (never main/master)
+GOT_AUTO_PUSH_ENABLED = os.environ.get("GOT_AUTO_PUSH", "").lower() in ("1", "true", "yes")
+
+# Protected branches that should NEVER be auto-pushed (even if GOT_AUTO_PUSH=1)
+PROTECTED_BRANCHES = {"main", "master", "prod", "production", "release"}
+
 # Commands that mutate GoT state (should trigger auto-commit)
 MUTATING_COMMANDS = {
     "task": {"create", "start", "complete", "block", "delete", "depends"},
@@ -195,12 +203,93 @@ def got_auto_commit(command: str, subcommand: Optional[str] = None) -> bool:
         )
 
         logger.info(f"[GoT Auto-commit] {msg}")
+
+        # Auto-push if enabled and on a safe branch
+        if GOT_AUTO_PUSH_ENABLED:
+            _got_auto_push()
+
         return True
     except subprocess.CalledProcessError as e:
         logger.debug(f"Auto-commit failed: {e}")
         return False
     except Exception as e:
         logger.debug(f"Auto-commit error: {e}")
+        return False
+
+
+def _got_auto_push() -> bool:
+    """
+    Auto-push to remote if on a safe branch (claude/*).
+
+    Safety rules:
+    - NEVER push to protected branches (main, master, prod, etc.)
+    - Only push to claude/* branches (per-session unique, safe)
+    - Try once, don't block on failures
+    - Use exponential backoff for network errors (up to 3 retries)
+
+    Returns:
+        True if push succeeded, False otherwise
+    """
+    import subprocess
+    import time
+
+    try:
+        # Get current branch
+        result = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        branch = result.stdout.strip()
+
+        # Safety checks
+        if branch in PROTECTED_BRANCHES:
+            logger.debug(f"[GoT Auto-push] Skipped: {branch} is protected")
+            return False
+
+        if not branch.startswith("claude/"):
+            logger.debug(f"[GoT Auto-push] Skipped: {branch} is not a claude/* branch")
+            return False
+
+        # Push with retries for network errors
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                result = subprocess.run(
+                    ['git', 'push', '-u', 'origin', branch],
+                    cwd=str(PROJECT_ROOT),
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if result.returncode == 0:
+                    logger.info(f"[GoT Auto-push] Pushed to origin/{branch}")
+                    return True
+                else:
+                    # Check if it's a network error worth retrying
+                    stderr = result.stderr.lower()
+                    if any(err in stderr for err in ['network', 'timeout', 'connection', 'unable to access']):
+                        if attempt < max_retries - 1:
+                            wait_time = 2 ** (attempt + 1)  # 2, 4 seconds
+                            logger.debug(f"[GoT Auto-push] Network error, retry in {wait_time}s")
+                            time.sleep(wait_time)
+                            continue
+                    # Non-network error or final retry failed
+                    logger.debug(f"[GoT Auto-push] Failed: {result.stderr}")
+                    return False
+            except subprocess.TimeoutExpired:
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** (attempt + 1)
+                    logger.debug(f"[GoT Auto-push] Timeout, retry in {wait_time}s")
+                    time.sleep(wait_time)
+                    continue
+                return False
+
+        return False
+    except Exception as e:
+        logger.debug(f"[GoT Auto-push] Error: {e}")
         return False
 
 
