@@ -19,6 +19,7 @@ Components demonstrated:
     3. AnomalyDetector: Prompt injection detection
     4. Quality metrics: Perplexity and accuracy
     5. Integration with CorticalTextProcessor
+    6. Real corpus: Training on samples/ directory
 """
 
 import argparse
@@ -375,6 +376,106 @@ def demo_quality_evaluation(verbose: bool = True):
             print(f"  {label}: '{text}' -> {perp:.2f}")
 
 
+def demo_real_corpus(verbose: bool = True):
+    """Demonstrate SparkSLM trained on the real samples/ corpus."""
+    print_header("6. Real Corpus Demo (samples/)")
+
+    samples_dir = Path(__file__).parent.parent / "samples"
+
+    if not samples_dir.exists():
+        print("\n  samples/ directory not found. Skipping.")
+        return None
+
+    # Train SparkPredictor on the samples directory
+    print("\nTraining SparkPredictor on samples/ directory...")
+    print("  (This includes technical docs, memories, and knowledge files)")
+
+    spark = SparkPredictor(ngram_order=3)
+    spark.train_from_directory(str(samples_dir), extensions=['.txt', '.md'])
+
+    if not spark._trained:
+        print("  No documents found for training. Skipping.")
+        return None
+
+    print(f"  Documents processed: {spark.ngram.total_documents}")
+    print(f"  Vocabulary size: {len(spark.ngram.vocab)} terms")
+    print(f"  Context count: {len(spark.ngram.counts)} unique contexts")
+    print(f"  Total tokens: {spark.ngram.total_tokens}")
+
+    # Demo queries related to the codebase
+    print_subheader("Query Priming on Real Corpus")
+
+    queries = [
+        "neural network",
+        "machine learning",
+        "pagerank algorithm",
+        "query expansion",
+        "document retrieval",
+        "text processing",
+        "graph clustering",
+        "semantic search",
+    ]
+
+    for query in queries:
+        primed = spark.prime(query)
+        print(f"\n  Query: '{query}'")
+        print(f"    Keywords: {primed['keywords']}")
+        if primed['completions']:
+            top_3 = primed['completions'][:3]
+            comp_str = ", ".join(f"{w} ({p:.2f})" for w, p in top_3)
+            print(f"    Predictions: {comp_str}")
+
+    # Demo sequence completion
+    print_subheader("Sequence Completion")
+
+    prefixes = [
+        "neural networks",
+        "machine learning",
+        "the cortical",
+        "information retrieval",
+        "natural language",
+    ]
+
+    for prefix in prefixes:
+        completed = spark.complete_sequence(prefix, length=4)
+        print(f"  '{prefix}' -> '{completed}'")
+
+    # Demo perplexity on different text types
+    if verbose:
+        print_subheader("Perplexity Analysis")
+
+        test_texts = [
+            ("Technical (in-domain)", "neural networks process information through layers"),
+            ("Code-related", "the function returns a dictionary of document scores"),
+            ("Out-of-domain", "the weather today is sunny and warm"),
+            ("Random words", "banana purple elephant quantum jazz"),
+        ]
+
+        for label, text in test_texts:
+            perp = spark.ngram.perplexity(text)
+            print(f"  {label}:")
+            print(f"    '{text}'")
+            print(f"    Perplexity: {perp:.2f}")
+
+    # Show some interesting vocabulary statistics
+    if verbose:
+        print_subheader("Vocabulary Insights")
+
+        # Find most common terms (by context appearances)
+        from collections import Counter
+        term_freq = Counter()
+        for context, word_counts in spark.ngram.counts.items():
+            for word, count in word_counts.items():
+                if word not in {'<s>', '</s>'}:
+                    term_freq[word] += count
+
+        print("\n  Most frequent terms in corpus:")
+        for term, count in term_freq.most_common(15):
+            print(f"    {term}: {count} occurrences")
+
+    return spark
+
+
 def interactive_mode():
     """Run interactive SparkSLM session."""
     print_header("Interactive SparkSLM Session")
@@ -491,7 +592,7 @@ def main():
     )
     parser.add_argument(
         "--section",
-        choices=["ngram", "predictor", "anomaly", "integration", "quality"],
+        choices=["ngram", "predictor", "anomaly", "integration", "quality", "corpus"],
         help="Run only a specific section"
     )
 
@@ -516,6 +617,7 @@ def main():
             "anomaly": demo_anomaly_detector,
             "integration": demo_processor_integration,
             "quality": demo_quality_evaluation,
+            "corpus": demo_real_corpus,
         }
         sections[args.section](verbose)
     else:
@@ -524,6 +626,7 @@ def main():
         demo_anomaly_detector(verbose)
         demo_processor_integration(verbose)
         demo_quality_evaluation(verbose)
+        demo_real_corpus(verbose)
 
     print_header("Demo Complete")
     print("\nSparkSLM provides fast, interpretable language priming.")
