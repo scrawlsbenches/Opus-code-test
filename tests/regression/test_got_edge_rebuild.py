@@ -943,14 +943,10 @@ class TestBackendStatsConsistency:
 
     def test_event_sourced_stats_has_all_fields(self, tmp_path):
         """Test that event-sourced backend stats has all required fields."""
-        import warnings
-        # This test uses the GoTProjectManager directly
+        # This test uses the GoTProjectManager directly (deprecation warning handled globally)
         from scripts.got_utils import GoTProjectManager, GOT_DIR
 
-        # Create a temporary manager (suppress deprecation warning - we're testing legacy backend intentionally)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            manager = GoTProjectManager(got_dir=tmp_path / ".got")
+        manager = GoTProjectManager(got_dir=tmp_path / ".got")
 
         stats = manager.get_stats()
 
@@ -981,7 +977,6 @@ class TestBackendStatsConsistency:
 
     def test_stats_fields_match_between_backends(self, tmp_path):
         """Test that both backends return the same stat fields."""
-        import warnings
         from scripts.got_utils import GoTProjectManager
 
         # Skip TX test if not available
@@ -992,11 +987,9 @@ class TestBackendStatsConsistency:
         except ImportError:
             pytest.skip("Transactional backend not available")
 
-        # Get stats from both backends (suppress deprecation warning - testing legacy backend intentionally)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            es_manager = GoTProjectManager(got_dir=tmp_path / ".got")
-            es_stats = es_manager.get_stats()
+        # Get stats from both backends (deprecation warning handled globally)
+        es_manager = GoTProjectManager(got_dir=tmp_path / ".got")
+        es_stats = es_manager.get_stats()
 
         tx_adapter = TransactionalGoTAdapter(got_dir=tmp_path / ".got-tx")
         tx_stats = tx_adapter.get_stats()
