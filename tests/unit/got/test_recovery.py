@@ -352,10 +352,17 @@ class TestOrphanRepair:
         recovery_mgr = RecoveryManager(tmp_path)
         result = recovery_mgr.recover()
 
-        # Should have repaired the orphan
-        assert any("orphaned entity" in action.lower() for action in result.actions_taken)
+        # Should have adopted the orphan (valid checksum = preserve, add to WAL)
+        assert any("adopted" in action.lower() for action in result.actions_taken)
         assert any("T-orphan" in action for action in result.actions_taken)
-        assert not orphan_file.exists()
+        # Valid orphan files are preserved (adopted), not deleted
+        assert orphan_file.exists()
+
+        # WAL should now have an ADOPTED entry for this entity
+        wal_file = wal_dir / "current.wal"
+        wal_content = wal_file.read_text()
+        assert "T-orphan" in wal_content
+        assert "ADOPTED" in wal_content
 
     def test_repair_orphans_invalid_strategy(self, tmp_path):
         """Test that invalid strategy raises ValueError."""
