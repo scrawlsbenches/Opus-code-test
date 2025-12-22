@@ -1,8 +1,8 @@
 {
-  "_checksum": "9c9102b17d8005b5",
-  "_written_at": "2025-12-22T11:15:49.829464+00:00",
+  "_checksum": "539cf0aac199f121",
+  "_written_at": "2025-12-22T11:19:55.147793+00:00",
   "data": {
-    "created_at": "2025-12-22T11:15:49.824878+00:00",
+    "created_at": "2025-12-22T11:19:55.142878+00:00",
     "entity_type": "sprint",
     "epic_id": "EPIC-nlu",
     "goals": [
@@ -37,7 +37,7 @@
       "cortical/query/nlu/` (new)"
     ],
     "metadata": {},
-    "modified_at": "2025-12-22T11:15:49.829395+00:00",
+    "modified_at": "2025-12-22T11:19:55.147753+00:00",
     "notes": [],
     "number": 16,
     "properties": {

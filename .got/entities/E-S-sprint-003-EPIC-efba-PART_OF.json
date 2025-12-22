@@ -1,13 +1,13 @@
 {
-  "_checksum": "dcdaab107febfc5e",
-  "_written_at": "2025-12-22T11:15:49.580636+00:00",
+  "_checksum": "1fc0cdf74e83a433",
+  "_written_at": "2025-12-22T11:19:54.911738+00:00",
   "data": {
     "confidence": 1.0,
-    "created_at": "2025-12-22T11:15:49.575954+00:00",
+    "created_at": "2025-12-22T11:19:54.906480+00:00",
     "edge_type": "PART_OF",
     "entity_type": "edge",
     "id": "E-S-sprint-003-EPIC-efba-PART_OF",
-    "modified_at": "2025-12-22T11:15:49.580579+00:00",
+    "modified_at": "2025-12-22T11:19:54.911704+00:00",
     "source_id": "S-sprint-003",
     "target_id": "EPIC-efba",
     "version": 2,

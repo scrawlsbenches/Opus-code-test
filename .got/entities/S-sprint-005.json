@@ -1,15 +1,15 @@
 {
-  "_checksum": "eb1d22f384b5cdc3",
-  "_written_at": "2025-12-22T11:15:49.528854+00:00",
+  "_checksum": "a447237ebc1cf1f3",
+  "_written_at": "2025-12-22T11:19:54.855689+00:00",
   "data": {
-    "created_at": "2025-12-22T11:15:49.524151+00:00",
+    "created_at": "2025-12-22T11:19:54.850501+00:00",
     "entity_type": "sprint",
     "epic_id": "EPIC-efba",
     "goals": [],
     "id": "S-sprint-005",
     "isolation": [],
     "metadata": {},
-    "modified_at": "2025-12-22T11:15:49.528800+00:00",
+    "modified_at": "2025-12-22T11:19:54.855654+00:00",
     "notes": [],
     "number": 5,
     "properties": {

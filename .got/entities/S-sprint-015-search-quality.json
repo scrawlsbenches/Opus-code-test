@@ -1,8 +1,8 @@
 {
-  "_checksum": "3e42463c3ee8d876",
-  "_written_at": "2025-12-22T11:15:49.800270+00:00",
+  "_checksum": "d6a3ade4eb043c59",
+  "_written_at": "2025-12-22T11:19:55.119009+00:00",
   "data": {
-    "created_at": "2025-12-22T11:15:49.795639+00:00",
+    "created_at": "2025-12-22T11:19:55.113866+00:00",
     "entity_type": "sprint",
     "epic_id": "EPIC-nlu",
     "goals": [
@@ -37,7 +37,7 @@
       "cortical/code_concepts.py"
     ],
     "metadata": {},
-    "modified_at": "2025-12-22T11:15:49.800212+00:00",
+    "modified_at": "2025-12-22T11:19:55.118969+00:00",
     "notes": [],
     "number": 15,
     "properties": {
@@ -45,7 +45,7 @@
       "sprint_id": "sprint-015-search-quality"
     },
     "session_id": "dOcbe",
-    "status": "available",
+    "status": "completed",
     "title": "Sprint 15: Search Quality Fundamentals",
     "version": 2
   }

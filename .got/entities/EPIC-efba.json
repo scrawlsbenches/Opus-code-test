@@ -1,12 +1,12 @@
 {
-  "_checksum": "49ce54b2e397013b",
-  "_written_at": "2025-12-22T11:15:49.370509+00:00",
+  "_checksum": "4ae82b629ed561c2",
+  "_written_at": "2025-12-22T11:19:54.674403+00:00",
   "data": {
-    "created_at": "2025-12-22T11:15:49.361310+00:00",
+    "created_at": "2025-12-22T11:19:54.628329+00:00",
     "entity_type": "epic",
     "id": "EPIC-efba",
     "metadata": {},
-    "modified_at": "2025-12-22T11:15:49.370434+00:00",
+    "modified_at": "2025-12-22T11:19:54.674361+00:00",
     "phase": 1,
     "phases": [],
     "properties": {

@@ -1,15 +1,15 @@
 {
-  "_checksum": "058257b457c901a7",
-  "_written_at": "2025-12-22T11:15:49.671058+00:00",
+  "_checksum": "e08de82401670293",
+  "_written_at": "2025-12-22T11:19:54.995090+00:00",
   "data": {
-    "created_at": "2025-12-22T11:15:49.665516+00:00",
+    "created_at": "2025-12-22T11:19:54.990730+00:00",
     "entity_type": "sprint",
     "epic_id": "",
     "goals": [],
     "id": "S-sprint-010",
     "isolation": [],
     "metadata": {},
-    "modified_at": "2025-12-22T11:15:49.670973+00:00",
+    "modified_at": "2025-12-22T11:19:54.995053+00:00",
     "notes": [],
     "number": 10,
     "properties": {

@@ -65,20 +65,15 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # =============================================================================
 
-GOT_DIR = PROJECT_ROOT / ".got"
-GOT_TX_DIR = PROJECT_ROOT / ".got-tx"  # Transactional backend directory
+GOT_DIR = PROJECT_ROOT / ".got"  # Single directory for all GoT data
 WAL_DIR = GOT_DIR / "wal"
 SNAPSHOTS_DIR = GOT_DIR / "snapshots"
-EVENTS_DIR = GOT_DIR / "events"  # Git-tracked event logs (source of truth)
+EVENTS_DIR = GOT_DIR / "events"  # Git-tracked event logs (legacy, still read)
 TASKS_DIR = PROJECT_ROOT / "tasks"
 
-# Backend selection (environment variable or auto-detect)
-# Set GOT_USE_TX=1 to force transactional backend
-# Set GOT_USE_TX=0 to force event-sourced backend
-USE_TX_BACKEND = os.environ.get("GOT_USE_TX", "").lower() in ("1", "true", "yes")
-if not USE_TX_BACKEND and TX_BACKEND_AVAILABLE:
-    # Auto-detect: if .got-tx exists and has entities, use it
-    USE_TX_BACKEND = (GOT_TX_DIR / "entities").exists()
+# Backend selection: TX backend is now the DEFAULT when available
+# Set GOT_USE_LEGACY=1 to force event-sourced backend (for debugging only)
+USE_TX_BACKEND = TX_BACKEND_AVAILABLE and os.environ.get("GOT_USE_LEGACY", "").lower() not in ("1", "true", "yes")
 
 # Status values
 STATUS_PENDING = "pending"
@@ -259,7 +254,7 @@ class GoTBackendFactory:
         if backend == "transactional":
             if not TX_BACKEND_AVAILABLE:
                 raise ValueError("Transactional backend not available")
-            return TransactionalGoTAdapter(got_dir or GOT_TX_DIR)
+            return TransactionalGoTAdapter(got_dir or GOT_DIR)
         elif backend in ("event-sourced", "event_sourced", "events"):
             return GoTProjectManager(got_dir or GOT_DIR)
         else:
@@ -276,7 +271,7 @@ class GoTBackendFactory:
             return "event-sourced"
 
         # Check if transactional store exists
-        if TX_BACKEND_AVAILABLE and (GOT_TX_DIR / "entities").exists():
+        if TX_BACKEND_AVAILABLE and (GOT_DIR / "entities").exists():
             return "transactional"
 
         return "event-sourced"
@@ -1255,7 +1250,7 @@ class TransactionalGoTAdapter:
     transactional backends without changing command handlers.
     """
 
-    def __init__(self, got_dir: Path = GOT_TX_DIR):
+    def __init__(self, got_dir: Path = GOT_DIR):
         if not TX_BACKEND_AVAILABLE:
             raise RuntimeError("Transactional backend not available")
 
@@ -5145,7 +5140,7 @@ def main():
         manager = GoTBackendFactory.create(backend=backend)
         if os.environ.get("GOT_DEBUG"):
             backend_type = "transactional" if isinstance(manager, TransactionalGoTAdapter) else "event-sourced"
-            backend_dir = GOT_TX_DIR if backend_type == "transactional" else GOT_DIR
+            backend_dir = GOT_DIR if backend_type == "transactional" else GOT_DIR
             print(f"[DEBUG] Using {backend_type} backend at {backend_dir}", file=sys.stderr)
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
