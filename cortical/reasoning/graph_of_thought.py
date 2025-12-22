@@ -108,10 +108,12 @@ class EdgeType(Enum):
     - DEPENDS_ON: A needs B to be complete first
     - REFINES: A refines/details B
     - MOTIVATES: A motivates/justifies B
+    - JUSTIFIES: A justifies/rationalizes B (decision → task)
 
     Structural edges (organization relationships):
     - HAS_OPTION: A (decision) has B as an option
     - HAS_ASPECT: A has B as an aspect/dimension
+    - PART_OF: A is part of B (hierarchical containment, e.g., sprint → epic)
     """
 
     # Semantic edges
@@ -142,10 +144,12 @@ class EdgeType(Enum):
     DEPENDS_ON = "depends_on"
     REFINES = "refines"
     MOTIVATES = "motivates"
+    JUSTIFIES = "justifies"  # Decision justifies task/entity
 
     # Structural edges
     HAS_OPTION = "has_option"
     HAS_ASPECT = "has_aspect"
+    PART_OF = "part_of"  # Entity belongs to sprint/epic
 
     def __repr__(self) -> str:
         """Return enum representation."""

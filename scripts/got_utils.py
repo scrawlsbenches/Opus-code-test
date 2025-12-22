@@ -1425,21 +1425,43 @@ class TransactionalGoTAdapter:
 
     def start_task(self, task_id: str) -> bool:
         """Start a task (set status to in_progress)."""
-        return self.update_task(task_id, status="in_progress")
+        clean_id = self._strip_prefix(task_id)
+        try:
+            task = self._manager.get_task(clean_id)
+            if not task:
+                return False
+            # Update metadata with started_at timestamp
+            task.metadata["started_at"] = datetime.now(timezone.utc).isoformat()
+            task.metadata["updated_at"] = datetime.now(timezone.utc).isoformat()
+            self._manager.update_task(clean_id, status="in_progress", metadata=task.metadata)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to start task {clean_id}: {e}")
+            return False
 
     def complete_task(self, task_id: str, retrospective: str = "") -> bool:
         """Complete a task."""
-        updates = {"status": "completed"}
-        if retrospective:
-            # Get current task to merge properties (don't overwrite!)
-            task = self.get_task(task_id)
+        clean_id = self._strip_prefix(task_id)
+        try:
+            task = self._manager.get_task(clean_id)
             if not task:
                 return False
-            # Copy existing properties and add/update retrospective
-            merged_properties = dict(task.properties) if task.properties else {}
-            merged_properties["retrospective"] = retrospective
-            updates["properties"] = merged_properties
-        return self.update_task(task_id, **updates)
+            # Update metadata with completed_at timestamp
+            task.metadata["completed_at"] = datetime.now(timezone.utc).isoformat()
+            task.metadata["updated_at"] = datetime.now(timezone.utc).isoformat()
+            updates = {"status": "completed", "metadata": task.metadata}
+            if retrospective:
+                # Copy existing properties and add/update retrospective
+                merged_properties = dict(task.properties) if task.properties else {}
+                # Filter out status to prevent conflicts
+                merged_properties = {k: v for k, v in merged_properties.items() if k != "status"}
+                merged_properties["retrospective"] = retrospective
+                updates["properties"] = merged_properties
+            self._manager.update_task(clean_id, **updates)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to complete task {clean_id}: {e}")
+            return False
 
     def block_task(self, task_id: str, reason: str = "", blocked_by: Optional[str] = None) -> bool:
         """Block a task."""
@@ -4326,6 +4348,22 @@ def cmd_task_block(args, manager: GoTProjectManager) -> int:
         return 1
 
 
+def cmd_task_depends(args, manager: GoTProjectManager) -> int:
+    """Create a dependency between tasks."""
+    try:
+        # Use add_dependency method
+        if manager.add_dependency(args.task_id, args.depends_on_id):
+            manager.save()
+            print(f"Created dependency: {args.task_id} depends on {args.depends_on_id}")
+            return 0
+        else:
+            print(f"Failed to create dependency - check that both task IDs exist")
+            return 1
+    except Exception as e:
+        print(f"Error creating dependency: {e}")
+        return 1
+
+
 def cmd_task_delete(args, manager: GoTProjectManager) -> int:
     """Delete a task with transactional safety checks.
 
@@ -4551,6 +4589,65 @@ def cmd_sprint_tasks(args, manager: GoTProjectManager) -> int:
         priority = task.properties.get("priority", "medium")
         print(f"  {task.id}: {task.content} [status={status}, priority={priority}]")
     return 0
+
+
+def cmd_sprint_suggest(args, manager: GoTProjectManager) -> int:
+    """Suggest tasks for next sprint based on priority and dependencies."""
+    try:
+        # Get pending tasks
+        if hasattr(manager, 'list_tasks'):
+            pending_tasks = manager.list_tasks(status="pending")
+        else:
+            pending_tasks = [t for t in manager.tasks.values() if t.properties.get("status") == "pending"]
+
+        if not pending_tasks:
+            print("No pending tasks to suggest.")
+            return 0
+
+        # Priority scoring
+        priority_scores = {"critical": 100, "high": 75, "medium": 50, "low": 25}
+
+        # Score and sort tasks
+        scored_tasks = []
+        for task in pending_tasks:
+            priority = task.properties.get("priority", "medium")
+            score = priority_scores.get(priority, 50)
+
+            # Check if blocked
+            if hasattr(manager, 'what_blocks'):
+                blockers = manager.what_blocks(task.id)
+                if blockers:
+                    score -= 30  # Penalty for blocked tasks
+
+            scored_tasks.append((score, task))
+
+        # Sort by score descending
+        scored_tasks.sort(key=lambda x: -x[0])
+
+        # Limit results
+        limit = getattr(args, 'limit', 10)
+        suggestions = scored_tasks[:limit]
+
+        # Display suggestions
+        print(f"\n{'='*60}")
+        print(f"SPRINT SUGGESTIONS ({len(suggestions)} tasks)")
+        print(f"{'='*60}\n")
+
+        for i, (score, task) in enumerate(suggestions, 1):
+            priority = task.properties.get("priority", "medium")
+            category = task.properties.get("category", "feature")
+            title = task.content[:50] + "..." if len(task.content) > 50 else task.content
+            print(f"{i:2}. [{priority.upper():8}] {task.id}")
+            print(f"    {title}")
+            print(f"    Category: {category}, Score: {score}")
+            print()
+
+        return 0
+    except Exception as e:
+        print(f"Error generating suggestions: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
 
 
 def cmd_epic_create(args, manager: GoTProjectManager) -> int:
@@ -5522,6 +5619,11 @@ def main():
     delete_parser.add_argument("--force", "-f", action="store_true",
                                help="Force delete even if task has dependencies or is in progress")
 
+    # task depends
+    depends_parser = task_subparsers.add_parser("depends", help="Create task dependency")
+    depends_parser.add_argument("task_id", help="Task that depends on another")
+    depends_parser.add_argument("--on", dest="depends_on_id", required=True, help="Task ID to depend on")
+
     # Sprint commands
     sprint_parser = subparsers.add_parser("sprint", help="Sprint operations")
     sprint_subparsers = sprint_parser.add_subparsers(dest="sprint_command")
@@ -5595,6 +5697,11 @@ def main():
     sprint_tasks = sprint_subparsers.add_parser("tasks", help="List tasks in sprint")
     sprint_tasks.add_argument("sprint_id", help="Sprint ID")
     sprint_tasks.set_defaults(func=cmd_sprint_tasks)
+
+    sprint_suggest = sprint_subparsers.add_parser("suggest", help="Suggest tasks for next sprint")
+    sprint_suggest.add_argument("--limit", "-n", type=int, default=10, help="Number of suggestions")
+    sprint_suggest.add_argument("--strategy", choices=["balanced", "quick-wins", "impact"], default="balanced", help="Selection strategy")
+    sprint_suggest.set_defaults(func=cmd_sprint_suggest)
 
     # Epic commands
     epic_parser = subparsers.add_parser("epic", help="Epic operations")
@@ -5765,6 +5872,8 @@ def main():
             return cmd_task_block(args, manager)
         elif args.task_command == "delete":
             return cmd_task_delete(args, manager)
+        elif args.task_command == "depends":
+            return cmd_task_depends(args, manager)
         else:
             task_parser.print_help()
             return 1
@@ -5800,6 +5909,8 @@ def main():
             return cmd_sprint_unlink(args, manager)
         elif args.sprint_command == "tasks":
             return cmd_sprint_tasks(args, manager)
+        elif args.sprint_command == "suggest":
+            return cmd_sprint_suggest(args, manager)
         else:
             sprint_parser.print_help()
             return 1
