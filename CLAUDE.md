@@ -24,6 +24,7 @@ GoT (Graph of Thought) is our task, sprint, and decision tracking system:
 - **Sprints**: Time-boxed work periods with IDs like `S-sprint-017-spark-slm`
 - **Epics**: Large initiatives spanning multiple sprints (e.g., `EPIC-nlu`)
 - **Decisions**: Logged choices with rationale
+- **Handoffs**: Agent-to-agent work transfers with IDs like `H-20251222-093045-a1b2c3d4`
 - **Edges**: Relationships (DEPENDS_ON, BLOCKS, CONTAINS, etc.)
 
 **Task commands:**
@@ -643,7 +644,7 @@ cortical/
 │   └── claude_code_spawner.py  # Production agent spawning
 ├── got/              # Graph of Thought task/decision tracking
 │   ├── __init__.py   # Re-exports GoTManager
-│   ├── manager.py    # GoTManager - task/decision/edge CRUD operations
+│   ├── manager.py    # GoTManager - task/decision/edge/sprint/epic/handoff CRUD operations
 │   ├── wal.py        # Transaction WAL using TransactionWALEntry from cortical/wal.py
 │   └── query.py      # GoT query language ("what blocks X", "path from A to B")
 ├── spark/            # Statistical Language Model for quick predictions
@@ -716,6 +717,7 @@ cortical/
 | Crash recovery | `reasoning/graph_persistence.py` - GraphRecovery (4-level cascade) |
 | Git auto-versioning | `reasoning/graph_persistence.py` - GitAutoCommitter |
 | GoT task/decision tracking | `got/` - GoTManager, WAL, query language |
+| Manage agent handoffs | `got/` - GoTManager handoff methods (initiate, accept, complete, reject) |
 | Generate unique IDs | `utils/id_generation.py` - generate_task_id, generate_plan_id, etc. |
 | Compute checksums | `utils/checksums.py` - compute_checksum() |
 | Atomic file saves | `utils/persistence.py` - atomic_save() |

@@ -4190,6 +4190,24 @@ def cmd_sprint_status(args, manager: GoTProjectManager) -> int:
     return 0
 
 
+def cmd_sprint_start(args, manager: GoTProjectManager) -> int:
+    """Start a sprint."""
+    sprint = manager.update_sprint(args.sprint_id, status="in_progress")
+    manager.save()
+    print(f"Started: {sprint.id}")
+    print(f"  Title: {sprint.content}")
+    return 0
+
+
+def cmd_sprint_complete(args, manager: GoTProjectManager) -> int:
+    """Complete a sprint."""
+    sprint = manager.update_sprint(args.sprint_id, status="completed")
+    manager.save()
+    print(f"Completed: {sprint.id}")
+    print(f"  Title: {sprint.content}")
+    return 0
+
+
 def cmd_blocked(args, manager: GoTProjectManager) -> int:
     """Show blocked tasks."""
     blocked = manager.get_blocked_tasks()
@@ -5124,6 +5142,14 @@ def main():
     sprint_status = sprint_subparsers.add_parser("status", help="Show sprint status")
     sprint_status.add_argument("sprint_id", nargs="?", help="Sprint ID (optional)")
 
+    # sprint start
+    sprint_start = sprint_subparsers.add_parser("start", help="Start a sprint")
+    sprint_start.add_argument("sprint_id", help="Sprint ID to start")
+
+    # sprint complete
+    sprint_complete = sprint_subparsers.add_parser("complete", help="Complete a sprint")
+    sprint_complete.add_argument("sprint_id", help="Sprint ID to complete")
+
     # Query commands
     subparsers.add_parser("blocked", help="Show blocked tasks")
     subparsers.add_parser("active", help="Show active tasks")
@@ -5287,6 +5313,10 @@ def main():
             return cmd_sprint_list(args, manager)
         elif args.sprint_command == "status":
             return cmd_sprint_status(args, manager)
+        elif args.sprint_command == "start":
+            return cmd_sprint_start(args, manager)
+        elif args.sprint_command == "complete":
+            return cmd_sprint_complete(args, manager)
         else:
             sprint_parser.print_help()
             return 1
