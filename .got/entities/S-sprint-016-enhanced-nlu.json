@@ -1,0 +1,52 @@
+{
+  "_checksum": "9c9102b17d8005b5",
+  "_written_at": "2025-12-22T11:15:49.829464+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:15:49.824878+00:00",
+    "entity_type": "sprint",
+    "epic_id": "EPIC-nlu",
+    "goals": [
+      {
+        "completed": false,
+        "text": "Implement negation parsing (\"find X not in tests\")"
+      },
+      {
+        "completed": false,
+        "text": "Implement scope parsing (\"config in core module\")"
+      },
+      {
+        "completed": false,
+        "text": "Implement temporal parsing (\"recent changes to auth\")"
+      },
+      {
+        "completed": false,
+        "text": "Add explainable search results (show WHY matched)"
+      },
+      {
+        "completed": false,
+        "text": "Add query reformulation suggestions"
+      },
+      {
+        "completed": false,
+        "text": "Integrate enhanced NLU into main search API"
+      }
+    ],
+    "id": "S-sprint-016-enhanced-nlu",
+    "isolation": [
+      "cortical/query/intent.py",
+      "cortical/query/nlu/` (new)"
+    ],
+    "metadata": {},
+    "modified_at": "2025-12-22T11:15:49.829395+00:00",
+    "notes": [],
+    "number": 16,
+    "properties": {
+      "epic_name": "NLU Enhancement",
+      "sprint_id": "sprint-016-enhanced-nlu"
+    },
+    "session_id": "",
+    "status": "available",
+    "title": "Sprint 16: Enhanced NLU Queries",
+    "version": 2
+  }
+}

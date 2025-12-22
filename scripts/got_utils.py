@@ -1908,17 +1908,137 @@ class TransactionalGoTAdapter:
     def get_decisions_for_task(self, *args, **kwargs) -> List:
         return []
 
-    def create_sprint(self, *args, **kwargs) -> str:
-        raise NotImplementedError("Sprints not yet implemented in TX backend")
+    def create_sprint(
+        self,
+        name: str,
+        number: Optional[int] = None,
+        epic_id: Optional[str] = None,
+    ) -> str:
+        """Create a new sprint using TX backend."""
+        sprint = self._manager.create_sprint(
+            title=name,
+            number=number,
+            epic_id=epic_id or "",
+        )
+        return sprint.id
 
-    def get_current_sprint(self, *args, **kwargs):
-        return None
+    def get_current_sprint(self) -> Optional[ThoughtNode]:
+        """Get the currently active sprint."""
+        sprint = self._manager.get_current_sprint()
+        if sprint is None:
+            return None
+        # Convert to ThoughtNode for compatibility
+        return ThoughtNode(
+            id=sprint.id,
+            node_type=NodeType.GOAL,
+            content=sprint.title,
+            properties={
+                "name": sprint.title,
+                "status": sprint.status,
+                "number": sprint.number,
+                "epic_id": sprint.epic_id,
+            },
+            metadata={
+                "created_at": sprint.created_at,
+                "modified_at": sprint.modified_at,
+            },
+        )
 
-    def list_sprints(self, *args, **kwargs) -> List:
-        return []
+    def get_sprint(self, sprint_id: str) -> Optional[ThoughtNode]:
+        """Get a sprint by ID."""
+        sprint = self._manager.get_sprint(sprint_id)
+        if sprint is None:
+            return None
+        return ThoughtNode(
+            id=sprint.id,
+            node_type=NodeType.GOAL,
+            content=sprint.title,
+            properties={
+                "name": sprint.title,
+                "status": sprint.status,
+                "number": sprint.number,
+                "epic_id": sprint.epic_id,
+                "session_id": sprint.session_id,
+                "isolation": sprint.isolation,
+                "goals": sprint.goals,
+                "notes": sprint.notes,
+            },
+            metadata={
+                "created_at": sprint.created_at,
+                "modified_at": sprint.modified_at,
+            },
+        )
 
-    def list_epics(self, *args, **kwargs) -> List:
-        return []
+    def list_sprints(self, status: Optional[str] = None, epic_id: Optional[str] = None) -> List[ThoughtNode]:
+        """List sprints from TX backend."""
+        sprints = self._manager.list_sprints(status=status, epic_id=epic_id)
+        result = []
+        for sprint in sprints:
+            node = ThoughtNode(
+                id=sprint.id,
+                node_type=NodeType.GOAL,
+                content=sprint.title,
+                properties={
+                    "name": sprint.title,
+                    "status": sprint.status,
+                    "number": sprint.number,
+                    "epic_id": sprint.epic_id,
+                },
+                metadata={
+                    "created_at": sprint.created_at,
+                    "modified_at": sprint.modified_at,
+                },
+            )
+            result.append(node)
+        return result
+
+    def list_epics(self, status: Optional[str] = None) -> List[ThoughtNode]:
+        """List epics from TX backend."""
+        epics = self._manager.list_epics(status=status)
+        result = []
+        for epic in epics:
+            node = ThoughtNode(
+                id=epic.id,
+                node_type=NodeType.GOAL,
+                content=epic.title,
+                properties={
+                    "name": epic.title,
+                    "status": epic.status,
+                    "phase": epic.phase,
+                },
+                metadata={
+                    "created_at": epic.created_at,
+                    "modified_at": epic.modified_at,
+                },
+            )
+            result.append(node)
+        return result
+
+    def create_epic(self, name: str, epic_id: Optional[str] = None) -> str:
+        """Create a new epic using TX backend."""
+        epic = self._manager.create_epic(title=name, epic_id=epic_id)
+        return epic.id
+
+    def get_epic(self, epic_id: str) -> Optional[ThoughtNode]:
+        """Get an epic by ID."""
+        epic = self._manager.get_epic(epic_id)
+        if epic is None:
+            return None
+        return ThoughtNode(
+            id=epic.id,
+            node_type=NodeType.GOAL,
+            content=epic.title,
+            properties={
+                "name": epic.title,
+                "status": epic.status,
+                "phase": epic.phase,
+                "phases": epic.phases,
+            },
+            metadata={
+                "created_at": epic.created_at,
+                "modified_at": epic.modified_at,
+            },
+        )
 
     def initiate_handoff(self, *args, **kwargs) -> str:
         raise NotImplementedError("Handoffs not yet implemented in TX backend")
@@ -1933,26 +2053,44 @@ class TransactionalGoTAdapter:
         return []
 
     def get_sprint_tasks(self, sprint_id: str) -> List[ThoughtNode]:
-        """Get all tasks in a sprint.
-
-        Note: Sprint support is limited in TX backend.
-        Returns empty list with warning.
-        """
-        logger.warning("Sprint support limited in TX backend - returning empty list")
-        return []
+        """Get all tasks in a sprint using TX backend."""
+        tasks = self._manager.get_sprint_tasks(sprint_id)
+        result = []
+        for task in tasks:
+            node = ThoughtNode(
+                id=task.id,
+                node_type=NodeType.TASK,
+                content=task.title,
+                properties={
+                    "title": task.title,
+                    "status": task.status,
+                    "priority": task.priority,
+                    "description": task.description,
+                    **task.properties,
+                },
+                metadata={
+                    "created_at": task.created_at,
+                    "modified_at": task.modified_at,
+                    **task.metadata,
+                },
+            )
+            result.append(node)
+        return result
 
     def get_sprint_progress(self, sprint_id: str) -> Dict[str, Any]:
-        """Get sprint progress statistics.
-
-        Note: Sprint support is limited in TX backend.
-        Returns empty progress dict.
-        """
-        logger.warning("Sprint support limited in TX backend - returning empty progress")
+        """Get sprint progress statistics using TX backend."""
+        progress = self._manager.get_sprint_progress(sprint_id)
+        # Normalize keys to match expected format
         return {
-            "total_tasks": 0,
-            "by_status": {},
-            "completed": 0,
-            "progress_percent": 0.0,
+            "total_tasks": progress.get("total", 0),
+            "by_status": {
+                "completed": progress.get("completed", 0),
+                "in_progress": progress.get("in_progress", 0),
+                "pending": progress.get("pending", 0),
+                "blocked": progress.get("blocked", 0),
+            },
+            "completed": progress.get("completed", 0),
+            "progress_percent": progress.get("completion_rate", 0.0) * 100,
         }
 
     def get_next_task(self) -> Optional[Dict[str, Any]]:
@@ -3587,7 +3725,7 @@ class TaskMigrator:
                 results["errors"].append(f"File {task_file.name}: {e}")
 
         if not dry_run:
-            self.manager.save()
+            self._manager.save()
 
         return results
 
@@ -3602,7 +3740,7 @@ class TaskMigrator:
             status = STATUS_PENDING
 
         # Create task in graph
-        task_id = self.manager.create_task(
+        task_id = self._manager.create_task(
             title=title,
             priority=task_data.get("priority", PRIORITY_MEDIUM),
             category=task_data.get("category", "feature"),
@@ -3610,7 +3748,7 @@ class TaskMigrator:
         )
 
         # Update status
-        task = self.manager.get_task(task_id)
+        task = self._manager.get_task(task_id)
         if task:
             task.properties["status"] = status
             task.properties["legacy_id"] = old_id

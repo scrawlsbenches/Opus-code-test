@@ -1,0 +1,65 @@
+{
+  "_checksum": "7c00a6d73034d9ba",
+  "_written_at": "2025-12-22T11:15:49.950675+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:15:49.946508+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [
+      {
+        "completed": true,
+        "text": "Complete ID generation migration to canonical module (a17e259e)"
+      },
+      {
+        "completed": true,
+        "text": "Consolidate WAL implementations (got/wal.py \u2192 cortical/wal.py) (a17e259e)"
+      },
+      {
+        "completed": true,
+        "text": "Create cortical/utils/checksums.py (consolidate 6+ duplicates) (428beb7a)"
+      },
+      {
+        "completed": true,
+        "text": "Create query/utils.py for shared TF-IDF scoring helper (428beb7a)"
+      },
+      {
+        "completed": true,
+        "text": "Extract atomic save pattern to cortical/utils/persistence.py (428beb7a)"
+      },
+      {
+        "completed": true,
+        "text": "Extract slugify to cortical/utils/text.py (428beb7a)"
+      },
+      {
+        "completed": true,
+        "text": "Update all consumers to use shared modules"
+      },
+      {
+        "completed": true,
+        "text": "Verify tests pass after each consolidation (7,394 passing)"
+      }
+    ],
+    "id": "S-sprint-020-forensic-remediation",
+    "isolation": [
+      "cortical/utils/",
+      "cortical/got/",
+      "cortical/query/"
+    ],
+    "metadata": {},
+    "modified_at": "2025-12-22T11:15:49.950607+00:00",
+    "notes": [
+      "Reference: docs/CONSOLIDATED_FORENSIC_REPORT.md",
+      "Each consolidation should be a separate commit",
+      "Run tests after each change to catch regressions early"
+    ],
+    "number": 20,
+    "properties": {
+      "epic_name": "Code Quality",
+      "sprint_id": "sprint-020-forensic-remediation"
+    },
+    "session_id": "dOcbe",
+    "status": "available",
+    "title": "Sprint 20: Forensic Remediation",
+    "version": 2
+  }
+}

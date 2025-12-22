@@ -1,0 +1,46 @@
+{
+  "_checksum": "c616c2a1865e1c7b",
+  "_written_at": "2025-12-22T11:15:49.411360+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:15:49.406592+00:00",
+    "entity_type": "epic",
+    "id": "EPIC-nlu",
+    "metadata": {},
+    "modified_at": "2025-12-22T11:15:49.411273+00:00",
+    "phase": 5,
+    "phases": [
+      {
+        "name": "Search Quality",
+        "number": 1,
+        "status": "in_progress"
+      },
+      {
+        "name": "Enhanced NLU",
+        "number": 2,
+        "status": "in_progress"
+      },
+      {
+        "name": "SparkSLM",
+        "number": 3,
+        "status": "in_progress"
+      },
+      {
+        "name": "Reasoning",
+        "number": 4,
+        "status": "in_progress"
+      },
+      {
+        "name": "Knowledge Base",
+        "number": 5,
+        "status": "in_progress"
+      }
+    ],
+    "properties": {
+      "short_id": "nlu",
+      "started": "2025-12-19"
+    },
+    "status": "active",
+    "title": "NLU Enhancement",
+    "version": 2
+  }
+}

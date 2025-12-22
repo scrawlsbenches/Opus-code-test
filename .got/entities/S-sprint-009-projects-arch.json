@@ -1,0 +1,66 @@
+{
+  "_checksum": "3541d94003d91f45",
+  "_written_at": "2025-12-22T11:15:49.505659+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:15:49.500731+00:00",
+    "entity_type": "sprint",
+    "epic_id": "EPIC-core",
+    "goals": [
+      {
+        "completed": true,
+        "text": "Create `cortical/projects/` directory structure"
+      },
+      {
+        "completed": true,
+        "text": "Move MCP server to `cortical/projects/mcp/`"
+      },
+      {
+        "completed": true,
+        "text": "Move proto to `cortical/projects/proto/` (already removed, placeholder added)"
+      },
+      {
+        "completed": true,
+        "text": "Update pyproject.toml with per-project dependencies"
+      },
+      {
+        "completed": true,
+        "text": "Update CI to isolate project tests"
+      },
+      {
+        "completed": true,
+        "text": "Document Projects architecture pattern"
+      },
+      {
+        "completed": true,
+        "text": "Verify all tests pass (4,769 core + 38 MCP = 4,807 total)"
+      },
+      {
+        "completed": true,
+        "text": "Create knowledge transfer document"
+      }
+    ],
+    "id": "S-sprint-009-projects-arch",
+    "isolation": [
+      "cortical/projects/` (new)",
+      "tests/",
+      ".github/workflows/"
+    ],
+    "metadata": {},
+    "modified_at": "2025-12-22T11:15:49.505592+00:00",
+    "notes": [
+      "This sprint addresses the recurring MCP test failures",
+      "Creates pattern for future optional features",
+      "Maintains backward compatibility via `cortical.projects.mcp`",
+      "Sub-agents should coordinate via task file updates"
+    ],
+    "number": 9,
+    "properties": {
+      "epic_name": "Cortical Text Processor",
+      "sprint_id": "sprint-009-projects-arch"
+    },
+    "session_id": "ac6d",
+    "status": "completed",
+    "title": "Sprint 9: Projects Architecture",
+    "version": 2
+  }
+}

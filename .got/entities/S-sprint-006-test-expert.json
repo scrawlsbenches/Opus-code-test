@@ -1,0 +1,52 @@
+{
+  "_checksum": "c592acd0542b7097",
+  "_written_at": "2025-12-22T11:15:49.432778+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:15:49.427292+00:00",
+    "entity_type": "sprint",
+    "epic_id": "EPIC-efba",
+    "goals": [
+      {
+        "completed": true,
+        "text": "Wire TestExpert to actual test outcomes (pass/fail signals)"
+      },
+      {
+        "completed": true,
+        "text": "Add `suggest-tests` command to CLI"
+      },
+      {
+        "completed": true,
+        "text": "Integrate with CI results from `.git-ml/commits/` (test_passed field)"
+      },
+      {
+        "completed": true,
+        "text": "Create test selection accuracy metrics"
+      },
+      {
+        "completed": true,
+        "text": "Add TestExpert to feedback loop (post-test-run hook)"
+      }
+    ],
+    "id": "S-sprint-006-test-expert",
+    "isolation": [
+      "scripts/hubris/experts/test_expert.py",
+      "tests/hubris/"
+    ],
+    "metadata": {},
+    "modified_at": "2025-12-22T11:15:49.432677+00:00",
+    "notes": [
+      "TestExpert exists but isn't wired to real outcomes",
+      "CI already captures test results in commit data",
+      "Low risk of conflicts with Sprint 7 or 8"
+    ],
+    "number": 6,
+    "properties": {
+      "epic_name": "Hubris MoE System",
+      "sprint_id": "sprint-006-test-expert"
+    },
+    "session_id": "0c9WR",
+    "status": "completed",
+    "title": "Sprint 6: TestExpert Activation",
+    "version": 2
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "_checksum": "54ceb3f59cd32c23",
+  "_written_at": "2025-12-22T11:15:49.920246+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:15:49.915707+00:00",
+    "entity_type": "sprint",
+    "epic_id": "EPIC-nlu",
+    "goals": [
+      {
+        "completed": false,
+        "text": "Create sample generation script"
+      },
+      {
+        "completed": false,
+        "text": "Generate API documentation samples"
+      },
+      {
+        "completed": false,
+        "text": "Generate security documentation samples"
+      },
+      {
+        "completed": false,
+        "text": "Generate database documentation samples"
+      },
+      {
+        "completed": false,
+        "text": "Generate architecture decision records (ADRs)"
+      },
+      {
+        "completed": false,
+        "text": "Generate \"how does X work?\" tutorial documents"
+      },
+      {
+        "completed": false,
+        "text": "Generate glossary/definition documents"
+      }
+    ],
+    "id": "S-sprint-019-samples",
+    "isolation": [
+      "samples/",
+      "scripts/generate_samples.py` (new)"
+    ],
+    "metadata": {},
+    "modified_at": "2025-12-22T11:15:49.920190+00:00",
+    "notes": [],
+    "number": 19,
+    "properties": {
+      "epic_name": "NLU Enhancement",
+      "sprint_id": "sprint-019-samples"
+    },
+    "session_id": "",
+    "status": "available",
+    "title": "Sprint 19: Sample Generation for Knowledge Base",
+    "version": 2
+  }
+}

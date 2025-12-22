@@ -1,14 +1,14 @@
 """
 Unit tests for GoT types module.
 
-Tests Entity, Task, Decision, and Edge classes for serialization,
+Tests Entity, Task, Decision, Edge, Sprint, and Epic classes for serialization,
 validation, versioning, and checksum computation.
 """
 
 import pytest
 from datetime import datetime, timezone
 
-from cortical.got.types import Entity, Task, Decision, Edge
+from cortical.got.types import Entity, Task, Decision, Edge, Sprint, Epic
 from cortical.got.errors import ValidationError
 
 
@@ -413,3 +413,239 @@ class TestEdge:
         assert edge2.edge_type == edge1.edge_type
         assert edge2.weight == edge1.weight
         assert edge2.confidence == edge1.confidence
+
+
+class TestSprint:
+    """Test Sprint entity functionality."""
+
+    def test_sprint_creation(self):
+        """Test basic sprint creation."""
+        sprint = Sprint(id="S-001", title="Sprint 1")
+        assert sprint.id == "S-001"
+        assert sprint.title == "Sprint 1"
+        assert sprint.entity_type == "sprint"
+        assert sprint.status == "available"
+        assert sprint.epic_id == ""
+        assert sprint.number == 0
+        assert sprint.session_id == ""
+        assert sprint.isolation == []
+        assert sprint.goals == []
+        assert sprint.notes == []
+        assert sprint.properties == {}
+        assert sprint.metadata == {}
+
+    def test_sprint_with_all_fields(self):
+        """Test sprint creation with all fields."""
+        sprint = Sprint(
+            id="S-001",
+            title="Authentication Sprint",
+            status="in_progress",
+            epic_id="E-001",
+            number=7,
+            session_id="abc123",
+            isolation=["cortical/auth/", "tests/test_auth.py"],
+            goals=[
+                {"text": "Implement JWT", "status": "completed"},
+                {"text": "Add OAuth2", "status": "in_progress"},
+            ],
+            notes=["Started with JWT", "OAuth2 next"],
+            properties={"priority": "high"},
+            metadata={"team": "backend"},
+        )
+        assert sprint.status == "in_progress"
+        assert sprint.epic_id == "E-001"
+        assert sprint.number == 7
+        assert sprint.session_id == "abc123"
+        assert len(sprint.isolation) == 2
+        assert len(sprint.goals) == 2
+        assert len(sprint.notes) == 2
+        assert sprint.properties["priority"] == "high"
+        assert sprint.metadata["team"] == "backend"
+
+    def test_sprint_to_dict(self):
+        """Test sprint serialization."""
+        sprint = Sprint(
+            id="S-001",
+            title="Test Sprint",
+            status="completed",
+            number=5,
+        )
+        data = sprint.to_dict()
+
+        assert data["id"] == "S-001"
+        assert data["title"] == "Test Sprint"
+        assert data["status"] == "completed"
+        assert data["number"] == 5
+        assert data["entity_type"] == "sprint"
+
+    def test_sprint_from_dict(self):
+        """Test sprint deserialization."""
+        data = {
+            "id": "S-001",
+            "title": "Test Sprint",
+            "status": "blocked",
+            "epic_id": "E-001",
+            "number": 3,
+            "session_id": "xyz789",
+            "isolation": ["cortical/"],
+            "goals": [{"text": "Goal 1", "status": "pending"}],
+            "notes": ["Note 1"],
+            "properties": {"key": "value"},
+            "metadata": {"tag": "test"},
+        }
+        sprint = Sprint.from_dict(data)
+
+        assert sprint.id == "S-001"
+        assert sprint.title == "Test Sprint"
+        assert sprint.status == "blocked"
+        assert sprint.epic_id == "E-001"
+        assert sprint.number == 3
+        assert sprint.session_id == "xyz789"
+        assert sprint.isolation == ["cortical/"]
+        assert sprint.goals == [{"text": "Goal 1", "status": "pending"}]
+        assert sprint.notes == ["Note 1"]
+        assert sprint.properties == {"key": "value"}
+        assert sprint.metadata == {"tag": "test"}
+
+    def test_sprint_roundtrip(self):
+        """Test sprint to_dict/from_dict round-trip."""
+        sprint1 = Sprint(
+            id="S-001",
+            title="Test",
+            status="in_progress",
+            epic_id="E-001",
+            number=5,
+            goals=[{"text": "Goal", "status": "pending"}],
+        )
+        data = sprint1.to_dict()
+        sprint2 = Sprint.from_dict(data)
+
+        assert sprint2.id == sprint1.id
+        assert sprint2.title == sprint1.title
+        assert sprint2.status == sprint1.status
+        assert sprint2.epic_id == sprint1.epic_id
+        assert sprint2.number == sprint1.number
+        assert sprint2.goals == sprint1.goals
+
+    def test_sprint_invalid_status(self):
+        """Test that invalid status raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            Sprint(id="S-001", title="Test", status="invalid_status")
+        assert "Invalid status" in str(exc_info.value)
+
+    def test_sprint_all_valid_statuses(self):
+        """Test all valid sprint statuses."""
+        valid_statuses = ["available", "in_progress", "completed", "blocked"]
+        for status in valid_statuses:
+            sprint = Sprint(id=f"S-{status}", title="Test", status=status)
+            assert sprint.status == status
+
+
+class TestEpic:
+    """Test Epic entity functionality."""
+
+    def test_epic_creation(self):
+        """Test basic epic creation."""
+        epic = Epic(id="E-001", title="Big Initiative")
+        assert epic.id == "E-001"
+        assert epic.title == "Big Initiative"
+        assert epic.entity_type == "epic"
+        assert epic.status == "active"
+        assert epic.phase == 1
+        assert epic.phases == []
+        assert epic.properties == {}
+        assert epic.metadata == {}
+
+    def test_epic_with_all_fields(self):
+        """Test epic creation with all fields."""
+        epic = Epic(
+            id="E-001",
+            title="Security Hardening",
+            status="active",
+            phase=2,
+            phases=[
+                {"number": 1, "title": "Authentication", "status": "completed"},
+                {"number": 2, "title": "Authorization", "status": "in_progress"},
+                {"number": 3, "title": "Audit Logging", "status": "planned"},
+            ],
+            properties={"priority": "critical"},
+            metadata={"quarter": "Q1-2025"},
+        )
+        assert epic.status == "active"
+        assert epic.phase == 2
+        assert len(epic.phases) == 3
+        assert epic.phases[0]["title"] == "Authentication"
+        assert epic.properties["priority"] == "critical"
+        assert epic.metadata["quarter"] == "Q1-2025"
+
+    def test_epic_to_dict(self):
+        """Test epic serialization."""
+        epic = Epic(
+            id="E-001",
+            title="Test Epic",
+            status="completed",
+            phase=3,
+        )
+        data = epic.to_dict()
+
+        assert data["id"] == "E-001"
+        assert data["title"] == "Test Epic"
+        assert data["status"] == "completed"
+        assert data["phase"] == 3
+        assert data["entity_type"] == "epic"
+
+    def test_epic_from_dict(self):
+        """Test epic deserialization."""
+        data = {
+            "id": "E-001",
+            "title": "Test Epic",
+            "status": "on_hold",
+            "phase": 2,
+            "phases": [
+                {"number": 1, "title": "Phase 1", "status": "completed"},
+                {"number": 2, "title": "Phase 2", "status": "active"},
+            ],
+            "properties": {"key": "value"},
+            "metadata": {"tag": "test"},
+        }
+        epic = Epic.from_dict(data)
+
+        assert epic.id == "E-001"
+        assert epic.title == "Test Epic"
+        assert epic.status == "on_hold"
+        assert epic.phase == 2
+        assert len(epic.phases) == 2
+        assert epic.phases[0]["title"] == "Phase 1"
+        assert epic.properties == {"key": "value"}
+        assert epic.metadata == {"tag": "test"}
+
+    def test_epic_roundtrip(self):
+        """Test epic to_dict/from_dict round-trip."""
+        epic1 = Epic(
+            id="E-001",
+            title="Test",
+            status="active",
+            phase=2,
+            phases=[{"number": 1, "title": "Phase 1"}],
+        )
+        data = epic1.to_dict()
+        epic2 = Epic.from_dict(data)
+
+        assert epic2.id == epic1.id
+        assert epic2.title == epic1.title
+        assert epic2.status == epic1.status
+        assert epic2.phase == epic1.phase
+        assert epic2.phases == epic1.phases
+
+    def test_epic_invalid_status(self):
+        """Test that invalid status raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            Epic(id="E-001", title="Test", status="invalid_status")
+        assert "Invalid status" in str(exc_info.value)
+
+    def test_epic_all_valid_statuses(self):
+        """Test all valid epic statuses."""
+        valid_statuses = ["active", "completed", "on_hold"]
+        for status in valid_statuses:
+            epic = Epic(id=f"E-{status}", title="Test", status=status)
+            assert epic.status == status

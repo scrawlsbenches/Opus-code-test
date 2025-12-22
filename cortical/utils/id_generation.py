@@ -116,6 +116,26 @@ def generate_sprint_id(number: Optional[int] = None) -> str:
     return f"S-{datetime.now(timezone.utc).strftime('%Y-%m')}"
 
 
+def generate_epic_id() -> str:
+    """
+    Generate epic ID.
+
+    Format: E-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
+
+    Returns:
+        Epic ID string (e.g., 'E-20251222-143052-q7r8s9t0')
+
+    Note:
+        - Uses UTC timezone for consistency
+        - Random suffix provides ~4 billion unique values
+        - No 'epic:' prefix (that's legacy format)
+    """
+    now = datetime.now(timezone.utc)
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    suffix = secrets.token_hex(4)  # 8 hex chars
+    return f"E-{timestamp}-{suffix}"
+
+
 def generate_goal_id() -> str:
     """
     Generate goal ID.
@@ -155,7 +175,7 @@ def normalize_id(id_str: str) -> str:
         >>> normalize_id('T-20251222-143052-a1b2c3d4')
         'T-20251222-143052-a1b2c3d4'
     """
-    for prefix in ('task:', 'decision:', 'edge:', 'sprint:', 'goal:'):
+    for prefix in ('task:', 'decision:', 'edge:', 'sprint:', 'epic:', 'goal:'):
         if id_str.startswith(prefix):
             return id_str[len(prefix):]
     return id_str

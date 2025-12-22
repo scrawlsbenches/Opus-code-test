@@ -1,0 +1,24 @@
+{
+  "_checksum": "30969d41d71fd5a8",
+  "_written_at": "2025-12-22T11:15:49.580151+00:00",
+  "data": {
+    "created_at": "2025-12-22T11:15:49.575317+00:00",
+    "entity_type": "sprint",
+    "epic_id": "EPIC-efba",
+    "goals": [],
+    "id": "S-sprint-003",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2025-12-22T11:15:49.580093+00:00",
+    "notes": [],
+    "number": 3,
+    "properties": {
+      "epic_name": "Hubris MoE System",
+      "sprint_id": "sprint-003"
+    },
+    "session_id": "",
+    "status": "completed",
+    "title": "Sprint 3: MoE Integration (Complete \u2705)",
+    "version": 2
+  }
+}

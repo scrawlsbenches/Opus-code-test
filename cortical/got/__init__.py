@@ -7,7 +7,7 @@ system, enabling reliable concurrent access from multiple agents.
 Key components:
 - TransactionManager: Main entry point for transactional operations
 - Transaction: Transaction object with snapshot isolation
-- Entity types: Task, Decision, Edge
+- Entity types: Task, Decision, Edge, Sprint, Epic
 - VersionedStore: File-based storage with checksums and versioning
 - WALManager: Write-ahead log for crash recovery
 """
@@ -34,6 +34,8 @@ from .types import (
     Task,
     Decision,
     Edge,
+    Sprint,
+    Epic,
 )
 
 from .transaction import (
@@ -104,6 +106,8 @@ __all__ = [
     'Task',
     'Decision',
     'Edge',
+    'Sprint',
+    'Epic',
     # Transaction
     'Transaction',
     'TransactionState',
