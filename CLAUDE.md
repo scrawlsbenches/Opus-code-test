@@ -1465,6 +1465,28 @@ coverage run -m pytest tests/
 3. Never add duplicate test runners in the coverage-report job
 4. When in doubt, run locally first: `time python -m pytest tests/ -v`
 
+**Scripts called from CI must add project root to sys.path:**
+
+Scripts in `scripts/` that import from `cortical` need path setup because CI runs them directly without installing the package:
+
+```python
+# At the top of the script, BEFORE any cortical imports:
+import sys
+from pathlib import Path
+
+_PROJECT_ROOT = Path(__file__).parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+# Now cortical imports will work
+from cortical.utils.id_generation import generate_task_id
+```
+
+**Scripts currently called from CI:**
+- `ci_task_report.py` → imports `task_utils.py` → imports from `cortical.utils`
+- `ml_data_collector.py` → handles missing cortical gracefully (try/except)
+- `validate_tasks.py`, `resolve_wiki_links.py` → no cortical imports
+
 ---
 
 ## Common Tasks
