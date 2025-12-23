@@ -44,6 +44,7 @@ from cortical.utils.locking import ProcessLock
 from cortical.reasoning.thought_graph import ThoughtGraph
 from cortical.reasoning.graph_of_thought import NodeType, EdgeType, ThoughtNode, ThoughtEdge
 from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery, GitAutoCommitter
+from cortical.got.cli.doc import setup_doc_parser, handle_doc_command
 
 # Import transactional backend (new)
 try:
@@ -5992,6 +5993,9 @@ def main():
     handoff_list = handoff_subparsers.add_parser("list", help="List handoffs")
     handoff_list.add_argument("--status", choices=["initiated", "accepted", "completed", "rejected"])
 
+    # Doc commands (document registry)
+    setup_doc_parser(subparsers)
+
     # Compaction command
     compact_parser = subparsers.add_parser("compact", help="Compact old events into consolidated file")
     compact_parser.add_argument("--preserve-days", "-d", type=int, default=7,
@@ -6195,6 +6199,9 @@ def main():
 
     elif args.command == "validate":
         return cmd_validate(args, manager)
+
+    elif args.command == "doc":
+        return handle_doc_command(args, manager)
 
     else:
         parser.print_help()

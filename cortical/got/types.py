@@ -976,3 +976,167 @@ class PersonaProfile(Entity):
             properties=data.get("properties", {}),
             metadata=data.get("metadata", {}),
         )
+
+
+@dataclass
+class Document(Entity):
+    """
+    Document entity representing a tracked documentation file.
+
+    Documents can be linked to tasks, decisions, and sprints via edges,
+    enabling traceability between work items and their documentation.
+
+    Edge types for documents:
+        - DOCUMENTED_BY: Task/Decision → Document (task is documented by doc)
+        - PRODUCES: Task → Document (task produces/creates doc)
+        - REFERENCES: Any → Document (entity references doc)
+
+    Example:
+        doc = Document(
+            id="DOC-docs-architecture-md",
+            path="docs/architecture.md",
+            title="Architecture Overview",
+            doc_type="architecture",
+            tags=["core", "design"]
+        )
+    """
+
+    # Core fields
+    path: str = ""                    # Relative path from repo root
+    title: str = ""                   # Human-readable title
+    doc_type: str = "general"         # architecture, design, memory, decision, api, guide
+
+    # Content tracking
+    content_hash: str = ""            # SHA256 hash of content (first 16 chars)
+    line_count: int = 0               # Number of lines
+    word_count: int = 0               # Approximate word count
+
+    # Staleness detection
+    last_file_modified: str = ""      # ISO timestamp of file mtime
+    last_verified: str = ""           # When we last checked the file
+    is_stale: bool = False            # True if file changed since last_verified
+
+    # Organization
+    tags: List[str] = field(default_factory=list)
+    category: str = ""                # Parent category (e.g., "api", "guides")
+
+    # Linkage tracking (cached for quick access)
+    linked_task_ids: List[str] = field(default_factory=list)
+    linked_decision_ids: List[str] = field(default_factory=list)
+
+    properties: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Validate document fields after initialization."""
+        self.entity_type = "document"
+
+        # Validate doc_type
+        valid_doc_types = {
+            "general", "architecture", "design", "memory", "decision",
+            "api", "guide", "research", "knowledge-transfer", ""
+        }
+        if self.doc_type and self.doc_type not in valid_doc_types:
+            raise ValidationError(
+                f"Invalid doc_type '{self.doc_type}'",
+                valid_types=list(valid_doc_types - {""})
+            )
+
+    def compute_content_hash(self, content: str) -> str:
+        """Compute hash of document content."""
+        import hashlib
+        return hashlib.sha256(content.encode()).hexdigest()[:16]
+
+    def update_from_file(self, content: str, file_mtime: str) -> bool:
+        """
+        Update document tracking from file content.
+
+        Args:
+            content: File content
+            file_mtime: File modification time (ISO format)
+
+        Returns:
+            True if content changed, False otherwise
+        """
+        new_hash = self.compute_content_hash(content)
+        changed = new_hash != self.content_hash
+
+        self.content_hash = new_hash
+        self.last_file_modified = file_mtime
+        self.last_verified = datetime.now(timezone.utc).isoformat()
+        self.line_count = content.count('\n') + 1
+        self.word_count = len(content.split())
+        self.is_stale = False
+
+        if changed:
+            self.bump_version()
+
+        return changed
+
+    def mark_stale(self) -> None:
+        """Mark document as needing re-verification."""
+        self.is_stale = True
+        self.bump_version()
+
+    @classmethod
+    def id_from_path(cls, path: str) -> str:
+        """
+        Generate document ID from file path.
+
+        Args:
+            path: File path (e.g., "docs/architecture.md")
+
+        Returns:
+            Document ID (e.g., "DOC-docs-architecture-md")
+        """
+        # Normalize path and convert to ID-safe format
+        safe_path = path.replace("/", "-").replace(".", "-").replace("_", "-")
+        return f"DOC-{safe_path}"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize document to dictionary."""
+        result = super().to_dict()
+        result.update({
+            "path": self.path,
+            "title": self.title,
+            "doc_type": self.doc_type,
+            "content_hash": self.content_hash,
+            "line_count": self.line_count,
+            "word_count": self.word_count,
+            "last_file_modified": self.last_file_modified,
+            "last_verified": self.last_verified,
+            "is_stale": self.is_stale,
+            "tags": self.tags,
+            "category": self.category,
+            "linked_task_ids": self.linked_task_ids,
+            "linked_decision_ids": self.linked_decision_ids,
+            "properties": self.properties,
+            "metadata": self.metadata,
+        })
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Document":
+        """Deserialize document from dictionary."""
+        return cls(
+            id=data["id"],
+            entity_type=data.get("entity_type", "document"),
+            version=data.get("version", 1),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            modified_at=data.get("modified_at", datetime.now(timezone.utc).isoformat()),
+            path=data.get("path", ""),
+            title=data.get("title", ""),
+            doc_type=data.get("doc_type", "general"),
+            content_hash=data.get("content_hash", ""),
+            line_count=data.get("line_count", 0),
+            word_count=data.get("word_count", 0),
+            last_file_modified=data.get("last_file_modified", ""),
+            last_verified=data.get("last_verified", ""),
+            is_stale=data.get("is_stale", False),
+            tags=data.get("tags", []),
+            category=data.get("category", ""),
+            linked_task_ids=data.get("linked_task_ids", []),
+            linked_decision_ids=data.get("linked_decision_ids", []),
+            properties=data.get("properties", {}),
+            metadata=data.get("metadata", {}),
+        )
