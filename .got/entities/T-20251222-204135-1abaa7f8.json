@@ -1,0 +1,19 @@
+{
+  "_checksum": "ba4e7a7055af7933",
+  "_written_at": "2025-12-22T21:11:54.108828+00:00",
+  "data": {
+    "created_at": "2025-12-22T20:41:35.560159+00:00",
+    "description": "Unit tests covering: layer CRUD operations, edge relationships, query by layer type, versioning operations. Use mocks, no real file I/O.",
+    "entity_type": "task",
+    "id": "T-20251222-204135-1abaa7f8",
+    "metadata": {},
+    "modified_at": "2025-12-22T21:11:54.108787+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "Test: Unit tests for layer storage and retrieval",
+    "version": 6
+  }
+}

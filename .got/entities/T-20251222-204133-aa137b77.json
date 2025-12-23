@@ -1,0 +1,19 @@
+{
+  "_checksum": "6f6bcd1cb7c0a910",
+  "_written_at": "2025-12-22T21:02:01.206594+00:00",
+  "data": {
+    "created_at": "2025-12-22T20:41:33.564405+00:00",
+    "description": "Implement ClaudeMdLayer entity type in GoT with fields for: layer_type, content, freshness_rules, inclusion_conditions, version. Add edges for layer relationships.",
+    "entity_type": "task",
+    "id": "T-20251222-204133-aa137b77",
+    "metadata": {},
+    "modified_at": "2025-12-22T21:02:01.206531+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "Implement: Layer storage schema in GoT",
+    "version": 6
+  }
+}

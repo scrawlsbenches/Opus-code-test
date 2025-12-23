@@ -1,0 +1,19 @@
+{
+  "_checksum": "f3b7b1507ac3caf8",
+  "_written_at": "2025-12-22T21:11:54.585638+00:00",
+  "data": {
+    "created_at": "2025-12-22T20:41:36.077678+00:00",
+    "description": "Unit tests covering: layer composition, inclusion rule evaluation, fallback behavior, error handling. Use mocks for GoT and file system.",
+    "entity_type": "task",
+    "id": "T-20251222-204136-5e81610e",
+    "metadata": {},
+    "modified_at": "2025-12-22T21:11:54.585591+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "Test: Unit tests for generation engine",
+    "version": 6
+  }
+}

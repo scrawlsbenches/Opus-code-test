@@ -1,0 +1,15 @@
+{
+  "_checksum": "8523298fcc2ccefd",
+  "_written_at": "2025-12-23T00:31:34.464611+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2025-12-23T00:31:34.457713+00:00",
+    "entity_type": "decision",
+    "id": "D-20251223-003134-e80e4332",
+    "modified_at": "2025-12-23T00:31:34.464572+00:00",
+    "properties": {},
+    "rationale": "Current design with context_branches and inclusion_rule already supports branch/team filtering. Extension via PersonaProfile and Team entities preferred over core redesign. Maintains backward compatibility while enabling SDLC pipeline and team hierarchy features.",
+    "title": "Keep current 5-layer CLAUDE.md design, extend via new entities for multi-team support",
+    "version": 2
+  }
+}
