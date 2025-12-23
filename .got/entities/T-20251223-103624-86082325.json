@@ -1,0 +1,19 @@
+{
+  "_checksum": "db4b5f38c6284e8d",
+  "_written_at": "2025-12-23T10:36:24.445080+00:00",
+  "data": {
+    "created_at": "2025-12-23T10:36:24.436117+00:00",
+    "description": "## Overview\nQuality of life improvements to make GoT CLI more usable and reduce errors during daily work.\n\n## Missing Commands (Encountered During Use)\n\n### 1. `task update` - Modify existing tasks\n**Problem:** No way to update task description/title without editing JSON directly\n**Current workaround:** Edit `.got/entities/T-*.json` files manually\n**Solution:** Add `got task update <ID> [--title TEXT] [--description TEXT] [--priority LEVEL]`\n\n### 2. `task complete --note` - Add completion notes\n**Problem:** `task complete` doesn't accept notes/retrospectives\n**Current workaround:** None - information is lost\n**Solution:** Add `--note TEXT` flag to capture what was learned\n**Related:** T-20251223-025609-f3a8453c\n\n### 3. `task assign --sprint` - Link task to sprint\n**Problem:** No CLI way to add task to current sprint\n**Current workaround:** Manual edge creation or JSON editing\n**Solution:** Add `got task assign <ID> --sprint <SPRINT_ID>`\n\n## Error Prevention Improvements\n\n### 4. Validate JSON on task operations\n**Problem:** Checksum mismatches can occur after manual edits\n**Solution:** Auto-recompute checksums on read, warn if modified externally\n\n### 5. Better error messages for invalid task IDs\n**Problem:** Cryptic errors when task ID doesn't exist\n**Solution:** Suggest similar task IDs, show recent tasks\n\n### 6. `task edit` - Open in $EDITOR\n**Problem:** Complex descriptions hard to write inline\n**Solution:** `got task edit <ID>` opens description in $EDITOR\n\n## Nice to Have\n\n### 7. Tab completion for task IDs\n**Problem:** Task IDs are long and hard to type\n**Solution:** Bash/Zsh completion script for task IDs\n\n### 8. `task search` - Find tasks by keyword\n**Problem:** Must grep JSON files to find tasks\n**Solution:** `got task search \"keyword\"` searches titles/descriptions\n\n### 9. Short aliases\n**Problem:** Commands are verbose\n**Solution:** Add aliases: `t` for task, `s` for sprint, `c` for complete\n\n## Implementation Notes\n- All changes in `scripts/got_utils.py`\n- Follow existing argparse patterns\n- Add tests in `tests/unit/test_got_cli.py`\n\n## Sprint Assignment\nAssign to Sprint 17 (SparkSLM) as low-priority improvement.",
+    "entity_type": "task",
+    "id": "T-20251223-103624-86082325",
+    "metadata": {},
+    "modified_at": "2025-12-23T10:36:24.444998+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "GoT CLI usability improvements - quality of life features",
+    "version": 2
+  }
+}
