@@ -1,19 +1,23 @@
 {
-  "_checksum": "d5f284dbb3e47b60",
-  "_written_at": "2025-12-22T19:32:27.181789+00:00",
+  "_checksum": "3d0c3193c259263c",
+  "_written_at": "2025-12-23T19:48:16.166530+00:00",
   "data": {
     "created_at": "2025-12-22T19:32:27.175421+00:00",
     "description": "## Problem\nWhen sub-agents make changes that don't persist (due to environment resets or isolation), we lose the work with no recovery path.\n\n## Proposed Solution\nStore diffs with task metadata when delegating to sub-agents:\n1. Before: Record file state checksums\n2. After: Capture diff of intended changes\n3. Store: Save diff in task properties or separate artifact\n4. Recovery: If changes lost, can replay diff\n\n## Implementation Options\n1. Modify /delegate command to capture diffs\n2. Add diff field to Task entity type\n3. Create DiffArtifact entity linked to tasks\n4. Use git stash/patch for atomic capture\n\n## Considerations\n- Storage overhead for large diffs\n- How to handle multi-file changes\n- Integration with existing task workflow",
     "entity_type": "task",
     "id": "T-20251222-193227-9b8b0bd4",
-    "metadata": {},
-    "modified_at": "2025-12-22T19:32:27.181722+00:00",
+    "metadata": {
+      "completed_at": "2025-12-23T19:48:16.157527+00:00",
+      "updated_at": "2025-12-23T19:48:16.157536+00:00"
+    },
+    "modified_at": "2025-12-23T19:48:16.166448+00:00",
     "priority": "medium",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Implemented minimal diff storage:\n1. Created scripts/task_diff.py with capture/restore/list/show commands\n2. Updated /delegate command to document diff capture workflow\n3. Diffs stored in .got/diffs/ with task ID linkage\n4. Tested capture and show commands successfully"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Add diff storage to sub-agent task delegation",
-    "version": 2
+    "version": 4
   }
 }
