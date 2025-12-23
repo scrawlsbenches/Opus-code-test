@@ -1,0 +1,19 @@
+{
+  "_checksum": "9c893b47adf51fbe",
+  "_written_at": "2025-12-23T00:31:08.271912+00:00",
+  "data": {
+    "created_at": "2025-12-23T00:31:08.263610+00:00",
+    "description": "Design layer inheritance between git branches. Each branch inherits parent layers but can override. Enables SDLC pipeline with environment-specific knowledge.",
+    "entity_type": "task",
+    "id": "T-20251223-003108-9872bb95",
+    "metadata": {},
+    "modified_at": "2025-12-23T00:31:08.271846+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "IDEA: Multi-branch layer inheritance (Dev\u2192QA\u2192Staging\u2192Prod)",
+    "version": 2
+  }
+}

@@ -31,11 +31,13 @@ from cortical.utils.id_generation import (
     generate_sprint_id,
     generate_epic_id,
     generate_handoff_id,
+    generate_claudemd_layer_id,
+    generate_claudemd_version_id,
 )
 from .tx_manager import TransactionManager, CommitResult
 from .sync import SyncManager, SyncResult
 from .recovery import RecoveryManager, RecoveryResult
-from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff
+from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion
 from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
 from .config import DurabilityMode
@@ -1094,6 +1096,146 @@ class GoTManager:
 
         return handoffs
 
+    # ==================== ClaudeMdLayer Methods ====================
+
+    def create_claudemd_layer(
+        self,
+        layer_type: str,
+        section_id: str,
+        title: str,
+        content: str,
+        layer_number: int = 0,
+        inclusion_rule: str = "always",
+        freshness_decay_days: int = 0,
+        **properties
+    ) -> ClaudeMdLayer:
+        """
+        Create a CLAUDE.md layer in a single-operation transaction.
+
+        Args:
+            layer_type: Type of layer (core, operational, contextual, persona, ephemeral)
+            section_id: Section identifier (e.g., "architecture", "quick-start")
+            title: Human-readable title
+            content: Markdown content
+            layer_number: Layer number 0-4 (default: 0)
+            inclusion_rule: When to include (always, context, user_pref)
+            freshness_decay_days: Days before content becomes stale (0 = never)
+            **properties: Additional properties
+
+        Returns:
+            Created ClaudeMdLayer object
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        with self.transaction() as tx:
+            layer = tx.create_claudemd_layer(
+                layer_type=layer_type,
+                section_id=section_id,
+                title=title,
+                content=content,
+                layer_number=layer_number,
+                inclusion_rule=inclusion_rule,
+                freshness_decay_days=freshness_decay_days,
+                **properties
+            )
+        return layer
+
+    def get_claudemd_layer(self, layer_id: str) -> Optional[ClaudeMdLayer]:
+        """
+        Get a CLAUDE.md layer by ID (read-only).
+
+        Args:
+            layer_id: Layer identifier
+
+        Returns:
+            ClaudeMdLayer object or None if not found
+        """
+        with self.transaction(read_only=True) as tx:
+            layer = tx.get_claudemd_layer(layer_id)
+        return layer
+
+    def update_claudemd_layer(self, layer_id: str, **updates) -> ClaudeMdLayer:
+        """
+        Update a CLAUDE.md layer in a single-operation transaction.
+
+        Args:
+            layer_id: Layer identifier
+            **updates: Fields to update
+
+        Returns:
+            Updated ClaudeMdLayer object
+
+        Raises:
+            TransactionError: If commit fails or layer not found
+        """
+        with self.transaction() as tx:
+            layer = tx.update_claudemd_layer(layer_id, **updates)
+        return layer
+
+    def list_claudemd_layers(
+        self,
+        layer_type: Optional[str] = None,
+        freshness_status: Optional[str] = None,
+        inclusion_rule: Optional[str] = None
+    ) -> List[ClaudeMdLayer]:
+        """
+        List CLAUDE.md layers with optional filters.
+
+        Args:
+            layer_type: Filter by layer type
+            freshness_status: Filter by freshness (fresh, stale, regenerating)
+            inclusion_rule: Filter by inclusion rule
+
+        Returns:
+            List of matching ClaudeMdLayer objects
+        """
+        with self.transaction(read_only=True) as tx:
+            layers = tx.list_claudemd_layers(
+                layer_type=layer_type,
+                freshness_status=freshness_status,
+                inclusion_rule=inclusion_rule
+            )
+        return layers
+
+    def delete_claudemd_layer(self, layer_id: str) -> bool:
+        """
+        Delete a CLAUDE.md layer.
+
+        Args:
+            layer_id: Layer identifier
+
+        Returns:
+            True if deleted, False if not found
+        """
+        with self.transaction() as tx:
+            result = tx.delete_claudemd_layer(layer_id)
+        return result
+
+    def _read_claudemd_layer_file(self, path: Path) -> Optional[ClaudeMdLayer]:
+        """
+        Read and parse a CLAUDE.md layer file.
+
+        Args:
+            path: Path to layer JSON file
+
+        Returns:
+            ClaudeMdLayer object or None if not a layer
+
+        Raises:
+            CorruptionError: If checksum verification fails
+            json.JSONDecodeError: If file is not valid JSON
+            KeyError: If required fields are missing
+        """
+        with open(path, 'r', encoding='utf-8') as f:
+            wrapper = json.load(f)
+
+        data = wrapper.get("data", {})
+        if data.get("entity_type") != "claudemd_layer":
+            return None
+
+        return ClaudeMdLayer.from_dict(data)
+
 
 class TransactionContext:
     """
@@ -1571,6 +1713,173 @@ class TransactionContext:
         if not isinstance(entity, Handoff):
             return None
         return entity
+
+    # ==================== ClaudeMdLayer Methods ====================
+
+    def create_claudemd_layer(
+        self,
+        layer_type: str,
+        section_id: str,
+        title: str,
+        content: str,
+        **kwargs
+    ) -> ClaudeMdLayer:
+        """
+        Create CLAUDE.md layer within transaction.
+
+        Args:
+            layer_type: Type of layer
+            section_id: Section identifier
+            title: Human-readable title
+            content: Markdown content
+            **kwargs: Additional fields
+
+        Returns:
+            Created ClaudeMdLayer object
+        """
+        layer_number = kwargs.get("layer_number", 0)
+        layer_id = generate_claudemd_layer_id(layer_number, section_id)
+
+        layer = ClaudeMdLayer(
+            id=layer_id,
+            layer_type=layer_type,
+            layer_number=layer_number,
+            section_id=section_id,
+            title=title,
+            content=content,
+            freshness_status=kwargs.get("freshness_status", "fresh"),
+            freshness_decay_days=kwargs.get("freshness_decay_days", 0),
+            inclusion_rule=kwargs.get("inclusion_rule", "always"),
+            context_modules=kwargs.get("context_modules", []),
+            context_branches=kwargs.get("context_branches", []),
+            properties=kwargs.get("properties", {}),
+            metadata=kwargs.get("metadata", {}),
+        )
+
+        # Compute content hash
+        layer.content_hash = layer.compute_content_hash()
+        layer.last_regenerated = datetime.now(timezone.utc).isoformat()
+
+        self.tx_manager.write(self.tx, layer)
+        return layer
+
+    def get_claudemd_layer(self, layer_id: str) -> Optional[ClaudeMdLayer]:
+        """
+        Get CLAUDE.md layer within transaction.
+
+        Args:
+            layer_id: Layer identifier
+
+        Returns:
+            ClaudeMdLayer object or None if not found
+        """
+        entity = self.tx_manager.read(self.tx, layer_id)
+        if entity is None:
+            return None
+        if not isinstance(entity, ClaudeMdLayer):
+            return None
+        return entity
+
+    def update_claudemd_layer(self, layer_id: str, **updates) -> ClaudeMdLayer:
+        """
+        Update CLAUDE.md layer within transaction.
+
+        Args:
+            layer_id: Layer identifier
+            **updates: Fields to update
+
+        Returns:
+            Updated ClaudeMdLayer object
+
+        Raises:
+            TransactionError: If layer not found
+        """
+        layer = self.get_claudemd_layer(layer_id)
+        if layer is None:
+            raise TransactionError(f"ClaudeMdLayer not found: {layer_id}")
+
+        # Apply updates
+        for key, value in updates.items():
+            if hasattr(layer, key):
+                setattr(layer, key, value)
+
+        # Recompute content hash if content changed
+        if "content" in updates:
+            layer.content_hash = layer.compute_content_hash()
+
+        layer.bump_version()
+        self.tx_manager.write(self.tx, layer)
+        return layer
+
+    def list_claudemd_layers(
+        self,
+        layer_type: Optional[str] = None,
+        freshness_status: Optional[str] = None,
+        inclusion_rule: Optional[str] = None
+    ) -> List[ClaudeMdLayer]:
+        """
+        List CLAUDE.md layers within transaction.
+
+        Args:
+            layer_type: Filter by layer type
+            freshness_status: Filter by freshness status
+            inclusion_rule: Filter by inclusion rule
+
+        Returns:
+            List of matching ClaudeMdLayer objects
+        """
+        entities_dir = self.tx_manager.got_dir / "entities"
+        layers = []
+
+        # Glob for layer files (CML prefix)
+        for layer_file in entities_dir.glob("CML*.json"):
+            try:
+                with open(layer_file, 'r') as f:
+                    data = json.load(f)
+
+                entity_data = data.get("data", data)
+                if entity_data.get("entity_type") != "claudemd_layer":
+                    continue
+
+                layer = ClaudeMdLayer.from_dict(entity_data)
+
+                # Apply filters
+                if layer_type and layer.layer_type != layer_type:
+                    continue
+                if freshness_status and layer.freshness_status != freshness_status:
+                    continue
+                if inclusion_rule and layer.inclusion_rule != inclusion_rule:
+                    continue
+
+                layers.append(layer)
+
+            except (json.JSONDecodeError, KeyError, CorruptionError) as e:
+                logger.warning(f"Skipping corrupted layer file {layer_file}: {e}")
+                continue
+
+        return layers
+
+    def delete_claudemd_layer(self, layer_id: str) -> bool:
+        """
+        Delete CLAUDE.md layer within transaction.
+
+        Args:
+            layer_id: Layer identifier
+
+        Returns:
+            True if deleted, False if not found
+        """
+        layer = self.get_claudemd_layer(layer_id)
+        if layer is None:
+            return False
+
+        # Delete the layer entity file
+        entities_dir = self.tx_manager.got_dir / "entities"
+        layer_file = entities_dir / f"{layer_id}.json"
+        if layer_file.exists():
+            layer_file.unlink()
+            return True
+        return False
 
     def read(self, entity_id: str) -> Optional[Entity]:
         """
