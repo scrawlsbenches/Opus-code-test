@@ -1,0 +1,19 @@
+{
+  "_checksum": "4c8b83bb81483d26",
+  "_written_at": "2025-12-22T23:32:08.442902+00:00",
+  "data": {
+    "created_at": "2025-12-22T23:32:08.436480+00:00",
+    "description": "Explore training SparkCodeIntelligence on git history to learn code evolution patterns. Potential approaches:\n1. Train on commit diffs to learn change patterns (what changes together)\n2. Use commit messages + changed files to predict future changes\n3. Learn refactoring patterns from historical code transformations\n4. Integrate with ML file prediction for temporal awareness\n5. Build a 'code evolution' model that understands how codebase grows\n\nKey questions:\n- How to tokenize diffs intelligently (additions/deletions/context)?\n- Should we weight recent commits more heavily?\n- Can we learn from commit message \u2192 file mapping?\n- Integration with existing call graph for impact prediction?",
+    "entity_type": "task",
+    "id": "T-20251222-233208-fcaea6f5",
+    "metadata": {},
+    "modified_at": "2025-12-22T23:32:08.442842+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Investigate training SparkSLM on full git history",
+    "version": 2
+  }
+}
