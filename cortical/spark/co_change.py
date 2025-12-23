@@ -125,6 +125,7 @@ class CoChangeModel:
         self._file_index: Dict[str, Set[str]] = {}
         self._commits: Dict[str, Commit] = {}
         self._decay_lambda = decay_lambda
+        self._dirty = False  # Track if normalization needed
 
     def add_commit(
         self,
@@ -159,23 +160,37 @@ class CoChangeModel:
                 key_a, key_b = (file_b, file_a) if file_a > file_b else (file_a, file_b)
                 self._update_edge(key_a, key_b, sha, timestamp)
 
-        # Recompute confidences after updates
-        self._normalize_confidence()
+        # Mark as needing normalization (deferred to prediction time)
+        self._dirty = True
 
     def add_commits_batch(self, commits: List[Commit]) -> None:
         """
-        Add multiple commits in batch.
+        Add multiple commits in batch (optimized - normalizes once at end).
 
         Args:
             commits: List of Commit objects to add
         """
         for commit in commits:
-            self.add_commit(
-                commit.sha,
-                commit.files,
-                commit.timestamp,
-                commit.message
-            )
+            # Inline the add logic without triggering normalize each time
+            if commit.sha in self._commits:
+                continue
+
+            self._commits[commit.sha] = commit
+
+            for i, file_a in enumerate(commit.files):
+                for file_b in commit.files[i+1:]:
+                    key_a, key_b = (file_b, file_a) if file_a > file_b else (file_a, file_b)
+                    self._update_edge(key_a, key_b, commit.sha, commit.timestamp)
+
+        # Mark dirty once at the end
+        if commits:
+            self._dirty = True
+
+    def _ensure_normalized(self) -> None:
+        """Normalize confidence scores if needed (lazy evaluation)."""
+        if self._dirty:
+            self._normalize_confidence()
+            self._dirty = False
 
     def predict(
         self,
@@ -194,6 +209,9 @@ class CoChangeModel:
         """
         if not seed_files:
             return []
+
+        # Ensure scores are normalized before prediction
+        self._ensure_normalized()
 
         # Aggregate scores from all seed files
         candidates: Dict[str, float] = {}
@@ -231,6 +249,9 @@ class CoChangeModel:
         Returns:
             Confidence score (0-1), or 0.0 if no relationship
         """
+        # Ensure scores are normalized
+        self._ensure_normalized()
+
         # Ensure consistent ordering
         if file_a > file_b:
             file_a, file_b = file_b, file_a
@@ -248,6 +269,9 @@ class CoChangeModel:
         Returns:
             List of CoChangeEdge objects
         """
+        # Ensure scores are normalized
+        self._ensure_normalized()
+
         edges = []
         related = self._file_index.get(file, set())
 
@@ -283,9 +307,9 @@ class CoChangeModel:
             if edge.target_file in self._file_index:
                 self._file_index[edge.target_file].discard(edge.source_file)
 
-        # Recompute confidences after pruning
+        # Mark as needing re-normalization after pruning
         if to_remove:
-            self._normalize_confidence()
+            self._dirty = True
 
         return len(to_remove)
 
@@ -338,6 +362,9 @@ class CoChangeModel:
         # Restore commits
         for sha, commit_data in data['commits'].items():
             model._commits[sha] = Commit.from_dict(commit_data)
+
+        # Loaded data is already normalized
+        model._dirty = False
 
         return model
 
