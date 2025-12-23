@@ -153,3 +153,4 @@ corpus_dev/
 .got-backup-*/
 .got-tx/
 .got/.got.lock
+.spark_intelligence_model.json

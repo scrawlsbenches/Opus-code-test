@@ -12,6 +12,9 @@ Components:
 - AlignmentIndex: User definitions, patterns, and preferences
 - SparkPredictor: Unified facade for first-blitz predictions
 - AnomalyDetector: Statistical and pattern-based anomaly detection
+- CodeTokenizer: Code-aware tokenizer preserving punctuation and operators
+- ASTIndex: AST-based code indexing for structural analysis
+- SparkCodeIntelligence: Hybrid AST + N-gram code intelligence engine
 
 Usage:
     from cortical.spark import SparkPredictor
@@ -28,6 +31,12 @@ Usage:
     completions = spark.complete("neural net")
     # Returns: [("network", 0.7), ("networks", 0.2), ...]
 
+    # Code intelligence
+    from cortical.spark import SparkCodeIntelligence
+    engine = SparkCodeIntelligence()
+    engine.train()
+    completions = engine.complete("self.", top_n=10)
+
 Philosophy:
     SparkSLM is NOT a neural language model. It's statistical pattern
     matching that provides useful "sparks" to guide deeper analysis.
@@ -38,6 +47,9 @@ from .ngram import NGramModel
 from .alignment import AlignmentIndex
 from .predictor import SparkPredictor
 from .anomaly import AnomalyDetector, AnomalyResult
+from .tokenizer import CodeTokenizer
+from .ast_index import ASTIndex, FunctionInfo, ClassInfo, ImportInfo
+from .intelligence import SparkCodeIntelligence
 from .suggester import (
     SampleSuggester,
     DefinitionSuggestion,
@@ -75,6 +87,13 @@ __all__ = [
     # Anomaly Detection
     'AnomalyDetector',
     'AnomalyResult',
+    # Code Intelligence
+    'CodeTokenizer',
+    'ASTIndex',
+    'FunctionInfo',
+    'ClassInfo',
+    'ImportInfo',
+    'SparkCodeIntelligence',
     # Sample Suggestion
     'SampleSuggester',
     'DefinitionSuggestion',

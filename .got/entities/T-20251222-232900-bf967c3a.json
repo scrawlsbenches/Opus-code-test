@@ -1,0 +1,19 @@
+{
+  "_checksum": "1f319beb5f6a8658",
+  "_written_at": "2025-12-22T23:29:12.701101+00:00",
+  "data": {
+    "created_at": "2025-12-22T23:29:00.782089+00:00",
+    "description": "Split spark_code_intelligence.py into cortical/spark/ modules (tokenizer, ast_index, intelligence) with comprehensive unit/integration/performance tests (118 tests)",
+    "entity_type": "task",
+    "id": "T-20251222-232900-bf967c3a",
+    "metadata": {},
+    "modified_at": "2025-12-22T23:29:12.701040+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "SparkCodeIntelligence modular refactor with tests",
+    "version": 4
+  }
+}
