@@ -5331,7 +5331,9 @@ def cmd_handoff_initiate(args, manager: GoTProjectManager) -> int:
         print(f"Task not found: {args.task_id}")
         return 1
 
-    handoff_mgr = HandoffManager(manager.event_log)
+    # Create EventLog from events_dir (works with both legacy and transactional adapters)
+    event_log = EventLog(manager.events_dir)
+    handoff_mgr = HandoffManager(event_log)
     handoff_id = handoff_mgr.initiate_handoff(
         source_agent=args.source,
         target_agent=args.target,
@@ -5354,7 +5356,8 @@ def cmd_handoff_initiate(args, manager: GoTProjectManager) -> int:
 
 def cmd_handoff_accept(args, manager: GoTProjectManager) -> int:
     """Accept a handoff."""
-    handoff_mgr = HandoffManager(manager.event_log)
+    event_log = EventLog(manager.events_dir)
+    handoff_mgr = HandoffManager(event_log)
     handoff_mgr.accept_handoff(
         handoff_id=args.handoff_id,
         agent=args.agent,
@@ -5373,7 +5376,8 @@ def cmd_handoff_complete(args, manager: GoTProjectManager) -> int:
     except json.JSONDecodeError:
         result = {"message": args.result}
 
-    handoff_mgr = HandoffManager(manager.event_log)
+    event_log = EventLog(manager.events_dir)
+    handoff_mgr = HandoffManager(event_log)
     handoff_mgr.complete_handoff(
         handoff_id=args.handoff_id,
         agent=args.agent,

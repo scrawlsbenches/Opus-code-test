@@ -102,6 +102,27 @@ python /home/user/Opus-code-test/scripts/ml_data_collector.py stats
 
 ---
 
+## DIFF CAPTURE (for WRITE mode tasks)
+
+**Before completing a WRITE task**, capture changes for recovery:
+
+```bash
+# If you have a task ID, capture diff for recovery
+python /home/user/Opus-code-test/scripts/task_diff.py capture TASK_ID -m "Description of changes"
+
+# Example:
+python /home/user/Opus-code-test/scripts/task_diff.py capture T-20251222-193227 -m "Added validation logic"
+```
+
+This saves the diff to `.got/diffs/TASK_ID.patch` so changes can be recovered if they don't persist.
+
+**If your changes didn't persist**, the main agent can restore them:
+```bash
+python /home/user/Opus-code-test/scripts/task_diff.py restore TASK_ID
+```
+
+---
+
 ## UNIVERSAL RULES
 
 1. **Absolute paths only** - Always use `/home/user/Opus-code-test/...`
