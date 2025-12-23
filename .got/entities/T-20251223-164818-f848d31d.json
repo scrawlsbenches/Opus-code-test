@@ -1,19 +1,22 @@
 {
-  "_checksum": "4728ddfb80f2cd0a",
-  "_written_at": "2025-12-23T16:48:18.987009+00:00",
+  "_checksum": "de2fdaaa013bd3dc",
+  "_written_at": "2025-12-23T16:48:39.401058+00:00",
   "data": {
     "created_at": "2025-12-23T16:48:18.981739+00:00",
     "description": "Integrate Layer 4 (Ephemeral) generation with GoT state: sprint status, handoffs, decision checkpoints. This enables dynamic session context generation for continuation protocol.",
     "entity_type": "task",
     "id": "T-20251223-164818-f848d31d",
-    "metadata": {},
-    "modified_at": "2025-12-23T16:48:18.986930+00:00",
+    "metadata": {
+      "started_at": "2025-12-23T16:48:39.393618+00:00",
+      "updated_at": "2025-12-23T16:48:39.393625+00:00"
+    },
+    "modified_at": "2025-12-23T16:48:39.401006+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "Update claudemd_generation_demo.py for GoT-based continuation",
-    "version": 2
+    "version": 4
   }
 }
