@@ -1,0 +1,26 @@
+{
+  "_checksum": "67b1b775aa5eab55",
+  "_written_at": "2025-12-23T20:26:04.316277+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "bcc4dccc1210dc97",
+    "created_at": "2025-12-23T20:26:04.250194+00:00",
+    "doc_type": "knowledge-transfer",
+    "entity_type": "document",
+    "id": "DOC-docs-director-continuation-prompt-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:04.309081+00:00",
+    "line_count": 142,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:04.316231+00:00",
+    "path": "docs/director-continuation-prompt.md",
+    "properties": {},
+    "tags": [],
+    "title": "Director Agent Continuation Prompt",
+    "version": 4,
+    "word_count": 671
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "_checksum": "b5a4c2fa40df4374",
+  "_written_at": "2025-12-23T20:26:17.689927+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "db539ee6013c76b7",
+    "created_at": "2025-12-23T20:26:17.608628+00:00",
+    "doc_type": "general",
+    "entity_type": "document",
+    "id": "DOC-docs-self-healing-codebase-patterns-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-23T20:18:33.733157+00:00",
+    "last_verified": "2025-12-23T20:26:17.683605+00:00",
+    "line_count": 717,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:17.689894+00:00",
+    "path": "docs/self-healing-codebase-patterns.md",
+    "properties": {},
+    "tags": [],
+    "title": "Self-Healing Patterns: What's Implemented in Cortical",
+    "version": 4,
+    "word_count": 2304
+  }
+}

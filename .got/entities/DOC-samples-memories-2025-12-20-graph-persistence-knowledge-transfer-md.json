@@ -1,0 +1,32 @@
+{
+  "_checksum": "0162431df00ade75",
+  "_written_at": "2025-12-23T20:26:24.922378+00:00",
+  "data": {
+    "category": "samples/memories",
+    "content_hash": "51e607ad02b4a16f",
+    "created_at": "2025-12-23T20:26:24.819724+00:00",
+    "doc_type": "memory",
+    "entity_type": "document",
+    "id": "DOC-samples-memories-2025-12-20-graph-persistence-knowledge-transfer-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:24.914524+00:00",
+    "line_count": 208,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:24.922334+00:00",
+    "path": "samples/memories/2025-12-20-graph-persistence-knowledge-transfer.md",
+    "properties": {},
+    "tags": [
+      "graph-persistence",
+      "wal",
+      "recovery",
+      "git-integration",
+      "architecture"
+    ],
+    "title": "Knowledge Transfer: Graph Persistence Layer",
+    "version": 4,
+    "word_count": 793
+  }
+}

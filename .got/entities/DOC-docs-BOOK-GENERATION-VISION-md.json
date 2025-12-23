@@ -1,0 +1,26 @@
+{
+  "_checksum": "68a7754dc4cf1730",
+  "_written_at": "2025-12-23T20:26:07.509157+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "1aeeec4083729e80",
+    "created_at": "2025-12-23T20:26:07.434939+00:00",
+    "doc_type": "general",
+    "entity_type": "document",
+    "id": "DOC-docs-BOOK-GENERATION-VISION-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:07.502687+00:00",
+    "line_count": 743,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:07.509124+00:00",
+    "path": "docs/BOOK-GENERATION-VISION.md",
+    "properties": {},
+    "tags": [],
+    "title": "The Living Book: Vision for Intelligent Documentation",
+    "version": 4,
+    "word_count": 2627
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "_checksum": "4c97c1fe81033572",
+  "_written_at": "2025-12-23T20:26:06.817260+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "6b29a25544e84f9e",
+    "created_at": "2025-12-23T20:26:06.696712+00:00",
+    "doc_type": "guide",
+    "entity_type": "document",
+    "id": "DOC-docs-PATTERN-DETECTION-GUIDE-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:06.810890+00:00",
+    "line_count": 329,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:06.817212+00:00",
+    "path": "docs/PATTERN_DETECTION_GUIDE.md",
+    "properties": {},
+    "tags": [],
+    "title": "Code Pattern Detection Guide",
+    "version": 4,
+    "word_count": 975
+  }
+}

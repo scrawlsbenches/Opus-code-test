@@ -1,0 +1,26 @@
+{
+  "_checksum": "b88db46c29928873",
+  "_written_at": "2025-12-23T20:26:19.205005+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "728edd17ace2b64f",
+    "created_at": "2025-12-23T20:26:19.106771+00:00",
+    "doc_type": "general",
+    "entity_type": "document",
+    "id": "DOC-docs-README-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:19.197954+00:00",
+    "line_count": 135,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:19.204967+00:00",
+    "path": "docs/README.md",
+    "properties": {},
+    "tags": [],
+    "title": "Documentation Index",
+    "version": 4,
+    "word_count": 613
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "_checksum": "cebfb21b85f7668b",
+  "_written_at": "2025-12-23T20:26:25.306355+00:00",
+  "data": {
+    "category": "samples/memories",
+    "content_hash": "50373c7812d028e6",
+    "created_at": "2025-12-23T20:26:25.199300+00:00",
+    "doc_type": "architecture",
+    "entity_type": "document",
+    "id": "DOC-samples-memories-2025-12-23-handoff-got-database-sprint18-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-23T20:18:33.737157+00:00",
+    "last_verified": "2025-12-23T20:26:25.299524+00:00",
+    "line_count": 172,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:25.306314+00:00",
+    "path": "samples/memories/2025-12-23-handoff-got-database-sprint18.md",
+    "properties": {},
+    "tags": [],
+    "title": "Session Handoff: GoT Database Architecture",
+    "version": 4,
+    "word_count": 679
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "_checksum": "8b27b4e3503284ab",
+  "_written_at": "2025-12-23T20:26:08.741479+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "b35d8f747490f573",
+    "created_at": "2025-12-23T20:26:08.666694+00:00",
+    "doc_type": "general",
+    "entity_type": "document",
+    "id": "DOC-docs-definition-of-done-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:08.734648+00:00",
+    "line_count": 305,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:08.741438+00:00",
+    "path": "docs/definition-of-done.md",
+    "properties": {},
+    "tags": [],
+    "title": "Definition of Done",
+    "version": 4,
+    "word_count": 1430
+  }
+}

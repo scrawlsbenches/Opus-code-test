@@ -1,0 +1,26 @@
+{
+  "_checksum": "ba018441a713b629",
+  "_written_at": "2025-12-23T20:26:16.374422+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "0fc7eb34ecc84510",
+    "created_at": "2025-12-23T20:26:16.280389+00:00",
+    "doc_type": "guide",
+    "entity_type": "document",
+    "id": "DOC-docs-patterns-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:16.367272+00:00",
+    "line_count": 457,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:16.374384+00:00",
+    "path": "docs/patterns.md",
+    "properties": {},
+    "tags": [],
+    "title": "Usage Patterns Guide",
+    "version": 4,
+    "word_count": 1390
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "_checksum": "8ae71b4f9c84eb44",
+  "_written_at": "2025-12-23T20:26:11.763327+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "29af48e25de3e103",
+    "created_at": "2025-12-23T20:26:11.680765+00:00",
+    "doc_type": "api",
+    "entity_type": "document",
+    "id": "DOC-docs-fluent-api-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:11.756328+00:00",
+    "line_count": 1048,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:11.763269+00:00",
+    "path": "docs/fluent-api.md",
+    "properties": {},
+    "tags": [],
+    "title": "FluentProcessor API Reference",
+    "version": 4,
+    "word_count": 2816
+  }
+}

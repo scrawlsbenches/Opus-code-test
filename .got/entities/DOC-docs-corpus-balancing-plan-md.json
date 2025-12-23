@@ -1,0 +1,26 @@
+{
+  "_checksum": "aa43465bad6dafdb",
+  "_written_at": "2025-12-23T20:26:09.617448+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "42a9e8501178583c",
+    "created_at": "2025-12-23T20:26:09.543721+00:00",
+    "doc_type": "general",
+    "entity_type": "document",
+    "id": "DOC-docs-corpus-balancing-plan-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:09.610534+00:00",
+    "line_count": 516,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:09.617410+00:00",
+    "path": "docs/corpus-balancing-plan.md",
+    "properties": {},
+    "tags": [],
+    "title": "Corpus Balancing Plan: Building a Mixture of Experts Training Corpus",
+    "version": 4,
+    "word_count": 2732
+  }
+}

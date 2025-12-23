@@ -1,0 +1,26 @@
+{
+  "_checksum": "943c225a54b67cb0",
+  "_written_at": "2025-12-23T20:26:04.817251+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "3fc0b8121664197f",
+    "created_at": "2025-12-23T20:26:04.748678+00:00",
+    "doc_type": "general",
+    "entity_type": "document",
+    "id": "DOC-docs-got-project-management-schema-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:04.810536+00:00",
+    "line_count": 1254,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:04.817217+00:00",
+    "path": "docs/got-project-management-schema.md",
+    "properties": {},
+    "tags": [],
+    "title": "Graph of Thought: Project Management Schema",
+    "version": 4,
+    "word_count": 3393
+  }
+}

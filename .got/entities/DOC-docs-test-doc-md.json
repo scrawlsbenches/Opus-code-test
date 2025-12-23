@@ -1,0 +1,28 @@
+{
+  "_checksum": "f429c74079e42a6f",
+  "_written_at": "2025-12-23T20:23:47.515984+00:00",
+  "data": {
+    "category": "",
+    "content_hash": "",
+    "created_at": "2025-12-23T20:23:47.509201+00:00",
+    "doc_type": "general",
+    "entity_type": "document",
+    "id": "DOC-docs-test-doc-md",
+    "is_stale": false,
+    "last_file_modified": "",
+    "last_verified": "",
+    "line_count": 0,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:23:47.515904+00:00",
+    "path": "docs/test-doc.md",
+    "properties": {},
+    "tags": [
+      "test"
+    ],
+    "title": "Test Document",
+    "version": 2,
+    "word_count": 0
+  }
+}

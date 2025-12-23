@@ -1,0 +1,33 @@
+{
+  "_checksum": "b13dd90f28d61164",
+  "_written_at": "2025-12-23T20:26:29.649197+00:00",
+  "data": {
+    "category": "samples/memories",
+    "content_hash": "a88bda4cfb656acc",
+    "created_at": "2025-12-23T20:26:29.545541+00:00",
+    "doc_type": "memory",
+    "entity_type": "document",
+    "id": "DOC-samples-memories-2025-12-22-session-knowledge-transfer-sparksml-benchmarks-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-23T20:18:33.736157+00:00",
+    "last_verified": "2025-12-23T20:26:29.643041+00:00",
+    "line_count": 160,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:29.649162+00:00",
+    "path": "samples/memories/2025-12-22-session-knowledge-transfer-sparksml-benchmarks.md",
+    "properties": {},
+    "tags": [
+      "sparksml",
+      "benchmarks",
+      "performance",
+      "demo",
+      "ngram",
+      "anomaly-detection"
+    ],
+    "title": "Knowledge Transfer: SparkSLM Benchmarks and Demo",
+    "version": 4,
+    "word_count": 617
+  }
+}

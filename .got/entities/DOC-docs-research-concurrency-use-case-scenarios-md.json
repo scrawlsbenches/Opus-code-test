@@ -1,0 +1,28 @@
+{
+  "_checksum": "8514d0944500d0ec",
+  "_written_at": "2025-12-23T20:26:21.801032+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "7eaf09d0ad9ad30e",
+    "created_at": "2025-12-23T20:26:21.701154+00:00",
+    "doc_type": "research",
+    "entity_type": "document",
+    "id": "DOC-docs-research-concurrency-use-case-scenarios-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-23T20:18:33.729157+00:00",
+    "last_verified": "2025-12-23T20:26:21.793242+00:00",
+    "line_count": 1185,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:21.800992+00:00",
+    "path": "docs/research/concurrency-use-case-scenarios.md",
+    "properties": {},
+    "tags": [
+      "[]]"
+    ],
+    "title": "Multi-Agent Concurrency: Use Case Scenarios",
+    "version": 4,
+    "word_count": 3604
+  }
+}

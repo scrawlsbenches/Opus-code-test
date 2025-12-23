@@ -1,0 +1,26 @@
+{
+  "_checksum": "8b77f7c008dcc7dd",
+  "_written_at": "2025-12-23T20:26:13.017856+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "bdce9e491a44253c",
+    "created_at": "2025-12-23T20:26:12.933712+00:00",
+    "doc_type": "guide",
+    "entity_type": "document",
+    "id": "DOC-docs-test-feedback-integration-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:13.010796+00:00",
+    "line_count": 269,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:13.017821+00:00",
+    "path": "docs/test-feedback-integration.md",
+    "properties": {},
+    "tags": [],
+    "title": "Test Feedback Integration Guide",
+    "version": 4,
+    "word_count": 910
+  }
+}

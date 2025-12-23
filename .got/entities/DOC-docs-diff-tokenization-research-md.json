@@ -1,0 +1,28 @@
+{
+  "_checksum": "647dcbd43fb30f7d",
+  "_written_at": "2025-12-23T20:26:17.214102+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "743f76833b9e735e",
+    "created_at": "2025-12-23T20:26:17.127782+00:00",
+    "doc_type": "research",
+    "entity_type": "document",
+    "id": "DOC-docs-diff-tokenization-research-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-23T20:18:33.725157+00:00",
+    "last_verified": "2025-12-23T20:26:17.207182+00:00",
+    "line_count": 847,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:17.214066+00:00",
+    "path": "docs/diff-tokenization-research.md",
+    "properties": {},
+    "tags": [
+      "bool = True"
+    ],
+    "title": "Diff Tokenization Research for Language Model Training",
+    "version": 4,
+    "word_count": 3275
+  }
+}

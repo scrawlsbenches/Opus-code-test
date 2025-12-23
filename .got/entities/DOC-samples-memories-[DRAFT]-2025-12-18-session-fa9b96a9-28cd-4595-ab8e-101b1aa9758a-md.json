@@ -1,0 +1,36 @@
+{
+  "_checksum": "8549cd3abf1beece",
+  "_written_at": "2025-12-23T20:26:27.775814+00:00",
+  "data": {
+    "category": "samples/memories",
+    "content_hash": "caf182acb8cd96e6",
+    "created_at": "2025-12-23T20:26:27.663986+00:00",
+    "doc_type": "memory",
+    "entity_type": "document",
+    "id": "DOC-samples-memories-[DRAFT]-2025-12-18-session-fa9b96a9-28cd-4595-ab8e-101b1aa9758a-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:27.767890+00:00",
+    "line_count": 75,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:27.775774+00:00",
+    "path": "samples/memories/[DRAFT]-2025-12-18-session-fa9b96a9-28cd-4595-ab8e-101b1aa9758a.md",
+    "properties": {},
+    "tags": [
+      "bugfix",
+      "config",
+      "docs",
+      "documentation",
+      "feature",
+      "python",
+      "scripts",
+      "session",
+      "testing"
+    ],
+    "title": "Memory Entry: 2025-12-18 Session - session fix(tests): test",
+    "version": 4,
+    "word_count": 215
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "_checksum": "a93c67ae5283b436",
+  "_written_at": "2025-12-23T20:26:12.861184+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "8e894a8f1ee8f719",
+    "created_at": "2025-12-23T20:26:12.775531+00:00",
+    "doc_type": "general",
+    "entity_type": "document",
+    "id": "DOC-docs-tiered-locking-patterns-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-23T20:18:33.734157+00:00",
+    "last_verified": "2025-12-23T20:26:12.853817+00:00",
+    "line_count": 1325,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:12.861148+00:00",
+    "path": "docs/tiered-locking-patterns.md",
+    "properties": {},
+    "tags": [],
+    "title": "Tiered Locking & Transaction Patterns",
+    "version": 4,
+    "word_count": 5102
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "_checksum": "322f4fd8abc51b09",
+  "_written_at": "2025-12-23T20:26:30.435665+00:00",
+  "data": {
+    "category": "samples/memories",
+    "content_hash": "b6c96ede115d0575",
+    "created_at": "2025-12-23T20:26:30.333076+00:00",
+    "doc_type": "memory",
+    "entity_type": "document",
+    "id": "DOC-samples-memories-2025-12-22-session-knowledge-transfer-got-migration-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:30.428701+00:00",
+    "line_count": 141,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:30.435624+00:00",
+    "path": "samples/memories/2025-12-22-session-knowledge-transfer-got-migration.md",
+    "properties": {},
+    "tags": [
+      "got",
+      "migration",
+      "tx-backend",
+      "decisions",
+      "velocity-metrics",
+      "edge-types"
+    ],
+    "title": "Knowledge Transfer: GoT TX Backend Migration Completion",
+    "version": 4,
+    "word_count": 566
+  }
+}

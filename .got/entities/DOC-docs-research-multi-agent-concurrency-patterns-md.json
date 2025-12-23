@@ -1,0 +1,26 @@
+{
+  "_checksum": "65a608ca1a596e63",
+  "_written_at": "2025-12-23T20:26:22.989672+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "902d0b81c9a09e5d",
+    "created_at": "2025-12-23T20:26:22.894114+00:00",
+    "doc_type": "architecture",
+    "entity_type": "document",
+    "id": "DOC-docs-research-multi-agent-concurrency-patterns-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-23T20:18:33.730157+00:00",
+    "last_verified": "2025-12-23T20:26:22.981919+00:00",
+    "line_count": 1964,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:22.989638+00:00",
+    "path": "docs/research/multi-agent-concurrency-patterns.md",
+    "properties": {},
+    "tags": [],
+    "title": "Multi-Agent Concurrency Patterns for File-Based Systems",
+    "version": 4,
+    "word_count": 6474
+  }
+}

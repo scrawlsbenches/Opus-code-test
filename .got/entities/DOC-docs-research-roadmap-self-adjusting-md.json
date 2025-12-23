@@ -1,0 +1,26 @@
+{
+  "_checksum": "90e1d73220570606",
+  "_written_at": "2025-12-23T20:26:23.171473+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "dd99dfb8813dd2ae",
+    "created_at": "2025-12-23T20:26:23.074540+00:00",
+    "doc_type": "research",
+    "entity_type": "document",
+    "id": "DOC-docs-research-roadmap-self-adjusting-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:23.164421+00:00",
+    "line_count": 447,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:23.171437+00:00",
+    "path": "docs/research/roadmap-self-adjusting.md",
+    "properties": {},
+    "tags": [],
+    "title": "SparkSLM Research Roadmap: Self-Adjusting Plan",
+    "version": 4,
+    "word_count": 1867
+  }
+}

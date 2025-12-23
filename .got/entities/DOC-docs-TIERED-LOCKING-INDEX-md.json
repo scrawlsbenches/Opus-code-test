@@ -1,0 +1,26 @@
+{
+  "_checksum": "b100922018c7c03e",
+  "_written_at": "2025-12-23T20:26:07.653177+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "8a4783e7dfc0db1f",
+    "created_at": "2025-12-23T20:26:07.578567+00:00",
+    "doc_type": "research",
+    "entity_type": "document",
+    "id": "DOC-docs-TIERED-LOCKING-INDEX-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-23T20:18:33.719157+00:00",
+    "last_verified": "2025-12-23T20:26:07.645957+00:00",
+    "line_count": 337,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:07.653133+00:00",
+    "path": "docs/TIERED_LOCKING_INDEX.md",
+    "properties": {},
+    "tags": [],
+    "title": "Tiered Locking & Transaction Patterns: Complete Research Package",
+    "version": 4,
+    "word_count": 1467
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "_checksum": "6e79c107ca91d9bb",
+  "_written_at": "2025-12-23T20:26:26.528450+00:00",
+  "data": {
+    "category": "samples/memories",
+    "content_hash": "e75fdb1f33fbe802",
+    "created_at": "2025-12-23T20:26:26.418726+00:00",
+    "doc_type": "memory",
+    "entity_type": "document",
+    "id": "DOC-samples-memories-[DRAFT]-2025-12-18-session-757dddd4-d7ed-41d2-9228-8eb24f24f46b-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:26.521301+00:00",
+    "line_count": 82,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:26.528413+00:00",
+    "path": "samples/memories/[DRAFT]-2025-12-18-session-757dddd4-d7ed-41d2-9228-8eb24f24f46b.md",
+    "properties": {},
+    "tags": [
+      "bugfix",
+      "config",
+      "docs",
+      "documentation",
+      "feature",
+      "python",
+      "scripts",
+      "session",
+      "testing"
+    ],
+    "title": "Memory Entry: 2025-12-18 Session - implement feat(moe): tracking",
+    "version": 4,
+    "word_count": 238
+  }
+}

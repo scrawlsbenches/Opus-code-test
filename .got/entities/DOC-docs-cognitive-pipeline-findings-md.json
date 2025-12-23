@@ -1,0 +1,26 @@
+{
+  "_checksum": "afb2b6d1666f05ef",
+  "_written_at": "2025-12-23T20:26:03.168163+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "2433f44dc76b47ad",
+    "created_at": "2025-12-23T20:26:03.094073+00:00",
+    "doc_type": "research",
+    "entity_type": "document",
+    "id": "DOC-docs-cognitive-pipeline-findings-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:03.161538+00:00",
+    "line_count": 126,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:03.168126+00:00",
+    "path": "docs/cognitive-pipeline-findings.md",
+    "properties": {},
+    "tags": [],
+    "title": "Cognitive Pipeline Analysis: Key Findings",
+    "version": 4,
+    "word_count": 594
+  }
+}

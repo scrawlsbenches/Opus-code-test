@@ -1,0 +1,36 @@
+{
+  "_checksum": "36f43ae87186799c",
+  "_written_at": "2025-12-23T20:26:27.567632+00:00",
+  "data": {
+    "category": "samples/memories",
+    "content_hash": "f1a1e9f66051eede",
+    "created_at": "2025-12-23T20:26:27.455500+00:00",
+    "doc_type": "memory",
+    "entity_type": "document",
+    "id": "DOC-samples-memories-[DRAFT]-2025-12-18-session-879fbdbb-193a-406a-8c89-c59eb33aefc8-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:27.559612+00:00",
+    "line_count": 68,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:27.567565+00:00",
+    "path": "samples/memories/[DRAFT]-2025-12-18-session-879fbdbb-193a-406a-8c89-c59eb33aefc8.md",
+    "properties": {},
+    "tags": [
+      "bugfix",
+      "config",
+      "docs",
+      "documentation",
+      "feature",
+      "python",
+      "scripts",
+      "session",
+      "testing"
+    ],
+    "title": "Memory Entry: 2025-12-18 Session - implement feat(moe): expert",
+    "version": 4,
+    "word_count": 199
+  }
+}

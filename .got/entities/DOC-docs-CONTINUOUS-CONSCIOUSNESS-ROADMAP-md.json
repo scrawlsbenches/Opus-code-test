@@ -1,0 +1,26 @@
+{
+  "_checksum": "0e326bac32023825",
+  "_written_at": "2025-12-23T20:26:18.254958+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "41ca02942c1e4dbf",
+    "created_at": "2025-12-23T20:26:18.147601+00:00",
+    "doc_type": "general",
+    "entity_type": "document",
+    "id": "DOC-docs-CONTINUOUS-CONSCIOUSNESS-ROADMAP-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:18.247551+00:00",
+    "line_count": 486,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:18.254921+00:00",
+    "path": "docs/CONTINUOUS-CONSCIOUSNESS-ROADMAP.md",
+    "properties": {},
+    "tags": [],
+    "title": "Continuous Development Consciousness Roadmap",
+    "version": 4,
+    "word_count": 2198
+  }
+}

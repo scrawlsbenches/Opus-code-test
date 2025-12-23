@@ -1,0 +1,26 @@
+{
+  "_checksum": "623caba2f58eb60f",
+  "_written_at": "2025-12-23T20:26:17.370052+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "93f8aed47757ed65",
+    "created_at": "2025-12-23T20:26:17.286763+00:00",
+    "doc_type": "general",
+    "entity_type": "document",
+    "id": "DOC-docs-got-process-safety-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:17.363355+00:00",
+    "line_count": 179,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:17.370010+00:00",
+    "path": "docs/got-process-safety.md",
+    "properties": {},
+    "tags": [],
+    "title": "GoT (Graph of Thought) Process Safety",
+    "version": 4,
+    "word_count": 770
+  }
+}

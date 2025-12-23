@@ -1,0 +1,26 @@
+{
+  "_checksum": "d0ac9df9641dde6f",
+  "_written_at": "2025-12-23T20:26:10.639371+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "2312866ebc8a1b1c",
+    "created_at": "2025-12-23T20:26:10.557912+00:00",
+    "doc_type": "research",
+    "entity_type": "document",
+    "id": "DOC-docs-FORENSIC-ANALYSIS-REPORT-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:10.632045+00:00",
+    "line_count": 377,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:10.639333+00:00",
+    "path": "docs/FORENSIC_ANALYSIS_REPORT.md",
+    "properties": {},
+    "tags": [],
+    "title": "Forensic Analysis Report: GoT and Reasoning Code Duplications",
+    "version": 4,
+    "word_count": 1618
+  }
+}

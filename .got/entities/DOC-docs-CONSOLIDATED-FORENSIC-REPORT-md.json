@@ -1,0 +1,26 @@
+{
+  "_checksum": "193883deaf5202c9",
+  "_written_at": "2025-12-23T20:26:05.246898+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "f935c2980896b62f",
+    "created_at": "2025-12-23T20:26:05.146244+00:00",
+    "doc_type": "research",
+    "entity_type": "document",
+    "id": "DOC-docs-CONSOLIDATED-FORENSIC-REPORT-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:05.239371+00:00",
+    "line_count": 252,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:05.246857+00:00",
+    "path": "docs/CONSOLIDATED_FORENSIC_REPORT.md",
+    "properties": {},
+    "tags": [],
+    "title": "Consolidated Forensic Analysis Report",
+    "version": 4,
+    "word_count": 1087
+  }
+}

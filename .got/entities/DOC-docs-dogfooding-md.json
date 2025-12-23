@@ -1,0 +1,26 @@
+{
+  "_checksum": "dd88e5d1f2b5b862",
+  "_written_at": "2025-12-23T20:26:07.084317+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "4efb5cbcd9954e44",
+    "created_at": "2025-12-23T20:26:07.011433+00:00",
+    "doc_type": "guide",
+    "entity_type": "document",
+    "id": "DOC-docs-dogfooding-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:07.077030+00:00",
+    "line_count": 603,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:07.084271+00:00",
+    "path": "docs/dogfooding.md",
+    "properties": {},
+    "tags": [],
+    "title": "Dog-Fooding Guide",
+    "version": 4,
+    "word_count": 2037
+  }
+}

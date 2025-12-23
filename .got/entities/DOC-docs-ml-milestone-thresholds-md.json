@@ -1,0 +1,26 @@
+{
+  "_checksum": "594b0322d67141ed",
+  "_written_at": "2025-12-23T20:26:12.553872+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "ef392530ba45624c",
+    "created_at": "2025-12-23T20:26:12.473112+00:00",
+    "doc_type": "general",
+    "entity_type": "document",
+    "id": "DOC-docs-ml-milestone-thresholds-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:12.546872+00:00",
+    "line_count": 403,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:12.553829+00:00",
+    "path": "docs/ml-milestone-thresholds.md",
+    "properties": {},
+    "tags": [],
+    "title": "ML Milestone Thresholds",
+    "version": 4,
+    "word_count": 1677
+  }
+}

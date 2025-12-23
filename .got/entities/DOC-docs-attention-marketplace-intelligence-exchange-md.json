@@ -1,0 +1,26 @@
+{
+  "_checksum": "87f93e6de99e2094",
+  "_written_at": "2025-12-23T20:26:01.185701+00:00",
+  "data": {
+    "category": "docs",
+    "content_hash": "765b468bf1ee7532",
+    "created_at": "2025-12-23T20:26:01.121912+00:00",
+    "doc_type": "general",
+    "entity_type": "document",
+    "id": "DOC-docs-attention-marketplace-intelligence-exchange-md",
+    "is_stale": false,
+    "last_file_modified": "2025-12-22T21:12:26+00:00",
+    "last_verified": "2025-12-23T20:26:01.178974+00:00",
+    "line_count": 614,
+    "linked_decision_ids": [],
+    "linked_task_ids": [],
+    "metadata": {},
+    "modified_at": "2025-12-23T20:26:01.185662+00:00",
+    "path": "docs/attention-marketplace-intelligence-exchange.md",
+    "properties": {},
+    "tags": [],
+    "title": "Attention Marketplace: Intelligence Exchange for ML Models",
+    "version": 4,
+    "word_count": 2470
+  }
+}
