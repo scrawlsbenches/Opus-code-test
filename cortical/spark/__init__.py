@@ -13,8 +13,11 @@ Components:
 - SparkPredictor: Unified facade for first-blitz predictions
 - AnomalyDetector: Statistical and pattern-based anomaly detection
 - CodeTokenizer: Code-aware tokenizer preserving punctuation and operators
+- DiffTokenizer: Git diff tokenizer for code evolution training
 - ASTIndex: AST-based code indexing for structural analysis
 - SparkCodeIntelligence: Hybrid AST + N-gram code intelligence engine
+- IntentParser: Commit message intent parsing for code evolution model
+- CoChangeModel: Learn file co-change patterns from git history
 
 Usage:
     from cortical.spark import SparkPredictor
@@ -48,8 +51,11 @@ from .alignment import AlignmentIndex
 from .predictor import SparkPredictor
 from .anomaly import AnomalyDetector, AnomalyResult
 from .tokenizer import CodeTokenizer
+from .diff_tokenizer import DiffTokenizer, DiffToken, DiffHunk, DiffFile, SPECIAL_TOKENS
 from .ast_index import ASTIndex, FunctionInfo, ClassInfo, ImportInfo
 from .intelligence import SparkCodeIntelligence
+from .intent_parser import IntentParser, IntentResult
+from .co_change import CoChangeModel, CoChangeEdge, Commit
 from .suggester import (
     SampleSuggester,
     DefinitionSuggestion,
@@ -89,11 +95,23 @@ __all__ = [
     'AnomalyResult',
     # Code Intelligence
     'CodeTokenizer',
+    'DiffTokenizer',
+    'DiffToken',
+    'DiffHunk',
+    'DiffFile',
+    'SPECIAL_TOKENS',
     'ASTIndex',
     'FunctionInfo',
     'ClassInfo',
     'ImportInfo',
     'SparkCodeIntelligence',
+    # Intent Parsing
+    'IntentParser',
+    'IntentResult',
+    # Co-Change Model
+    'CoChangeModel',
+    'CoChangeEdge',
+    'Commit',
     # Sample Suggestion
     'SampleSuggester',
     'DefinitionSuggestion',
