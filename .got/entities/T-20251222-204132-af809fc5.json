@@ -1,19 +1,22 @@
 {
-  "_checksum": "f4f9e5f191c941a8",
-  "_written_at": "2025-12-22T20:49:30.252027+00:00",
+  "_checksum": "395cef5a8e5e7b37",
+  "_written_at": "2025-12-23T09:53:23.832530+00:00",
   "data": {
     "created_at": "2025-12-22T20:41:32.078265+00:00",
     "description": "Design the 5-layer architecture: Layer 0 (Core), Layer 1 (Operational), Layer 2 (Contextual), Layer 3 (Persona), Layer 4 (Ephemeral). Define storage format, relationships, and inclusion rules.",
     "entity_type": "task",
     "id": "T-20251222-204132-af809fc5",
-    "metadata": {},
-    "modified_at": "2025-12-22T20:49:30.251975+00:00",
+    "metadata": {
+      "completed_at": "2025-12-23T09:53:23.820321+00:00",
+      "updated_at": "2025-12-23T09:53:23.820332+00:00"
+    },
+    "modified_at": "2025-12-23T09:53:23.832469+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
     "status": "completed",
     "title": "Design: Layer architecture specification",
-    "version": 6
+    "version": 8
   }
 }
