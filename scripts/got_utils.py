@@ -45,6 +45,12 @@ from cortical.reasoning.thought_graph import ThoughtGraph
 from cortical.reasoning.graph_of_thought import NodeType, EdgeType, ThoughtNode, ThoughtEdge
 from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery, GitAutoCommitter
 from cortical.got.cli.doc import setup_doc_parser, handle_doc_command
+from cortical.got.cli.task import setup_task_parser, handle_task_command
+from cortical.got.cli.sprint import setup_sprint_parser, setup_epic_parser, handle_sprint_command, handle_epic_command
+from cortical.got.cli.handoff import setup_handoff_parser, handle_handoff_command
+from cortical.got.cli.decision import setup_decision_parser, handle_decision_command
+from cortical.got.cli.query import setup_query_parser, handle_query_commands
+from cortical.got.cli.backup import setup_backup_parser, handle_backup_command, handle_sync_migrate_commands
 
 # Import transactional backend (new)
 try:
@@ -5746,10 +5752,16 @@ def cmd_sync(args, manager: GoTProjectManager) -> int:
 
 
 # =============================================================================
-# MAIN
+# MAIN (Thin Dispatcher)
 # =============================================================================
 
 def main():
+    """
+    Main CLI entry point.
+
+    This is a thin dispatcher that delegates to the modular CLI handlers
+    in cortical/got/cli/. See the individual modules for command implementations.
+    """
     parser = argparse.ArgumentParser(
         description="Graph of Thought Project Management",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -5764,278 +5776,15 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
-    # Task commands
-    task_parser = subparsers.add_parser("task", help="Task operations")
-    task_subparsers = task_parser.add_subparsers(dest="task_command")
-
-    # task create
-    create_parser = task_subparsers.add_parser("create", help="Create a task")
-    create_parser.add_argument("title", help="Task title")
-    create_parser.add_argument("--priority", "-p", choices=VALID_PRIORITIES, default=PRIORITY_MEDIUM)
-    create_parser.add_argument("--category", "-c", choices=VALID_CATEGORIES, default="feature")
-    create_parser.add_argument("--description", "-d", default="")
-    create_parser.add_argument("--sprint", "-s", help="Sprint ID")
-    create_parser.add_argument("--depends-on", "--depends", nargs="+", dest="depends", help="Task IDs this task depends on")
-    create_parser.add_argument("--blocks", nargs="+", help="Task IDs this task blocks")
-
-    # task list
-    list_parser = task_subparsers.add_parser("list", help="List tasks")
-    list_parser.add_argument("--status", choices=VALID_STATUSES)
-    list_parser.add_argument("--priority", choices=VALID_PRIORITIES)
-    list_parser.add_argument("--category", choices=VALID_CATEGORIES)
-    list_parser.add_argument("--sprint", help="Filter by sprint")
-    list_parser.add_argument("--blocked", action="store_true", help="Show only blocked")
-    list_parser.add_argument("--json", action="store_true", help="Output as JSON")
-
-    # task show
-    show_parser = task_subparsers.add_parser("show", help="Show task details")
-    show_parser.add_argument("task_id", help="Task ID to display")
-
-    # task next
-    next_parser = task_subparsers.add_parser("next", help="Get the next task to work on")
-    next_parser.add_argument("--start", "-s", action="store_true",
-                             help="Also start the task after selecting it")
-
-    # task start
-    start_parser = task_subparsers.add_parser("start", help="Start a task")
-    start_parser.add_argument("task_id", help="Task ID")
-
-    # task complete
-    complete_parser = task_subparsers.add_parser("complete", help="Complete a task")
-    complete_parser.add_argument("task_id", help="Task ID")
-    complete_parser.add_argument("--retrospective", "-r", help="Retrospective notes")
-
-    # task block
-    block_parser = task_subparsers.add_parser("block", help="Block a task")
-    block_parser.add_argument("task_id", help="Task ID")
-    block_parser.add_argument("--reason", "-r", required=True, help="Block reason")
-    block_parser.add_argument("--blocker", "-b", help="Blocking task ID")
-
-    # task delete
-    delete_parser = task_subparsers.add_parser("delete", help="Delete a task (transactional)")
-    delete_parser.add_argument("task_id", help="Task ID to delete")
-    delete_parser.add_argument("--force", "-f", action="store_true",
-                               help="Force delete even if task has dependencies or is in progress")
-
-    # task depends
-    depends_parser = task_subparsers.add_parser("depends", help="Create task dependency")
-    depends_parser.add_argument("task_id", help="Task that depends on another")
-    depends_parser.add_argument("--on", dest="depends_on_id", required=True, help="Task ID to depend on")
-
-    # Sprint commands
-    sprint_parser = subparsers.add_parser("sprint", help="Sprint operations")
-    sprint_subparsers = sprint_parser.add_subparsers(dest="sprint_command")
-
-    # sprint create
-    sprint_create = sprint_subparsers.add_parser("create", help="Create a sprint")
-    sprint_create.add_argument("name", help="Sprint name")
-    sprint_create.add_argument("--number", "-n", type=int, help="Sprint number")
-    sprint_create.add_argument("--epic", "-e", help="Epic ID")
-
-    # sprint list
-    sprint_list = sprint_subparsers.add_parser("list", help="List sprints")
-    sprint_list.add_argument("--status", help="Filter by status")
-
-    # sprint status
-    sprint_status = sprint_subparsers.add_parser("status", help="Show sprint status")
-    sprint_status.add_argument("sprint_id", nargs="?", help="Sprint ID (optional)")
-
-    # sprint start
-    sprint_start = sprint_subparsers.add_parser("start", help="Start a sprint")
-    sprint_start.add_argument("sprint_id", help="Sprint ID to start")
-
-    # sprint complete
-    sprint_complete = sprint_subparsers.add_parser("complete", help="Complete a sprint")
-    sprint_complete.add_argument("sprint_id", help="Sprint ID to complete")
-
-    # sprint claim
-    sprint_claim = sprint_subparsers.add_parser("claim", help="Claim sprint for an agent")
-    sprint_claim.add_argument("sprint_id", help="Sprint ID to claim")
-    sprint_claim.add_argument("--agent", required=True, help="Agent name")
-
-    # sprint release
-    sprint_release = sprint_subparsers.add_parser("release", help="Release sprint claim")
-    sprint_release.add_argument("sprint_id", help="Sprint ID to release")
-    sprint_release.add_argument("--agent", required=True, help="Agent name")
-
-    # sprint goal
-    goal_parser = sprint_subparsers.add_parser("goal", help="Manage sprint goals")
-    goal_subparsers = goal_parser.add_subparsers(dest="goal_action")
-
-    # goal add
-    goal_add = goal_subparsers.add_parser("add", help="Add a goal")
-    goal_add.add_argument("sprint_id", help="Sprint ID")
-    goal_add.add_argument("description", help="Goal description")
-    goal_add.set_defaults(func=cmd_sprint_goal_add)
-
-    # goal list
-    goal_list = goal_subparsers.add_parser("list", help="List goals")
-    goal_list.add_argument("sprint_id", help="Sprint ID")
-    goal_list.set_defaults(func=cmd_sprint_goal_list)
-
-    # goal complete
-    goal_complete = goal_subparsers.add_parser("complete", help="Mark goal complete")
-    goal_complete.add_argument("sprint_id", help="Sprint ID")
-    goal_complete.add_argument("index", type=int, help="Goal index (0-based)")
-    goal_complete.set_defaults(func=cmd_sprint_goal_complete)
-
-    # sprint link
-    sprint_link = sprint_subparsers.add_parser("link", help="Link a task to sprint")
-    sprint_link.add_argument("sprint_id", help="Sprint ID")
-    sprint_link.add_argument("task_id", help="Task ID to link")
-    sprint_link.set_defaults(func=cmd_sprint_link)
-
-    # sprint unlink
-    sprint_unlink = sprint_subparsers.add_parser("unlink", help="Unlink task from sprint")
-    sprint_unlink.add_argument("sprint_id", help="Sprint ID")
-    sprint_unlink.add_argument("task_id", help="Task ID to unlink")
-    sprint_unlink.set_defaults(func=cmd_sprint_unlink)
-
-    # sprint tasks
-    sprint_tasks = sprint_subparsers.add_parser("tasks", help="List tasks in sprint")
-    sprint_tasks.add_argument("sprint_id", help="Sprint ID")
-    sprint_tasks.set_defaults(func=cmd_sprint_tasks)
-
-    sprint_suggest = sprint_subparsers.add_parser("suggest", help="Suggest tasks for next sprint")
-    sprint_suggest.add_argument("--limit", "-n", type=int, default=10, help="Number of suggestions")
-    sprint_suggest.add_argument("--strategy", choices=["balanced", "quick-wins", "impact"], default="balanced", help="Selection strategy")
-    sprint_suggest.set_defaults(func=cmd_sprint_suggest)
-
-    # Epic commands
-    epic_parser = subparsers.add_parser("epic", help="Epic operations")
-    epic_subparsers = epic_parser.add_subparsers(dest="epic_command")
-
-    # epic create
-    epic_create = epic_subparsers.add_parser("create", help="Create an epic")
-    epic_create.add_argument("name", help="Epic name")
-    epic_create.add_argument("--id", dest="epic_id", help="Custom epic ID")
-
-    # epic list
-    epic_list = epic_subparsers.add_parser("list", help="List epics")
-    epic_list.add_argument("--status", help="Filter by status")
-
-    # epic show
-    epic_show = epic_subparsers.add_parser("show", help="Show epic details")
-    epic_show.add_argument("epic_id", help="Epic ID to display")
-
-    # Query commands
-    subparsers.add_parser("blocked", help="Show blocked tasks")
-    subparsers.add_parser("active", help="Show active tasks")
-    subparsers.add_parser("stats", help="Show statistics")
-    subparsers.add_parser("dashboard", help="Show comprehensive metrics dashboard")
-
-    # Migration commands
-    migrate_parser = subparsers.add_parser("migrate", help="Migrate from files")
-    migrate_parser.add_argument("--dry-run", action="store_true", help="Don't actually migrate")
-
-    # Migrate to events command (convert snapshot to event-sourced format)
-    migrate_events_parser = subparsers.add_parser("migrate-events",
-        help="Convert snapshot to event-sourced format for cross-branch coordination")
-    migrate_events_parser.add_argument("--dry-run", action="store_true", help="Show what would be migrated")
-    migrate_events_parser.add_argument("--force", "-f", action="store_true", help="Migrate even if events exist")
-
-    # Export command
-    export_parser = subparsers.add_parser("export", help="Export graph")
-    export_parser.add_argument("--output", "-o", help="Output file")
-
-    # Backup commands
-    backup_parser = subparsers.add_parser("backup", help="Backup and recovery")
-    backup_subparsers = backup_parser.add_subparsers(dest="backup_command")
-
-    # backup create
-    backup_create = backup_subparsers.add_parser("create", help="Create a snapshot")
-    backup_create.add_argument("--compress", "-c", action="store_true", default=True,
-                               help="Compress snapshot (default: true)")
-
-    # backup list
-    backup_list = backup_subparsers.add_parser("list", help="List available snapshots")
-    backup_list.add_argument("--limit", "-n", type=int, default=10, help="Number to show")
-
-    # backup verify
-    backup_verify = backup_subparsers.add_parser("verify", help="Verify snapshot integrity")
-    backup_verify.add_argument("snapshot_id", nargs="?", help="Snapshot ID (default: latest)")
-
-    # backup restore
-    backup_restore = backup_subparsers.add_parser("restore", help="Restore from snapshot")
-    backup_restore.add_argument("snapshot_id", help="Snapshot ID to restore")
-    backup_restore.add_argument("--force", "-f", action="store_true",
-                                help="Force restore without confirmation")
-
-    # Sync command (critical for environment resilience)
-    sync_parser = subparsers.add_parser("sync", help="Sync state to git-tracked snapshot")
-    sync_parser.add_argument("--message", "-m", help="Commit message (auto-commits if provided)")
-
-    # Handoff commands (for agent coordination)
-    handoff_parser = subparsers.add_parser("handoff", help="Agent handoff operations")
-    handoff_subparsers = handoff_parser.add_subparsers(dest="handoff_command")
-
-    # handoff initiate
-    handoff_init = handoff_subparsers.add_parser("initiate", help="Initiate a handoff to another agent")
-    handoff_init.add_argument("task_id", help="Task to hand off")
-    handoff_init.add_argument("--target", "-t", required=True, help="Target agent (e.g., 'sub-agent-1')")
-    handoff_init.add_argument("--source", "-s", default="main", help="Source agent (default: main)")
-    handoff_init.add_argument("--instructions", "-i", default="", help="Instructions for target agent")
-
-    # handoff accept
-    handoff_accept = handoff_subparsers.add_parser("accept", help="Accept a handoff")
-    handoff_accept.add_argument("handoff_id", help="Handoff ID to accept")
-    handoff_accept.add_argument("--agent", "-a", required=True, help="Agent accepting")
-    handoff_accept.add_argument("--message", "-m", default="", help="Acknowledgment message")
-
-    # handoff complete
-    handoff_complete = handoff_subparsers.add_parser("complete", help="Complete a handoff")
-    handoff_complete.add_argument("handoff_id", help="Handoff ID to complete")
-    handoff_complete.add_argument("--agent", "-a", required=True, help="Agent completing")
-    handoff_complete.add_argument("--result", "-r", default="{}", help="Result as JSON")
-    handoff_complete.add_argument("--artifacts", nargs="*", help="Artifacts created (files, commits)")
-
-    # handoff list
-    handoff_list = handoff_subparsers.add_parser("list", help="List handoffs")
-    handoff_list.add_argument("--status", choices=["initiated", "accepted", "completed", "rejected"])
-
-    # Doc commands (document registry)
+    # Set up CLI parsers from modular CLI modules
+    setup_task_parser(subparsers)
+    setup_sprint_parser(subparsers)
+    setup_epic_parser(subparsers)
+    setup_handoff_parser(subparsers)
+    setup_decision_parser(subparsers)
     setup_doc_parser(subparsers)
-
-    # Compaction command
-    compact_parser = subparsers.add_parser("compact", help="Compact old events into consolidated file")
-    compact_parser.add_argument("--preserve-days", "-d", type=int, default=7,
-                                help="Preserve events from last N days (default: 7)")
-    compact_parser.add_argument("--no-preserve-handoffs", action="store_true",
-                                help="Don't preserve handoff events")
-    compact_parser.add_argument("--dry-run", action="store_true",
-                                help="Show what would be compacted")
-
-    # Query command
-    query_parser = subparsers.add_parser("query", help="Query the graph")
-    query_parser.add_argument("query_string", nargs="+", help="Query (e.g., 'what blocks task:T-...')")
-
-    # Decision commands (Reasoning Trace Logger)
-    decision_parser = subparsers.add_parser("decision", help="Log decisions with rationale")
-    decision_subparsers = decision_parser.add_subparsers(dest="decision_command")
-
-    # decision log
-    decision_log = decision_subparsers.add_parser("log", help="Log a decision")
-    decision_log.add_argument("decision", help="What was decided")
-    decision_log.add_argument("--rationale", "-r", required=True, help="Why this choice was made")
-    decision_log.add_argument("--affects", "-a", nargs="+", help="Task IDs affected by this decision")
-    decision_log.add_argument("--alternatives", nargs="+", help="Alternatives considered")
-    decision_log.add_argument("--file", "-f", help="File this decision relates to")
-
-    # decision list
-    decision_list = decision_subparsers.add_parser("list", help="List all decisions")
-
-    # decision why
-    decision_why = decision_subparsers.add_parser("why", help="Ask why a task exists")
-    decision_why.add_argument("task_id", help="Task ID to query")
-
-    # Validation command
-    validate_parser = subparsers.add_parser("validate", help="Validate graph health")
-
-    # Edge inference commands
-    infer_parser = subparsers.add_parser("infer", help="Infer edges from git history")
-    infer_parser.add_argument("--commits", "-n", type=int, default=10,
-                              help="Number of recent commits to analyze")
-    infer_parser.add_argument("--message", "-m", help="Analyze a specific commit message")
+    setup_query_parser(subparsers)
+    setup_backup_parser(subparsers)
 
     args = parser.parse_args()
 
@@ -6055,157 +5804,41 @@ def main():
         print(f"Error: {e}", file=sys.stderr)
         return 1
 
-    # Route commands
+    # Route commands to modular handlers
     if args.command == "task":
-        if args.task_command == "create":
-            return cmd_task_create(args, manager)
-        elif args.task_command == "list":
-            return cmd_task_list(args, manager)
-        elif args.task_command == "show":
-            return cmd_task_show(args, manager)
-        elif args.task_command == "next":
-            return cmd_task_next(args, manager)
-        elif args.task_command == "start":
-            return cmd_task_start(args, manager)
-        elif args.task_command == "complete":
-            return cmd_task_complete(args, manager)
-        elif args.task_command == "block":
-            return cmd_task_block(args, manager)
-        elif args.task_command == "delete":
-            return cmd_task_delete(args, manager)
-        elif args.task_command == "depends":
-            return cmd_task_depends(args, manager)
-        else:
-            task_parser.print_help()
-            return 1
+        return handle_task_command(args, manager)
 
     elif args.command == "sprint":
-        if args.sprint_command == "create":
-            return cmd_sprint_create(args, manager)
-        elif args.sprint_command == "list":
-            return cmd_sprint_list(args, manager)
-        elif args.sprint_command == "status":
-            return cmd_sprint_status(args, manager)
-        elif args.sprint_command == "start":
-            return cmd_sprint_start(args, manager)
-        elif args.sprint_command == "complete":
-            return cmd_sprint_complete(args, manager)
-        elif args.sprint_command == "claim":
-            return cmd_sprint_claim(args, manager)
-        elif args.sprint_command == "release":
-            return cmd_sprint_release(args, manager)
-        elif args.sprint_command == "goal":
-            if args.goal_action == "add":
-                return cmd_sprint_goal_add(args, manager)
-            elif args.goal_action == "list":
-                return cmd_sprint_goal_list(args, manager)
-            elif args.goal_action == "complete":
-                return cmd_sprint_goal_complete(args, manager)
-            else:
-                goal_parser.print_help()
-                return 1
-        elif args.sprint_command == "link":
-            return cmd_sprint_link(args, manager)
-        elif args.sprint_command == "unlink":
-            return cmd_sprint_unlink(args, manager)
-        elif args.sprint_command == "tasks":
-            return cmd_sprint_tasks(args, manager)
-        elif args.sprint_command == "suggest":
-            return cmd_sprint_suggest(args, manager)
-        else:
-            sprint_parser.print_help()
-            return 1
+        return handle_sprint_command(args, manager)
 
     elif args.command == "epic":
-        if args.epic_command == "create":
-            return cmd_epic_create(args, manager)
-        elif args.epic_command == "list":
-            return cmd_epic_list(args, manager)
-        elif args.epic_command == "show":
-            return cmd_epic_show(args, manager)
-        else:
-            epic_parser.print_help()
-            return 1
-
-    elif args.command == "blocked":
-        return cmd_blocked(args, manager)
-
-    elif args.command == "active":
-        return cmd_active(args, manager)
-
-    elif args.command == "stats":
-        return cmd_stats(args, manager)
-
-    elif args.command == "dashboard":
-        return cmd_dashboard(args, manager)
-
-    elif args.command == "migrate":
-        return cmd_migrate(args, manager)
-
-    elif args.command == "migrate-events":
-        return cmd_migrate_events(args, manager)
-
-    elif args.command == "export":
-        return cmd_export(args, manager)
-
-    elif args.command == "backup":
-        if args.backup_command == "create":
-            return cmd_backup_create(args, manager)
-        elif args.backup_command == "list":
-            return cmd_backup_list(args, manager)
-        elif args.backup_command == "verify":
-            return cmd_backup_verify(args, manager)
-        elif args.backup_command == "restore":
-            return cmd_backup_restore(args, manager)
-        else:
-            backup_parser.print_help()
-            return 1
-
-    elif args.command == "sync":
-        return cmd_sync(args, manager)
+        return handle_epic_command(args, manager)
 
     elif args.command == "handoff":
-        if args.handoff_command == "initiate":
-            return cmd_handoff_initiate(args, manager)
-        elif args.handoff_command == "accept":
-            return cmd_handoff_accept(args, manager)
-        elif args.handoff_command == "complete":
-            return cmd_handoff_complete(args, manager)
-        elif args.handoff_command == "list":
-            return cmd_handoff_list(args, manager)
-        else:
-            handoff_parser.print_help()
-            return 1
-
-    elif args.command == "compact":
-        return cmd_compact(args, manager)
-
-    elif args.command == "query":
-        return cmd_query(args, manager)
+        return handle_handoff_command(args, manager)
 
     elif args.command == "decision":
-        if args.decision_command == "log":
-            return cmd_decision_log(args, manager)
-        elif args.decision_command == "list":
-            return cmd_decision_list(args, manager)
-        elif args.decision_command == "why":
-            return cmd_decision_why(args, manager)
-        else:
-            decision_parser.print_help()
-            return 1
-
-    elif args.command == "infer":
-        return cmd_infer(args, manager)
-
-    elif args.command == "validate":
-        return cmd_validate(args, manager)
+        return handle_decision_command(args, manager)
 
     elif args.command == "doc":
         return handle_doc_command(args, manager)
 
-    else:
-        parser.print_help()
-        return 1
+    elif args.command == "backup":
+        return handle_backup_command(args, manager)
+
+    # Query-related commands (query, blocked, active, stats, etc.)
+    result = handle_query_commands(args, manager)
+    if result is not None:
+        return result
+
+    # Sync and migrate commands
+    result = handle_sync_migrate_commands(args, manager)
+    if result is not None:
+        return result
+
+    # Fallback
+    parser.print_help()
+    return 1
 
 
 def _run_with_auto_commit():
