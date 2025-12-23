@@ -1,0 +1,19 @@
+{
+  "_checksum": "6b25460934890ade",
+  "_written_at": "2025-12-23T00:59:14.795620+00:00",
+  "data": {
+    "created_at": "2025-12-23T00:59:14.789199+00:00",
+    "description": "The .got/entities/_version.json file causes merge conflicts when multiple branches modify GoT state concurrently. Options: (1) Use timestamp instead of incrementing counter - last-write-wins, (2) Add .gitattributes merge strategy to always take higher version, (3) Remove version file and derive from file count/checksums, (4) Use branch-aware versioning. Triggered by merge conflict in session QkbsL (version 160 vs 138).",
+    "entity_type": "task",
+    "id": "T-20251223-005914-f298d276",
+    "metadata": {},
+    "modified_at": "2025-12-23T00:59:14.795558+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "arch"
+    },
+    "status": "pending",
+    "title": "Make GoT _version.json merge-conflict-free",
+    "version": 2
+  }
+}
