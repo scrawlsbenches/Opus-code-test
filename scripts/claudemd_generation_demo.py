@@ -234,48 +234,6 @@ def get_last_sprint_branch() -> Optional[str]:
     return None
 
 
-def check_branch_merged(branch_name: str) -> bool:
-    """Check if a branch has been merged into current branch."""
-    try:
-        # Check if the branch exists
-        result = subprocess.run(
-            ["git", "branch", "-a", "--list", f"*{branch_name}*"],
-            capture_output=True,
-            text=True,
-            cwd=str(_PROJECT_ROOT),
-        )
-        if not result.stdout.strip():
-            return True  # Branch doesn't exist = assume merged/deleted
-
-        # Check if commits from that branch are in current branch
-        result = subprocess.run(
-            ["git", "log", f"origin/{branch_name}", "--not", "HEAD", "--oneline", "-1"],
-            capture_output=True,
-            text=True,
-            cwd=str(_PROJECT_ROOT),
-        )
-        # If no output, all commits are in HEAD = merged
-        return not result.stdout.strip()
-    except Exception:
-        return False  # Assume not merged if we can't check
-
-
-def get_recent_commits_on_branch(branch: str, limit: int = 3) -> list:
-    """Get recent commits from a specific branch."""
-    try:
-        result = subprocess.run(
-            ["git", "log", f"origin/{branch}", "--oneline", f"-{limit}"],
-            capture_output=True,
-            text=True,
-            cwd=str(_PROJECT_ROOT),
-        )
-        if result.returncode == 0:
-            return [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]
-    except Exception:
-        pass
-    return []
-
-
 def save_branch_to_sprint(branch: str) -> bool:
     """
     Save current branch to sprint metadata for future continuity tracking.
@@ -314,55 +272,35 @@ def save_branch_to_sprint(branch: str) -> bool:
         return False
 
 
-def analyze_branch_continuity() -> dict:
+def get_branch_state() -> dict:
     """
-    Analyze branch continuity for session handoff.
+    Get raw branch state facts - NO determinations.
 
-    Returns a dict with:
-    - current_branch: Current git branch
-    - previous_branch: Branch from last session (from handoff or sprint)
-    - continuity_status: 'same', 'merged', 'needs_merge', 'unknown'
-    - guidance: What the agent should do
+    Returns observable facts only. Agent decides what to do.
     """
     current = get_current_branch()
-    previous = get_branch_from_handoff() or get_last_sprint_branch()
+    saved = get_branch_from_handoff() or get_last_sprint_branch()
 
-    result = {
+    # Get saved branch timestamp if available
+    saved_at = None
+    sprint = get_sprint_status()
+    if sprint and sprint.get("id"):
+        sprint_file = _PROJECT_ROOT / ".got" / "entities" / f"{sprint['id']}.json"
+        if sprint_file.exists():
+            import json
+            try:
+                with open(sprint_file) as fp:
+                    data = json.load(fp)
+                    saved_at = data.get("metadata", {}).get("branch_updated_at")
+            except (json.JSONDecodeError, IOError):
+                pass
+
+    return {
         "current_branch": current,
-        "previous_branch": previous,
-        "continuity_status": "unknown",
-        "guidance": "",
-        "previous_commits": [],
+        "saved_branch": saved,
+        "saved_at": saved_at,
+        "branches_differ": current != saved if saved else None,
     }
-
-    if not previous:
-        result["continuity_status"] = "no_previous"
-        result["guidance"] = "No previous branch found. Starting fresh or first session."
-        return result
-
-    if current == previous:
-        result["continuity_status"] = "same"
-        result["guidance"] = "Same branch as previous session. Pull latest and continue."
-        return result
-
-    # Different branch - check if previous was merged
-    if check_branch_merged(previous):
-        result["continuity_status"] = "merged"
-        result["guidance"] = (
-            f"Previous branch `{previous}` has been merged. "
-            f"Pull from main/develop before continuing."
-        )
-    else:
-        result["continuity_status"] = "needs_merge"
-        result["previous_commits"] = get_recent_commits_on_branch(previous)
-        result["guidance"] = (
-            f"⚠️ BRANCH DIVERGENCE: Previous work on `{previous}` needs PR merge first!\n"
-            f"   1. Create/merge PR for `{previous}`\n"
-            f"   2. Pull merged changes to your branch\n"
-            f"   3. Then continue work"
-        )
-
-    return result
 
 
 def get_sprint_status() -> dict:
@@ -468,93 +406,158 @@ def get_recent_knowledge_transfer() -> Optional[str]:
 
 def generate_layer4_from_got(verbose: bool = False) -> str:
     """
-    Dynamically generate Layer 4 (Ephemeral) content from GoT state.
+    Generate Layer 4 (Ephemeral) content from GoT state.
 
-    This is the core function for continuation context generation.
-    It pulls current state from GoT and formats it for session context.
+    Philosophy: Provide FACTS and INVESTIGATION COMMANDS.
+    Agent runs commands, sees output, makes decisions.
+    Script does NOT make determinations like "needs_merge".
     """
-    lines = ["## Current Session Context\n"]
-    lines.append(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    lines = []
 
-    # Branch continuity analysis (critical for cross-session work)
-    continuity = analyze_branch_continuity()
-    current_branch = continuity["current_branch"]
-    lines.append(f"**Branch:** `{current_branch}`\n")
+    # ==========================================================================
+    # SECTION 1: OBSERVABLE FACTS (from GoT files)
+    # ==========================================================================
+    lines.append("## Observable Facts\n\n")
 
-    # Show branch continuity status
-    status = continuity["continuity_status"]
-    if status == "needs_merge":
-        lines.append("\n### ⚠️ BRANCH CONTINUITY ALERT\n")
-        lines.append(f"**Previous branch:** `{continuity['previous_branch']}`\n")
-        lines.append(f"**Status:** Unmerged work from previous session\n\n")
-        lines.append(f"{continuity['guidance']}\n")
-        if continuity.get("previous_commits"):
-            lines.append("\n**Commits on previous branch:**\n")
-            for commit in continuity["previous_commits"][:3]:
-                lines.append(f"- `{commit}`\n")
+    # Branch state
+    branch_state = get_branch_state()
+    lines.append(f"**Current Branch:** `{branch_state['current_branch']}`\n")
+    if branch_state["saved_branch"]:
+        lines.append(f"**Saved Branch:** `{branch_state['saved_branch']}`")
+        if branch_state["saved_at"]:
+            lines.append(f" (saved: {branch_state['saved_at'][:19]})")
         lines.append("\n")
-    elif status == "merged":
-        lines.append(f"**Previous branch:** `{continuity['previous_branch']}` (merged ✓)\n")
-    elif status == "same":
-        lines.append("**Continuity:** Same branch as previous session ✓\n")
+        if branch_state["branches_differ"]:
+            lines.append("**Note:** Branches differ. Investigate before acting.\n")
+    else:
+        lines.append("**Saved Branch:** None (first session or no prior save)\n")
 
-    # Sprint status (Primary source per continuation protocol)
+    # Sprint status
     sprint = get_sprint_status()
     if sprint:
         sprint_id = sprint.get("id", "unknown")
         sprint_name = sprint.get("name", "")
         sprint_status = sprint.get("status", "")
-        epic = sprint.get("epic", "")
-
-        lines.append(f"**Active Sprint:** {sprint_id}")
+        lines.append(f"**Sprint:** {sprint_id}")
         if sprint_name:
             lines.append(f" ({sprint_name})")
         if sprint_status:
             lines.append(f" [{sprint_status}]")
         lines.append("\n")
 
-        if epic:
-            lines.append(f"**Epic:** {epic}\n")
-
         # Sprint tasks
         tasks = get_sprint_tasks(sprint_id)
         if tasks:
-            lines.append("\n### Sprint Tasks (Recent)\n")
+            lines.append("\n**Sprint Tasks:**\n")
             for task in tasks[:5]:
                 lines.append(f"- {task}\n")
     else:
-        lines.append("**Sprint:** No active sprint found\n")
+        lines.append("**Sprint:** None active\n")
 
-    # Pending handoffs (Critical for continuation)
+    # Pending handoffs
     handoffs = get_pending_handoffs()
     if handoffs:
-        lines.append("\n### Pending Handoffs\n")
-        lines.append("**⚠️ Action Required:** Accept and read handoff context before proceeding.\n")
+        lines.append("\n**Pending Handoffs:**\n")
         for handoff in handoffs:
             lines.append(f"- {handoff}\n")
 
-    # Recent decisions (Context for continuation)
+    # Recent decisions
     decisions = get_recent_decisions(3)
     if decisions:
-        lines.append("\n### Recent Decisions\n")
+        lines.append("\n**Recent Decisions:**\n")
         for d in decisions:
             lines.append(f"- {d['id']}: {d['title']}\n")
 
-    # Knowledge transfer reference
+    # Knowledge transfer
     kt_file = get_recent_knowledge_transfer()
     if kt_file:
-        lines.append(f"\n### Knowledge Transfer\n")
-        lines.append(f"**Latest:** `samples/memories/{kt_file}`\n")
+        lines.append(f"\n**Latest Knowledge Transfer:** `samples/memories/{kt_file}`\n")
 
-    # Trust protocol reminder (from continuation protocol v2.0)
-    lines.append("\n### Session Protocol\n")
-    lines.append("1. **Verify state** - Confirm understanding with human\n")
-    lines.append("2. **Start at Trust L0** - Read files, ask questions\n")
-    lines.append("3. **Earn L1** - Human confirms state summary\n")
-    lines.append("4. **Earn L2** - First task completed successfully\n")
+    # ==========================================================================
+    # SECTION 2: VERIFY STATE (commands for agent to run)
+    # ==========================================================================
+    lines.append("\n---\n")
+    lines.append("\n## Verify State\n\n")
+    lines.append("Run these commands to understand current state:\n\n")
+    lines.append("```bash\n")
+    lines.append("# Git state\n")
+    lines.append("git status\n")
+    lines.append("git log --oneline -5\n")
+    lines.append("\n# Divergence from main\n")
+    lines.append("git log --oneline main..HEAD      # What's here but not in main\n")
+    lines.append("git log --oneline HEAD..main      # What's in main but not here\n")
+
+    # If branches differ, add commands to investigate
+    if branch_state["saved_branch"] and branch_state["branches_differ"]:
+        saved = branch_state["saved_branch"]
+        lines.append(f"\n# Previous branch investigation\n")
+        lines.append(f"git fetch origin\n")
+        lines.append(f"git log --oneline origin/{saved} -5  # Commits on saved branch\n")
+        lines.append(f"git log --oneline HEAD..origin/{saved}  # What's there but not here\n")
+
+    lines.append("\n# GoT state\n")
+    lines.append("python scripts/got_utils.py validate\n")
+    if sprint:
+        lines.append(f"python scripts/got_utils.py sprint tasks {sprint.get('id', 'SPRINT_ID')}\n")
+    lines.append("```\n")
+
+    # ==========================================================================
+    # SECTION 3: QUESTIONS TO RESOLVE WITH HUMAN
+    # ==========================================================================
+    lines.append("\n## Questions to Resolve\n\n")
+    lines.append("Before acting, ask the human:\n\n")
+
+    # Generate contextual questions based on state
+    q_num = 1
+
+    # Branch question (only if branches differ or no saved branch)
+    if branch_state["saved_branch"] and branch_state["branches_differ"]:
+        lines.append(f"{q_num}. **Branch Continuity**\n")
+        lines.append(f"   - Current: `{branch_state['current_branch']}`\n")
+        lines.append(f"   - Saved: `{branch_state['saved_branch']}`\n")
+        lines.append(f"   - *Is this a continuation? Should I pull from previous branch?*\n\n")
+        q_num += 1
+    elif not branch_state["saved_branch"]:
+        lines.append(f"{q_num}. **Session Context**\n")
+        lines.append(f"   - No saved branch found. Is this a fresh start or continuation?\n\n")
+        q_num += 1
+
+    # Sprint/task question
+    if sprint:
+        lines.append(f"{q_num}. **Work Focus**\n")
+        lines.append(f"   - Sprint: {sprint.get('id')} ({sprint.get('name', '')})\n")
+        if tasks:
+            lines.append(f"   - Active tasks exist. Continue current work or switch focus?\n\n")
+        else:
+            lines.append(f"   - No tasks listed. What should I work on?\n\n")
+        q_num += 1
+
+    # Handoff question
+    if handoffs:
+        lines.append(f"{q_num}. **Pending Handoffs**\n")
+        lines.append(f"   - {len(handoffs)} handoff(s) pending. Should I accept and read?\n\n")
+        q_num += 1
+
+    # Default question if nothing specific
+    if q_num == 1:
+        lines.append("1. What should I work on this session?\n")
+
+    # ==========================================================================
+    # SECTION 4: TRUST PROTOCOL
+    # ==========================================================================
+    lines.append("\n## Trust Protocol\n\n")
+    lines.append("| Level | Meaning | Earned By |\n")
+    lines.append("|-------|---------|----------|\n")
+    lines.append("| L0 | Read-only | Default start |\n")
+    lines.append("| L1 | Verified | Human confirms state summary |\n")
+    lines.append("| L2 | Trusted | First task completed successfully |\n")
+    lines.append("| L3 | Autonomous | Track record established |\n")
+    lines.append("\n**Start at L0. Verify before acting.**\n")
 
     if verbose:
+        lines.append("\n---\n")
         lines.append("\n### Debug Info\n")
+        lines.append(f"- Branch state: {branch_state}\n")
         lines.append(f"- Sprint data: {sprint}\n")
         lines.append(f"- Handoffs found: {len(handoffs)}\n")
         lines.append(f"- Decisions found: {len(decisions)}\n")
@@ -566,54 +569,32 @@ def generate_continuation_context(verbose: bool = False) -> str:
     """
     Generate full continuation context for session resumption.
 
-    This combines:
-    - Layer 4 dynamic content (from GoT)
-    - Quick recovery commands
-    - State verification checklist
+    Philosophy: Information + Investigation + Questions.
+    No prescriptive guidance. Agent investigates and decides.
     """
     lines = ["# Continuation Context\n\n"]
-    lines.append("> Auto-generated for session continuity. GoT is primary source.\n\n")
+    lines.append("> Facts from GoT. You investigate. You decide.\n\n")
 
-    # Add Layer 4 content
+    # Add Layer 4 content (facts + verify commands + questions)
     lines.append(generate_layer4_from_got(verbose))
 
-    # Add quick recovery section
+    # Session ending protocol (informational, not prescriptive)
     lines.append("\n---\n")
-    lines.append("\n## Quick Recovery Commands\n\n")
+    lines.append("\n## Session Ending (When Done)\n\n")
+    lines.append("Before stopping, consider:\n\n")
     lines.append("```bash\n")
-    lines.append("# 1. Check sprint status\n")
-    lines.append("python scripts/got_utils.py sprint status\n")
-    lines.append("python scripts/got_utils.py sprint tasks $(python scripts/got_utils.py sprint status 2>/dev/null | grep '^ID:' | cut -d' ' -f2)\n\n")
-    lines.append("# 2. Check for pending handoffs\n")
-    lines.append("python scripts/got_utils.py handoff list --status initiated\n\n")
-    lines.append("# 3. Read latest knowledge transfer\n")
-    lines.append("ls -t samples/memories/*knowledge-transfer*.md | head -1 | xargs cat\n\n")
-    lines.append("# 4. Git state\n")
-    lines.append("git branch --show-current && git log --oneline -5\n")
+    lines.append("# Save state for next session\n")
+    lines.append("git add -A && git commit -m 'checkpoint: [description]'\n")
+    lines.append("git push -u origin $(git branch --show-current)\n")
+    lines.append("python scripts/claudemd_generation_demo.py --save-branch\n")
+    lines.append("\n# If handing off to another session\n")
+    lines.append("python scripts/got_utils.py handoff initiate TASK_ID --target 'next-session' --instructions '...'\n")
     lines.append("```\n")
 
-    # Cross-branch workflow guidance
-    lines.append("\n## Cross-Session Branch Workflow\n\n")
-    lines.append("Each Claude Code session gets a NEW branch (`claude/task-SESSIONID`).\n")
-    lines.append("Previous session work needs to be merged before continuing.\n\n")
-    lines.append("**If you see a BRANCH CONTINUITY ALERT above:**\n")
-    lines.append("1. Ask user to merge the previous branch via PR\n")
-    lines.append("2. Wait for merge to complete\n")
-    lines.append("3. Pull merged changes: `git pull origin main`\n")
-    lines.append("4. Then continue work on current branch\n\n")
-    lines.append("**Before ending this session:**\n")
-    lines.append("1. Commit all work: `git add -A && git commit -m '...'`\n")
-    lines.append("2. Push branch: `git push -u origin $(git branch --show-current)`\n")
-    lines.append("3. Save branch for continuity: `python scripts/claudemd_generation_demo.py --save-branch`\n")
-    lines.append("4. Create handoff if needed: `python scripts/got_utils.py handoff initiate TASK_ID ...`\n")
-
-    # State verification checklist
-    lines.append("\n## State Verification Checklist\n\n")
-    lines.append("Before acting, confirm:\n")
-    lines.append("- [ ] Branch continuity checked (no unmerged previous work)\n")
-    lines.append("- [ ] Current sprint understood\n")
-    lines.append("- [ ] Pending handoffs reviewed\n")
-    lines.append("- [ ] Human confirmed state summary\n")
+    lines.append("\n**Tell the human:**\n")
+    lines.append("- What you were working on\n")
+    lines.append("- What's done vs in-progress\n")
+    lines.append("- What the next session should do\n")
 
     return "".join(lines)
 
@@ -1133,16 +1114,20 @@ def main():
         return
 
     if args.check_continuity:
-        continuity = analyze_branch_continuity()
-        print(f"Current branch: {continuity['current_branch']}")
-        print(f"Previous branch: {continuity['previous_branch'] or 'None'}")
-        print(f"Status: {continuity['continuity_status']}")
-        print()
-        print(continuity['guidance'])
-        if continuity.get('previous_commits'):
-            print("\nRecent commits on previous branch:")
-            for c in continuity['previous_commits']:
-                print(f"  {c}")
+        state = get_branch_state()
+        print("## Branch State (Facts)")
+        print(f"Current: {state['current_branch']}")
+        print(f"Saved:   {state['saved_branch'] or 'None'}")
+        if state['saved_at']:
+            print(f"Saved at: {state['saved_at']}")
+        if state['branches_differ']:
+            print("\nBranches differ. Run these to investigate:")
+            print(f"  git log --oneline origin/{state['saved_branch']} -5")
+            print(f"  git log --oneline HEAD..origin/{state['saved_branch']}")
+        elif state['saved_branch']:
+            print("\nSame branch as saved.")
+        else:
+            print("\nNo saved branch. First session or no prior save.")
         return
 
     # Quick generation modes (no demo, just output)
