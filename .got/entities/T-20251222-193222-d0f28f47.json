@@ -1,0 +1,24 @@
+{
+  "_checksum": "ba69d5d427321bf2",
+  "_written_at": "2025-12-22T19:43:08.381715+00:00",
+  "data": {
+    "created_at": "2025-12-22T19:32:22.746751+00:00",
+    "description": "## Problem\nSub-agents report success but file changes don't persist to the main agent's filesystem.\n\n## Evidence from 2025-12-22 session (QkbsL)\n1. Implementation agent reported adding JUSTIFIES/PART_OF to EdgeType enum\n2. Agent showed verification output proving changes worked\n3. But `git status` showed no changes to the file\n4. Main agent had to manually apply the same changes\n\n## Investigation Tasks\n1. Understand how Task tool spawns sub-agents and their filesystem context\n2. Determine if sub-agents share the same filesystem or work in isolation\n3. Test with explicit file verification after sub-agent completion\n4. Check if there's a flush/sync issue with file writes\n\n## Possible Solutions\n- Require sub-agents to commit changes before returning\n- Have main agent always verify file state after sub-agent work\n- Store diffs in task metadata for recovery",
+    "entity_type": "task",
+    "id": "T-20251222-193222-d0f28f47",
+    "metadata": {
+      "completed_at": "2025-12-22T19:43:08.374376+00:00",
+      "started_at": "2025-12-22T19:40:33.603733+00:00",
+      "updated_at": "2025-12-22T19:43:08.374379+00:00"
+    },
+    "modified_at": "2025-12-22T19:43:08.381675+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "bugfix",
+      "retrospective": "## Investigation Results\n\n**Tests Performed:**\n1. New untracked file modification - \u2705 Persisted\n2. Existing tracked file modification - \u2705 Persisted\n\n**Findings:**\nSub-agent file persistence is working correctly in current testing. The failures observed earlier in session QkbsL may have been caused by:\n1. Transient infrastructure issue (now resolved)\n2. Timing/race condition during heavy parallel agent use\n3. Session-specific context isolation\n\n**Recommendations:**\n1. Keep CLAUDE.md warning as defensive practice\n2. Always verify changes after sub-agent work (already documented)\n3. Consider the diff storage feature (T-20251222-193227) for recovery\n4. Monitor for recurrence in future sessions\n\n**Status:** Issue not reproducible in current testing, but warning remains valuable."
+    },
+    "status": "completed",
+    "title": "Investigate sub-agent file persistence issue",
+    "version": 6
+  }
+}

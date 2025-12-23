@@ -61,6 +61,21 @@ GoT (Graph of Thought) is our task, sprint, and decision tracking system:
 > - Logs the deletion as an event for audit trail
 > - Supports `--force` for overriding safety checks
 
+**GoT Auto-Commit & Auto-Push (DEFAULT: ON)**
+
+Both are enabled by default for environment resilience. GoT state auto-saves to git after every mutation.
+
+| Variable | Default | To Disable |
+|----------|---------|------------|
+| `GOT_AUTO_COMMIT` | ON | `export GOT_AUTO_COMMIT=0` |
+| `GOT_AUTO_PUSH` | ON | `export GOT_AUTO_PUSH=0` |
+
+**Safety features:**
+- Auto-push ONLY works on `claude/*` branches (never main/master)
+- Protected branches: `main`, `master`, `prod`, `production`, `release`
+- Network errors retry up to 3 times with exponential backoff
+- Failures are logged but never block operations
+
 ### 4. Critical Bugs Fixed (Don't Reintroduce!)
 - **Edge rebuild**: Use `from_id`/`to_id`, NOT `source_id`/`target_id` in `add_edge()`
 - **EdgeType lookup**: Use `EdgeType[name]` with try/except, NOT `hasattr()`
@@ -101,6 +116,46 @@ Main Agent (keeps context):
 - Provide explicit input/output specs to sub-agents (e.g., "create file X with function Y from file Z")
 - Wait for all sub-agents to complete before proceeding to dependent work
 - Review sub-agent outputs for integration issues before committing
+
+> **⚠️ CRITICAL: Sub-Agent Persistence Issue**
+>
+> Sub-agents may work in isolated contexts. Their file changes can fail to persist even when they report success.
+>
+> **Always verify after sub-agent completion:**
+> ```bash
+> git status                    # Check if files actually changed
+> git diff path/to/file.py     # Verify the actual changes
+> ```
+>
+> **If changes didn't persist:**
+> 1. Apply changes manually in main agent context
+> 2. The sub-agent's report contains the correct implementation details
+> 3. Consider storing diffs with task metadata for recovery
+>
+> **Observed in session QkbsL (2025-12-22):** Implementation agents reported success with verification output, but `git status` showed no file changes. Main agent had to manually apply identical changes.
+>
+> **Investigation update (same session):** Issue could not be reproduced in controlled testing - both new and existing file modifications persisted correctly. Root cause unclear (possibly transient, timing-related, or session-specific). **The warning remains as defensive practice** - always verify changes when using sub-agents for critical work.
+
+**Sub-agent delegation language:**
+```
+## Task: [Clear action verb] [specific thing]
+
+### File to modify
+`/absolute/path/to/file.py`
+
+### Changes needed
+1. [Specific change with line numbers if known]
+2. [Exact code to add/modify]
+
+### Verification
+After making changes, run:
+[specific command to verify]
+
+### DO NOT
+- Create new files (unless specified)
+- Modify other files
+- [Other constraints]
+```
 
 **Full guide:** `docs/sub-agent-utilization-plan.md`
 

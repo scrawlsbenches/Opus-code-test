@@ -1,24 +1,26 @@
 {
-  "_checksum": "4c70ec067b8fc6ad",
-  "_written_at": "2025-12-22T18:12:31.365470+00:00",
+  "_checksum": "645aee46b82773bc",
+  "_written_at": "2025-12-22T19:15:48.359444+00:00",
   "data": {
     "created_at": "2025-12-22T18:00:02.966356+00:00",
     "description": "Changed orphan repair strategy from 'delete' to 'adopt' to preserve git-tracked entity files that lack WAL entries. Files committed to git have no WAL records (WAL is gitignored), so they were incorrectly identified as crash orphans and deleted.",
     "entity_type": "task",
     "id": "T-20251222-180002-04659482",
-    "metadata": {},
-    "modified_at": "2025-12-22T18:12:31.365411+00:00",
+    "metadata": {
+      "completed_at": "2025-12-22T19:15:48.351004+00:00",
+      "updated_at": "2025-12-22T19:15:48.351011+00:00"
+    },
+    "modified_at": "2025-12-22T19:15:48.359393+00:00",
     "priority": "critical",
     "properties": {
       "category": "feature",
       "description": "Changed orphan repair strategy from 'delete' to 'adopt' to preserve git-tracked entity files that lack WAL entries. Files committed to git have no WAL records (WAL is gitignored), so they were incorrectly identified as crash orphans and deleted.",
       "priority": "critical",
-      "retrospective": "Fixed by changing repair_orphans strategy from 'delete' to 'adopt' in cortical/got/recovery.py:164. Valid orphan files are now preserved and adopted into WAL. Corrupted files are still deleted (checksum validation). Updated test to verify adopt behavior. All 325 GoT tests pass.",
-      "status": "pending",
+      "retrospective": "Verified fix in cortical/got/recovery.py:164 - orphan repair uses 'adopt' strategy to preserve git-tracked files.",
       "title": "Fix recovery orphan repair deleting git-tracked entities"
     },
     "status": "completed",
     "title": "Fix recovery orphan repair deleting git-tracked entities",
-    "version": 6
+    "version": 8
   }
 }

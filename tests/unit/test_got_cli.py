@@ -59,6 +59,12 @@ from got_utils import (
     STATUS_IN_PROGRESS,
     STATUS_COMPLETED,
     STATUS_BLOCKED,
+    got_auto_commit,
+    _got_auto_push,
+    GOT_AUTO_COMMIT_ENABLED,
+    GOT_AUTO_PUSH_ENABLED,
+    MUTATING_COMMANDS,
+    PROTECTED_BRANCHES,
 )
 
 
@@ -1790,6 +1796,216 @@ class TestTaskNextCommand:
 
         assert result is not None
         assert "First high" in result["title"]
+
+
+# =============================================================================
+# AUTO-COMMIT/PUSH TESTS
+# =============================================================================
+
+
+class TestGotAutoCommit:
+    """Tests for got_auto_commit function."""
+
+    @patch('got_utils.GOT_AUTO_COMMIT_ENABLED', False)
+    def test_disabled_returns_false(self):
+        """Auto-commit returns False when disabled."""
+        result = got_auto_commit("task", "create")
+        assert result is False
+
+    @patch('got_utils.GOT_AUTO_COMMIT_ENABLED', True)
+    def test_non_mutating_command_returns_false(self):
+        """Auto-commit returns False for non-mutating commands."""
+        result = got_auto_commit("dashboard", None)
+        assert result is False
+
+    @patch('got_utils.GOT_AUTO_COMMIT_ENABLED', True)
+    def test_invalid_subcommand_returns_false(self):
+        """Auto-commit returns False for invalid subcommand."""
+        result = got_auto_commit("task", "nonexistent")
+        assert result is False
+
+    @patch('got_utils.GOT_AUTO_COMMIT_ENABLED', True)
+    @patch('subprocess.run')
+    def test_mutating_command_commits(self, mock_run):
+        """Auto-commit triggers commit for mutating commands."""
+        # Mock: git add succeeds, git diff --cached shows changes, git commit succeeds
+        def run_side_effect(*args, **kwargs):
+            if 'diff' in args[0] and '--cached' in args[0]:
+                # Return non-zero to indicate there are staged changes
+                return MagicMock(returncode=1)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = run_side_effect
+
+        result = got_auto_commit("task", "create")
+
+        assert result is True
+        # Verify commit was called
+        commit_calls = [c for c in mock_run.call_args_list if 'commit' in str(c)]
+        assert len(commit_calls) >= 1
+
+    @patch('got_utils.GOT_AUTO_COMMIT_ENABLED', True)
+    @patch('subprocess.run')
+    def test_no_changes_returns_false(self, mock_run):
+        """Auto-commit returns False when no changes to commit."""
+        # Mock: git diff --cached shows no changes (returncode=0)
+        mock_run.return_value = MagicMock(returncode=0)
+
+        result = got_auto_commit("task", "complete")
+
+        assert result is False
+
+    @patch('got_utils.GOT_AUTO_COMMIT_ENABLED', True)
+    @patch('subprocess.run')
+    def test_git_error_returns_false(self, mock_run):
+        """Auto-commit returns False on git error."""
+        import subprocess
+        mock_run.side_effect = subprocess.CalledProcessError(1, ['git', 'commit'])
+
+        result = got_auto_commit("task", "create")
+
+        assert result is False
+
+    @patch('got_utils.GOT_AUTO_COMMIT_ENABLED', True)
+    @patch('got_utils.GOT_AUTO_PUSH_ENABLED', True)
+    @patch('got_utils._got_auto_push')
+    @patch('subprocess.run')
+    def test_auto_push_called_after_commit(self, mock_run, mock_push):
+        """Auto-push is called after successful commit when enabled."""
+        def run_side_effect(*args, **kwargs):
+            if 'diff' in args[0] and '--cached' in args[0]:
+                return MagicMock(returncode=1)  # Has changes
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = run_side_effect
+        mock_push.return_value = True
+
+        result = got_auto_commit("task", "complete")
+
+        assert result is True
+        mock_push.assert_called_once()
+
+
+class TestGotAutoPush:
+    """Tests for _got_auto_push function."""
+
+    @patch('subprocess.run')
+    def test_protected_branch_skips_push(self, mock_run):
+        """Auto-push skips protected branches (main, master, etc.)."""
+        mock_run.return_value = MagicMock(stdout='main\n', returncode=0)
+
+        result = _got_auto_push()
+
+        assert result is False
+        # Should only call git rev-parse, not git push
+        push_calls = [c for c in mock_run.call_args_list if 'push' in str(c)]
+        assert len(push_calls) == 0
+
+    @patch('subprocess.run')
+    def test_non_claude_branch_skips_push(self, mock_run):
+        """Auto-push skips non-claude/* branches."""
+        mock_run.return_value = MagicMock(stdout='feature/my-feature\n', returncode=0)
+
+        result = _got_auto_push()
+
+        assert result is False
+
+    @patch('subprocess.run')
+    def test_claude_branch_pushes(self, mock_run):
+        """Auto-push works on claude/* branches."""
+        def run_side_effect(*args, **kwargs):
+            if 'rev-parse' in args[0]:
+                return MagicMock(stdout='claude/test-session-abc\n', returncode=0)
+            if 'push' in args[0]:
+                return MagicMock(returncode=0, stderr='')
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = run_side_effect
+
+        result = _got_auto_push()
+
+        assert result is True
+        push_calls = [c for c in mock_run.call_args_list if 'push' in str(c)]
+        assert len(push_calls) == 1
+
+    @patch('subprocess.run')
+    def test_network_error_retries(self, mock_run):
+        """Auto-push retries on network errors."""
+        call_count = [0]
+
+        def run_side_effect(*args, **kwargs):
+            if 'rev-parse' in args[0]:
+                return MagicMock(stdout='claude/test-session\n', returncode=0)
+            if 'push' in args[0]:
+                call_count[0] += 1
+                if call_count[0] < 3:
+                    return MagicMock(returncode=1, stderr='network error')
+                return MagicMock(returncode=0, stderr='')
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = run_side_effect
+
+        result = _got_auto_push()
+
+        assert result is True
+        assert call_count[0] == 3  # Retried until success
+
+    @patch('subprocess.run')
+    def test_timeout_returns_false(self, mock_run):
+        """Auto-push returns False on timeout."""
+        import subprocess
+
+        def run_side_effect(*args, **kwargs):
+            if 'rev-parse' in args[0]:
+                return MagicMock(stdout='claude/test-session\n', returncode=0)
+            if 'push' in args[0]:
+                raise subprocess.TimeoutExpired(args[0], 30)
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = run_side_effect
+
+        result = _got_auto_push()
+
+        assert result is False
+
+    @patch('subprocess.run')
+    def test_all_protected_branches(self, mock_run):
+        """Verify all protected branches are skipped."""
+        for branch in PROTECTED_BRANCHES:
+            mock_run.return_value = MagicMock(stdout=f'{branch}\n', returncode=0)
+            result = _got_auto_push()
+            assert result is False, f"Branch {branch} should be protected"
+
+
+class TestMutatingCommands:
+    """Tests for MUTATING_COMMANDS configuration."""
+
+    def test_task_mutating_subcommands(self):
+        """Task subcommands that mutate are in the list."""
+        task_mutating = MUTATING_COMMANDS.get("task")
+        assert "create" in task_mutating
+        assert "start" in task_mutating
+        assert "complete" in task_mutating
+        assert "block" in task_mutating
+        assert "delete" in task_mutating
+        assert "depends" in task_mutating
+
+    def test_sprint_mutating_subcommands(self):
+        """Sprint subcommands that mutate are in the list."""
+        sprint_mutating = MUTATING_COMMANDS.get("sprint")
+        assert "create" in sprint_mutating
+        assert "start" in sprint_mutating
+        assert "complete" in sprint_mutating
+
+    def test_always_mutating_commands(self):
+        """Commands like compact/migrate are always mutating."""
+        assert MUTATING_COMMANDS.get("compact") is True
+        assert MUTATING_COMMANDS.get("migrate") is True
+
+    def test_dashboard_not_mutating(self):
+        """Dashboard and query commands are not mutating."""
+        assert MUTATING_COMMANDS.get("dashboard") is None
+        assert MUTATING_COMMANDS.get("query") is None
 
 
 if __name__ == "__main__":
