@@ -1,25 +1,36 @@
 #!/usr/bin/env python3
 """
-Demo script for the CLAUDE.md auto-generation system.
+CLAUDE.md Auto-Generation with GoT-Based Continuation Context.
 
-This script demonstrates the layer system using REAL content from the
-Cortical Text Processor's CLAUDE.md file:
+This script implements the 5-layer CLAUDE.md system with dynamic Layer 4
+generation from Graph of Thought (GoT) state. This enables:
+
+- Session continuity across context windows
+- Dynamic sprint/handoff awareness
+- Checkpoint recovery for continuation
 
 Layer 0 (Core): Quick Session Start - Always included
 Layer 1 (Operational): Development Workflow - Always included
 Layer 2 (Contextual): GoT Guide - When working on cortical/got/*
 Layer 3 (Persona): ML Data Collection - For ML engineers
-Layer 4 (Ephemeral): Current Session - Sprint/branch specific
+Layer 4 (Ephemeral): Current Session - DYNAMICALLY GENERATED from GoT
 
 Usage:
     python scripts/claudemd_generation_demo.py [--verbose]
     python scripts/claudemd_generation_demo.py --dry-run
     python scripts/claudemd_generation_demo.py --team-demo
+    python scripts/claudemd_generation_demo.py --generate-layer4   # Generate L4 from GoT
+    python scripts/claudemd_generation_demo.py --continuation      # Full continuation context
+
+Task: T-20251223-164818-f848d31d
+Sprint: S-018 (Schema Evolution Foundation)
 """
 
 import sys
+import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
+from typing import Optional
 
 # Add project root to path
 _PROJECT_ROOT = Path(__file__).parent.parent
@@ -130,21 +141,270 @@ python scripts/ml_file_prediction.py train     # Train file predictor
 ```
 """
 
-LAYER_4_SESSION_CONTEXT = """## Current Session Context
+LAYER_4_SESSION_CONTEXT_FALLBACK = """## Current Session Context
 
-**Active Sprint:** S-017 (Spark SLM Integration)
-**Current Branch:** claude/auto-generate-claude-md-LwdTl
-**Epic:** CLAUDE.md Auto-Generation System
+**Note:** GoT state unavailable. Using fallback context.
 
-### This Session's Focus
-- Implementing 5-layer CLAUDE.md architecture
-- PersonaProfile and Team entities for multi-team support
-- Context-aware layer selection
-
-### Recent Decisions
-- D-20251222: Keep original CLAUDE.md as fallback
-- D-20251222: Use GoT for layer storage (not separate files)
+### Quick Start
+1. Check GoT: `python scripts/got_utils.py sprint status`
+2. Check handoffs: `python scripts/got_utils.py handoff list`
+3. Read recent knowledge transfer in `samples/memories/`
 """
+
+
+# =============================================================================
+# GOT INTEGRATION FOR DYNAMIC LAYER 4 GENERATION
+# =============================================================================
+
+def run_got_command(args: list) -> Optional[str]:
+    """Run a got_utils.py command and return output."""
+    try:
+        result = subprocess.run(
+            ["python", str(_PROJECT_ROOT / "scripts" / "got_utils.py")] + args,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=str(_PROJECT_ROOT),
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+        return None
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+
+
+def get_current_branch() -> str:
+    """Get the current git branch name."""
+    try:
+        result = subprocess.run(
+            ["git", "branch", "--show-current"],
+            capture_output=True,
+            text=True,
+            cwd=str(_PROJECT_ROOT),
+        )
+        return result.stdout.strip() or "unknown"
+    except Exception:
+        return "unknown"
+
+
+def get_sprint_status() -> dict:
+    """Get current sprint status from GoT.
+
+    Returns the first (most recent) sprint found in output.
+    Multiple sprints may be in_progress; we take the first one listed.
+    """
+    output = run_got_command(["sprint", "status"])
+    if not output:
+        return {}
+
+    status = {}
+    for line in output.split("\n"):
+        # Sprint: line indicates a new sprint block - if we already have data, stop
+        if line.startswith("Sprint:") and status.get("id"):
+            break
+        elif line.startswith("Sprint:"):
+            status["name"] = line.split(":", 1)[1].strip()
+        elif line.startswith("ID:"):
+            status["id"] = line.split(":", 1)[1].strip()
+        elif line.startswith("Status:"):
+            status["status"] = line.split(":", 1)[1].strip()
+        elif line.startswith("Epic:"):
+            status["epic"] = line.split(":", 1)[1].strip()
+    return status
+
+
+def get_sprint_tasks(sprint_id: str, limit: int = 5) -> list:
+    """Get tasks for a sprint."""
+    output = run_got_command(["sprint", "tasks", sprint_id])
+    if not output:
+        return []
+
+    tasks = []
+    for line in output.split("\n"):
+        line = line.strip()
+        if line.startswith("T-") or "T-" in line:
+            # Parse task line format varies, extract what we can
+            tasks.append(line)
+        if len(tasks) >= limit:
+            break
+    return tasks
+
+
+def get_pending_handoffs() -> list:
+    """Get pending handoffs from GoT."""
+    output = run_got_command(["handoff", "list", "--status", "initiated"])
+    if not output or "No handoffs" in output:
+        return []
+
+    handoffs = []
+    for line in output.split("\n"):
+        line = line.strip()
+        if line.startswith("H-") or "H-" in line:
+            handoffs.append(line)
+    return handoffs
+
+
+def get_recent_decisions(limit: int = 3) -> list:
+    """Get recent decisions from GoT."""
+    # Decisions are stored in .got/entities/decisions/
+    decisions_dir = _PROJECT_ROOT / ".got" / "entities" / "decisions"
+    if not decisions_dir.exists():
+        return []
+
+    # Get most recent decision files
+    import json
+    decisions = []
+    files = sorted(decisions_dir.glob("D-*.json"), reverse=True)[:limit]
+
+    for f in files:
+        try:
+            with open(f) as fp:
+                data = json.load(fp)
+                decisions.append({
+                    "id": data.get("id", f.stem),
+                    "title": data.get("title", "Unknown"),
+                    "created_at": data.get("created_at", ""),
+                })
+        except (json.JSONDecodeError, IOError):
+            continue
+
+    return decisions
+
+
+def get_recent_knowledge_transfer() -> Optional[str]:
+    """Get the most recent knowledge transfer file path."""
+    memories_dir = _PROJECT_ROOT / "samples" / "memories"
+    if not memories_dir.exists():
+        return None
+
+    kt_files = sorted(
+        memories_dir.glob("*knowledge-transfer*.md"),
+        key=lambda x: x.stat().st_mtime,
+        reverse=True
+    )
+
+    if kt_files:
+        return kt_files[0].name
+    return None
+
+
+def generate_layer4_from_got(verbose: bool = False) -> str:
+    """
+    Dynamically generate Layer 4 (Ephemeral) content from GoT state.
+
+    This is the core function for continuation context generation.
+    It pulls current state from GoT and formats it for session context.
+    """
+    lines = ["## Current Session Context\n"]
+    lines.append(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+
+    # Git branch
+    branch = get_current_branch()
+    lines.append(f"**Branch:** `{branch}`\n")
+
+    # Sprint status (Primary source per continuation protocol)
+    sprint = get_sprint_status()
+    if sprint:
+        sprint_id = sprint.get("id", "unknown")
+        sprint_name = sprint.get("name", "")
+        sprint_status = sprint.get("status", "")
+        epic = sprint.get("epic", "")
+
+        lines.append(f"**Active Sprint:** {sprint_id}")
+        if sprint_name:
+            lines.append(f" ({sprint_name})")
+        if sprint_status:
+            lines.append(f" [{sprint_status}]")
+        lines.append("\n")
+
+        if epic:
+            lines.append(f"**Epic:** {epic}\n")
+
+        # Sprint tasks
+        tasks = get_sprint_tasks(sprint_id)
+        if tasks:
+            lines.append("\n### Sprint Tasks (Recent)\n")
+            for task in tasks[:5]:
+                lines.append(f"- {task}\n")
+    else:
+        lines.append("**Sprint:** No active sprint found\n")
+
+    # Pending handoffs (Critical for continuation)
+    handoffs = get_pending_handoffs()
+    if handoffs:
+        lines.append("\n### Pending Handoffs\n")
+        lines.append("**⚠️ Action Required:** Accept and read handoff context before proceeding.\n")
+        for handoff in handoffs:
+            lines.append(f"- {handoff}\n")
+
+    # Recent decisions (Context for continuation)
+    decisions = get_recent_decisions(3)
+    if decisions:
+        lines.append("\n### Recent Decisions\n")
+        for d in decisions:
+            lines.append(f"- {d['id']}: {d['title']}\n")
+
+    # Knowledge transfer reference
+    kt_file = get_recent_knowledge_transfer()
+    if kt_file:
+        lines.append(f"\n### Knowledge Transfer\n")
+        lines.append(f"**Latest:** `samples/memories/{kt_file}`\n")
+
+    # Trust protocol reminder (from continuation protocol v2.0)
+    lines.append("\n### Session Protocol\n")
+    lines.append("1. **Verify state** - Confirm understanding with human\n")
+    lines.append("2. **Start at Trust L0** - Read files, ask questions\n")
+    lines.append("3. **Earn L1** - Human confirms state summary\n")
+    lines.append("4. **Earn L2** - First task completed successfully\n")
+
+    if verbose:
+        lines.append("\n### Debug Info\n")
+        lines.append(f"- Sprint data: {sprint}\n")
+        lines.append(f"- Handoffs found: {len(handoffs)}\n")
+        lines.append(f"- Decisions found: {len(decisions)}\n")
+
+    return "".join(lines)
+
+
+def generate_continuation_context(verbose: bool = False) -> str:
+    """
+    Generate full continuation context for session resumption.
+
+    This combines:
+    - Layer 4 dynamic content (from GoT)
+    - Quick recovery commands
+    - State verification checklist
+    """
+    lines = ["# Continuation Context\n\n"]
+    lines.append("> Auto-generated for session continuity. GoT is primary source.\n\n")
+
+    # Add Layer 4 content
+    lines.append(generate_layer4_from_got(verbose))
+
+    # Add quick recovery section
+    lines.append("\n---\n")
+    lines.append("\n## Quick Recovery Commands\n\n")
+    lines.append("```bash\n")
+    lines.append("# 1. Check sprint status\n")
+    lines.append("python scripts/got_utils.py sprint status\n")
+    lines.append("python scripts/got_utils.py sprint tasks $(python scripts/got_utils.py sprint status 2>/dev/null | grep '^ID:' | cut -d' ' -f2)\n\n")
+    lines.append("# 2. Check for pending handoffs\n")
+    lines.append("python scripts/got_utils.py handoff list --status initiated\n\n")
+    lines.append("# 3. Read latest knowledge transfer\n")
+    lines.append("ls -t samples/memories/*knowledge-transfer*.md | head -1 | xargs cat\n\n")
+    lines.append("# 4. Git state\n")
+    lines.append("git branch --show-current && git log --oneline -5\n")
+    lines.append("```\n")
+
+    # State verification checklist
+    lines.append("\n## State Verification Checklist\n\n")
+    lines.append("Before acting, confirm:\n")
+    lines.append("- [ ] Current sprint understood\n")
+    lines.append("- [ ] Pending handoffs reviewed\n")
+    lines.append("- [ ] Branch matches expected\n")
+    lines.append("- [ ] Human confirmed state summary\n")
+
+    return "".join(lines)
 
 
 def demo_layer_creation() -> list:
@@ -222,21 +482,29 @@ def demo_layer_creation() -> list:
     print(f"    Rule: {layer3.inclusion_rule}")
     print(f"    For: {layer3.properties.get('persona_ids', [])}")
 
-    # Layer 4: Ephemeral - Current Session Context
+    # Layer 4: Ephemeral - Current Session Context (DYNAMICALLY GENERATED)
+    # This is the key integration point for continuation protocol
+    try:
+        layer4_content = generate_layer4_from_got(verbose=False)
+        layer4_source = "GoT (dynamic)"
+    except Exception as e:
+        layer4_content = LAYER_4_SESSION_CONTEXT_FALLBACK
+        layer4_source = f"fallback (GoT error: {e})"
+
     layer4 = ClaudeMdLayer(
         id=generate_claudemd_layer_id(4, "session-context"),
         layer_type="ephemeral",
         layer_number=4,
         section_id="session-context",
         title="Current Session Context",
-        content=LAYER_4_SESSION_CONTEXT,
+        content=layer4_content,
         freshness_decay_days=1,
         inclusion_rule="context",
         context_branches=["claude/*"],
     )
     layers.append(layer4)
     print(f"  ✓ Layer 4 (Ephemeral): {layer4.title}")
-    print(f"    Generated: dynamically per session")
+    print(f"    Source: {layer4_source}")
     print(f"    Decay: {layer4.freshness_decay_days} day (regenerate each session)")
 
     return layers
@@ -612,17 +880,52 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="CLAUDE.md Auto-Generation System Demo (Using Real Content)"
+        description="CLAUDE.md Auto-Generation with GoT-Based Continuation Context"
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Show verbose output")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be generated")
     parser.add_argument("--team-demo", action="store_true", help="Focus on team/persona features")
+    parser.add_argument(
+        "--generate-layer4",
+        action="store_true",
+        help="Generate Layer 4 (Ephemeral) content from GoT and print it"
+    )
+    parser.add_argument(
+        "--continuation",
+        action="store_true",
+        help="Generate full continuation context for session resumption"
+    )
+    parser.add_argument(
+        "--output", "-o",
+        type=str,
+        help="Output file path (default: stdout)"
+    )
     args = parser.parse_args()
 
+    # Quick generation modes (no demo, just output)
+    if args.generate_layer4:
+        content = generate_layer4_from_got(verbose=args.verbose)
+        if args.output:
+            Path(args.output).write_text(content)
+            print(f"Layer 4 written to: {args.output}")
+        else:
+            print(content)
+        return
+
+    if args.continuation:
+        content = generate_continuation_context(verbose=args.verbose)
+        if args.output:
+            Path(args.output).write_text(content)
+            print(f"Continuation context written to: {args.output}")
+        else:
+            print(content)
+        return
+
+    # Demo mode
     print()
     print("╔" + "═" * 68 + "╗")
-    print("║  CLAUDE.md Auto-Generation System Demo                            ║")
-    print("║  Cortical Text Processor - Using REAL CLAUDE.md Content           ║")
+    print("║  CLAUDE.md Auto-Generation with GoT-Based Continuation            ║")
+    print("║  Cortical Text Processor - Dynamic Layer 4 from GoT State         ║")
     print("╚" + "═" * 68 + "╝")
 
     if args.team_demo:
@@ -648,7 +951,13 @@ def main():
     print("     L1 Operational → Dev Workflow (always)")
     print("     L2 Contextual → GoT Guide (when working on GoT)")
     print("     L3 Persona    → ML Guide (for ML engineers)")
-    print("     L4 Ephemeral  → Session Context (per-session)")
+    print("     L4 Ephemeral  → Session Context (DYNAMIC from GoT)")
+    print()
+    print("  🔄 GoT-Based Continuation:")
+    print("     • Layer 4 generated dynamically from GoT state")
+    print("     • Sprint status, handoffs, decisions included")
+    print("     • Trust protocol reminder embedded")
+    print("     • Fallback to static content if GoT unavailable")
     print()
     print("  🎯 Key Features:")
     print("     • Context-aware layer selection")
@@ -657,9 +966,14 @@ def main():
     print("     • Team hierarchy for SDLC pipelines")
     print("     • Fault-tolerant with fallback chain")
     print()
+    print("  🚀 Quick Commands:")
+    print("     python scripts/claudemd_generation_demo.py --generate-layer4")
+    print("     python scripts/claudemd_generation_demo.py --continuation")
+    print("     python scripts/claudemd_generation_demo.py --continuation -o context.md")
+    print()
     print("  📖 Documentation:")
-    print("     • docs/claude-md-generation-design.md")
-    print("     • cortical/got/claudemd.py")
+    print("     • .claude/commands/project:continuation.md (v2.0)")
+    print("     • docs/architecture/GOT_DATABASE_ARCHITECTURE.md")
     print("     • cortical/got/types.py")
     print()
 
