@@ -380,18 +380,64 @@ class VersionedStore:
 
     def _load_version(self) -> int:
         """
-        Load global version from _version.json.
+        Compute global version from entities and history.
+
+        The version is computed as the maximum of:
+        1. Stored value in _version.json (if exists) - for backward compatibility
+        2. Count of entity files (minimum valid version)
+        3. Max global_version from all history entries
+
+        This makes the version self-healing and merge-conflict-free:
+        - If _version.json is missing or stale, we compute correctly
+        - If two branches had different versions, we take the highest
+        - The file is gitignored to prevent merge conflicts
 
         Returns:
-            Current version, or 0 if not found
+            Current version (always >= entity count and max history version)
         """
+        # Start with stored value (if exists) for backward compatibility
+        stored_version = 0
         version_path = self.store_dir / "_version.json"
-        if not version_path.exists():
-            return 0
+        if version_path.exists():
+            try:
+                with open(version_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                stored_version = data.get("version", 0)
+            except (json.JSONDecodeError, OSError):
+                # Corrupted or unreadable file, compute from scratch
+                pass
 
-        with open(version_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return data.get("version", 0)
+        # Count entity files (excluding _version.json and _history dir)
+        entity_count = 0
+        for entity_file in self.store_dir.glob("*.json"):
+            if entity_file.name != "_version.json":
+                entity_count += 1
+
+        # Find max global_version from history files
+        max_history_version = 0
+        if self.history_dir.exists():
+            for history_file in self.history_dir.glob("*.jsonl"):
+                try:
+                    with open(history_file, 'r', encoding='utf-8') as f:
+                        for line in f:
+                            if line.strip():
+                                entry = json.loads(line)
+                                gv = entry.get("global_version", 0)
+                                if gv > max_history_version:
+                                    max_history_version = gv
+                except (json.JSONDecodeError, OSError):
+                    # Skip corrupted history files
+                    continue
+
+        # Use max of all sources
+        computed_version = max(stored_version, entity_count, max_history_version)
+
+        # If computed is higher than stored, update the file (local cache)
+        if computed_version > stored_version:
+            self._version = computed_version
+            self._save_version()
+
+        return computed_version
 
     def _save_version(self) -> None:
         """Save global version to _version.json."""
