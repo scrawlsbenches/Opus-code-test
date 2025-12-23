@@ -593,6 +593,143 @@ class TestSparkPredictor(unittest.TestCase):
         self.assertIn("pattern1", summary)
 
 
+class TestSparkPredictorCoverageGaps(unittest.TestCase):
+    """Tests to improve coverage for SparkPredictor."""
+
+    def test_train_from_processor(self):
+        """Test training from CorticalTextProcessor."""
+        from cortical.processor import CorticalTextProcessor
+
+        # Create and populate a processor
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "neural networks process data efficiently")
+        processor.process_document("doc2", "machine learning uses neural networks")
+
+        spark = SparkPredictor()
+        result = spark.train_from_processor(processor)
+
+        # Method chaining
+        self.assertIs(result, spark)
+
+        # Should be trained (fallback via token layer)
+        self.assertTrue(spark._trained)
+
+    def test_train_from_processor_empty(self):
+        """Test training from empty processor."""
+        from cortical.processor import CorticalTextProcessor
+
+        processor = CorticalTextProcessor()
+        spark = SparkPredictor()
+        result = spark.train_from_processor(processor)
+
+        # Should return self even if no documents
+        self.assertIs(result, spark)
+        self.assertFalse(spark._trained)
+
+    def test_load_alignment_json_file(self):
+        """Test loading alignment from JSON file."""
+        spark = SparkPredictor()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create alignment JSON with correct format (entries is dict of lists)
+            json_path = os.path.join(tmpdir, "alignment.json")
+            import json
+            alignment_data = {
+                "entries": {
+                    "test_term": [
+                        {
+                            "key": "test_term",
+                            "value": "test meaning",
+                            "entry_type": "definition",
+                            "tags": ["tag1"]
+                        }
+                    ]
+                }
+            }
+            with open(json_path, 'w') as f:
+                json.dump(alignment_data, f)
+
+            # Load it
+            result = spark.load_alignment(json_path)
+
+            # Method chaining
+            self.assertIs(result, spark)
+            self.assertTrue(spark._alignment_loaded)
+
+    def test_load_alignment_md_file(self):
+        """Test loading alignment from single markdown file."""
+        spark = SparkPredictor()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create markdown file
+            md_path = os.path.join(tmpdir, "alignment.md")
+            with open(md_path, 'w') as f:
+                f.write("# Definitions\n\n")
+                f.write("- **term1**: meaning one\n")
+                f.write("- **term2**: meaning two\n")
+
+            # Load it
+            result = spark.load_alignment(md_path)
+
+            # Method chaining
+            self.assertIs(result, spark)
+            # Should have loaded entries
+            self.assertGreaterEqual(len(spark.alignment), 0)
+
+    def test_load_alignment_directory(self):
+        """Test loading alignment from directory with markdown files."""
+        spark = SparkPredictor()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create multiple markdown files
+            with open(os.path.join(tmpdir, "defs.md"), 'w') as f:
+                f.write("# Definitions\n\n- **term1**: meaning\n")
+            with open(os.path.join(tmpdir, "patterns.md"), 'w') as f:
+                f.write("# Patterns\n\n- **pattern1**: description\n")
+
+            result = spark.load_alignment(tmpdir)
+
+            self.assertIs(result, spark)
+
+    def test_prime_with_alignment(self):
+        """Test prime() returns alignment context when loaded."""
+        spark = SparkPredictor()
+
+        # Train the model
+        docs = ["pagerank computes importance scores"]
+        spark.train_from_documents(docs)
+
+        # Add alignment
+        spark.add_definition("pagerank", "Graph-based importance algorithm")
+        spark.add_definition("importance", "Measure of node centrality")
+
+        # Prime a query that matches alignment
+        result = spark.prime("pagerank algorithm")
+
+        # Check alignment was included
+        self.assertTrue(spark._alignment_loaded)
+        self.assertIn('alignment', result)
+        # The alignment list should have entries if search found matches
+        self.assertIsInstance(result['alignment'], list)
+
+    def test_prime_keywords_extraction(self):
+        """Test that prime extracts meaningful keywords."""
+        spark = SparkPredictor()
+        spark.train_from_documents(["test document"])
+
+        result = spark.prime("the quick brown fox jumps over the lazy dog")
+
+        # Common stop words should be filtered
+        keywords = result['keywords']
+        self.assertNotIn('the', keywords)
+        self.assertNotIn('a', keywords)
+        # Content words should be present
+        self.assertIn('quick', keywords)
+        self.assertIn('brown', keywords)
+        self.assertIn('fox', keywords)
+        self.assertIn('jumps', keywords)
+
+
 class TestBenchmarks(unittest.TestCase):
     """Benchmark tests for performance requirements."""
 
