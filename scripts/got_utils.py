@@ -100,14 +100,15 @@ VALID_PRIORITIES = [PRIORITY_CRITICAL, PRIORITY_HIGH, PRIORITY_MEDIUM, PRIORITY_
 VALID_CATEGORIES = ["arch", "feature", "bugfix", "test", "docs", "refactor",
                     "debt", "devex", "security", "performance", "optimization"]
 
-# Auto-commit configuration
-# Set GOT_AUTO_COMMIT=1 to enable automatic commits after GoT mutations
-GOT_AUTO_COMMIT_ENABLED = os.environ.get("GOT_AUTO_COMMIT", "").lower() in ("1", "true", "yes")
+# Auto-commit configuration (DEFAULT: ON)
+# GoT state is always safe to commit - it's just task/decision tracking data.
+# Set GOT_AUTO_COMMIT=0 to disable automatic commits after GoT mutations.
+GOT_AUTO_COMMIT_ENABLED = os.environ.get("GOT_AUTO_COMMIT", "1").lower() not in ("0", "false", "no")
 
-# Auto-push configuration (for environment resilience)
-# Set GOT_AUTO_PUSH=1 to enable automatic push after auto-commit
-# SAFETY: Only pushes to claude/* branches (never main/master)
-GOT_AUTO_PUSH_ENABLED = os.environ.get("GOT_AUTO_PUSH", "").lower() in ("1", "true", "yes")
+# Auto-push configuration (DEFAULT: ON for environment resilience)
+# SAFETY: Only pushes to claude/* branches (never main/master/prod)
+# Set GOT_AUTO_PUSH=0 to disable automatic push after auto-commit.
+GOT_AUTO_PUSH_ENABLED = os.environ.get("GOT_AUTO_PUSH", "1").lower() not in ("0", "false", "no")
 
 # Protected branches that should NEVER be auto-pushed (even if GOT_AUTO_PUSH=1)
 PROTECTED_BRANCHES = {"main", "master", "prod", "production", "release"}

@@ -61,21 +61,14 @@ GoT (Graph of Thought) is our task, sprint, and decision tracking system:
 > - Logs the deletion as an event for audit trail
 > - Supports `--force` for overriding safety checks
 
-**GoT Auto-Commit & Auto-Push (Environment Resilience):**
+**GoT Auto-Commit & Auto-Push (DEFAULT: ON)**
 
-| Variable | Effect | Safety |
-|----------|--------|--------|
-| `GOT_AUTO_COMMIT=1` | Commits `.got/` after mutating operations | Always safe |
-| `GOT_AUTO_PUSH=1` | Pushes after commit (requires auto-commit) | Only `claude/*` branches |
+Both are enabled by default for environment resilience. GoT state auto-saves to git after every mutation.
 
-```bash
-# Enable for session (recommended for agent work)
-export GOT_AUTO_COMMIT=1
-export GOT_AUTO_PUSH=1
-
-# Or per-command
-GOT_AUTO_COMMIT=1 GOT_AUTO_PUSH=1 python scripts/got_utils.py task complete T-XXX
-```
+| Variable | Default | To Disable |
+|----------|---------|------------|
+| `GOT_AUTO_COMMIT` | ON | `export GOT_AUTO_COMMIT=0` |
+| `GOT_AUTO_PUSH` | ON | `export GOT_AUTO_PUSH=0` |
 
 **Safety features:**
 - Auto-push ONLY works on `claude/*` branches (never main/master)
