@@ -2,12 +2,14 @@
 """
 Demo script for the CLAUDE.md auto-generation system.
 
-This script demonstrates:
-1. Creating and managing CLAUDE.md layers
-2. Context-aware layer selection
-3. Freshness tracking and staleness detection
-4. PersonaProfile and Team entities for multi-team support
-5. Full generation pipeline with fault tolerance
+This script demonstrates the layer system using REAL content from the
+Cortical Text Processor's CLAUDE.md file:
+
+Layer 0 (Core): Quick Session Start - Always included
+Layer 1 (Operational): Development Workflow - Always included
+Layer 2 (Contextual): GoT Guide - When working on cortical/got/*
+Layer 3 (Persona): ML Data Collection - For ML engineers
+Layer 4 (Ephemeral): Current Session - Sprint/branch specific
 
 Usage:
     python scripts/claudemd_generation_demo.py [--verbose]
@@ -47,124 +49,195 @@ def print_subheader(title: str) -> None:
     print(f"--- {title} ---")
 
 
-def demo_layer_creation() -> list:
-    """Demonstrate creating CLAUDE.md layers."""
-    print_header("1. Creating CLAUDE.md Layers")
+# =============================================================================
+# REAL CLAUDE.md CONTENT EXCERPTS
+# =============================================================================
 
-    layers = []
-
-    # Layer 0: Core (always included)
-    layer0 = ClaudeMdLayer(
-        id=generate_claudemd_layer_id(0, "quick-start"),
-        layer_type="core",
-        layer_number=0,
-        section_id="quick-start",
-        title="Quick Session Start",
-        content="""## Quick Session Start (READ THIS FIRST)
+LAYER_0_QUICK_START = """## 🚀 Quick Session Start (READ THIS FIRST)
 
 **New session? Start here to restore context fast.**
 
-1. Check GoT State: `python scripts/got_utils.py validate`
-2. Read Recent Knowledge Transfer
-3. Work Priority: Security > Bugs > Features > Docs
-""",
+### 1. Check GoT State (30 seconds)
+```bash
+python scripts/got_utils.py validate      # Health check
+python scripts/got_utils.py task list --status in_progress  # What's active?
+```
+
+### 2. Read Recent Knowledge Transfer (2 minutes)
+```bash
+ls -t samples/memories/*knowledge-transfer*.md | head -1 | xargs cat
+```
+
+### 3. Work Priority Order
+1. **Security** → 2. **Bugs** → 3. **Features** → 4. **Documentation**
+"""
+
+LAYER_1_DEV_WORKFLOW = """## Development Workflow
+
+### Before Writing Code
+1. **Read the relevant module** - understand existing patterns
+2. **Check existing tasks** - run `python scripts/got_utils.py task list`
+3. **Run tests first** to establish baseline:
+   ```bash
+   python -m pytest tests/ -q
+   ```
+
+### After Writing Code
+1. **Run the full test suite**
+2. **Check coverage hasn't dropped** (baseline: 89%)
+3. **Dog-food the feature** - test with real usage
+4. **Create follow-up tasks** if issues discovered
+"""
+
+LAYER_2_GOT_GUIDE = """## Graph of Thought (GoT) Usage
+
+GoT is our task, sprint, and decision tracking system:
+- **Tasks**: `T-YYYYMMDD-HHMMSS-XXXXXXXX`
+- **Sprints**: `S-NNN` (e.g., S-017)
+- **Decisions**: `D-YYYYMMDD-HHMMSS-XXXXXXXX`
+- **Handoffs**: `H-YYYYMMDD-HHMMSS-XXXXXXXX`
+
+**Key Commands:**
+| Command | Purpose |
+|---------|---------|
+| `got_utils.py dashboard` | Overview of all tasks |
+| `got_utils.py task create "Title"` | Create task |
+| `got_utils.py task complete T-XXX` | Mark complete |
+| `got_utils.py validate` | Health check |
+
+> ⚠️ **NEVER delete GoT files directly!** Use `got task delete` command.
+"""
+
+LAYER_3_ML_GUIDE = """## ML Data Collection Guide
+
+**Fully automatic. Zero configuration required.**
+
+ML data collection starts automatically when you open this project.
+Every session is tracked, every commit is captured.
+
+### What Gets Collected
+| Data Type | Location | Contents |
+|-----------|----------|----------|
+| **Commits** | `.git-ml/commits/` | Git history with diffs |
+| **Chats** | `.git-ml/chats/` | Query/response pairs |
+| **Sessions** | `.git-ml/sessions/` | Development sessions |
+
+### Quick Commands
+```bash
+python scripts/ml_data_collector.py stats      # Check progress
+python scripts/ml_data_collector.py estimate   # Training viability
+python scripts/ml_file_prediction.py train     # Train file predictor
+```
+"""
+
+LAYER_4_SESSION_CONTEXT = """## Current Session Context
+
+**Active Sprint:** S-017 (Spark SLM Integration)
+**Current Branch:** claude/auto-generate-claude-md-LwdTl
+**Epic:** CLAUDE.md Auto-Generation System
+
+### This Session's Focus
+- Implementing 5-layer CLAUDE.md architecture
+- PersonaProfile and Team entities for multi-team support
+- Context-aware layer selection
+
+### Recent Decisions
+- D-20251222: Keep original CLAUDE.md as fallback
+- D-20251222: Use GoT for layer storage (not separate files)
+"""
+
+
+def demo_layer_creation() -> list:
+    """Demonstrate creating CLAUDE.md layers from real content."""
+    print_header("1. Creating CLAUDE.md Layers (From Real CLAUDE.md)")
+
+    layers = []
+
+    # Layer 0: Core - Quick Session Start (always included)
+    layer0 = ClaudeMdLayer(
+        id=generate_claudemd_layer_id(0, "quick-session-start"),
+        layer_type="core",
+        layer_number=0,
+        section_id="quick-session-start",
+        title="Quick Session Start",
+        content=LAYER_0_QUICK_START,
         freshness_decay_days=30,
         inclusion_rule="always",
     )
     layers.append(layer0)
-    print(f"  Created Layer 0 (Core): {layer0.title}")
-    print(f"    ID: {layer0.id}")
-    print(f"    Inclusion: {layer0.inclusion_rule}")
+    print(f"  ✓ Layer 0 (Core): {layer0.title}")
+    print(f"    Source: CLAUDE.md lines 5-70")
+    print(f"    Rule: {layer0.inclusion_rule} (every session needs this)")
 
-    # Layer 1: Operational
+    # Layer 1: Operational - Development Workflow (always included)
     layer1 = ClaudeMdLayer(
         id=generate_claudemd_layer_id(1, "dev-workflow"),
         layer_type="operational",
         layer_number=1,
         section_id="dev-workflow",
         title="Development Workflow",
-        content="""## Development Workflow
-
-### Before Writing Code
-1. Read the relevant module
-2. Check existing tasks
-3. Run tests first to establish baseline
-
-### After Writing Code
-1. Run the full test suite
-2. Check coverage hasn't dropped
-3. Dog-food the feature
-""",
+        content=LAYER_1_DEV_WORKFLOW,
         freshness_decay_days=14,
         inclusion_rule="always",
     )
     layers.append(layer1)
-    print(f"  Created Layer 1 (Operational): {layer1.title}")
+    print(f"  ✓ Layer 1 (Operational): {layer1.title}")
+    print(f"    Source: CLAUDE.md lines 1077-1258")
+    print(f"    Rule: {layer1.inclusion_rule} (standard dev practices)")
 
-    # Layer 2: Contextual (included based on context)
+    # Layer 2: Contextual - GoT Guide (only when working on GoT)
     layer2 = ClaudeMdLayer(
-        id=generate_claudemd_layer_id(2, "got-guide"),
+        id=generate_claudemd_layer_id(2, "got-usage"),
         layer_type="contextual",
         layer_number=2,
-        section_id="got-guide",
-        title="Graph of Thought Guide",
-        content="""## Graph of Thought (GoT) Usage
-
-When working with the GoT system:
-- Tasks: `T-YYYYMMDD-HHMMSS-XXXXXXXX`
-- Decisions: `D-YYYYMMDD-HHMMSS-XXXXXXXX`
-- Use `python scripts/got_utils.py` for all operations
-""",
+        section_id="got-usage",
+        title="Graph of Thought Usage",
+        content=LAYER_2_GOT_GUIDE,
         freshness_decay_days=7,
         inclusion_rule="context",
-        context_modules=["cortical/got", "cortical/reasoning"],
-        context_branches=["feature/got-*", "claude/*"],
+        context_modules=["cortical/got", "cortical/reasoning", ".got"],
+        context_branches=["*got*", "*task*", "*sprint*"],
     )
     layers.append(layer2)
-    print(f"  Created Layer 2 (Contextual): {layer2.title}")
-    print(f"    Context modules: {layer2.context_modules}")
+    print(f"  ✓ Layer 2 (Contextual): {layer2.title}")
+    print(f"    Source: CLAUDE.md lines 21-62")
+    print(f"    Rule: {layer2.inclusion_rule}")
+    print(f"    When: Working on {layer2.context_modules}")
 
-    # Layer 3: Persona-specific
+    # Layer 3: Persona - ML Data Collection (for ML engineers)
     layer3 = ClaudeMdLayer(
-        id=generate_claudemd_layer_id(3, "ml-engineer"),
+        id=generate_claudemd_layer_id(3, "ml-data-collection"),
         layer_type="persona",
         layer_number=3,
-        section_id="ml-engineer",
-        title="ML Engineering Guidelines",
-        content="""## ML Engineering Guidelines
-
-- Always validate data quality before training
-- Use reproducible random seeds
-- Track experiments with clear naming conventions
-- Monitor for data drift in production
-""",
+        section_id="ml-data-collection",
+        title="ML Data Collection Guide",
+        content=LAYER_3_ML_GUIDE,
         freshness_decay_days=30,
         inclusion_rule="user_pref",
         properties={"persona_ids": ["ml-engineer", "data-scientist"]},
     )
     layers.append(layer3)
-    print(f"  Created Layer 3 (Persona): {layer3.title}")
-    print(f"    Persona IDs: {layer3.properties.get('persona_ids', [])}")
+    print(f"  ✓ Layer 3 (Persona): {layer3.title}")
+    print(f"    Source: CLAUDE.md lines 2180-2430")
+    print(f"    Rule: {layer3.inclusion_rule}")
+    print(f"    For: {layer3.properties.get('persona_ids', [])}")
 
-    # Layer 4: Ephemeral (session-specific)
+    # Layer 4: Ephemeral - Current Session Context
     layer4 = ClaudeMdLayer(
         id=generate_claudemd_layer_id(4, "session-context"),
         layer_type="ephemeral",
         layer_number=4,
         section_id="session-context",
         title="Current Session Context",
-        content="""## Current Session Context
-
-**Active Sprint:** S-017 (Spark SLM)
-**Current Branch:** claude/auto-generate-claude-md
-**Focus:** CLAUDE.md auto-generation system
-""",
+        content=LAYER_4_SESSION_CONTEXT,
         freshness_decay_days=1,
         inclusion_rule="context",
+        context_branches=["claude/*"],
     )
     layers.append(layer4)
-    print(f"  Created Layer 4 (Ephemeral): {layer4.title}")
-    print(f"    Decay: {layer4.freshness_decay_days} day(s)")
+    print(f"  ✓ Layer 4 (Ephemeral): {layer4.title}")
+    print(f"    Generated: dynamically per session")
+    print(f"    Decay: {layer4.freshness_decay_days} day (regenerate each session)")
 
     return layers
 
@@ -173,262 +246,384 @@ def demo_freshness_tracking(layers: list) -> None:
     """Demonstrate freshness tracking and staleness detection."""
     print_header("2. Freshness Tracking")
 
+    print("  Each layer has a decay period after which it becomes stale:")
+    print()
     for layer in layers:
         status = "FRESH" if not layer.is_stale() else "STALE"
-        print(f"  Layer {layer.layer_number} ({layer.layer_type}): {status}")
-        print(f"    Decay period: {layer.freshness_decay_days} days")
-        print(f"    Last regenerated: {layer.last_regenerated or 'Never'}")
+        emoji = "🟢" if status == "FRESH" else "🔴"
+        print(f"  {emoji} Layer {layer.layer_number} ({layer.layer_type}): {status}")
+        print(f"       Decay: {layer.freshness_decay_days} days | Last: {layer.last_regenerated or 'Never'}")
 
-    # Simulate marking a layer stale
-    print_subheader("Simulating Staleness")
-    layers[4].mark_stale()
-    print(f"  Marked Layer 4 as stale: {layers[4].freshness_status}")
+    print_subheader("Simulating Layer Lifecycle")
 
-    # Refresh it
+    # Mark ephemeral layer stale (simulating day passed)
+    layers[4].mark_stale("Session ended")
+    print(f"  → Marked Layer 4 as stale (session ended)")
+    print(f"    Status: {layers[4].freshness_status}")
+    print(f"    Trigger: {layers[4].regeneration_trigger}")
+
+    # Refresh it (simulating new session)
     layers[4].mark_fresh()
-    print(f"  Refreshed Layer 4: {layers[4].freshness_status}")
-    print(f"    New regeneration time: {layers[4].last_regenerated}")
+    print(f"  → Refreshed Layer 4 (new session started)")
+    print(f"    Status: {layers[4].freshness_status}")
+    print(f"    Timestamp: {layers[4].last_regenerated}")
 
 
 def demo_versioning(layers: list) -> None:
-    """Demonstrate layer versioning."""
-    print_header("3. Layer Versioning")
+    """Demonstrate layer versioning for audit trail."""
+    print_header("3. Layer Versioning (Audit Trail)")
 
-    # Create a version snapshot
     layer = layers[0]
-    version = ClaudeMdVersion(
+
+    print("  When CLAUDE.md content changes, we create version snapshots:")
+    print()
+
+    # Create version 1
+    v1 = ClaudeMdVersion(
         id=generate_claudemd_version_id(layer.id, 1),
         layer_id=layer.id,
         version_number=1,
         content_snapshot=layer.content,
-        change_rationale="Initial version",
+        change_rationale="Initial extraction from CLAUDE.md",
+        changed_by="claude/auto-generate-claude-md",
     )
 
-    print(f"  Created version snapshot:")
-    print(f"    Version ID: {version.id}")
-    print(f"    Layer ID: {version.layer_id}")
-    print(f"    Version Number: {version.version_number}")
-    print(f"    Rationale: {version.change_rationale}")
-    print(f"    Content length: {len(version.content_snapshot)} chars")
+    print(f"  Version 1:")
+    print(f"    ID: {v1.id[:50]}...")
+    print(f"    Rationale: {v1.change_rationale}")
+    print(f"    Content: {len(v1.content_snapshot)} chars")
+
+    # Simulate version 2
+    v2 = ClaudeMdVersion(
+        id=generate_claudemd_version_id(layer.id, 2),
+        layer_id=layer.id,
+        version_number=2,
+        content_snapshot=layer.content + "\n### 4. New Section Added\n",
+        change_rationale="Added new quick-start section",
+        changed_by="user-request",
+        additions=2,
+        deletions=0,
+    )
+
+    print(f"\n  Version 2:")
+    print(f"    ID: {v2.id[:50]}...")
+    print(f"    Rationale: {v2.change_rationale}")
+    print(f"    Changes: +{v2.additions} -{v2.deletions} lines")
 
 
-def demo_serialization(layers: list) -> None:
-    """Demonstrate serialization and deserialization."""
-    print_header("4. Serialization Round-Trip")
+def demo_context_selection(layers: list) -> None:
+    """Demonstrate context-aware layer selection."""
+    print_header("4. Context-Aware Layer Selection")
 
-    layer = layers[2]  # Use the contextual layer
+    # Scenario 1: Working on GoT module
+    print_subheader("Scenario: Working on cortical/got/api.py")
+    context1 = {
+        "branch": "claude/auto-generate-claude-md-LwdTl",
+        "active_files": ["cortical/got/api.py", "cortical/got/types.py"],
+        "sprint": "S-017",
+        "persona": "developer",
+    }
 
-    # Serialize
-    data = layer.to_dict()
-    print(f"  Serialized layer to dict:")
-    print(f"    Keys: {list(data.keys())[:8]}...")
+    selected1 = []
+    for layer in layers:
+        include = False
+        reason = ""
 
-    # Deserialize
-    restored = ClaudeMdLayer.from_dict(data)
-    print(f"  Deserialized back to ClaudeMdLayer:")
-    print(f"    ID match: {layer.id == restored.id}")
-    print(f"    Content match: {layer.content == restored.content}")
-    print(f"    Context modules match: {layer.context_modules == restored.context_modules}")
+        if layer.inclusion_rule == "always":
+            include = True
+            reason = "always included"
+        elif layer.inclusion_rule == "context":
+            # Check module context
+            for ctx_mod in layer.context_modules:
+                for active in context1["active_files"]:
+                    if ctx_mod.replace("/*", "") in active or ctx_mod in active:
+                        include = True
+                        reason = f"matches {ctx_mod}"
+                        break
+            # Check branch context
+            if not include:
+                for pattern in layer.context_branches:
+                    if pattern.replace("*", "") in context1["branch"]:
+                        include = True
+                        reason = f"branch matches {pattern}"
+                        break
+
+        status = "✓ INCLUDE" if include else "✗ SKIP"
+        print(f"    Layer {layer.layer_number} ({layer.section_id}): {status}")
+        if reason:
+            print(f"      Reason: {reason}")
+        if include:
+            selected1.append(layer)
+
+    print(f"\n    Result: {len(selected1)} layers selected for this context")
+
+    # Scenario 2: Working on ML module
+    print_subheader("Scenario: ML Engineer working on spark/ngram.py")
+    context2 = {
+        "branch": "feature/ml-training",
+        "active_files": ["cortical/spark/ngram.py"],
+        "persona": "ml-engineer",
+    }
+
+    selected2 = []
+    for layer in layers:
+        include = False
+
+        if layer.inclusion_rule == "always":
+            include = True
+        elif layer.inclusion_rule == "user_pref":
+            # Check persona
+            persona_ids = layer.properties.get("persona_ids", [])
+            if context2["persona"] in persona_ids:
+                include = True
+
+        if include:
+            selected2.append(layer)
+            print(f"    ✓ Layer {layer.layer_number}: {layer.title}")
+
+    print(f"\n    Result: {len(selected2)} layers (includes ML guide for ml-engineer)")
 
 
 def demo_persona_profiles() -> None:
-    """Demonstrate PersonaProfile entity for multi-team support."""
-    print_header("5. PersonaProfile Entity (Multi-Team Support)")
+    """Demonstrate PersonaProfile for role-based customization."""
+    print_header("5. PersonaProfile (Role-Based Customization)")
 
-    # Create a developer persona
-    dev_persona = PersonaProfile(
+    # Create personas matching our project
+    senior_dev = PersonaProfile(
         id=generate_persona_profile_id(),
         name="Senior Developer",
         role="developer",
         layer_preferences={
-            "quick-start": True,
+            "quick-session-start": True,
             "dev-workflow": True,
-            "got-guide": True,
-            "ml-engineer": False,  # Not relevant for general dev
+            "got-usage": True,
+            "ml-data-collection": False,  # Not their focus
+            "architecture": True,
         },
-        custom_layers=["testing-guidelines"],
-        excluded_layers=["marketing-style"],
+        excluded_layers=["marketing-style", "branding-guide"],
     )
 
-    print(f"  Created Developer Persona:")
-    print(f"    ID: {dev_persona.id}")
-    print(f"    Name: {dev_persona.name}")
-    print(f"    Role: {dev_persona.role}")
-
-    # Test layer inclusion
-    print_subheader("Layer Inclusion Decisions")
-    test_sections = ["quick-start", "ml-engineer", "testing-guidelines", "marketing-style"]
-    for section in test_sections:
-        include = dev_persona.should_include_layer(section)
-        print(f"    {section}: {'INCLUDE' if include else 'EXCLUDE'}")
-
-    # Create an ML engineer persona that inherits from developer
-    ml_persona = PersonaProfile(
+    ml_engineer = PersonaProfile(
         id=generate_persona_profile_id(),
-        name="ML Engineer",
+        name="ML Platform Engineer",
         role="developer",
-        inherits_from=dev_persona.id,
+        inherits_from=senior_dev.id,
         layer_preferences={
-            "ml-engineer": True,  # Override parent's False
+            "ml-data-collection": True,  # Override parent
+            "spark-slm": True,
         },
     )
 
-    print_subheader("Inheritance Demo")
-    print(f"  ML Engineer inherits from: {ml_persona.inherits_from}")
-    print(f"  ML Engineer's own preferences: {ml_persona.layer_preferences}")
-    print(f"  Effective preferences would include parent's + overrides")
+    qa_engineer = PersonaProfile(
+        id=generate_persona_profile_id(),
+        name="QA Engineer",
+        role="qa",
+        layer_preferences={
+            "quick-session-start": True,
+            "testing-patterns": True,
+            "regression-tests": True,
+        },
+        custom_layers=["qa-checklist", "test-coverage-report"],
+    )
+
+    print("  Project Personas:")
+    print()
+    for persona in [senior_dev, ml_engineer, qa_engineer]:
+        print(f"  📋 {persona.name} ({persona.role})")
+        print(f"     ID: {persona.id}")
+        if persona.inherits_from:
+            print(f"     Inherits from: {persona.inherits_from[:30]}...")
+        prefs = [k for k, v in persona.layer_preferences.items() if v]
+        print(f"     Includes: {', '.join(prefs[:3])}{'...' if len(prefs) > 3 else ''}")
+        print()
+
+    print_subheader("Layer Decisions for ML Engineer")
+    test_layers = ["quick-session-start", "ml-data-collection", "marketing-style", "qa-checklist"]
+    for layer in test_layers:
+        include = ml_engineer.should_include_layer(layer)
+        status = "✓ INCLUDE" if include else "✗ EXCLUDE"
+        print(f"    {layer}: {status}")
 
 
 def demo_team_hierarchy() -> None:
-    """Demonstrate Team entity for organizational hierarchy."""
-    print_header("6. Team Entity (Organizational Hierarchy)")
+    """Demonstrate Team entity for SDLC pipeline support."""
+    print_header("6. Team Hierarchy (SDLC Pipeline Support)")
 
-    # Create Engineering team (parent)
+    # Create teams matching potential SDLC pipeline
     engineering = Team(
         id=generate_team_id(),
         name="Engineering",
+        description="Core development team",
         branch_patterns=["main", "develop", "feature/*", "bugfix/*"],
-        module_scope=["cortical/*"],
+        module_scope=["cortical"],
         settings={
-            "code_review_required": True,
-            "min_coverage": 85,
-            "knowledge_domains": ["architecture", "testing", "performance"],
+            "min_coverage": 89,
+            "require_tests": True,
+            "knowledge_domains": ["architecture", "algorithms", "testing"],
         },
     )
 
-    print(f"  Created Engineering Team:")
-    print(f"    ID: {engineering.id}")
-    print(f"    Name: {engineering.name}")
-    print(f"    Branch patterns: {engineering.branch_patterns}")
-
-    # Create ML sub-team
-    ml_team = Team(
+    ml_platform = Team(
         id=generate_team_id(),
         name="ML Platform",
         parent_team_id=engineering.id,
+        description="ML/AI feature development",
         branch_patterns=["feature/ml-*", "feature/spark-*"],
-        module_scope=["cortical/spark/*", "cortical/reasoning/*"],
+        module_scope=["cortical/spark", "cortical/reasoning", ".git-ml"],
         settings={"knowledge_domains": ["ml-training", "data-pipelines"]},
     )
 
-    print(f"\n  Created ML Platform Sub-Team:")
-    print(f"    ID: {ml_team.id}")
-    print(f"    Parent: {ml_team.parent_team_id}")
-    print(f"    Module scope: {ml_team.module_scope}")
+    qa_team = Team(
+        id=generate_team_id(),
+        name="QA",
+        description="Quality assurance",
+        branch_patterns=["qa/*", "release/*"],
+        module_scope=["tests"],
+        settings={
+            "focus": "regression-testing",
+            "knowledge_domains": ["test-patterns", "coverage"],
+        },
+    )
 
-    # Test branch matching
-    print_subheader("Branch Matching Demo")
-    test_branches = ["main", "feature/ml-training", "feature/auth", "release/v1.0"]
+    print("  SDLC Team Structure:")
+    print()
+    print(f"  🏢 {engineering.name}")
+    print(f"     Branches: {', '.join(engineering.branch_patterns)}")
+    print(f"     Scope: {engineering.module_scope}")
+    print()
+    print(f"     └── 🤖 {ml_platform.name} (sub-team)")
+    print(f"         Branches: {', '.join(ml_platform.branch_patterns)}")
+    print(f"         Scope: {ml_platform.module_scope}")
+    print()
+    print(f"  🧪 {qa_team.name}")
+    print(f"     Branches: {', '.join(qa_team.branch_patterns)}")
+    print(f"     Scope: {qa_team.module_scope}")
+
+    print_subheader("Branch → Team Mapping")
+    test_branches = [
+        "feature/ml-training",
+        "feature/new-search",
+        "qa/release-v2",
+        "main",
+    ]
     for branch in test_branches:
-        eng_match = engineering.matches_branch(branch)
-        ml_match = ml_team.matches_branch(branch)
-        print(f"    {branch}:")
-        print(f"      Engineering: {'MATCH' if eng_match else 'NO MATCH'}")
-        print(f"      ML Platform: {'MATCH' if ml_match else 'NO MATCH'}")
+        matches = []
+        if engineering.matches_branch(branch):
+            matches.append("Engineering")
+        if ml_platform.matches_branch(branch):
+            matches.append("ML Platform")
+        if qa_team.matches_branch(branch):
+            matches.append("QA")
 
-    # Test module scope
-    print_subheader("Module Scope Demo")
-    test_modules = ["cortical/got/api.py", "cortical/spark/ngram.py", "scripts/demo.py"]
-    for module in test_modules:
-        eng_scope = engineering.is_in_scope(module)
-        ml_scope = ml_team.is_in_scope(module)
-        print(f"    {module}:")
-        print(f"      Engineering: {'IN SCOPE' if eng_scope else 'OUT OF SCOPE'}")
-        print(f"      ML Platform: {'IN SCOPE' if ml_scope else 'OUT OF SCOPE'}")
+        teams_str = ", ".join(matches) if matches else "(no match)"
+        print(f"    {branch} → {teams_str}")
 
 
-def demo_generation_pipeline(layers: list, dry_run: bool = True) -> None:
-    """Demonstrate the generation pipeline concept."""
-    print_header("7. Generation Pipeline (Conceptual)")
+def demo_generation_pipeline(layers: list) -> None:
+    """Demonstrate the full generation pipeline."""
+    print_header("7. Generation Pipeline")
 
-    print("  Pipeline Phases:")
-    print("    1. Context Analysis - Detect branch, sprint, active files")
-    print("    2. Layer Selection - Filter by context and persona")
-    print("    3. Content Composition - Assemble in layer order")
-    print("    4. Validation - Check required sections")
-    print("    5. Output - Write with backup (or dry-run)")
+    print("  The pipeline composes CLAUDE.md from selected layers:")
+    print()
+    print("    ┌─────────────────────────────────────────────────┐")
+    print("    │  1. CONTEXT ANALYSIS                            │")
+    print("    │     → Detect branch, sprint, active modules     │")
+    print("    ├─────────────────────────────────────────────────┤")
+    print("    │  2. LAYER SELECTION                             │")
+    print("    │     → Filter by context + persona preferences   │")
+    print("    ├─────────────────────────────────────────────────┤")
+    print("    │  3. CONTENT COMPOSITION                         │")
+    print("    │     → Assemble in layer order (L0→L4)           │")
+    print("    ├─────────────────────────────────────────────────┤")
+    print("    │  4. VALIDATION                                  │")
+    print("    │     → Verify required sections present          │")
+    print("    ├─────────────────────────────────────────────────┤")
+    print("    │  5. OUTPUT                                      │")
+    print("    │     → Write with backup (atomic + fallback)     │")
+    print("    └─────────────────────────────────────────────────┘")
 
-    print_subheader("Simulated Context")
+    print_subheader("Simulated Generation")
+
+    # Current context
     context = {
-        "branch": "claude/auto-generate-claude-md",
+        "branch": "claude/auto-generate-claude-md-LwdTl",
         "sprint": "S-017",
-        "active_modules": ["cortical/got", "cortical/reasoning"],
+        "modules": ["cortical/got", "scripts"],
         "persona": "developer",
     }
-    for key, value in context.items():
-        print(f"    {key}: {value}")
 
-    print_subheader("Layer Selection Results")
-    selected = []
-    for layer in layers:
-        # Simulate context-based selection
-        include = False
-        if layer.inclusion_rule == "always":
-            include = True
-        elif layer.inclusion_rule == "context":
-            # Check if any context module matches
-            for ctx_mod in layer.context_modules:
-                for active in context["active_modules"]:
-                    if active.startswith(ctx_mod.replace("/*", "")):
-                        include = True
-                        break
+    print(f"    Context: branch={context['branch']}")
+    print(f"             sprint={context['sprint']}")
+    print(f"             modules={context['modules']}")
+    print()
 
-        status = "SELECTED" if include else "SKIPPED"
-        print(f"    Layer {layer.layer_number} ({layer.section_id}): {status}")
-        if include:
-            selected.append(layer)
+    # Select layers
+    selected = [l for l in layers if l.inclusion_rule == "always"]
+    # Add GoT layer (context match)
+    selected.append(layers[2])  # GoT guide
+    selected.append(layers[4])  # Session context
 
-    print_subheader("Composed Output Preview")
-    if dry_run:
-        print("  [DRY RUN - No file written]")
-
+    print("    Selected Layers:")
     total_lines = 0
-    for layer in selected:
+    for layer in sorted(selected, key=lambda x: x.layer_number):
         lines = len(layer.content.strip().split('\n'))
         total_lines += lines
-        print(f"    + {layer.title}: {lines} lines")
+        print(f"      L{layer.layer_number}: {layer.title} ({lines} lines)")
 
-    print(f"\n  Total composed content: {total_lines} lines from {len(selected)} layers")
+    print()
+    print(f"    📄 Composed output: {total_lines} lines from {len(selected)} layers")
+    print(f"    💾 Original CLAUDE.md preserved as fallback")
 
 
 def demo_fault_tolerance() -> None:
-    """Demonstrate fault tolerance concepts."""
-    print_header("8. Fault Tolerance")
+    """Demonstrate fault tolerance mechanisms."""
+    print_header("8. Fault Tolerance & Recovery")
 
-    print("  Built-in protections:")
-    print("    - Atomic writes with temp file + rename")
-    print("    - Automatic backup before overwrite")
-    print("    - Fallback to original CLAUDE.md on failure")
-    print("    - Validation before write")
-    print("    - Checksum verification on read")
+    print("  The system is designed to never break your workflow:")
+    print()
+    print("  🛡️  PROTECTION MECHANISMS:")
+    print("      • Atomic writes (temp file → rename)")
+    print("      • Automatic backup before any changes")
+    print("      • Checksum verification on read")
+    print("      • Validation before write")
+    print()
+    print("  🔄 FALLBACK CHAIN:")
+    print("      1. Try generated CLAUDE.md")
+    print("      2. If invalid → use backup")
+    print("      3. If no backup → use original CLAUDE.md")
+    print("      4. Original CLAUDE.md is NEVER modified")
+    print()
 
     print_subheader("Recovery Scenarios")
     scenarios = [
-        ("Corrupted layer file", "Skip layer, log warning, continue"),
-        ("Missing required section", "Fall back to original CLAUDE.md"),
-        ("Write failure", "Restore from backup"),
-        ("Invalid layer content", "Validation catches before write"),
+        ("Layer file corrupted", "Skip layer, log warning, continue with others"),
+        ("Required section missing", "Fall back to original CLAUDE.md"),
+        ("Write fails mid-operation", "Restore from automatic backup"),
+        ("GoT database unavailable", "Use cached layer content"),
     ]
     for scenario, response in scenarios:
-        print(f"    {scenario}")
-        print(f"      -> {response}")
+        print(f"    ⚠️  {scenario}")
+        print(f"       → {response}")
+        print()
 
 
 def main():
     """Run the CLAUDE.md generation demo."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="CLAUDE.md Generation System Demo")
+    parser = argparse.ArgumentParser(
+        description="CLAUDE.md Auto-Generation System Demo (Using Real Content)"
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Show verbose output")
-    parser.add_argument("--dry-run", action="store_true", help="Run generation in dry-run mode")
-    parser.add_argument("--team-demo", action="store_true", help="Focus on team/persona demo")
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be generated")
+    parser.add_argument("--team-demo", action="store_true", help="Focus on team/persona features")
     args = parser.parse_args()
 
     print()
-    print("*" * 70)
-    print("*  CLAUDE.md Auto-Generation System Demo")
-    print("*  Cortical Text Processor - Graph of Thought Integration")
-    print("*" * 70)
+    print("╔" + "═" * 68 + "╗")
+    print("║  CLAUDE.md Auto-Generation System Demo                            ║")
+    print("║  Cortical Text Processor - Using REAL CLAUDE.md Content           ║")
+    print("╚" + "═" * 68 + "╝")
 
     if args.team_demo:
         # Focus on multi-team features
@@ -439,26 +634,33 @@ def main():
         layers = demo_layer_creation()
         demo_freshness_tracking(layers)
         demo_versioning(layers)
-        demo_serialization(layers)
+        demo_context_selection(layers)
         demo_persona_profiles()
         demo_team_hierarchy()
-        demo_generation_pipeline(layers, dry_run=args.dry_run)
+        demo_generation_pipeline(layers)
         demo_fault_tolerance()
 
-    print_header("Demo Complete")
+    print_header("Summary")
     print("  The CLAUDE.md auto-generation system provides:")
-    print("    - 5-layer architecture (Core -> Ephemeral)")
-    print("    - Context-aware layer selection")
-    print("    - Freshness tracking with configurable decay")
-    print("    - Version history for audit trails")
-    print("    - PersonaProfile for role-based customization")
-    print("    - Team hierarchy for organizational scoping")
-    print("    - Fault-tolerant generation pipeline")
     print()
-    print("  For more details, see:")
-    print("    - docs/claude-md-generation-design.md")
-    print("    - cortical/got/claudemd.py")
-    print("    - cortical/got/types.py")
+    print("  📚 5-Layer Architecture:")
+    print("     L0 Core       → Quick Session Start (always)")
+    print("     L1 Operational → Dev Workflow (always)")
+    print("     L2 Contextual → GoT Guide (when working on GoT)")
+    print("     L3 Persona    → ML Guide (for ML engineers)")
+    print("     L4 Ephemeral  → Session Context (per-session)")
+    print()
+    print("  🎯 Key Features:")
+    print("     • Context-aware layer selection")
+    print("     • Freshness tracking with decay")
+    print("     • PersonaProfile for role customization")
+    print("     • Team hierarchy for SDLC pipelines")
+    print("     • Fault-tolerant with fallback chain")
+    print()
+    print("  📖 Documentation:")
+    print("     • docs/claude-md-generation-design.md")
+    print("     • cortical/got/claudemd.py")
+    print("     • cortical/got/types.py")
     print()
 
 
