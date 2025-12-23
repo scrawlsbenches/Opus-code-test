@@ -7,7 +7,12 @@
 
 ## Summary
 
-This session investigated and resolved open tasks in the GoT system using a director pattern with parallel sub-agents. Six tasks were completed, significantly improving edge loading, enabling velocity metrics in the dashboard, and adding environment resilience via auto-commit/push.
+This session investigated and resolved open tasks in the GoT system using a director pattern with parallel sub-agents. **Nine accomplishments** across two context windows:
+- Fixed edge loading (7→30 edges) and velocity metrics
+- Added CLI commands (task depends, sprint suggest)
+- Implemented auto-commit/push for environment resilience
+- Added 17 unit tests with mocked git operations
+- Created validation bug task and linked 5 tasks to Sprint S-018
 
 ## Key Accomplishments
 
@@ -91,6 +96,36 @@ Verified previous fix was in place - `cortical/got/recovery.py:164` uses `strate
 
 **Result:** Environment resilience - GoT state persists to remote on every mutation.
 
+### 7. Unit Tests for Auto-Commit/Push ✅
+**Added in session continuation**
+
+Added 17 unit tests to `tests/unit/test_got_cli.py` using mocked `subprocess.run`:
+
+| Test Class | Tests | Coverage |
+|------------|-------|----------|
+| `TestGotAutoCommit` | 7 | Disabled state, mutating commands, git errors, auto-push integration |
+| `TestGotAutoPush` | 6 | Protected branches, claude/* safety, network retry, timeout |
+| `TestMutatingCommands` | 4 | Configuration validation |
+
+**Key pattern:** All tests mock git operations - no real git commands executed.
+
+### 8. Validation Bug Task Created ✅
+**Task:** T-20251222-211835-c9793f4f (delegated to sub-agent)
+
+**Bug:** `got validate` reports false edge discrepancy (27 actual vs 276 expected).
+**Root cause:** Counts create-delete events without accounting for re-created edges.
+**Fix needed:** Count unique edge IDs from entity files, not event log math.
+
+### 9. Sprint Linking ✅
+Linked 5 pending tasks to Sprint S-018 (GoT Cleanup & Observability):
+- T-20251222-142959-a4bcd0ad (Remove GoTProjectManager)
+- T-20251222-193227-9b8b0bd4 (Add diff storage)
+- T-20251222-145525-445df343 (Remove EventLog)
+- T-20251222-151135-47f51084 (Remove filterwarnings)
+- T-20251222-211835-c9793f4f (Fix validation bug)
+
+Sprint S-018 now at 37.5% (3/8 tasks complete).
+
 ## Deferred Tasks
 
 | Task | Reason |
@@ -126,13 +161,17 @@ Director (main agent - context keeper):
 | File | Changes |
 |------|---------|
 | `cortical/reasoning/graph_of_thought.py` | +4 lines: JUSTIFIES, PART_OF edge types |
-| `scripts/got_utils.py` | +200 lines: timestamps, task depends, sprint suggest, auto-commit/push |
+| `scripts/got_utils.py` | +275 lines: timestamps, task depends, sprint suggest, auto-commit/push |
 | `CLAUDE.md` | +22 lines: Auto-commit/push documentation, sub-agent warning |
+| `tests/unit/test_got_cli.py` | +216 lines: 17 unit tests for auto-commit/push |
 
 ## Commits
 
 1. `54a4f6ec` - feat(got): Add EdgeType enum values, velocity timestamps, and CLI commands
 2. `f7ffc666` - chore(got): Update task states and add dependency edges
+3. `b5e1bc63` - feat(got): Add auto-push for environment resilience
+4. `758f87f4` - test(got): Add unit tests for auto-commit/push functions
+5. `70443278` - chore(got): Link pending tasks to Sprint 018 and create validation bug task
 
 ## Terminology Clarification
 
@@ -145,26 +184,33 @@ The confusion arose from retrospective text saying "Fixed by..." while status re
 ## Dashboard Metrics After Session
 
 ```
-Task Completion: 18/21 (85.7%)
-Edges: 23 (was 5)
-Velocity - Completed Today: 5
-Velocity - Avg Completion Time: 4.2h
-Orphan Nodes: 15 (was 18)
+Task Completion: 21/26 (80.8%)
+Edges: 30 (was 7 at session start)
+Edge Density: 1.07 edges/node
+Velocity - Completed Today: 8
+Velocity - Avg Completion Time: 2.8h
+Orphan Nodes: 15
+Sprint S-018: 37.5% (3/8 tasks)
 ```
 
 ## Commands for Next Session
 
 ```bash
+# Enable environment resilience (recommended)
+export GOT_AUTO_COMMIT=1
+export GOT_AUTO_PUSH=1
+
 # Check current state
 python scripts/got_utils.py dashboard
+python scripts/got_utils.py sprint status S-018
 python scripts/got_utils.py task list --status pending
 
-# Test new CLI commands
-python scripts/got_utils.py task depends --help
+# Sprint planning
 python scripts/got_utils.py sprint suggest -n 5
 
-# Verify edge loading
-python -c "from scripts.got_utils import TransactionalGoTAdapter; a=TransactionalGoTAdapter('.got'); print(f'Edges: {len(a.graph.edges)}')"
+# Run the new tests
+python -m pytest tests/unit/test_got_cli.py::TestGotAutoCommit -v
+python -m pytest tests/unit/test_got_cli.py::TestGotAutoPush -v
 ```
 
 ## Related Documentation
