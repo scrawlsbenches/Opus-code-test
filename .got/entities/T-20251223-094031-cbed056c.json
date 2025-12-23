@@ -1,0 +1,19 @@
+{
+  "_checksum": "927cdef13f8bb4fb",
+  "_written_at": "2025-12-23T09:40:31.889551+00:00",
+  "data": {
+    "created_at": "2025-12-23T09:40:31.884449+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251223-094031-cbed056c",
+    "metadata": {},
+    "modified_at": "2025-12-23T09:40:31.889489+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "refactor"
+    },
+    "status": "pending",
+    "title": "Remove protobuf package and related code from repository",
+    "version": 2
+  }
+}
