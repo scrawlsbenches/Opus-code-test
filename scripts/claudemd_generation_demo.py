@@ -393,9 +393,10 @@ def get_recent_knowledge_transfer() -> Optional[str]:
     if not memories_dir.exists():
         return None
 
+    # Sort by filename (not mtime) - filenames start with YYYY-MM-DD
+    # so lexicographic sort gives chronological order
     kt_files = sorted(
         memories_dir.glob("*knowledge-transfer*.md"),
-        key=lambda x: x.stat().st_mtime,
         reverse=True
     )
 
