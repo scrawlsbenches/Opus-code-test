@@ -695,3 +695,284 @@ class ClaudeMdVersion(Entity):
             deletions=data.get("deletions", 0),
             properties=data.get("properties", {}),
         )
+
+
+@dataclass
+class Team(Entity):
+    """
+    Team or organizational unit for knowledge scoping.
+
+    Enables hierarchical knowledge inheritance where child teams
+    inherit layers and settings from parent teams.
+
+    Example:
+        team = Team(
+            id="TEAM-eng-backend",
+            name="Backend Engineering",
+            parent_team_id="TEAM-engineering",
+            branch_patterns=["feature/*", "dev"],
+            module_scope=["query", "analysis", "persistence"]
+        )
+    """
+
+    # Identity
+    name: str = ""                    # "Backend Engineering"
+    description: str = ""             # Team description
+
+    # Hierarchy
+    parent_team_id: str = ""          # Parent team for inheritance
+
+    # Scope - what this team works on
+    branch_patterns: List[str] = field(default_factory=list)
+    # Git branch patterns this team owns, e.g., ["feature/*", "dev", "hotfix/*"]
+
+    module_scope: List[str] = field(default_factory=list)
+    # Modules this team is responsible for, e.g., ["query", "analysis"]
+
+    # Team-specific layers
+    layer_ids: List[str] = field(default_factory=list)
+    # ClaudeMdLayer IDs specific to this team
+
+    # Team members (persona profile IDs)
+    member_profiles: List[str] = field(default_factory=list)
+
+    # Settings
+    settings: Dict[str, Any] = field(default_factory=dict)
+    # Team-specific settings like default_freshness_days, required_sections, etc.
+
+    properties: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Set entity type."""
+        self.entity_type = "team"
+
+    def is_in_scope(self, module: str) -> bool:
+        """
+        Check if a module is in this team's scope.
+
+        Args:
+            module: Module name to check
+
+        Returns:
+            True if module is in scope (or scope is empty = all modules)
+        """
+        if not self.module_scope:
+            return True  # Empty scope means all modules
+        return module in self.module_scope
+
+    def matches_branch(self, branch: str) -> bool:
+        """
+        Check if a branch matches this team's patterns.
+
+        Args:
+            branch: Branch name to check
+
+        Returns:
+            True if branch matches any pattern
+        """
+        import fnmatch
+
+        if not self.branch_patterns:
+            return True  # Empty patterns means all branches
+
+        for pattern in self.branch_patterns:
+            if fnmatch.fnmatch(branch, pattern):
+                return True
+        return False
+
+    def get_setting(self, key: str, default: Any = None) -> Any:
+        """
+        Get a team setting with optional default.
+
+        Args:
+            key: Setting key
+            default: Default value if not found
+
+        Returns:
+            Setting value or default
+        """
+        return self.settings.get(key, default)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize team to dictionary."""
+        result = super().to_dict()
+        result.update({
+            "name": self.name,
+            "description": self.description,
+            "parent_team_id": self.parent_team_id,
+            "branch_patterns": self.branch_patterns,
+            "module_scope": self.module_scope,
+            "layer_ids": self.layer_ids,
+            "member_profiles": self.member_profiles,
+            "settings": self.settings,
+            "properties": self.properties,
+            "metadata": self.metadata,
+        })
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Team":
+        """Deserialize team from dictionary."""
+        return cls(
+            id=data["id"],
+            entity_type=data.get("entity_type", "team"),
+            version=data.get("version", 1),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            modified_at=data.get("modified_at", datetime.now(timezone.utc).isoformat()),
+            name=data.get("name", ""),
+            description=data.get("description", ""),
+            parent_team_id=data.get("parent_team_id", ""),
+            branch_patterns=data.get("branch_patterns", []),
+            module_scope=data.get("module_scope", []),
+            layer_ids=data.get("layer_ids", []),
+            member_profiles=data.get("member_profiles", []),
+            settings=data.get("settings", {}),
+            properties=data.get("properties", {}),
+            metadata=data.get("metadata", {}),
+        )
+
+
+@dataclass
+class PersonaProfile(Entity):
+    """
+    Profile defining layer preferences for a specific role.
+
+    Enables teams of personas with inherited knowledge and
+    role-specific CLAUDE.md generation.
+
+    Example:
+        profile = PersonaProfile(
+            id="PP-backend-dev",
+            name="Backend Developer",
+            role="developer",
+            team_id="TEAM-engineering-backend",
+            layer_preferences={"include_spark": False, "include_query": True},
+            default_branch="dev"
+        )
+    """
+
+    # Identity
+    name: str = ""                    # "Senior Backend Developer"
+    role: str = ""                    # "developer", "qa", "devops", "marketing", "manager"
+    team_id: str = ""                 # Reference to Team entity
+
+    # Layer preferences (section_id -> include boolean)
+    layer_preferences: Dict[str, bool] = field(default_factory=dict)
+    # e.g., {"spark-module": False, "query-module": True, "marketing": False}
+
+    # Inheritance
+    inherits_from: str = ""           # Parent profile ID for preference inheritance
+
+    # Context defaults
+    default_branch: str = ""          # Default branch context ("dev", "qa", "prod")
+    default_modules: List[str] = field(default_factory=list)
+    # Modules this persona typically works with
+
+    # Customization
+    custom_layers: List[str] = field(default_factory=list)
+    # Additional layer IDs always included for this persona
+
+    excluded_layers: List[str] = field(default_factory=list)
+    # Layer IDs always excluded for this persona
+
+    properties: Dict[str, Any] = field(default_factory=dict)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Validate persona profile fields."""
+        self.entity_type = "persona_profile"
+
+        # Validate role if provided
+        valid_roles = {"developer", "qa", "devops", "marketing", "manager", "analyst", "designer", ""}
+        if self.role and self.role not in valid_roles:
+            raise ValidationError(
+                f"Invalid role '{self.role}'",
+                valid_roles=list(valid_roles - {""})
+            )
+
+    def should_include_layer(self, section_id: str) -> bool:
+        """
+        Check if a layer should be included for this persona.
+
+        Args:
+            section_id: The section ID to check
+
+        Returns:
+            True if layer should be included, False otherwise
+        """
+        # Check explicit exclusions first
+        if section_id in self.excluded_layers:
+            return False
+
+        # Check explicit inclusions
+        if section_id in self.custom_layers:
+            return True
+
+        # Check preferences
+        if section_id in self.layer_preferences:
+            return self.layer_preferences[section_id]
+
+        # Default to include
+        return True
+
+    def get_effective_preferences(self, parent_profile: "PersonaProfile" = None) -> Dict[str, bool]:
+        """
+        Get effective layer preferences with inheritance.
+
+        Args:
+            parent_profile: Parent profile to inherit from
+
+        Returns:
+            Merged preferences dict
+        """
+        if parent_profile is None:
+            return self.layer_preferences.copy()
+
+        # Start with parent preferences
+        effective = parent_profile.layer_preferences.copy()
+
+        # Override with this profile's preferences
+        effective.update(self.layer_preferences)
+
+        return effective
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize persona profile to dictionary."""
+        result = super().to_dict()
+        result.update({
+            "name": self.name,
+            "role": self.role,
+            "team_id": self.team_id,
+            "layer_preferences": self.layer_preferences,
+            "inherits_from": self.inherits_from,
+            "default_branch": self.default_branch,
+            "default_modules": self.default_modules,
+            "custom_layers": self.custom_layers,
+            "excluded_layers": self.excluded_layers,
+            "properties": self.properties,
+            "metadata": self.metadata,
+        })
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "PersonaProfile":
+        """Deserialize persona profile from dictionary."""
+        return cls(
+            id=data["id"],
+            entity_type=data.get("entity_type", "persona_profile"),
+            version=data.get("version", 1),
+            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
+            modified_at=data.get("modified_at", datetime.now(timezone.utc).isoformat()),
+            name=data.get("name", ""),
+            role=data.get("role", ""),
+            team_id=data.get("team_id", ""),
+            layer_preferences=data.get("layer_preferences", {}),
+            inherits_from=data.get("inherits_from", ""),
+            default_branch=data.get("default_branch", ""),
+            default_modules=data.get("default_modules", []),
+            custom_layers=data.get("custom_layers", []),
+            excluded_layers=data.get("excluded_layers", []),
+            properties=data.get("properties", {}),
+            metadata=data.get("metadata", {}),
+        )

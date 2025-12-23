@@ -13,7 +13,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
-from .types import Entity, Task, Decision, Edge, Sprint, Epic, Handoff, ClaudeMdLayer
+from .types import Entity, Task, Decision, Edge, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, PersonaProfile, Team
 from .errors import CorruptionError
 from cortical.utils.checksums import compute_checksum
 from .config import DurabilityMode
@@ -435,5 +435,11 @@ class VersionedStore:
             return Handoff.from_dict(data)
         elif entity_type == "claudemd_layer":
             return ClaudeMdLayer.from_dict(data)
+        elif entity_type == "claudemd_version":
+            return ClaudeMdVersion.from_dict(data)
+        elif entity_type == "persona_profile":
+            return PersonaProfile.from_dict(data)
+        elif entity_type == "team":
+            return Team.from_dict(data)
         else:
             return Entity.from_dict(data)

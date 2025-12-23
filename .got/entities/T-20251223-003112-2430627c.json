@@ -1,19 +1,19 @@
 {
-  "_checksum": "d36ebf339b995c56",
-  "_written_at": "2025-12-23T00:31:12.455651+00:00",
+  "_checksum": "a102eb2f8fc59529",
+  "_written_at": "2025-12-23T00:36:22.775548+00:00",
   "data": {
     "created_at": "2025-12-23T00:31:12.450076+00:00",
     "description": "Create PersonaProfile entity that groups layer preferences for specific roles (Developer, QA Engineer, Marketing). Enables teams of personas with knowledge transfer.",
     "entity_type": "task",
     "id": "T-20251223-003112-2430627c",
     "metadata": {},
-    "modified_at": "2025-12-23T00:31:12.455615+00:00",
+    "modified_at": "2025-12-23T00:36:22.775505+00:00",
     "priority": "medium",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "IDEA: PersonaProfile entity for team/role-based layer collections",
-    "version": 2
+    "version": 4
   }
 }

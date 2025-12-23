@@ -3,7 +3,7 @@ Canonical ID generation utilities for all GoT and task systems.
 
 All IDs use format: {PREFIX}-YYYYMMDD-HHMMSS-XXXXXXXX
 - PREFIX: T (task), D (decision), E (edge), S (sprint), G (goal), H (handoff),
-          OP (plan), EX (execution)
+          OP (plan), EX (execution), PP (persona profile), TEAM (team)
 - Timestamp: UTC timezone for consistency
 - Suffix: 8 hex characters (4 bytes = ~4 billion unique values)
 
@@ -326,3 +326,41 @@ def generate_claudemd_version_id(layer_id: str, version_number: int) -> str:
         - Maintains traceability to parent layer
     """
     return f"CMV-{layer_id}-v{version_number}"
+
+
+def generate_persona_profile_id() -> str:
+    """
+    Generate unique persona profile ID.
+
+    Format: PP-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
+
+    Returns:
+        Persona profile ID string (e.g., 'PP-20251222-143052-a1b2c3d4')
+
+    Note:
+        - Uses UTC timezone for consistency
+        - Random suffix provides ~4 billion unique values
+    """
+    now = datetime.now(timezone.utc)
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    suffix = secrets.token_hex(4)  # 8 hex chars
+    return f"PP-{timestamp}-{suffix}"
+
+
+def generate_team_id() -> str:
+    """
+    Generate unique team ID.
+
+    Format: TEAM-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
+
+    Returns:
+        Team ID string (e.g., 'TEAM-20251222-143052-a1b2c3d4')
+
+    Note:
+        - Uses UTC timezone for consistency
+        - Random suffix provides ~4 billion unique values
+    """
+    now = datetime.now(timezone.utc)
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    suffix = secrets.token_hex(4)  # 8 hex chars
+    return f"TEAM-{timestamp}-{suffix}"

@@ -914,7 +914,221 @@ python scripts/claudemd_utils.py knowledge promote ID  # Promote candidate
 
 ---
 
-## 10. File Structure
+## 10. Future Extensions: Multi-Team Support
+
+This section outlines future extensions to support SDLC pipelines, multi-team organizations, and cross-branch knowledge transfer.
+
+### 10.1 Multi-Branch Layer Inheritance
+
+Support for environment-specific layers with inheritance chains:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    BRANCH INHERITANCE CHAIN                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  prod ←─── staging ←─── qa ←─── dev                                 │
+│                                                                       │
+│  Each branch:                                                        │
+│  ├── Inherits parent layers (unless overridden)                     │
+│  ├── Can add branch-specific layers                                 │
+│  └── Can override inherited layers with same section_id             │
+│                                                                       │
+│  Example layer resolution for 'qa' branch:                          │
+│  1. Load qa-specific layers                                         │
+│  2. Load dev layers not overridden by qa                            │
+│  3. Apply inclusion rules based on qa context                       │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**New Edge Type:** `INHERITS_FROM`
+```python
+# qa branch inherits from dev
+Edge(source_id="branch:qa", target_id="branch:dev", edge_type="INHERITS_FROM")
+```
+
+### 10.2 PersonaProfile Entity
+
+Groups layer preferences for specific roles within teams:
+
+```python
+@dataclass
+class PersonaProfile(Entity):
+    """
+    Profile defining layer preferences for a specific role.
+
+    Enables teams of personas with inherited knowledge.
+    """
+    name: str = ""                    # "Senior Backend Developer"
+    team_id: str = ""                 # Reference to Team entity
+    role: str = ""                    # "developer", "qa", "devops", "marketing"
+
+    # Layer preferences
+    layer_preferences: Dict[str, bool] = field(default_factory=dict)
+    # e.g., {"include_spark": False, "include_query": True}
+
+    # Inheritance
+    inherits_from: str = ""           # Parent profile ID
+
+    # Context defaults
+    default_branch: str = ""          # "dev", "qa", etc.
+    default_modules: List[str] = field(default_factory=list)
+
+    properties: Dict[str, Any] = field(default_factory=dict)
+```
+
+**Use Cases:**
+- Developer persona includes code-focused layers, excludes marketing
+- QA persona includes testing patterns, debugging guides
+- Marketing persona includes branding, content guidelines
+
+### 10.3 Team Entity
+
+Organizational hierarchy for knowledge scoping:
+
+```python
+@dataclass
+class Team(Entity):
+    """
+    Team or organizational unit for knowledge scoping.
+
+    Enables hierarchical knowledge inheritance.
+    """
+    name: str = ""                    # "Backend Engineering"
+    parent_team_id: str = ""          # Parent team for inheritance
+
+    # Scope
+    branch_patterns: List[str] = field(default_factory=list)
+    # e.g., ["feature/*", "dev", "qa"]
+
+    module_scope: List[str] = field(default_factory=list)
+    # e.g., ["query", "analysis", "persistence"]
+
+    # Team-specific layers
+    layer_ids: List[str] = field(default_factory=list)
+
+    properties: Dict[str, Any] = field(default_factory=dict)
+```
+
+**Hierarchy Example:**
+```
+Organization
+├── Engineering
+│   ├── Backend Team
+│   │   ├── API Squad
+│   │   └── Data Squad
+│   ├── Frontend Team
+│   └── DevOps Team
+├── Marketing
+│   ├── Content Team
+│   └── Analytics Team
+└── QA
+    └── Test Automation Team
+```
+
+### 10.4 Layer Pull/Merge Mechanism
+
+Git-like synchronization between branches:
+
+```python
+class LayerSyncManager:
+    """Synchronize layers between branches."""
+
+    def pull_layers(
+        self,
+        from_branch: str,
+        to_branch: str,
+        layer_ids: List[str] = None,
+        strategy: str = "merge"  # "merge", "overwrite", "skip_existing"
+    ) -> SyncResult:
+        """Pull layers from one branch to another."""
+        pass
+
+    def diff_layers(
+        self,
+        branch_a: str,
+        branch_b: str
+    ) -> LayerDiff:
+        """Compare layers between branches."""
+        pass
+
+    def resolve_conflicts(
+        self,
+        conflicts: List[LayerConflict],
+        strategy: str = "ours"  # "ours", "theirs", "manual"
+    ) -> List[ClaudeMdLayer]:
+        """Resolve layer conflicts during merge."""
+        pass
+```
+
+**Workflow:**
+```bash
+# Pull architecture docs from dev to qa
+claudemd pull --from dev --to qa --layers CML2-architecture
+
+# Diff layers between branches
+claudemd diff dev qa
+
+# Merge all fresh layers from dev to staging
+claudemd merge dev staging --only-fresh
+```
+
+### 10.5 Knowledge Transfer Patterns
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    KNOWLEDGE TRANSFER FLOWS                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  VERTICAL (Hierarchy):                                               │
+│  Organization → Department → Team → Role                             │
+│  (Policies)     (Standards)  (Practices) (Skills)                   │
+│                                                                       │
+│  HORIZONTAL (Branches):                                              │
+│  dev → qa → staging → prod                                          │
+│  (New features) (Tested) (Validated) (Released)                     │
+│                                                                       │
+│  CROSS-FUNCTIONAL:                                                   │
+│  Engineering ←→ Marketing ←→ QA                                     │
+│  (Shared standards, API docs, test patterns)                        │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 10.6 Implementation Priority
+
+| Phase | Feature | Complexity | Value |
+|-------|---------|------------|-------|
+| 1 | PersonaProfile entity | Low | High |
+| 2 | Team entity | Low | Medium |
+| 3 | Branch inheritance | Medium | High |
+| 4 | Layer pull/merge | High | High |
+| 5 | Conflict resolution | High | Medium |
+
+### 10.7 Backward Compatibility
+
+All extensions maintain backward compatibility:
+- Existing layers work without modification
+- New entities are optional
+- Default behavior unchanged
+- Gradual adoption path
+
+```python
+# Old code continues to work
+manager.generate()  # Uses default context
+
+# New code can leverage extensions
+manager.generate(
+    persona="backend-developer",
+    team="engineering",
+    branch="dev"
+)
+```
+
+---
+
+## 11. File Structure
 
 ```
 .got/
@@ -959,9 +1173,9 @@ CLAUDE.md                     # Original (NEVER MODIFIED, fallback)
 
 ---
 
-## 11. Testing Strategy
+## 12. Testing Strategy
 
-### 11.1 Test Categories
+### 12.1 Test Categories
 
 | Category | Purpose | Coverage Target |
 |----------|---------|-----------------|
@@ -971,7 +1185,7 @@ CLAUDE.md                     # Original (NEVER MODIFIED, fallback)
 | **Performance** | Generation speed | <500ms |
 | **Regression** | Quality preservation | All critical sections |
 
-### 11.2 Test Files
+### 12.2 Test Files
 
 ```
 tests/
@@ -1001,7 +1215,7 @@ tests/
 
 ---
 
-## 12. Implementation Phases
+## 13. Implementation Phases
 
 ### Phase 1: Core Entity Types (Week 1)
 - [ ] Add ClaudeMdLayer entity to types.py
@@ -1048,7 +1262,7 @@ tests/
 
 ---
 
-## 13. Risk Mitigation
+## 14. Risk Mitigation
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
@@ -1060,7 +1274,7 @@ tests/
 
 ---
 
-## 14. Success Criteria
+## 15. Success Criteria
 
 1. **Functional**: Generated CLAUDE.md is valid and useful
 2. **Reliable**: Zero session failures due to generation
