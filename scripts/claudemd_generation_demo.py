@@ -187,6 +187,184 @@ def get_current_branch() -> str:
         return "unknown"
 
 
+def get_branch_from_handoff() -> Optional[str]:
+    """Get the branch name from the most recent handoff."""
+    handoffs_dir = _PROJECT_ROOT / ".got" / "entities" / "handoffs"
+    if not handoffs_dir.exists():
+        return None
+
+    import json
+    files = sorted(handoffs_dir.glob("H-*.json"), reverse=True)
+    for f in files[:3]:  # Check recent handoffs
+        try:
+            with open(f) as fp:
+                data = json.load(fp)
+                # Look for branch in context or metadata
+                context = data.get("context", {})
+                if isinstance(context, dict):
+                    branch = context.get("branch") or context.get("source_branch")
+                    if branch:
+                        return branch
+        except (json.JSONDecodeError, IOError):
+            continue
+    return None
+
+
+def get_last_sprint_branch() -> Optional[str]:
+    """Get the branch from the active sprint's metadata."""
+    sprint = get_sprint_status()
+    if not sprint:
+        return None
+
+    sprint_id = sprint.get("id")
+    if not sprint_id:
+        return None
+
+    # Check sprint entity for last known branch
+    # Sprints are stored directly in .got/entities/ (not in a subdirectory)
+    sprint_file = _PROJECT_ROOT / ".got" / "entities" / f"{sprint_id}.json"
+    if sprint_file.exists():
+        import json
+        try:
+            with open(sprint_file) as fp:
+                data = json.load(fp)
+                return data.get("metadata", {}).get("last_branch")
+        except (json.JSONDecodeError, IOError):
+            pass
+    return None
+
+
+def check_branch_merged(branch_name: str) -> bool:
+    """Check if a branch has been merged into current branch."""
+    try:
+        # Check if the branch exists
+        result = subprocess.run(
+            ["git", "branch", "-a", "--list", f"*{branch_name}*"],
+            capture_output=True,
+            text=True,
+            cwd=str(_PROJECT_ROOT),
+        )
+        if not result.stdout.strip():
+            return True  # Branch doesn't exist = assume merged/deleted
+
+        # Check if commits from that branch are in current branch
+        result = subprocess.run(
+            ["git", "log", f"origin/{branch_name}", "--not", "HEAD", "--oneline", "-1"],
+            capture_output=True,
+            text=True,
+            cwd=str(_PROJECT_ROOT),
+        )
+        # If no output, all commits are in HEAD = merged
+        return not result.stdout.strip()
+    except Exception:
+        return False  # Assume not merged if we can't check
+
+
+def get_recent_commits_on_branch(branch: str, limit: int = 3) -> list:
+    """Get recent commits from a specific branch."""
+    try:
+        result = subprocess.run(
+            ["git", "log", f"origin/{branch}", "--oneline", f"-{limit}"],
+            capture_output=True,
+            text=True,
+            cwd=str(_PROJECT_ROOT),
+        )
+        if result.returncode == 0:
+            return [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]
+    except Exception:
+        pass
+    return []
+
+
+def save_branch_to_sprint(branch: str) -> bool:
+    """
+    Save current branch to sprint metadata for future continuity tracking.
+
+    This should be called when starting work on a sprint to record
+    which branch the work is happening on.
+    """
+    sprint = get_sprint_status()
+    if not sprint:
+        return False
+
+    sprint_id = sprint.get("id")
+    if not sprint_id:
+        return False
+
+    # Sprints are stored directly in .got/entities/ (not in a subdirectory)
+    sprint_file = _PROJECT_ROOT / ".got" / "entities" / f"{sprint_id}.json"
+    if not sprint_file.exists():
+        return False
+
+    import json
+    try:
+        with open(sprint_file) as fp:
+            data = json.load(fp)
+
+        # Update metadata with current branch
+        if "metadata" not in data:
+            data["metadata"] = {}
+        data["metadata"]["last_branch"] = branch
+        data["metadata"]["branch_updated_at"] = datetime.now().isoformat()
+
+        with open(sprint_file, "w") as fp:
+            json.dump(data, fp, indent=2)
+        return True
+    except (json.JSONDecodeError, IOError):
+        return False
+
+
+def analyze_branch_continuity() -> dict:
+    """
+    Analyze branch continuity for session handoff.
+
+    Returns a dict with:
+    - current_branch: Current git branch
+    - previous_branch: Branch from last session (from handoff or sprint)
+    - continuity_status: 'same', 'merged', 'needs_merge', 'unknown'
+    - guidance: What the agent should do
+    """
+    current = get_current_branch()
+    previous = get_branch_from_handoff() or get_last_sprint_branch()
+
+    result = {
+        "current_branch": current,
+        "previous_branch": previous,
+        "continuity_status": "unknown",
+        "guidance": "",
+        "previous_commits": [],
+    }
+
+    if not previous:
+        result["continuity_status"] = "no_previous"
+        result["guidance"] = "No previous branch found. Starting fresh or first session."
+        return result
+
+    if current == previous:
+        result["continuity_status"] = "same"
+        result["guidance"] = "Same branch as previous session. Pull latest and continue."
+        return result
+
+    # Different branch - check if previous was merged
+    if check_branch_merged(previous):
+        result["continuity_status"] = "merged"
+        result["guidance"] = (
+            f"Previous branch `{previous}` has been merged. "
+            f"Pull from main/develop before continuing."
+        )
+    else:
+        result["continuity_status"] = "needs_merge"
+        result["previous_commits"] = get_recent_commits_on_branch(previous)
+        result["guidance"] = (
+            f"⚠️ BRANCH DIVERGENCE: Previous work on `{previous}` needs PR merge first!\n"
+            f"   1. Create/merge PR for `{previous}`\n"
+            f"   2. Pull merged changes to your branch\n"
+            f"   3. Then continue work"
+        )
+
+    return result
+
+
 def get_sprint_status() -> dict:
     """Get current sprint status from GoT.
 
@@ -298,9 +476,27 @@ def generate_layer4_from_got(verbose: bool = False) -> str:
     lines = ["## Current Session Context\n"]
     lines.append(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
-    # Git branch
-    branch = get_current_branch()
-    lines.append(f"**Branch:** `{branch}`\n")
+    # Branch continuity analysis (critical for cross-session work)
+    continuity = analyze_branch_continuity()
+    current_branch = continuity["current_branch"]
+    lines.append(f"**Branch:** `{current_branch}`\n")
+
+    # Show branch continuity status
+    status = continuity["continuity_status"]
+    if status == "needs_merge":
+        lines.append("\n### ⚠️ BRANCH CONTINUITY ALERT\n")
+        lines.append(f"**Previous branch:** `{continuity['previous_branch']}`\n")
+        lines.append(f"**Status:** Unmerged work from previous session\n\n")
+        lines.append(f"{continuity['guidance']}\n")
+        if continuity.get("previous_commits"):
+            lines.append("\n**Commits on previous branch:**\n")
+            for commit in continuity["previous_commits"][:3]:
+                lines.append(f"- `{commit}`\n")
+        lines.append("\n")
+    elif status == "merged":
+        lines.append(f"**Previous branch:** `{continuity['previous_branch']}` (merged ✓)\n")
+    elif status == "same":
+        lines.append("**Continuity:** Same branch as previous session ✓\n")
 
     # Sprint status (Primary source per continuation protocol)
     sprint = get_sprint_status()
@@ -396,12 +592,27 @@ def generate_continuation_context(verbose: bool = False) -> str:
     lines.append("git branch --show-current && git log --oneline -5\n")
     lines.append("```\n")
 
+    # Cross-branch workflow guidance
+    lines.append("\n## Cross-Session Branch Workflow\n\n")
+    lines.append("Each Claude Code session gets a NEW branch (`claude/task-SESSIONID`).\n")
+    lines.append("Previous session work needs to be merged before continuing.\n\n")
+    lines.append("**If you see a BRANCH CONTINUITY ALERT above:**\n")
+    lines.append("1. Ask user to merge the previous branch via PR\n")
+    lines.append("2. Wait for merge to complete\n")
+    lines.append("3. Pull merged changes: `git pull origin main`\n")
+    lines.append("4. Then continue work on current branch\n\n")
+    lines.append("**Before ending this session:**\n")
+    lines.append("1. Commit all work: `git add -A && git commit -m '...'`\n")
+    lines.append("2. Push branch: `git push -u origin $(git branch --show-current)`\n")
+    lines.append("3. Save branch for continuity: `python scripts/claudemd_generation_demo.py --save-branch`\n")
+    lines.append("4. Create handoff if needed: `python scripts/got_utils.py handoff initiate TASK_ID ...`\n")
+
     # State verification checklist
     lines.append("\n## State Verification Checklist\n\n")
     lines.append("Before acting, confirm:\n")
+    lines.append("- [ ] Branch continuity checked (no unmerged previous work)\n")
     lines.append("- [ ] Current sprint understood\n")
     lines.append("- [ ] Pending handoffs reviewed\n")
-    lines.append("- [ ] Branch matches expected\n")
     lines.append("- [ ] Human confirmed state summary\n")
 
     return "".join(lines)
@@ -900,7 +1111,39 @@ def main():
         type=str,
         help="Output file path (default: stdout)"
     )
+    parser.add_argument(
+        "--save-branch",
+        action="store_true",
+        help="Save current branch to sprint metadata for continuity tracking"
+    )
+    parser.add_argument(
+        "--check-continuity",
+        action="store_true",
+        help="Check branch continuity status and show guidance"
+    )
     args = parser.parse_args()
+
+    # Branch management
+    if args.save_branch:
+        branch = get_current_branch()
+        if save_branch_to_sprint(branch):
+            print(f"✓ Saved branch `{branch}` to active sprint metadata")
+        else:
+            print(f"✗ Failed to save branch (no active sprint or write error)")
+        return
+
+    if args.check_continuity:
+        continuity = analyze_branch_continuity()
+        print(f"Current branch: {continuity['current_branch']}")
+        print(f"Previous branch: {continuity['previous_branch'] or 'None'}")
+        print(f"Status: {continuity['continuity_status']}")
+        print()
+        print(continuity['guidance'])
+        if continuity.get('previous_commits'):
+            print("\nRecent commits on previous branch:")
+            for c in continuity['previous_commits']:
+                print(f"  {c}")
+        return
 
     # Quick generation modes (no demo, just output)
     if args.generate_layer4:
