@@ -1,8 +1,9 @@
-# Agent Continuation Protocol v1.0
+# Agent Continuation Protocol v2.0
 
 > **Purpose:** Enable work continuity across context windows, sessions, branches, and time.
 > **Last Updated:** 2025-12-23
 > **Update this file** when you learn new patterns that help continuation.
+> **Storage:** GoT is primary (Sprint, Decision, Handoff), files are backup.
 
 ---
 
@@ -19,27 +20,34 @@ I'm resuming work on this project. Let me verify my understanding of the current
 
 ## Phase 1: State Recovery (2-3 minutes)
 
-**Context lives in files, not memory. Read before thinking.**
+**Context lives in GoT and files. Read before thinking.**
 
-### Step 1.1: Check Current Sprint
+### Step 1.1: Check Current Sprint (Primary Source)
 ```bash
 python scripts/got_utils.py sprint status
 python scripts/got_utils.py sprint tasks $(python scripts/got_utils.py sprint status 2>/dev/null | grep "^ID:" | cut -d' ' -f2)
 ```
 
-### Step 1.2: Read Most Recent Knowledge Transfer
+### Step 1.2: Check for Pending Handoffs
 ```bash
-ls -t samples/memories/*knowledge-transfer*.md | head -1 | xargs cat
+python scripts/got_utils.py handoff list --status initiated
+python scripts/got_utils.py handoff list --status accepted
+```
+If a handoff exists targeting you, accept and read its context.
+
+### Step 1.3: Read Most Recent Knowledge Transfer (Backup)
+```bash
+ls -t samples/memories/*knowledge-transfer*.md samples/memories/*handoff*.md | head -1 | xargs cat
 ```
 
-### Step 1.3: Check Git State
+### Step 1.4: Check Git State
 ```bash
 git branch --show-current
 git log --oneline -5
 git status --short
 ```
 
-### Step 1.4: Quick Health Check
+### Step 1.5: Quick Health Check
 ```bash
 python scripts/got_utils.py validate
 python scripts/got_utils.py dashboard
@@ -47,8 +55,9 @@ python scripts/got_utils.py dashboard
 
 **After reading, summarize to the human:**
 ```
-Based on files, I understand:
+Based on GoT and files, I understand:
 - Current sprint: [NAME] with [N] tasks ([M] pending)
+- Pending handoff: [YES/NO - if yes, from whom]
 - Last session: [SUMMARY from knowledge transfer]
 - Branch: [BRANCH], [clean/dirty]
 - My first task should be: [TASK]
@@ -143,6 +152,27 @@ Always update docs if the task changed system behavior.
 - **Max parallel sub-agents:** 5
 - **Timeout:** If no response in reasonable time, assume failure
 
+### Intention→Action Verification (NEW)
+
+**Before delegating:**
+```bash
+# Log intention as Decision
+python scripts/got_utils.py decision log "Intention: [what sub-agent will do]" \
+  --rationale "Expected: [outcome]. Verification: [how to check]."
+```
+
+**After sub-agent returns:**
+1. Check output exists and is non-empty
+2. Run verification commands
+3. Compare result to logged intention
+4. If mismatch: log discrepancy, decide whether to retry or escalate
+
+```bash
+# Log observation
+python scripts/got_utils.py decision log "Observation: [what actually happened]" \
+  --rationale "Matched intention: [YES/NO]. Discrepancy: [if any]."
+```
+
 ### Verification Protocol
 After sub-agent returns:
 1. Check output exists and is non-empty
@@ -206,13 +236,40 @@ I want to double-check something. You mentioned [X], but I see [Y] in the codeba
 Did you mean [Y], or should we update the code to match [X]?
 ```
 
+### When Self-Disagreement Detected (NEW)
+
+If you find your current understanding contradicts logged decisions or previous session state:
+
+```
+I detected a potential contradiction:
+- Previous session recorded: [X]
+- Current observation shows: [Y]
+
+Possible explanations:
+1. State changed legitimately (someone else modified it)
+2. Previous session made an error
+3. I'm misunderstanding something
+
+Before proceeding, I need to investigate. Should I:
+A) Trust the current observation (update records)
+B) Trust the previous record (investigate why current differs)
+C) Escalate to you for decision
+```
+
+**Log the discrepancy:**
+```bash
+python scripts/got_utils.py decision log "Discrepancy detected: [summary]" \
+  --rationale "Previous: [X]. Current: [Y]. Resolution: [chosen action]."
+```
+
 ---
 
 ## Phase 6: Session Lifecycle
 
 ### Session Start Checklist
-- [ ] Read sprint status
-- [ ] Read latest knowledge transfer
+- [ ] Check for pending handoffs (GoT)
+- [ ] Read sprint status (GoT)
+- [ ] Read latest knowledge transfer (files - backup)
 - [ ] Check git state
 - [ ] Summarize understanding to human
 - [ ] Get confirmation before acting
@@ -220,23 +277,54 @@ Did you mean [Y], or should we update the code to match [X]?
 ### During Session
 - [ ] Stay focused on sprint tasks
 - [ ] Create tasks for new ideas (don't just do them)
+- [ ] Log intentions before major actions (Decisions in GoT)
 - [ ] Commit state frequently (GoT auto-commits, but push periodically)
 - [ ] Note blockers and questions as you go
+
+### Taking a Break (NEW)
+
+**Before stopping work, always tell the human:**
+```
+I'm taking a break. Here's the status:
+
+**Current task:** [TASK_ID] - [TITLE]
+**Status:** [in_progress/blocked/waiting]
+**What I was doing:** [brief description]
+**Next step when resuming:** [specific action]
+
+Should I create a checkpoint before stopping?
+```
+
+If checkpoint requested:
+```bash
+python scripts/got_utils.py decision log "Checkpoint: [task summary]" \
+  --rationale '{"current_task": "T-xxx", "next_step": "...", "blockers": [], "context": "..."}'
+```
 
 ### Session End Checklist
 - [ ] Complete or checkpoint current task
 - [ ] Update any tasks that changed status
-- [ ] Create knowledge transfer document
+- [ ] Create handoff in GoT for next session
+- [ ] Create knowledge transfer document (files - backup)
 - [ ] Commit and push all changes
-- [ ] Summarize what's next for future self
+- [ ] Tell human what's next
 
-### Knowledge Transfer Template
+### Creating a Handoff (GoT - Primary)
+```bash
+python scripts/got_utils.py handoff initiate [CURRENT_TASK_ID] \
+  --target "next-session" \
+  --instructions "Continue [task]. Next step: [action]." \
+  --context '{"branch": "...", "checkpoint_decision": "D-xxx", "pending_tasks": [...]}'
+```
+
+### Knowledge Transfer Template (Files - Backup)
 ```markdown
 # Knowledge Transfer: [Sprint] - [Topic]
 
 **Date:** YYYY-MM-DD
 **Session:** [branch name]
 **Sprint:** [sprint ID and name]
+**Handoff ID:** [H-xxx if created]
 
 ## What Was Accomplished
 [Bullet points]
@@ -245,7 +333,7 @@ Did you mean [Y], or should we update the code to match [X]?
 [Sprint tasks with status]
 
 ## Key Decisions
-[What was decided and why]
+[What was decided and why - reference D-xxx IDs]
 
 ## Open Questions
 [Unresolved issues]
@@ -263,12 +351,14 @@ Did you mean [Y], or should we update the code to match [X]?
 - A pattern fails repeatedly
 - The human suggests an improvement
 - Trust levels need adjustment
+- New GoT entity types are added
 
 ### How to Update
 1. Edit this file (`.claude/commands/project:continuation.md`)
 2. Increment version number
 3. Update "Last Updated" date
 4. Commit with message: `docs: Update continuation protocol vX.Y`
+5. Log a Decision explaining the change
 
 ### Checking for Updates
 At session start, after reading knowledge transfer:
@@ -289,11 +379,20 @@ python scripts/got_utils.py sprint tasks [SPRINT_ID]
 python scripts/got_utils.py task start [TASK_ID]
 python scripts/got_utils.py task complete [TASK_ID]
 
+# Handoffs (session continuity)
+python scripts/got_utils.py handoff list
+python scripts/got_utils.py handoff initiate [TASK_ID] --target "next-session" --instructions "..."
+python scripts/got_utils.py handoff accept [HANDOFF_ID]
+python scripts/got_utils.py handoff complete [HANDOFF_ID]
+
+# Decisions (checkpoints, intentions, observations)
+python scripts/got_utils.py decision log "Title" --rationale "Why"
+
 # Health checks
 python scripts/got_utils.py validate
 python scripts/got_utils.py dashboard
 
-# Knowledge transfer
+# Knowledge transfer (backup)
 ls -t samples/memories/*knowledge-transfer*.md | head -1
 
 # Git state
@@ -301,10 +400,21 @@ git branch --show-current
 git log --oneline -5
 ```
 
+### GoT Entity Usage for Sessions
+| Entity | Purpose |
+|--------|---------|
+| **Sprint** | Session container (use session_id field) |
+| **Task** | Work items |
+| **Decision** | Checkpoints, intentions, observations, discrepancies |
+| **Handoff** | Session-to-session transitions |
+| **Edge** | Relationships (CONTAINS, DEPENDS_ON, etc.) |
+
 ### Files I Should Read First
-1. `samples/memories/[latest-knowledge-transfer].md`
-2. `CLAUDE.md` (project conventions)
-3. `docs/architecture/GOT_DATABASE_ARCHITECTURE.md` (if doing GoT work)
+1. Check GoT: `python scripts/got_utils.py handoff list` (pending handoffs)
+2. Check GoT: `python scripts/got_utils.py sprint status` (current sprint)
+3. Backup: `samples/memories/[latest-knowledge-transfer].md`
+4. Context: `CLAUDE.md` (project conventions)
+5. Architecture: `docs/architecture/GOT_DATABASE_ARCHITECTURE.md` (if doing GoT work)
 
 ### Red Flags (Stop and Ask)
 - About to delete data
@@ -313,6 +423,8 @@ git log --oneline -5
 - Confused for more than 5 minutes
 - Sub-agent failed 3 times
 - Human instruction contradicts codebase
+- Self-disagreement detected (current vs. logged state)
+- No pending handoff but knowledge transfer mentions unfinished work
 
 ---
 
@@ -323,8 +435,14 @@ This prompt can be invoked:
 - Manually via `/project:continuation`
 - By reading the file directly
 
-**Remember:** You have no memory. Files are truth. Verify before acting. Earn trust through good work.
+**Remember:**
+- You have no memory
+- GoT is truth (primary), files are backup
+- Verify before acting
+- Log intentions, verify observations
+- Earn trust through good work
+- Tell human when taking a break
 
 ---
 
-*End of Continuation Protocol*
+*End of Continuation Protocol v2.0*
