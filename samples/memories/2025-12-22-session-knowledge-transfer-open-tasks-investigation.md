@@ -7,10 +7,10 @@
 
 ## Summary
 
-This session investigated and resolved open tasks in the GoT system using a director pattern with parallel sub-agents. **Nine accomplishments** across two context windows:
+This session investigated and resolved open tasks in the GoT system using a director pattern with parallel sub-agents. **Ten accomplishments** across two context windows:
 - Fixed edge loading (7→30 edges) and velocity metrics
 - Added CLI commands (task depends, sprint suggest)
-- Implemented auto-commit/push for environment resilience
+- Implemented auto-commit/push for environment resilience (now ON by default)
 - Added 17 unit tests with mocked git operations
 - Created validation bug task and linked 5 tasks to Sprint S-018
 
@@ -126,6 +126,16 @@ Linked 5 pending tasks to Sprint S-018 (GoT Cleanup & Observability):
 
 Sprint S-018 now at 37.5% (3/8 tasks complete).
 
+### 10. Auto-Commit/Push Default ON ✅
+Changed defaults for environment resilience:
+
+| Variable | Before | After |
+|----------|--------|-------|
+| `GOT_AUTO_COMMIT` | OFF (opt-in) | **ON** (opt-out with `=0`) |
+| `GOT_AUTO_PUSH` | OFF (opt-in) | **ON** (opt-out with `=0`) |
+
+GoT state now auto-saves to git after every mutation without any configuration.
+
 ## Deferred Tasks
 
 | Task | Reason |
@@ -172,6 +182,7 @@ Director (main agent - context keeper):
 3. `b5e1bc63` - feat(got): Add auto-push for environment resilience
 4. `758f87f4` - test(got): Add unit tests for auto-commit/push functions
 5. `70443278` - chore(got): Link pending tasks to Sprint 018 and create validation bug task
+6. `e20c8f82` - feat(got): Make auto-commit and auto-push ON by default
 
 ## Terminology Clarification
 
@@ -196,9 +207,8 @@ Sprint S-018: 37.5% (3/8 tasks)
 ## Commands for Next Session
 
 ```bash
-# Enable environment resilience (recommended)
-export GOT_AUTO_COMMIT=1
-export GOT_AUTO_PUSH=1
+# Auto-commit/push is ON by default - no configuration needed!
+# To disable: export GOT_AUTO_COMMIT=0 or GOT_AUTO_PUSH=0
 
 # Check current state
 python scripts/got_utils.py dashboard
