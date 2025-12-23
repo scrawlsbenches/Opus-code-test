@@ -137,6 +137,8 @@ corpus_dev/
 #   - .got/events/          - Append-only event logs (TRUE source of truth)
 #   - .got/snapshots/       - Compressed graph snapshots (cache, can rebuild)
 #   - .got/tracked/         - Exported task/sprint/epic state
+#   - .got/entities/        - Entity JSON files (tasks, decisions, edges)
+#   - .got/entities/_version.json - Version counter (self-healing, see .gitattributes)
 # LOCAL ONLY (transient recovery data):
 #   - .got/wal/             - Write-ahead logs (crash recovery only)
 #   - .got/chunks/          - Chunk-based storage (local cache)

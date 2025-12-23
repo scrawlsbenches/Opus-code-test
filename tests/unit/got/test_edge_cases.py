@@ -137,10 +137,12 @@ class TestEdgeCases:
         with open(version_file, 'w', encoding='utf-8') as f:
             f.write("INVALID JSON{{{")
 
-        # Corrupted version file causes JSONDecodeError during store init
-        # This is expected behavior - corruption should be detected
-        with pytest.raises(json.JSONDecodeError):
-            recovery_mgr = RecoveryManager(tmp_path)
+        # Corrupted version file is now handled gracefully (self-healing)
+        # The version is computed from entities/history instead of crashing
+        recovery_mgr = RecoveryManager(tmp_path)
+        result = recovery_mgr.recover()
+        # Recovery should succeed even with corrupted version file
+        assert result is not None
 
     def test_recovery_idempotent(self, tmp_path):
         """Test that running recovery multiple times is safe."""

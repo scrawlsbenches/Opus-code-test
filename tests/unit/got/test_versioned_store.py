@@ -442,3 +442,229 @@ class TestVersionedStoreInitialization:
         """Store starts at version 0 if no version file exists."""
         store = VersionedStore(tmp_path)
         assert store.current_version() == 0
+
+
+class TestVersionedStoreComputedVersion:
+    """Test self-healing version computation (merge-conflict-free).
+
+    The version is computed as max(stored_version, entity_count, max_history_version).
+    This ensures version is always valid even if _version.json is missing or stale.
+    """
+
+    def test_version_computed_from_entity_count_if_no_file(self, tmp_path):
+        """Version is computed from entity count if _version.json is missing."""
+        # Create entities without a version file
+        store_dir = tmp_path / "store"
+        store_dir.mkdir()
+        (store_dir / "_history").mkdir()
+
+        # Create entity files manually
+        for i in range(5):
+            entity_data = {
+                "id": f"T{i}",
+                "entity_type": "task",
+                "title": f"Task {i}",
+                "status": "pending",
+                "priority": "medium"
+            }
+            entity_file = store_dir / f"T{i}.json"
+            wrapper = {
+                "_checksum": compute_checksum(entity_data),
+                "_written_at": "2025-01-01T00:00:00Z",
+                "data": entity_data
+            }
+            with open(entity_file, 'w') as f:
+                json.dump(wrapper, f)
+
+        # Initialize store - should compute version from entity count
+        store = VersionedStore(store_dir)
+
+        # Version should be at least entity count (5)
+        assert store.current_version() >= 5
+
+    def test_version_computed_from_history_if_higher(self, tmp_path):
+        """Version is computed from max history global_version if higher than entity count."""
+        store_dir = tmp_path / "store"
+        store_dir.mkdir()
+        history_dir = store_dir / "_history"
+        history_dir.mkdir()
+
+        # Create one entity
+        entity_data = {
+            "id": "T1",
+            "entity_type": "task",
+            "title": "Task 1",
+            "status": "pending",
+            "priority": "medium"
+        }
+        wrapper = {
+            "_checksum": compute_checksum(entity_data),
+            "_written_at": "2025-01-01T00:00:00Z",
+            "data": entity_data
+        }
+        with open(store_dir / "T1.json", 'w') as f:
+            json.dump(wrapper, f)
+
+        # Create history with high global_version
+        history_entry = {
+            "global_version": 100,
+            "timestamp": "2025-01-01T00:00:00Z",
+            "data": entity_data
+        }
+        with open(history_dir / "T1.jsonl", 'w') as f:
+            json.dump(history_entry, f)
+            f.write('\n')
+
+        # Initialize store - should compute version from history
+        store = VersionedStore(store_dir)
+
+        # Version should be at least max history version (100)
+        assert store.current_version() >= 100
+
+    def test_version_self_heals_if_file_is_stale(self, tmp_path):
+        """Version file is updated if computed version is higher."""
+        store_dir = tmp_path / "store"
+        store_dir.mkdir()
+        history_dir = store_dir / "_history"
+        history_dir.mkdir()
+
+        # Create version file with stale value
+        with open(store_dir / "_version.json", 'w') as f:
+            json.dump({"version": 10}, f)
+
+        # Create entity files
+        for i in range(20):
+            entity_data = {
+                "id": f"T{i}",
+                "entity_type": "task",
+                "title": f"Task {i}",
+                "status": "pending",
+                "priority": "medium"
+            }
+            wrapper = {
+                "_checksum": compute_checksum(entity_data),
+                "_written_at": "2025-01-01T00:00:00Z",
+                "data": entity_data
+            }
+            with open(store_dir / f"T{i}.json", 'w') as f:
+                json.dump(wrapper, f)
+
+        # Initialize store - should self-heal
+        store = VersionedStore(store_dir)
+
+        # Version should be updated to entity count (20)
+        assert store.current_version() >= 20
+
+        # Version file should be updated
+        with open(store_dir / "_version.json", 'r') as f:
+            file_version = json.load(f).get("version", 0)
+        assert file_version >= 20
+
+    def test_version_uses_stored_value_if_valid(self, tmp_path):
+        """Version uses stored value if it's higher than computed values."""
+        store_dir = tmp_path / "store"
+        store_dir.mkdir()
+        (store_dir / "_history").mkdir()
+
+        # Create version file with high value
+        with open(store_dir / "_version.json", 'w') as f:
+            json.dump({"version": 50}, f)
+
+        # Create only 2 entities
+        for i in range(2):
+            entity_data = {
+                "id": f"T{i}",
+                "entity_type": "task",
+                "title": f"Task {i}",
+                "status": "pending",
+                "priority": "medium"
+            }
+            wrapper = {
+                "_checksum": compute_checksum(entity_data),
+                "_written_at": "2025-01-01T00:00:00Z",
+                "data": entity_data
+            }
+            with open(store_dir / f"T{i}.json", 'w') as f:
+                json.dump(wrapper, f)
+
+        # Initialize store - should use stored value
+        store = VersionedStore(store_dir)
+
+        # Version should be stored value (50), not entity count (2)
+        assert store.current_version() == 50
+
+    def test_version_handles_corrupted_version_file(self, tmp_path):
+        """Version is computed if version file is corrupted."""
+        store_dir = tmp_path / "store"
+        store_dir.mkdir()
+        (store_dir / "_history").mkdir()
+
+        # Create corrupted version file
+        with open(store_dir / "_version.json", 'w') as f:
+            f.write("not valid json")
+
+        # Create 3 entities
+        for i in range(3):
+            entity_data = {
+                "id": f"T{i}",
+                "entity_type": "task",
+                "title": f"Task {i}",
+                "status": "pending",
+                "priority": "medium"
+            }
+            wrapper = {
+                "_checksum": compute_checksum(entity_data),
+                "_written_at": "2025-01-01T00:00:00Z",
+                "data": entity_data
+            }
+            with open(store_dir / f"T{i}.json", 'w') as f:
+                json.dump(wrapper, f)
+
+        # Initialize store - should recover from corrupted file
+        store = VersionedStore(store_dir)
+
+        # Version should be computed from entity count
+        assert store.current_version() >= 3
+
+    def test_version_handles_corrupted_history_file(self, tmp_path):
+        """Version is computed even if some history files are corrupted."""
+        store_dir = tmp_path / "store"
+        store_dir.mkdir()
+        history_dir = store_dir / "_history"
+        history_dir.mkdir()
+
+        # Create entity
+        entity_data = {
+            "id": "T1",
+            "entity_type": "task",
+            "title": "Task 1",
+            "status": "pending",
+            "priority": "medium"
+        }
+        wrapper = {
+            "_checksum": compute_checksum(entity_data),
+            "_written_at": "2025-01-01T00:00:00Z",
+            "data": entity_data
+        }
+        with open(store_dir / "T1.json", 'w') as f:
+            json.dump(wrapper, f)
+
+        # Create corrupted history file
+        with open(history_dir / "T1.jsonl", 'w') as f:
+            f.write("not valid json\n")
+
+        # Create valid history file with high version
+        history_entry = {
+            "global_version": 50,
+            "timestamp": "2025-01-01T00:00:00Z",
+            "data": entity_data
+        }
+        with open(history_dir / "T2.jsonl", 'w') as f:
+            json.dump(history_entry, f)
+            f.write('\n')
+
+        # Initialize store - should skip corrupted file and use valid one
+        store = VersionedStore(store_dir)
+
+        # Version should be from valid history file
+        assert store.current_version() >= 50

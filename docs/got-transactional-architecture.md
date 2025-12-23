@@ -431,6 +431,12 @@ class VersionedStore:
 
     The store maintains a global version counter that increments
     on every successful commit.
+
+    **Merge-Conflict-Free Version (2025-12-23 update):**
+    The version is computed as max(stored_version, entity_count, max_history_version)
+    rather than simply read from _version.json. This makes the version self-healing
+    and eliminates merge conflicts when multiple branches modify GoT state.
+    The _version.json file is now gitignored and used only as a local cache.
     """
 
     def __init__(self, store_dir: Path):
