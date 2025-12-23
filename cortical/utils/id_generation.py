@@ -364,3 +364,39 @@ def generate_team_id() -> str:
     timestamp = now.strftime("%Y%m%d-%H%M%S")
     suffix = secrets.token_hex(4)  # 8 hex chars
     return f"TEAM-{timestamp}-{suffix}"
+
+
+def generate_document_id(path: Optional[str] = None) -> str:
+    """
+    Generate unique document ID.
+
+    If path is provided, creates a deterministic path-based ID.
+    Otherwise, creates a timestamp-based unique ID.
+
+    Args:
+        path: Optional file path for deterministic ID generation
+
+    Returns:
+        Document ID string
+
+    Examples:
+        >>> generate_document_id("docs/architecture.md")
+        'DOC-docs-architecture-md'
+
+        >>> generate_document_id()
+        'DOC-20251222-143052-a1b2c3d4'
+
+    Note:
+        - Path-based IDs are deterministic (same path = same ID)
+        - Timestamp-based IDs are unique (for programmatic creation)
+    """
+    if path:
+        # Deterministic: path-based ID
+        safe_path = path.replace("/", "-").replace(".", "-").replace("_", "-")
+        return f"DOC-{safe_path}"
+    else:
+        # Unique: timestamp-based ID
+        now = datetime.now(timezone.utc)
+        timestamp = now.strftime("%Y%m%d-%H%M%S")
+        suffix = secrets.token_hex(4)  # 8 hex chars
+        return f"DOC-{timestamp}-{suffix}"

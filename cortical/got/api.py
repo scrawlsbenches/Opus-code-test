@@ -33,11 +33,12 @@ from cortical.utils.id_generation import (
     generate_handoff_id,
     generate_claudemd_layer_id,
     generate_claudemd_version_id,
+    generate_document_id,
 )
 from .tx_manager import TransactionManager, CommitResult
 from .sync import SyncManager, SyncResult
 from .recovery import RecoveryManager, RecoveryResult
-from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion
+from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, Document
 from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
 from .config import DurabilityMode
@@ -617,6 +618,251 @@ class GoTManager:
             TransactionError: If commit fails
         """
         return self.add_edge(epic_id, sprint_id, "CONTAINS")
+
+    # Document management methods
+    def create_document(
+        self,
+        path: str,
+        title: str = "",
+        doc_type: str = "general",
+        tags: Optional[List[str]] = None,
+        **properties
+    ) -> Document:
+        """
+        Create a document entity in a single-operation transaction.
+
+        Args:
+            path: Relative path from repo root (e.g., "docs/architecture.md")
+            title: Human-readable title
+            doc_type: Document type (architecture, design, memory, etc.)
+            tags: List of tags for organization
+            **properties: Additional document properties
+
+        Returns:
+            Created Document object
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        with self.transaction() as tx:
+            doc = tx.create_document(
+                path=path,
+                title=title,
+                doc_type=doc_type,
+                tags=tags or [],
+                **properties
+            )
+        return doc
+
+    def get_document(self, doc_id: str) -> Optional[Document]:
+        """
+        Get a document by ID (read-only).
+
+        Args:
+            doc_id: Document identifier (e.g., "DOC-docs-architecture-md")
+
+        Returns:
+            Document object or None if not found
+        """
+        with self.transaction(read_only=True) as tx:
+            doc = tx.get_document(doc_id)
+        return doc
+
+    def get_document_by_path(self, path: str) -> Optional[Document]:
+        """
+        Get a document by its file path.
+
+        Args:
+            path: File path (e.g., "docs/architecture.md")
+
+        Returns:
+            Document object or None if not found
+        """
+        doc_id = generate_document_id(path)
+        return self.get_document(doc_id)
+
+    def update_document(self, doc_id: str, **updates) -> Document:
+        """
+        Update a document in a single-operation transaction.
+
+        Args:
+            doc_id: Document identifier
+            **updates: Fields to update (title, tags, etc.)
+
+        Returns:
+            Updated Document object
+
+        Raises:
+            TransactionError: If commit fails or document not found
+        """
+        with self.transaction() as tx:
+            doc = tx.update_document(doc_id, **updates)
+        return doc
+
+    def list_documents(
+        self,
+        doc_type: Optional[str] = None,
+        tag: Optional[str] = None,
+        is_stale: Optional[bool] = None
+    ) -> List[Document]:
+        """
+        List documents, optionally filtered by type, tag, or staleness.
+
+        Args:
+            doc_type: Filter by document type
+            tag: Filter by tag (document must have this tag)
+            is_stale: Filter by staleness status
+
+        Returns:
+            List of matching Document objects
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        documents = []
+        for entity_file in entities_dir.glob("DOC-*.json"):
+            try:
+                doc = self._read_document_file(entity_file)
+                if doc is None:
+                    continue
+
+                # Apply filters
+                if doc_type is not None and doc.doc_type != doc_type:
+                    continue
+                if tag is not None and tag not in doc.tags:
+                    continue
+                if is_stale is not None and doc.is_stale != is_stale:
+                    continue
+
+                documents.append(doc)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted document file {entity_file}: {e}")
+                continue
+
+        return documents
+
+    def link_document_to_task(
+        self,
+        doc_id: str,
+        task_id: str,
+        edge_type: str = "DOCUMENTED_BY"
+    ) -> Edge:
+        """
+        Link a document to a task via an edge.
+
+        Edge types:
+            - DOCUMENTED_BY: Task is documented by this document
+            - PRODUCES: Task produces/creates this document
+            - REFERENCES: Task references this document
+
+        Args:
+            doc_id: Document identifier
+            task_id: Task identifier
+            edge_type: Type of relationship (default: DOCUMENTED_BY)
+
+        Returns:
+            Created Edge object
+
+        Raises:
+            TransactionError: If commit fails
+        """
+        return self.add_edge(task_id, doc_id, edge_type)
+
+    def get_documents_for_task(self, task_id: str) -> List[Document]:
+        """
+        Get all documents linked to a task.
+
+        Args:
+            task_id: Task identifier
+
+        Returns:
+            List of Document objects linked to the task
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        # Find all edges from task to documents
+        doc_ids = []
+        for edge_file in entities_dir.glob("E-*.json"):
+            try:
+                with open(edge_file, "r") as f:
+                    wrapper = json.load(f)
+
+                data = wrapper.get("data", {})
+                if data.get("entity_type") != "edge":
+                    continue
+
+                edge = Edge.from_dict(data)
+                # Check if edge is from task to a document
+                if edge.source_id == task_id and edge.target_id.startswith("DOC-"):
+                    doc_ids.append(edge.target_id)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+                continue
+
+        # Load the documents
+        documents = []
+        for doc_id in doc_ids:
+            doc = self.get_document(doc_id)
+            if doc is not None:
+                documents.append(doc)
+
+        return documents
+
+    def get_tasks_for_document(self, doc_id: str) -> List[Task]:
+        """
+        Get all tasks linked to a document.
+
+        Args:
+            doc_id: Document identifier
+
+        Returns:
+            List of Task objects linked to the document
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        # Find all edges to this document
+        task_ids = []
+        for edge_file in entities_dir.glob("E-*.json"):
+            try:
+                with open(edge_file, "r") as f:
+                    wrapper = json.load(f)
+
+                data = wrapper.get("data", {})
+                if data.get("entity_type") != "edge":
+                    continue
+
+                edge = Edge.from_dict(data)
+                # Check if edge is to this document from a task
+                if edge.target_id == doc_id and edge.source_id.startswith("T-"):
+                    task_ids.append(edge.source_id)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+                continue
+
+        # Load the tasks
+        tasks = []
+        for task_id in task_ids:
+            task = self.get_task(task_id)
+            if task is not None:
+                tasks.append(task)
+
+        return tasks
+
+    def _read_document_file(self, file_path: Path) -> Optional[Document]:
+        """Read a document entity from file."""
+        with open(file_path, "r") as f:
+            wrapper = json.load(f)
+
+        data = wrapper.get("data", {})
+        if data.get("entity_type") != "document":
+            return None
+
+        return Document.from_dict(data)
 
     def sync(self) -> SyncResult:
         """
@@ -1555,6 +1801,79 @@ class TransactionContext:
         if entity is None:
             return None
         if not isinstance(entity, Epic):
+            return None
+        return entity
+
+    # Document operations
+    def create_document(self, path: str, **kwargs) -> Document:
+        """
+        Create document within transaction.
+
+        Args:
+            path: File path (e.g., "docs/architecture.md")
+            **kwargs: Additional document fields (title, doc_type, tags, etc.)
+
+        Returns:
+            Created Document object
+        """
+        doc_id = generate_document_id(path)
+        doc = Document(
+            id=doc_id,
+            path=path,
+            title=kwargs.get("title", ""),
+            doc_type=kwargs.get("doc_type", "general"),
+            tags=kwargs.get("tags", []),
+            category=kwargs.get("category", ""),
+            properties=kwargs.get("properties", {}),
+            metadata=kwargs.get("metadata", {}),
+        )
+        self.tx_manager.write(self.tx, doc)
+        return doc
+
+    def update_document(self, doc_id: str, **updates) -> Document:
+        """
+        Update document within transaction.
+
+        Args:
+            doc_id: Document identifier
+            **updates: Fields to update
+
+        Returns:
+            Updated Document object
+
+        Raises:
+            TransactionError: If document not found
+        """
+        doc = self.get_document(doc_id)
+        if doc is None:
+            raise TransactionError(f"Document not found: {doc_id}")
+
+        # Apply updates
+        for key, value in updates.items():
+            if hasattr(doc, key):
+                setattr(doc, key, value)
+
+        # Bump version
+        doc.bump_version()
+
+        # Write back
+        self.tx_manager.write(self.tx, doc)
+        return doc
+
+    def get_document(self, doc_id: str) -> Optional[Document]:
+        """
+        Get document within transaction (sees own writes).
+
+        Args:
+            doc_id: Document identifier
+
+        Returns:
+            Document object or None if not found
+        """
+        entity = self.tx_manager.read(self.tx, doc_id)
+        if entity is None:
+            return None
+        if not isinstance(entity, Document):
             return None
         return entity
 
