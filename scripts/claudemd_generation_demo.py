@@ -1,25 +1,36 @@
 #!/usr/bin/env python3
 """
-Demo script for the CLAUDE.md auto-generation system.
+CLAUDE.md Auto-Generation with GoT-Based Continuation Context.
 
-This script demonstrates the layer system using REAL content from the
-Cortical Text Processor's CLAUDE.md file:
+This script implements the 5-layer CLAUDE.md system with dynamic Layer 4
+generation from Graph of Thought (GoT) state. This enables:
+
+- Session continuity across context windows
+- Dynamic sprint/handoff awareness
+- Checkpoint recovery for continuation
 
 Layer 0 (Core): Quick Session Start - Always included
 Layer 1 (Operational): Development Workflow - Always included
 Layer 2 (Contextual): GoT Guide - When working on cortical/got/*
 Layer 3 (Persona): ML Data Collection - For ML engineers
-Layer 4 (Ephemeral): Current Session - Sprint/branch specific
+Layer 4 (Ephemeral): Current Session - DYNAMICALLY GENERATED from GoT
 
 Usage:
     python scripts/claudemd_generation_demo.py [--verbose]
     python scripts/claudemd_generation_demo.py --dry-run
     python scripts/claudemd_generation_demo.py --team-demo
+    python scripts/claudemd_generation_demo.py --generate-layer4   # Generate L4 from GoT
+    python scripts/claudemd_generation_demo.py --continuation      # Full continuation context
+
+Task: T-20251223-164818-f848d31d
+Sprint: S-018 (Schema Evolution Foundation)
 """
 
 import sys
+import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
+from typing import Optional
 
 # Add project root to path
 _PROJECT_ROOT = Path(__file__).parent.parent
@@ -130,21 +141,462 @@ python scripts/ml_file_prediction.py train     # Train file predictor
 ```
 """
 
-LAYER_4_SESSION_CONTEXT = """## Current Session Context
+LAYER_4_SESSION_CONTEXT_FALLBACK = """## Current Session Context
 
-**Active Sprint:** S-017 (Spark SLM Integration)
-**Current Branch:** claude/auto-generate-claude-md-LwdTl
-**Epic:** CLAUDE.md Auto-Generation System
+**Note:** GoT state unavailable. Using fallback context.
 
-### This Session's Focus
-- Implementing 5-layer CLAUDE.md architecture
-- PersonaProfile and Team entities for multi-team support
-- Context-aware layer selection
-
-### Recent Decisions
-- D-20251222: Keep original CLAUDE.md as fallback
-- D-20251222: Use GoT for layer storage (not separate files)
+### Quick Start
+1. Check GoT: `python scripts/got_utils.py sprint status`
+2. Check handoffs: `python scripts/got_utils.py handoff list`
+3. Read recent knowledge transfer in `samples/memories/`
 """
+
+
+# =============================================================================
+# GOT INTEGRATION FOR DYNAMIC LAYER 4 GENERATION
+# =============================================================================
+
+def run_got_command(args: list) -> Optional[str]:
+    """Run a got_utils.py command and return output."""
+    try:
+        result = subprocess.run(
+            ["python", str(_PROJECT_ROOT / "scripts" / "got_utils.py")] + args,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=str(_PROJECT_ROOT),
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+        return None
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+
+
+def get_current_branch() -> str:
+    """Get the current git branch name."""
+    try:
+        result = subprocess.run(
+            ["git", "branch", "--show-current"],
+            capture_output=True,
+            text=True,
+            cwd=str(_PROJECT_ROOT),
+        )
+        return result.stdout.strip() or "unknown"
+    except Exception:
+        return "unknown"
+
+
+def get_branch_from_handoff() -> Optional[str]:
+    """Get the branch name from the most recent handoff."""
+    handoffs_dir = _PROJECT_ROOT / ".got" / "entities" / "handoffs"
+    if not handoffs_dir.exists():
+        return None
+
+    import json
+    files = sorted(handoffs_dir.glob("H-*.json"), reverse=True)
+    for f in files[:3]:  # Check recent handoffs
+        try:
+            with open(f) as fp:
+                data = json.load(fp)
+                # Look for branch in context or metadata
+                context = data.get("context", {})
+                if isinstance(context, dict):
+                    branch = context.get("branch") or context.get("source_branch")
+                    if branch:
+                        return branch
+        except (json.JSONDecodeError, IOError):
+            continue
+    return None
+
+
+def get_last_sprint_branch() -> Optional[str]:
+    """Get the branch from the active sprint's metadata."""
+    sprint = get_sprint_status()
+    if not sprint:
+        return None
+
+    sprint_id = sprint.get("id")
+    if not sprint_id:
+        return None
+
+    # Check sprint entity for last known branch
+    # Sprints are stored directly in .got/entities/ (not in a subdirectory)
+    sprint_file = _PROJECT_ROOT / ".got" / "entities" / f"{sprint_id}.json"
+    if sprint_file.exists():
+        import json
+        try:
+            with open(sprint_file) as fp:
+                data = json.load(fp)
+                return data.get("metadata", {}).get("last_branch")
+        except (json.JSONDecodeError, IOError):
+            pass
+    return None
+
+
+def save_branch_to_sprint(branch: str) -> bool:
+    """
+    Save current branch to sprint metadata for future continuity tracking.
+
+    This should be called when starting work on a sprint to record
+    which branch the work is happening on.
+    """
+    sprint = get_sprint_status()
+    if not sprint:
+        return False
+
+    sprint_id = sprint.get("id")
+    if not sprint_id:
+        return False
+
+    # Sprints are stored directly in .got/entities/ (not in a subdirectory)
+    sprint_file = _PROJECT_ROOT / ".got" / "entities" / f"{sprint_id}.json"
+    if not sprint_file.exists():
+        return False
+
+    import json
+    try:
+        with open(sprint_file) as fp:
+            data = json.load(fp)
+
+        # Update metadata with current branch
+        if "metadata" not in data:
+            data["metadata"] = {}
+        data["metadata"]["last_branch"] = branch
+        data["metadata"]["branch_updated_at"] = datetime.now().isoformat()
+
+        with open(sprint_file, "w") as fp:
+            json.dump(data, fp, indent=2)
+        return True
+    except (json.JSONDecodeError, IOError):
+        return False
+
+
+def get_branch_state() -> dict:
+    """
+    Get raw branch state facts - NO determinations.
+
+    Returns observable facts only. Agent decides what to do.
+    """
+    current = get_current_branch()
+    saved = get_branch_from_handoff() or get_last_sprint_branch()
+
+    # Get saved branch timestamp if available
+    saved_at = None
+    sprint = get_sprint_status()
+    if sprint and sprint.get("id"):
+        sprint_file = _PROJECT_ROOT / ".got" / "entities" / f"{sprint['id']}.json"
+        if sprint_file.exists():
+            import json
+            try:
+                with open(sprint_file) as fp:
+                    data = json.load(fp)
+                    saved_at = data.get("metadata", {}).get("branch_updated_at")
+            except (json.JSONDecodeError, IOError):
+                pass
+
+    return {
+        "current_branch": current,
+        "saved_branch": saved,
+        "saved_at": saved_at,
+        "branches_differ": current != saved if saved else None,
+    }
+
+
+def get_sprint_status() -> dict:
+    """Get current sprint status from GoT.
+
+    Returns the first (most recent) sprint found in output.
+    Multiple sprints may be in_progress; we take the first one listed.
+    """
+    output = run_got_command(["sprint", "status"])
+    if not output:
+        return {}
+
+    status = {}
+    for line in output.split("\n"):
+        # Sprint: line indicates a new sprint block - if we already have data, stop
+        if line.startswith("Sprint:") and status.get("id"):
+            break
+        elif line.startswith("Sprint:"):
+            status["name"] = line.split(":", 1)[1].strip()
+        elif line.startswith("ID:"):
+            status["id"] = line.split(":", 1)[1].strip()
+        elif line.startswith("Status:"):
+            status["status"] = line.split(":", 1)[1].strip()
+        elif line.startswith("Epic:"):
+            status["epic"] = line.split(":", 1)[1].strip()
+    return status
+
+
+def get_sprint_tasks(sprint_id: str, limit: int = 5) -> list:
+    """Get tasks for a sprint."""
+    output = run_got_command(["sprint", "tasks", sprint_id])
+    if not output:
+        return []
+
+    tasks = []
+    for line in output.split("\n"):
+        line = line.strip()
+        if line.startswith("T-") or "T-" in line:
+            # Parse task line format varies, extract what we can
+            tasks.append(line)
+        if len(tasks) >= limit:
+            break
+    return tasks
+
+
+def get_pending_handoffs() -> list:
+    """Get pending handoffs from GoT."""
+    output = run_got_command(["handoff", "list", "--status", "initiated"])
+    if not output or "No handoffs" in output:
+        return []
+
+    handoffs = []
+    for line in output.split("\n"):
+        line = line.strip()
+        if line.startswith("H-") or "H-" in line:
+            handoffs.append(line)
+    return handoffs
+
+
+def get_recent_decisions(limit: int = 3) -> list:
+    """Get recent decisions from GoT."""
+    # Decisions are stored in .got/entities/decisions/
+    decisions_dir = _PROJECT_ROOT / ".got" / "entities" / "decisions"
+    if not decisions_dir.exists():
+        return []
+
+    # Get most recent decision files
+    import json
+    decisions = []
+    files = sorted(decisions_dir.glob("D-*.json"), reverse=True)[:limit]
+
+    for f in files:
+        try:
+            with open(f) as fp:
+                data = json.load(fp)
+                decisions.append({
+                    "id": data.get("id", f.stem),
+                    "title": data.get("title", "Unknown"),
+                    "created_at": data.get("created_at", ""),
+                })
+        except (json.JSONDecodeError, IOError):
+            continue
+
+    return decisions
+
+
+def get_recent_knowledge_transfer() -> Optional[str]:
+    """Get the most recent knowledge transfer file path."""
+    memories_dir = _PROJECT_ROOT / "samples" / "memories"
+    if not memories_dir.exists():
+        return None
+
+    kt_files = sorted(
+        memories_dir.glob("*knowledge-transfer*.md"),
+        key=lambda x: x.stat().st_mtime,
+        reverse=True
+    )
+
+    if kt_files:
+        return kt_files[0].name
+    return None
+
+
+def generate_layer4_from_got(verbose: bool = False) -> str:
+    """
+    Generate Layer 4 (Ephemeral) content from GoT state.
+
+    Philosophy: Provide FACTS and INVESTIGATION COMMANDS.
+    Agent runs commands, sees output, makes decisions.
+    Script does NOT make determinations like "needs_merge".
+    """
+    lines = []
+
+    # ==========================================================================
+    # SECTION 1: OBSERVABLE FACTS (from GoT files)
+    # ==========================================================================
+    lines.append("## Observable Facts\n\n")
+
+    # Branch state
+    branch_state = get_branch_state()
+    lines.append(f"**Current Branch:** `{branch_state['current_branch']}`\n")
+    if branch_state["saved_branch"]:
+        lines.append(f"**Saved Branch:** `{branch_state['saved_branch']}`")
+        if branch_state["saved_at"]:
+            lines.append(f" (saved: {branch_state['saved_at'][:19]})")
+        lines.append("\n")
+        if branch_state["branches_differ"]:
+            lines.append("**Note:** Branches differ. Investigate before acting.\n")
+    else:
+        lines.append("**Saved Branch:** None (first session or no prior save)\n")
+
+    # Sprint status
+    sprint = get_sprint_status()
+    if sprint:
+        sprint_id = sprint.get("id", "unknown")
+        sprint_name = sprint.get("name", "")
+        sprint_status = sprint.get("status", "")
+        lines.append(f"**Sprint:** {sprint_id}")
+        if sprint_name:
+            lines.append(f" ({sprint_name})")
+        if sprint_status:
+            lines.append(f" [{sprint_status}]")
+        lines.append("\n")
+
+        # Sprint tasks
+        tasks = get_sprint_tasks(sprint_id)
+        if tasks:
+            lines.append("\n**Sprint Tasks:**\n")
+            for task in tasks[:5]:
+                lines.append(f"- {task}\n")
+    else:
+        lines.append("**Sprint:** None active\n")
+
+    # Pending handoffs
+    handoffs = get_pending_handoffs()
+    if handoffs:
+        lines.append("\n**Pending Handoffs:**\n")
+        for handoff in handoffs:
+            lines.append(f"- {handoff}\n")
+
+    # Recent decisions
+    decisions = get_recent_decisions(3)
+    if decisions:
+        lines.append("\n**Recent Decisions:**\n")
+        for d in decisions:
+            lines.append(f"- {d['id']}: {d['title']}\n")
+
+    # Knowledge transfer
+    kt_file = get_recent_knowledge_transfer()
+    if kt_file:
+        lines.append(f"\n**Latest Knowledge Transfer:** `samples/memories/{kt_file}`\n")
+
+    # ==========================================================================
+    # SECTION 2: VERIFY STATE (commands for agent to run)
+    # ==========================================================================
+    lines.append("\n---\n")
+    lines.append("\n## Verify State\n\n")
+    lines.append("Run these commands to understand current state:\n\n")
+    lines.append("```bash\n")
+    lines.append("# Git state\n")
+    lines.append("git status\n")
+    lines.append("git log --oneline -5\n")
+    lines.append("\n# Divergence from main\n")
+    lines.append("git log --oneline main..HEAD      # What's here but not in main\n")
+    lines.append("git log --oneline HEAD..main      # What's in main but not here\n")
+
+    # If branches differ, add commands to investigate
+    if branch_state["saved_branch"] and branch_state["branches_differ"]:
+        saved = branch_state["saved_branch"]
+        lines.append(f"\n# Previous branch investigation\n")
+        lines.append(f"git fetch origin\n")
+        lines.append(f"git log --oneline origin/{saved} -5  # Commits on saved branch\n")
+        lines.append(f"git log --oneline HEAD..origin/{saved}  # What's there but not here\n")
+
+    lines.append("\n# GoT state\n")
+    lines.append("python scripts/got_utils.py validate\n")
+    if sprint:
+        lines.append(f"python scripts/got_utils.py sprint tasks {sprint.get('id', 'SPRINT_ID')}\n")
+    lines.append("```\n")
+
+    # ==========================================================================
+    # SECTION 3: QUESTIONS TO RESOLVE WITH HUMAN
+    # ==========================================================================
+    lines.append("\n## Questions to Resolve\n\n")
+    lines.append("Before acting, ask the human:\n\n")
+
+    # Generate contextual questions based on state
+    q_num = 1
+
+    # Branch question (only if branches differ or no saved branch)
+    if branch_state["saved_branch"] and branch_state["branches_differ"]:
+        lines.append(f"{q_num}. **Branch Continuity**\n")
+        lines.append(f"   - Current: `{branch_state['current_branch']}`\n")
+        lines.append(f"   - Saved: `{branch_state['saved_branch']}`\n")
+        lines.append(f"   - *Is this a continuation? Should I pull from previous branch?*\n\n")
+        q_num += 1
+    elif not branch_state["saved_branch"]:
+        lines.append(f"{q_num}. **Session Context**\n")
+        lines.append(f"   - No saved branch found. Is this a fresh start or continuation?\n\n")
+        q_num += 1
+
+    # Sprint/task question
+    if sprint:
+        lines.append(f"{q_num}. **Work Focus**\n")
+        lines.append(f"   - Sprint: {sprint.get('id')} ({sprint.get('name', '')})\n")
+        if tasks:
+            lines.append(f"   - Active tasks exist. Continue current work or switch focus?\n\n")
+        else:
+            lines.append(f"   - No tasks listed. What should I work on?\n\n")
+        q_num += 1
+
+    # Handoff question
+    if handoffs:
+        lines.append(f"{q_num}. **Pending Handoffs**\n")
+        lines.append(f"   - {len(handoffs)} handoff(s) pending. Should I accept and read?\n\n")
+        q_num += 1
+
+    # Default question if nothing specific
+    if q_num == 1:
+        lines.append("1. What should I work on this session?\n")
+
+    # ==========================================================================
+    # SECTION 4: TRUST PROTOCOL
+    # ==========================================================================
+    lines.append("\n## Trust Protocol\n\n")
+    lines.append("| Level | Meaning | Earned By |\n")
+    lines.append("|-------|---------|----------|\n")
+    lines.append("| L0 | Read-only | Default start |\n")
+    lines.append("| L1 | Verified | Human confirms state summary |\n")
+    lines.append("| L2 | Trusted | First task completed successfully |\n")
+    lines.append("| L3 | Autonomous | Track record established |\n")
+    lines.append("\n**Start at L0. Verify before acting.**\n")
+
+    if verbose:
+        lines.append("\n---\n")
+        lines.append("\n### Debug Info\n")
+        lines.append(f"- Branch state: {branch_state}\n")
+        lines.append(f"- Sprint data: {sprint}\n")
+        lines.append(f"- Handoffs found: {len(handoffs)}\n")
+        lines.append(f"- Decisions found: {len(decisions)}\n")
+
+    return "".join(lines)
+
+
+def generate_continuation_context(verbose: bool = False) -> str:
+    """
+    Generate full continuation context for session resumption.
+
+    Philosophy: Information + Investigation + Questions.
+    No prescriptive guidance. Agent investigates and decides.
+    """
+    lines = ["# Continuation Context\n\n"]
+    lines.append("> Facts from GoT. You investigate. You decide.\n\n")
+
+    # Add Layer 4 content (facts + verify commands + questions)
+    lines.append(generate_layer4_from_got(verbose))
+
+    # Session ending protocol (informational, not prescriptive)
+    lines.append("\n---\n")
+    lines.append("\n## Session Ending (When Done)\n\n")
+    lines.append("Before stopping, consider:\n\n")
+    lines.append("```bash\n")
+    lines.append("# Save state for next session\n")
+    lines.append("git add -A && git commit -m 'checkpoint: [description]'\n")
+    lines.append("git push -u origin $(git branch --show-current)\n")
+    lines.append("python scripts/claudemd_generation_demo.py --save-branch\n")
+    lines.append("\n# If handing off to another session\n")
+    lines.append("python scripts/got_utils.py handoff initiate TASK_ID --target 'next-session' --instructions '...'\n")
+    lines.append("```\n")
+
+    lines.append("\n**Tell the human:**\n")
+    lines.append("- What you were working on\n")
+    lines.append("- What's done vs in-progress\n")
+    lines.append("- What the next session should do\n")
+
+    return "".join(lines)
 
 
 def demo_layer_creation() -> list:
@@ -222,21 +674,29 @@ def demo_layer_creation() -> list:
     print(f"    Rule: {layer3.inclusion_rule}")
     print(f"    For: {layer3.properties.get('persona_ids', [])}")
 
-    # Layer 4: Ephemeral - Current Session Context
+    # Layer 4: Ephemeral - Current Session Context (DYNAMICALLY GENERATED)
+    # This is the key integration point for continuation protocol
+    try:
+        layer4_content = generate_layer4_from_got(verbose=False)
+        layer4_source = "GoT (dynamic)"
+    except Exception as e:
+        layer4_content = LAYER_4_SESSION_CONTEXT_FALLBACK
+        layer4_source = f"fallback (GoT error: {e})"
+
     layer4 = ClaudeMdLayer(
         id=generate_claudemd_layer_id(4, "session-context"),
         layer_type="ephemeral",
         layer_number=4,
         section_id="session-context",
         title="Current Session Context",
-        content=LAYER_4_SESSION_CONTEXT,
+        content=layer4_content,
         freshness_decay_days=1,
         inclusion_rule="context",
         context_branches=["claude/*"],
     )
     layers.append(layer4)
     print(f"  ✓ Layer 4 (Ephemeral): {layer4.title}")
-    print(f"    Generated: dynamically per session")
+    print(f"    Source: {layer4_source}")
     print(f"    Decay: {layer4.freshness_decay_days} day (regenerate each session)")
 
     return layers
@@ -612,17 +1072,88 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="CLAUDE.md Auto-Generation System Demo (Using Real Content)"
+        description="CLAUDE.md Auto-Generation with GoT-Based Continuation Context"
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Show verbose output")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be generated")
     parser.add_argument("--team-demo", action="store_true", help="Focus on team/persona features")
+    parser.add_argument(
+        "--generate-layer4",
+        action="store_true",
+        help="Generate Layer 4 (Ephemeral) content from GoT and print it"
+    )
+    parser.add_argument(
+        "--continuation",
+        action="store_true",
+        help="Generate full continuation context for session resumption"
+    )
+    parser.add_argument(
+        "--output", "-o",
+        type=str,
+        help="Output file path (default: stdout)"
+    )
+    parser.add_argument(
+        "--save-branch",
+        action="store_true",
+        help="Save current branch to sprint metadata for continuity tracking"
+    )
+    parser.add_argument(
+        "--check-continuity",
+        action="store_true",
+        help="Check branch continuity status and show guidance"
+    )
     args = parser.parse_args()
 
+    # Branch management
+    if args.save_branch:
+        branch = get_current_branch()
+        if save_branch_to_sprint(branch):
+            print(f"✓ Saved branch `{branch}` to active sprint metadata")
+        else:
+            print(f"✗ Failed to save branch (no active sprint or write error)")
+        return
+
+    if args.check_continuity:
+        state = get_branch_state()
+        print("## Branch State (Facts)")
+        print(f"Current: {state['current_branch']}")
+        print(f"Saved:   {state['saved_branch'] or 'None'}")
+        if state['saved_at']:
+            print(f"Saved at: {state['saved_at']}")
+        if state['branches_differ']:
+            print("\nBranches differ. Run these to investigate:")
+            print(f"  git log --oneline origin/{state['saved_branch']} -5")
+            print(f"  git log --oneline HEAD..origin/{state['saved_branch']}")
+        elif state['saved_branch']:
+            print("\nSame branch as saved.")
+        else:
+            print("\nNo saved branch. First session or no prior save.")
+        return
+
+    # Quick generation modes (no demo, just output)
+    if args.generate_layer4:
+        content = generate_layer4_from_got(verbose=args.verbose)
+        if args.output:
+            Path(args.output).write_text(content)
+            print(f"Layer 4 written to: {args.output}")
+        else:
+            print(content)
+        return
+
+    if args.continuation:
+        content = generate_continuation_context(verbose=args.verbose)
+        if args.output:
+            Path(args.output).write_text(content)
+            print(f"Continuation context written to: {args.output}")
+        else:
+            print(content)
+        return
+
+    # Demo mode
     print()
     print("╔" + "═" * 68 + "╗")
-    print("║  CLAUDE.md Auto-Generation System Demo                            ║")
-    print("║  Cortical Text Processor - Using REAL CLAUDE.md Content           ║")
+    print("║  CLAUDE.md Auto-Generation with GoT-Based Continuation            ║")
+    print("║  Cortical Text Processor - Dynamic Layer 4 from GoT State         ║")
     print("╚" + "═" * 68 + "╝")
 
     if args.team_demo:
@@ -648,7 +1179,13 @@ def main():
     print("     L1 Operational → Dev Workflow (always)")
     print("     L2 Contextual → GoT Guide (when working on GoT)")
     print("     L3 Persona    → ML Guide (for ML engineers)")
-    print("     L4 Ephemeral  → Session Context (per-session)")
+    print("     L4 Ephemeral  → Session Context (DYNAMIC from GoT)")
+    print()
+    print("  🔄 GoT-Based Continuation:")
+    print("     • Layer 4 generated dynamically from GoT state")
+    print("     • Sprint status, handoffs, decisions included")
+    print("     • Trust protocol reminder embedded")
+    print("     • Fallback to static content if GoT unavailable")
     print()
     print("  🎯 Key Features:")
     print("     • Context-aware layer selection")
@@ -657,9 +1194,14 @@ def main():
     print("     • Team hierarchy for SDLC pipelines")
     print("     • Fault-tolerant with fallback chain")
     print()
+    print("  🚀 Quick Commands:")
+    print("     python scripts/claudemd_generation_demo.py --generate-layer4")
+    print("     python scripts/claudemd_generation_demo.py --continuation")
+    print("     python scripts/claudemd_generation_demo.py --continuation -o context.md")
+    print()
     print("  📖 Documentation:")
-    print("     • docs/claude-md-generation-design.md")
-    print("     • cortical/got/claudemd.py")
+    print("     • .claude/commands/project:continuation.md (v2.0)")
+    print("     • docs/architecture/GOT_DATABASE_ARCHITECTURE.md")
     print("     • cortical/got/types.py")
     print()
 
