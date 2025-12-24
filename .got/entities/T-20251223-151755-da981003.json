@@ -1,22 +1,23 @@
 {
-  "_checksum": "61a289f7c0dcd5f0",
-  "_written_at": "2025-12-24T09:20:09.993027+00:00",
+  "_checksum": "28f7bf88f90bc323",
+  "_written_at": "2025-12-24T09:21:55.205445+00:00",
   "data": {
     "created_at": "2025-12-23T15:17:55.232519+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20251223-151755-da981003",
     "metadata": {
+      "completed_at": "2025-12-24T09:21:55.196688+00:00",
       "started_at": "2025-12-24T09:20:09.982512+00:00",
-      "updated_at": "2025-12-24T09:20:09.982522+00:00"
+      "updated_at": "2025-12-24T09:21:55.196697+00:00"
     },
-    "modified_at": "2025-12-24T09:20:09.992969+00:00",
+    "modified_at": "2025-12-24T09:21:55.205376+00:00",
     "priority": "low",
     "properties": {
       "category": "feature"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Update architecture docs after schema implementation",
-    "version": 4
+    "version": 6
   }
 }
