@@ -1958,6 +1958,7 @@ python examples/observability_demo.py
 | Initiate handoff | `python scripts/got_utils.py handoff initiate TASK_ID --target AGENT --instructions "..."` |
 | Accept handoff | `python scripts/got_utils.py handoff accept HANDOFF_ID --agent AGENT` |
 | Complete handoff | `python scripts/got_utils.py handoff complete HANDOFF_ID --agent AGENT --result JSON` |
+| Reject handoff | `python scripts/got_utils.py handoff reject HANDOFF_ID --agent AGENT --reason "..."` |
 | List handoffs | `python scripts/got_utils.py handoff list [--status STATUS]` |
 | Compact events | `python scripts/got_utils.py compact [--preserve-days N]` |
 | **GoT Query Language** | |
@@ -2288,7 +2289,11 @@ This is configured in `.claude/settings.local.json` via the `SessionStart` hook.
 | **Sessions** | `.git-ml/sessions/` | Development sessions linking chats to commits |
 | **Actions** | `.git-ml/actions/` | Individual tool uses and operations |
 
-**Note:** All ML data is stored in `.git-ml/` which is gitignored and regeneratable via backfill.
+**Note:** ML data in `.git-ml/` has two tiers:
+- **Tracked** (`.git-ml/tracked/`, `.git-ml/cali/`): JSONL files - commits, sessions summaries, CALI logs/objects - persisted in git
+- **Local** (`.git-ml/chats/`, `actions/`, `cali/local/`): Rich data - gitignored, **NOT regeneratable** (chats/actions) or regeneratable indices (cali/local/)
+
+**⚠️ WARNING:** Chat transcripts (`.git-ml/chats/`) and action logs (`.git-ml/actions/`) are **irreplaceable** if lost and currently gitignored. CALI data is now preserved (logs/ and objects/ tracked, only local/ indices ignored). See `docs/ml-ephemeral-architecture.md` for the migration plan to fix remaining chat/action data loss.
 
 ### Quick Commands
 

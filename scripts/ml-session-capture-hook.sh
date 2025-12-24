@@ -62,6 +62,68 @@ cd "$cwd" 2>/dev/null || exit 0
 error_log="$HOME/.claude/ml-capture-errors.log"
 mkdir -p "$(dirname "$error_log")" 2>/dev/null
 
+# ============================================================
+# SESSION END CONTEXT - Show work summary and handoff options
+# ============================================================
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📊 Session End Summary"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Show recent commits from this session
+echo ""
+echo "📝 Recent Commits (this session):"
+recent_commits=$(git log --oneline --since="1 hour ago" 2>/dev/null | head -5)
+if [[ -n "$recent_commits" ]]; then
+    echo "$recent_commits" | while read line; do
+        echo "   $line"
+    done
+else
+    echo "   (no commits this session)"
+fi
+
+# Show files modified
+echo ""
+echo "📁 Files Modified:"
+modified_files=$(git status --porcelain 2>/dev/null | head -10)
+if [[ -n "$modified_files" ]]; then
+    echo "$modified_files" | while read line; do
+        echo "   $line"
+    done
+else
+    echo "   (working tree clean)"
+fi
+
+# Show sprint progress
+echo ""
+echo "📅 Sprint Status:"
+sprint_status=$(python3 scripts/got_utils.py sprint status 2>/dev/null | grep -E "Sprint:|Progress:" | head -2)
+if [[ -n "$sprint_status" ]]; then
+    echo "$sprint_status" | while read line; do
+        echo "   $line"
+    done
+else
+    echo "   (no active sprint)"
+fi
+
+# Show in-progress tasks that may need handoff
+echo ""
+echo "📌 Tasks Still In Progress:"
+in_progress_tasks=$(python3 scripts/got_utils.py task list --status in_progress 2>/dev/null | grep "T-" | head -5)
+if [[ -n "$in_progress_tasks" ]]; then
+    echo "$in_progress_tasks" | while read line; do
+        echo "   $line"
+    done
+    echo ""
+    echo "   💡 Consider creating a handoff if work is incomplete:"
+    echo "      python scripts/got_utils.py handoff initiate <TASK_ID> --target next-session --instructions \"...\""
+else
+    echo "   (none - all tasks completed or pending)"
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
 # Call the transcript processor (log errors but don't block session end)
 python3 "$COLLECTOR" transcript \
     --file "$transcript_path" \

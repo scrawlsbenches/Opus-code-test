@@ -43,15 +43,17 @@ class OrphanReport:
 
     orphan_tasks: List[str] = field(default_factory=list)
     orphan_decisions: List[str] = field(default_factory=list)
+    orphan_handoffs: List[str] = field(default_factory=list)
     total_tasks: int = 0
     total_decisions: int = 0
+    total_handoffs: int = 0
     orphan_rate: float = 0.0
     generated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     @property
     def orphan_count(self) -> int:
         """Total number of orphan entities."""
-        return len(self.orphan_tasks) + len(self.orphan_decisions)
+        return len(self.orphan_tasks) + len(self.orphan_decisions) + len(self.orphan_handoffs)
 
     @property
     def has_orphans(self) -> bool:
@@ -63,8 +65,10 @@ class OrphanReport:
         return {
             'orphan_tasks': self.orphan_tasks,
             'orphan_decisions': self.orphan_decisions,
+            'orphan_handoffs': self.orphan_handoffs,
             'total_tasks': self.total_tasks,
             'total_decisions': self.total_decisions,
+            'total_handoffs': self.total_handoffs,
             'orphan_rate': self.orphan_rate,
             'orphan_count': self.orphan_count,
             'generated_at': self.generated_at,
@@ -170,6 +174,38 @@ class OrphanDetector:
 
         return orphans
 
+    def find_orphan_handoffs(self) -> List[Tuple[str, str]]:
+        """
+        Find orphan handoffs (stale handoffs that should be closed).
+
+        A handoff is considered orphan if:
+        1. The task it references doesn't exist anymore
+        2. The task is completed but the handoff is still open (not completed/rejected)
+
+        Returns:
+            List of (handoff_id, reason) tuples
+        """
+        orphans = []
+        handoffs = self.manager.list_handoffs()
+
+        for handoff in handoffs:
+            # Skip already closed handoffs
+            if handoff.status in ("completed", "rejected"):
+                continue
+
+            # Check if task exists
+            task = self.manager.get_task(handoff.task_id)
+            if task is None:
+                orphans.append((handoff.id, f"Task {handoff.task_id} no longer exists"))
+                continue
+
+            # Check if task is completed but handoff is still open
+            if task.status == "completed":
+                orphans.append((handoff.id, f"Task {handoff.task_id} is completed but handoff still open"))
+                continue
+
+        return orphans
+
     def generate_orphan_report(self) -> OrphanReport:
         """
         Generate a comprehensive orphan report.
@@ -184,15 +220,26 @@ class OrphanDetector:
             if self.is_orphan(task.id):
                 orphan_task_ids.append(task.id)
 
+        # Find orphan handoffs
+        orphan_handoff_tuples = self.find_orphan_handoffs()
+        orphan_handoff_ids = [h_id for h_id, _ in orphan_handoff_tuples]
+
+        # Get total handoff count
+        all_handoffs = self.manager.list_handoffs()
+        total_handoffs = len(all_handoffs)
+
         total = len(tasks)
-        orphan_count = len(orphan_task_ids)
-        rate = (orphan_count / total * 100) if total > 0 else 0.0
+        orphan_count = len(orphan_task_ids) + len(orphan_handoff_ids)
+        total_entities = total + total_handoffs
+        rate = (orphan_count / total_entities * 100) if total_entities > 0 else 0.0
 
         return OrphanReport(
             orphan_tasks=orphan_task_ids,
             orphan_decisions=[],  # TODO: Add decision tracking
+            orphan_handoffs=orphan_handoff_ids,
             total_tasks=total,
             total_decisions=0,
+            total_handoffs=total_handoffs,
             orphan_rate=rate,
         )
 
@@ -471,12 +518,14 @@ class OrphanDetector:
             "=" * 60,
             "",
             f"Total Tasks: {report.total_tasks}",
+            f"Total Handoffs: {report.total_handoffs}",
             f"Orphan Tasks: {len(report.orphan_tasks)}",
+            f"Orphan Handoffs: {len(report.orphan_handoffs)}",
             f"Orphan Rate: {report.orphan_rate:.1f}%",
             "",
         ]
 
-        if report.has_orphans:
+        if report.orphan_tasks:
             lines.append("Orphan Task IDs:")
             for task_id in report.orphan_tasks[:20]:  # Limit to 20
                 task = self.manager.get_task(task_id)
@@ -485,10 +534,21 @@ class OrphanDetector:
 
             if len(report.orphan_tasks) > 20:
                 lines.append(f"  ... and {len(report.orphan_tasks) - 20} more")
-        else:
-            lines.append("No orphan tasks found!")
+            lines.append("")
 
-        lines.append("")
+        if report.orphan_handoffs:
+            lines.append("Orphan Handoff IDs:")
+            orphan_handoff_tuples = self.find_orphan_handoffs()
+            for handoff_id, reason in orphan_handoff_tuples[:20]:  # Limit to 20
+                lines.append(f"  - {handoff_id}: {reason}")
+
+            if len(report.orphan_handoffs) > 20:
+                lines.append(f"  ... and {len(report.orphan_handoffs) - 20} more")
+            lines.append("")
+
+        if not report.has_orphans:
+            lines.append("No orphans found!")
+
         lines.append("=" * 60)
 
         return "\n".join(lines)

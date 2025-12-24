@@ -1,0 +1,16 @@
+{
+  "_checksum": "2789925c09f391df",
+  "_written_at": "2025-12-24T12:49:05.854379+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2025-12-24T12:49:05.849346+00:00",
+    "edge_type": "CONTAINS",
+    "entity_type": "edge",
+    "id": "E-S-018-T-20251223-003112-2430627c-CONTAINS",
+    "modified_at": "2025-12-24T12:49:05.854318+00:00",
+    "source_id": "S-018",
+    "target_id": "T-20251223-003112-2430627c",
+    "version": 2,
+    "weight": 1.0
+  }
+}

@@ -103,8 +103,60 @@ session_id=$(echo "$session_output" | grep -oP 'Started session: \K.*' || echo "
 # Get current stats
 stats=$(python3 scripts/ml_data_collector.py stats 2>/dev/null | grep -E "Commits:|Chats:|Sessions:" | head -3)
 
-# Output session info
+# ============================================================
+# SESSION TYPE DETECTION - Is this new or continuation?
+# ============================================================
+echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🚀 SESSION START"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Check for pending handoffs - indicates this might be a continuation
+pending_count=$(python3 scripts/got_utils.py handoff list --status initiated 2>/dev/null | grep -c "→ H-" || echo "0")
+in_progress_count=$(python3 scripts/got_utils.py task list --status in_progress 2>/dev/null | grep -c "T-" || echo "0")
+
+if [[ "$pending_count" -gt 0 ]]; then
+    echo "   📨 CONTINUATION SESSION - Pending handoffs detected"
+    echo "   You may be picking up work from a previous agent."
+    echo ""
+    echo "   Questions to answer:"
+    echo "   1. Do you accept the pending handoff?"
+    echo "   2. Which task are you working on?"
+    echo "   3. What's your agent name? (for handoff tracking)"
+elif [[ "$in_progress_count" -gt 0 ]]; then
+    echo "   🔄 RESUMPTION SESSION - In-progress tasks found"
+    echo "   You may be resuming your own previous work."
+    echo ""
+    echo "   Questions to answer:"
+    echo "   1. Which task are you continuing?"
+    echo "   2. What was the last state of work?"
+else
+    echo "   ✨ FRESH SESSION - No pending work detected"
+    echo ""
+    echo "   Questions to answer:"
+    echo "   1. What task will you work on?"
+    echo "   2. Is there a sprint or epic context?"
+fi
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# ============================================================
+# SPRINT CONTEXT - What sprint are we in?
+# ============================================================
+echo ""
+echo "📅 Current Sprint:"
+current_sprint=$(python3 scripts/got_utils.py sprint status 2>/dev/null | head -5)
+if [[ -n "$current_sprint" ]]; then
+    echo "$current_sprint" | while read line; do
+        echo "   $line"
+    done
+else
+    echo "   (no active sprint)"
+    echo "   💡 Create one: python scripts/got_utils.py sprint create \"Sprint Name\" --number N"
+fi
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Output session info
+echo ""
 echo "📊 ML Data Collection Active"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 if [[ -n "$session_id" ]]; then
@@ -183,6 +235,39 @@ task_stats=$(python3 scripts/got_utils.py dashboard 2>/dev/null | grep -E "Tasks
 echo "$task_stats" | while read line; do
     echo "   $line"
 done
+
+# ============================================================
+# HANDOFF DETECTION - Check for pending handoffs awaiting acceptance
+# ============================================================
+echo ""
+echo "   🤝 Pending Handoffs:"
+pending_handoffs=$(python3 scripts/got_utils.py handoff list --status initiated 2>/dev/null | grep -E "^  → H-" | head -5)
+if [[ -n "$pending_handoffs" ]]; then
+    echo ""
+    echo "   ⚠️  HANDOFFS AWAITING YOUR ACCEPTANCE:"
+    echo "$pending_handoffs" | while read line; do
+        handoff_id=$(echo "$line" | grep -oP 'H-\S+')
+        echo "      $line"
+    done
+    echo ""
+    echo "   💡 To accept a handoff: python scripts/got_utils.py handoff accept <HANDOFF_ID> --agent <YOUR_AGENT_NAME>"
+    echo ""
+
+    # Get details of first pending handoff
+    first_handoff=$(echo "$pending_handoffs" | head -1 | grep -oP 'H-\S+')
+    if [[ -n "$first_handoff" ]]; then
+        handoff_details=$(python3 scripts/got_utils.py handoff list --status initiated 2>/dev/null | grep -A5 "$first_handoff")
+        task_id=$(echo "$handoff_details" | grep "Task:" | sed 's/.*Task: //')
+        if [[ -n "$task_id" ]]; then
+            echo "   📋 First pending handoff task ($task_id):"
+            python3 scripts/got_utils.py task show "$task_id" 2>/dev/null | head -10 | while read line; do
+                echo "      $line"
+            done
+        fi
+    fi
+else
+    echo "      (no pending handoffs)"
+fi
 
 # Show in-progress tasks
 echo ""

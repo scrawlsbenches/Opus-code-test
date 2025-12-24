@@ -122,6 +122,24 @@ def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
+def cmd_handoff_reject(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got handoff reject' command."""
+    success = manager.reject_handoff(
+        handoff_id=args.handoff_id,
+        agent=args.agent,
+        reason=args.reason,
+    )
+
+    if not success:
+        print(f"Failed to reject handoff: {args.handoff_id}")
+        return 1
+
+    print(f"Handoff rejected: {args.handoff_id}")
+    print(f"  Agent: {args.agent}")
+    print(f"  Reason: {args.reason}")
+    return 0
+
+
 # =============================================================================
 # CLI INTEGRATION
 # =============================================================================
@@ -179,6 +197,12 @@ def setup_handoff_parser(subparsers) -> None:
         help="Artifacts created (files, commits)"
     )
 
+    # handoff reject
+    handoff_reject = handoff_subparsers.add_parser("reject", help="Reject a handoff")
+    handoff_reject.add_argument("handoff_id", help="Handoff ID to reject")
+    handoff_reject.add_argument("--agent", "-a", required=True, help="Agent rejecting")
+    handoff_reject.add_argument("--reason", "-r", default="", help="Reason for rejection")
+
     # handoff list
     handoff_list = handoff_subparsers.add_parser("list", help="List handoffs")
     handoff_list.add_argument(
@@ -206,6 +230,7 @@ def handle_handoff_command(args, manager: "TransactionalGoTAdapter") -> int:
         "initiate": cmd_handoff_initiate,
         "accept": cmd_handoff_accept,
         "complete": cmd_handoff_complete,
+        "reject": cmd_handoff_reject,
         "list": cmd_handoff_list,
     }
 
