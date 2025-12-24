@@ -1,22 +1,23 @@
 {
-  "_checksum": "f0f3dd7488134228",
-  "_written_at": "2025-12-24T09:17:48.318919+00:00",
+  "_checksum": "e7144c95dc43bb89",
+  "_written_at": "2025-12-24T09:19:51.575100+00:00",
   "data": {
     "created_at": "2025-12-23T15:17:42.920651+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20251223-151742-d62f2abf",
     "metadata": {
+      "completed_at": "2025-12-24T09:19:51.566300+00:00",
       "started_at": "2025-12-24T09:17:48.310845+00:00",
-      "updated_at": "2025-12-24T09:17:48.310855+00:00"
+      "updated_at": "2025-12-24T09:19:51.566307+00:00"
     },
-    "modified_at": "2025-12-24T09:17:48.318875+00:00",
+    "modified_at": "2025-12-24T09:19:51.575033+00:00",
     "priority": "medium",
     "properties": {
       "category": "feature"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Add schema validation on save",
-    "version": 4
+    "version": 6
   }
 }
