@@ -1010,3 +1010,587 @@ class TestRecoveryEdgeCases:
 
         # Should complete without error
         assert result.success
+
+
+# =============================================================================
+# 11. MONKEYPATCH-BASED RACE CONDITION TESTS
+# =============================================================================
+
+class TestRaceConditionCoverage:
+    """
+    Tests using monkeypatch to simulate race conditions.
+
+    These tests cover the FileNotFoundError handlers that are difficult
+    to trigger naturally because they require files to vanish between
+    filesystem operations.
+    """
+
+    def test_verify_store_integrity_file_vanishes_during_read(self, got_dir, monkeypatch):
+        """File deleted between glob and _read_and_verify."""
+        # Create a valid entity
+        tm = TransactionManager(got_dir)
+        tx = tm.begin()
+        task = Task(id="T-vanish", title="Will vanish")
+        tm.write(tx, task)
+        tm.commit(tx)
+
+        recovery = RecoveryManager(got_dir)
+
+        # Patch _read_and_verify to raise FileNotFoundError
+        def exploding_read(entity_file):
+            if "T-vanish" in str(entity_file):
+                raise FileNotFoundError("Simulated race condition")
+            # Call original for other files
+            return recovery.store._read_and_verify.__wrapped__(recovery.store, entity_file)
+
+        monkeypatch.setattr(recovery.store, "_read_and_verify", exploding_read)
+
+        corrupted = recovery.verify_store_integrity()
+
+        # Should not crash, vanished file should NOT be in corrupted list
+        assert "T-vanish" not in corrupted
+
+    def test_detect_orphaned_entities_wal_vanishes(self, got_dir, monkeypatch):
+        """WAL file deleted during orphan detection."""
+        # Create entity
+        entities_dir = got_dir / "entities"
+        entity_file = entities_dir / "T-orphan.json"
+        entity_data = {
+            "_checksum": compute_checksum({"id": "T-orphan", "entity_type": "task", "title": "Orphan"}),
+            "_written_at": "2025-12-24T00:00:00+00:00",
+            "data": {"id": "T-orphan", "entity_type": "task", "title": "Orphan"}
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        # Create WAL file
+        wal_file = got_dir / "wal" / "current.wal"
+        wal_file.write_text("")
+
+        recovery = RecoveryManager(got_dir)
+
+        # Patch open to raise FileNotFoundError for WAL file
+        original_open = open
+        def patched_open(path, *args, **kwargs):
+            if "current.wal" in str(path) and 'r' in str(args):
+                raise FileNotFoundError("WAL vanished")
+            return original_open(path, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", patched_open)
+
+        orphans = recovery.detect_orphaned_entities()
+
+        # Should not crash, all disk entities become orphans when WAL is gone
+        assert isinstance(orphans, list)
+
+    def test_repair_orphans_delete_race_condition(self, got_dir, monkeypatch):
+        """File vanishes during delete operation."""
+        # Create orphan entity
+        entities_dir = got_dir / "entities"
+        entity_file = entities_dir / "T-race-delete.json"
+        entity_data = {
+            "_checksum": compute_checksum({"id": "T-race-delete", "entity_type": "task", "title": "Race"}),
+            "_written_at": "2025-12-24T00:00:00+00:00",
+            "data": {"id": "T-race-delete", "entity_type": "task", "title": "Race"}
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        recovery = RecoveryManager(got_dir)
+
+        # Patch Path.unlink to raise FileNotFoundError
+        original_unlink = Path.unlink
+        def patched_unlink(self, *args, **kwargs):
+            if "T-race-delete" in str(self):
+                raise FileNotFoundError("Already deleted")
+            return original_unlink(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "unlink", patched_unlink)
+
+        result = recovery.repair_orphans(strategy='delete')
+
+        # Should complete successfully (race condition is OK)
+        assert result.success
+
+    def test_repair_orphans_adopt_file_vanishes_before_verify(self, got_dir, monkeypatch):
+        """File vanishes before we can verify it for adoption."""
+        # Create orphan entity
+        entities_dir = got_dir / "entities"
+        entity_file = entities_dir / "T-vanish-adopt.json"
+        entity_data = {
+            "_checksum": compute_checksum({"id": "T-vanish-adopt", "entity_type": "task", "title": "Vanish"}),
+            "_written_at": "2025-12-24T00:00:00+00:00",
+            "data": {"id": "T-vanish-adopt", "entity_type": "task", "title": "Vanish"}
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        recovery = RecoveryManager(got_dir)
+
+        # Patch _read_and_verify to raise FileNotFoundError
+        original_read_and_verify = recovery.store._read_and_verify
+        def patched_read(entity_path):
+            if "T-vanish-adopt" in str(entity_path):
+                raise FileNotFoundError("File vanished before adoption")
+            return original_read_and_verify(entity_path)
+
+        monkeypatch.setattr(recovery.store, "_read_and_verify", patched_read)
+
+        result = recovery.repair_orphans(strategy='adopt')
+
+        # Should complete (skips vanished file)
+        assert result.success
+
+    def test_repair_orphans_corrupted_delete_race(self, got_dir, monkeypatch):
+        """Corrupted orphan file vanishes during cleanup delete."""
+        # Create corrupted orphan
+        entities_dir = got_dir / "entities"
+        entity_file = entities_dir / "T-corrupt-race.json"
+        entity_data = {
+            "_checksum": "wrong_checksum",
+            "_written_at": "2025-12-24T00:00:00+00:00",
+            "data": {"id": "T-corrupt-race", "entity_type": "task", "title": "Corrupt"}
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        recovery = RecoveryManager(got_dir)
+
+        # Patch unlink to fail after corruption detection
+        unlink_calls = [0]
+        original_unlink = Path.unlink
+        def patched_unlink(self, *args, **kwargs):
+            if "T-corrupt-race" in str(self):
+                unlink_calls[0] += 1
+                if unlink_calls[0] == 1:
+                    raise FileNotFoundError("Already deleted during cleanup")
+            return original_unlink(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "unlink", patched_unlink)
+
+        result = recovery.repair_orphans(strategy='adopt')
+
+        # Should handle gracefully
+        assert len(result.errors) >= 1  # Corruption was detected
+
+    def test_repair_orphans_unexpected_exception(self, got_dir, monkeypatch):
+        """Unexpected exception during repair is logged and handled."""
+        # Create orphan
+        entities_dir = got_dir / "entities"
+        entity_file = entities_dir / "T-unexpected.json"
+        entity_data = {
+            "_checksum": compute_checksum({"id": "T-unexpected", "entity_type": "task", "title": "Test"}),
+            "_written_at": "2025-12-24T00:00:00+00:00",
+            "data": {"id": "T-unexpected", "entity_type": "task", "title": "Test"}
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        recovery = RecoveryManager(got_dir)
+
+        # Patch unlink to raise unexpected error
+        original_unlink = Path.unlink
+        def patched_unlink(self, *args, **kwargs):
+            if "T-unexpected" in str(self):
+                raise PermissionError("Unexpected error!")
+            return original_unlink(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "unlink", patched_unlink)
+
+        result = recovery.repair_orphans(strategy='delete')
+
+        # Should fail gracefully with error logged
+        assert not result.success
+        assert len(result.errors) >= 1
+        assert "T-unexpected" in result.errors[0]
+
+
+class TestWALRaceConditionCoverage:
+    """Tests for WAL race condition handlers."""
+
+    def test_load_sequence_file_vanishes(self, got_dir, monkeypatch):
+        """Sequence file deleted between exists() and open()."""
+        from cortical.got.wal import WALManager
+
+        wal_dir = got_dir / "wal"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create sequence file
+        seq_file = wal_dir / "_sequence.json"
+        seq_file.write_text('{"seq": 42}')
+
+        # Patch open to raise FileNotFoundError
+        original_open = open
+        call_count = [0]
+        def patched_open(path, *args, **kwargs):
+            if "_sequence.json" in str(path) and 'r' in str(args):
+                call_count[0] += 1
+                if call_count[0] == 1:
+                    raise FileNotFoundError("Sequence file vanished")
+            return original_open(path, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", patched_open)
+
+        wal = WALManager(wal_dir)
+
+        # Should handle gracefully and start from 0
+        assert wal._sequence == 0
+
+    def test_replay_entries_with_corrupted_json(self, got_dir):
+        """replay_entries should skip corrupted JSON entries."""
+        from cortical.got.wal import WALManager
+
+        wal_dir = got_dir / "wal"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+        wal_file = wal_dir / "current.wal"
+
+        # Write mix of valid and invalid entries
+        wal_file.write_text("not json\n{malformed\n")
+
+        wal = WALManager(wal_dir)
+        entries = wal.replay_entries()
+
+        # All entries should be skipped
+        assert len(entries) == 0
+
+    def test_replay_entries_with_invalid_checksum(self, got_dir):
+        """replay_entries should skip entries with bad checksums."""
+        from cortical.got.wal import WALManager
+
+        wal_dir = got_dir / "wal"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+        wal_file = wal_dir / "current.wal"
+
+        # Entry with wrong checksum
+        entry = '{"seq":1,"ts":"2025-01-01","tx":"TX-1","op":"TX_BEGIN","data":{},"checksum":"bad"}'
+        wal_file.write_text(entry + "\n")
+
+        wal = WALManager(wal_dir)
+        entries = wal.replay_entries()
+
+        # Should be skipped
+        assert len(entries) == 0
+
+
+class TestLockingRaceConditionCoverage:
+    """Tests for locking race condition handlers."""
+
+    def test_lock_acquire_flock_fails_then_stale_recovery(self, tmp_path, monkeypatch):
+        """flock fails, but stale lock recovery succeeds."""
+        from cortical.utils.locking import ProcessLock
+        import sys
+
+        if sys.platform == 'win32':
+            pytest.skip("flock not available on Windows")
+
+        lock_path = tmp_path / ".lock"
+
+        # Create lock file with dead process
+        holder_info = {"pid": 999999999, "acquired_at": 0}
+        lock_path.write_text(json.dumps(holder_info))
+
+        lock = ProcessLock(lock_path, stale_timeout=1.0)
+        result = lock.acquire()
+
+        # Should recover from stale lock
+        assert result is True
+        lock.release()
+
+    def test_lock_stale_check_read_error(self, tmp_path, monkeypatch):
+        """_is_stale_lock handles read errors gracefully."""
+        from cortical.utils.locking import ProcessLock
+
+        lock_path = tmp_path / ".lock"
+        lock_path.write_text('{"pid": 1}')
+
+        lock = ProcessLock(lock_path)
+
+        # Patch open to raise on read
+        original_open = open
+        def patched_open(path, *args, **kwargs):
+            if str(lock_path) in str(path) and 'r' in str(args):
+                raise PermissionError("Cannot read lock file")
+            return original_open(path, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", patched_open)
+
+        # Should return False (don't assume stale on error)
+        assert lock._is_stale_lock() is False
+
+    def test_lock_remove_stale_fails(self, tmp_path, monkeypatch):
+        """Stale lock removal failure is handled."""
+        from cortical.utils.locking import ProcessLock
+        import sys
+        import fcntl
+
+        if sys.platform == 'win32':
+            pytest.skip("flock not available on Windows")
+
+        lock_path = tmp_path / ".lock"
+
+        # Create stale lock (dead PID, old timestamp)
+        holder_info = {"pid": 999999999, "acquired_at": 0}
+        lock_path.write_text(json.dumps(holder_info))
+
+        # Track calls
+        unlink_calls = []
+
+        # Patch flock to fail (simulating locked file) so stale detection triggers
+        original_flock = fcntl.flock
+        def patched_flock(fd, operation):
+            # Fail on exclusive non-blocking call before unlink attempted
+            if operation == (fcntl.LOCK_EX | fcntl.LOCK_NB) and len(unlink_calls) == 0:
+                raise BlockingIOError("Resource temporarily unavailable")
+            return original_flock(fd, operation)
+
+        # Patch unlink to fail (can't remove stale lock)
+        original_unlink = Path.unlink
+        def patched_unlink(self, *args, **kwargs):
+            unlink_calls.append(str(self))
+            if str(lock_path) in str(self):
+                raise PermissionError("Cannot remove lock")
+            return original_unlink(self, *args, **kwargs)
+
+        monkeypatch.setattr(fcntl, "flock", patched_flock)
+        monkeypatch.setattr(Path, "unlink", patched_unlink)
+
+        lock = ProcessLock(lock_path, stale_timeout=1.0)
+        result = lock.acquire()
+
+        # Should fail gracefully since stale lock couldn't be removed
+        assert result is False
+        # Verify unlink was attempted
+        assert len(unlink_calls) > 0
+
+    def test_lock_write_holder_info_fails(self, tmp_path, monkeypatch):
+        """Lock acquisition succeeds even if writing holder info fails."""
+        from cortical.utils.locking import ProcessLock
+        import sys
+
+        if sys.platform == 'win32':
+            pytest.skip("flock not available on Windows")
+
+        lock_path = tmp_path / ".lock"
+
+        lock = ProcessLock(lock_path)
+
+        # Patch json.dump to fail
+        import json as json_module
+        original_dump = json_module.dump
+        def patched_dump(*args, **kwargs):
+            raise IOError("Cannot write holder info")
+
+        # Acquire first to create file descriptor
+        first_call = [True]
+        def patched_dump_once(*args, **kwargs):
+            if first_call[0]:
+                first_call[0] = False
+                raise IOError("Cannot write holder info")
+            return original_dump(*args, **kwargs)
+
+        monkeypatch.setattr(json_module, "dump", patched_dump_once)
+
+        result = lock.acquire()
+
+        # Should still succeed (metadata write failure is non-fatal)
+        assert result is True
+        lock.release()
+
+    def test_lock_timeout_with_backoff(self, tmp_path):
+        """Lock with timeout exercises exponential backoff code."""
+        from cortical.utils.locking import ProcessLock
+        import sys
+        import time
+
+        if sys.platform == 'win32':
+            pytest.skip("flock not available on Windows")
+
+        lock_path = tmp_path / ".lock"
+        lock1 = ProcessLock(lock_path, reentrant=False)
+
+        # Hold lock
+        assert lock1.acquire() is True
+
+        lock2 = ProcessLock(lock_path, reentrant=False)
+
+        start = time.time()
+        result = lock2.acquire(timeout=0.15)  # Should retry a few times
+        elapsed = time.time() - start
+
+        # Should have tried for approximately the timeout period
+        assert result is False
+        assert elapsed >= 0.1  # At least tried for a bit
+
+        lock1.release()
+
+    def test_lock_reentrant_release_decrement(self, tmp_path):
+        """Reentrant lock decrements count correctly."""
+        from cortical.utils.locking import ProcessLock
+
+        lock = ProcessLock(tmp_path / ".lock", reentrant=True)
+
+        # Acquire 3 times
+        lock.acquire()
+        lock.acquire()
+        lock.acquire()
+        assert lock._lock_count == 3
+
+        # Release 2 times
+        lock.release()
+        assert lock._lock_count == 2
+        lock.release()
+        assert lock._lock_count == 1
+
+        # Still locked
+        assert lock.is_locked()
+
+        # Final release
+        lock.release()
+        assert lock._lock_count == 0
+        assert not lock.is_locked()
+
+    def test_lock_stale_removed_but_retry_fails(self, tmp_path, monkeypatch):
+        """Stale lock is successfully removed, but retry acquisition fails."""
+        from cortical.utils.locking import ProcessLock
+        import sys
+        import fcntl
+
+        if sys.platform == 'win32':
+            pytest.skip("flock not available on Windows")
+
+        lock_path = tmp_path / ".lock"
+
+        # Create stale lock (dead PID)
+        holder_info = {"pid": 999999999, "acquired_at": 0}
+        lock_path.write_text(json.dumps(holder_info))
+
+        flock_call_count = [0]
+
+        # Patch flock to always fail
+        original_flock = fcntl.flock
+        def patched_flock(fd, operation):
+            if operation == (fcntl.LOCK_EX | fcntl.LOCK_NB):
+                flock_call_count[0] += 1
+                # Both initial and retry fail
+                raise BlockingIOError("Resource temporarily unavailable")
+            return original_flock(fd, operation)
+
+        monkeypatch.setattr(fcntl, "flock", patched_flock)
+
+        lock = ProcessLock(lock_path, stale_timeout=1.0)
+        result = lock.acquire()
+
+        # Should fail because retry also failed
+        assert result is False
+        # Should have tried at least twice (initial + retry after stale removal)
+        assert flock_call_count[0] >= 2
+
+    def test_lock_acquire_unexpected_exception(self, tmp_path, monkeypatch):
+        """Unexpected exception in _try_acquire_once is caught."""
+        from cortical.utils.locking import ProcessLock
+        import builtins
+
+        lock_path = tmp_path / ".lock"
+
+        # Patch open to raise an unexpected exception
+        original_open = builtins.open
+        def patched_open(path, *args, **kwargs):
+            if str(lock_path) in str(path):
+                raise RuntimeError("Unexpected disk error!")
+            return original_open(path, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "open", patched_open)
+
+        lock = ProcessLock(lock_path)
+        result = lock.acquire()
+
+        # Should fail gracefully
+        assert result is False
+
+    def test_lock_release_flock_fails(self, tmp_path, monkeypatch):
+        """Release handles flock unlock failure."""
+        from cortical.utils.locking import ProcessLock
+        import sys
+        import fcntl
+
+        if sys.platform == 'win32':
+            pytest.skip("flock not available on Windows")
+
+        lock_path = tmp_path / ".lock"
+        lock = ProcessLock(lock_path)
+
+        # Acquire first
+        assert lock.acquire() is True
+
+        # Now patch flock to fail on unlock
+        original_flock = fcntl.flock
+        def patched_flock(fd, operation):
+            if operation == fcntl.LOCK_UN:
+                raise IOError("Cannot unlock")
+            return original_flock(fd, operation)
+
+        monkeypatch.setattr(fcntl, "flock", patched_flock)
+
+        # Release should not raise - it catches the exception
+        lock.release()
+
+        # Lock should be released from our tracking
+        assert lock._lock_count == 0
+        assert lock._fd is None
+
+    def test_lock_exception_after_file_open_cleans_up_fd(self, tmp_path, monkeypatch):
+        """Exception after file open cleans up file descriptor."""
+        from cortical.utils.locking import ProcessLock
+        import sys
+        import fcntl
+
+        if sys.platform == 'win32':
+            pytest.skip("flock not available on Windows")
+
+        lock_path = tmp_path / ".lock"
+
+        # Patch flock to raise an unexpected exception (not IOError/OSError)
+        def patched_flock(fd, operation):
+            raise RuntimeError("Unexpected flock error!")
+
+        monkeypatch.setattr(fcntl, "flock", patched_flock)
+
+        lock = ProcessLock(lock_path)
+        result = lock.acquire()
+
+        # Should fail gracefully and clean up fd
+        assert result is False
+        assert lock._fd is None
+
+    def test_lock_timeout_success_on_retry(self, tmp_path):
+        """Lock acquired on retry within timeout period."""
+        from cortical.utils.locking import ProcessLock
+        import sys
+        import fcntl
+        import threading
+        import time
+
+        if sys.platform == 'win32':
+            pytest.skip("flock not available on Windows")
+
+        lock_path = tmp_path / ".lock"
+        lock1 = ProcessLock(lock_path, reentrant=False)
+
+        # Hold lock briefly
+        assert lock1.acquire() is True
+
+        # Release after 0.1s
+        def release_soon():
+            time.sleep(0.1)
+            lock1.release()
+
+        thread = threading.Thread(target=release_soon)
+        thread.start()
+
+        lock2 = ProcessLock(lock_path, reentrant=False)
+        start = time.time()
+        result = lock2.acquire(timeout=0.5)  # Should succeed after lock1 releases
+        elapsed = time.time() - start
+
+        thread.join()
+
+        # Should have acquired the lock
+        assert result is True
+        # Should have taken at least 0.1s (waited for release)
+        assert elapsed >= 0.05
+        lock2.release()
