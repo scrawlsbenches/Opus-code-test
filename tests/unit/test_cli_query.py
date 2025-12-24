@@ -519,3 +519,335 @@ class TestCmdExport:
         assert result == 0
         captured = capsys.readouterr()
         assert "Exported to:" in captured.out
+
+
+class TestCmdQueryEdgeCases:
+    """Tests for edge cases in cmd_query function."""
+
+    @pytest.fixture
+    def mock_manager(self):
+        """Create a mock manager."""
+        manager = MagicMock()
+        return manager
+
+    def test_query_relationship_without_title(self, mock_manager, capsys):
+        """Test query with relationship result that has no title."""
+        mock_manager.query.return_value = [
+            {"relation": "BLOCKS", "id": "T-001"},  # No title field
+        ]
+        args = Namespace(query_string=["relationships", "T-002"])
+
+        result = cmd_query(args, mock_manager)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "BLOCKS" in captured.out
+        assert "T-001" in captured.out
+
+    def test_query_generic_result_without_status(self, mock_manager, capsys):
+        """Test query with generic result that has no status."""
+        mock_manager.query.return_value = [
+            {"id": "T-001", "title": "Task without status", "priority": "high"},
+        ]
+        args = Namespace(query_string=["active", "tasks"])
+
+        result = cmd_query(args, mock_manager)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "T-001" in captured.out
+        assert "Priority: high" in captured.out
+
+
+class TestCmdValidateEdgeCases:
+    """Tests for edge cases in cmd_validate function."""
+
+    @pytest.fixture
+    def mock_manager(self):
+        """Create a mock manager with graph."""
+        from cortical.reasoning.graph_of_thought import NodeType
+
+        manager = MagicMock()
+        manager.events_dir = "/fake/events"
+
+        # Create mock nodes
+        task1 = MagicMock()
+        task1.node_type = NodeType.TASK
+
+        manager.graph.nodes = {"T-001": task1}
+
+        # Create mock edges
+        edge1 = MagicMock()
+        edge1.source_id = "T-001"
+        edge1.target_id = "T-002"
+
+        manager.graph.edges = [edge1]
+
+        return manager
+
+    def test_validate_edge_loss_warning(self, mock_manager, capsys):
+        """Test validate with minor edge loss (between -10% and -5%)."""
+        args = Namespace()
+
+        with patch('scripts.got_utils.EventLog') as mock_event_log:
+            # Create events suggesting 2 edges should exist (actual is 1)
+            # This is a -50% discrepancy, but we need -6% to hit the warning path
+            # Expected edges = 17, actual = 16 → -5.88% (within warning range)
+            mock_event_log.load_all_events.return_value = [
+                {"event": "edge.create"} for _ in range(17)
+            ]
+            # Set actual edges to 16
+            mock_manager.graph.edges = [MagicMock() for _ in range(16)]
+            for i, edge in enumerate(mock_manager.graph.edges):
+                edge.source_id = f"T-{i}"
+                edge.target_id = f"T-{i+1}"
+
+            result = cmd_validate(args, mock_manager)
+
+        # Should have warning, not issue
+        captured = capsys.readouterr()
+        assert "edge loss" in captured.out or "Minor edge loss" in captured.out
+
+    def test_validate_edge_surplus_warning(self, mock_manager, capsys):
+        """Test validate with edge surplus (between +5% and +10%)."""
+        args = Namespace()
+
+        with patch('scripts.got_utils.EventLog') as mock_event_log:
+            # Expected edges = 10, actual = 11 → +10% (within surplus range)
+            mock_event_log.load_all_events.return_value = [
+                {"event": "edge.create"} for _ in range(10)
+            ]
+            # Set actual edges to 11
+            mock_manager.graph.edges = [MagicMock() for _ in range(11)]
+            for i, edge in enumerate(mock_manager.graph.edges):
+                edge.source_id = f"T-{i}"
+                edge.target_id = f"T-{i+1}"
+
+            result = cmd_validate(args, mock_manager)
+
+        # Should have warning about surplus
+        captured = capsys.readouterr()
+        assert "surplus" in captured.out or "Edge surplus" in captured.out
+
+    def test_validate_moderate_orphan_rate(self, mock_manager, capsys):
+        """Test validate with moderate orphan rate (between 25% and 50%)."""
+        # Create 10 nodes with 3 edges → 4 connected nodes, 6 orphans → 60% orphan rate
+        # Actually, let's do 10 nodes, 5 edges connecting 8 nodes → 2 orphans = 20%
+        # Need 30% orphan rate: 10 nodes, 3 edges connecting 6 nodes → 4 orphans = 40%
+        mock_manager.graph.nodes = {f"T-{i:03d}": MagicMock() for i in range(10)}
+
+        # Create 3 edges connecting 6 nodes
+        edges = []
+        for i in range(3):
+            edge = MagicMock()
+            edge.source_id = f"T-{i*2:03d}"
+            edge.target_id = f"T-{i*2+1:03d}"
+            edges.append(edge)
+        mock_manager.graph.edges = edges
+
+        args = Namespace()
+
+        with patch('scripts.got_utils.EventLog') as mock_event_log:
+            mock_event_log.load_all_events.return_value = []
+            result = cmd_validate(args, mock_manager)
+
+        # Should have warning for moderate orphan rate (40% is between 25% and 50%)
+        captured = capsys.readouterr()
+        assert "Moderate orphan rate" in captured.out or "orphan rate" in captured.out
+
+
+class TestSetupQueryParser:
+    """Tests for setup_query_parser function."""
+
+    def test_setup_query_parser(self):
+        """Test setup_query_parser adds all subcommands."""
+        from argparse import ArgumentParser
+        from cortical.got.cli.query import setup_query_parser
+
+        parser = ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+
+        setup_query_parser(subparsers)
+
+        # Test that we can parse each command
+        args = parser.parse_args(["query", "what", "blocks", "T-001"])
+        assert args.command == "query"
+        assert args.query_string == ["what", "blocks", "T-001"]
+
+        args = parser.parse_args(["blocked"])
+        assert args.command == "blocked"
+
+        args = parser.parse_args(["active"])
+        assert args.command == "active"
+
+        args = parser.parse_args(["stats"])
+        assert args.command == "stats"
+
+        args = parser.parse_args(["dashboard"])
+        assert args.command == "dashboard"
+
+        args = parser.parse_args(["validate"])
+        assert args.command == "validate"
+
+        args = parser.parse_args(["infer", "--commits", "20"])
+        assert args.command == "infer"
+        assert args.commits == 20
+
+        args = parser.parse_args(["infer", "-m", "feat: Add feature"])
+        assert args.command == "infer"
+        assert args.message == "feat: Add feature"
+
+        args = parser.parse_args(["compact", "--preserve-days", "14"])
+        assert args.command == "compact"
+        assert args.preserve_days == 14
+
+        args = parser.parse_args(["compact", "--no-preserve-handoffs"])
+        assert args.command == "compact"
+        assert args.no_preserve_handoffs is True
+
+        args = parser.parse_args(["compact", "--dry-run"])
+        assert args.command == "compact"
+        assert args.dry_run is True
+
+        args = parser.parse_args(["export", "-o", "output.json"])
+        assert args.command == "export"
+        assert args.output == "output.json"
+
+
+class TestHandleQueryCommands:
+    """Tests for handle_query_commands function."""
+
+    @pytest.fixture
+    def mock_manager(self):
+        """Create a mock manager."""
+        manager = MagicMock()
+        return manager
+
+    def test_handle_query_command(self, mock_manager):
+        """Test handle_query_commands routes to cmd_query."""
+        from cortical.got.cli.query import handle_query_commands
+
+        mock_manager.query.return_value = []
+        args = Namespace(command="query", query_string=["test"])
+
+        result = handle_query_commands(args, mock_manager)
+
+        assert result == 0
+        mock_manager.query.assert_called_once()
+
+    def test_handle_blocked_command(self, mock_manager):
+        """Test handle_query_commands routes to cmd_blocked."""
+        from cortical.got.cli.query import handle_query_commands
+
+        mock_manager.get_blocked_tasks.return_value = []
+        args = Namespace(command="blocked")
+
+        result = handle_query_commands(args, mock_manager)
+
+        assert result == 0
+        mock_manager.get_blocked_tasks.assert_called_once()
+
+    def test_handle_active_command(self, mock_manager):
+        """Test handle_query_commands routes to cmd_active."""
+        from cortical.got.cli.query import handle_query_commands
+
+        mock_manager.get_active_tasks.return_value = []
+        args = Namespace(command="active")
+
+        with patch('cortical.got.cli.query.format_task_table', return_value=""):
+            result = handle_query_commands(args, mock_manager)
+
+        assert result == 0
+        mock_manager.get_active_tasks.assert_called_once()
+
+    def test_handle_stats_command(self, mock_manager):
+        """Test handle_query_commands routes to cmd_stats."""
+        from cortical.got.cli.query import handle_query_commands
+
+        mock_manager.get_stats.return_value = {
+            "total_tasks": 0,
+            "total_sprints": 0,
+            "total_epics": 0,
+            "total_edges": 0,
+            "tasks_by_status": {},
+        }
+        args = Namespace(command="stats")
+
+        result = handle_query_commands(args, mock_manager)
+
+        assert result == 0
+        mock_manager.get_stats.assert_called_once()
+
+    def test_handle_dashboard_command(self, mock_manager):
+        """Test handle_query_commands routes to cmd_dashboard."""
+        from cortical.got.cli.query import handle_query_commands
+
+        args = Namespace(command="dashboard")
+
+        with patch('scripts.got_dashboard.render_dashboard', return_value="Dashboard"):
+            result = handle_query_commands(args, mock_manager)
+
+        assert result == 0
+
+    def test_handle_validate_command(self, mock_manager):
+        """Test handle_query_commands routes to cmd_validate."""
+        from cortical.got.cli.query import handle_query_commands
+        from cortical.reasoning.graph_of_thought import NodeType
+
+        mock_manager.graph.nodes = {}
+        mock_manager.graph.edges = []
+        mock_manager.events_dir = "/fake/events"
+        args = Namespace(command="validate")
+
+        with patch('scripts.got_utils.EventLog') as mock_event_log:
+            mock_event_log.load_all_events.return_value = []
+            result = handle_query_commands(args, mock_manager)
+
+        assert result == 0
+
+    def test_handle_infer_command(self, mock_manager):
+        """Test handle_query_commands routes to cmd_infer."""
+        from cortical.got.cli.query import handle_query_commands
+
+        mock_manager.infer_edges_from_recent_commits.return_value = []
+        args = Namespace(command="infer", commits=10, message=None)
+
+        result = handle_query_commands(args, mock_manager)
+
+        assert result == 0
+        mock_manager.infer_edges_from_recent_commits.assert_called_once()
+
+    def test_handle_compact_command(self, mock_manager):
+        """Test handle_query_commands routes to cmd_compact."""
+        from cortical.got.cli.query import handle_query_commands
+
+        mock_manager.events_dir = "/fake/events"
+        args = Namespace(command="compact", dry_run=False, preserve_days=7, no_preserve_handoffs=False)
+
+        with patch('scripts.got_utils.EventLog') as mock_event_log:
+            mock_event_log.compact_events.return_value = {"status": "nothing_to_compact"}
+            result = handle_query_commands(args, mock_manager)
+
+        assert result == 0
+
+    def test_handle_export_command(self, mock_manager):
+        """Test handle_query_commands routes to cmd_export."""
+        from cortical.got.cli.query import handle_query_commands
+
+        mock_manager.export_graph.return_value = {}
+        args = Namespace(command="export", output=None)
+
+        result = handle_query_commands(args, mock_manager)
+
+        assert result == 0
+        mock_manager.export_graph.assert_called_once()
+
+    def test_handle_unknown_command(self, mock_manager):
+        """Test handle_query_commands returns None for unknown command."""
+        from cortical.got.cli.query import handle_query_commands
+
+        args = Namespace(command="unknown")
+
+        result = handle_query_commands(args, mock_manager)
+
+        assert result is None

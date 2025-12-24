@@ -676,5 +676,493 @@ class TestSetupDocParser(unittest.TestCase):
         self.assertEqual(args.edge_type, 'PRODUCES')
 
 
+class TestCmdDocScan(unittest.TestCase):
+    """Test cmd_doc_scan command handler."""
+
+    def test_scan_success(self):
+        """Test successful scan operation."""
+        mock_manager = Mock()
+        mock_manager.got_dir = "/fake/.got"
+
+        args = Namespace(
+            dirs=["docs"],
+            dry_run=False,
+            verbose=False
+        )
+
+        scan_results = {
+            "scanned": 10,
+            "registered": 5,
+            "updated": 3,
+            "skipped": 2,
+            "errors": [],
+        }
+
+        with patch('cortical.got.cli.doc.scan_documents', return_value=scan_results):
+            with patch('builtins.print') as mock_print:
+                result = cmd_doc_scan(args, mock_manager)
+
+        self.assertEqual(result, 0)
+        # Check that results were printed
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        self.assertTrue(any("Scanned:    10" in str(call) for call in print_calls))
+        self.assertTrue(any("Registered: 5" in str(call) for call in print_calls))
+
+    def test_scan_dry_run(self):
+        """Test scan with dry-run flag."""
+        mock_manager = Mock()
+        mock_manager.got_dir = "/fake/.got"
+
+        args = Namespace(
+            dirs=["docs"],
+            dry_run=True,
+            verbose=False
+        )
+
+        scan_results = {
+            "scanned": 5,
+            "registered": 5,
+            "updated": 0,
+            "skipped": 0,
+            "errors": [],
+        }
+
+        with patch('cortical.got.cli.doc.scan_documents', return_value=scan_results) as mock_scan:
+            with patch('builtins.print') as mock_print:
+                result = cmd_doc_scan(args, mock_manager)
+
+        self.assertEqual(result, 0)
+        # Check dry_run was passed
+        mock_scan.assert_called_once_with(
+            mock_manager.got_dir,
+            ["docs"],
+            dry_run=True,
+            verbose=False,
+        )
+        # Check output mentions dry run
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        self.assertTrue(any("[DRY RUN]" in str(call) for call in print_calls))
+
+    def test_scan_with_errors(self):
+        """Test scan with errors."""
+        mock_manager = Mock()
+        mock_manager.got_dir = "/fake/.got"
+
+        args = Namespace(
+            dirs=["docs"],
+            dry_run=False,
+            verbose=False
+        )
+
+        scan_results = {
+            "scanned": 10,
+            "registered": 5,
+            "updated": 3,
+            "skipped": 1,
+            "errors": ["file1.md: Invalid content", "file2.md: Permission denied"],
+        }
+
+        with patch('cortical.got.cli.doc.scan_documents', return_value=scan_results):
+            with patch('builtins.print') as mock_print:
+                result = cmd_doc_scan(args, mock_manager)
+
+        self.assertEqual(result, 0)
+        # Check that errors were printed
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        self.assertTrue(any("Errors:     2" in str(call) for call in print_calls))
+
+
+class TestGetFileMtime(unittest.TestCase):
+    """Test get_file_mtime helper function."""
+
+    @patch('cortical.got.cli.doc.os.path.getmtime')
+    def test_get_file_mtime(self, mock_getmtime):
+        """Test file modification time extraction."""
+        from cortical.got.cli.doc import get_file_mtime
+        from pathlib import Path
+
+        # Mock timestamp (2025-01-15 12:30:00 UTC)
+        mock_getmtime.return_value = 1736944200.0
+
+        result = get_file_mtime(Path("/fake/file.md"))
+
+        self.assertIsInstance(result, str)
+        self.assertIn("2025-01-15", result)
+        mock_getmtime.assert_called_once()
+
+
+class TestShowDocument(unittest.TestCase):
+    """Test show_document helper function."""
+
+    def test_show_by_id(self):
+        """Test showing document by ID."""
+        from cortical.got.cli.doc import show_document
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_doc = Document(
+            id="DOC-001",
+            path="docs/test.md",
+            title="Test",
+            doc_type="general",
+        )
+        mock_manager.get_document.return_value = mock_doc
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            result = show_document(Path("/fake/.got"), "DOC-001")
+
+        self.assertEqual(result, mock_doc)
+        mock_manager.get_document.assert_called_once_with("DOC-001")
+
+    def test_show_by_path(self):
+        """Test showing document by path."""
+        from cortical.got.cli.doc import show_document
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_doc = Document(
+            id="DOC-002",
+            path="docs/test.md",
+            title="Test",
+            doc_type="general",
+        )
+        # ID lookup fails, path lookup succeeds
+        mock_manager.get_document.return_value = None
+        mock_manager.get_document_by_path.return_value = mock_doc
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            result = show_document(Path("/fake/.got"), "docs/test.md")
+
+        self.assertEqual(result, mock_doc)
+        mock_manager.get_document.assert_called_once_with("docs/test.md")
+        mock_manager.get_document_by_path.assert_called_once_with("docs/test.md")
+
+    def test_show_not_found(self):
+        """Test showing non-existent document."""
+        from cortical.got.cli.doc import show_document
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_manager.get_document.return_value = None
+        mock_manager.get_document_by_path.return_value = None
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            result = show_document(Path("/fake/.got"), "nonexistent")
+
+        self.assertIsNone(result)
+
+
+class TestLinkDocumentToTask(unittest.TestCase):
+    """Test link_document_to_task helper function."""
+
+    def test_link_success(self):
+        """Test successful linking."""
+        from cortical.got.cli.doc import link_document_to_task
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_doc = Document(id="DOC-001", path="docs/test.md", title="Test", doc_type="general")
+        mock_task = Task(id="T-001", title="Test task", status="pending", priority="medium")
+
+        mock_manager.get_document.return_value = mock_doc
+        mock_manager.get_task.return_value = mock_task
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            with patch('builtins.print'):
+                result = link_document_to_task(
+                    Path("/fake/.got"),
+                    "DOC-001",
+                    "T-001",
+                    "DOCUMENTED_BY"
+                )
+
+        self.assertTrue(result)
+        mock_manager.link_document_to_task.assert_called_once_with(
+            "DOC-001", "T-001", "DOCUMENTED_BY"
+        )
+
+    def test_link_document_not_found(self):
+        """Test linking with non-existent document."""
+        from cortical.got.cli.doc import link_document_to_task
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_manager.get_document.return_value = None
+        mock_manager.get_document_by_path.return_value = None
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            with patch('builtins.print') as mock_print:
+                result = link_document_to_task(
+                    Path("/fake/.got"),
+                    "DOC-999",
+                    "T-001",
+                    "DOCUMENTED_BY"
+                )
+
+        self.assertFalse(result)
+        mock_print.assert_called_with("Document not found: DOC-999")
+
+    def test_link_task_not_found(self):
+        """Test linking with non-existent task."""
+        from cortical.got.cli.doc import link_document_to_task
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_doc = Document(id="DOC-001", path="docs/test.md", title="Test", doc_type="general")
+        mock_manager.get_document.return_value = mock_doc
+        mock_manager.get_task.return_value = None
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            with patch('builtins.print') as mock_print:
+                result = link_document_to_task(
+                    Path("/fake/.got"),
+                    "DOC-001",
+                    "T-999",
+                    "DOCUMENTED_BY"
+                )
+
+        self.assertFalse(result)
+        mock_print.assert_called_with("Task not found: T-999")
+
+    def test_link_by_path(self):
+        """Test linking document by path."""
+        from cortical.got.cli.doc import link_document_to_task
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_doc = Document(id="DOC-001", path="docs/test.md", title="Test", doc_type="general")
+        mock_task = Task(id="T-001", title="Test task", status="pending", priority="medium")
+
+        # First lookup by ID fails, second by path succeeds
+        mock_manager.get_document.return_value = None
+        mock_manager.get_document_by_path.return_value = mock_doc
+        mock_manager.get_task.return_value = mock_task
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            with patch('builtins.print'):
+                result = link_document_to_task(
+                    Path("/fake/.got"),
+                    "docs/test.md",
+                    "T-001",
+                    "PRODUCES"
+                )
+
+        self.assertTrue(result)
+        mock_manager.get_document_by_path.assert_called_once()
+
+
+class TestGetTasksForDocument(unittest.TestCase):
+    """Test get_tasks_for_document helper function."""
+
+    def test_get_tasks_success(self):
+        """Test getting tasks for a document."""
+        from cortical.got.cli.doc import get_tasks_for_document
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_doc = Document(id="DOC-001", path="docs/test.md", title="Test", doc_type="general")
+        mock_tasks = [
+            Task(id="T-001", title="Task 1", status="pending", priority="high"),
+            Task(id="T-002", title="Task 2", status="completed", priority="low"),
+        ]
+
+        mock_manager.get_document.return_value = mock_doc
+        mock_manager.get_tasks_for_document.return_value = mock_tasks
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            result = get_tasks_for_document(Path("/fake/.got"), "DOC-001")
+
+        self.assertEqual(result, mock_tasks)
+        mock_manager.get_tasks_for_document.assert_called_once_with("DOC-001")
+
+    def test_get_tasks_document_not_found(self):
+        """Test getting tasks when document doesn't exist."""
+        from cortical.got.cli.doc import get_tasks_for_document
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_manager.get_document.return_value = None
+        mock_manager.get_document_by_path.return_value = None
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            result = get_tasks_for_document(Path("/fake/.got"), "DOC-999")
+
+        self.assertEqual(result, [])
+
+    def test_get_tasks_by_path(self):
+        """Test getting tasks using document path."""
+        from cortical.got.cli.doc import get_tasks_for_document
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_doc = Document(id="DOC-001", path="docs/test.md", title="Test", doc_type="general")
+        mock_tasks = [Task(id="T-001", title="Task 1", status="pending", priority="high")]
+
+        mock_manager.get_document.return_value = None
+        mock_manager.get_document_by_path.return_value = mock_doc
+        mock_manager.get_tasks_for_document.return_value = mock_tasks
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            result = get_tasks_for_document(Path("/fake/.got"), "docs/test.md")
+
+        self.assertEqual(result, mock_tasks)
+
+
+class TestGetDocumentsForTask(unittest.TestCase):
+    """Test get_documents_for_task helper function."""
+
+    def test_get_documents_success(self):
+        """Test getting documents for a task."""
+        from cortical.got.cli.doc import get_documents_for_task
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_docs = [
+            Document(id="DOC-001", path="docs/test1.md", title="Test 1", doc_type="general"),
+            Document(id="DOC-002", path="docs/test2.md", title="Test 2", doc_type="api"),
+        ]
+
+        mock_manager.get_documents_for_task.return_value = mock_docs
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            result = get_documents_for_task(Path("/fake/.got"), "T-001")
+
+        self.assertEqual(result, mock_docs)
+        mock_manager.get_documents_for_task.assert_called_once_with("T-001")
+
+
+class TestListDocuments(unittest.TestCase):
+    """Test list_documents helper function."""
+
+    def test_list_all_documents(self):
+        """Test listing all documents."""
+        from cortical.got.cli.doc import list_documents
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_docs = [
+            Document(id="DOC-001", path="docs/test1.md", title="Test 1", doc_type="general"),
+            Document(id="DOC-002", path="docs/test2.md", title="Test 2", doc_type="api"),
+        ]
+
+        mock_manager.list_documents.return_value = mock_docs
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            result = list_documents(Path("/fake/.got"))
+
+        self.assertEqual(result, mock_docs)
+        mock_manager.list_documents.assert_called_once_with(
+            doc_type=None,
+            tag=None,
+            is_stale=None,
+        )
+
+    def test_list_with_filters(self):
+        """Test listing documents with filters."""
+        from cortical.got.cli.doc import list_documents
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_manager.list_documents.return_value = []
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            result = list_documents(
+                Path("/fake/.got"),
+                doc_type="architecture",
+                stale_only=True,
+                tag="important"
+            )
+
+        mock_manager.list_documents.assert_called_once_with(
+            doc_type="architecture",
+            tag="important",
+            is_stale=True,
+        )
+
+    def test_list_stale_only(self):
+        """Test listing only stale documents."""
+        from cortical.got.cli.doc import list_documents
+        from pathlib import Path
+
+        mock_manager = MagicMock()
+        mock_manager.list_documents.return_value = []
+
+        with patch('cortical.got.cli.doc.GoTManager', return_value=mock_manager):
+            result = list_documents(
+                Path("/fake/.got"),
+                stale_only=True
+            )
+
+        mock_manager.list_documents.assert_called_once_with(
+            doc_type=None,
+            tag=None,
+            is_stale=True,
+        )
+
+
+class TestEdgeCases(unittest.TestCase):
+    """Test edge cases and error conditions."""
+
+    def test_detect_doc_type_case_insensitive(self):
+        """Test that doc type detection is case-insensitive."""
+        # Uppercase in path
+        self.assertEqual(detect_doc_type("DOCS/ARCHITECTURE.MD"), "architecture")
+        # Uppercase in title
+        self.assertEqual(detect_doc_type("file.md", "API REFERENCE"), "api")
+
+    def test_detect_doc_type_multiple_matches(self):
+        """Test doc type when multiple patterns could match."""
+        # Should return first match in DOC_TYPE_PATTERNS order
+        # "knowledge-transfer" pattern includes "knowledge-transfer"
+        result = detect_doc_type("docs/knowledge-transfer-session.md")
+        # Either "memory" or "knowledge-transfer" is valid depending on order
+        self.assertIn(result, ["memory", "knowledge-transfer"])
+
+    def test_extract_title_with_extra_hashes(self):
+        """Test title extraction with markdown closing hashes."""
+        content = "# Title Here #\n\nContent"
+        result = extract_title_from_content(content)
+        # Should handle trailing # if present
+        self.assertIn("Title", result)
+
+    def test_extract_tags_empty_tags_line(self):
+        """Test tag extraction with empty tags line."""
+        content = "# Title\n\n**Tags:**\n\nContent"
+        result = extract_tags_from_content(content)
+        # Should handle empty tags gracefully
+        self.assertTrue(isinstance(result, list))
+
+    def test_cmd_doc_link_default_edge_type(self):
+        """Test cmd_doc_link uses default edge type when not specified."""
+        mock_manager = Mock()
+        mock_manager.got_dir = "/fake/.got"
+
+        # Args with default edge_type (as argparse would set it)
+        args = Namespace(doc_id="DOC-001", task_id="T-001", edge_type="DOCUMENTED_BY")
+
+        with patch('cortical.got.cli.doc.link_document_to_task', return_value=True) as mock_link:
+            with patch('builtins.print') as mock_print:
+                result = cmd_doc_link(args, mock_manager)
+
+        # Should use default "DOCUMENTED_BY"
+        self.assertEqual(result, 0)
+        call_args = mock_link.call_args[0]
+        self.assertEqual(call_args[3], "DOCUMENTED_BY")
+        # Verify print message includes edge type
+        mock_print.assert_called_with("Linked: DOC-001 --DOCUMENTED_BY--> T-001")
+
+    def test_handle_doc_command_none_subcommand(self):
+        """Test handle_doc_command when doc_command is None."""
+        mock_manager = Mock()
+        # doc_command exists but is None
+        args = Namespace(doc_command=None)
+
+        with patch('builtins.print') as mock_print:
+            result = handle_doc_command(args, mock_manager)
+
+        self.assertEqual(result, 1)
+        mock_print.assert_called_once()
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -675,3 +675,642 @@ class TestHandleSyncMigrateCommands:
         result = handle_sync_migrate_commands(args, mock_manager)
 
         assert result is None  # Not handled
+
+
+class TestCmdBackupCreateRealExecution:
+    """Tests that actually execute cmd_backup_create code."""
+
+    @pytest.fixture
+    def mock_manager_with_real_paths(self, tmp_path):
+        """Create a mock manager with real paths."""
+        manager = MagicMock()
+        manager.got_dir = tmp_path
+        manager.wal = MagicMock()
+        manager.graph = MagicMock()
+
+        # Create snapshots directory
+        snapshots_dir = tmp_path / "wal" / "snapshots"
+        snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+        return manager
+
+    def test_create_with_file_not_found(self, mock_manager_with_real_paths, capsys):
+        """Test when snapshot file cannot be found after creation."""
+        mock_manager_with_real_paths.wal.create_snapshot.return_value = "snap_20251223_120000_notfound"
+
+        args = Namespace(compress=True)
+        result = cmd_backup_create(args, mock_manager_with_real_paths)
+
+        # Should succeed even if file not found (snapshot was created)
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Snapshot created" in captured.out
+
+    def test_create_with_actual_snapshot_file(self, mock_manager_with_real_paths, capsys):
+        """Test with actual snapshot file on disk."""
+        snapshot_id = "snap_20251223_120000_abc123"
+        mock_manager_with_real_paths.wal.create_snapshot.return_value = snapshot_id
+
+        # Create actual snapshot file
+        snapshots_dir = mock_manager_with_real_paths.got_dir / "wal" / "snapshots"
+        snap_file = snapshots_dir / f"{snapshot_id}.json.gz"
+        snap_file.write_text("test data")
+
+        args = Namespace(compress=True)
+        result = cmd_backup_create(args, mock_manager_with_real_paths)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Snapshot created" in captured.out
+        assert "KB" in captured.out  # Size should be shown
+        assert "Compressed: True" in captured.out
+
+
+class TestCmdBackupListRealExecution:
+    """Tests that actually execute cmd_backup_list code."""
+
+    @pytest.fixture
+    def manager_with_snapshots(self, tmp_path):
+        """Create a manager with real snapshot files."""
+        manager = MagicMock()
+        manager.got_dir = tmp_path
+
+        snapshots_dir = tmp_path / "wal" / "snapshots"
+        snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create test snapshot files
+        snap1 = snapshots_dir / "snap_20251223_120000_abc123.json.gz"
+        snap2 = snapshots_dir / "snap_20251222_100000_def456.json"
+        snap3 = snapshots_dir / "snap_20251221_080000_ghi789.json"
+
+        # Write valid JSON to each
+        import gzip
+        data1 = {"state": {"nodes": {"T-001": {}}, "edges": {}}}
+        with gzip.open(snap1, 'wt') as f:
+            json.dump(data1, f)
+
+        data2 = {"state": {"nodes": {"T-001": {}, "T-002": {}}, "edges": {}}}
+        snap2.write_text(json.dumps(data2))
+
+        data3 = {"state": {"nodes": {}, "edges": {}}}
+        snap3.write_text(json.dumps(data3))
+
+        return manager
+
+    def test_list_with_real_files(self, manager_with_snapshots, capsys):
+        """Test list with real snapshot files."""
+        args = Namespace(limit=10)
+        result = cmd_backup_list(args, manager_with_snapshots)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Available Snapshots" in captured.out
+        assert "2025-12-23" in captured.out  # Timestamp parsing
+        assert "2025-12-22" in captured.out
+
+    def test_list_with_limit_real_files(self, manager_with_snapshots, capsys):
+        """Test list with limit on real files."""
+        args = Namespace(limit=2)
+        result = cmd_backup_list(args, manager_with_snapshots)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "... and 1 more" in captured.out
+
+    def test_list_invalid_snapshot_skipped(self, tmp_path, capsys):
+        """Test that invalid snapshots are skipped."""
+        manager = MagicMock()
+        manager.got_dir = tmp_path
+
+        snapshots_dir = tmp_path / "wal" / "snapshots"
+        snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create invalid snapshot (bad JSON)
+        snap1 = snapshots_dir / "snap_20251223_120000_bad.json"
+        snap1.write_text("not valid json")
+
+        # Create valid snapshot
+        snap2 = snapshots_dir / "snap_20251222_100000_good.json"
+        snap2.write_text(json.dumps({"state": {"nodes": {}, "edges": {}}}))
+
+        args = Namespace(limit=10)
+        result = cmd_backup_list(args, manager)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        # Should show only the valid snapshot
+        assert "2025-12-22" in captured.out
+
+    def test_list_malformed_filename(self, tmp_path, capsys):
+        """Test handling of malformed snapshot filenames."""
+        manager = MagicMock()
+        manager.got_dir = tmp_path
+
+        snapshots_dir = tmp_path / "wal" / "snapshots"
+        snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create snapshot with malformed name
+        snap1 = snapshots_dir / "snap_bad.json"
+        snap1.write_text(json.dumps({"state": {"nodes": {}, "edges": {}}}))
+
+        args = Namespace(limit=10)
+        result = cmd_backup_list(args, manager)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        # Should still list it with "unknown" timestamp
+        assert "unknown" in captured.out or "snap_bad.json" in captured.out
+
+
+class TestCmdBackupVerifyRealExecution:
+    """Tests that actually execute cmd_backup_verify code."""
+
+    @pytest.fixture
+    def manager_with_snapshot(self, tmp_path):
+        """Create manager with a real snapshot."""
+        manager = MagicMock()
+        manager.got_dir = tmp_path
+
+        snapshots_dir = tmp_path / "wal" / "snapshots"
+        snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create valid snapshot
+        snap_file = snapshots_dir / "snap_20251223_120000_abc123.json"
+        data = {
+            "snapshot_id": "snap_20251223_120000_abc123",
+            "timestamp": "2025-12-23T12:00:00Z",
+            "state": {
+                "nodes": {
+                    "T-001": {"node_type": "TASK", "content": "Task 1"},
+                },
+                "edges": {},
+            },
+        }
+        snap_file.write_text(json.dumps(data))
+
+        return manager
+
+    def test_verify_with_real_file(self, manager_with_snapshot, capsys):
+        """Test verify with real snapshot file."""
+        args = Namespace(snapshot_id="abc123")
+        result = cmd_backup_verify(args, manager_with_snapshot)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "PASSED" in captured.out
+        assert "Nodes: 1" in captured.out
+
+    def test_verify_latest_without_id(self, manager_with_snapshot, capsys):
+        """Test verify without snapshot_id (uses latest)."""
+        args = Namespace(snapshot_id=None)
+        result = cmd_backup_verify(args, manager_with_snapshot)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "PASSED" in captured.out
+
+    def test_verify_invalid_nodes(self, tmp_path, capsys):
+        """Test verify with invalid node structures."""
+        manager = MagicMock()
+        manager.got_dir = tmp_path
+
+        snapshots_dir = tmp_path / "wal" / "snapshots"
+        snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+        snap_file = snapshots_dir / "snap_20251223_120000_bad.json"
+        data = {
+            "snapshot_id": "snap_20251223_120000_bad",
+            "timestamp": "2025-12-23T12:00:00Z",
+            "state": {
+                "nodes": {
+                    "T-001": {"node_type": "TASK"},  # Valid
+                    "T-002": "invalid",  # Invalid - not a dict
+                    "T-003": {},  # Invalid - missing node_type
+                },
+                "edges": {},
+            },
+        }
+        snap_file.write_text(json.dumps(data))
+
+        args = Namespace(snapshot_id="bad")
+        result = cmd_backup_verify(args, manager)
+
+        assert result == 0  # Still passes, but warns
+        captured = capsys.readouterr()
+        assert "Invalid nodes: 2" in captured.out
+
+    def test_verify_compressed_real_file(self, tmp_path, capsys):
+        """Test verify with real compressed file."""
+        manager = MagicMock()
+        manager.got_dir = tmp_path
+
+        snapshots_dir = tmp_path / "wal" / "snapshots"
+        snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+        snap_file = snapshots_dir / "snap_20251223_120000_comp.json.gz"
+        data = {
+            "snapshot_id": "snap_20251223_120000_comp",
+            "timestamp": "2025-12-23T12:00:00Z",
+            "state": {"nodes": {}, "edges": {}},
+        }
+
+        with gzip.open(snap_file, 'wt') as f:
+            json.dump(data, f)
+
+        args = Namespace(snapshot_id="comp")
+        result = cmd_backup_verify(args, manager)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "PASSED" in captured.out
+
+
+class TestCmdBackupRestoreRealExecution:
+    """Tests that actually execute cmd_backup_restore code."""
+
+    @pytest.fixture
+    def manager_with_restore_snapshot(self, tmp_path):
+        """Create manager with snapshot for restoration."""
+        manager = MagicMock()
+        manager.got_dir = tmp_path
+        manager.graph = MagicMock()
+
+        snapshots_dir = tmp_path / "wal" / "snapshots"
+        snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+        snap_file = snapshots_dir / "snap_20251223_120000_restore.json"
+        data = {
+            "state": {
+                "nodes": {
+                    "T-001": {
+                        "node_type": "TASK",
+                        "content": "Task 1",
+                        "properties": {"status": "pending"},
+                        "metadata": {},
+                    },
+                },
+                "edges": {
+                    "E-001": {
+                        "source_id": "T-001",
+                        "target_id": "T-002",
+                        "edge_type": "DEPENDS_ON",
+                        "weight": 1.0,
+                        "metadata": {},
+                    },
+                },
+            },
+        }
+        snap_file.write_text(json.dumps(data))
+
+        return manager
+
+    @patch('builtins.input', return_value='y')
+    @patch('cortical.reasoning.thought_graph.ThoughtGraph')
+    @patch('cortical.reasoning.graph_of_thought.NodeType')
+    @patch('cortical.reasoning.graph_of_thought.EdgeType')
+    def test_restore_confirmed(self, mock_edge_type, mock_node_type, mock_graph_class,
+                                mock_input, manager_with_restore_snapshot, capsys):
+        """Test restore with user confirmation."""
+        mock_graph_instance = MagicMock()
+        mock_graph_class.return_value = mock_graph_instance
+
+        # Mock NodeType and EdgeType
+        mock_node_type.__getitem__ = MagicMock(return_value="TASK")
+        mock_edge_type.__getitem__ = MagicMock(return_value="DEPENDS_ON")
+
+        args = Namespace(snapshot_id="restore", force=False)
+        result = cmd_backup_restore(args, manager_with_restore_snapshot)
+
+        assert result == 0
+        mock_graph_instance.add_node.assert_called_once()
+        captured = capsys.readouterr()
+        assert "Restored from" in captured.out
+
+    @patch('cortical.reasoning.thought_graph.ThoughtGraph')
+    @patch('cortical.reasoning.graph_of_thought.NodeType')
+    @patch('cortical.reasoning.graph_of_thought.EdgeType')
+    def test_restore_skip_invalid_edges(self, mock_edge_type, mock_node_type,
+                                         mock_graph_class, tmp_path, capsys):
+        """Test restore skips invalid edges."""
+        manager = MagicMock()
+        manager.got_dir = tmp_path
+        manager.graph = MagicMock()
+
+        snapshots_dir = tmp_path / "wal" / "snapshots"
+        snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+        snap_file = snapshots_dir / "snap_20251223_120000_edges.json"
+        data = {
+            "state": {
+                "nodes": {},
+                "edges": {
+                    "E-001": {
+                        "source_id": "T-001",
+                        "target_id": "T-002",
+                        "edge_type": "INVALID_TYPE",  # Will cause error
+                        "weight": 1.0,
+                    },
+                },
+            },
+        }
+        snap_file.write_text(json.dumps(data))
+
+        mock_graph_instance = MagicMock()
+        mock_graph_instance.add_edge.side_effect = Exception("Invalid edge type")
+        mock_graph_class.return_value = mock_graph_instance
+
+        mock_node_type.__getitem__ = MagicMock(return_value="TASK")
+        mock_edge_type.__getitem__ = MagicMock(side_effect=KeyError("INVALID_TYPE"))
+
+        args = Namespace(snapshot_id="edges", force=True)
+        result = cmd_backup_restore(args, manager)
+
+        # Should still succeed (invalid edges are skipped)
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Restored from" in captured.out
+
+    @patch('cortical.reasoning.thought_graph.ThoughtGraph')
+    @patch('cortical.reasoning.graph_of_thought.NodeType')
+    def test_restore_compressed_snapshot(self, mock_node_type, mock_graph_class,
+                                          tmp_path, capsys):
+        """Test restore from compressed snapshot."""
+        manager = MagicMock()
+        manager.got_dir = tmp_path
+        manager.graph = MagicMock()
+
+        snapshots_dir = tmp_path / "wal" / "snapshots"
+        snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+        snap_file = snapshots_dir / "snap_20251223_120000_comp.json.gz"
+        data = {
+            "state": {
+                "nodes": {
+                    "T-001": {
+                        "node_type": "TASK",
+                        "content": "Task 1",
+                        "properties": {},
+                        "metadata": {},
+                    },
+                },
+                "edges": {},
+            },
+        }
+
+        with gzip.open(snap_file, 'wt') as f:
+            json.dump(data, f)
+
+        mock_graph_instance = MagicMock()
+        mock_graph_class.return_value = mock_graph_instance
+        mock_node_type.__getitem__ = MagicMock(return_value="TASK")
+
+        args = Namespace(snapshot_id="comp", force=True)
+        result = cmd_backup_restore(args, manager)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Restored from" in captured.out
+
+
+class TestCmdSyncRealExecution:
+    """Tests that actually execute cmd_sync code."""
+
+    @pytest.fixture
+    def manager_with_snapshots_dir(self, tmp_path):
+        """Create manager with snapshots directory."""
+        manager = MagicMock()
+        manager.snapshots_dir = tmp_path / "snapshots"
+        manager.snapshots_dir.mkdir(parents=True, exist_ok=True)
+        manager.sync_to_git.return_value = "snapshot_20251223_120000.json"
+        manager.get_stats.return_value = {
+            "total_tasks": 10,
+            "total_sprints": 3,
+        }
+        return manager
+
+    def test_sync_without_message(self, manager_with_snapshots_dir, capsys):
+        """Test sync without commit message."""
+        args = Namespace(message=None)
+        result = cmd_sync(args, manager_with_snapshots_dir)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Synced to git-tracked snapshot" in captured.out
+        assert "To persist across environments" in captured.out
+
+    @patch('cortical.got.cli.backup.subprocess.run')
+    def test_sync_subprocess_error_details(self, mock_run, manager_with_snapshots_dir, capsys):
+        """Test sync with subprocess error showing details."""
+        import subprocess
+
+        mock_run.side_effect = subprocess.CalledProcessError(
+            returncode=1,
+            cmd="git",
+            stderr=b"Permission denied"
+        )
+
+        args = Namespace(message="Test commit")
+        result = cmd_sync(args, manager_with_snapshots_dir)
+
+        assert result == 0  # Sync still succeeds
+        captured = capsys.readouterr()
+        assert "Warning: Git commit failed" in captured.out
+
+
+class TestCmdMigrateEventsRealExecution:
+    """Tests that actually execute cmd_migrate_events edge migration logic."""
+
+    @pytest.fixture
+    def manager_with_edges_list(self):
+        """Create manager with edges as a list."""
+        manager = MagicMock()
+        manager.events_dir = Path("/fake/events")
+        manager.graph = MagicMock()
+        manager.graph.nodes = {}
+
+        # Create edges as a list of objects (not dict)
+        edge1 = MagicMock()
+        edge1.source_id = "T-001"
+        edge1.target_id = "T-002"
+        edge1.edge_type = MagicMock()
+        edge1.edge_type.name = "DEPENDS_ON"
+        edge1.weight = 1.0
+
+        edge2 = MagicMock()
+        edge2.source_id = "T-002"
+        edge2.target_id = "T-003"
+        edge2.edge_type = MagicMock()
+        edge2.edge_type.name = "BLOCKS"
+        edge2.weight = 0.5
+
+        # Edges as a list (not dict)
+        manager.graph.edges = [edge1, edge2]
+
+        return manager
+
+    @pytest.fixture
+    def manager_with_edges_dict(self):
+        """Create manager with edges as a dict of dicts."""
+        manager = MagicMock()
+        manager.events_dir = Path("/fake/events")
+        manager.graph = MagicMock()
+        manager.graph.nodes = {}
+
+        # Edges as a dict of dicts
+        manager.graph.edges = {
+            "E-001": {
+                "source_id": "T-001",
+                "target_id": "T-002",
+                "edge_type": "DEPENDS_ON",
+                "weight": 1.0,
+            },
+            "E-002": {
+                "source_id": "T-002",
+                "target_id": "T-003",
+                "edge_type": "BLOCKS",
+                "weight": 0.5,
+            },
+        }
+
+        return manager
+
+    @patch('scripts.got_utils.EventLog')
+    def test_migrate_events_edges_as_list_dry_run(self, mock_event_log_class,
+                                                   manager_with_edges_list, capsys):
+        """Test dry run with edges as list of objects."""
+        mock_event_log_class.load_all_events.return_value = []
+
+        args = Namespace(dry_run=True, force=False)
+        result = cmd_migrate_events(args, manager_with_edges_list)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Would migrate edge: T-001 -> T-002" in captured.out
+        assert "Would migrate edge: T-002 -> T-003" in captured.out
+        assert "Edges: 2" in captured.out
+
+    @patch('scripts.got_utils.EventLog')
+    def test_migrate_events_edges_as_list_real(self, mock_event_log_class,
+                                                manager_with_edges_list, capsys):
+        """Test actual migration with edges as list of objects."""
+        mock_event_log_class.load_all_events.return_value = []
+        mock_event_log_instance = MagicMock()
+        mock_event_log_instance.event_file = "/fake/events/migration.jsonl"
+        mock_event_log_class.return_value = mock_event_log_instance
+
+        args = Namespace(dry_run=False, force=False)
+        result = cmd_migrate_events(args, manager_with_edges_list)
+
+        assert result == 0
+        assert mock_event_log_instance.log_edge_create.call_count == 2
+        captured = capsys.readouterr()
+        assert "Edges: 2" in captured.out
+
+    @patch('scripts.got_utils.EventLog')
+    def test_migrate_events_edges_as_dict_dry_run(self, mock_event_log_class,
+                                                   manager_with_edges_dict, capsys):
+        """Test dry run with edges as dict of dicts."""
+        mock_event_log_class.load_all_events.return_value = []
+
+        args = Namespace(dry_run=True, force=False)
+        result = cmd_migrate_events(args, manager_with_edges_dict)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Would migrate edge: T-001 -> T-002" in captured.out
+        assert "Would migrate edge: T-002 -> T-003" in captured.out
+
+    @patch('scripts.got_utils.EventLog')
+    def test_migrate_events_edges_as_dict_real(self, mock_event_log_class,
+                                                manager_with_edges_dict, capsys):
+        """Test actual migration with edges as dict of dicts."""
+        mock_event_log_class.load_all_events.return_value = []
+        mock_event_log_instance = MagicMock()
+        mock_event_log_instance.event_file = "/fake/events/migration.jsonl"
+        mock_event_log_class.return_value = mock_event_log_instance
+
+        args = Namespace(dry_run=False, force=False)
+        result = cmd_migrate_events(args, manager_with_edges_dict)
+
+        assert result == 0
+        # Should call log_edge_create for each edge
+        assert mock_event_log_instance.log_edge_create.call_count == 2
+
+        # Verify edge_type handling for dict edges
+        calls = mock_event_log_instance.log_edge_create.call_args_list
+        assert any("DEPENDS_ON" in str(call) for call in calls)
+
+    @patch('scripts.got_utils.EventLog')
+    def test_migrate_events_edges_missing_fields_dry_run(self, mock_event_log_class, capsys):
+        """Test edge migration with missing fields in dry run."""
+        manager = MagicMock()
+        manager.events_dir = Path("/fake/events")
+        manager.graph = MagicMock()
+        manager.graph.nodes = {}
+
+        # Edge with missing fields
+        edge = MagicMock()
+        # No source_id or target_id attributes
+        del edge.source_id
+        del edge.target_id
+
+        manager.graph.edges = [edge]
+
+        mock_event_log_class.load_all_events.return_value = []
+
+        args = Namespace(dry_run=True, force=False)
+        result = cmd_migrate_events(args, manager)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        # Should show ? for missing fields
+        assert "Would migrate edge: ? -> ?" in captured.out
+
+    @patch('scripts.got_utils.EventLog')
+    def test_migrate_events_edges_missing_fields_real(self, mock_event_log_class):
+        """Test edge migration skips edges with missing source/target."""
+        manager = MagicMock()
+        manager.events_dir = Path("/fake/events")
+        manager.graph = MagicMock()
+        manager.graph.nodes = {}
+
+        # Edge as dict with missing target_id
+        manager.graph.edges = [{"source_id": "T-001"}]  # Missing target_id
+
+        mock_event_log_class.load_all_events.return_value = []
+        mock_event_log_instance = MagicMock()
+        mock_event_log_instance.event_file = "/fake/events/migration.jsonl"
+        mock_event_log_class.return_value = mock_event_log_instance
+
+        args = Namespace(dry_run=False, force=False)
+        result = cmd_migrate_events(args, manager)
+
+        assert result == 0
+        # Should not call log_edge_create for invalid edge
+        mock_event_log_instance.log_edge_create.assert_not_called()
+
+
+class TestCmdMigrateEdgeCases:
+    """Test edge cases for cmd_migrate."""
+
+    @patch('scripts.got_utils.TaskMigrator')
+    def test_migrate_more_than_10_errors(self, mock_migrator_class, capsys):
+        """Test migrate with more than 10 errors (truncation)."""
+        manager = MagicMock()
+
+        mock_migrator = MagicMock()
+        errors = [f"Error {i}" for i in range(15)]
+        mock_migrator.migrate_all.return_value = {
+            "sessions_processed": 5,
+            "tasks_migrated": 8,
+            "tasks_skipped": 4,
+            "errors": errors,
+        }
+        mock_migrator_class.return_value = mock_migrator
+
+        args = Namespace(dry_run=False)
+        result = cmd_migrate(args, manager)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "... and 5 more" in captured.out  # 15 - 10 = 5

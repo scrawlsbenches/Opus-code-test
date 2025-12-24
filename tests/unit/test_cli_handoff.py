@@ -443,3 +443,211 @@ class TestHandleHandoffCommand:
 
         assert result == 0
         mock_cmd.assert_called_once_with(args, mock_manager)
+
+
+class TestSetupHandoffParser:
+    """Tests for setup_handoff_parser function."""
+
+    def test_creates_handoff_subparser(self):
+        """Test that handoff subparser is created with correct structure."""
+        import argparse
+        from cortical.got.cli.handoff import setup_handoff_parser
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+
+        # Setup handoff parser
+        setup_handoff_parser(subparsers)
+
+        # Parse a handoff initiate command
+        args = parser.parse_args([
+            'handoff', 'initiate', 'T-123',
+            '--target', 'sub-agent-1',
+            '--source', 'main',
+            '--instructions', 'Do the work'
+        ])
+
+        assert args.handoff_command == 'initiate'
+        assert args.task_id == 'T-123'
+        assert args.target == 'sub-agent-1'
+        assert args.source == 'main'
+        assert args.instructions == 'Do the work'
+
+    def test_initiate_parser_required_args(self):
+        """Test that initiate parser requires target argument."""
+        import argparse
+        from cortical.got.cli.handoff import setup_handoff_parser
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        setup_handoff_parser(subparsers)
+
+        # Missing --target should fail
+        with pytest.raises(SystemExit):
+            parser.parse_args(['handoff', 'initiate', 'T-123'])
+
+    def test_initiate_parser_defaults(self):
+        """Test initiate parser default values."""
+        import argparse
+        from cortical.got.cli.handoff import setup_handoff_parser
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        setup_handoff_parser(subparsers)
+
+        args = parser.parse_args([
+            'handoff', 'initiate', 'T-123',
+            '--target', 'sub-agent-1'
+        ])
+
+        assert args.source == 'main'  # Default source
+        assert args.instructions == ''  # Default instructions
+
+    def test_accept_parser_structure(self):
+        """Test that accept parser is created correctly."""
+        import argparse
+        from cortical.got.cli.handoff import setup_handoff_parser
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        setup_handoff_parser(subparsers)
+
+        args = parser.parse_args([
+            'handoff', 'accept', 'H-123',
+            '--agent', 'sub-agent-1',
+            '--message', 'Accepted'
+        ])
+
+        assert args.handoff_command == 'accept'
+        assert args.handoff_id == 'H-123'
+        assert args.agent == 'sub-agent-1'
+        assert args.message == 'Accepted'
+
+    def test_accept_parser_required_args(self):
+        """Test that accept parser requires agent argument."""
+        import argparse
+        from cortical.got.cli.handoff import setup_handoff_parser
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        setup_handoff_parser(subparsers)
+
+        # Missing --agent should fail
+        with pytest.raises(SystemExit):
+            parser.parse_args(['handoff', 'accept', 'H-123'])
+
+    def test_accept_parser_defaults(self):
+        """Test accept parser default values."""
+        import argparse
+        from cortical.got.cli.handoff import setup_handoff_parser
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        setup_handoff_parser(subparsers)
+
+        args = parser.parse_args([
+            'handoff', 'accept', 'H-123',
+            '--agent', 'sub-agent-1'
+        ])
+
+        assert args.message == ''  # Default message
+
+    def test_complete_parser_structure(self):
+        """Test that complete parser is created correctly."""
+        import argparse
+        from cortical.got.cli.handoff import setup_handoff_parser
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        setup_handoff_parser(subparsers)
+
+        args = parser.parse_args([
+            'handoff', 'complete', 'H-123',
+            '--agent', 'sub-agent-1',
+            '--result', '{"status": "done"}',
+            '--artifacts', 'file1.py', 'file2.py'
+        ])
+
+        assert args.handoff_command == 'complete'
+        assert args.handoff_id == 'H-123'
+        assert args.agent == 'sub-agent-1'
+        assert args.result == '{"status": "done"}'
+        assert args.artifacts == ['file1.py', 'file2.py']
+
+    def test_complete_parser_required_args(self):
+        """Test that complete parser requires agent argument."""
+        import argparse
+        from cortical.got.cli.handoff import setup_handoff_parser
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        setup_handoff_parser(subparsers)
+
+        # Missing --agent should fail
+        with pytest.raises(SystemExit):
+            parser.parse_args(['handoff', 'complete', 'H-123'])
+
+    def test_complete_parser_defaults(self):
+        """Test complete parser default values."""
+        import argparse
+        from cortical.got.cli.handoff import setup_handoff_parser
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        setup_handoff_parser(subparsers)
+
+        args = parser.parse_args([
+            'handoff', 'complete', 'H-123',
+            '--agent', 'sub-agent-1'
+        ])
+
+        assert args.result == '{}'  # Default result
+        assert args.artifacts is None  # Default artifacts
+
+    def test_list_parser_structure(self):
+        """Test that list parser is created correctly."""
+        import argparse
+        from cortical.got.cli.handoff import setup_handoff_parser
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        setup_handoff_parser(subparsers)
+
+        args = parser.parse_args([
+            'handoff', 'list',
+            '--status', 'initiated'
+        ])
+
+        assert args.handoff_command == 'list'
+        assert args.status == 'initiated'
+
+    def test_list_parser_status_choices(self):
+        """Test that list parser validates status choices."""
+        import argparse
+        from cortical.got.cli.handoff import setup_handoff_parser
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        setup_handoff_parser(subparsers)
+
+        # Valid status should work
+        args = parser.parse_args(['handoff', 'list', '--status', 'completed'])
+        assert args.status == 'completed'
+
+        # Invalid status should fail
+        with pytest.raises(SystemExit):
+            parser.parse_args(['handoff', 'list', '--status', 'invalid'])
+
+    def test_list_parser_no_status(self):
+        """Test list parser without status filter."""
+        import argparse
+        from cortical.got.cli.handoff import setup_handoff_parser
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        setup_handoff_parser(subparsers)
+
+        args = parser.parse_args(['handoff', 'list'])
+
+        assert args.handoff_command == 'list'
+        assert args.status is None
