@@ -11,11 +11,12 @@
 
 This session performed a comprehensive repository audit following a "catastrophic event" and fixed multiple systemic issues. Key accomplishments:
 
-1. **Orphan Rate: 71.6% → 4.8%** - Implemented auto-sprint-linking at task creation
+1. **Orphan Rate: 71.6% → 8.3%** - Auto-sprint-linking + backlog sprint for remaining orphans
 2. **ML Data Preservation** - Fixed CALI gitignore to preserve irreplaceable data
 3. **Handoff System Fixes** - Added validation, auto-close, and reject CLI command
 4. **Hook Improvements** - Session start/end now show sprint context and handoff prompts
 5. **Test Fixes** - Fixed 6 failing orphan tests caused by sub-agent modifications
+6. **Validation Bug Fix** - Corrected orphan counting to use set difference (was inflating connected count)
 
 ---
 
@@ -153,6 +154,44 @@ Changed `.gitignore`:
 
 ---
 
+### 7. Validation Orphan Counting Bug (Continuation Session)
+
+**Problem:** `got validate` reported 4 orphans (4.8%) when actual count was 23 (27.4%).
+
+**Root Cause:** The orphan calculation used subtraction (`total_nodes - len(nodes_with_edges)`) but `nodes_with_edges` contained references to non-existent nodes (old sprint IDs like `S-sprint-001`, `S-sprint-017-spark-slm`). This inflated the "connected" count.
+
+**Fix:** Changed calculation in both `cortical/got/cli/query.py` and `scripts/got_utils.py`:
+```python
+# Before (wrong)
+orphan_count = total_nodes - len(nodes_with_edges)
+
+# After (correct)
+all_node_ids = set(manager.graph.nodes.keys())
+nodes_with_edges = set()
+for edge in manager.graph.edges:
+    if edge.source_id in all_node_ids:
+        nodes_with_edges.add(edge.source_id)
+    if edge.target_id in all_node_ids:
+        nodes_with_edges.add(edge.target_id)
+orphan_count = len(all_node_ids - nodes_with_edges)
+```
+
+**Commit:** `e2e58a6c` - fix(got): Correct orphan count calculation in validate command
+
+---
+
+### 8. Backlog Sprint for Orphan Tasks (Continuation Session)
+
+**Problem:** 16 orphan tasks existed with no sprint assignment.
+
+**Solution:** Created `S-000 "Backlog"` sprint and linked all 16 orphan tasks to it.
+
+**Result:** Orphan rate dropped from 27.4% to 8.3%. Remaining 7 orphans are decisions (acceptable).
+
+**Commit:** `5066d806` - chore(got): Add backlog sprint and link orphan tasks
+
+---
+
 ## Key Decisions Made
 
 | Decision ID | Decision | Rationale |
@@ -166,16 +205,16 @@ Changed `.gitignore`:
 
 ### Code Coverage
 - **87%** (down from 89% baseline due to new code)
-- All tests passing (7822 passed)
+- All tests passing (**8864 passed**)
 
 ### GoT Health
 - Tasks: 74
-- Orphan rate: **4.8%** (was 71.6%)
-- Edges: 79 (was 42)
-- Sprint S-018: 54/55 tasks (98.2% complete)
+- Orphan rate: **8.3%** (was 71.6% → 27.4% → 8.3%)
+- Edges: 94 (was 42 → 78 → 94)
+- Sprints: S-018 (active), S-000 (backlog with 16 tasks)
 
-### Remaining Orphans (4 nodes)
-Legitimate pending items not yet assigned to sprints - design/architecture tasks awaiting next sprint.
+### Remaining Orphans (7 nodes)
+All 7 are **decisions** without explicit task links. This is acceptable - decisions can exist standalone or be linked later. All 16 orphan tasks are now in backlog S-000.
 
 ---
 
@@ -187,6 +226,8 @@ Legitimate pending items not yet assigned to sprints - design/architecture tasks
 | `cortical/got/orphan.py` | Added find_orphan_handoffs(), updated OrphanReport |
 | `cortical/got/cli/handoff.py` | Added reject command |
 | `cortical/got/cli/task.py` | Added auto-sprint-linking at creation |
+| `cortical/got/cli/query.py` | **Fixed orphan counting bug** - use set difference |
+| `scripts/got_utils.py` | **Fixed orphan counting bug** (same fix as query.py) |
 | `scripts/ml-session-start-hook.sh` | Session type detection, sprint context, handoff prompts |
 | `scripts/ml-session-capture-hook.sh` | Session summary, sprint status, handoff prompts |
 | `.gitignore` | Fixed CALI and _version.json patterns |
@@ -257,6 +298,29 @@ python scripts/got_utils.py sprint status
 3. **Parallel sub-agents are effective** - 3 agents completed faster than sequential work
 4. **ML collection hooks now work** - CALI data is being preserved (53 files tracked)
 5. **Auto-linking prevents orphans** - Future tasks will automatically link to sprints
+6. **Validate command can have bugs** - Always verify metrics with direct analysis when something seems off
+7. **Duplicate code paths exist** - The validate function existed in both `query.py` and `got_utils.py` - both needed fixing
+8. **Backlog sprint is useful** - S-000 "Backlog" provides a place for unassigned tasks without leaving them orphaned
+
+---
+
+## Verification Checklist (For Next Session)
+
+Before proceeding with new work, verify these are working:
+
+```bash
+# 1. Tests pass
+python3 -m pytest tests/ -x --tb=short -q
+
+# 2. Orphan rate is reasonable (<10%)
+python3 scripts/got_utils.py validate | grep -i orphan
+
+# 3. Backlog sprint exists
+python3 scripts/got_utils.py sprint list | grep "S-000"
+
+# 4. No pending handoffs (unless intentional)
+python3 scripts/got_utils.py handoff list --status initiated
+```
 
 ---
 
