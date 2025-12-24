@@ -326,6 +326,30 @@ Recognize these signs of cognitive breakdown:
 | Asking questions already answered | **Context loss** | Check memories, task history |
 | Generating placeholder content | **Uncertainty masked** | Admit uncertainty, ask for help |
 
+### Verifying Previous Agents' Claims
+
+**Trust but verify.** Tasks and decisions from previous agents are *input*, not *truth*. Before acting on claims that involve destructive operations (delete, remove, deprecate):
+
+| Step | Action | Example |
+|------|--------|---------|
+| 1. **Identify the claim** | What is being asserted? | "TX backend replaces all functionality" |
+| 2. **Find evidence** | Did they test it? Is there proof? | Check for test results, verification steps |
+| 3. **Verify empirically** | Run commands, check code | `python scripts/got_utils.py infer --message "test"` |
+| 4. **Only proceed if verified** | Document your verification | Log decision with findings |
+
+**Why this matters (2025-12-24 incident):**
+- Task claimed "TX backend replaces all functionality"
+- `infer` command was actually **broken** - method never migrated
+- Would have deleted 2,200 lines containing the only working implementation
+- Caught by empirical testing, not by trusting the claim
+- See: `D-20251224-052658-40924db3`, `samples/memories/2025-12-24-session-knowledge-transfer-audit-findings.md`
+
+**High-risk operations requiring verification:**
+- Deleting code/files
+- Removing "deprecated" components
+- Claims of functional equivalence ("X replaces Y")
+- Migration completion claims
+
 ### Automated Recovery Process
 
 When breakdown is detected, follow this recovery protocol:
