@@ -18,14 +18,14 @@ from typing import TYPE_CHECKING
 from .shared import format_task_table
 
 if TYPE_CHECKING:
-    from scripts.got_utils import GoTProjectManager
+    from scripts.got_utils import TransactionalGoTAdapter
 
 
 # =============================================================================
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_query(args, manager: "GoTProjectManager") -> int:
+def cmd_query(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got query' command."""
     query_str = " ".join(args.query_string)
 
@@ -63,7 +63,7 @@ def cmd_query(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_blocked(args, manager: "GoTProjectManager") -> int:
+def cmd_blocked(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got blocked' command."""
     blocked = manager.get_blocked_tasks()
 
@@ -83,14 +83,14 @@ def cmd_blocked(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_active(args, manager: "GoTProjectManager") -> int:
+def cmd_active(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got active' command."""
     active = manager.get_active_tasks()
     print(format_task_table(active))
     return 0
 
 
-def cmd_stats(args, manager: "GoTProjectManager") -> int:
+def cmd_stats(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got stats' command."""
     stats = manager.get_stats()
 
@@ -107,7 +107,7 @@ def cmd_stats(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_dashboard(args, manager: "GoTProjectManager") -> int:
+def cmd_dashboard(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got dashboard' command."""
     # Import dashboard module
     try:
@@ -125,9 +125,8 @@ def cmd_dashboard(args, manager: "GoTProjectManager") -> int:
         return 1
 
 
-def cmd_validate(args, manager: "GoTProjectManager") -> int:
+def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got validate' command."""
-    from scripts.got_utils import EventLog
     from cortical.reasoning.graph_of_thought import NodeType
 
     print("=" * 60)
@@ -137,13 +136,19 @@ def cmd_validate(args, manager: "GoTProjectManager") -> int:
     issues = []
     warnings = []
 
-    # Count nodes and edges
+    # Count nodes and edges from TX backend entities
     total_nodes = len(manager.graph.nodes)
     total_edges = len(manager.graph.edges)
 
     # Count tasks by status
     tasks = [n for n in manager.graph.nodes.values() if n.node_type == NodeType.TASK]
     task_count = len(tasks)
+
+    # Count by status
+    by_status = {}
+    for task in tasks:
+        status = str(task.properties.get("status", "unknown"))
+        by_status[status] = by_status.get(status, 0) + 1
 
     # Check for orphan nodes (no edges)
     nodes_with_edges = set()
@@ -154,61 +159,40 @@ def cmd_validate(args, manager: "GoTProjectManager") -> int:
     orphan_count = total_nodes - len(nodes_with_edges)
     orphan_rate = orphan_count / max(total_nodes, 1) * 100
 
-    # Load events and compare
-    events = EventLog.load_all_events(manager.events_dir)
-    event_edge_creates = sum(1 for e in events if e.get('event') == 'edge.create')
-    event_edge_deletes = sum(1 for e in events if e.get('event') == 'edge.delete')
-    event_node_count = sum(1 for e in events if e.get('event') == 'node.create')
-    expected_edges = event_edge_creates - event_edge_deletes
-
-    # Check for edge discrepancy
-    edge_discrepancy = 0
-    if expected_edges > 0:
-        edge_discrepancy = ((total_edges - expected_edges) / expected_edges) * 100
-        if abs(edge_discrepancy) > 10:
-            issues.append(
-                f"EDGE DISCREPANCY: {edge_discrepancy:+.1f}% "
-                f"({total_edges} actual vs {expected_edges} expected)"
-            )
-        elif abs(edge_discrepancy) > 0:
-            # Only warn if there's a significant discrepancy
-            if edge_discrepancy < -5:
-                warnings.append(
-                    f"Minor edge loss: {-edge_discrepancy:.1f}% ({total_edges}/{expected_edges})"
-                )
-            elif edge_discrepancy > 5:
-                warnings.append(
-                    f"Edge surplus: {edge_discrepancy:.1f}% ({total_edges}/{expected_edges})"
-                )
-
-    # Check orphan rate
+    # Check orphan rate (warning if high, but not critical)
     if orphan_rate > 50:
-        issues.append(f"HIGH ORPHAN RATE: {orphan_rate:.1f}% of nodes have no edges")
+        warnings.append(f"High orphan rate: {orphan_rate:.1f}% of nodes have no edges")
     elif orphan_rate > 25:
         warnings.append(f"Moderate orphan rate: {orphan_rate:.1f}%")
 
     # Check edge density
     edge_density = total_edges / max(total_nodes, 1)
-    if edge_density < 0.1:
+    if edge_density < 0.1 and total_nodes > 10:
         warnings.append(f"Low edge density: {edge_density:.2f} edges/node")
+
+    # Count entity files for accurate statistics
+    entities_dir = manager.got_dir / "entities"
+    task_files = len(list(entities_dir.glob("T-*.json"))) if entities_dir.exists() else 0
+    edge_files = len(list(entities_dir.glob("E-*.json"))) if entities_dir.exists() else 0
+    decision_files = len(list(entities_dir.glob("D-*.json"))) if entities_dir.exists() else 0
+    handoff_files = len(list(entities_dir.glob("H-*.json"))) if entities_dir.exists() else 0
 
     # Print stats
     print(f"\n📊 STATISTICS")
-    print(f"   Nodes: {total_nodes}")
     print(f"   Tasks: {task_count}")
     print(f"   Edges: {total_edges}")
     print(f"   Edge density: {edge_density:.2f} edges/node")
     print(f"   Orphan nodes: {orphan_count} ({orphan_rate:.1f}%)")
 
-    print(f"\n📁 EVENT LOG")
-    print(f"   Node events: {event_node_count}")
-    print(f"   Edge create events: {event_edge_creates}")
-    print(f"   Edge delete events: {event_edge_deletes}")
-    print(f"   Expected edges: {expected_edges}")
-    if expected_edges > 0 and total_edges != expected_edges:
-        print(f"   Edge accuracy: {100 - abs(edge_discrepancy):.1f}%")
-    else:
-        print("   Edge accuracy: 100%")
+    print(f"\n📁 ENTITY FILES")
+    print(f"   Task files: {task_files}")
+    print(f"   Edge files: {edge_files}")
+    print(f"   Decision files: {decision_files}")
+    print(f"   Handoff files: {handoff_files}")
+
+    print(f"\n📈 TASKS BY STATUS")
+    for status, count in sorted(by_status.items()):
+        print(f"   {status}: {count}")
 
     # Print issues
     if issues:
@@ -230,7 +214,7 @@ def cmd_validate(args, manager: "GoTProjectManager") -> int:
     return 1 if issues else 0
 
 
-def cmd_infer(args, manager: "GoTProjectManager") -> int:
+def cmd_infer(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got infer' command."""
     if args.message:
         # Analyze a specific message
@@ -261,63 +245,19 @@ def cmd_infer(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_compact(args, manager: "GoTProjectManager") -> int:
-    """Handle 'got compact' command."""
-    from scripts.got_utils import EventLog
-    import datetime as dt
+def cmd_compact(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got compact' command.
 
-    preserve_handoffs = not getattr(args, 'no_preserve_handoffs', False)
-    preserve_days = getattr(args, 'preserve_days', 7)
-    dry_run = getattr(args, 'dry_run', False)
-
-    if dry_run:
-        print(f"Dry run - would compact events older than {preserve_days} days")
-        print(f"  Preserve handoffs: {preserve_handoffs}")
-
-        # Load and analyze events
-        events = EventLog.load_all_events(manager.events_dir)
-        cutoff = datetime.utcnow() - dt.timedelta(days=preserve_days)
-        cutoff_str = cutoff.isoformat() + "Z"
-
-        old_events = [e for e in events if e.get("ts", "") < cutoff_str]
-        handoff_events = [e for e in events if e.get("event", "").startswith("handoff.")]
-        recent_events = [e for e in events if e.get("ts", "") >= cutoff_str]
-
-        print(f"\nAnalysis:")
-        print(f"  Total events: {len(events)}")
-        print(f"  Old events (would compact): {len(old_events)}")
-        print(f"  Recent events (would keep): {len(recent_events)}")
-        print(f"  Handoff events: {len(handoff_events)}")
-        return 0
-
-    result = EventLog.compact_events(
-        manager.events_dir,
-        preserve_handoffs=preserve_handoffs,
-        preserve_days=preserve_days,
-    )
-
-    if result.get("error"):
-        print(f"Error: {result['error']}")
-        return 1
-
-    if result.get("status") == "nothing_to_compact":
-        print("Nothing to compact - all events are recent.")
-        return 0
-
-    print("Event compaction complete:")
-    print(f"  Nodes written: {result.get('nodes_written', 0)}")
-    print(f"  Edges written: {result.get('edges_written', 0)}")
-    print(f"  Handoffs preserved: {result.get('handoffs_preserved', 0)}")
-    print(f"  Files removed: {result.get('files_removed', 0)}")
-    print(f"  Compact file: {result.get('compact_file', '?')}")
-    print(f"\n  Original events: {result.get('original_event_count', 0)}")
-    print(f"  Old events consolidated: {result.get('old_events_consolidated', 0)}")
-    print(f"  Recent events kept: {result.get('recent_events_kept', 0)}")
-
+    DEPRECATED: This command is for the legacy event-sourced backend.
+    The TX backend uses entity files in .got/entities/ which don't need compaction.
+    """
+    print("The 'compact' command is deprecated.")
+    print("The TX backend stores entities directly in .got/entities/ and doesn't use event logs.")
+    print("No compaction is needed.")
     return 0
 
 
-def cmd_export(args, manager: "GoTProjectManager") -> int:
+def cmd_export(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got export' command."""
     from pathlib import Path
 
@@ -403,7 +343,7 @@ def setup_query_parser(subparsers) -> None:
     export_parser.add_argument("--output", "-o", help="Output file")
 
 
-def handle_query_commands(args, manager: "GoTProjectManager") -> int:
+def handle_query_commands(args, manager: "TransactionalGoTAdapter") -> int:
     """
     Route query-related commands to appropriate handlers.
 

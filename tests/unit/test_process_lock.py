@@ -248,13 +248,13 @@ class TestProcessLockErrorHandling:
 
 
 class TestGoTManagerLocking:
-    """Test GoTProjectManager with locking."""
+    """Test TransactionalGoTAdapter with locking."""
 
     def test_manager_uses_lock_for_mutations(self, tmp_path):
-        """GoTProjectManager should use lock for graph mutations."""
-        from got_utils import GoTProjectManager
+        """TransactionalGoTAdapter should use lock for graph mutations."""
+        from got_utils import GoTBackendFactory
 
-        manager = GoTProjectManager(got_dir=tmp_path)
+        manager = GoTBackendFactory.create(got_dir=tmp_path)
 
         # Create task should acquire lock
         task_id = manager.create_task("Test task", priority="high")
@@ -266,9 +266,9 @@ class TestGoTManagerLocking:
 
     def test_manager_lock_file_location(self, tmp_path):
         """Manager should create lock file in got_dir."""
-        from got_utils import GoTProjectManager
+        from got_utils import GoTBackendFactory
 
-        manager = GoTProjectManager(got_dir=tmp_path)
+        manager = GoTBackendFactory.create(got_dir=tmp_path)
         manager.create_task("Test", priority="high")
 
         lock_file = tmp_path / ".got.lock"

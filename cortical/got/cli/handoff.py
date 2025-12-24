@@ -14,27 +14,22 @@ import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from scripts.got_utils import GoTProjectManager, EventLog, HandoffManager
+    from scripts.got_utils import TransactionalGoTAdapter
 
 
 # =============================================================================
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_handoff_initiate(args, manager: "GoTProjectManager") -> int:
+def cmd_handoff_initiate(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got handoff initiate' command."""
-    # Import here to avoid circular imports
-    from scripts.got_utils import EventLog, HandoffManager
-
     task = manager.get_task(args.task_id)
     if not task:
         print(f"Task not found: {args.task_id}")
         return 1
 
-    # Create EventLog from events_dir (works with both legacy and transactional adapters)
-    event_log = EventLog(manager.events_dir)
-    handoff_mgr = HandoffManager(event_log)
-    handoff_id = handoff_mgr.initiate_handoff(
+    # Use manager's handoff method (works with TX backend)
+    handoff_id = manager.initiate_handoff(
         source_agent=args.source,
         target_agent=args.target,
         task_id=args.task_id,
@@ -54,40 +49,42 @@ def cmd_handoff_initiate(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_handoff_accept(args, manager: "GoTProjectManager") -> int:
+def cmd_handoff_accept(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got handoff accept' command."""
-    from scripts.got_utils import EventLog, HandoffManager
-
-    event_log = EventLog(manager.events_dir)
-    handoff_mgr = HandoffManager(event_log)
-    handoff_mgr.accept_handoff(
+    # Use manager's handoff method (works with TX backend)
+    success = manager.accept_handoff(
         handoff_id=args.handoff_id,
         agent=args.agent,
         acknowledgment=args.message,
     )
+
+    if not success:
+        print(f"Failed to accept handoff: {args.handoff_id}")
+        return 1
 
     print(f"Handoff accepted: {args.handoff_id}")
     print(f"  Agent: {args.agent}")
     return 0
 
 
-def cmd_handoff_complete(args, manager: "GoTProjectManager") -> int:
+def cmd_handoff_complete(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got handoff complete' command."""
-    from scripts.got_utils import EventLog, HandoffManager
-
     try:
         result = json.loads(args.result)
     except json.JSONDecodeError:
         result = {"message": args.result}
 
-    event_log = EventLog(manager.events_dir)
-    handoff_mgr = HandoffManager(event_log)
-    handoff_mgr.complete_handoff(
+    # Use manager's handoff method (works with TX backend)
+    success = manager.complete_handoff(
         handoff_id=args.handoff_id,
         agent=args.agent,
         result=result,
         artifacts=args.artifacts or [],
     )
+
+    if not success:
+        print(f"Failed to complete handoff: {args.handoff_id}")
+        return 1
 
     print(f"Handoff completed: {args.handoff_id}")
     print(f"  Agent: {args.agent}")
@@ -95,15 +92,10 @@ def cmd_handoff_complete(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_handoff_list(args, manager: "GoTProjectManager") -> int:
+def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got handoff list' command."""
-    from scripts.got_utils import EventLog, HandoffManager
-
-    events = EventLog.load_all_events(manager.events_dir)
-    handoffs = HandoffManager.load_handoffs_from_events(events)
-
-    if args.status:
-        handoffs = [h for h in handoffs if h.get("status") == args.status]
+    # Use manager's handoff method (works with TX backend)
+    handoffs = manager.list_handoffs(status=args.status)
 
     if not handoffs:
         print("No handoffs found.")
@@ -195,7 +187,7 @@ def setup_handoff_parser(subparsers) -> None:
     )
 
 
-def handle_handoff_command(args, manager: "GoTProjectManager") -> int:
+def handle_handoff_command(args, manager: "TransactionalGoTAdapter") -> int:
     """
     Route handoff subcommand to appropriate handler.
 

@@ -30,8 +30,7 @@ from cortical.reasoning.thought_graph import ThoughtGraph
 # Import after path setup
 import got_utils
 from got_utils import (
-    GoTProjectManager,
-    EventLog,
+    GoTBackendFactory,
     cmd_task_create,
     cmd_task_list,
     cmd_task_show,
@@ -82,8 +81,13 @@ def temp_got_dir():
 
 @pytest.fixture
 def mock_manager(temp_got_dir):
-    """Create a mock GoTProjectManager with pre-configured behavior."""
-    manager = Mock(spec=GoTProjectManager)
+    """Create a mock GoTProjectManager with pre-configured behavior.
+
+    Note: We don't use spec=GoTProjectManager because the TX backend
+    (TransactionalGoTAdapter) adds additional methods like initiate_handoff,
+    accept_handoff, complete_handoff, and list_handoffs.
+    """
+    manager = MagicMock()
     manager.got_dir = temp_got_dir
     manager.events_dir = temp_got_dir / "events"
     manager.events_dir.mkdir(parents=True, exist_ok=True)
@@ -94,11 +98,17 @@ def mock_manager(temp_got_dir):
     # Mock event log
     manager.event_log = Mock()
 
-    # Default return values
+    # Default return values for standard operations
     manager.save.return_value = None
     manager.create_task.return_value = "task:T-20251220-120000-abc123"
     manager.create_sprint.return_value = "sprint:S-001"
     manager.log_decision.return_value = "decision:D-20251220-120000-def456"
+
+    # Default return values for handoff operations (TX backend)
+    manager.initiate_handoff.return_value = "H-20251220-120000-abc123"
+    manager.accept_handoff.return_value = True
+    manager.complete_handoff.return_value = True
+    manager.list_handoffs.return_value = []
 
     return manager
 
@@ -844,7 +854,10 @@ class TestDecisionWhy:
 
 
 class TestHandoffInitiate:
-    """Tests for handoff initiate command."""
+    """Tests for handoff initiate command.
+
+    Updated to use manager methods (TX backend) instead of EventLog/HandoffManager.
+    """
 
     def test_initiate_handoff_basic(self, mock_manager, mock_args):
         """Initiate a basic handoff."""
@@ -860,19 +873,16 @@ class TestHandoffInitiate:
         task.properties = {"status": "pending", "priority": "high"}
 
         mock_manager.get_task.return_value = task
+        mock_manager.initiate_handoff.return_value = "handoff:H-001"
 
-        with patch('got_utils.HandoffManager') as MockHandoffMgr:
-            mock_handoff_mgr = Mock()
-            mock_handoff_mgr.initiate_handoff.return_value = "handoff:H-001"
-            MockHandoffMgr.return_value = mock_handoff_mgr
-
-            with patch('sys.stdout', new=StringIO()) as captured:
-                result = cmd_handoff_initiate(mock_args, mock_manager)
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_initiate(mock_args, mock_manager)
 
         assert result == 0
         output = captured.getvalue()
-        assert "handoff:H-001" in output
+        assert "handoff:H-001" in output or "H-001" in output
         assert "main" in output and "sub-agent-1" in output
+        mock_manager.initiate_handoff.assert_called_once()
 
     def test_initiate_handoff_nonexistent_task(self, mock_manager, mock_args):
         """Initiate handoff for nonexistent task fails."""
@@ -891,7 +901,10 @@ class TestHandoffInitiate:
 
 
 class TestHandoffAccept:
-    """Tests for handoff accept command."""
+    """Tests for handoff accept command.
+
+    Updated to use manager.accept_handoff() instead of HandoffManager.
+    """
 
     def test_accept_handoff(self, mock_manager, mock_args):
         """Accept a handoff."""
@@ -899,21 +912,41 @@ class TestHandoffAccept:
         mock_args.agent = "sub-agent-1"
         mock_args.message = "Acknowledged"
 
-        with patch('got_utils.HandoffManager') as MockHandoffMgr:
-            mock_handoff_mgr = Mock()
-            MockHandoffMgr.return_value = mock_handoff_mgr
+        mock_manager.accept_handoff.return_value = True
 
-            with patch('sys.stdout', new=StringIO()) as captured:
-                result = cmd_handoff_accept(mock_args, mock_manager)
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_accept(mock_args, mock_manager)
 
         assert result == 0
         output = captured.getvalue()
-        assert "handoff:H-001" in output
+        assert "H-001" in output
         assert "sub-agent-1" in output
+        mock_manager.accept_handoff.assert_called_once_with(
+            handoff_id="handoff:H-001",
+            agent="sub-agent-1",
+            acknowledgment="Acknowledged"
+        )
+
+    def test_accept_handoff_failure(self, mock_manager, mock_args):
+        """Accept handoff returns error on failure."""
+        mock_args.handoff_id = "handoff:H-NONEXISTENT"
+        mock_args.agent = "sub-agent-1"
+        mock_args.message = ""
+
+        mock_manager.accept_handoff.return_value = False
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_accept(mock_args, mock_manager)
+
+        assert result == 1
+        assert "Failed" in captured.getvalue()
 
 
 class TestHandoffComplete:
-    """Tests for handoff complete command."""
+    """Tests for handoff complete command.
+
+    Updated to use manager.complete_handoff() instead of HandoffManager.
+    """
 
     def test_complete_handoff_with_json_result(self, mock_manager, mock_args):
         """Complete a handoff with JSON result."""
@@ -922,17 +955,19 @@ class TestHandoffComplete:
         mock_args.result = '{"status": "done", "files": ["auth.py"]}'
         mock_args.artifacts = ["commit:abc123"]
 
-        with patch('got_utils.HandoffManager') as MockHandoffMgr:
-            mock_handoff_mgr = Mock()
-            MockHandoffMgr.return_value = mock_handoff_mgr
+        mock_manager.complete_handoff.return_value = True
 
-            with patch('sys.stdout', new=StringIO()) as captured:
-                result = cmd_handoff_complete(mock_args, mock_manager)
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_complete(mock_args, mock_manager)
 
         assert result == 0
         output = captured.getvalue()
-        assert "handoff:H-001" in output
+        assert "H-001" in output
         assert "done" in output
+        mock_manager.complete_handoff.assert_called_once()
+        # Verify JSON was parsed
+        call_kwargs = mock_manager.complete_handoff.call_args[1]
+        assert call_kwargs["result"] == {"status": "done", "files": ["auth.py"]}
 
     def test_complete_handoff_with_invalid_json(self, mock_manager, mock_args):
         """Complete a handoff with invalid JSON falls back to message."""
@@ -941,30 +976,50 @@ class TestHandoffComplete:
         mock_args.result = "Task completed successfully"
         mock_args.artifacts = None
 
-        with patch('got_utils.HandoffManager') as MockHandoffMgr:
-            mock_handoff_mgr = Mock()
-            MockHandoffMgr.return_value = mock_handoff_mgr
+        mock_manager.complete_handoff.return_value = True
 
-            with patch('sys.stdout', new=StringIO()) as captured:
-                result = cmd_handoff_complete(mock_args, mock_manager)
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_complete(mock_args, mock_manager)
 
         assert result == 0
+        # Verify plain text was wrapped in dict
+        call_kwargs = mock_manager.complete_handoff.call_args[1]
+        assert call_kwargs["result"] == {"message": "Task completed successfully"}
+
+    def test_complete_handoff_failure(self, mock_manager, mock_args):
+        """Complete handoff returns error on failure."""
+        mock_args.handoff_id = "handoff:H-001"
+        mock_args.agent = "sub-agent-1"
+        mock_args.result = "{}"
+        mock_args.artifacts = None
+
+        mock_manager.complete_handoff.return_value = False
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_complete(mock_args, mock_manager)
+
+        assert result == 1
+        assert "Failed" in captured.getvalue()
 
 
 class TestHandoffList:
-    """Tests for handoff list command."""
+    """Tests for handoff list command.
+
+    Updated to use manager.list_handoffs() instead of EventLog/HandoffManager.
+    """
 
     def test_list_handoffs_empty(self, mock_manager, mock_args):
         """List handoffs when none exist."""
         mock_args.status = None
 
-        with patch('got_utils.EventLog.load_all_events', return_value=[]):
-            with patch('got_utils.HandoffManager.load_handoffs_from_events', return_value=[]):
-                with patch('sys.stdout', new=StringIO()) as captured:
-                    result = cmd_handoff_list(mock_args, mock_manager)
+        mock_manager.list_handoffs.return_value = []
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_list(mock_args, mock_manager)
 
         assert result == 0
         assert "No handoffs" in captured.getvalue()
+        mock_manager.list_handoffs.assert_called_once_with(status=None)
 
     def test_list_handoffs_with_data(self, mock_manager, mock_args):
         """List handoffs when they exist."""
@@ -981,31 +1036,31 @@ class TestHandoffList:
             }
         ]
 
-        with patch('got_utils.EventLog.load_all_events', return_value=[]):
-            with patch('got_utils.HandoffManager.load_handoffs_from_events', return_value=handoffs):
-                with patch('sys.stdout', new=StringIO()) as captured:
-                    result = cmd_handoff_list(mock_args, mock_manager)
+        mock_manager.list_handoffs.return_value = handoffs
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_list(mock_args, mock_manager)
 
         assert result == 0
         output = captured.getvalue()
-        assert "handoff:H-001" in output
+        assert "H-001" in output
         assert "main → sub-agent-1" in output
 
     def test_list_handoffs_filtered_by_status(self, mock_manager, mock_args):
         """List handoffs filtered by status."""
         mock_args.status = "initiated"
 
-        all_handoffs = [
-            {"id": "H-001", "status": "initiated"},
-            {"id": "H-002", "status": "completed"},
+        filtered_handoffs = [
+            {"id": "H-001", "status": "initiated", "source_agent": "main", "target_agent": "sub-agent-1"},
         ]
 
-        with patch('got_utils.EventLog.load_all_events', return_value=[]):
-            with patch('got_utils.HandoffManager.load_handoffs_from_events', return_value=all_handoffs):
-                with patch('sys.stdout', new=StringIO()) as captured:
-                    result = cmd_handoff_list(mock_args, mock_manager)
+        mock_manager.list_handoffs.return_value = filtered_handoffs
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_list(mock_args, mock_manager)
 
         assert result == 0
+        mock_manager.list_handoffs.assert_called_once_with(status="initiated")
 
 
 # =============================================================================
@@ -1381,248 +1436,16 @@ class TestCLIIntegration:
 
 
 # =============================================================================
-# REBUILD TELEMETRY TESTS
+# DEPRECATED TEST CLASSES REMOVED
 # =============================================================================
-
-
-class TestRebuildTelemetry:
-    """
-    Unit tests for rebuild_graph_from_events telemetry feature.
-
-    Task T-20251221-020047-ecf6: Add rebuild validation with telemetry.
-    These tests verify that edge counts are validated after event replay.
-    """
-
-    def test_rebuild_returns_telemetry(self, temp_got_dir):
-        """Rebuild should return telemetry with graph and stats."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Task 1"}, "meta": {}},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-
-        # Should return a dict with graph and telemetry
-        assert isinstance(result, dict), "with_telemetry=True should return dict"
-        assert "graph" in result, "Result should contain 'graph'"
-        assert "telemetry" in result, "Result should contain 'telemetry'"
-        assert isinstance(result["graph"], ThoughtGraph), "graph should be ThoughtGraph"
-
-    def test_telemetry_counts_nodes_created(self, temp_got_dir):
-        """Telemetry should count nodes created."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Task 1"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "Task 2"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:02Z", "event": "node.create", "id": "task:T-003", "type": "TASK", "data": {"title": "Task 3"}, "meta": {}},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["nodes_created"] == 3, "Should count 3 nodes created"
-        assert telemetry["node_create_events"] == 3, "Should count 3 node.create events"
-
-    def test_telemetry_counts_edges_created(self, temp_got_dir):
-        """Telemetry should count edges created vs edge events."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Source"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "Target"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:02Z", "event": "edge.create", "src": "task:T-001", "tgt": "task:T-002", "type": "DEPENDS_ON", "weight": 1.0},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["edge_create_events"] == 1, "Should count 1 edge.create event"
-        assert telemetry["edges_created"] == 1, "Should count 1 edge created"
-        assert telemetry["edges_skipped"] == 0, "No edges should be skipped"
-
-    def test_telemetry_tracks_skipped_edges(self, temp_got_dir):
-        """Telemetry should track edges skipped due to missing nodes."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Source"}, "meta": {}},
-            # T-002 NOT created - edge should be skipped
-            {"ts": "2025-01-01T00:00:01Z", "event": "edge.create", "src": "task:T-001", "tgt": "task:T-002", "type": "DEPENDS_ON", "weight": 1.0},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["edge_create_events"] == 1, "Should count 1 edge.create event"
-        assert telemetry["edges_created"] == 0, "No edges should be created (target missing)"
-        assert telemetry["edges_skipped"] == 1, "1 edge should be skipped"
-
-    def test_telemetry_edge_validation_passes(self, temp_got_dir):
-        """Telemetry should validate: edges_created == edges expected (no skips)."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "A"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "B"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:02Z", "event": "edge.create", "src": "task:T-001", "tgt": "task:T-002", "type": "DEPENDS_ON", "weight": 1.0},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["validation_passed"] is True, "Validation should pass when all edges created"
-
-    def test_telemetry_edge_validation_fails_on_skips(self, temp_got_dir):
-        """Telemetry should fail validation when edges are skipped."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "A"}, "meta": {}},
-            # Missing target node
-            {"ts": "2025-01-01T00:00:01Z", "event": "edge.create", "src": "task:T-001", "tgt": "task:T-MISSING", "type": "DEPENDS_ON", "weight": 1.0},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["validation_passed"] is False, "Validation should fail when edges skipped"
-        assert len(telemetry["validation_errors"]) > 0, "Should have validation errors"
-
-    def test_telemetry_tracks_comma_split_edges(self, temp_got_dir):
-        """Telemetry should correctly count edges from comma-separated IDs."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "S"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "T1"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:02Z", "event": "node.create", "id": "task:T-003", "type": "TASK", "data": {"title": "T2"}, "meta": {}},
-            {
-                "ts": "2025-01-01T00:00:03Z",
-                "event": "edge.create",
-                "src": "task:T-001",
-                "tgt": "task:T-002,task:T-003",  # Comma-separated
-                "type": "DEPENDS_ON",
-                "weight": 1.0
-            },
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["edge_create_events"] == 1, "Should count 1 edge.create event"
-        assert telemetry["edges_created"] == 2, "Should create 2 edges from comma-split"
-
-    def test_telemetry_tracks_errors(self, temp_got_dir):
-        """Telemetry should track processing errors."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create"},  # Missing required fields
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["errors"] > 0, "Should count errors"
-
-    def test_backward_compatible_without_telemetry(self, temp_got_dir):
-        """Default behavior (no telemetry flag) returns just the graph."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Task 1"}, "meta": {}},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events)
-
-        # Should return just the graph (backward compatible)
-        assert isinstance(result, ThoughtGraph), "Default should return ThoughtGraph directly"
-
-    def test_telemetry_summary_string(self, temp_got_dir):
-        """Telemetry should include a human-readable summary."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Task 1"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "Task 2"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:02Z", "event": "edge.create", "src": "task:T-001", "tgt": "task:T-002", "type": "DEPENDS_ON", "weight": 1.0},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert "summary" in telemetry, "Telemetry should include summary"
-        assert "nodes" in telemetry["summary"].lower(), "Summary should mention nodes"
-        assert "edges" in telemetry["summary"].lower(), "Summary should mention edges"
-
-
-class TestDecisionNodeType:
-    """
-    Unit tests for decision node type handling in rebuild_graph_from_events.
-
-    Bug fix: Decisions were being created with NodeType.CONTEXT instead of
-    NodeType.DECISION, causing the dashboard to show "Decisions: 0" despite
-    19 decision events in the event log.
-    """
-
-    def test_decision_create_uses_decision_nodetype(self, temp_got_dir):
-        """decision.create events should create nodes with NodeType.DECISION."""
-        events = [
-            {
-                "ts": "2025-01-01T00:00:00Z",
-                "event": "decision.create",
-                "id": "decision:D-001",
-                "decision": "Use TDD for all changes",
-                "rationale": "Improves code quality",
-                "affects": [],
-                "alternatives": [],
-            }
-        ]
-
-        graph = EventLog.rebuild_graph_from_events(events)
-
-        assert "decision:D-001" in graph.nodes, "Decision node should exist"
-        node = graph.nodes["decision:D-001"]
-        assert node.node_type == NodeType.DECISION, \
-            f"Node type should be DECISION, got {node.node_type}"
-
-    def test_decision_count_in_rebuilt_graph(self, temp_got_dir):
-        """Multiple decisions should all have NodeType.DECISION."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "decision.create", "id": "decision:D-001",
-             "decision": "Decision 1", "rationale": "Reason 1", "affects": [], "alternatives": []},
-            {"ts": "2025-01-01T00:00:01Z", "event": "decision.create", "id": "decision:D-002",
-             "decision": "Decision 2", "rationale": "Reason 2", "affects": [], "alternatives": []},
-            {"ts": "2025-01-01T00:00:02Z", "event": "decision.create", "id": "decision:D-003",
-             "decision": "Decision 3", "rationale": "Reason 3", "affects": [], "alternatives": []},
-        ]
-
-        graph = EventLog.rebuild_graph_from_events(events)
-
-        decision_nodes = [n for n in graph.nodes.values() if n.node_type == NodeType.DECISION]
-        assert len(decision_nodes) == 3, f"Should have 3 DECISION nodes, got {len(decision_nodes)}"
-
-    def test_decision_affects_creates_motivates_edges(self, temp_got_dir):
-        """Decisions with 'affects' should create MOTIVATES edges."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001",
-             "type": "TASK", "data": {"title": "Task 1"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:01Z", "event": "decision.create", "id": "decision:D-001",
-             "decision": "Choose approach A", "rationale": "Faster",
-             "affects": ["task:T-001"], "alternatives": []},
-        ]
-
-        graph = EventLog.rebuild_graph_from_events(events)
-
-        # Decision should exist with correct type
-        assert graph.nodes["decision:D-001"].node_type == NodeType.DECISION
-
-        # Should have MOTIVATES edge from decision to task
-        motivates_edges = [e for e in graph.edges
-                          if e.source_id == "decision:D-001" and e.edge_type == EdgeType.MOTIVATES]
-        assert len(motivates_edges) == 1, "Should have 1 MOTIVATES edge"
-        assert motivates_edges[0].target_id == "task:T-001"
-
-    def test_decision_content_preserved(self, temp_got_dir):
-        """Decision content and rationale should be preserved in node."""
-        events = [
-            {
-                "ts": "2025-01-01T00:00:00Z",
-                "event": "decision.create",
-                "id": "decision:D-001",
-                "decision": "Use event sourcing",
-                "rationale": "Better for concurrency",
-                "affects": [],
-                "alternatives": ["Use CRUD", "Use state machine"],
-            }
-        ]
-
-        graph = EventLog.rebuild_graph_from_events(events)
-        node = graph.nodes["decision:D-001"]
-
-        assert "event sourcing" in node.content.lower(), "Decision content should be in node"
+# The following test classes were removed as they tested deprecated EventLog
+# functionality (rebuild_graph_from_events) which is no longer supported:
+# - TestRebuildTelemetry (tests for T-20251221-020047-ecf6)
+# - TestDecisionNodeType (tests for decision handling in event replay)
+#
+# The TX backend stores entities directly in .got/entities/ and doesn't use
+# event replay. See TransactionalGoTAdapter for the current implementation.
+# =============================================================================
 
 
 class TestAutoTaskHook:
@@ -1716,7 +1539,7 @@ class TestTaskNextCommand:
 
     def test_next_returns_highest_priority_pending(self, temp_got_dir):
         """Should return high priority task before medium/low."""
-        manager = GoTProjectManager(got_dir=temp_got_dir)
+        manager = GoTBackendFactory.create(got_dir=temp_got_dir)
 
         # Create tasks with different priorities
         low_id = manager.create_task("Low priority task", priority="low")
@@ -1731,7 +1554,7 @@ class TestTaskNextCommand:
 
     def test_next_skips_in_progress_tasks(self, temp_got_dir):
         """Should skip tasks that are already in progress."""
-        manager = GoTProjectManager(got_dir=temp_got_dir)
+        manager = GoTBackendFactory.create(got_dir=temp_got_dir)
 
         high_id = manager.create_task("In progress task", priority="high")
         manager.start_task(high_id)
@@ -1744,7 +1567,7 @@ class TestTaskNextCommand:
 
     def test_next_skips_completed_tasks(self, temp_got_dir):
         """Should skip completed tasks."""
-        manager = GoTProjectManager(got_dir=temp_got_dir)
+        manager = GoTBackendFactory.create(got_dir=temp_got_dir)
 
         high_id = manager.create_task("Completed task", priority="high")
         manager.start_task(high_id)
@@ -1758,11 +1581,11 @@ class TestTaskNextCommand:
 
     def test_next_skips_blocked_tasks(self, temp_got_dir):
         """Should skip tasks that are blocked."""
-        manager = GoTProjectManager(got_dir=temp_got_dir)
+        manager = GoTBackendFactory.create(got_dir=temp_got_dir)
 
         blocker_id = manager.create_task("Blocker task", priority="high")
         blocked_id = manager.create_task("Blocked task", priority="high")
-        manager.block_task(blocked_id, reason="Depends on blocker", blocker_id=blocker_id)
+        manager.block_task(blocked_id, reason="Depends on blocker", blocked_by=blocker_id)
 
         unblocked_id = manager.create_task("Unblocked task", priority="medium")
 
@@ -1774,7 +1597,7 @@ class TestTaskNextCommand:
 
     def test_next_returns_none_when_no_pending(self, temp_got_dir):
         """Should return None when no pending tasks exist."""
-        manager = GoTProjectManager(got_dir=temp_got_dir)
+        manager = GoTBackendFactory.create(got_dir=temp_got_dir)
 
         # Create and complete a task
         task_id = manager.create_task("Done task", priority="high")
@@ -1787,7 +1610,7 @@ class TestTaskNextCommand:
 
     def test_next_returns_oldest_within_same_priority(self, temp_got_dir):
         """When priority is equal, should return oldest task first."""
-        manager = GoTProjectManager(got_dir=temp_got_dir)
+        manager = GoTBackendFactory.create(got_dir=temp_got_dir)
 
         first_id = manager.create_task("First high task", priority="high")
         second_id = manager.create_task("Second high task", priority="high")

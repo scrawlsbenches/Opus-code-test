@@ -293,38 +293,42 @@ class TestCmdValidate:
         return manager
 
     def test_validate_healthy(self, mock_manager, capsys):
-        """Test validate command with healthy graph."""
+        """Test validate command with healthy graph.
+
+        Note: The validate command no longer compares event log edges vs TX entity
+        edges, since these are separate systems. It now just validates the graph
+        structure and counts entity files.
+        """
         args = Namespace()
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.load_all_events.return_value = [
-                {"event": "node.create"},
-                {"event": "edge.create"},
-            ]
-            result = cmd_validate(args, mock_manager)
+        # Mock got_dir for entity file counting
+        mock_manager.got_dir = MagicMock()
+        mock_manager.got_dir.__truediv__ = MagicMock(return_value=MagicMock())
+        mock_manager.got_dir.__truediv__.return_value.exists.return_value = False
+
+        result = cmd_validate(args, mock_manager)
 
         assert result == 0
         captured = capsys.readouterr()
         assert "HEALTHY" in captured.out
-        assert "Nodes: 2" in captured.out
-        assert "Tasks: 2" in captured.out
+        assert "Tasks:" in captured.out
 
-    def test_validate_edge_discrepancy(self, mock_manager, capsys):
-        """Test validate with edge discrepancy."""
+    def test_validate_shows_statistics(self, mock_manager, capsys):
+        """Test validate command shows graph statistics."""
         args = Namespace()
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            # Create events that suggest more edges should exist
-            mock_event_log.load_all_events.return_value = [
-                {"event": "edge.create"},
-                {"event": "edge.create"},
-                {"event": "edge.create"},
-            ]
-            result = cmd_validate(args, mock_manager)
+        # Mock got_dir for entity file counting
+        mock_manager.got_dir = MagicMock()
+        mock_manager.got_dir.__truediv__ = MagicMock(return_value=MagicMock())
+        mock_manager.got_dir.__truediv__.return_value.exists.return_value = False
 
-        # Should detect discrepancy
+        result = cmd_validate(args, mock_manager)
+
+        assert result == 0
         captured = capsys.readouterr()
-        assert "EDGE DISCREPANCY" in captured.out or "edge loss" in captured.out
+        # Should show statistics section
+        assert "STATISTICS" in captured.out
+        assert "Edge density" in captured.out
 
     def test_validate_high_orphan_rate(self, mock_manager, capsys):
         """Test validate with high orphan rate."""
@@ -332,15 +336,18 @@ class TestCmdValidate:
         mock_manager.graph.nodes = {f"T-{i:03d}": MagicMock() for i in range(100)}
         mock_manager.graph.edges = []  # No edges
 
+        # Mock got_dir for entity file counting
+        mock_manager.got_dir = MagicMock()
+        mock_manager.got_dir.__truediv__ = MagicMock(return_value=MagicMock())
+        mock_manager.got_dir.__truediv__.return_value.exists.return_value = False
+
         args = Namespace()
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.load_all_events.return_value = []
-            result = cmd_validate(args, mock_manager)
+        result = cmd_validate(args, mock_manager)
 
         # Should detect high orphan rate
         captured = capsys.readouterr()
-        assert "ORPHAN RATE" in captured.out or "orphan rate" in captured.out
+        assert "orphan rate" in captured.out.lower()
 
 
 class TestCmdInfer:
@@ -398,88 +405,8 @@ class TestCmdInfer:
         assert "No task references found" in captured.out
 
 
-class TestCmdCompact:
-    """Tests for cmd_compact function."""
-
-    @pytest.fixture
-    def mock_manager(self):
-        """Create a mock manager."""
-        manager = MagicMock()
-        manager.events_dir = "/fake/events"
-        return manager
-
-    def test_compact_dry_run(self, mock_manager, capsys):
-        """Test compact command in dry run mode."""
-        args = Namespace(dry_run=True, preserve_days=7, no_preserve_handoffs=False)
-
-        mock_now = datetime(2025, 12, 23, 12, 0, 0)
-
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            with patch('cortical.got.cli.query.datetime') as mock_dt:
-                mock_dt.utcnow.return_value = mock_now
-                mock_event_log.load_all_events.return_value = [
-                    {"event": "node.create", "ts": "2025-12-16T12:00:00Z"},  # Old
-                    {"event": "node.create", "ts": "2025-12-22T12:00:00Z"},  # Recent
-                    {"event": "handoff.initiate", "ts": "2025-12-15T12:00:00Z"},  # Handoff
-                ]
-                result = cmd_compact(args, mock_manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "Dry run" in captured.out
-        assert "Total events: 3" in captured.out
-
-    def test_compact_success(self, mock_manager, capsys):
-        """Test compact command success."""
-        args = Namespace(dry_run=False, preserve_days=7, no_preserve_handoffs=False)
-
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.compact_events.return_value = {
-                "status": "success",
-                "nodes_written": 10,
-                "edges_written": 20,
-                "handoffs_preserved": 2,
-                "files_removed": 5,
-                "compact_file": "compact.jsonl",
-                "original_event_count": 100,
-                "old_events_consolidated": 80,
-                "recent_events_kept": 20,
-            }
-            result = cmd_compact(args, mock_manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "Event compaction complete" in captured.out
-        assert "Nodes written: 10" in captured.out
-        assert "Edges written: 20" in captured.out
-
-    def test_compact_nothing_to_compact(self, mock_manager, capsys):
-        """Test compact with nothing to compact."""
-        args = Namespace(dry_run=False, preserve_days=7, no_preserve_handoffs=False)
-
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.compact_events.return_value = {
-                "status": "nothing_to_compact",
-            }
-            result = cmd_compact(args, mock_manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "Nothing to compact" in captured.out
-
-    def test_compact_error(self, mock_manager, capsys):
-        """Test compact with error."""
-        args = Namespace(dry_run=False, preserve_days=7, no_preserve_handoffs=False)
-
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.compact_events.return_value = {
-                "error": "Failed to compact",
-            }
-            result = cmd_compact(args, mock_manager)
-
-        assert result == 1
-        captured = capsys.readouterr()
-        assert "Error: Failed to compact" in captured.out
+# TestCmdCompact removed - tests deprecated cmd_compact function
+# The TX backend stores entities directly in .got/entities/ and doesn't use event logs
 
 
 class TestCmdExport:
@@ -585,55 +512,55 @@ class TestCmdValidateEdgeCases:
 
         return manager
 
-    def test_validate_edge_loss_warning(self, mock_manager, capsys):
-        """Test validate with minor edge loss (between -10% and -5%)."""
+    def test_validate_low_edge_density(self, mock_manager, capsys):
+        """Test validate with low edge density.
+
+        Note: Edge discrepancy tests (edge loss/surplus) removed because:
+        - The validate command no longer compares event log vs TX entity edges
+        - These are separate systems with different lifecycles
+        - Previous false positives were causing confusion
+        """
+        # Create 20 nodes with just 1 edge → low density
+        mock_manager.graph.nodes = {f"T-{i:03d}": MagicMock() for i in range(20)}
+        edge1 = MagicMock()
+        edge1.source_id = "T-000"
+        edge1.target_id = "T-001"
+        mock_manager.graph.edges = [edge1]
+
+        # Mock got_dir for entity file counting
+        mock_manager.got_dir = MagicMock()
+        mock_manager.got_dir.__truediv__ = MagicMock(return_value=MagicMock())
+        mock_manager.got_dir.__truediv__.return_value.exists.return_value = False
+
         args = Namespace()
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            # Create events suggesting 2 edges should exist (actual is 1)
-            # This is a -50% discrepancy, but we need -6% to hit the warning path
-            # Expected edges = 17, actual = 16 → -5.88% (within warning range)
-            mock_event_log.load_all_events.return_value = [
-                {"event": "edge.create"} for _ in range(17)
-            ]
-            # Set actual edges to 16
-            mock_manager.graph.edges = [MagicMock() for _ in range(16)]
-            for i, edge in enumerate(mock_manager.graph.edges):
-                edge.source_id = f"T-{i}"
-                edge.target_id = f"T-{i+1}"
+        result = cmd_validate(args, mock_manager)
 
-            result = cmd_validate(args, mock_manager)
-
-        # Should have warning, not issue
         captured = capsys.readouterr()
-        assert "edge loss" in captured.out or "Minor edge loss" in captured.out
+        # Should detect low edge density warning
+        assert "edge density" in captured.out.lower() or "Low edge density" in captured.out
 
-    def test_validate_edge_surplus_warning(self, mock_manager, capsys):
-        """Test validate with edge surplus (between +5% and +10%)."""
+    def test_validate_returns_zero_on_warnings(self, mock_manager, capsys):
+        """Test that warnings don't cause validate to return non-zero."""
+        # Create nodes with no edges (warnings but not errors)
+        mock_manager.graph.nodes = {f"T-{i:03d}": MagicMock() for i in range(5)}
+        mock_manager.graph.edges = []
+
+        # Mock got_dir for entity file counting
+        mock_manager.got_dir = MagicMock()
+        mock_manager.got_dir.__truediv__ = MagicMock(return_value=MagicMock())
+        mock_manager.got_dir.__truediv__.return_value.exists.return_value = False
+
         args = Namespace()
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            # Expected edges = 10, actual = 11 → +10% (within surplus range)
-            mock_event_log.load_all_events.return_value = [
-                {"event": "edge.create"} for _ in range(10)
-            ]
-            # Set actual edges to 11
-            mock_manager.graph.edges = [MagicMock() for _ in range(11)]
-            for i, edge in enumerate(mock_manager.graph.edges):
-                edge.source_id = f"T-{i}"
-                edge.target_id = f"T-{i+1}"
+        result = cmd_validate(args, mock_manager)
 
-            result = cmd_validate(args, mock_manager)
-
-        # Should have warning about surplus
-        captured = capsys.readouterr()
-        assert "surplus" in captured.out or "Edge surplus" in captured.out
+        # Warnings shouldn't cause failure
+        assert result == 0
 
     def test_validate_moderate_orphan_rate(self, mock_manager, capsys):
         """Test validate with moderate orphan rate (between 25% and 50%)."""
-        # Create 10 nodes with 3 edges → 4 connected nodes, 6 orphans → 60% orphan rate
-        # Actually, let's do 10 nodes, 5 edges connecting 8 nodes → 2 orphans = 20%
-        # Need 30% orphan rate: 10 nodes, 3 edges connecting 6 nodes → 4 orphans = 40%
+        # Create 10 nodes with 3 edges → 6 connected nodes, 4 orphans → 40% orphan rate
         mock_manager.graph.nodes = {f"T-{i:03d}": MagicMock() for i in range(10)}
 
         # Create 3 edges connecting 6 nodes
@@ -645,15 +572,18 @@ class TestCmdValidateEdgeCases:
             edges.append(edge)
         mock_manager.graph.edges = edges
 
+        # Mock got_dir for entity file counting
+        mock_manager.got_dir = MagicMock()
+        mock_manager.got_dir.__truediv__ = MagicMock(return_value=MagicMock())
+        mock_manager.got_dir.__truediv__.return_value.exists.return_value = False
+
         args = Namespace()
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.load_all_events.return_value = []
-            result = cmd_validate(args, mock_manager)
+        result = cmd_validate(args, mock_manager)
 
         # Should have warning for moderate orphan rate (40% is between 25% and 50%)
         captured = capsys.readouterr()
-        assert "Moderate orphan rate" in captured.out or "orphan rate" in captured.out
+        assert "Moderate orphan rate" in captured.out or "orphan rate" in captured.out.lower()
 
 
 class TestSetupQueryParser:
@@ -789,19 +719,16 @@ class TestHandleQueryCommands:
 
         assert result == 0
 
-    def test_handle_validate_command(self, mock_manager):
+    def test_handle_validate_command(self, mock_manager, tmp_path):
         """Test handle_query_commands routes to cmd_validate."""
         from cortical.got.cli.query import handle_query_commands
-        from cortical.reasoning.graph_of_thought import NodeType
 
         mock_manager.graph.nodes = {}
         mock_manager.graph.edges = []
-        mock_manager.events_dir = "/fake/events"
+        mock_manager.got_dir = tmp_path
         args = Namespace(command="validate")
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.load_all_events.return_value = []
-            result = handle_query_commands(args, mock_manager)
+        result = handle_query_commands(args, mock_manager)
 
         assert result == 0
 
@@ -817,18 +744,17 @@ class TestHandleQueryCommands:
         assert result == 0
         mock_manager.infer_edges_from_recent_commits.assert_called_once()
 
-    def test_handle_compact_command(self, mock_manager):
-        """Test handle_query_commands routes to cmd_compact."""
+    def test_handle_compact_command(self, mock_manager, capsys):
+        """Test handle_query_commands routes to cmd_compact (deprecated)."""
         from cortical.got.cli.query import handle_query_commands
 
-        mock_manager.events_dir = "/fake/events"
         args = Namespace(command="compact", dry_run=False, preserve_days=7, no_preserve_handoffs=False)
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.compact_events.return_value = {"status": "nothing_to_compact"}
-            result = handle_query_commands(args, mock_manager)
+        result = handle_query_commands(args, mock_manager)
 
         assert result == 0
+        captured = capsys.readouterr()
+        assert "deprecated" in captured.out.lower()
 
     def test_handle_export_command(self, mock_manager):
         """Test handle_query_commands routes to cmd_export."""
