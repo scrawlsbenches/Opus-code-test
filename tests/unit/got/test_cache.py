@@ -404,3 +404,137 @@ class TestBatchLoading:
 
         counts = manager_with_entities.load_all()
         assert counts['edges'] >= 2
+
+
+class TestCacheTTL:
+    """Test cache TTL (time-to-live) functionality."""
+
+    @pytest.fixture
+    def manager_with_task(self):
+        """Create a manager with one task."""
+        temp_dir = tempfile.mkdtemp()
+        got_dir = Path(temp_dir) / ".got"
+        manager = GoTManager(got_dir)
+
+        task = manager.create_task("Test task", priority="high")
+        manager.cache_clear()
+
+        yield manager, task.id
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_ttl_configuration(self, manager_with_task):
+        """TTL should be configurable."""
+        manager, _ = manager_with_task
+
+        manager.cache_configure(ttl=60.0)
+        stats = manager.cache_stats()
+        assert stats['ttl'] == 60.0
+
+    def test_ttl_not_expired(self, manager_with_task):
+        """Cache entry should be returned before TTL expires."""
+        manager, task_id = manager_with_task
+
+        manager.cache_configure(ttl=60.0)  # 60 second TTL
+
+        # First read populates cache
+        manager.find_tasks()
+
+        # Second read should hit cache (within TTL)
+        manager.find_tasks()
+
+        stats = manager.cache_stats()
+        assert stats['hits'] > 0
+
+    def test_ttl_expired(self, manager_with_task):
+        """Cache entry should be evicted after TTL expires."""
+        import time as time_module
+        manager, task_id = manager_with_task
+
+        manager.cache_configure(ttl=0.01)  # 10ms TTL
+
+        # First read populates cache
+        manager.find_tasks()
+        initial_misses = manager._cache_misses
+
+        # Wait for TTL to expire
+        time_module.sleep(0.05)  # 50ms
+
+        # Second read should miss cache (entry expired)
+        manager.find_tasks()
+
+        # Should have more misses now (expired entry not found)
+        assert manager._cache_misses > initial_misses
+
+
+class TestCacheLRU:
+    """Test cache LRU (least recently used) eviction."""
+
+    @pytest.fixture
+    def manager_with_tasks(self):
+        """Create a manager with multiple tasks."""
+        temp_dir = tempfile.mkdtemp()
+        got_dir = Path(temp_dir) / ".got"
+        manager = GoTManager(got_dir)
+
+        tasks = []
+        for i in range(10):
+            task = manager.create_task(f"Task {i}", priority="medium")
+            tasks.append(task)
+
+        manager.cache_clear()
+
+        yield manager, tasks
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_max_size_configuration(self, manager_with_tasks):
+        """Max size should be configurable."""
+        manager, _ = manager_with_tasks
+
+        manager.cache_configure(max_size=5)
+        stats = manager.cache_stats()
+        assert stats['max_size'] == 5
+
+    def test_max_size_enforced(self, manager_with_tasks):
+        """Cache should not exceed max size."""
+        manager, tasks = manager_with_tasks
+
+        manager.cache_configure(max_size=5)
+
+        # Load all 10 tasks (should trigger eviction)
+        manager.find_tasks()
+
+        stats = manager.cache_stats()
+        assert stats['size'] <= 5
+
+    def test_lru_eviction_order(self, manager_with_tasks):
+        """Least recently used entries should be evicted first."""
+        manager, tasks = manager_with_tasks
+
+        manager.cache_configure(max_size=3)
+
+        # Read tasks 0, 1, 2 in order
+        for i in range(3):
+            # Read each task individually to populate cache in order
+            manager._cache_set(tasks[i].id, tasks[i])
+
+        # Access task 0 to make it most recently used
+        manager._cache_get(tasks[0].id)
+
+        # Add task 3 (should evict task 1, not task 0)
+        manager._cache_set(tasks[3].id, tasks[3])
+
+        # Task 0 should still be in cache (recently accessed)
+        assert tasks[0].id in manager._entity_cache
+
+        # Task 1 should be evicted (least recently used)
+        assert tasks[1].id not in manager._entity_cache
+
+    def test_combined_ttl_and_max_size(self, manager_with_tasks):
+        """Both TTL and max size can be configured together."""
+        manager, _ = manager_with_tasks
+
+        manager.cache_configure(ttl=300.0, max_size=100)
+
+        stats = manager.cache_stats()
+        assert stats['ttl'] == 300.0
+        assert stats['max_size'] == 100
