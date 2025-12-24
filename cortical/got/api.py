@@ -195,6 +195,72 @@ class GoTManager:
             'enabled': self._cache_enabled,
         }
 
+    def load_all(self) -> Dict[str, int]:
+        """
+        Pre-load all entities into memory for sub-millisecond queries.
+
+        This is useful for read-heavy workloads like CLI analyze commands
+        where you want to pay the I/O cost upfront and then have fast
+        access to all entities.
+
+        Returns:
+            Dictionary with counts of each entity type loaded
+
+        Example:
+            >>> manager = GoTManager(got_dir)
+            >>> counts = manager.load_all()
+            >>> print(f"Loaded {counts['tasks']} tasks, {counts['edges']} edges")
+
+            # Now all queries will use cached entities
+            >>> Query(manager).tasks().execute()  # Sub-millisecond!
+        """
+        if not self._cache_enabled:
+            # Enable caching temporarily to allow loading
+            self._cache_enabled = True
+            was_disabled = True
+        else:
+            was_disabled = False
+
+        counts = {
+            'tasks': 0,
+            'decisions': 0,
+            'sprints': 0,
+            'epics': 0,
+            'edges': 0,
+            'handoffs': 0,
+        }
+
+        # Load all tasks
+        for task in self.list_all_tasks():
+            counts['tasks'] += 1
+
+        # Load all decisions
+        for decision in self.list_decisions():
+            counts['decisions'] += 1
+
+        # Load all sprints
+        for sprint in self.list_sprints():
+            counts['sprints'] += 1
+
+        # Load all epics
+        for epic in self.list_epics():
+            counts['epics'] += 1
+
+        # Load all edges
+        for edge in self.list_edges():
+            counts['edges'] += 1
+
+        # Load all handoffs
+        for handoff in self.list_handoffs():
+            counts['handoffs'] += 1
+
+        # If caching was disabled, restore that state but keep the loaded data
+        if was_disabled:
+            # Keep cache enabled so the loaded data is useful
+            pass
+
+        return counts
+
     def _cache_invalidate_many(self, entity_ids: List[str]) -> None:
         """
         Remove multiple entities from cache.

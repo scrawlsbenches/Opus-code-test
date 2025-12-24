@@ -319,3 +319,88 @@ class TestCacheWithMultipleEntityTypes:
 
         stats = manager_with_entities.cache_stats()
         assert stats['hits'] > 0
+
+
+class TestBatchLoading:
+    """Test load_all() batch loading functionality."""
+
+    @pytest.fixture
+    def manager_with_entities(self):
+        """Create a manager with various entity types."""
+        temp_dir = tempfile.mkdtemp()
+        got_dir = Path(temp_dir) / ".got"
+        manager = GoTManager(got_dir)
+
+        # Create different entity types
+        for i in range(5):
+            manager.create_task(f"Task {i}", priority="medium")
+
+        for i in range(3):
+            manager.create_decision(f"Decision {i}", rationale=f"Reason {i}")
+
+        manager.create_sprint("Test sprint", number=99)
+
+        # Clear cache to start fresh
+        manager.cache_clear()
+
+        yield manager
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_load_all_returns_counts(self, manager_with_entities):
+        """load_all should return counts of loaded entities."""
+        counts = manager_with_entities.load_all()
+
+        assert 'tasks' in counts
+        assert 'decisions' in counts
+        assert 'sprints' in counts
+        assert 'edges' in counts
+
+        assert counts['tasks'] == 5
+        assert counts['decisions'] == 3
+        assert counts['sprints'] == 1
+
+    def test_load_all_populates_cache(self, manager_with_entities):
+        """load_all should populate the cache."""
+        manager_with_entities.load_all()
+
+        stats = manager_with_entities.cache_stats()
+        # Should have all entities in cache
+        assert stats['size'] >= 9  # 5 tasks + 3 decisions + 1 sprint
+
+    def test_load_all_enables_fast_queries(self, manager_with_entities):
+        """After load_all, queries should use cache."""
+        # Load all entities
+        manager_with_entities.load_all()
+        manager_with_entities._cache_hits = 0  # Reset hits counter
+
+        # Query tasks - should hit cache
+        manager_with_entities.find_tasks()
+
+        stats = manager_with_entities.cache_stats()
+        assert stats['hits'] > 0
+
+    def test_load_all_with_cache_disabled(self, manager_with_entities):
+        """load_all should enable caching if it was disabled."""
+        # Start with cache disabled
+        manager_with_entities._cache_enabled = False
+        manager_with_entities._entity_cache.clear()
+
+        # load_all should enable cache
+        counts = manager_with_entities.load_all()
+
+        # Cache should be enabled now
+        assert manager_with_entities._cache_enabled is True
+        assert counts['tasks'] == 5
+
+    def test_load_all_with_edges(self, manager_with_entities):
+        """load_all should also load edges."""
+        # Create some edges
+        tasks = manager_with_entities.find_tasks()
+        if len(tasks) >= 2:
+            manager_with_entities.add_edge(tasks[0].id, tasks[1].id, "DEPENDS_ON")
+            manager_with_entities.add_edge(tasks[1].id, tasks[2].id, "DEPENDS_ON")
+
+        manager_with_entities.cache_clear()
+
+        counts = manager_with_entities.load_all()
+        assert counts['edges'] >= 2
