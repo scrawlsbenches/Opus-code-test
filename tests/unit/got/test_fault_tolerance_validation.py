@@ -1594,3 +1594,156 @@ class TestLockingRaceConditionCoverage:
         # Should have taken at least 0.1s (waited for release)
         assert elapsed >= 0.05
         lock2.release()
+
+    def test_lock_fd_close_fails_in_exception_handler(self, tmp_path, monkeypatch):
+        """fd.close() failing inside exception handler is handled."""
+        from cortical.utils.locking import ProcessLock
+        import sys
+        import fcntl
+
+        if sys.platform == 'win32':
+            pytest.skip("flock not available on Windows")
+
+        lock_path = tmp_path / ".lock"
+
+        # We need to:
+        # 1. Open file successfully (so _fd is set)
+        # 2. Have flock raise a non-IOError exception (triggers outer except)
+        # 3. Have _fd.close() also fail
+
+        close_patched = [False]
+        original_close = None
+
+        def patched_flock(fd, operation):
+            # After flock is called, patch close to fail
+            nonlocal close_patched, original_close
+            if not close_patched[0]:
+                close_patched[0] = True
+                # Get the file object and patch its close method
+                import io
+                original_close = io.IOBase.close
+                def failing_close(self):
+                    raise OSError("Cannot close file")
+                monkeypatch.setattr(io.IOBase, "close", failing_close)
+            raise RuntimeError("Unexpected flock error!")
+
+        monkeypatch.setattr(fcntl, "flock", patched_flock)
+
+        lock = ProcessLock(lock_path)
+        result = lock.acquire()
+
+        # Should fail gracefully even when close() fails
+        assert result is False
+
+
+# =============================================================================
+# 12. ADDITIONAL COVERAGE - WAL AND RECOVERY EDGE CASES
+# =============================================================================
+
+class TestAdditionalWALCoverage:
+    """Additional tests for remaining WAL coverage."""
+
+    def test_wal_log_tx_abort(self, got_dir):
+        """Test log_tx_abort creates proper entry."""
+        from cortical.got.wal import WALManager
+
+        wal = WALManager(got_dir / "wal")
+        seq = wal.log_tx_abort("TX-abort-test", "user_cancelled")
+
+        assert seq >= 1
+        entries = wal.replay()
+        abort_entries = [e for e in entries if e['op'] == 'TX_ABORT']
+        assert len(abort_entries) >= 1
+        assert abort_entries[0]['data']['reason'] == "user_cancelled"
+
+
+class TestAdditionalRecoveryCoverage:
+    """Additional tests for remaining recovery coverage."""
+
+    def test_detect_orphaned_entities_with_adopted_entries(self, got_dir):
+        """detect_orphaned_entities should recognize ADOPTED entries."""
+        # Create entity on disk
+        entities_dir = got_dir / "entities"
+        entity_file = entities_dir / "T-adopted.json"
+        entity_data = {
+            "_checksum": compute_checksum({"id": "T-adopted", "entity_type": "task", "title": "Adopted"}),
+            "_written_at": "2025-12-24T00:00:00+00:00",
+            "data": {"id": "T-adopted", "entity_type": "task", "title": "Adopted"}
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        # Create WAL with ADOPTED entry for this entity
+        wal_dir = got_dir / "wal"
+        wal_file = wal_dir / "current.wal"
+        adopted_entry = {
+            "op": "ADOPTED",
+            "entity_id": "T-adopted",
+            "reason": "orphan_recovery",
+            "timestamp": 1234567890
+        }
+        adopted_entry["checksum"] = compute_checksum({k: v for k, v in adopted_entry.items() if k != "checksum"})
+        wal_file.write_text(json.dumps(adopted_entry) + "\n")
+
+        recovery = RecoveryManager(got_dir)
+        orphans = recovery.detect_orphaned_entities()
+
+        # T-adopted should NOT be in orphans since it's tracked via ADOPTED entry
+        assert "T-adopted" not in orphans
+
+    def test_detect_orphaned_entities_write_without_entity_id(self, got_dir):
+        """detect_orphaned_entities handles WRITE entries without entity_id."""
+        # Create entity on disk
+        entities_dir = got_dir / "entities"
+        entity_file = entities_dir / "T-no-eid.json"
+        entity_data = {
+            "_checksum": compute_checksum({"id": "T-no-eid", "entity_type": "task", "title": "No EID"}),
+            "_written_at": "2025-12-24T00:00:00+00:00",
+            "data": {"id": "T-no-eid", "entity_type": "task", "title": "No EID"}
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        # Create WAL with WRITE entry that has data but no entity_id
+        wal_dir = got_dir / "wal"
+        wal_file = wal_dir / "current.wal"
+        write_entry = {
+            "op": "WRITE",
+            "tx": "TX-1",
+            "data": {"some_field": "value"}  # No entity_id
+        }
+        write_entry["checksum"] = compute_checksum({k: v for k, v in write_entry.items() if k != "checksum"})
+        wal_file.write_text(json.dumps(write_entry) + "\n")
+
+        recovery = RecoveryManager(got_dir)
+        orphans = recovery.detect_orphaned_entities()
+
+        # T-no-eid should be in orphans since WAL WRITE has no entity_id
+        assert "T-no-eid" in orphans
+
+    def test_detect_orphaned_entities_write_with_non_dict_data(self, got_dir):
+        """detect_orphaned_entities handles WRITE entries where data is not a dict."""
+        # Create entity on disk
+        entities_dir = got_dir / "entities"
+        entity_file = entities_dir / "T-bad-data.json"
+        entity_data = {
+            "_checksum": compute_checksum({"id": "T-bad-data", "entity_type": "task", "title": "Bad"}),
+            "_written_at": "2025-12-24T00:00:00+00:00",
+            "data": {"id": "T-bad-data", "entity_type": "task", "title": "Bad"}
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        # Create WAL with WRITE entry where data is not a dict
+        wal_dir = got_dir / "wal"
+        wal_file = wal_dir / "current.wal"
+        write_entry = {
+            "op": "WRITE",
+            "tx": "TX-1",
+            "data": "not a dict"  # String instead of dict
+        }
+        write_entry["checksum"] = compute_checksum({k: v for k, v in write_entry.items() if k != "checksum"})
+        wal_file.write_text(json.dumps(write_entry) + "\n")
+
+        recovery = RecoveryManager(got_dir)
+        orphans = recovery.detect_orphaned_entities()
+
+        # T-bad-data should be in orphans since WAL has non-dict data
+        assert "T-bad-data" in orphans
