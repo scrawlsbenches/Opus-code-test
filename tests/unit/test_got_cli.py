@@ -30,8 +30,7 @@ from cortical.reasoning.thought_graph import ThoughtGraph
 # Import after path setup
 import got_utils
 from got_utils import (
-    GoTProjectManager,
-    EventLog,
+    GoTBackendFactory,
     cmd_task_create,
     cmd_task_list,
     cmd_task_show,
@@ -1437,248 +1436,16 @@ class TestCLIIntegration:
 
 
 # =============================================================================
-# REBUILD TELEMETRY TESTS
+# DEPRECATED TEST CLASSES REMOVED
 # =============================================================================
-
-
-class TestRebuildTelemetry:
-    """
-    Unit tests for rebuild_graph_from_events telemetry feature.
-
-    Task T-20251221-020047-ecf6: Add rebuild validation with telemetry.
-    These tests verify that edge counts are validated after event replay.
-    """
-
-    def test_rebuild_returns_telemetry(self, temp_got_dir):
-        """Rebuild should return telemetry with graph and stats."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Task 1"}, "meta": {}},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-
-        # Should return a dict with graph and telemetry
-        assert isinstance(result, dict), "with_telemetry=True should return dict"
-        assert "graph" in result, "Result should contain 'graph'"
-        assert "telemetry" in result, "Result should contain 'telemetry'"
-        assert isinstance(result["graph"], ThoughtGraph), "graph should be ThoughtGraph"
-
-    def test_telemetry_counts_nodes_created(self, temp_got_dir):
-        """Telemetry should count nodes created."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Task 1"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "Task 2"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:02Z", "event": "node.create", "id": "task:T-003", "type": "TASK", "data": {"title": "Task 3"}, "meta": {}},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["nodes_created"] == 3, "Should count 3 nodes created"
-        assert telemetry["node_create_events"] == 3, "Should count 3 node.create events"
-
-    def test_telemetry_counts_edges_created(self, temp_got_dir):
-        """Telemetry should count edges created vs edge events."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Source"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "Target"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:02Z", "event": "edge.create", "src": "task:T-001", "tgt": "task:T-002", "type": "DEPENDS_ON", "weight": 1.0},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["edge_create_events"] == 1, "Should count 1 edge.create event"
-        assert telemetry["edges_created"] == 1, "Should count 1 edge created"
-        assert telemetry["edges_skipped"] == 0, "No edges should be skipped"
-
-    def test_telemetry_tracks_skipped_edges(self, temp_got_dir):
-        """Telemetry should track edges skipped due to missing nodes."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Source"}, "meta": {}},
-            # T-002 NOT created - edge should be skipped
-            {"ts": "2025-01-01T00:00:01Z", "event": "edge.create", "src": "task:T-001", "tgt": "task:T-002", "type": "DEPENDS_ON", "weight": 1.0},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["edge_create_events"] == 1, "Should count 1 edge.create event"
-        assert telemetry["edges_created"] == 0, "No edges should be created (target missing)"
-        assert telemetry["edges_skipped"] == 1, "1 edge should be skipped"
-
-    def test_telemetry_edge_validation_passes(self, temp_got_dir):
-        """Telemetry should validate: edges_created == edges expected (no skips)."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "A"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "B"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:02Z", "event": "edge.create", "src": "task:T-001", "tgt": "task:T-002", "type": "DEPENDS_ON", "weight": 1.0},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["validation_passed"] is True, "Validation should pass when all edges created"
-
-    def test_telemetry_edge_validation_fails_on_skips(self, temp_got_dir):
-        """Telemetry should fail validation when edges are skipped."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "A"}, "meta": {}},
-            # Missing target node
-            {"ts": "2025-01-01T00:00:01Z", "event": "edge.create", "src": "task:T-001", "tgt": "task:T-MISSING", "type": "DEPENDS_ON", "weight": 1.0},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["validation_passed"] is False, "Validation should fail when edges skipped"
-        assert len(telemetry["validation_errors"]) > 0, "Should have validation errors"
-
-    def test_telemetry_tracks_comma_split_edges(self, temp_got_dir):
-        """Telemetry should correctly count edges from comma-separated IDs."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "S"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "T1"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:02Z", "event": "node.create", "id": "task:T-003", "type": "TASK", "data": {"title": "T2"}, "meta": {}},
-            {
-                "ts": "2025-01-01T00:00:03Z",
-                "event": "edge.create",
-                "src": "task:T-001",
-                "tgt": "task:T-002,task:T-003",  # Comma-separated
-                "type": "DEPENDS_ON",
-                "weight": 1.0
-            },
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["edge_create_events"] == 1, "Should count 1 edge.create event"
-        assert telemetry["edges_created"] == 2, "Should create 2 edges from comma-split"
-
-    def test_telemetry_tracks_errors(self, temp_got_dir):
-        """Telemetry should track processing errors."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create"},  # Missing required fields
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert telemetry["errors"] > 0, "Should count errors"
-
-    def test_backward_compatible_without_telemetry(self, temp_got_dir):
-        """Default behavior (no telemetry flag) returns just the graph."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Task 1"}, "meta": {}},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events)
-
-        # Should return just the graph (backward compatible)
-        assert isinstance(result, ThoughtGraph), "Default should return ThoughtGraph directly"
-
-    def test_telemetry_summary_string(self, temp_got_dir):
-        """Telemetry should include a human-readable summary."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001", "type": "TASK", "data": {"title": "Task 1"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:01Z", "event": "node.create", "id": "task:T-002", "type": "TASK", "data": {"title": "Task 2"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:02Z", "event": "edge.create", "src": "task:T-001", "tgt": "task:T-002", "type": "DEPENDS_ON", "weight": 1.0},
-        ]
-
-        result = EventLog.rebuild_graph_from_events(events, with_telemetry=True)
-        telemetry = result["telemetry"]
-
-        assert "summary" in telemetry, "Telemetry should include summary"
-        assert "nodes" in telemetry["summary"].lower(), "Summary should mention nodes"
-        assert "edges" in telemetry["summary"].lower(), "Summary should mention edges"
-
-
-class TestDecisionNodeType:
-    """
-    Unit tests for decision node type handling in rebuild_graph_from_events.
-
-    Bug fix: Decisions were being created with NodeType.CONTEXT instead of
-    NodeType.DECISION, causing the dashboard to show "Decisions: 0" despite
-    19 decision events in the event log.
-    """
-
-    def test_decision_create_uses_decision_nodetype(self, temp_got_dir):
-        """decision.create events should create nodes with NodeType.DECISION."""
-        events = [
-            {
-                "ts": "2025-01-01T00:00:00Z",
-                "event": "decision.create",
-                "id": "decision:D-001",
-                "decision": "Use TDD for all changes",
-                "rationale": "Improves code quality",
-                "affects": [],
-                "alternatives": [],
-            }
-        ]
-
-        graph = EventLog.rebuild_graph_from_events(events)
-
-        assert "decision:D-001" in graph.nodes, "Decision node should exist"
-        node = graph.nodes["decision:D-001"]
-        assert node.node_type == NodeType.DECISION, \
-            f"Node type should be DECISION, got {node.node_type}"
-
-    def test_decision_count_in_rebuilt_graph(self, temp_got_dir):
-        """Multiple decisions should all have NodeType.DECISION."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "decision.create", "id": "decision:D-001",
-             "decision": "Decision 1", "rationale": "Reason 1", "affects": [], "alternatives": []},
-            {"ts": "2025-01-01T00:00:01Z", "event": "decision.create", "id": "decision:D-002",
-             "decision": "Decision 2", "rationale": "Reason 2", "affects": [], "alternatives": []},
-            {"ts": "2025-01-01T00:00:02Z", "event": "decision.create", "id": "decision:D-003",
-             "decision": "Decision 3", "rationale": "Reason 3", "affects": [], "alternatives": []},
-        ]
-
-        graph = EventLog.rebuild_graph_from_events(events)
-
-        decision_nodes = [n for n in graph.nodes.values() if n.node_type == NodeType.DECISION]
-        assert len(decision_nodes) == 3, f"Should have 3 DECISION nodes, got {len(decision_nodes)}"
-
-    def test_decision_affects_creates_motivates_edges(self, temp_got_dir):
-        """Decisions with 'affects' should create MOTIVATES edges."""
-        events = [
-            {"ts": "2025-01-01T00:00:00Z", "event": "node.create", "id": "task:T-001",
-             "type": "TASK", "data": {"title": "Task 1"}, "meta": {}},
-            {"ts": "2025-01-01T00:00:01Z", "event": "decision.create", "id": "decision:D-001",
-             "decision": "Choose approach A", "rationale": "Faster",
-             "affects": ["task:T-001"], "alternatives": []},
-        ]
-
-        graph = EventLog.rebuild_graph_from_events(events)
-
-        # Decision should exist with correct type
-        assert graph.nodes["decision:D-001"].node_type == NodeType.DECISION
-
-        # Should have MOTIVATES edge from decision to task
-        motivates_edges = [e for e in graph.edges
-                          if e.source_id == "decision:D-001" and e.edge_type == EdgeType.MOTIVATES]
-        assert len(motivates_edges) == 1, "Should have 1 MOTIVATES edge"
-        assert motivates_edges[0].target_id == "task:T-001"
-
-    def test_decision_content_preserved(self, temp_got_dir):
-        """Decision content and rationale should be preserved in node."""
-        events = [
-            {
-                "ts": "2025-01-01T00:00:00Z",
-                "event": "decision.create",
-                "id": "decision:D-001",
-                "decision": "Use event sourcing",
-                "rationale": "Better for concurrency",
-                "affects": [],
-                "alternatives": ["Use CRUD", "Use state machine"],
-            }
-        ]
-
-        graph = EventLog.rebuild_graph_from_events(events)
-        node = graph.nodes["decision:D-001"]
-
-        assert "event sourcing" in node.content.lower(), "Decision content should be in node"
+# The following test classes were removed as they tested deprecated EventLog
+# functionality (rebuild_graph_from_events) which is no longer supported:
+# - TestRebuildTelemetry (tests for T-20251221-020047-ecf6)
+# - TestDecisionNodeType (tests for decision handling in event replay)
+#
+# The TX backend stores entities directly in .got/entities/ and doesn't use
+# event replay. See TransactionalGoTAdapter for the current implementation.
+# =============================================================================
 
 
 class TestAutoTaskHook:
@@ -1772,7 +1539,7 @@ class TestTaskNextCommand:
 
     def test_next_returns_highest_priority_pending(self, temp_got_dir):
         """Should return high priority task before medium/low."""
-        manager = GoTProjectManager(got_dir=temp_got_dir)
+        manager = GoTBackendFactory.create(got_dir=temp_got_dir)
 
         # Create tasks with different priorities
         low_id = manager.create_task("Low priority task", priority="low")
@@ -1787,7 +1554,7 @@ class TestTaskNextCommand:
 
     def test_next_skips_in_progress_tasks(self, temp_got_dir):
         """Should skip tasks that are already in progress."""
-        manager = GoTProjectManager(got_dir=temp_got_dir)
+        manager = GoTBackendFactory.create(got_dir=temp_got_dir)
 
         high_id = manager.create_task("In progress task", priority="high")
         manager.start_task(high_id)
@@ -1800,7 +1567,7 @@ class TestTaskNextCommand:
 
     def test_next_skips_completed_tasks(self, temp_got_dir):
         """Should skip completed tasks."""
-        manager = GoTProjectManager(got_dir=temp_got_dir)
+        manager = GoTBackendFactory.create(got_dir=temp_got_dir)
 
         high_id = manager.create_task("Completed task", priority="high")
         manager.start_task(high_id)
@@ -1814,11 +1581,11 @@ class TestTaskNextCommand:
 
     def test_next_skips_blocked_tasks(self, temp_got_dir):
         """Should skip tasks that are blocked."""
-        manager = GoTProjectManager(got_dir=temp_got_dir)
+        manager = GoTBackendFactory.create(got_dir=temp_got_dir)
 
         blocker_id = manager.create_task("Blocker task", priority="high")
         blocked_id = manager.create_task("Blocked task", priority="high")
-        manager.block_task(blocked_id, reason="Depends on blocker", blocker_id=blocker_id)
+        manager.block_task(blocked_id, reason="Depends on blocker", blocked_by=blocker_id)
 
         unblocked_id = manager.create_task("Unblocked task", priority="medium")
 
@@ -1830,7 +1597,7 @@ class TestTaskNextCommand:
 
     def test_next_returns_none_when_no_pending(self, temp_got_dir):
         """Should return None when no pending tasks exist."""
-        manager = GoTProjectManager(got_dir=temp_got_dir)
+        manager = GoTBackendFactory.create(got_dir=temp_got_dir)
 
         # Create and complete a task
         task_id = manager.create_task("Done task", priority="high")
@@ -1843,7 +1610,7 @@ class TestTaskNextCommand:
 
     def test_next_returns_oldest_within_same_priority(self, temp_got_dir):
         """When priority is equal, should return oldest task first."""
-        manager = GoTProjectManager(got_dir=temp_got_dir)
+        manager = GoTBackendFactory.create(got_dir=temp_got_dir)
 
         first_id = manager.create_task("First high task", priority="high")
         second_id = manager.create_task("Second high task", priority="high")

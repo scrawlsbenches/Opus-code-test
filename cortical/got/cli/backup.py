@@ -339,107 +339,12 @@ def cmd_migrate(args, manager: "GoTProjectManager") -> int:
 def cmd_migrate_events(args, manager: "GoTProjectManager") -> int:
     """Handle 'got migrate-events' command.
 
-    Migrate existing snapshot to event-sourced format.
-    This creates event log entries from the current graph state,
-    enabling merge-friendly cross-branch coordination.
+    DEPRECATED: This command is for the legacy event-sourced backend.
+    The TX backend stores entities directly in .got/entities/ and doesn't use event logs.
     """
-    from scripts.got_utils import EventLog
-    from datetime import datetime
-
-    dry_run = getattr(args, 'dry_run', False)
-
-    # Check if events already exist
-    existing_events = EventLog.load_all_events(manager.events_dir)
-    if existing_events and not getattr(args, 'force', False):
-        print(f"Events already exist ({len(existing_events)} events).")
-        print("Use --force to migrate anyway (will append, not replace).")
-        return 1
-
-    # Create migration event log
-    migration_log = EventLog(
-        manager.events_dir,
-        session_id=f"migration-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    )
-
-    nodes_migrated = 0
-    edges_migrated = 0
-
-    # Migrate all nodes
-    for node_id, node in manager.graph.nodes.items():
-        if dry_run:
-            print(f"  Would migrate node: {node_id}")
-        else:
-            migration_log.log_node_create(
-                node_id=node_id,
-                node_type=(
-                    node.node_type.name
-                    if hasattr(node.node_type, 'name')
-                    else str(node.node_type)
-                ),
-                data={
-                    **node.properties,
-                    "title": node.content,
-                }
-            )
-        nodes_migrated += 1
-
-    # Migrate all edges
-    edges = manager.graph.edges
-    if isinstance(edges, dict):
-        edge_list = edges.values()
-    else:
-        edge_list = edges
-
-    for edge in edge_list:
-        if dry_run:
-            src = getattr(
-                edge, 'source_id',
-                edge.get('source_id', '?') if isinstance(edge, dict) else '?'
-            )
-            tgt = getattr(
-                edge, 'target_id',
-                edge.get('target_id', '?') if isinstance(edge, dict) else '?'
-            )
-            print(f"  Would migrate edge: {src} -> {tgt}")
-        else:
-            src = getattr(
-                edge, 'source_id',
-                edge.get('source_id') if isinstance(edge, dict) else None
-            )
-            tgt = getattr(
-                edge, 'target_id',
-                edge.get('target_id') if isinstance(edge, dict) else None
-            )
-            etype = getattr(
-                edge, 'edge_type',
-                edge.get('edge_type') if isinstance(edge, dict) else None
-            )
-            weight = getattr(
-                edge, 'weight',
-                edge.get('weight', 1.0) if isinstance(edge, dict) else 1.0
-            )
-
-            if src and tgt:
-                migration_log.log_edge_create(
-                    src=src,
-                    tgt=tgt,
-                    edge_type=etype.name if hasattr(etype, 'name') else str(etype),
-                    weight=weight
-                )
-        edges_migrated += 1
-
-    if dry_run:
-        print(f"\nDry run complete:")
-    else:
-        print(f"\nMigration complete:")
-
-    print(f"  Nodes: {nodes_migrated}")
-    print(f"  Edges: {edges_migrated}")
-    if not dry_run:
-        print(f"  Event file: {migration_log.event_file}")
-    print(f"\nEvents are now the source of truth.")
-    print("Commit .got/events/ to make this survive across environments.")
-
+    print("The 'migrate-events' command is deprecated.")
+    print("The TX backend stores entities directly in .got/entities/ and doesn't use event logs.")
+    print("No migration is needed.")
     return 0
 
 

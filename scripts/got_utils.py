@@ -1580,6 +1580,16 @@ class TransactionalGoTAdapter:
                     logger.warning(f"Could not add blocks edge from {task.id} to {clean_blocked}: {e}")
                     print(f"  Warning: Could not add blocks to {clean_blocked}: {e}")
 
+        # Add to sprint if specified
+        if sprint_id:
+            clean_sprint = self._strip_prefix(sprint_id)
+            try:
+                self._manager.add_edge(clean_sprint, task.id, "CONTAINS")
+                print(f"  Added to sprint: {clean_sprint} contains {task.id}")
+            except Exception as e:
+                logger.warning(f"Could not add task {task.id} to sprint {clean_sprint}: {e}")
+                print(f"  Warning: Could not add to sprint {clean_sprint}: {e}")
+
         return task.id
 
     def get_task(self, task_id: str) -> Optional[ThoughtNode]:
@@ -1664,8 +1674,38 @@ class TransactionalGoTAdapter:
             return False
 
     def block_task(self, task_id: str, reason: str = "", blocked_by: Optional[str] = None) -> bool:
-        """Block a task."""
-        return self.update_task(task_id, status="blocked")
+        """Block a task.
+
+        Args:
+            task_id: The task to block
+            reason: Why the task is blocked
+            blocked_by: Optional task ID that is blocking this task
+
+        Returns:
+            True if successful
+        """
+        clean_id = self._strip_prefix(task_id)
+        try:
+            # Get task and update properties
+            task = self._manager.get_task(clean_id)
+            if not task:
+                return False
+
+            # Set blocked_reason in properties (where tests expect it)
+            props = dict(task.properties)
+            props["blocked_reason"] = reason if reason else "No reason given"
+
+            # Update task status and properties
+            self._manager.update_task(clean_id, status="blocked", properties=props)
+
+            # Create BLOCKS edge if blocker is specified
+            if blocked_by:
+                self.add_blocks(blocked_by, task_id)
+
+            return True
+        except Exception as e:
+            logger.error(f"Failed to block task {clean_id}: {e}")
+            return False
 
     def delete_task(self, task_id: str, force: bool = False) -> Tuple[bool, str]:
         """Delete a task."""
@@ -1717,12 +1757,21 @@ class TransactionalGoTAdapter:
         return [self._tx_task_to_node(t) for t in dependents]
 
     def get_task_dependencies(self, task_id: str) -> List[ThoughtNode]:
-        """Get all tasks this task depends on."""
+        """Get all tasks this task depends on.
+
+        Returns tasks that are the target of DEPENDS_ON edges from this task.
+        """
         clean_id = self._strip_prefix(task_id)
         try:
-            # Tasks that block this task are tasks this task depends on
-            deps = self._manager.get_blockers(clean_id)
-            return [self._tx_task_to_node(t) for t in deps if t]
+            # Get outgoing edges from this task
+            outgoing, _ = self._manager.get_edges_for_task(clean_id)
+            deps = []
+            for edge in outgoing:
+                if edge.edge_type == "DEPENDS_ON":
+                    dep_task = self._manager.get_task(edge.target_id)
+                    if dep_task:
+                        deps.append(self._tx_task_to_node(dep_task))
+            return deps
         except Exception as e:
             logger.error(f"Failed to get dependencies for {task_id}: {e}")
             return []
@@ -1871,9 +1920,9 @@ class TransactionalGoTAdapter:
                 target_task = self._manager.get_task(edge.target_id)
                 if target_task:
                     target_node = self._tx_task_to_node(target_task)
-                    if edge.edge_type == "blocks":
+                    if edge.edge_type == "BLOCKS":
                         result['blocks'].append(target_node)
-                    elif edge.edge_type == "depends_on":
+                    elif edge.edge_type == "DEPENDS_ON":
                         result['depends_on'].append(target_node)
 
             # Process incoming edges
@@ -1881,9 +1930,9 @@ class TransactionalGoTAdapter:
                 source_task = self._manager.get_task(edge.source_id)
                 if source_task:
                     source_node = self._tx_task_to_node(source_task)
-                    if edge.edge_type == "blocks":
+                    if edge.edge_type == "BLOCKS":
                         result['blocked_by'].append(source_node)
-                    elif edge.edge_type == "depends_on":
+                    elif edge.edge_type == "DEPENDS_ON":
                         result['depended_by'].append(source_node)
 
         except Exception as e:
@@ -4359,7 +4408,7 @@ class GoTProjectManager:
 class TaskMigrator:
     """Migrate from file-based task system to GoT."""
 
-    def __init__(self, manager: GoTProjectManager, tasks_dir: Path = TASKS_DIR):
+    def __init__(self, manager: "TransactionalGoTAdapter", tasks_dir: Path = TASKS_DIR):
         self.manager = manager
         self.tasks_dir = tasks_dir
 
@@ -4507,7 +4556,7 @@ def format_sprint_status(sprint: ThoughtNode, progress: Dict[str, Any]) -> str:
 # CLI COMMANDS
 # =============================================================================
 
-def cmd_task_create(args, manager: GoTProjectManager) -> int:
+def cmd_task_create(args, manager: "TransactionalGoTAdapter") -> int:
     """Create a task."""
     task_id = manager.create_task(
         title=args.title,
@@ -4524,7 +4573,7 @@ def cmd_task_create(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_task_list(args, manager: GoTProjectManager) -> int:
+def cmd_task_list(args, manager: "TransactionalGoTAdapter") -> int:
     """List tasks."""
     tasks = manager.list_tasks(
         status=getattr(args, 'status', None),
@@ -4543,7 +4592,7 @@ def cmd_task_list(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_task_next(args, manager: GoTProjectManager) -> int:
+def cmd_task_next(args, manager: "TransactionalGoTAdapter") -> int:
     """Get the next task to work on."""
     result = manager.get_next_task()
 
@@ -4569,7 +4618,7 @@ def cmd_task_next(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_task_show(args, manager: GoTProjectManager) -> int:
+def cmd_task_show(args, manager: "TransactionalGoTAdapter") -> int:
     """Show details of a specific task."""
     task_id = args.task_id
 
@@ -4632,7 +4681,7 @@ def cmd_task_show(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_task_start(args, manager: GoTProjectManager) -> int:
+def cmd_task_start(args, manager: "TransactionalGoTAdapter") -> int:
     """Start a task."""
     if manager.start_task(args.task_id):
         manager.save()
@@ -4643,7 +4692,7 @@ def cmd_task_start(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_task_complete(args, manager: GoTProjectManager) -> int:
+def cmd_task_complete(args, manager: "TransactionalGoTAdapter") -> int:
     """Complete a task."""
     if manager.complete_task(args.task_id, getattr(args, 'retrospective', None)):
         manager.save()
@@ -4654,7 +4703,7 @@ def cmd_task_complete(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_task_block(args, manager: GoTProjectManager) -> int:
+def cmd_task_block(args, manager: "TransactionalGoTAdapter") -> int:
     """Block a task."""
     if manager.block_task(args.task_id, args.reason, getattr(args, 'blocker', None)):
         manager.save()
@@ -4665,7 +4714,7 @@ def cmd_task_block(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_task_depends(args, manager: GoTProjectManager) -> int:
+def cmd_task_depends(args, manager: "TransactionalGoTAdapter") -> int:
     """Create a dependency between tasks."""
     try:
         # Use add_dependency method
@@ -4681,7 +4730,7 @@ def cmd_task_depends(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_task_delete(args, manager: GoTProjectManager) -> int:
+def cmd_task_delete(args, manager: "TransactionalGoTAdapter") -> int:
     """Delete a task with transactional safety checks.
 
     TRANSACTIONAL: Verifies pre-conditions before deletion.
@@ -4732,7 +4781,7 @@ def cmd_task_delete(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_sprint_create(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_create(args, manager: "TransactionalGoTAdapter") -> int:
     """Create a sprint."""
     sprint_id = manager.create_sprint(
         name=args.name,
@@ -4745,7 +4794,7 @@ def cmd_sprint_create(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_sprint_list(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_list(args, manager: "TransactionalGoTAdapter") -> int:
     """List sprints."""
     sprints = manager.list_sprints(
         status=getattr(args, 'status', None),
@@ -4770,7 +4819,7 @@ def cmd_sprint_list(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_sprint_status(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_status(args, manager: "TransactionalGoTAdapter") -> int:
     """Show sprint status."""
     sprint_id = getattr(args, 'sprint_id', None)
 
@@ -4794,7 +4843,7 @@ def cmd_sprint_status(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_sprint_start(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_start(args, manager: "TransactionalGoTAdapter") -> int:
     """Start a sprint."""
     sprint = manager.update_sprint(args.sprint_id, status="in_progress")
     manager.save()
@@ -4803,7 +4852,7 @@ def cmd_sprint_start(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_sprint_complete(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_complete(args, manager: "TransactionalGoTAdapter") -> int:
     """Complete a sprint."""
     sprint = manager.update_sprint(args.sprint_id, status="completed")
     manager.save()
@@ -4812,7 +4861,7 @@ def cmd_sprint_complete(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_sprint_claim(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_claim(args, manager: "TransactionalGoTAdapter") -> int:
     """Claim a sprint."""
     try:
         sprint = manager.claim_sprint(args.sprint_id, args.agent)
@@ -4825,7 +4874,7 @@ def cmd_sprint_claim(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_sprint_release(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_release(args, manager: "TransactionalGoTAdapter") -> int:
     """Release a sprint claim."""
     try:
         sprint = manager.release_sprint(args.sprint_id, args.agent)
@@ -4837,7 +4886,7 @@ def cmd_sprint_release(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_sprint_goal_add(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_goal_add(args, manager: "TransactionalGoTAdapter") -> int:
     """Add a goal to sprint."""
     if manager.add_sprint_goal(args.sprint_id, args.description):
         manager.save()
@@ -4848,7 +4897,7 @@ def cmd_sprint_goal_add(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_sprint_goal_list(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_goal_list(args, manager: "TransactionalGoTAdapter") -> int:
     """List sprint goals."""
     goals = manager.list_sprint_goals(args.sprint_id)
     if not goals:
@@ -4861,7 +4910,7 @@ def cmd_sprint_goal_list(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_sprint_goal_complete(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_goal_complete(args, manager: "TransactionalGoTAdapter") -> int:
     """Mark a goal as complete."""
     if manager.complete_sprint_goal(args.sprint_id, args.index):
         manager.save()
@@ -4872,7 +4921,7 @@ def cmd_sprint_goal_complete(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_sprint_link(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_link(args, manager: "TransactionalGoTAdapter") -> int:
     """Link a task to a sprint."""
     if manager.link_task_to_sprint(args.sprint_id, args.task_id):
         manager.save()
@@ -4883,7 +4932,7 @@ def cmd_sprint_link(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_sprint_unlink(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_unlink(args, manager: "TransactionalGoTAdapter") -> int:
     """Unlink a task from a sprint."""
     if manager.unlink_task_from_sprint(args.sprint_id, args.task_id):
         manager.save()
@@ -4894,7 +4943,7 @@ def cmd_sprint_unlink(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_sprint_tasks(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_tasks(args, manager: "TransactionalGoTAdapter") -> int:
     """List tasks in a sprint."""
     tasks = manager.get_sprint_tasks(args.sprint_id)
     if not tasks:
@@ -4908,7 +4957,7 @@ def cmd_sprint_tasks(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_sprint_suggest(args, manager: GoTProjectManager) -> int:
+def cmd_sprint_suggest(args, manager: "TransactionalGoTAdapter") -> int:
     """Suggest tasks for next sprint based on priority and dependencies."""
     try:
         # Get pending tasks
@@ -4967,7 +5016,7 @@ def cmd_sprint_suggest(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_epic_create(args, manager: GoTProjectManager) -> int:
+def cmd_epic_create(args, manager: "TransactionalGoTAdapter") -> int:
     """Create an epic."""
     epic_id = manager.create_epic(
         name=args.name,
@@ -4979,7 +5028,7 @@ def cmd_epic_create(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_epic_list(args, manager: GoTProjectManager) -> int:
+def cmd_epic_list(args, manager: "TransactionalGoTAdapter") -> int:
     """List epics."""
     epics = manager.list_epics(
         status=getattr(args, 'status', None),
@@ -4997,7 +5046,7 @@ def cmd_epic_list(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_epic_show(args, manager: GoTProjectManager) -> int:
+def cmd_epic_show(args, manager: "TransactionalGoTAdapter") -> int:
     """Show epic details."""
     epic = manager.get_epic(args.epic_id)
 
@@ -5020,7 +5069,7 @@ def cmd_epic_show(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_blocked(args, manager: GoTProjectManager) -> int:
+def cmd_blocked(args, manager: "TransactionalGoTAdapter") -> int:
     """Show blocked tasks."""
     blocked = manager.get_blocked_tasks()
 
@@ -5040,14 +5089,14 @@ def cmd_blocked(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_active(args, manager: GoTProjectManager) -> int:
+def cmd_active(args, manager: "TransactionalGoTAdapter") -> int:
     """Show active tasks."""
     active = manager.get_active_tasks()
     print(format_task_table(active))
     return 0
 
 
-def cmd_stats(args, manager: GoTProjectManager) -> int:
+def cmd_stats(args, manager: "TransactionalGoTAdapter") -> int:
     """Show statistics."""
     stats = manager.get_stats()
 
@@ -5064,7 +5113,7 @@ def cmd_stats(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_dashboard(args, manager: GoTProjectManager) -> int:
+def cmd_dashboard(args, manager: "TransactionalGoTAdapter") -> int:
     """Show comprehensive metrics dashboard."""
     # Import dashboard module
     try:
@@ -5082,7 +5131,7 @@ def cmd_dashboard(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_migrate(args, manager: GoTProjectManager) -> int:
+def cmd_migrate(args, manager: "TransactionalGoTAdapter") -> int:
     """Migrate from file-based system."""
     migrator = TaskMigrator(manager)
 
@@ -5104,89 +5153,19 @@ def cmd_migrate(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_migrate_events(args, manager: GoTProjectManager) -> int:
+def cmd_migrate_events(args, manager: "TransactionalGoTAdapter") -> int:
     """Migrate existing snapshot to event-sourced format.
 
-    This creates event log entries from the current graph state,
-    enabling merge-friendly cross-branch coordination.
+    DEPRECATED: This command is for the legacy event-sourced backend.
+    The TX backend stores entities directly in .got/entities/ and doesn't use event logs.
     """
-    import gzip
-
-    dry_run = getattr(args, 'dry_run', False)
-
-    # Check if events already exist
-    existing_events = EventLog.load_all_events(manager.events_dir)
-    if existing_events and not getattr(args, 'force', False):
-        print(f"Events already exist ({len(existing_events)} events).")
-        print("Use --force to migrate anyway (will append, not replace).")
-        return 1
-
-    # Create migration event log
-    migration_log = EventLog(
-        manager.events_dir,
-        session_id=f"migration-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    )
-
-    nodes_migrated = 0
-    edges_migrated = 0
-
-    # Migrate all nodes
-    for node_id, node in manager.graph.nodes.items():
-        if dry_run:
-            print(f"  Would migrate node: {node_id}")
-        else:
-            migration_log.log_node_create(
-                node_id=node_id,
-                node_type=node.node_type.name if hasattr(node.node_type, 'name') else str(node.node_type),
-                data={
-                    **node.properties,
-                    "title": node.content,
-                }
-            )
-        nodes_migrated += 1
-
-    # Migrate all edges
-    edges = manager.graph.edges
-    if isinstance(edges, dict):
-        edge_list = edges.values()
-    else:
-        edge_list = edges
-
-    for edge in edge_list:
-        if dry_run:
-            src = getattr(edge, 'source_id', edge.get('source_id', '?') if isinstance(edge, dict) else '?')
-            tgt = getattr(edge, 'target_id', edge.get('target_id', '?') if isinstance(edge, dict) else '?')
-            print(f"  Would migrate edge: {src} -> {tgt}")
-        else:
-            src = getattr(edge, 'source_id', edge.get('source_id') if isinstance(edge, dict) else None)
-            tgt = getattr(edge, 'target_id', edge.get('target_id') if isinstance(edge, dict) else None)
-            etype = getattr(edge, 'edge_type', edge.get('edge_type') if isinstance(edge, dict) else None)
-            weight = getattr(edge, 'weight', edge.get('weight', 1.0) if isinstance(edge, dict) else 1.0)
-
-            if src and tgt:
-                migration_log.log_edge_create(
-                    src=src,
-                    tgt=tgt,
-                    edge_type=etype.name if hasattr(etype, 'name') else str(etype),
-                    weight=weight
-                )
-        edges_migrated += 1
-
-    if dry_run:
-        print(f"\nDry run complete:")
-    else:
-        print(f"\nMigration complete:")
-
-    print(f"  Nodes: {nodes_migrated}")
-    print(f"  Edges: {edges_migrated}")
-    print(f"  Event file: {migration_log.event_file}")
-    print(f"\nEvents are now the source of truth.")
-    print("Commit .got/events/ to make this survive across environments.")
-
+    print("The 'migrate-events' command is deprecated.")
+    print("The TX backend stores entities directly in .got/entities/ and doesn't use event logs.")
+    print("No migration is needed.")
     return 0
 
 
-def cmd_export(args, manager: GoTProjectManager) -> int:
+def cmd_export(args, manager: "TransactionalGoTAdapter") -> int:
     """Export graph."""
     output = getattr(args, 'output', None)
     if output:
@@ -5207,7 +5186,7 @@ def cmd_export(args, manager: GoTProjectManager) -> int:
 # =============================================================================
 
 
-def cmd_backup_create(args, manager: GoTProjectManager) -> int:
+def cmd_backup_create(args, manager: "TransactionalGoTAdapter") -> int:
     """Create a backup snapshot."""
     compress = getattr(args, 'compress', True)
 
@@ -5228,7 +5207,7 @@ def cmd_backup_create(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_backup_list(args, manager: GoTProjectManager) -> int:
+def cmd_backup_list(args, manager: "TransactionalGoTAdapter") -> int:
     """List available snapshots."""
     limit = getattr(args, 'limit', 10)
 
@@ -5299,7 +5278,7 @@ def cmd_backup_list(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_backup_verify(args, manager: GoTProjectManager) -> int:
+def cmd_backup_verify(args, manager: "TransactionalGoTAdapter") -> int:
     """Verify snapshot integrity."""
     snapshot_id = getattr(args, 'snapshot_id', None)
 
@@ -5370,7 +5349,7 @@ def cmd_backup_verify(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_backup_restore(args, manager: GoTProjectManager) -> int:
+def cmd_backup_restore(args, manager: "TransactionalGoTAdapter") -> int:
     """Restore from a snapshot."""
     snapshot_id = args.snapshot_id
     force = getattr(args, 'force', False)
@@ -5448,7 +5427,7 @@ def cmd_backup_restore(args, manager: GoTProjectManager) -> int:
         return 1
 
 
-def cmd_handoff_initiate(args, manager: GoTProjectManager) -> int:
+def cmd_handoff_initiate(args, manager: "TransactionalGoTAdapter") -> int:
     """Initiate a handoff to another agent."""
     task = manager.get_task(args.task_id)
     if not task:
@@ -5476,7 +5455,7 @@ def cmd_handoff_initiate(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_handoff_accept(args, manager: GoTProjectManager) -> int:
+def cmd_handoff_accept(args, manager: "TransactionalGoTAdapter") -> int:
     """Accept a handoff."""
     # Use manager's handoff method (works with TX backend)
     success = manager.accept_handoff(
@@ -5494,7 +5473,7 @@ def cmd_handoff_accept(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_handoff_complete(args, manager: GoTProjectManager) -> int:
+def cmd_handoff_complete(args, manager: "TransactionalGoTAdapter") -> int:
     """Complete a handoff."""
     try:
         result = json.loads(args.result)
@@ -5519,7 +5498,7 @@ def cmd_handoff_complete(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_handoff_list(args, manager: GoTProjectManager) -> int:
+def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     """List handoffs."""
     # Use manager's handoff method (works with TX backend)
     handoffs = manager.list_handoffs(status=args.status)
@@ -5549,7 +5528,7 @@ def cmd_handoff_list(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_decision_log(args, manager: GoTProjectManager) -> int:
+def cmd_decision_log(args, manager: "TransactionalGoTAdapter") -> int:
     """Log a decision with rationale."""
     context = {}
     if args.file:
@@ -5573,7 +5552,7 @@ def cmd_decision_log(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_decision_list(args, manager: GoTProjectManager) -> int:
+def cmd_decision_list(args, manager: "TransactionalGoTAdapter") -> int:
     """List all decisions."""
     decisions = manager.get_decisions()
 
@@ -5593,7 +5572,7 @@ def cmd_decision_list(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_decision_why(args, manager: GoTProjectManager) -> int:
+def cmd_decision_why(args, manager: "TransactionalGoTAdapter") -> int:
     """Query why a task was created/modified."""
     reasons = manager.why(args.task_id)
 
@@ -5613,7 +5592,7 @@ def cmd_decision_why(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_infer(args, manager: GoTProjectManager) -> int:
+def cmd_infer(args, manager: "TransactionalGoTAdapter") -> int:
     """Infer edges from git commits."""
     if args.message:
         # Analyze a specific message
@@ -5638,7 +5617,7 @@ def cmd_infer(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_validate(args, manager: GoTProjectManager) -> int:
+def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
     """Validate graph health and report issues."""
     print("=" * 60)
     print("GoT VALIDATION REPORT")
@@ -5725,7 +5704,7 @@ def cmd_validate(args, manager: GoTProjectManager) -> int:
     return 1 if issues else 0
 
 
-def cmd_query(args, manager: GoTProjectManager) -> int:
+def cmd_query(args, manager: "TransactionalGoTAdapter") -> int:
     """Run a query against the graph."""
     query_str = " ".join(args.query_string)
 
@@ -5763,60 +5742,19 @@ def cmd_query(args, manager: GoTProjectManager) -> int:
     return 0
 
 
-def cmd_compact(args, manager: GoTProjectManager) -> int:
-    """Compact old events."""
-    preserve_handoffs = not getattr(args, 'no_preserve_handoffs', False)
-    preserve_days = getattr(args, 'preserve_days', 7)
-    dry_run = getattr(args, 'dry_run', False)
+def cmd_compact(args, manager: "TransactionalGoTAdapter") -> int:
+    """Compact old events.
 
-    if dry_run:
-        print(f"Dry run - would compact events older than {preserve_days} days")
-        print(f"  Preserve handoffs: {preserve_handoffs}")
-
-        # Load and analyze events
-        events = EventLog.load_all_events(manager.events_dir)
-        cutoff = datetime.utcnow() - __import__('datetime').timedelta(days=preserve_days)
-        cutoff_str = cutoff.isoformat() + "Z"
-
-        old_events = [e for e in events if e.get("ts", "") < cutoff_str]
-        handoff_events = [e for e in events if e.get("event", "").startswith("handoff.")]
-        recent_events = [e for e in events if e.get("ts", "") >= cutoff_str]
-
-        print(f"\nAnalysis:")
-        print(f"  Total events: {len(events)}")
-        print(f"  Old events (would compact): {len(old_events)}")
-        print(f"  Recent events (would keep): {len(recent_events)}")
-        print(f"  Handoff events: {len(handoff_events)}")
-        return 0
-
-    result = EventLog.compact_events(
-        manager.events_dir,
-        preserve_handoffs=preserve_handoffs,
-        preserve_days=preserve_days,
-    )
-
-    if result.get("error"):
-        print(f"Error: {result['error']}")
-        return 1
-
-    if result.get("status") == "nothing_to_compact":
-        print("Nothing to compact - all events are recent.")
-        return 0
-
-    print("Event compaction complete:")
-    print(f"  Nodes written: {result.get('nodes_written', 0)}")
-    print(f"  Edges written: {result.get('edges_written', 0)}")
-    print(f"  Handoffs preserved: {result.get('handoffs_preserved', 0)}")
-    print(f"  Files removed: {result.get('files_removed', 0)}")
-    print(f"  Compact file: {result.get('compact_file', '?')}")
-    print(f"\n  Original events: {result.get('original_event_count', 0)}")
-    print(f"  Old events consolidated: {result.get('old_events_consolidated', 0)}")
-    print(f"  Recent events kept: {result.get('recent_events_kept', 0)}")
-
+    DEPRECATED: This command is for the legacy event-sourced backend.
+    The TX backend uses entity files in .got/entities/ which don't need compaction.
+    """
+    print("The 'compact' command is deprecated.")
+    print("The TX backend stores entities directly in .got/entities/ and doesn't use event logs.")
+    print("No compaction is needed.")
     return 0
 
 
-def cmd_sync(args, manager: GoTProjectManager) -> int:
+def cmd_sync(args, manager: "TransactionalGoTAdapter") -> int:
     """Sync GoT state to git-tracked snapshot.
 
     This is CRITICAL for environment resilience:

@@ -246,58 +246,14 @@ def cmd_infer(args, manager: "GoTProjectManager") -> int:
 
 
 def cmd_compact(args, manager: "GoTProjectManager") -> int:
-    """Handle 'got compact' command."""
-    from scripts.got_utils import EventLog
-    import datetime as dt
+    """Handle 'got compact' command.
 
-    preserve_handoffs = not getattr(args, 'no_preserve_handoffs', False)
-    preserve_days = getattr(args, 'preserve_days', 7)
-    dry_run = getattr(args, 'dry_run', False)
-
-    if dry_run:
-        print(f"Dry run - would compact events older than {preserve_days} days")
-        print(f"  Preserve handoffs: {preserve_handoffs}")
-
-        # Load and analyze events
-        events = EventLog.load_all_events(manager.events_dir)
-        cutoff = datetime.utcnow() - dt.timedelta(days=preserve_days)
-        cutoff_str = cutoff.isoformat() + "Z"
-
-        old_events = [e for e in events if e.get("ts", "") < cutoff_str]
-        handoff_events = [e for e in events if e.get("event", "").startswith("handoff.")]
-        recent_events = [e for e in events if e.get("ts", "") >= cutoff_str]
-
-        print(f"\nAnalysis:")
-        print(f"  Total events: {len(events)}")
-        print(f"  Old events (would compact): {len(old_events)}")
-        print(f"  Recent events (would keep): {len(recent_events)}")
-        print(f"  Handoff events: {len(handoff_events)}")
-        return 0
-
-    result = EventLog.compact_events(
-        manager.events_dir,
-        preserve_handoffs=preserve_handoffs,
-        preserve_days=preserve_days,
-    )
-
-    if result.get("error"):
-        print(f"Error: {result['error']}")
-        return 1
-
-    if result.get("status") == "nothing_to_compact":
-        print("Nothing to compact - all events are recent.")
-        return 0
-
-    print("Event compaction complete:")
-    print(f"  Nodes written: {result.get('nodes_written', 0)}")
-    print(f"  Edges written: {result.get('edges_written', 0)}")
-    print(f"  Handoffs preserved: {result.get('handoffs_preserved', 0)}")
-    print(f"  Files removed: {result.get('files_removed', 0)}")
-    print(f"  Compact file: {result.get('compact_file', '?')}")
-    print(f"\n  Original events: {result.get('original_event_count', 0)}")
-    print(f"  Old events consolidated: {result.get('old_events_consolidated', 0)}")
-    print(f"  Recent events kept: {result.get('recent_events_kept', 0)}")
-
+    DEPRECATED: This command is for the legacy event-sourced backend.
+    The TX backend uses entity files in .got/entities/ which don't need compaction.
+    """
+    print("The 'compact' command is deprecated.")
+    print("The TX backend stores entities directly in .got/entities/ and doesn't use event logs.")
+    print("No compaction is needed.")
     return 0
 
 
