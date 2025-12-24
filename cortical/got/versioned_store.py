@@ -14,9 +14,10 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from .types import Entity, Task, Decision, Edge, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, PersonaProfile, Team, Document
-from .errors import CorruptionError
+from .errors import CorruptionError, ValidationError
 from cortical.utils.checksums import compute_checksum
 from .config import DurabilityMode
+from .schema import get_registry, ValidationResult
 
 
 class VersionedStore:
@@ -40,17 +41,24 @@ class VersionedStore:
                 {entity_id}.jsonl     # Historical snapshots
     """
 
-    def __init__(self, store_dir: Path, durability: DurabilityMode = DurabilityMode.BALANCED):
+    def __init__(
+        self,
+        store_dir: Path,
+        durability: DurabilityMode = DurabilityMode.BALANCED,
+        validate_on_save: bool = False
+    ):
         """
         Initialize store, creating directory structure if needed.
 
         Args:
             store_dir: Directory path for storing entities
             durability: Durability mode controlling fsync behavior
+            validate_on_save: If True, validate entities against schemas before saving
         """
         self.store_dir = Path(store_dir)
         self.store_dir.mkdir(parents=True, exist_ok=True)
         self.durability = durability
+        self.validate_on_save = validate_on_save
         self.history_dir = self.store_dir / "_history"
         self.history_dir.mkdir(exist_ok=True)
         self._version = self._load_version()
@@ -132,6 +140,37 @@ class VersionedStore:
             else:
                 return None
 
+    def _validate_entity(self, entity: Entity) -> None:
+        """
+        Validate entity against its schema.
+
+        Args:
+            entity: Entity to validate
+
+        Raises:
+            ValidationError: If entity fails schema validation
+        """
+        if not self.validate_on_save:
+            return
+
+        # Get entity type from the entity
+        entity_type = getattr(entity, 'entity_type', '')
+        if not entity_type:
+            return  # Skip validation for unknown types
+
+        # Validate against schema
+        registry = get_registry()
+        if not registry.has_schema(entity_type):
+            return  # Skip validation for types without schemas
+
+        result = registry.validate(entity_type, entity.to_dict())
+        if not result.valid:
+            raise ValidationError(
+                f"Entity {entity.id} failed schema validation",
+                entity_type=entity_type,
+                errors=result.errors
+            )
+
     def write(self, entity: Entity) -> None:
         """
         Write an entity (used for single writes, increments entity.version).
@@ -141,7 +180,11 @@ class VersionedStore:
 
         Raises:
             CorruptionError: If checksum operations fail
+            ValidationError: If entity fails schema validation (when validate_on_save=True)
         """
+        # Validate entity before writing
+        self._validate_entity(entity)
+
         # Save current state to history before overwriting
         if self.exists(entity.id):
             self._save_to_history(entity.id, self._version)
@@ -162,11 +205,12 @@ class VersionedStore:
         Atomically apply a set of writes.
 
         Uses atomic file operations:
-        1. Write to temp files
-        2. Fsync all temp files
-        3. Rename temp files to final (atomic on POSIX)
-        4. Update version counter
-        5. Fsync version file
+        1. Validate all entities (if validate_on_save=True)
+        2. Write to temp files
+        3. Fsync all temp files
+        4. Rename temp files to final (atomic on POSIX)
+        5. Update version counter
+        6. Fsync version file
 
         If any operation fails, all successfully renamed files are rolled back
         to ensure no partial state persists.
@@ -179,8 +223,13 @@ class VersionedStore:
 
         Raises:
             CorruptionError: If checksum operations fail
+            ValidationError: If any entity fails schema validation
             Exception: Any error during write (all changes rolled back)
         """
+        # Step 0: Validate all entities before any writes
+        for entity in write_set.values():
+            self._validate_entity(entity)
+
         temp_files = []
         renamed_files = []  # Track successful renames for rollback
 
