@@ -1,0 +1,15 @@
+{
+  "_checksum": "663bbaab7ec5ddcb",
+  "_written_at": "2025-12-24T18:23:49.205521+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2025-12-24T18:23:49.198276+00:00",
+    "entity_type": "decision",
+    "id": "D-20251224-182349-bb7daed6",
+    "modified_at": "2025-12-24T18:23:49.205484+00:00",
+    "properties": {},
+    "rationale": "Orphan rate was at 51.4% (38 orphans) causing validation warnings. Root cause: tasks completed during migration period were never linked to sprints. Fix: auto-linked 25 completed orphans to S-018 (Schema Evolution Foundation) sprint. Remaining 7 orphans are legitimate backlog items (pending IDEA/design/test tasks). Result: orphan rate reduced to 17.6% (13 orphans), validation now passes healthy.",
+    "title": "Linked 25 completed orphan tasks to S-018",
+    "version": 2
+  }
+}

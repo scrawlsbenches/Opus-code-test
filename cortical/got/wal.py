@@ -46,6 +46,28 @@ from .config import DurabilityMode
 __all__ = ['WALManager', 'TransactionWALEntry']
 
 
+def _is_legacy_entry(data: Dict[str, Any]) -> bool:
+    """
+    Detect legacy WAL entry format from orphan_recovery migration.
+
+    Legacy format: {"op": "ADOPTED", "entity_id": "...", "timestamp": float, "checksum": "..."}
+    Current format: {"seq": N, "ts": "ISO-8601", "tx": "TX-xxx", "op": "...", "data": {...}}
+
+    Legacy entries have already been replayed into entities and can be safely skipped
+    during WAL replay. They remain in the WAL for historical audit purposes.
+    """
+    # Legacy entries have entity_id (not in new format)
+    if 'entity_id' in data:
+        return True
+    # Legacy entries have numeric timestamp (new format uses 'ts' as ISO string)
+    if 'timestamp' in data and isinstance(data.get('timestamp'), (int, float)):
+        return True
+    # Legacy entries lack the 'seq' field
+    if 'seq' not in data and 'tx' not in data:
+        return True
+    return False
+
+
 class WALManager:
     """
     Write-Ahead Log for crash recovery.
@@ -246,6 +268,9 @@ class WALManager:
             return []
 
         entries = []
+        legacy_count = 0
+        invalid_checksum_count = 0
+
         with open(self.wal_file, 'r', encoding='utf-8') as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
@@ -262,19 +287,33 @@ class WALManager:
                     )
                     continue
 
+                # Skip legacy format entries (already replayed into entities)
+                if _is_legacy_entry(data):
+                    legacy_count += 1
+                    continue
+
                 # Parse into TransactionWALEntry for verification
                 entry = TransactionWALEntry.from_dict(data)
 
                 if not entry.verify():
-                    # Skip corrupted entry
-                    logger.warning(
-                        "Skipping WAL entry with invalid checksum at line %d",
-                        line_num
-                    )
+                    # Count but don't log per-line to avoid spam
+                    invalid_checksum_count += 1
                     continue
 
                 # Return as dictionary for backward compatibility
                 entries.append(entry.to_dict())
+
+        # Consolidated warnings
+        if legacy_count > 0:
+            logger.debug(
+                "Skipped %d legacy WAL entries (already applied to entities)",
+                legacy_count
+            )
+        if invalid_checksum_count > 0:
+            logger.warning(
+                "Skipped %d WAL entries with invalid checksums",
+                invalid_checksum_count
+            )
 
         return entries
 
@@ -291,6 +330,9 @@ class WALManager:
             return []
 
         entries = []
+        legacy_count = 0
+        invalid_checksum_count = 0
+
         with open(self.wal_file, 'r', encoding='utf-8') as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
@@ -307,18 +349,32 @@ class WALManager:
                     )
                     continue
 
+                # Skip legacy format entries (already replayed into entities)
+                if _is_legacy_entry(data):
+                    legacy_count += 1
+                    continue
+
                 # Parse into TransactionWALEntry for verification
                 entry = TransactionWALEntry.from_dict(data)
 
                 if not entry.verify():
-                    # Skip corrupted entry
-                    logger.warning(
-                        "Skipping WAL entry with invalid checksum at line %d",
-                        line_num
-                    )
+                    # Count but don't log per-line to avoid spam
+                    invalid_checksum_count += 1
                     continue
 
                 entries.append(entry)
+
+        # Consolidated warnings
+        if legacy_count > 0:
+            logger.debug(
+                "Skipped %d legacy WAL entries (already applied to entities)",
+                legacy_count
+            )
+        if invalid_checksum_count > 0:
+            logger.warning(
+                "Skipped %d WAL entries with invalid checksums",
+                invalid_checksum_count
+            )
 
         return entries
 
