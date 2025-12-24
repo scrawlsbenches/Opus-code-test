@@ -1,8 +1,8 @@
 {
-  "_checksum": "99d5c11f5339f8aa",
-  "_written_at": "2025-12-24T09:25:09.016150+00:00",
+  "_checksum": "6d5cdc6bb4416db0",
+  "_written_at": "2025-12-24T10:28:56.250459+00:00",
   "data": {
-    "accepted_at": "",
+    "accepted_at": "2025-12-24T10:28:56.243385+00:00",
     "artifacts": [],
     "completed_at": "",
     "context": {
@@ -15,15 +15,15 @@
     "id": "H-20251224-092509-1f9493d8",
     "initiated_at": "2025-12-24T09:25:09.010135+00:00",
     "instructions": "## Handoff: Schema Validation System Complete\n\n### Session Summary\nThis session completed 7 Sprint 018 tasks implementing a declarative schema validation system for GoT entities:\n\n1. **Schema Registry Architecture** (T-20251223-151723-24aed5d3) - Created `cortical/got/schema.py` with:\n   - `FieldType` enum (STRING, INTEGER, ENUM, LIST, DICT, etc.)\n   - `Field` class for declarative field definitions\n   - `BaseSchema` class with version tracking and migration support\n   - `SchemaRegistry` singleton for centralized schema management\n   - `ValidationResult` for validation feedback\n\n2. **Entity Schemas** (T-20251223-151749-cb683757) - Created `cortical/got/entity_schemas.py` with schemas for all 11 entity types:\n   - Task, Decision, Sprint, Epic, Edge\n   - Handoff, ClaudeMdLayer, ClaudeMdVersion\n   - Team, PersonaProfile, Document\n\n3. **Validation on Save** (T-20251223-151742-d62f2abf) - Added `validate_on_save` parameter to `VersionedStore`:\n   - Validates entities before `write()` and `apply_writes()`\n   - Raises `ValidationError` with detailed error messages\n   - Backward compatible (disabled by default)\n\n4. **Documentation** (T-20251223-151755-da981003) - Created `docs/got-entity-schema-validation.md`\n\n5. **HandoffManager Fix** (T-20251223-184503-0550720b) - Verified fixed after deprecated class removal\n\n### Test Results\n- 37 new unit tests in `tests/unit/test_schema.py`\n- All 55 schema + smoke tests pass\n- GoT CLI commands working correctly\n\n### Commit\n```\nfeat(got): Add declarative schema validation for GoT entities\n0a7648cf - 2377 lines added\n```\n\n### Sprint 018 Status\n- Progress: 15/18 tasks (83.3%)\n- 3 tasks remaining (not schema-related)\n\n### High Priority Pending Tasks\n| Task ID | Title | Priority |\n|---------|-------|----------|\n| T-20251223-153551-5705de6e | Design orphan detection and auto-cleanup | high |\n| T-20251222-204135-781dad64 | Context detection for CLAUDE.md | high |\n| T-20251222-204138-51a38502 | Validate: Fault tolerance and recovery | high |\n| T-20251222-204138-5915d70a | Test: Regression tests for CLAUDE.md | high |\n\n### Key Files Modified\n- `cortical/got/schema.py` (NEW - 520 lines)\n- `cortical/got/entity_schemas.py` (NEW - 620 lines)\n- `cortical/got/versioned_store.py` (validation integration)\n- `cortical/got/__init__.py` (exports)\n- `tests/unit/test_schema.py` (NEW - 440 lines)\n- `docs/got-entity-schema-validation.md` (NEW)\n\n### Usage Example\n```python\nfrom cortical.got.versioned_store import VersionedStore\nfrom cortical.got.entity_schemas import ensure_schemas_registered\n\nensure_schemas_registered()\nstore = VersionedStore(store_dir, validate_on_save=True)\n# All writes now validated against schemas\n```\n\n### Next Session Can\n- Work on remaining high-priority tasks\n- Enable `validate_on_save=True` in production\n- Add schema migrations for future entity changes",
-    "modified_at": "2025-12-24T09:25:09.016088+00:00",
+    "modified_at": "2025-12-24T10:28:56.250411+00:00",
     "properties": {},
     "reject_reason": "",
     "rejected_at": "",
     "result": {},
     "source_agent": "main",
-    "status": "initiated",
+    "status": "accepted",
     "target_agent": "next-session",
     "task_id": "T-20251223-153551-5705de6e",
-    "version": 2
+    "version": 4
   }
 }
