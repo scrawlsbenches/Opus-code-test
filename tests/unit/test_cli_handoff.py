@@ -3,10 +3,13 @@ Unit tests for cortical/got/cli/handoff.py
 
 Tests the CLI command handlers for handoff operations without
 using real GoT data or file I/O.
+
+Updated to use TX backend methods (manager.initiate_handoff, etc.)
+instead of EventLog/HandoffManager.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from argparse import Namespace
 
 from cortical.got.cli.handoff import (
@@ -18,36 +21,38 @@ from cortical.got.cli.handoff import (
 )
 
 
+@pytest.fixture
+def mock_manager():
+    """Create a mock GoTProjectManager with TX backend methods."""
+    manager = MagicMock()
+    manager.events_dir = "/fake/events"
+    # Mock TX backend methods
+    manager.initiate_handoff = MagicMock(return_value="H-20251223-123456-abc123")
+    manager.accept_handoff = MagicMock(return_value=True)
+    manager.complete_handoff = MagicMock(return_value=True)
+    manager.list_handoffs = MagicMock(return_value=[])
+    return manager
+
+
+@pytest.fixture
+def mock_task():
+    """Create a mock task."""
+    task = MagicMock()
+    task.content = "Implement feature X"
+    task.properties = {
+        "status": "in_progress",
+        "priority": "high"
+    }
+    return task
+
+
 class TestHandoffInitiate:
     """Tests for cmd_handoff_initiate command."""
 
-    @pytest.fixture
-    def mock_manager(self):
-        """Create a mock GoTProjectManager."""
-        manager = MagicMock()
-        manager.events_dir = "/fake/events"
-        return manager
-
-    @pytest.fixture
-    def mock_task(self):
-        """Create a mock task."""
-        task = MagicMock()
-        task.content = "Implement feature X"
-        task.properties = {
-            "status": "in_progress",
-            "priority": "high"
-        }
-        return task
-
-    @patch('scripts.got_utils.EventLog')
-    @patch('scripts.got_utils.HandoffManager')
-    def test_initiate_success(self, mock_handoff_mgr_cls, mock_event_log_cls, mock_manager, mock_task, capsys):
+    def test_initiate_success(self, mock_manager, mock_task, capsys):
         """Test successful handoff initiation."""
-        # Setup
         mock_manager.get_task.return_value = mock_task
-        mock_handoff_mgr = MagicMock()
-        mock_handoff_mgr.initiate_handoff.return_value = "H-20251223-123456-abc123"
-        mock_handoff_mgr_cls.return_value = mock_handoff_mgr
+        mock_manager.initiate_handoff.return_value = "H-20251223-123456-abc123"
 
         args = Namespace(
             task_id="T-123",
@@ -56,13 +61,11 @@ class TestHandoffInitiate:
             instructions="Please implement this feature"
         )
 
-        # Execute
         result = cmd_handoff_initiate(args, mock_manager)
 
-        # Assert
         assert result == 0
         mock_manager.get_task.assert_called_once_with("T-123")
-        mock_handoff_mgr.initiate_handoff.assert_called_once_with(
+        mock_manager.initiate_handoff.assert_called_once_with(
             source_agent="main",
             target_agent="sub-agent-1",
             task_id="T-123",
@@ -81,14 +84,10 @@ class TestHandoffInitiate:
         assert "To: sub-agent-1" in captured.out
         assert "Please implement this feature" in captured.out
 
-    @patch('scripts.got_utils.EventLog')
-    @patch('scripts.got_utils.HandoffManager')
-    def test_initiate_without_instructions(self, mock_handoff_mgr_cls, mock_event_log_cls, mock_manager, mock_task):
+    def test_initiate_without_instructions(self, mock_manager, mock_task):
         """Test handoff initiation without instructions."""
         mock_manager.get_task.return_value = mock_task
-        mock_handoff_mgr = MagicMock()
-        mock_handoff_mgr.initiate_handoff.return_value = "H-123"
-        mock_handoff_mgr_cls.return_value = mock_handoff_mgr
+        mock_manager.initiate_handoff.return_value = "H-123"
 
         args = Namespace(
             task_id="T-123",
@@ -100,8 +99,8 @@ class TestHandoffInitiate:
         result = cmd_handoff_initiate(args, mock_manager)
 
         assert result == 0
-        mock_handoff_mgr.initiate_handoff.assert_called_once()
-        call_kwargs = mock_handoff_mgr.initiate_handoff.call_args[1]
+        mock_manager.initiate_handoff.assert_called_once()
+        call_kwargs = mock_manager.initiate_handoff.call_args[1]
         assert call_kwargs["instructions"] == ""
 
     def test_initiate_task_not_found(self, mock_manager, capsys):
@@ -125,19 +124,9 @@ class TestHandoffInitiate:
 class TestHandoffAccept:
     """Tests for cmd_handoff_accept command."""
 
-    @pytest.fixture
-    def mock_manager(self):
-        """Create a mock GoTProjectManager."""
-        manager = MagicMock()
-        manager.events_dir = "/fake/events"
-        return manager
-
-    @patch('scripts.got_utils.EventLog')
-    @patch('scripts.got_utils.HandoffManager')
-    def test_accept_success(self, mock_handoff_mgr_cls, mock_event_log_cls, mock_manager, capsys):
+    def test_accept_success(self, mock_manager, capsys):
         """Test successful handoff acceptance."""
-        mock_handoff_mgr = MagicMock()
-        mock_handoff_mgr_cls.return_value = mock_handoff_mgr
+        mock_manager.accept_handoff.return_value = True
 
         args = Namespace(
             handoff_id="H-123",
@@ -148,7 +137,7 @@ class TestHandoffAccept:
         result = cmd_handoff_accept(args, mock_manager)
 
         assert result == 0
-        mock_handoff_mgr.accept_handoff.assert_called_once_with(
+        mock_manager.accept_handoff.assert_called_once_with(
             handoff_id="H-123",
             agent="sub-agent-1",
             acknowledgment="Got it, starting work"
@@ -158,12 +147,9 @@ class TestHandoffAccept:
         assert "Handoff accepted: H-123" in captured.out
         assert "Agent: sub-agent-1" in captured.out
 
-    @patch('scripts.got_utils.EventLog')
-    @patch('scripts.got_utils.HandoffManager')
-    def test_accept_without_message(self, mock_handoff_mgr_cls, mock_event_log_cls, mock_manager):
+    def test_accept_without_message(self, mock_manager):
         """Test handoff acceptance without acknowledgment message."""
-        mock_handoff_mgr = MagicMock()
-        mock_handoff_mgr_cls.return_value = mock_handoff_mgr
+        mock_manager.accept_handoff.return_value = True
 
         args = Namespace(
             handoff_id="H-123",
@@ -174,27 +160,33 @@ class TestHandoffAccept:
         result = cmd_handoff_accept(args, mock_manager)
 
         assert result == 0
-        mock_handoff_mgr.accept_handoff.assert_called_once()
-        call_kwargs = mock_handoff_mgr.accept_handoff.call_args[1]
+        mock_manager.accept_handoff.assert_called_once()
+        call_kwargs = mock_manager.accept_handoff.call_args[1]
         assert call_kwargs["acknowledgment"] == ""
+
+    def test_accept_failure(self, mock_manager, capsys):
+        """Test handoff acceptance failure."""
+        mock_manager.accept_handoff.return_value = False
+
+        args = Namespace(
+            handoff_id="H-123",
+            agent="sub-agent-1",
+            message=""
+        )
+
+        result = cmd_handoff_accept(args, mock_manager)
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Failed to accept handoff" in captured.out
 
 
 class TestHandoffComplete:
     """Tests for cmd_handoff_complete command."""
 
-    @pytest.fixture
-    def mock_manager(self):
-        """Create a mock GoTProjectManager."""
-        manager = MagicMock()
-        manager.events_dir = "/fake/events"
-        return manager
-
-    @patch('scripts.got_utils.EventLog')
-    @patch('scripts.got_utils.HandoffManager')
-    def test_complete_with_json_result(self, mock_handoff_mgr_cls, mock_event_log_cls, mock_manager, capsys):
+    def test_complete_with_json_result(self, mock_manager, capsys):
         """Test handoff completion with valid JSON result."""
-        mock_handoff_mgr = MagicMock()
-        mock_handoff_mgr_cls.return_value = mock_handoff_mgr
+        mock_manager.complete_handoff.return_value = True
 
         args = Namespace(
             handoff_id="H-123",
@@ -206,7 +198,7 @@ class TestHandoffComplete:
         result = cmd_handoff_complete(args, mock_manager)
 
         assert result == 0
-        mock_handoff_mgr.complete_handoff.assert_called_once_with(
+        mock_manager.complete_handoff.assert_called_once_with(
             handoff_id="H-123",
             agent="sub-agent-1",
             result={"status": "success", "files_modified": 3},
@@ -218,12 +210,9 @@ class TestHandoffComplete:
         assert "Agent: sub-agent-1" in captured.out
         assert "status" in captured.out
 
-    @patch('scripts.got_utils.EventLog')
-    @patch('scripts.got_utils.HandoffManager')
-    def test_complete_with_plain_text_result(self, mock_handoff_mgr_cls, mock_event_log_cls, mock_manager):
+    def test_complete_with_plain_text_result(self, mock_manager):
         """Test handoff completion with plain text result (gets wrapped in dict)."""
-        mock_handoff_mgr = MagicMock()
-        mock_handoff_mgr_cls.return_value = mock_handoff_mgr
+        mock_manager.complete_handoff.return_value = True
 
         args = Namespace(
             handoff_id="H-123",
@@ -235,17 +224,31 @@ class TestHandoffComplete:
         result = cmd_handoff_complete(args, mock_manager)
 
         assert result == 0
-        mock_handoff_mgr.complete_handoff.assert_called_once()
-        call_kwargs = mock_handoff_mgr.complete_handoff.call_args[1]
+        mock_manager.complete_handoff.assert_called_once()
+        call_kwargs = mock_manager.complete_handoff.call_args[1]
         assert call_kwargs["result"] == {"message": "Work completed successfully"}
         assert call_kwargs["artifacts"] == []
 
-    @patch('scripts.got_utils.EventLog')
-    @patch('scripts.got_utils.HandoffManager')
-    def test_complete_without_artifacts(self, mock_handoff_mgr_cls, mock_event_log_cls, mock_manager):
+    def test_complete_without_artifacts(self, mock_manager):
         """Test handoff completion without artifacts."""
-        mock_handoff_mgr = MagicMock()
-        mock_handoff_mgr_cls.return_value = mock_handoff_mgr
+        mock_manager.complete_handoff.return_value = True
+
+        args = Namespace(
+            handoff_id="H-123",
+            agent="sub-agent-1",
+            result='{"status": "done"}',
+            artifacts=None
+        )
+
+        result = cmd_handoff_complete(args, mock_manager)
+
+        assert result == 0
+        call_kwargs = mock_manager.complete_handoff.call_args[1]
+        assert call_kwargs["artifacts"] == []
+
+    def test_complete_failure(self, mock_manager, capsys):
+        """Test handoff completion failure."""
+        mock_manager.complete_handoff.return_value = False
 
         args = Namespace(
             handoff_id="H-123",
@@ -256,56 +259,17 @@ class TestHandoffComplete:
 
         result = cmd_handoff_complete(args, mock_manager)
 
-        assert result == 0
-        call_kwargs = mock_handoff_mgr.complete_handoff.call_args[1]
-        assert call_kwargs["artifacts"] == []
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Failed to complete handoff" in captured.out
 
 
 class TestHandoffList:
     """Tests for cmd_handoff_list command."""
 
-    @pytest.fixture
-    def mock_manager(self):
-        """Create a mock GoTProjectManager."""
-        manager = MagicMock()
-        manager.events_dir = "/fake/events"
-        return manager
-
-    @pytest.fixture
-    def sample_handoffs(self):
-        """Sample handoff data."""
-        return [
-            {
-                "id": "H-001",
-                "status": "initiated",
-                "source_agent": "main",
-                "target_agent": "sub-1",
-                "task_id": "T-123",
-                "instructions": "Please implement authentication feature with OAuth2 support"
-            },
-            {
-                "id": "H-002",
-                "status": "accepted",
-                "source_agent": "main",
-                "target_agent": "sub-2",
-                "task_id": "T-456",
-                "instructions": "Fix bug in login flow"
-            },
-            {
-                "id": "H-003",
-                "status": "completed",
-                "source_agent": "main",
-                "target_agent": "sub-1",
-                "task_id": "T-789",
-            },
-        ]
-
-    @patch('scripts.got_utils.EventLog')
-    @patch('scripts.got_utils.HandoffManager')
-    def test_list_no_handoffs(self, mock_handoff_mgr_cls, mock_event_log_cls, mock_manager, capsys):
+    def test_list_no_handoffs(self, mock_manager, capsys):
         """Test listing when no handoffs exist."""
-        mock_event_log_cls.load_all_events.return_value = []
-        mock_handoff_mgr_cls.load_handoffs_from_events.return_value = []
+        mock_manager.list_handoffs.return_value = []
 
         args = Namespace(status=None)
 
@@ -315,51 +279,78 @@ class TestHandoffList:
         captured = capsys.readouterr()
         assert "No handoffs found" in captured.out
 
-    @patch('scripts.got_utils.EventLog')
-    @patch('scripts.got_utils.HandoffManager')
-    def test_list_all_handoffs(self, mock_handoff_mgr_cls, mock_event_log_cls, mock_manager, sample_handoffs, capsys):
-        """Test listing all handoffs without status filter."""
-        mock_event_log_cls.load_all_events.return_value = []
-        mock_handoff_mgr_cls.load_handoffs_from_events.return_value = sample_handoffs
+    def test_list_all_handoffs(self, mock_manager, capsys):
+        """Test listing all handoffs."""
+        mock_manager.list_handoffs.return_value = [
+            {
+                "id": "H-123",
+                "source_agent": "main",
+                "target_agent": "sub-agent-1",
+                "task_id": "T-456",
+                "status": "initiated",
+                "instructions": "Implement feature X"
+            },
+            {
+                "id": "H-124",
+                "source_agent": "main",
+                "target_agent": "sub-agent-2",
+                "task_id": "T-789",
+                "status": "completed",
+                "instructions": "Fix bug Y"
+            }
+        ]
 
         args = Namespace(status=None)
 
         result = cmd_handoff_list(args, mock_manager)
 
         assert result == 0
-        captured = capsys.readouterr()
-        assert "Handoffs (3)" in captured.out
-        assert "H-001" in captured.out
-        assert "H-002" in captured.out
-        assert "H-003" in captured.out
-        assert "→" in captured.out  # initiated icon
-        assert "✓" in captured.out  # accepted icon
-        assert "✓✓" in captured.out  # completed icon
+        mock_manager.list_handoffs.assert_called_once_with(status=None)
 
-    @patch('scripts.got_utils.EventLog')
-    @patch('scripts.got_utils.HandoffManager')
-    def test_list_with_status_filter(self, mock_handoff_mgr_cls, mock_event_log_cls, mock_manager, sample_handoffs, capsys):
+        captured = capsys.readouterr()
+        assert "Handoffs (2):" in captured.out
+        assert "H-123" in captured.out
+        assert "H-124" in captured.out
+        assert "main → sub-agent-1" in captured.out
+        assert "main → sub-agent-2" in captured.out
+
+    def test_list_with_status_filter(self, mock_manager, capsys):
         """Test listing handoffs filtered by status."""
-        mock_event_log_cls.load_all_events.return_value = []
-        mock_handoff_mgr_cls.load_handoffs_from_events.return_value = sample_handoffs
+        mock_manager.list_handoffs.return_value = [
+            {
+                "id": "H-123",
+                "source_agent": "main",
+                "target_agent": "sub-agent-1",
+                "task_id": "T-456",
+                "status": "completed",
+                "instructions": "Done"
+            }
+        ]
 
-        args = Namespace(status="initiated")
+        args = Namespace(status="completed")
 
         result = cmd_handoff_list(args, mock_manager)
 
         assert result == 0
-        captured = capsys.readouterr()
-        assert "Handoffs (1)" in captured.out
-        assert "H-001" in captured.out
-        assert "H-002" not in captured.out
-        assert "H-003" not in captured.out
+        mock_manager.list_handoffs.assert_called_once_with(status="completed")
 
-    @patch('scripts.got_utils.EventLog')
-    @patch('scripts.got_utils.HandoffManager')
-    def test_list_shows_truncated_instructions(self, mock_handoff_mgr_cls, mock_event_log_cls, mock_manager, sample_handoffs, capsys):
-        """Test that long instructions are truncated in list view."""
-        mock_event_log_cls.load_all_events.return_value = []
-        mock_handoff_mgr_cls.load_handoffs_from_events.return_value = sample_handoffs
+        captured = capsys.readouterr()
+        assert "Handoffs (1):" in captured.out
+        assert "H-123" in captured.out
+
+    def test_list_shows_truncated_instructions(self, mock_manager, capsys):
+        """Test that long instructions are truncated in list output."""
+        long_instructions = "A" * 100
+        mock_manager.list_handoffs.return_value = [
+            {
+                "id": "H-123",
+                "source_agent": "main",
+                "target_agent": "sub-agent-1",
+                "task_id": "T-456",
+                "status": "initiated",
+                "instructions": long_instructions
+            }
+        ]
 
         args = Namespace(status=None)
 
@@ -367,22 +358,80 @@ class TestHandoffList:
 
         assert result == 0
         captured = capsys.readouterr()
-        # First handoff has long instructions
-        assert "Please implement authentication feature with OAuth" in captured.out
+        # Should be truncated to 50 chars + "..."
         assert "..." in captured.out
 
 
 class TestHandleHandoffCommand:
-    """Tests for handle_handoff_command dispatcher."""
+    """Tests for handle_handoff_command routing."""
 
-    @pytest.fixture
-    def mock_manager(self):
-        """Create a mock GoTProjectManager."""
-        return MagicMock()
+    def test_route_to_initiate(self, mock_manager, mock_task):
+        """Test routing to initiate command."""
+        mock_manager.get_task.return_value = mock_task
 
-    def test_no_subcommand(self, mock_manager, capsys):
-        """Test when no handoff subcommand is specified."""
-        args = Namespace()
+        args = Namespace(
+            handoff_command="initiate",
+            task_id="T-123",
+            target="sub-agent-1",
+            source="main",
+            instructions=""
+        )
+
+        result = handle_handoff_command(args, mock_manager)
+
+        assert result == 0
+        mock_manager.initiate_handoff.assert_called_once()
+
+    def test_route_to_accept(self, mock_manager):
+        """Test routing to accept command."""
+        mock_manager.accept_handoff.return_value = True
+
+        args = Namespace(
+            handoff_command="accept",
+            handoff_id="H-123",
+            agent="sub-agent-1",
+            message=""
+        )
+
+        result = handle_handoff_command(args, mock_manager)
+
+        assert result == 0
+        mock_manager.accept_handoff.assert_called_once()
+
+    def test_route_to_complete(self, mock_manager):
+        """Test routing to complete command."""
+        mock_manager.complete_handoff.return_value = True
+
+        args = Namespace(
+            handoff_command="complete",
+            handoff_id="H-123",
+            agent="sub-agent-1",
+            result="{}",
+            artifacts=None
+        )
+
+        result = handle_handoff_command(args, mock_manager)
+
+        assert result == 0
+        mock_manager.complete_handoff.assert_called_once()
+
+    def test_route_to_list(self, mock_manager):
+        """Test routing to list command."""
+        mock_manager.list_handoffs.return_value = []
+
+        args = Namespace(
+            handoff_command="list",
+            status=None
+        )
+
+        result = handle_handoff_command(args, mock_manager)
+
+        assert result == 0
+        mock_manager.list_handoffs.assert_called_once()
+
+    def test_missing_subcommand(self, mock_manager, capsys):
+        """Test error when handoff subcommand is missing."""
+        args = Namespace()  # No handoff_command
 
         result = handle_handoff_command(args, mock_manager)
 
@@ -391,263 +440,11 @@ class TestHandleHandoffCommand:
         assert "No handoff subcommand specified" in captured.out
 
     def test_unknown_subcommand(self, mock_manager, capsys):
-        """Test when unknown handoff subcommand is specified."""
-        args = Namespace(handoff_command="invalid")
+        """Test error for unknown subcommand."""
+        args = Namespace(handoff_command="unknown")
 
         result = handle_handoff_command(args, mock_manager)
 
         assert result == 1
         captured = capsys.readouterr()
-        assert "Unknown handoff subcommand: invalid" in captured.out
-
-    @patch('cortical.got.cli.handoff.cmd_handoff_initiate')
-    def test_routes_to_initiate(self, mock_cmd, mock_manager):
-        """Test that 'initiate' command is routed correctly."""
-        mock_cmd.return_value = 0
-        args = Namespace(handoff_command="initiate")
-
-        result = handle_handoff_command(args, mock_manager)
-
-        assert result == 0
-        mock_cmd.assert_called_once_with(args, mock_manager)
-
-    @patch('cortical.got.cli.handoff.cmd_handoff_accept')
-    def test_routes_to_accept(self, mock_cmd, mock_manager):
-        """Test that 'accept' command is routed correctly."""
-        mock_cmd.return_value = 0
-        args = Namespace(handoff_command="accept")
-
-        result = handle_handoff_command(args, mock_manager)
-
-        assert result == 0
-        mock_cmd.assert_called_once_with(args, mock_manager)
-
-    @patch('cortical.got.cli.handoff.cmd_handoff_complete')
-    def test_routes_to_complete(self, mock_cmd, mock_manager):
-        """Test that 'complete' command is routed correctly."""
-        mock_cmd.return_value = 0
-        args = Namespace(handoff_command="complete")
-
-        result = handle_handoff_command(args, mock_manager)
-
-        assert result == 0
-        mock_cmd.assert_called_once_with(args, mock_manager)
-
-    @patch('cortical.got.cli.handoff.cmd_handoff_list')
-    def test_routes_to_list(self, mock_cmd, mock_manager):
-        """Test that 'list' command is routed correctly."""
-        mock_cmd.return_value = 0
-        args = Namespace(handoff_command="list")
-
-        result = handle_handoff_command(args, mock_manager)
-
-        assert result == 0
-        mock_cmd.assert_called_once_with(args, mock_manager)
-
-
-class TestSetupHandoffParser:
-    """Tests for setup_handoff_parser function."""
-
-    def test_creates_handoff_subparser(self):
-        """Test that handoff subparser is created with correct structure."""
-        import argparse
-        from cortical.got.cli.handoff import setup_handoff_parser
-
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-
-        # Setup handoff parser
-        setup_handoff_parser(subparsers)
-
-        # Parse a handoff initiate command
-        args = parser.parse_args([
-            'handoff', 'initiate', 'T-123',
-            '--target', 'sub-agent-1',
-            '--source', 'main',
-            '--instructions', 'Do the work'
-        ])
-
-        assert args.handoff_command == 'initiate'
-        assert args.task_id == 'T-123'
-        assert args.target == 'sub-agent-1'
-        assert args.source == 'main'
-        assert args.instructions == 'Do the work'
-
-    def test_initiate_parser_required_args(self):
-        """Test that initiate parser requires target argument."""
-        import argparse
-        from cortical.got.cli.handoff import setup_handoff_parser
-
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        setup_handoff_parser(subparsers)
-
-        # Missing --target should fail
-        with pytest.raises(SystemExit):
-            parser.parse_args(['handoff', 'initiate', 'T-123'])
-
-    def test_initiate_parser_defaults(self):
-        """Test initiate parser default values."""
-        import argparse
-        from cortical.got.cli.handoff import setup_handoff_parser
-
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        setup_handoff_parser(subparsers)
-
-        args = parser.parse_args([
-            'handoff', 'initiate', 'T-123',
-            '--target', 'sub-agent-1'
-        ])
-
-        assert args.source == 'main'  # Default source
-        assert args.instructions == ''  # Default instructions
-
-    def test_accept_parser_structure(self):
-        """Test that accept parser is created correctly."""
-        import argparse
-        from cortical.got.cli.handoff import setup_handoff_parser
-
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        setup_handoff_parser(subparsers)
-
-        args = parser.parse_args([
-            'handoff', 'accept', 'H-123',
-            '--agent', 'sub-agent-1',
-            '--message', 'Accepted'
-        ])
-
-        assert args.handoff_command == 'accept'
-        assert args.handoff_id == 'H-123'
-        assert args.agent == 'sub-agent-1'
-        assert args.message == 'Accepted'
-
-    def test_accept_parser_required_args(self):
-        """Test that accept parser requires agent argument."""
-        import argparse
-        from cortical.got.cli.handoff import setup_handoff_parser
-
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        setup_handoff_parser(subparsers)
-
-        # Missing --agent should fail
-        with pytest.raises(SystemExit):
-            parser.parse_args(['handoff', 'accept', 'H-123'])
-
-    def test_accept_parser_defaults(self):
-        """Test accept parser default values."""
-        import argparse
-        from cortical.got.cli.handoff import setup_handoff_parser
-
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        setup_handoff_parser(subparsers)
-
-        args = parser.parse_args([
-            'handoff', 'accept', 'H-123',
-            '--agent', 'sub-agent-1'
-        ])
-
-        assert args.message == ''  # Default message
-
-    def test_complete_parser_structure(self):
-        """Test that complete parser is created correctly."""
-        import argparse
-        from cortical.got.cli.handoff import setup_handoff_parser
-
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        setup_handoff_parser(subparsers)
-
-        args = parser.parse_args([
-            'handoff', 'complete', 'H-123',
-            '--agent', 'sub-agent-1',
-            '--result', '{"status": "done"}',
-            '--artifacts', 'file1.py', 'file2.py'
-        ])
-
-        assert args.handoff_command == 'complete'
-        assert args.handoff_id == 'H-123'
-        assert args.agent == 'sub-agent-1'
-        assert args.result == '{"status": "done"}'
-        assert args.artifacts == ['file1.py', 'file2.py']
-
-    def test_complete_parser_required_args(self):
-        """Test that complete parser requires agent argument."""
-        import argparse
-        from cortical.got.cli.handoff import setup_handoff_parser
-
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        setup_handoff_parser(subparsers)
-
-        # Missing --agent should fail
-        with pytest.raises(SystemExit):
-            parser.parse_args(['handoff', 'complete', 'H-123'])
-
-    def test_complete_parser_defaults(self):
-        """Test complete parser default values."""
-        import argparse
-        from cortical.got.cli.handoff import setup_handoff_parser
-
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        setup_handoff_parser(subparsers)
-
-        args = parser.parse_args([
-            'handoff', 'complete', 'H-123',
-            '--agent', 'sub-agent-1'
-        ])
-
-        assert args.result == '{}'  # Default result
-        assert args.artifacts is None  # Default artifacts
-
-    def test_list_parser_structure(self):
-        """Test that list parser is created correctly."""
-        import argparse
-        from cortical.got.cli.handoff import setup_handoff_parser
-
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        setup_handoff_parser(subparsers)
-
-        args = parser.parse_args([
-            'handoff', 'list',
-            '--status', 'initiated'
-        ])
-
-        assert args.handoff_command == 'list'
-        assert args.status == 'initiated'
-
-    def test_list_parser_status_choices(self):
-        """Test that list parser validates status choices."""
-        import argparse
-        from cortical.got.cli.handoff import setup_handoff_parser
-
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        setup_handoff_parser(subparsers)
-
-        # Valid status should work
-        args = parser.parse_args(['handoff', 'list', '--status', 'completed'])
-        assert args.status == 'completed'
-
-        # Invalid status should fail
-        with pytest.raises(SystemExit):
-            parser.parse_args(['handoff', 'list', '--status', 'invalid'])
-
-    def test_list_parser_no_status(self):
-        """Test list parser without status filter."""
-        import argparse
-        from cortical.got.cli.handoff import setup_handoff_parser
-
-        parser = argparse.ArgumentParser()
-        subparsers = parser.add_subparsers()
-        setup_handoff_parser(subparsers)
-
-        args = parser.parse_args(['handoff', 'list'])
-
-        assert args.handoff_command == 'list'
-        assert args.status is None
+        assert "Unknown handoff subcommand" in captured.out

@@ -82,8 +82,13 @@ def temp_got_dir():
 
 @pytest.fixture
 def mock_manager(temp_got_dir):
-    """Create a mock GoTProjectManager with pre-configured behavior."""
-    manager = Mock(spec=GoTProjectManager)
+    """Create a mock GoTProjectManager with pre-configured behavior.
+
+    Note: We don't use spec=GoTProjectManager because the TX backend
+    (TransactionalGoTAdapter) adds additional methods like initiate_handoff,
+    accept_handoff, complete_handoff, and list_handoffs.
+    """
+    manager = MagicMock()
     manager.got_dir = temp_got_dir
     manager.events_dir = temp_got_dir / "events"
     manager.events_dir.mkdir(parents=True, exist_ok=True)
@@ -94,11 +99,17 @@ def mock_manager(temp_got_dir):
     # Mock event log
     manager.event_log = Mock()
 
-    # Default return values
+    # Default return values for standard operations
     manager.save.return_value = None
     manager.create_task.return_value = "task:T-20251220-120000-abc123"
     manager.create_sprint.return_value = "sprint:S-001"
     manager.log_decision.return_value = "decision:D-20251220-120000-def456"
+
+    # Default return values for handoff operations (TX backend)
+    manager.initiate_handoff.return_value = "H-20251220-120000-abc123"
+    manager.accept_handoff.return_value = True
+    manager.complete_handoff.return_value = True
+    manager.list_handoffs.return_value = []
 
     return manager
 
@@ -844,7 +855,10 @@ class TestDecisionWhy:
 
 
 class TestHandoffInitiate:
-    """Tests for handoff initiate command."""
+    """Tests for handoff initiate command.
+
+    Updated to use manager methods (TX backend) instead of EventLog/HandoffManager.
+    """
 
     def test_initiate_handoff_basic(self, mock_manager, mock_args):
         """Initiate a basic handoff."""
@@ -860,19 +874,16 @@ class TestHandoffInitiate:
         task.properties = {"status": "pending", "priority": "high"}
 
         mock_manager.get_task.return_value = task
+        mock_manager.initiate_handoff.return_value = "handoff:H-001"
 
-        with patch('got_utils.HandoffManager') as MockHandoffMgr:
-            mock_handoff_mgr = Mock()
-            mock_handoff_mgr.initiate_handoff.return_value = "handoff:H-001"
-            MockHandoffMgr.return_value = mock_handoff_mgr
-
-            with patch('sys.stdout', new=StringIO()) as captured:
-                result = cmd_handoff_initiate(mock_args, mock_manager)
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_initiate(mock_args, mock_manager)
 
         assert result == 0
         output = captured.getvalue()
-        assert "handoff:H-001" in output
+        assert "handoff:H-001" in output or "H-001" in output
         assert "main" in output and "sub-agent-1" in output
+        mock_manager.initiate_handoff.assert_called_once()
 
     def test_initiate_handoff_nonexistent_task(self, mock_manager, mock_args):
         """Initiate handoff for nonexistent task fails."""
@@ -891,7 +902,10 @@ class TestHandoffInitiate:
 
 
 class TestHandoffAccept:
-    """Tests for handoff accept command."""
+    """Tests for handoff accept command.
+
+    Updated to use manager.accept_handoff() instead of HandoffManager.
+    """
 
     def test_accept_handoff(self, mock_manager, mock_args):
         """Accept a handoff."""
@@ -899,21 +913,41 @@ class TestHandoffAccept:
         mock_args.agent = "sub-agent-1"
         mock_args.message = "Acknowledged"
 
-        with patch('got_utils.HandoffManager') as MockHandoffMgr:
-            mock_handoff_mgr = Mock()
-            MockHandoffMgr.return_value = mock_handoff_mgr
+        mock_manager.accept_handoff.return_value = True
 
-            with patch('sys.stdout', new=StringIO()) as captured:
-                result = cmd_handoff_accept(mock_args, mock_manager)
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_accept(mock_args, mock_manager)
 
         assert result == 0
         output = captured.getvalue()
-        assert "handoff:H-001" in output
+        assert "H-001" in output
         assert "sub-agent-1" in output
+        mock_manager.accept_handoff.assert_called_once_with(
+            handoff_id="handoff:H-001",
+            agent="sub-agent-1",
+            acknowledgment="Acknowledged"
+        )
+
+    def test_accept_handoff_failure(self, mock_manager, mock_args):
+        """Accept handoff returns error on failure."""
+        mock_args.handoff_id = "handoff:H-NONEXISTENT"
+        mock_args.agent = "sub-agent-1"
+        mock_args.message = ""
+
+        mock_manager.accept_handoff.return_value = False
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_accept(mock_args, mock_manager)
+
+        assert result == 1
+        assert "Failed" in captured.getvalue()
 
 
 class TestHandoffComplete:
-    """Tests for handoff complete command."""
+    """Tests for handoff complete command.
+
+    Updated to use manager.complete_handoff() instead of HandoffManager.
+    """
 
     def test_complete_handoff_with_json_result(self, mock_manager, mock_args):
         """Complete a handoff with JSON result."""
@@ -922,17 +956,19 @@ class TestHandoffComplete:
         mock_args.result = '{"status": "done", "files": ["auth.py"]}'
         mock_args.artifacts = ["commit:abc123"]
 
-        with patch('got_utils.HandoffManager') as MockHandoffMgr:
-            mock_handoff_mgr = Mock()
-            MockHandoffMgr.return_value = mock_handoff_mgr
+        mock_manager.complete_handoff.return_value = True
 
-            with patch('sys.stdout', new=StringIO()) as captured:
-                result = cmd_handoff_complete(mock_args, mock_manager)
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_complete(mock_args, mock_manager)
 
         assert result == 0
         output = captured.getvalue()
-        assert "handoff:H-001" in output
+        assert "H-001" in output
         assert "done" in output
+        mock_manager.complete_handoff.assert_called_once()
+        # Verify JSON was parsed
+        call_kwargs = mock_manager.complete_handoff.call_args[1]
+        assert call_kwargs["result"] == {"status": "done", "files": ["auth.py"]}
 
     def test_complete_handoff_with_invalid_json(self, mock_manager, mock_args):
         """Complete a handoff with invalid JSON falls back to message."""
@@ -941,30 +977,50 @@ class TestHandoffComplete:
         mock_args.result = "Task completed successfully"
         mock_args.artifacts = None
 
-        with patch('got_utils.HandoffManager') as MockHandoffMgr:
-            mock_handoff_mgr = Mock()
-            MockHandoffMgr.return_value = mock_handoff_mgr
+        mock_manager.complete_handoff.return_value = True
 
-            with patch('sys.stdout', new=StringIO()) as captured:
-                result = cmd_handoff_complete(mock_args, mock_manager)
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_complete(mock_args, mock_manager)
 
         assert result == 0
+        # Verify plain text was wrapped in dict
+        call_kwargs = mock_manager.complete_handoff.call_args[1]
+        assert call_kwargs["result"] == {"message": "Task completed successfully"}
+
+    def test_complete_handoff_failure(self, mock_manager, mock_args):
+        """Complete handoff returns error on failure."""
+        mock_args.handoff_id = "handoff:H-001"
+        mock_args.agent = "sub-agent-1"
+        mock_args.result = "{}"
+        mock_args.artifacts = None
+
+        mock_manager.complete_handoff.return_value = False
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_complete(mock_args, mock_manager)
+
+        assert result == 1
+        assert "Failed" in captured.getvalue()
 
 
 class TestHandoffList:
-    """Tests for handoff list command."""
+    """Tests for handoff list command.
+
+    Updated to use manager.list_handoffs() instead of EventLog/HandoffManager.
+    """
 
     def test_list_handoffs_empty(self, mock_manager, mock_args):
         """List handoffs when none exist."""
         mock_args.status = None
 
-        with patch('got_utils.EventLog.load_all_events', return_value=[]):
-            with patch('got_utils.HandoffManager.load_handoffs_from_events', return_value=[]):
-                with patch('sys.stdout', new=StringIO()) as captured:
-                    result = cmd_handoff_list(mock_args, mock_manager)
+        mock_manager.list_handoffs.return_value = []
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_list(mock_args, mock_manager)
 
         assert result == 0
         assert "No handoffs" in captured.getvalue()
+        mock_manager.list_handoffs.assert_called_once_with(status=None)
 
     def test_list_handoffs_with_data(self, mock_manager, mock_args):
         """List handoffs when they exist."""
@@ -981,31 +1037,31 @@ class TestHandoffList:
             }
         ]
 
-        with patch('got_utils.EventLog.load_all_events', return_value=[]):
-            with patch('got_utils.HandoffManager.load_handoffs_from_events', return_value=handoffs):
-                with patch('sys.stdout', new=StringIO()) as captured:
-                    result = cmd_handoff_list(mock_args, mock_manager)
+        mock_manager.list_handoffs.return_value = handoffs
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_list(mock_args, mock_manager)
 
         assert result == 0
         output = captured.getvalue()
-        assert "handoff:H-001" in output
+        assert "H-001" in output
         assert "main → sub-agent-1" in output
 
     def test_list_handoffs_filtered_by_status(self, mock_manager, mock_args):
         """List handoffs filtered by status."""
         mock_args.status = "initiated"
 
-        all_handoffs = [
-            {"id": "H-001", "status": "initiated"},
-            {"id": "H-002", "status": "completed"},
+        filtered_handoffs = [
+            {"id": "H-001", "status": "initiated", "source_agent": "main", "target_agent": "sub-agent-1"},
         ]
 
-        with patch('got_utils.EventLog.load_all_events', return_value=[]):
-            with patch('got_utils.HandoffManager.load_handoffs_from_events', return_value=all_handoffs):
-                with patch('sys.stdout', new=StringIO()) as captured:
-                    result = cmd_handoff_list(mock_args, mock_manager)
+        mock_manager.list_handoffs.return_value = filtered_handoffs
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_list(mock_args, mock_manager)
 
         assert result == 0
+        mock_manager.list_handoffs.assert_called_once_with(status="initiated")
 
 
 # =============================================================================

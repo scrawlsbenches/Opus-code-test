@@ -293,38 +293,42 @@ class TestCmdValidate:
         return manager
 
     def test_validate_healthy(self, mock_manager, capsys):
-        """Test validate command with healthy graph."""
+        """Test validate command with healthy graph.
+
+        Note: The validate command no longer compares event log edges vs TX entity
+        edges, since these are separate systems. It now just validates the graph
+        structure and counts entity files.
+        """
         args = Namespace()
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.load_all_events.return_value = [
-                {"event": "node.create"},
-                {"event": "edge.create"},
-            ]
-            result = cmd_validate(args, mock_manager)
+        # Mock got_dir for entity file counting
+        mock_manager.got_dir = MagicMock()
+        mock_manager.got_dir.__truediv__ = MagicMock(return_value=MagicMock())
+        mock_manager.got_dir.__truediv__.return_value.exists.return_value = False
+
+        result = cmd_validate(args, mock_manager)
 
         assert result == 0
         captured = capsys.readouterr()
         assert "HEALTHY" in captured.out
-        assert "Nodes: 2" in captured.out
-        assert "Tasks: 2" in captured.out
+        assert "Tasks:" in captured.out
 
-    def test_validate_edge_discrepancy(self, mock_manager, capsys):
-        """Test validate with edge discrepancy."""
+    def test_validate_shows_statistics(self, mock_manager, capsys):
+        """Test validate command shows graph statistics."""
         args = Namespace()
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            # Create events that suggest more edges should exist
-            mock_event_log.load_all_events.return_value = [
-                {"event": "edge.create"},
-                {"event": "edge.create"},
-                {"event": "edge.create"},
-            ]
-            result = cmd_validate(args, mock_manager)
+        # Mock got_dir for entity file counting
+        mock_manager.got_dir = MagicMock()
+        mock_manager.got_dir.__truediv__ = MagicMock(return_value=MagicMock())
+        mock_manager.got_dir.__truediv__.return_value.exists.return_value = False
 
-        # Should detect discrepancy
+        result = cmd_validate(args, mock_manager)
+
+        assert result == 0
         captured = capsys.readouterr()
-        assert "EDGE DISCREPANCY" in captured.out or "edge loss" in captured.out
+        # Should show statistics section
+        assert "STATISTICS" in captured.out
+        assert "Edge density" in captured.out
 
     def test_validate_high_orphan_rate(self, mock_manager, capsys):
         """Test validate with high orphan rate."""
@@ -332,15 +336,18 @@ class TestCmdValidate:
         mock_manager.graph.nodes = {f"T-{i:03d}": MagicMock() for i in range(100)}
         mock_manager.graph.edges = []  # No edges
 
+        # Mock got_dir for entity file counting
+        mock_manager.got_dir = MagicMock()
+        mock_manager.got_dir.__truediv__ = MagicMock(return_value=MagicMock())
+        mock_manager.got_dir.__truediv__.return_value.exists.return_value = False
+
         args = Namespace()
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.load_all_events.return_value = []
-            result = cmd_validate(args, mock_manager)
+        result = cmd_validate(args, mock_manager)
 
         # Should detect high orphan rate
         captured = capsys.readouterr()
-        assert "ORPHAN RATE" in captured.out or "orphan rate" in captured.out
+        assert "orphan rate" in captured.out.lower()
 
 
 class TestCmdInfer:
@@ -585,55 +592,55 @@ class TestCmdValidateEdgeCases:
 
         return manager
 
-    def test_validate_edge_loss_warning(self, mock_manager, capsys):
-        """Test validate with minor edge loss (between -10% and -5%)."""
+    def test_validate_low_edge_density(self, mock_manager, capsys):
+        """Test validate with low edge density.
+
+        Note: Edge discrepancy tests (edge loss/surplus) removed because:
+        - The validate command no longer compares event log vs TX entity edges
+        - These are separate systems with different lifecycles
+        - Previous false positives were causing confusion
+        """
+        # Create 20 nodes with just 1 edge → low density
+        mock_manager.graph.nodes = {f"T-{i:03d}": MagicMock() for i in range(20)}
+        edge1 = MagicMock()
+        edge1.source_id = "T-000"
+        edge1.target_id = "T-001"
+        mock_manager.graph.edges = [edge1]
+
+        # Mock got_dir for entity file counting
+        mock_manager.got_dir = MagicMock()
+        mock_manager.got_dir.__truediv__ = MagicMock(return_value=MagicMock())
+        mock_manager.got_dir.__truediv__.return_value.exists.return_value = False
+
         args = Namespace()
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            # Create events suggesting 2 edges should exist (actual is 1)
-            # This is a -50% discrepancy, but we need -6% to hit the warning path
-            # Expected edges = 17, actual = 16 → -5.88% (within warning range)
-            mock_event_log.load_all_events.return_value = [
-                {"event": "edge.create"} for _ in range(17)
-            ]
-            # Set actual edges to 16
-            mock_manager.graph.edges = [MagicMock() for _ in range(16)]
-            for i, edge in enumerate(mock_manager.graph.edges):
-                edge.source_id = f"T-{i}"
-                edge.target_id = f"T-{i+1}"
+        result = cmd_validate(args, mock_manager)
 
-            result = cmd_validate(args, mock_manager)
-
-        # Should have warning, not issue
         captured = capsys.readouterr()
-        assert "edge loss" in captured.out or "Minor edge loss" in captured.out
+        # Should detect low edge density warning
+        assert "edge density" in captured.out.lower() or "Low edge density" in captured.out
 
-    def test_validate_edge_surplus_warning(self, mock_manager, capsys):
-        """Test validate with edge surplus (between +5% and +10%)."""
+    def test_validate_returns_zero_on_warnings(self, mock_manager, capsys):
+        """Test that warnings don't cause validate to return non-zero."""
+        # Create nodes with no edges (warnings but not errors)
+        mock_manager.graph.nodes = {f"T-{i:03d}": MagicMock() for i in range(5)}
+        mock_manager.graph.edges = []
+
+        # Mock got_dir for entity file counting
+        mock_manager.got_dir = MagicMock()
+        mock_manager.got_dir.__truediv__ = MagicMock(return_value=MagicMock())
+        mock_manager.got_dir.__truediv__.return_value.exists.return_value = False
+
         args = Namespace()
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            # Expected edges = 10, actual = 11 → +10% (within surplus range)
-            mock_event_log.load_all_events.return_value = [
-                {"event": "edge.create"} for _ in range(10)
-            ]
-            # Set actual edges to 11
-            mock_manager.graph.edges = [MagicMock() for _ in range(11)]
-            for i, edge in enumerate(mock_manager.graph.edges):
-                edge.source_id = f"T-{i}"
-                edge.target_id = f"T-{i+1}"
+        result = cmd_validate(args, mock_manager)
 
-            result = cmd_validate(args, mock_manager)
-
-        # Should have warning about surplus
-        captured = capsys.readouterr()
-        assert "surplus" in captured.out or "Edge surplus" in captured.out
+        # Warnings shouldn't cause failure
+        assert result == 0
 
     def test_validate_moderate_orphan_rate(self, mock_manager, capsys):
         """Test validate with moderate orphan rate (between 25% and 50%)."""
-        # Create 10 nodes with 3 edges → 4 connected nodes, 6 orphans → 60% orphan rate
-        # Actually, let's do 10 nodes, 5 edges connecting 8 nodes → 2 orphans = 20%
-        # Need 30% orphan rate: 10 nodes, 3 edges connecting 6 nodes → 4 orphans = 40%
+        # Create 10 nodes with 3 edges → 6 connected nodes, 4 orphans → 40% orphan rate
         mock_manager.graph.nodes = {f"T-{i:03d}": MagicMock() for i in range(10)}
 
         # Create 3 edges connecting 6 nodes
@@ -645,15 +652,18 @@ class TestCmdValidateEdgeCases:
             edges.append(edge)
         mock_manager.graph.edges = edges
 
+        # Mock got_dir for entity file counting
+        mock_manager.got_dir = MagicMock()
+        mock_manager.got_dir.__truediv__ = MagicMock(return_value=MagicMock())
+        mock_manager.got_dir.__truediv__.return_value.exists.return_value = False
+
         args = Namespace()
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.load_all_events.return_value = []
-            result = cmd_validate(args, mock_manager)
+        result = cmd_validate(args, mock_manager)
 
         # Should have warning for moderate orphan rate (40% is between 25% and 50%)
         captured = capsys.readouterr()
-        assert "Moderate orphan rate" in captured.out or "orphan rate" in captured.out
+        assert "Moderate orphan rate" in captured.out or "orphan rate" in captured.out.lower()
 
 
 class TestSetupQueryParser:

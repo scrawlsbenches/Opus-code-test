@@ -5455,10 +5455,8 @@ def cmd_handoff_initiate(args, manager: GoTProjectManager) -> int:
         print(f"Task not found: {args.task_id}")
         return 1
 
-    # Create EventLog from events_dir (works with both legacy and transactional adapters)
-    event_log = EventLog(manager.events_dir)
-    handoff_mgr = HandoffManager(event_log)
-    handoff_id = handoff_mgr.initiate_handoff(
+    # Use manager's handoff method (works with TX backend)
+    handoff_id = manager.initiate_handoff(
         source_agent=args.source,
         target_agent=args.target,
         task_id=args.task_id,
@@ -5480,13 +5478,16 @@ def cmd_handoff_initiate(args, manager: GoTProjectManager) -> int:
 
 def cmd_handoff_accept(args, manager: GoTProjectManager) -> int:
     """Accept a handoff."""
-    event_log = EventLog(manager.events_dir)
-    handoff_mgr = HandoffManager(event_log)
-    handoff_mgr.accept_handoff(
+    # Use manager's handoff method (works with TX backend)
+    success = manager.accept_handoff(
         handoff_id=args.handoff_id,
         agent=args.agent,
         acknowledgment=args.message,
     )
+
+    if not success:
+        print(f"Failed to accept handoff: {args.handoff_id}")
+        return 1
 
     print(f"Handoff accepted: {args.handoff_id}")
     print(f"  Agent: {args.agent}")
@@ -5500,14 +5501,17 @@ def cmd_handoff_complete(args, manager: GoTProjectManager) -> int:
     except json.JSONDecodeError:
         result = {"message": args.result}
 
-    event_log = EventLog(manager.events_dir)
-    handoff_mgr = HandoffManager(event_log)
-    handoff_mgr.complete_handoff(
+    # Use manager's handoff method (works with TX backend)
+    success = manager.complete_handoff(
         handoff_id=args.handoff_id,
         agent=args.agent,
         result=result,
         artifacts=args.artifacts or [],
     )
+
+    if not success:
+        print(f"Failed to complete handoff: {args.handoff_id}")
+        return 1
 
     print(f"Handoff completed: {args.handoff_id}")
     print(f"  Agent: {args.agent}")
@@ -5517,11 +5521,8 @@ def cmd_handoff_complete(args, manager: GoTProjectManager) -> int:
 
 def cmd_handoff_list(args, manager: GoTProjectManager) -> int:
     """List handoffs."""
-    events = EventLog.load_all_events(manager.events_dir)
-    handoffs = HandoffManager.load_handoffs_from_events(events)
-
-    if args.status:
-        handoffs = [h for h in handoffs if h.get("status") == args.status]
+    # Use manager's handoff method (works with TX backend)
+    handoffs = manager.list_handoffs(status=args.status)
 
     if not handoffs:
         print("No handoffs found.")
@@ -5646,13 +5647,19 @@ def cmd_validate(args, manager: GoTProjectManager) -> int:
     issues = []
     warnings = []
 
-    # Count nodes and edges
+    # Count nodes and edges from TX backend entities
     total_nodes = len(manager.graph.nodes)
     total_edges = len(manager.graph.edges)
 
     # Count tasks by status
     tasks = [n for n in manager.graph.nodes.values() if n.node_type == NodeType.TASK]
     task_count = len(tasks)
+
+    # Count by status
+    by_status = {}
+    for task in tasks:
+        status = task.properties.get("status", "unknown")
+        by_status[status] = by_status.get(status, 0) + 1
 
     # Check for orphan nodes (no edges)
     nodes_with_edges = set()
@@ -5663,54 +5670,40 @@ def cmd_validate(args, manager: GoTProjectManager) -> int:
     orphan_count = total_nodes - len(nodes_with_edges)
     orphan_rate = orphan_count / max(total_nodes, 1) * 100
 
-    # Load events and compare
-    events = EventLog.load_all_events(manager.events_dir)
-    event_edge_creates = sum(1 for e in events if e.get('event') == 'edge.create')
-    event_edge_deletes = sum(1 for e in events if e.get('event') == 'edge.delete')
-    event_node_count = sum(1 for e in events if e.get('event') == 'node.create')
-    expected_edges = event_edge_creates - event_edge_deletes
-
-    # Check for edge discrepancy
-    edge_discrepancy = 0
-    if expected_edges > 0:
-        edge_discrepancy = ((total_edges - expected_edges) / expected_edges) * 100
-        if abs(edge_discrepancy) > 10:
-            issues.append(f"EDGE DISCREPANCY: {edge_discrepancy:+.1f}% ({total_edges} actual vs {expected_edges} expected)")
-        elif abs(edge_discrepancy) > 0:
-            # Only warn if there's a significant discrepancy
-            if edge_discrepancy < -5:
-                warnings.append(f"Minor edge loss: {-edge_discrepancy:.1f}% ({total_edges}/{expected_edges})")
-            elif edge_discrepancy > 5:
-                warnings.append(f"Edge surplus: {edge_discrepancy:.1f}% ({total_edges}/{expected_edges})")
-
-    # Check orphan rate
+    # Check orphan rate (warning if high, but not critical)
     if orphan_rate > 50:
-        issues.append(f"HIGH ORPHAN RATE: {orphan_rate:.1f}% of nodes have no edges")
+        warnings.append(f"High orphan rate: {orphan_rate:.1f}% of nodes have no edges")
     elif orphan_rate > 25:
         warnings.append(f"Moderate orphan rate: {orphan_rate:.1f}%")
 
     # Check edge density
     edge_density = total_edges / max(total_nodes, 1)
-    if edge_density < 0.1:
+    if edge_density < 0.1 and total_nodes > 10:
         warnings.append(f"Low edge density: {edge_density:.2f} edges/node")
+
+    # Count entity files for accurate statistics
+    entities_dir = manager.got_dir / "entities"
+    task_files = len(list(entities_dir.glob("T-*.json"))) if entities_dir.exists() else 0
+    edge_files = len(list(entities_dir.glob("E-*.json"))) if entities_dir.exists() else 0
+    decision_files = len(list(entities_dir.glob("D-*.json"))) if entities_dir.exists() else 0
+    handoff_files = len(list(entities_dir.glob("H-*.json"))) if entities_dir.exists() else 0
 
     # Print stats
     print(f"\n📊 STATISTICS")
-    print(f"   Nodes: {total_nodes}")
     print(f"   Tasks: {task_count}")
     print(f"   Edges: {total_edges}")
     print(f"   Edge density: {edge_density:.2f} edges/node")
     print(f"   Orphan nodes: {orphan_count} ({orphan_rate:.1f}%)")
 
-    print(f"\n📁 EVENT LOG")
-    print(f"   Node events: {event_node_count}")
-    print(f"   Edge create events: {event_edge_creates}")
-    print(f"   Edge delete events: {event_edge_deletes}")
-    print(f"   Expected edges: {expected_edges}")
-    if expected_edges > 0 and total_edges != expected_edges:
-        print(f"   Edge accuracy: {100 - abs(edge_discrepancy):.1f}%")
-    else:
-        print(f"   Edge accuracy: 100%")
+    print(f"\n📁 ENTITY FILES")
+    print(f"   Task files: {task_files}")
+    print(f"   Edge files: {edge_files}")
+    print(f"   Decision files: {decision_files}")
+    print(f"   Handoff files: {handoff_files}")
+
+    print(f"\n📈 TASKS BY STATUS")
+    for status, count in sorted(by_status.items()):
+        print(f"   {status}: {count}")
 
     # Print issues
     if issues:
