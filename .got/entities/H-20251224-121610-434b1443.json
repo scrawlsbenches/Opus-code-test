@@ -1,0 +1,29 @@
+{
+  "_checksum": "7d80028495432c4d",
+  "_written_at": "2025-12-24T12:16:10.675815+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "medium",
+      "task_status": "pending",
+      "task_title": "Implement backlog management system"
+    },
+    "created_at": "2025-12-24T12:16:10.671139+00:00",
+    "entity_type": "handoff",
+    "id": "H-20251224-121610-434b1443",
+    "initiated_at": "2025-12-24T12:16:10.671152+00:00",
+    "instructions": "Test auto-close",
+    "modified_at": "2025-12-24T12:16:10.675749+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "initiated",
+    "target_agent": "test-agent",
+    "task_id": "T-20251223-154334-b77c3b84",
+    "version": 2
+  }
+}
