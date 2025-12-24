@@ -1,29 +1,60 @@
 """
 Graph Walker with Visitor Pattern for Graph of Thought.
 
-Provides flexible graph traversal with:
-- BFS and DFS traversal strategies
-- Visitor pattern for node processing
-- Filtering and depth limiting
-- Edge type filtering
-- Directional traversal (forward/reverse)
+This module provides flexible graph traversal using the classic Visitor pattern.
+It's designed for tasks like dependency analysis, impact assessment, and
+collecting statistics across connected nodes.
 
-Example:
-    # Count tasks by status while traversing
-    def count_by_status(node, acc):
-        status = node.properties.get("status", "unknown")
-        acc[status] = acc.get(status, 0) + 1
-        return acc
+TRAVERSAL STRATEGIES
+--------------------
+- BFS (Breadth-First): Visits nodes level by level. Best for finding
+  shortest paths or when you need to process nearby nodes first.
 
-    result = (
-        GraphWalker(manager)
-        .starting_from(root_task_id)
-        .bfs()
-        .filter(lambda n: n.node_type == "task")
-        .max_depth(3)
-        .visit(count_by_status, initial={})
-        .run()
-    )
+- DFS (Depth-First): Goes deep before backtracking. Best for exploring
+  complete branches or when order doesn't matter (uses less memory).
+
+EDGE DIRECTION
+--------------
+By default, edges are treated as BIDIRECTIONAL (undirected graph).
+This is usually what you want for "find all connected nodes".
+
+- .directed(): Only follow source->target direction
+- .reverse(): Only follow target->source direction (for "what depends on me?")
+
+VISITOR PATTERN
+---------------
+The visitor receives (node, accumulator) and returns updated accumulator.
+This allows stateful traversal without external mutable state.
+
+USAGE EXAMPLES
+--------------
+
+Count tasks by status:
+    >>> def count_by_status(node, acc):
+    ...     acc[node.status] = acc.get(node.status, 0) + 1
+    ...     return acc
+    >>> result = GraphWalker(manager).starting_from(task_id).bfs() \\
+    ...     .visit(count_by_status, initial={}).run()
+    {"pending": 3, "completed": 2}
+
+Find all connected task IDs:
+    >>> ids = []
+    >>> GraphWalker(manager).starting_from(task_id).bfs() \\
+    ...     .visit(lambda n, acc: acc + [n.id], initial=[]).run()
+
+Traverse only DEPENDS_ON edges up to depth 3:
+    >>> GraphWalker(manager).starting_from(task_id) \\
+    ...     .follow("DEPENDS_ON").max_depth(3).bfs().visit(collector).run()
+
+Find what blocks a task (reverse traversal):
+    >>> GraphWalker(manager).starting_from(task_id) \\
+    ...     .follow("BLOCKS").reverse().bfs().visit(collector).run()
+
+PERFORMANCE NOTES
+-----------------
+- BFS uses a queue (deque) for O(1) enqueue/dequeue
+- DFS uses recursion with explicit visited set to prevent cycles
+- Bidirectional doubles the edge lookups but finds all connections
 """
 
 from __future__ import annotations

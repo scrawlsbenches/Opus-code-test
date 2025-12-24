@@ -1,25 +1,76 @@
 """
 Pattern Matcher for Graph of Thought.
 
-Implements subgraph pattern matching for finding structural patterns:
-- Chain patterns (A -> B -> C)
-- Star patterns (hub connected to many nodes)
-- Custom constraint matching
+This module implements subgraph isomorphism for finding structural patterns
+in the GoT graph. It's useful for:
+- Finding dependency chains
+- Detecting anti-patterns (circular dependencies, orphan clusters)
+- Analyzing graph structure
 
-Example:
-    # Find dependency chains
-    pattern = (
-        Pattern()
-        .node("a", type="task", status="pending")
-        .edge("DEPENDS_ON", direction="incoming")
-        .node("b", type="task")
-        .edge("DEPENDS_ON", direction="incoming")
-        .node("c", type="task")
-    )
+PATTERN SYNTAX
+--------------
+Patterns are built by chaining .node() and .edge() calls:
 
-    matches = PatternMatcher(manager).find(pattern)
-    for match in matches:
-        print(f"Chain: {match['a'].id} <- {match['b'].id} <- {match['c'].id}")
+    Pattern()
+    .node("a", type="task")          # First node, named "a"
+    .edge("DEPENDS_ON")              # Edge connecting to next node
+    .node("b", type="task")          # Second node, named "b"
+
+Node constraints:
+    .node("name", type="task", status="pending", priority="high")
+
+Edge constraints:
+    .edge("DEPENDS_ON", direction="incoming")  # b depends on a
+    .edge("BLOCKS", direction="outgoing")      # a blocks b
+    .edge("CONTAINS", direction="any")         # either direction
+
+ALGORITHM
+---------
+Uses backtracking search with constraint propagation:
+1. For each pattern node, try all graph nodes that match constraints
+2. Check edge exists to previous pattern node
+3. Backtrack if no valid binding, continue if found
+4. Complete match when all pattern nodes are bound
+
+Time complexity: O(n^k) where n=graph nodes, k=pattern nodes
+Use .limit() to cap results for large graphs.
+
+USAGE EXAMPLES
+--------------
+
+Find 3-node dependency chains:
+    >>> pattern = Pattern() \\
+    ...     .node("a", type="task") \\
+    ...     .edge("DEPENDS_ON", direction="incoming") \\
+    ...     .node("b", type="task") \\
+    ...     .edge("DEPENDS_ON", direction="incoming") \\
+    ...     .node("c", type="task")
+    >>> for match in PatternMatcher(manager).find(pattern):
+    ...     print(f"{match['c'].title} -> {match['b'].title} -> {match['a'].title}")
+
+Find tasks blocking high-priority work:
+    >>> pattern = Pattern() \\
+    ...     .node("blocker", type="task") \\
+    ...     .edge("BLOCKS", direction="outgoing") \\
+    ...     .node("blocked", type="task", priority="high")
+    >>> blockers = PatternMatcher(manager).find(pattern)
+
+Find first match only (more efficient):
+    >>> match = PatternMatcher(manager).find_first(pattern)
+
+Count matches:
+    >>> count = PatternMatcher(manager).count(pattern)
+
+DIRECTION SEMANTICS
+-------------------
+Edge direction is relative to the PREVIOUS node in the pattern:
+- "outgoing": previous_node --edge--> current_node
+- "incoming": current_node --edge--> previous_node
+- "any": either direction
+
+For DEPENDS_ON where A depends on B (edge: A->B):
+    .node("A").edge("DEPENDS_ON", direction="outgoing").node("B")
+    Means: A --DEPENDS_ON--> B (A depends on B)
 """
 
 from __future__ import annotations

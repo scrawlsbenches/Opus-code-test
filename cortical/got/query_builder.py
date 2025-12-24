@@ -1,30 +1,70 @@
 """
 Fluent Query Builder for Graph of Thought.
 
-Provides a powerful, chainable API for querying the GoT graph:
+This module provides a powerful, SQL-like query interface for the GoT graph.
+It follows the Builder pattern for intuitive method chaining and supports
+lazy evaluation for memory efficiency on large graphs.
 
-    # Basic queries
-    Query(manager).tasks().where(status="pending").execute()
+USAGE EXAMPLES
+--------------
 
-    # Complex filters
-    Query(manager).tasks()
-        .where(status="pending")
-        .where(priority="high")
-        .connected_to(sprint_id)
-        .order_by("created_at", desc=True)
-        .limit(10)
-        .execute()
+Basic queries:
+    >>> Query(manager).tasks().where(status="pending").execute()
+    [Task(...), Task(...)]
 
-    # Aggregation
-    Query(manager).tasks()
-        .group_by("status")
-        .count()
-        .execute()
+Complex filters with multiple conditions:
+    >>> results = (
+    ...     Query(manager)
+    ...     .tasks()
+    ...     .where(status="pending")      # AND condition
+    ...     .where(priority="high")       # AND condition
+    ...     .or_where(priority="critical") # OR alternative
+    ...     .connected_to(sprint_id)      # Must be connected to sprint
+    ...     .order_by("created_at", desc=True)
+    ...     .limit(10)
+    ...     .execute()
+    ... )
 
-Design Patterns Used:
+Aggregation with GROUP BY:
+    >>> counts = (
+    ...     Query(manager)
+    ...     .tasks()
+    ...     .group_by("status")
+    ...     .count()
+    ...     .execute()
+    ... )
+    {"pending": 5, "completed": 3, "in_progress": 2}
+
+Lazy iteration (memory efficient):
+    >>> for task in Query(manager).tasks().iter():
+    ...     process(task)
+    ...     if should_stop:
+    ...         break  # Stops iteration early, no wasted work
+
+DESIGN PATTERNS
+---------------
 - Builder Pattern: Method chaining for query construction
 - Strategy Pattern: Different execution strategies (eager, lazy, indexed)
 - Iterator Pattern: Lazy evaluation with generators
+- Composite Pattern: OR groups containing multiple WHERE clauses
+
+FILTER LOGIC
+------------
+The WHERE/OR logic follows these rules:
+- Multiple .where() calls: AND (all must match)
+- .or_where(): Creates OR alternative to WHERE
+- Combined: (WHERE conditions) OR (any OR group)
+
+Example: .where(status="pending").or_where(priority="critical")
+         Matches: status="pending" OR priority="critical"
+
+PERFORMANCE NOTES
+-----------------
+- Use .limit() to avoid loading all results
+- Use .iter() for memory-efficient streaming
+- Use .exists() when you only need boolean check
+- Use .first() when you only need one result
+- .explain() shows the query plan without executing
 """
 
 from __future__ import annotations
@@ -119,24 +159,45 @@ class QueryPlan:
 # ============================================================================
 # AGGREGATION FUNCTIONS
 # ============================================================================
+#
+# These classes implement the Strategy pattern for aggregation operations.
+# Each aggregation follows a three-phase lifecycle:
+#   1. initial() - Create the starting accumulator value
+#   2. accumulate() - Called once per entity, updates accumulator
+#   3. finalize() - Convert accumulator to final result
+#
+# This design allows streaming aggregation without loading all data first.
+# ============================================================================
 
 
 class AggregateFunction(ABC):
-    """Base class for aggregate functions."""
+    """
+    Base class for aggregate functions (Strategy pattern).
+
+    Subclasses implement specific aggregation logic like COUNT, SUM, AVG.
+    The three-phase design (initial -> accumulate -> finalize) enables
+    streaming aggregation over large result sets.
+
+    Example implementation:
+        class Sum(AggregateFunction):
+            def initial(self): return 0
+            def accumulate(self, acc, entity): return acc + entity.value
+            def finalize(self, acc): return acc
+    """
 
     @abstractmethod
     def initial(self) -> Any:
-        """Return initial accumulator value."""
+        """Return initial accumulator value (e.g., 0 for Count, [] for Collect)."""
         pass
 
     @abstractmethod
     def accumulate(self, acc: Any, value: Any) -> Any:
-        """Accumulate a value into the accumulator."""
+        """Update accumulator with entity. Called once per matching entity."""
         pass
 
     @abstractmethod
     def finalize(self, acc: Any) -> Any:
-        """Finalize and return the result."""
+        """Convert accumulator to final result (e.g., compute average from sum/count)."""
         pass
 
 
@@ -196,24 +257,36 @@ class Sum(AggregateFunction):
 
 
 class Avg(AggregateFunction):
-    """Calculate average of numeric field values."""
+    """
+    Calculate average of numeric field values.
+
+    Uses a (sum, count) tuple as accumulator to avoid storing all values.
+    This is memory-efficient for large datasets.
+
+    Example:
+        Query(manager).tasks().group_by("priority").aggregate(avg_time=Avg("duration"))
+    """
 
     def __init__(self, field: str):
         self.field = field
 
     def initial(self) -> Tuple[float, int]:
+        # Tuple of (running_sum, count) - allows one-pass average calculation
         return (0.0, 0)
 
     def accumulate(self, acc: Tuple[float, int], entity: Any) -> Tuple[float, int]:
         total, count = acc
+        # Try direct attribute first, then properties dict
         value = getattr(entity, self.field, None)
         if value is None and hasattr(entity, 'properties'):
             value = entity.properties.get(self.field)
+        # Only accumulate numeric values, skip None/strings
         if isinstance(value, (int, float)):
             return (total + value, count + 1)
         return acc
 
     def finalize(self, acc: Tuple[float, int]) -> float:
+        # Compute average from accumulated sum and count
         total, count = acc
         return total / count if count > 0 else 0.0
 

@@ -1,23 +1,63 @@
 """
 Path Finder for Graph of Thought.
 
-Implements efficient path finding algorithms:
-- BFS for shortest path (unweighted graphs)
-- DFS for all paths enumeration
-- Edge type filtering
-- Path length constraints
+This module provides path-finding algorithms for analyzing relationships
+between entities in the GoT graph. Useful for:
+- Dependency chain analysis
+- Finding blocking relationships
+- Detecting connection paths between tasks
 
-Example:
-    # Find shortest path
-    path = PathFinder(manager).shortest_path(start_id, end_id)
+ALGORITHMS
+----------
+shortest_path (BFS):
+    Finds the shortest path between two nodes using Breadth-First Search.
+    Optimal for unweighted graphs where all edges have equal cost.
+    Time complexity: O(V + E) where V=vertices, E=edges
 
-    # Find all paths with constraints
-    paths = (
-        PathFinder(manager)
-        .via_edges("DEPENDS_ON", "BLOCKS")
-        .max_length(5)
-        .all_paths(start_id, end_id)
-    )
+all_paths (DFS):
+    Finds ALL possible paths between two nodes using Depth-First Search.
+    WARNING: Can be expensive for densely connected graphs!
+    Use max_length() to limit search depth.
+
+EDGE DIRECTION
+--------------
+By default, edges are treated as BIDIRECTIONAL. This means:
+    A --DEPENDS_ON--> B
+Can be traversed in either direction for path finding.
+
+Use .directed() to only follow source->target direction.
+
+USAGE EXAMPLES
+--------------
+
+Find shortest dependency path:
+    >>> path = PathFinder(manager).shortest_path(task_a, task_b)
+    >>> if path:
+    ...     print(f"Path length: {len(path)}")
+    ...     print(" -> ".join(path))
+
+Find all paths (with safety limit):
+    >>> paths = PathFinder(manager).max_length(5).all_paths(start, end)
+    >>> print(f"Found {len(paths)} paths")
+
+Check if two tasks are connected:
+    >>> if PathFinder(manager).path_exists(task_a, task_b):
+    ...     print("Tasks are connected!")
+
+Find all reachable nodes:
+    >>> reachable = PathFinder(manager).reachable_from(start_task)
+    >>> print(f"{len(reachable)} tasks in dependency chain")
+
+Find disconnected components:
+    >>> components = PathFinder(manager).connected_components()
+    >>> print(f"{len(components)} isolated groups")
+
+PERFORMANCE NOTES
+-----------------
+- shortest_path is O(V+E) - safe for large graphs
+- all_paths can be O(V!) in worst case - USE max_length!
+- path_exists stops at first path - more efficient than shortest_path
+- reachable_from uses DFS - memory efficient
 """
 
 from __future__ import annotations
