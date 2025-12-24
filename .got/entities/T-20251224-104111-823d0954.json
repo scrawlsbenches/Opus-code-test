@@ -1,0 +1,19 @@
+{
+  "_checksum": "850a0dfe14be2f92",
+  "_written_at": "2025-12-24T10:41:11.426000+00:00",
+  "data": {
+    "created_at": "2025-12-24T10:41:11.419926+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251224-104111-823d0954",
+    "metadata": {},
+    "modified_at": "2025-12-24T10:41:11.425928+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Design GoT orphan cleanup strategy - 40% orphan rate needs addressing without losing ML training value",
+    "version": 2
+  }
+}
