@@ -1,22 +1,24 @@
 {
-  "_checksum": "93cb2585507cba69",
-  "_written_at": "2025-12-24T19:32:05.660490+00:00",
+  "_checksum": "9ec40c7b3de90917",
+  "_written_at": "2025-12-24T19:45:21.311138+00:00",
   "data": {
     "created_at": "2025-12-22T20:41:35.018738+00:00",
     "description": "Implement context analyzer that detects: current files/modules being worked on, active sprint/epic, branch state. Use this to select relevant contextual layers.",
     "entity_type": "task",
     "id": "T-20251222-204135-781dad64",
     "metadata": {
+      "completed_at": "2025-12-24T19:45:21.302371+00:00",
       "started_at": "2025-12-24T19:32:05.650997+00:00",
-      "updated_at": "2025-12-24T19:32:05.651008+00:00"
+      "updated_at": "2025-12-24T19:45:21.302378+00:00"
     },
-    "modified_at": "2025-12-24T19:32:05.660411+00:00",
+    "modified_at": "2025-12-24T19:45:21.311072+00:00",
     "priority": "high",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Context detection for layer inclusion was already fully implemented in cortical/got/claudemd.py with ContextAnalyzer, LayerSelector, ClaudeMdComposer, ClaudeMdValidator, and ClaudeMdGenerator. Improved test coverage from 85% to 98% by adding 16 new tests covering: exception paths, edge cases, content handling, MAX_LINES validation, fallback paths, and delegation methods."
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Implement: Context detection for layer inclusion",
-    "version": 4
+    "version": 6
   }
 }
