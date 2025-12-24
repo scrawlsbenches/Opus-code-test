@@ -163,6 +163,7 @@ class TestOrphanDetector:
         manager.get_current_sprint.return_value = sprint
         manager.list_sprints.return_value = [sprint]
         manager.get_sprint_tasks.return_value = [task2]  # task2 is in sprint
+        manager.list_handoffs.return_value = []  # No handoffs by default
 
         return manager
 
@@ -415,6 +416,7 @@ class TestConvenienceFunctions:
         """Test generate_orphan_report convenience function."""
         manager = Mock()
         manager.list_all_tasks.return_value = []
+        manager.list_handoffs.return_value = []  # Required for handoff orphan detection
 
         report = generate_orphan_report(manager)
 
@@ -511,6 +513,7 @@ class TestOrphanCLI:
         manager.get_current_sprint.return_value = sprint
         manager.list_sprints.return_value = [sprint]
         manager.get_sprint_tasks.return_value = []
+        manager.list_handoffs.return_value = []  # No handoffs by default
 
         return manager
 
