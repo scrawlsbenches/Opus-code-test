@@ -1581,6 +1581,9 @@ class TransactionContext:
         if task is None:
             raise TransactionError(f"Task not found: {task_id}")
 
+        # Check if task is being marked as completed
+        completing_task = updates.get("status") == "completed" and task.status != "completed"
+
         # Apply updates
         for key, value in updates.items():
             if hasattr(task, key):
@@ -1591,7 +1594,66 @@ class TransactionContext:
 
         # Write back
         self.tx_manager.write(self.tx, task)
+
+        # Auto-close handoffs when task completes
+        if completing_task:
+            self._auto_close_handoffs(task_id)
+
         return task
+
+    def _auto_close_handoffs(self, task_id: str) -> None:
+        """
+        Auto-close handoffs when a task completes.
+
+        Finds all handoffs referencing the task and marks them as completed
+        with a system note indicating auto-closure.
+
+        Args:
+            task_id: The task that was completed
+        """
+        entities_dir = self.tx_manager.got_dir / "entities"
+        if not entities_dir.exists():
+            return
+
+        # Find all handoffs for this task
+        for handoff_file in entities_dir.glob("H-*.json"):
+            try:
+                with open(handoff_file, 'r') as f:
+                    wrapper = json.load(f)
+
+                data = wrapper.get("data", {})
+                if data.get("entity_type") != "handoff":
+                    continue
+
+                # Check if this handoff references the completed task
+                if data.get("task_id") != task_id:
+                    continue
+
+                # Check if handoff is already completed or rejected
+                status = data.get("status", "")
+                if status in ("completed", "rejected"):
+                    continue
+
+                # Load handoff and auto-complete it
+                handoff = Handoff.from_dict(data)
+                handoff.status = "completed"
+                handoff.completed_at = datetime.now(timezone.utc).isoformat()
+                handoff.result = {
+                    "auto_closed": True,
+                    "reason": f"Task {task_id} was marked as completed",
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+                handoff.artifacts = []
+                handoff.bump_version()
+
+                # Write back
+                self.tx_manager.write(self.tx, handoff)
+
+                logger.info(f"Auto-closed handoff {handoff.id} for completed task {task_id}")
+
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted handoff file {handoff_file}: {e}")
+                continue
 
     def get_task(self, task_id: str) -> Optional[Task]:
         """
@@ -1900,7 +1962,15 @@ class TransactionContext:
 
         Returns:
             Created Handoff object
+
+        Raises:
+            ValueError: If task_id does not exist
         """
+        # Validate task exists
+        task = self.get_task(task_id)
+        if task is None:
+            raise ValueError(f"Task not found: {task_id}")
+
         if handoff_id is None:
             handoff_id = generate_handoff_id()
 

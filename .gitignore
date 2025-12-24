@@ -121,12 +121,12 @@ cortical/proto/__pycache__/
 # .git-ml/contribution_consent.json  # Uncomment to ignore consent file
 .git-ml/current_session.json.lock
 .git-ml/.last_activity  # Session continuity tracking (local only)
-.git-ml/cali/  # CALI storage (local indices, objects, manifest - all regeneratable)
+.git-ml/cali/local/  # CALI local indices (regeneratable) - logs/ and objects/ are tracked
 .git-ml/predictions/  # Hubris prediction state (local, regeneratable)
 
 # Clean ignores for local ML data
 .git-ml/.last_activity
-.git-ml/cali/
+.git-ml/cali/local/
 .git-ml/predictions/
 samples/memories/\[DRAFT\]-*
 .git-ml/current_session.json
@@ -151,6 +151,8 @@ corpus_dev/
 !.got/events/
 !.got/snapshots/
 !.got/tracked/
+!.git-ml/cali/logs/
+!.git-ml/cali/objects/
 
 # GoT migration artifacts
 .got-backup-*/
