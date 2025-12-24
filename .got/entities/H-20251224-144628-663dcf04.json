@@ -1,0 +1,29 @@
+{
+  "_checksum": "23d0ef02855da1d4",
+  "_written_at": "2025-12-24T14:46:28.903491+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "medium",
+      "task_status": "pending",
+      "task_title": "Address orphan rate and continue sprint S-018"
+    },
+    "created_at": "2025-12-24T14:46:28.897411+00:00",
+    "entity_type": "handoff",
+    "id": "H-20251224-144628-663dcf04",
+    "initiated_at": "2025-12-24T14:46:28.897429+00:00",
+    "instructions": "## Session Summary\n\nCompleted comprehensive analysis and fix cycle for GoT dashboard bugs.\n\n### Commits Made\n\n1. `93b993c8` - fix(got): Mock CALI functions in orchestration lite test\n2. `5329a979` - fix(got): Correct orphan count calculation in validate command  \n3. `09b71917` - fix(dashboard): Use CONTAINS edges for sprint velocity calculation\n4. `1aabd1b3` - test(regression): Add tests for dashboard sprint velocity fix\n\n### Current State\n\n- All tests pass: 8871 passed\n- Dashboard shows Sprint Progress: 16/18 (88.9%)\n- Orphan rate: 67.1% (49/73 nodes)\n- Sprint S-018 in_progress with 2 tasks remaining\n\n### Recommended Next Actions\n\n1. **Address high orphan rate** - 49/73 nodes have no edges\n2. **Complete Sprint S-018** - 2 tasks remaining\n3. **Optional**: Add stale orphan sub-metric to dashboard\n\n### Key Files\n\n- `scripts/got_dashboard.py` - Fixed sprint velocity\n- `tests/regression/test_dashboard_sprint_velocity.py` - 10 new tests\n- `tests/regression/test_orphan_calculation_bug.py` - Orphan bug tests",
+    "modified_at": "2025-12-24T14:46:28.903420+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "initiated",
+    "target_agent": "next-session",
+    "task_id": "T-20251224-144610-eb10a232",
+    "version": 2
+  }
+}

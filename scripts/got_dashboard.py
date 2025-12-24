@@ -211,6 +211,27 @@ class DashboardMetrics:
         """Initialize with a TransactionalGoTAdapter instance."""
         self.manager = manager
 
+    def _get_current_sprint(self):
+        """Get the current active sprint, if any.
+
+        Returns:
+            Sprint node or None if no active sprint
+        """
+        try:
+            # Try using manager's get_current_sprint method
+            if hasattr(self.manager, 'get_current_sprint'):
+                return self.manager.get_current_sprint()
+
+            # Fallback: search graph for sprint with in_progress status
+            for node in self.manager.graph.nodes.values():
+                if (node.node_type.name == "CONTEXT" and  # Sprints are CONTEXT nodes
+                    node.id.startswith("S-") and
+                    node.properties.get("status") == "in_progress"):
+                    return node
+        except Exception:
+            pass
+        return None
+
     def get_overview_stats(self) -> Dict[str, Any]:
         """Get overview statistics."""
         tasks = self.manager.list_tasks()
@@ -311,7 +332,20 @@ class DashboardMetrics:
         avg_completion_time = sum(completion_times) / len(completion_times) if completion_times else 0
 
         # Sprint burndown (if active sprint exists)
-        sprint_tasks = [t for t in tasks if t.properties.get("sprint_id")]
+        # Find tasks linked to current sprint via CONTAINS edges
+        sprint_tasks = []
+        current_sprint = self._get_current_sprint()
+        if current_sprint:
+            task_ids = set(t.id for t in tasks)
+            for edge in self.manager.graph.edges:
+                if (edge.source_id == current_sprint.id and
+                    edge.edge_type.name == "CONTAINS" and
+                    edge.target_id in task_ids):
+                    # Find the task object
+                    for t in tasks:
+                        if t.id == edge.target_id:
+                            sprint_tasks.append(t)
+                            break
         sprint_completed = [t for t in sprint_tasks if t.properties.get("status") == "completed"]
         sprint_remaining = len(sprint_tasks) - len(sprint_completed)
 

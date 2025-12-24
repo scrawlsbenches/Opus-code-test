@@ -1,0 +1,19 @@
+{
+  "_checksum": "fba96c3ad3373237",
+  "_written_at": "2025-12-24T14:46:10.201718+00:00",
+  "data": {
+    "created_at": "2025-12-24T14:46:10.195574+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251224-144610-eb10a232",
+    "metadata": {},
+    "modified_at": "2025-12-24T14:46:10.201655+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Address orphan rate and continue sprint S-018",
+    "version": 2
+  }
+}
