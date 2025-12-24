@@ -10,6 +10,7 @@ Handles crash recovery and data integrity verification through:
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
@@ -32,6 +33,8 @@ class RecoveryResult:
         rolled_back: List of transaction IDs that were rolled back
         corrupted_entities: List of entity IDs with checksum mismatches
         corrupted_wal_entries: Count of WAL entries with invalid checksums
+        orphans_detected: List of entity IDs found without WAL records
+        orphans_repaired: Number of orphans that were repaired (adopted)
         actions_taken: Human-readable log of recovery actions
     """
 
@@ -40,6 +43,8 @@ class RecoveryResult:
     rolled_back: List[str] = field(default_factory=list)
     corrupted_entities: List[str] = field(default_factory=list)
     corrupted_wal_entries: int = 0
+    orphans_detected: List[str] = field(default_factory=list)
+    orphans_repaired: int = 0
     actions_taken: List[str] = field(default_factory=list)
 
     def add_action(self, action: str) -> None:
@@ -161,7 +166,13 @@ class RecoveryManager:
         # Step 3: Repair orphaned entities
         # Use 'adopt' strategy to preserve git-tracked files that lack WAL entries
         # (files committed to git don't have WAL records, so 'delete' would wipe them)
+        # First detect orphans to populate orphans_detected
+        orphans = self.detect_orphaned_entities()
+        result.orphans_detected = orphans
+
         repair_result = self.repair_orphans(strategy='adopt')
+        result.orphans_repaired = repair_result.repaired_count
+
         if repair_result.repaired_count > 0:
             result.add_action(f"Adopted {repair_result.repaired_count} orphaned entity/entities")
             for entity_id in repair_result.repaired_entities:
@@ -217,8 +228,14 @@ class RecoveryManager:
             try:
                 # Read and verify checksum
                 self.store._read_and_verify(entity_file)
-            except CorruptionError:
-                # Extract entity ID from filename
+            except FileNotFoundError:
+                # File was deleted between glob and read (race condition)
+                # This is fine - another process may have cleaned it up
+                pass
+            except (CorruptionError, json.JSONDecodeError, KeyError):
+                # CorruptionError: checksum mismatch
+                # JSONDecodeError: truncated or malformed JSON file
+                # KeyError: missing required fields (_checksum, data, etc.)
                 entity_id = entity_file.stem
                 corrupted.append(entity_id)
 
@@ -317,28 +334,32 @@ class RecoveryManager:
 
         # Get all entity IDs from WAL
         wal_entity_ids = set()
-        if self.wal.wal_file.exists():
-            import json
-            with open(self.wal.wal_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
+        try:
+            if self.wal.wal_file.exists():
+                import json
+                with open(self.wal.wal_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
 
-                    try:
-                        entry = json.loads(line)
-                        # Look for WRITE operations which track entity modifications
-                        if entry.get('op') == 'WRITE':
-                            if 'data' in entry and isinstance(entry['data'], dict):
-                                if 'entity_id' in entry['data']:
-                                    wal_entity_ids.add(entry['data']['entity_id'])
-                        # Also check for ADOPTED operations (from recovery)
-                        elif entry.get('op') == 'ADOPTED':
-                            if 'entity_id' in entry:
-                                wal_entity_ids.add(entry['entity_id'])
-                    except (json.JSONDecodeError, KeyError):
-                        # Skip malformed entries
-                        continue
+                        try:
+                            entry = json.loads(line)
+                            # Look for WRITE operations which track entity modifications
+                            if entry.get('op') == 'WRITE':
+                                if 'data' in entry and isinstance(entry['data'], dict):
+                                    if 'entity_id' in entry['data']:
+                                        wal_entity_ids.add(entry['data']['entity_id'])
+                            # Also check for ADOPTED operations (from recovery)
+                            elif entry.get('op') == 'ADOPTED':
+                                if 'entity_id' in entry:
+                                    wal_entity_ids.add(entry['entity_id'])
+                        except (json.JSONDecodeError, KeyError):
+                            # Skip malformed entries
+                            continue
+        except FileNotFoundError:
+            # WAL file was deleted by another process (race condition)
+            pass
 
         # Find entities on disk but not in WAL
         orphaned = list(disk_entity_ids - wal_entity_ids)
@@ -378,22 +399,36 @@ class RecoveryManager:
         for entity_id in orphaned_ids:
             entity_file = self.store.store_dir / f"{entity_id}.json"
 
+            # Skip if file no longer exists (race condition with another recovery)
+            if not entity_file.exists():
+                continue
+
             try:
                 if strategy == 'delete':
                     # Delete the orphaned file
-                    entity_file.unlink()
-                    result.repaired_entities.append(entity_id)
-                    result.repaired_count += 1
+                    try:
+                        entity_file.unlink()
+                        result.repaired_entities.append(entity_id)
+                        result.repaired_count += 1
+                    except FileNotFoundError:
+                        # Another process already deleted it
+                        pass
 
                 elif strategy == 'adopt':
                     # Verify the entity is valid before adopting
                     try:
                         self.store._read_and_verify(entity_file)
+                    except FileNotFoundError:
+                        # File was deleted by another process
+                        continue
                     except (CorruptionError, Exception) as e:
                         # If corrupted, delete it instead of adopting
                         error_msg = f"Entity {entity_id} is corrupted, deleting: {str(e)}"
                         result.errors.append(error_msg)
-                        entity_file.unlink()
+                        try:
+                            entity_file.unlink()
+                        except FileNotFoundError:
+                            pass
                         result.repaired_entities.append(entity_id)
                         result.repaired_count += 1
                         continue

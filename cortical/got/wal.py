@@ -72,10 +72,15 @@ class WALManager:
 
     def _load_sequence(self) -> int:
         """Load sequence counter from disk."""
-        if self.seq_file.exists():
-            with open(self.seq_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                return data.get('seq', 0)
+        try:
+            if self.seq_file.exists():
+                with open(self.seq_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return data.get('seq', 0)
+        except (FileNotFoundError, json.JSONDecodeError):
+            # File was deleted or corrupted between exists() and read
+            # This is fine - start from 0
+            pass
         return 0
 
     def _save_sequence(self) -> None:
