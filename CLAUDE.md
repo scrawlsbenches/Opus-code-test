@@ -860,16 +860,23 @@ tests/
 
 **Running Tests:**
 
+> **TL;DR**: Use `make test-smoke` after every change, `make test-quick` before commit.
+> See [docs/testing-strategy.md](docs/testing-strategy.md) for full guide.
+
 ```bash
-# Quick feedback during development
+# Makefile shortcuts (recommended!)
+make test-smoke                           # ~1s - sanity check
+make test-fast                            # ~5s - no slow tests
+make test-quick                           # ~30s - before commit
+make test-parallel                        # ~23s - 4 parallel workers
+
+# Or use run_tests.py
 python scripts/run_tests.py smoke        # ~1s - sanity check
 python scripts/run_tests.py quick        # smoke + unit
+python scripts/run_tests.py unit -j 4    # parallel execution (3x faster!)
 
-# Before committing
+# Before pushing
 python scripts/run_tests.py precommit    # smoke + unit + integration
-
-# Full test suite
-python -m unittest discover -s tests -v  # All tests with coverage
 
 # Specific category
 python -m pytest tests/performance/ -v   # Performance tests
@@ -1909,11 +1916,12 @@ python examples/observability_demo.py
 | Metrics summary | `processor.get_metrics_summary()` |
 | Reset metrics | `processor.reset_metrics()` |
 | Record metric | `processor.record_metric("name", count)` |
-| Run all tests | `python scripts/run_tests.py all` |
-| Run smoke tests | `python scripts/run_tests.py smoke` |
-| Run unit tests | `python scripts/run_tests.py unit` |
-| Run quick tests | `python scripts/run_tests.py quick` (smoke + unit) |
+| Run smoke tests | `make test-smoke` or `python scripts/run_tests.py smoke` |
+| Run fast tests | `make test-fast` (~5s, no slow tests) |
+| Run quick tests | `make test-quick` or `python scripts/run_tests.py quick` |
+| Run parallel | `make test-parallel` or `python scripts/run_tests.py unit -j 4` |
 | Run pre-commit | `python scripts/run_tests.py precommit` (smoke + unit + integration) |
+| Run all tests | `python scripts/run_tests.py all` |
 | Run performance | `python scripts/run_tests.py performance` (no coverage) |
 | Check coverage | `python -m coverage run --source=cortical -m pytest tests/ && python -m coverage report --include="cortical/*"` |
 | Run showcase | `python showcase.py` |
