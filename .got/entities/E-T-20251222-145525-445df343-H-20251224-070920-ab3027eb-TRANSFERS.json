@@ -1,0 +1,16 @@
+{
+  "_checksum": "2a972df9616235b2",
+  "_written_at": "2025-12-24T15:08:44.508723+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2025-12-24T15:08:44.503526+00:00",
+    "edge_type": "TRANSFERS",
+    "entity_type": "edge",
+    "id": "E-T-20251222-145525-445df343-H-20251224-070920-ab3027eb-TRANSFERS",
+    "modified_at": "2025-12-24T15:08:44.508653+00:00",
+    "source_id": "T-20251222-145525-445df343",
+    "target_id": "H-20251224-070920-ab3027eb",
+    "version": 2,
+    "weight": 1.0
+  }
+}
