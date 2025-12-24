@@ -1,0 +1,29 @@
+{
+  "_checksum": "246ac668b8bd9386",
+  "_written_at": "2025-12-24T13:32:22.632015+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "high",
+      "task_status": "pending",
+      "task_title": "Review and verify session T73QD changes before new work"
+    },
+    "created_at": "2025-12-24T13:32:22.625234+00:00",
+    "entity_type": "handoff",
+    "id": "H-20251224-133222-63fbe550",
+    "initiated_at": "2025-12-24T13:32:22.625246+00:00",
+    "instructions": "VERIFICATION HANDOFF - Session T73QD Changes\n\nThis session fixed critical bugs and created infrastructure. Before proceeding with new work:\n\n1. RUN VERIFICATION CHECKLIST:\n   python3 -m pytest tests/ -x --tb=short -q\n   python3 scripts/got_utils.py validate | grep -i orphan\n   python3 scripts/got_utils.py sprint list | grep \"S-000\"\n   python3 scripts/got_utils.py handoff list --status initiated\n\n2. EXPECTED RESULTS:\n   - 8864+ tests passing\n   - Orphan rate: ~8.3% (7 decision orphans)\n   - S-000 \"Backlog\" sprint exists with 16 tasks\n   - This handoff should be the only pending one\n\n3. KEY CHANGES TO UNDERSTAND:\n   - Orphan counting fixed in cortical/got/cli/query.py (set difference)\n   - Backlog sprint S-000 created for unassigned tasks\n   - 16 orphan tasks linked to backlog\n\n4. READ KNOWLEDGE TRANSFER:\n   samples/memories/2025-12-24-session-knowledge-transfer-T73QD.md\n\n5. AFTER VERIFICATION:\n   Accept this handoff, complete the task, then proceed with new work.\n   New tasks should auto-link to current sprint.",
+    "modified_at": "2025-12-24T13:32:22.631947+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "Opus-4.5-T73QD",
+    "status": "initiated",
+    "target_agent": "next-session",
+    "task_id": "T-20251224-133203-1c84a754",
+    "version": 2
+  }
+}
