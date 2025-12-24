@@ -849,6 +849,35 @@ class TransactionalGoTAdapter:
             logger.error(f"Failed to get blocked tasks: {e}")
             return []
 
+    def get_orphan_tasks(self) -> List[ThoughtNode]:
+        """Get all tasks that have no edges (not connected to sprints, decisions, or other tasks).
+
+        Returns:
+            List of ThoughtNode objects representing orphan tasks
+        """
+        try:
+            # Get all task IDs
+            all_tasks = self._manager.list_all_tasks()
+            all_task_ids = {t.id for t in all_tasks}
+
+            # Get all edges and find which tasks are connected
+            edges = self._manager.list_edges()
+            connected_ids = set()
+            for edge in edges:
+                if edge.source_id in all_task_ids:
+                    connected_ids.add(edge.source_id)
+                if edge.target_id in all_task_ids:
+                    connected_ids.add(edge.target_id)
+
+            # Find orphan tasks (those with no edges)
+            orphan_ids = all_task_ids - connected_ids
+            orphan_tasks = [t for t in all_tasks if t.id in orphan_ids]
+
+            return [self._tx_task_to_node(t) for t in orphan_tasks]
+        except Exception as e:
+            logger.error(f"Failed to get orphan tasks: {e}")
+            return []
+
     def what_blocks(self, task_id: str) -> List[ThoughtNode]:
         """Get tasks blocking this task.
 
@@ -1792,6 +1821,7 @@ class TransactionalGoTAdapter:
         - "blocked tasks"
         - "active tasks"
         - "pending tasks"
+        - "orphan tasks" / "orphan nodes"
         - "relationships <task_id>"
 
         Returns list of result dicts.
@@ -1840,6 +1870,15 @@ class TransactionalGoTAdapter:
                 results.append({
                     "id": node.id,
                     "title": node.content,
+                    "priority": node.properties.get("priority"),
+                })
+
+        elif query_str in ("orphan tasks", "orphan nodes", "orphans"):
+            for node in self.get_orphan_tasks():
+                results.append({
+                    "id": node.id,
+                    "title": node.content,
+                    "status": node.properties.get("status"),
                     "priority": node.properties.get("priority"),
                 })
 
