@@ -1,19 +1,22 @@
 {
-  "_checksum": "afa939b2350bbef0",
-  "_written_at": "2025-12-22T20:41:38.601934+00:00",
+  "_checksum": "5272dd721325fa34",
+  "_written_at": "2025-12-24T15:52:35.809701+00:00",
   "data": {
     "created_at": "2025-12-22T20:41:38.595981+00:00",
     "description": "Validate that: generation failures fall back gracefully, corrupted layers are detected, recovery procedures work, sessions can start even if generation fails.",
     "entity_type": "task",
     "id": "T-20251222-204138-51a38502",
-    "metadata": {},
-    "modified_at": "2025-12-22T20:41:38.601871+00:00",
+    "metadata": {
+      "started_at": "2025-12-24T15:52:35.802186+00:00",
+      "updated_at": "2025-12-24T15:52:35.802189+00:00"
+    },
+    "modified_at": "2025-12-24T15:52:35.809658+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "Validate: Fault tolerance and recovery",
-    "version": 2
+    "version": 4
   }
 }
