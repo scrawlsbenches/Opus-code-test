@@ -1,8 +1,8 @@
 {
-  "_checksum": "310e5b6c8fb6cc0a",
-  "_written_at": "2025-12-24T06:23:28.561313+00:00",
+  "_checksum": "fc196fec14be6303",
+  "_written_at": "2025-12-24T06:23:49.567163+00:00",
   "data": {
-    "accepted_at": "",
+    "accepted_at": "2025-12-24T06:23:49.556814+00:00",
     "artifacts": [],
     "completed_at": "",
     "context": {
@@ -15,15 +15,15 @@
     "id": "H-20251224-062328-89bb7f80",
     "initiated_at": "2025-12-24T06:23:28.554922+00:00",
     "instructions": "Test handoff",
-    "modified_at": "2025-12-24T06:23:28.561225+00:00",
+    "modified_at": "2025-12-24T06:23:49.567101+00:00",
     "properties": {},
     "reject_reason": "",
     "rejected_at": "",
     "result": {},
     "source_agent": "main",
-    "status": "initiated",
+    "status": "accepted",
     "target_agent": "test-agent",
     "task_id": "T-20251222-211835-c9793f4f",
-    "version": 2
+    "version": 4
   }
 }
