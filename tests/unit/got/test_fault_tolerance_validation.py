@@ -327,27 +327,28 @@ class TestSessionStartupWithFailedGeneration:
         assert (empty_dir / "entities").exists()
         assert (empty_dir / "wal").exists()
 
-    def test_transaction_manager_handles_readonly_directory(self, got_dir):
+    def test_transaction_manager_handles_readonly_directory(self, tmp_path, monkeypatch):
         """Should handle read-only directory gracefully."""
-        # This test may not work on all platforms
-        import os
-        import stat
+        # Use monkeypatching instead of actual permissions - more reliable across CI environments
+        # (CI runners may have CAP_DAC_OVERRIDE or other capabilities that bypass permissions)
+        from pathlib import Path
 
-        # Skip if running as root (can write anywhere)
-        if os.geteuid() == 0:
-            pytest.skip("Cannot test read-only as root")
+        original_mkdir = Path.mkdir
 
-        # Make directory read-only
-        original_mode = os.stat(got_dir).st_mode
-        os.chmod(got_dir, stat.S_IRUSR | stat.S_IXUSR)
+        def permission_denied_mkdir(self, *args, **kwargs):
+            # Fail on entities or wal subdirectory creation
+            if "entities" in str(self) or "wal" in str(self):
+                raise PermissionError(f"Permission denied: {self}")
+            return original_mkdir(self, *args, **kwargs)
 
-        try:
-            # Should handle gracefully
-            with pytest.raises(Exception):  # Should raise permission error
-                TransactionManager(got_dir)
-        finally:
-            # Restore permissions
-            os.chmod(got_dir, original_mode)
+        monkeypatch.setattr(Path, "mkdir", permission_denied_mkdir)
+
+        # Should raise permission error when trying to create subdirectories
+        got_dir = tmp_path / "test_got"
+        got_dir.mkdir()  # Base dir OK, but subdirs will fail
+
+        with pytest.raises(PermissionError):
+            TransactionManager(got_dir)
 
     def test_can_read_entities_with_corrupted_wal(self, populated_got):
         """Should be able to read entities even if WAL is corrupted."""
