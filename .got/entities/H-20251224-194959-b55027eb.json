@@ -1,10 +1,10 @@
 {
-  "_checksum": "cf44be5b9746289b",
-  "_written_at": "2025-12-24T19:49:59.743195+00:00",
+  "_checksum": "d58ecb8130015d98",
+  "_written_at": "2025-12-24T19:59:10.083761+00:00",
   "data": {
-    "accepted_at": "",
+    "accepted_at": "2025-12-24T19:53:53.623947+00:00",
     "artifacts": [],
-    "completed_at": "",
+    "completed_at": "2025-12-24T19:59:10.076888+00:00",
     "context": {
       "task_priority": "high",
       "task_status": "pending",
@@ -15,15 +15,26 @@
     "id": "H-20251224-194959-b55027eb",
     "initiated_at": "2025-12-24T19:49:59.737960+00:00",
     "instructions": "## Handoff: Coverage Improvements Complete - Ready for Regression Tests\n\n### Session Summary\nCompleted task T-20251222-204135-781dad64 (Context detection for layer inclusion):\n1. \u2705 Found context detection already fully implemented in `cortical/got/claudemd.py`\n2. \u2705 Improved test coverage from 85% \u2192 **98%** (16 new tests added)\n3. \u2705 Removed unused MCP/Proto modules (per previous session)\n4. \u2705 Converted probabilistic ID tests to deterministic mocks\n5. \u2705 All 9,021 tests passing\n\n### Current Sprint: S-019 (Transaction API & FK Safety)\n**Progress:** 2/3 (66.7%)\n\n| Status | Task |\n|--------|------|\n| \u2705 | Validate: Fault tolerance and recovery |\n| \u2705 | Context detection for layer inclusion |\n| \u2b1c | **Regression tests for CLAUDE.md quality** (HIGH) \u2190 Next task |\n\n### Next Task: T-20251222-204138-5915d70a\n**Title:** Test: Regression tests for CLAUDE.md quality\n**Description:** Ensure CLAUDE.md generation produces consistent, high-quality output.\n\n### Tests Added This Session\nCoverage for `cortical/got/claudemd.py`:\n- ContextAnalyzer exception paths (branch, sprint, file detection)\n- LayerSelector edge cases (context matching, unknown rules)\n- ClaudeMdComposer content handling (empty layers, custom sections)\n- ClaudeMdValidator MAX_LINES warning\n- ClaudeMdGenerator fallback/backup paths\n- ClaudeMdManager delegation methods\n\n### Modules Removed (Previous Work Merged)\n- `cortical/mcp_server.py` - MCP shim (unused)\n- `cortical/projects/mcp/*` - Full MCP server (never used)\n- `cortical/projects/proto/*` - Protobuf serialization (unused)\n\n### GoT Health\n- Tasks: 68 (87% complete)\n- Coverage: 98% for claudemd.py\n- Status: \u2705 HEALTHY\n\n### Commits This Session\n```\nb5ef1539 test(coverage): Add tests for low coverage modules and convert probabilistic tests\n```\n\n### Quick Start\n```bash\npython scripts/got_utils.py sprint status\npython scripts/got_utils.py task show T-20251222-204138-5915d70a\npython -m coverage report --include=\"cortical/got/claudemd.py\"\n```",
-    "modified_at": "2025-12-24T19:49:59.743100+00:00",
+    "modified_at": "2025-12-24T19:59:10.083708+00:00",
     "properties": {},
     "reject_reason": "",
     "rejected_at": "",
-    "result": {},
+    "result": {
+      "categories": [
+        "CriticalSectionsPresence",
+        "NoInformationLoss",
+        "FormattingConsistency",
+        "GenerationQuality",
+        "LayerSelectionQuality"
+      ],
+      "commit": "eab526fc",
+      "test_file": "tests/regression/test_claudemd_quality.py",
+      "tests_added": 23
+    },
     "source_agent": "main",
-    "status": "initiated",
+    "status": "completed",
     "target_agent": "next-session",
     "task_id": "T-20251222-204138-5915d70a",
-    "version": 2
+    "version": 6
   }
 }

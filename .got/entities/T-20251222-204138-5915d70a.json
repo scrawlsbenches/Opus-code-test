@@ -1,19 +1,23 @@
 {
-  "_checksum": "6cf4c5dd8cc54558",
-  "_written_at": "2025-12-22T20:41:38.083857+00:00",
+  "_checksum": "78a6cf7c1a051b92",
+  "_written_at": "2025-12-24T19:58:15.066883+00:00",
   "data": {
     "created_at": "2025-12-22T20:41:38.078646+00:00",
     "description": "Regression tests ensuring: generated CLAUDE.md contains all critical sections, no information loss vs static file, proper formatting maintained.",
     "entity_type": "task",
     "id": "T-20251222-204138-5915d70a",
-    "metadata": {},
-    "modified_at": "2025-12-22T20:41:38.083768+00:00",
+    "metadata": {
+      "completed_at": "2025-12-24T19:58:15.058149+00:00",
+      "started_at": "2025-12-24T19:54:55.052055+00:00",
+      "updated_at": "2025-12-24T19:58:15.058156+00:00"
+    },
+    "modified_at": "2025-12-24T19:58:15.066821+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Test: Regression tests for CLAUDE.md quality",
-    "version": 2
+    "version": 6
   }
 }
