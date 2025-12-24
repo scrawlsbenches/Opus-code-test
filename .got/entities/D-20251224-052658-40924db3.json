@@ -1,0 +1,15 @@
+{
+  "_checksum": "2bdcbd141ed38f41",
+  "_written_at": "2025-12-24T05:26:58.918704+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2025-12-24T05:26:58.912923+00:00",
+    "entity_type": "decision",
+    "id": "D-20251224-052658-40924db3",
+    "modified_at": "2025-12-24T05:26:58.918646+00:00",
+    "properties": {},
+    "rationale": "## Audit Finding (2025-12-24)\n\nDuring deep analysis of task T-20251222-145525-445df343 (\"Remove deprecated EventLog and GoTProjectManager\"), we discovered:\n\n### Critical Gap\nThe `infer` CLI command is **currently broken**:\n```\nAttributeError: 'TransactionalGoTAdapter' object has no attribute 'infer_edges_from_commit'\n```\n\n### Root Cause\n1. GoTBackendFactory.create() now ONLY returns TransactionalGoTAdapter\n2. But `infer_edges_from_commit()` and `infer_edges_from_recent_commits()` exist ONLY in GoTProjectManager (lines 3732-3853)\n3. CLI module cortical/got/cli/query.py:237 calls these methods on manager\n4. Result: Runtime AttributeError\n\n### Methods Missing from TransactionalGoTAdapter\n- infer_edges_from_commit(commit_message, files_changed) -> List[Dict]\n- infer_edges_from_recent_commits(count) -> List[Dict]\n\n### Implication\nTask T-20251222-145525-445df343 is PREMATURE. The claim that \"TX backend replaces all functionality\" is FALSE.\n\n### Required Before Any Deletion\n1. Port missing methods to TransactionalGoTAdapter\n2. Add integration tests for ALL CLI commands\n3. Verify no other gaps exist\n4. Only then consider deletion\n\n### Lesson Learned\nPrevious agents' decisions must be verified empirically, not trusted blindly. This gap existed because the decision was made without testing the `infer` command.",
+    "title": "Migration from GoTProjectManager to TransactionalGoTAdapter is INCOMPLETE - do not delete legacy code yet",
+    "version": 2
+  }
+}
