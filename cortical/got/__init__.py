@@ -88,6 +88,35 @@ from .api import (
 
 from .protocol import GoTBackend
 
+from .schema import (
+    BaseSchema,
+    Field,
+    FieldType,
+    SchemaRegistry,
+    ValidationResult,
+    get_registry,
+    register_schema,
+    validate_entity,
+    migrate_entity,
+)
+
+from .entity_schemas import (
+    ensure_schemas_registered,
+    get_schema_for_entity_type,
+    list_entity_types,
+    TaskSchema,
+    DecisionSchema,
+    SprintSchema,
+    EpicSchema,
+    EdgeSchema,
+    HandoffSchema,
+    ClaudeMdLayerSchema,
+    ClaudeMdVersionSchema,
+    TeamSchema,
+    PersonaProfileSchema,
+    DocumentSchema,
+)
+
 __all__ = [
     # Errors
     'GoTError',
@@ -145,4 +174,29 @@ __all__ = [
     'generate_decision_id',
     # Protocol
     'GoTBackend',
+    # Schema
+    'BaseSchema',
+    'Field',
+    'FieldType',
+    'SchemaRegistry',
+    'ValidationResult',
+    'get_registry',
+    'register_schema',
+    'validate_entity',
+    'migrate_entity',
+    # Entity Schemas
+    'ensure_schemas_registered',
+    'get_schema_for_entity_type',
+    'list_entity_types',
+    'TaskSchema',
+    'DecisionSchema',
+    'SprintSchema',
+    'EpicSchema',
+    'EdgeSchema',
+    'HandoffSchema',
+    'ClaudeMdLayerSchema',
+    'ClaudeMdVersionSchema',
+    'TeamSchema',
+    'PersonaProfileSchema',
+    'DocumentSchema',
 ]
