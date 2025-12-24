@@ -1,0 +1,17 @@
+{
+  "_checksum": "4918d914ddc667de",
+  "_written_at": "2025-12-24T06:10:31.849126+00:00",
+  "data": {
+    "affects": [
+      "T-20251222-145525-445df343"
+    ],
+    "created_at": "2025-12-24T06:10:31.842499+00:00",
+    "entity_type": "decision",
+    "id": "D-20251224-061031-45d46c1c",
+    "modified_at": "2025-12-24T06:10:31.849061+00:00",
+    "properties": {},
+    "rationale": "Audit confirmed TransactionalGoTAdapter has all methods needed, but CLI handoff/compact/validate commands still use EventLog directly. These must be migrated before removal is safe. Edge discrepancy is known false positive (T-20251222-211835-c9793f4f).",
+    "title": "Keep T-20251222-145525-445df343 blocked until CLI migration",
+    "version": 2
+  }
+}
