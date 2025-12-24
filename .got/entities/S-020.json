@@ -1,6 +1,6 @@
 {
-  "_checksum": "3ddedbfac774c538",
-  "_written_at": "2025-12-24T22:05:36.969103+00:00",
+  "_checksum": "8cc8499abdd6e7a3",
+  "_written_at": "2025-12-24T22:11:15.594962+00:00",
   "data": {
     "created_at": "2025-12-24T22:05:36.961559+00:00",
     "entity_type": "sprint",
@@ -9,13 +9,13 @@
     "id": "S-020",
     "isolation": [],
     "metadata": {},
-    "modified_at": "2025-12-24T22:05:36.969061+00:00",
+    "modified_at": "2025-12-24T22:11:15.594916+00:00",
     "notes": [],
     "number": 20,
     "properties": {},
     "session_id": "",
-    "status": "available",
+    "status": "in_progress",
     "title": "Performance & Observability",
-    "version": 2
+    "version": 4
   }
 }
