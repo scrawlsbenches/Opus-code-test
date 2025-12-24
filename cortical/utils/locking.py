@@ -1,36 +1,48 @@
 """
 Process-safe file-based locking utilities.
 
+Platform Support:
+    This module requires POSIX systems (Linux, macOS). Windows is not supported.
+
 Provides ProcessLock for cross-process synchronization with:
 - Stale lock detection and recovery
 - Timeout support with exponential backoff
 - Reentrant locking option
 - Thread-safe implementation
+
+Logging:
+    This module uses Python's standard logging. Configure via:
+
+        import logging
+        logging.getLogger('cortical.utils.locking').setLevel(logging.DEBUG)
+
+    Log levels:
+    - DEBUG: Lock acquisition attempts, stale lock checks
+    - INFO: Lock acquired/released
+    - WARNING: Stale lock recovery
+    - ERROR: Lock failures
 """
 
 from __future__ import annotations
 
+import fcntl
 import json
 import logging
 import os
-import sys
 import threading
 import time
 from pathlib import Path
 from typing import Optional
 
+# Module-level logger - configure via logging.getLogger('cortical.utils.locking')
 logger = logging.getLogger(__name__)
-
-# Platform detection for file locking
-if sys.platform != 'win32':
-    import fcntl
 
 
 class ProcessLock:
     """
     Simple file-based lock for process safety.
 
-    Uses fcntl.flock() on POSIX systems, graceful no-op on Windows.
+    Uses fcntl.flock() on POSIX systems (Linux, macOS).
     Provides context manager interface for safe lock management.
 
     Features:
@@ -132,38 +144,36 @@ class ProcessLock:
             # Open file for locking
             self._fd = open(self.lock_path, 'r+' if self.lock_path.exists() else 'w+')
 
-            # Platform-specific locking
-            if sys.platform != 'win32':
-                try:
-                    fcntl.flock(self._fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                except (IOError, OSError):
-                    # Lock held by another process - check if stale
-                    self._fd.close()
-                    self._fd = None
+            # Try to acquire exclusive lock (non-blocking)
+            try:
+                fcntl.flock(self._fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except (IOError, OSError):
+                # Lock held by another process - check if stale
+                self._fd.close()
+                self._fd = None
 
-                    if self._is_stale_lock():
-                        logger.warning(
-                            f"Detected stale lock at {self.lock_path}, recovering..."
-                        )
-                        # Remove stale lock file and retry
-                        try:
-                            self.lock_path.unlink(missing_ok=True)
-                        except Exception as e:
-                            logger.error(f"Failed to remove stale lock: {e}")
-                            return False
-
-                        # Retry acquisition after removing stale lock
-                        try:
-                            self._fd = open(self.lock_path, 'w+')
-                            if sys.platform != 'win32':
-                                fcntl.flock(self._fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                        except (IOError, OSError):
-                            if self._fd:
-                                self._fd.close()
-                                self._fd = None
-                            return False
-                    else:
+                if self._is_stale_lock():
+                    logger.warning(
+                        f"Detected stale lock at {self.lock_path}, recovering..."
+                    )
+                    # Remove stale lock file and retry
+                    try:
+                        self.lock_path.unlink(missing_ok=True)
+                    except Exception as e:
+                        logger.error(f"Failed to remove stale lock: {e}")
                         return False
+
+                    # Retry acquisition after removing stale lock
+                    try:
+                        self._fd = open(self.lock_path, 'w+')
+                        fcntl.flock(self._fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except (IOError, OSError):
+                        if self._fd:
+                            self._fd.close()
+                            self._fd = None
+                        return False
+                else:
+                    return False
 
             # Successfully acquired - write holder info
             try:
@@ -254,11 +264,10 @@ class ProcessLock:
                 return
 
             if self._fd:
-                if sys.platform != 'win32':
-                    try:
-                        fcntl.flock(self._fd.fileno(), fcntl.LOCK_UN)
-                    except (IOError, OSError):
-                        pass
+                try:
+                    fcntl.flock(self._fd.fileno(), fcntl.LOCK_UN)
+                except (IOError, OSError):
+                    pass
                 self._fd.close()
                 self._fd = None
 

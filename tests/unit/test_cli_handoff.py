@@ -334,6 +334,33 @@ class TestHandoffList:
         assert result == 0
         mock_manager.list_handoffs.assert_called_once_with(status="completed")
 
+    def test_list_in_progress_alias_for_accepted(self, mock_manager, capsys):
+        """Test that 'in_progress' is an alias for 'accepted' status.
+
+        This matches the task terminology where users expect 'in_progress'
+        to mean 'currently being worked on'. For handoffs, this maps to
+        the 'accepted' status.
+        """
+        mock_manager.list_handoffs.return_value = [
+            {
+                "id": "H-123",
+                "source_agent": "main",
+                "target_agent": "sub-agent-1",
+                "task_id": "T-456",
+                "status": "accepted",
+                "instructions": "Working on it"
+            }
+        ]
+
+        # User passes in_progress (familiar from tasks)
+        args = Namespace(status="in_progress")
+
+        result = cmd_handoff_list(args, mock_manager)
+
+        assert result == 0
+        # Should be normalized to 'accepted' when calling manager
+        mock_manager.list_handoffs.assert_called_once_with(status="accepted")
+
         captured = capsys.readouterr()
         assert "Handoffs (1):" in captured.out
         assert "H-123" in captured.out

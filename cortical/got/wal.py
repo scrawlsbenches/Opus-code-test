@@ -8,6 +8,17 @@ This module uses the shared TransactionWALEntry from cortical.wal for entry
 representation, ensuring consistent checksum computation and serialization
 across all WAL implementations in the system.
 
+Logging:
+    This module uses Python's standard logging. Configure via:
+
+        import logging
+        logging.getLogger('cortical.got.wal').setLevel(logging.DEBUG)
+
+    Log levels:
+    - DEBUG: Race conditions, sequence file recovery
+    - WARNING: Corrupted WAL entries skipped during replay
+    - ERROR: WAL operation failures
+
 See also:
     - cortical.wal: Base WAL infrastructure (BaseWALEntry, TransactionWALEntry)
     - cortical.utils.checksums: Shared checksum utilities
@@ -17,7 +28,11 @@ from __future__ import annotations
 
 import os
 import json
+import logging
 from pathlib import Path
+
+# Module-level logger - configure via logging.getLogger('cortical.got.wal')
+logger = logging.getLogger(__name__)
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
 
@@ -72,10 +87,18 @@ class WALManager:
 
     def _load_sequence(self) -> int:
         """Load sequence counter from disk."""
-        if self.seq_file.exists():
-            with open(self.seq_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                return data.get('seq', 0)
+        try:
+            if self.seq_file.exists():
+                with open(self.seq_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return data.get('seq', 0)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            # File was deleted or corrupted between exists() and read
+            # This is fine - start from 0
+            logger.debug(
+                "Sequence file unavailable, starting from 0: %s: %s",
+                type(e).__name__, e
+            )
         return 0
 
     def _save_sequence(self) -> None:
@@ -231,8 +254,12 @@ class WALManager:
 
                 try:
                     data = json.loads(line)
-                except json.JSONDecodeError:
+                except json.JSONDecodeError as e:
                     # Skip corrupted JSON
+                    logger.warning(
+                        "Skipping corrupted WAL entry at line %d: %s",
+                        line_num, e
+                    )
                     continue
 
                 # Parse into TransactionWALEntry for verification
@@ -240,6 +267,10 @@ class WALManager:
 
                 if not entry.verify():
                     # Skip corrupted entry
+                    logger.warning(
+                        "Skipping WAL entry with invalid checksum at line %d",
+                        line_num
+                    )
                     continue
 
                 # Return as dictionary for backward compatibility
@@ -268,8 +299,12 @@ class WALManager:
 
                 try:
                     data = json.loads(line)
-                except json.JSONDecodeError:
+                except json.JSONDecodeError as e:
                     # Skip corrupted JSON
+                    logger.warning(
+                        "Skipping corrupted WAL entry at line %d: %s",
+                        line_num, e
+                    )
                     continue
 
                 # Parse into TransactionWALEntry for verification
@@ -277,6 +312,10 @@ class WALManager:
 
                 if not entry.verify():
                     # Skip corrupted entry
+                    logger.warning(
+                        "Skipping WAL entry with invalid checksum at line %d",
+                        line_num
+                    )
                     continue
 
                 entries.append(entry)

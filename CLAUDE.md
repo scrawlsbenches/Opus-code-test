@@ -172,42 +172,47 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 
 ### Core Principles
 
-**Scientific Rigor First**
+**Test-Driven Development First**
+- **Write tests BEFORE writing code** - this is non-negotiable
+- Tests define the contract; implementation fulfills it
+- If you can't write a test for it, you don't understand it yet
+- See [docs/automated-testing-techniques.md](docs/automated-testing-techniques.md) for comprehensive testing guide
+
+**Scientific Rigor**
 - Verify claims with data, not assumptions
 - When something "seems slow," profile it before optimizing
 - Be skeptical of intuitions—measure, then act
 
-**Understand Before Acting**
-- Read relevant code before proposing changes
-- Trace data flow through the system
+**Understand Through Testing**
+- Write a test to verify your understanding of the code
+- Use tests as executable documentation of behavior
 - Check `tasks/` directory or run `python scripts/task_utils.py list` to avoid duplicate work
 
 **Deep Analysis Over Trial-and-Error**
-- When debugging, build a complete picture before running fixes
+- When debugging, write a failing test that reproduces the bug first
 - Profile bottlenecks systematically; the obvious culprit often isn't the real one
 - Document findings even when they contradict initial hypotheses
 
-**Test-Driven Confidence**
-- Don't regress coverage on files you modify
-- Run the full test suite after every change
-- Write tests for the bug before writing the fix
-
 > **⚠️ CODE COVERAGE POLICY:**
-> - **Current baseline:** 89% (as of 2025-12-21)
-> - **Target:** Improve incrementally, never regress on modified files
-> - **Reality:** Some modules have low coverage (see debt list below)
+> - **Current baseline:** 98% on fault-tolerant systems (as of 2025-12-24)
+> - **Target:** 95%+ for core logic, 90%+ for error handling
+> - **TDD Requirement:** Write tests FIRST, then implement
 >
-> When you add new code, add corresponding unit tests. Before committing:
+> **Before writing ANY code:**
 > ```bash
+> # 1. Write failing tests that define expected behavior
+> # 2. Run to confirm they fail (RED)
+> python -m pytest tests/path/to/new_tests.py -v
+> # 3. Implement until tests pass (GREEN)
+> # 4. Check coverage
 > python -m coverage run -m pytest tests/ && python -m coverage report --include="cortical/*"
 > ```
 >
 > **Known coverage debt (acknowledged, not blocking):**
 > - `cortical/query/analogy.py` (3%), `cortical/gaps.py` (9%)
 > - `cortical/cli_wrapper.py` (0% - CLI entry point), `cortical/types.py` (0% - type aliases)
-> - Full list: `samples/memories/2025-12-17-session-coverage-and-workflow-analysis.md`
 >
-> **Rule:** New code in well-covered modules needs tests. New code in debt modules: use judgment.
+> **Rule:** ALL new code requires tests written first. No exceptions.
 
 **Dog-Food Everything**
 - Use the system to test itself when possible
@@ -488,6 +493,8 @@ Always have backup plans:
 
 **Cortical Text Processor** is a zero-dependency Python library for hierarchical text analysis. It organizes text through 4 layers inspired by visual cortex organization:
 
+> **Platform Support:** Linux and macOS only. Windows is not supported (uses POSIX-specific `fcntl.flock()` for process-safe locking).
+
 ```
 Layer 0 (TOKENS)    → Individual words        [V1 analogy: edges]
 Layer 1 (BIGRAMS)   → Word pairs              [V2 analogy: patterns]
@@ -550,7 +557,7 @@ python -m coverage report --include="cortical/*"
 python -m coverage report --include="cortical/*" | tail -1
 ```
 
-**Expected output:** Coverage should be ~89% or higher (current baseline as of 2025-12-21).
+**Expected output:** Coverage should be ~98% or higher (current baseline as of 2025-12-24).
 
 ### Troubleshooting
 
@@ -1168,22 +1175,27 @@ Key defaults to know:
 
 | Priority | Type | Rule |
 |----------|------|------|
+| 0 | **Tests First** | Write failing tests BEFORE any implementation. This is the TDD way. |
 | 1 | **Security Issues** | Fix security vulnerabilities BEFORE any other code work. No exceptions. |
-| 2 | **Bugs** | Fix bugs BEFORE working on new features. Stability over velocity. |
-| 3 | **Features** | New functionality only after security and bugs are addressed. |
+| 2 | **Bugs** | Write a test that reproduces the bug, then fix it. |
+| 3 | **Features** | Write tests defining the feature, then implement. |
 | 4 | **Documentation** | Update docs AS YOU WORK, not after. Every code change = doc update. |
 
 **Why this order:**
+- Tests first ensures you understand the problem before solving it
 - Security issues can expose users to harm - they cannot wait
-- Bugs in existing code affect current users - fix them first
-- Features for future users come after current users are protected
+- Bugs need regression tests to prevent reoccurrence
+- Features without tests are incomplete
 - Documentation debt compounds - write it while context is fresh
 
 ### Test-Driven Development (TDD) Workflow
 
-> **⚠️ IMPORTANT: Use TDD for all code changes to important systems.**
+> **⚠️ MANDATORY: TDD is required for ALL code changes. No exceptions.**
+>
+> If you find yourself writing implementation code without a failing test, STOP.
+> Go back and write the test first.
 
-This project uses Test-Driven Development. The workflow is:
+This project strictly follows Test-Driven Development. The workflow is:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -1244,20 +1256,27 @@ def test_delete_task_with_deps(self, mock_manager, mock_args):  # Mocked
     ...
 ```
 
-### Before Writing Code
+### Before Writing Implementation Code
 
-1. **Read the relevant module** - understand existing patterns
-2. **Check existing tasks** - run `python scripts/task_utils.py list` to see planned/in-progress work
-3. **Run tests first** to establish baseline:
+> **Remember: Tests come FIRST. Always.**
+
+1. **Write failing tests first** - define what success looks like:
    ```bash
-   python -m unittest discover -s tests -v
+   # Create test file or add to existing
+   # Write tests that describe expected behavior
+   # Run to confirm they fail (RED phase)
+   python -m pytest tests/path/to/your_tests.py -v
    ```
-4. **Check code coverage** - ensure >89% before optimizations:
+2. **Check existing tasks** - run `python scripts/got_utils.py task list` to see planned/in-progress work
+3. **Run existing tests** to establish baseline:
    ```bash
-   python -m coverage run -m unittest discover -s tests
-   python -m coverage report --include="cortical/*"
+   python -m pytest tests/ -q
    ```
-5. **Trace data flow** - follow how data moves through layers
+4. **Check code coverage** - know the current state:
+   ```bash
+   python -m coverage run -m pytest tests/ && python -m coverage report --include="cortical/*"
+   ```
+5. **Read relevant code** - understand patterns AFTER writing tests (tests clarify what you need to understand)
 
 ### When Debugging Performance Issues
 
@@ -1271,10 +1290,20 @@ def test_delete_task_with_deps(self, mock_manager, mock_args):  # Mocked
 
 ### When Implementing Features
 
-1. **Follow existing patterns** - this codebase is consistent
-2. **Add type hints** - the codebase uses them extensively
-3. **Write docstrings** - Google style with Args/Returns sections
-4. **Update staleness tracking** if adding new computation:
+**Follow TDD: RED → GREEN → REFACTOR**
+
+1. **Write failing tests first** - Define expected behavior before implementation
+   ```bash
+   # Write the test
+   python -m pytest tests/unit/test_your_feature.py -v
+   # Watch it fail (RED) - this confirms the test is meaningful
+   ```
+2. **Implement minimal code to pass** - No more, no less (GREEN)
+3. **Refactor while tests pass** - Clean up with confidence
+4. **Follow existing patterns** - this codebase is consistent
+5. **Add type hints** - the codebase uses them extensively
+6. **Write docstrings** - Google style with Args/Returns sections
+7. **Update staleness tracking** if adding new computation:
    ```python
    # In processor/core.py, add constant:
    COMP_YOUR_FEATURE = 'your_feature'
@@ -1282,26 +1311,32 @@ def test_delete_task_with_deps(self, mock_manager, mock_args):  # Mocked
    # Mark fresh after computation
    ```
 
-### After Writing Code
+### After Implementation (Tests Already Written via TDD)
 
-1. **Run the full test suite**:
+Since you followed TDD, your tests already exist. Now verify everything works together:
+
+1. **Verify all tests pass** (they should - you wrote them first!):
    ```bash
-   python -m unittest discover -s tests -v
+   python -m pytest tests/ -v
    ```
-2. **Check coverage hasn't dropped**:
+2. **Check coverage meets standards** (98%+ for core, 90%+ for error handling):
    ```bash
-   python -m coverage run -m unittest discover -s tests
+   python -m coverage run -m pytest tests/
    python -m coverage report --include="cortical/*"
    ```
-3. **Run the showcase** to verify integration:
+3. **Run smoke tests** for quick sanity check:
+   ```bash
+   make test-smoke  # ~1s
+   ```
+4. **Run the showcase** to verify integration:
    ```bash
    python showcase.py
    ```
-4. **Check for regressions** in related functionality
-5. **Dog-food the feature** - test with real usage (see [dogfooding-checklist.md](docs/dogfooding-checklist.md))
-6. **Create follow-up tasks** - use `scripts/new_task.py` for issues discovered
-7. **Verify completion** - use [definition-of-done.md](docs/definition-of-done.md) checklist
-8. **Mark task complete** - update task status in `tasks/` (see below)
+5. **Check for regressions** in related functionality
+6. **Dog-food the feature** - test with real usage (see [dogfooding-checklist.md](docs/dogfooding-checklist.md))
+7. **Create follow-up tasks** - use `scripts/new_task.py` for issues discovered
+8. **Verify completion** - use [definition-of-done.md](docs/definition-of-done.md) checklist
+9. **Mark task complete** - update task status in `tasks/` (see below)
 
 ### Task Management (Merge-Friendly System)
 
