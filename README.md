@@ -127,6 +127,59 @@ python scripts/reasoning_demo.py --quick
 
 **Documentation:** [docs/graph-of-thought.md](docs/graph-of-thought.md)
 
+## GoT Query API (New)
+
+The `cortical.got` package includes a fluent Query API for analyzing and traversing the Graph of Thought:
+
+```python
+from cortical.got import GoTManager
+from cortical.got.query_builder import Query
+from cortical.got.graph_walker import GraphWalker
+from cortical.got.path_finder import PathFinder
+
+manager = GoTManager(".got")
+
+# SQL-like fluent queries
+pending = (Query(manager)
+    .tasks()
+    .where(status="pending")
+    .order_by("priority", desc=True)
+    .limit(10)
+    .execute())
+
+# Aggregations with group by
+status_counts = (Query(manager)
+    .tasks()
+    .group_by("status")
+    .count()
+    .execute())
+# {"pending": 10, "completed": 57, "in_progress": 3}
+
+# Graph traversal with visitor pattern
+def count_blockers(node, acc):
+    if getattr(node, 'status', None) == 'blocked':
+        return acc + 1
+    return acc
+
+blocked_count = (GraphWalker(manager)
+    .starting_from(task_id)
+    .bfs()
+    .visit(count_blockers, initial=0)
+    .run())
+
+# Path finding
+path = PathFinder(manager).shortest_path(task_a, task_b)
+reachable = PathFinder(manager).reachable_from(task_id)
+```
+
+**Key components:**
+- **Query**: Fluent SQL-like interface with WHERE, ORDER BY, LIMIT, GROUP BY, aggregations
+- **GraphWalker**: BFS/DFS traversal with visitor pattern and accumulator
+- **PathFinder**: Shortest path, all paths, connected components, reachability
+- **PatternMatcher**: Subgraph isomorphism for structural pattern matching
+
+**Documentation:** [docs/got-query-api.md](docs/got-query-api.md)
+
 ## Use Cases & When to Use
 
 ### Ideal Use Cases

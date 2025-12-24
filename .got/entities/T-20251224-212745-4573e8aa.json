@@ -1,0 +1,19 @@
+{
+  "_checksum": "be89ad31f94bcb4f",
+  "_written_at": "2025-12-24T21:27:45.795432+00:00",
+  "data": {
+    "created_at": "2025-12-24T21:27:45.789605+00:00",
+    "description": "Query.explain() method that shows execution plan without running. Helps debug slow queries and understand filter order.",
+    "entity_type": "task",
+    "id": "T-20251224-212745-4573e8aa",
+    "metadata": {},
+    "modified_at": "2025-12-24T21:27:45.795373+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add query explain/plan visualization",
+    "version": 2
+  }
+}

@@ -730,9 +730,15 @@ cortical/
 │   └── claude_code_spawner.py  # Production agent spawning
 ├── got/              # Graph of Thought task/decision tracking
 │   ├── __init__.py   # Re-exports GoTManager
-│   ├── manager.py    # GoTManager - task/decision/edge/sprint/epic/handoff CRUD operations
+│   ├── api.py        # GoTManager - task/decision/edge/sprint/epic/handoff CRUD operations
 │   ├── wal.py        # Transaction WAL using TransactionWALEntry from cortical/wal.py
-│   └── query.py      # GoT query language ("what blocks X", "path from A to B")
+│   ├── query.py      # GoT query language ("what blocks X", "path from A to B")
+│   ├── query_builder.py  # Fluent Query API with SQL-like chaining (~800 lines)
+│   ├── graph_walker.py   # GraphWalker with visitor pattern for traversal (~380 lines)
+│   ├── path_finder.py    # PathFinder with BFS/DFS algorithms (~190 lines)
+│   ├── pattern_matcher.py # PatternMatcher for subgraph matching (~250 lines)
+│   └── cli/          # CLI commands for GoT
+│       └── analyze.py    # Analysis commands using Query API
 ├── spark/            # Statistical Language Model for quick predictions
 │   ├── __init__.py   # Re-exports SparkPredictor, NGramModel, AnomalyDetector
 │   ├── ngram.py      # N-gram language model (bigram/trigram)
@@ -803,6 +809,10 @@ cortical/
 | Crash recovery | `reasoning/graph_persistence.py` - GraphRecovery (4-level cascade) |
 | Git auto-versioning | `reasoning/graph_persistence.py` - GitAutoCommitter |
 | GoT task/decision tracking | `got/` - GoTManager, WAL, query language |
+| Query tasks fluently | `got/query_builder.py` - Query().tasks().where().order_by().execute() |
+| Walk graph with visitors | `got/graph_walker.py` - GraphWalker().starting_from().bfs().visit() |
+| Find paths in graph | `got/path_finder.py` - PathFinder().shortest_path(), reachable_from() |
+| Match subgraph patterns | `got/pattern_matcher.py` - PatternMatcher().find(pattern) |
 | Manage agent handoffs | `got/` - GoTManager handoff methods (initiate, accept, complete, reject) |
 | Generate unique IDs | `utils/id_generation.py` - generate_task_id, generate_plan_id, etc. |
 | Compute checksums | `utils/checksums.py` - compute_checksum() |
@@ -1971,6 +1981,15 @@ python examples/observability_demo.py
 | View sprint status | `python scripts/got_utils.py sprint status` |
 | List all sprints | `python scripts/got_utils.py sprint list` |
 | Create sprint | `python scripts/got_utils.py sprint create "Title" --number N` |
+| **GoT Query API** | |
+| Query tasks | `Query(manager).tasks().where(status="pending").execute()` |
+| Group and count | `Query(manager).tasks().group_by("priority").count().execute()` |
+| Walk graph (BFS) | `GraphWalker(manager).starting_from(id).bfs().visit(fn).run()` |
+| Find shortest path | `PathFinder(manager).shortest_path(from_id, to_id)` |
+| Find reachable nodes | `PathFinder(manager).reachable_from(node_id)` |
+| Match patterns | `PatternMatcher(manager).find(pattern)` |
+| Analyze summary | `python scripts/got_utils.py analyze summary` |
+| Profile Query API | `python scripts/profile_got_query.py` |
 | Create orchestration plan | `python scripts/orchestration_utils.py generate --type plan` |
 | List orchestration plans | `python scripts/orchestration_utils.py list` |
 | Verify batch | `python scripts/verify_batch.py --quick` |

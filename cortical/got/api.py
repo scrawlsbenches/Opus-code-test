@@ -205,6 +205,27 @@ class GoTManager:
             )
         return decision
 
+    def log_decision(
+        self,
+        title: str,
+        rationale: str,
+        affects: Optional[List[str]] = None,
+        **properties
+    ) -> Decision:
+        """
+        Alias for create_decision() - matches CLI 'decision log' command.
+
+        Args:
+            title: Decision title
+            rationale: Rationale for the decision
+            affects: List of entity IDs affected
+            **properties: Additional decision properties
+
+        Returns:
+            Created Decision object
+        """
+        return self.create_decision(title, rationale, affects, **properties)
+
     def add_edge(
         self,
         source_id: str,
@@ -1008,6 +1029,64 @@ class GoTManager:
         """
         return self.find_tasks()
 
+    def list_tasks(self, status: Optional[str] = None) -> List[Task]:
+        """
+        Alias for find_tasks() - more intuitive naming matching list_sprints(), list_decisions().
+
+        Args:
+            status: Optional status filter
+
+        Returns:
+            List of Task objects
+        """
+        return self.find_tasks(status=status)
+
+    def list_edges(self) -> List[Edge]:
+        """
+        List all edges in the store.
+
+        Returns:
+            List of all Edge objects
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        edges = []
+        for edge_file in entities_dir.glob("E-*.json"):
+            try:
+                edge = self._read_edge_file(edge_file)
+                if edge is not None:
+                    edges.append(edge)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+                continue
+
+        return edges
+
+    def list_decisions(self) -> List[Decision]:
+        """
+        List all decisions in the store.
+
+        Returns:
+            List of all Decision objects
+        """
+        entities_dir = self.got_dir / "entities"
+        if not entities_dir.exists():
+            return []
+
+        decisions = []
+        for decision_file in entities_dir.glob("D-*.json"):
+            try:
+                decision = self._read_decision_file(decision_file)
+                if decision is not None:
+                    decisions.append(decision)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted decision file {decision_file}: {e}")
+                continue
+
+        return decisions
+
     def get_edges_for_task(self, task_id: str) -> Tuple[List[Edge], List[Edge]]:
         """
         Get all edges connected to a task.
@@ -1088,6 +1167,30 @@ class GoTManager:
             return None
 
         return Edge.from_dict(data)
+
+    def _read_decision_file(self, path: Path) -> Optional[Decision]:
+        """
+        Read and parse a decision file.
+
+        Args:
+            path: Path to decision JSON file
+
+        Returns:
+            Decision object or None if not a decision
+
+        Raises:
+            CorruptionError: If checksum verification fails
+            json.JSONDecodeError: If file is not valid JSON
+            KeyError: If required fields are missing
+        """
+        with open(path, 'r', encoding='utf-8') as f:
+            wrapper = json.load(f)
+
+        data = wrapper.get("data", {})
+        if data.get("entity_type") != "decision":
+            return None
+
+        return Decision.from_dict(data)
 
     def _read_sprint_file(self, path: Path) -> Optional[Sprint]:
         """
@@ -1632,6 +1735,20 @@ class TransactionContext:
         )
         self.tx_manager.write(self.tx, decision)
         return decision
+
+    def log_decision(self, title: str, rationale: str, **kwargs) -> Decision:
+        """
+        Alias for create_decision() - matches CLI 'decision log' command.
+
+        Args:
+            title: Decision title
+            rationale: Decision rationale
+            **kwargs: Additional decision fields
+
+        Returns:
+            Created Decision object
+        """
+        return self.create_decision(title, rationale, **kwargs)
 
     def add_edge(self, source_id: str, target_id: str, edge_type: str, **kwargs) -> Edge:
         """
