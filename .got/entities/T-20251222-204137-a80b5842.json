@@ -1,22 +1,23 @@
 {
-  "_checksum": "14b66bbca8101c8b",
-  "_written_at": "2025-12-24T22:54:53.683804+00:00",
+  "_checksum": "079e17ab9e2a92f3",
+  "_written_at": "2025-12-24T23:00:49.217081+00:00",
   "data": {
     "created_at": "2025-12-22T20:41:37.578481+00:00",
     "description": "Performance tests ensuring: generation completes <500ms, caching reduces regeneration time, large layer sets don't cause timeouts.",
     "entity_type": "task",
     "id": "T-20251222-204137-a80b5842",
     "metadata": {
+      "completed_at": "2025-12-24T23:00:49.209691+00:00",
       "started_at": "2025-12-24T22:54:53.676689+00:00",
-      "updated_at": "2025-12-24T22:54:53.676694+00:00"
+      "updated_at": "2025-12-24T23:00:49.209700+00:00"
     },
-    "modified_at": "2025-12-24T22:54:53.683734+00:00",
+    "modified_at": "2025-12-24T23:00:49.217037+00:00",
     "priority": "medium",
     "properties": {
       "category": "feature"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Test: Performance tests for generation speed",
-    "version": 4
+    "version": 6
   }
 }
