@@ -36,65 +36,6 @@ class TestCorticalInit:
         assert Minicolumn is not None
         assert Edge is not None
 
-    def test_mcp_has_flag(self):
-        """Test that _has_mcp flag is set correctly."""
-        import cortical
-        # Just verify the flag exists - it's set based on import success/failure
-        assert hasattr(cortical, '_has_mcp')
-        assert isinstance(cortical._has_mcp, bool)
-
-    def test_mcp_exports_when_available(self):
-        """Test that MCP exports are added to __all__ when available."""
-        # This test assumes MCP is available (normal case)
-        import cortical
-
-        if cortical._has_mcp:
-            # When MCP is available, these should be in __all__
-            assert 'CorticalMCPServer' in cortical.__all__
-            assert 'create_mcp_server' in cortical.__all__
-            assert cortical.CorticalMCPServer is not None
-            assert cortical.create_mcp_server is not None
-
-
-class TestMCPInit:
-    """Tests for cortical/projects/mcp/__init__.py"""
-
-    def test_mcp_import_success(self):
-        """Test successful MCP server import."""
-        try:
-            from cortical.projects.mcp import CorticalMCPServer, main
-            # If import succeeds, verify they're not the error placeholders
-            assert CorticalMCPServer is not None
-            assert main is not None
-            assert '__all__' in dir(sys.modules['cortical.projects.mcp'])
-        except ImportError:
-            # If MCP deps not installed, skip this test
-            pytest.skip("MCP dependencies not installed")
-
-    def test_mcp_all_exports(self):
-        """Test that __all__ is defined in mcp module."""
-        import cortical.projects.mcp as mcp_module
-        # Verify __all__ exists (covers line 26 or 36)
-        assert hasattr(mcp_module, '__all__')
-        assert 'CorticalMCPServer' in mcp_module.__all__
-        assert 'main' in mcp_module.__all__
-
-    def test_mcp_placeholder_error(self):
-        """Test that calling placeholder functions raises helpful error."""
-        import cortical.projects.mcp as mcp_module
-
-        # If MCP server isn't actually available, calling these should raise ImportError
-        # This covers line 30 in the _missing_deps function
-        if isinstance(mcp_module.CorticalMCPServer, type(lambda: None)):
-            # It's a function (placeholder), not a class
-            with pytest.raises((ImportError, NameError)):
-                # Might raise NameError due to 'e' scope issue, or ImportError
-                mcp_module.CorticalMCPServer()
-
-            with pytest.raises((ImportError, NameError)):
-                mcp_module.main()
-
-
 class TestMLExperimentsInit:
     """Tests for cortical/ml_experiments/__init__.py"""
 

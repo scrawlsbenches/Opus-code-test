@@ -45,16 +45,6 @@ from .diff import (
     what_changed
 )
 from .async_api import AsyncProcessor
-# Pickle support removed - JSON-only persistence now
-
-# MCP Server support (optional import) - now in cortical.projects.mcp
-try:
-    from .projects.mcp import CorticalMCPServer, main as create_mcp_server
-    _has_mcp = True
-except ImportError:
-    _has_mcp = False
-    CorticalMCPServer = None
-    create_mcp_server = None
 
 __version__ = "2.0.0"
 __all__ = [
@@ -89,10 +79,3 @@ __all__ = [
     # Async API
     "AsyncProcessor",
 ]
-
-# Add MCP exports if available
-if _has_mcp:
-    __all__.extend([
-        "CorticalMCPServer",
-        "create_mcp_server",
-    ])
