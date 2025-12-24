@@ -474,3 +474,393 @@ class TestEdgeCases:
 
         # Should handle error and return empty list
         assert linked == []
+
+
+class TestOrphanCLI:
+    """Tests for orphan CLI command handlers."""
+
+    @pytest.fixture
+    def mock_got_manager(self):
+        """Create a mock GoTManager for CLI tests."""
+        manager = Mock()
+
+        # Create mock tasks
+        task1 = Mock()
+        task1.id = "T-001"
+        task1.title = "Test task one"
+        task1.description = "Description one"
+        task1.status = "pending"
+        task1.priority = "high"
+
+        task2 = Mock()
+        task2.id = "T-002"
+        task2.title = "Test task two"
+        task2.description = "Description two"
+        task2.status = "completed"
+        task2.priority = "medium"
+
+        manager.list_all_tasks.return_value = [task1, task2]
+        manager.get_task.side_effect = lambda tid: {"T-001": task1, "T-002": task2}.get(tid)
+        manager.get_edges_for_task.return_value = ([], [])
+
+        # Mock sprint
+        sprint = Mock()
+        sprint.id = "S-001"
+        sprint.title = "Test Sprint"
+        sprint.status = "in_progress"
+        manager.get_current_sprint.return_value = sprint
+        manager.list_sprints.return_value = [sprint]
+        manager.get_sprint_tasks.return_value = []
+
+        return manager
+
+    @pytest.fixture
+    def mock_adapter(self, mock_got_manager):
+        """Create a mock adapter with _manager attribute."""
+        adapter = Mock()
+        adapter._manager = mock_got_manager
+        return adapter
+
+    def test_cmd_orphan_report_text(self, mock_adapter, capsys):
+        """Test orphan report command with text output."""
+        from cortical.got.cli.orphan import cmd_orphan_report
+
+        args = Mock()
+        args.json = False
+
+        result = cmd_orphan_report(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "ORPHAN DETECTION REPORT" in captured.out
+
+    def test_cmd_orphan_report_json(self, mock_adapter, capsys):
+        """Test orphan report command with JSON output."""
+        from cortical.got.cli.orphan import cmd_orphan_report
+
+        args = Mock()
+        args.json = True
+
+        result = cmd_orphan_report(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        import json
+        data = json.loads(captured.out)
+        assert "orphan_tasks" in data
+
+    def test_cmd_orphan_report_no_manager(self, capsys):
+        """Test orphan report when manager not accessible."""
+        from cortical.got.cli.orphan import cmd_orphan_report
+
+        adapter = Mock(spec=[])  # Empty spec means no attributes
+        args = Mock()
+        args.json = False
+
+        result = cmd_orphan_report(args, adapter)
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Error" in captured.out
+
+    def test_cmd_orphan_list_text(self, mock_adapter, capsys):
+        """Test orphan list command with text output."""
+        from cortical.got.cli.orphan import cmd_orphan_list
+
+        args = Mock()
+        args.json = False
+
+        result = cmd_orphan_list(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Orphan Tasks" in captured.out
+
+    def test_cmd_orphan_list_json(self, mock_adapter, capsys):
+        """Test orphan list command with JSON output."""
+        from cortical.got.cli.orphan import cmd_orphan_list
+
+        args = Mock()
+        args.json = True
+
+        result = cmd_orphan_list(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        import json
+        data = json.loads(captured.out)
+        assert isinstance(data, list)
+
+    def test_cmd_orphan_list_empty(self, mock_adapter, capsys):
+        """Test orphan list when no orphans."""
+        from cortical.got.cli.orphan import cmd_orphan_list
+
+        # Make all tasks connected
+        edge = Mock()
+        edge.source_id = "S-001"
+        edge.target_id = "T-001"
+        edge.edge_type = "CONTAINS"
+        mock_adapter._manager.get_edges_for_task.return_value = ([], [edge])
+
+        args = Mock()
+        args.json = False
+
+        result = cmd_orphan_list(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "No orphan tasks found" in captured.out
+
+    def test_cmd_orphan_check_text(self, mock_adapter, capsys):
+        """Test orphan check command with text output."""
+        from cortical.got.cli.orphan import cmd_orphan_check
+
+        args = Mock()
+        args.task_id = "T-001"
+        args.json = False
+
+        result = cmd_orphan_check(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Task: T-001" in captured.out
+
+    def test_cmd_orphan_check_json(self, mock_adapter, capsys):
+        """Test orphan check command with JSON output."""
+        from cortical.got.cli.orphan import cmd_orphan_check
+
+        args = Mock()
+        args.task_id = "T-001"
+        args.json = True
+
+        result = cmd_orphan_check(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        import json
+        data = json.loads(captured.out)
+        assert data["task_id"] == "T-001"
+
+    def test_cmd_orphan_check_not_found(self, mock_adapter, capsys):
+        """Test orphan check when task not found."""
+        from cortical.got.cli.orphan import cmd_orphan_check
+
+        mock_adapter._manager.get_task.return_value = None
+
+        args = Mock()
+        args.task_id = "T-nonexistent"
+        args.json = False
+
+        result = cmd_orphan_check(args, mock_adapter)
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Task not found" in captured.out
+
+    def test_cmd_orphan_suggest_sprint_text(self, mock_adapter, capsys):
+        """Test suggest-sprint command with text output."""
+        from cortical.got.cli.orphan import cmd_orphan_suggest_sprint
+
+        args = Mock()
+        args.task_id = "T-001"
+        args.json = False
+
+        result = cmd_orphan_suggest_sprint(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Sprint suggestions" in captured.out or "S-001" in captured.out
+
+    def test_cmd_orphan_suggest_sprint_json(self, mock_adapter, capsys):
+        """Test suggest-sprint command with JSON output."""
+        from cortical.got.cli.orphan import cmd_orphan_suggest_sprint
+
+        args = Mock()
+        args.task_id = "T-001"
+        args.json = True
+
+        result = cmd_orphan_suggest_sprint(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        import json
+        data = json.loads(captured.out)
+        assert isinstance(data, list)
+
+    def test_cmd_orphan_suggest_sprint_no_suggestions(self, mock_adapter, capsys):
+        """Test suggest-sprint when no suggestions available."""
+        from cortical.got.cli.orphan import cmd_orphan_suggest_sprint
+
+        mock_adapter._manager.get_current_sprint.return_value = None
+        mock_adapter._manager.list_sprints.return_value = []
+
+        args = Mock()
+        args.task_id = "T-001"
+        args.json = False
+
+        result = cmd_orphan_suggest_sprint(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "No sprint suggestions" in captured.out
+
+    def test_cmd_orphan_suggest_links_text(self, mock_adapter, capsys):
+        """Test suggest-links command with text output."""
+        from cortical.got.cli.orphan import cmd_orphan_suggest_links
+
+        args = Mock()
+        args.task_id = "T-001"
+        args.json = False
+
+        result = cmd_orphan_suggest_links(args, mock_adapter)
+
+        assert result == 0
+
+    def test_cmd_orphan_suggest_links_json(self, mock_adapter, capsys):
+        """Test suggest-links command with JSON output."""
+        from cortical.got.cli.orphan import cmd_orphan_suggest_links
+
+        args = Mock()
+        args.task_id = "T-001"
+        args.json = True
+
+        result = cmd_orphan_suggest_links(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        import json
+        data = json.loads(captured.out)
+        assert isinstance(data, list)
+
+    def test_cmd_orphan_auto_link_dry_run(self, mock_adapter, capsys):
+        """Test auto-link command with dry run."""
+        from cortical.got.cli.orphan import cmd_orphan_auto_link
+
+        args = Mock()
+        args.task_ids = None
+        args.sprint = None
+        args.dry_run = True
+        args.json = False
+
+        result = cmd_orphan_auto_link(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Would link" in captured.out
+
+    def test_cmd_orphan_auto_link_execute(self, mock_adapter, capsys):
+        """Test auto-link command execution."""
+        from cortical.got.cli.orphan import cmd_orphan_auto_link
+
+        args = Mock()
+        args.task_ids = ["T-001"]
+        args.sprint = "S-001"
+        args.dry_run = False
+        args.json = False
+
+        result = cmd_orphan_auto_link(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Linked" in captured.out
+
+    def test_cmd_orphan_auto_link_json(self, mock_adapter, capsys):
+        """Test auto-link command with JSON output."""
+        from cortical.got.cli.orphan import cmd_orphan_auto_link
+
+        args = Mock()
+        args.task_ids = ["T-001"]
+        args.sprint = "S-001"
+        args.dry_run = False
+        args.json = True
+
+        result = cmd_orphan_auto_link(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        import json
+        data = json.loads(captured.out)
+        assert isinstance(data, list)
+
+    def test_cmd_orphan_auto_link_no_orphans(self, mock_adapter, capsys):
+        """Test auto-link when no orphan tasks."""
+        from cortical.got.cli.orphan import cmd_orphan_auto_link
+
+        # Make all tasks connected
+        edge = Mock()
+        edge.source_id = "S-001"
+        edge.target_id = "T-001"
+        edge.edge_type = "CONTAINS"
+        mock_adapter._manager.get_edges_for_task.return_value = ([], [edge])
+
+        args = Mock()
+        args.task_ids = None
+        args.sprint = None
+        args.dry_run = False
+        args.json = False
+
+        result = cmd_orphan_auto_link(args, mock_adapter)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "No orphan tasks" in captured.out
+
+    def test_handle_orphan_command_no_subcommand(self, mock_adapter, capsys):
+        """Test handle_orphan_command with no subcommand."""
+        from cortical.got.cli.orphan import handle_orphan_command
+
+        args = Mock()
+        args.orphan_command = None
+
+        result = handle_orphan_command(args, mock_adapter)
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "No orphan subcommand" in captured.out
+
+    def test_handle_orphan_command_unknown(self, mock_adapter, capsys):
+        """Test handle_orphan_command with unknown subcommand."""
+        from cortical.got.cli.orphan import handle_orphan_command
+
+        args = Mock()
+        args.orphan_command = "unknown"
+
+        result = handle_orphan_command(args, mock_adapter)
+
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "Unknown orphan subcommand" in captured.out
+
+    def test_handle_orphan_command_routes_correctly(self, mock_adapter, capsys):
+        """Test that handle_orphan_command routes to correct handler."""
+        from cortical.got.cli.orphan import handle_orphan_command
+
+        args = Mock()
+        args.orphan_command = "report"
+        args.json = False
+
+        result = handle_orphan_command(args, mock_adapter)
+
+        assert result == 0
+
+    def test_setup_orphan_parser(self):
+        """Test setup_orphan_parser creates correct subparsers."""
+        from cortical.got.cli.orphan import setup_orphan_parser
+        import argparse
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+
+        setup_orphan_parser(subparsers)
+
+        # Test parsing various commands
+        args = parser.parse_args(["orphan", "report"])
+        assert args.orphan_command == "report"
+
+        args = parser.parse_args(["orphan", "list", "--json"])
+        assert args.orphan_command == "list"
+        assert args.json is True
+
+        args = parser.parse_args(["orphan", "check", "T-001"])
+        assert args.orphan_command == "check"
+        assert args.task_id == "T-001"
