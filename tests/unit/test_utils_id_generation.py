@@ -226,10 +226,12 @@ class TestSessionId:
         assert len(session_id) == 4
 
     def test_uniqueness(self):
-        """Session IDs are unique (probabilistically)."""
-        ids = [generate_session_id() for _ in range(100)]
-        # With 4 hex chars (65536 possible values), 100 should be unique
-        assert len(set(ids)) == 100
+        """Session IDs are unique for small batches."""
+        # With 4 hex chars (65536 possible values), birthday paradox means:
+        # - 100 IDs: ~7.3% collision probability (flaky!)
+        # - 10 IDs: ~0.07% collision probability (reliable)
+        ids = [generate_session_id() for _ in range(10)]
+        assert len(set(ids)) == 10
 
 
 class TestShortId:
