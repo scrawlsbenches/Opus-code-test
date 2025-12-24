@@ -488,6 +488,8 @@ Always have backup plans:
 
 **Cortical Text Processor** is a zero-dependency Python library for hierarchical text analysis. It organizes text through 4 layers inspired by visual cortex organization:
 
+> **Platform Support:** Linux and macOS only. Windows is not supported (uses POSIX-specific `fcntl.flock()` for process-safe locking).
+
 ```
 Layer 0 (TOKENS)    → Individual words        [V1 analogy: edges]
 Layer 1 (BIGRAMS)   → Word pairs              [V2 analogy: patterns]

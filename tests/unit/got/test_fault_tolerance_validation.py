@@ -333,9 +333,9 @@ class TestSessionStartupWithFailedGeneration:
         import os
         import stat
 
-        # Skip on Windows or if running as root
-        if os.name == 'nt' or os.geteuid() == 0:
-            pytest.skip("Cannot test read-only on Windows or as root")
+        # Skip if running as root (can write anywhere)
+        if os.geteuid() == 0:
+            pytest.skip("Cannot test read-only as root")
 
         # Make directory read-only
         original_mode = os.stat(got_dir).st_mode
@@ -862,8 +862,6 @@ class TestLockingCoverageBranches:
         from cortical.utils.locking import ProcessLock
         import sys
 
-        if sys.platform == 'win32':
-            pytest.skip("flock not available on Windows")
 
         lock_path = tmp_path / ".lock"
         lock1 = ProcessLock(lock_path, reentrant=False)
@@ -1275,8 +1273,6 @@ class TestLockingRaceConditionCoverage:
         from cortical.utils.locking import ProcessLock
         import sys
 
-        if sys.platform == 'win32':
-            pytest.skip("flock not available on Windows")
 
         lock_path = tmp_path / ".lock"
 
@@ -1318,8 +1314,6 @@ class TestLockingRaceConditionCoverage:
         import sys
         import fcntl
 
-        if sys.platform == 'win32':
-            pytest.skip("flock not available on Windows")
 
         lock_path = tmp_path / ".lock"
 
@@ -1362,8 +1356,6 @@ class TestLockingRaceConditionCoverage:
         from cortical.utils.locking import ProcessLock
         import sys
 
-        if sys.platform == 'win32':
-            pytest.skip("flock not available on Windows")
 
         lock_path = tmp_path / ".lock"
 
@@ -1397,8 +1389,6 @@ class TestLockingRaceConditionCoverage:
         import sys
         import time
 
-        if sys.platform == 'win32':
-            pytest.skip("flock not available on Windows")
 
         lock_path = tmp_path / ".lock"
         lock1 = ProcessLock(lock_path, reentrant=False)
@@ -1450,8 +1440,6 @@ class TestLockingRaceConditionCoverage:
         import sys
         import fcntl
 
-        if sys.platform == 'win32':
-            pytest.skip("flock not available on Windows")
 
         lock_path = tmp_path / ".lock"
 
@@ -1508,8 +1496,6 @@ class TestLockingRaceConditionCoverage:
         import sys
         import fcntl
 
-        if sys.platform == 'win32':
-            pytest.skip("flock not available on Windows")
 
         lock_path = tmp_path / ".lock"
         lock = ProcessLock(lock_path)
@@ -1539,8 +1525,6 @@ class TestLockingRaceConditionCoverage:
         import sys
         import fcntl
 
-        if sys.platform == 'win32':
-            pytest.skip("flock not available on Windows")
 
         lock_path = tmp_path / ".lock"
 
@@ -1565,8 +1549,6 @@ class TestLockingRaceConditionCoverage:
         import threading
         import time
 
-        if sys.platform == 'win32':
-            pytest.skip("flock not available on Windows")
 
         lock_path = tmp_path / ".lock"
         lock1 = ProcessLock(lock_path, reentrant=False)
@@ -1601,8 +1583,6 @@ class TestLockingRaceConditionCoverage:
         import sys
         import fcntl
 
-        if sys.platform == 'win32':
-            pytest.skip("flock not available on Windows")
 
         lock_path = tmp_path / ".lock"
 
@@ -1747,3 +1727,225 @@ class TestAdditionalRecoveryCoverage:
 
         # T-bad-data should be in orphans since WAL has non-dict data
         assert "T-bad-data" in orphans
+
+
+# =============================================================================
+# 13. FINAL COVERAGE PUSH - REMAINING BRANCHES
+# =============================================================================
+
+class TestFinalCoveragePush:
+    """Tests targeting remaining uncovered lines for 100% coverage."""
+
+    def test_lock_timeout_immediate_return(self, tmp_path, monkeypatch):
+        """Timeout returns immediately when elapsed >= timeout."""
+        from cortical.utils.locking import ProcessLock
+        import fcntl
+
+        lock_path = tmp_path / ".lock"
+
+        # Make flock always fail so we hit the timeout loop
+        def patched_flock(fd, operation):
+            if operation == (fcntl.LOCK_EX | fcntl.LOCK_NB):
+                raise BlockingIOError("Resource temporarily unavailable")
+
+        monkeypatch.setattr(fcntl, "flock", patched_flock)
+
+        lock = ProcessLock(lock_path)
+
+        # Very short timeout - should hit line 122 quickly
+        import time
+        start = time.time()
+        result = lock.acquire(timeout=0.01)  # 10ms timeout
+        elapsed = time.time() - start
+
+        assert result is False
+        assert elapsed < 0.5  # Should be quick
+
+    def test_lock_stale_empty_file_via_flock_failure(self, tmp_path, monkeypatch):
+        """Empty lock file detected as stale when flock fails."""
+        from cortical.utils.locking import ProcessLock
+        import fcntl
+
+        lock_path = tmp_path / ".lock"
+
+        # Create an empty lock file
+        lock_path.write_text("")
+
+        flock_calls = [0]
+        original_flock = fcntl.flock
+
+        def patched_flock(fd, operation):
+            flock_calls[0] += 1
+            if flock_calls[0] == 1:
+                # First call fails, triggering stale detection
+                raise BlockingIOError("Resource temporarily unavailable")
+            # Retry succeeds after stale lock is removed
+            return original_flock(fd, operation)
+
+        monkeypatch.setattr(fcntl, "flock", patched_flock)
+
+        lock = ProcessLock(lock_path, stale_timeout=1.0)
+        result = lock.acquire()
+
+        # Should succeed after detecting stale (empty) lock and recovering
+        assert result is True
+        lock.release()
+
+    def test_lock_stale_invalid_json_via_flock_failure(self, tmp_path, monkeypatch):
+        """Invalid JSON in lock file detected as stale when flock fails."""
+        from cortical.utils.locking import ProcessLock
+        import fcntl
+
+        lock_path = tmp_path / ".lock"
+
+        # Create lock file with invalid JSON
+        lock_path.write_text("not valid json {{{")
+
+        flock_calls = [0]
+        original_flock = fcntl.flock
+
+        def patched_flock(fd, operation):
+            flock_calls[0] += 1
+            if flock_calls[0] == 1:
+                # First call fails, triggering stale detection
+                raise BlockingIOError("Resource temporarily unavailable")
+            # Retry succeeds after stale lock is removed
+            return original_flock(fd, operation)
+
+        monkeypatch.setattr(fcntl, "flock", patched_flock)
+
+        lock = ProcessLock(lock_path, stale_timeout=1.0)
+        result = lock.acquire()
+
+        # Should succeed after detecting stale (invalid JSON) lock and recovering
+        assert result is True
+        lock.release()
+
+    def test_lock_backoff_zero_sleep_time(self, tmp_path, monkeypatch):
+        """Test backoff when sleep_time is zero or negative."""
+        from cortical.utils.locking import ProcessLock
+        import fcntl
+        import time
+
+        lock_path = tmp_path / ".lock"
+
+        # Track flock call count
+        flock_calls = [0]
+        start_time = [None]
+
+        def patched_flock(fd, operation):
+            if start_time[0] is None:
+                start_time[0] = time.time()
+            flock_calls[0] += 1
+
+            # Always fail to force timeout loop
+            if operation == (fcntl.LOCK_EX | fcntl.LOCK_NB):
+                raise BlockingIOError("Resource temporarily unavailable")
+
+        monkeypatch.setattr(fcntl, "flock", patched_flock)
+
+        lock = ProcessLock(lock_path)
+
+        # Very short timeout to force the branch where timeout-elapsed is tiny
+        result = lock.acquire(timeout=0.005)  # 5ms
+
+        assert result is False
+
+    def test_lock_retry_flock_fails_on_retry(self, tmp_path, monkeypatch):
+        """Flock fails both on initial attempt and retry after stale removal."""
+        from cortical.utils.locking import ProcessLock
+        import fcntl
+
+        lock_path = tmp_path / ".lock"
+
+        # Create stale lock (dead PID)
+        lock_path.write_text('{"pid": 999999999, "acquired_at": 0}')
+
+        # Make flock always fail
+        def patched_flock(fd, operation):
+            if operation == (fcntl.LOCK_EX | fcntl.LOCK_NB):
+                raise BlockingIOError("Resource temporarily unavailable")
+
+        monkeypatch.setattr(fcntl, "flock", patched_flock)
+
+        lock = ProcessLock(lock_path, stale_timeout=1.0)
+        result = lock.acquire()
+
+        # Should fail because both initial and retry flock fail
+        assert result is False
+
+    def test_lock_timeout_before_sleep(self, tmp_path, monkeypatch):
+        """Timeout exceeded before sleep (hits line 122)."""
+        from cortical.utils.locking import ProcessLock
+        import fcntl
+        import time
+        import os
+
+        lock_path = tmp_path / ".lock"
+
+        # Create a lock held by current process (not stale)
+        lock_path.write_text(json.dumps({
+            "pid": os.getpid(),
+            "acquired_at": time.time()
+        }))
+
+        call_count = [0]
+
+        def patched_flock(fd, operation):
+            if operation == (fcntl.LOCK_EX | fcntl.LOCK_NB):
+                call_count[0] += 1
+                # Delay to exceed timeout on first attempt
+                time.sleep(0.05)  # 50ms delay
+                raise BlockingIOError("Resource temporarily unavailable")
+
+        monkeypatch.setattr(fcntl, "flock", patched_flock)
+
+        lock = ProcessLock(lock_path)
+
+        # 30ms timeout - flock takes 50ms, so we exceed timeout before sleep
+        result = lock.acquire(timeout=0.03)
+
+        assert result is False
+        # Should have tried only once (lock not stale, no retry)
+        assert call_count[0] == 1
+
+    def test_wal_replay_entries_nonexistent_file(self, got_dir):
+        """replay_entries returns empty list for non-existent WAL file."""
+        from cortical.got.wal import WALManager
+
+        wal = WALManager(got_dir / "wal")
+
+        # Make sure WAL file doesn't exist
+        if wal.wal_file.exists():
+            wal.wal_file.unlink()
+
+        entries = wal.replay_entries()
+        assert entries == []
+
+    def test_wal_replay_entries_with_empty_lines(self, got_dir):
+        """replay_entries skips empty lines in WAL file."""
+        from cortical.got.wal import WALManager
+        from cortical.wal import TransactionWALEntry
+
+        wal = WALManager(got_dir / "wal")
+
+        # Create a valid entry
+        entry = TransactionWALEntry(
+            operation="TX_BEGIN",
+            tx_id="TX-test",
+            seq=1,
+            payload={}
+        )
+
+        # Write WAL file with empty lines
+        with open(wal.wal_file, 'w') as f:
+            f.write("\n")  # Empty line
+            f.write(json.dumps(entry.to_dict()) + "\n")
+            f.write("   \n")  # Whitespace-only line
+            f.write("\n")  # Another empty line
+
+        entries = wal.replay_entries()
+
+        # Should get just the one valid entry
+        assert len(entries) == 1
+        assert entries[0].tx_id == "TX-test"
