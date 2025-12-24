@@ -2013,6 +2013,7 @@ python examples/observability_demo.py
 | Accept handoff | `python scripts/got_utils.py handoff accept HANDOFF_ID --agent AGENT` |
 | Complete handoff | `python scripts/got_utils.py handoff complete HANDOFF_ID --agent AGENT --result JSON` |
 | List handoffs | `python scripts/got_utils.py handoff list [--status STATUS]` |
+| ↳ Handoff statuses | `initiated` → `accepted` → `completed` or `rejected` (not `pending`) |
 | Compact events | `python scripts/got_utils.py compact [--preserve-days N]` |
 | **GoT Query Language** | |
 | What blocks task | `python scripts/got_utils.py query "what blocks TASK_ID"` |
