@@ -1,6 +1,5 @@
 # Git attributes for merge conflict handling
 
-# GoT version file: Use 'ours' strategy to avoid conflicts
+# GoT version file is now gitignored (see .gitignore)
 # The version is self-healing (computed from entities/history on load)
-# so any version value is valid - it will be corrected automatically
-.got/entities/_version.json merge=ours
+# No merge strategy needed since file is not tracked
