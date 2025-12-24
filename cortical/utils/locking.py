@@ -6,6 +6,18 @@ Provides ProcessLock for cross-process synchronization with:
 - Timeout support with exponential backoff
 - Reentrant locking option
 - Thread-safe implementation
+
+Logging:
+    This module uses Python's standard logging. Configure via:
+
+        import logging
+        logging.getLogger('cortical.utils.locking').setLevel(logging.DEBUG)
+
+    Log levels:
+    - DEBUG: Lock acquisition attempts, stale lock checks
+    - INFO: Lock acquired/released
+    - WARNING: Stale lock recovery
+    - ERROR: Lock failures
 """
 
 from __future__ import annotations
@@ -19,6 +31,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
+# Module-level logger - configure via logging.getLogger('cortical.utils.locking')
 logger = logging.getLogger(__name__)
 
 # Platform detection for file locking

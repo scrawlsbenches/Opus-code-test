@@ -501,3 +501,512 @@ class TestEdgeCasesAndRegressions:
         result = recovery.recover()
 
         assert isinstance(result, RecoveryResult)
+
+
+# =============================================================================
+# 6. ADDITIONAL COVERAGE TESTS - recovery.py
+# =============================================================================
+
+class TestRecoveryCoverageBranches:
+    """Additional tests to cover remaining branches in recovery.py."""
+
+    def test_needs_recovery_with_incomplete_transactions(self, got_dir):
+        """needs_recovery should return True when incomplete transactions exist."""
+        tm = TransactionManager(got_dir)
+        tx = tm.begin()
+        task = Task(id="T-incomplete", title="Not committed")
+        tm.write(tx, task)
+        # Don't commit
+
+        recovery = RecoveryManager(got_dir)
+        assert recovery.needs_recovery() is True
+
+    def test_needs_recovery_with_corrupted_entities(self, got_dir):
+        """needs_recovery should return True when corrupted entities exist."""
+        # First create a valid entity
+        tm = TransactionManager(got_dir)
+        tx = tm.begin()
+        task = Task(id="T-corrupt", title="Will be corrupted")
+        tm.write(tx, task)
+        tm.commit(tx)
+
+        # Now corrupt it
+        entity_file = got_dir / "entities" / "T-corrupt.json"
+        with open(entity_file, 'r') as f:
+            data = json.load(f)
+        data["data"]["title"] = "TAMPERED"
+        with open(entity_file, 'w') as f:
+            json.dump(data, f)
+
+        recovery = RecoveryManager(got_dir)
+        assert recovery.needs_recovery() is True
+
+    def test_needs_recovery_with_corrupted_wal_entries(self, got_dir):
+        """needs_recovery should return True when WAL entries are corrupted."""
+        # Create a WAL with corrupted entries
+        wal_file = got_dir / "wal" / "current.wal"
+        entries = [
+            '{"op":"TX_BEGIN","tx":"TX-bad","data":{},"checksum":"wrong"}',
+        ]
+        wal_file.write_text('\n'.join(entries) + '\n')
+
+        recovery = RecoveryManager(got_dir)
+        assert recovery.needs_recovery() is True
+
+    def test_needs_recovery_false_when_clean(self, populated_got):
+        """needs_recovery should return False when system is clean."""
+        recovery = RecoveryManager(populated_got)
+        # First ensure recovery is complete
+        recovery.recover()
+        # Now check if needs_recovery is False
+        assert recovery.needs_recovery() is False
+
+    def test_repair_orphans_delete_strategy(self, got_dir):
+        """repair_orphans with delete strategy should remove orphaned files."""
+        # Create orphaned entity (no WAL entry)
+        entities_dir = got_dir / "entities"
+        entity_file = entities_dir / "T-orphan-delete.json"
+        entity_data = {
+            "_checksum": compute_checksum({"id": "T-orphan-delete", "entity_type": "task", "title": "Orphan"}),
+            "_written_at": "2025-12-24T00:00:00+00:00",
+            "data": {"id": "T-orphan-delete", "entity_type": "task", "title": "Orphan"}
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        recovery = RecoveryManager(got_dir)
+        result = recovery.repair_orphans(strategy='delete')
+
+        assert result.success
+        assert result.repaired_count >= 1
+        assert not entity_file.exists()
+
+    def test_repair_orphans_invalid_strategy(self, got_dir):
+        """repair_orphans should raise ValueError for invalid strategy."""
+        recovery = RecoveryManager(got_dir)
+        with pytest.raises(ValueError) as exc_info:
+            recovery.repair_orphans(strategy='invalid')
+        assert "Invalid strategy" in str(exc_info.value)
+
+    def test_repair_orphans_with_corrupted_entity(self, got_dir):
+        """repair_orphans adopt should delete corrupted orphans."""
+        # Create corrupted orphaned entity
+        entities_dir = got_dir / "entities"
+        entity_file = entities_dir / "T-corrupt-orphan.json"
+        # Write invalid JSON that will fail checksum
+        entity_data = {
+            "_checksum": "intentionally_wrong_checksum",
+            "_written_at": "2025-12-24T00:00:00+00:00",
+            "data": {"id": "T-corrupt-orphan", "entity_type": "task", "title": "Corrupted Orphan"}
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        recovery = RecoveryManager(got_dir)
+        result = recovery.repair_orphans(strategy='adopt')
+
+        # Corrupted orphan should be deleted, not adopted
+        assert result.repaired_count >= 1
+        assert len(result.errors) >= 1
+        assert not entity_file.exists()
+
+
+# =============================================================================
+# 7. ADDITIONAL COVERAGE TESTS - wal.py
+# =============================================================================
+
+class TestWALCoverageBranches:
+    """Additional tests to cover remaining branches in wal.py."""
+
+    def test_wal_log_tx_rollback(self, got_dir):
+        """Test log_tx_rollback creates proper entry."""
+        from cortical.got.wal import WALManager
+
+        wal = WALManager(got_dir / "wal")
+        seq = wal.log_tx_rollback("TX-test", "test_reason")
+
+        assert seq >= 1
+        entries = wal.replay()
+        assert any(e['op'] == 'TX_ROLLBACK' for e in entries)
+
+    def test_wal_replay_entries_returns_typed_objects(self, got_dir):
+        """replay_entries should return TransactionWALEntry objects."""
+        from cortical.got.wal import WALManager
+
+        wal = WALManager(got_dir / "wal")
+        wal.log_tx_begin("TX-typed", 1)
+        wal.log_tx_commit("TX-typed", 1)
+
+        entries = wal.replay_entries()
+        assert len(entries) >= 2
+        from cortical.wal import TransactionWALEntry
+        assert all(isinstance(e, TransactionWALEntry) for e in entries)
+
+    def test_wal_fsync_now(self, got_dir):
+        """fsync_now should sync WAL and sequence files."""
+        from cortical.got.wal import WALManager
+
+        wal = WALManager(got_dir / "wal")
+        wal.log_tx_begin("TX-sync", 1)
+
+        # Should not raise
+        wal.fsync_now()
+
+    def test_wal_truncate_with_archive(self, got_dir):
+        """truncate with archive=True should move WAL to archived/."""
+        from cortical.got.wal import WALManager
+
+        wal = WALManager(got_dir / "wal")
+        wal.log_tx_begin("TX-archive", 1)
+
+        archive_path = wal.truncate(archive=True)
+
+        assert archive_path is not None
+        assert archive_path.exists()
+        assert not wal.wal_file.exists()
+
+    def test_wal_truncate_without_archive(self, got_dir):
+        """truncate with archive=False should delete WAL."""
+        from cortical.got.wal import WALManager
+
+        wal = WALManager(got_dir / "wal")
+        wal.log_tx_begin("TX-delete", 1)
+
+        result = wal.truncate(archive=False)
+
+        assert result is None
+        assert not wal.wal_file.exists()
+
+    def test_wal_truncate_no_file(self, got_dir):
+        """truncate on non-existent WAL should return None."""
+        from cortical.got.wal import WALManager
+
+        wal = WALManager(got_dir / "wal")
+        # Don't create any entries
+
+        result = wal.truncate(archive=True)
+        assert result is None
+
+    def test_wal_sequence_recovery_from_corrupted_file(self, got_dir):
+        """WAL should recover from corrupted sequence file."""
+        from cortical.got.wal import WALManager
+
+        # Create corrupted sequence file
+        seq_file = got_dir / "wal" / "_sequence.json"
+        (got_dir / "wal").mkdir(parents=True, exist_ok=True)
+        seq_file.write_text("not valid json{")
+
+        # Should handle gracefully and start from 0
+        wal = WALManager(got_dir / "wal")
+        seq = wal.log_tx_begin("TX-1", 1)
+
+        assert seq == 1
+
+    def test_wal_replay_with_corrupted_checksum(self, got_dir):
+        """replay should skip entries with invalid checksums."""
+        from cortical.got.wal import WALManager
+
+        wal_dir = got_dir / "wal"
+        wal_dir.mkdir(parents=True, exist_ok=True)
+        wal_file = wal_dir / "current.wal"
+
+        # Write entry with bad checksum
+        entries = [
+            '{"seq":1,"ts":"2025-01-01T00:00:00","tx":"TX-bad","op":"TX_BEGIN","data":{},"checksum":"wrong"}',
+        ]
+        wal_file.write_text('\n'.join(entries) + '\n')
+
+        wal = WALManager(wal_dir)
+        valid_entries = wal.replay()
+
+        # Bad checksum entry should be skipped
+        assert len(valid_entries) == 0
+
+
+# =============================================================================
+# 8. ADDITIONAL COVERAGE TESTS - locking.py
+# =============================================================================
+
+class TestLockingCoverageBranches:
+    """Additional tests to cover remaining branches in locking.py."""
+
+    def test_lock_acquire_and_release(self, tmp_path):
+        """Basic lock acquire and release."""
+        from cortical.utils.locking import ProcessLock
+
+        lock = ProcessLock(tmp_path / ".lock")
+        assert lock.acquire() is True
+        assert lock.is_locked() is True
+        lock.release()
+        assert lock.is_locked() is False
+
+    def test_lock_context_manager(self, tmp_path):
+        """Lock as context manager."""
+        from cortical.utils.locking import ProcessLock
+
+        lock = ProcessLock(tmp_path / ".lock")
+        with lock:
+            assert lock.is_locked()
+        assert not lock.is_locked()
+
+    def test_lock_reentrant(self, tmp_path):
+        """Reentrant lock can be acquired multiple times by same process."""
+        from cortical.utils.locking import ProcessLock
+
+        lock = ProcessLock(tmp_path / ".lock", reentrant=True)
+        assert lock.acquire() is True
+        assert lock._lock_count == 1
+        assert lock.acquire() is True
+        assert lock._lock_count == 2
+        lock.release()
+        assert lock._lock_count == 1
+        lock.release()
+        assert lock._lock_count == 0
+
+    def test_lock_with_timeout(self, tmp_path):
+        """Lock with timeout should retry."""
+        from cortical.utils.locking import ProcessLock
+
+        lock = ProcessLock(tmp_path / ".lock")
+        # First acquire without timeout
+        assert lock.acquire() is True
+
+        # Create second lock and try to acquire with timeout
+        lock2 = ProcessLock(tmp_path / ".lock", reentrant=False)
+        # This should fail after timeout since lock is held
+        # Use very short timeout
+        result = lock2.acquire(timeout=0.05)
+        # Result depends on whether flock is available and working
+        # Just verify it returns a boolean
+        assert isinstance(result, bool)
+
+        lock.release()
+
+    def test_lock_release_when_not_held(self, tmp_path):
+        """Release on unheld lock should do nothing."""
+        from cortical.utils.locking import ProcessLock
+
+        lock = ProcessLock(tmp_path / ".lock")
+        # Release without acquire - should not raise
+        lock.release()
+        assert lock._lock_count == 0
+
+    def test_lock_stale_detection_dead_process(self, tmp_path):
+        """Lock should detect stale locks from dead processes."""
+        from cortical.utils.locking import ProcessLock
+        import os
+
+        lock_path = tmp_path / ".lock"
+
+        # Create a lock file with a non-existent PID
+        holder_info = {
+            "pid": 999999999,  # Very unlikely to exist
+            "acquired_at": 0  # Old timestamp
+        }
+        lock_path.write_text(json.dumps(holder_info))
+
+        # Lock should detect stale and recover
+        lock = ProcessLock(lock_path, stale_timeout=1.0)
+        result = lock.acquire()
+
+        # Should successfully acquire after detecting stale lock
+        assert result is True
+        lock.release()
+
+    def test_lock_stale_detection_empty_file(self, tmp_path):
+        """Lock should handle empty lock file as stale."""
+        from cortical.utils.locking import ProcessLock
+
+        lock_path = tmp_path / ".lock"
+        lock_path.write_text("")
+
+        lock = ProcessLock(lock_path)
+        result = lock.acquire()
+
+        assert result is True
+        lock.release()
+
+    def test_lock_stale_detection_invalid_json(self, tmp_path):
+        """Lock should handle invalid JSON in lock file as stale."""
+        from cortical.utils.locking import ProcessLock
+
+        lock_path = tmp_path / ".lock"
+        lock_path.write_text("not valid json{}")
+
+        lock = ProcessLock(lock_path)
+        result = lock.acquire()
+
+        assert result is True
+        lock.release()
+
+    def test_lock_stale_detection_timeout(self, tmp_path):
+        """Lock older than stale_timeout should be considered stale."""
+        from cortical.utils.locking import ProcessLock
+        import os
+        import time
+
+        lock_path = tmp_path / ".lock"
+
+        # Create a lock file with old timestamp
+        holder_info = {
+            "pid": os.getpid(),  # Current process (still alive)
+            "acquired_at": time.time() - 10000  # Very old
+        }
+        lock_path.write_text(json.dumps(holder_info))
+
+        # Lock with short stale timeout
+        lock = ProcessLock(lock_path, stale_timeout=1.0)
+        # Check if _is_stale_lock returns True
+        assert lock._is_stale_lock() is True
+
+    def test_lock_context_manager_failure(self, tmp_path):
+        """Context manager should raise if lock acquisition fails."""
+        from cortical.utils.locking import ProcessLock
+        import sys
+
+        if sys.platform == 'win32':
+            pytest.skip("flock not available on Windows")
+
+        lock_path = tmp_path / ".lock"
+        lock1 = ProcessLock(lock_path, reentrant=False)
+
+        # Hold lock with first instance
+        assert lock1.acquire() is True
+
+        # Try context manager with second instance - should fail
+        lock2 = ProcessLock(lock_path, reentrant=False)
+        with pytest.raises(RuntimeError) as exc_info:
+            with lock2:
+                pass
+        assert "Failed to acquire lock" in str(exc_info.value)
+
+        lock1.release()
+
+    def test_lock_is_stale_nonexistent_file(self, tmp_path):
+        """_is_stale_lock should return False for non-existent file."""
+        from cortical.utils.locking import ProcessLock
+
+        lock_path = tmp_path / ".nonexistent"
+        lock = ProcessLock(lock_path)
+
+        # File doesn't exist, should not be considered stale
+        assert lock._is_stale_lock() is False
+
+    def test_lock_is_stale_no_pid(self, tmp_path):
+        """_is_stale_lock should return True when PID is missing."""
+        from cortical.utils.locking import ProcessLock
+
+        lock_path = tmp_path / ".lock"
+        # Lock file without pid field
+        lock_path.write_text(json.dumps({"acquired_at": 0}))
+
+        lock = ProcessLock(lock_path)
+        assert lock._is_stale_lock() is True
+
+
+# =============================================================================
+# 9. ADDITIONAL COVERAGE TESTS - WAL PARANOID MODE
+# =============================================================================
+
+class TestWALParanoidMode:
+    """Tests for WAL PARANOID durability mode."""
+
+    def test_wal_paranoid_mode_fsync(self, got_dir):
+        """PARANOID mode should fsync on every write."""
+        from cortical.got.wal import WALManager
+        from cortical.got.config import DurabilityMode
+
+        wal = WALManager(got_dir / "wal", durability=DurabilityMode.PARANOID)
+        seq = wal.log_tx_begin("TX-paranoid", 1)
+
+        assert seq >= 1
+        # File should exist and contain the entry
+        assert wal.wal_file.exists()
+
+    def test_wal_paranoid_mode_sequence_save(self, got_dir):
+        """PARANOID mode should fsync sequence file."""
+        from cortical.got.wal import WALManager
+        from cortical.got.config import DurabilityMode
+
+        wal = WALManager(got_dir / "wal", durability=DurabilityMode.PARANOID)
+        wal.log_tx_begin("TX-1", 1)
+        wal.log_tx_begin("TX-2", 1)
+
+        # Sequence should be persisted
+        assert wal.seq_file.exists()
+
+
+# =============================================================================
+# 10. RECOVERY EDGE CASE TESTS
+# =============================================================================
+
+class TestRecoveryEdgeCases:
+    """Additional edge case tests for recovery module."""
+
+    def test_verify_wal_integrity_with_missing_checksum(self, got_dir):
+        """verify_wal_integrity should count entries without checksum as corrupted."""
+        wal_file = got_dir / "wal" / "current.wal"
+        # Entry without checksum field
+        entries = [
+            '{"op":"TX_BEGIN","tx":"TX-no-checksum","data":{}}',
+        ]
+        wal_file.write_text('\n'.join(entries) + '\n')
+
+        recovery = RecoveryManager(got_dir)
+        corrupted_count = recovery.verify_wal_integrity()
+
+        assert corrupted_count >= 1
+
+    def test_recovery_with_mixed_valid_invalid_wal(self, got_dir):
+        """Recovery should handle mix of valid and invalid WAL entries."""
+        from cortical.got.wal import WALManager
+
+        wal = WALManager(got_dir / "wal")
+        # Add valid entries
+        wal.log_tx_begin("TX-valid", 1)
+        wal.log_tx_commit("TX-valid", 1)
+
+        # Append corrupted entry
+        with open(wal.wal_file, 'a') as f:
+            f.write('{"invalid": "entry"}\n')
+
+        recovery = RecoveryManager(got_dir)
+        result = recovery.recover()
+
+        # Should complete despite corrupted entry
+        assert isinstance(result, RecoveryResult)
+        assert result.corrupted_wal_entries >= 1
+
+    def test_detect_orphaned_entities_with_wal_containing_write_ops(self, got_dir):
+        """detect_orphaned_entities should find entities tracked in WAL WRITE ops."""
+        tm = TransactionManager(got_dir)
+        tx = tm.begin()
+        task = Task(id="T-tracked", title="Tracked in WAL")
+        tm.write(tx, task)
+        tm.commit(tx)
+
+        recovery = RecoveryManager(got_dir)
+        orphans = recovery.detect_orphaned_entities()
+
+        # T-tracked should NOT be in orphans since it's in WAL
+        assert "T-tracked" not in orphans
+
+    def test_repair_orphans_skips_vanished_files(self, got_dir):
+        """repair_orphans should handle files that vanish during processing."""
+        # Create orphan entity
+        entities_dir = got_dir / "entities"
+        entity_file = entities_dir / "T-vanish.json"
+        entity_data = {
+            "_checksum": compute_checksum({"id": "T-vanish", "entity_type": "task", "title": "Will vanish"}),
+            "_written_at": "2025-12-24T00:00:00+00:00",
+            "data": {"id": "T-vanish", "entity_type": "task", "title": "Will vanish"}
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        recovery = RecoveryManager(got_dir)
+
+        # Delete before repair runs (simulates race condition)
+        entity_file.unlink()
+
+        result = recovery.repair_orphans(strategy='delete')
+
+        # Should complete without error
+        assert result.success

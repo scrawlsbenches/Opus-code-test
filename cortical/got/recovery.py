@@ -6,14 +6,30 @@ Handles crash recovery and data integrity verification through:
 - Entity checksum verification
 - WAL entry checksum verification
 - Comprehensive recovery reporting
+
+Logging:
+    This module uses Python's standard logging. Configure via:
+
+        import logging
+        logging.getLogger('cortical.got.recovery').setLevel(logging.DEBUG)
+
+    Log levels:
+    - DEBUG: Race conditions, skipped files, detailed operations
+    - INFO: Recovery actions, orphan repairs
+    - WARNING: Corrupted entries, integrity issues
+    - ERROR: Recovery failures
 """
 
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
+
+# Module-level logger - configure via logging.getLogger('cortical.got.recovery')
+logger = logging.getLogger(__name__)
 
 from .tx_manager import TransactionManager
 from .versioned_store import VersionedStore
@@ -231,13 +247,20 @@ class RecoveryManager:
             except FileNotFoundError:
                 # File was deleted between glob and read (race condition)
                 # This is fine - another process may have cleaned it up
-                pass
-            except (CorruptionError, json.JSONDecodeError, KeyError):
+                logger.debug(
+                    "Entity file %s vanished during integrity check (race condition)",
+                    entity_file.name
+                )
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
                 # CorruptionError: checksum mismatch
                 # JSONDecodeError: truncated or malformed JSON file
                 # KeyError: missing required fields (_checksum, data, etc.)
                 entity_id = entity_file.stem
                 corrupted.append(entity_id)
+                logger.warning(
+                    "Corrupted entity detected: %s - %s: %s",
+                    entity_id, type(e).__name__, e
+                )
 
         return corrupted
 
@@ -354,12 +377,18 @@ class RecoveryManager:
                             elif entry.get('op') == 'ADOPTED':
                                 if 'entity_id' in entry:
                                     wal_entity_ids.add(entry['entity_id'])
-                        except (json.JSONDecodeError, KeyError):
+                        except (json.JSONDecodeError, KeyError) as e:
                             # Skip malformed entries
+                            logger.debug(
+                                "Skipping malformed WAL entry in orphan detection: %s: %s",
+                                type(e).__name__, e
+                            )
                             continue
         except FileNotFoundError:
             # WAL file was deleted by another process (race condition)
-            pass
+            logger.debug(
+                "WAL file vanished during orphan detection (race condition)"
+            )
 
         # Find entities on disk but not in WAL
         orphaned = list(disk_entity_ids - wal_entity_ids)
@@ -410,9 +439,13 @@ class RecoveryManager:
                         entity_file.unlink()
                         result.repaired_entities.append(entity_id)
                         result.repaired_count += 1
+                        logger.info("Deleted orphaned entity: %s", entity_id)
                     except FileNotFoundError:
                         # Another process already deleted it
-                        pass
+                        logger.debug(
+                            "Orphan %s already deleted by another process (race condition)",
+                            entity_id
+                        )
 
                 elif strategy == 'adopt':
                     # Verify the entity is valid before adopting
@@ -420,15 +453,26 @@ class RecoveryManager:
                         self.store._read_and_verify(entity_file)
                     except FileNotFoundError:
                         # File was deleted by another process
+                        logger.debug(
+                            "Orphan %s vanished before adoption (race condition)",
+                            entity_id
+                        )
                         continue
                     except (CorruptionError, Exception) as e:
                         # If corrupted, delete it instead of adopting
                         error_msg = f"Entity {entity_id} is corrupted, deleting: {str(e)}"
                         result.errors.append(error_msg)
+                        logger.warning(
+                            "Cannot adopt corrupted orphan %s, deleting: %s: %s",
+                            entity_id, type(e).__name__, e
+                        )
                         try:
                             entity_file.unlink()
                         except FileNotFoundError:
-                            pass
+                            logger.debug(
+                                "Corrupted orphan %s already deleted (race condition)",
+                                entity_id
+                            )
                         result.repaired_entities.append(entity_id)
                         result.repaired_count += 1
                         continue
@@ -451,11 +495,16 @@ class RecoveryManager:
 
                     result.repaired_entities.append(entity_id)
                     result.repaired_count += 1
+                    logger.info("Adopted orphaned entity: %s", entity_id)
 
             except Exception as e:
                 # Handle any unexpected errors
                 error_msg = f"Failed to repair {entity_id}: {str(e)}"
                 result.errors.append(error_msg)
                 result.success = False
+                logger.error(
+                    "Unexpected error repairing orphan %s: %s: %s",
+                    entity_id, type(e).__name__, e
+                )
 
         return result
