@@ -1,22 +1,23 @@
 {
-  "_checksum": "ca6e822b9c6e0788",
-  "_written_at": "2025-12-24T09:15:12.123988+00:00",
+  "_checksum": "ab3f5c663ce0752a",
+  "_written_at": "2025-12-24T09:17:28.077339+00:00",
   "data": {
     "created_at": "2025-12-23T15:17:49.227550+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20251223-151749-cb683757",
     "metadata": {
+      "completed_at": "2025-12-24T09:17:28.068959+00:00",
       "started_at": "2025-12-24T09:15:12.116052+00:00",
-      "updated_at": "2025-12-24T09:15:12.116060+00:00"
+      "updated_at": "2025-12-24T09:17:28.068966+00:00"
     },
-    "modified_at": "2025-12-24T09:15:12.123929+00:00",
+    "modified_at": "2025-12-24T09:17:28.077283+00:00",
     "priority": "medium",
     "properties": {
       "category": "feature"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Define schemas for existing entities (Task, Decision, Edge, Sprint, Epic)",
-    "version": 4
+    "version": 6
   }
 }
