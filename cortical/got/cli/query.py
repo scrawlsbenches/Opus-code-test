@@ -151,12 +151,16 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
         by_status[status] = by_status.get(status, 0) + 1
 
     # Check for orphan nodes (no edges)
+    # Only count edge references that point to existing nodes
+    all_node_ids = set(manager.graph.nodes.keys())
     nodes_with_edges = set()
     for edge in manager.graph.edges:
-        nodes_with_edges.add(edge.source_id)
-        nodes_with_edges.add(edge.target_id)
+        if edge.source_id in all_node_ids:
+            nodes_with_edges.add(edge.source_id)
+        if edge.target_id in all_node_ids:
+            nodes_with_edges.add(edge.target_id)
 
-    orphan_count = total_nodes - len(nodes_with_edges)
+    orphan_count = len(all_node_ids - nodes_with_edges)
     orphan_rate = orphan_count / max(total_nodes, 1) * 100
 
     # Check orphan rate (warning if high, but not critical)
