@@ -88,11 +88,147 @@ from typing import (
     Union,
 )
 
+import time
 from .api import GoTManager
 from .types import Task, Decision, Edge, Sprint, Entity
 
 
 T = TypeVar("T", bound=Entity)
+
+
+# ============================================================================
+# QUERY METRICS
+# ============================================================================
+
+class QueryMetrics:
+    """
+    Collects query execution metrics for the GoT Query API.
+
+    Tracks:
+    - Query execution times (min, max, avg, total)
+    - Entity counts per query
+    - Cache hit rates from GoTManager
+    - Query counts by type
+
+    Thread Safety: NOT thread-safe. Use external locking for concurrent access.
+
+    Example:
+        metrics = QueryMetrics()
+        query = Query(manager, metrics=metrics).tasks().execute()
+        print(metrics.summary())
+    """
+
+    def __init__(self, enabled: bool = True):
+        """Initialize metrics collector."""
+        self.enabled = enabled
+        self._query_times: List[float] = []  # List of execution times in ms
+        self._entity_counts: List[int] = []  # Entities returned per query
+        self._query_counts: Dict[str, int] = defaultdict(int)  # By entity type
+        self._total_queries = 0
+        self._cache_hits_before = 0
+        self._cache_misses_before = 0
+
+    def start_query(self, manager: GoTManager, entity_type: str) -> float:
+        """Record query start. Returns start time."""
+        if not self.enabled:
+            return 0.0
+
+        # Capture cache state before query
+        cache_stats = manager.cache_stats()
+        self._cache_hits_before = cache_stats.get('hits', 0)
+        self._cache_misses_before = cache_stats.get('misses', 0)
+
+        return time.perf_counter()
+
+    def end_query(
+        self,
+        manager: GoTManager,
+        entity_type: str,
+        start_time: float,
+        result_count: int
+    ) -> None:
+        """Record query completion."""
+        if not self.enabled:
+            return
+
+        # Calculate duration
+        duration_ms = (time.perf_counter() - start_time) * 1000
+
+        # Record metrics
+        self._query_times.append(duration_ms)
+        self._entity_counts.append(result_count)
+        self._query_counts[entity_type] += 1
+        self._total_queries += 1
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get query metrics statistics."""
+        if not self._query_times:
+            return {
+                'total_queries': 0,
+                'total_entities': 0,
+                'avg_time_ms': 0.0,
+                'min_time_ms': 0.0,
+                'max_time_ms': 0.0,
+                'queries_by_type': {},
+            }
+
+        return {
+            'total_queries': self._total_queries,
+            'total_entities': sum(self._entity_counts),
+            'avg_entities_per_query': sum(self._entity_counts) / len(self._entity_counts),
+            'avg_time_ms': sum(self._query_times) / len(self._query_times),
+            'min_time_ms': min(self._query_times),
+            'max_time_ms': max(self._query_times),
+            'queries_by_type': dict(self._query_counts),
+        }
+
+    def summary(self) -> str:
+        """Get human-readable metrics summary."""
+        stats = self.get_stats()
+        lines = [
+            "GoT Query API Metrics",
+            "=" * 40,
+            f"Total queries: {stats['total_queries']}",
+            f"Total entities: {stats['total_entities']}",
+            f"Avg entities/query: {stats.get('avg_entities_per_query', 0):.1f}",
+            "",
+            "Timing:",
+            f"  Avg: {stats['avg_time_ms']:.2f}ms",
+            f"  Min: {stats['min_time_ms']:.2f}ms",
+            f"  Max: {stats['max_time_ms']:.2f}ms",
+            "",
+            "Queries by type:",
+        ]
+        for entity_type, count in stats['queries_by_type'].items():
+            lines.append(f"  {entity_type}: {count}")
+
+        return "\n".join(lines)
+
+    def reset(self) -> None:
+        """Reset all metrics."""
+        self._query_times.clear()
+        self._entity_counts.clear()
+        self._query_counts.clear()
+        self._total_queries = 0
+
+
+# Module-level default metrics collector (disabled by default)
+_default_metrics = QueryMetrics(enabled=False)
+
+
+def get_query_metrics() -> QueryMetrics:
+    """Get the module-level query metrics collector."""
+    return _default_metrics
+
+
+def enable_query_metrics() -> None:
+    """Enable module-level query metrics collection."""
+    _default_metrics.enabled = True
+
+
+def disable_query_metrics() -> None:
+    """Disable module-level query metrics collection."""
+    _default_metrics.enabled = False
 
 
 class EntityType(Enum):
@@ -357,9 +493,17 @@ class Query(Generic[T]):
         )
     """
 
-    def __init__(self, manager: GoTManager):
-        """Initialize query builder with GoT manager."""
+    def __init__(self, manager: GoTManager, metrics: Optional[QueryMetrics] = None):
+        """
+        Initialize query builder with GoT manager.
+
+        Args:
+            manager: GoTManager instance for entity access
+            metrics: Optional QueryMetrics for timing/counting. If None, uses
+                     module-level metrics (disabled by default).
+        """
         self._manager = manager
+        self._metrics = metrics if metrics is not None else _default_metrics
         self._entity_type: Optional[EntityType] = None
         self._where_clauses: List[WhereClause] = []
         self._or_groups: List[OrGroup] = []
@@ -539,32 +683,53 @@ class Query(Generic[T]):
         Returns:
             List of matching entities, or dict if using group_by/aggregate
         """
-        if self._count_mode and self._group_by_fields:
-            # Count mode with group_by - return counts per group
-            groups: Dict[Any, int] = defaultdict(int)
-            for entity in self._execute_query():
-                key = self._get_group_key(entity)
-                groups[key] += 1
-            return dict(groups)
+        # Start metrics timing
+        entity_type_name = self._entity_type.name if self._entity_type else "UNKNOWN"
+        start_time = self._metrics.start_query(self._manager, entity_type_name)
 
-        if self._group_by_fields or self._aggregates:
-            return self._execute_aggregation()
+        try:
+            if self._count_mode and self._group_by_fields:
+                # Count mode with group_by - return counts per group
+                groups: Dict[Any, int] = defaultdict(int)
+                for entity in self._execute_query():
+                    key = self._get_group_key(entity)
+                    groups[key] += 1
+                result = dict(groups)
+                self._metrics.end_query(
+                    self._manager, entity_type_name, start_time, sum(groups.values())
+                )
+                return result
 
-        self._executed = True
-        results = list(self._execute_query())
+            if self._group_by_fields or self._aggregates:
+                result = self._execute_aggregation()
+                self._metrics.end_query(
+                    self._manager, entity_type_name, start_time, len(result) if isinstance(result, dict) else 0
+                )
+                return result
 
-        # Apply sorting
-        if self._order_by:
-            results = self._apply_sorting(results)
+            self._executed = True
+            results = list(self._execute_query())
 
-        # Apply offset and limit
-        if self._offset_value:
-            results = results[self._offset_value:]
-        if self._limit_value is not None:
-            results = results[:self._limit_value]
+            # Apply sorting
+            if self._order_by:
+                results = self._apply_sorting(results)
 
-        self._cached_results = results
-        return results
+            # Apply offset and limit
+            if self._offset_value:
+                results = results[self._offset_value:]
+            if self._limit_value is not None:
+                results = results[:self._limit_value]
+
+            self._cached_results = results
+
+            # Record metrics
+            self._metrics.end_query(self._manager, entity_type_name, start_time, len(results))
+
+            return results
+        except Exception:
+            # Record failed query (0 results)
+            self._metrics.end_query(self._manager, entity_type_name, start_time, 0)
+            raise
 
     def iter(self) -> Generator[T, None, None]:
         """
