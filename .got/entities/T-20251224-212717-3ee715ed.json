@@ -1,22 +1,23 @@
 {
-  "_checksum": "60ad6178e9be422c",
-  "_written_at": "2025-12-24T22:13:29.837463+00:00",
+  "_checksum": "f63bc3df3195519e",
+  "_written_at": "2025-12-24T22:21:00.991438+00:00",
   "data": {
     "created_at": "2025-12-24T21:27:17.036534+00:00",
-    "description": "Implement in-memory caching for Task/Decision/Edge entities. Cache on first read, invalidate on write. Expected 10-50x speedup for repeated queries. See docs/got-performance-analysis.md for details.",
+    "description": "Updated desc",
     "entity_type": "task",
     "id": "T-20251224-212717-3ee715ed",
     "metadata": {
+      "completed_at": "2025-12-24T22:21:00.983043+00:00",
       "started_at": "2025-12-24T22:13:29.828495+00:00",
-      "updated_at": "2025-12-24T22:13:29.828503+00:00"
+      "updated_at": "2025-12-24T22:21:00.983050+00:00"
     },
-    "modified_at": "2025-12-24T22:13:29.837408+00:00",
+    "modified_at": "2025-12-24T22:21:00.991388+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Add entity caching layer to GoTManager",
-    "version": 4
+    "version": 8
   }
 }
