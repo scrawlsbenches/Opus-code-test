@@ -53,10 +53,20 @@ class TestTaskId:
         # Should be close to current UTC time
         assert date_part == now_utc.strftime("%Y%m%d")
 
-    def test_uniqueness(self):
-        """Task IDs are unique."""
-        ids = [generate_task_id() for _ in range(100)]
-        assert len(set(ids)) == 100
+    def test_uses_secrets_module(self, monkeypatch):
+        """Task ID uses cryptographically secure randomness."""
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "a1b2c3d4"[:n*2]
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+        result = generate_task_id()
+
+        assert calls == [4]  # 4 bytes = 8 hex chars
+        assert result.endswith("-a1b2c3d4")
 
     def test_no_legacy_prefix(self):
         """Task ID doesn't have legacy 'task:' prefix."""
@@ -74,10 +84,20 @@ class TestDecisionId:
         pattern = r'^D-\d{8}-\d{6}-[0-9a-f]{8}$'
         assert re.match(pattern, decision_id)
 
-    def test_uniqueness(self):
-        """Decision IDs are unique."""
-        ids = [generate_decision_id() for _ in range(100)]
-        assert len(set(ids)) == 100
+    def test_uses_secrets_module(self, monkeypatch):
+        """Decision ID uses cryptographically secure randomness."""
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "e5f6g7h8"[:n*2]
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+        result = generate_decision_id()
+
+        assert calls == [4]  # 4 bytes = 8 hex chars
+        assert result.endswith("-e5f6g7h8")
 
 
 class TestEdgeId:
@@ -90,10 +110,20 @@ class TestEdgeId:
         pattern = r'^E-\d{8}-\d{6}-[0-9a-f]{8}$'
         assert re.match(pattern, edge_id)
 
-    def test_uniqueness(self):
-        """Edge IDs are unique."""
-        ids = [generate_edge_id() for _ in range(100)]
-        assert len(set(ids)) == 100
+    def test_uses_secrets_module(self, monkeypatch):
+        """Edge ID uses cryptographically secure randomness."""
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "i9j0k1l2"[:n*2]
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+        result = generate_edge_id()
+
+        assert calls == [4]  # 4 bytes = 8 hex chars
+        assert result.endswith("-i9j0k1l2")
 
 
 class TestSprintId:
@@ -134,10 +164,20 @@ class TestEpicId:
         pattern = r'^E-\d{8}-\d{6}-[0-9a-f]{8}$'
         assert re.match(pattern, epic_id)
 
-    def test_uniqueness(self):
-        """Epic IDs are unique."""
-        ids = [generate_epic_id() for _ in range(100)]
-        assert len(set(ids)) == 100
+    def test_uses_secrets_module(self, monkeypatch):
+        """Epic ID uses cryptographically secure randomness."""
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "q7r8s9t0"[:n*2]
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+        result = generate_epic_id()
+
+        assert calls == [4]  # 4 bytes = 8 hex chars
+        assert result.endswith("-q7r8s9t0")
 
 
 class TestHandoffId:
@@ -150,10 +190,20 @@ class TestHandoffId:
         pattern = r'^H-\d{8}-\d{6}-[0-9a-f]{8}$'
         assert re.match(pattern, handoff_id)
 
-    def test_uniqueness(self):
-        """Handoff IDs are unique."""
-        ids = [generate_handoff_id() for _ in range(100)]
-        assert len(set(ids)) == 100
+    def test_uses_secrets_module(self, monkeypatch):
+        """Handoff ID uses cryptographically secure randomness."""
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "u1v2w3x4"[:n*2]
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+        result = generate_handoff_id()
+
+        assert calls == [4]  # 4 bytes = 8 hex chars
+        assert result.endswith("-u1v2w3x4")
 
 
 class TestGoalId:
@@ -173,10 +223,20 @@ class TestGoalId:
         # Should be G-YYYYMMDD-XXXXXXXX (19 chars)
         assert len(goal_id) == 19
 
-    def test_uniqueness(self):
-        """Goal IDs are unique."""
-        ids = [generate_goal_id() for _ in range(100)]
-        assert len(set(ids)) == 100
+    def test_uses_secrets_module(self, monkeypatch):
+        """Goal ID uses cryptographically secure randomness."""
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "m3n4o5p6"[:n*2]
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+        result = generate_goal_id()
+
+        assert calls == [4]  # 4 bytes = 8 hex chars
+        assert result.endswith("-m3n4o5p6")
 
 
 class TestPlanId:
@@ -189,10 +249,20 @@ class TestPlanId:
         pattern = r'^OP-\d{8}-\d{6}-[0-9a-f]{8}$'
         assert re.match(pattern, plan_id)
 
-    def test_uniqueness(self):
-        """Plan IDs are unique."""
-        ids = [generate_plan_id() for _ in range(100)]
-        assert len(set(ids)) == 100
+    def test_uses_secrets_module(self, monkeypatch):
+        """Plan ID uses cryptographically secure randomness."""
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "a1b2c3d4"[:n*2]
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+        result = generate_plan_id()
+
+        assert calls == [4]  # 4 bytes = 8 hex chars
+        assert result.endswith("-a1b2c3d4")
 
 
 class TestExecutionId:
@@ -205,10 +275,20 @@ class TestExecutionId:
         pattern = r'^EX-\d{8}-\d{6}-[0-9a-f]{8}$'
         assert re.match(pattern, execution_id)
 
-    def test_uniqueness(self):
-        """Execution IDs are unique."""
-        ids = [generate_execution_id() for _ in range(100)]
-        assert len(set(ids)) == 100
+    def test_uses_secrets_module(self, monkeypatch):
+        """Execution ID uses cryptographically secure randomness."""
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "b2c3d4e5"[:n*2]
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+        result = generate_execution_id()
+
+        assert calls == [4]  # 4 bytes = 8 hex chars
+        assert result.endswith("-b2c3d4e5")
 
 
 class TestSessionId:
@@ -271,10 +351,20 @@ class TestShortId:
         assert short_id.startswith("TEST-")
         assert len(short_id) == 13  # "TEST-" + 8 hex chars
 
-    def test_uniqueness(self):
-        """Short IDs are unique."""
-        ids = [generate_short_id() for _ in range(100)]
-        assert len(set(ids)) == 100
+    def test_uses_secrets_module(self, monkeypatch):
+        """Short ID uses cryptographically secure randomness."""
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "abcd1234"[:n*2]
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+        result = generate_short_id()
+
+        assert calls == [4]  # 4 bytes = 8 hex chars
+        assert result == "abcd1234"
 
 
 class TestClaudeMdLayerId:
@@ -337,10 +427,20 @@ class TestPersonaProfileId:
         pattern = r'^PP-\d{8}-\d{6}-[0-9a-f]{8}$'
         assert re.match(pattern, profile_id)
 
-    def test_uniqueness(self):
-        """Persona profile IDs are unique."""
-        ids = [generate_persona_profile_id() for _ in range(100)]
-        assert len(set(ids)) == 100
+    def test_uses_secrets_module(self, monkeypatch):
+        """Persona profile ID uses cryptographically secure randomness."""
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "a1b2c3d4"[:n*2]
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+        result = generate_persona_profile_id()
+
+        assert calls == [4]  # 4 bytes = 8 hex chars
+        assert result.endswith("-a1b2c3d4")
 
 
 class TestTeamId:
@@ -353,10 +453,20 @@ class TestTeamId:
         pattern = r'^TEAM-\d{8}-\d{6}-[0-9a-f]{8}$'
         assert re.match(pattern, team_id)
 
-    def test_uniqueness(self):
-        """Team IDs are unique."""
-        ids = [generate_team_id() for _ in range(100)]
-        assert len(set(ids)) == 100
+    def test_uses_secrets_module(self, monkeypatch):
+        """Team ID uses cryptographically secure randomness."""
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "a1b2c3d4"[:n*2]
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+        result = generate_team_id()
+
+        assert calls == [4]  # 4 bytes = 8 hex chars
+        assert result.endswith("-a1b2c3d4")
 
 
 class TestDocumentId:
@@ -386,13 +496,20 @@ class TestDocumentId:
         pattern = r'^DOC-\d{8}-\d{6}-[0-9a-f]{8}$'
         assert re.match(pattern, doc_id)
 
-    def test_uniqueness_without_path(self):
-        """Document IDs without path are highly unique."""
-        ids = [generate_document_id() for _ in range(100)]
-        # With 8 hex chars (4 billion combinations), collisions are extremely rare
-        # Allow up to 1 collision in 100 rapid generations (still 99% unique)
-        unique_count = len(set(ids))
-        assert unique_count >= 99, f"Expected at least 99 unique IDs, got {unique_count}"
+    def test_uses_secrets_module_without_path(self, monkeypatch):
+        """Document ID without path uses cryptographically secure randomness."""
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "a1b2c3d4"[:n*2]
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+        result = generate_document_id()
+
+        assert calls == [4]  # 4 bytes = 8 hex chars
+        assert result.endswith("-a1b2c3d4")
 
 
 class TestNormalizeId:
@@ -466,14 +583,23 @@ class TestIdCollisionResistance:
         ids = [task_id, decision_id, edge_id, handoff_id]
         assert len(set(ids)) == 4
 
-    def test_high_volume_uniqueness(self):
-        """Generate many IDs without collisions."""
-        # Mix different ID types
-        ids = []
-        for _ in range(50):
-            ids.append(generate_task_id())
-            ids.append(generate_decision_id())
-            ids.append(generate_handoff_id())
+    def test_prefix_ensures_uniqueness_across_types(self, monkeypatch):
+        """Different prefixes guarantee uniqueness even with same random suffix."""
+        import secrets
 
-        # All should be unique
-        assert len(set(ids)) == 150
+        # Mock to return the SAME random value every time
+        monkeypatch.setattr(secrets, "token_hex", lambda n: "a1b2c3d4"[:n*2])
+
+        # Generate IDs - all will have same random suffix but different prefixes
+        task_id = generate_task_id()
+        decision_id = generate_decision_id()
+        handoff_id = generate_handoff_id()
+
+        # All should be unique due to prefix differentiation
+        ids = [task_id, decision_id, handoff_id]
+        assert len(set(ids)) == 3
+
+        # Verify prefixes are the differentiator
+        assert task_id.startswith("T-")
+        assert decision_id.startswith("D-")
+        assert handoff_id.startswith("H-")
