@@ -575,5 +575,434 @@ class TestIncrementalSave(unittest.TestCase):
         self.assertFalse(result1)
 
 
+class TestErrorHandling(unittest.TestCase):
+    """Tests for error handling paths."""
+
+    def setUp(self):
+        """Create temp directory."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.state_dir = os.path.join(self.temp_dir, 'corpus_state')
+
+    def tearDown(self):
+        """Clean up."""
+        shutil.rmtree(self.temp_dir)
+
+    def test_writer_loads_corrupted_manifest(self):
+        """Test writer handles corrupted manifest gracefully."""
+        # Create state dir with corrupted manifest
+        os.makedirs(self.state_dir, exist_ok=True)
+        manifest_path = os.path.join(self.state_dir, 'manifest.json')
+
+        # Write invalid JSON
+        with open(manifest_path, 'w') as f:
+            f.write("{invalid json")
+
+        # Writer should create new manifest instead of crashing
+        writer = StateWriter(self.state_dir)
+        self.assertIsNotNone(writer.manifest)
+        self.assertEqual(writer.manifest.version, STATE_VERSION)
+
+    def test_save_layer_invalid_level(self):
+        """Test saving layer with invalid level raises ValueError."""
+        writer = StateWriter(self.state_dir)
+
+        # Create layer with invalid level (not in LAYER_FILENAMES)
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        layer.level = 99  # Invalid level
+
+        with self.assertRaises(ValueError) as context:
+            writer.save_layer(layer)
+        self.assertIn("Unknown layer level", str(context.exception))
+
+    def test_save_documents_skips_unchanged(self):
+        """Test save_documents returns False when content unchanged."""
+        writer = StateWriter(self.state_dir)
+        documents = {'doc1': 'Test content'}
+        metadata = {'doc1': {'source': 'test'}}
+
+        # First save
+        result1 = writer.save_documents(documents, metadata)
+        self.assertTrue(result1)
+
+        # Second save with same content
+        result2 = writer.save_documents(documents, metadata)
+        self.assertFalse(result2)
+
+    def test_save_semantic_relations_skips_unchanged(self):
+        """Test save_semantic_relations returns False when unchanged."""
+        writer = StateWriter(self.state_dir)
+        relations = [('a', 'rel', 'b', 0.5)]
+
+        result1 = writer.save_semantic_relations(relations)
+        self.assertTrue(result1)
+
+        result2 = writer.save_semantic_relations(relations)
+        self.assertFalse(result2)
+
+    def test_save_embeddings_skips_unchanged(self):
+        """Test save_embeddings returns False when unchanged."""
+        writer = StateWriter(self.state_dir)
+        embeddings = {'term': [0.1, 0.2]}
+
+        result1 = writer.save_embeddings(embeddings)
+        self.assertTrue(result1)
+
+        result2 = writer.save_embeddings(embeddings)
+        self.assertFalse(result2)
+
+    def test_load_manifest_missing(self):
+        """Test loading manifest raises FileNotFoundError when missing."""
+        loader = StateLoader(self.state_dir)
+
+        with self.assertRaises(FileNotFoundError):
+            loader.load_manifest()
+
+    def test_load_layer_missing(self):
+        """Test loading missing layer file raises FileNotFoundError."""
+        # Create state dir with manifest but no layer files
+        os.makedirs(self.state_dir, exist_ok=True)
+        manifest_path = os.path.join(self.state_dir, 'manifest.json')
+        with open(manifest_path, 'w') as f:
+            json.dump({'version': STATE_VERSION}, f)
+
+        loader = StateLoader(self.state_dir)
+
+        with self.assertRaises(FileNotFoundError):
+            loader.load_layer(0)
+
+    def test_load_documents_missing(self):
+        """Test loading missing documents raises FileNotFoundError."""
+        loader = StateLoader(self.state_dir)
+
+        with self.assertRaises(FileNotFoundError):
+            loader.load_documents()
+
+    def test_load_embeddings_missing(self):
+        """Test loading missing embeddings returns empty dict."""
+        loader = StateLoader(self.state_dir)
+        embeddings = loader.load_embeddings()
+
+        self.assertEqual(embeddings, {})
+
+
+class TestConfigPersistence(unittest.TestCase):
+    """Tests for config and BM25 metadata persistence."""
+
+    def setUp(self):
+        """Create temp directory."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.state_dir = os.path.join(self.temp_dir, 'corpus_state')
+
+    def tearDown(self):
+        """Clean up."""
+        shutil.rmtree(self.temp_dir)
+
+    def test_save_config(self):
+        """Test saving config and BM25 metadata."""
+        writer = StateWriter(self.state_dir)
+
+        config_dict = {
+            'scoring_algorithm': 'bm25',
+            'bm25_k1': 1.2,
+            'bm25_b': 0.75
+        }
+        doc_lengths = {'doc1': 100, 'doc2': 200}
+        avg_doc_length = 150.0
+
+        result = writer.save_config(config_dict, doc_lengths, avg_doc_length)
+
+        # save_config always returns True
+        self.assertTrue(result)
+
+        # Verify stored in manifest
+        self.assertEqual(writer.manifest.config_snapshot, config_dict)
+        self.assertEqual(writer.manifest.bm25_doc_lengths, doc_lengths)
+        self.assertEqual(writer.manifest.avg_doc_length, avg_doc_length)
+
+    def test_load_config(self):
+        """Test loading config and BM25 metadata."""
+        writer = StateWriter(self.state_dir)
+
+        config_dict = {'test': 'value'}
+        doc_lengths = {'doc1': 50}
+        avg_doc_length = 50.0
+
+        writer.save_config(config_dict, doc_lengths, avg_doc_length)
+        writer.save_manifest()
+
+        loader = StateLoader(self.state_dir)
+        loaded_config, loaded_lengths, loaded_avg = loader.load_config()
+
+        self.assertEqual(loaded_config, config_dict)
+        self.assertEqual(loaded_lengths, doc_lengths)
+        self.assertEqual(loaded_avg, avg_doc_length)
+
+    def test_load_config_missing_manifest(self):
+        """Test load_config returns defaults when manifest missing."""
+        loader = StateLoader(self.state_dir)
+        config, lengths, avg = loader.load_config()
+
+        self.assertIsNone(config)
+        self.assertEqual(lengths, {})
+        self.assertEqual(avg, 0.0)
+
+    def test_load_config_empty_fields(self):
+        """Test load_config handles empty config fields gracefully."""
+        # Create manifest without config fields
+        writer = StateWriter(self.state_dir)
+        writer.manifest.config_snapshot = {}
+        writer.save_manifest()
+
+        loader = StateLoader(self.state_dir)
+        config, lengths, avg = loader.load_config()
+
+        self.assertIsNone(config)
+        self.assertEqual(lengths, {})
+        self.assertEqual(avg, 0.0)
+
+
+class TestChecksumValidation(unittest.TestCase):
+    """Tests for checksum validation."""
+
+    def setUp(self):
+        """Create temp directory."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.state_dir = os.path.join(self.temp_dir, 'corpus_state')
+
+    def tearDown(self):
+        """Clean up."""
+        shutil.rmtree(self.temp_dir)
+
+    def test_validate_checksum_no_manifest(self):
+        """Test validate_checksum loads manifest if not loaded."""
+        # Create state with manifest
+        writer = StateWriter(self.state_dir)
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        writer.save_layer(layer)
+        writer.save_manifest()
+
+        loader = StateLoader(self.state_dir)
+        # manifest is None initially
+        self.assertIsNone(loader.manifest)
+
+        filepath = os.path.join(self.state_dir, 'layers', 'L0_tokens.json')
+        result = loader.validate_checksum('layer_0', Path(filepath))
+
+        # Should load manifest and validate
+        self.assertIsNotNone(loader.manifest)
+        self.assertTrue(result)
+
+    def test_validate_checksum_no_stored_checksum(self):
+        """Test validate_checksum returns True when no checksum stored."""
+        writer = StateWriter(self.state_dir)
+        writer.save_manifest()
+
+        loader = StateLoader(self.state_dir)
+        loader.load_manifest()
+
+        # Validate component with no stored checksum
+        filepath = Path(self.state_dir) / 'dummy.json'
+        filepath.write_text('{}')
+
+        result = loader.validate_checksum('unknown_component', filepath)
+        self.assertTrue(result)
+
+    def test_validate_checksum_file_missing(self):
+        """Test validate_checksum returns False when file missing."""
+        writer = StateWriter(self.state_dir)
+        writer.manifest.update_checksum('test', 'content')
+        writer.save_manifest()
+
+        loader = StateLoader(self.state_dir)
+        loader.load_manifest()
+
+        filepath = Path(self.state_dir) / 'missing.json'
+        result = loader.validate_checksum('test', filepath)
+
+        self.assertFalse(result)
+
+    def test_validate_checksum_match(self):
+        """Test validate_checksum returns True when checksum matches."""
+        writer = StateWriter(self.state_dir)
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        writer.save_layer(layer)
+        writer.save_manifest()
+
+        loader = StateLoader(self.state_dir)
+        loader.load_manifest()
+
+        filepath = os.path.join(self.state_dir, 'layers', 'L0_tokens.json')
+        result = loader.validate_checksum('layer_0', Path(filepath))
+
+        self.assertTrue(result)
+
+    def test_validate_checksum_mismatch(self):
+        """Test validate_checksum returns False when checksum differs."""
+        writer = StateWriter(self.state_dir)
+        layer = HierarchicalLayer(CorticalLayer.TOKENS)
+        writer.save_layer(layer)
+        writer.save_manifest()
+
+        # Modify the file to corrupt checksum
+        filepath = os.path.join(self.state_dir, 'layers', 'L0_tokens.json')
+        with open(filepath, 'w') as f:
+            f.write('{"corrupted": true}')
+
+        loader = StateLoader(self.state_dir)
+        loader.load_manifest()
+
+        result = loader.validate_checksum('layer_0', Path(filepath))
+        self.assertFalse(result)
+
+
+class TestVerboseLogging(unittest.TestCase):
+    """Tests for verbose logging paths."""
+
+    def setUp(self):
+        """Create temp directory."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.state_dir = os.path.join(self.temp_dir, 'corpus_state')
+
+    def tearDown(self):
+        """Clean up."""
+        shutil.rmtree(self.temp_dir)
+
+    def _create_test_layer(self, level: int) -> HierarchicalLayer:
+        """Create a test layer."""
+        layer = HierarchicalLayer(CorticalLayer(level))
+        col = Minicolumn(f"L{level}_test", "test", level)
+        layer.minicolumns["test"] = col
+        layer._id_index[col.id] = "test"
+        return layer
+
+    def test_save_all_verbose_logging(self):
+        """Test save_all with verbose=True logs appropriately."""
+        import logging
+
+        # Capture log output
+        handler = logging.StreamHandler()
+        logger = logging.getLogger('cortical.state_storage')
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+        writer = StateWriter(self.state_dir)
+
+        layers = {CorticalLayer(i): self._create_test_layer(i) for i in range(4)}
+        documents = {'doc1': 'Test'}
+        embeddings = {'term': [0.1]}
+        relations = [('a', 'rel', 'b', 0.5)]
+
+        # This should log without errors
+        writer.save_all(
+            layers=layers,
+            documents=documents,
+            embeddings=embeddings,
+            semantic_relations=relations,
+            verbose=True
+        )
+
+        logger.removeHandler(handler)
+
+    def test_load_all_verbose_logging(self):
+        """Test load_all with verbose=True logs appropriately."""
+        import logging
+
+        # First create state
+        writer = StateWriter(self.state_dir)
+        layers = {CorticalLayer(i): self._create_test_layer(i) for i in range(4)}
+        documents = {'doc1': 'Test'}
+        embeddings = {'term': [0.1]}
+        relations = [('a', 'rel', 'b', 0.5)]
+
+        writer.save_all(
+            layers=layers,
+            documents=documents,
+            embeddings=embeddings,
+            semantic_relations=relations,
+            verbose=False
+        )
+
+        # Now load with verbose
+        handler = logging.StreamHandler()
+        logger = logging.getLogger('cortical.state_storage')
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+
+        loader = StateLoader(self.state_dir)
+        loader.load_all(verbose=True)
+
+        logger.removeHandler(handler)
+
+    def test_load_all_verbose_with_missing_files(self):
+        """Test load_all verbose logging when files are missing."""
+        import logging
+
+        # Create minimal state (just manifest)
+        os.makedirs(self.state_dir, exist_ok=True)
+        manifest_path = os.path.join(self.state_dir, 'manifest.json')
+        manifest = StateManifest()
+        with open(manifest_path, 'w') as f:
+            json.dump(manifest.to_dict(), f)
+
+        handler = logging.StreamHandler()
+        logger = logging.getLogger('cortical.state_storage')
+        logger.addHandler(handler)
+        logger.setLevel(logging.WARNING)
+
+        loader = StateLoader(self.state_dir)
+        loader.load_all(verbose=True)
+
+        logger.removeHandler(handler)
+
+
+class TestAtomicWriteErrorHandling(unittest.TestCase):
+    """Tests for atomic write error handling."""
+
+    def setUp(self):
+        """Create temp directory."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.state_dir = os.path.join(self.temp_dir, 'corpus_state')
+
+    def tearDown(self):
+        """Clean up."""
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_atomic_write_cleanup_on_error(self):
+        """Test atomic write cleans up temp file on error."""
+        import unittest.mock as mock
+
+        writer = StateWriter(self.state_dir)
+        writer._ensure_dirs()
+
+        filepath = Path(self.state_dir) / 'test.json'
+        temp_path = filepath.with_suffix('.json.tmp')
+
+        # Mock replace to raise OSError
+        with mock.patch('pathlib.Path.replace', side_effect=OSError("Mock error")):
+            with self.assertRaises(OSError):
+                writer._atomic_write(filepath, '{"test": true}')
+
+        # Temp file should be cleaned up
+        self.assertFalse(temp_path.exists())
+
+
+class TestManifestFromDict(unittest.TestCase):
+    """Tests for StateManifest.from_dict edge cases."""
+
+    def test_from_dict_with_partial_data(self):
+        """Test from_dict handles missing fields gracefully."""
+        # Minimal data
+        data = {'version': 1}
+
+        manifest = StateManifest.from_dict(data)
+
+        self.assertEqual(manifest.version, 1)
+        self.assertEqual(manifest.checksums, {})
+        self.assertEqual(manifest.stale_computations, [])
+        self.assertEqual(manifest.document_count, 0)
+        self.assertIsNotNone(manifest.created_at)
+
+
 if __name__ == '__main__':
     unittest.main()

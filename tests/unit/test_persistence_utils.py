@@ -167,3 +167,129 @@ class TestAtomicWriteJson:
 
         # File should not exist after failure
         assert not path.exists()
+
+    def test_cleanup_temp_file_on_error(self, tmp_path, monkeypatch):
+        """Temp file is cleaned up if rename fails."""
+        path = tmp_path / "test.json"
+
+        # Mock rename to fail after temp file is created
+        original_rename = Path.rename
+
+        def failing_rename(self, target):
+            if str(self).endswith('.tmp'):
+                raise OSError("Simulated rename failure")
+            return original_rename(self, target)
+
+        monkeypatch.setattr(Path, 'rename', failing_rename)
+
+        with pytest.raises(OSError, match="Simulated rename failure"):
+            atomic_write_json(path, {"key": "value"})
+
+        # Temp file should be cleaned up
+        temp_path = path.with_suffix('.json.tmp')
+        assert not temp_path.exists()
+
+    def test_error_when_temp_file_doesnt_exist_json(self, tmp_path, monkeypatch):
+        """Handle error case when temp file was already deleted (JSON)."""
+        path = tmp_path / "test.json"
+
+        # Mock exists() to return False, simulating temp file already gone
+        original_exists = Path.exists
+
+        def mock_exists(self):
+            if str(self).endswith('.tmp'):
+                return False  # Simulate temp file already deleted
+            return original_exists(self)
+
+        # Also mock rename to fail
+        original_rename = Path.rename
+
+        def failing_rename(self, target):
+            if str(self).endswith('.tmp'):
+                raise OSError("Simulated rename failure")
+            return original_rename(self, target)
+
+        monkeypatch.setattr(Path, 'exists', mock_exists)
+        monkeypatch.setattr(Path, 'rename', failing_rename)
+
+        with pytest.raises(OSError, match="Simulated rename failure"):
+            atomic_write_json(path, {"key": "value"})
+
+        # Main file shouldn't exist since write failed
+        assert not path.exists()
+
+
+class TestAtomicWriteErrorHandling:
+    """Tests for error handling in atomic_write()."""
+
+    def test_cleanup_temp_file_on_write_error(self, tmp_path, monkeypatch):
+        """Temp file is cleaned up if write fails."""
+        path = tmp_path / "test.txt"
+
+        # Mock write to fail
+        import builtins
+        original_open = builtins.open
+
+        def failing_open(file, mode='r', *args, **kwargs):
+            if str(file).endswith('.tmp') and 'w' in mode:
+                raise OSError("Simulated write failure")
+            return original_open(file, mode, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, 'open', failing_open)
+
+        with pytest.raises(OSError, match="Simulated write failure"):
+            atomic_write(path, "content")
+
+        # Temp file should be cleaned up
+        temp_path = path.with_suffix('.txt.tmp')
+        assert not temp_path.exists()
+
+    def test_cleanup_temp_file_on_rename_error(self, tmp_path, monkeypatch):
+        """Temp file is cleaned up if rename fails."""
+        path = tmp_path / "test.txt"
+
+        # Mock rename to fail after temp file is created
+        original_rename = Path.rename
+
+        def failing_rename(self, target):
+            if str(self).endswith('.tmp'):
+                raise OSError("Simulated rename failure")
+            return original_rename(self, target)
+
+        monkeypatch.setattr(Path, 'rename', failing_rename)
+
+        with pytest.raises(OSError, match="Simulated rename failure"):
+            atomic_write(path, "content")
+
+        # Temp file should be cleaned up
+        temp_path = path.with_suffix('.txt.tmp')
+        assert not temp_path.exists()
+
+    def test_error_when_temp_file_doesnt_exist(self, tmp_path, monkeypatch):
+        """Handle error case when temp file was already deleted."""
+        path = tmp_path / "test.txt"
+
+        # Mock exists() to return False, simulating temp file already gone
+        original_exists = Path.exists
+
+        def mock_exists(self):
+            if str(self).endswith('.tmp'):
+                return False  # Simulate temp file already deleted
+            return original_exists(self)
+
+        # Also mock rename to fail
+        original_rename = Path.rename
+
+        def failing_rename(self, target):
+            if str(self).endswith('.tmp'):
+                raise OSError("Simulated rename failure")
+            return original_rename(self, target)
+
+        monkeypatch.setattr(Path, 'exists', mock_exists)
+        monkeypatch.setattr(Path, 'rename', failing_rename)
+
+        with pytest.raises(OSError, match="Simulated rename failure"):
+            atomic_write(path, "content")
+
+        # Main file shouldn't exist since write failed
+        assert not path.exists()

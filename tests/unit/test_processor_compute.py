@@ -2,8 +2,10 @@
 Unit Tests for processor.py - Compute Methods
 """
 
+import json
 import pytest
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, List, Any
 
@@ -611,6 +613,346 @@ class TestVerbosePathCoverage(unittest.TestCase):
 # =============================================================================
 # ERROR HANDLING COVERAGE TESTS (10+ tests)
 # =============================================================================
+
+
+# =============================================================================
+# REAL INTEGRATION TESTS (for uncovered lines)
+# =============================================================================
+
+
+class TestRecomputeMethod(unittest.TestCase):
+    """Test recompute() method - currently has no coverage."""
+
+    def test_recompute_full(self):
+        """Test recompute with level='full'."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "neural networks process data")
+
+        result = processor.recompute(level='full', verbose=False)
+
+        self.assertIn(processor.COMP_ACTIVATION, result)
+        self.assertIn(processor.COMP_PAGERANK, result)
+        self.assertIn(processor.COMP_TFIDF, result)
+
+    def test_recompute_tfidf_only(self):
+        """Test recompute with level='tfidf'."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+
+        result = processor.recompute(level='tfidf', verbose=False)
+
+        self.assertIn(processor.COMP_TFIDF, result)
+        self.assertEqual(len(result), 1)
+
+    def test_recompute_stale(self):
+        """Test recompute with level='stale'."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+        processor.compute_all(verbose=False, build_concepts=False)
+
+        # Mark something as stale
+        processor._stale_computations.add(processor.COMP_TFIDF)
+
+        result = processor.recompute(level='stale', verbose=False)
+
+        self.assertIn(processor.COMP_TFIDF, result)
+
+
+class TestCheckpointFunctionality(unittest.TestCase):
+    """Test checkpoint save/load/resume functionality - currently has no coverage."""
+
+    def setUp(self):
+        """Create temp directory for checkpoints."""
+        import tempfile
+        self.checkpoint_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up checkpoint directory."""
+        import shutil
+        if Path(self.checkpoint_dir).exists():
+            shutil.rmtree(self.checkpoint_dir)
+
+    def test_save_checkpoint(self):
+        """Test _save_checkpoint creates files."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+
+        processor._save_checkpoint(self.checkpoint_dir, "test_phase", verbose=False)
+
+        progress_file = Path(self.checkpoint_dir) / 'checkpoint_progress.json'
+        self.assertTrue(progress_file.exists())
+
+        with open(progress_file, 'r') as f:
+            data = json.load(f)
+        self.assertIn('test_phase', data['completed_phases'])
+
+    def test_load_checkpoint_progress(self):
+        """Test _load_checkpoint_progress reads completed phases."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test")
+
+        processor._save_checkpoint(self.checkpoint_dir, "phase1", verbose=False)
+        processor._save_checkpoint(self.checkpoint_dir, "phase2", verbose=False)
+
+        completed = processor._load_checkpoint_progress(self.checkpoint_dir)
+
+        self.assertIn('phase1', completed)
+        self.assertIn('phase2', completed)
+
+    def test_load_checkpoint_progress_missing(self):
+        """Test loading from non-existent directory."""
+        processor = CorticalTextProcessor()
+        completed = processor._load_checkpoint_progress("/nonexistent")
+
+        self.assertEqual(completed, set())
+
+    def test_resume_from_checkpoint(self):
+        """Test resume_from_checkpoint classmethod."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "neural networks")
+        processor.compute_all(verbose=False, checkpoint_dir=self.checkpoint_dir, build_concepts=False)
+
+        resumed = CorticalTextProcessor.resume_from_checkpoint(self.checkpoint_dir, verbose=False)
+
+        self.assertIsNotNone(resumed)
+        # Verify the processor was loaded successfully
+        self.assertEqual(len(resumed.documents), 1)
+
+    def test_compute_all_with_checkpoint(self):
+        """Test compute_all creates checkpoints."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+
+        processor.compute_all(verbose=False, checkpoint_dir=self.checkpoint_dir, build_concepts=False)
+
+        progress_file = Path(self.checkpoint_dir) / 'checkpoint_progress.json'
+        self.assertTrue(progress_file.exists())
+
+    def test_compute_all_resume(self):
+        """Test compute_all with resume=True."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+
+        # First run with checkpoint
+        processor.compute_all(verbose=False, checkpoint_dir=self.checkpoint_dir, build_concepts=False)
+
+        # Resume should skip completed phases
+        processor.compute_all(verbose=False, checkpoint_dir=self.checkpoint_dir, resume=True, build_concepts=False)
+
+
+class TestBM25Methods(unittest.TestCase):
+    """Test BM25 methods - currently have no coverage."""
+
+    def test_compute_bm25_direct(self):
+        """Test compute_bm25 method."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "neural networks process data")
+        processor.process_document("doc2", "machine learning algorithms")
+
+        processor.compute_bm25(k1=1.2, b=0.75, verbose=False)
+
+    def test_compute_bm25_default_params(self):
+        """Test compute_bm25 with default parameters."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+
+        processor.compute_bm25(verbose=False)
+
+    def test_compute_bm25_parallel(self):
+        """Test compute_bm25_parallel (falls back to sequential for small corpus)."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+
+        stats = processor.compute_bm25_parallel(verbose=False)
+
+        self.assertIn('method', stats)
+        self.assertIn('k1', stats)
+        self.assertIn('b', stats)
+
+    def test_compute_bm25_parallel_custom_params(self):
+        """Test BM25 parallel with custom k1 and b."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+
+        stats = processor.compute_bm25_parallel(k1=1.5, b=0.6, verbose=False)
+
+        self.assertEqual(stats['k1'], 1.5)
+        self.assertEqual(stats['b'], 0.6)
+
+
+class TestTFIDFParallel(unittest.TestCase):
+    """Test TF-IDF parallel methods - currently have no coverage."""
+
+    def test_compute_tfidf_parallel(self):
+        """Test compute_tfidf_parallel (falls back to sequential for small corpus)."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+
+        stats = processor.compute_tfidf_parallel(verbose=False)
+
+        self.assertIn('method', stats)
+        self.assertIn('terms_processed', stats)
+
+    def test_compute_tfidf_parallel_custom_workers(self):
+        """Test TF-IDF parallel with custom worker count."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+
+        stats = processor.compute_tfidf_parallel(num_workers=2, chunk_size=500, verbose=False)
+
+        self.assertIn('terms_processed', stats)
+
+
+class TestClusteringMethods(unittest.TestCase):
+    """Test clustering methods - some paths uncovered."""
+
+    def test_build_concept_clusters_louvain(self):
+        """Test concept clustering with Louvain method."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "neural networks machine learning")
+        processor.compute_all(verbose=False, build_concepts=False)
+
+        clusters = processor.build_concept_clusters(clustering_method='louvain', verbose=False)
+
+        self.assertIsInstance(clusters, dict)
+
+    def test_build_concept_clusters_label_propagation(self):
+        """Test clustering with label propagation."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "neural networks machine learning")
+        processor.compute_all(verbose=False, build_concepts=False)
+
+        clusters = processor.build_concept_clusters(
+            clustering_method='label_propagation',
+            cluster_strictness=0.7,
+            bridge_weight=0.2,
+            verbose=False
+        )
+
+        self.assertIsInstance(clusters, dict)
+
+    def test_build_concept_clusters_invalid_method(self):
+        """Test invalid clustering method raises ValueError."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test")
+
+        with self.assertRaises(ValueError):
+            processor.build_concept_clusters(clustering_method='invalid', verbose=False)
+
+
+class TestEmbeddingMethods(unittest.TestCase):
+    """Test embedding methods - some paths uncovered."""
+
+    def test_compute_graph_embeddings_different_methods(self):
+        """Test different embedding methods."""
+        for method in ['tfidf', 'fast', 'adjacency']:
+            processor = CorticalTextProcessor()
+            processor.process_document("doc1", "neural networks")
+            processor.compute_all(verbose=False, build_concepts=False)
+
+            stats = processor.compute_graph_embeddings(method=method, verbose=False)
+
+            self.assertIn('terms_embedded', stats)
+
+    def test_compute_graph_embeddings_with_max_terms(self):
+        """Test embeddings with max_terms limit."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "neural networks machine learning")
+        processor.compute_all(verbose=False, build_concepts=False)
+
+        stats = processor.compute_graph_embeddings(max_terms=5, verbose=False)
+
+        self.assertIn('terms_embedded', stats)
+
+
+class TestSemanticMethods(unittest.TestCase):
+    """Test semantic methods - some paths uncovered."""
+
+    def test_compute_semantic_importance_no_relations(self):
+        """Test semantic importance when no relations exist."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+        processor.semantic_relations = []
+
+        stats = processor.compute_semantic_importance(verbose=False)
+
+        self.assertEqual(stats['total_edges_with_relations'], 0)
+
+    def test_compute_semantic_importance_with_relations(self):
+        """Test semantic importance with relations."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+        processor.extract_corpus_semantics(verbose=False)
+
+        stats = processor.compute_semantic_importance(verbose=False)
+
+        self.assertIn('total_edges_with_relations', stats)
+
+    def test_compute_hierarchical_importance(self):
+        """Test hierarchical PageRank."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+
+        stats = processor.compute_hierarchical_importance(verbose=False)
+
+        self.assertIn('iterations_run', stats)
+        self.assertIn('converged', stats)
+
+    def test_compute_property_similarity_no_relations(self):
+        """Test property similarity with no relations."""
+        processor = CorticalTextProcessor()
+        processor.semantic_relations = []
+
+        sim = processor.compute_property_similarity("a", "b")
+
+        self.assertEqual(sim, 0.0)
+
+    def test_retrofit_connections_auto_extract(self):
+        """Test retrofit_connections extracts semantics if missing."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+        processor.semantic_relations = []
+
+        stats = processor.retrofit_connections(verbose=False)
+
+        self.assertIn('tokens_affected', stats)
+
+
+class TestProgressReporting(unittest.TestCase):
+    """Test progress reporting paths in compute_all."""
+
+    def test_compute_all_show_progress(self):
+        """Test compute_all with show_progress=True."""
+        processor = CorticalTextProcessor()
+        processor.process_document("doc1", "test content")
+
+        stats = processor.compute_all(show_progress=True, verbose=False, build_concepts=False)
+
+        self.assertIsInstance(stats, dict)
+
+
+class TestParallelProcessing(unittest.TestCase):
+    """Test parallel processing paths in compute_all."""
+
+    def test_compute_all_parallel_bm25(self):
+        """Test compute_all with parallel BM25."""
+        config = CorticalConfig(scoring_algorithm='bm25')
+        processor = CorticalTextProcessor(config=config)
+        processor.process_document("doc1", "test content")
+
+        stats = processor.compute_all(verbose=False, parallel=True, build_concepts=False)
+
+        self.assertIsInstance(stats, dict)
+
+    def test_compute_all_parallel_tfidf(self):
+        """Test compute_all with parallel TF-IDF."""
+        config = CorticalConfig(scoring_algorithm='tfidf')
+        processor = CorticalTextProcessor(config=config)
+        processor.process_document("doc1", "test content")
+
+        stats = processor.compute_all(verbose=False, parallel=True, build_concepts=False)
+
+        self.assertIsInstance(stats, dict)
 
 
 if __name__ == '__main__':
