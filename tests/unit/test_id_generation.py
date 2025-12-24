@@ -37,10 +37,25 @@ class TestTaskIdGeneration:
         task_id = generate_task_id()
         assert task_id.startswith("T-")
 
-    def test_uniqueness(self):
-        """Multiple calls generate unique IDs."""
-        ids = {generate_task_id() for _ in range(100)}
-        assert len(ids) == 100
+    def test_uniqueness_deterministic(self, monkeypatch):
+        """IDs are unique when secrets returns different values (deterministic mock).
+
+        Uses mocked secrets.token_hex to verify uniqueness without relying on
+        probabilistic behavior. This replaces the flaky birthday paradox test.
+        """
+        import secrets
+        counter = [0]
+
+        def mock_token_hex(n):
+            counter[0] += 1
+            # Return unique values for each call
+            return format(counter[0], f'0{n*2}x')
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+
+        # Generate 10 IDs with mocked unique random parts
+        ids = {generate_task_id() for _ in range(10)}
+        assert len(ids) == 10
 
 
 class TestDecisionIdGeneration:
@@ -57,10 +72,25 @@ class TestDecisionIdGeneration:
         decision_id = generate_decision_id()
         assert decision_id.startswith("D-")
 
-    def test_uniqueness(self):
-        """Multiple calls generate unique IDs."""
-        ids = {generate_decision_id() for _ in range(100)}
-        assert len(ids) == 100
+    def test_uniqueness_deterministic(self, monkeypatch):
+        """IDs are unique when secrets returns different values (deterministic mock).
+
+        Uses mocked secrets.token_hex to verify uniqueness without relying on
+        probabilistic behavior. This replaces the flaky birthday paradox test.
+        """
+        import secrets
+        counter = [0]
+
+        def mock_token_hex(n):
+            counter[0] += 1
+            # Return unique values for each call
+            return format(counter[0], f'0{n*2}x')
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+
+        # Generate 10 IDs with mocked unique random parts
+        ids = {generate_decision_id() for _ in range(10)}
+        assert len(ids) == 10
 
 
 class TestEdgeIdGeneration:

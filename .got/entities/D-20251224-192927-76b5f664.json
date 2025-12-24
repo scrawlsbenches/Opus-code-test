@@ -1,0 +1,15 @@
+{
+  "_checksum": "9dc9a147749cc5c2",
+  "_written_at": "2025-12-24T19:29:27.251598+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2025-12-24T19:29:27.243700+00:00",
+    "entity_type": "decision",
+    "id": "D-20251224-192927-76b5f664",
+    "modified_at": "2025-12-24T19:29:27.251518+00:00",
+    "properties": {},
+    "rationale": "These modules were never used (0-4% coverage) and were dragging down overall coverage metrics. MCP server was optional infrastructure we never utilized. Proto was stub code for future cross-language serialization that was never implemented.",
+    "title": "Removed unused MCP server and Protobuf modules to improve code coverage",
+    "version": 2
+  }
+}
