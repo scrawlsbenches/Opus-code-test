@@ -63,6 +63,8 @@ cli = [
 # Development dependencies (includes all projects for testing)
 dev = [
     "pytest>=7.0",
+    "pytest-xdist>=3.0",  # Parallel test execution
+    "pytest-timeout>=2.0",  # Test timeout protection
     "coverage>=7.0",
     "hypothesis>=6.0",
     "pyyaml>=6.0",  # Required for workflow integration tests

@@ -614,9 +614,10 @@ class TestCommitOnSave:
         time.sleep(0.1)
         assert mock_run.call_count >= 3  # rev-parse, add, commit
 
+    @pytest.mark.slow
     @patch('subprocess.run')
     def test_debounced_mode(self, mock_run):
-        """Test debounced mode waits before committing."""
+        """Test debounced mode waits before committing (includes real sleep delays)."""
         mock_run.return_value = MagicMock(returncode=0, stdout=b'', stderr=b'')
 
         committer = GitAutoCommitter(mode='debounced', debounce_seconds=1)
@@ -640,9 +641,10 @@ class TestCommitOnSave:
 
         # No commit should happen (no way to verify, but no error)
 
+    @pytest.mark.slow
     @patch('subprocess.run')
     def test_debounced_multiple_saves(self, mock_run):
-        """Test debounced mode resets timer on multiple saves."""
+        """Test debounced mode resets timer on multiple saves (includes real sleep delays)."""
         mock_run.return_value = MagicMock(returncode=0, stdout=b'', stderr=b'')
 
         committer = GitAutoCommitter(mode='debounced', debounce_seconds=1)
