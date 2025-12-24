@@ -14,14 +14,14 @@ import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from scripts.got_utils import GoTProjectManager
+    from scripts.got_utils import TransactionalGoTAdapter
 
 
 # =============================================================================
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_handoff_initiate(args, manager: "GoTProjectManager") -> int:
+def cmd_handoff_initiate(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got handoff initiate' command."""
     task = manager.get_task(args.task_id)
     if not task:
@@ -49,7 +49,7 @@ def cmd_handoff_initiate(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_handoff_accept(args, manager: "GoTProjectManager") -> int:
+def cmd_handoff_accept(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got handoff accept' command."""
     # Use manager's handoff method (works with TX backend)
     success = manager.accept_handoff(
@@ -67,7 +67,7 @@ def cmd_handoff_accept(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_handoff_complete(args, manager: "GoTProjectManager") -> int:
+def cmd_handoff_complete(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got handoff complete' command."""
     try:
         result = json.loads(args.result)
@@ -92,7 +92,7 @@ def cmd_handoff_complete(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_handoff_list(args, manager: "GoTProjectManager") -> int:
+def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got handoff list' command."""
     # Use manager's handoff method (works with TX backend)
     handoffs = manager.list_handoffs(status=args.status)
@@ -187,7 +187,7 @@ def setup_handoff_parser(subparsers) -> None:
     )
 
 
-def handle_handoff_command(args, manager: "GoTProjectManager") -> int:
+def handle_handoff_command(args, manager: "TransactionalGoTAdapter") -> int:
     """
     Route handoff subcommand to appropriate handler.
 

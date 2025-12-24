@@ -18,14 +18,14 @@ from typing import TYPE_CHECKING
 from .shared import format_task_table
 
 if TYPE_CHECKING:
-    from scripts.got_utils import GoTProjectManager
+    from scripts.got_utils import TransactionalGoTAdapter
 
 
 # =============================================================================
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_query(args, manager: "GoTProjectManager") -> int:
+def cmd_query(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got query' command."""
     query_str = " ".join(args.query_string)
 
@@ -63,7 +63,7 @@ def cmd_query(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_blocked(args, manager: "GoTProjectManager") -> int:
+def cmd_blocked(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got blocked' command."""
     blocked = manager.get_blocked_tasks()
 
@@ -83,14 +83,14 @@ def cmd_blocked(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_active(args, manager: "GoTProjectManager") -> int:
+def cmd_active(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got active' command."""
     active = manager.get_active_tasks()
     print(format_task_table(active))
     return 0
 
 
-def cmd_stats(args, manager: "GoTProjectManager") -> int:
+def cmd_stats(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got stats' command."""
     stats = manager.get_stats()
 
@@ -107,7 +107,7 @@ def cmd_stats(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_dashboard(args, manager: "GoTProjectManager") -> int:
+def cmd_dashboard(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got dashboard' command."""
     # Import dashboard module
     try:
@@ -125,7 +125,7 @@ def cmd_dashboard(args, manager: "GoTProjectManager") -> int:
         return 1
 
 
-def cmd_validate(args, manager: "GoTProjectManager") -> int:
+def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got validate' command."""
     from cortical.reasoning.graph_of_thought import NodeType
 
@@ -214,7 +214,7 @@ def cmd_validate(args, manager: "GoTProjectManager") -> int:
     return 1 if issues else 0
 
 
-def cmd_infer(args, manager: "GoTProjectManager") -> int:
+def cmd_infer(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got infer' command."""
     if args.message:
         # Analyze a specific message
@@ -245,7 +245,7 @@ def cmd_infer(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_compact(args, manager: "GoTProjectManager") -> int:
+def cmd_compact(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got compact' command.
 
     DEPRECATED: This command is for the legacy event-sourced backend.
@@ -257,7 +257,7 @@ def cmd_compact(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_export(args, manager: "GoTProjectManager") -> int:
+def cmd_export(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got export' command."""
     from pathlib import Path
 
@@ -343,7 +343,7 @@ def setup_query_parser(subparsers) -> None:
     export_parser.add_argument("--output", "-o", help="Output file")
 
 
-def handle_query_commands(args, manager: "GoTProjectManager") -> int:
+def handle_query_commands(args, manager: "TransactionalGoTAdapter") -> int:
     """
     Route query-related commands to appropriate handlers.
 

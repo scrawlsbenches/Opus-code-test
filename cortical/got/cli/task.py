@@ -25,14 +25,14 @@ from .shared import (
 )
 
 if TYPE_CHECKING:
-    from scripts.got_utils import GoTProjectManager
+    from scripts.got_utils import TransactionalGoTAdapter
 
 
 # =============================================================================
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_task_create(args, manager: "GoTProjectManager") -> int:
+def cmd_task_create(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task create' command."""
     task_id = manager.create_task(
         title=args.title,
@@ -49,7 +49,7 @@ def cmd_task_create(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_task_list(args, manager: "GoTProjectManager") -> int:
+def cmd_task_list(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task list' command."""
     tasks = manager.list_tasks(
         status=getattr(args, 'status', None),
@@ -68,7 +68,7 @@ def cmd_task_list(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_task_next(args, manager: "GoTProjectManager") -> int:
+def cmd_task_next(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task next' command."""
     result = manager.get_next_task()
 
@@ -94,7 +94,7 @@ def cmd_task_next(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_task_show(args, manager: "GoTProjectManager") -> int:
+def cmd_task_show(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task show' command."""
     task_id = args.task_id
 
@@ -132,7 +132,7 @@ def cmd_task_show(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_task_start(args, manager: "GoTProjectManager") -> int:
+def cmd_task_start(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task start' command."""
     if manager.start_task(args.task_id):
         manager.save()
@@ -143,7 +143,7 @@ def cmd_task_start(args, manager: "GoTProjectManager") -> int:
         return 1
 
 
-def cmd_task_complete(args, manager: "GoTProjectManager") -> int:
+def cmd_task_complete(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task complete' command."""
     if manager.complete_task(args.task_id, getattr(args, 'retrospective', None)):
         manager.save()
@@ -154,7 +154,7 @@ def cmd_task_complete(args, manager: "GoTProjectManager") -> int:
         return 1
 
 
-def cmd_task_block(args, manager: "GoTProjectManager") -> int:
+def cmd_task_block(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task block' command."""
     if manager.block_task(args.task_id, args.reason, getattr(args, 'blocker', None)):
         manager.save()
@@ -165,7 +165,7 @@ def cmd_task_block(args, manager: "GoTProjectManager") -> int:
         return 1
 
 
-def cmd_task_depends(args, manager: "GoTProjectManager") -> int:
+def cmd_task_depends(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task depends' command."""
     try:
         # Use add_dependency method
@@ -181,7 +181,7 @@ def cmd_task_depends(args, manager: "GoTProjectManager") -> int:
         return 1
 
 
-def cmd_task_delete(args, manager: "GoTProjectManager") -> int:
+def cmd_task_delete(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task delete' command.
 
     TRANSACTIONAL: Verifies pre-conditions before deletion.
@@ -335,7 +335,7 @@ def setup_task_parser(subparsers) -> None:
     )
 
 
-def handle_task_command(args, manager: "GoTProjectManager") -> int:
+def handle_task_command(args, manager: "TransactionalGoTAdapter") -> int:
     """
     Route task subcommand to appropriate handler.
 

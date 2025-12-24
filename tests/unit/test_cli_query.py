@@ -405,88 +405,8 @@ class TestCmdInfer:
         assert "No task references found" in captured.out
 
 
-class TestCmdCompact:
-    """Tests for cmd_compact function."""
-
-    @pytest.fixture
-    def mock_manager(self):
-        """Create a mock manager."""
-        manager = MagicMock()
-        manager.events_dir = "/fake/events"
-        return manager
-
-    def test_compact_dry_run(self, mock_manager, capsys):
-        """Test compact command in dry run mode."""
-        args = Namespace(dry_run=True, preserve_days=7, no_preserve_handoffs=False)
-
-        mock_now = datetime(2025, 12, 23, 12, 0, 0)
-
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            with patch('cortical.got.cli.query.datetime') as mock_dt:
-                mock_dt.utcnow.return_value = mock_now
-                mock_event_log.load_all_events.return_value = [
-                    {"event": "node.create", "ts": "2025-12-16T12:00:00Z"},  # Old
-                    {"event": "node.create", "ts": "2025-12-22T12:00:00Z"},  # Recent
-                    {"event": "handoff.initiate", "ts": "2025-12-15T12:00:00Z"},  # Handoff
-                ]
-                result = cmd_compact(args, mock_manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "Dry run" in captured.out
-        assert "Total events: 3" in captured.out
-
-    def test_compact_success(self, mock_manager, capsys):
-        """Test compact command success."""
-        args = Namespace(dry_run=False, preserve_days=7, no_preserve_handoffs=False)
-
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.compact_events.return_value = {
-                "status": "success",
-                "nodes_written": 10,
-                "edges_written": 20,
-                "handoffs_preserved": 2,
-                "files_removed": 5,
-                "compact_file": "compact.jsonl",
-                "original_event_count": 100,
-                "old_events_consolidated": 80,
-                "recent_events_kept": 20,
-            }
-            result = cmd_compact(args, mock_manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "Event compaction complete" in captured.out
-        assert "Nodes written: 10" in captured.out
-        assert "Edges written: 20" in captured.out
-
-    def test_compact_nothing_to_compact(self, mock_manager, capsys):
-        """Test compact with nothing to compact."""
-        args = Namespace(dry_run=False, preserve_days=7, no_preserve_handoffs=False)
-
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.compact_events.return_value = {
-                "status": "nothing_to_compact",
-            }
-            result = cmd_compact(args, mock_manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "Nothing to compact" in captured.out
-
-    def test_compact_error(self, mock_manager, capsys):
-        """Test compact with error."""
-        args = Namespace(dry_run=False, preserve_days=7, no_preserve_handoffs=False)
-
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.compact_events.return_value = {
-                "error": "Failed to compact",
-            }
-            result = cmd_compact(args, mock_manager)
-
-        assert result == 1
-        captured = capsys.readouterr()
-        assert "Error: Failed to compact" in captured.out
+# TestCmdCompact removed - tests deprecated cmd_compact function
+# The TX backend stores entities directly in .got/entities/ and doesn't use event logs
 
 
 class TestCmdExport:
@@ -799,19 +719,16 @@ class TestHandleQueryCommands:
 
         assert result == 0
 
-    def test_handle_validate_command(self, mock_manager):
+    def test_handle_validate_command(self, mock_manager, tmp_path):
         """Test handle_query_commands routes to cmd_validate."""
         from cortical.got.cli.query import handle_query_commands
-        from cortical.reasoning.graph_of_thought import NodeType
 
         mock_manager.graph.nodes = {}
         mock_manager.graph.edges = []
-        mock_manager.events_dir = "/fake/events"
+        mock_manager.got_dir = tmp_path
         args = Namespace(command="validate")
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.load_all_events.return_value = []
-            result = handle_query_commands(args, mock_manager)
+        result = handle_query_commands(args, mock_manager)
 
         assert result == 0
 
@@ -827,18 +744,17 @@ class TestHandleQueryCommands:
         assert result == 0
         mock_manager.infer_edges_from_recent_commits.assert_called_once()
 
-    def test_handle_compact_command(self, mock_manager):
-        """Test handle_query_commands routes to cmd_compact."""
+    def test_handle_compact_command(self, mock_manager, capsys):
+        """Test handle_query_commands routes to cmd_compact (deprecated)."""
         from cortical.got.cli.query import handle_query_commands
 
-        mock_manager.events_dir = "/fake/events"
         args = Namespace(command="compact", dry_run=False, preserve_days=7, no_preserve_handoffs=False)
 
-        with patch('scripts.got_utils.EventLog') as mock_event_log:
-            mock_event_log.compact_events.return_value = {"status": "nothing_to_compact"}
-            result = handle_query_commands(args, mock_manager)
+        result = handle_query_commands(args, mock_manager)
 
         assert result == 0
+        captured = capsys.readouterr()
+        assert "deprecated" in captured.out.lower()
 
     def test_handle_export_command(self, mock_manager):
         """Test handle_query_commands routes to cmd_export."""

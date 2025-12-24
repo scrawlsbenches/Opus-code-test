@@ -18,14 +18,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from scripts.got_utils import GoTProjectManager
+    from scripts.got_utils import TransactionalGoTAdapter
 
 
 # =============================================================================
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_backup_create(args, manager: "GoTProjectManager") -> int:
+def cmd_backup_create(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got backup create' command."""
     compress = getattr(args, 'compress', True)
 
@@ -46,7 +46,7 @@ def cmd_backup_create(args, manager: "GoTProjectManager") -> int:
         return 1
 
 
-def cmd_backup_list(args, manager: "GoTProjectManager") -> int:
+def cmd_backup_list(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got backup list' command."""
     limit = getattr(args, 'limit', 10)
 
@@ -119,7 +119,7 @@ def cmd_backup_list(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_backup_verify(args, manager: "GoTProjectManager") -> int:
+def cmd_backup_verify(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got backup verify' command."""
     snapshot_id = getattr(args, 'snapshot_id', None)
 
@@ -189,7 +189,7 @@ def cmd_backup_verify(args, manager: "GoTProjectManager") -> int:
         return 1
 
 
-def cmd_backup_restore(args, manager: "GoTProjectManager") -> int:
+def cmd_backup_restore(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got backup restore' command."""
     from cortical.reasoning.thought_graph import ThoughtGraph
     from cortical.reasoning.graph_of_thought import NodeType, EdgeType
@@ -269,7 +269,7 @@ def cmd_backup_restore(args, manager: "GoTProjectManager") -> int:
         return 1
 
 
-def cmd_sync(args, manager: "GoTProjectManager") -> int:
+def cmd_sync(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got sync' command.
 
     This is CRITICAL for environment resilience:
@@ -312,31 +312,19 @@ def cmd_sync(args, manager: "GoTProjectManager") -> int:
         return 1
 
 
-def cmd_migrate(args, manager: "GoTProjectManager") -> int:
-    """Handle 'got migrate' command."""
-    from scripts.got_utils import TaskMigrator
+def cmd_migrate(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got migrate' command.
 
-    migrator = TaskMigrator(manager)
-
-    results = migrator.migrate_all(dry_run=getattr(args, 'dry_run', False))
-
-    print("Migration Results:")
-    print(f"  Sessions processed: {results['sessions_processed']}")
-    print(f"  Tasks migrated: {results['tasks_migrated']}")
-    print(f"  Tasks skipped: {results['tasks_skipped']}")
-
-    if results['errors']:
-        print()
-        print("Errors:")
-        for error in results['errors'][:10]:
-            print(f"  - {error}")
-        if len(results['errors']) > 10:
-            print(f"  ... and {len(results['errors']) - 10} more")
-
+    DEPRECATED: This command is for migrating from the legacy file-based task system.
+    The TX backend stores entities directly in .got/entities/.
+    """
+    print("The 'migrate' command is deprecated.")
+    print("The TX backend stores entities directly in .got/entities/.")
+    print("Use 'got task create' to create new tasks directly.")
     return 0
 
 
-def cmd_migrate_events(args, manager: "GoTProjectManager") -> int:
+def cmd_migrate_events(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got migrate-events' command.
 
     DEPRECATED: This command is for the legacy event-sourced backend.
@@ -433,7 +421,7 @@ def setup_backup_parser(subparsers) -> None:
     )
 
 
-def handle_backup_command(args, manager: "GoTProjectManager") -> int:
+def handle_backup_command(args, manager: "TransactionalGoTAdapter") -> int:
     """
     Route backup subcommand to appropriate handler.
 
@@ -463,7 +451,7 @@ def handle_backup_command(args, manager: "GoTProjectManager") -> int:
     return 1
 
 
-def handle_sync_migrate_commands(args, manager: "GoTProjectManager") -> int:
+def handle_sync_migrate_commands(args, manager: "TransactionalGoTAdapter") -> int:
     """
     Route sync/migrate commands to appropriate handlers.
 

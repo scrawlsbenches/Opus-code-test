@@ -462,7 +462,7 @@ class TestCmdSync:
 
 
 class TestCmdMigrate:
-    """Tests for cmd_migrate function."""
+    """Tests for cmd_migrate function (deprecated)."""
 
     @pytest.fixture
     def mock_manager(self):
@@ -470,123 +470,20 @@ class TestCmdMigrate:
         manager = MagicMock()
         return manager
 
-    def test_migrate_success(self, mock_manager, capsys):
-        """Test migrate command success."""
+    def test_migrate_deprecated(self, mock_manager, capsys):
+        """Test migrate command shows deprecation message."""
         args = Namespace(dry_run=False)
 
-        with patch('scripts.got_utils.TaskMigrator') as mock_migrator_class:
-            mock_migrator = MagicMock()
-            mock_migrator.migrate_all.return_value = {
-                "sessions_processed": 5,
-                "tasks_migrated": 10,
-                "tasks_skipped": 2,
-                "errors": [],
-            }
-            mock_migrator_class.return_value = mock_migrator
-
-            result = cmd_migrate(args, mock_manager)
+        result = cmd_migrate(args, mock_manager)
 
         assert result == 0
         captured = capsys.readouterr()
-        assert "Sessions processed: 5" in captured.out
-        assert "Tasks migrated: 10" in captured.out
-        assert "Tasks skipped: 2" in captured.out
-
-    def test_migrate_with_errors(self, mock_manager, capsys):
-        """Test migrate with errors."""
-        args = Namespace(dry_run=False)
-
-        with patch('scripts.got_utils.TaskMigrator') as mock_migrator_class:
-            mock_migrator = MagicMock()
-            mock_migrator.migrate_all.return_value = {
-                "sessions_processed": 5,
-                "tasks_migrated": 8,
-                "tasks_skipped": 4,
-                "errors": ["Error 1", "Error 2", "Error 3"],
-            }
-            mock_migrator_class.return_value = mock_migrator
-
-            result = cmd_migrate(args, mock_manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "Errors:" in captured.out
+        assert "deprecated" in captured.out.lower()
+        assert "got task create" in captured.out.lower()
 
 
-class TestCmdMigrateEvents:
-    """Tests for cmd_migrate_events function."""
-
-    @pytest.fixture
-    def mock_manager(self):
-        """Create a mock manager."""
-        manager = MagicMock()
-        manager.events_dir = Path("/fake/events")
-        manager.graph = MagicMock()
-        manager.graph.nodes = {
-            "T-001": MagicMock(node_type=MagicMock(name="TASK"), content="Task 1", properties={"status": "pending"}),
-        }
-        manager.graph.edges = []
-        return manager
-
-    def test_migrate_events_dry_run(self, mock_manager, capsys):
-        """Test migrate events in dry run mode."""
-        args = Namespace(dry_run=True, force=False)
-
-        with patch('scripts.got_utils.EventLog') as mock_event_log_class:
-            mock_event_log_class.load_all_events.return_value = []
-            result = cmd_migrate_events(args, mock_manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "Dry run complete" in captured.out
-        assert "Nodes: 1" in captured.out
-
-    def test_migrate_events_success(self, mock_manager, capsys):
-        """Test migrate events success."""
-        args = Namespace(dry_run=False, force=False)
-
-        with patch('scripts.got_utils.EventLog') as mock_event_log_class:
-            mock_event_log_class.load_all_events.return_value = []
-            mock_event_log_instance = MagicMock()
-            mock_event_log_instance.event_file = "/fake/events/migration.jsonl"
-            mock_event_log_class.return_value = mock_event_log_instance
-
-            # No need to mock datetime - it's only used for session ID
-            result = cmd_migrate_events(args, mock_manager)
-
-        assert result == 0
-        mock_event_log_instance.log_node_create.assert_called()
-        captured = capsys.readouterr()
-        assert "Migration complete" in captured.out
-
-    def test_migrate_events_already_exist(self, mock_manager, capsys):
-        """Test migrate events when events already exist."""
-        args = Namespace(dry_run=False, force=False)
-
-        with patch('scripts.got_utils.EventLog') as mock_event_log_class:
-            mock_event_log_class.load_all_events.return_value = [{"event": "node.create"}]
-            result = cmd_migrate_events(args, mock_manager)
-
-        assert result == 1
-        captured = capsys.readouterr()
-        assert "Events already exist" in captured.out
-
-    def test_migrate_events_force(self, mock_manager, capsys):
-        """Test migrate events with force flag."""
-        args = Namespace(dry_run=False, force=True)
-
-        with patch('scripts.got_utils.EventLog') as mock_event_log_class:
-            mock_event_log_class.load_all_events.return_value = [{"event": "node.create"}]
-            mock_event_log_instance = MagicMock()
-            mock_event_log_instance.event_file = "/fake/events/migration.jsonl"
-            mock_event_log_class.return_value = mock_event_log_instance
-
-            # No need to mock datetime - it's only used for session ID
-            result = cmd_migrate_events(args, mock_manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "Migration complete" in captured.out
+# TestCmdMigrateEvents removed - tests deprecated cmd_migrate_events function
+# The TX backend doesn't use event logs; see TransactionalGoTAdapter
 
 
 class TestHandleBackupCommand:
@@ -1117,200 +1014,9 @@ class TestCmdSyncRealExecution:
         assert "Warning: Git commit failed" in captured.out
 
 
-class TestCmdMigrateEventsRealExecution:
-    """Tests that actually execute cmd_migrate_events edge migration logic."""
-
-    @pytest.fixture
-    def manager_with_edges_list(self):
-        """Create manager with edges as a list."""
-        manager = MagicMock()
-        manager.events_dir = Path("/fake/events")
-        manager.graph = MagicMock()
-        manager.graph.nodes = {}
-
-        # Create edges as a list of objects (not dict)
-        edge1 = MagicMock()
-        edge1.source_id = "T-001"
-        edge1.target_id = "T-002"
-        edge1.edge_type = MagicMock()
-        edge1.edge_type.name = "DEPENDS_ON"
-        edge1.weight = 1.0
-
-        edge2 = MagicMock()
-        edge2.source_id = "T-002"
-        edge2.target_id = "T-003"
-        edge2.edge_type = MagicMock()
-        edge2.edge_type.name = "BLOCKS"
-        edge2.weight = 0.5
-
-        # Edges as a list (not dict)
-        manager.graph.edges = [edge1, edge2]
-
-        return manager
-
-    @pytest.fixture
-    def manager_with_edges_dict(self):
-        """Create manager with edges as a dict of dicts."""
-        manager = MagicMock()
-        manager.events_dir = Path("/fake/events")
-        manager.graph = MagicMock()
-        manager.graph.nodes = {}
-
-        # Edges as a dict of dicts
-        manager.graph.edges = {
-            "E-001": {
-                "source_id": "T-001",
-                "target_id": "T-002",
-                "edge_type": "DEPENDS_ON",
-                "weight": 1.0,
-            },
-            "E-002": {
-                "source_id": "T-002",
-                "target_id": "T-003",
-                "edge_type": "BLOCKS",
-                "weight": 0.5,
-            },
-        }
-
-        return manager
-
-    @patch('scripts.got_utils.EventLog')
-    def test_migrate_events_edges_as_list_dry_run(self, mock_event_log_class,
-                                                   manager_with_edges_list, capsys):
-        """Test dry run with edges as list of objects."""
-        mock_event_log_class.load_all_events.return_value = []
-
-        args = Namespace(dry_run=True, force=False)
-        result = cmd_migrate_events(args, manager_with_edges_list)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "Would migrate edge: T-001 -> T-002" in captured.out
-        assert "Would migrate edge: T-002 -> T-003" in captured.out
-        assert "Edges: 2" in captured.out
-
-    @patch('scripts.got_utils.EventLog')
-    def test_migrate_events_edges_as_list_real(self, mock_event_log_class,
-                                                manager_with_edges_list, capsys):
-        """Test actual migration with edges as list of objects."""
-        mock_event_log_class.load_all_events.return_value = []
-        mock_event_log_instance = MagicMock()
-        mock_event_log_instance.event_file = "/fake/events/migration.jsonl"
-        mock_event_log_class.return_value = mock_event_log_instance
-
-        args = Namespace(dry_run=False, force=False)
-        result = cmd_migrate_events(args, manager_with_edges_list)
-
-        assert result == 0
-        assert mock_event_log_instance.log_edge_create.call_count == 2
-        captured = capsys.readouterr()
-        assert "Edges: 2" in captured.out
-
-    @patch('scripts.got_utils.EventLog')
-    def test_migrate_events_edges_as_dict_dry_run(self, mock_event_log_class,
-                                                   manager_with_edges_dict, capsys):
-        """Test dry run with edges as dict of dicts."""
-        mock_event_log_class.load_all_events.return_value = []
-
-        args = Namespace(dry_run=True, force=False)
-        result = cmd_migrate_events(args, manager_with_edges_dict)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "Would migrate edge: T-001 -> T-002" in captured.out
-        assert "Would migrate edge: T-002 -> T-003" in captured.out
-
-    @patch('scripts.got_utils.EventLog')
-    def test_migrate_events_edges_as_dict_real(self, mock_event_log_class,
-                                                manager_with_edges_dict, capsys):
-        """Test actual migration with edges as dict of dicts."""
-        mock_event_log_class.load_all_events.return_value = []
-        mock_event_log_instance = MagicMock()
-        mock_event_log_instance.event_file = "/fake/events/migration.jsonl"
-        mock_event_log_class.return_value = mock_event_log_instance
-
-        args = Namespace(dry_run=False, force=False)
-        result = cmd_migrate_events(args, manager_with_edges_dict)
-
-        assert result == 0
-        # Should call log_edge_create for each edge
-        assert mock_event_log_instance.log_edge_create.call_count == 2
-
-        # Verify edge_type handling for dict edges
-        calls = mock_event_log_instance.log_edge_create.call_args_list
-        assert any("DEPENDS_ON" in str(call) for call in calls)
-
-    @patch('scripts.got_utils.EventLog')
-    def test_migrate_events_edges_missing_fields_dry_run(self, mock_event_log_class, capsys):
-        """Test edge migration with missing fields in dry run."""
-        manager = MagicMock()
-        manager.events_dir = Path("/fake/events")
-        manager.graph = MagicMock()
-        manager.graph.nodes = {}
-
-        # Edge with missing fields
-        edge = MagicMock()
-        # No source_id or target_id attributes
-        del edge.source_id
-        del edge.target_id
-
-        manager.graph.edges = [edge]
-
-        mock_event_log_class.load_all_events.return_value = []
-
-        args = Namespace(dry_run=True, force=False)
-        result = cmd_migrate_events(args, manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        # Should show ? for missing fields
-        assert "Would migrate edge: ? -> ?" in captured.out
-
-    @patch('scripts.got_utils.EventLog')
-    def test_migrate_events_edges_missing_fields_real(self, mock_event_log_class):
-        """Test edge migration skips edges with missing source/target."""
-        manager = MagicMock()
-        manager.events_dir = Path("/fake/events")
-        manager.graph = MagicMock()
-        manager.graph.nodes = {}
-
-        # Edge as dict with missing target_id
-        manager.graph.edges = [{"source_id": "T-001"}]  # Missing target_id
-
-        mock_event_log_class.load_all_events.return_value = []
-        mock_event_log_instance = MagicMock()
-        mock_event_log_instance.event_file = "/fake/events/migration.jsonl"
-        mock_event_log_class.return_value = mock_event_log_instance
-
-        args = Namespace(dry_run=False, force=False)
-        result = cmd_migrate_events(args, manager)
-
-        assert result == 0
-        # Should not call log_edge_create for invalid edge
-        mock_event_log_instance.log_edge_create.assert_not_called()
+# TestCmdMigrateEventsRealExecution removed - tests deprecated cmd_migrate_events function
+# The TX backend doesn't use event logs; see TransactionalGoTAdapter
 
 
-class TestCmdMigrateEdgeCases:
-    """Test edge cases for cmd_migrate."""
-
-    @patch('scripts.got_utils.TaskMigrator')
-    def test_migrate_more_than_10_errors(self, mock_migrator_class, capsys):
-        """Test migrate with more than 10 errors (truncation)."""
-        manager = MagicMock()
-
-        mock_migrator = MagicMock()
-        errors = [f"Error {i}" for i in range(15)]
-        mock_migrator.migrate_all.return_value = {
-            "sessions_processed": 5,
-            "tasks_migrated": 8,
-            "tasks_skipped": 4,
-            "errors": errors,
-        }
-        mock_migrator_class.return_value = mock_migrator
-
-        args = Namespace(dry_run=False)
-        result = cmd_migrate(args, manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "... and 5 more" in captured.out  # 15 - 10 = 5
+# TestCmdMigrateEdgeCases removed - tests deprecated cmd_migrate function
+# The TX backend uses direct entity storage; see TransactionalGoTAdapter

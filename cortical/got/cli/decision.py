@@ -12,14 +12,14 @@ This module can be integrated into got_utils.py CLI or used standalone.
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from scripts.got_utils import GoTProjectManager
+    from scripts.got_utils import TransactionalGoTAdapter
 
 
 # =============================================================================
 # CLI COMMAND HANDLERS
 # =============================================================================
 
-def cmd_decision_log(args, manager: "GoTProjectManager") -> int:
+def cmd_decision_log(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got decision log' command."""
     context = {}
     if args.file:
@@ -43,7 +43,7 @@ def cmd_decision_log(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_decision_list(args, manager: "GoTProjectManager") -> int:
+def cmd_decision_list(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got decision list' command."""
     # Use list_decisions for transactional backend compatibility
     if hasattr(manager, 'list_decisions'):
@@ -67,7 +67,7 @@ def cmd_decision_list(args, manager: "GoTProjectManager") -> int:
     return 0
 
 
-def cmd_decision_why(args, manager: "GoTProjectManager") -> int:
+def cmd_decision_why(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got decision why' command."""
     reasons = manager.why(args.task_id)
 
@@ -139,7 +139,7 @@ def setup_decision_parser(subparsers) -> None:
     decision_why.add_argument("task_id", help="Task ID to query")
 
 
-def handle_decision_command(args, manager: "GoTProjectManager") -> int:
+def handle_decision_command(args, manager: "TransactionalGoTAdapter") -> int:
     """
     Route decision subcommand to appropriate handler.
 
