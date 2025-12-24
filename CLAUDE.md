@@ -2288,7 +2288,11 @@ This is configured in `.claude/settings.local.json` via the `SessionStart` hook.
 | **Sessions** | `.git-ml/sessions/` | Development sessions linking chats to commits |
 | **Actions** | `.git-ml/actions/` | Individual tool uses and operations |
 
-**Note:** All ML data is stored in `.git-ml/` which is gitignored and regeneratable via backfill.
+**Note:** ML data in `.git-ml/` has two tiers:
+- **Tracked** (`.git-ml/tracked/`): JSONL files - commits, sessions summaries - persisted in git
+- **Local** (`.git-ml/chats/`, `actions/`, `cali/`): Rich data - gitignored, **NOT regeneratable**
+
+**⚠️ WARNING:** Chat transcripts and action logs are **irreplaceable** if lost. See `docs/ml-ephemeral-architecture.md` for the migration plan to fix this.
 
 ### Quick Commands
 

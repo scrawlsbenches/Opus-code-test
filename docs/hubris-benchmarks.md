@@ -222,7 +222,7 @@ All Hubris expert models are stored in:
 └── credit_ledger.json     # Credit system state
 ```
 
-**Note**: Models are **gitignored** and regenerated from commit history. The `.git-ml/` directory is ephemeral and can be safely deleted (see `docs/ml-ephemeral-architecture.md`).
+**Note**: Models (`.git-ml/models/`) can be regenerated from commit history. However, **chat transcripts and action logs are NOT regeneratable** - see `docs/ml-ephemeral-architecture.md` for the migration plan to preserve this data.
 
 ### Version Tracking
 
