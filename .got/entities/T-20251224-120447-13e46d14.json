@@ -1,0 +1,19 @@
+{
+  "_checksum": "852d7f31db8b7f7c",
+  "_written_at": "2025-12-24T12:04:47.586143+00:00",
+  "data": {
+    "created_at": "2025-12-24T12:04:47.580081+00:00",
+    "description": "Handoff system bugs found during audit: (1) No validation that task exists when handoff is created via non-CLI path (2) Handoffs not auto-closed when associated task is completed (3) No orphan detection for stale handoffs. Found: test handoff with non-existent task, orphan detection handoff still open after task completed. See D-20251224-115112-4272c7d2 for context.",
+    "entity_type": "task",
+    "id": "T-20251224-120447-13e46d14",
+    "metadata": {},
+    "modified_at": "2025-12-24T12:04:47.586082+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "Add handoff validation and auto-close logic",
+    "version": 2
+  }
+}
