@@ -726,8 +726,10 @@ class Query(Generic[T]):
         """Get IDs of entities connected per connection filters."""
         connected = set()
 
+        # Load edges once for all connection filters (query-level caching)
+        edges = self._manager.list_edges()
+
         for conn in self._connections:
-            edges = self._manager.list_edges()
             for edge in edges:
                 # Check edge type filter
                 if conn.edge_type and edge.edge_type != conn.edge_type:
