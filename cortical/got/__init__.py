@@ -126,6 +126,28 @@ from .orphan import (
     generate_orphan_report,
 )
 
+from .query_builder import (
+    Query,
+    QueryPlan,
+    AggregateFunction,
+    Count,
+    Collect,
+    Sum,
+    Avg,
+    Min,
+    Max,
+)
+
+from .graph_walker import GraphWalker
+
+from .path_finder import PathFinder
+
+from .pattern_matcher import (
+    Pattern,
+    PatternMatcher,
+    PatternMatch,
+)
+
 __all__ = [
     # Errors
     'GoTError',
@@ -215,4 +237,22 @@ __all__ = [
     'SprintSuggestion',
     'check_orphan_on_create',
     'generate_orphan_report',
+    # Query Builder
+    'Query',
+    'QueryPlan',
+    'AggregateFunction',
+    'Count',
+    'Collect',
+    'Sum',
+    'Avg',
+    'Min',
+    'Max',
+    # Graph Walker
+    'GraphWalker',
+    # Path Finder
+    'PathFinder',
+    # Pattern Matcher
+    'Pattern',
+    'PatternMatcher',
+    'PatternMatch',
 ]

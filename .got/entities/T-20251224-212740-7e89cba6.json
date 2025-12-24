@@ -1,0 +1,19 @@
+{
+  "_checksum": "2f88bd098afb3c4f",
+  "_written_at": "2025-12-24T21:27:40.113976+00:00",
+  "data": {
+    "created_at": "2025-12-24T21:27:40.107331+00:00",
+    "description": "GoTManager.load_all() to pre-load all entities into memory. Sub-millisecond queries after initial load. Useful for CLI analyze commands.",
+    "entity_type": "task",
+    "id": "T-20251224-212740-7e89cba6",
+    "metadata": {},
+    "modified_at": "2025-12-24T21:27:40.113908+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add batch loading mode for read-heavy workloads",
+    "version": 2
+  }
+}
