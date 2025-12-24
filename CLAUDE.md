@@ -1958,6 +1958,7 @@ python examples/observability_demo.py
 | Initiate handoff | `python scripts/got_utils.py handoff initiate TASK_ID --target AGENT --instructions "..."` |
 | Accept handoff | `python scripts/got_utils.py handoff accept HANDOFF_ID --agent AGENT` |
 | Complete handoff | `python scripts/got_utils.py handoff complete HANDOFF_ID --agent AGENT --result JSON` |
+| Reject handoff | `python scripts/got_utils.py handoff reject HANDOFF_ID --agent AGENT --reason "..."` |
 | List handoffs | `python scripts/got_utils.py handoff list [--status STATUS]` |
 | Compact events | `python scripts/got_utils.py compact [--preserve-days N]` |
 | **GoT Query Language** | |
