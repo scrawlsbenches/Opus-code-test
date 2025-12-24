@@ -1,22 +1,23 @@
 {
-  "_checksum": "4e6291337215c601",
-  "_written_at": "2025-12-24T09:10:53.347435+00:00",
+  "_checksum": "ea7b89fc1e6360f9",
+  "_written_at": "2025-12-24T09:14:46.758450+00:00",
   "data": {
     "created_at": "2025-12-23T15:17:23.986347+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20251223-151723-24aed5d3",
     "metadata": {
+      "completed_at": "2025-12-24T09:14:46.750709+00:00",
       "started_at": "2025-12-24T09:10:53.338010+00:00",
-      "updated_at": "2025-12-24T09:10:53.338023+00:00"
+      "updated_at": "2025-12-24T09:14:46.750714+00:00"
     },
-    "modified_at": "2025-12-24T09:10:53.347378+00:00",
+    "modified_at": "2025-12-24T09:14:46.758410+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Design schema registry architecture",
-    "version": 4
+    "version": 6
   }
 }
