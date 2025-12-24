@@ -1,0 +1,19 @@
+{
+  "_checksum": "2bccc07447200250",
+  "_written_at": "2025-12-24T12:47:16.983080+00:00",
+  "data": {
+    "created_at": "2025-12-24T12:47:16.977112+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251224-124716-b42dbe53",
+    "metadata": {},
+    "modified_at": "2025-12-24T12:47:16.983040+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Test no-sprint flag",
+    "version": 2
+  }
+}
