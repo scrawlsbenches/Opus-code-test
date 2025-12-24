@@ -44,6 +44,22 @@ def cmd_task_create(args, manager: "TransactionalGoTAdapter") -> int:
         blocks=getattr(args, 'blocks', None),
     )
 
+    # Auto-link to current sprint unless --no-sprint or explicit --sprint
+    if not getattr(args, 'no_sprint', False) and not getattr(args, 'sprint', None):
+        current_sprint = manager.get_current_sprint()
+        if current_sprint:
+            # Add CONTAINS edge from sprint to task
+            try:
+                manager._manager.add_edge(
+                    source_id=current_sprint.id,
+                    target_id=task_id,
+                    edge_type="CONTAINS"
+                )
+                print(f"  Linked to sprint: {current_sprint.id}")
+            except Exception as e:
+                # Non-fatal - just warn the user
+                print(f"  Warning: Could not auto-link to sprint {current_sprint.id}: {e}")
+
     manager.save()
     print(f"Created: {task_id}")
     return 0
@@ -267,6 +283,11 @@ def setup_task_parser(subparsers) -> None:
     )
     create_parser.add_argument("--description", "-d", default="")
     create_parser.add_argument("--sprint", "-s", help="Sprint ID")
+    create_parser.add_argument(
+        "--no-sprint",
+        action="store_true",
+        help="Skip auto-linking to current sprint"
+    )
     create_parser.add_argument(
         "--depends-on", "--depends",
         nargs="+",

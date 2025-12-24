@@ -139,6 +139,22 @@ else
 fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# ============================================================
+# SPRINT CONTEXT - What sprint are we in?
+# ============================================================
+echo ""
+echo "📅 Current Sprint:"
+current_sprint=$(python3 scripts/got_utils.py sprint status 2>/dev/null | head -5)
+if [[ -n "$current_sprint" ]]; then
+    echo "$current_sprint" | while read line; do
+        echo "   $line"
+    done
+else
+    echo "   (no active sprint)"
+    echo "   💡 Create one: python scripts/got_utils.py sprint create \"Sprint Name\" --number N"
+fi
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
 # Output session info
 echo ""
 echo "📊 ML Data Collection Active"

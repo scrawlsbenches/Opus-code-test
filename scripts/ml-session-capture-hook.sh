@@ -94,6 +94,18 @@ else
     echo "   (working tree clean)"
 fi
 
+# Show sprint progress
+echo ""
+echo "📅 Sprint Status:"
+sprint_status=$(python3 scripts/got_utils.py sprint status 2>/dev/null | grep -E "Sprint:|Progress:" | head -2)
+if [[ -n "$sprint_status" ]]; then
+    echo "$sprint_status" | while read line; do
+        echo "   $line"
+    done
+else
+    echo "   (no active sprint)"
+fi
+
 # Show in-progress tasks that may need handoff
 echo ""
 echo "📌 Tasks Still In Progress:"
