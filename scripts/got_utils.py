@@ -52,6 +52,7 @@ from cortical.got.cli.decision import setup_decision_parser, handle_decision_com
 from cortical.got.cli.query import setup_query_parser, handle_query_commands
 from cortical.got.cli.backup import setup_backup_parser, handle_backup_command, handle_sync_migrate_commands
 from cortical.got.cli.orphan import setup_orphan_parser, handle_orphan_command
+from cortical.got.cli.backlog import setup_backlog_parser, handle_backlog_command
 
 # Import transactional backend (new)
 try:
@@ -3323,6 +3324,7 @@ def main():
     setup_query_parser(subparsers)
     setup_backup_parser(subparsers)
     setup_orphan_parser(subparsers)
+    setup_backlog_parser(subparsers)
 
     args = parser.parse_args()
 
@@ -3366,6 +3368,9 @@ def main():
 
     elif args.command == "orphan":
         return handle_orphan_command(args, manager)
+
+    elif args.command == "backlog":
+        return handle_backlog_command(args, manager)
 
     # Query-related commands (query, blocked, active, stats, etc.)
     result = handle_query_commands(args, manager)

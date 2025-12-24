@@ -491,6 +491,7 @@ class TestOrphanCLI:
         task1.description = "Description one"
         task1.status = "pending"
         task1.priority = "high"
+        task1.created_at = "2025-12-24T00:00:00+00:00"
 
         task2 = Mock()
         task2.id = "T-002"
@@ -498,6 +499,7 @@ class TestOrphanCLI:
         task2.description = "Description two"
         task2.status = "completed"
         task2.priority = "medium"
+        task2.created_at = "2025-12-24T00:00:00+00:00"
 
         manager.list_all_tasks.return_value = [task1, task2]
         manager.get_task.side_effect = lambda tid: {"T-001": task1, "T-002": task2}.get(tid)
@@ -569,12 +571,15 @@ class TestOrphanCLI:
 
         args = Mock()
         args.json = False
+        args.status = None  # Don't filter by status
+        args.sort = "priority"  # Default sort
 
         result = cmd_orphan_list(args, mock_adapter)
 
         assert result == 0
         captured = capsys.readouterr()
-        assert "Orphan Tasks" in captured.out
+        # Output format is now "Backlog / Orphan Tasks"
+        assert "Orphan Tasks" in captured.out or "Backlog" in captured.out
 
     def test_cmd_orphan_list_json(self, mock_adapter, capsys):
         """Test orphan list command with JSON output."""
@@ -582,6 +587,8 @@ class TestOrphanCLI:
 
         args = Mock()
         args.json = True
+        args.status = None  # Don't filter by status
+        args.sort = "priority"  # Default sort
 
         result = cmd_orphan_list(args, mock_adapter)
 
@@ -604,6 +611,8 @@ class TestOrphanCLI:
 
         args = Mock()
         args.json = False
+        args.status = None  # Don't filter by status
+        args.sort = "priority"  # Default sort
 
         result = cmd_orphan_list(args, mock_adapter)
 

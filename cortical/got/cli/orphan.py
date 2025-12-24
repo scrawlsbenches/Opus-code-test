@@ -204,31 +204,50 @@ def cmd_orphan_list(args, manager: "TransactionalGoTAdapter") -> int:
     detector = OrphanDetector(got_manager)
     orphans = detector.find_orphan_tasks()
 
+    # Collect task data with priority and status
+    orphan_data = []
+    for task_id in orphans:
+        task = got_manager.get_task(task_id)
+        if task:
+            # Filter by status if specified
+            if hasattr(args, 'status') and args.status and task.status != args.status:
+                continue
+            orphan_data.append({
+                "id": task_id,
+                "title": task.title,
+                "status": task.status,
+                "priority": task.priority,
+                "created_at": getattr(task, 'created_at', ''),
+            })
+
+    # Sort by priority if requested
+    if hasattr(args, 'sort') and args.sort == 'priority':
+        priority_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
+        orphan_data.sort(key=lambda t: priority_order.get(t['priority'], 99))
+    elif hasattr(args, 'sort') and args.sort == 'created':
+        orphan_data.sort(key=lambda t: t.get('created_at', ''), reverse=True)
+
     if args.json:
-        orphan_data = []
-        for task_id in orphans:
-            task = got_manager.get_task(task_id)
-            if task:
-                orphan_data.append({
-                    "id": task_id,
-                    "title": task.title,
-                    "status": task.status,
-                    "priority": task.priority,
-                })
         print(json.dumps(orphan_data, indent=2))
     else:
-        if not orphans:
+        if not orphan_data:
             print("No orphan tasks found!")
             return 0
 
-        print(f"Orphan Tasks ({len(orphans)}):\n")
-        for task_id in orphans:
-            task = got_manager.get_task(task_id)
-            if task:
-                print(f"  {task_id}")
-                print(f"    Title: {task.title[:50]}")
-                print(f"    Status: {task.status}, Priority: {task.priority}")
-                print()
+        # Table header
+        print(f"Backlog / Orphan Tasks ({len(orphan_data)}):")
+        print("-" * 80)
+        print(f"{'Priority':<10} {'Status':<12} {'ID':<30} {'Title':<30}")
+        print("-" * 80)
+
+        for t in orphan_data:
+            priority_markers = {'critical': '🔴', 'high': '🟠', 'medium': '🟡', 'low': '🟢'}
+            marker = priority_markers.get(t['priority'], '⚪')
+            title = t['title'][:28] + '..' if len(t['title']) > 30 else t['title']
+            print(f"{marker} {t['priority']:<8} {t['status']:<12} {t['id']:<30} {title}")
+
+        print("-" * 80)
+        print(f"\nTip: Use 'got orphan auto-link --sprint S-XXX' to promote tasks to a sprint")
 
     return 0
 
@@ -268,12 +287,23 @@ def setup_orphan_parser(subparsers) -> None:
     # orphan list
     list_parser = orphan_subparsers.add_parser(
         "list",
-        help="List all orphan tasks"
+        help="List all orphan tasks (the backlog)"
     )
     list_parser.add_argument(
         "--json",
         action="store_true",
         help="Output as JSON"
+    )
+    list_parser.add_argument(
+        "--sort",
+        choices=["priority", "created"],
+        default="priority",
+        help="Sort by priority (default) or creation date"
+    )
+    list_parser.add_argument(
+        "--status",
+        choices=["pending", "in_progress", "completed", "blocked"],
+        help="Filter by status"
     )
 
     # orphan check TASK_ID
