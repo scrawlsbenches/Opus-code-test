@@ -607,11 +607,13 @@ class TestSaveOrchestration(unittest.TestCase):
         self.assertEqual(data["parent_session_id"], "session-save-test")
         self.assertEqual(data["total_sub_agents"], 2)
 
-    @patch('ml_collector.orchestration.TRACKED_DIR')
-    def test_save_orchestration_lite_appends(self, mock_tracked_dir):
+    @patch('ml_collector.orchestration.cali_put')
+    @patch('ml_collector.orchestration.cali_exists')
+    def test_save_orchestration_lite_appends(self, mock_cali_exists, mock_cali_put):
         """Test saving lite orchestration appends to JSONL."""
-        mock_tracked_dir.__truediv__ = lambda self, x: self.test_path / x
-        mock_tracked_dir.mkdir = lambda **kwargs: self.test_path.mkdir(parents=True, exist_ok=True)
+        # Mock CALI functions to ensure file is written (not returning early)
+        mock_cali_exists.return_value = False
+        mock_cali_put.return_value = True
 
         # Create output directory
         self.test_path.mkdir(parents=True, exist_ok=True)
@@ -625,7 +627,7 @@ class TestSaveOrchestration(unittest.TestCase):
             models_used=["claude-sonnet-4-20250514"],
         )
 
-        # Patch ORCHESTRATION_LITE_FILE
+        # Patch file paths to use test directory
         with patch('ml_collector.orchestration.ORCHESTRATION_LITE_FILE', lite_file):
             with patch('ml_collector.orchestration.TRACKED_DIR', self.test_path):
                 result = save_orchestration_lite(extraction)
