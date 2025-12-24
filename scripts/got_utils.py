@@ -2761,6 +2761,123 @@ class TransactionalGoTAdapter:
         """Sync to git (no-op for TX backend, state is already persistent)."""
         return ""
 
+    def infer_edges_from_commit(self, commit_message: str, files_changed: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """Infer edges from a commit message.
+
+        Parses commit messages for task references and creates edges:
+        - "task:T-..." references → noted as IMPLEMENTS
+        - "depends on task:T-..." → DEPENDS_ON edge
+        - "blocks task:T-..." → BLOCKS edge
+        - "closes task:T-..." → COMPLETES edge (marks task complete)
+
+        Args:
+            commit_message: The commit message to parse
+            files_changed: Optional list of files changed in commit (for context)
+
+        Returns:
+            List of edges/actions performed
+        """
+        edges_created = []
+
+        # Find all task references
+        task_refs = re.findall(r'(?:task:)?(T-[\w-]+)', commit_message, re.IGNORECASE)
+
+        # Find specific relationship patterns
+        depends_pattern = re.findall(r'depends on (?:task:)?(T-[\w-]+)', commit_message, re.IGNORECASE)
+        blocks_pattern = re.findall(r'blocks (?:task:)?(T-[\w-]+)', commit_message, re.IGNORECASE)
+        closes_pattern = re.findall(r'(?:closes?|fixes?|resolves?) (?:task:)?(T-[\w-]+)', commit_message, re.IGNORECASE)
+
+        # Get all known task IDs for matching
+        all_tasks = {t.id.upper(): t.id for t in self.list_all_tasks()}
+
+        # Track which tasks were referenced
+        referenced_tasks = []
+        for ref in task_refs:
+            ref_upper = ref.upper()
+            if ref_upper in all_tasks:
+                referenced_tasks.append(all_tasks[ref_upper])
+                edges_created.append({
+                    "type": "REFERENCES",
+                    "task": all_tasks[ref_upper],
+                    "commit_message": commit_message[:50],
+                })
+
+        # Handle dependencies
+        for dep_ref in depends_pattern:
+            dep_upper = dep_ref.upper()
+            if dep_upper in all_tasks and referenced_tasks:
+                # First referenced task depends on this one
+                first_task = referenced_tasks[0]
+                target_task = all_tasks[dep_upper]
+                if first_task != target_task:
+                    self.add_dependency(first_task, target_task)
+                    edges_created.append({
+                        "type": "DEPENDS_ON",
+                        "from": first_task,
+                        "to": target_task,
+                    })
+
+        # Handle blocks
+        for block_ref in blocks_pattern:
+            block_upper = block_ref.upper()
+            if block_upper in all_tasks and referenced_tasks:
+                first_task = referenced_tasks[0]
+                target_task = all_tasks[block_upper]
+                if first_task != target_task:
+                    self.add_blocks(first_task, target_task)
+                    edges_created.append({
+                        "type": "BLOCKS",
+                        "from": first_task,
+                        "to": target_task,
+                    })
+
+        # Handle closes/fixes (mark tasks complete)
+        for close_ref in closes_pattern:
+            close_upper = close_ref.upper()
+            if close_upper in all_tasks:
+                task_id = all_tasks[close_upper]
+                self.complete_task(task_id, retrospective=f"Closed via commit: {commit_message[:50]}")
+                edges_created.append({
+                    "type": "CLOSES",
+                    "task": task_id,
+                })
+
+        return edges_created
+
+    def infer_edges_from_recent_commits(self, count: int = 10) -> List[Dict[str, Any]]:
+        """Infer edges from recent git commits.
+
+        Reads the last N commits and creates edges for any task references.
+
+        Args:
+            count: Number of recent commits to analyze
+
+        Returns:
+            List of all edges/actions created
+        """
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                ["git", "log", f"-{count}", "--pretty=format:%H|%s"],
+                capture_output=True, text=True, check=True,
+                cwd=str(self.got_dir.parent)  # Run from project root
+            )
+        except Exception as e:
+            logger.warning(f"Failed to read git log: {e}")
+            return []
+
+        all_edges = []
+        for line in result.stdout.strip().split("\n"):
+            if "|" in line:
+                commit_hash, message = line.split("|", 1)
+                edges = self.infer_edges_from_commit(message)
+                for edge in edges:
+                    edge["commit_hash"] = commit_hash[:8]
+                all_edges.extend(edges)
+
+        return all_edges
+
 
 # =============================================================================
 # GRAPH MANAGER (Event-Sourced Backend)
