@@ -225,13 +225,24 @@ class TestSessionId:
         session_id = generate_session_id()
         assert len(session_id) == 4
 
-    def test_uniqueness(self):
-        """Session IDs are unique for small batches."""
-        # With 4 hex chars (65536 possible values), birthday paradox means:
-        # - 100 IDs: ~7.3% collision probability (flaky!)
-        # - 10 IDs: ~0.07% collision probability (reliable)
-        ids = [generate_session_id() for _ in range(10)]
-        assert len(set(ids)) == 10
+    def test_uses_secrets_module(self, monkeypatch):
+        """Session ID uses cryptographically secure randomness."""
+        # Mock secrets.token_hex to verify it's called correctly
+        # This is deterministic - no flaky birthday paradox issues!
+        import secrets
+        calls = []
+
+        def mock_token_hex(n):
+            calls.append(n)
+            return "ab" * n  # Return predictable value
+
+        monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
+
+        result = generate_session_id()
+
+        # Verify secrets.token_hex(2) was called (2 bytes = 4 hex chars)
+        assert calls == [2]
+        assert result == "abab"
 
 
 class TestShortId:
