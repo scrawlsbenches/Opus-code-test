@@ -117,6 +117,15 @@ from .entity_schemas import (
     DocumentSchema,
 )
 
+from .orphan import (
+    OrphanDetector,
+    OrphanReport,
+    ConnectionSuggestion,
+    SprintSuggestion,
+    check_orphan_on_create,
+    generate_orphan_report,
+)
+
 __all__ = [
     # Errors
     'GoTError',
@@ -199,4 +208,11 @@ __all__ = [
     'TeamSchema',
     'PersonaProfileSchema',
     'DocumentSchema',
+    # Orphan Detection
+    'OrphanDetector',
+    'OrphanReport',
+    'ConnectionSuggestion',
+    'SprintSuggestion',
+    'check_orphan_on_create',
+    'generate_orphan_report',
 ]
