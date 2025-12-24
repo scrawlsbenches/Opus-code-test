@@ -1,10 +1,10 @@
 {
-  "_checksum": "31fdbf8b98e33751",
-  "_written_at": "2025-12-24T09:23:45.440407+00:00",
+  "_checksum": "77385d92bac92436",
+  "_written_at": "2025-12-24T14:48:18.323996+00:00",
   "data": {
     "accepted_at": "",
     "artifacts": [],
-    "completed_at": "",
+    "completed_at": "2025-12-24T14:48:18.315442+00:00",
     "context": {
       "task_priority": "low",
       "task_status": "pending",
@@ -15,15 +15,18 @@
     "id": "H-20251224-092345-a404eaeb",
     "initiated_at": "2025-12-24T09:23:45.431124+00:00",
     "instructions": "Test handoff to verify fix",
-    "modified_at": "2025-12-24T09:23:45.440352+00:00",
+    "modified_at": "2025-12-24T14:48:18.323916+00:00",
     "properties": {},
     "reject_reason": "",
     "rejected_at": "",
-    "result": {},
+    "result": {
+      "reason": "Test handoff no longer needed - verification complete",
+      "status": "closed"
+    },
     "source_agent": "main",
-    "status": "initiated",
+    "status": "completed",
     "target_agent": "test-agent",
     "task_id": "T-20251224-092335-a01e0e36",
-    "version": 2
+    "version": 4
   }
 }
