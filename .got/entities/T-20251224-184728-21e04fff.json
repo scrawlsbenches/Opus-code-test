@@ -1,0 +1,19 @@
+{
+  "_checksum": "33129c3384295d12",
+  "_written_at": "2025-12-24T18:47:28.079382+00:00",
+  "data": {
+    "created_at": "2025-12-24T18:47:28.073274+00:00",
+    "description": "Currently 'got_utils.py decision log' creates orphan decisions. Should prompt: 'Which task does this decision relate to?' to create JUSTIFIES edge automatically. Discovered during dog-fooding session.",
+    "entity_type": "task",
+    "id": "T-20251224-184728-21e04fff",
+    "metadata": {},
+    "modified_at": "2025-12-24T18:47:28.079323+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Improve decision logging UX: prompt for task linkage when creating decisions",
+    "version": 2
+  }
+}
