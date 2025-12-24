@@ -11,6 +11,9 @@ Tests cover:
 
 import unittest
 import time
+
+import pytest
+
 from cortical.reasoning import (
     CognitiveLoop,
     LoopPhase,
@@ -84,8 +87,9 @@ class TestQAPVVerifier(unittest.TestCase):
         )
         self.assertEqual(anomalies[0].severity, "high")
 
+    @pytest.mark.slow
     def test_detect_stuck_phase_anomaly(self):
-        """Test detection of stuck phase anomaly."""
+        """Test detection of stuck phase anomaly (includes real sleep delays)."""
         # Enter a phase and wait past threshold
         self.verifier.record_transition(None, "question")
         time.sleep(2.5)  # Exceed 2.0s threshold

@@ -7,6 +7,8 @@ import time
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from cortical.reasoning.context_pool import (
     ContextPool,
     ContextFinding,
@@ -331,8 +333,9 @@ class TestSubscriptions(unittest.TestCase):
         self.assertEqual(len(received), 0)
 
 
+@pytest.mark.slow
 class TestTTL(unittest.TestCase):
-    """Test TTL expiration."""
+    """Test TTL expiration (includes real sleep delays)."""
 
     def test_ttl_expiration(self):
         """Findings expire after TTL."""

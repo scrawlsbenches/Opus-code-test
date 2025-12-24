@@ -1928,9 +1928,10 @@ class TestGotAutoPush:
         push_calls = [c for c in mock_run.call_args_list if 'push' in str(c)]
         assert len(push_calls) == 1
 
+    @pytest.mark.slow
     @patch('subprocess.run')
     def test_network_error_retries(self, mock_run):
-        """Auto-push retries on network errors."""
+        """Auto-push retries on network errors (includes real sleep delays)."""
         call_count = [0]
 
         def run_side_effect(*args, **kwargs):
@@ -1950,9 +1951,10 @@ class TestGotAutoPush:
         assert result is True
         assert call_count[0] == 3  # Retried until success
 
+    @pytest.mark.slow
     @patch('subprocess.run')
     def test_timeout_returns_false(self, mock_run):
-        """Auto-push returns False on timeout."""
+        """Auto-push returns False on timeout (includes real sleep delays)."""
         import subprocess
 
         def run_side_effect(*args, **kwargs):

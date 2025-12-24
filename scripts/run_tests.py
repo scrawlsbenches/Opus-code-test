@@ -54,6 +54,12 @@ TEST_DEPENDENCIES = {
     'coverage': 'coverage',
 }
 
+# Optional dependencies for faster testing
+OPTIONAL_TEST_DEPENDENCIES = {
+    'xdist': 'pytest-xdist',  # Parallel execution
+    'timeout': 'pytest-timeout',  # Timeout protection
+}
+
 # Cache for dependency check results
 _deps_checked = False
 _deps_available = {}
@@ -233,7 +239,8 @@ def print_header(text, char='='):
 
 
 def run_pytest(paths, verbose=False, quiet=False, no_capture=False,
-               failfast=False, no_coverage=False, include_optional=False):
+               failfast=False, no_coverage=False, include_optional=False,
+               parallel=None):
     """Run pytest with the given paths and options.
 
     If pytest is not available, falls back to unittest with a warning.
@@ -241,6 +248,7 @@ def run_pytest(paths, verbose=False, quiet=False, no_capture=False,
     Args:
         include_optional: If True, include optional tests (mcp, protobuf, fuzz)
                          by adding -m "" to override pyproject.toml addopts
+        parallel: If set, number of parallel workers to use (requires pytest-xdist)
     """
     deps = ensure_test_dependencies(auto_install=True, verbose=verbose)
 
@@ -260,6 +268,20 @@ def run_pytest(paths, verbose=False, quiet=False, no_capture=False,
     # Include optional tests if requested (override pyproject.toml addopts)
     if include_optional:
         cmd.extend(['-m', ''])
+
+    # Add parallel execution if requested
+    if parallel:
+        try:
+            import xdist
+            cmd.extend(['-n', str(parallel)])
+            if not quiet:
+                print(f"  Running with {parallel} parallel workers...")
+        except ImportError:
+            if not quiet:
+                print("  Note: Install pytest-xdist for parallel execution")
+            # Try to install
+            if install_dependency('pytest-xdist', quiet=True):
+                cmd.extend(['-n', str(parallel)])
 
     # Add options
     if verbose:
@@ -301,11 +323,12 @@ def run_unittest(paths, verbose=False):
 
 
 def run_category(category, verbose=False, quiet=False, no_capture=False,
-                 failfast=False, include_optional=False):
+                 failfast=False, include_optional=False, parallel=None):
     """Run a test category.
 
     Args:
         include_optional: If True, include optional tests (mcp, protobuf, fuzz)
+        parallel: If set, number of parallel workers to use
     """
     config = CATEGORIES[category]
 
@@ -313,6 +336,8 @@ def run_category(category, verbose=False, quiet=False, no_capture=False,
     print(f"Expected time: {config['expected_time']}")
     if include_optional:
         print("Including optional tests (mcp, protobuf, fuzz)")
+    if parallel:
+        print(f"Parallel mode: {parallel} workers")
 
     start_time = time.time()
 
@@ -335,7 +360,8 @@ def run_category(category, verbose=False, quiet=False, no_capture=False,
         no_capture=no_capture,
         failfast=failfast,
         no_coverage=no_coverage,
-        include_optional=include_optional
+        include_optional=include_optional,
+        parallel=parallel
     )
 
     elapsed = time.time() - start_time
@@ -412,6 +438,8 @@ def main():
                         help='Only check dependencies, do not run tests')
     parser.add_argument('--include-optional', '--all', action='store_true',
                         help='Include optional tests (mcp, protobuf, fuzz) that are excluded by default')
+    parser.add_argument('--parallel', '-j', type=int, nargs='?', const=4, default=None,
+                        help='Run tests in parallel with N workers (default: 4 if flag given)')
 
     args = parser.parse_args()
 
@@ -459,7 +487,8 @@ def main():
             quiet=args.quiet,
             no_capture=args.no_capture,
             failfast=args.failfast,
-            include_optional=args.include_optional
+            include_optional=args.include_optional,
+            parallel=args.parallel
         )
         results[category] = result
 
