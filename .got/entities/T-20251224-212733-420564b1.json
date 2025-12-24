@@ -1,22 +1,23 @@
 {
-  "_checksum": "9b649017abb2fe92",
-  "_written_at": "2025-12-24T22:39:02.625144+00:00",
+  "_checksum": "6a230712fc908df4",
+  "_written_at": "2025-12-24T22:42:03.654914+00:00",
   "data": {
     "created_at": "2025-12-24T21:27:33.718104+00:00",
     "description": "Cache entity lookups within a single query execution. Prevents redundant file reads during filter/sort operations. Expected 2-3x speedup.",
     "entity_type": "task",
     "id": "T-20251224-212733-420564b1",
     "metadata": {
+      "completed_at": "2025-12-24T22:42:03.646363+00:00",
       "started_at": "2025-12-24T22:39:02.616755+00:00",
-      "updated_at": "2025-12-24T22:39:02.616768+00:00"
+      "updated_at": "2025-12-24T22:42:03.646374+00:00"
     },
-    "modified_at": "2025-12-24T22:39:02.625085+00:00",
+    "modified_at": "2025-12-24T22:42:03.654876+00:00",
     "priority": "medium",
     "properties": {
       "category": "feature"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Add query-level caching in Query builder",
-    "version": 4
+    "version": 6
   }
 }
