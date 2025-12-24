@@ -1,0 +1,29 @@
+{
+  "_checksum": "d05553279a4e945f",
+  "_written_at": "2025-12-24T15:25:42.679537+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "medium",
+      "task_status": "completed",
+      "task_title": "Implement backlog management system"
+    },
+    "created_at": "2025-12-24T15:25:42.673190+00:00",
+    "entity_type": "handoff",
+    "id": "H-20251224-152542-5239555b",
+    "initiated_at": "2025-12-24T15:25:42.673207+00:00",
+    "instructions": "## Session Completed: Sprint S-018 (100%)\n\n### What Was Done:\n1. **Accepted handoff H-20251224-144628-663dcf04** and continued Sprint S-018\n2. **Completed PIVOT task** (T-20251223-153544-3bf4a9d4) - Sprint 17 was already 100%\n3. **Implemented Backlog Management System** (T-20251223-154334-b77c3b84):\n   - Created `cortical/got/cli/backlog.py` with commands:\n     - `got backlog list` - priority sorted, status filterable\n     - `got backlog promote` - move task to sprint\n     - `got backlog review` - get suggestions\n     - `got backlog stats` - statistics\n   - Enhanced orphan list with sorting/filtering\n   - Registered in got_utils.py\n4. **Reduced orphan rate**: Connected 6/7 handoffs to tasks, all 25 sprints to epics\n   - Edge density improved: 0.55 \u2192 0.69\n5. **Fixed unit tests**: Mock attribute issues in test_orphan.py\n   - All 7810 tests passing\n\n### Current State:\n- Sprint S-018: COMPLETED (was in_progress, 100%)\n- Task completion: 55/66 (83.3%)\n- Orphan nodes: 50 (still 67.6% - mostly pending tasks)\n- Edge density: 0.69 edges/node\n- Backlog: 10 pending tasks (3 high, 7 medium priority)\n\n### Priorities for Next Session:\n1. **Start Sprint S-019** - create and plan new sprint\n2. **Promote high-priority backlog items**:\n   - T-20251222-204138-5915d70a (Regression tests for CLAUDE.md)\n   - T-20251222-204135-781dad64 (Context detection)\n   - T-20251222-204138-51a38502 (Fault tolerance validation)\n3. **Continue orphan reduction** - connect pending tasks to sprints\n4. **Optional**: Add stale orphan sub-metric to dashboard\n\n### Commands to Review:\n- `python scripts/got_utils.py dashboard` - current state\n- `python scripts/got_utils.py backlog list` - pending work\n- `python scripts/got_utils.py backlog review TASK_ID` - get suggestions",
+    "modified_at": "2025-12-24T15:25:42.679463+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "initiated",
+    "target_agent": "next-session",
+    "task_id": "T-20251223-154334-b77c3b84",
+    "version": 2
+  }
+}
