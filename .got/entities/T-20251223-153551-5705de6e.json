@@ -1,19 +1,22 @@
 {
-  "_checksum": "9c31c4b5fe418e60",
-  "_written_at": "2025-12-23T15:35:51.311876+00:00",
+  "_checksum": "49f395cc64cb4fce",
+  "_written_at": "2025-12-24T10:29:36.406953+00:00",
   "data": {
     "created_at": "2025-12-23T15:35:51.305241+00:00",
     "description": "50 orphan tasks exist. Need: 1) Detection on create 2) Suggest sprint assignment 3) Periodic orphan report 4) Auto-link based on context. This is why we pivoted.",
     "entity_type": "task",
     "id": "T-20251223-153551-5705de6e",
-    "metadata": {},
-    "modified_at": "2025-12-23T15:35:51.311819+00:00",
+    "metadata": {
+      "started_at": "2025-12-24T10:29:36.399971+00:00",
+      "updated_at": "2025-12-24T10:29:36.399974+00:00"
+    },
+    "modified_at": "2025-12-24T10:29:36.406918+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "Design orphan detection and auto-linking system",
-    "version": 2
+    "version": 4
   }
 }
