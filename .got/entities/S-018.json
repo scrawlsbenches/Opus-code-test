@@ -9,12 +9,12 @@
     "id": "S-018",
     "isolation": [],
     "metadata": {},
-    "modified_at": "2025-12-24T21:27:01.946464+00:00",
+    "modified_at": "2025-12-25T10:30:00+00:00",
     "notes": [],
     "number": 18,
     "properties": {},
     "session_id": "",
-    "status": "available",
+    "status": "completed",
     "title": "Performance & Observability",
     "version": 2
   }
