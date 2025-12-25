@@ -17,7 +17,6 @@ from cortical.got.cli.backup import (
     cmd_backup_verify,
     cmd_backup_restore,
     cmd_sync,
-    cmd_migrate_events,
     handle_backup_command,
     handle_sync_migrate_commands,
 )
@@ -524,17 +523,7 @@ class TestHandleSyncMigrateCommands:
         mock_cmd.assert_called_once_with(args, mock_manager)
 
     # test_handle_migrate_command removed - tests deprecated cmd_migrate function
-
-    @patch('cortical.got.cli.backup.cmd_migrate_events')
-    def test_handle_migrate_events_command(self, mock_cmd, mock_manager):
-        """Test handle migrate-events command."""
-        mock_cmd.return_value = 0
-        args = Namespace(command="migrate-events")
-
-        result = handle_sync_migrate_commands(args, mock_manager)
-
-        assert result == 0
-        mock_cmd.assert_called_once_with(args, mock_manager)
+    # test_handle_migrate_events_command removed - tests deprecated cmd_migrate_events function
 
     def test_handle_unknown_command(self, mock_manager):
         """Test handle unknown command."""
