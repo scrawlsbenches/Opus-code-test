@@ -1,21 +1,21 @@
 {
-  "_checksum": "ca829e0f28bed624",
-  "_written_at": "2025-12-23T15:16:57.372996+00:00",
+  "_checksum": "866ff45f62d6ae9c",
+  "_written_at": "2025-12-25T23:03:39.907876+00:00",
   "data": {
-    "created_at": "2025-12-23T15:16:57.367539+00:00",
+    "created_at": "2025-12-25T23:03:39.900956+00:00",
     "entity_type": "sprint",
-    "epic_id": "EPIC-got-db",
+    "epic_id": "",
     "goals": [],
     "id": "S-022",
     "isolation": [],
     "metadata": {},
-    "modified_at": "2025-12-23T15:16:57.372945+00:00",
+    "modified_at": "2025-12-25T23:03:39.907825+00:00",
     "notes": [],
     "number": 22,
     "properties": {},
     "session_id": "",
     "status": "available",
-    "title": "Self-Healing & Diagnostics",
+    "title": "Consolidation Engine",
     "version": 2
   }
 }
