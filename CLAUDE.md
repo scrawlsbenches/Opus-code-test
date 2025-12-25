@@ -482,6 +482,7 @@ Always have backup plans:
 | Command | Purpose |
 |---------|---------|
 | `/context-recovery` | Restore cognitive state from available sources |
+| `/woven-mind-director` | Orchestrate Woven Mind + PRISM marriage tasks |
 | `python scripts/task_utils.py list --status in_progress` | See active work |
 | `git log --oneline -5` | Recent actions context |
 | `cat .branch-state/active/*.json` | Branch state |
@@ -2034,7 +2035,14 @@ For Director orchestration and parallel agent workflows:
 - `scripts/orchestration_utils.py` - Director orchestration tracking (plans, batches, metrics)
 - `scripts/verify_batch.py` - Automated batch verification
 
-See `.claude/commands/director.md` for comprehensive orchestration documentation.
+**Director Commands:**
+- `.claude/commands/director.md` - General orchestration documentation
+- `.claude/commands/woven-mind-director.md` - Woven Mind + PRISM marriage orchestration
+
+**Woven Mind Project Docs:**
+- `docs/roadmap-woven-prism-marriage.md` - 6-sprint integration plan
+- `docs/task-knowledge-base-woven-prism.md` - Task details and sub-agent guardrails
+- `docs/research-prism-woven-mind-comparison.md` - Comparative analysis
 
 ---
 
