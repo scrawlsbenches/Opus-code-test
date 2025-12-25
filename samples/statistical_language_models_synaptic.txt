@@ -1,0 +1,107 @@
+# Statistical Language Models with Synaptic Learning
+
+## Overview
+
+Traditional n-gram language models treat word transitions as fixed probabilities learned from corpus statistics. Synaptic language models extend this by treating transitions as living connections that strengthen through use and decay when unused - bringing biological plausibility to text generation.
+
+## Architecture
+
+### Synaptic Transitions
+
+Each word-to-word transition is a synaptic connection:
+
+```
+SynapticTransition:
+    from_token: "the"
+    to_token: "cat"
+    weight: 2.4
+    count: 15
+    decay_rate: 0.99
+```
+
+Weight increases each time this transition is observed. Decay applies when time passes without reinforcement.
+
+### Context Windows
+
+Like n-grams, context windows track recent tokens to condition predictions:
+
+- Size determines how much history influences the next word
+- Sliding window maintains fixed-size context
+- Multiple context sizes (1-gram, 2-gram, 3-gram) operate in parallel
+
+### Transition Graphs
+
+The full model is a graph where nodes are tokens and edges are synaptic transitions:
+
+- Vocabulary emerges from observed tokens
+- Transitions form through sequential observation
+- Weights encode frequency and recency
+
+## Generation
+
+### Temperature-Controlled Sampling
+
+Temperature controls the randomness of generation:
+
+- **Low temperature (0.1)**: Nearly deterministic, picks highest weight
+- **Medium temperature (1.0)**: Balanced exploration and exploitation
+- **High temperature (2.0)**: More random, explores unlikely paths
+
+The softmax with temperature:
+```
+probability[i] = (weight[i] / max_weight) ^ (1 / temperature)
+```
+
+### Reward-Based Learning
+
+After generation, paths can be rewarded or penalized:
+
+- Positive reward strengthens all transitions in the path
+- Negative reward weakens them
+- This enables reinforcement learning for text quality
+
+## Evaluation
+
+### Perplexity
+
+Perplexity measures how well the model predicts held-out text:
+
+- Lower perplexity = better prediction
+- In-domain text should have low perplexity
+- Out-of-domain text will have high perplexity
+
+### Hebbian Metrics
+
+Track learning dynamics:
+
+- Average transition weight over time
+- Decay vs. strengthening balance
+- Vocabulary growth rate
+
+## Integration
+
+### With Synaptic Memory
+
+The language model shares principles with synaptic reasoning graphs:
+
+- Both use Hebbian strengthening
+- Both apply temporal decay
+- Both track prediction accuracy
+
+### With Probabilistic Logic
+
+Truth values in PLN can weight language generation:
+
+- High-confidence facts produce more deterministic text
+- Uncertain knowledge allows more variation
+- Logical constraints guide coherent generation
+
+## The Caterpillar's Wisdom
+
+"Who... are... YOU?" - The caterpillar's question captures the essence of language models. Identity emerges from patterns of word usage. The synaptic connections that strengthen through a corpus define what the model "knows" and how it "speaks."
+
+## See Also
+
+- Synaptic Memory and Hebbian Learning
+- Probabilistic Logic Networks
+- Transformer Architecture (contrast with neural approaches)

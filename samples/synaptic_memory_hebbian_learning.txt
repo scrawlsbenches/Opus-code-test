@@ -1,0 +1,69 @@
+# Synaptic Memory and Hebbian Learning in Reasoning Systems
+
+## Overview
+
+Synaptic memory represents a biologically-inspired approach to knowledge representation where connections between concepts strengthen through use and decay when unused. This mirrors how neurons in the brain form and maintain connections through the principle known as Hebbian learning: "neurons that fire together, wire together."
+
+## Core Principles
+
+### Activation Traces
+
+When a concept is activated, it leaves a trace - a timestamp record of when it fired. These traces enable temporal correlation:
+
+- Recent activations are weighted more heavily than distant ones
+- Co-activation within a time window triggers strengthening
+- The decay of traces models forgetting over time
+
+### Synaptic Edges
+
+Unlike static graph edges, synaptic edges are dynamic learning structures:
+
+- **Weight**: Strength of the connection (increases with use)
+- **Decay Factor**: Rate at which unused connections weaken
+- **Prediction Accuracy**: Track record of successful predictions
+- **Activation Count**: How often this path has been traversed
+
+### Hebbian Learning Rules
+
+The fundamental learning rule states that when source and target nodes activate together, their connecting edge strengthens:
+
+```
+if source.activated AND target.activated within time_window:
+    edge.weight += learning_rate
+```
+
+Anti-Hebbian learning provides the complement - when one fires without the other, the connection weakens slightly, preventing runaway strengthening.
+
+## Applications to Reasoning
+
+### Incremental Reasoning
+
+Rather than building complete knowledge graphs upfront, incremental reasoning allows the graph to grow through experience:
+
+1. Process a new thought
+2. Connect it to related existing thoughts
+3. Activate relevant nodes
+4. Apply Hebbian learning to strengthen useful paths
+5. Apply decay to prune unused connections
+
+### Predictive Reasoning
+
+The synaptic weights encode predictive relationships. Given an active thought, we can predict likely next thoughts by following the strongest outgoing edges. Prediction accuracy tracking allows the system to learn which predictions succeed.
+
+## Integration with Other Systems
+
+Synaptic memory integrates naturally with:
+
+- **Statistical Language Models**: Word transitions as synaptic connections
+- **Probabilistic Logic**: Truth values that learn from evidence
+- **Knowledge Graphs**: Dynamic edge weights replacing static relations
+
+## The Wonderland Principle
+
+"We're all mad here" - the apparent chaos of synaptic learning produces emergent order. Individual connection updates seem random, but patterns crystallize through repeated use. The Mad Hatter's riddles become wisdom when the right synapses strengthen.
+
+## See Also
+
+- Statistical Language Models with Synaptic Learning
+- Probabilistic Logic Networks
+- Graph of Thought Architecture
