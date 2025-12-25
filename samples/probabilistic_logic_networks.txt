@@ -1,0 +1,144 @@
+# Probabilistic Logic Networks for Uncertain Reasoning
+
+## Overview
+
+Probabilistic Logic Networks (PLN) extend classical logic to handle uncertainty. Rather than propositions being simply true or false, they carry truth values with both strength (probability) and confidence (certainty of that probability). This enables reasoning under uncertainty - essential for real-world knowledge that is rarely absolute.
+
+## Truth Values
+
+### The Two Dimensions
+
+Every statement in PLN carries a truth value with two components:
+
+- **Strength**: The probability estimate (0.0 to 1.0)
+- **Confidence**: How much evidence supports that estimate (0.0 to 1.0)
+
+A truth value of (0.9, 0.1) means "probably true but we're not sure" while (0.9, 0.95) means "almost certainly true with strong evidence."
+
+### Why Confidence Matters
+
+Consider: "Birds fly" has high strength but moderate confidence (we know of exceptions). "Penguins are birds" has very high strength and very high confidence (definitional). When combining these through inference, the confidence degrades appropriately.
+
+## Logical Operations
+
+### Negation
+
+NOT inverts the strength while preserving confidence:
+```
+NOT(strength=0.8, confidence=0.9) = (strength=0.2, confidence=0.9)
+```
+
+### Conjunction (AND)
+
+AND combines truth values, typically producing lower strength:
+```
+(0.8, 0.9) AND (0.7, 0.8) = (0.56, 0.72)
+```
+Both conditions must hold, so the probability multiplies down.
+
+### Disjunction (OR)
+
+OR increases strength - at least one condition holding:
+```
+(0.8, 0.9) OR (0.7, 0.8) = (0.94, 0.72)
+```
+
+### Implication
+
+If A implies B with some strength, and we know A, we can infer B:
+```
+Given: A (strength=0.9) and A→B (strength=0.8)
+Infer: B (strength≈0.72)
+```
+
+## Inference Rules
+
+### Deduction
+
+The classic syllogism with uncertainty:
+- A implies B (strength 0.9)
+- B implies C (strength 0.85)
+- Therefore A implies C (strength ≈0.77)
+
+Confidence degrades through the chain, appropriately reflecting the accumulated uncertainty.
+
+### Induction
+
+Generalization from examples:
+- Tweety is a bird and flies
+- Opus is a bird and flies
+- Therefore birds fly (with some confidence based on sample size)
+
+Inductive conclusions have lower confidence than the evidence they're based on.
+
+### Abduction
+
+Reasoning backwards from effects to causes:
+- Birds typically fly (A→B)
+- This thing flies (B)
+- Therefore this thing might be a bird (A)
+
+Abduction has even lower confidence - many things could cause the observed effect.
+
+## Synaptic Learning Integration
+
+### Truth Values That Learn
+
+In PRISM-PLN, truth values can be synaptic - they update based on observed evidence:
+
+```
+SynapticTruthValue:
+    strength: 0.5  (starts uncertain)
+    confidence: 0.1  (little evidence)
+    positive_count: 0
+    negative_count: 0
+
+After observing 10 positive cases:
+    strength: 0.85  (mostly true)
+    confidence: 0.83  (good evidence)
+```
+
+### Evidence Accumulation
+
+Each observation updates the truth value:
+- Positive evidence increases strength and confidence
+- Negative evidence decreases strength, increases confidence
+- Mixed evidence keeps strength moderate, increases confidence
+
+### Temporal Decay
+
+Without reinforcement, confidence can decay:
+- Old knowledge becomes less certain
+- Fresh evidence is weighted more heavily
+- This models the forgetting of outdated information
+
+## The Cheshire Cat's Grin
+
+"We're all mad here. I'm mad. You're mad."
+"How do you know I'm mad?" said Alice.
+"You must be," said the Cat, "or you wouldn't have come here."
+
+This is abductive reasoning! The Cat observes Alice in Wonderland (effect) and infers she must be mad (cause). The inference has low confidence - there could be other explanations. But it's a reasonable guess given the evidence.
+
+PLN captures this kind of uncertain, everyday reasoning that classical logic cannot represent.
+
+## Integration Points
+
+### With Synaptic Memory
+
+- Edge weights can be PLN truth values
+- Co-activation provides evidence for implications
+- Prediction accuracy updates rule strengths
+
+### With Statistical Language Models
+
+- Word transition probabilities are truth values
+- High-confidence patterns produce deterministic text
+- Low-confidence allows creative variation
+
+## See Also
+
+- Synaptic Memory and Hebbian Learning
+- Statistical Language Models with Synaptic Learning
+- Backward Chaining Inference
+
