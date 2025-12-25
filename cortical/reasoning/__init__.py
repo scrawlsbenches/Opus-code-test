@@ -291,6 +291,24 @@ from .thought_patterns import (
 )
 
 # =============================================================================
+# PRISM-GoT: Predictive Reasoning through Incremental Synaptic Memory
+# =============================================================================
+
+from .prism_got import (
+    # Core data structures
+    ActivationRecord,
+    ActivationTrace,
+    SynapticEdge,
+    PredictionResult,
+    # Learning rules
+    PlasticityRules,
+    # Graph with synaptic memory
+    SynapticMemoryGraph,
+    # Incremental reasoning
+    IncrementalReasoner,
+)
+
+# =============================================================================
 # PUBLIC API
 # =============================================================================
 
@@ -433,4 +451,13 @@ __all__ = [
     'create_analysis_graph',
     'create_pattern_graph',
     'PATTERN_REGISTRY',
+
+    # === PRISM-GoT: Synaptic Memory Graph ===
+    'ActivationRecord',
+    'ActivationTrace',
+    'SynapticEdge',
+    'PredictionResult',
+    'PlasticityRules',
+    'SynapticMemoryGraph',
+    'IncrementalReasoner',
 ]
