@@ -111,7 +111,6 @@ from .backup import (
     cmd_backup_verify,
     cmd_backup_restore,
     cmd_sync,
-    cmd_migrate,
     cmd_migrate_events,
 )
 
@@ -214,7 +213,6 @@ __all__ = [
     "cmd_backup_verify",
     "cmd_backup_restore",
     "cmd_sync",
-    "cmd_migrate",
     "cmd_migrate_events",
     # Shared
     "VALID_STATUSES",

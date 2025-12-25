@@ -312,18 +312,6 @@ def cmd_sync(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_migrate(args, manager: "TransactionalGoTAdapter") -> int:
-    """Handle 'got migrate' command.
-
-    DEPRECATED: This command is for migrating from the legacy file-based task system.
-    The TX backend stores entities directly in .got/entities/.
-    """
-    print("The 'migrate' command is deprecated.")
-    print("The TX backend stores entities directly in .got/entities/.")
-    print("Use 'got task create' to create new tasks directly.")
-    return 0
-
-
 def cmd_migrate_events(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got migrate-events' command.
 
@@ -396,15 +384,7 @@ def setup_backup_parser(subparsers) -> None:
         help="Commit message (auto-commits if provided)"
     )
 
-    # Migration commands
-    migrate_parser = subparsers.add_parser("migrate", help="Migrate from files")
-    migrate_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Don't actually migrate"
-    )
-
-    # Migrate to events command
+    # Migrate to events command (deprecated)
     migrate_events_parser = subparsers.add_parser(
         "migrate-events",
         help="Convert snapshot to event-sourced format for cross-branch coordination"
@@ -466,7 +446,6 @@ def handle_sync_migrate_commands(args, manager: "TransactionalGoTAdapter") -> in
 
     handlers = {
         "sync": cmd_sync,
-        "migrate": cmd_migrate,
         "migrate-events": cmd_migrate_events,
     }
 

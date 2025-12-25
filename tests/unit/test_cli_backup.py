@@ -17,7 +17,6 @@ from cortical.got.cli.backup import (
     cmd_backup_verify,
     cmd_backup_restore,
     cmd_sync,
-    cmd_migrate,
     cmd_migrate_events,
     handle_backup_command,
     handle_sync_migrate_commands,
@@ -461,26 +460,7 @@ class TestCmdSync:
         assert "Error syncing" in captured.out
 
 
-class TestCmdMigrate:
-    """Tests for cmd_migrate function (deprecated)."""
-
-    @pytest.fixture
-    def mock_manager(self):
-        """Create a mock manager."""
-        manager = MagicMock()
-        return manager
-
-    def test_migrate_deprecated(self, mock_manager, capsys):
-        """Test migrate command shows deprecation message."""
-        args = Namespace(dry_run=False)
-
-        result = cmd_migrate(args, mock_manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "deprecated" in captured.out.lower()
-        assert "got task create" in captured.out.lower()
-
+# TestCmdMigrate removed - tests deprecated cmd_migrate function
 
 # TestCmdMigrateEvents removed - tests deprecated cmd_migrate_events function
 # The TX backend doesn't use event logs; see TransactionalGoTAdapter
@@ -543,16 +523,7 @@ class TestHandleSyncMigrateCommands:
         assert result == 0
         mock_cmd.assert_called_once_with(args, mock_manager)
 
-    @patch('cortical.got.cli.backup.cmd_migrate')
-    def test_handle_migrate_command(self, mock_cmd, mock_manager):
-        """Test handle migrate command."""
-        mock_cmd.return_value = 0
-        args = Namespace(command="migrate")
-
-        result = handle_sync_migrate_commands(args, mock_manager)
-
-        assert result == 0
-        mock_cmd.assert_called_once_with(args, mock_manager)
+    # test_handle_migrate_command removed - tests deprecated cmd_migrate function
 
     @patch('cortical.got.cli.backup.cmd_migrate_events')
     def test_handle_migrate_events_command(self, mock_cmd, mock_manager):
