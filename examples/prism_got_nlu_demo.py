@@ -103,16 +103,28 @@ class KnowledgeBase:
 
         return score
 
-    def ask(self, question: str, top_k: int = 5) -> list:
+    def ask(self, question: str, top_k: int = 5) -> tuple:
         """
         Answer a natural language question by finding relevant documents.
 
-        Returns list of (doc_id, summary, score, snippet) tuples.
+        Returns tuple of (results, unknown_terms) where:
+        - results: list of (doc_id, summary, score, snippet) tuples
+        - unknown_terms: list of query terms not found in corpus
         """
         query_terms = self._tokenize_query(question)
 
         if not query_terms:
-            return []
+            return [], []
+
+        # Check which terms are in corpus
+        layer0 = self.processor.get_layer(CorticalLayer.TOKENS)
+        known_terms = []
+        unknown_terms = []
+        for term in query_terms:
+            if layer0.get_minicolumn(term) is not None:
+                known_terms.append(term)
+            else:
+                unknown_terms.append(term)
 
         # Score all documents
         scores = {}
@@ -148,7 +160,7 @@ class KnowledgeBase:
                     weight=min(score / 10, 1.0)
                 )
 
-        return results
+        return results, unknown_terms
 
     def _extract_snippet(self, content: str, query_terms: list, max_len: int = 150) -> str:
         """Extract a relevant snippet from content."""
@@ -232,7 +244,10 @@ def main():
     for question in questions:
         print(f"\n Q: {question}")
 
-        results = kb.ask(question, top_k=3)
+        results, unknown = kb.ask(question, top_k=3)
+
+        if unknown:
+            print(f" ⚠ Terms not in corpus: {', '.join(unknown)}")
 
         if results:
             print(" A: Found relevant knowledge:")
@@ -258,7 +273,10 @@ def main():
         if question.lower() in ('quit', 'exit', 'q'):
             break
 
-        results = kb.ask(question, top_k=3)
+        results, unknown = kb.ask(question, top_k=3)
+
+        if unknown:
+            print(f"\n⚠ Terms not in corpus: {', '.join(unknown)}")
 
         if results:
             print("\nKB: Here's what I found:\n")
@@ -275,7 +293,10 @@ def main():
             except:
                 pass
         else:
-            print("\nKB: I couldn't find relevant information for that question.\n")
+            if unknown:
+                print(f"\nKB: I don't have information about: {', '.join(unknown)}\n")
+            else:
+                print("\nKB: I couldn't find relevant information for that question.\n")
 
     print("\nFinal knowledge graph stats:")
     stats = kb.get_stats()
