@@ -2822,28 +2822,6 @@ def cmd_dashboard(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_migrate(args, manager: "TransactionalGoTAdapter") -> int:
-    """Migrate from file-based system."""
-    migrator = TaskMigrator(manager)
-
-    results = migrator.migrate_all(dry_run=getattr(args, 'dry_run', False))
-
-    print("Migration Results:")
-    print(f"  Sessions processed: {results['sessions_processed']}")
-    print(f"  Tasks migrated: {results['tasks_migrated']}")
-    print(f"  Tasks skipped: {results['tasks_skipped']}")
-
-    if results['errors']:
-        print()
-        print("Errors:")
-        for error in results['errors'][:10]:
-            print(f"  - {error}")
-        if len(results['errors']) > 10:
-            print(f"  ... and {len(results['errors']) - 10} more")
-
-    return 0
-
-
 def cmd_migrate_events(args, manager: "TransactionalGoTAdapter") -> int:
     """Migrate existing snapshot to event-sourced format.
 
