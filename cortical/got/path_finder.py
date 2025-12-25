@@ -90,14 +90,27 @@ class PathFinder:
 
     Uses BFS for shortest path and DFS for all paths.
     Supports edge type filtering and length constraints.
+
+    SAFETY: all_paths() has defaults to prevent exponential blowup:
+    - max_paths=100: Stop after finding 100 paths
+    - max_length=10: Don't explore paths longer than 10 nodes
+
+    Override with .max_paths(None) or .max_length(None) if needed,
+    but be aware of the O(V!) worst-case complexity.
     """
+
+    # Default limits to prevent exponential blowup
+    DEFAULT_MAX_PATHS = 100
+    DEFAULT_MAX_LENGTH = 10
 
     def __init__(self, manager: GoTManager):
         """Initialize path finder with GoT manager."""
         self._manager = manager
         self._edge_types: Optional[List[str]] = None
         self._max_len: Optional[int] = None
+        self._max_paths: Optional[int] = None
         self._bidirectional: bool = True  # Follow edges in both directions
+        self._use_defaults: bool = True  # Apply safety defaults
 
     def via_edges(self, *edge_types: str) -> "PathFinder":
         """
@@ -112,17 +125,38 @@ class PathFinder:
         self._edge_types = list(edge_types)
         return self
 
-    def max_length(self, length: int) -> "PathFinder":
+    def max_length(self, length: Optional[int]) -> "PathFinder":
         """
         Set maximum path length (number of nodes).
 
+        For all_paths(), the default is 10 to prevent exponential blowup.
+        Pass None to remove the limit (use with caution!).
+
         Args:
-            length: Maximum path length
+            length: Maximum path length, or None to remove limit
 
         Returns:
             Self for chaining
         """
         self._max_len = length
+        self._use_defaults = False  # Explicit setting overrides defaults
+        return self
+
+    def max_paths(self, count: Optional[int]) -> "PathFinder":
+        """
+        Set maximum number of paths to find in all_paths().
+
+        For all_paths(), the default is 100 to prevent exponential blowup.
+        Pass None to remove the limit (use with caution!).
+
+        Args:
+            count: Maximum number of paths, or None to remove limit
+
+        Returns:
+            Self for chaining
+        """
+        self._max_paths = count
+        self._use_defaults = False  # Explicit setting overrides defaults
         return self
 
     def directed(self) -> "PathFinder":
@@ -187,7 +221,12 @@ class PathFinder:
         """
         Find all paths between two nodes using DFS.
 
-        Warning: Can be expensive for large graphs with many paths.
+        SAFETY: Has default limits to prevent exponential blowup:
+        - max_paths=100: Stop after finding 100 paths
+        - max_length=10: Don't explore paths longer than 10 nodes
+
+        Use .max_paths(N) or .max_length(N) to override.
+        Use .max_paths(None) or .max_length(None) to remove limits.
 
         Args:
             from_id: Starting node ID
@@ -199,6 +238,16 @@ class PathFinder:
         if from_id == to_id:
             return [[from_id]]
 
+        # Apply safety defaults if no explicit limits set
+        effective_max_len = self._max_len
+        effective_max_paths = self._max_paths
+
+        if self._use_defaults:
+            if effective_max_len is None:
+                effective_max_len = self.DEFAULT_MAX_LENGTH
+            if effective_max_paths is None:
+                effective_max_paths = self.DEFAULT_MAX_PATHS
+
         adjacency = self._build_adjacency()
         paths: List[List[str]] = []
 
@@ -208,7 +257,9 @@ class PathFinder:
             path=[from_id],
             visited={from_id},
             adjacency=adjacency,
-            paths=paths
+            paths=paths,
+            max_len=effective_max_len,
+            max_paths=effective_max_paths
         )
 
         return paths
@@ -315,23 +366,51 @@ class PathFinder:
         path: List[str],
         visited: Set[str],
         adjacency: Dict[str, List[str]],
-        paths: List[List[str]]
-    ) -> None:
-        """DFS to find all paths."""
+        paths: List[List[str]],
+        max_len: Optional[int] = None,
+        max_paths: Optional[int] = None
+    ) -> bool:
+        """
+        DFS to find all paths.
+
+        Args:
+            current: Current node in traversal
+            target: Target node to find
+            path: Current path being explored
+            visited: Set of visited nodes in current path
+            adjacency: Adjacency list
+            paths: Accumulator for found paths
+            max_len: Maximum path length (None = no limit)
+            max_paths: Maximum number of paths to find (None = no limit)
+
+        Returns:
+            True if should continue searching, False if max_paths reached
+        """
         # Check max length
-        if self._max_len is not None and len(path) >= self._max_len:
-            return
+        if max_len is not None and len(path) >= max_len:
+            return True  # Continue searching other branches
 
         for neighbor in adjacency.get(current, []):
+            # Check if we've found enough paths
+            if max_paths is not None and len(paths) >= max_paths:
+                return False  # Stop searching
+
             if neighbor == target:
                 paths.append(path + [neighbor])
+                # Check limit after adding path
+                if max_paths is not None and len(paths) >= max_paths:
+                    return False
             elif neighbor not in visited:
                 visited.add(neighbor)
-                self._dfs_all_paths(
+                should_continue = self._dfs_all_paths(
                     neighbor, target, path + [neighbor],
-                    visited, adjacency, paths
+                    visited, adjacency, paths, max_len, max_paths
                 )
                 visited.remove(neighbor)
+                if not should_continue:
+                    return False
+
+        return True  # Continue searching
 
     def _dfs_reachable(
         self,

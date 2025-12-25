@@ -1,19 +1,23 @@
 {
-  "_checksum": "ca7cdf64cacee92a",
-  "_written_at": "2025-12-24T21:27:51.408574+00:00",
+  "_checksum": "313f9696a58d19a1",
+  "_written_at": "2025-12-24T22:46:03.323801+00:00",
   "data": {
     "created_at": "2025-12-24T21:27:51.402385+00:00",
     "description": "Track query execution times, cache hit rates, entity counts. Integrate with cortical.observability for consistent metrics.",
     "entity_type": "task",
     "id": "T-20251224-212751-702e491e",
-    "metadata": {},
-    "modified_at": "2025-12-24T21:27:51.408508+00:00",
+    "metadata": {
+      "completed_at": "2025-12-24T22:46:03.314837+00:00",
+      "started_at": "2025-12-24T22:43:02.616082+00:00",
+      "updated_at": "2025-12-24T22:46:03.314842+00:00"
+    },
+    "modified_at": "2025-12-24T22:46:03.323750+00:00",
     "priority": "medium",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Add built-in query timing and metrics",
-    "version": 2
+    "version": 6
   }
 }

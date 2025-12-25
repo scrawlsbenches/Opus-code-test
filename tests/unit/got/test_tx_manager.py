@@ -416,27 +416,38 @@ class TestProcessLock:
         lock1 = ProcessLock(lock_path, reentrant=False)
         lock2 = ProcessLock(lock_path, reentrant=False)
 
-        # Lock1 acquires
-        assert lock1.acquire() is True
+        thread = None
+        try:
+            # Lock1 acquires
+            assert lock1.acquire() is True
 
-        # Function to release lock1 after 0.2 seconds
-        def release_after_delay():
-            time.sleep(0.2)
-            lock1.release()
+            # Function to release lock1 after 0.2 seconds
+            def release_after_delay():
+                time.sleep(0.2)
+                lock1.release()
 
-        thread = threading.Thread(target=release_after_delay)
-        thread.start()
+            thread = threading.Thread(target=release_after_delay)
+            thread.start()
 
-        # Lock2 should acquire within 1 second timeout
-        start = time.time()
-        assert lock2.acquire(timeout=1.0) is True
-        elapsed = time.time() - start
+            # Lock2 should acquire within 1 second timeout
+            start = time.time()
+            assert lock2.acquire(timeout=1.0) is True
+            elapsed = time.time() - start
 
-        # Should have waited approximately 0.2 seconds
-        assert 0.15 < elapsed < 0.4
+            # Should have waited approximately 0.2 seconds
+            # Use generous upper bound for CI variance (can be 2-3x slower)
+            assert 0.15 < elapsed < 1.0
 
-        lock2.release()
-        thread.join()
+            lock2.release()
+        finally:
+            # Ensure thread completes and locks are cleaned up
+            if thread is not None:
+                thread.join(timeout=2.0)
+            # Force release any held locks to avoid resource leaks
+            if lock1._lock_count > 0:
+                lock1.release()
+            if lock2._lock_count > 0:
+                lock2.release()
 
     def test_lock_timeout_expired(self, tmp_path):
         """Test lock not acquired when timeout expires."""

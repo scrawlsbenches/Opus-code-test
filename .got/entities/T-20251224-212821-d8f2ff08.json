@@ -1,19 +1,23 @@
 {
-  "_checksum": "6220814512aa80a3",
-  "_written_at": "2025-12-24T21:28:21.698697+00:00",
+  "_checksum": "3a24ced7c140532b",
+  "_written_at": "2025-12-24T22:28:45.228570+00:00",
   "data": {
     "created_at": "2025-12-24T21:28:21.692918+00:00",
     "description": "Prevent exponential blowup on connected graphs. Add max_paths=100 and max_depth=10 parameters. Currently hangs on dense graphs.",
     "entity_type": "task",
     "id": "T-20251224-212821-d8f2ff08",
-    "metadata": {},
-    "modified_at": "2025-12-24T21:28:21.698632+00:00",
+    "metadata": {
+      "completed_at": "2025-12-24T22:28:45.220442+00:00",
+      "started_at": "2025-12-24T22:24:34.058630+00:00",
+      "updated_at": "2025-12-24T22:28:45.220451+00:00"
+    },
+    "modified_at": "2025-12-24T22:28:45.228518+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Add max_paths limit to PathFinder.all_paths()",
-    "version": 2
+    "version": 6
   }
 }

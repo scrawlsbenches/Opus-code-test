@@ -735,3 +735,1053 @@ class TestQueryPerformance:
 
         assert "steps" in plan
         assert len(plan["steps"]) > 0
+
+
+class TestQueryMetrics:
+    """Test QueryMetrics class for tracking query performance."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create basic manager."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        # Create some test data
+        for i in range(10):
+            manager.create_task(f"Task {i}", status="pending", priority="high")
+
+        return manager
+
+    def test_metrics_enabled(self, manager):
+        """QueryMetrics tracks when enabled."""
+        from cortical.got.query_builder import Query, QueryMetrics
+
+        metrics = QueryMetrics(enabled=True)
+        query = Query(manager, metrics=metrics)
+
+        results = query.tasks().execute()
+
+        stats = metrics.get_stats()
+        assert stats['total_queries'] == 1
+        assert stats['total_entities'] == 10
+
+    def test_metrics_disabled(self, manager):
+        """QueryMetrics does nothing when disabled."""
+        from cortical.got.query_builder import Query, QueryMetrics
+
+        metrics = QueryMetrics(enabled=False)
+        query = Query(manager, metrics=metrics)
+
+        results = query.tasks().execute()
+
+        stats = metrics.get_stats()
+        assert stats['total_queries'] == 0
+
+    def test_metrics_empty_stats(self):
+        """get_stats() returns zeros when no queries recorded."""
+        from cortical.got.query_builder import QueryMetrics
+
+        metrics = QueryMetrics()
+        stats = metrics.get_stats()
+
+        assert stats['total_queries'] == 0
+        assert stats['total_entities'] == 0
+        assert stats['avg_time_ms'] == 0.0
+        assert stats['min_time_ms'] == 0.0
+        assert stats['max_time_ms'] == 0.0
+
+    def test_metrics_summary(self, manager):
+        """summary() returns formatted string."""
+        from cortical.got.query_builder import Query, QueryMetrics
+
+        metrics = QueryMetrics(enabled=True)
+        Query(manager, metrics=metrics).tasks().execute()
+
+        summary = metrics.summary()
+
+        assert "GoT Query API Metrics" in summary
+        assert "Total queries:" in summary
+        assert "Avg:" in summary
+
+    def test_metrics_reset(self, manager):
+        """reset() clears all metrics."""
+        from cortical.got.query_builder import Query, QueryMetrics
+
+        metrics = QueryMetrics(enabled=True)
+        Query(manager, metrics=metrics).tasks().execute()
+
+        metrics.reset()
+        stats = metrics.get_stats()
+
+        assert stats['total_queries'] == 0
+
+    def test_module_level_metrics(self):
+        """Module-level metrics functions work."""
+        from cortical.got.query_builder import (
+            get_query_metrics, enable_query_metrics, disable_query_metrics
+        )
+
+        metrics = get_query_metrics()
+        assert metrics is not None
+
+        enable_query_metrics()
+        assert metrics.enabled is True
+
+        disable_query_metrics()
+        assert metrics.enabled is False
+
+
+class TestAggregationFunctions:
+    """Test aggregate functions (Sum, Avg, Min, Max, etc)."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager with numeric data."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        # Create tasks with numeric properties
+        t1 = manager.create_task("T1", status="pending")
+        t1.properties['score'] = 10
+        manager.update_task(t1.id, properties=t1.properties)
+
+        t2 = manager.create_task("T2", status="pending")
+        t2.properties['score'] = 20
+        manager.update_task(t2.id, properties=t2.properties)
+
+        t3 = manager.create_task("T3", status="completed")
+        t3.properties['score'] = 30
+        manager.update_task(t3.id, properties=t3.properties)
+
+        return manager
+
+    def test_sum_aggregation(self, manager):
+        """Sum aggregate function."""
+        from cortical.got.query_builder import Query, Sum
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status")
+            .aggregate(total_score=Sum("score"))
+            .execute()
+        )
+
+        assert result["pending"]["total_score"] == 30.0
+        assert result["completed"]["total_score"] == 30.0
+
+    def test_avg_aggregation(self, manager):
+        """Avg aggregate function."""
+        from cortical.got.query_builder import Query, Avg
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status")
+            .aggregate(avg_score=Avg("score"))
+            .execute()
+        )
+
+        assert result["pending"]["avg_score"] == 15.0
+        assert result["completed"]["avg_score"] == 30.0
+
+    def test_min_aggregation(self, manager):
+        """Min aggregate function."""
+        from cortical.got.query_builder import Query, Min
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status")
+            .aggregate(min_score=Min("score"))
+            .execute()
+        )
+
+        assert result["pending"]["min_score"] == 10
+        assert result["completed"]["min_score"] == 30
+
+    def test_max_aggregation(self, manager):
+        """Max aggregate function."""
+        from cortical.got.query_builder import Query, Max
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status")
+            .aggregate(max_score=Max("score"))
+            .execute()
+        )
+
+        assert result["pending"]["max_score"] == 20
+        assert result["completed"]["max_score"] == 30
+
+    def test_avg_with_zero_values(self, tmp_path):
+        """Avg returns 0.0 when no numeric values."""
+        from cortical.got.query_builder import Query, Avg
+
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+        t = manager.create_task("T1", status="pending")
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status")
+            .aggregate(avg_score=Avg("nonexistent"))
+            .execute()
+        )
+
+        assert result["pending"]["avg_score"] == 0.0
+
+
+class TestWhereOperators:
+    """Test different WHERE clause operators."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager with varied data."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        t1 = manager.create_task("T1", status="pending")
+        t1.properties['score'] = 10
+        manager.update_task(t1.id, properties=t1.properties)
+
+        t2 = manager.create_task("T2", status="pending")
+        t2.properties['score'] = 20
+        manager.update_task(t2.id, properties=t2.properties)
+
+        t3 = manager.create_task("T3", status="completed")
+        t3.properties['score'] = 30
+        manager.update_task(t3.id, properties=t3.properties)
+
+        return manager
+
+    def test_where_with_properties(self, manager):
+        """where() accesses entity.properties when attribute missing."""
+        from cortical.got.query_builder import Query, WhereClause
+
+        query = Query(manager).tasks()
+        # Manually test _matches_clause with properties
+        tasks = manager.list_all_tasks()
+        task = tasks[0] if tasks else None
+        assert task is not None
+        clause = WhereClause(field="score", value=10, operator="eq")
+
+        matches = query._matches_clause(task, clause)
+        assert isinstance(matches, bool)
+
+    def test_order_by_with_properties(self, manager):
+        """order_by() accesses entity.properties."""
+        from cortical.got.query_builder import Query
+
+        results = (
+            Query(manager)
+            .tasks()
+            .order_by("score")
+            .execute()
+        )
+
+        # Should be sorted by score
+        assert len(results) == 3
+
+    def test_order_by_with_none_values(self, tmp_path):
+        """order_by() handles None values."""
+        from cortical.got.query_builder import Query
+
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        manager.create_task("T1", status="pending")
+        manager.create_task("T2", status="completed")
+
+        results = (
+            Query(manager)
+            .tasks()
+            .order_by("nonexistent_field")
+            .execute()
+        )
+
+        assert len(results) == 2
+
+    def test_group_by_multiple_fields(self, manager):
+        """group_by() with multiple fields returns tuple keys."""
+        from cortical.got.query_builder import Query
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status", "title")
+            .count()
+            .execute()
+        )
+
+        # Keys should be tuples
+        for key in result.keys():
+            assert isinstance(key, tuple)
+            assert len(key) == 2
+
+    def test_iter_with_offset_and_limit(self, manager):
+        """iter() respects offset and limit."""
+        from cortical.got.query_builder import Query
+
+        items = list(
+            Query(manager)
+            .tasks()
+            .offset(1)
+            .limit(1)
+            .iter()
+        )
+
+        assert len(items) == 1
+
+    def test_explain_with_or_groups(self, tmp_path):
+        """explain() includes OR groups in plan."""
+        from cortical.got.query_builder import Query
+
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+        manager.create_task("T1", status="pending", priority="high")
+
+        plan = (
+            Query(manager)
+            .tasks()
+            .where(status="pending")
+            .or_where(priority="critical")
+            .explain()
+        )
+
+        assert "steps" in plan
+
+    def test_explain_with_connections(self, tmp_path):
+        """explain() includes connection filters."""
+        from cortical.got.query_builder import Query
+
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+        t1 = manager.create_task("T1", status="pending")
+
+        plan = (
+            Query(manager)
+            .tasks()
+            .connected_to(t1.id, via="DEPENDS_ON")
+            .explain()
+        )
+
+        # Check for connection_filter step
+        step_types = [s['type'] for s in plan.steps]
+        assert 'connection_filter' in step_types
+
+    def test_explain_with_pagination(self, tmp_path):
+        """explain() includes pagination when offset/limit present."""
+        from cortical.got.query_builder import Query
+
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+        manager.create_task("T1", status="pending")
+
+        plan = (
+            Query(manager)
+            .tasks()
+            .limit(10)
+            .offset(5)
+            .explain()
+        )
+
+        step_types = [s['type'] for s in plan.steps]
+        assert 'pagination' in step_types
+
+    def test_query_plan_dict_access(self):
+        """QueryPlan supports dict-like access."""
+        from cortical.got.query_builder import QueryPlan
+
+        plan = QueryPlan(
+            steps=[],
+            estimated_cost=10.0,
+            uses_index=True,
+            index_name="test_index"
+        )
+
+        assert plan["steps"] == []
+        assert plan["estimated_cost"] == 10.0
+        assert "steps" in plan
+        assert "nonexistent" not in plan
+
+    def test_connected_to_direction_incoming(self, tmp_path):
+        """connected_to() with direction='incoming' finds sources."""
+        from cortical.got.query_builder import Query
+
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        t1 = manager.create_task("T1", status="pending")
+        t2 = manager.create_task("T2", status="pending")
+        # Edge: t1 -> t2 (t1 is source, t2 is target)
+        manager.add_edge(t1.id, t2.id, "DEPENDS_ON")
+
+        # Find tasks with incoming edges TO t2 (i.e., sources pointing to t2)
+        results = (
+            Query(manager)
+            .tasks()
+            .connected_to(t2.id, direction="incoming")
+            .execute()
+        )
+
+        # t1 should be found (t1 points to t2)
+        assert any(r.id == t1.id for r in results)
+
+    def test_connected_to_direction_outgoing(self, tmp_path):
+        """connected_to() with direction='outgoing' finds targets."""
+        from cortical.got.query_builder import Query
+
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        t1 = manager.create_task("T1", status="pending")
+        t2 = manager.create_task("T2", status="pending")
+        # Edge: t1 -> t2 (t1 is source, t2 is target)
+        manager.add_edge(t1.id, t2.id, "DEPENDS_ON")
+
+        # Find tasks with outgoing edges FROM t1 (i.e., targets that t1 points to)
+        results = (
+            Query(manager)
+            .tasks()
+            .connected_to(t1.id, direction="outgoing")
+            .execute()
+        )
+
+        # t2 should be found (t1 points to t2)
+        assert any(r.id == t2.id for r in results)
+
+    def test_execute_exception_handling(self, tmp_path):
+        """execute() records metrics even on exception."""
+        from cortical.got.query_builder import Query, QueryMetrics
+        from unittest.mock import MagicMock, patch
+
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+        manager.create_task("T1", status="pending")
+
+        metrics = QueryMetrics(enabled=True)
+        query = Query(manager, metrics=metrics).tasks()
+
+        # Force an exception during execution
+        with patch.object(query, '_execute_query', side_effect=RuntimeError("test error")):
+            try:
+                query.execute()
+            except RuntimeError:
+                pass
+
+        # Metrics should still record the failed query
+        stats = metrics.get_stats()
+        assert stats['total_queries'] == 1
+
+
+class TestWhereOperatorsExtended:
+    """Test all WHERE clause operators comprehensively."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager with test data for operator tests."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        # Create tasks with various numeric properties
+        t1 = manager.create_task("T1", status="pending")
+        t1.properties['score'] = 10
+        t1.properties['tags'] = ['high', 'urgent']
+        t1.properties['description'] = 'Important task'
+        manager.update_task(t1.id, properties=t1.properties)
+
+        t2 = manager.create_task("T2", status="pending")
+        t2.properties['score'] = 20
+        t2.properties['tags'] = ['medium']
+        t2.properties['description'] = 'Regular task'
+        manager.update_task(t2.id, properties=t2.properties)
+
+        t3 = manager.create_task("T3", status="completed")
+        t3.properties['score'] = 30
+        t3.properties['tags'] = ['low']
+        t3.properties['description'] = 'Done'
+        manager.update_task(t3.id, properties=t3.properties)
+
+        return manager
+
+    def test_where_operator_ne(self, manager):
+        """Test != operator."""
+        from cortical.got.query_builder import Query, WhereClause
+
+        query = Query(manager).tasks()
+        tasks = manager.list_all_tasks()
+
+        # Test ne operator
+        clause = WhereClause(field="status", value="pending", operator="ne")
+        completed_task = [t for t in tasks if t.status == "completed"][0]
+
+        assert query._matches_clause(completed_task, clause) is True
+
+    def test_where_operator_gt(self, manager):
+        """Test > operator."""
+        from cortical.got.query_builder import Query, WhereClause
+
+        query = Query(manager).tasks()
+        tasks = manager.list_all_tasks()
+
+        # Test gt operator with properties
+        clause = WhereClause(field="score", value=15, operator="gt")
+        high_score_task = [t for t in tasks if t.properties.get('score', 0) > 15][0]
+
+        assert query._matches_clause(high_score_task, clause) is True
+
+    def test_where_operator_lt(self, manager):
+        """Test < operator."""
+        from cortical.got.query_builder import Query, WhereClause
+
+        query = Query(manager).tasks()
+        tasks = manager.list_all_tasks()
+
+        # Test lt operator
+        clause = WhereClause(field="score", value=15, operator="lt")
+        low_score_task = [t for t in tasks if t.properties.get('score', 0) < 15][0]
+
+        assert query._matches_clause(low_score_task, clause) is True
+
+    def test_where_operator_gte(self, manager):
+        """Test >= operator."""
+        from cortical.got.query_builder import Query, WhereClause
+
+        query = Query(manager).tasks()
+        tasks = manager.list_all_tasks()
+
+        # Test gte operator
+        clause = WhereClause(field="score", value=20, operator="gte")
+        task = [t for t in tasks if t.properties.get('score', 0) >= 20][0]
+
+        assert query._matches_clause(task, clause) is True
+
+    def test_where_operator_lte(self, manager):
+        """Test <= operator."""
+        from cortical.got.query_builder import Query, WhereClause
+
+        query = Query(manager).tasks()
+        tasks = manager.list_all_tasks()
+
+        # Test lte operator
+        clause = WhereClause(field="score", value=20, operator="lte")
+        task = [t for t in tasks if t.properties.get('score', 0) <= 20][0]
+
+        assert query._matches_clause(task, clause) is True
+
+    def test_where_operator_in(self, manager):
+        """Test 'in' operator."""
+        from cortical.got.query_builder import Query, WhereClause
+
+        query = Query(manager).tasks()
+        tasks = manager.list_all_tasks()
+
+        # Test in operator
+        clause = WhereClause(field="status", value=["pending", "completed"], operator="in")
+        task = tasks[0]
+
+        assert query._matches_clause(task, clause) is True
+
+    def test_where_operator_contains(self, manager):
+        """Test 'contains' operator."""
+        from cortical.got.query_builder import Query, WhereClause
+
+        query = Query(manager).tasks()
+        tasks = manager.list_all_tasks()
+
+        # Test contains operator on title field (which exists on all tasks)
+        task = tasks[0]
+        clause = WhereClause(field="title", value=task.title[:2], operator="contains")
+
+        assert query._matches_clause(task, clause) is True
+
+    def test_where_operator_with_none_value(self, manager):
+        """Test operators with None values."""
+        from cortical.got.query_builder import Query, WhereClause
+
+        query = Query(manager).tasks()
+        tasks = manager.list_all_tasks()
+
+        # Test gt with None value (should return False)
+        clause = WhereClause(field="nonexistent", value=10, operator="gt")
+        task = tasks[0]
+
+        assert query._matches_clause(task, clause) is False
+
+
+class TestAggregationEdgeCases:
+    """Test edge cases in aggregation functions."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager with varied data types."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        # Task with numeric property
+        t1 = manager.create_task("T1", status="pending")
+        t1.properties['value'] = 100
+        manager.update_task(t1.id, properties=t1.properties)
+
+        # Task without the property
+        t2 = manager.create_task("T2", status="pending")
+
+        # Task with non-numeric property
+        t3 = manager.create_task("T3", status="completed")
+        t3.properties['value'] = "not a number"
+        manager.update_task(t3.id, properties=t3.properties)
+
+        return manager
+
+    def test_collect_with_properties(self, manager):
+        """Collect accesses entity.properties when attribute missing."""
+        from cortical.got.query_builder import Query, Collect
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status")
+            .aggregate(values=Collect("value"))
+            .execute()
+        )
+
+        # Should collect values from properties
+        assert 100 in result["pending"]["values"]
+
+    def test_sum_with_properties(self, manager):
+        """Sum accesses entity.properties when attribute missing."""
+        from cortical.got.query_builder import Query, Sum
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status")
+            .aggregate(total=Sum("value"))
+            .execute()
+        )
+
+        # Should sum numeric values from properties
+        assert result["pending"]["total"] == 100.0
+
+    def test_sum_skips_non_numeric(self, manager):
+        """Sum skips non-numeric values."""
+        from cortical.got.query_builder import Query, Sum
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status")
+            .aggregate(total=Sum("value"))
+            .execute()
+        )
+
+        # Should skip "not a number" string
+        assert result["completed"]["total"] == 0.0
+
+    def test_avg_with_properties(self, manager):
+        """Avg accesses entity.properties when attribute missing."""
+        from cortical.got.query_builder import Query, Avg
+
+        result = (
+            Query(manager)
+            .tasks()
+            .where(status="pending")
+            .group_by("status")
+            .aggregate(avg_val=Avg("value"))
+            .execute()
+        )
+
+        # Should average numeric values from properties
+        # Only t1 has numeric value (100), t2 has none
+        assert result["pending"]["avg_val"] == 100.0
+
+    def test_min_with_properties(self, manager):
+        """Min accesses entity.properties when attribute missing."""
+        from cortical.got.query_builder import Query, Min
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status")
+            .aggregate(min_val=Min("value"))
+            .execute()
+        )
+
+        # Should find minimum from properties
+        assert result["pending"]["min_val"] == 100
+
+    def test_max_with_properties(self, manager):
+        """Max accesses entity.properties when attribute missing."""
+        from cortical.got.query_builder import Query, Max
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status")
+            .aggregate(max_val=Max("value"))
+            .execute()
+        )
+
+        # Should find maximum from properties
+        assert result["pending"]["max_val"] == 100
+
+
+class TestOrderByEdgeCases:
+    """Test edge cases in order_by functionality."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager with data for sorting tests."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        # Create tasks with different timestamps
+        t1 = manager.create_task("T1", status="pending", priority="high")
+        t1.properties['score'] = 30
+        manager.update_task(t1.id, properties=t1.properties)
+
+        t2 = manager.create_task("T2", status="pending", priority="low")
+        t2.properties['score'] = 10
+        manager.update_task(t2.id, properties=t2.properties)
+
+        t3 = manager.create_task("T3", status="completed", priority="high")
+        t3.properties['score'] = 20
+        manager.update_task(t3.id, properties=t3.properties)
+
+        return manager
+
+    def test_order_by_multiple_fields(self, manager):
+        """order_by() with multiple fields."""
+        from cortical.got.query_builder import Query
+
+        results = (
+            Query(manager)
+            .tasks()
+            .order_by("priority")
+            .order_by("score")
+            .execute()
+        )
+
+        # Should sort by priority first, then score
+        assert len(results) == 3
+
+    def test_order_by_priority_special_handling(self, manager):
+        """order_by() handles priority field specially."""
+        from cortical.got.query_builder import Query
+
+        results = (
+            Query(manager)
+            .tasks()
+            .order_by("priority")
+            .execute()
+        )
+
+        # Priority should be ordered: critical, high, medium, low
+        priorities = [r.priority for r in results]
+        # high should come before low
+        high_idx = next(i for i, p in enumerate(priorities) if p == "high")
+        low_idx = next(i for i, p in enumerate(priorities) if p == "low")
+        assert high_idx < low_idx
+
+    def test_order_by_empty_list(self, manager):
+        """order_by() with no clauses returns unsorted."""
+        from cortical.got.query_builder import Query
+
+        query = Query(manager).tasks()
+        results = list(query._execute_query())
+
+        # _apply_sorting with empty order_by should return as-is
+        sorted_results = query._apply_sorting(results)
+        assert sorted_results == results
+
+
+class TestGroupByEdgeCases:
+    """Test edge cases in group_by functionality."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager for grouping tests."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        t1 = manager.create_task("T1", status="pending", priority="high")
+        t1.properties['category'] = 'feature'
+        manager.update_task(t1.id, properties=t1.properties)
+
+        t2 = manager.create_task("T2", status="pending", priority="low")
+        t2.properties['category'] = 'bugfix'
+        manager.update_task(t2.id, properties=t2.properties)
+
+        return manager
+
+    def test_group_by_with_properties_access(self, manager):
+        """group_by() accesses entity.properties when needed."""
+        from cortical.got.query_builder import Query
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("category")
+            .count()
+            .execute()
+        )
+
+        # Should group by category from properties
+        assert result.get('feature') == 1
+        assert result.get('bugfix') == 1
+
+    def test_group_by_multiple_with_properties(self, manager):
+        """group_by() multiple fields accessing properties."""
+        from cortical.got.query_builder import Query
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status", "category")
+            .count()
+            .execute()
+        )
+
+        # Keys should be tuples with values from properties
+        assert result.get(('pending', 'feature')) == 1
+
+
+class TestIterEdgeCases:
+    """Test edge cases in iter() method."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager for iteration tests."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        for i in range(5):
+            manager.create_task(f"T{i}", status="pending")
+
+        return manager
+
+    def test_iter_with_limit_stops_early(self, manager):
+        """iter() stops at limit without processing all."""
+        from cortical.got.query_builder import Query
+
+        count = 0
+        for task in Query(manager).tasks().limit(2).iter():
+            count += 1
+
+        assert count == 2
+
+    def test_iter_with_offset_skips_correctly(self, manager):
+        """iter() skips offset items correctly."""
+        from cortical.got.query_builder import Query
+
+        all_tasks = Query(manager).tasks().execute()
+        offset_tasks = list(Query(manager).tasks().offset(2).iter())
+
+        assert len(offset_tasks) == len(all_tasks) - 2
+
+
+class TestMetricsEdgeCases:
+    """Test QueryMetrics edge cases."""
+
+    def test_metrics_avg_entities_per_query(self, tmp_path):
+        """get_stats() calculates avg_entities_per_query."""
+        from cortical.got.query_builder import Query, QueryMetrics
+
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        for i in range(10):
+            manager.create_task(f"T{i}", status="pending")
+
+        metrics = QueryMetrics(enabled=True)
+
+        # Run multiple queries
+        Query(manager, metrics=metrics).tasks().limit(5).execute()
+        Query(manager, metrics=metrics).tasks().limit(3).execute()
+
+        stats = metrics.get_stats()
+        assert stats['avg_entities_per_query'] == 4.0  # (5 + 3) / 2
+
+
+class TestExecuteEdgeCases:
+    """Test execute() method edge cases."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager for execution tests."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        t1 = manager.create_task("T1", status="pending", priority="high")
+        t2 = manager.create_task("T2", status="pending", priority="low")
+        t3 = manager.create_task("T3", status="completed", priority="high")
+
+        return manager
+
+    def test_execute_with_count_mode_and_group_by(self, manager):
+        """execute() in count mode with group_by returns counts dict."""
+        from cortical.got.query_builder import Query
+
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status")
+            .count()
+            .execute()
+        )
+
+        assert isinstance(result, dict)
+        assert result["pending"] == 2
+        assert result["completed"] == 1
+
+    def test_execute_aggregation_without_aggregates(self, manager):
+        """execute() with group_by but no aggregates returns counts."""
+        from cortical.got.query_builder import Query
+
+        # This tests the _execute_aggregation branch where _aggregates is empty
+        result = (
+            Query(manager)
+            .tasks()
+            .group_by("status")
+            .count()
+            .execute()
+        )
+
+        assert result["pending"] == 2
+
+
+class TestModuleLevelFunctions:
+    """Test module-level query metrics functions."""
+
+    def test_enable_disable_query_metrics(self):
+        """enable/disable_query_metrics toggle module-level metrics."""
+        from cortical.got.query_builder import (
+            get_query_metrics,
+            enable_query_metrics,
+            disable_query_metrics
+        )
+
+        metrics = get_query_metrics()
+
+        # Initially disabled
+        assert metrics.enabled is False
+
+        # Enable
+        enable_query_metrics()
+        assert metrics.enabled is True
+
+        # Disable
+        disable_query_metrics()
+        assert metrics.enabled is False
+
+
+class TestUnknownEntityType:
+    """Test handling of unknown entity types."""
+
+    def test_get_base_entities_unknown_type(self, tmp_path):
+        """_get_base_entities() returns empty list for unknown type."""
+        from cortical.got.query_builder import Query
+
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        query = Query(manager)
+        # Don't set entity type - should be None
+
+        entities = query._get_base_entities()
+        assert entities == []
+
+
+class TestConnectedToEdgeTypeFiltering:
+    """Test _get_connected_ids() edge type filtering."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager with multiple edge types."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        t1 = manager.create_task("T1", status="pending")
+        t2 = manager.create_task("T2", status="pending")
+        t3 = manager.create_task("T3", status="completed")
+
+        # Different edge types
+        manager.add_edge(t1.id, t2.id, "DEPENDS_ON")
+        manager.add_edge(t1.id, t3.id, "BLOCKS")
+
+        self.t1 = t1
+        self.t2 = t2
+        self.t3 = t3
+
+        return manager
+
+    def test_connected_to_filters_by_edge_type(self, manager):
+        """connected_to() with via filters by edge type."""
+        from cortical.got.query_builder import Query
+
+        # Find tasks connected via DEPENDS_ON only
+        results = (
+            Query(manager)
+            .tasks()
+            .connected_to(self.t1.id, via="DEPENDS_ON", direction="outgoing")
+            .execute()
+        )
+
+        # Should find t2 but not t3
+        result_ids = [r.id for r in results]
+        assert self.t2.id in result_ids
+        assert self.t3.id not in result_ids
+
+    def test_connected_to_without_edge_type_filter(self, manager):
+        """connected_to() without via includes all edge types."""
+        from cortical.got.query_builder import Query
+
+        # Find all tasks connected from t1
+        results = (
+            Query(manager)
+            .tasks()
+            .connected_to(self.t1.id, direction="outgoing")
+            .execute()
+        )
+
+        # Should find both t2 and t3
+        result_ids = [r.id for r in results]
+        assert self.t2.id in result_ids
+        assert self.t3.id in result_ids
+
+
+class TestMatchesFiltersEdgeCases:
+    """Test _matches_filters() edge cases."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager for filter tests."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        t1 = manager.create_task("T1", status="pending", priority="high")
+        t2 = manager.create_task("T2", status="completed", priority="low")
+
+        self.t1 = t1
+        self.t2 = t2
+
+        return manager
+
+    def test_matches_filters_only_or_groups(self, manager):
+        """_matches_filters() with only OR groups."""
+        from cortical.got.query_builder import Query
+
+        # Create query with only OR groups (no WHERE clauses)
+        results = (
+            Query(manager)
+            .tasks()
+            .or_where(status="pending")
+            .or_where(status="completed")
+            .execute()
+        )
+
+        # Should match all tasks
+        assert len(results) == 2
