@@ -322,6 +322,30 @@ from .prism_slm import (
 )
 
 # =============================================================================
+# PRISM-PLN: Probabilistic Logic Networks with Synaptic Learning
+# =============================================================================
+
+from .prism_pln import (
+    # Truth values
+    TruthValue,
+    SynapticTruthValue,
+    # Logical operations
+    pln_not,
+    pln_and,
+    pln_or,
+    pln_implication,
+    # Inference rules
+    deduce,
+    induce,
+    abduce,
+    # Knowledge structures
+    Atom,
+    ImplicationLink,
+    PLNGraph,
+    PLNReasoner,
+)
+
+# =============================================================================
 # PUBLIC API
 # =============================================================================
 
@@ -479,4 +503,19 @@ __all__ = [
     'ContextWindow',
     'TransitionGraph',
     'PRISMLanguageModel',
+
+    # === PRISM-PLN: Probabilistic Logic Networks ===
+    'TruthValue',
+    'SynapticTruthValue',
+    'pln_not',
+    'pln_and',
+    'pln_or',
+    'pln_implication',
+    'deduce',
+    'induce',
+    'abduce',
+    'Atom',
+    'ImplicationLink',
+    'PLNGraph',
+    'PLNReasoner',
 ]
