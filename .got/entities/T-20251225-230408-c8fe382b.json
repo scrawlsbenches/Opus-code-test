@@ -1,22 +1,23 @@
 {
-  "_checksum": "bf89509190b82b0d",
-  "_written_at": "2025-12-25T23:54:04.939132+00:00",
+  "_checksum": "8bbd8f5e8727a658",
+  "_written_at": "2025-12-25T23:56:20.576697+00:00",
   "data": {
     "created_at": "2025-12-25T23:04:08.348599+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20251225-230408-c8fe382b",
     "metadata": {
+      "completed_at": "2025-12-25T23:56:20.568046+00:00",
       "started_at": "2025-12-25T23:54:04.931494+00:00",
-      "updated_at": "2025-12-25T23:54:04.931496+00:00"
+      "updated_at": "2025-12-25T23:56:20.568056+00:00"
     },
-    "modified_at": "2025-12-25T23:54:04.939089+00:00",
+    "modified_at": "2025-12-25T23:56:20.576646+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Design Loom interface contract",
-    "version": 4
+    "version": 6
   }
 }
