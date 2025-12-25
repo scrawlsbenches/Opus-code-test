@@ -309,6 +309,19 @@ from .prism_got import (
 )
 
 # =============================================================================
+# PRISM-SLM: Statistical Language Model with Synaptic Learning
+# =============================================================================
+
+from .prism_slm import (
+    # Core data structures
+    SynapticTransition,
+    ContextWindow,
+    TransitionGraph,
+    # Language model
+    PRISMLanguageModel,
+)
+
+# =============================================================================
 # PUBLIC API
 # =============================================================================
 
@@ -460,4 +473,10 @@ __all__ = [
     'PlasticityRules',
     'SynapticMemoryGraph',
     'IncrementalReasoner',
+
+    # === PRISM-SLM: Statistical Language Model ===
+    'SynapticTransition',
+    'ContextWindow',
+    'TransitionGraph',
+    'PRISMLanguageModel',
 ]
