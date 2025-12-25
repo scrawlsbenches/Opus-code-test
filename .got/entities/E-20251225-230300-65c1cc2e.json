@@ -1,0 +1,17 @@
+{
+  "_checksum": "98f7be461f8e7c8e",
+  "_written_at": "2025-12-25T23:03:00.745150+00:00",
+  "data": {
+    "created_at": "2025-12-25T23:03:00.737072+00:00",
+    "entity_type": "epic",
+    "id": "E-20251225-230300-65c1cc2e",
+    "metadata": {},
+    "modified_at": "2025-12-25T23:03:00.745081+00:00",
+    "phase": 1,
+    "phases": [],
+    "properties": {},
+    "status": "active",
+    "title": "EPIC-WOVEN: Woven Mind + PRISM Marriage",
+    "version": 2
+  }
+}
