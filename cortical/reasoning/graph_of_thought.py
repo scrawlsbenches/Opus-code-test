@@ -68,6 +68,11 @@ class NodeType(Enum):
     CONSTRAINT = "constraint"
     ACTION = "action"
 
+    # Semantic types for attention mechanisms
+    ENTITY = "entity"      # A named thing (person, character, organization)
+    LOCATION = "location"  # A place or setting
+    OBJECT = "object"      # A physical or abstract object
+
     def __repr__(self) -> str:
         """Return enum representation."""
         return f"NodeType.{self.name}"
@@ -150,6 +155,11 @@ class EdgeType(Enum):
     HAS_OPTION = "has_option"
     HAS_ASPECT = "has_aspect"
     PART_OF = "part_of"  # Entity belongs to sprint/epic
+
+    # Semantic role edges (for attention mechanisms)
+    LOCATED_IN = "located_in"  # Entity is at location
+    PERFORMS = "performs"      # Entity performs action
+    USES = "uses"              # Action uses object
 
     def __repr__(self) -> str:
         """Return enum representation."""

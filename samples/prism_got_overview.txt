@@ -1,0 +1,163 @@
+PRISM-GoT: Predictive Reasoning through Incremental Synaptic Memory Graph of Thought
+=====================================================================================
+
+Overview
+--------
+PRISM-GoT is a biologically-inspired reasoning framework that learns from
+experience. Unlike traditional graphs where edges have fixed weights, PRISM-GoT
+edges behave like synapses - they strengthen when used together and weaken
+when neglected.
+
+
+Core Principles
+---------------
+
+1. HEBBIAN LEARNING
+   "Neurons that fire together wire together"
+
+   When two thoughts are activated close in time, the connection between
+   them strengthens. If you repeatedly go from "authentication question"
+   to "JWT solution", that path becomes the preferred route.
+
+2. TEMPORAL DECAY
+   "Use it or lose it"
+
+   Connections that aren't used gradually fade. This prevents old, outdated
+   reasoning patterns from dominating. Fresh, recently-used paths stay strong.
+
+3. PREDICTION ACCURACY
+   "Track what works"
+
+   Each edge remembers how often it led to correct predictions. Edges with
+   high accuracy become more influential in future predictions.
+
+4. REWARD LEARNING
+   "Reinforce success"
+
+   When a reasoning path leads to a good outcome, all edges in that path
+   get strengthened. Failed paths get weakened.
+
+
+Example Scenario
+----------------
+
+Session 1: Developer asks "How should we handle authentication?"
+
+  Question: "How to handle auth?"
+      |
+      |--[explores, weight=0.5]--> Hypothesis: "Use JWT tokens"
+      |
+      |--[explores, weight=0.5]--> Hypothesis: "Use session cookies"
+
+  Developer chooses JWT. System applies reward to that path.
+
+  After reward:
+      |--[explores, weight=0.8]--> Hypothesis: "Use JWT tokens"  (strengthened)
+      |--[explores, weight=0.5]--> Hypothesis: "Use session cookies"
+
+
+Session 2: Same question asked again
+
+  Prediction: "Use JWT tokens" (probability=0.72)
+
+  The system has learned from experience that JWT is the preferred answer
+  for authentication questions in this codebase.
+
+
+Session 3: Weeks pass without asking about auth
+
+  After decay:
+      |--[explores, weight=0.65]--> Hypothesis: "Use JWT tokens"  (decayed)
+      |--[explores, weight=0.40]--> Hypothesis: "Use session cookies" (decayed more)
+
+  Both paths weakened, but JWT still leads because it was stronger.
+
+
+Key Components
+--------------
+
+SynapticEdge
+  An edge that tracks:
+  - weight: current connection strength
+  - activation_count: how often it's been traversed
+  - last_activation_time: when it was last used
+  - prediction_accuracy: success rate of predictions through this edge
+  - decay_factor: how quickly it weakens without use
+
+SynapticMemoryGraph
+  A graph where:
+  - Nodes have activation traces (history of when they fired)
+  - Edges are synaptic (they learn and decay)
+  - Co-activation triggers Hebbian strengthening
+  - Global decay can be applied periodically
+
+PlasticityRules
+  Learning algorithms:
+  - Hebbian: strengthen co-activated connections
+  - Anti-Hebbian: weaken unused connections
+  - Reward: adjust based on outcomes
+
+IncrementalReasoner
+  Orchestrator that:
+  - Processes thoughts one at a time
+  - Automatically links related content
+  - Makes predictions based on learned patterns
+  - Tracks successful/failed outcomes
+
+
+Simple Usage
+------------
+
+  from cortical.reasoning import (
+      SynapticMemoryGraph,
+      IncrementalReasoner,
+      NodeType,
+      EdgeType,
+  )
+
+  # Create graph and reasoner
+  graph = SynapticMemoryGraph()
+  reasoner = IncrementalReasoner(graph)
+
+  # Process thoughts incrementally
+  q1 = reasoner.process_thought(
+      "How do we handle caching?",
+      NodeType.QUESTION
+  )
+
+  h1 = reasoner.process_thought(
+      "Use Redis for distributed caching",
+      NodeType.HYPOTHESIS,
+      relation_to_focus=EdgeType.EXPLORES
+  )
+
+  # Mark as successful
+  reasoner.mark_outcome_success(path=[q1.id, h1.id])
+
+  # Later, get predictions
+  predictions = reasoner.predict_next(q1.id)
+  # Returns: Redis hypothesis with high probability
+
+
+Applications
+------------
+
+1. Learning user preferences over time
+2. Tracking which solutions work for which problems
+3. Predicting likely next steps in familiar workflows
+4. Adapting to team coding patterns
+5. Building institutional memory that improves with use
+
+
+The Biological Metaphor
+-----------------------
+
+In the brain, synapses between neurons strengthen when both neurons fire
+together (Long-Term Potentiation) and weaken when unused (synaptic pruning).
+This is how we learn - frequently used neural pathways become "highways"
+while unused ones fade.
+
+PRISM-GoT applies this same principle to reasoning graphs. Thoughts that
+frequently lead to good outcomes form strong connections. Abandoned
+approaches gradually disappear. The graph becomes a reflection of what
+actually works, learned through experience rather than programmed rules.

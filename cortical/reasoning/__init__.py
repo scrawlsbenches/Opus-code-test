@@ -291,6 +291,85 @@ from .thought_patterns import (
 )
 
 # =============================================================================
+# PRISM-GoT: Predictive Reasoning through Incremental Synaptic Memory
+# =============================================================================
+
+from .prism_got import (
+    # Core data structures
+    ActivationRecord,
+    ActivationTrace,
+    SynapticEdge,
+    PredictionResult,
+    # Learning rules
+    PlasticityRules,
+    # Graph with synaptic memory
+    SynapticMemoryGraph,
+    # Incremental reasoning
+    IncrementalReasoner,
+)
+
+# Convenient alias for PRISM systems
+PRISMGraph = SynapticMemoryGraph
+
+# =============================================================================
+# PRISM-SLM: Statistical Language Model with Synaptic Learning
+# =============================================================================
+
+from .prism_slm import (
+    # Core data structures
+    SynapticTransition,
+    ContextWindow,
+    TransitionGraph,
+    # Language model
+    PRISMLanguageModel,
+)
+
+# =============================================================================
+# PRISM-PLN: Probabilistic Logic Networks with Synaptic Learning
+# =============================================================================
+
+from .prism_pln import (
+    # Truth values
+    TruthValue,
+    SynapticTruthValue,
+    # Logical operations
+    pln_not,
+    pln_and,
+    pln_or,
+    pln_implication,
+    # Inference rules
+    deduce,
+    induce,
+    abduce,
+    # Knowledge structures
+    Atom,
+    ImplicationLink,
+    PLNGraph,
+    PLNReasoner,
+)
+
+# =============================================================================
+# PRISM-Attention: Selective Focus Mechanisms
+# =============================================================================
+
+from .prism_attention import (
+    # Core attention layers
+    AttentionLayer,
+    MultiHeadAttention,
+    SynapticAttention,
+    LearnableAttention,
+    TemporalAttention,
+    UnifiedAttention,
+    # PLN integration
+    AttentionGuidedReasoner,
+    # Visualization
+    AttentionVisualizer,
+    AttentionHeatmap,
+    # Result types
+    AttentionResult,
+)
+
+# =============================================================================
 # PUBLIC API
 # =============================================================================
 
@@ -433,4 +512,47 @@ __all__ = [
     'create_analysis_graph',
     'create_pattern_graph',
     'PATTERN_REGISTRY',
+
+    # === PRISM-GoT: Synaptic Memory Graph ===
+    'ActivationRecord',
+    'ActivationTrace',
+    'SynapticEdge',
+    'PredictionResult',
+    'PlasticityRules',
+    'SynapticMemoryGraph',
+    'PRISMGraph',  # Alias for SynapticMemoryGraph
+    'IncrementalReasoner',
+
+    # === PRISM-SLM: Statistical Language Model ===
+    'SynapticTransition',
+    'ContextWindow',
+    'TransitionGraph',
+    'PRISMLanguageModel',
+
+    # === PRISM-PLN: Probabilistic Logic Networks ===
+    'TruthValue',
+    'SynapticTruthValue',
+    'pln_not',
+    'pln_and',
+    'pln_or',
+    'pln_implication',
+    'deduce',
+    'induce',
+    'abduce',
+    'Atom',
+    'ImplicationLink',
+    'PLNGraph',
+    'PLNReasoner',
+
+    # === PRISM-Attention: Selective Focus ===
+    'AttentionLayer',
+    'MultiHeadAttention',
+    'SynapticAttention',
+    'LearnableAttention',
+    'TemporalAttention',
+    'UnifiedAttention',
+    'AttentionGuidedReasoner',
+    'AttentionVisualizer',
+    'AttentionHeatmap',
+    'AttentionResult',
 ]
