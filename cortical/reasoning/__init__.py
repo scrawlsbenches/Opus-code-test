@@ -308,6 +308,9 @@ from .prism_got import (
     IncrementalReasoner,
 )
 
+# Convenient alias for PRISM systems
+PRISMGraph = SynapticMemoryGraph
+
 # =============================================================================
 # PRISM-SLM: Statistical Language Model with Synaptic Learning
 # =============================================================================
@@ -343,6 +346,27 @@ from .prism_pln import (
     ImplicationLink,
     PLNGraph,
     PLNReasoner,
+)
+
+# =============================================================================
+# PRISM-Attention: Selective Focus Mechanisms
+# =============================================================================
+
+from .prism_attention import (
+    # Core attention layers
+    AttentionLayer,
+    MultiHeadAttention,
+    SynapticAttention,
+    LearnableAttention,
+    TemporalAttention,
+    UnifiedAttention,
+    # PLN integration
+    AttentionGuidedReasoner,
+    # Visualization
+    AttentionVisualizer,
+    AttentionHeatmap,
+    # Result types
+    AttentionResult,
 )
 
 # =============================================================================
@@ -496,6 +520,7 @@ __all__ = [
     'PredictionResult',
     'PlasticityRules',
     'SynapticMemoryGraph',
+    'PRISMGraph',  # Alias for SynapticMemoryGraph
     'IncrementalReasoner',
 
     # === PRISM-SLM: Statistical Language Model ===
@@ -518,4 +543,16 @@ __all__ = [
     'ImplicationLink',
     'PLNGraph',
     'PLNReasoner',
+
+    # === PRISM-Attention: Selective Focus ===
+    'AttentionLayer',
+    'MultiHeadAttention',
+    'SynapticAttention',
+    'LearnableAttention',
+    'TemporalAttention',
+    'UnifiedAttention',
+    'AttentionGuidedReasoner',
+    'AttentionVisualizer',
+    'AttentionHeatmap',
+    'AttentionResult',
 ]
