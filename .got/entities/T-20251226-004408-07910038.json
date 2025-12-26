@@ -1,0 +1,19 @@
+{
+  "_checksum": "00341e81844a8bfe",
+  "_written_at": "2025-12-26T00:44:08.006695+00:00",
+  "data": {
+    "created_at": "2025-12-26T00:44:08.000633+00:00",
+    "description": "Create HiveNode wrapper class that tracks activation traces. Depends on spreading_activation. Part of EPIC-HIVE Sprint 2.",
+    "entity_type": "task",
+    "id": "T-20251226-004408-07910038",
+    "metadata": {},
+    "modified_at": "2025-12-26T00:44:08.006616+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Create HiveNode wrapper with traces",
+    "version": 2
+  }
+}
