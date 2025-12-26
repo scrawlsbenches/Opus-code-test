@@ -21,6 +21,12 @@ Sprint 3 (Cortex Abstraction):
   - Hierarchical abstraction formation
   - Goal tracking with monotonic progress
 
+Sprint 4 (The Loom Weaves):
+  - LoomHiveConnector: FAST mode with PRISM-SLM + homeostasis
+  - LoomCortexConnector: SLOW mode with abstraction engine
+  - AttentionRouter: Mode-based routing
+  - WovenMind: Unified facade for the complete architecture
+
 Usage:
     python examples/woven_mind_demo.py
     python examples/woven_mind_demo.py --verbose
@@ -60,6 +66,14 @@ from cortical.reasoning import (
     Goal,
     GoalStatus,
     GoalPriority,
+    # Sprint 4: The Loom Weaves (Unified Architecture)
+    LoomHiveConnector,
+    LoomHiveConfig,
+    LoomCortexConnector,
+    LoomCortexConfig,
+    AttentionRouter,
+    WovenMind,
+    WovenMindConfig,
 )
 
 
@@ -446,6 +460,129 @@ def demo_goal_stack(verbose: bool = False):
     print(f"  Average progress: {stats['avg_progress']:.0%}")
 
 
+def demo_woven_mind_facade(corpus: list, verbose: bool = False):
+    """
+    Demonstrate Sprint 4: WovenMind Unified Facade.
+
+    Shows the complete dual-process architecture through the
+    WovenMind facade, integrating:
+    - LoomHiveConnector for FAST mode
+    - LoomCortexConnector for SLOW mode
+    - AttentionRouter for mode-based routing
+    - Surprise detection for automatic mode switching
+    """
+    print_header("SPRINT 4: WOVEN MIND - Unified Dual-Process Architecture")
+
+    # Create WovenMind with custom configuration
+    config = WovenMindConfig(
+        surprise_threshold=0.3,    # Switch to SLOW when surprise > 0.3
+        k_winners=5,               # Lateral inhibition winners
+        min_frequency=2,           # Abstractions form after 2 observations
+    )
+    mind = WovenMind(config=config)
+
+    print(f"\n  Created WovenMind with:")
+    print(f"    Surprise threshold: {config.surprise_threshold}")
+    print(f"    K-winners: {config.k_winners}")
+    print(f"    Min frequency: {config.min_frequency}")
+
+    # Train on corpus
+    print_subheader("Training the Hive (FAST Mode)")
+    training_text = " ".join([doc["content"] for doc in corpus[:5]])
+    mind.train(training_text)
+    print(f"  Trained on {len(training_text.split())} words from corpus")
+
+    # Demonstrate FAST mode processing
+    print_subheader("FAST Mode Processing (Pattern Matching)")
+
+    fast_queries = [
+        ["neural", "network"],
+        ["machine", "learning"],
+        ["deep", "learning"],
+    ]
+
+    for query in fast_queries:
+        result = mind.process(query, mode=ThinkingMode.FAST)
+        print(f"\n  Query: {query}")
+        print(f"    Mode: {result.mode.name}")
+        print(f"    Source: {result.source}")
+        print(f"    Activations: {sorted(list(result.activations))[:8]}")
+
+    # Demonstrate SLOW mode processing
+    print_subheader("SLOW Mode Processing (Abstraction)")
+
+    # Observe patterns to build abstractions
+    patterns = [
+        ["neural", "network"],
+        ["neural", "network"],
+        ["neural", "network"],
+        ["machine", "learning"],
+        ["machine", "learning"],
+    ]
+
+    for pattern in patterns:
+        result = mind.process(pattern, mode=ThinkingMode.SLOW)
+        if verbose:
+            print(f"  Observed: {pattern} -> {len(result.activations)} abstractions")
+
+    # Check formed abstractions
+    abstractions = mind.cortex.get_abstractions()
+    print(f"\n  Formed {len(abstractions)} abstraction(s):")
+    for abs in abstractions[:3]:
+        print(f"    - {abs.id}: {set(abs.source_nodes)} (freq={abs.frequency})")
+
+    # Demonstrate auto mode selection
+    print_subheader("Auto Mode Selection (Surprise-Based)")
+
+    # First, establish baseline with predictable input
+    mind.process(["neural"])
+
+    # Now process and let system decide
+    auto_queries = [
+        ["neural"],           # Expected - should stay FAST
+        ["quantum", "computer"],  # Novel - might trigger SLOW
+        ["neural"],           # Back to expected
+    ]
+
+    for query in auto_queries:
+        result = mind.process(query, mode=None)  # Auto mode
+        surprise_str = f", surprise={result.surprise.magnitude:.2f}" if result.surprise else ""
+        print(f"\n  Query: {query}")
+        print(f"    Auto-selected: {result.mode.name}{surprise_str}")
+
+    # Demonstrate dual-path comparison
+    print_subheader("Dual-Path Comparison")
+
+    context = ["pattern", "recognition"]
+    dual_result = mind.router.route_both(context)
+
+    print(f"\n  Context: {context}")
+    print(f"  FAST path: {sorted(list(dual_result.fast_result))[:5]}")
+    print(f"  SLOW path: {sorted(list(dual_result.slow_result))[:5]}")
+    if dual_result.surprise:
+        print(f"  Path divergence (surprise): {dual_result.surprise.magnitude:.2f}")
+    print(f"  Recommended mode: {dual_result.recommended_mode}")
+
+    # Show system statistics
+    print_subheader("System Statistics")
+    stats = mind.get_stats()
+
+    print(f"\n  Current Mode: {stats['mode']}")
+    print(f"  Surprise Baseline: {stats['loom']['surprise_baseline']:.3f}")
+    print(f"  Mode Transitions: {stats['loom']['transition_count']}")
+    print(f"  Hive Nodes Tracked: {stats['hive']['total_nodes_tracked']}")
+    print(f"  Cortex Observations: {stats['cortex']['total_observations']}")
+    print(f"  Cortex Abstractions: {stats['cortex']['total_abstractions']}")
+
+    # Demonstrate serialization
+    if verbose:
+        print_subheader("Serialization")
+        state = mind.to_dict()
+        print(f"  State keys: {list(state.keys())}")
+        restored = WovenMind.from_dict(state)
+        print(f"  Restored successfully: {restored is not None}")
+
+
 def demo_integrated_workflow(corpus: list, verbose: bool = False):
     """
     Demonstrate the full integrated cognitive workflow.
@@ -578,7 +715,7 @@ def main():
         help="Path to corpus directory (default: samples/)"
     )
     parser.add_argument(
-        "--section", type=str, choices=["loom", "hive", "abstraction", "goals", "all"],
+        "--section", type=str, choices=["loom", "hive", "abstraction", "goals", "wovenmind", "all"],
         default="all",
         help="Which section to run (default: all)"
     )
@@ -613,6 +750,9 @@ def main():
 
     if args.section in ["goals", "all"]:
         demo_goal_stack(args.verbose)
+
+    if args.section in ["wovenmind", "all"]:
+        demo_woven_mind_facade(corpus, args.verbose)
 
     if args.section == "all":
         demo_integrated_workflow(corpus, args.verbose)
