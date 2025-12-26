@@ -503,9 +503,9 @@ Layer 3 (DOCUMENTS) → Full documents          [IT analogy: objects]
 ```
 
 **Core algorithms:**
-- **PageRank** for term importance (`analysis.py`)
-- **TF-IDF** for document relevance (`analysis.py`)
-- **Louvain community detection** for concept clustering (`analysis.py`)
+- **PageRank** for term importance (`analysis/pagerank.py`)
+- **TF-IDF** for document relevance (`analysis/tfidf.py`)
+- **Louvain community detection** for concept clustering (`analysis/clustering.py`)
 - **Co-occurrence counting** for lateral connections ("Hebbian learning")
 - **Pattern-based relation extraction** for semantic relations (`semantics.py`)
 
@@ -755,7 +755,16 @@ cortical/
 │   ├── persistence.py # Atomic save utilities (atomic_save)
 │   └── text.py       # Text processing utilities (slugify)
 ├── wal.py            # Base WAL entry classes (BaseWALEntry, TransactionWALEntry)
-├── analysis.py       # Graph algorithms: PageRank, TF-IDF, clustering (1,123 lines)
+├── analysis/         # Graph algorithms package (3,014 lines total)
+│   ├── __init__.py   # Re-exports public API
+│   ├── pagerank.py   # PageRank importance scoring
+│   ├── tfidf.py      # TF-IDF term weighting
+│   ├── clustering.py # Louvain community detection
+│   ├── connections.py # Connection building
+│   ├── activation.py # Activation propagation
+│   ├── parallel.py   # Parallel computation
+│   ├── quality.py    # Quality metrics
+│   └── utils.py      # Shared utilities
 ├── semantics.py      # Relation extraction, inheritance, retrofitting (915 lines)
 ├── persistence.py    # Save/load with full state preservation (606 lines)
 ├── chunk_index.py    # Git-friendly chunk-based storage (574 lines)
@@ -770,7 +779,7 @@ cortical/
 └── embeddings.py     # Graph embeddings (adjacency, spectral, random walk) (209 lines)
 ```
 
-**Total:** ~11,100 lines of core library code
+**Total:** ~13,000 lines of core library code
 
 **For detailed architecture documentation**, see [docs/architecture.md](docs/architecture.md), which includes:
 - Complete module dependency graphs (ASCII + Mermaid)
@@ -789,7 +798,7 @@ cortical/
 | Add introspection | `processor/introspection.py` - fingerprints, gaps, summaries |
 | Modify persistence | `processor/persistence_api.py` - save/load/export |
 | Implement search/retrieval | `query/` - all search functions (8 modules) |
-| Add graph algorithms | `analysis.py` - PageRank, TF-IDF, clustering |
+| Add graph algorithms | `analysis/` - PageRank, TF-IDF, clustering |
 | Add semantic relations | `semantics.py` - pattern extraction, retrofitting |
 | Modify data structures | `minicolumn.py` - Minicolumn, Edge classes |
 | Change layer behavior | `layers.py` - HierarchicalLayer class |
@@ -855,23 +864,23 @@ tests/
 | `tests/regression/` | Bug-specific tests | After fixing a bug |
 | `tests/behavioral/` | User workflow quality | Search relevance, quality metrics |
 
-**Legacy Test Files** (still maintained for coverage):
+**Unit Test Files** (organized in `tests/unit/`):
 
 | When testing... | Add tests to... |
 |-----------------|-----------------|
-| Processor methods | `tests/test_processor.py` (most comprehensive) |
-| Query functions | `tests/test_query.py` |
-| Analysis algorithms | `tests/test_analysis.py` |
-| Semantic extraction | `tests/test_semantics.py` |
-| Persistence/save/load | `tests/test_persistence.py` |
-| Tokenization | `tests/test_tokenizer.py` |
-| Configuration | `tests/test_config.py` |
-| Layers | `tests/test_layers.py` |
-| Embeddings | `tests/test_embeddings.py` |
-| Gap detection | `tests/test_gaps.py` |
-| Fingerprinting | `tests/test_fingerprint.py` |
-| Code concepts | `tests/test_code_concepts.py` |
-| Chunk indexing | `tests/test_chunk_indexing.py` |
+| Processor methods | `tests/unit/test_processor_*.py` (split by concern) |
+| Query functions | `tests/unit/test_query.py` |
+| Analysis algorithms | `tests/unit/test_analysis_*.py` |
+| Semantic extraction | `tests/unit/test_semantics.py` |
+| Persistence/save/load | `tests/unit/test_persistence.py` |
+| Tokenization | `tests/unit/test_tokenizer.py` |
+| Configuration | `tests/unit/test_config.py` |
+| Layers | `tests/unit/test_layers.py` |
+| Embeddings | `tests/unit/test_embeddings.py` |
+| Gap detection | `tests/unit/test_gaps.py` |
+| Fingerprinting | `tests/unit/test_fingerprint.py` |
+| Code concepts | `tests/unit/test_code_concepts.py` |
+| Chunk indexing | `tests/unit/test_chunk_index.py` |
 | Incremental updates | `tests/test_incremental_indexing.py` |
 | Intent queries | `tests/unit/test_query.py` |
 
@@ -1635,7 +1644,7 @@ from cortical.utils.id_generation import generate_task_id
 
 ### Adding a New Analysis Function
 
-1. Add function to `analysis.py` with proper signature:
+1. Add function to the `analysis/` package (appropriate module):
    ```python
    def compute_your_analysis(
        layers: Dict[CorticalLayer, HierarchicalLayer],
@@ -1654,7 +1663,7 @@ from cortical.utils.id_generation import generate_task_id
        return compute_your_analysis(self.layers, **kwargs)
    ```
 
-3. Add tests in `tests/test_analysis.py`
+3. Add tests in `tests/unit/test_analysis_*.py`
 
 ### Adding a New Query Function
 
@@ -1662,7 +1671,7 @@ from cortical.utils.id_generation import generate_task_id
 2. Use `get_expanded_query_terms()` helper for query expansion
 3. Use `layer.get_by_id()` for O(1) lookups, not iteration
 4. Add wrapper to the `processor/` package (likely `processor/query_api.py`)
-5. Add tests in `tests/test_processor.py`
+5. Add tests in `tests/unit/test_query*.py` or `tests/unit/test_processor*.py`
 
 ### Modifying Minicolumn Structure
 
@@ -2573,11 +2582,11 @@ See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
 ## File Quick Links
 
 - **Main API**: `cortical/processor/` - `CorticalTextProcessor` class (split into mixins)
-- **Graph algorithms**: `cortical/analysis.py` - PageRank, TF-IDF, clustering
+- **Graph algorithms**: `cortical/analysis/` - PageRank, TF-IDF, clustering (package)
 - **Search**: `cortical/query/` - query expansion, document retrieval (split into 8 modules)
 - **Data structures**: `cortical/minicolumn.py` - `Minicolumn`, `Edge`
 - **Configuration**: `cortical/config.py` - `CorticalConfig` dataclass
-- **Tests**: `tests/test_processor.py` - most comprehensive test file
+- **Tests**: `tests/unit/test_processor_*.py` - processor tests (split by concern)
 - **Demo**: `showcase.py` - interactive demonstration
 
 **Process Documentation:**
