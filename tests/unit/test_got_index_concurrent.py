@@ -8,15 +8,10 @@ correctly, including:
 - Parallel task deletions
 - Mixed concurrent operations
 
-NOTE: These tests are currently SKIPPED due to a known race condition
-in VersionedStore._version.tmp handling. The race condition causes
-"No such file or directory" errors when multiple transactions
-try to update the version file simultaneously.
-
-See: docs/analysis-got-merge-conflicts.md for details on the issue.
-Once the race condition is fixed, remove the skip markers.
-
-Task: T-20251226-112810-f4d8650c
+The race condition in VersionedStore._version.tmp has been fixed by
+adding ProcessLock around version file operations. See:
+- cortical/got/versioned_store.py: _save_version() now uses _version_lock
+- Task: T-20251226-132353-68a469de (Fix VersionedStore race condition)
 """
 
 import json
@@ -32,10 +27,6 @@ from cortical.got.indexer import QueryIndexManager
 from cortical.got.config import DurabilityMode
 
 
-RACE_CONDITION_REASON = (
-    "Known race condition in VersionedStore._version.tmp - "
-    "see Task T-20251226-112810-f4d8650c and docs/analysis-got-merge-conflicts.md"
-)
 
 
 class TestConcurrentTaskCreation:
@@ -47,7 +38,6 @@ class TestConcurrentTaskCreation:
         with tempfile.TemporaryDirectory() as tmp:
             yield Path(tmp)
 
-    @pytest.mark.skip(reason=RACE_CONDITION_REASON)
     def test_parallel_task_creation_all_indexed(self, got_dir):
         """All tasks created in parallel should be indexed."""
         manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
@@ -85,7 +75,6 @@ class TestConcurrentTaskCreation:
             status_ids = index.lookup("status", status)
             assert task_id in status_ids, f"Task {task_id} not found in {status} index"
 
-    @pytest.mark.skip(reason=RACE_CONDITION_REASON)
     def test_parallel_task_creation_index_counts_match(self, got_dir):
         """Index counts should match number of tasks created."""
         manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
@@ -126,7 +115,6 @@ class TestConcurrentTaskUpdates:
         with tempfile.TemporaryDirectory() as tmp:
             yield Path(tmp)
 
-    @pytest.mark.skip(reason=RACE_CONDITION_REASON)
     def test_parallel_status_updates_indexed_correctly(self, got_dir):
         """Index should reflect final status after parallel updates."""
         manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
@@ -165,7 +153,6 @@ class TestConcurrentTaskUpdates:
         for task in tasks:
             assert task.id in completed_ids
 
-    @pytest.mark.skip(reason=RACE_CONDITION_REASON)
     def test_rapid_status_toggles(self, got_dir):
         """Index should handle rapid status changes on same task."""
         manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
@@ -210,7 +197,6 @@ class TestConcurrentMixedOperations:
         with tempfile.TemporaryDirectory() as tmp:
             yield Path(tmp)
 
-    @pytest.mark.skip(reason=RACE_CONDITION_REASON)
     def test_create_update_delete_in_parallel(self, got_dir):
         """Index should handle create, update, delete all in parallel."""
         manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
@@ -304,7 +290,6 @@ class TestIndexThreadSafety:
         with tempfile.TemporaryDirectory() as tmp:
             yield Path(tmp)
 
-    @pytest.mark.skip(reason=RACE_CONDITION_REASON)
     def test_parallel_index_reads_during_writes(self, got_dir):
         """Index reads should be consistent during concurrent writes."""
         manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
