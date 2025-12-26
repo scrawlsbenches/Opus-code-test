@@ -1,19 +1,22 @@
 {
-  "_checksum": "693686f5cdfbb844",
-  "_written_at": "2025-12-26T00:44:01.900994+00:00",
+  "_checksum": "24ad06576aaf3156",
+  "_written_at": "2025-12-26T00:55:49.857025+00:00",
   "data": {
     "created_at": "2025-12-26T00:44:01.895104+00:00",
     "description": "Implement spreading activation for associative retrieval in PRISM-SLM. Depends on lateral_inhibition. Part of EPIC-HIVE Sprint 2.",
     "entity_type": "task",
     "id": "T-20251226-004401-d72e18d9",
-    "metadata": {},
-    "modified_at": "2025-12-26T00:44:01.900934+00:00",
+    "metadata": {
+      "completed_at": "2025-12-26T00:55:49.846005+00:00",
+      "updated_at": "2025-12-26T00:55:49.846019+00:00"
+    },
+    "modified_at": "2025-12-26T00:55:49.856971+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Add spreading_activation() method",
-    "version": 2
+    "version": 4
   }
 }
