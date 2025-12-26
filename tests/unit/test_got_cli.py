@@ -44,6 +44,7 @@ from got_utils import (
     cmd_handoff_initiate,
     cmd_handoff_accept,
     cmd_handoff_complete,
+    cmd_handoff_reject,
     cmd_handoff_list,
     cmd_query,
     cmd_infer,
@@ -119,8 +120,13 @@ def mock_manager(temp_got_dir):
 
 @pytest.fixture
 def mock_args():
-    """Create a mock args object for argparse."""
+    """Create a mock args object for argparse.
+
+    Sets common optional arguments to None to avoid Mock comparison issues.
+    """
     args = Mock()
+    # Set common optional arguments to None (avoid Mock comparison issues)
+    args.limit = None
     return args
 
 
@@ -788,10 +794,14 @@ class TestDecisionList:
             result = cmd_decision_list(mock_args, mock_manager)
 
         assert result == 0
-        assert "No decisions" in captured.getvalue()
+        # CLI module outputs "Decisions (0):" for empty list
+        output = captured.getvalue()
+        assert "Decisions" in output or "No decisions" in output
 
     def test_list_decisions_with_data(self, mock_manager, mock_args):
         """List decisions when they exist."""
+        mock_args.limit = None  # CLI checks for limit attribute
+
         decision1 = Mock()
         decision1.id = "decision:D-001"
         decision1.content = "Use microservices"
@@ -805,7 +815,8 @@ class TestDecisionList:
         decision2.content = "Use TypeScript"
         decision2.properties = {"rationale": "Type safety"}
 
-        mock_manager.get_decisions.return_value = [decision1, decision2]
+        # CLI module checks list_decisions first
+        mock_manager.list_decisions.return_value = [decision1, decision2]
 
         with patch('sys.stdout', new=StringIO()) as captured:
             result = cmd_decision_list(mock_args, mock_manager)
@@ -1004,6 +1015,65 @@ class TestHandoffComplete:
 
         assert result == 1
         assert "Failed" in captured.getvalue()
+
+
+class TestHandoffReject:
+    """Tests for handoff reject command."""
+
+    def test_reject_handoff(self, mock_manager, mock_args):
+        """Reject a handoff."""
+        mock_args.handoff_id = "handoff:H-001"
+        mock_args.agent = "cleanup-agent"
+        mock_args.reason = "Task already completed"
+
+        mock_manager.reject_handoff.return_value = True
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_reject(mock_args, mock_manager)
+
+        assert result == 0
+        output = captured.getvalue()
+        assert "H-001" in output
+        assert "cleanup-agent" in output
+        assert "Task already completed" in output
+        mock_manager.reject_handoff.assert_called_once_with(
+            handoff_id="handoff:H-001",
+            agent="cleanup-agent",
+            reason="Task already completed"
+        )
+
+    def test_reject_handoff_failure(self, mock_manager, mock_args):
+        """Reject handoff returns error on failure."""
+        mock_args.handoff_id = "handoff:H-NONEXISTENT"
+        mock_args.agent = "cleanup-agent"
+        mock_args.reason = "Invalid handoff"
+
+        mock_manager.reject_handoff.return_value = False
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_reject(mock_args, mock_manager)
+
+        assert result == 1
+        assert "Failed" in captured.getvalue()
+
+    def test_reject_handoff_with_stdin(self, mock_manager, mock_args):
+        """Reject handoff with reason from stdin."""
+        mock_args.handoff_id = "handoff:H-001"
+        mock_args.agent = "cleanup-agent"
+        mock_args.reason = "-"
+
+        mock_manager.reject_handoff.return_value = True
+
+        with patch('sys.stdin', StringIO("Reason from stdin")):
+            with patch('sys.stdout', new=StringIO()) as captured:
+                result = cmd_handoff_reject(mock_args, mock_manager)
+
+        assert result == 0
+        mock_manager.reject_handoff.assert_called_once_with(
+            handoff_id="handoff:H-001",
+            agent="cleanup-agent",
+            reason="Reason from stdin"
+        )
 
 
 class TestHandoffList:
@@ -1293,10 +1363,13 @@ class TestSprintStatus:
         mock_manager.list_sprints.return_value = [sprint]
         mock_manager.get_sprint_progress.return_value = {
             "total_tasks": 10,
-            "completed_tasks": 6,
-            "in_progress_tasks": 3,
-            "blocked_tasks": 1,
-            "progress_percent": 60.0
+            "completed": 6,
+            "progress_percent": 60.0,
+            "by_status": {
+                "completed": 6,
+                "in_progress": 3,
+                "blocked": 1,
+            }
         }
 
         with patch('got_utils.format_sprint_status', return_value="Sprint Status"):

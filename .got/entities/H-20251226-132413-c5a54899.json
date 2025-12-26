@@ -1,6 +1,6 @@
 {
-  "_checksum": "8aa1686e9bbed88c",
-  "_written_at": "2025-12-26T13:24:13.283212+00:00",
+  "_checksum": "4808ba53de1c68b3",
+  "_written_at": "2025-12-26T18:08:02.434327+00:00",
   "data": {
     "accepted_at": "",
     "artifacts": [],
@@ -15,15 +15,15 @@
     "id": "H-20251226-132413-c5a54899",
     "initiated_at": "2025-12-26T13:24:13.279009+00:00",
     "instructions": "## Session jrLBX Complete - Handoff Ready\n\n### Summary\nCompleted 6 high-priority tasks focused on GoT index integration and crash recovery:\n1. \u2705 QueryIndexManager integrated with GoT transactions\n2. \u2705 Index recovery added to RecoveryManager\n3. \u2705 Concurrent access tests added (skipped due to race condition)\n4. \u2705 Error recovery tests added\n5. \u2705 Merge conflict root cause analysis completed\n6. \u2705 Timestamp-based sprint IDs investigated\n\n### Test Status\n- 344 GoT tests passing\n- 7 tests skipped (concurrent tests blocked by race condition)\n\n### High Priority for Next Session\n1. **T-20251226-132353-68a469de: Fix VersionedStore race condition**\n   - Location: cortical/got/versioned_store.py\n   - Problem: _version.tmp atomic rename races with concurrent processes\n   - Fix: Add ProcessLock around version file operations\n   - Impact: Will enable 7 skipped concurrent tests\n\n2. **Implement merge conflict fix (Option 3)**\n   - Remove timestamps from entity files\n   - Keep operational data in WAL only\n   - See: docs/analysis-got-merge-conflicts.md\n\n### Knowledge Transfer\nRead: samples/memories/2025-12-26-session-knowledge-transfer-index-integration.md\n\n### Key Files Changed\n- cortical/got/api.py - index_manager property, transaction tracking\n- cortical/got/recovery.py - needs_index_recovery(), rebuild_indexes()\n- tests/unit/test_got_index_*.py - 22 new tests\n\n### Decisions Made\n- D-20251226-130828: Merge conflicts caused by operational timestamps\n- D-20251226-131002: Keep sequential sprint IDs",
-    "modified_at": "2025-12-26T13:24:13.283133+00:00",
+    "modified_at": "2025-12-26T18:08:02.434268+00:00",
     "properties": {},
-    "reject_reason": "",
-    "rejected_at": "",
+    "reject_reason": "Superseded by more recent handoff H-20251226-172602-c6e8201c for same task",
+    "rejected_at": "2025-12-26T18:08:02.430017+00:00",
     "result": {},
     "source_agent": "main",
-    "status": "initiated",
+    "status": "rejected",
     "target_agent": "next-agent",
     "task_id": "T-20251226-132353-68a469de",
-    "version": 2
+    "version": 4
   }
 }

@@ -1,0 +1,22 @@
+{
+  "_checksum": "204964dbc94a0d0d",
+  "_written_at": "2025-12-26T18:52:38.171544+00:00",
+  "data": {
+    "created_at": "2025-12-26T18:52:26.387445+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251226-185226-c6b19432",
+    "metadata": {
+      "started_at": "2025-12-26T18:52:38.164363+00:00",
+      "updated_at": "2025-12-26T18:52:38.164369+00:00"
+    },
+    "modified_at": "2025-12-26T18:52:38.171499+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "in_progress",
+    "title": "CLI Handler Consolidation & Handoff Reject Command",
+    "version": 4
+  }
+}
