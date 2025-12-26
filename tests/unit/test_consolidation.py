@@ -464,6 +464,7 @@ class TestConsolidationScheduler:
         # Thread should have stopped (stop_scheduler sets it to None)
         assert engine._scheduler_thread is None or not engine._scheduler_thread.is_alive()
 
+    @pytest.mark.slow
     def test_scheduler_runs_consolidation(self, hive, cortex):
         """Scheduler runs consolidation at intervals."""
         config = ConsolidationConfig(schedule_interval_seconds=1)

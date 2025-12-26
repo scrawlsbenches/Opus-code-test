@@ -137,6 +137,7 @@ class TestProcessLockTimeout:
             # Should have been called exactly once
             assert lock._try_acquire_once.call_count == 1
 
+    @pytest.mark.slow
     def test_exponential_backoff(self, tmp_path):
         """Test that retries use exponential backoff."""
         lock_path = tmp_path / "test.lock"

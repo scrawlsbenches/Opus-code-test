@@ -321,31 +321,12 @@ class TestRewardLearning:
 
 
 class TestIntegration:
-    """Integration tests with corpus."""
+    """Integration tests with corpus.
 
-    def test_train_on_corpus_files(self):
-        """Model can train on corpus files."""
-        from pathlib import Path
-        from cortical.reasoning.prism_slm import PRISMLanguageModel
-
-        model = PRISMLanguageModel(context_size=3)
-
-        samples_dir = Path(__file__).parent.parent.parent / "samples"
-        if samples_dir.exists():
-            count = 0
-            for f in samples_dir.glob("*.txt"):
-                try:
-                    text = f.read_text(encoding="utf-8")
-                    model.train(text)
-                    count += 1
-                except:
-                    pass
-
-            if count > 0:
-                assert model.vocab_size > 100
-                # Should be able to generate something
-                generated = model.generate(prompt="The", max_tokens=10)
-                assert len(generated) > 3
+    NOTE: test_train_on_corpus_files was moved to
+    tests/integration/test_prism_slm_integration.py because it
+    reads actual files from samples/ directory.
+    """
 
     def test_model_serialization(self):
         """Model can be saved and loaded."""

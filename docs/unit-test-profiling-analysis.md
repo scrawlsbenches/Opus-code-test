@@ -172,11 +172,25 @@ Moving/marking these tests would:
 
 ---
 
-## Next Steps
+## Completed Actions
 
-1. [ ] Move `TestQueryPerformance` to `tests/performance/`
-2. [ ] Move `test_train_on_corpus_files` to `tests/integration/`
-3. [ ] Move `TestMultiProcessSafety` to `tests/integration/`
-4. [ ] Add `@pytest.mark.slow` to timing-dependent tests
+1. [x] Move `TestQueryPerformance` to `tests/performance/test_got_query_perf.py`
+2. [x] Move `test_train_on_corpus_files` to `tests/integration/test_prism_slm_integration.py`
+3. [x] Move `TestMultiProcessSafety` to `tests/integration/test_process_lock_integration.py`
+4. [x] Add `@pytest.mark.slow` to timing-dependent tests:
+   - `test_scheduler_runs_consolidation`
+   - `test_commit_on_save_debounced_with_auto_push`
+   - `test_cleanup_cancels_timer`
+   - `test_valid_lock_not_removed`
+   - `test_exponential_backoff`
 5. [x] ~~Fix thread safety bugs in concurrent tests~~ (Fixed in main)
-6. [ ] Update `make test-fast` to exclude `slow` marker
+6. [x] Slow tests already excluded by default via `pyproject.toml` (`addopts = "-m 'not optional and not slow'"`)
+
+## Results After Changes
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Unit test time | 101.69s | 94.59s |
+| Tests deselected | 0 | 13 (slow + moved) |
+| Performance tests in unit/ | 3 | 0 |
+| Integration tests in unit/ | 2 | 0 |
