@@ -456,6 +456,14 @@ class TestEdgeCasesAndRegressions:
                 # already processed/deleted the file. This is expected behavior
                 # in concurrent recovery scenarios.
                 results.append(None)  # Mark as handled
+            except RuntimeError as e:
+                # RuntimeError from lock acquisition is expected - it means
+                # another thread holds the version lock. This is correct behavior
+                # as the lock prevents concurrent modifications.
+                if "Failed to acquire lock" in str(e):
+                    results.append(None)  # Mark as handled (lock contention)
+                else:
+                    errors.append(e)
             except Exception as e:
                 errors.append(e)
 
