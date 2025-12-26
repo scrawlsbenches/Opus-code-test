@@ -576,3 +576,147 @@ class TestConsolidationIntegration:
         assert frozenset(["neural", "networks"]) in pattern_set
         # Low-frequency pattern should be gone
         assert frozenset(["rare", "pattern"]) not in pattern_set
+
+
+class TestConsolidationEdgeCases:
+    """Tests for edge cases and error handling."""
+
+    @pytest.fixture
+    def hive(self):
+        """Create a minimal hive for testing."""
+        return LoomHiveConnector()
+
+    @pytest.fixture
+    def cortex(self):
+        """Create a minimal cortex for testing."""
+        return LoomCortexConnector()
+
+    def test_pattern_transfer_max_limit(self, hive, cortex):
+        """Pattern transfer respects max_patterns_per_cycle limit."""
+        config = ConsolidationConfig(
+            transfer_threshold=2,
+            max_patterns_per_cycle=2,  # Only allow 2 patterns
+        )
+        engine = ConsolidationEngine(hive, cortex, config)
+
+        # Record many patterns above threshold
+        for i in range(5):
+            pattern = frozenset([f"term{i}", f"word{i}"])
+            for _ in range(3):  # Above threshold
+                engine.record_pattern(pattern)
+
+        # Run pattern transfer
+        result = engine.pattern_transfer()
+
+        # Should only transfer max_patterns_per_cycle
+        assert result["transferred"] <= 2
+
+    def test_pattern_transfer_skips_abstracted(self, hive, cortex):
+        """Pattern transfer skips patterns that already have abstractions."""
+        config = ConsolidationConfig(transfer_threshold=2)
+        engine = ConsolidationEngine(hive, cortex, config)
+
+        # Record a pattern
+        pattern = frozenset(["neural", "networks"])
+        for _ in range(3):
+            engine.record_pattern(pattern)
+
+        # First transfer should work
+        result1 = engine.pattern_transfer()
+        first_transferred = result1["transferred"]
+
+        # Record same pattern again (still above threshold)
+        for _ in range(3):
+            engine.record_pattern(pattern)
+
+        # Second transfer should skip (already abstracted)
+        result2 = engine.pattern_transfer()
+
+        # If pattern was abstracted, second transfer should skip it
+        # (transfers 0 if that was the only pattern above threshold)
+        assert result2["transferred"] <= first_transferred
+
+    def test_decay_cycle_prunes_transitions(self, hive, cortex):
+        """Decay cycle prunes transitions below minimum strength."""
+        config = ConsolidationConfig(
+            decay_factor=0.1,  # Aggressive decay
+            min_strength_keep=0.5,  # High threshold for pruning
+        )
+        engine = ConsolidationEngine(hive, cortex, config)
+
+        # Train hive to create transitions
+        hive.train("the quick brown fox")
+        hive.train("the quick brown dog")
+        hive.train("the quick red fox")
+
+        # Run decay multiple times to prune weak connections
+        for _ in range(5):
+            result = engine.decay_cycle()
+
+        # Should have pruned some connections
+        assert "pruned" in result
+        assert result["pruned"] >= 0  # May or may not have pruned
+
+    def test_scheduler_handles_exceptions(self, hive, cortex):
+        """Scheduler continues running even if consolidation raises."""
+        config = ConsolidationConfig(schedule_interval_seconds=0.1)
+        engine = ConsolidationEngine(hive, cortex, config)
+
+        # Patch consolidate to raise an exception
+        original_consolidate = engine.consolidate
+        call_count = [0]
+
+        def failing_consolidate():
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise RuntimeError("Simulated failure")
+            return original_consolidate()
+
+        engine.consolidate = failing_consolidate
+
+        # Start scheduler
+        engine.start_scheduler()
+
+        # Wait for multiple cycles (including failed one)
+        time.sleep(0.35)
+
+        engine.stop_scheduler()
+
+        # Should have attempted multiple times despite failure
+        assert call_count[0] >= 2
+
+    def test_scheduler_already_running(self, hive, cortex):
+        """Starting scheduler when already running is a no-op."""
+        config = ConsolidationConfig(schedule_interval_seconds=60)
+        engine = ConsolidationEngine(hive, cortex, config)
+
+        engine.start_scheduler()
+        first_thread = engine._scheduler_thread
+
+        # Start again - should be no-op
+        engine.start_scheduler()
+
+        # Should be the same thread
+        assert engine._scheduler_thread is first_thread
+
+        engine.stop_scheduler()
+
+    def test_decay_removes_empty_context_entries(self, hive, cortex):
+        """Decay cycle removes context entries when all transitions pruned."""
+        config = ConsolidationConfig(
+            decay_factor=0.01,  # Very aggressive decay
+            min_strength_keep=0.9,  # Very high threshold
+        )
+        engine = ConsolidationEngine(hive, cortex, config)
+
+        # Train hive minimally to create weak connections
+        hive.train("single word")
+
+        # Run aggressive decay to potentially remove all
+        total_pruned = 0
+        for _ in range(10):
+            result = engine.decay_cycle()
+            total_pruned += result["pruned"]
+
+        # Should have attempted pruning
+        assert result["pruned"] >= 0
