@@ -1,22 +1,23 @@
 {
-  "_checksum": "ca6f6ebac317e8d0",
-  "_written_at": "2025-12-25T23:56:24.359280+00:00",
+  "_checksum": "a864b6f9a45c0a76",
+  "_written_at": "2025-12-26T00:01:52.643987+00:00",
   "data": {
     "created_at": "2025-12-25T23:04:20.453662+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20251225-230420-6ebf03e9",
     "metadata": {
+      "completed_at": "2025-12-26T00:01:52.634794+00:00",
       "started_at": "2025-12-25T23:56:24.349753+00:00",
-      "updated_at": "2025-12-25T23:56:24.349765+00:00"
+      "updated_at": "2025-12-26T00:01:52.634799+00:00"
     },
-    "modified_at": "2025-12-25T23:56:24.359235+00:00",
+    "modified_at": "2025-12-26T00:01:52.643940+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Implement ModeController class",
-    "version": 4
+    "version": 6
   }
 }
