@@ -406,6 +406,13 @@ from .loom_cortex import (
     LoomCortexConnector,
 )
 
+from .attention_router import (
+    AttentionRouterConfig,
+    RoutingResult,
+    DualRoutingResult,
+    AttentionRouter,
+)
+
 # =============================================================================
 # CORTEX ABSTRACTION: Hierarchical Pattern Abstraction (Sprint 3)
 # =============================================================================
@@ -684,6 +691,12 @@ __all__ = [
     # === Loom-Cortex Connector (Sprint 4) ===
     'LoomCortexConfig',
     'LoomCortexConnector',
+
+    # === Attention Router (Sprint 4) ===
+    'AttentionRouterConfig',
+    'RoutingResult',
+    'DualRoutingResult',
+    'AttentionRouter',
 
     # === Cortex Abstraction (Sprint 3) ===
     'Abstraction',
