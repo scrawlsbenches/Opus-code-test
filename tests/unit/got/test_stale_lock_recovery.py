@@ -67,6 +67,7 @@ class TestStaleLockRecovery:
         # Clean up
         lock.release()
 
+    @pytest.mark.slow
     def test_valid_lock_not_removed(self, lock_file):
         """Test that valid lock with live process PID is not removed."""
         # Create lock with current process PID

@@ -407,3 +407,70 @@ class TestCachePerformance:
         # After warm-up, hit rate should be at least 50%
         assert stats['hit_rate'] >= 0.5, \
             f"Hit rate {stats['hit_rate']:.1%} is below 50% threshold"
+
+
+# =============================================================================
+# QUERY BUILDER PERFORMANCE TESTS
+# =============================================================================
+# Moved from tests/unit/got/test_query_builder.py::TestQueryPerformance
+# These tests use 100-entity fixtures for performance validation.
+
+
+class TestQueryBuilderPerformance:
+    """Tests for query builder performance with large datasets.
+
+    Moved from unit tests because they create 100 tasks per test,
+    which is appropriate for performance testing but not unit testing.
+    """
+
+    @pytest.fixture
+    def large_manager(self, tmp_path):
+        """Create manager with larger dataset for perf testing."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+
+        # Create 100 tasks
+        for i in range(100):
+            status = ["pending", "completed", "in_progress"][i % 3]
+            priority = ["low", "medium", "high", "critical"][i % 4]
+            manager.create_task(f"Task {i}", status=status, priority=priority)
+
+        return manager
+
+    def test_query_with_index_hint(self, large_manager):
+        """Query can use index hints for optimization."""
+        # This should use status index if available
+        results = (
+            Query(large_manager)
+            .tasks()
+            .where(status="pending")
+            .use_index("status")
+            .execute()
+        )
+
+        assert len(results) > 0
+
+    def test_lazy_iteration(self, large_manager):
+        """Results can be iterated lazily."""
+        query = Query(large_manager).tasks()
+
+        # Should be able to iterate without loading all
+        count = 0
+        for task in query.iter():
+            count += 1
+            if count >= 10:
+                break
+
+        assert count == 10
+
+    def test_explain_query(self, large_manager):
+        """explain() returns query execution plan."""
+        plan = (
+            Query(large_manager)
+            .tasks()
+            .where(status="pending")
+            .explain()
+        )
+
+        assert "steps" in plan
+        assert len(plan["steps"]) > 0

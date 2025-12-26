@@ -675,66 +675,8 @@ class TestPatternMatching:
             assert all(getattr(n, 'status', None) == "pending" for n in match.values())
 
 
-class TestQueryPerformance:
-    """Tests for query performance characteristics."""
-
-    @pytest.fixture
-    def large_manager(self, tmp_path):
-        """Create manager with larger dataset for perf testing."""
-        got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
-
-        # Create 100 tasks
-        for i in range(100):
-            status = ["pending", "completed", "in_progress"][i % 3]
-            priority = ["low", "medium", "high", "critical"][i % 4]
-            manager.create_task(f"Task {i}", status=status, priority=priority)
-
-        return manager
-
-    def test_query_with_index_hint(self, large_manager):
-        """Query can use index hints for optimization."""
-        from cortical.got.query_builder import Query
-
-        # This should use status index if available
-        results = (
-            Query(large_manager)
-            .tasks()
-            .where(status="pending")
-            .use_index("status")
-            .execute()
-        )
-
-        assert len(results) > 0
-
-    def test_lazy_iteration(self, large_manager):
-        """Results can be iterated lazily."""
-        from cortical.got.query_builder import Query
-
-        query = Query(large_manager).tasks()
-
-        # Should be able to iterate without loading all
-        count = 0
-        for task in query.iter():
-            count += 1
-            if count >= 10:
-                break
-
-        assert count == 10
-
-    def test_explain_query(self, large_manager):
-        """explain() returns query execution plan."""
-        from cortical.got.query_builder import Query
-
-        plan = (
-            Query(large_manager)
-            .tasks()
-            .where(status="pending")
-            .explain()
-        )
-
-        assert "steps" in plan
-        assert len(plan["steps"]) > 0
+# NOTE: TestQueryPerformance was moved to tests/performance/test_got_query_perf.py
+# because it uses 100-entity fixtures appropriate for performance testing.
 
 
 class TestQueryMetrics:

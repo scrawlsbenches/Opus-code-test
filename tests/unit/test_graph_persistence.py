@@ -702,6 +702,7 @@ class TestBackupBranch:
 class TestCleanup:
     """Tests for cleanup method."""
 
+    @pytest.mark.slow
     @patch('subprocess.run')
     def test_cleanup_cancels_timer(self, mock_run):
         """Test cleanup cancels pending debounced commit."""
@@ -2848,6 +2849,7 @@ class TestCommitOnSaveEdgeCases:
         time.sleep(0.1)
         assert mock_run.call_count >= 4  # rev-parse, add, commit, rev-parse for push, push
 
+    @pytest.mark.slow
     @patch('subprocess.run')
     def test_commit_on_save_debounced_with_auto_push(self, mock_run):
         """Test debounced mode with auto_push enabled."""
