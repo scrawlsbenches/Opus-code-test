@@ -668,3 +668,94 @@ class TestVersionedStoreComputedVersion:
 
         # Version should be from valid history file
         assert store.current_version() >= 50
+
+
+class TestEntityTypeValidation:
+    """Test entity_type validation during deserialization."""
+
+    def test_missing_entity_type_raises_error(self, tmp_path):
+        """Missing entity_type in data raises ValueError."""
+        store = VersionedStore(tmp_path)
+
+        # Create file with missing entity_type
+        data = {"id": "T1", "title": "Test Task", "status": "pending"}
+        wrapper = {
+            "_checksum": compute_checksum(data),
+            "_written_at": "2025-01-01T00:00:00Z",
+            "data": data
+        }
+        with open(tmp_path / "T1.json", 'w') as f:
+            json.dump(wrapper, f)
+
+        # Reading should raise ValueError
+        with pytest.raises(ValueError) as exc_info:
+            store.read("T1")
+        assert "Missing entity_type" in str(exc_info.value)
+        assert "T1" in str(exc_info.value)
+
+    def test_unknown_entity_type_raises_error(self, tmp_path):
+        """Unknown entity_type raises ValueError with helpful message."""
+        store = VersionedStore(tmp_path)
+
+        # Create file with unknown entity_type
+        data = {"id": "X1", "entity_type": "unknown_type", "title": "Test"}
+        wrapper = {
+            "_checksum": compute_checksum(data),
+            "_written_at": "2025-01-01T00:00:00Z",
+            "data": data
+        }
+        with open(tmp_path / "X1.json", 'w') as f:
+            json.dump(wrapper, f)
+
+        # Reading should raise ValueError
+        with pytest.raises(ValueError) as exc_info:
+            store.read("X1")
+        assert "Unknown entity_type" in str(exc_info.value)
+        assert "unknown_type" in str(exc_info.value)
+        assert "X1" in str(exc_info.value)
+
+    def test_valid_entity_types_deserialize_correctly(self, tmp_path):
+        """All valid entity types deserialize to correct classes."""
+        from cortical.got.types import VALID_ENTITY_TYPES
+
+        store = VersionedStore(tmp_path)
+
+        # Test a subset of common entity types
+        test_cases = [
+            ("task", {"id": "T1", "entity_type": "task", "title": "Test", "status": "pending", "priority": "medium"}, Task),
+            ("decision", {"id": "D1", "entity_type": "decision", "title": "Test", "rationale": "Why"}, Decision),
+            ("edge", {"id": "E1", "entity_type": "edge", "source_id": "T1", "target_id": "T2", "edge_type": "DEPENDS_ON"}, Edge),
+        ]
+
+        for entity_type, data, expected_class in test_cases:
+            # Write raw data
+            wrapper = {
+                "_checksum": compute_checksum(data),
+                "_written_at": "2025-01-01T00:00:00Z",
+                "data": data
+            }
+            with open(tmp_path / f"{data['id']}.json", 'w') as f:
+                json.dump(wrapper, f)
+
+            # Read and verify type
+            entity = store.read(data["id"])
+            assert isinstance(entity, expected_class), f"Expected {expected_class}, got {type(entity)}"
+
+    def test_empty_entity_type_raises_error(self, tmp_path):
+        """Empty string entity_type raises ValueError."""
+        store = VersionedStore(tmp_path)
+
+        # Create file with empty entity_type
+        data = {"id": "E1", "entity_type": "", "title": "Test"}
+        wrapper = {
+            "_checksum": compute_checksum(data),
+            "_written_at": "2025-01-01T00:00:00Z",
+            "data": data
+        }
+        with open(tmp_path / "E1.json", 'w') as f:
+            json.dump(wrapper, f)
+
+        # Reading should raise ValueError
+        with pytest.raises(ValueError) as exc_info:
+            store.read("E1")
+        assert "Missing entity_type" in str(exc_info.value)

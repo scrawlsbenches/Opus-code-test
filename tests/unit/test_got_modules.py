@@ -967,7 +967,7 @@ class TestGoTManagerAPIExtended:
         task2 = got_manager.create_task(title="Task 2", priority="high")
 
         # Create edge
-        edge = got_manager.add_edge(task1.id, task2.id, "RELATED_TO")
+        edge = got_manager.add_edge(task1.id, task2.id, "RELATES_TO")
 
         # Delete task2 with force
         got_manager.delete_task(task2.id, force=True)

@@ -9,10 +9,225 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, Any, List
+from typing import Dict, Any, List, TypedDict
 
 from cortical.utils.checksums import compute_checksum
 from .errors import ValidationError
+
+
+# =============================================================================
+# TYPED DICT SCHEMAS FOR NESTED STRUCTURES
+# =============================================================================
+# These TypedDicts define the expected structure of Dict[str, Any] fields
+# used in entity types. They enable type checking and documentation while
+# remaining backward-compatible with existing untyped dictionaries.
+
+
+class TaskProperties(TypedDict, total=False):
+    """
+    Expected structure for Task.properties field.
+
+    All fields are optional (total=False) for backward compatibility.
+
+    Example:
+        properties = TaskProperties(
+            category="feature",
+            tags=["api", "core"],
+            estimated_hours=4.0
+        )
+    """
+    category: str           # Task category: "feature", "bugfix", "chore", etc.
+    retrospective: str      # Completion notes / lessons learned
+    tags: List[str]         # Classification tags
+    estimated_hours: float  # Time estimate in hours
+    sprint_id: str          # Sprint this task belongs to
+    epic_id: str            # Epic this task is part of
+
+
+class TaskMetadata(TypedDict, total=False):
+    """
+    Expected structure for Task.metadata field.
+
+    Stores operational metadata like timestamps and attribution.
+
+    Example:
+        metadata = TaskMetadata(
+            completed_at="2025-12-26T10:00:00+00:00",
+            created_by="agent-abc123"
+        )
+    """
+    completed_at: str       # ISO 8601 completion timestamp
+    started_at: str         # ISO 8601 start timestamp
+    updated_at: str         # ISO 8601 last update timestamp
+    created_by: str         # Agent/user ID who created the task
+    completed_by: str       # Agent/user ID who completed the task
+    blocked_reason: str     # Why task is blocked (if status="blocked")
+    blocked_by: List[str]   # Task IDs blocking this task
+
+
+class SprintGoal(TypedDict, total=False):
+    """
+    Structure for individual goals in Sprint.goals list.
+
+    Goals track sprint objectives with completion status.
+
+    Example:
+        goal = SprintGoal(
+            description="Implement edge type validation",
+            completed=True,
+            progress=1.0
+        )
+    """
+    description: str        # Goal description (required in practice)
+    completed: bool         # Whether goal is complete
+    progress: float         # Progress as 0.0-1.0 (optional)
+    priority: str           # Goal priority: "high", "medium", "low"
+
+
+class SprintMetadata(TypedDict, total=False):
+    """
+    Expected structure for Sprint.metadata field.
+
+    Stores sprint-level operational metadata.
+    """
+    started_at: str         # ISO 8601 start timestamp
+    completed_at: str       # ISO 8601 completion timestamp
+    velocity: float         # Story points or task count completed
+    notes: str              # Sprint retrospective notes
+
+
+class EpicPhase(TypedDict, total=False):
+    """
+    Structure for phases in Epic.phases list.
+
+    Phases organize epic work into sequential stages.
+
+    Example:
+        phase = EpicPhase(
+            name="Foundation",
+            status="completed",
+            sprints=["S-018", "S-019"]
+        )
+    """
+    name: str               # Phase name (required in practice)
+    status: str             # "pending", "in_progress", "completed"
+    description: str        # Phase description
+    sprints: List[str]      # Sprint IDs in this phase
+    order: int              # Phase sequence number
+
+
+class EpicMetadata(TypedDict, total=False):
+    """
+    Expected structure for Epic.metadata field.
+    """
+    started_at: str         # ISO 8601 start timestamp
+    completed_at: str       # ISO 8601 completion timestamp
+    owner: str              # Primary owner/responsible agent
+
+
+class HandoffContext(TypedDict, total=False):
+    """
+    Structure for Handoff.context field.
+
+    Context provides necessary information for the target agent.
+
+    Example:
+        context = HandoffContext(
+            current_branch="claude/feature-x",
+            files_modified=["api.py", "tests/test_api.py"],
+            sprint_id="S-026"
+        )
+    """
+    current_branch: str         # Git branch to work on
+    files_modified: List[str]   # Files changed so far
+    files_to_review: List[str]  # Files needing attention
+    sprint_id: str              # Associated sprint
+    epic_id: str                # Associated epic
+    blockers: List[str]         # Current blocking issues
+    dependencies: List[str]     # Task IDs this depends on
+    notes: str                  # Free-form context notes
+    session_id: str             # Source session ID
+
+
+class HandoffResult(TypedDict, total=False):
+    """
+    Structure for Handoff.result field.
+
+    Returned by the target agent upon completion.
+
+    Example:
+        result = HandoffResult(
+            success=True,
+            tasks_completed=["T-001", "T-002"],
+            summary="Completed edge validation implementation"
+        )
+    """
+    success: bool               # Whether handoff work succeeded
+    tasks_completed: List[str]  # Task IDs completed
+    tasks_created: List[str]    # New task IDs created
+    commits: List[str]          # Commit hashes made
+    files_modified: List[str]   # Files that were changed
+    summary: str                # Summary of work done
+    blockers: List[str]         # Remaining blockers (if any)
+    next_steps: List[str]       # Suggested next actions
+
+
+class DocumentMetadata(TypedDict, total=False):
+    """
+    Expected structure for Document.metadata field.
+    """
+    author: str             # Document author
+    reviewers: List[str]    # Document reviewers
+    status: str             # "draft", "review", "published"
+    version: str            # Document version string
+
+
+# Type aliases for common nested list types
+SprintGoals = List[SprintGoal]
+EpicPhases = List[EpicPhase]
+
+
+# Valid edge types - single source of truth
+# This set is re-exported in entity_schemas.py for schema validation
+VALID_EDGE_TYPES = frozenset({
+    # Core relationship types
+    'DEPENDS_ON',    # Task A depends on Task B
+    'BLOCKS',        # Task A blocks Task B
+    'CONTAINS',      # Sprint contains Task, Epic contains Sprint
+    'RELATES_TO',    # General relationship
+    'REQUIRES',      # Hard requirement
+    'IMPLEMENTS',    # Task implements Decision
+    'SUPERSEDES',    # Entity replaces another
+    'DERIVED_FROM',  # Entity derived from another
+    # Hierarchical relationships
+    'PARENT_OF',     # Hierarchical parent
+    'CHILD_OF',      # Hierarchical child
+    'PART_OF',       # Component of larger entity (Sprint PART_OF Epic)
+    # Reference and semantic relationships
+    'REFERENCES',    # Soft reference
+    'CONTRADICTS',   # Conflicting entities
+    'JUSTIFIES',     # Decision justifies Task
+    # Workflow relationships
+    'TRANSFERS',     # Task transfers to Handoff
+    'PRODUCES',      # Task produces Document/Artifact
+    'DOCUMENTED_BY', # Task/Decision is documented by Document (inverse of PRODUCES)
+})
+
+
+# Valid entity types - single source of truth for deserialization
+VALID_ENTITY_TYPES = frozenset({
+    'task',
+    'decision',
+    'edge',
+    'sprint',
+    'epic',
+    'handoff',
+    'claudemd_layer',
+    'claudemd_version',
+    'persona_profile',
+    'team',
+    'document',
+})
 
 
 @dataclass
@@ -330,6 +545,15 @@ class Edge(Entity):
     def __post_init__(self):
         """Validate edge fields and auto-generate ID if needed."""
         self.entity_type = "edge"
+
+        # Validate edge_type against allowed values
+        if self.edge_type not in VALID_EDGE_TYPES:
+            raise ValidationError(
+                f"Invalid edge_type: '{self.edge_type}'. "
+                f"Must be one of: {sorted(VALID_EDGE_TYPES)}",
+                edge_type=self.edge_type,
+                valid_types=sorted(VALID_EDGE_TYPES)
+            )
 
         # Auto-generate ID if not provided or empty
         if not self.id:

@@ -137,15 +137,26 @@ class TestEpicIdGeneration:
     """Tests for generate_epic_id()."""
 
     def test_format(self):
-        """Epic ID matches expected format."""
+        """Epic ID matches expected format (EPIC- prefix)."""
         epic_id = generate_epic_id()
-        pattern = r"^E-\d{8}-\d{6}-[a-f0-9]{8}$"
+        # Format: EPIC-YYYYMMDD-HHMMSS-XXXXXXXX (uses EPIC- not E- to avoid Edge conflict)
+        pattern = r"^EPIC-\d{8}-\d{6}-[a-f0-9]{8}$"
         assert re.match(pattern, epic_id), f"Invalid format: {epic_id}"
 
     def test_prefix(self):
-        """Epic ID starts with E-."""
+        """Epic ID starts with EPIC-."""
         epic_id = generate_epic_id()
-        assert epic_id.startswith("E-")
+        assert epic_id.startswith("EPIC-")
+
+    def test_with_name(self):
+        """Epic ID with name uses EPIC-{name} format."""
+        epic_id = generate_epic_id(name="woven-mind")
+        assert epic_id == "EPIC-woven-mind"
+
+    def test_name_normalization(self):
+        """Epic name is normalized (lowercase, hyphens)."""
+        epic_id = generate_epic_id(name="Woven_Mind Feature")
+        assert epic_id == "EPIC-woven-mind-feature"
 
 
 class TestHandoffIdGeneration:

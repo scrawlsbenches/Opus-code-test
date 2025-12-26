@@ -120,24 +120,31 @@ def generate_sprint_id(number: Optional[int] = None) -> str:
     return f"S-{datetime.now(timezone.utc).strftime('%Y-%m')}"
 
 
-def generate_epic_id() -> str:
+def generate_epic_id(name: Optional[str] = None) -> str:
     """
     Generate epic ID.
 
-    Format: E-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
+    Args:
+        name: Optional descriptive name for the epic (e.g., 'got-db', 'woven-mind')
 
     Returns:
-        Epic ID string (e.g., 'E-20251222-143052-q7r8s9t0')
+        Epic ID string (e.g., 'EPIC-got-db' or 'EPIC-20251222-143052-q7r8s9t0')
 
     Note:
-        - Uses UTC timezone for consistency
-        - Random suffix provides ~4 billion unique values
-        - No 'epic:' prefix (that's legacy format)
+        - Uses EPIC- prefix (NOT E- which is reserved for Edge)
+        - If name provided, creates human-readable ID
+        - Otherwise uses timestamp for uniqueness
     """
-    now = datetime.now(timezone.utc)
-    timestamp = now.strftime("%Y%m%d-%H%M%S")
-    suffix = secrets.token_hex(4)  # 8 hex chars
-    return f"E-{timestamp}-{suffix}"
+    if name:
+        # Human-readable: name-based ID
+        safe_name = name.lower().replace(" ", "-").replace("_", "-")
+        return f"EPIC-{safe_name}"
+    else:
+        # Unique: timestamp-based ID
+        now = datetime.now(timezone.utc)
+        timestamp = now.strftime("%Y%m%d-%H%M%S")
+        suffix = secrets.token_hex(4)  # 8 hex chars
+        return f"EPIC-{timestamp}-{suffix}"
 
 
 def generate_handoff_id() -> str:
@@ -400,3 +407,119 @@ def generate_document_id(path: Optional[str] = None) -> str:
         timestamp = now.strftime("%Y%m%d-%H%M%S")
         suffix = secrets.token_hex(4)  # 8 hex chars
         return f"DOC-{timestamp}-{suffix}"
+
+
+# =============================================================================
+# ID VALIDATION
+# =============================================================================
+
+# Authoritative prefix-to-entity-type mapping
+# See docs/got-namespace-specification.md for full documentation
+ID_PREFIX_MAP = {
+    'T-': 'task',
+    'D-': 'decision',
+    'E-': 'edge',           # Reserved for Edge ONLY (not Epic)
+    'S-': 'sprint',
+    'EPIC-': 'epic',        # Epic uses EPIC- prefix
+    'H-': 'handoff',
+    'DOC-': 'document',
+    'CML': 'claudemd_layer',  # CML0-, CML1-, etc.
+    'CMV-': 'claudemd_version',
+    'TEAM-': 'team',
+    'PP-': 'persona_profile',
+    'OP-': 'orchestration_plan',
+    'EX-': 'execution',
+    'G-': 'goal',
+}
+
+
+def entity_type_from_id(entity_id: str) -> Optional[str]:
+    """
+    Infer entity type from ID prefix.
+
+    Args:
+        entity_id: Entity ID string
+
+    Returns:
+        Entity type string, or None if prefix not recognized
+
+    Examples:
+        >>> entity_type_from_id('T-20251226-141000-a1b2c3d4')
+        'task'
+
+        >>> entity_type_from_id('EPIC-woven-mind')
+        'epic'
+
+        >>> entity_type_from_id('E-src-tgt-DEPENDS_ON')
+        'edge'
+
+        >>> entity_type_from_id('unknown-id')
+        None
+    """
+    # Check prefixes in order (longer prefixes first to avoid false matches)
+    for prefix in sorted(ID_PREFIX_MAP.keys(), key=len, reverse=True):
+        if entity_id.startswith(prefix):
+            return ID_PREFIX_MAP[prefix]
+    return None
+
+
+def validate_id_format(entity_id: str, expected_type: Optional[str] = None) -> bool:
+    """
+    Validate that an entity ID has a recognized format.
+
+    Args:
+        entity_id: Entity ID string to validate
+        expected_type: Optional expected entity type (e.g., 'task', 'edge')
+
+    Returns:
+        True if ID format is valid (and matches expected_type if provided)
+
+    Examples:
+        >>> validate_id_format('T-20251226-141000-a1b2c3d4')
+        True
+
+        >>> validate_id_format('T-20251226-141000-a1b2c3d4', 'task')
+        True
+
+        >>> validate_id_format('T-20251226-141000-a1b2c3d4', 'decision')
+        False
+
+        >>> validate_id_format('invalid-format')
+        False
+    """
+    detected_type = entity_type_from_id(entity_id)
+
+    if detected_type is None:
+        return False
+
+    if expected_type is not None:
+        return detected_type == expected_type
+
+    return True
+
+
+def get_id_prefix_for_type(entity_type: str) -> Optional[str]:
+    """
+    Get the ID prefix for a given entity type.
+
+    Args:
+        entity_type: Entity type string (e.g., 'task', 'edge', 'epic')
+
+    Returns:
+        ID prefix string, or None if type not recognized
+
+    Examples:
+        >>> get_id_prefix_for_type('task')
+        'T-'
+
+        >>> get_id_prefix_for_type('epic')
+        'EPIC-'
+
+        >>> get_id_prefix_for_type('unknown')
+        None
+    """
+    # Reverse lookup
+    for prefix, etype in ID_PREFIX_MAP.items():
+        if etype == entity_type:
+            return prefix
+    return None
