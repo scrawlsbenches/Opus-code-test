@@ -1,0 +1,17 @@
+{
+  "_checksum": "6f30ec01ed4b2a47",
+  "_written_at": "2025-12-26T11:42:31.664236+00:00",
+  "data": {
+    "created_at": "2025-12-26T11:42:31.658775+00:00",
+    "description": "## Problem\nGoT operations are not merge-aware:\n- Creating sprint S-020 on branch A doesn't know branch B also created S-020\n- No pre-merge validation of entity compatibility\n- No post-merge reconciliation process\n\n## Investigation Scope\n\n1. **Pre-merge checks**\n   - `got validate --merge-preview origin/main`\n   - Detect ID collisions before merge\n   - Detect semantic conflicts (same ID, different content)\n   - Suggest resolutions\n\n2. **Merge strategies**\n   - \"Ours\" vs \"theirs\" for GoT entities?\n   - Auto-rename conflicting entities?\n   - Merge entity histories?\n\n3. **Post-merge reconciliation**\n   - Validate all edges still point to valid targets\n   - Detect orphaned edges\n   - Detect semantically invalid edges\n   - Auto-cleanup or manual review queue?\n\n4. **Branch isolation**\n   - Namespace entities by branch during development?\n   - Merge namespaces on PR merge?\n   - Prevent cross-branch ID assignment?\n\n## Deliverables\n- Design document for merge-aware GoT\n- CLI commands specification\n- Conflict resolution workflow diagram",
+    "entity_type": "task",
+    "id": "T-20251226-114231-88d9866c",
+    "metadata": {},
+    "modified_at": "2025-12-26T11:42:31.664146+00:00",
+    "priority": "medium",
+    "properties": {},
+    "status": "pending",
+    "title": "Design merge-aware GoT operations for conflict prevention",
+    "version": 2
+  }
+}

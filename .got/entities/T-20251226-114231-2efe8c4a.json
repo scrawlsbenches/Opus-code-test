@@ -1,0 +1,17 @@
+{
+  "_checksum": "87102afb7ba82ef6",
+  "_written_at": "2025-12-26T11:42:31.760426+00:00",
+  "data": {
+    "created_at": "2025-12-26T11:42:31.755492+00:00",
+    "description": "## Problem\nWe discovered merge issues in production, not in tests. Need test coverage for:\n- Sprint ID collisions\n- Entity semantic drift\n- Edge invalidation\n- Modify/delete conflicts\n\n## Test Scenarios Needed\n\n1. **ID collision tests**\n   ```python\n   def test_sprint_id_collision_across_branches():\n       # Simulate two branches creating S-020\n       # Verify conflict is detected or prevented\n   ```\n\n2. **Semantic drift tests**\n   ```python\n   def test_detect_semantic_change_in_sprint():\n       # Sprint changes from \"Feature A\" to \"Feature B\"\n       # Verify edges are flagged as potentially invalid\n   ```\n\n3. **Edge invalidation tests**\n   ```python\n   def test_edge_validation_after_target_change():\n       # Edge links task to sprint\n       # Sprint meaning changes\n       # Verify edge is flagged\n   ```\n\n4. **Modify/delete conflict tests**\n   ```python\n   def test_modify_delete_conflict_detection():\n       # Branch A deletes entity\n       # Branch B modifies entity\n       # Verify conflict handling\n   ```\n\n## Deliverables\n- Test file: tests/unit/test_got_merge_conflicts.py\n- At least 10 test cases covering identified scenarios\n- Integration with CI to catch regressions",
+    "entity_type": "task",
+    "id": "T-20251226-114231-2efe8c4a",
+    "metadata": {},
+    "modified_at": "2025-12-26T11:42:31.760347+00:00",
+    "priority": "medium",
+    "properties": {},
+    "status": "pending",
+    "title": "Create automated tests for GoT merge conflict scenarios",
+    "version": 2
+  }
+}

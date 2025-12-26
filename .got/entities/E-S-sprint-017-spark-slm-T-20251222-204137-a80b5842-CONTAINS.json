@@ -1,0 +1,16 @@
+{
+  "_checksum": "dbd266a19921493c",
+  "_written_at": "2025-12-25T10:53:06.822271+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2025-12-25T10:53:06.817678+00:00",
+    "edge_type": "CONTAINS",
+    "entity_type": "edge",
+    "id": "E-S-sprint-017-spark-slm-T-20251222-204137-a80b5842-CONTAINS",
+    "modified_at": "2025-12-25T10:53:06.822194+00:00",
+    "source_id": "S-sprint-017-spark-slm",
+    "target_id": "T-20251222-204137-a80b5842",
+    "version": 2,
+    "weight": 1.0
+  }
+}

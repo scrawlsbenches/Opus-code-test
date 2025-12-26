@@ -312,30 +312,6 @@ def cmd_sync(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_migrate(args, manager: "TransactionalGoTAdapter") -> int:
-    """Handle 'got migrate' command.
-
-    DEPRECATED: This command is for migrating from the legacy file-based task system.
-    The TX backend stores entities directly in .got/entities/.
-    """
-    print("The 'migrate' command is deprecated.")
-    print("The TX backend stores entities directly in .got/entities/.")
-    print("Use 'got task create' to create new tasks directly.")
-    return 0
-
-
-def cmd_migrate_events(args, manager: "TransactionalGoTAdapter") -> int:
-    """Handle 'got migrate-events' command.
-
-    DEPRECATED: This command is for the legacy event-sourced backend.
-    The TX backend stores entities directly in .got/entities/ and doesn't use event logs.
-    """
-    print("The 'migrate-events' command is deprecated.")
-    print("The TX backend stores entities directly in .got/entities/ and doesn't use event logs.")
-    print("No migration is needed.")
-    return 0
-
-
 # =============================================================================
 # CLI INTEGRATION
 # =============================================================================
@@ -396,30 +372,6 @@ def setup_backup_parser(subparsers) -> None:
         help="Commit message (auto-commits if provided)"
     )
 
-    # Migration commands
-    migrate_parser = subparsers.add_parser("migrate", help="Migrate from files")
-    migrate_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Don't actually migrate"
-    )
-
-    # Migrate to events command
-    migrate_events_parser = subparsers.add_parser(
-        "migrate-events",
-        help="Convert snapshot to event-sourced format for cross-branch coordination"
-    )
-    migrate_events_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be migrated"
-    )
-    migrate_events_parser.add_argument(
-        "--force", "-f",
-        action="store_true",
-        help="Migrate even if events exist"
-    )
-
 
 def handle_backup_command(args, manager: "TransactionalGoTAdapter") -> int:
     """
@@ -466,8 +418,6 @@ def handle_sync_migrate_commands(args, manager: "TransactionalGoTAdapter") -> in
 
     handlers = {
         "sync": cmd_sync,
-        "migrate": cmd_migrate,
-        "migrate-events": cmd_migrate_events,
     }
 
     handler = handlers.get(command)

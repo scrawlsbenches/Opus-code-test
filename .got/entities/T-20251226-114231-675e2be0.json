@@ -1,0 +1,17 @@
+{
+  "_checksum": "dd44a67fd08587df",
+  "_written_at": "2025-12-26T11:42:31.350302+00:00",
+  "data": {
+    "created_at": "2025-12-26T11:42:31.344362+00:00",
+    "description": "## Background\nDuring the December 2025 codebase cleanup audit, we experienced merge conflicts in GoT entities that required manual resolution:\n\n### Conflicts Encountered\n\n1. **S-018 content conflict**\n   - Our branch: \"Performance & Observability\" (status: completed)\n   - Main branch: \"The Loom Foundation\" (status: available)\n   - Same sprint ID used for completely different sprints\n   - Result: Had to discard our changes, accept main's version\n\n2. **S-020 modify/delete conflict**\n   - Our branch: Deleted (was empty duplicate of S-018's title)\n   - Main branch: Repurposed to \"Cortex Abstraction\"\n   - Result: Had to keep main's version\n\n3. **Orphaned edges**\n   - Edge `E-S-018-T-20251224-144610-eb10a232-CONTAINS` linked task to \"Performance & Observability\"\n   - After merge, S-018 means \"The Loom Foundation\" - semantically wrong\n   - Result: Had to delete the edge manually\n\n### Root Cause Analysis Needed\n\n1. Why do sprint IDs collide across branches?\n2. Why can the same ID represent different semantic entities?\n3. How do parallel agents/branches create conflicting state?\n4. What makes tasks (T-*) more merge-friendly than sprints (S-*)?\n\n### Deliverables\n- Document detailing each root cause\n- Comparison of task ID generation vs sprint ID generation\n- Diagram of how the conflict arose\n- Recommendations for investigation tasks",
+    "entity_type": "task",
+    "id": "T-20251226-114231-675e2be0",
+    "metadata": {},
+    "modified_at": "2025-12-26T11:42:31.350225+00:00",
+    "priority": "high",
+    "properties": {},
+    "status": "pending",
+    "title": "Analyze GoT merge conflict root causes from Dec 2025 audit",
+    "version": 2
+  }
+}

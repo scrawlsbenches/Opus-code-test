@@ -6,7 +6,6 @@ Provides commands for:
 - Showing blocked/active/stats
 - Validating graph health
 - Inferring edges from git
-- Event compaction
 
 This module can be integrated into got_utils.py CLI or used standalone.
 """
@@ -249,18 +248,6 @@ def cmd_infer(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
-def cmd_compact(args, manager: "TransactionalGoTAdapter") -> int:
-    """Handle 'got compact' command.
-
-    DEPRECATED: This command is for the legacy event-sourced backend.
-    The TX backend uses entity files in .got/entities/ which don't need compaction.
-    """
-    print("The 'compact' command is deprecated.")
-    print("The TX backend stores entities directly in .got/entities/ and doesn't use event logs.")
-    print("No compaction is needed.")
-    return 0
-
-
 def cmd_export(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got export' command."""
     from pathlib import Path
@@ -320,28 +307,6 @@ def setup_query_parser(subparsers) -> None:
         help="Analyze a specific commit message"
     )
 
-    # Compact command
-    compact_parser = subparsers.add_parser(
-        "compact",
-        help="Compact old events into consolidated file"
-    )
-    compact_parser.add_argument(
-        "--preserve-days", "-d",
-        type=int,
-        default=7,
-        help="Preserve events from last N days (default: 7)"
-    )
-    compact_parser.add_argument(
-        "--no-preserve-handoffs",
-        action="store_true",
-        help="Don't preserve handoff events"
-    )
-    compact_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be compacted"
-    )
-
     # Export command
     export_parser = subparsers.add_parser("export", help="Export graph")
     export_parser.add_argument("--output", "-o", help="Output file")
@@ -368,7 +333,6 @@ def handle_query_commands(args, manager: "TransactionalGoTAdapter") -> int:
         "dashboard": cmd_dashboard,
         "validate": cmd_validate,
         "infer": cmd_infer,
-        "compact": cmd_compact,
         "export": cmd_export,
     }
 

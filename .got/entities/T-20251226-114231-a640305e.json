@@ -1,0 +1,17 @@
+{
+  "_checksum": "3304b9600845718d",
+  "_written_at": "2025-12-26T11:42:31.556471+00:00",
+  "data": {
+    "created_at": "2025-12-26T11:42:31.551518+00:00",
+    "description": "## Problem\nWhen S-018 changed from \"Performance & Observability\" to \"The Loom Foundation\":\n- The version number incremented (expected)\n- But no mechanism detected the SEMANTIC change\n- Edges linking to S-018 became silently invalid\n\n## Current State\n- Entities have `version` field (increments on any change)\n- No distinction between:\n  - Metadata changes (status update)\n  - Semantic changes (title/purpose change)\n  - Structural changes (new entity replacing old)\n\n## Investigation Scope\n\n1. **Semantic fingerprinting**\n   - Hash of semantic fields (title, description, purpose)?\n   - Detect when meaning changes vs metadata changes?\n   - Store semantic_version separate from version?\n\n2. **Tombstoning mechanism**\n   - When entity meaning changes significantly, tombstone old ID?\n   - Create new entity with new ID for new meaning?\n   - Preserve history of what ID meant when?\n\n3. **Edge validation**\n   - On merge, validate edges still make semantic sense?\n   - Warn when edge target's meaning has changed?\n   - Automated edge migration suggestions?\n\n## Deliverables\n- Design document for semantic versioning\n- Prototype of semantic fingerprint calculation\n- Edge validation algorithm proposal",
+    "entity_type": "task",
+    "id": "T-20251226-114231-a640305e",
+    "metadata": {},
+    "modified_at": "2025-12-26T11:42:31.556392+00:00",
+    "priority": "medium",
+    "properties": {},
+    "status": "pending",
+    "title": "Design semantic versioning for GoT entities to detect meaning changes",
+    "version": 2
+  }
+}

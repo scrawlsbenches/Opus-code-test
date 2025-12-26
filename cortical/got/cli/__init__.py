@@ -97,7 +97,6 @@ from .query import (
     cmd_dashboard,
     cmd_validate,
     cmd_infer,
-    cmd_compact,
     cmd_export,
 )
 
@@ -111,8 +110,6 @@ from .backup import (
     cmd_backup_verify,
     cmd_backup_restore,
     cmd_sync,
-    cmd_migrate,
-    cmd_migrate_events,
 )
 
 # Shared utilities
@@ -203,7 +200,6 @@ __all__ = [
     "cmd_dashboard",
     "cmd_validate",
     "cmd_infer",
-    "cmd_compact",
     "cmd_export",
     # Backup
     "setup_backup_parser",
@@ -214,8 +210,6 @@ __all__ = [
     "cmd_backup_verify",
     "cmd_backup_restore",
     "cmd_sync",
-    "cmd_migrate",
-    "cmd_migrate_events",
     # Shared
     "VALID_STATUSES",
     "VALID_PRIORITIES",

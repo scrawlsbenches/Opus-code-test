@@ -2822,40 +2822,6 @@ def cmd_dashboard(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_migrate(args, manager: "TransactionalGoTAdapter") -> int:
-    """Migrate from file-based system."""
-    migrator = TaskMigrator(manager)
-
-    results = migrator.migrate_all(dry_run=getattr(args, 'dry_run', False))
-
-    print("Migration Results:")
-    print(f"  Sessions processed: {results['sessions_processed']}")
-    print(f"  Tasks migrated: {results['tasks_migrated']}")
-    print(f"  Tasks skipped: {results['tasks_skipped']}")
-
-    if results['errors']:
-        print()
-        print("Errors:")
-        for error in results['errors'][:10]:
-            print(f"  - {error}")
-        if len(results['errors']) > 10:
-            print(f"  ... and {len(results['errors']) - 10} more")
-
-    return 0
-
-
-def cmd_migrate_events(args, manager: "TransactionalGoTAdapter") -> int:
-    """Migrate existing snapshot to event-sourced format.
-
-    DEPRECATED: This command is for the legacy event-sourced backend.
-    The TX backend stores entities directly in .got/entities/ and doesn't use event logs.
-    """
-    print("The 'migrate-events' command is deprecated.")
-    print("The TX backend stores entities directly in .got/entities/ and doesn't use event logs.")
-    print("No migration is needed.")
-    return 0
-
-
 def cmd_export(args, manager: "TransactionalGoTAdapter") -> int:
     """Export graph."""
     output = getattr(args, 'output', None)
@@ -3434,18 +3400,6 @@ def cmd_query(args, manager: "TransactionalGoTAdapter") -> int:
                 print(f"      Status: {r['status']}")
         print()
 
-    return 0
-
-
-def cmd_compact(args, manager: "TransactionalGoTAdapter") -> int:
-    """Compact old events.
-
-    DEPRECATED: This command is for the legacy event-sourced backend.
-    The TX backend uses entity files in .got/entities/ which don't need compaction.
-    """
-    print("The 'compact' command is deprecated.")
-    print("The TX backend stores entities directly in .got/entities/ and doesn't use event logs.")
-    print("No compaction is needed.")
     return 0
 
 

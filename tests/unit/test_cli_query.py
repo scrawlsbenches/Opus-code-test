@@ -17,7 +17,6 @@ from cortical.got.cli.query import (
     cmd_dashboard,
     cmd_validate,
     cmd_infer,
-    cmd_compact,
     cmd_export,
 )
 
@@ -627,17 +626,7 @@ class TestSetupQueryParser:
         assert args.command == "infer"
         assert args.message == "feat: Add feature"
 
-        args = parser.parse_args(["compact", "--preserve-days", "14"])
-        assert args.command == "compact"
-        assert args.preserve_days == 14
-
-        args = parser.parse_args(["compact", "--no-preserve-handoffs"])
-        assert args.command == "compact"
-        assert args.no_preserve_handoffs is True
-
-        args = parser.parse_args(["compact", "--dry-run"])
-        assert args.command == "compact"
-        assert args.dry_run is True
+        # compact command tests removed - deprecated command
 
         args = parser.parse_args(["export", "-o", "output.json"])
         assert args.command == "export"
@@ -744,17 +733,7 @@ class TestHandleQueryCommands:
         assert result == 0
         mock_manager.infer_edges_from_recent_commits.assert_called_once()
 
-    def test_handle_compact_command(self, mock_manager, capsys):
-        """Test handle_query_commands routes to cmd_compact (deprecated)."""
-        from cortical.got.cli.query import handle_query_commands
-
-        args = Namespace(command="compact", dry_run=False, preserve_days=7, no_preserve_handoffs=False)
-
-        result = handle_query_commands(args, mock_manager)
-
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "deprecated" in captured.out.lower()
+    # test_handle_compact_command removed - tests deprecated cmd_compact function
 
     def test_handle_export_command(self, mock_manager):
         """Test handle_query_commands routes to cmd_export."""
