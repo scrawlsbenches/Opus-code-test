@@ -1,0 +1,19 @@
+{
+  "_checksum": "9141c8dd0a5987f0",
+  "_written_at": "2025-12-26T14:14:20.465824+00:00",
+  "data": {
+    "created_at": "2025-12-26T14:14:20.462378+00:00",
+    "description": "## Problem\nEdge entities reference source_id and target_id, but there's no validation that these IDs actually exist in the store. Edges can point to non-existent entities.\n\n## Current State\n- Edge.from_dict() accepts any string for source_id/target_id\n- GoTManager.add_edge() creates edges without verifying references\n- No referential integrity checking\n- Orphan edges possible after entity deletion\n\n## Solution\n1. Add optional FK validation to GoTManager.add_edge():\n```python\ndef add_edge(self, source_id, target_id, edge_type, validate_refs=True):\n    if validate_refs:\n        if not self.get_entity(source_id):\n            raise ReferenceError(f\"Source entity not found: {source_id}\")\n        if not self.get_entity(target_id):\n            raise ReferenceError(f\"Target entity not found: {target_id}\")\n    ...\n```\n\n2. Add got_utils.py validate --check-refs command\n3. Add orphan edge detection to dashboard\n\n## Trade-offs\n- Full FK validation adds overhead (2 lookups per edge)\n- May need batch mode for bulk operations\n- Soft references (allow missing) vs hard references (enforce)\n\n## Acceptance Criteria\n1. Optional FK validation on edge creation\n2. CLI command to audit existing edges for broken references\n3. Dashboard shows orphan edge count\n4. Documentation of when to use strict vs relaxed mode",
+    "entity_type": "task",
+    "id": "T-20251226-141420-b8c7aa8e",
+    "metadata": {},
+    "modified_at": "2025-12-26T14:14:20.465757+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add foreign key validation for edge source/target references",
+    "version": 2
+  }
+}
