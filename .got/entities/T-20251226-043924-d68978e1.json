@@ -1,19 +1,22 @@
 {
-  "_checksum": "4fa80886083eb79c",
-  "_written_at": "2025-12-26T04:39:24.421753+00:00",
+  "_checksum": "2d310b0ebfd214ec",
+  "_written_at": "2025-12-26T04:40:11.050356+00:00",
   "data": {
     "created_at": "2025-12-26T04:39:24.413192+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20251226-043924-d68978e1",
-    "metadata": {},
-    "modified_at": "2025-12-26T04:39:24.421708+00:00",
+    "metadata": {
+      "completed_at": "2025-12-26T04:40:11.040301+00:00",
+      "updated_at": "2025-12-26T04:40:11.040309+00:00"
+    },
+    "modified_at": "2025-12-26T04:40:11.050313+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "T6.3: User guide documentation (woven-mind-user-guide.md)",
-    "version": 2
+    "version": 4
   }
 }
