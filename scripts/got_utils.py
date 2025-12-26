@@ -54,6 +54,7 @@ from cortical.got.cli.backup import setup_backup_parser, handle_backup_command, 
 from cortical.got.cli.orphan import setup_orphan_parser, handle_orphan_command
 from cortical.got.cli.backlog import setup_backlog_parser, handle_backlog_command
 from cortical.got.cli.analyze import setup_analyze_parser, handle_analyze_command
+from cortical.got.cli.edge import setup_edge_parser, handle_edge_command
 
 # Import transactional backend (new)
 try:
@@ -794,6 +795,64 @@ class TransactionalGoTAdapter:
         except Exception as e:
             logger.error(f"Failed to add blocks edge from {clean_task} to {clean_blocked}: {e}")
             return False
+
+    def add_edge(self, source_id: str, target_id: str, edge_type: str, weight: float = 1.0):
+        """Add a generic edge between two entities.
+
+        Args:
+            source_id: Source entity ID
+            target_id: Target entity ID
+            edge_type: Type of edge (e.g., DEPENDS_ON, BLOCKS, CAUSED_BY)
+            weight: Edge weight (default: 1.0)
+
+        Returns:
+            Edge object if successful, None otherwise
+        """
+        clean_source = self._strip_prefix(source_id)
+        clean_target = self._strip_prefix(target_id)
+        try:
+            edge = self._manager.add_edge(clean_source, clean_target, edge_type, weight=weight)
+            return edge
+        except AttributeError as e:
+            logger.error(f"Method not implemented: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to add edge from {clean_source} to {clean_target}: {e}")
+            return None
+
+    def list_edges(self) -> List:
+        """List all edges in the graph.
+
+        Returns:
+            List of Edge objects
+        """
+        try:
+            return self._manager.list_edges()
+        except AttributeError as e:
+            logger.error(f"Method not implemented: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Failed to list edges: {e}")
+            return []
+
+    def get_edges_for_task(self, task_id: str) -> Tuple[List, List]:
+        """Get all edges connected to a task.
+
+        Args:
+            task_id: Task ID to get edges for
+
+        Returns:
+            Tuple of (outgoing_edges, incoming_edges)
+        """
+        clean_id = self._strip_prefix(task_id)
+        try:
+            return self._manager.get_edges_for_task(clean_id)
+        except AttributeError as e:
+            logger.error(f"Method not implemented: {e}")
+            return [], []
+        except Exception as e:
+            logger.error(f"Failed to get edges for {task_id}: {e}")
+            return [], []
 
     def get_blockers(self, task_id: str) -> List[ThoughtNode]:
         """Get tasks that block this task."""
@@ -3449,6 +3508,55 @@ def cmd_sync(args, manager: "TransactionalGoTAdapter") -> int:
 
 
 # =============================================================================
+# COMMAND SUGGESTION HELPER
+# =============================================================================
+
+# All valid commands for suggestion
+VALID_COMMANDS = [
+    "task", "sprint", "epic", "handoff", "decision", "doc", "query",
+    "blocked", "active", "stats", "dashboard", "validate", "infer",
+    "export", "backup", "sync", "orphan", "backlog", "analyze", "edge",
+]
+
+
+def suggest_command(invalid_cmd: str, valid_commands: list = VALID_COMMANDS) -> list:
+    """
+    Suggest similar commands when user types an invalid one.
+
+    Uses difflib to find close matches, making the CLI more user-friendly.
+
+    Args:
+        invalid_cmd: The invalid command the user typed
+        valid_commands: List of valid commands to match against
+
+    Returns:
+        List of up to 3 similar command suggestions
+    """
+    import difflib
+    matches = difflib.get_close_matches(
+        invalid_cmd.lower(),
+        valid_commands,
+        n=3,
+        cutoff=0.4  # Lower cutoff to catch more typos
+    )
+    return matches
+
+
+def print_command_suggestion(invalid_cmd: str) -> None:
+    """Print helpful suggestions when an invalid command is used."""
+    suggestions = suggest_command(invalid_cmd)
+
+    print(f"\nError: '{invalid_cmd}' is not a valid command.", file=sys.stderr)
+
+    if suggestions:
+        print("\nDid you mean:", file=sys.stderr)
+        for suggestion in suggestions:
+            print(f"  - {suggestion}", file=sys.stderr)
+
+    print(f"\nRun 'python scripts/got_utils.py --help' for available commands.", file=sys.stderr)
+
+
+# =============================================================================
 # MAIN (Thin Dispatcher)
 # =============================================================================
 
@@ -3485,6 +3593,15 @@ def main():
     setup_orphan_parser(subparsers)
     setup_backlog_parser(subparsers)
     setup_analyze_parser(subparsers)  # Graph analysis using fluent Query API
+    setup_edge_parser(subparsers)  # Direct edge management
+
+    # Pre-check for invalid commands to provide better error messages
+    # This runs before argparse's default error handling
+    if len(sys.argv) > 1:
+        potential_cmd = sys.argv[1]
+        if not potential_cmd.startswith('-') and potential_cmd not in VALID_COMMANDS:
+            print_command_suggestion(potential_cmd)
+            return 2
 
     args = parser.parse_args()
 
@@ -3534,6 +3651,9 @@ def main():
 
     elif args.command == "analyze":
         return handle_analyze_command(args, manager)
+
+    elif args.command == "edge":
+        return handle_edge_command(args, manager)
 
     # Query-related commands (query, blocked, active, stats, etc.)
     result = handle_query_commands(args, manager)
