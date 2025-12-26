@@ -2076,6 +2076,13 @@ python examples/observability_demo.py
 | Run consolidation | `mind.consolidate()` |
 | Woven Mind demo | `python examples/woven_mind_demo.py --section all` |
 | Woven Mind tests | `python -m pytest tests/unit/test_woven_mind*.py -v` |
+| **Woven Mind Benchmarks** | |
+| List benchmarks | `python -m benchmarks.woven_mind.runner --list` |
+| Run all benchmarks | `python -m benchmarks.woven_mind.runner --all` |
+| Run category | `python -m benchmarks.woven_mind.runner --category stability` |
+| Run quick mode | `python -m benchmarks.woven_mind.runner --all --quick` |
+| Save results | `python -m benchmarks.woven_mind.runner --all --output results/baseline.json` |
+| Compare results | `python -m benchmarks.woven_mind.runner --all --compare results/baseline.json` |
 | **GoT Handoff Primitives** | |
 | Initiate handoff | `python scripts/got_utils.py handoff initiate TASK_ID --target AGENT --instructions "..."` |
 | Accept handoff | `python scripts/got_utils.py handoff accept HANDOFF_ID --agent AGENT` |
@@ -2107,6 +2114,7 @@ For Director orchestration and parallel agent workflows:
 - `.claude/commands/woven-mind-director.md` - Woven Mind + PRISM marriage orchestration
 
 **Woven Mind Project Docs:**
+- `docs/woven-mind-engineering-analysis.md` - Engineering analysis, concerns, benchmarks, maintenance advice
 - `docs/roadmap-woven-prism-marriage.md` - 6-sprint integration plan
 - `docs/task-knowledge-base-woven-prism.md` - Task details and sub-agent guardrails
 - `docs/research-prism-woven-mind-comparison.md` - Comparative analysis
