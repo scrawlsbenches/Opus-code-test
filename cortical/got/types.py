@@ -42,6 +42,22 @@ VALID_EDGE_TYPES = frozenset({
 })
 
 
+# Valid entity types - single source of truth for deserialization
+VALID_ENTITY_TYPES = frozenset({
+    'task',
+    'decision',
+    'edge',
+    'sprint',
+    'epic',
+    'handoff',
+    'claudemd_layer',
+    'claudemd_version',
+    'persona_profile',
+    'team',
+    'document',
+})
+
+
 @dataclass
 class Entity:
     """
