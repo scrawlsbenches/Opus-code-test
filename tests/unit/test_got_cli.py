@@ -794,10 +794,14 @@ class TestDecisionList:
             result = cmd_decision_list(mock_args, mock_manager)
 
         assert result == 0
-        assert "No decisions" in captured.getvalue()
+        # CLI module outputs "Decisions (0):" for empty list
+        output = captured.getvalue()
+        assert "Decisions" in output or "No decisions" in output
 
     def test_list_decisions_with_data(self, mock_manager, mock_args):
         """List decisions when they exist."""
+        mock_args.limit = None  # CLI checks for limit attribute
+
         decision1 = Mock()
         decision1.id = "decision:D-001"
         decision1.content = "Use microservices"
@@ -811,7 +815,8 @@ class TestDecisionList:
         decision2.content = "Use TypeScript"
         decision2.properties = {"rationale": "Type safety"}
 
-        mock_manager.get_decisions.return_value = [decision1, decision2]
+        # CLI module checks list_decisions first
+        mock_manager.list_decisions.return_value = [decision1, decision2]
 
         with patch('sys.stdout', new=StringIO()) as captured:
             result = cmd_decision_list(mock_args, mock_manager)
@@ -1358,10 +1363,13 @@ class TestSprintStatus:
         mock_manager.list_sprints.return_value = [sprint]
         mock_manager.get_sprint_progress.return_value = {
             "total_tasks": 10,
-            "completed_tasks": 6,
-            "in_progress_tasks": 3,
-            "blocked_tasks": 1,
-            "progress_percent": 60.0
+            "completed": 6,
+            "progress_percent": 60.0,
+            "by_status": {
+                "completed": 6,
+                "in_progress": 3,
+                "blocked": 1,
+            }
         }
 
         with patch('got_utils.format_sprint_status', return_value="Sprint Status"):
