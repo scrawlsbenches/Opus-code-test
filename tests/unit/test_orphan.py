@@ -80,7 +80,7 @@ class TestConnectionSuggestion:
         suggestion = ConnectionSuggestion(
             source_id="T-001",
             target_id="T-002",
-            edge_type="RELATED_TO",
+            edge_type="RELATES_TO",
             confidence=0.5,
             reason="Test",
         )
@@ -372,7 +372,7 @@ class TestOrphanDetector:
         assert edge_type == "BLOCKS"
 
     def test_infer_edge_type_related(self, mock_manager):
-        """Test inferring RELATED_TO edge type as default."""
+        """Test inferring RELATES_TO edge type as default."""
         detector = OrphanDetector(mock_manager)
 
         source = Mock()
@@ -384,7 +384,7 @@ class TestOrphanDetector:
         target.description = ""
 
         edge_type, reason = detector._infer_edge_type(source, target)
-        assert edge_type == "RELATED_TO"
+        assert edge_type == "RELATES_TO"
 
 
 class TestConvenienceFunctions:

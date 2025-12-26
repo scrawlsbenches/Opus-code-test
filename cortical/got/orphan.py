@@ -454,7 +454,7 @@ class OrphanDetector:
                 return "BLOCKS", f"Source mentions '{keyword}'"
 
         # Default to related
-        return "RELATED_TO", "Similar content"
+        return "RELATES_TO", "Similar content"
 
     def get_orphan_summary(self) -> str:
         """

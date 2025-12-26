@@ -53,7 +53,7 @@ class TestFindRelationBetween:
         """Should find multiple relations between same pair."""
         relations = [
             ("neural", "COMPOUND_WITH", "networks", 0.8),
-            ("neural", "RELATED_TO", "networks", 0.6),
+            ("neural", "RELATES_TO", "networks", 0.6),
             ("neural", "SIMILAR_TO", "networks", 0.5),
         ]
         result = find_relation_between("neural", "networks", relations)
@@ -66,7 +66,7 @@ class TestFindRelationBetween:
     def test_sorts_by_weight_descending(self):
         """Should sort results by weight in descending order."""
         relations = [
-            ("neural", "RELATED_TO", "networks", 0.3),
+            ("neural", "RELATES_TO", "networks", 0.3),
             ("neural", "COMPOUND_WITH", "networks", 0.9),
             ("neural", "SIMILAR_TO", "networks", 0.5),
         ]
@@ -109,7 +109,7 @@ class TestFindTermsWithRelation:
         """Should only return relations of specified type."""
         relations = [
             ("neural", "COMPOUND_WITH", "networks", 0.8),
-            ("neural", "RELATED_TO", "computation", 0.7),
+            ("neural", "RELATES_TO", "computation", 0.7),
         ]
         result = find_terms_with_relation(
             "neural", "COMPOUND_WITH", relations, direction='forward'

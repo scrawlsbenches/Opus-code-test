@@ -158,10 +158,11 @@ class TestEpicId:
     """Tests for generate_epic_id()."""
 
     def test_format(self):
-        """Epic ID has correct format."""
+        """Epic ID has correct format (EPIC- prefix)."""
         epic_id = generate_epic_id()
-        assert epic_id.startswith("E-")
-        pattern = r'^E-\d{8}-\d{6}-[0-9a-f]{8}$'
+        assert epic_id.startswith("EPIC-")
+        # Format: EPIC-YYYYMMDD-HHMMSS-XXXXXXXX
+        pattern = r'^EPIC-\d{8}-\d{6}-[0-9a-f]{8}$'
         assert re.match(pattern, epic_id)
 
     def test_uses_secrets_module(self, monkeypatch):
@@ -178,6 +179,11 @@ class TestEpicId:
 
         assert calls == [4]  # 4 bytes = 8 hex chars
         assert result.endswith("-q7r8s9t0")
+
+    def test_with_name(self):
+        """Epic ID with name uses EPIC-{name} format."""
+        epic_id = generate_epic_id(name="test-epic")
+        assert epic_id == "EPIC-test-epic"
 
 
 class TestHandoffId:

@@ -83,8 +83,8 @@ class TestGoTQueryPerformance:
                 manager.add_edge(tasks[i].id, tasks[i + 1].id, "DEPENDS_ON")
             if i % 3 == 0:  # ~17 BLOCKS edges
                 manager.add_edge(tasks[i].id, tasks[(i + 3) % len(tasks)].id, "BLOCKS")
-            if i % 4 == 0:  # ~12 RELATED_TO edges
-                manager.add_edge(tasks[i].id, decisions[i % 10].id, "RELATED_TO")
+            if i % 4 == 0:  # ~12 RELATES_TO edges
+                manager.add_edge(tasks[i].id, decisions[i % 10].id, "RELATES_TO")
 
         # Clear cache to ensure fair timing
         manager.cache_clear()
