@@ -1,0 +1,19 @@
+{
+  "_checksum": "a179487245c36049",
+  "_written_at": "2025-12-26T14:14:41.432880+00:00",
+  "data": {
+    "created_at": "2025-12-26T14:14:41.428841+00:00",
+    "description": "## Problem\nSprint IDs use inconsistent formats:\n- S-NNN (e.g., S-026) - Sequential number\n- S-sprint-NNN-name (e.g., S-sprint-017-spark-slm) - Legacy format\n- S-YYYY-MM (e.g., S-2025-12) - Date-based (from generate_sprint_id())\n\nThis inconsistency:\n- Makes sorting/filtering harder\n- Complicates ID parsing\n- Creates confusion about which format to use\n\n## Current State (Production Data)\n```\nS-018, S-019, S-020, S-021, S-022, S-023, S-024, S-025, S-026  # Sequential\nS-sprint-001 through S-sprint-020-*  # Legacy format\n```\n\n## Solution\n1. Standardize on S-NNN format for new sprints\n2. Update generate_sprint_id() to use sequential format:\n```python\ndef generate_sprint_id(number: int) -> str:\n    return f\"S-{number:03d}\"\n```\n\n3. Document legacy format as deprecated but supported\n4. Add migration guide for renaming if desired (optional)\n\n## Files\n- cortical/utils/id_generation.py:generate_sprint_id()\n- scripts/got_utils.py (sprint create command)\n\n## Acceptance Criteria\n1. New sprints use S-NNN format consistently\n2. Legacy formats still parse correctly\n3. Documentation clarifies preferred format\n4. No breaking changes to existing sprint references",
+    "entity_type": "task",
+    "id": "T-20251226-141441-08b2860f",
+    "metadata": {},
+    "modified_at": "2025-12-26T14:14:41.432817+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Consolidate Sprint ID format for consistency",
+    "version": 2
+  }
+}
