@@ -1,19 +1,22 @@
 {
-  "_checksum": "6c9856b76278ccf7",
-  "_written_at": "2025-12-26T00:43:55.991577+00:00",
+  "_checksum": "d2d38e942db2e644",
+  "_written_at": "2025-12-26T00:55:47.988543+00:00",
   "data": {
     "created_at": "2025-12-26T00:43:55.986401+00:00",
     "description": "Add excitability adjustment mechanism to HomeostasisRegulator. Depends on HomeostasisRegulator class. Part of EPIC-HIVE Sprint 2.",
     "entity_type": "task",
     "id": "T-20251226-004355-b0003612",
-    "metadata": {},
-    "modified_at": "2025-12-26T00:43:55.991531+00:00",
+    "metadata": {
+      "completed_at": "2025-12-26T00:55:47.978135+00:00",
+      "updated_at": "2025-12-26T00:55:47.978147+00:00"
+    },
+    "modified_at": "2025-12-26T00:55:47.988492+00:00",
     "priority": "medium",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Implement excitability adjustment",
-    "version": 2
+    "version": 4
   }
 }
