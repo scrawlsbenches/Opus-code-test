@@ -169,31 +169,46 @@ class QueryIndexManager:
                 logger.warning(f"Failed to load sprint index: {e}")
 
     def _save_indexes(self) -> None:
-        """Save all indexes to disk."""
+        """Save all indexes to disk using atomic temp-rename pattern."""
         if not self._dirty:
             return
 
         for field_name, index in self._indexes.items():
             index_file = self._index_dir / f"by_{field_name}.json"
-            try:
-                with open(index_file, "w") as f:
-                    json.dump(index.to_dict(), f, indent=2)
-            except IOError as e:
-                logger.error(f"Failed to save index {field_name}: {e}")
+            self._atomic_write_json(index_file, index.to_dict())
 
         # Save sprint index
         sprint_file = self._index_dir / "by_sprint.json"
-        try:
-            data = {
-                "sprints": {k: list(v) for k, v in self._sprint_index.items()},
-                "version": 1,
-            }
-            with open(sprint_file, "w") as f:
-                json.dump(data, f, indent=2)
-        except IOError as e:
-            logger.error(f"Failed to save sprint index: {e}")
+        data = {
+            "sprints": {k: list(v) for k, v in self._sprint_index.items()},
+            "version": 1,
+        }
+        self._atomic_write_json(sprint_file, data)
 
         self._dirty = False
+
+    def _atomic_write_json(self, filepath: Path, data: Any) -> None:
+        """
+        Write JSON atomically using temp file + os.replace().
+
+        If a crash occurs during write, the original file remains intact.
+        """
+        temp_file = filepath.with_suffix(".json.tmp")
+        try:
+            with open(temp_file, "w") as f:
+                json.dump(data, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            # Atomic rename - either succeeds completely or fails completely
+            os.replace(temp_file, filepath)
+        except IOError as e:
+            logger.error(f"Failed to save {filepath.name}: {e}")
+            # Clean up temp file if it exists
+            if temp_file.exists():
+                try:
+                    temp_file.unlink()
+                except OSError:
+                    pass
 
     def has_index(self, field_name: str) -> bool:
         """Check if an index exists for the given field."""

@@ -46,6 +46,11 @@ def cmd_sprint_list(args, manager: "TransactionalGoTAdapter") -> int:
         print("No sprints found.")
         return 0
 
+    # Apply limit if specified
+    limit = getattr(args, 'limit', None)
+    if limit is not None and limit > 0:
+        sprints = sprints[:limit]
+
     for sprint in sprints:
         progress = manager.get_sprint_progress(sprint.id)
         status = sprint.properties.get("status", "?")
@@ -284,6 +289,11 @@ def cmd_epic_list(args, manager: "TransactionalGoTAdapter") -> int:
         print("No epics found.")
         return 0
 
+    # Apply limit if specified
+    limit = getattr(args, 'limit', None)
+    if limit is not None and limit > 0:
+        epics = epics[:limit]
+
     for epic in epics:
         status = epic.properties.get("status", "?")
         phase = epic.properties.get("phase", "?")
@@ -342,6 +352,11 @@ def setup_sprint_parser(subparsers) -> None:
     # sprint list
     sprint_list = sprint_subparsers.add_parser("list", help="List sprints")
     sprint_list.add_argument("--status", help="Filter by status")
+    sprint_list.add_argument(
+        "--limit", "-n",
+        type=int,
+        help="Limit number of results"
+    )
 
     # sprint status
     sprint_status = sprint_subparsers.add_parser("status", help="Show sprint status")
@@ -435,6 +450,11 @@ def setup_epic_parser(subparsers) -> None:
     # epic list
     epic_list = epic_subparsers.add_parser("list", help="List epics")
     epic_list.add_argument("--status", help="Filter by status")
+    epic_list.add_argument(
+        "--limit", "-n",
+        type=int,
+        help="Limit number of results"
+    )
 
     # epic show
     epic_show = epic_subparsers.add_parser("show", help="Show epic details")

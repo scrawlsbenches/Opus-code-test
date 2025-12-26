@@ -92,6 +92,75 @@ def cmd_handoff_complete(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
+def cmd_handoff_show(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got handoff show' command."""
+    handoff_id = args.handoff_id
+
+    # Get all handoffs and find the one we want
+    handoffs = manager.list_handoffs(status=None)
+    handoff = None
+    for h in handoffs:
+        if h.get("id") == handoff_id:
+            handoff = h
+            break
+
+    if not handoff:
+        print(f"Handoff not found: {handoff_id}")
+        return 1
+
+    # Display full handoff details
+    status = handoff.get("status", "?")
+    status_icon = {
+        "initiated": "→",
+        "accepted": "✓",
+        "completed": "✓✓",
+        "rejected": "✗",
+    }.get(status, "?")
+
+    print("=" * 60)
+    print(f"HANDOFF: {handoff_id}")
+    print("=" * 60)
+    print(f"Status:      {status_icon} {status}")
+    print(f"From:        {handoff.get('source_agent', '?')}")
+    print(f"To:          {handoff.get('target_agent', '?')}")
+    print(f"Task:        {handoff.get('task_id', '?')}")
+
+    if handoff.get("created_at"):
+        print(f"Created:     {handoff['created_at']}")
+    if handoff.get("accepted_at"):
+        print(f"Accepted:    {handoff['accepted_at']}")
+    if handoff.get("completed_at"):
+        print(f"Completed:   {handoff['completed_at']}")
+
+    # Show context
+    context = handoff.get("context", {})
+    if context:
+        print(f"\nContext:")
+        for key, value in context.items():
+            print(f"  {key}: {value}")
+
+    # Show full instructions (not truncated)
+    if handoff.get("instructions"):
+        print(f"\nInstructions:")
+        print("-" * 40)
+        print(handoff["instructions"])
+        print("-" * 40)
+
+    # Show result if completed
+    if handoff.get("result"):
+        print(f"\nResult:")
+        print(json.dumps(handoff["result"], indent=2))
+
+    # Show artifacts if any
+    if handoff.get("artifacts"):
+        print(f"\nArtifacts:")
+        for artifact in handoff["artifacts"]:
+            print(f"  - {artifact}")
+
+    print("=" * 60)
+    return 0
+
+
 def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got handoff list' command."""
     # Normalize status alias: in_progress -> accepted (matches task terminology)
@@ -105,6 +174,11 @@ def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     if not handoffs:
         print("No handoffs found.")
         return 0
+
+    # Apply limit if specified
+    limit = getattr(args, 'limit', None)
+    if limit is not None and limit > 0:
+        handoffs = handoffs[:limit]
 
     print(f"Handoffs ({len(handoffs)}):\n")
     for h in handoffs:
@@ -184,12 +258,21 @@ def setup_handoff_parser(subparsers) -> None:
         help="Artifacts created (files, commits)"
     )
 
+    # handoff show
+    handoff_show = handoff_subparsers.add_parser("show", help="Show handoff details")
+    handoff_show.add_argument("handoff_id", help="Handoff ID to display")
+
     # handoff list
     handoff_list = handoff_subparsers.add_parser("list", help="List handoffs")
     handoff_list.add_argument(
         "--status",
         # Note: in_progress is an alias for accepted (matches task terminology)
         choices=["initiated", "accepted", "in_progress", "completed", "rejected"]
+    )
+    handoff_list.add_argument(
+        "--limit", "-n",
+        type=int,
+        help="Limit number of results"
     )
 
 
@@ -212,6 +295,7 @@ def handle_handoff_command(args, manager: "TransactionalGoTAdapter") -> int:
         "initiate": cmd_handoff_initiate,
         "accept": cmd_handoff_accept,
         "complete": cmd_handoff_complete,
+        "show": cmd_handoff_show,
         "list": cmd_handoff_list,
     }
 

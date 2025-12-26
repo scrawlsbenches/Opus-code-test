@@ -325,25 +325,27 @@ def save_commit_lite(context: CommitContext):
         logger.debug(f"CALI: commit {context.hash[:8]} already exists")
         return COMMITS_LITE_FILE
 
-    # Legacy: Check if this commit hash already exists in the file (idempotent)
-    if COMMITS_LITE_FILE.exists():
-        with open(COMMITS_LITE_FILE, 'r') as f:
-            for line in f:
-                if line.strip():
-                    try:
-                        existing = json.loads(line)
-                        if existing.get("hash") == context.hash:
-                            return COMMITS_LITE_FILE  # Already recorded
-                    except json.JSONDecodeError:
-                        continue
+    # Lock to prevent check-then-act race condition
+    with file_lock(COMMITS_LITE_FILE):
+        # Legacy: Check if this commit hash already exists in the file (idempotent)
+        if COMMITS_LITE_FILE.exists():
+            with open(COMMITS_LITE_FILE, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        try:
+                            existing = json.loads(line)
+                            if existing.get("hash") == context.hash:
+                                return COMMITS_LITE_FILE  # Already recorded
+                        except json.JSONDecodeError:
+                            continue
 
-    # Append to JSONL file (one JSON object per line)
-    with open(COMMITS_LITE_FILE, 'a') as f:
-        f.write(json.dumps(lite_data, separators=(',', ':')) + '\n')
+        # Append to JSONL file (one JSON object per line)
+        with open(COMMITS_LITE_FILE, 'a') as f:
+            f.write(json.dumps(lite_data, separators=(',', ':')) + '\n')
 
-    # Also write to CALI for O(1) lookups and git-friendly storage
-    if cali_put('commit', context.hash, lite_data):
-        logger.debug(f"CALI: stored commit {context.hash[:8]}")
+        # Also write to CALI for O(1) lookups and git-friendly storage
+        if cali_put('commit', context.hash, lite_data):
+            logger.debug(f"CALI: stored commit {context.hash[:8]}")
 
     return COMMITS_LITE_FILE
 
@@ -375,25 +377,27 @@ def save_session_lite(session_summary: Dict[str, Any]):
         logger.debug(f"CALI: session {session_id} already exists")
         return SESSIONS_LITE_FILE
 
-    # Legacy: Check if this session already exists (idempotent)
-    if SESSIONS_LITE_FILE.exists():
-        with open(SESSIONS_LITE_FILE, 'r') as f:
-            for line in f:
-                if line.strip():
-                    try:
-                        existing = json.loads(line)
-                        if existing.get("session_id") == session_id:
-                            return SESSIONS_LITE_FILE  # Already recorded
-                    except json.JSONDecodeError:
-                        continue
+    # Lock to prevent check-then-act race condition
+    with file_lock(SESSIONS_LITE_FILE):
+        # Legacy: Check if this session already exists (idempotent)
+        if SESSIONS_LITE_FILE.exists():
+            with open(SESSIONS_LITE_FILE, 'r') as f:
+                for line in f:
+                    if line.strip():
+                        try:
+                            existing = json.loads(line)
+                            if existing.get("session_id") == session_id:
+                                return SESSIONS_LITE_FILE  # Already recorded
+                        except json.JSONDecodeError:
+                            continue
 
-    # Append to JSONL file
-    with open(SESSIONS_LITE_FILE, 'a') as f:
-        f.write(json.dumps(session_summary, separators=(',', ':')) + '\n')
+        # Append to JSONL file
+        with open(SESSIONS_LITE_FILE, 'a') as f:
+            f.write(json.dumps(session_summary, separators=(',', ':')) + '\n')
 
-    # Also write to CALI for O(1) lookups and git-friendly storage
-    if cali_put('session', session_id, session_summary):
-        logger.debug(f"CALI: stored session {session_id}")
+        # Also write to CALI for O(1) lookups and git-friendly storage
+        if cali_put('session', session_id, session_summary):
+            logger.debug(f"CALI: stored session {session_id}")
 
     return SESSIONS_LITE_FILE
 

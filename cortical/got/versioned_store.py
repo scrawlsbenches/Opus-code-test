@@ -16,6 +16,7 @@ from typing import Dict, Optional
 from .types import Entity, Task, Decision, Edge, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, PersonaProfile, Team, Document
 from .errors import CorruptionError, ValidationError
 from cortical.utils.checksums import compute_checksum
+from cortical.utils.locking import ProcessLock
 from .config import DurabilityMode
 from .schema import get_registry, ValidationResult
 
@@ -61,6 +62,10 @@ class VersionedStore:
         self.validate_on_save = validate_on_save
         self.history_dir = self.store_dir / "_history"
         self.history_dir.mkdir(exist_ok=True)
+
+        # Process lock for concurrent history file access protection
+        self._history_lock = ProcessLock(self.history_dir / ".history.lock")
+
         self._version = self._load_version()
 
     def current_version(self) -> int:
@@ -416,6 +421,7 @@ class VersionedStore:
         data = wrapper["data"]
 
         # Append to history file (JSONL format)
+        # Use lock to prevent concurrent writes from interleaving
         history_path = self._history_path(entity_id)
         history_entry = {
             "global_version": global_version,
@@ -423,9 +429,10 @@ class VersionedStore:
             "data": data
         }
 
-        with open(history_path, 'a', encoding='utf-8') as f:
-            json.dump(history_entry, f, sort_keys=True)
-            f.write('\n')
+        with self._history_lock:
+            with open(history_path, 'a', encoding='utf-8') as f:
+                json.dump(history_entry, f, sort_keys=True)
+                f.write('\n')
 
     def _load_version(self) -> int:
         """

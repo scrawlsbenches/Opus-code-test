@@ -176,6 +176,9 @@ class ProcessLock:
                     return False
 
             # Successfully acquired - write holder info
+            # Note: We don't fsync here because holder info is just metadata
+            # for stale detection, not critical data. This avoids unnecessary
+            # syscalls and respects RELAXED durability modes.
             try:
                 holder_info = {
                     "pid": os.getpid(),
@@ -185,7 +188,6 @@ class ProcessLock:
                 self._fd.truncate()
                 json.dump(holder_info, self._fd)
                 self._fd.flush()
-                os.fsync(self._fd.fileno())
             except Exception as e:
                 logger.error(f"Failed to write lock holder info: {e}")
                 # Don't fail the lock acquisition if we can't write metadata
