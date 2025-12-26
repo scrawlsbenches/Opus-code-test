@@ -18,6 +18,8 @@ from .generation import (
     GenerationCoherenceBenchmark,
     PerplexityCalibrationBenchmark,
     TemperatureDiversityBenchmark,
+    FullCorpusPerplexityBenchmark,
+    VariedCorpusDiversityBenchmark,
 )
 from .learning import (
     HebbianStrengtheningBenchmark,
@@ -35,6 +37,8 @@ __all__ = [
     "GenerationCoherenceBenchmark",
     "PerplexityCalibrationBenchmark",
     "TemperatureDiversityBenchmark",
+    "FullCorpusPerplexityBenchmark",
+    "VariedCorpusDiversityBenchmark",
     # Learning
     "HebbianStrengtheningBenchmark",
     "DecayStabilityBenchmark",

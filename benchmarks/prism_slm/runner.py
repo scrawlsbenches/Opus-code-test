@@ -42,6 +42,8 @@ from benchmarks.prism_slm.generation import (
     GenerationCoherenceBenchmark,
     PerplexityCalibrationBenchmark,
     TemperatureDiversityBenchmark,
+    FullCorpusPerplexityBenchmark,
+    VariedCorpusDiversityBenchmark,
 )
 from benchmarks.prism_slm.learning import (
     HebbianStrengtheningBenchmark,
@@ -57,10 +59,14 @@ from benchmarks.prism_slm.integration import (
 
 # Registry of all benchmarks
 ALL_BENCHMARKS: List[Type[BaseBenchmark]] = [
-    # Generation
+    # Generation (small corpus)
     GenerationCoherenceBenchmark,
     PerplexityCalibrationBenchmark,
     TemperatureDiversityBenchmark,
+    # Generation (full corpus - Option A)
+    FullCorpusPerplexityBenchmark,
+    # Generation (varied corpus - Option B)
+    VariedCorpusDiversityBenchmark,
     # Learning
     HebbianStrengtheningBenchmark,
     DecayStabilityBenchmark,
