@@ -1,19 +1,22 @@
 {
-  "_checksum": "4e5ef5de1b8d6335",
-  "_written_at": "2025-12-26T02:02:09.962765+00:00",
+  "_checksum": "c2bf29f40bf3800c",
+  "_written_at": "2025-12-26T02:36:07.474560+00:00",
   "data": {
     "created_at": "2025-12-26T02:02:09.956688+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20251226-020209-b574288b",
-    "metadata": {},
-    "modified_at": "2025-12-26T02:02:09.962668+00:00",
+    "metadata": {
+      "completed_at": "2025-12-26T02:36:07.463627+00:00",
+      "updated_at": "2025-12-26T02:36:07.463632+00:00"
+    },
+    "modified_at": "2025-12-26T02:36:07.474506+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "T4.3: Implement surprise_from_predictions()",
-    "version": 2
+    "version": 4
   }
 }
