@@ -1,0 +1,22 @@
+{
+  "_checksum": "2fc94a6834bfc5f2",
+  "_written_at": "2025-12-26T01:26:41.284829+00:00",
+  "data": {
+    "created_at": "2025-12-26T01:17:39.894809+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251226-011739-0fdb8d99",
+    "metadata": {
+      "completed_at": "2025-12-26T01:26:41.273392+00:00",
+      "updated_at": "2025-12-26T01:26:41.273404+00:00"
+    },
+    "modified_at": "2025-12-26T01:26:41.284763+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "Implement goal progress tracking",
+    "version": 4
+  }
+}

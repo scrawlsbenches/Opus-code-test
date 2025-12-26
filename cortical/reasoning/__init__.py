@@ -291,6 +291,204 @@ from .thought_patterns import (
 )
 
 # =============================================================================
+# PRISM-GoT: Predictive Reasoning through Incremental Synaptic Memory
+# =============================================================================
+
+from .prism_got import (
+    # Core data structures
+    ActivationRecord,
+    ActivationTrace,
+    SynapticEdge,
+    PredictionResult,
+    # Learning rules
+    PlasticityRules,
+    # Graph with synaptic memory
+    SynapticMemoryGraph,
+    # Incremental reasoning
+    IncrementalReasoner,
+)
+
+# Convenient alias for PRISM systems
+PRISMGraph = SynapticMemoryGraph
+
+# =============================================================================
+# PRISM-SLM: Statistical Language Model with Synaptic Learning
+# =============================================================================
+
+from .prism_slm import (
+    # Core data structures
+    SynapticTransition,
+    ContextWindow,
+    TransitionGraph,
+    # Hive data structures (Sprint 2)
+    HiveNode,
+    HiveEdge,
+    # Language model
+    PRISMLanguageModel,
+)
+
+# =============================================================================
+# PRISM-PLN: Probabilistic Logic Networks with Synaptic Learning
+# =============================================================================
+
+from .prism_pln import (
+    # Truth values
+    TruthValue,
+    SynapticTruthValue,
+    # Logical operations
+    pln_not,
+    pln_and,
+    pln_or,
+    pln_implication,
+    # Inference rules
+    deduce,
+    induce,
+    abduce,
+    # Knowledge structures
+    Atom,
+    ImplicationLink,
+    PLNGraph,
+    PLNReasoner,
+)
+
+# =============================================================================
+# THE LOOM: Dual-Process Integration Layer
+# =============================================================================
+
+from .loom import (
+    # Enums
+    ThinkingMode,
+    TransitionTrigger,
+    # Data structures
+    SurpriseSignal,
+    LoomConfig,
+    ModeTransition,
+    LoomAttentionResult,
+    # Protocols
+    SurpriseDetectorProtocol,
+    ModeControllerProtocol,
+    LoomObserverProtocol,
+    # Abstract base
+    LoomInterface,
+    # Concrete implementations
+    SurpriseDetector,
+    ModeController,
+    Loom,
+    # PRISM integration
+    LoomEnhancedAttention,
+    # Type aliases
+    TransitionCallback,
+    SurpriseCallback,
+)
+
+# =============================================================================
+# HOMEOSTATIC REGULATION: Network Stability
+# =============================================================================
+
+from .homeostasis import (
+    HomeostasisConfig,
+    NodeState,
+    HomeostasisRegulator,
+    AdaptiveHomeostasisRegulator,
+)
+
+# =============================================================================
+# LOOM-HIVE CONNECTOR: Dual-Process Integration (Sprint 4)
+# =============================================================================
+
+from .loom_hive import (
+    LoomHiveConfig,
+    LoomHiveConnector,
+)
+
+from .loom_cortex import (
+    LoomCortexConfig,
+    LoomCortexConnector,
+)
+
+from .attention_router import (
+    AttentionRouterConfig,
+    RoutingResult,
+    DualRoutingResult,
+    AttentionRouter,
+)
+
+from .woven_mind import (
+    WovenMindConfig,
+    WovenMindResult,
+    WovenMind,
+)
+
+# =============================================================================
+# CORTEX ABSTRACTION: Hierarchical Pattern Abstraction (Sprint 3)
+# =============================================================================
+
+from .abstraction import (
+    # Core data structures
+    Abstraction,
+    PatternObservation,
+    # Pattern detection
+    PatternDetector,
+    # Abstraction engine
+    AbstractionEngine,
+)
+
+# =============================================================================
+# GOAL STACK: Goal Tracking with Monotonic Progress (Sprint 3)
+# =============================================================================
+
+from .goal_stack import (
+    # Enums
+    GoalStatus,
+    GoalPriority,
+    # Core data structures
+    Goal,
+    # Goal stack manager
+    GoalStack,
+)
+
+# =============================================================================
+# ABSTRACTION-PLN BRIDGE: Wiring Abstractions to PLN (Sprint 3, T3.5)
+# =============================================================================
+
+from .abstraction_pln import (
+    # Bridge class
+    AbstractionPLNBridge,
+)
+
+# =============================================================================
+# CONSOLIDATION ENGINE: Learning Transfer (Sprint 5)
+# =============================================================================
+
+from .consolidation import (
+    ConsolidationConfig,
+    ConsolidationResult,
+    ConsolidationPhase,
+    ConsolidationEngine,
+)
+
+# =============================================================================
+# PRISM-Attention: Selective Focus Mechanisms
+# =============================================================================
+
+from .prism_attention import (
+    # Core attention layers
+    AttentionLayer,
+    MultiHeadAttention,
+    SynapticAttention,
+    LearnableAttention,
+    TemporalAttention,
+    UnifiedAttention,
+    # PLN integration
+    AttentionGuidedReasoner,
+    # Visualization
+    AttentionVisualizer,
+    AttentionHeatmap,
+    # Result types
+    AttentionResult,
+)
+
+# =============================================================================
 # PUBLIC API
 # =============================================================================
 
@@ -433,4 +631,113 @@ __all__ = [
     'create_analysis_graph',
     'create_pattern_graph',
     'PATTERN_REGISTRY',
+
+    # === PRISM-GoT: Synaptic Memory Graph ===
+    'ActivationRecord',
+    'ActivationTrace',
+    'SynapticEdge',
+    'PredictionResult',
+    'PlasticityRules',
+    'SynapticMemoryGraph',
+    'PRISMGraph',  # Alias for SynapticMemoryGraph
+    'IncrementalReasoner',
+
+    # === PRISM-SLM: Statistical Language Model ===
+    'SynapticTransition',
+    'ContextWindow',
+    'TransitionGraph',
+    'HiveNode',
+    'HiveEdge',
+    'PRISMLanguageModel',
+
+    # === PRISM-PLN: Probabilistic Logic Networks ===
+    'TruthValue',
+    'SynapticTruthValue',
+    'pln_not',
+    'pln_and',
+    'pln_or',
+    'pln_implication',
+    'deduce',
+    'induce',
+    'abduce',
+    'Atom',
+    'ImplicationLink',
+    'PLNGraph',
+    'PLNReasoner',
+
+    # === PRISM-Attention: Selective Focus ===
+    'AttentionLayer',
+    'MultiHeadAttention',
+    'SynapticAttention',
+    'LearnableAttention',
+    'TemporalAttention',
+    'UnifiedAttention',
+    'AttentionGuidedReasoner',
+    'AttentionVisualizer',
+    'AttentionHeatmap',
+    'AttentionResult',
+
+    # === The Loom: Dual-Process Integration ===
+    'ThinkingMode',
+    'TransitionTrigger',
+    'SurpriseSignal',
+    'LoomConfig',
+    'ModeTransition',
+    'LoomAttentionResult',
+    'SurpriseDetectorProtocol',
+    'ModeControllerProtocol',
+    'LoomObserverProtocol',
+    'LoomInterface',
+    'SurpriseDetector',
+    'ModeController',
+    'Loom',
+    'LoomEnhancedAttention',
+    'TransitionCallback',
+    'SurpriseCallback',
+
+    # === Homeostatic Regulation ===
+    'HomeostasisConfig',
+    'NodeState',
+    'HomeostasisRegulator',
+    'AdaptiveHomeostasisRegulator',
+
+    # === Loom-Hive Connector (Sprint 4) ===
+    'LoomHiveConfig',
+    'LoomHiveConnector',
+
+    # === Loom-Cortex Connector (Sprint 4) ===
+    'LoomCortexConfig',
+    'LoomCortexConnector',
+
+    # === Attention Router (Sprint 4) ===
+    'AttentionRouterConfig',
+    'RoutingResult',
+    'DualRoutingResult',
+    'AttentionRouter',
+
+    # === WovenMind Facade (Sprint 4) ===
+    'WovenMindConfig',
+    'WovenMindResult',
+    'WovenMind',
+
+    # === Cortex Abstraction (Sprint 3) ===
+    'Abstraction',
+    'PatternObservation',
+    'PatternDetector',
+    'AbstractionEngine',
+
+    # === Goal Stack (Sprint 3) ===
+    'GoalStatus',
+    'GoalPriority',
+    'Goal',
+    'GoalStack',
+
+    # === Abstraction-PLN Bridge (Sprint 3, T3.5) ===
+    'AbstractionPLNBridge',
+
+    # === Consolidation Engine (Sprint 5) ===
+    'ConsolidationConfig',
+    'ConsolidationResult',
+    'ConsolidationPhase',
+    'ConsolidationEngine',
 ]

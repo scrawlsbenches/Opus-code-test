@@ -482,6 +482,7 @@ Always have backup plans:
 | Command | Purpose |
 |---------|---------|
 | `/context-recovery` | Restore cognitive state from available sources |
+| `/woven-mind-director` | Orchestrate Woven Mind + PRISM marriage tasks |
 | `python scripts/task_utils.py list --status in_progress` | See active work |
 | `git log --oneline -5` | Recent actions context |
 | `cat .branch-state/active/*.json` | Branch state |
@@ -690,6 +691,47 @@ python scripts/validate_reasoning_persistence.py
 - [docs/graph-of-thought.md](docs/graph-of-thought.md) - Reasoning framework
 - [docs/graph-recovery-procedures.md](docs/graph-recovery-procedures.md) - Recovery guide
 
+### Woven Mind Cognitive Architecture
+
+Dual-process cognitive system inspired by Kahneman's System 1/System 2 theory:
+
+```python
+from cortical.reasoning.woven_mind import WovenMind
+
+# Create and train
+mind = WovenMind()
+mind.train("neural networks process information")
+mind.train("deep learning uses neural networks")
+
+# Process input - automatically routes to FAST or SLOW mode
+result = mind.process(["neural", "networks"])
+print(f"Mode: {result.mode.name}")  # FAST or SLOW
+print(f"Source: {result.source}")    # 'hive' or 'cortex'
+
+# Periodic consolidation (like sleep)
+consolidation = mind.consolidate()
+print(f"Patterns transferred: {consolidation.patterns_transferred}")
+```
+
+**Key components:**
+- **WovenMind**: Main facade orchestrating dual-process cognition
+- **The Loom**: Routes between FAST (Hive) and SLOW (Cortex) based on surprise
+- **Hive (System 1)**: Fast pattern matching, automatic responses, spreading activation
+- **Cortex (System 2)**: Slow deliberate reasoning, abstraction formation, planning
+- **ConsolidationEngine**: Sleep-like memory transfer from Hive to Cortex
+
+**When to use:**
+- Adaptive text classification (familiar → fast, novel → slow)
+- Intelligent systems that know when to think carefully
+- Knowledge extraction with progressive learning
+- Anomaly detection through surprise monitoring
+
+**Documentation:**
+- User Guide: [docs/woven-mind-user-guide.md](docs/woven-mind-user-guide.md)
+- Tutorial: [examples/woven_mind_tutorial.ipynb](examples/woven_mind_tutorial.ipynb)
+- Demo: `python examples/woven_mind_demo.py --section all`
+- Release Notes: [docs/release-announcement-woven-mind-v1.md](docs/release-announcement-woven-mind-v1.md)
+
 ---
 
 ## Architecture Map
@@ -716,8 +758,13 @@ cortical/
 │   ├── ranking.py    # Multi-stage ranking
 │   ├── analogy.py    # Analogy completion
 │   └── utils.py      # Shared query scoring helpers (TF-IDF utilities)
-├── reasoning/        # Graph of Thought reasoning framework
+├── reasoning/        # Graph of Thought + Woven Mind cognitive architecture
 │   ├── __init__.py   # Re-exports all components
+│   ├── woven_mind.py     # WovenMind facade - dual-process orchestration (404 lines)
+│   ├── loom.py           # The Loom - mode switching, surprise detection (1,115 lines)
+│   ├── loom_hive.py      # System 1 connector - fast, automatic processing (400 lines)
+│   ├── loom_cortex.py    # System 2 connector - slow, deliberate reasoning (416 lines)
+│   ├── consolidation.py  # Sleep-like memory consolidation engine (634 lines)
 │   ├── workflow.py   # ReasoningWorkflow orchestrator
 │   ├── cognitive_loop.py  # QAPV cycle implementation
 │   ├── thought_graph.py   # Graph-based thought representation
@@ -817,6 +864,11 @@ cortical/
 | Graph persistence (WAL) | `reasoning/graph_persistence.py` - GraphWAL, snapshots |
 | Crash recovery | `reasoning/graph_persistence.py` - GraphRecovery (4-level cascade) |
 | Git auto-versioning | `reasoning/graph_persistence.py` - GitAutoCommitter |
+| Dual-process cognition | `reasoning/woven_mind.py` - WovenMind facade |
+| Mode switching (Loom) | `reasoning/loom.py` - surprise detection, routing |
+| System 1 fast processing | `reasoning/loom_hive.py` - Hive connector |
+| System 2 slow reasoning | `reasoning/loom_cortex.py` - Cortex connector |
+| Memory consolidation | `reasoning/consolidation.py` - ConsolidationEngine |
 | GoT task/decision tracking | `got/` - GoTManager, WAL, query language |
 | Query tasks fluently | `got/query_builder.py` - Query().tasks().where().order_by().execute() |
 | Walk graph with visitors | `got/graph_walker.py` - GraphWalker().starting_from().bfs().visit() |
@@ -2017,6 +2069,13 @@ python examples/observability_demo.py
 | Check recovery needed | `GraphRecovery(wal_dir).needs_recovery()` |
 | Recover graph | `result = GraphRecovery(wal_dir).recover()` |
 | Git auto-commit | `GitAutoCommitter(repo_path).commit_on_save(path, graph)` |
+| **Woven Mind (Dual-Process)** | |
+| WovenMind quick start | `from cortical.reasoning.woven_mind import WovenMind` |
+| Create and train | `mind = WovenMind(); mind.train("text")` |
+| Process input | `result = mind.process(["tokens"])` |
+| Run consolidation | `mind.consolidate()` |
+| Woven Mind demo | `python examples/woven_mind_demo.py --section all` |
+| Woven Mind tests | `python -m pytest tests/unit/test_woven_mind*.py -v` |
 | **GoT Handoff Primitives** | |
 | Initiate handoff | `python scripts/got_utils.py handoff initiate TASK_ID --target AGENT --instructions "..."` |
 | Accept handoff | `python scripts/got_utils.py handoff accept HANDOFF_ID --agent AGENT` |
@@ -2043,7 +2102,14 @@ For Director orchestration and parallel agent workflows:
 - `scripts/orchestration_utils.py` - Director orchestration tracking (plans, batches, metrics)
 - `scripts/verify_batch.py` - Automated batch verification
 
-See `.claude/commands/director.md` for comprehensive orchestration documentation.
+**Director Commands:**
+- `.claude/commands/director.md` - General orchestration documentation
+- `.claude/commands/woven-mind-director.md` - Woven Mind + PRISM marriage orchestration
+
+**Woven Mind Project Docs:**
+- `docs/roadmap-woven-prism-marriage.md` - 6-sprint integration plan
+- `docs/task-knowledge-base-woven-prism.md` - Task details and sub-agent guardrails
+- `docs/research-prism-woven-mind-comparison.md` - Comparative analysis
 
 ---
 

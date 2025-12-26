@@ -1,0 +1,22 @@
+{
+  "_checksum": "97e808d682c8b95d",
+  "_written_at": "2025-12-26T01:26:45.194779+00:00",
+  "data": {
+    "created_at": "2025-12-26T01:17:43.826835+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251226-011743-db0e2821",
+    "metadata": {
+      "completed_at": "2025-12-26T01:26:45.184647+00:00",
+      "updated_at": "2025-12-26T01:26:45.184656+00:00"
+    },
+    "modified_at": "2025-12-26T01:26:45.194724+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "Write tests for goal tracking",
+    "version": 4
+  }
+}

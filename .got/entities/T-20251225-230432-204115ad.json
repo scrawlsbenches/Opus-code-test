@@ -1,0 +1,22 @@
+{
+  "_checksum": "d2140c2d46347868",
+  "_written_at": "2025-12-26T00:01:56.517775+00:00",
+  "data": {
+    "created_at": "2025-12-25T23:04:32.430153+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251225-230432-204115ad",
+    "metadata": {
+      "completed_at": "2025-12-26T00:01:56.508651+00:00",
+      "updated_at": "2025-12-26T00:01:56.508658+00:00"
+    },
+    "modified_at": "2025-12-26T00:01:56.517711+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "Add observable mode transitions",
+    "version": 4
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "_checksum": "5c833d5f9e0cfc37",
+  "_written_at": "2025-12-26T01:26:33.633955+00:00",
+  "data": {
+    "created_at": "2025-12-26T01:17:30.155210+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251226-011730-9c5b3362",
+    "metadata": {
+      "completed_at": "2025-12-26T01:26:33.626142+00:00",
+      "updated_at": "2025-12-26T01:26:33.626151+00:00"
+    },
+    "modified_at": "2025-12-26T01:26:33.633895+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "Implement PatternDetector",
+    "version": 4
+  }
+}
