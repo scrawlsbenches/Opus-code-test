@@ -1,19 +1,22 @@
 {
-  "_checksum": "fbb7a768985417f7",
-  "_written_at": "2025-12-26T14:13:44.096436+00:00",
+  "_checksum": "3ecb3687f7384176",
+  "_written_at": "2025-12-26T16:27:48.893826+00:00",
   "data": {
     "created_at": "2025-12-26T14:13:44.093252+00:00",
     "description": "## Problem\nID prefix conventions are scattered across multiple files with no single source of truth:\n- cortical/utils/id_generation.py (generate_* functions)\n- cortical/got/types.py (entity classes)\n- Various usages throughout codebase\n\nIssues found:\n1. E- prefix collision: Both Edge and Epic use E- (though Epic prefers EPIC-)\n2. Sprint ID format inconsistency: S-NNN vs S-sprint-NNN-name\n3. No documented prefix \u2192 entity_type mapping\n4. No collision prevention specification\n\n## Solution\nCreate authoritative documentation:\n\n### 1. Create docs/got-namespace-specification.md\n```markdown\n# GoT Namespace Specification\n\n## ID Prefixes (Authoritative)\n| Prefix | Entity Type | Format | Example |\n|--------|-------------|--------|---------|\n| T- | Task | T-YYYYMMDD-HHMMSS-XXXX | T-20251226-141000-a1b2c3d4 |\n| D- | Decision | D-YYYYMMDD-HHMMSS-XXXX | D-20251226-141000-e5f6g7h8 |\n| S- | Sprint | S-NNN | S-026 |\n| EPIC- | Epic | EPIC-{name} | EPIC-got-db |\n| H- | Handoff | H-YYYYMMDD-HHMMSS-XXXX | H-20251226-141000-q1r2s3t4 |\n| E- | Edge | E-{source}-{target}-{type} | E-S-026-T-xxx-CONTAINS |\n\n## Reserved Prefixes\n| Prefix | Reserved For |\n|--------|--------------|\n| E- | Edge ONLY (not Epic) |\n| CML-, CMV-, TEAM-, PP-, DOC-, G-, OP-, EX- | Extended entities |\n```\n\n### 2. Add validation function\n```python\ndef validate_id_format(entity_id: str, expected_type: str) -> bool:\n    '''Validate ID matches expected entity type.'''\n    ...\n```\n\n## Acceptance Criteria\n1. Single authoritative document for all ID conventions\n2. Validation function to detect malformed IDs\n3. CLAUDE.md references the specification\n4. CI check for ID format violations",
     "entity_type": "task",
     "id": "T-20251226-141344-74b7dbc3",
-    "metadata": {},
-    "modified_at": "2025-12-26T14:13:44.096373+00:00",
+    "metadata": {
+      "started_at": "2025-12-26T16:27:48.885608+00:00",
+      "updated_at": "2025-12-26T16:27:48.885617+00:00"
+    },
+    "modified_at": "2025-12-26T16:27:48.893760+00:00",
     "priority": "medium",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "Document namespace conventions comprehensively",
-    "version": 2
+    "version": 4
   }
 }
