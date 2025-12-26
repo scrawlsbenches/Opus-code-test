@@ -155,6 +155,115 @@ def _get_auto_committer() -> Optional[GitAutoCommitter]:
     return _got_auto_committer
 
 
+def _build_descriptive_commit_message(command: str, subcommand: Optional[str]) -> str:
+    """
+    Build a descriptive commit message by examining staged .got/ changes.
+
+    Examines the staged entity files to extract entity IDs and titles
+    for a more informative commit message.
+
+    Args:
+        command: Main command (e.g., "task", "sprint")
+        subcommand: Subcommand (e.g., "create", "complete")
+
+    Returns:
+        Descriptive commit message
+    """
+    import subprocess
+
+    try:
+        # Get list of staged entity files
+        result = subprocess.run(
+            ['git', 'diff', '--cached', '--name-only', str(GOT_DIR / 'entities')],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+
+        if result.returncode != 0 or not result.stdout.strip():
+            # Fall back to generic message
+            return _generic_commit_message(command, subcommand)
+
+        changed_files = result.stdout.strip().split('\n')
+
+        # Parse entity details from the first changed file
+        for filepath in changed_files:
+            full_path = PROJECT_ROOT / filepath
+            if not full_path.exists():
+                continue
+
+            try:
+                with open(full_path, 'r') as f:
+                    wrapper = json.load(f)
+
+                data = wrapper.get("data", {})
+                entity_type = data.get("entity_type", "")
+                entity_id = data.get("id", "")
+
+                # Build message based on entity type and action
+                if entity_type == "task":
+                    title = data.get("title", "")
+                    if subcommand == "create":
+                        if title:
+                            return f'chore(got): Create task "{title}" ({entity_id})'
+                        return f"chore(got): Create task {entity_id}"
+                    elif subcommand == "complete":
+                        return f"chore(got): Complete task {entity_id}"
+                    elif subcommand == "start":
+                        return f"chore(got): Start task {entity_id}"
+                    elif subcommand == "block":
+                        return f"chore(got): Block task {entity_id}"
+                    elif subcommand == "delete":
+                        return f"chore(got): Delete task {entity_id}"
+
+                elif entity_type == "decision":
+                    title = data.get("title", "")
+                    if title:
+                        return f'chore(got): Log decision "{title}"'
+                    return f"chore(got): Log decision {entity_id}"
+
+                elif entity_type == "sprint":
+                    title = data.get("title", "")
+                    if subcommand == "create":
+                        if title:
+                            return f'chore(got): Create sprint "{title}" ({entity_id})'
+                        return f"chore(got): Create sprint {entity_id}"
+                    elif subcommand in ("start", "complete", "claim", "release"):
+                        return f"chore(got): {subcommand.capitalize()} sprint {entity_id}"
+
+                elif entity_type == "edge":
+                    edge_type = data.get("edge_type", "")
+                    source = data.get("source_id", "")
+                    target = data.get("target_id", "")
+                    if edge_type and source and target:
+                        return f"chore(got): Add edge {edge_type} {source} -> {target}"
+
+                elif entity_type == "handoff":
+                    if subcommand == "initiate":
+                        target = data.get("target_agent", "")
+                        task_id = data.get("task_id", "")
+                        return f"chore(got): Initiate handoff to {target} for {task_id}"
+                    elif subcommand in ("accept", "complete"):
+                        return f"chore(got): {subcommand.capitalize()} handoff {entity_id}"
+
+            except (json.JSONDecodeError, KeyError, IOError):
+                continue
+
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+        pass
+
+    # Fall back to generic message
+    return _generic_commit_message(command, subcommand)
+
+
+def _generic_commit_message(command: str, subcommand: Optional[str]) -> str:
+    """Build generic commit message when entity details unavailable."""
+    if subcommand:
+        return f"chore(got): Auto-save after {command} {subcommand}"
+    return f"chore(got): Auto-save after {command}"
+
+
 def got_auto_commit(command: str, subcommand: Optional[str] = None) -> bool:
     """
     Auto-commit .got/ changes if enabled and command was mutating.
@@ -177,12 +286,6 @@ def got_auto_commit(command: str, subcommand: Optional[str] = None) -> bool:
         return False
 
     try:
-        # Build commit message
-        if subcommand:
-            msg = f"chore(got): Auto-save after {command} {subcommand}"
-        else:
-            msg = f"chore(got): Auto-save after {command}"
-
         # Use direct git commands for .got/ directory
         import subprocess
 
@@ -204,6 +307,9 @@ def got_auto_commit(command: str, subcommand: Optional[str] = None) -> bool:
         if result.returncode == 0:
             # No changes to commit
             return False
+
+        # Build descriptive commit message from staged changes
+        msg = _build_descriptive_commit_message(command, subcommand)
 
         # Commit
         subprocess.run(
