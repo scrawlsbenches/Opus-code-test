@@ -106,13 +106,13 @@ import mmap
 import os
 import struct
 import time
-import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Generator, Iterator, List, Optional, Set, Tuple, Union
 
 from cortical.utils.checksums import compute_bytes_checksum
+from cortical.utils.id_generation import generate_short_id
 
 
 # Storage format version
@@ -739,8 +739,8 @@ class SessionLog:
     def __init__(self, logs_dir: Path, record_type: str, session_id: Optional[str] = None):
         self.logs_dir = logs_dir
         self.record_type = record_type
-        self.session_id = session_id or uuid.uuid4().hex[:8]
-        self.timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        self.session_id = session_id or generate_short_id()
+        self.timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d_%H-%M-%S')
         self._current_file: Optional[Path] = None
         logs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -848,7 +848,7 @@ class MLStore:
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
         # Session ID for this store instance (unique per session)
-        self.session_id = session_id or uuid.uuid4().hex[:8]
+        self.session_id = session_id or generate_short_id()
 
         # Directories
         self._objects_dir = self.base_dir / 'objects'

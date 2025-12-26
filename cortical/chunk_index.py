@@ -27,16 +27,18 @@ Chunk Format:
     }
 """
 
-import hashlib
 import json
 import os
+import secrets
 import subprocess
-import uuid
 import warnings
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
+
+from cortical.utils.checksums import compute_checksum
+from cortical.utils.id_generation import generate_short_id
 
 
 # Chunk format version
@@ -131,8 +133,8 @@ class ChunkWriter:
 
     def __init__(self, chunks_dir: str = 'corpus_chunks'):
         self.chunks_dir = Path(chunks_dir)
-        self.session_id = uuid.uuid4().hex[:16]
-        self.timestamp = datetime.now().isoformat(timespec='seconds')
+        self.session_id = secrets.token_hex(8)  # 16 hex chars
+        self.timestamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
         self.branch = self._get_git_branch()
         self.operations: List[ChunkOperation] = []
 
@@ -354,13 +356,8 @@ class ChunkLoader:
         if not self._loaded:
             self.load_all()
 
-        # Hash based on sorted (doc_id, content) pairs
-        hasher = hashlib.sha256()
-        for doc_id in sorted(self._documents.keys()):
-            hasher.update(doc_id.encode('utf-8'))
-            hasher.update(self._documents[doc_id].encode('utf-8'))
-
-        return hasher.hexdigest()[:16]
+        # Hash based on all documents for cache validation
+        return compute_checksum(self._documents, truncate=16)
 
     def is_cache_valid(self, cache_path: str, cache_hash_path: Optional[str] = None) -> bool:
         """
@@ -521,8 +518,8 @@ class ChunkCompactor:
 
         # Create compacted chunk with all remaining documents as 'add' operations
         writer = ChunkWriter(str(self.chunks_dir))
-        writer.timestamp = datetime.now().isoformat(timespec='seconds')
-        writer.session_id = 'compacted_' + uuid.uuid4().hex[:8]
+        writer.timestamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
+        writer.session_id = 'compacted_' + generate_short_id()
 
         for doc_id, content in sorted(documents.items()):
             writer.add_document(doc_id, content, mtimes.get(doc_id), metadata.get(doc_id))
