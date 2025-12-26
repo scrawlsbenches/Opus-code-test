@@ -1,0 +1,19 @@
+{
+  "_checksum": "89b6ba6eb48920d4",
+  "_written_at": "2025-12-26T13:23:53.012041+00:00",
+  "data": {
+    "created_at": "2025-12-26T13:23:53.008741+00:00",
+    "description": "Concurrent transactions fail with 'No such file or directory' when multiple processes try to update _version.tmp simultaneously. Add ProcessLock around version file operations. This will enable the 7 skipped concurrent tests in test_got_index_concurrent.py and test_got_index_integration.py.",
+    "entity_type": "task",
+    "id": "T-20251226-132353-68a469de",
+    "metadata": {},
+    "modified_at": "2025-12-26T13:23:53.011942+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Fix VersionedStore race condition in _version.tmp",
+    "version": 2
+  }
+}
