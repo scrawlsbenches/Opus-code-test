@@ -59,6 +59,11 @@ def cmd_task_list(args, manager: "TransactionalGoTAdapter") -> int:
         blocked_only=getattr(args, 'blocked', False),
     )
 
+    # Apply limit if specified
+    limit = getattr(args, 'limit', None)
+    if limit is not None and limit > 0:
+        tasks = tasks[:limit]
+
     if getattr(args, 'json', False):
         data = [{"id": t.id, "title": t.content, **t.properties} for t in tasks]
         print(json.dumps(data, indent=2))
@@ -287,6 +292,11 @@ def setup_task_parser(subparsers) -> None:
     list_parser.add_argument("--sprint", help="Filter by sprint")
     list_parser.add_argument("--blocked", action="store_true", help="Show only blocked")
     list_parser.add_argument("--json", action="store_true", help="Output as JSON")
+    list_parser.add_argument(
+        "--limit", "-n",
+        type=int,
+        help="Limit number of results"
+    )
 
     # task show
     show_parser = task_subparsers.add_parser("show", help="Show task details")
