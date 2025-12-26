@@ -175,6 +175,11 @@ def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
         print("No handoffs found.")
         return 0
 
+    # Apply limit if specified
+    limit = getattr(args, 'limit', None)
+    if limit is not None and limit > 0:
+        handoffs = handoffs[:limit]
+
     print(f"Handoffs ({len(handoffs)}):\n")
     for h in handoffs:
         status = h.get("status", "?")
@@ -263,6 +268,11 @@ def setup_handoff_parser(subparsers) -> None:
         "--status",
         # Note: in_progress is an alias for accepted (matches task terminology)
         choices=["initiated", "accepted", "in_progress", "completed", "rejected"]
+    )
+    handoff_list.add_argument(
+        "--limit", "-n",
+        type=int,
+        help="Limit number of results"
     )
 
 

@@ -55,6 +55,11 @@ def cmd_decision_list(args, manager: "TransactionalGoTAdapter") -> int:
         print("No decisions logged yet.")
         return 0
 
+    # Apply limit if specified
+    limit = getattr(args, 'limit', None)
+    if limit is not None and limit > 0:
+        decisions = decisions[:limit]
+
     print(f"Decisions ({len(decisions)}):\n")
     for d in decisions:
         print(f"  {d.id}")
@@ -64,6 +69,66 @@ def cmd_decision_list(args, manager: "TransactionalGoTAdapter") -> int:
             print(f"    Alternatives: {', '.join(d.properties['alternatives'])}")
         print()
 
+    return 0
+
+
+def cmd_decision_show(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got decision show' command."""
+    decision_id = args.decision_id
+
+    # Get all decisions and find the one we want
+    if hasattr(manager, 'list_decisions'):
+        decisions = manager.list_decisions()
+    else:
+        decisions = manager.get_decisions()
+
+    decision = None
+    for d in decisions:
+        if d.id == decision_id:
+            decision = d
+            break
+
+    if not decision:
+        print(f"Decision not found: {decision_id}")
+        return 1
+
+    # Display full decision details
+    print("=" * 60)
+    print(f"DECISION: {decision_id}")
+    print("=" * 60)
+    print(f"Decision:    {decision.content}")
+    print(f"Rationale:   {decision.properties.get('rationale', 'N/A')}")
+
+    if decision.properties.get("created_at"):
+        print(f"Created:     {decision.properties['created_at']}")
+
+    # Show alternatives
+    alternatives = decision.properties.get("alternatives", [])
+    if alternatives:
+        print(f"\nAlternatives Considered:")
+        for alt in alternatives:
+            print(f"  - {alt}")
+
+    # Show affected tasks
+    affects = decision.properties.get("affects", [])
+    if affects:
+        print(f"\nAffects:")
+        for task_id in affects:
+            # Try to get task details
+            task = manager.get_task(task_id)
+            if task:
+                print(f"  - {task_id}: {task.content}")
+            else:
+                print(f"  - {task_id}")
+
+    # Show context
+    context = decision.properties.get("context", {})
+    if context:
+        print(f"\nContext:")
+        for key, value in context.items():
+            print(f"  {key}: {value}")
+
+    print("=" * 60)
     return 0
 
 
@@ -132,7 +197,16 @@ def setup_decision_parser(subparsers) -> None:
     )
 
     # decision list
-    decision_subparsers.add_parser("list", help="List all decisions")
+    decision_list = decision_subparsers.add_parser("list", help="List all decisions")
+    decision_list.add_argument(
+        "--limit", "-n",
+        type=int,
+        help="Limit number of results"
+    )
+
+    # decision show
+    decision_show = decision_subparsers.add_parser("show", help="Show decision details")
+    decision_show.add_argument("decision_id", help="Decision ID to display")
 
     # decision why
     decision_why = decision_subparsers.add_parser("why", help="Ask why a task exists")
@@ -157,6 +231,7 @@ def handle_decision_command(args, manager: "TransactionalGoTAdapter") -> int:
     command_handlers = {
         "log": cmd_decision_log,
         "list": cmd_decision_list,
+        "show": cmd_decision_show,
         "why": cmd_decision_why,
     }
 
