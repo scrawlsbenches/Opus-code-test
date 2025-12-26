@@ -28,8 +28,8 @@ Example:
     ...     print(f"{a.id}: {a.source_nodes}")
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, FrozenSet
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Set
 
 from .abstraction import Abstraction, AbstractionEngine
 from .abstraction_pln import AbstractionPLNBridge
