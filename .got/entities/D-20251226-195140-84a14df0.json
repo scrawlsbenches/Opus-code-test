@@ -1,0 +1,15 @@
+{
+  "_checksum": "4e651dbf2253814a",
+  "_written_at": "2025-12-26T19:51:40.461859+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2025-12-26T19:51:40.458654+00:00",
+    "entity_type": "decision",
+    "id": "D-20251226-195140-84a14df0",
+    "modified_at": "2025-12-26T19:51:40.461804+00:00",
+    "properties": {},
+    "rationale": "Session vnXhK discovered that direct .got/ file edits (via sed) break checksums and cause auto-deletion. Added explicit policy: STOP, ASSESS, FIX tool, USE tool, DOCUMENT. Also added CAUSED_BY edge type to prevent future schema issues. Fixes root cause of corruption.",
+    "title": "Add Tool Reliability Policy to CLAUDE.md",
+    "version": 2
+  }
+}
