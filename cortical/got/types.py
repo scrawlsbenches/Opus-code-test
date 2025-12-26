@@ -547,12 +547,8 @@ class Edge(Entity):
         """Validate edge fields and auto-generate ID if needed."""
         self.entity_type = "edge"
 
-        # Normalize edge_type to uppercase for consistency
-        if self.edge_type:
-            self.edge_type = self.edge_type.upper()
-
-        # Validate edge_type against allowed values
-        if self.edge_type and self.edge_type not in VALID_EDGE_TYPES:
+        # Validate edge_type against allowed values (case-sensitive, no empty)
+        if self.edge_type not in VALID_EDGE_TYPES:
             raise ValidationError(
                 f"Invalid edge_type: '{self.edge_type}'. "
                 f"Must be one of: {sorted(VALID_EDGE_TYPES)}",

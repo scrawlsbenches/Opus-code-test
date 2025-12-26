@@ -434,7 +434,7 @@ class GoTMigrator:
             id="",  # Auto-generated
             source_id=clean_source,
             target_id=clean_target,
-            edge_type=edge_type.lower(),  # Normalize to lowercase
+            edge_type=edge_type.upper(),  # Normalize to uppercase (validation requires uppercase)
             weight=weight,
             confidence=edge_data.get("confidence", 1.0)
         )
