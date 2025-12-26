@@ -413,6 +413,12 @@ from .attention_router import (
     AttentionRouter,
 )
 
+from .woven_mind import (
+    WovenMindConfig,
+    WovenMindResult,
+    WovenMind,
+)
+
 # =============================================================================
 # CORTEX ABSTRACTION: Hierarchical Pattern Abstraction (Sprint 3)
 # =============================================================================
@@ -697,6 +703,11 @@ __all__ = [
     'RoutingResult',
     'DualRoutingResult',
     'AttentionRouter',
+
+    # === WovenMind Facade (Sprint 4) ===
+    'WovenMindConfig',
+    'WovenMindResult',
+    'WovenMind',
 
     # === Cortex Abstraction (Sprint 3) ===
     'Abstraction',
