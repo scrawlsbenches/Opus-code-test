@@ -153,11 +153,19 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
     # Only count edge references that point to existing nodes
     all_node_ids = set(manager.graph.nodes.keys())
     nodes_with_edges = set()
+    orphan_edges = []  # Edges pointing to non-existent entities
+
     for edge in manager.graph.edges:
+        # Create edge identifier from source->target (ThoughtEdge has no .id attribute)
+        edge_repr = f"{edge.source_id}->{edge.target_id}"
         if edge.source_id in all_node_ids:
             nodes_with_edges.add(edge.source_id)
+        else:
+            orphan_edges.append((edge_repr, "source", edge.source_id))
         if edge.target_id in all_node_ids:
             nodes_with_edges.add(edge.target_id)
+        else:
+            orphan_edges.append((edge_repr, "target", edge.target_id))
 
     orphan_count = len(all_node_ids - nodes_with_edges)
     orphan_rate = orphan_count / max(total_nodes, 1) * 100
@@ -207,6 +215,18 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
         print(f"\n⚠️  WARNINGS ({len(warnings)})")
         for warning in warnings:
             print(f"   • {warning}")
+
+    # Check for broken edge references if --check-refs is passed
+    if getattr(args, 'check_refs', False):
+        if orphan_edges:
+            issues.append(f"Found {len(orphan_edges)} broken edge reference(s)")
+            print(f"\n🔗 BROKEN EDGE REFERENCES ({len(orphan_edges)})")
+            for edge_id, ref_type, missing_id in orphan_edges[:10]:  # Show first 10
+                print(f"   • Edge {edge_id}: {ref_type} '{missing_id}' not found")
+            if len(orphan_edges) > 10:
+                print(f"   ... and {len(orphan_edges) - 10} more")
+        else:
+            print("\n🔗 EDGE REFERENCES: All valid")
 
     if not issues and not warnings:
         print("\n✅ HEALTHY - No issues detected")
@@ -292,7 +312,12 @@ def setup_query_parser(subparsers) -> None:
     subparsers.add_parser("dashboard", help="Show comprehensive metrics dashboard")
 
     # Validation command
-    subparsers.add_parser("validate", help="Validate graph health")
+    validate_parser = subparsers.add_parser("validate", help="Validate graph health")
+    validate_parser.add_argument(
+        "--check-refs",
+        action="store_true",
+        help="Check for broken edge references (edges pointing to non-existent entities)"
+    )
 
     # Infer command
     infer_parser = subparsers.add_parser("infer", help="Infer edges from git history")

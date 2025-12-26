@@ -74,16 +74,16 @@ class TestPathFinderLimits:
 
         # Connect start to all L1
         for t in layer1:
-            manager.add_edge(start.id, t.id, "NEXT")
+            manager.add_edge(start.id, t.id, "DEPENDS_ON")
 
         # Connect all L1 to all L2
         for t1 in layer1:
             for t2 in layer2:
-                manager.add_edge(t1.id, t2.id, "NEXT")
+                manager.add_edge(t1.id, t2.id, "DEPENDS_ON")
 
         # Connect all L2 to end
         for t in layer2:
-            manager.add_edge(t.id, end.id, "NEXT")
+            manager.add_edge(t.id, end.id, "DEPENDS_ON")
 
         yield manager, start.id, end.id
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -208,7 +208,7 @@ class TestPathFinderSafety:
         for i in range(len(tasks)):
             for j in range(len(tasks)):
                 if i != j:
-                    manager.add_edge(tasks[i].id, tasks[j].id, "CONNECTED")
+                    manager.add_edge(tasks[i].id, tasks[j].id, "RELATES_TO")
 
         yield manager, tasks[0].id, tasks[-1].id
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -263,7 +263,7 @@ class TestShortestPath:
 
         # Create edges
         for i in range(len(tasks) - 1):
-            manager.add_edge(tasks[i].id, tasks[i + 1].id, "NEXT")
+            manager.add_edge(tasks[i].id, tasks[i + 1].id, "DEPENDS_ON")
 
         yield manager, tasks
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -341,10 +341,10 @@ class TestPathExists:
         tasks = {name: manager.create_task(f"Task {name}", priority="medium")
                  for name in ["A", "B", "C", "D", "E"]}
 
-        manager.add_edge(tasks["A"].id, tasks["B"].id, "NEXT")
-        manager.add_edge(tasks["B"].id, tasks["C"].id, "NEXT")
-        manager.add_edge(tasks["A"].id, tasks["D"].id, "NEXT")
-        manager.add_edge(tasks["D"].id, tasks["E"].id, "NEXT")
+        manager.add_edge(tasks["A"].id, tasks["B"].id, "DEPENDS_ON")
+        manager.add_edge(tasks["B"].id, tasks["C"].id, "DEPENDS_ON")
+        manager.add_edge(tasks["A"].id, tasks["D"].id, "DEPENDS_ON")
+        manager.add_edge(tasks["D"].id, tasks["E"].id, "DEPENDS_ON")
 
         yield manager, tasks
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -388,11 +388,11 @@ class TestReachableFrom:
         # Component 1: A -> B -> C
         comp1 = [manager.create_task(f"C1-{i}", priority="high") for i in range(3)]
         for i in range(len(comp1) - 1):
-            manager.add_edge(comp1[i].id, comp1[i + 1].id, "NEXT")
+            manager.add_edge(comp1[i].id, comp1[i + 1].id, "DEPENDS_ON")
 
         # Component 2: D -> E (isolated)
         comp2 = [manager.create_task(f"C2-{i}", priority="low") for i in range(2)]
-        manager.add_edge(comp2[0].id, comp2[1].id, "NEXT")
+        manager.add_edge(comp2[0].id, comp2[1].id, "DEPENDS_ON")
 
         yield manager, comp1, comp2
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -429,17 +429,17 @@ class TestReachableFrom:
 
         # Add different edge type
         special = manager.create_task("Special", priority="high")
-        manager.add_edge(comp1[0].id, special.id, "SPECIAL")
+        manager.add_edge(comp1[0].id, special.id, "REFERENCES")
 
-        # Filter to only NEXT edges
-        finder = PathFinder(manager).via_edges("NEXT")
+        # Filter to only DEPENDS_ON edges
+        finder = PathFinder(manager).via_edges("DEPENDS_ON")
         reachable = finder.reachable_from(comp1[0].id)
 
         # Should NOT include special node
         assert special.id not in reachable
 
-        # Filter to only SPECIAL edges
-        finder_special = PathFinder(manager).via_edges("SPECIAL")
+        # Filter to only REFERENCES edges
+        finder_special = PathFinder(manager).via_edges("REFERENCES")
         reachable_special = finder_special.reachable_from(comp1[0].id)
 
         # Should include special but not the rest of chain
@@ -459,12 +459,12 @@ class TestConnectedComponents:
 
         # Component 1: 3 tasks in a chain
         comp1 = [manager.create_task(f"A{i}", priority="high") for i in range(3)]
-        manager.add_edge(comp1[0].id, comp1[1].id, "NEXT")
-        manager.add_edge(comp1[1].id, comp1[2].id, "NEXT")
+        manager.add_edge(comp1[0].id, comp1[1].id, "DEPENDS_ON")
+        manager.add_edge(comp1[1].id, comp1[2].id, "DEPENDS_ON")
 
         # Component 2: 2 tasks
         comp2 = [manager.create_task(f"B{i}", priority="medium") for i in range(2)]
-        manager.add_edge(comp2[0].id, comp2[1].id, "NEXT")
+        manager.add_edge(comp2[0].id, comp2[1].id, "DEPENDS_ON")
 
         # Component 3: 1 isolated task
         comp3 = [manager.create_task("C0", priority="low")]
@@ -564,7 +564,7 @@ class TestAllNodeTypes:
 
         # Connect them
         manager.add_edge(task.id, sprint.id, "PART_OF")
-        manager.add_edge(decision.id, task.id, "INFLUENCES")
+        manager.add_edge(decision.id, task.id, "REFERENCES")
 
         yield manager, task, sprint, decision
         shutil.rmtree(temp_dir, ignore_errors=True)

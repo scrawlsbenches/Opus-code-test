@@ -37,6 +37,19 @@ from .types import (
     Sprint,
     Epic,
     Handoff,
+    # TypedDict schemas for nested structures
+    TaskProperties,
+    TaskMetadata,
+    SprintGoal,
+    SprintMetadata,
+    EpicPhase,
+    EpicMetadata,
+    HandoffContext,
+    HandoffResult,
+    DocumentMetadata,
+    # Type aliases
+    SprintGoals,
+    EpicPhases,
 )
 
 from .transaction import (
@@ -186,6 +199,18 @@ __all__ = [
     'Sprint',
     'Epic',
     'Handoff',
+    # TypedDict schemas for nested structures
+    'TaskProperties',
+    'TaskMetadata',
+    'SprintGoal',
+    'SprintMetadata',
+    'EpicPhase',
+    'EpicMetadata',
+    'HandoffContext',
+    'HandoffResult',
+    'DocumentMetadata',
+    'SprintGoals',
+    'EpicPhases',
     # Transaction
     'Transaction',
     'TransactionState',

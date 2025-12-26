@@ -30,6 +30,7 @@ from .schema import (
     register_schema,
     get_registry,
 )
+from .types import VALID_EDGE_TYPES
 
 
 # =============================================================================
@@ -226,12 +227,9 @@ class EdgeSchema(BaseSchema):
     schema_version = 1
     entity_type = 'edge'
 
-    # Valid edge types
-    EDGE_TYPES = [
-        'DEPENDS_ON', 'BLOCKS', 'CONTAINS', 'RELATES_TO',
-        'REQUIRES', 'IMPLEMENTS', 'SUPERSEDES', 'DERIVED_FROM',
-        'PARENT_OF', 'CHILD_OF', 'REFERENCES', 'CONTRADICTS',
-    ]
+    # Valid edge types - imported from types.py (single source of truth)
+    # Re-exported here for backward compatibility with code that uses EdgeSchema.EDGE_TYPES
+    EDGE_TYPES = list(VALID_EDGE_TYPES)
 
     fields = {
         **BASE_ENTITY_FIELDS,

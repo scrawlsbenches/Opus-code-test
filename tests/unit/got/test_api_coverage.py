@@ -747,11 +747,11 @@ class TestEpicOperations:
         updated = manager.update_epic(
             epic.id,
             title="Updated",
-            status="in_progress"
+            status="completed"  # Epic status must be: active, completed, on_hold
         )
 
         assert updated.title == "Updated"
-        assert updated.status == "in_progress"
+        assert updated.status == "completed"
 
     def test_list_epics(self, manager):
         """List all epics."""
@@ -926,3 +926,82 @@ class TestHandoffOperations:
         accepted = manager.list_handoffs(status="accepted")
         assert len(accepted) == 1
         assert accepted[0].id == handoff2.id
+
+
+class TestEdgeForeignKeyValidation:
+    """Tests for edge foreign key (reference) validation."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Provide GoTManager instance."""
+        return GoTManager(tmp_path / ".got")
+
+    def test_add_edge_with_valid_refs(self, manager):
+        """add_edge succeeds when both source and target exist."""
+        task1 = manager.create_task("Task 1")
+        task2 = manager.create_task("Task 2")
+
+        edge = manager.add_edge(task1.id, task2.id, "DEPENDS_ON")
+
+        assert edge.source_id == task1.id
+        assert edge.target_id == task2.id
+
+    def test_add_edge_rejects_invalid_source(self, manager):
+        """add_edge raises ValueError when source doesn't exist."""
+        task = manager.create_task("Real task")
+
+        with pytest.raises(ValueError) as exc_info:
+            manager.add_edge("T-nonexistent", task.id, "DEPENDS_ON")
+
+        assert "Source entity not found" in str(exc_info.value)
+        assert "T-nonexistent" in str(exc_info.value)
+
+    def test_add_edge_rejects_invalid_target(self, manager):
+        """add_edge raises ValueError when target doesn't exist."""
+        task = manager.create_task("Real task")
+
+        with pytest.raises(ValueError) as exc_info:
+            manager.add_edge(task.id, "T-nonexistent", "DEPENDS_ON")
+
+        assert "Target entity not found" in str(exc_info.value)
+        assert "T-nonexistent" in str(exc_info.value)
+
+    def test_add_edge_rejects_both_invalid(self, manager):
+        """add_edge raises ValueError when both source and target don't exist."""
+        with pytest.raises(ValueError) as exc_info:
+            manager.add_edge("T-fake-source", "T-fake-target", "DEPENDS_ON")
+
+        # Should fail on source first
+        assert "Source entity not found" in str(exc_info.value)
+
+    def test_add_edge_validate_refs_false_skips_check(self, manager):
+        """add_edge with validate_refs=False skips reference validation."""
+        # This allows creating edges to entities that may not be loaded yet
+        edge = manager.add_edge(
+            "T-nonexistent-source",
+            "T-nonexistent-target",
+            "DEPENDS_ON",
+            validate_refs=False
+        )
+
+        # Edge is created even though entities don't exist
+        assert edge.source_id == "T-nonexistent-source"
+        assert edge.target_id == "T-nonexistent-target"
+
+    def test_add_dependency_validates_refs(self, manager):
+        """add_dependency also validates references."""
+        task = manager.create_task("Real task")
+
+        with pytest.raises(ValueError) as exc_info:
+            manager.add_dependency("T-nonexistent", task.id)
+
+        assert "Source entity not found" in str(exc_info.value)
+
+    def test_add_blocks_validates_refs(self, manager):
+        """add_blocks also validates references."""
+        task = manager.create_task("Real task")
+
+        with pytest.raises(ValueError) as exc_info:
+            manager.add_blocks("T-nonexistent", task.id)
+
+        assert "Source entity not found" in str(exc_info.value)

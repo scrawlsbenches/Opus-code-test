@@ -8,7 +8,7 @@ validation, versioning, and checksum computation.
 import pytest
 from datetime import datetime, timezone
 
-from cortical.got.types import Entity, Task, Decision, Edge, Sprint, Epic, Handoff
+from cortical.got.types import Entity, Task, Decision, Edge, Sprint, Epic, Handoff, VALID_EDGE_TYPES
 from cortical.got.errors import ValidationError
 
 
@@ -303,7 +303,7 @@ class TestEdge:
             id="E-001",
             source_id="T-001",
             target_id="T-002",
-            edge_type="SIMILAR",
+            edge_type="RELATES_TO",
             weight=0.75,
             confidence=0.9,
         )
@@ -317,7 +317,7 @@ class TestEdge:
                 id="E-001",
                 source_id="T-001",
                 target_id="T-002",
-                edge_type="TEST",
+                edge_type="DEPENDS_ON",
                 weight=-0.1,
             )
         assert "weight must be in [0.0, 1.0]" in str(exc_info.value)
@@ -329,7 +329,7 @@ class TestEdge:
                 id="E-001",
                 source_id="T-001",
                 target_id="T-002",
-                edge_type="TEST",
+                edge_type="DEPENDS_ON",
                 weight=1.5,
             )
         assert "weight must be in [0.0, 1.0]" in str(exc_info.value)
@@ -341,7 +341,7 @@ class TestEdge:
                 id="E-001",
                 source_id="T-001",
                 target_id="T-002",
-                edge_type="TEST",
+                edge_type="DEPENDS_ON",
                 confidence=-0.5,
             )
         assert "confidence must be in [0.0, 1.0]" in str(exc_info.value)
@@ -353,10 +353,56 @@ class TestEdge:
                 id="E-001",
                 source_id="T-001",
                 target_id="T-002",
-                edge_type="TEST",
+                edge_type="DEPENDS_ON",
                 confidence=2.0,
             )
         assert "confidence must be in [0.0, 1.0]" in str(exc_info.value)
+
+    # Edge type validation tests
+    def test_edge_valid_edge_types(self):
+        """Test that all valid edge types are accepted."""
+        for edge_type in VALID_EDGE_TYPES:
+            edge = Edge(
+                id="E-001",
+                source_id="T-001",
+                target_id="T-002",
+                edge_type=edge_type,
+            )
+            assert edge.edge_type == edge_type
+
+    def test_edge_invalid_edge_type(self):
+        """Test that invalid edge types raise ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            Edge(
+                id="E-001",
+                source_id="T-001",
+                target_id="T-002",
+                edge_type="INVALID_TYPE",
+            )
+        assert "Invalid edge_type" in str(exc_info.value)
+        assert "INVALID_TYPE" in str(exc_info.value)
+
+    def test_edge_empty_edge_type(self):
+        """Test that empty edge type raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            Edge(
+                id="E-001",
+                source_id="T-001",
+                target_id="T-002",
+                edge_type="",
+            )
+        assert "Invalid edge_type" in str(exc_info.value)
+
+    def test_edge_case_sensitive_edge_type(self):
+        """Test that edge types are case-sensitive (lowercase is invalid)."""
+        with pytest.raises(ValidationError) as exc_info:
+            Edge(
+                id="E-001",
+                source_id="T-001",
+                target_id="T-002",
+                edge_type="depends_on",  # Should be DEPENDS_ON
+            )
+        assert "Invalid edge_type" in str(exc_info.value)
 
     def test_edge_to_dict(self):
         """Test edge serialization."""

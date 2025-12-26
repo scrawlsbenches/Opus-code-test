@@ -279,8 +279,8 @@ class TestGraphWalkerFiltering:
 
         # All connected
         edges = [
-            Edge(id="edge-1", source_id="task-1", target_id="task-2", edge_type="NEXT"),
-            Edge(id="edge-2", source_id="task-2", target_id="task-3", edge_type="NEXT"),
+            Edge(id="edge-1", source_id="task-1", target_id="task-2", edge_type="DEPENDS_ON"),
+            Edge(id="edge-2", source_id="task-2", target_id="task-3", edge_type="DEPENDS_ON"),
         ]
         manager.list_edges.return_value = edges
 
@@ -345,7 +345,7 @@ class TestGraphWalkerDepthLimit:
         manager.list_decisions.return_value = []
 
         edges = [
-            Edge(id=f"edge-{i}", source_id=f"task-{i}", target_id=f"task-{i+1}", edge_type="NEXT")
+            Edge(id=f"edge-{i}", source_id=f"task-{i}", target_id=f"task-{i+1}", edge_type="DEPENDS_ON")
             for i in range(4)
         ]
         manager.list_edges.return_value = edges
@@ -491,8 +491,8 @@ class TestGraphWalkerDirection:
         manager.list_decisions.return_value = []
 
         edges = [
-            Edge(id="edge-1", source_id="task-a", target_id="task-b", edge_type="NEXT"),
-            Edge(id="edge-2", source_id="task-b", target_id="task-c", edge_type="NEXT"),
+            Edge(id="edge-1", source_id="task-a", target_id="task-b", edge_type="DEPENDS_ON"),
+            Edge(id="edge-2", source_id="task-b", target_id="task-c", edge_type="DEPENDS_ON"),
         ]
         manager.list_edges.return_value = edges
 
@@ -651,8 +651,8 @@ class TestGraphWalkerEdgeCases:
 
         # Create cycle: A -> B -> A
         edges = [
-            Edge(id="edge-1", source_id="task-a", target_id="task-b", edge_type="NEXT"),
-            Edge(id="edge-2", source_id="task-b", target_id="task-a", edge_type="NEXT"),
+            Edge(id="edge-1", source_id="task-a", target_id="task-b", edge_type="DEPENDS_ON"),
+            Edge(id="edge-2", source_id="task-b", target_id="task-a", edge_type="DEPENDS_ON"),
         ]
         manager.list_edges.return_value = edges
 
@@ -689,8 +689,8 @@ class TestGraphWalkerIterator:
         manager.list_decisions.return_value = []
 
         edges = [
-            Edge(id="edge-1", source_id="task-0", target_id="task-1", edge_type="NEXT"),
-            Edge(id="edge-2", source_id="task-1", target_id="task-2", edge_type="NEXT"),
+            Edge(id="edge-1", source_id="task-0", target_id="task-1", edge_type="DEPENDS_ON"),
+            Edge(id="edge-2", source_id="task-1", target_id="task-2", edge_type="DEPENDS_ON"),
         ]
         manager.list_edges.return_value = edges
 
@@ -803,7 +803,7 @@ class TestGraphWalkerMixedEntities:
         # Connect them: sprint -> task -> decision
         edges = [
             Edge(id="edge-1", source_id="sprint-1", target_id="task-1", edge_type="CONTAINS"),
-            Edge(id="edge-2", source_id="task-1", target_id="decision-1", edge_type="JUSTIFIED_BY"),
+            Edge(id="edge-2", source_id="task-1", target_id="decision-1", edge_type="JUSTIFIES"),
         ]
         manager.list_edges.return_value = edges
 
@@ -866,8 +866,8 @@ class TestGraphWalkerAdditionalCoverage:
         manager.list_decisions.return_value = []
 
         edges = [
-            Edge(id="edge-1", source_id="task-1", target_id="task-2", edge_type="NEXT"),
-            Edge(id="edge-2", source_id="task-2", target_id="task-3", edge_type="NEXT"),
+            Edge(id="edge-1", source_id="task-1", target_id="task-2", edge_type="DEPENDS_ON"),
+            Edge(id="edge-2", source_id="task-2", target_id="task-3", edge_type="DEPENDS_ON"),
         ]
         manager.list_edges.return_value = edges
 

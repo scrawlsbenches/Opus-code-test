@@ -13,7 +13,11 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
-from .types import Entity, Task, Decision, Edge, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, PersonaProfile, Team, Document
+from .types import (
+    Entity, Task, Decision, Edge, Sprint, Epic, Handoff,
+    ClaudeMdLayer, ClaudeMdVersion, PersonaProfile, Team, Document,
+    VALID_ENTITY_TYPES,
+)
 from .errors import CorruptionError, ValidationError
 from cortical.utils.checksums import compute_checksum
 from cortical.utils.locking import ProcessLock
@@ -46,7 +50,7 @@ class VersionedStore:
         self,
         store_dir: Path,
         durability: DurabilityMode = DurabilityMode.BALANCED,
-        validate_on_save: bool = False
+        validate_on_save: bool = True
     ):
         """
         Initialize store, creating directory structure if needed.
@@ -55,6 +59,7 @@ class VersionedStore:
             store_dir: Directory path for storing entities
             durability: Durability mode controlling fsync behavior
             validate_on_save: If True, validate entities against schemas before saving
+                             (default: True for data integrity)
         """
         self.store_dir = Path(store_dir)
         self.store_dir.mkdir(parents=True, exist_ok=True)
@@ -520,9 +525,29 @@ class VersionedStore:
 
         Returns:
             Appropriate Entity subclass instance
-        """
-        entity_type = data.get("entity_type", "")
 
+        Raises:
+            ValueError: If entity_type is missing or invalid
+        """
+        entity_type = data.get("entity_type")
+
+        # Validate entity_type is present
+        if not entity_type:
+            entity_id = data.get("id", "<unknown>")
+            raise ValueError(
+                f"Missing entity_type in entity data for {entity_id}. "
+                f"Valid types: {sorted(VALID_ENTITY_TYPES)}"
+            )
+
+        # Validate entity_type is known
+        if entity_type not in VALID_ENTITY_TYPES:
+            entity_id = data.get("id", "<unknown>")
+            raise ValueError(
+                f"Unknown entity_type '{entity_type}' for entity {entity_id}. "
+                f"Valid types: {sorted(VALID_ENTITY_TYPES)}"
+            )
+
+        # Dispatch to appropriate factory
         if entity_type == "task":
             return Task.from_dict(data)
         elif entity_type == "decision":
@@ -546,4 +571,6 @@ class VersionedStore:
         elif entity_type == "document":
             return Document.from_dict(data)
         else:
+            # This should never be reached due to validation above
+            # but kept as defensive fallback
             return Entity.from_dict(data)
