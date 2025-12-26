@@ -48,18 +48,33 @@ GoT (Graph of Thought) is our task, sprint, and decision tracking system:
 
 > **Note:** Sprint data is stored in `.got/entities/`. The file `tasks/CURRENT_SPRINT.md` is deprecated and kept for historical reference only.
 
-> **⚠️ NEVER delete GoT files directly!**
+> **⚠️ NEVER edit or delete GoT files directly!**
 >
-> GoT data in `.got/` is **transactional and event-sourced**. Direct file deletion:
-> - Breaks the event log (events reference deleted nodes)
+> GoT data in `.got/` is **transactional and event-sourced** with **checksum integrity**. Direct file manipulation:
+> - Breaks checksum validation (files will be auto-deleted as corrupted)
+> - Breaks the event log (events reference modified/deleted nodes)
 > - Corrupts dependency tracking
 > - Leaves orphaned edges and broken relationships
 >
-> **Always use `got task delete` command** which:
-> - Verifies preconditions (no dependents, not blocking others)
-> - Cleans up related edges
-> - Logs the deletion as an event for audit trail
-> - Supports `--force` for overriding safety checks
+> **This includes:**
+> - ❌ `sed -i` on `.got/` files
+> - ❌ Direct JSON editing with any tool
+> - ❌ Manual file deletion with `rm`
+> - ❌ Any bypass of the GoT API
+>
+> **Always use GoT CLI commands** which:
+> - Maintain checksum integrity
+> - Verify preconditions (no dependents, not blocking others)
+> - Clean up related edges
+> - Log operations as events for audit trail
+> - Support `--force` for overriding safety checks
+>
+> **If a GoT command fails or is missing:**
+> 1. **DO NOT work around it** by editing files directly
+> 2. **FIX THE TOOL** - add the missing command or fix the bug
+> 3. **Then use the fixed tool** to make your changes
+>
+> See "Tool Reliability Policy" below for the full protocol.
 
 **GoT Auto-Commit & Auto-Push (DEFAULT: ON)**
 
@@ -83,6 +98,62 @@ Both are enabled by default for environment resilience. GoT state auto-saves to 
 
 ### 5. Work Priority Order
 1. **Security** → 2. **Bugs** → 3. **Features** → 4. **Documentation**
+
+### 5a. Tool Reliability Policy
+
+> **⚠️ CRITICAL: Tools must work. Fix them immediately when broken.**
+
+**The Golden Rule:** If a tool or API doesn't exist or fails, **fix the tool first**, then use it. Never work around broken tools with direct file manipulation.
+
+**When you discover a broken or missing tool:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                 TOOL FAILURE RESPONSE PROTOCOL                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  1. STOP                                                             │
+│     └── Do NOT attempt workarounds (sed, manual edits, etc.)         │
+│                                                                       │
+│  2. ASSESS                                                           │
+│     └── Is the tool missing entirely, or just buggy?                 │
+│     └── Is this blocking critical work?                              │
+│                                                                       │
+│  3. FIX                                                              │
+│     └── Add the missing command/feature to the tool                  │
+│     └── Or fix the bug in the existing tool                          │
+│     └── Add tests for the fix                                        │
+│                                                                       │
+│  4. USE                                                              │
+│     └── Now use the fixed tool to accomplish your goal               │
+│                                                                       │
+│  5. DOCUMENT                                                         │
+│     └── Update CLAUDE.md if needed                                   │
+│     └── Log a decision if significant                                │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Examples of what NOT to do:**
+
+| Situation | ❌ Wrong | ✅ Right |
+|-----------|----------|----------|
+| `handoff reject` missing | Work around it manually | Add `cmd_handoff_reject` to CLI |
+| Invalid edge type | `sed -i` the JSON file | Add edge type to EdgeType enum |
+| Checksum error | Delete the corrupted file | Use recovery tools or fix data properly |
+| API returns error | Ignore and edit file | Fix the API or handle the error |
+
+**Why this matters:**
+- Direct file edits break checksums → auto-deletion as "corrupted"
+- Workarounds accumulate → technical debt
+- Broken tools stay broken → future agents hit same issues
+- Each agent fixing tools → progressively better system
+
+**This policy applies to:**
+- GoT tools (`scripts/got_utils.py`, `cortical/got/cli/*`)
+- Test utilities
+- Index/search scripts
+- Any CLI or API in the project
 
 ### 6. Using Sub-Agents (Preserve Your Context!)
 

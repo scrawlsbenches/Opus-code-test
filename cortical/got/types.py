@@ -208,6 +208,7 @@ VALID_EDGE_TYPES = frozenset({
     'CONTRADICTS',   # Conflicting entities
     'JUSTIFIES',     # Decision justifies Task
     'MOTIVATES',     # Entity motivates another
+    'CAUSED_BY',     # Entity was caused by another (e.g., Task caused by Decision)
     # Workflow relationships
     'TRANSFERS',     # Task transfers to Handoff
     'PRODUCES',      # Task produces Document/Artifact
