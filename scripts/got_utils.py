@@ -3320,6 +3320,29 @@ def cmd_handoff_complete(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
+def cmd_handoff_reject(args, manager: "TransactionalGoTAdapter") -> int:
+    """Reject a handoff."""
+    # Read reason from stdin if '-' is specified
+    reason = args.reason
+    if reason == "-":
+        reason = sys.stdin.read().strip()
+
+    success = manager.reject_handoff(
+        handoff_id=args.handoff_id,
+        agent=args.agent,
+        reason=reason,
+    )
+
+    if not success:
+        print(f"Failed to reject handoff: {args.handoff_id}")
+        return 1
+
+    print(f"Handoff rejected: {args.handoff_id}")
+    print(f"  Agent: {args.agent}")
+    print(f"  Reason: {reason}")
+    return 0
+
+
 def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
     """List handoffs."""
     # Use manager's handoff method (works with TX backend)

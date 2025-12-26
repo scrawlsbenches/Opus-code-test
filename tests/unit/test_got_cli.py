@@ -44,6 +44,7 @@ from got_utils import (
     cmd_handoff_initiate,
     cmd_handoff_accept,
     cmd_handoff_complete,
+    cmd_handoff_reject,
     cmd_handoff_list,
     cmd_query,
     cmd_infer,
@@ -1004,6 +1005,65 @@ class TestHandoffComplete:
 
         assert result == 1
         assert "Failed" in captured.getvalue()
+
+
+class TestHandoffReject:
+    """Tests for handoff reject command."""
+
+    def test_reject_handoff(self, mock_manager, mock_args):
+        """Reject a handoff."""
+        mock_args.handoff_id = "handoff:H-001"
+        mock_args.agent = "cleanup-agent"
+        mock_args.reason = "Task already completed"
+
+        mock_manager.reject_handoff.return_value = True
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_reject(mock_args, mock_manager)
+
+        assert result == 0
+        output = captured.getvalue()
+        assert "H-001" in output
+        assert "cleanup-agent" in output
+        assert "Task already completed" in output
+        mock_manager.reject_handoff.assert_called_once_with(
+            handoff_id="handoff:H-001",
+            agent="cleanup-agent",
+            reason="Task already completed"
+        )
+
+    def test_reject_handoff_failure(self, mock_manager, mock_args):
+        """Reject handoff returns error on failure."""
+        mock_args.handoff_id = "handoff:H-NONEXISTENT"
+        mock_args.agent = "cleanup-agent"
+        mock_args.reason = "Invalid handoff"
+
+        mock_manager.reject_handoff.return_value = False
+
+        with patch('sys.stdout', new=StringIO()) as captured:
+            result = cmd_handoff_reject(mock_args, mock_manager)
+
+        assert result == 1
+        assert "Failed" in captured.getvalue()
+
+    def test_reject_handoff_with_stdin(self, mock_manager, mock_args):
+        """Reject handoff with reason from stdin."""
+        mock_args.handoff_id = "handoff:H-001"
+        mock_args.agent = "cleanup-agent"
+        mock_args.reason = "-"
+
+        mock_manager.reject_handoff.return_value = True
+
+        with patch('sys.stdin', StringIO("Reason from stdin")):
+            with patch('sys.stdout', new=StringIO()) as captured:
+                result = cmd_handoff_reject(mock_args, mock_manager)
+
+        assert result == 0
+        mock_manager.reject_handoff.assert_called_once_with(
+            handoff_id="handoff:H-001",
+            agent="cleanup-agent",
+            reason="Reason from stdin"
+        )
 
 
 class TestHandoffList:
