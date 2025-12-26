@@ -564,7 +564,8 @@ class GoTManager:
         source_id: str,
         target_id: str,
         edge_type: str,
-        weight: float = 1.0
+        weight: float = 1.0,
+        validate_refs: bool = True
     ) -> Edge:
         """
         Add an edge between entities.
@@ -574,13 +575,29 @@ class GoTManager:
             target_id: Target entity ID
             edge_type: Edge type (DEPENDS_ON, BLOCKS, etc.)
             weight: Edge weight (0.0-1.0)
+            validate_refs: If True, verify source and target entities exist
+                          (default: True for referential integrity)
 
         Returns:
             Created Edge object
 
         Raises:
             TransactionError: If commit fails
+            ValueError: If validate_refs=True and source/target doesn't exist
         """
+        # Optional FK validation
+        if validate_refs:
+            if not self.tx_manager.store.exists(source_id):
+                raise ValueError(
+                    f"Source entity not found: {source_id}. "
+                    f"Use validate_refs=False to create edge without validation."
+                )
+            if not self.tx_manager.store.exists(target_id):
+                raise ValueError(
+                    f"Target entity not found: {target_id}. "
+                    f"Use validate_refs=False to create edge without validation."
+                )
+
         with self.transaction() as tx:
             edge = tx.add_edge(source_id, target_id, edge_type, weight=weight)
         return edge
