@@ -1,8 +1,8 @@
 {
-  "_checksum": "dce9e28786609b6d",
-  "_written_at": "2025-12-26T15:10:04.916047+00:00",
+  "_checksum": "40a1d06ae9f44cf2",
+  "_written_at": "2025-12-26T15:14:52.985103+00:00",
   "data": {
-    "accepted_at": "",
+    "accepted_at": "2025-12-26T15:14:52.980641+00:00",
     "artifacts": [],
     "completed_at": "",
     "context": {
@@ -15,15 +15,15 @@
     "id": "H-20251226-151004-27b097dc",
     "initiated_at": "2025-12-26T15:10:04.912877+00:00",
     "instructions": "## Handoff: GoT Schema Validation Hardening (Sprint S-026)\n\n### Context\nDeep analysis completed of GoT schema and namespace utilization. Found critical validation gaps. Created Sprint S-026 with 7 tasks under EPIC-got-db.\n\n### Knowledge Transfer Document\n**READ FIRST:** `samples/memories/2025-12-26-knowledge-transfer-got-schema-namespace-analysis.md`\n\n### Priority Work (Execute in Order)\n\n1. **T-20251226-141240-a584b507** [HIGH] - Enable edge type validation\n   - Location: `cortical/got/types.py:315-378`\n   - Add VALID_EDGE_TYPES set and validate in Edge.__post_init__\n   - Move EDGE_TYPES from entity_schemas.py to types.py as single source of truth\n\n2. **T-20251226-141300-96f4577c** [HIGH] - Enable validation by default\n   - Location: `cortical/got/versioned_store.py:49`\n   - Change `validate_on_save=False` to `validate_on_save=True`\n   - Depends on task #1 completing first\n\n### Critical Files\n- `cortical/got/types.py` - Entity definitions, Edge class at lines 315-378\n- `cortical/got/entity_schemas.py:230-234` - EDGE_TYPES list (to be moved)\n- `cortical/got/versioned_store.py:49` - Default validation flag\n- `cortical/got/api.py` - GoTManager initialization\n\n### Before Making Changes\n```bash\n# Run existing tests\npython -m pytest tests/unit/test_got*.py -v\n\n# Check production data for invalid edge types\npython3 -c \"\nimport os, json\nfor f in os.listdir('.got/entities'):\n    if f.startswith('E-') and f.endswith('.json'):\n        with open(f'.got/entities/{f}') as fp:\n            data = json.load(fp)\n            et = data.get('data',{}).get('edge_type','')\n            if et not in ['DEPENDS_ON','BLOCKS','CONTAINS','RELATES_TO','REQUIRES','IMPLEMENTS','SUPERSEDES','DERIVED_FROM','PARENT_OF','CHILD_OF','REFERENCES','CONTRADICTS']:\n                print(f'Invalid: {f} -> {et}')\n\"\n```\n\n### Sprint Status\n```bash\npython scripts/got_utils.py sprint status S-026\n```\n\n### Decision Reference\nD-20251226-141841-c387695a - Documents rationale for this initiative",
-    "modified_at": "2025-12-26T15:10:04.915957+00:00",
+    "modified_at": "2025-12-26T15:14:52.985050+00:00",
     "properties": {},
     "reject_reason": "",
     "rejected_at": "",
     "result": {},
     "source_agent": "main",
-    "status": "initiated",
+    "status": "accepted",
     "target_agent": "next-session",
     "task_id": "T-20251226-141240-a584b507",
-    "version": 2
+    "version": 4
   }
 }
