@@ -158,3 +158,6 @@ corpus_dev/
 .got/.got.lock
 .got/**/*.lock
 .spark_intelligence_model.json
+
+# Generated training corpus (regenerate with: python -m benchmarks.codebase_slm.generate_corpus --full)
+benchmarks/codebase_slm/corpus/
