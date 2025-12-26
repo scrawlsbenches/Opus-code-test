@@ -60,10 +60,14 @@ from got_utils import (
     STATUS_BLOCKED,
     got_auto_commit,
     _got_auto_push,
+    _build_descriptive_commit_message,
+    _generic_commit_message,
     GOT_AUTO_COMMIT_ENABLED,
     GOT_AUTO_PUSH_ENABLED,
     MUTATING_COMMANDS,
     PROTECTED_BRANCHES,
+    GOT_DIR,
+    PROJECT_ROOT,
 )
 
 
@@ -1831,6 +1835,595 @@ class TestMutatingCommands:
         """Dashboard and query commands are not mutating."""
         assert MUTATING_COMMANDS.get("dashboard") is None
         assert MUTATING_COMMANDS.get("query") is None
+
+
+class TestGenericCommitMessage:
+    """Tests for _generic_commit_message helper function."""
+
+    def test_with_subcommand(self):
+        """Generic message includes command and subcommand."""
+        msg = _generic_commit_message("task", "create")
+        assert msg == "chore(got): Auto-save after task create"
+
+    def test_without_subcommand(self):
+        """Generic message works without subcommand."""
+        msg = _generic_commit_message("compact", None)
+        assert msg == "chore(got): Auto-save after compact"
+
+    def test_various_commands(self):
+        """Generic message works for various command combinations."""
+        assert "sprint start" in _generic_commit_message("sprint", "start")
+        assert "decision log" in _generic_commit_message("decision", "log")
+        assert "handoff initiate" in _generic_commit_message("handoff", "initiate")
+
+
+class TestBuildDescriptiveCommitMessage:
+    """Tests for _build_descriptive_commit_message function."""
+
+    @patch('subprocess.run')
+    def test_fallback_on_git_error(self, mock_run):
+        """Falls back to generic message when git diff fails."""
+        mock_run.return_value = MagicMock(returncode=1, stdout='')
+
+        msg = _build_descriptive_commit_message("task", "create")
+
+        assert msg == "chore(got): Auto-save after task create"
+
+    @patch('subprocess.run')
+    def test_fallback_on_empty_diff(self, mock_run):
+        """Falls back to generic message when no staged files."""
+        mock_run.return_value = MagicMock(returncode=0, stdout='')
+
+        msg = _build_descriptive_commit_message("task", "create")
+
+        assert msg == "chore(got): Auto-save after task create"
+
+    @patch('subprocess.run')
+    def test_fallback_on_timeout(self, mock_run):
+        """Falls back to generic message on subprocess timeout."""
+        import subprocess
+        mock_run.side_effect = subprocess.TimeoutExpired(['git'], 5)
+
+        msg = _build_descriptive_commit_message("task", "create")
+
+        assert msg == "chore(got): Auto-save after task create"
+
+    @patch('subprocess.run')
+    def test_task_create_with_title(self, mock_run, tmp_path):
+        """Task create message includes title and ID."""
+        # Create a mock task entity file
+        entity_file = tmp_path / "T-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "task",
+                "id": "T-20251226-123456-abcd1234",
+                "title": "Fix login bug"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        # Mock git diff to return our test file path
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        # Patch PROJECT_ROOT to use our temp path
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "create")
+
+        assert 'Create task' in msg
+        assert 'Fix login bug' in msg
+        assert 'T-20251226-123456-abcd1234' in msg
+
+    @patch('subprocess.run')
+    def test_task_create_without_title(self, mock_run, tmp_path):
+        """Task create message works without title."""
+        entity_file = tmp_path / "T-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "task",
+                "id": "T-20251226-123456-abcd1234",
+                "title": ""
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "create")
+
+        assert msg == "chore(got): Create task T-20251226-123456-abcd1234"
+
+    @patch('subprocess.run')
+    def test_task_complete_message(self, mock_run, tmp_path):
+        """Task complete message includes task ID."""
+        entity_file = tmp_path / "T-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "task",
+                "id": "T-20251226-123456-abcd1234",
+                "title": "Some task"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "complete")
+
+        assert msg == "chore(got): Complete task T-20251226-123456-abcd1234"
+
+    @patch('subprocess.run')
+    def test_task_start_message(self, mock_run, tmp_path):
+        """Task start message includes task ID."""
+        entity_file = tmp_path / "T-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "task",
+                "id": "T-20251226-123456-abcd1234",
+                "title": "Some task"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "start")
+
+        assert msg == "chore(got): Start task T-20251226-123456-abcd1234"
+
+    @patch('subprocess.run')
+    def test_task_block_message(self, mock_run, tmp_path):
+        """Task block message includes task ID."""
+        entity_file = tmp_path / "T-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "task",
+                "id": "T-20251226-123456-abcd1234",
+                "title": "Some task"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "block")
+
+        assert msg == "chore(got): Block task T-20251226-123456-abcd1234"
+
+    @patch('subprocess.run')
+    def test_task_delete_message(self, mock_run, tmp_path):
+        """Task delete message includes task ID."""
+        entity_file = tmp_path / "T-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "task",
+                "id": "T-20251226-123456-abcd1234",
+                "title": "Some task"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "delete")
+
+        assert msg == "chore(got): Delete task T-20251226-123456-abcd1234"
+
+    @patch('subprocess.run')
+    def test_decision_log_with_title(self, mock_run, tmp_path):
+        """Decision log message includes title."""
+        entity_file = tmp_path / "D-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "decision",
+                "id": "D-20251226-123456-abcd1234",
+                "title": "Use JWT for authentication"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("decision", "log")
+
+        assert 'Log decision' in msg
+        assert 'Use JWT for authentication' in msg
+
+    @patch('subprocess.run')
+    def test_decision_log_without_title(self, mock_run, tmp_path):
+        """Decision log message works without title."""
+        entity_file = tmp_path / "D-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "decision",
+                "id": "D-20251226-123456-abcd1234",
+                "title": ""
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("decision", "log")
+
+        assert msg == "chore(got): Log decision D-20251226-123456-abcd1234"
+
+    @patch('subprocess.run')
+    def test_sprint_create_with_title(self, mock_run, tmp_path):
+        """Sprint create message includes title and ID."""
+        entity_file = tmp_path / "S-sprint-017-test.json"
+        entity_data = {
+            "data": {
+                "entity_type": "sprint",
+                "id": "S-sprint-017-test",
+                "title": "Implement auth feature"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("sprint", "create")
+
+        assert 'Create sprint' in msg
+        assert 'Implement auth feature' in msg
+        assert 'S-sprint-017-test' in msg
+
+    @patch('subprocess.run')
+    def test_sprint_start_message(self, mock_run, tmp_path):
+        """Sprint start message includes sprint ID."""
+        entity_file = tmp_path / "S-sprint-017-test.json"
+        entity_data = {
+            "data": {
+                "entity_type": "sprint",
+                "id": "S-sprint-017-test",
+                "title": "Sprint 17"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("sprint", "start")
+
+        assert msg == "chore(got): Start sprint S-sprint-017-test"
+
+    @patch('subprocess.run')
+    def test_sprint_complete_message(self, mock_run, tmp_path):
+        """Sprint complete message includes sprint ID."""
+        entity_file = tmp_path / "S-sprint-017-test.json"
+        entity_data = {
+            "data": {
+                "entity_type": "sprint",
+                "id": "S-sprint-017-test",
+                "title": "Sprint 17"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("sprint", "complete")
+
+        assert msg == "chore(got): Complete sprint S-sprint-017-test"
+
+    @patch('subprocess.run')
+    def test_edge_message(self, mock_run, tmp_path):
+        """Edge creation message includes edge type and endpoints."""
+        entity_file = tmp_path / "E-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "edge",
+                "id": "E-20251226-123456-abcd1234",
+                "edge_type": "DEPENDS_ON",
+                "source_id": "T-20251226-aaa",
+                "target_id": "T-20251226-bbb"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "depends")
+
+        assert 'Add edge DEPENDS_ON' in msg
+        assert 'T-20251226-aaa' in msg
+        assert 'T-20251226-bbb' in msg
+        assert '->' in msg
+
+    @patch('subprocess.run')
+    def test_edge_blocks_type(self, mock_run, tmp_path):
+        """Edge message works with BLOCKS edge type."""
+        entity_file = tmp_path / "E-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "edge",
+                "id": "E-20251226-123456-abcd1234",
+                "edge_type": "BLOCKS",
+                "source_id": "T-blocker",
+                "target_id": "T-blocked"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "block")
+
+        assert 'Add edge BLOCKS T-blocker -> T-blocked' in msg
+
+    @patch('subprocess.run')
+    def test_handoff_initiate_message(self, mock_run, tmp_path):
+        """Handoff initiate message includes target and task."""
+        entity_file = tmp_path / "H-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "handoff",
+                "id": "H-20251226-123456-abcd1234",
+                "target_agent": "agent-2",
+                "task_id": "T-20251226-task123"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("handoff", "initiate")
+
+        assert 'Initiate handoff' in msg
+        assert 'agent-2' in msg
+        assert 'T-20251226-task123' in msg
+
+    @patch('subprocess.run')
+    def test_handoff_accept_message(self, mock_run, tmp_path):
+        """Handoff accept message includes handoff ID."""
+        entity_file = tmp_path / "H-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "handoff",
+                "id": "H-20251226-123456-abcd1234",
+                "target_agent": "agent-2",
+                "task_id": "T-20251226-task123"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("handoff", "accept")
+
+        assert msg == "chore(got): Accept handoff H-20251226-123456-abcd1234"
+
+    @patch('subprocess.run')
+    def test_handoff_complete_message(self, mock_run, tmp_path):
+        """Handoff complete message includes handoff ID."""
+        entity_file = tmp_path / "H-20251226-123456-abcd1234.json"
+        entity_data = {
+            "data": {
+                "entity_type": "handoff",
+                "id": "H-20251226-123456-abcd1234",
+                "target_agent": "agent-2",
+                "task_id": "T-20251226-task123"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("handoff", "complete")
+
+        assert msg == "chore(got): Complete handoff H-20251226-123456-abcd1234"
+
+    @patch('subprocess.run')
+    def test_invalid_json_falls_back(self, mock_run, tmp_path):
+        """Falls back to generic message when entity file is invalid JSON."""
+        entity_file = tmp_path / "T-invalid.json"
+        entity_file.write_text("not valid json {{{")
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "create")
+
+        assert msg == "chore(got): Auto-save after task create"
+
+    @patch('subprocess.run')
+    def test_missing_entity_type_falls_back(self, mock_run, tmp_path):
+        """Falls back when entity type is missing."""
+        entity_file = tmp_path / "T-unknown.json"
+        entity_data = {
+            "data": {
+                "id": "T-unknown"
+                # No entity_type
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "create")
+
+        assert msg == "chore(got): Auto-save after task create"
+
+    @patch('subprocess.run')
+    def test_nonexistent_file_skipped(self, mock_run, tmp_path):
+        """Nonexistent files in diff output are skipped."""
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout='/nonexistent/path/to/file.json\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "create")
+
+        assert msg == "chore(got): Auto-save after task create"
+
+    @patch('subprocess.run')
+    def test_multiple_files_uses_first_valid(self, mock_run, tmp_path):
+        """When multiple files changed, uses first valid entity."""
+        # First file is invalid
+        invalid_file = tmp_path / "invalid.json"
+        invalid_file.write_text("not json")
+
+        # Second file is valid
+        valid_file = tmp_path / "T-valid.json"
+        entity_data = {
+            "data": {
+                "entity_type": "task",
+                "id": "T-valid-task",
+                "title": "Valid task"
+            }
+        }
+        valid_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=f'{invalid_file}\n{valid_file}\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "create")
+
+        assert 'Valid task' in msg
+        assert 'T-valid-task' in msg
+
+    @patch('subprocess.run')
+    def test_unknown_entity_type_falls_back(self, mock_run, tmp_path):
+        """Falls back for unknown entity types."""
+        entity_file = tmp_path / "X-unknown.json"
+        entity_data = {
+            "data": {
+                "entity_type": "unknown_type",
+                "id": "X-unknown"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "create")
+
+        assert msg == "chore(got): Auto-save after task create"
+
+    @patch('subprocess.run')
+    def test_task_unknown_subcommand_falls_back(self, mock_run, tmp_path):
+        """Falls back for unknown task subcommand."""
+        entity_file = tmp_path / "T-task.json"
+        entity_data = {
+            "data": {
+                "entity_type": "task",
+                "id": "T-task",
+                "title": "Some task"
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "unknown_action")
+
+        assert msg == "chore(got): Auto-save after task unknown_action"
+
+    @patch('subprocess.run')
+    def test_edge_missing_fields_falls_back(self, mock_run, tmp_path):
+        """Falls back when edge is missing required fields."""
+        entity_file = tmp_path / "E-incomplete.json"
+        entity_data = {
+            "data": {
+                "entity_type": "edge",
+                "id": "E-incomplete",
+                "edge_type": "DEPENDS_ON"
+                # Missing source_id and target_id
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("task", "depends")
+
+        assert msg == "chore(got): Auto-save after task depends"
 
 
 if __name__ == "__main__":
