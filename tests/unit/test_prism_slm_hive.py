@@ -6,12 +6,19 @@ Tests cover:
 - k_winners_take_all(): Competition to select top-k
 - spreading_activation(): Associative retrieval
 - sparse_activate(): Combined pipeline
+- HiveNode: Node with activation traces
+- HiveEdge: Edge with Hebbian learning traces
 
 Part of Sprint 2: Hebbian Hive Enhancement (Woven Mind + PRISM Marriage)
 """
 
 import pytest
-from cortical.reasoning.prism_slm import TransitionGraph, PRISMLanguageModel
+from cortical.reasoning.prism_slm import (
+    TransitionGraph,
+    PRISMLanguageModel,
+    HiveNode,
+    HiveEdge,
+)
 
 
 # ==============================================================================
@@ -445,3 +452,287 @@ class TestHiveIntegration:
             sparsity_ratio = active_count / vocab_size
             # Should be sparse (less than 20% in any case)
             assert sparsity_ratio <= 0.2
+
+
+# ==============================================================================
+# HIVENODE TESTS
+# ==============================================================================
+
+
+class TestHiveNode:
+    """Tests for HiveNode dataclass."""
+
+    def test_default_values(self):
+        """Default node should have neutral values."""
+        node = HiveNode(id="test")
+        assert node.id == "test"
+        assert node.activation == 0.0
+        assert node.trace == 0.0
+        assert node.excitability == 1.0
+        assert node.activation_count == 0
+
+    def test_activate(self):
+        """Activation should update state correctly."""
+        node = HiveNode(id="test")
+        result = node.activate(0.8, step=5)
+
+        assert result == 0.8  # excitability = 1.0
+        assert node.activation == 0.8
+        assert node.trace == 1.0  # Reset on activation
+        assert node.activation_count == 1
+        assert node.last_activation_step == 5
+
+    def test_excitability_modulation(self):
+        """Excitability should modulate activation."""
+        node = HiveNode(id="test", excitability=0.5)
+        result = node.activate(1.0)
+
+        assert result == 0.5  # 1.0 * 0.5
+        assert node.activation == 0.5
+
+    def test_decay_trace(self):
+        """Trace should decay correctly."""
+        node = HiveNode(id="test", trace=1.0, trace_decay=0.9)
+        node.decay_trace()
+
+        assert node.trace == pytest.approx(0.9)
+
+        node.decay_trace()
+        assert node.trace == pytest.approx(0.81)
+
+    def test_reset(self):
+        """Reset should clear activation state."""
+        node = HiveNode(id="test", activation=0.5, trace=0.8)
+        node.reset()
+
+        assert node.activation == 0.0
+        assert node.trace == 0.0
+
+    def test_to_dict(self):
+        """Serialization should capture all fields."""
+        node = HiveNode(
+            id="test",
+            activation=0.5,
+            trace=0.3,
+            excitability=0.8,
+            activation_count=10,
+        )
+        data = node.to_dict()
+
+        assert data["id"] == "test"
+        assert data["activation"] == 0.5
+        assert data["trace"] == 0.3
+        assert data["excitability"] == 0.8
+        assert data["activation_count"] == 10
+
+    def test_from_dict(self):
+        """Deserialization should restore state."""
+        data = {
+            "id": "restored",
+            "activation": 0.7,
+            "trace": 0.4,
+            "excitability": 1.2,
+            "activation_count": 5,
+        }
+        node = HiveNode.from_dict(data)
+
+        assert node.id == "restored"
+        assert node.activation == 0.7
+        assert node.trace == 0.4
+        assert node.excitability == 1.2
+        assert node.activation_count == 5
+
+    def test_round_trip_serialization(self):
+        """Serialize and deserialize should preserve state."""
+        original = HiveNode(
+            id="test",
+            activation=0.6,
+            trace=0.2,
+            trace_decay=0.9,
+            target_activation=0.1,
+            excitability=1.5,
+            activation_count=3,
+            last_activation_step=7,
+        )
+        data = original.to_dict()
+        restored = HiveNode.from_dict(data)
+
+        assert restored.id == original.id
+        assert restored.activation == original.activation
+        assert restored.trace == original.trace
+        assert restored.excitability == original.excitability
+
+
+# ==============================================================================
+# HIVEEDGE TESTS
+# ==============================================================================
+
+
+class TestHiveEdge:
+    """Tests for HiveEdge dataclass."""
+
+    def test_default_values(self):
+        """Default edge should have neutral values."""
+        edge = HiveEdge(source_id="a", target_id="b")
+        assert edge.source_id == "a"
+        assert edge.target_id == "b"
+        assert edge.weight == 0.0
+        assert edge.pre_trace == 0.0
+        assert edge.post_trace == 0.0
+        assert edge.co_activations == 0
+
+    def test_observe_pre(self):
+        """Pre-synaptic observation should set trace."""
+        edge = HiveEdge(source_id="a", target_id="b")
+        edge.observe_pre()
+
+        assert edge.pre_trace == 1.0
+        assert edge.total_observations == 1
+
+    def test_observe_post(self):
+        """Post-synaptic observation should set trace."""
+        edge = HiveEdge(source_id="a", target_id="b")
+        edge.observe_post()
+
+        assert edge.post_trace == 1.0
+
+    def test_observe_co_activation(self):
+        """Co-activation should update statistics."""
+        edge = HiveEdge(source_id="a", target_id="b")
+        edge.observe_co_activation()
+        edge.observe_co_activation()
+
+        assert edge.co_activations == 2
+        assert edge.total_observations == 2
+
+    def test_correlation(self):
+        """Correlation should be co-activations / total."""
+        edge = HiveEdge(source_id="a", target_id="b")
+        edge.observe_co_activation()  # Both active
+        edge.observe_pre()  # Only pre active
+        edge.observe_pre()  # Only pre active
+
+        # 1 co-activation out of 3 observations
+        assert edge.correlation == pytest.approx(1.0 / 3.0)
+
+    def test_correlation_empty(self):
+        """Correlation with no observations should be 0."""
+        edge = HiveEdge(source_id="a", target_id="b")
+        assert edge.correlation == 0.0
+
+    def test_learn(self):
+        """Learning should increase weight based on traces."""
+        edge = HiveEdge(source_id="a", target_id="b", learning_rate=0.1)
+        edge.pre_trace = 1.0
+        edge.post_trace = 1.0
+
+        delta = edge.learn()
+
+        assert delta == pytest.approx(0.1)  # 0.1 * 1.0 * 1.0
+        assert edge.weight == pytest.approx(0.1)
+
+    def test_learn_partial_traces(self):
+        """Learning with partial traces should produce less change."""
+        edge = HiveEdge(source_id="a", target_id="b", learning_rate=0.1)
+        edge.pre_trace = 0.5
+        edge.post_trace = 0.5
+
+        delta = edge.learn()
+
+        assert delta == pytest.approx(0.025)  # 0.1 * 0.5 * 0.5
+        assert edge.weight == pytest.approx(0.025)
+
+    def test_decay_traces(self):
+        """Traces should decay correctly."""
+        edge = HiveEdge(
+            source_id="a",
+            target_id="b",
+            pre_trace=1.0,
+            post_trace=1.0,
+            trace_decay=0.8,
+        )
+        edge.decay_traces()
+
+        assert edge.pre_trace == pytest.approx(0.8)
+        assert edge.post_trace == pytest.approx(0.8)
+
+    def test_to_dict(self):
+        """Serialization should capture all fields."""
+        edge = HiveEdge(
+            source_id="a",
+            target_id="b",
+            weight=0.5,
+            pre_trace=0.3,
+            post_trace=0.4,
+            co_activations=10,
+        )
+        data = edge.to_dict()
+
+        assert data["source_id"] == "a"
+        assert data["target_id"] == "b"
+        assert data["weight"] == 0.5
+        assert data["pre_trace"] == 0.3
+        assert data["co_activations"] == 10
+
+    def test_from_dict(self):
+        """Deserialization should restore state."""
+        data = {
+            "source_id": "x",
+            "target_id": "y",
+            "weight": 0.7,
+            "pre_trace": 0.2,
+            "post_trace": 0.3,
+            "co_activations": 5,
+            "total_observations": 20,
+        }
+        edge = HiveEdge.from_dict(data)
+
+        assert edge.source_id == "x"
+        assert edge.target_id == "y"
+        assert edge.weight == 0.7
+        assert edge.co_activations == 5
+        assert edge.total_observations == 20
+
+    def test_round_trip_serialization(self):
+        """Serialize and deserialize should preserve state."""
+        original = HiveEdge(
+            source_id="s",
+            target_id="t",
+            weight=1.5,
+            pre_trace=0.6,
+            post_trace=0.7,
+            co_activations=15,
+            total_observations=50,
+            trace_decay=0.9,
+            learning_rate=0.05,
+        )
+        data = original.to_dict()
+        restored = HiveEdge.from_dict(data)
+
+        assert restored.source_id == original.source_id
+        assert restored.target_id == original.target_id
+        assert restored.weight == original.weight
+        assert restored.co_activations == original.co_activations
+
+    def test_hebbian_learning_cycle(self):
+        """Test a full Hebbian learning cycle."""
+        edge = HiveEdge(source_id="a", target_id="b", learning_rate=0.1)
+
+        # Simulate: pre fires, then post fires, then learn
+        edge.observe_pre()
+        edge.observe_post()
+        edge.observe_co_activation()
+
+        # Learn from the traces
+        delta = edge.learn()
+
+        assert delta > 0
+        assert edge.weight > 0
+
+        # Decay traces over time (0.95^20 ≈ 0.36)
+        for _ in range(20):
+            edge.decay_traces()
+
+        # Traces should have decayed significantly (0.95^20 ≈ 0.36)
+        assert edge.pre_trace < 0.5
+        assert edge.post_trace < 0.5

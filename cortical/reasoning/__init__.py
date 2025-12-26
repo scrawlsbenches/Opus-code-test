@@ -320,6 +320,9 @@ from .prism_slm import (
     SynapticTransition,
     ContextWindow,
     TransitionGraph,
+    # Hive data structures (Sprint 2)
+    HiveNode,
+    HiveEdge,
     # Language model
     PRISMLanguageModel,
 )
@@ -568,6 +571,8 @@ __all__ = [
     'SynapticTransition',
     'ContextWindow',
     'TransitionGraph',
+    'HiveNode',
+    'HiveEdge',
     'PRISMLanguageModel',
 
     # === PRISM-PLN: Probabilistic Logic Networks ===

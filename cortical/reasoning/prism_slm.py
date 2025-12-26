@@ -78,6 +78,184 @@ class SynapticTransition:
         )
 
 
+@dataclass
+class HiveNode:
+    """
+    A node in the Hebbian Hive with activation traces.
+
+    Tracks activation history for homeostatic regulation and
+    maintains excitability for modulating node responsiveness.
+
+    Part of Sprint 2: Hebbian Hive Enhancement (Woven Mind + PRISM Marriage)
+    """
+    id: str
+    activation: float = 0.0
+
+    # Eligibility trace for temporal credit assignment
+    trace: float = 0.0
+    trace_decay: float = 0.95
+
+    # Homeostatic regulation (integrates with HomeostasisRegulator)
+    target_activation: float = 0.05
+    excitability: float = 1.0
+
+    # Statistics
+    activation_count: int = 0
+    last_activation_step: int = -1
+
+    def activate(self, amount: float = 1.0, step: int = 0) -> float:
+        """
+        Activate this node with given amount.
+
+        Args:
+            amount: Activation strength (0.0-1.0).
+            step: Current time step for temporal tracking.
+
+        Returns:
+            Actual activation after excitability modulation.
+        """
+        # Apply excitability modulation
+        modulated = amount * self.excitability
+
+        # Update state
+        self.activation = modulated
+        self.trace = 1.0  # Reset trace on activation
+        self.activation_count += 1
+        self.last_activation_step = step
+
+        return modulated
+
+    def decay_trace(self) -> None:
+        """Apply decay to the eligibility trace."""
+        self.trace *= self.trace_decay
+
+    def reset(self) -> None:
+        """Reset activation state."""
+        self.activation = 0.0
+        self.trace = 0.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dictionary."""
+        return {
+            "id": self.id,
+            "activation": self.activation,
+            "trace": self.trace,
+            "trace_decay": self.trace_decay,
+            "target_activation": self.target_activation,
+            "excitability": self.excitability,
+            "activation_count": self.activation_count,
+            "last_activation_step": self.last_activation_step,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "HiveNode":
+        """Deserialize from dictionary."""
+        return cls(
+            id=data["id"],
+            activation=data.get("activation", 0.0),
+            trace=data.get("trace", 0.0),
+            trace_decay=data.get("trace_decay", 0.95),
+            target_activation=data.get("target_activation", 0.05),
+            excitability=data.get("excitability", 1.0),
+            activation_count=data.get("activation_count", 0),
+            last_activation_step=data.get("last_activation_step", -1),
+        )
+
+
+@dataclass
+class HiveEdge:
+    """
+    An edge in the Hebbian Hive with learning traces.
+
+    Implements STDP-inspired (Spike-Timing-Dependent Plasticity) learning
+    through pre- and post-synaptic traces.
+
+    Part of Sprint 2: Hebbian Hive Enhancement (Woven Mind + PRISM Marriage)
+    """
+    source_id: str
+    target_id: str
+    weight: float = 0.0
+
+    # Hebbian traces for learning
+    pre_trace: float = 0.0   # Trace of source activation
+    post_trace: float = 0.0  # Trace of target activation
+
+    # Statistics
+    co_activations: int = 0
+    total_observations: int = 0
+
+    # Learning parameters
+    trace_decay: float = 0.95
+    learning_rate: float = 0.01
+
+    @property
+    def correlation(self) -> float:
+        """How often do source and target fire together?"""
+        if self.total_observations == 0:
+            return 0.0
+        return self.co_activations / self.total_observations
+
+    def observe_pre(self) -> None:
+        """Record pre-synaptic activation."""
+        self.pre_trace = 1.0
+        self.total_observations += 1
+
+    def observe_post(self) -> None:
+        """Record post-synaptic activation."""
+        self.post_trace = 1.0
+
+    def observe_co_activation(self) -> None:
+        """Record that both source and target are active."""
+        self.co_activations += 1
+        self.total_observations += 1
+
+    def learn(self) -> float:
+        """
+        Apply Hebbian learning based on traces.
+
+        Returns:
+            Weight change amount.
+        """
+        # STDP-style: weight change proportional to trace product
+        delta = self.learning_rate * self.pre_trace * self.post_trace
+        self.weight += delta
+        return delta
+
+    def decay_traces(self) -> None:
+        """Apply decay to both traces."""
+        self.pre_trace *= self.trace_decay
+        self.post_trace *= self.trace_decay
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize to dictionary."""
+        return {
+            "source_id": self.source_id,
+            "target_id": self.target_id,
+            "weight": self.weight,
+            "pre_trace": self.pre_trace,
+            "post_trace": self.post_trace,
+            "co_activations": self.co_activations,
+            "total_observations": self.total_observations,
+            "trace_decay": self.trace_decay,
+            "learning_rate": self.learning_rate,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "HiveEdge":
+        """Deserialize from dictionary."""
+        return cls(
+            source_id=data["source_id"],
+            target_id=data["target_id"],
+            weight=data.get("weight", 0.0),
+            pre_trace=data.get("pre_trace", 0.0),
+            post_trace=data.get("post_trace", 0.0),
+            co_activations=data.get("co_activations", 0),
+            total_observations=data.get("total_observations", 0),
+            trace_decay=data.get("trace_decay", 0.95),
+            learning_rate=data.get("learning_rate", 0.01),
+        )
+
+
 class ContextWindow:
     """
     A sliding window of recent tokens for context tracking.
