@@ -1,22 +1,23 @@
 {
-  "_checksum": "4e97bb89a3aeb1c3",
-  "_written_at": "2025-12-26T13:11:58.382017+00:00",
+  "_checksum": "2d6396ff5acd248f",
+  "_written_at": "2025-12-26T13:13:14.012529+00:00",
   "data": {
     "created_at": "2025-12-26T11:28:10.865891+00:00",
     "description": "0 concurrent tests exist. Use threading module to test: 1) Concurrent index_task calls 2) Concurrent lookup calls 3) rebuild_all during active lookups 4) Multiple rebuilds simultaneously. Target: 10+ tests.",
     "entity_type": "task",
     "id": "T-20251226-112810-f4d8650c",
     "metadata": {
+      "completed_at": "2025-12-26T13:13:14.004901+00:00",
       "started_at": "2025-12-26T13:11:58.375415+00:00",
-      "updated_at": "2025-12-26T13:11:58.375434+00:00"
+      "updated_at": "2025-12-26T13:13:14.004912+00:00"
     },
-    "modified_at": "2025-12-26T13:11:58.381961+00:00",
+    "modified_at": "2025-12-26T13:13:14.012478+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "TEST: Add concurrent access tests for QueryIndexManager",
-    "version": 4
+    "version": 6
   }
 }
