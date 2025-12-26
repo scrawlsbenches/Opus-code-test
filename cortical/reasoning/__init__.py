@@ -421,6 +421,15 @@ from .goal_stack import (
 )
 
 # =============================================================================
+# ABSTRACTION-PLN BRIDGE: Wiring Abstractions to PLN (Sprint 3, T3.5)
+# =============================================================================
+
+from .abstraction_pln import (
+    # Bridge class
+    AbstractionPLNBridge,
+)
+
+# =============================================================================
 # PRISM-Attention: Selective Focus Mechanisms
 # =============================================================================
 
@@ -665,4 +674,7 @@ __all__ = [
     'GoalPriority',
     'Goal',
     'GoalStack',
+
+    # === Abstraction-PLN Bridge (Sprint 3, T3.5) ===
+    'AbstractionPLNBridge',
 ]
