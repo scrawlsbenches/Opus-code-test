@@ -1,0 +1,19 @@
+{
+  "_checksum": "d44b1caef4299137",
+  "_written_at": "2025-12-26T14:47:57.182195+00:00",
+  "data": {
+    "created_at": "2025-12-26T14:47:57.178660+00:00",
+    "description": "Benchmark shows convergence_ratio=1.0 (threshold max=0.5). Baseline is not converging as expected during domain-specific training. Need to investigate adaptive baseline algorithm in Loom.",
+    "entity_type": "task",
+    "id": "T-20251226-144757-f13543d6",
+    "metadata": {},
+    "modified_at": "2025-12-26T14:47:57.182116+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Investigate baseline_drift benchmark failure",
+    "version": 2
+  }
+}
