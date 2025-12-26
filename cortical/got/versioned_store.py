@@ -46,7 +46,7 @@ class VersionedStore:
         self,
         store_dir: Path,
         durability: DurabilityMode = DurabilityMode.BALANCED,
-        validate_on_save: bool = False
+        validate_on_save: bool = True
     ):
         """
         Initialize store, creating directory structure if needed.
@@ -55,6 +55,7 @@ class VersionedStore:
             store_dir: Directory path for storing entities
             durability: Durability mode controlling fsync behavior
             validate_on_save: If True, validate entities against schemas before saving
+                             (default: True for data integrity)
         """
         self.store_dir = Path(store_dir)
         self.store_dir.mkdir(parents=True, exist_ok=True)

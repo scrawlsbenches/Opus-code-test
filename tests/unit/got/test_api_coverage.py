@@ -747,11 +747,11 @@ class TestEpicOperations:
         updated = manager.update_epic(
             epic.id,
             title="Updated",
-            status="in_progress"
+            status="completed"  # Epic status must be: active, completed, on_hold
         )
 
         assert updated.title == "Updated"
-        assert updated.status == "in_progress"
+        assert updated.status == "completed"
 
     def test_list_epics(self, manager):
         """List all epics."""
