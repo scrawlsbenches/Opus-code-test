@@ -5,6 +5,7 @@ Provides commands for agent-to-agent work transfers:
 - Initiating handoffs
 - Accepting handoffs
 - Completing handoffs
+- Rejecting handoffs
 - Listing handoff status
 
 This module can be integrated into got_utils.py CLI or used standalone.
@@ -97,6 +98,29 @@ def cmd_handoff_complete(args, manager: "TransactionalGoTAdapter") -> int:
     print(f"Handoff completed: {args.handoff_id}")
     print(f"  Agent: {args.agent}")
     print(f"  Result: {json.dumps(result, indent=2)}")
+    return 0
+
+
+def cmd_handoff_reject(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got handoff reject' command."""
+    # Read reason from stdin if '-' is specified
+    reason = args.reason
+    if reason == "-":
+        reason = sys.stdin.read().strip()
+
+    success = manager.reject_handoff(
+        handoff_id=args.handoff_id,
+        agent=args.agent,
+        reason=reason,
+    )
+
+    if not success:
+        print(f"Failed to reject handoff: {args.handoff_id}")
+        return 1
+
+    print(f"Handoff rejected: {args.handoff_id}")
+    print(f"  Agent: {args.agent}")
+    print(f"  Reason: {reason}")
     return 0
 
 
@@ -266,6 +290,16 @@ def setup_handoff_parser(subparsers) -> None:
         help="Artifacts created (files, commits)"
     )
 
+    # handoff reject
+    handoff_reject = handoff_subparsers.add_parser("reject", help="Reject a handoff")
+    handoff_reject.add_argument("handoff_id", help="Handoff ID to reject")
+    handoff_reject.add_argument("--agent", "-a", required=True, help="Agent rejecting")
+    handoff_reject.add_argument(
+        "--reason", "-r",
+        required=True,
+        help="Reason for rejection (use '-' to read from stdin)"
+    )
+
     # handoff show
     handoff_show = handoff_subparsers.add_parser("show", help="Show handoff details")
     handoff_show.add_argument("handoff_id", help="Handoff ID to display")
@@ -303,6 +337,7 @@ def handle_handoff_command(args, manager: "TransactionalGoTAdapter") -> int:
         "initiate": cmd_handoff_initiate,
         "accept": cmd_handoff_accept,
         "complete": cmd_handoff_complete,
+        "reject": cmd_handoff_reject,
         "show": cmd_handoff_show,
         "list": cmd_handoff_list,
     }
