@@ -27,6 +27,12 @@ Sprint 4 (The Loom Weaves):
   - AttentionRouter: Mode-based routing
   - WovenMind: Unified facade for the complete architecture
 
+Sprint 5 (Consolidation Engine):
+  - ConsolidationEngine: "Sleep-like" learning transfer
+  - Pattern transfer from Hive to Cortex
+  - Abstraction mining from frequent patterns
+  - Decay cycles for forgetting unused connections
+
 Usage:
     python examples/woven_mind_demo.py
     python examples/woven_mind_demo.py --verbose
@@ -702,6 +708,91 @@ def demo_integrated_workflow(corpus: list, verbose: bool = False):
     print(f"  Goal completion: {goal_stats['avg_progress']:.0%}")
 
 
+def demo_consolidation(corpus: list, verbose: bool = False):
+    """
+    Demonstrate Sprint 5: Consolidation Engine.
+
+    Shows the "sleep-like" consolidation cycles that:
+    - Transfer frequent Hive patterns to Cortex abstractions
+    - Mine latent structure in patterns
+    - Apply decay to unused connections
+    """
+    print_header("SPRINT 5: CONSOLIDATION ENGINE")
+
+    from cortical.reasoning.consolidation import (
+        ConsolidationEngine,
+        ConsolidationConfig,
+        ConsolidationResult,
+    )
+
+    # Create WovenMind for consolidation demo
+    config = WovenMindConfig(
+        consolidation_threshold=2,
+        consolidation_decay_factor=0.9,
+    )
+    mind = WovenMind(config=config)
+
+    # Train on corpus
+    print_subheader("Training Phase")
+    for doc in corpus[:5]:
+        mind.train(doc["content"])
+    print(f"  Trained on {min(5, len(corpus))} documents")
+
+    # Process and record patterns
+    print_subheader("Pattern Recording")
+    patterns_recorded = 0
+    for doc in corpus[:5]:
+        tokens = doc["content"].lower().split()[:3]
+        mind.process(tokens)
+        if len(tokens) >= 2:
+            mind.consolidation.record_pattern(set(tokens[:2]))
+            patterns_recorded += 1
+    print(f"  Recorded {patterns_recorded} patterns")
+
+    # Simulate repeated exposure
+    print_subheader("Repeated Exposure (Building Frequency)")
+    for _ in range(5):
+        for doc in corpus[:3]:
+            tokens = doc["content"].lower().split()[:2]
+            if len(tokens) >= 2:
+                mind.consolidation.record_pattern(set(tokens))
+    print("  Built up pattern frequencies")
+
+    # Check frequent patterns
+    frequent = mind.consolidation.get_frequent_patterns(min_frequency=3)
+    print(f"  Frequent patterns (freq>=3): {len(frequent)}")
+
+    # Run consolidation
+    print_subheader("Consolidation Cycle ('Sleep')")
+    result = mind.consolidate()
+
+    print(f"  Patterns transferred: {result.patterns_transferred}")
+    print(f"  Abstractions formed: {result.abstractions_formed}")
+    print(f"  Connections decayed: {result.connections_decayed}")
+    print(f"  Connections pruned: {result.connections_pruned}")
+    print(f"  Cycle duration: {result.cycle_duration_ms:.2f}ms")
+
+    # Run multiple cycles
+    print_subheader("Multiple Consolidation Cycles")
+    for i in range(3):
+        r = mind.consolidate()
+        print(f"  Cycle {i+2}: transferred={r.patterns_transferred}, "
+              f"abstractions={r.abstractions_formed}, "
+              f"duration={r.cycle_duration_ms:.2f}ms")
+
+    # Final stats
+    print_subheader("Consolidation Statistics")
+    stats = mind.get_consolidation_stats()
+    print(f"  Total cycles: {stats['total_cycles']}")
+    print(f"  Total patterns transferred: {stats['total_patterns_transferred']}")
+    print(f"  Total abstractions formed: {stats['total_abstractions_formed']}")
+    print(f"  Avg cycle duration: {stats['avg_cycle_duration_ms']:.2f}ms")
+
+    if verbose:
+        print_subheader("Phase Breakdown")
+        print(f"  Phase durations: {result.phase_durations_ms}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Woven Mind + PRISM Marriage Demo"
@@ -715,7 +806,7 @@ def main():
         help="Path to corpus directory (default: samples/)"
     )
     parser.add_argument(
-        "--section", type=str, choices=["loom", "hive", "abstraction", "goals", "wovenmind", "all"],
+        "--section", type=str, choices=["loom", "hive", "abstraction", "goals", "wovenmind", "consolidation", "all"],
         default="all",
         help="Which section to run (default: all)"
     )
@@ -753,6 +844,9 @@ def main():
 
     if args.section in ["wovenmind", "all"]:
         demo_woven_mind_facade(corpus, args.verbose)
+
+    if args.section in ["consolidation", "all"]:
+        demo_consolidation(corpus, args.verbose)
 
     if args.section == "all":
         demo_integrated_workflow(corpus, args.verbose)
