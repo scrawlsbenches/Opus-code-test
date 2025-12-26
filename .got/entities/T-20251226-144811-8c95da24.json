@@ -1,0 +1,19 @@
+{
+  "_checksum": "1075b5d1395a7dfe",
+  "_written_at": "2025-12-26T14:48:11.838284+00:00",
+  "data": {
+    "created_at": "2025-12-26T14:48:11.833752+00:00",
+    "description": "Benchmark shows CV=0.897 (threshold max=0.5). Activation variance too high during normal operation. Need to investigate HomeostasisRegulator in loom_hive.py.",
+    "entity_type": "task",
+    "id": "T-20251226-144811-8c95da24",
+    "metadata": {},
+    "modified_at": "2025-12-26T14:48:11.838220+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Investigate homeostasis_stability benchmark failure",
+    "version": 2
+  }
+}
