@@ -393,6 +393,34 @@ from .homeostasis import (
 )
 
 # =============================================================================
+# CORTEX ABSTRACTION: Hierarchical Pattern Abstraction (Sprint 3)
+# =============================================================================
+
+from .abstraction import (
+    # Core data structures
+    Abstraction,
+    PatternObservation,
+    # Pattern detection
+    PatternDetector,
+    # Abstraction engine
+    AbstractionEngine,
+)
+
+# =============================================================================
+# GOAL STACK: Goal Tracking with Monotonic Progress (Sprint 3)
+# =============================================================================
+
+from .goal_stack import (
+    # Enums
+    GoalStatus,
+    GoalPriority,
+    # Core data structures
+    Goal,
+    # Goal stack manager
+    GoalStack,
+)
+
+# =============================================================================
 # PRISM-Attention: Selective Focus Mechanisms
 # =============================================================================
 
@@ -625,4 +653,16 @@ __all__ = [
     'NodeState',
     'HomeostasisRegulator',
     'AdaptiveHomeostasisRegulator',
+
+    # === Cortex Abstraction (Sprint 3) ===
+    'Abstraction',
+    'PatternObservation',
+    'PatternDetector',
+    'AbstractionEngine',
+
+    # === Goal Stack (Sprint 3) ===
+    'GoalStatus',
+    'GoalPriority',
+    'Goal',
+    'GoalStack',
 ]
