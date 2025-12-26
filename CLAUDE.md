@@ -2090,6 +2090,11 @@ python examples/observability_demo.py
 | List handoffs | `python scripts/got_utils.py handoff list [--status STATUS]` |
 | ↳ Handoff statuses | `initiated` → `accepted` → `completed` or `rejected` (not `pending`) |
 | Compact events | `python scripts/got_utils.py compact [--preserve-days N]` |
+| **GoT Edge Management** | |
+| Add edge | `python scripts/got_utils.py edge add SOURCE_ID TARGET_ID EDGE_TYPE` |
+| List edges | `python scripts/got_utils.py edge list [--type TYPE] [--source ID] [--target ID]` |
+| Show edge types | `python scripts/got_utils.py edge types` |
+| Edges for entity | `python scripts/got_utils.py edge for ENTITY_ID` |
 | **GoT Query Language** | |
 | What blocks task | `python scripts/got_utils.py query "what blocks TASK_ID"` |
 | What depends on | `python scripts/got_utils.py query "what depends on TASK_ID"` |
