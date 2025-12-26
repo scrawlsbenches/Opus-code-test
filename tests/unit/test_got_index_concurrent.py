@@ -290,7 +290,6 @@ class TestIndexThreadSafety:
         with tempfile.TemporaryDirectory() as tmp:
             yield Path(tmp)
 
-    @pytest.mark.skip(reason="QueryIndexManager has separate race condition in _atomic_write_json - needs threading.Lock like VersionedStore fix")
     def test_parallel_index_reads_during_writes(self, got_dir):
         """Index reads should be consistent during concurrent writes."""
         manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)

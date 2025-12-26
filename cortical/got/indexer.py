@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -135,6 +136,9 @@ class QueryIndexManager:
         self._stats = IndexStats()
         self._dirty = False
 
+        # Thread lock for concurrent write protection (fcntl.flock doesn't work between threads)
+        self._write_lock = threading.Lock()
+
         # Ensure index directory exists
         self._index_dir.mkdir(parents=True, exist_ok=True)
 
@@ -192,23 +196,26 @@ class QueryIndexManager:
         Write JSON atomically using temp file + os.replace().
 
         If a crash occurs during write, the original file remains intact.
+        Uses threading.Lock for thread safety within the same process.
         """
         temp_file = filepath.with_suffix(".json.tmp")
-        try:
-            with open(temp_file, "w") as f:
-                json.dump(data, f, indent=2)
-                f.flush()
-                os.fsync(f.fileno())
-            # Atomic rename - either succeeds completely or fails completely
-            os.replace(temp_file, filepath)
-        except IOError as e:
-            logger.error(f"Failed to save {filepath.name}: {e}")
-            # Clean up temp file if it exists
-            if temp_file.exists():
-                try:
-                    temp_file.unlink()
-                except OSError:
-                    pass
+        # Thread lock prevents concurrent writes from racing on temp file
+        with self._write_lock:
+            try:
+                with open(temp_file, "w") as f:
+                    json.dump(data, f, indent=2)
+                    f.flush()
+                    os.fsync(f.fileno())
+                # Atomic rename - either succeeds completely or fails completely
+                os.replace(temp_file, filepath)
+            except IOError as e:
+                logger.error(f"Failed to save {filepath.name}: {e}")
+                # Clean up temp file if it exists
+                if temp_file.exists():
+                    try:
+                        temp_file.unlink()
+                    except OSError:
+                        pass
 
     def has_index(self, field_name: str) -> bool:
         """Check if an index exists for the given field."""
