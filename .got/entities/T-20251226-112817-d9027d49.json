@@ -1,22 +1,23 @@
 {
-  "_checksum": "2f0d4b96e1f0ff6a",
-  "_written_at": "2025-12-26T13:10:35.818778+00:00",
+  "_checksum": "68737d97cdf6aaec",
+  "_written_at": "2025-12-26T13:11:46.259346+00:00",
   "data": {
     "created_at": "2025-12-26T11:28:17.284728+00:00",
     "description": "Only 2 recovery tests exist. Add: 1) Corrupted JSON chunks 2) Truncated writes 3) Disk full simulation 4) Permission denied 5) Encoding errors 6) Partial rebuild recovery. Target: 15+ tests.",
     "entity_type": "task",
     "id": "T-20251226-112817-d9027d49",
     "metadata": {
+      "completed_at": "2025-12-26T13:11:46.253267+00:00",
       "started_at": "2025-12-26T13:10:35.811485+00:00",
-      "updated_at": "2025-12-26T13:10:35.811494+00:00"
+      "updated_at": "2025-12-26T13:11:46.253275+00:00"
     },
-    "modified_at": "2025-12-26T13:10:35.818721+00:00",
+    "modified_at": "2025-12-26T13:11:46.259297+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "TEST: Add error recovery tests for indexes",
-    "version": 4
+    "version": 6
   }
 }
