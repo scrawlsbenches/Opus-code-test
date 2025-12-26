@@ -1,19 +1,22 @@
 {
-  "_checksum": "fab292a1e0d00202",
-  "_written_at": "2025-12-26T22:33:17.007563+00:00",
+  "_checksum": "a7a9fdc0ee888ff1",
+  "_written_at": "2025-12-26T22:40:15.021159+00:00",
   "data": {
     "created_at": "2025-12-26T22:33:17.004366+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20251226-223317-bb160e25",
-    "metadata": {},
-    "modified_at": "2025-12-26T22:33:17.007487+00:00",
+    "metadata": {
+      "completed_at": "2025-12-26T22:40:15.014782+00:00",
+      "updated_at": "2025-12-26T22:40:15.014797+00:00"
+    },
+    "modified_at": "2025-12-26T22:40:15.021099+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "S20.1: Code extractor - parse Python files to extract functions, classes, imports",
-    "version": 2
+    "version": 4
   }
 }
