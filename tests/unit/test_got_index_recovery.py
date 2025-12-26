@@ -29,25 +29,46 @@ class TestIndexRecoveryDetection:
         with tempfile.TemporaryDirectory() as tmp:
             yield Path(tmp)
 
-    def test_needs_recovery_when_indexes_missing(self, got_dir):
-        """needs_recovery should return True when index files are missing."""
-        # Create manager and add tasks
+    def test_needs_index_recovery_false_when_indexes_never_created(self, got_dir):
+        """needs_index_recovery should return False when indexes were never created.
+
+        Missing indexes don't need "recovery" - they were never created.
+        Index initialization is the responsibility of GoTManager, not recovery.
+        """
+        # Create manager and add tasks WITHOUT accessing index_manager
         manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
         manager.create_task("Task 1", status="pending")
         manager.create_task("Task 2", status="completed")
 
+        # Don't access index_manager - indexes should not exist
+        index_dir = got_dir / "indexes"
+        assert not index_dir.exists(), "Indexes should not exist yet"
+
+        # Recovery should NOT detect missing indexes (they were never created)
+        recovery = RecoveryManager(got_dir)
+        assert not recovery.needs_index_recovery()
+
+    def test_needs_index_recovery_false_when_empty_index_dir(self, got_dir):
+        """needs_index_recovery should return False when index dir is empty.
+
+        An empty index directory (leftover from aborted init) is not a
+        recovery situation - there's nothing to recover.
+        """
+        # Create manager and add tasks
+        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        manager.create_task("Task 1", status="pending")
+
         # Force index creation
         _ = manager.index_manager
 
-        # Delete index files
+        # Delete all index files but keep directory
         index_dir = got_dir / "indexes"
-        if index_dir.exists():
-            for f in index_dir.glob("*.json"):
-                f.unlink()
+        for f in index_dir.glob("*.json"):
+            f.unlink()
 
-        # Recovery should detect missing indexes
+        # Empty directory - not a recovery situation
         recovery = RecoveryManager(got_dir)
-        assert recovery.needs_index_recovery()
+        assert not recovery.needs_index_recovery()
 
     def test_needs_recovery_when_indexes_stale(self, got_dir):
         """needs_recovery should return True when indexes are stale."""
@@ -100,21 +121,39 @@ class TestIndexRecoveryExecution:
         with tempfile.TemporaryDirectory() as tmp:
             yield Path(tmp)
 
-    def test_recover_rebuilds_missing_indexes(self, got_dir):
-        """recover() should rebuild indexes from entities."""
+    def test_recover_rebuilds_stale_indexes(self, got_dir):
+        """recover() should rebuild indexes when they become stale."""
+        from datetime import datetime, timezone
+        from cortical.utils.checksums import compute_checksum
+
         # Create manager and add tasks
         manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
         task1 = manager.create_task("Task 1", status="pending", priority="high")
-        task2 = manager.create_task("Task 2", status="completed", priority="low")
 
         # Force index creation
         _ = manager.index_manager
 
-        # Delete index files
-        index_dir = got_dir / "indexes"
-        if index_dir.exists():
-            for f in index_dir.glob("*.json"):
-                f.unlink()
+        # Add a task directly to disk without updating the index (stale scenario)
+        entities_dir = got_dir / "entities"
+        stale_task_id = "T-STALE-12345678-abcd1234"
+        stale_task_data = {
+            "id": stale_task_id,
+            "entity_type": "task",
+            "title": "Stale Task",
+            "status": "completed",
+            "priority": "low",
+            "description": "",
+            "properties": {},
+            "version": 1,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "modified_at": datetime.now(timezone.utc).isoformat()
+        }
+        entity_wrapper = {"data": stale_task_data}
+        entity_wrapper["_checksum"] = compute_checksum(stale_task_data)
+        entity_wrapper["_written_at"] = datetime.now(timezone.utc).isoformat()
+
+        with open(entities_dir / f"{stale_task_id}.json", "w") as f:
+            json.dump(entity_wrapper, f)
 
         # Run recovery
         recovery = RecoveryManager(got_dir)
@@ -124,30 +163,50 @@ class TestIndexRecoveryExecution:
         manager2 = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
         index = manager2.index_manager
 
-        # Verify indexes were rebuilt correctly
+        # Verify indexes were rebuilt correctly (both tasks should be indexed)
         pending_ids = index.lookup("status", "pending")
         completed_ids = index.lookup("status", "completed")
         high_ids = index.lookup("priority", "high")
         low_ids = index.lookup("priority", "low")
 
         assert task1.id in pending_ids
-        assert task2.id in completed_ids
+        assert stale_task_id in completed_ids
         assert task1.id in high_ids
-        assert task2.id in low_ids
+        assert stale_task_id in low_ids
 
     def test_recover_includes_index_action(self, got_dir):
-        """Recovery result should include index rebuild action."""
+        """Recovery result should include index rebuild action when indexes are stale."""
+        from datetime import datetime, timezone
+        from cortical.utils.checksums import compute_checksum
+
         # Create manager and add tasks
         manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
         manager.create_task("Task 1", status="pending")
 
-        # Force index creation then delete
+        # Force index creation
         _ = manager.index_manager
 
-        index_dir = got_dir / "indexes"
-        if index_dir.exists():
-            for f in index_dir.glob("*.json"):
-                f.unlink()
+        # Add a task directly to disk without updating the index (stale scenario)
+        entities_dir = got_dir / "entities"
+        stale_task_id = "T-STALE-12345678-efgh5678"
+        stale_task_data = {
+            "id": stale_task_id,
+            "entity_type": "task",
+            "title": "Stale Task",
+            "status": "pending",
+            "priority": "medium",
+            "description": "",
+            "properties": {},
+            "version": 1,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "modified_at": datetime.now(timezone.utc).isoformat()
+        }
+        entity_wrapper = {"data": stale_task_data}
+        entity_wrapper["_checksum"] = compute_checksum(stale_task_data)
+        entity_wrapper["_written_at"] = datetime.now(timezone.utc).isoformat()
+
+        with open(entities_dir / f"{stale_task_id}.json", "w") as f:
+            json.dump(entity_wrapper, f)
 
         # Run recovery
         recovery = RecoveryManager(got_dir)
@@ -168,18 +227,38 @@ class TestIndexRecoveryResult:
             yield Path(tmp)
 
     def test_recovery_result_has_indexes_rebuilt_flag(self, got_dir):
-        """RecoveryResult should indicate if indexes were rebuilt."""
+        """RecoveryResult should indicate if indexes were rebuilt due to stale state."""
+        from datetime import datetime, timezone
+        from cortical.utils.checksums import compute_checksum
+
         # Create manager and add tasks
         manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
         manager.create_task("Task 1", status="pending")
 
-        # Force index creation then delete
+        # Force index creation
         _ = manager.index_manager
 
-        index_dir = got_dir / "indexes"
-        if index_dir.exists():
-            for f in index_dir.glob("*.json"):
-                f.unlink()
+        # Add a task directly to disk without updating the index (stale scenario)
+        entities_dir = got_dir / "entities"
+        stale_task_id = "T-STALE-12345678-ijkl9012"
+        stale_task_data = {
+            "id": stale_task_id,
+            "entity_type": "task",
+            "title": "Stale Task",
+            "status": "pending",
+            "priority": "medium",
+            "description": "",
+            "properties": {},
+            "version": 1,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "modified_at": datetime.now(timezone.utc).isoformat()
+        }
+        entity_wrapper = {"data": stale_task_data}
+        entity_wrapper["_checksum"] = compute_checksum(stale_task_data)
+        entity_wrapper["_written_at"] = datetime.now(timezone.utc).isoformat()
+
+        with open(entities_dir / f"{stale_task_id}.json", "w") as f:
+            json.dump(entity_wrapper, f)
 
         # Run recovery
         recovery = RecoveryManager(got_dir)
@@ -323,29 +402,44 @@ class TestIndexErrorRecovery:
         # At minimum, task2 should be indexed
         assert task2.id in pending_ids
 
-    def test_recovery_creates_missing_index_directory(self, got_dir):
-        """Recovery should create indexes directory if it doesn't exist."""
-        # Create manager and add tasks (no index created yet)
+    def test_recovery_does_not_create_indexes_when_never_existed(self, got_dir):
+        """Recovery should NOT create indexes if they never existed.
+
+        Missing indexes don't need "recovery" - they were never created.
+        Index initialization is the responsibility of GoTManager, not recovery.
+        """
+        # Create manager and add tasks (without accessing index_manager)
         manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
         task1 = manager.create_task("Task 1", status="pending")
 
-        # Ensure no index directory
+        # Ensure no index directory (don't access index_manager)
         index_dir = got_dir / "indexes"
-        if index_dir.exists():
-            import shutil
-            shutil.rmtree(index_dir)
-
-        assert not index_dir.exists()
+        assert not index_dir.exists(), "Index directory should not exist yet"
 
         # Run recovery
         recovery = RecoveryManager(got_dir)
         result = recovery.recover()
 
-        # Indexes should be rebuilt
-        assert result.indexes_rebuilt
+        # Indexes should NOT be rebuilt (they never existed)
+        assert not result.indexes_rebuilt
+        assert "clean" in result.actions_taken[0].lower() or "no recovery" in result.actions_taken[0].lower()
 
-        # Create new manager to verify
-        manager2 = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
-        index = manager2.index_manager
+    def test_got_manager_creates_indexes_on_first_access(self, got_dir):
+        """GoTManager should create indexes on first access to index_manager.
+
+        This is the correct way to initialize indexes - not through recovery.
+        """
+        # Create manager and add tasks (without accessing index_manager)
+        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        task1 = manager.create_task("Task 1", status="pending")
+
+        # Ensure no index directory
+        index_dir = got_dir / "indexes"
+        assert not index_dir.exists(), "Index directory should not exist yet"
+
+        # Access index_manager - this should create indexes
+        index = manager.index_manager
+
+        # Indexes should now exist and contain the task
         pending_ids = index.lookup("status", "pending")
         assert task1.id in pending_ids

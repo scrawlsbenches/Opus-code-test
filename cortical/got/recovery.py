@@ -154,9 +154,12 @@ class RecoveryManager:
         if corrupted_count > 0:
             return True
 
-        # Check if indexes need recovery
-        if self.needs_index_recovery():
-            return True
+        # Note: Index recovery is NOT part of needs_recovery() check.
+        # Indexes are an optional feature of GoTManager, not a core part of
+        # the transaction system. Missing indexes don't indicate corruption -
+        # they may simply not have been created yet (e.g., when using
+        # TransactionManager directly without GoTManager).
+        # Index recovery is still performed during recover() if needed.
 
         return False
 
@@ -165,24 +168,30 @@ class RecoveryManager:
         Check if indexes need to be rebuilt.
 
         Indexes need recovery if:
-        - Index files are missing
-        - Indexes are stale (entities exist that aren't indexed)
+        - Index directory EXISTS but files are corrupt or stale
+        - Indexes were created but are now incomplete
+
+        Note: If index directory doesn't exist, this returns False.
+        Missing indexes don't need "recovery" - they were never created.
+        Index initialization is the responsibility of GoTManager, not recovery.
 
         Returns:
             True if index recovery is needed
         """
-        index_manager = QueryIndexManager(self.got_dir)
-
-        # Check if index files exist
+        # Check if index directory exists - if not, no recovery needed
+        # (indexes were never created, this isn't a recovery situation)
         index_dir = self.got_dir / "indexes"
         if not index_dir.exists():
-            return True
+            return False  # Indexes never existed, nothing to recover
 
+        # Index directory exists - check if it has any files
         index_files = list(index_dir.glob("*.json"))
         if not index_files:
-            return True
+            # Empty index directory - could be leftover from aborted init
+            # Not really a recovery situation, but clean it up
+            return False
 
-        # Check if indexes are stale by comparing with entities
+        # Indexes exist - now check if they're stale
         # Get all task IDs from disk
         entity_files = list(self.store.store_dir.glob("T-*.json"))
         disk_task_ids = set()
@@ -193,7 +202,10 @@ class RecoveryManager:
             disk_task_ids.add(entity_file.stem)
 
         if not disk_task_ids:
-            return False  # No tasks to index
+            return False  # No tasks, indexes don't need recovery
+
+        # Check if indexes are stale by comparing with entities
+        index_manager = QueryIndexManager(self.got_dir)
 
         # Get all task IDs from index
         indexed_task_ids = set()
