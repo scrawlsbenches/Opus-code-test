@@ -1,0 +1,29 @@
+{
+  "_checksum": "48d0bddfea379ca3",
+  "_written_at": "2025-12-26T17:20:51.263416+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "high",
+      "task_status": "pending",
+      "task_title": "Fix VersionedStore race condition in _version.tmp"
+    },
+    "created_at": "2025-12-26T17:20:51.260074+00:00",
+    "entity_type": "handoff",
+    "id": "H-20251226-172051-340d9705",
+    "initiated_at": "2025-12-26T17:20:51.260090+00:00",
+    "instructions": "-",
+    "modified_at": "2025-12-26T17:20:51.263351+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "initiated",
+    "target_agent": "next-session",
+    "task_id": "T-20251226-132353-68a469de",
+    "version": 2
+  }
+}
