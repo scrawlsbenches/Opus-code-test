@@ -393,6 +393,15 @@ from .homeostasis import (
 )
 
 # =============================================================================
+# LOOM-HIVE CONNECTOR: Dual-Process Integration (Sprint 4)
+# =============================================================================
+
+from .loom_hive import (
+    LoomHiveConfig,
+    LoomHiveConnector,
+)
+
+# =============================================================================
 # CORTEX ABSTRACTION: Hierarchical Pattern Abstraction (Sprint 3)
 # =============================================================================
 
@@ -662,6 +671,10 @@ __all__ = [
     'NodeState',
     'HomeostasisRegulator',
     'AdaptiveHomeostasisRegulator',
+
+    # === Loom-Hive Connector (Sprint 4) ===
+    'LoomHiveConfig',
+    'LoomHiveConnector',
 
     # === Cortex Abstraction (Sprint 3) ===
     'Abstraction',
