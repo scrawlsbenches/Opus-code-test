@@ -415,6 +415,44 @@ class HomeostasisRegulator:
         """Reset all node states."""
         self.nodes.clear()
 
+    def apply_decay(self, decay_factor: float = 0.9) -> int:
+        """Apply decay to activation history and excitability.
+
+        Part of the consolidation cycle - decays old activation history
+        to allow forgetting of stale patterns.
+
+        Args:
+            decay_factor: Factor to multiply excitability by (0.0-1.0).
+                Values closer to 1.0 mean slower decay.
+
+        Returns:
+            Number of nodes that were decayed.
+        """
+        decayed_count = 0
+
+        for node_id, state in list(self.nodes.items()):
+            # Decay excitability toward neutral (1.0)
+            if state.excitability != 1.0:
+                if state.excitability > 1.0:
+                    # Reduce boosted excitability
+                    state.excitability = 1.0 + (state.excitability - 1.0) * decay_factor
+                else:
+                    # Raise suppressed excitability
+                    state.excitability = 1.0 - (1.0 - state.excitability) * decay_factor
+                decayed_count += 1
+
+            # Decay activation history by removing oldest entries
+            if len(state.activation_history) > 0:
+                # Keep only recent 75% of history
+                history_keep = int(len(state.activation_history) * 0.75)
+                if history_keep > 0:
+                    state.activation_history = deque(
+                        list(state.activation_history)[-history_keep:],
+                        maxlen=self._history_maxlen
+                    )
+
+        return decayed_count
+
     def to_dict(self) -> Dict:
         """Serialize regulator state to dictionary.
 

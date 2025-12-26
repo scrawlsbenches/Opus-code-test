@@ -42,6 +42,11 @@ from .loom import (
 from .loom_hive import LoomHiveConnector, LoomHiveConfig
 from .loom_cortex import LoomCortexConnector, LoomCortexConfig
 from .attention_router import AttentionRouter, AttentionRouterConfig
+from .consolidation import (
+    ConsolidationEngine,
+    ConsolidationConfig,
+    ConsolidationResult,
+)
 
 
 @dataclass
@@ -56,12 +61,18 @@ class WovenMindConfig:
         min_frequency: Minimum observations for abstraction formation.
         auto_switch: Whether to auto-switch modes based on surprise.
         enable_observability: Whether to emit events for monitoring.
+        consolidation_threshold: Minimum pattern frequency for transfer.
+        consolidation_decay_factor: Decay factor during consolidation.
+        enable_auto_consolidation: Whether to record patterns for auto-consolidation.
     """
     surprise_threshold: float = 0.3
     k_winners: int = 5
     min_frequency: int = 3
     auto_switch: bool = True
     enable_observability: bool = True
+    consolidation_threshold: int = 3
+    consolidation_decay_factor: float = 0.9
+    enable_auto_consolidation: bool = True
 
 
 @dataclass
@@ -155,6 +166,17 @@ class WovenMind:
             config=router_config,
         )
 
+        # Initialize consolidation engine
+        consolidation_config = ConsolidationConfig(
+            transfer_threshold=self.config.consolidation_threshold,
+            decay_factor=self.config.consolidation_decay_factor,
+        )
+        self.consolidation = ConsolidationEngine(
+            hive=self.hive,
+            cortex=self.cortex,
+            config=consolidation_config,
+        )
+
     def train(self, text: str) -> None:
         """
         Train the WovenMind on text data.
@@ -204,6 +226,10 @@ class WovenMind:
         # Route through the attention router
         routing_result = self.router.route(context, mode=mode)
 
+        # Record pattern for consolidation if enabled
+        if self.config.enable_auto_consolidation and routing_result.activations:
+            self.consolidation.record_pattern(routing_result.activations)
+
         return WovenMindResult(
             mode=routing_result.mode_used,
             activations=routing_result.activations,
@@ -235,6 +261,36 @@ class WovenMind:
         """Get the mode transition history."""
         return self.loom.get_transition_history()
 
+    def consolidate(self) -> ConsolidationResult:
+        """
+        Run a consolidation cycle ("sleep").
+
+        Performs:
+        1. Pattern transfer: Frequent Hive patterns become Cortex abstractions
+        2. Abstraction mining: Discover latent structure in patterns
+        3. Decay cycle: Forget unused connections, strengthen important ones
+
+        This implements the memory consolidation that occurs during sleep
+        in biological systems.
+
+        Returns:
+            ConsolidationResult with cycle statistics.
+
+        Example:
+            >>> mind = WovenMind()
+            >>> for text in training_data:
+            ...     mind.train(text)
+            ...     result = mind.process(text.split())
+            >>> # Run consolidation ("sleep")
+            >>> consolidation_result = mind.consolidate()
+            >>> print(f"Transferred: {consolidation_result.patterns_transferred}")
+        """
+        return self.consolidation.consolidate()
+
+    def get_consolidation_stats(self) -> Dict[str, Any]:
+        """Get consolidation engine statistics."""
+        return self.consolidation.get_stats()
+
     def get_stats(self) -> Dict[str, Any]:
         """
         Get comprehensive system statistics.
@@ -251,6 +307,7 @@ class WovenMind:
             "hive": self.hive.get_homeostasis_stats(),
             "cortex": self.cortex.get_pattern_stats(),
             "router": self.router.get_routing_stats(),
+            "consolidation": self.get_consolidation_stats(),
         }
 
     def reset(self) -> None:
@@ -262,6 +319,10 @@ class WovenMind:
         self.loom.reset()
         self.router._last_predictions.clear()
         self.router._last_context = None
+        # Reset consolidation tracking
+        self.consolidation._pattern_frequencies.clear()
+        self.consolidation._consolidation_history.clear()
+        self.consolidation._last_consolidation = None
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -277,6 +338,9 @@ class WovenMind:
                 "min_frequency": self.config.min_frequency,
                 "auto_switch": self.config.auto_switch,
                 "enable_observability": self.config.enable_observability,
+                "consolidation_threshold": self.config.consolidation_threshold,
+                "consolidation_decay_factor": self.config.consolidation_decay_factor,
+                "enable_auto_consolidation": self.config.enable_auto_consolidation,
             },
             "hive_state": self.hive.to_dict(),
             "cortex_state": self.cortex.to_dict(),
@@ -284,6 +348,7 @@ class WovenMind:
                 "last_predictions": self.router._last_predictions,
                 "last_context": self.router._last_context,
             },
+            "consolidation_state": self.consolidation.to_dict(),
         }
 
     @classmethod
@@ -305,6 +370,9 @@ class WovenMind:
             min_frequency=config_data.get("min_frequency", 3),
             auto_switch=config_data.get("auto_switch", True),
             enable_observability=config_data.get("enable_observability", True),
+            consolidation_threshold=config_data.get("consolidation_threshold", 3),
+            consolidation_decay_factor=config_data.get("consolidation_decay_factor", 0.9),
+            enable_auto_consolidation=config_data.get("enable_auto_consolidation", True),
         )
 
         # Reconstruct components
@@ -318,6 +386,13 @@ class WovenMind:
         router_state = data.get("router_state", {})
         mind.router._last_predictions = router_state.get("last_predictions", {})
         mind.router._last_context = router_state.get("last_context")
+
+        # Restore consolidation state
+        consolidation_state = data.get("consolidation_state", {})
+        if consolidation_state:
+            mind.consolidation = ConsolidationEngine.from_dict(
+                consolidation_state, hive, cortex
+            )
 
         return mind
 

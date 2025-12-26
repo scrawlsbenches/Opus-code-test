@@ -457,6 +457,17 @@ from .abstraction_pln import (
 )
 
 # =============================================================================
+# CONSOLIDATION ENGINE: Learning Transfer (Sprint 5)
+# =============================================================================
+
+from .consolidation import (
+    ConsolidationConfig,
+    ConsolidationResult,
+    ConsolidationPhase,
+    ConsolidationEngine,
+)
+
+# =============================================================================
 # PRISM-Attention: Selective Focus Mechanisms
 # =============================================================================
 
@@ -723,4 +734,10 @@ __all__ = [
 
     # === Abstraction-PLN Bridge (Sprint 3, T3.5) ===
     'AbstractionPLNBridge',
+
+    # === Consolidation Engine (Sprint 5) ===
+    'ConsolidationConfig',
+    'ConsolidationResult',
+    'ConsolidationPhase',
+    'ConsolidationEngine',
 ]

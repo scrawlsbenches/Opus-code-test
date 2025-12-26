@@ -305,3 +305,137 @@ class TestWovenMindReset:
         mind.reset()
 
         assert mind.config.surprise_threshold == 0.5
+
+
+class TestWovenMindConsolidation:
+    """Test consolidation functionality (Sprint 5)."""
+
+    def test_has_consolidation_engine(self):
+        """WovenMind should have a consolidation engine."""
+        from cortical.reasoning.woven_mind import WovenMind
+
+        mind = WovenMind()
+
+        assert hasattr(mind, "consolidation")
+        assert mind.consolidation is not None
+
+    def test_consolidate_method_exists(self):
+        """WovenMind should have a consolidate() method."""
+        from cortical.reasoning.woven_mind import WovenMind
+
+        mind = WovenMind()
+
+        assert hasattr(mind, "consolidate")
+        assert callable(mind.consolidate)
+
+    def test_consolidate_returns_result(self):
+        """consolidate() should return a ConsolidationResult."""
+        from cortical.reasoning.woven_mind import WovenMind
+        from cortical.reasoning.consolidation import ConsolidationResult
+
+        mind = WovenMind()
+        mind.train("neural networks process data")
+
+        result = mind.consolidate()
+
+        assert isinstance(result, ConsolidationResult)
+        assert hasattr(result, "patterns_transferred")
+        assert hasattr(result, "abstractions_formed")
+
+    def test_process_records_patterns_for_consolidation(self):
+        """Processing should record patterns for later consolidation."""
+        from cortical.reasoning.woven_mind import WovenMind
+
+        mind = WovenMind()
+        mind.train("neural networks process data efficiently")
+
+        # Process multiple times to build frequency
+        for _ in range(5):
+            mind.process(["neural", "networks"])
+
+        # Check that patterns were recorded
+        patterns = mind.consolidation.get_frequent_patterns(min_frequency=1)
+        assert len(patterns) > 0
+
+    def test_consolidation_stats_in_get_stats(self):
+        """get_stats() should include consolidation statistics."""
+        from cortical.reasoning.woven_mind import WovenMind
+
+        mind = WovenMind()
+
+        stats = mind.get_stats()
+
+        assert "consolidation" in stats
+
+    def test_consolidation_config_integration(self):
+        """WovenMindConfig should control consolidation behavior."""
+        from cortical.reasoning.woven_mind import WovenMind, WovenMindConfig
+
+        config = WovenMindConfig(
+            consolidation_threshold=5,
+            consolidation_decay_factor=0.8,
+        )
+        mind = WovenMind(config=config)
+
+        assert mind.consolidation.config.transfer_threshold == 5
+        assert mind.consolidation.config.decay_factor == 0.8
+
+    def test_consolidation_state_serializes(self):
+        """Consolidation state should be included in serialization."""
+        from cortical.reasoning.woven_mind import WovenMind
+
+        mind = WovenMind()
+        mind.train("test data")
+
+        # Record some patterns
+        for _ in range(3):
+            mind.consolidation.record_pattern({"a", "b"})
+
+        data = mind.to_dict()
+
+        assert "consolidation_state" in data
+
+    def test_consolidation_state_deserializes(self):
+        """Consolidation state should be restored from serialization."""
+        from cortical.reasoning.woven_mind import WovenMind
+
+        mind = WovenMind()
+        mind.train("test data")
+
+        # Record patterns
+        for _ in range(5):
+            mind.consolidation.record_pattern({"x", "y"})
+
+        # Serialize and restore
+        data = mind.to_dict()
+        restored = WovenMind.from_dict(data)
+
+        # Pattern frequencies should be restored
+        patterns = restored.consolidation.get_frequent_patterns(min_frequency=1)
+        assert len(patterns) > 0
+
+    def test_full_consolidation_cycle(self):
+        """Full consolidation cycle should work end-to-end."""
+        from cortical.reasoning.woven_mind import WovenMind
+
+        mind = WovenMind()
+
+        # Train
+        texts = [
+            "neural networks learn patterns",
+            "deep learning uses neural networks",
+            "machine learning processes data",
+        ]
+        for text in texts:
+            mind.train(text)
+            mind.process(text.split())
+
+        # Run consolidation ("sleep")
+        result = mind.consolidate()
+
+        # Should have run without errors
+        assert result.cycle_duration_ms > 0
+
+        # Stats should reflect the cycle
+        stats = mind.get_consolidation_stats()
+        assert stats["total_cycles"] == 1
