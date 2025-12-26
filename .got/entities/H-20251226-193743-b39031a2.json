@@ -1,6 +1,6 @@
 {
-  "_checksum": "b70f882d17a922f8",
-  "_written_at": "2025-12-26T19:37:43.012364+00:00",
+  "_checksum": "914c050b375b5043",
+  "_written_at": "2025-12-26T19:37:57.877007+00:00",
   "data": {
     "accepted_at": "",
     "artifacts": [],
@@ -15,15 +15,15 @@
     "id": "H-20251226-193743-b39031a2",
     "initiated_at": "2025-12-26T19:37:43.008889+00:00",
     "instructions": "Test handoff for reject validation",
-    "modified_at": "2025-12-26T19:37:43.012289+00:00",
+    "modified_at": "2025-12-26T19:37:57.876966+00:00",
     "properties": {},
-    "reject_reason": "",
-    "rejected_at": "",
+    "reject_reason": "Testing reject command - validation only",
+    "rejected_at": "2025-12-26T19:37:57.872029+00:00",
     "result": {},
     "source_agent": "main",
-    "status": "initiated",
+    "status": "rejected",
     "target_agent": "test-agent",
     "task_id": "T-20251226-193730-d78b8615",
-    "version": 2
+    "version": 4
   }
 }
