@@ -1,22 +1,23 @@
 {
-  "_checksum": "7068b106c103f0ee",
-  "_written_at": "2025-12-26T15:27:39.642170+00:00",
+  "_checksum": "80cf74a44c9a9ddd",
+  "_written_at": "2025-12-26T15:33:02.676208+00:00",
   "data": {
     "created_at": "2025-12-26T14:13:00.294928+00:00",
     "description": "## Problem\nVersionedStore has validate_on_save=False by default (versioned_store.py:49), meaning invalid entities can be persisted silently without schema validation.\n\n## Current State\n- SchemaRegistry provides comprehensive validation (schema.py)\n- VersionedStore._validate_entity() is implemented but opt-in\n- GoTManager creates VersionedStore without enabling validation\n- Invalid data can enter the system undetected\n\n## Solution\n1. Change default in VersionedStore:\n```python\ndef __init__(self, ..., validate_on_save: bool = True):  # Was False\n```\n\n2. Ensure GoTManager passes validate_on_save=True explicitly\n\n3. Add migration path for existing invalid data:\n   - Run validation on load to warn about issues\n   - Provide got_utils.py validate --fix command\n\n## Files\n- cortical/got/versioned_store.py:49 (default parameter)\n- cortical/got/api.py (GoTManager initialization)\n\n## Acceptance Criteria\n1. New entities are validated before save by default\n2. Invalid entity creation raises ValidationError\n3. Existing production data (.got/entities/) passes validation\n4. If existing data has issues, document them and provide fix path",
     "entity_type": "task",
     "id": "T-20251226-141300-96f4577c",
     "metadata": {
+      "completed_at": "2025-12-26T15:33:02.669447+00:00",
       "started_at": "2025-12-26T15:27:39.636597+00:00",
-      "updated_at": "2025-12-26T15:27:39.636603+00:00"
+      "updated_at": "2025-12-26T15:33:02.669457+00:00"
     },
-    "modified_at": "2025-12-26T15:27:39.642128+00:00",
+    "modified_at": "2025-12-26T15:33:02.676154+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Enable validation by default in VersionedStore",
-    "version": 4
+    "version": 6
   }
 }
