@@ -1,21 +1,21 @@
 {
-  "_checksum": "1f944354f84e7774",
-  "_written_at": "2025-12-25T23:03:27.358444+00:00",
+  "_checksum": "484032a56536140a",
+  "_written_at": "2025-12-26T22:32:52.974938+00:00",
   "data": {
-    "created_at": "2025-12-25T23:03:27.350513+00:00",
+    "created_at": "2025-12-26T22:32:52.969116+00:00",
     "entity_type": "sprint",
     "epic_id": "",
     "goals": [],
     "id": "S-020",
     "isolation": [],
     "metadata": {},
-    "modified_at": "2025-12-25T23:03:27.358387+00:00",
+    "modified_at": "2025-12-26T22:32:52.974787+00:00",
     "notes": [],
     "number": 20,
     "properties": {},
     "session_id": "",
     "status": "available",
-    "title": "Cortex Abstraction",
+    "title": "Synthetic Data Generators",
     "version": 2
   }
 }
