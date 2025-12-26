@@ -2104,6 +2104,29 @@ class TestBuildDescriptiveCommitMessage:
         assert 'S-sprint-017-test' in msg
 
     @patch('subprocess.run')
+    def test_sprint_create_without_title(self, mock_run, tmp_path):
+        """Sprint create message works without title."""
+        entity_file = tmp_path / "S-sprint-017-test.json"
+        entity_data = {
+            "data": {
+                "entity_type": "sprint",
+                "id": "S-sprint-017-test",
+                "title": ""
+            }
+        }
+        entity_file.write_text(json.dumps(entity_data))
+
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=str(entity_file) + '\n'
+        )
+
+        with patch('got_utils.PROJECT_ROOT', tmp_path):
+            msg = _build_descriptive_commit_message("sprint", "create")
+
+        assert msg == "chore(got): Create sprint S-sprint-017-test"
+
+    @patch('subprocess.run')
     def test_sprint_start_message(self, mock_run, tmp_path):
         """Sprint start message includes sprint ID."""
         entity_file = tmp_path / "S-sprint-017-test.json"
