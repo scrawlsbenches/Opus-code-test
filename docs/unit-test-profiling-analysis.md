@@ -2,20 +2,21 @@
 
 **Date:** 2025-12-26
 **Branch:** `claude/profile-unit-tests-WUbZi`
+**Updated:** After merging latest from main (includes concurrent test fixes)
 
 ## Executive Summary
 
-Profiled 8,911 unit tests completing in **101.69s** (average ~11ms per test). Overall test performance is excellent. However, several tests are misplaced and should be moved to more appropriate test categories.
+Profiled 8,913 unit tests completing in **101.15s** (average ~11ms per test). Overall test performance is excellent. All tests now pass after recent fixes for concurrent test race conditions. However, several tests are misplaced and should be moved to more appropriate test categories.
 
 ## Test Suite Overview
 
 | Metric | Value |
 |--------|-------|
-| Total tests | 8,911 |
-| Total time | 101.69s |
+| Total tests | 8,913 |
+| Total time | 101.15s |
 | Average per test | ~11ms |
-| Failed tests | 2 (race conditions) |
-| Skipped tests | 2 |
+| Failed tests | 0 ✅ |
+| Skipped tests | 2 (optional dependencies) |
 | Largest test files | `test_graph_persistence.py` (3,052 lines), `test_moe_foundation.py` (3,005 lines) |
 
 ## Slow Tests Identified
@@ -97,19 +98,17 @@ Tests with expensive fixtures creating many entities:
 
 ---
 
-### 5. Failing Concurrent Tests (FLAKY - NEED FIX)
+### 5. Concurrent Tests (FIXED ✅)
 
-| Test | Issue |
-|------|-------|
-| `test_handles_concurrent_recovery_attempts` | Race condition in concurrent recovery |
-| `test_rapid_status_toggles` | Race condition - task appears in multiple status buckets |
+The following tests were previously flaky but have been fixed in recent commits:
 
-**Root Cause:** Thread safety issues in index updates during concurrent operations.
+| Test | Status | Fix |
+|------|--------|-----|
+| `test_handles_concurrent_recovery_attempts` | ✅ Fixed | Added lock RuntimeError handling |
+| `test_rapid_status_toggles` | ✅ Fixed | Improved thread synchronization |
+| `test_parallel_index_reads_during_writes` | ✅ Fixed | Fixed race condition |
 
-**Recommendation:**
-- Fix the underlying thread safety bugs
-- Mark as `@pytest.mark.flaky` temporarily
-- Consider moving to `tests/behavioral/` since they test concurrent behavior
+**Note:** These tests now pass reliably. They test concurrent behavior and are appropriately placed in unit tests since they verify thread-safety of core components.
 
 ---
 
@@ -146,20 +145,6 @@ def test_commit_on_save_debounced_with_auto_push(self, mock_run):
     ...
 ```
 
-### Fix or Mark as Flaky
-
-```python
-# In tests/unit/got/test_fault_tolerance_validation.py
-@pytest.mark.flaky(reruns=3)
-def test_handles_concurrent_recovery_attempts(self, populated_got):
-    ...
-
-# In tests/unit/test_got_index_concurrent.py
-@pytest.mark.flaky(reruns=3)
-def test_rapid_status_toggles(self, got_dir):
-    ...
-```
-
 ---
 
 ## Test Category Guidelines
@@ -193,5 +178,5 @@ Moving/marking these tests would:
 2. [ ] Move `test_train_on_corpus_files` to `tests/integration/`
 3. [ ] Move `TestMultiProcessSafety` to `tests/integration/`
 4. [ ] Add `@pytest.mark.slow` to timing-dependent tests
-5. [ ] Fix thread safety bugs in concurrent tests
+5. [x] ~~Fix thread safety bugs in concurrent tests~~ (Fixed in main)
 6. [ ] Update `make test-fast` to exclude `slow` marker
