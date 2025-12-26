@@ -1,19 +1,22 @@
 {
-  "_checksum": "c83e4f22ff476575",
-  "_written_at": "2025-12-24T21:28:55.579869+00:00",
+  "_checksum": "d9d3dac7e97edf68",
+  "_written_at": "2025-12-26T05:05:27.148583+00:00",
   "data": {
     "created_at": "2025-12-24T21:28:55.572253+00:00",
     "description": "Validate query chains at build time. Catch errors like .count().order_by() before execution. Better developer experience.",
     "entity_type": "task",
     "id": "T-20251224-212855-75fadb58",
-    "metadata": {},
-    "modified_at": "2025-12-24T21:28:55.579798+00:00",
+    "metadata": {
+      "completed_at": "2025-12-26T05:05:27.140864+00:00",
+      "updated_at": "2025-12-26T05:05:27.140874+00:00"
+    },
+    "modified_at": "2025-12-26T05:05:27.148524+00:00",
     "priority": "low",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Add query builder syntax validation",
-    "version": 2
+    "version": 4
   }
 }
