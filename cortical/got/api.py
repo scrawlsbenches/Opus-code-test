@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -109,6 +110,7 @@ class GoTManager:
         self._cache_misses = 0
         self._cache_ttl: Optional[float] = None  # TTL in seconds (None = no expiry)
         self._cache_max_size: Optional[int] = None  # Max entries (None = unlimited)
+        self._cache_lock = threading.Lock()  # Thread-safety for cache operations
 
         # Log initialization at debug level
         cache_status = "enabled" if cache_enabled else "disabled"
@@ -148,25 +150,26 @@ class GoTManager:
         if not self._cache_enabled:
             return None
 
-        entity = self._entity_cache.get(entity_id)
-        if entity is None:
-            return None
-
-        # Check TTL expiration
-        if self._cache_ttl is not None:
-            timestamp = self._cache_timestamps.get(entity_id, 0)
-            if time.time() - timestamp > self._cache_ttl:
-                # Entry expired, remove it
-                self._cache_invalidate(entity_id)
+        with self._cache_lock:
+            entity = self._entity_cache.get(entity_id)
+            if entity is None:
                 return None
 
-        # Update LRU order (move to end = most recently used)
-        if entity_id in self._cache_access_order:
-            self._cache_access_order.remove(entity_id)
-        self._cache_access_order.append(entity_id)
+            # Check TTL expiration
+            if self._cache_ttl is not None:
+                timestamp = self._cache_timestamps.get(entity_id, 0)
+                if time.time() - timestamp > self._cache_ttl:
+                    # Entry expired, remove it
+                    self._cache_invalidate_locked(entity_id)
+                    return None
 
-        self._cache_hits += 1
-        return entity
+            # Update LRU order (move to end = most recently used)
+            if entity_id in self._cache_access_order:
+                self._cache_access_order.remove(entity_id)
+            self._cache_access_order.append(entity_id)
+
+            self._cache_hits += 1
+            return entity
 
     def _cache_set(self, entity_id: str, entity: Entity) -> None:
         """
@@ -181,25 +184,37 @@ class GoTManager:
         if not self._cache_enabled:
             return
 
-        # Enforce max size via LRU eviction
-        if self._cache_max_size is not None:
-            while len(self._entity_cache) >= self._cache_max_size:
-                if not self._cache_access_order:
-                    break
-                # Evict least recently used (first in list)
-                lru_id = self._cache_access_order.pop(0)
-                self._entity_cache.pop(lru_id, None)
-                self._cache_timestamps.pop(lru_id, None)
+        with self._cache_lock:
+            # Enforce max size via LRU eviction
+            if self._cache_max_size is not None:
+                while len(self._entity_cache) >= self._cache_max_size:
+                    if not self._cache_access_order:
+                        break
+                    # Evict least recently used (first in list)
+                    lru_id = self._cache_access_order.pop(0)
+                    self._entity_cache.pop(lru_id, None)
+                    self._cache_timestamps.pop(lru_id, None)
 
-        self._entity_cache[entity_id] = entity
-        self._cache_timestamps[entity_id] = time.time()
+            self._entity_cache[entity_id] = entity
+            self._cache_timestamps[entity_id] = time.time()
 
-        # Update LRU order
+            # Update LRU order
+            if entity_id in self._cache_access_order:
+                self._cache_access_order.remove(entity_id)
+            self._cache_access_order.append(entity_id)
+
+            self._cache_misses += 1
+
+    def _cache_invalidate_locked(self, entity_id: str) -> None:
+        """
+        Remove entity from cache (caller holds lock).
+
+        Internal method - use _cache_invalidate() for external calls.
+        """
+        self._entity_cache.pop(entity_id, None)
+        self._cache_timestamps.pop(entity_id, None)
         if entity_id in self._cache_access_order:
             self._cache_access_order.remove(entity_id)
-        self._cache_access_order.append(entity_id)
-
-        self._cache_misses += 1
 
     def _cache_invalidate(self, entity_id: str) -> None:
         """
@@ -211,18 +226,17 @@ class GoTManager:
         if not self._cache_enabled:
             return
 
-        self._entity_cache.pop(entity_id, None)
-        self._cache_timestamps.pop(entity_id, None)
-        if entity_id in self._cache_access_order:
-            self._cache_access_order.remove(entity_id)
+        with self._cache_lock:
+            self._cache_invalidate_locked(entity_id)
 
     def cache_clear(self) -> None:
         """Clear all cached entities and reset statistics."""
-        self._entity_cache.clear()
-        self._cache_timestamps.clear()
-        self._cache_access_order.clear()
-        self._cache_hits = 0
-        self._cache_misses = 0
+        with self._cache_lock:
+            self._entity_cache.clear()
+            self._cache_timestamps.clear()
+            self._cache_access_order.clear()
+            self._cache_hits = 0
+            self._cache_misses = 0
 
     def cache_configure(
         self,
@@ -250,18 +264,19 @@ class GoTManager:
         Returns:
             Dictionary with hits, misses, hit_rate, size, ttl, and max_size
         """
-        total = self._cache_hits + self._cache_misses
-        hit_rate = self._cache_hits / total if total > 0 else 0.0
+        with self._cache_lock:
+            total = self._cache_hits + self._cache_misses
+            hit_rate = self._cache_hits / total if total > 0 else 0.0
 
-        return {
-            'hits': self._cache_hits,
-            'misses': self._cache_misses,
-            'hit_rate': hit_rate,
-            'size': len(self._entity_cache),
-            'enabled': self._cache_enabled,
-            'ttl': self._cache_ttl,
-            'max_size': self._cache_max_size,
-        }
+            return {
+                'hits': self._cache_hits,
+                'misses': self._cache_misses,
+                'hit_rate': hit_rate,
+                'size': len(self._entity_cache),
+                'enabled': self._cache_enabled,
+                'ttl': self._cache_ttl,
+                'max_size': self._cache_max_size,
+            }
 
     def load_all(self) -> Dict[str, int]:
         """
