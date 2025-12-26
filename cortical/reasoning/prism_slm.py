@@ -220,6 +220,244 @@ class TransitionGraph:
 
         return graph
 
+    # ==========================================================================
+    # WOVEN MIND ENHANCEMENTS (Sprint 2: Hebbian Hive)
+    # ==========================================================================
+
+    def lateral_inhibition(
+        self,
+        activations: Dict[str, float],
+        inhibition_radius: int = 2,
+        inhibition_strength: float = 0.5,
+    ) -> Dict[str, float]:
+        """
+        Apply lateral inhibition to activations for sparse representations.
+
+        Nearby tokens inhibit each other based on activation strength.
+        Produces sparse activation patterns (target: 5-10% active).
+
+        Args:
+            activations: Token -> activation level mapping
+            inhibition_radius: How many "neighbors" to inhibit
+            inhibition_strength: How much neighbors reduce activation (0-1)
+
+        Returns:
+            Inhibited activation levels (sparse)
+
+        Example:
+            >>> graph = TransitionGraph()
+            >>> activations = {"cat": 0.9, "dog": 0.7, "bird": 0.5}
+            >>> sparse = graph.lateral_inhibition(activations)
+            >>> # "cat" inhibits "dog" and "bird"
+        """
+        if not activations:
+            return {}
+
+        # Sort tokens by activation strength (strongest first)
+        sorted_tokens = sorted(
+            activations.items(),
+            key=lambda x: x[1],
+            reverse=True,
+        )
+
+        # Track inhibition each token receives
+        inhibition = {token: 0.0 for token in activations}
+
+        # Stronger activations inhibit weaker neighbors
+        for i, (token, activation) in enumerate(sorted_tokens):
+            # Inhibit neighbors within radius
+            for j in range(max(0, i - inhibition_radius), min(len(sorted_tokens), i + inhibition_radius + 1)):
+                if i != j:
+                    neighbor_token = sorted_tokens[j][0]
+                    # Inhibition proportional to the difference in rank
+                    distance = abs(i - j)
+                    local_inhibition = inhibition_strength * activation * (1.0 / (distance + 1))
+                    inhibition[neighbor_token] += local_inhibition
+
+        # Apply inhibition
+        result = {}
+        for token, activation in activations.items():
+            inhibited = max(0.0, activation - inhibition[token])
+            result[token] = inhibited
+
+        return result
+
+    def k_winners_take_all(
+        self,
+        activations: Dict[str, float],
+        k: int = 5,
+        min_activation: float = 0.1,
+    ) -> Dict[str, float]:
+        """
+        Apply k-winners-take-all competition.
+
+        Only the top-k most active tokens remain active (nonzero).
+        All others are set to zero. This enforces sparsity.
+
+        Args:
+            activations: Token -> activation level mapping
+            k: Number of winners to keep
+            min_activation: Minimum activation to qualify as winner
+
+        Returns:
+            Sparse activation with only k active tokens
+
+        Example:
+            >>> graph = TransitionGraph()
+            >>> activations = {"a": 0.9, "b": 0.7, "c": 0.5, "d": 0.3, "e": 0.1}
+            >>> sparse = graph.k_winners_take_all(activations, k=2)
+            >>> # Only "a" and "b" remain active
+        """
+        if not activations:
+            return {}
+
+        # Sort by activation (strongest first)
+        sorted_tokens = sorted(
+            activations.items(),
+            key=lambda x: x[1],
+            reverse=True,
+        )
+
+        result = {}
+        winners = 0
+
+        for token, activation in sorted_tokens:
+            if winners < k and activation >= min_activation:
+                result[token] = activation
+                winners += 1
+            else:
+                result[token] = 0.0
+
+        return result
+
+    def spreading_activation(
+        self,
+        seed_tokens: Dict[str, float],
+        spread_factor: float = 0.5,
+        decay_per_step: float = 0.7,
+        max_steps: int = 3,
+        threshold: float = 0.01,
+    ) -> Dict[str, float]:
+        """
+        Spread activation through the transition graph.
+
+        Starting from seed tokens, activation flows along transitions
+        to associated tokens. This enables associative retrieval.
+
+        Args:
+            seed_tokens: Initial token -> activation mapping
+            spread_factor: How much activation spreads (0-1)
+            decay_per_step: How much activation decays each step (0-1)
+            max_steps: Maximum propagation steps
+            threshold: Minimum activation to propagate
+
+        Returns:
+            All activated tokens with their activation levels
+
+        Example:
+            >>> graph = TransitionGraph()
+            >>> graph.learn_sequence(["the", "quick", "brown", "fox"])
+            >>> activations = graph.spreading_activation({"quick": 1.0})
+            >>> # "brown" and "fox" should have some activation
+        """
+        if not seed_tokens:
+            return {}
+
+        # Current activations
+        current = dict(seed_tokens)
+
+        # Track all activations across steps
+        all_activations = dict(seed_tokens)
+
+        for step in range(max_steps):
+            next_activations: Dict[str, float] = {}
+
+            for token, activation in current.items():
+                if activation < threshold:
+                    continue
+
+                # Find contexts containing this token
+                for context, transitions in self._transitions.items():
+                    if token in context:
+                        # Spread to connected tokens
+                        for trans in transitions:
+                            spread_amount = (
+                                activation
+                                * spread_factor
+                                * (trans.weight / (1.0 + trans.weight))
+                                * (decay_per_step ** step)
+                            )
+
+                            if spread_amount >= threshold:
+                                target = trans.to_token
+                                next_activations[target] = max(
+                                    next_activations.get(target, 0.0),
+                                    spread_amount,
+                                )
+
+            # Update all_activations with new values
+            for token, activation in next_activations.items():
+                all_activations[token] = max(
+                    all_activations.get(token, 0.0),
+                    activation,
+                )
+
+            current = next_activations
+
+            if not current:
+                break
+
+        return all_activations
+
+    def sparse_activate(
+        self,
+        query_tokens: List[str],
+        k: int = 5,
+        use_inhibition: bool = True,
+        use_spreading: bool = True,
+    ) -> Dict[str, float]:
+        """
+        Combine spreading activation with lateral inhibition for sparse retrieval.
+
+        This is the main entry point for Hebbian Hive pattern matching:
+        1. Seed activation from query tokens
+        2. Spread activation through graph
+        3. Apply lateral inhibition
+        4. Select k winners
+
+        Args:
+            query_tokens: Tokens to start activation from
+            k: Number of final active tokens
+            use_inhibition: Whether to apply lateral inhibition
+            use_spreading: Whether to spread activation
+
+        Returns:
+            Sparse activation pattern (k active tokens)
+
+        Example:
+            >>> graph = TransitionGraph()
+            >>> graph.learn_sequence(["neural", "network", "learning"])
+            >>> result = graph.sparse_activate(["neural"], k=3)
+        """
+        # Initialize seed activations
+        seed = {token.lower(): 1.0 for token in query_tokens if token}
+
+        if not seed:
+            return {}
+
+        # Spread if requested
+        if use_spreading:
+            activations = self.spreading_activation(seed)
+        else:
+            activations = seed
+
+        # Apply inhibition if requested
+        if use_inhibition:
+            activations = self.lateral_inhibition(activations)
+
+        # Select k winners
+        return self.k_winners_take_all(activations, k=k)
+
 
 class PRISMLanguageModel:
     """

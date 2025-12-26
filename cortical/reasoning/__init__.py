@@ -379,6 +379,17 @@ from .loom import (
 )
 
 # =============================================================================
+# HOMEOSTATIC REGULATION: Network Stability
+# =============================================================================
+
+from .homeostasis import (
+    HomeostasisConfig,
+    NodeState,
+    HomeostasisRegulator,
+    AdaptiveHomeostasisRegulator,
+)
+
+# =============================================================================
 # PRISM-Attention: Selective Focus Mechanisms
 # =============================================================================
 
@@ -603,4 +614,10 @@ __all__ = [
     'LoomEnhancedAttention',
     'TransitionCallback',
     'SurpriseCallback',
+
+    # === Homeostatic Regulation ===
+    'HomeostasisConfig',
+    'NodeState',
+    'HomeostasisRegulator',
+    'AdaptiveHomeostasisRegulator',
 ]
