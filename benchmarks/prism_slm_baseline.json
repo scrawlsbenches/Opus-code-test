@@ -1,0 +1,573 @@
+{
+  "timestamp": "2025-12-26T20:58:07.120155",
+  "benchmarks": [
+    {
+      "benchmark_name": "generation_coherence",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "repetition_rate",
+          "value": 0.0,
+          "unit": "ratio",
+          "threshold_min": null,
+          "threshold_max": 0.3,
+          "is_passing": true
+        },
+        {
+          "name": "unique_token_ratio",
+          "value": 1.0,
+          "unit": "ratio",
+          "threshold_min": 0.5,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_generation_length",
+          "value": 7.2,
+          "unit": "tokens",
+          "threshold_min": 5.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "generations_per_second",
+          "value": 50231.18562874252,
+          "unit": "gen/s",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 0.3981590270996094,
+      "timestamp": "2025-12-26T20:58:07.116440",
+      "error_message": null,
+      "metadata": {
+        "num_generations": 20,
+        "max_tokens": 20
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "perplexity_calibration",
+      "category": "quality",
+      "status": "failed",
+      "metrics": [
+        {
+          "name": "in_domain_perplexity",
+          "value": 37043152.00104072,
+          "unit": "ppl",
+          "threshold_min": null,
+          "threshold_max": 1000,
+          "is_passing": false
+        },
+        {
+          "name": "out_domain_perplexity",
+          "value": 9999999999.999979,
+          "unit": "ppl",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "nonsense_perplexity",
+          "value": 10000000000.0,
+          "unit": "ppl",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "out_in_separation_ratio",
+          "value": 269.95542927121943,
+          "unit": "ratio",
+          "threshold_min": 2.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "nonsense_in_separation_ratio",
+          "value": 269.9554292712201,
+          "unit": "ratio",
+          "threshold_min": 10.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 0.15926361083984375,
+      "timestamp": "2025-12-26T20:58:07.117144",
+      "error_message": null,
+      "metadata": {},
+      "is_passing": false
+    },
+    {
+      "benchmark_name": "temperature_diversity",
+      "category": "stability",
+      "status": "failed",
+      "metrics": [
+        {
+          "name": "diversity_at_temp_0.3",
+          "value": 0.2,
+          "unit": "ratio",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "diversity_at_temp_1.0",
+          "value": 0.2,
+          "unit": "ratio",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "diversity_at_temp_2.0",
+          "value": 0.2,
+          "unit": "ratio",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "diversity_range",
+          "value": 0.0,
+          "unit": "ratio",
+          "threshold_min": 0.1,
+          "threshold_max": null,
+          "is_passing": false
+        },
+        {
+          "name": "monotonicity_score",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 0.5,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 1.07574462890625,
+      "timestamp": "2025-12-26T20:58:07.118782",
+      "error_message": null,
+      "metadata": {
+        "temperatures": [
+          0.3,
+          0.7,
+          1.0,
+          1.5,
+          2.0
+        ],
+        "num_samples": 10
+      },
+      "is_passing": false
+    },
+    {
+      "benchmark_name": "hebbian_strengthening",
+      "category": "stability",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "initial_weight",
+          "value": 1.2000000000000002,
+          "unit": "weight",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "final_weight",
+          "value": 3.0000000000000018,
+          "unit": "weight",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "growth_factor",
+          "value": 2.500000000000001,
+          "unit": "ratio",
+          "threshold_min": 2.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "is_monotonic",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "growth_efficiency",
+          "value": 1.8000000000000016,
+          "unit": "ratio",
+          "threshold_min": 0.5,
+          "threshold_max": 2.0,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 0.057220458984375,
+      "timestamp": "2025-12-26T20:58:07.118916",
+      "error_message": null,
+      "metadata": {
+        "repetitions": 10,
+        "phrase": "the cat sat"
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "decay_stability",
+      "category": "stability",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "strong_decay_accuracy",
+          "value": 1.0,
+          "unit": "ratio",
+          "threshold_min": 0.95,
+          "threshold_max": 1.05,
+          "is_passing": true
+        },
+        {
+          "name": "weak_decay_accuracy",
+          "value": 0.9999999999999998,
+          "unit": "ratio",
+          "threshold_min": 0.95,
+          "threshold_max": 1.05,
+          "is_passing": true
+        },
+        {
+          "name": "ratio_preserved",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "numerical_stability",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "final_strong_weight",
+          "value": 1.046035320300001,
+          "unit": "weight",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "final_weak_weight",
+          "value": 0.5578855041600003,
+          "unit": "weight",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 0.05125999450683594,
+      "timestamp": "2025-12-26T20:58:07.119114",
+      "error_message": null,
+      "metadata": {
+        "decay_factor": 0.9,
+        "decay_cycles": 10
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "reward_learning",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "initial_good_weight",
+          "value": 2.000000000000001,
+          "unit": "weight",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "final_good_weight",
+          "value": 2.500000000000001,
+          "unit": "weight",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "good_weight_change",
+          "value": 0.5,
+          "unit": "delta",
+          "threshold_min": 0.1,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "bad_weight_change",
+          "value": -0.19999999999999996,
+          "unit": "delta",
+          "threshold_min": null,
+          "threshold_max": 0.0,
+          "is_passing": true
+        },
+        {
+          "name": "positive_reward_effective",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "negative_reward_effective",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "weights_non_negative",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 0.026226043701171875,
+      "timestamp": "2025-12-26T20:58:07.119325",
+      "error_message": null,
+      "metadata": {},
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "spreading_activation",
+      "category": "cognitive",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "seed_activation",
+          "value": 1.0,
+          "unit": "activation",
+          "threshold_min": 0.99,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_direct_neighbor_activation",
+          "value": 0.3375,
+          "unit": "activation",
+          "threshold_min": 0.1,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_indirect_neighbor_activation",
+          "value": 0.31111111111111117,
+          "unit": "activation",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "distance_decay_correct",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "total_tokens_activated",
+          "value": 9,
+          "unit": "count",
+          "threshold_min": 3,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "spread_duration_ms",
+          "value": 0.048160552978515625,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": 1000,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 0.048160552978515625,
+      "timestamp": "2025-12-26T20:58:07.119733",
+      "error_message": null,
+      "metadata": {
+        "activations": {
+          "neural": 1.0,
+          "networks": 0.37500000000000006,
+          "learn": 0.33333333333333337,
+          "models": 0.30000000000000004,
+          "process": 0.30000000000000004,
+          "patterns": 0.30000000000000004,
+          "data": 0.30000000000000004,
+          "emerge": 0.07500000000000002,
+          "from": 0.07
+        }
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "lateral_inhibition",
+      "category": "cognitive",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "active_before_inhibition",
+          "value": 4,
+          "unit": "count",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "active_after_inhibition",
+          "value": 2,
+          "unit": "count",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "sparsity_improvement",
+          "value": 0.4,
+          "unit": "ratio",
+          "threshold_min": 0.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "strongest_preserved",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "weak_reduced",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 0.019550323486328125,
+      "timestamp": "2025-12-26T20:58:07.119826",
+      "error_message": null,
+      "metadata": {
+        "raw": {
+          "strong": 0.9,
+          "medium_high": 0.7,
+          "medium": 0.5,
+          "weak": 0.3,
+          "very_weak": 0.1
+        },
+        "inhibited": {
+          "strong": 0.6416666666666667,
+          "medium_high": 0.3,
+          "medium": 0.08333333333333337,
+          "weak": 0.033333333333333326,
+          "very_weak": 0.0
+        }
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "sparsecoding_efficiency",
+      "category": "cognitive",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "k1_winner_count",
+          "value": 1,
+          "unit": "count",
+          "threshold_min": 1,
+          "threshold_max": 1,
+          "is_passing": true
+        },
+        {
+          "name": "k3_winner_count",
+          "value": 3,
+          "unit": "count",
+          "threshold_min": 3,
+          "threshold_max": 3,
+          "is_passing": true
+        },
+        {
+          "name": "k5_winner_count",
+          "value": 5,
+          "unit": "count",
+          "threshold_min": 5,
+          "threshold_max": 5,
+          "is_passing": true
+        },
+        {
+          "name": "k1_correct_winner",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "k3_correct_winners",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 0.019311904907226562,
+      "timestamp": "2025-12-26T20:58:07.119903",
+      "error_message": null,
+      "metadata": {
+        "1": {
+          "count": 1,
+          "winners": [
+            "token_0"
+          ]
+        },
+        "3": {
+          "count": 3,
+          "winners": [
+            "token_0",
+            "token_1",
+            "token_2"
+          ]
+        },
+        "5": {
+          "count": 5,
+          "winners": [
+            "token_0",
+            "token_1",
+            "token_2",
+            "token_3",
+            "token_4"
+          ]
+        }
+      },
+      "is_passing": true
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 2,
+    "errors": 0,
+    "total_duration_ms": 1.8548965454101562
+  }
+}
