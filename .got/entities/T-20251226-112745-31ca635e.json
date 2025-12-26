@@ -1,0 +1,19 @@
+{
+  "_checksum": "b5f5148a8021ec57",
+  "_written_at": "2025-12-26T11:27:45.787213+00:00",
+  "data": {
+    "created_at": "2025-12-26T11:27:45.778354+00:00",
+    "description": "api.py:164-166 has check-modify-write race on cache access order list. list.remove() raises ValueError if another thread removed same element. Add lock.",
+    "entity_type": "task",
+    "id": "T-20251226-112745-31ca635e",
+    "metadata": {},
+    "modified_at": "2025-12-26T11:27:45.787146+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "HIGH: Add threading.Lock to cache LRU operations",
+    "version": 2
+  }
+}

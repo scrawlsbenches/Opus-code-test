@@ -6,8 +6,8 @@ Handles file I/O, atomic writes, and data storage operations.
 
 import json
 import os
+import sys
 import tempfile
-import uuid
 import fcntl
 import hashlib
 import logging
@@ -16,6 +16,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import asdict
+
+# Add project root to path for cortical imports
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+from cortical.utils.id_generation import generate_short_id
 
 from .config import (
     COMMITS_DIR, COMMITS_LITE_DIR, COMMITS_LITE_FILE, SESSIONS_LITE_FILE,
@@ -64,7 +71,7 @@ def get_cali_store():
     if _cali_store is None and ML_USE_CALI:
         try:
             from cortical.ml_storage import MLStore
-            session_id = os.getenv("CLAUDE_SESSION_ID", uuid.uuid4().hex[:8])
+            session_id = os.getenv("CLAUDE_SESSION_ID", generate_short_id())
             _cali_store = MLStore(CALI_DIR, session_id=session_id)
             logger.debug(f"CALI store initialized at {CALI_DIR}")
         except ImportError:
@@ -258,8 +265,8 @@ def save_commit_data(context: CommitContext, validate: bool = True, link_session
         if errors:
             raise SchemaValidationError(f"Commit validation failed: {errors}")
 
-    # Use full hash + UUID suffix to prevent collisions
-    unique_id = uuid.uuid4().hex[:8]
+    # Use full hash + unique suffix to prevent collisions
+    unique_id = generate_short_id()
     filename = f"{context.hash[:8]}_{context.timestamp[:10]}_{unique_id}.json"
     filepath = COMMITS_DIR / filename
 

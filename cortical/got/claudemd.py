@@ -25,6 +25,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
+from cortical.utils.checksums import compute_checksum
+
 logger = logging.getLogger(__name__)
 
 
@@ -519,8 +521,7 @@ class ClaudeMdGenerator:
 
     def _compute_hash(self, content: str) -> str:
         """Compute content hash."""
-        import hashlib
-        return hashlib.sha256(content.encode()).hexdigest()[:16]
+        return compute_checksum(content.encode('utf-8'), truncate=16)
 
 
 class ClaudeMdManager:

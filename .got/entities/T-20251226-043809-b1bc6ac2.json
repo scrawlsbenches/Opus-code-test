@@ -1,0 +1,22 @@
+{
+  "_checksum": "b37aa54099c75065",
+  "_written_at": "2025-12-26T04:38:52.739749+00:00",
+  "data": {
+    "created_at": "2025-12-26T04:38:09.954486+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251226-043809-b1bc6ac2",
+    "metadata": {
+      "completed_at": "2025-12-26T04:38:52.730634+00:00",
+      "updated_at": "2025-12-26T04:38:52.730648+00:00"
+    },
+    "modified_at": "2025-12-26T04:38:52.739690+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "T5.6: Observable phase callbacks for consolidation",
+    "version": 4
+  }
+}

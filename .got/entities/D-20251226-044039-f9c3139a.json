@@ -1,0 +1,15 @@
+{
+  "_checksum": "aa8b02dfcb25138c",
+  "_written_at": "2025-12-26T04:40:39.651333+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2025-12-26T04:40:39.644532+00:00",
+    "entity_type": "decision",
+    "id": "D-20251226-044039-f9c3139a",
+    "modified_at": "2025-12-26T04:40:39.651258+00:00",
+    "properties": {},
+    "rationale": "Code review completed 2025-12-26: 4.5/5 rating. Architecture is clean (Facade pattern), 96% test coverage, excellent documentation, secure implementation (no code injection vectors). Minor issues: 1) encapsulation break in force_mode, 2) silent exception in scheduler, 3) missing thread-safety docs. All low priority. Production-ready.",
+    "title": "Woven Mind v1.0 approved for release after comprehensive code review",
+    "version": 2
+  }
+}

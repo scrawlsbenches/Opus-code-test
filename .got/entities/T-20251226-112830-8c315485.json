@@ -1,0 +1,19 @@
+{
+  "_checksum": "c281aea9930d3530",
+  "_written_at": "2025-12-26T11:28:30.213170+00:00",
+  "data": {
+    "created_at": "2025-12-26T11:28:30.207415+00:00",
+    "description": "No validation tests. Add: 1) Invalid status values 2) Invalid priority values 3) Missing required fields 4) Type checking 5) Enum validation. Add validation to indexer.py first.",
+    "entity_type": "task",
+    "id": "T-20251226-112830-8c315485",
+    "metadata": {},
+    "modified_at": "2025-12-26T11:28:30.213118+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "TEST: Add schema validation tests for QueryIndexManager",
+    "version": 2
+  }
+}

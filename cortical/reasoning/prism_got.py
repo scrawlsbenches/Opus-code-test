@@ -40,8 +40,8 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Set, Tuple
 import hashlib
 import math
-import uuid
 
+from cortical.utils.id_generation import generate_short_id
 from .graph_of_thought import EdgeType, NodeType, ThoughtCluster, ThoughtEdge, ThoughtNode
 from .thought_graph import ThoughtGraph
 
@@ -917,8 +917,7 @@ class IncrementalReasoner:
     def _generate_node_id(self, node_type: NodeType) -> str:
         """Generate a unique node ID."""
         prefix = node_type.value[0].upper()
-        unique = uuid.uuid4().hex[:8]
-        return f"{prefix}-{unique}"
+        return f"{prefix}-{generate_short_id()}"
 
     def _compute_content_hash(self, content: str) -> str:
         """Compute a hash of content for similarity matching."""

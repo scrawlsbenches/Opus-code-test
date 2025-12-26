@@ -88,9 +88,105 @@ from typing import (
     Union,
 )
 
+import logging
 import time
 from .api import GoTManager
 from .types import Task, Decision, Edge, Sprint, Entity
+
+
+# Module-level logger for query operations
+logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# QUERY LOGGING CONFIGURATION
+# ============================================================================
+
+
+class QueryLogLevel(Enum):
+    """Logging verbosity levels for query operations.
+
+    OFF: No logging
+    ERROR: Only log slow queries (>threshold_ms)
+    INFO: Log all queries with timing
+    DEBUG: Log queries with full execution plans
+    """
+    OFF = auto()
+    ERROR = auto()
+    INFO = auto()
+    DEBUG = auto()
+
+
+# Module-level logging configuration
+_query_log_level = QueryLogLevel.OFF
+_slow_query_threshold_ms = 100.0  # Default: 100ms
+
+
+def set_query_log_level(level: QueryLogLevel) -> None:
+    """Set the query logging verbosity level.
+
+    Args:
+        level: OFF, ERROR, INFO, or DEBUG
+    """
+    global _query_log_level
+    _query_log_level = level
+
+
+def get_query_log_level() -> QueryLogLevel:
+    """Get the current query logging level."""
+    return _query_log_level
+
+
+def set_slow_query_threshold(threshold_ms: float) -> None:
+    """Set the threshold for logging slow queries (ERROR level).
+
+    Args:
+        threshold_ms: Queries taking longer than this are logged as warnings
+    """
+    global _slow_query_threshold_ms
+    _slow_query_threshold_ms = threshold_ms
+
+
+def get_slow_query_threshold() -> float:
+    """Get the current slow query threshold in milliseconds."""
+    return _slow_query_threshold_ms
+
+
+# ============================================================================
+# QUERY VALIDATION
+# ============================================================================
+
+
+class QueryValidationError(ValueError):
+    """
+    Raised when an invalid query chain is constructed.
+
+    Examples of invalid chains:
+    - .count().order_by() - Cannot order after aggregating to count
+    - .execute().where() - Cannot chain after execution
+    - .limit().group_by() - Limit should come after group_by
+    """
+    pass
+
+
+def _validate_syntax_enabled() -> bool:
+    """Check if syntax validation is enabled (default: True)."""
+    return _syntax_validation_enabled
+
+
+_syntax_validation_enabled = True
+
+
+def enable_syntax_validation() -> None:
+    """Enable query chain syntax validation (default)."""
+    global _syntax_validation_enabled
+    _syntax_validation_enabled = True
+
+
+def disable_syntax_validation() -> None:
+    """Disable query chain syntax validation for performance."""
+    global _syntax_validation_enabled
+    _syntax_validation_enabled = False
 
 
 T = TypeVar("T", bound=Entity)
@@ -290,6 +386,79 @@ class QueryPlan:
     def __contains__(self, key: str) -> bool:
         """Support 'in' operator."""
         return hasattr(self, key)
+
+    def __str__(self) -> str:
+        """Human-readable visualization of the query plan."""
+        lines = ["Query Execution Plan", "=" * 40]
+
+        for i, step in enumerate(self.steps, 1):
+            step_type = step.get("type", "unknown")
+            lines.append(f"\nStep {i}: {step_type.upper()}")
+
+            if step_type == "scan":
+                entity_type = step.get("entity_type", "unknown")
+                index = step.get("index")
+                lines.append(f"  Entity type: {entity_type}")
+                if index:
+                    lines.append(f"  Using index: {index}")
+                else:
+                    lines.append("  Full scan (no index)")
+
+            elif step_type == "filter":
+                conditions = step.get("conditions", [])
+                lines.append(f"  {len(conditions)} condition(s):")
+                for cond in conditions:
+                    field = cond.get("field", "?")
+                    op = cond.get("op", "eq")
+                    value = cond.get("value", "?")
+                    lines.append(f"    - {field} {op} {value}")
+
+            elif step_type == "connection_filter":
+                connections = step.get("connections", [])
+                lines.append(f"  {len(connections)} connection filter(s):")
+                for conn in connections:
+                    entity_id = conn.get("entity_id", "?")
+                    edge_type = conn.get("edge_type", "any")
+                    lines.append(f"    - connected to {entity_id} via {edge_type}")
+
+            elif step_type == "sort":
+                fields = step.get("fields", [])
+                lines.append("  Order by:")
+                for f in fields:
+                    field = f.get("field", "?")
+                    order = f.get("order", "ASC")
+                    lines.append(f"    - {field} {order}")
+
+            elif step_type == "pagination":
+                limit = step.get("limit")
+                offset = step.get("offset")
+                if offset:
+                    lines.append(f"  Offset: {offset}")
+                if limit:
+                    lines.append(f"  Limit: {limit}")
+
+            elif step_type == "aggregate":
+                group_by = step.get("group_by", [])
+                aggregates = step.get("aggregates", [])
+                if group_by:
+                    lines.append(f"  Group by: {', '.join(group_by)}")
+                if aggregates:
+                    lines.append(f"  Aggregates: {', '.join(aggregates)}")
+
+        lines.append("")
+        lines.append("-" * 40)
+        lines.append(f"Estimated cost: {self.estimated_cost:.1f}")
+        lines.append(f"Uses index: {'Yes (' + str(self.index_name) + ')' if self.uses_index else 'No'}")
+
+        return "\n".join(lines)
+
+    def __repr__(self) -> str:
+        """Debug representation."""
+        return (
+            f"QueryPlan(steps={len(self.steps)}, "
+            f"cost={self.estimated_cost:.1f}, "
+            f"uses_index={self.uses_index})"
+        )
 
 
 # ============================================================================
@@ -518,6 +687,36 @@ class Query(Generic[T]):
         self._cached_results: Optional[List[T]] = None
         self._count_mode = False  # When True, execute returns counts
 
+    def _validate_not_executed(self, method_name: str) -> None:
+        """Validate that the query hasn't been executed yet."""
+        if not _validate_syntax_enabled():
+            return
+        if self._executed:
+            raise QueryValidationError(
+                f"Cannot call .{method_name}() after query has been executed. "
+                "Create a new query instead."
+            )
+
+    def _validate_not_count_mode(self, method_name: str) -> None:
+        """Validate that we're not in count mode (after .count())."""
+        if not _validate_syntax_enabled():
+            return
+        if self._count_mode and not self._group_by_fields:
+            raise QueryValidationError(
+                f"Cannot call .{method_name}() after .count(). "
+                "Counting without group_by returns a scalar, not a query."
+            )
+
+    def _validate_no_pagination_before_grouping(self) -> None:
+        """Validate that limit/offset haven't been set before group_by."""
+        if not _validate_syntax_enabled():
+            return
+        if self._limit_value is not None or self._offset_value > 0:
+            raise QueryValidationError(
+                "Cannot call .group_by() after .limit() or .offset(). "
+                "Pagination should come after grouping."
+            )
+
     def tasks(self) -> "Query[Task]":
         """Query tasks."""
         self._entity_type = EntityType.TASK
@@ -547,7 +746,11 @@ class Query(Generic[T]):
 
         Returns:
             Self for chaining
+
+        Raises:
+            QueryValidationError: If called after .execute()
         """
+        self._validate_not_executed("where")
         for field, value in conditions.items():
             self._where_clauses.append(WhereClause(field=field, value=value))
         return self
@@ -561,7 +764,11 @@ class Query(Generic[T]):
 
         Returns:
             Self for chaining
+
+        Raises:
+            QueryValidationError: If called after .execute()
         """
+        self._validate_not_executed("or_where")
         group = OrGroup()
         for field, value in conditions.items():
             group.clauses.append(WhereClause(field=field, value=value))
@@ -584,7 +791,11 @@ class Query(Generic[T]):
 
         Returns:
             Self for chaining
+
+        Raises:
+            QueryValidationError: If called after .execute()
         """
+        self._validate_not_executed("connected_to")
         self._connections.append(ConnectionFilter(
             entity_id=entity_id,
             edge_type=via,
@@ -602,7 +813,12 @@ class Query(Generic[T]):
 
         Returns:
             Self for chaining
+
+        Raises:
+            QueryValidationError: If called after .count() or .execute()
         """
+        self._validate_not_executed("order_by")
+        self._validate_not_count_mode("order_by")
         order = SortOrder.DESC if desc else SortOrder.ASC
         self._order_by.append(OrderByClause(field=field, order=order))
         return self
@@ -616,7 +832,11 @@ class Query(Generic[T]):
 
         Returns:
             Self for chaining
+
+        Raises:
+            QueryValidationError: If called after .execute()
         """
+        self._validate_not_executed("limit")
         self._limit_value = n
         return self
 
@@ -629,7 +849,11 @@ class Query(Generic[T]):
 
         Returns:
             Self for chaining
+
+        Raises:
+            QueryValidationError: If called after .execute()
         """
+        self._validate_not_executed("offset")
         self._offset_value = n
         return self
 
@@ -642,7 +866,12 @@ class Query(Generic[T]):
 
         Returns:
             Self for chaining
+
+        Raises:
+            QueryValidationError: If called after .execute() or after .limit()/.offset()
         """
+        self._validate_not_executed("group_by")
+        self._validate_no_pagination_before_grouping()
         self._group_by_fields.extend(fields)
         return self
 
@@ -655,7 +884,11 @@ class Query(Generic[T]):
 
         Returns:
             Self for chaining
+
+        Raises:
+            QueryValidationError: If called after .execute()
         """
+        self._validate_not_executed("aggregate")
         self._aggregates.update(aggregates)
         return self
 
@@ -687,6 +920,12 @@ class Query(Generic[T]):
         entity_type_name = self._entity_type.name if self._entity_type else "UNKNOWN"
         start_time = self._metrics.start_query(self._manager, entity_type_name)
 
+        # DEBUG level: Log query plan before execution
+        log_level = get_query_log_level()
+        if log_level == QueryLogLevel.DEBUG:
+            plan = self.explain()
+            logger.debug(f"Executing query:\n{plan}")
+
         try:
             if self._count_mode and self._group_by_fields:
                 # Count mode with group_by - return counts per group
@@ -695,16 +934,20 @@ class Query(Generic[T]):
                     key = self._get_group_key(entity)
                     groups[key] += 1
                 result = dict(groups)
+                duration_ms = (time.time() - start_time) * 1000
                 self._metrics.end_query(
                     self._manager, entity_type_name, start_time, sum(groups.values())
                 )
+                self._log_query_result(entity_type_name, sum(groups.values()), duration_ms, log_level)
                 return result
 
             if self._group_by_fields or self._aggregates:
                 result = self._execute_aggregation()
+                duration_ms = (time.time() - start_time) * 1000
                 self._metrics.end_query(
                     self._manager, entity_type_name, start_time, len(result) if isinstance(result, dict) else 0
                 )
+                self._log_query_result(entity_type_name, len(result) if isinstance(result, dict) else 0, duration_ms, log_level)
                 return result
 
             self._executed = True
@@ -723,13 +966,47 @@ class Query(Generic[T]):
             self._cached_results = results
 
             # Record metrics
+            duration_ms = (time.time() - start_time) * 1000
             self._metrics.end_query(self._manager, entity_type_name, start_time, len(results))
+            self._log_query_result(entity_type_name, len(results), duration_ms, log_level)
 
             return results
-        except Exception:
+        except Exception as e:
             # Record failed query (0 results)
+            duration_ms = (time.time() - start_time) * 1000
             self._metrics.end_query(self._manager, entity_type_name, start_time, 0)
+            if log_level != QueryLogLevel.OFF:
+                logger.error(f"Query failed after {duration_ms:.2f}ms: {e}")
             raise
+
+    def _log_query_result(
+        self,
+        entity_type: str,
+        result_count: int,
+        duration_ms: float,
+        log_level: QueryLogLevel
+    ) -> None:
+        """Log query result based on configured log level."""
+        if log_level == QueryLogLevel.OFF:
+            return
+
+        threshold = get_slow_query_threshold()
+        is_slow = duration_ms > threshold
+
+        if log_level == QueryLogLevel.ERROR:
+            # Only log slow queries
+            if is_slow:
+                logger.warning(
+                    f"Slow query: {entity_type} returned {result_count} results "
+                    f"in {duration_ms:.2f}ms (threshold: {threshold:.0f}ms)"
+                )
+        elif log_level in (QueryLogLevel.INFO, QueryLogLevel.DEBUG):
+            # Log all queries with timing
+            log_msg = f"Query: {entity_type} returned {result_count} results in {duration_ms:.2f}ms"
+            if is_slow:
+                logger.warning(f"{log_msg} [SLOW]")
+            else:
+                logger.info(log_msg)
 
     def iter(self) -> Generator[T, None, None]:
         """

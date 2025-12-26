@@ -1,0 +1,22 @@
+{
+  "_checksum": "7b3fb1e695ffdf2f",
+  "_written_at": "2025-12-26T04:38:42.719679+00:00",
+  "data": {
+    "created_at": "2025-12-26T04:37:38.157598+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251226-043738-8ccfb9a8",
+    "metadata": {
+      "completed_at": "2025-12-26T04:38:42.710557+00:00",
+      "updated_at": "2025-12-26T04:38:42.710561+00:00"
+    },
+    "modified_at": "2025-12-26T04:38:42.719629+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "T5.1: ConsolidationConfig dataclass implementation",
+    "version": 4
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "_checksum": "128264b8dd6720fb",
+  "_written_at": "2025-12-26T11:28:24.118164+00:00",
+  "data": {
+    "created_at": "2025-12-26T11:28:24.111341+00:00",
+    "description": "0 performance tests exist. Add tests/performance/test_index_performance.py with: 1) 1000+ tasks indexing 2) O(1) lookup verification 3) Memory usage with large indexes 4) Rebuild timing benchmarks.",
+    "entity_type": "task",
+    "id": "T-20251226-112824-d50defff",
+    "metadata": {},
+    "modified_at": "2025-12-26T11:28:24.118078+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "TEST: Add performance tests for indexes",
+    "version": 2
+  }
+}

@@ -136,6 +136,22 @@ from .query_builder import (
     Avg,
     Min,
     Max,
+    # Query logging
+    QueryLogLevel,
+    set_query_log_level,
+    get_query_log_level,
+    set_slow_query_threshold,
+    get_slow_query_threshold,
+    # Query validation
+    QueryValidationError,
+    enable_syntax_validation,
+    disable_syntax_validation,
+)
+
+from .indexer import (
+    QueryIndexManager,
+    IndexEntry,
+    IndexStats,
 )
 
 from .graph_walker import GraphWalker
@@ -247,6 +263,20 @@ __all__ = [
     'Avg',
     'Min',
     'Max',
+    # Query Logging
+    'QueryLogLevel',
+    'set_query_log_level',
+    'get_query_log_level',
+    'set_slow_query_threshold',
+    'get_slow_query_threshold',
+    # Query Validation
+    'QueryValidationError',
+    'enable_syntax_validation',
+    'disable_syntax_validation',
+    # Query Indexing
+    'QueryIndexManager',
+    'IndexEntry',
+    'IndexStats',
     # Graph Walker
     'GraphWalker',
     # Path Finder
