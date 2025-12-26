@@ -1,0 +1,15 @@
+{
+  "_checksum": "8dad9c5c90e047ca",
+  "_written_at": "2025-12-26T13:08:28.544486+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2025-12-26T13:08:28.541520+00:00",
+    "entity_type": "decision",
+    "id": "D-20251226-130828-2e9fc493",
+    "modified_at": "2025-12-26T13:08:28.544433+00:00",
+    "properties": {},
+    "rationale": "Analysis identified 5 conflict sources: _written_at, modified_at, metadata.updated_at, version, _checksum. Short-term fix: remove timestamps from entity files (Option 3). Long-term: use vector clocks (Option 1). See docs/analysis-got-merge-conflicts.md for full analysis.",
+    "title": "Merge conflicts caused by operational timestamps in entity files",
+    "version": 2
+  }
+}
