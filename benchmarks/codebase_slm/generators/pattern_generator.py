@@ -19,7 +19,7 @@ import json
 from datetime import datetime
 
 from .code_extractor import CodePattern, FunctionPattern, ClassPattern
-from .doc_extractor import DocPattern, SectionPattern
+from .doc_extractor import DocPattern, SectionPattern, QAPairPattern
 from .meta_extractor import MetaPattern, TaskPattern, CommitPattern
 
 
@@ -60,6 +60,16 @@ class PatternGenerator:
         # Save for training
         generator.save_corpus('benchmarks/codebase_slm/corpus/training.jsonl')
     """
+
+    # Project root for path normalization
+    PROJECT_ROOT = str(Path(__file__).parent.parent.parent.parent)
+
+    @classmethod
+    def _normalize_path(cls, path: str) -> str:
+        """Convert absolute path to relative project path."""
+        if path.startswith(cls.PROJECT_ROOT):
+            return path[len(cls.PROJECT_ROOT):].lstrip('/')
+        return path
 
     # Question templates for Q&A generation
     QA_TEMPLATES = {
@@ -125,18 +135,19 @@ class PatternGenerator:
                 if func.name.startswith('_'):
                     continue
 
-                # Location questions
+                # Location questions - use normalized relative paths
+                rel_path = self._normalize_path(func.file_path)
                 for q_template, a_template in self.QA_TEMPLATES['function_location']:
                     q = q_template.format(name=func.name)
                     a = a_template.format(
-                        file_path=func.file_path,
+                        file_path=rel_path,
                         line_number=func.line_number
                     )
                     patterns.append(TrainingPattern(
                         pattern_type='qa',
                         input_text=q,
                         target_text=a,
-                        source_file=func.file_path,
+                        source_file=rel_path,
                         metadata={'function': func.name}
                     ))
 
@@ -151,7 +162,7 @@ class PatternGenerator:
                             pattern_type='qa',
                             input_text=q,
                             target_text=a,
-                            source_file=func.file_path,
+                            source_file=rel_path,
                             confidence=0.9,  # Slightly lower for generated text
                             metadata={'function': func.name}
                         ))
@@ -170,6 +181,8 @@ class PatternGenerator:
                 # Skip private classes
                 if cls.name.startswith('_'):
                     continue
+
+                rel_path = self._normalize_path(cls.file_path)
 
                 # Class info questions
                 for q_template, a_template in self.QA_TEMPLATES['class_info']:
@@ -195,7 +208,7 @@ class PatternGenerator:
                         pattern_type='qa',
                         input_text=q,
                         target_text=a,
-                        source_file=cls.file_path,
+                        source_file=rel_path,
                         metadata={'class': cls.name}
                     ))
 
@@ -209,6 +222,8 @@ class PatternGenerator:
         patterns = []
 
         for dp in doc_patterns:
+            rel_path = self._normalize_path(dp.file_path)
+
             # Generate from sections
             for section in dp.sections:
                 if len(section.content) < 50:  # Skip short sections
@@ -222,7 +237,7 @@ class PatternGenerator:
                     pattern_type='qa',
                     input_text=q,
                     target_text=a,
-                    source_file=dp.file_path,
+                    source_file=rel_path,
                     confidence=0.85,
                     metadata={'section': section.title}
                 ))
@@ -237,9 +252,25 @@ class PatternGenerator:
                         pattern_type='qa',
                         input_text=q,
                         target_text=a,
-                        source_file=dp.file_path,
+                        source_file=rel_path,
                         confidence=0.8,
                         metadata={'language': cb.language}
+                    ))
+
+            # Generate from explicit Q&A pairs (highest quality)
+            # Oversample 50x to dominate vs auto-generated patterns
+            for qa in dp.qa_pairs:
+                for _ in range(50):  # Repeat high-quality pairs heavily
+                    patterns.append(TrainingPattern(
+                        pattern_type='qa',
+                        input_text=qa.question,
+                        target_text=qa.answer,
+                        source_file=rel_path,
+                        confidence=0.98,  # Highest confidence - hand-crafted
+                        metadata={
+                            'category': qa.category,
+                            'source': 'explicit_qa'
+                        }
                     ))
 
         return patterns
@@ -295,6 +326,8 @@ class PatternGenerator:
         patterns = []
 
         for cp in code_patterns:
+            rel_path = self._normalize_path(cp.file_path)
+
             # Import completions
             for imp in cp.imports:
                 if imp.is_from_import:
@@ -303,7 +336,7 @@ class PatternGenerator:
                         pattern_type='completion',
                         input_text=f"from {imp.module} import",
                         target_text=names,
-                        source_file=imp.file_path,
+                        source_file=rel_path,
                         metadata={'import': imp.module}
                     ))
 
@@ -315,7 +348,7 @@ class PatternGenerator:
                         pattern_type='completion',
                         input_text=f"{cls.name}.",
                         target_text=method,
-                        source_file=cls.file_path,
+                        source_file=rel_path,
                         metadata={'class': cls.name, 'method': method}
                     ))
 
@@ -372,6 +405,8 @@ class PatternGenerator:
         patterns = []
 
         for cp in code_patterns:
+            rel_path = self._normalize_path(cp.file_path)
+
             # Function signature → docstring
             for func in cp.functions:
                 if func.docstring and not func.name.startswith('_'):
@@ -379,7 +414,7 @@ class PatternGenerator:
                         pattern_type='explanation',
                         input_text=f"def {func.signature}",
                         target_text=func.docstring.split('.')[0] + '.',
-                        source_file=func.file_path,
+                        source_file=rel_path,
                         metadata={'function': func.name}
                     ))
 
@@ -390,7 +425,7 @@ class PatternGenerator:
                         pattern_type='explanation',
                         input_text=f"class {cls.name}",
                         target_text=cls.docstring.split('.')[0] + '.',
-                        source_file=cls.file_path,
+                        source_file=rel_path,
                         metadata={'class': cls.name}
                     ))
 

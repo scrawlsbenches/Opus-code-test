@@ -62,6 +62,16 @@ class TablePattern:
 
 
 @dataclass
+class QAPairPattern:
+    """Extracted Q&A pair from knowledge base documents."""
+    question: str
+    answer: str
+    file_path: str
+    line_number: int
+    category: str = ""  # e.g., "file_location", "concept", "how_to"
+
+
+@dataclass
 class DocPattern:
     """Container for all patterns extracted from a markdown file."""
     file_path: str
@@ -70,6 +80,7 @@ class DocPattern:
     code_blocks: List[CodeBlockPattern] = field(default_factory=list)
     key_values: List[KeyValuePattern] = field(default_factory=list)
     tables: List[TablePattern] = field(default_factory=list)
+    qa_pairs: List[QAPairPattern] = field(default_factory=list)
     file_hash: str = ""
     extracted_at: str = ""
 
@@ -82,6 +93,7 @@ class DocPattern:
             'code_blocks': [asdict(c) for c in self.code_blocks],
             'key_values': [asdict(k) for k in self.key_values],
             'tables': [asdict(t) for t in self.tables],
+            'qa_pairs': [asdict(q) for q in self.qa_pairs],
             'file_hash': self.file_hash,
             'extracted_at': self.extracted_at,
         }
@@ -96,6 +108,7 @@ class DocPattern:
             code_blocks=[CodeBlockPattern(**c) for c in data.get('code_blocks', [])],
             key_values=[KeyValuePattern(**k) for k in data.get('key_values', [])],
             tables=[TablePattern(**t) for t in data.get('tables', [])],
+            qa_pairs=[QAPairPattern(**q) for q in data.get('qa_pairs', [])],
             file_hash=data.get('file_hash', ''),
             extracted_at=data.get('extracted_at', ''),
         )
@@ -123,6 +136,8 @@ class DocExtractor:
     CODE_BLOCK_PATTERN = re.compile(r'```(\w*)\n(.*?)```', re.DOTALL)
     KEY_VALUE_PATTERN = re.compile(r'\*\*([^*]+)\*\*:\s*(.+)$', re.MULTILINE)
     TABLE_ROW_PATTERN = re.compile(r'^\|(.+)\|$', re.MULTILINE)
+    # Q&A pattern: "Q: question\nA: answer" (answer can be multi-line until next Q: or section)
+    QA_PATTERN = re.compile(r'^Q:\s*(.+?)(?:\n|\r\n?)A:\s*(.+?)(?=(?:\n|\r\n?)Q:|(?:\n|\r\n?)#|$)', re.MULTILINE | re.DOTALL)
 
     def __init__(
         self,
@@ -319,6 +334,50 @@ class DocExtractor:
 
         return tables
 
+    def _extract_qa_pairs(self, content: str, file_path: str) -> List[QAPairPattern]:
+        """Extract Q&A pairs from content.
+
+        Parses patterns like:
+            Q: Where is PageRank implemented?
+            A: cortical/analysis/pagerank.py
+
+        Also attempts to categorize based on question patterns.
+        """
+        qa_pairs = []
+
+        # Categories based on question patterns
+        category_patterns = {
+            'file_location': re.compile(r'where\s+is|what\s+file|find\s+.+function', re.IGNORECASE),
+            'concept': re.compile(r'what\s+is|what\s+are|explain|define', re.IGNORECASE),
+            'how_to': re.compile(r'how\s+do|how\s+to|how\s+can', re.IGNORECASE),
+            'why': re.compile(r'why\s+|what\s+is\s+the\s+reason', re.IGNORECASE),
+            'command': re.compile(r'run|execute|command|script', re.IGNORECASE),
+        }
+
+        for match in self.QA_PATTERN.finditer(content):
+            question = match.group(1).strip()
+            answer = match.group(2).strip()
+
+            # Determine line number
+            line_number = content[:match.start()].count('\n') + 1
+
+            # Categorize
+            category = 'general'
+            for cat_name, cat_pattern in category_patterns.items():
+                if cat_pattern.search(question):
+                    category = cat_name
+                    break
+
+            qa_pairs.append(QAPairPattern(
+                question=question,
+                answer=answer,
+                file_path=file_path,
+                line_number=line_number,
+                category=category,
+            ))
+
+        return qa_pairs
+
     def _extract_from_file(self, file_path: Path) -> Optional[DocPattern]:
         """Extract patterns from a single markdown file."""
         try:
@@ -335,6 +394,7 @@ class DocExtractor:
             code_blocks=self._extract_code_blocks(content, str(file_path)),
             key_values=self._extract_key_values(content, str(file_path)),
             tables=self._extract_tables(content, str(file_path)),
+            qa_pairs=self._extract_qa_pairs(content, str(file_path)),
             file_hash=self._compute_file_hash(file_path),
             extracted_at=datetime.utcnow().isoformat(),
         )
@@ -424,6 +484,7 @@ class DocExtractor:
             'code_blocks': sum(len(p.code_blocks) for p in self._patterns.values()),
             'key_values': sum(len(p.key_values) for p in self._patterns.values()),
             'tables': sum(len(p.tables) for p in self._patterns.values()),
+            'qa_pairs': sum(len(p.qa_pairs) for p in self._patterns.values()),
         }
 
 

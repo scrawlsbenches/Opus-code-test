@@ -30,7 +30,11 @@ from cortical.reasoning.prism_slm import PRISMLanguageModel
 
 
 def load_training_corpus(corpus_path: Path, limit: int = None) -> List[str]:
-    """Load training patterns from corpus file."""
+    """Load training patterns from corpus file.
+
+    Uses Q: / A: format to create clear separation between
+    questions and answers for n-gram learning.
+    """
     patterns = []
 
     if not corpus_path.exists():
@@ -44,8 +48,25 @@ def load_training_corpus(corpus_path: Path, limit: int = None) -> List[str]:
                 break
             try:
                 data = json.loads(line.strip())
-                # Combine input and target for training
-                text = f"{data['input_text']} {data['target_text']}"
+                pattern_type = data.get('pattern_type', 'unknown')
+
+                # Format based on pattern type
+                if pattern_type == 'qa':
+                    # Q&A format for clear separation
+                    text = f"Q: {data['input_text']} A: {data['target_text']}"
+                elif pattern_type == 'completion':
+                    # Code completion: input → target
+                    text = f"{data['input_text']} → {data['target_text']}"
+                elif pattern_type == 'association':
+                    # Association: input relates to target
+                    text = f"{data['input_text']} relates to {data['target_text']}"
+                elif pattern_type == 'explanation':
+                    # Explanation format
+                    text = f"{data['input_text']}: {data['target_text']}"
+                else:
+                    # Default: simple concatenation
+                    text = f"{data['input_text']} {data['target_text']}"
+
                 patterns.append(text)
             except json.JSONDecodeError:
                 continue
@@ -179,25 +200,49 @@ def main():
     print(f"  Vocabulary size: {model.vocab_size}")
     print(f"  Transitions: {sum(len(t) for t in model.graph._transitions.values())}")
 
-    # Test queries
+    # Test queries - use Q: format to trigger trained pattern
     test_queries = [
-        {'prompt': 'Where is PageRank', 'expected': 'cortical/analysis/pagerank.py'},
-        {'prompt': 'What does compute_all', 'expected': 'computes all analysis phases'},
-        {'prompt': 'from cortical.got import', 'expected': 'GoTManager'},
-        {'prompt': 'How to create a task', 'expected': 'python scripts/got_utils.py task create'},
-        {'prompt': 'What is PRISM', 'expected': 'Statistical Language Model'},
+        {'prompt': 'Q: Where is PageRank implemented? A:', 'expected': 'cortical analysis pagerank', 'category': 'file_location'},
+        {'prompt': 'Q: What does compute_all do? A:', 'expected': 'computes all analysis', 'category': 'function'},
+        {'prompt': 'from cortical.got import', 'expected': 'GoTManager', 'category': 'completion'},
+        {'prompt': 'Q: How to create a task? A:', 'expected': 'python scripts got_utils', 'category': 'how_to'},
+        {'prompt': 'Q: What is PRISM? A:', 'expected': 'Statistical Language Model', 'category': 'concept'},
+        {'prompt': 'Q: Where is GoTManager defined? A:', 'expected': 'cortical got api', 'category': 'file_location'},
+        {'prompt': 'Q: What does Hebbian learning mean? A:', 'expected': 'neurons that fire together', 'category': 'concept'},
+        {'prompt': 'Q: What is the work priority order? A:', 'expected': 'Security Bugs Features', 'category': 'process'},
+        {'prompt': 'Q: Where is TF-IDF implemented? A:', 'expected': 'cortical analysis tfidf', 'category': 'file_location'},
     ]
 
     print("\n" + "=" * 60)
     print("EVALUATION")
     print("=" * 60)
+    print("(Note: Slashes become spaces due to tokenization)")
 
+    correct = 0
     for q in test_queries:
-        generated = model.generate(q['prompt'], max_tokens=15, temperature=0.5)
-        print(f"\nPrompt: {q['prompt']}")
-        print(f"Generated: {generated}")
-        if q.get('expected'):
-            print(f"Expected: {q['expected']}")
+        generated = model.generate(q['prompt'], max_tokens=20, temperature=0.3)
+        # Check if key terms appear in output
+        expected_terms = q['expected'].lower().split()
+        generated_lower = generated.lower()
+        matches = sum(1 for term in expected_terms if term in generated_lower)
+        match_pct = matches / len(expected_terms) * 100 if expected_terms else 0
+        is_match = match_pct >= 50
+
+        if is_match:
+            correct += 1
+            status = "✓"
+        else:
+            status = "✗"
+
+        print(f"\n[{q['category']}] {status}")
+        print(f"  Prompt: {q['prompt']}")
+        print(f"  Generated: {generated}")
+        print(f"  Expected terms: {q['expected']}")
+        print(f"  Match: {matches}/{len(expected_terms)} terms ({match_pct:.0f}%)")
+
+    print(f"\n{'=' * 60}")
+    print(f"RESULTS: {correct}/{len(test_queries)} queries matched (≥50% of terms)")
+    print(f"{'=' * 60}")
 
     # Interactive mode
     if args.interactive:
