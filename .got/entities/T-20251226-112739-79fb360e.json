@@ -1,19 +1,23 @@
 {
-  "_checksum": "f0fed61c3c254d35",
-  "_written_at": "2025-12-26T11:27:39.326483+00:00",
+  "_checksum": "0573178437aaafe3",
+  "_written_at": "2025-12-26T13:06:37.536222+00:00",
   "data": {
     "created_at": "2025-12-26T11:27:39.317160+00:00",
     "description": "RecoveryManager has no index recovery. Corrupt indexes are silently replaced with empty ones (data loss). Add index integrity verification and rebuild from entities if needed.",
     "entity_type": "task",
     "id": "T-20251226-112739-79fb360e",
-    "metadata": {},
-    "modified_at": "2025-12-26T11:27:39.326403+00:00",
+    "metadata": {
+      "completed_at": "2025-12-26T13:06:37.529133+00:00",
+      "started_at": "2025-12-26T13:03:24.362232+00:00",
+      "updated_at": "2025-12-26T13:06:37.529144+00:00"
+    },
+    "modified_at": "2025-12-26T13:06:37.536168+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "HIGH: Add index recovery to RecoveryManager",
-    "version": 2
+    "version": 6
   }
 }

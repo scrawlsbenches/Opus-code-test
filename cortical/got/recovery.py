@@ -34,6 +34,8 @@ logger = logging.getLogger(__name__)
 from .tx_manager import TransactionManager
 from .versioned_store import VersionedStore
 from .wal import WALManager
+from .indexer import QueryIndexManager
+from .types import Task
 from cortical.utils.checksums import compute_checksum, verify_checksum
 from .errors import CorruptionError
 
@@ -51,6 +53,7 @@ class RecoveryResult:
         corrupted_wal_entries: Count of WAL entries with invalid checksums
         orphans_detected: List of entity IDs found without WAL records
         orphans_repaired: Number of orphans that were repaired (adopted)
+        indexes_rebuilt: True if indexes were rebuilt during recovery
         actions_taken: Human-readable log of recovery actions
     """
 
@@ -61,6 +64,7 @@ class RecoveryResult:
     corrupted_wal_entries: int = 0
     orphans_detected: List[str] = field(default_factory=list)
     orphans_repaired: int = 0
+    indexes_rebuilt: bool = False
     actions_taken: List[str] = field(default_factory=list)
 
     def add_action(self, action: str) -> None:
@@ -150,7 +154,119 @@ class RecoveryManager:
         if corrupted_count > 0:
             return True
 
+        # Note: Index recovery is NOT part of needs_recovery() check.
+        # Indexes are an optional feature of GoTManager, not a core part of
+        # the transaction system. Missing indexes don't indicate corruption -
+        # they may simply not have been created yet (e.g., when using
+        # TransactionManager directly without GoTManager).
+        # Index recovery is still performed during recover() if needed.
+
         return False
+
+    def needs_index_recovery(self) -> bool:
+        """
+        Check if indexes need to be rebuilt.
+
+        Indexes need recovery if:
+        - Index directory EXISTS but files are corrupt or stale
+        - Indexes were created but are now incomplete
+
+        Note: If index directory doesn't exist, this returns False.
+        Missing indexes don't need "recovery" - they were never created.
+        Index initialization is the responsibility of GoTManager, not recovery.
+
+        Returns:
+            True if index recovery is needed
+        """
+        # Check if index directory exists - if not, no recovery needed
+        # (indexes were never created, this isn't a recovery situation)
+        index_dir = self.got_dir / "indexes"
+        if not index_dir.exists():
+            return False  # Indexes never existed, nothing to recover
+
+        # Index directory exists - check if it has any files
+        index_files = list(index_dir.glob("*.json"))
+        if not index_files:
+            # Empty index directory - could be leftover from aborted init
+            # Not really a recovery situation, but clean it up
+            return False
+
+        # Indexes exist - now check if they're stale
+        # Get all task IDs from disk
+        entity_files = list(self.store.store_dir.glob("T-*.json"))
+        disk_task_ids = set()
+
+        for entity_file in entity_files:
+            if entity_file.name.startswith("_") or entity_file.suffix == ".tmp":
+                continue
+            disk_task_ids.add(entity_file.stem)
+
+        if not disk_task_ids:
+            return False  # No tasks, indexes don't need recovery
+
+        # Check if indexes are stale by comparing with entities
+        index_manager = QueryIndexManager(self.got_dir)
+
+        # Get all task IDs from index
+        indexed_task_ids = set()
+        for status in ["pending", "in_progress", "completed", "blocked"]:
+            indexed_task_ids.update(index_manager.lookup("status", status))
+
+        # Check if there are tasks on disk not in the index
+        missing_from_index = disk_task_ids - indexed_task_ids
+        if missing_from_index:
+            logger.debug(
+                "Index recovery needed: %d task(s) not indexed: %s",
+                len(missing_from_index),
+                list(missing_from_index)[:5]  # Show first 5
+            )
+            return True
+
+        return False
+
+    def rebuild_indexes(self) -> int:
+        """
+        Rebuild all indexes from current entities.
+
+        Returns:
+            Number of tasks indexed
+        """
+        index_manager = QueryIndexManager(self.got_dir)
+
+        # Get all tasks from entity store
+        tasks = []
+        entity_files = list(self.store.store_dir.glob("T-*.json"))
+
+        for entity_file in entity_files:
+            if entity_file.name.startswith("_") or entity_file.suffix == ".tmp":
+                continue
+
+            try:
+                data = self.store._read_and_verify(entity_file)
+                if data.get("entity_type") == "task":
+                    task = Task(
+                        id=data["id"],
+                        title=data.get("title", ""),
+                        status=data.get("status", "pending"),
+                        priority=data.get("priority", "medium"),
+                        description=data.get("description", ""),
+                        properties=data.get("properties", {}),
+                    )
+                    tasks.append(task)
+            except (CorruptionError, json.JSONDecodeError, KeyError, FileNotFoundError) as e:
+                logger.warning(
+                    "Skipping entity %s during index rebuild: %s: %s",
+                    entity_file.name, type(e).__name__, e
+                )
+                continue
+
+        # Rebuild indexes
+        edges = []  # No edges for now - just tasks
+        index_manager.rebuild_all(tasks, edges)
+        index_manager.save()
+
+        logger.info("Rebuilt indexes: %d tasks indexed", len(tasks))
+        return len(tasks)
 
     def recover(self) -> RecoveryResult:
         """
@@ -215,6 +331,12 @@ class RecoveryManager:
 
         if corrupted_wal_count > 0:
             result.add_action(f"Found {corrupted_wal_count} corrupted WAL entry/entries")
+
+        # Step 7: Rebuild indexes if needed
+        if self.needs_index_recovery():
+            task_count = self.rebuild_indexes()
+            result.indexes_rebuilt = True
+            result.add_action(f"Rebuilt indexes: {task_count} task(s) indexed")
 
         # Final status
         if not result.actions_taken:

@@ -1,17 +1,21 @@
 {
-  "_checksum": "c907d3e559f07a8c",
-  "_written_at": "2025-12-26T11:42:31.459578+00:00",
+  "_checksum": "ab38e3afa3cdce87",
+  "_written_at": "2025-12-26T13:10:08.955824+00:00",
   "data": {
     "created_at": "2025-12-26T11:42:31.454469+00:00",
     "description": "## Problem\nSprint IDs use sequential numbering (S-018, S-019, S-020) which causes:\n- ID collisions when parallel branches create sprints\n- No uniqueness guarantee across distributed work\n- Semantic drift when IDs are reused\n\n## Current State\n- Tasks use: `T-YYYYMMDD-HHMMSS-{8-char-hex}` (collision-resistant)\n- Sprints use: `S-{number}` or `S-{slug}` (collision-prone)\n- Decisions use: `D-YYYYMMDD-HHMMSS-{8-char-hex}` (collision-resistant)\n\n## Investigation Scope\n\n1. **Feasibility analysis**\n   - Can we migrate to `S-YYYYMMDD-HHMMSS-{8-char-hex}` format?\n   - What code depends on sprint ID format?\n   - Are there numeric comparisons or sorting assumptions?\n\n2. **Migration path**\n   - How to handle existing S-NNN sprints?\n   - Backward compatibility requirements\n   - Edge references that embed sprint IDs\n\n3. **Alternative approaches**\n   - Content-addressable IDs (hash of title + created_at)?\n   - UUID-based IDs?\n   - Namespace prefixes per branch/agent?\n\n## Deliverables\n- Pros/cons analysis of each approach\n- Code locations that need changes\n- Migration script requirements\n- Recommendation with rationale",
     "entity_type": "task",
     "id": "T-20251226-114231-8be6020c",
-    "metadata": {},
-    "modified_at": "2025-12-26T11:42:31.459494+00:00",
+    "metadata": {
+      "completed_at": "2025-12-26T13:10:08.947071+00:00",
+      "started_at": "2025-12-26T13:09:02.797415+00:00",
+      "updated_at": "2025-12-26T13:10:08.947078+00:00"
+    },
+    "modified_at": "2025-12-26T13:10:08.955767+00:00",
     "priority": "high",
     "properties": {},
-    "status": "pending",
+    "status": "completed",
     "title": "Investigate timestamp-based sprint IDs to prevent collisions",
-    "version": 2
+    "version": 6
   }
 }
