@@ -1,0 +1,19 @@
+{
+  "_checksum": "558267a10373909a",
+  "_written_at": "2025-12-26T02:02:16.034382+00:00",
+  "data": {
+    "created_at": "2025-12-26T02:02:16.028291+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251226-020216-9e25ca2b",
+    "metadata": {},
+    "modified_at": "2025-12-26T02:02:16.034313+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "T4.4: Add attention_routing() based on mode",
+    "version": 2
+  }
+}
