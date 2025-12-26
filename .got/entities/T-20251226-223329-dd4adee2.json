@@ -1,0 +1,19 @@
+{
+  "_checksum": "571e280fc2aa2e7a",
+  "_written_at": "2025-12-26T22:33:29.840968+00:00",
+  "data": {
+    "created_at": "2025-12-26T22:33:29.837510+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251226-223329-dd4adee2",
+    "metadata": {},
+    "modified_at": "2025-12-26T22:33:29.840901+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "S20.7: Corpus builder - combine all patterns into training corpus with batching",
+    "version": 2
+  }
+}
