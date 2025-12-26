@@ -1,0 +1,19 @@
+{
+  "_checksum": "5e7e400784f4f4b0",
+  "_written_at": "2025-12-26T14:48:25.531386+00:00",
+  "data": {
+    "created_at": "2025-12-26T14:48:25.527463+00:00",
+    "description": "Run full benchmark suite and save results as baseline for regression tracking. Add to CI/CD pipeline for continuous monitoring.",
+    "entity_type": "task",
+    "id": "T-20251226-144825-e21737ee",
+    "metadata": {},
+    "modified_at": "2025-12-26T14:48:25.531309+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Establish Woven Mind benchmark baseline",
+    "version": 2
+  }
+}
