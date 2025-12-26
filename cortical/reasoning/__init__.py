@@ -393,6 +393,33 @@ from .homeostasis import (
 )
 
 # =============================================================================
+# LOOM-HIVE CONNECTOR: Dual-Process Integration (Sprint 4)
+# =============================================================================
+
+from .loom_hive import (
+    LoomHiveConfig,
+    LoomHiveConnector,
+)
+
+from .loom_cortex import (
+    LoomCortexConfig,
+    LoomCortexConnector,
+)
+
+from .attention_router import (
+    AttentionRouterConfig,
+    RoutingResult,
+    DualRoutingResult,
+    AttentionRouter,
+)
+
+from .woven_mind import (
+    WovenMindConfig,
+    WovenMindResult,
+    WovenMind,
+)
+
+# =============================================================================
 # CORTEX ABSTRACTION: Hierarchical Pattern Abstraction (Sprint 3)
 # =============================================================================
 
@@ -418,6 +445,15 @@ from .goal_stack import (
     Goal,
     # Goal stack manager
     GoalStack,
+)
+
+# =============================================================================
+# ABSTRACTION-PLN BRIDGE: Wiring Abstractions to PLN (Sprint 3, T3.5)
+# =============================================================================
+
+from .abstraction_pln import (
+    # Bridge class
+    AbstractionPLNBridge,
 )
 
 # =============================================================================
@@ -654,6 +690,25 @@ __all__ = [
     'HomeostasisRegulator',
     'AdaptiveHomeostasisRegulator',
 
+    # === Loom-Hive Connector (Sprint 4) ===
+    'LoomHiveConfig',
+    'LoomHiveConnector',
+
+    # === Loom-Cortex Connector (Sprint 4) ===
+    'LoomCortexConfig',
+    'LoomCortexConnector',
+
+    # === Attention Router (Sprint 4) ===
+    'AttentionRouterConfig',
+    'RoutingResult',
+    'DualRoutingResult',
+    'AttentionRouter',
+
+    # === WovenMind Facade (Sprint 4) ===
+    'WovenMindConfig',
+    'WovenMindResult',
+    'WovenMind',
+
     # === Cortex Abstraction (Sprint 3) ===
     'Abstraction',
     'PatternObservation',
@@ -665,4 +720,7 @@ __all__ = [
     'GoalPriority',
     'Goal',
     'GoalStack',
+
+    # === Abstraction-PLN Bridge (Sprint 3, T3.5) ===
+    'AbstractionPLNBridge',
 ]

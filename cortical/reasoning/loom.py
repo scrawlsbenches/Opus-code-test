@@ -873,6 +873,10 @@ class Loom(LoomInterface):
         """Get the current surprise baseline."""
         return self._surprise_detector.get_baseline()
 
+    def reset_surprise_baseline(self) -> None:
+        """Reset only the surprise baseline without resetting mode state."""
+        self._surprise_detector.reset_baseline()
+
     def get_transition_history(self) -> List[ModeTransition]:
         """Get recent mode transitions."""
         return self._mode_controller.get_transition_history()
