@@ -47,7 +47,16 @@ from cortical.reasoning.graph_persistence import GraphWAL, GraphRecovery, GitAut
 from cortical.got.cli.doc import setup_doc_parser, handle_doc_command
 from cortical.got.cli.task import setup_task_parser, handle_task_command
 from cortical.got.cli.sprint import setup_sprint_parser, setup_epic_parser, handle_sprint_command, handle_epic_command
-from cortical.got.cli.handoff import setup_handoff_parser, handle_handoff_command
+from cortical.got.cli.handoff import (
+    setup_handoff_parser,
+    handle_handoff_command,
+    # Re-export individual handlers for tests
+    cmd_handoff_initiate,
+    cmd_handoff_accept,
+    cmd_handoff_complete,
+    cmd_handoff_reject,
+    cmd_handoff_list,
+)
 from cortical.got.cli.decision import setup_decision_parser, handle_decision_command
 from cortical.got.cli.query import setup_query_parser, handle_query_commands
 from cortical.got.cli.backup import setup_backup_parser, handle_backup_command, handle_sync_migrate_commands
@@ -3249,128 +3258,9 @@ def cmd_backup_restore(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
-def cmd_handoff_initiate(args, manager: "TransactionalGoTAdapter") -> int:
-    """Initiate a handoff to another agent."""
-    task = manager.get_task(args.task_id)
-    if not task:
-        print(f"Task not found: {args.task_id}")
-        return 1
-
-    # Use manager's handoff method (works with TX backend)
-    handoff_id = manager.initiate_handoff(
-        source_agent=args.source,
-        target_agent=args.target,
-        task_id=args.task_id,
-        context={
-            "task_title": task.content,
-            "task_status": task.properties.get("status"),
-            "task_priority": task.properties.get("priority"),
-        },
-        instructions=args.instructions,
-    )
-
-    print(f"Handoff initiated: {handoff_id}")
-    print(f"  Task: {task.content}")
-    print(f"  From: {args.source} → To: {args.target}")
-    if args.instructions:
-        print(f"  Instructions: {args.instructions}")
-    return 0
-
-
-def cmd_handoff_accept(args, manager: "TransactionalGoTAdapter") -> int:
-    """Accept a handoff."""
-    # Use manager's handoff method (works with TX backend)
-    success = manager.accept_handoff(
-        handoff_id=args.handoff_id,
-        agent=args.agent,
-        acknowledgment=args.message,
-    )
-
-    if not success:
-        print(f"Failed to accept handoff: {args.handoff_id}")
-        return 1
-
-    print(f"Handoff accepted: {args.handoff_id}")
-    print(f"  Agent: {args.agent}")
-    return 0
-
-
-def cmd_handoff_complete(args, manager: "TransactionalGoTAdapter") -> int:
-    """Complete a handoff."""
-    try:
-        result = json.loads(args.result)
-    except json.JSONDecodeError:
-        result = {"message": args.result}
-
-    # Use manager's handoff method (works with TX backend)
-    success = manager.complete_handoff(
-        handoff_id=args.handoff_id,
-        agent=args.agent,
-        result=result,
-        artifacts=args.artifacts or [],
-    )
-
-    if not success:
-        print(f"Failed to complete handoff: {args.handoff_id}")
-        return 1
-
-    print(f"Handoff completed: {args.handoff_id}")
-    print(f"  Agent: {args.agent}")
-    print(f"  Result: {json.dumps(result, indent=2)}")
-    return 0
-
-
-def cmd_handoff_reject(args, manager: "TransactionalGoTAdapter") -> int:
-    """Reject a handoff."""
-    # Read reason from stdin if '-' is specified
-    reason = args.reason
-    if reason == "-":
-        reason = sys.stdin.read().strip()
-
-    success = manager.reject_handoff(
-        handoff_id=args.handoff_id,
-        agent=args.agent,
-        reason=reason,
-    )
-
-    if not success:
-        print(f"Failed to reject handoff: {args.handoff_id}")
-        return 1
-
-    print(f"Handoff rejected: {args.handoff_id}")
-    print(f"  Agent: {args.agent}")
-    print(f"  Reason: {reason}")
-    return 0
-
-
-def cmd_handoff_list(args, manager: "TransactionalGoTAdapter") -> int:
-    """List handoffs."""
-    # Use manager's handoff method (works with TX backend)
-    handoffs = manager.list_handoffs(status=args.status)
-
-    if not handoffs:
-        print("No handoffs found.")
-        return 0
-
-    print(f"Handoffs ({len(handoffs)}):\n")
-    for h in handoffs:
-        status = h.get("status", "?")
-        status_icon = {
-            "initiated": "→",
-            "accepted": "✓",
-            "completed": "✓✓",
-            "rejected": "✗",
-        }.get(status, "?")
-
-        print(f"  {status_icon} {h['id']}")
-        print(f"      {h.get('source_agent', '?')} → {h.get('target_agent', '?')}")
-        print(f"      Task: {h.get('task_id', '?')}")
-        print(f"      Status: {status}")
-        if h.get("instructions"):
-            print(f"      Instructions: {h['instructions'][:50]}...")
-        print()
-
-    return 0
+# NOTE: Handoff command handlers (cmd_handoff_*) are imported from
+# cortical/got/cli/handoff.py to avoid code duplication.
+# See imports at top of file.
 
 
 def cmd_decision_log(args, manager: "TransactionalGoTAdapter") -> int:

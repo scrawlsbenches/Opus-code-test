@@ -120,8 +120,13 @@ def mock_manager(temp_got_dir):
 
 @pytest.fixture
 def mock_args():
-    """Create a mock args object for argparse."""
+    """Create a mock args object for argparse.
+
+    Sets common optional arguments to None to avoid Mock comparison issues.
+    """
     args = Mock()
+    # Set common optional arguments to None (avoid Mock comparison issues)
+    args.limit = None
     return args
 
 
