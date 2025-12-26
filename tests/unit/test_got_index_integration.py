@@ -178,7 +178,6 @@ class TestIndexConcurrency:
         with tempfile.TemporaryDirectory() as tmp:
             yield Path(tmp)
 
-    @pytest.mark.skip(reason="Known race condition in VersionedStore._version.tmp - see Task T-20251226-112810-f4d8650c")
     def test_index_consistent_after_concurrent_transactions(self, got_dir):
         """Index should remain consistent after concurrent transactions."""
         import threading

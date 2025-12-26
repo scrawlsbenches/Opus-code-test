@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import json
+import threading
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, Optional
@@ -70,6 +71,14 @@ class VersionedStore:
 
         # Process lock for concurrent history file access protection
         self._history_lock = ProcessLock(self.history_dir / ".history.lock")
+
+        # Thread lock for concurrent version file access protection (within same process)
+        # ProcessLock only provides process-level locking via fcntl.flock, which doesn't
+        # provide mutual exclusion between threads in the same process.
+        self._version_thread_lock = threading.Lock()
+
+        # Process lock for cross-process version file protection
+        self._version_lock = ProcessLock(self.store_dir / ".version.lock", reentrant=False)
 
         self._version = self._load_version()
 
@@ -501,20 +510,30 @@ class VersionedStore:
         return computed_version
 
     def _save_version(self) -> None:
-        """Save global version to _version.json."""
+        """
+        Save global version to _version.json.
+
+        Uses both threading.Lock (for thread safety within a process) and
+        ProcessLock (for safety across processes) to prevent race conditions
+        when multiple threads/processes try to update _version.tmp simultaneously.
+        """
         version_path = self.store_dir / "_version.json"
         data = {"version": self._version}
 
-        # Write to temp first
-        temp_path = version_path.with_suffix('.tmp')
-        with open(temp_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, sort_keys=True)
+        # Thread lock for intra-process safety (fcntl.flock doesn't work between threads)
+        with self._version_thread_lock:
+            # Process lock for inter-process safety
+            with self._version_lock:
+                # Write to temp first
+                temp_path = version_path.with_suffix('.tmp')
+                with open(temp_path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2, sort_keys=True)
 
-        # Fsync (respects durability mode)
-        self._fsync_file(temp_path)
+                # Fsync (respects durability mode)
+                self._fsync_file(temp_path)
 
-        # Rename (atomic on POSIX)
-        temp_path.rename(version_path)
+                # Rename (atomic on POSIX)
+                temp_path.rename(version_path)
 
     def _entity_from_dict(self, data: dict) -> Entity:
         """
