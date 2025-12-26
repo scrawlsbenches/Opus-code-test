@@ -156,14 +156,16 @@ def cmd_validate(args, manager: "TransactionalGoTAdapter") -> int:
     orphan_edges = []  # Edges pointing to non-existent entities
 
     for edge in manager.graph.edges:
+        # Create edge identifier from source->target (ThoughtEdge has no .id attribute)
+        edge_repr = f"{edge.source_id}->{edge.target_id}"
         if edge.source_id in all_node_ids:
             nodes_with_edges.add(edge.source_id)
         else:
-            orphan_edges.append((edge.id, "source", edge.source_id))
+            orphan_edges.append((edge_repr, "source", edge.source_id))
         if edge.target_id in all_node_ids:
             nodes_with_edges.add(edge.target_id)
         else:
-            orphan_edges.append((edge.id, "target", edge.target_id))
+            orphan_edges.append((edge_repr, "target", edge.target_id))
 
     orphan_count = len(all_node_ids - nodes_with_edges)
     orphan_rate = orphan_count / max(total_nodes, 1) * 100

@@ -11,6 +11,7 @@ This module can be integrated into got_utils.py CLI or used standalone.
 """
 
 import json
+import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -28,6 +29,11 @@ def cmd_handoff_initiate(args, manager: "TransactionalGoTAdapter") -> int:
         print(f"Task not found: {args.task_id}")
         return 1
 
+    # Read instructions from stdin if '-' is specified
+    instructions = args.instructions
+    if instructions == "-":
+        instructions = sys.stdin.read().strip()
+
     # Use manager's handoff method (works with TX backend)
     handoff_id = manager.initiate_handoff(
         source_agent=args.source,
@@ -38,14 +44,16 @@ def cmd_handoff_initiate(args, manager: "TransactionalGoTAdapter") -> int:
             "task_status": task.properties.get("status"),
             "task_priority": task.properties.get("priority"),
         },
-        instructions=args.instructions,
+        instructions=instructions,
     )
 
     print(f"Handoff initiated: {handoff_id}")
     print(f"  Task: {task.content}")
     print(f"  From: {args.source} → To: {args.target}")
-    if args.instructions:
-        print(f"  Instructions: {args.instructions}")
+    if instructions:
+        # Truncate for display
+        display_instructions = instructions[:100] + "..." if len(instructions) > 100 else instructions
+        print(f"  Instructions: {display_instructions}")
     return 0
 
 
@@ -238,7 +246,7 @@ def setup_handoff_parser(subparsers) -> None:
     handoff_init.add_argument(
         "--instructions", "-i",
         default="",
-        help="Instructions for target agent"
+        help="Instructions for target agent (use '-' to read from stdin)"
     )
 
     # handoff accept
