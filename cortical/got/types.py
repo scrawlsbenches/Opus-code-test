@@ -15,6 +15,33 @@ from cortical.utils.checksums import compute_checksum
 from .errors import ValidationError
 
 
+# Valid edge types - single source of truth
+# This set is re-exported in entity_schemas.py for schema validation
+VALID_EDGE_TYPES = frozenset({
+    # Core relationship types
+    'DEPENDS_ON',    # Task A depends on Task B
+    'BLOCKS',        # Task A blocks Task B
+    'CONTAINS',      # Sprint contains Task, Epic contains Sprint
+    'RELATES_TO',    # General relationship
+    'REQUIRES',      # Hard requirement
+    'IMPLEMENTS',    # Task implements Decision
+    'SUPERSEDES',    # Entity replaces another
+    'DERIVED_FROM',  # Entity derived from another
+    # Hierarchical relationships
+    'PARENT_OF',     # Hierarchical parent
+    'CHILD_OF',      # Hierarchical child
+    'PART_OF',       # Component of larger entity (Sprint PART_OF Epic)
+    # Reference and semantic relationships
+    'REFERENCES',    # Soft reference
+    'CONTRADICTS',   # Conflicting entities
+    'JUSTIFIES',     # Decision justifies Task
+    # Workflow relationships
+    'TRANSFERS',     # Task transfers to Handoff
+    'PRODUCES',      # Task produces Document/Artifact
+    'DOCUMENTED_BY', # Task/Decision is documented by Document (inverse of PRODUCES)
+})
+
+
 @dataclass
 class Entity:
     """
@@ -330,6 +357,15 @@ class Edge(Entity):
     def __post_init__(self):
         """Validate edge fields and auto-generate ID if needed."""
         self.entity_type = "edge"
+
+        # Validate edge_type against allowed values
+        if self.edge_type not in VALID_EDGE_TYPES:
+            raise ValidationError(
+                f"Invalid edge_type: '{self.edge_type}'. "
+                f"Must be one of: {sorted(VALID_EDGE_TYPES)}",
+                edge_type=self.edge_type,
+                valid_types=sorted(VALID_EDGE_TYPES)
+            )
 
         # Auto-generate ID if not provided or empty
         if not self.id:

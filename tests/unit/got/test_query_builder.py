@@ -46,7 +46,7 @@ class TestFluentQueryBuilder:
 
         # Create decision
         self.decision = manager.create_decision("Use builder pattern", rationale="Cleaner API")
-        manager.add_edge(self.task1.id, self.decision.id, "JUSTIFIED_BY")
+        manager.add_edge(self.task1.id, self.decision.id, "JUSTIFIES")
 
         return manager
 
@@ -468,11 +468,11 @@ class TestPathFinder:
         self.d = manager.create_task("D", status="pending")
         self.e = manager.create_task("E", status="pending")
 
-        manager.add_edge(self.a.id, self.b.id, "CONNECTS")
-        manager.add_edge(self.a.id, self.c.id, "CONNECTS")
-        manager.add_edge(self.b.id, self.d.id, "CONNECTS")
-        manager.add_edge(self.c.id, self.d.id, "CONNECTS")
-        manager.add_edge(self.d.id, self.e.id, "CONNECTS")
+        manager.add_edge(self.a.id, self.b.id, "RELATES_TO")
+        manager.add_edge(self.a.id, self.c.id, "RELATES_TO")
+        manager.add_edge(self.b.id, self.d.id, "RELATES_TO")
+        manager.add_edge(self.c.id, self.d.id, "RELATES_TO")
+        manager.add_edge(self.d.id, self.e.id, "RELATES_TO")
 
         return manager
 
@@ -512,7 +512,7 @@ class TestPathFinder:
 
         path = (
             PathFinder(manager)
-            .via_edges("CONNECTS")
+            .via_edges("RELATES_TO")
             .shortest_path(self.a.id, self.e.id)
         )
 
