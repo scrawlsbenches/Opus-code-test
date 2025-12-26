@@ -349,6 +349,36 @@ from .prism_pln import (
 )
 
 # =============================================================================
+# THE LOOM: Dual-Process Integration Layer
+# =============================================================================
+
+from .loom import (
+    # Enums
+    ThinkingMode,
+    TransitionTrigger,
+    # Data structures
+    SurpriseSignal,
+    LoomConfig,
+    ModeTransition,
+    LoomAttentionResult,
+    # Protocols
+    SurpriseDetectorProtocol,
+    ModeControllerProtocol,
+    LoomObserverProtocol,
+    # Abstract base
+    LoomInterface,
+    # Concrete implementations
+    SurpriseDetector,
+    ModeController,
+    Loom,
+    # PRISM integration
+    LoomEnhancedAttention,
+    # Type aliases
+    TransitionCallback,
+    SurpriseCallback,
+)
+
+# =============================================================================
 # PRISM-Attention: Selective Focus Mechanisms
 # =============================================================================
 
@@ -555,4 +585,22 @@ __all__ = [
     'AttentionVisualizer',
     'AttentionHeatmap',
     'AttentionResult',
+
+    # === The Loom: Dual-Process Integration ===
+    'ThinkingMode',
+    'TransitionTrigger',
+    'SurpriseSignal',
+    'LoomConfig',
+    'ModeTransition',
+    'LoomAttentionResult',
+    'SurpriseDetectorProtocol',
+    'ModeControllerProtocol',
+    'LoomObserverProtocol',
+    'LoomInterface',
+    'SurpriseDetector',
+    'ModeController',
+    'Loom',
+    'LoomEnhancedAttention',
+    'TransitionCallback',
+    'SurpriseCallback',
 ]
