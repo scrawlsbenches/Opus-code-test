@@ -203,3 +203,149 @@ class TestIndexRecoveryResult:
         # Indexes should not be rebuilt
         assert hasattr(result, 'indexes_rebuilt')
         assert result.indexes_rebuilt == False
+
+
+class TestIndexErrorRecovery:
+    """Test index recovery from various error conditions.
+
+    These tests verify that the index system handles corruption,
+    partial writes, and other error conditions gracefully.
+
+    Task: T-20251226-112817-d9027d49
+    """
+
+    @pytest.fixture
+    def got_dir(self):
+        """Create a temporary GoT directory."""
+        with tempfile.TemporaryDirectory() as tmp:
+            yield Path(tmp)
+
+    def test_recovery_from_corrupted_index_file(self, got_dir):
+        """Recovery should rebuild indexes when index file is corrupted."""
+        # Create manager and add tasks
+        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        task1 = manager.create_task("Task 1", status="pending", priority="high")
+        _ = manager.index_manager
+
+        # Corrupt the index file by writing garbage
+        index_dir = got_dir / "indexes"
+        index_dir.mkdir(exist_ok=True)
+        status_index = index_dir / "by_status.json"
+        with open(status_index, "w") as f:
+            f.write("not valid json {{{")
+
+        # Create new manager - should recover
+        manager2 = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        index = manager2.index_manager
+
+        # Index should still work after recovery
+        pending_ids = index.lookup("status", "pending")
+        assert task1.id in pending_ids
+
+    def test_recovery_from_empty_index_file(self, got_dir):
+        """Recovery should rebuild indexes when index file is empty."""
+        # Create manager and add tasks
+        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        task1 = manager.create_task("Task 1", status="completed", priority="low")
+        _ = manager.index_manager
+
+        # Make index file empty
+        index_dir = got_dir / "indexes"
+        index_dir.mkdir(exist_ok=True)
+        status_index = index_dir / "by_status.json"
+        with open(status_index, "w") as f:
+            f.write("")
+
+        # Create new manager - should recover
+        manager2 = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        index = manager2.index_manager
+
+        # Index should still work after recovery
+        completed_ids = index.lookup("status", "completed")
+        assert task1.id in completed_ids
+
+    def test_recovery_from_partial_index_data(self, got_dir):
+        """Recovery should rebuild indexes when index has partial/truncated data."""
+        # Create manager and add tasks
+        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        task1 = manager.create_task("Task 1", status="pending")
+        task2 = manager.create_task("Task 2", status="in_progress")
+        _ = manager.index_manager
+
+        # Write partial JSON (truncated during write)
+        index_dir = got_dir / "indexes"
+        index_dir.mkdir(exist_ok=True)
+        status_index = index_dir / "by_status.json"
+        with open(status_index, "w") as f:
+            f.write('{"pending": ["T-incomplete-data"')  # Truncated JSON
+
+        # Create new manager - should recover
+        manager2 = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        index = manager2.index_manager
+
+        # Index should be rebuilt with correct data
+        pending_ids = index.lookup("status", "pending")
+        in_progress_ids = index.lookup("status", "in_progress")
+        assert task1.id in pending_ids
+        assert task2.id in in_progress_ids
+
+    def test_index_recovered_after_entity_with_corrupted_checksum(self, got_dir):
+        """Index should skip entities with corrupted checksums during rebuild."""
+        # Create manager and add tasks
+        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        task1 = manager.create_task("Task 1", status="pending")
+        task2 = manager.create_task("Task 2", status="pending")
+        _ = manager.index_manager
+
+        # Corrupt task1's checksum in entity file
+        entity_file = got_dir / "entities" / f"{task1.id}.json"
+        with open(entity_file, "r") as f:
+            content = json.load(f)
+        content["_checksum"] = "corrupted123"
+        with open(entity_file, "w") as f:
+            json.dump(content, f)
+
+        # Delete indexes to force rebuild
+        index_dir = got_dir / "indexes"
+        if index_dir.exists():
+            for f in index_dir.glob("*.json"):
+                f.unlink()
+
+        # Run recovery
+        recovery = RecoveryManager(got_dir)
+        result = recovery.recover()
+
+        # task2 should be in index, task1 may be skipped due to corruption
+        manager2 = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        index = manager2.index_manager
+        pending_ids = index.lookup("status", "pending")
+
+        # At minimum, task2 should be indexed
+        assert task2.id in pending_ids
+
+    def test_recovery_creates_missing_index_directory(self, got_dir):
+        """Recovery should create indexes directory if it doesn't exist."""
+        # Create manager and add tasks (no index created yet)
+        manager = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        task1 = manager.create_task("Task 1", status="pending")
+
+        # Ensure no index directory
+        index_dir = got_dir / "indexes"
+        if index_dir.exists():
+            import shutil
+            shutil.rmtree(index_dir)
+
+        assert not index_dir.exists()
+
+        # Run recovery
+        recovery = RecoveryManager(got_dir)
+        result = recovery.recover()
+
+        # Indexes should be rebuilt
+        assert result.indexes_rebuilt
+
+        # Create new manager to verify
+        manager2 = GoTManager(got_dir, durability=DurabilityMode.RELAXED)
+        index = manager2.index_manager
+        pending_ids = index.lookup("status", "pending")
+        assert task1.id in pending_ids
