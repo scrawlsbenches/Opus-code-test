@@ -38,6 +38,7 @@ from typing import Dict, List, Any, Optional
 
 from cortical.wal import TransactionWALEntry
 from cortical.utils.checksums import compute_checksum
+from cortical.utils.locking import ProcessLock
 from .errors import CorruptionError
 from .config import DurabilityMode
 
@@ -104,6 +105,9 @@ class WALManager:
         self.wal_file = self.wal_dir / "current.wal"
         self.seq_file = self.wal_dir / "_sequence.json"
 
+        # Process lock for concurrent access protection
+        self._wal_lock = ProcessLock(self.wal_dir / ".wal.lock")
+
         # Load or initialize sequence counter
         self._sequence = self._load_sequence()
 
@@ -142,6 +146,9 @@ class WALManager:
         """
         Append entry to WAL with fsync.
 
+        Uses file locking to prevent concurrent WAL corruption when multiple
+        processes write simultaneously.
+
         Args:
             tx_id: Transaction ID
             operation: Operation type (TX_BEGIN, WRITE, TX_COMMIT, etc.)
@@ -150,26 +157,28 @@ class WALManager:
         Returns:
             Sequence number of the entry
         """
-        seq = self._next_seq()
+        # Acquire lock to prevent concurrent writes from interleaving
+        with self._wal_lock:
+            seq = self._next_seq()
 
-        # Create entry using shared TransactionWALEntry
-        entry = TransactionWALEntry(
-            seq=seq,
-            timestamp=datetime.now(timezone.utc).isoformat(),
-            tx_id=tx_id,
-            operation=operation,
-            payload=data,
-        )
+            # Create entry using shared TransactionWALEntry
+            entry = TransactionWALEntry(
+                seq=seq,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                tx_id=tx_id,
+                operation=operation,
+                payload=data,
+            )
 
-        # Append to WAL file using entry's serialization
-        with open(self.wal_file, 'a', encoding='utf-8') as f:
-            f.write(json.dumps(entry.to_dict(), separators=(',', ':')) + '\n')
-            f.flush()
-            # Only fsync if PARANOID mode
-            if self.durability == DurabilityMode.PARANOID:
-                os.fsync(f.fileno())
+            # Append to WAL file using entry's serialization
+            with open(self.wal_file, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(entry.to_dict(), separators=(',', ':')) + '\n')
+                f.flush()
+                # Only fsync if PARANOID mode
+                if self.durability == DurabilityMode.PARANOID:
+                    os.fsync(f.fileno())
 
-        return seq
+            return seq
 
     def log_tx_begin(self, tx_id: str, snapshot_version: int) -> int:
         """
