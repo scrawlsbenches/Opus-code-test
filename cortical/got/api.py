@@ -40,6 +40,7 @@ from cortical.utils.id_generation import (
 from .tx_manager import TransactionManager, CommitResult
 from .sync import SyncManager, SyncResult
 from .recovery import RecoveryManager, RecoveryResult
+from .indexer import QueryIndexManager
 from .types import Task, Decision, Edge, Entity, Sprint, Epic, Handoff, ClaudeMdLayer, ClaudeMdVersion, Document
 from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
@@ -100,6 +101,7 @@ class GoTManager:
         self.tx_manager = TransactionManager(self.got_dir, durability=durability)
         self._sync_manager = None  # Lazy initialization
         self._recovery_manager = None  # Lazy initialization
+        self._index_manager = None  # Lazy initialization
 
         # Entity cache for read performance (10-50x faster for repeated queries)
         self._cache_enabled = cache_enabled
@@ -131,6 +133,74 @@ class GoTManager:
         if self._recovery_manager is None:
             self._recovery_manager = RecoveryManager(self.got_dir)
         return self._recovery_manager
+
+    @property
+    def index_manager(self) -> QueryIndexManager:
+        """
+        Get index manager (lazy initialization with rebuild).
+
+        The index manager is initialized lazily and rebuilds indexes
+        from entities on first access to ensure consistency.
+        """
+        if self._index_manager is None:
+            self._index_manager = QueryIndexManager(self.got_dir)
+            # Rebuild indexes from entities to ensure consistency
+            self._rebuild_indexes()
+        return self._index_manager
+
+    def _rebuild_indexes(self) -> None:
+        """Rebuild all indexes from current entities."""
+        if self._index_manager is None:
+            return
+
+        # Get all tasks and edges for index rebuild
+        tasks = self.list_all_tasks()
+        edges = self.list_edges()
+
+        # Rebuild indexes
+        self._index_manager.rebuild_all(tasks, edges)
+        logger.debug(f"Rebuilt indexes: {len(tasks)} tasks, {len(edges)} edges")
+
+    def _update_index_for_task(
+        self,
+        task: Task,
+        old_status: Optional[str] = None,
+        old_priority: Optional[str] = None,
+        is_delete: bool = False
+    ) -> None:
+        """
+        Update index when a task changes.
+
+        Args:
+            task: The task that changed
+            old_status: Previous status (for update operations)
+            old_priority: Previous priority (for update operations)
+            is_delete: True if task is being deleted
+        """
+        if self._index_manager is None:
+            return
+
+        if is_delete:
+            self._index_manager.remove_task(task.id)
+        elif old_status is not None or old_priority is not None:
+            # Update operation
+            self._index_manager.update_task(
+                task.id,
+                old_status=old_status,
+                new_status=task.status,
+                old_priority=old_priority,
+                new_priority=task.priority
+            )
+        else:
+            # Create operation
+            self._index_manager.index_task(
+                task.id,
+                status=task.status,
+                priority=task.priority
+            )
+
+        # Save indexes after each update
+        self._index_manager.save()
 
     # ==================== Cache Methods ====================
 
@@ -596,6 +666,11 @@ class GoTManager:
 
         # Invalidate cache for deleted entities
         self._cache_invalidate_many(ids_to_invalidate)
+
+        # Remove task from index
+        if self._index_manager is not None:
+            self._index_manager.remove_task(task_id)
+            self._index_manager.save()
 
     # Sprint management methods
     def create_sprint(
@@ -1977,6 +2052,9 @@ class TransactionContext:
         self.read_only = read_only
         self.tx: Optional[Transaction] = None
         self._got_manager = got_manager
+        # Track task state changes for index updates
+        # Maps task_id -> {'old_status': str, 'old_priority': str, 'is_create': bool}
+        self._task_changes: Dict[str, Dict[str, Any]] = {}
 
     def __enter__(self) -> TransactionContext:
         """Begin transaction."""
@@ -2015,7 +2093,41 @@ class TransactionContext:
                 written_ids = list(self.tx.write_set.keys())
                 self._got_manager._cache_invalidate_many(written_ids)
 
+            # Update indexes for task changes after successful commit
+            if self._got_manager is not None and self._task_changes:
+                self._apply_index_updates()
+
         return False  # Propagate exceptions
+
+    def _apply_index_updates(self) -> None:
+        """Apply all tracked task changes to the index."""
+        if self._got_manager is None or self._got_manager._index_manager is None:
+            return
+
+        for task_id, changes in self._task_changes.items():
+            task = self.tx.write_set.get(task_id)
+            if task is None or not isinstance(task, Task):
+                continue
+
+            if changes.get('is_create'):
+                # New task - add to index
+                self._got_manager._index_manager.index_task(
+                    task.id,
+                    status=task.status,
+                    priority=task.priority
+                )
+            else:
+                # Update task - update index with old/new values
+                self._got_manager._index_manager.update_task(
+                    task.id,
+                    old_status=changes.get('old_status'),
+                    new_status=task.status,
+                    old_priority=changes.get('old_priority'),
+                    new_priority=task.priority
+                )
+
+        # Save indexes after all updates
+        self._got_manager._index_manager.save()
 
     def create_task(self, title: str, **kwargs) -> Task:
         """
@@ -2038,6 +2150,10 @@ class TransactionContext:
             properties=kwargs.get("properties", {}),
         )
         self.tx_manager.write(self.tx, task)
+
+        # Track for index update after commit
+        self._task_changes[task.id] = {'is_create': True}
+
         return task
 
     def update_task(self, task_id: str, **updates) -> Task:
@@ -2057,6 +2173,14 @@ class TransactionContext:
         task = self.get_task(task_id)
         if task is None:
             raise TransactionError(f"Task not found: {task_id}")
+
+        # Track old values for index update (only if not already tracked as create)
+        if task_id not in self._task_changes:
+            self._task_changes[task_id] = {
+                'old_status': task.status,
+                'old_priority': task.priority,
+                'is_create': False
+            }
 
         # Apply updates
         for key, value in updates.items():
