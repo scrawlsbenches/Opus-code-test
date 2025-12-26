@@ -206,8 +206,13 @@ class TestConsolidationPerformance:
 
         print(f"\n  Multi-cycle consolidation: avg={avg_time:.2f}ms, max={max_time:.2f}ms")
 
-        # Should be consistent
-        assert max_time < avg_time * 3, f"Consolidation latency too variable: max={max_time:.2f}ms, avg={avg_time:.2f}ms"
+        # Should be consistent - but for very fast operations (sub-millisecond),
+        # timing jitter on build servers can cause high variance ratios even when
+        # the absolute variance is negligible. Use a minimum floor to avoid
+        # failing on operations that are already extremely fast.
+        MIN_TIME_FLOOR_MS = 0.1  # Below this, absolute time is negligible
+        effective_avg = max(avg_time, MIN_TIME_FLOOR_MS)
+        assert max_time < effective_avg * 3, f"Consolidation latency too variable: max={max_time:.2f}ms, avg={avg_time:.2f}ms"
 
 
 class TestMemoryPerformance:
