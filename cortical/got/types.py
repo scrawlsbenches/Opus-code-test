@@ -207,6 +207,7 @@ VALID_EDGE_TYPES = frozenset({
     'REFERENCES',    # Soft reference
     'CONTRADICTS',   # Conflicting entities
     'JUSTIFIES',     # Decision justifies Task
+    'MOTIVATES',     # Entity motivates another
     # Workflow relationships
     'TRANSFERS',     # Task transfers to Handoff
     'PRODUCES',      # Task produces Document/Artifact
@@ -546,7 +547,7 @@ class Edge(Entity):
         """Validate edge fields and auto-generate ID if needed."""
         self.entity_type = "edge"
 
-        # Validate edge_type against allowed values
+        # Validate edge_type against allowed values (case-sensitive, no empty)
         if self.edge_type not in VALID_EDGE_TYPES:
             raise ValidationError(
                 f"Invalid edge_type: '{self.edge_type}'. "

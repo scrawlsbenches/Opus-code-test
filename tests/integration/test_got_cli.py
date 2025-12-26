@@ -229,13 +229,13 @@ class TestEpicCommands(TestGoTCLI):
 
         assert result.returncode == 0
         assert "Created:" in result.stdout
-        assert "E-" in result.stdout  # Epic ID should be in output
+        assert "EPIC-" in result.stdout  # Epic ID should be in output
 
     def test_epic_create_with_custom_id(self, got_env):
         """Test creating an epic with a custom ID."""
         env, cwd = got_env
         result = self.run_cli(
-            ["epic", "create", "Custom Epic", "--id", "E-custom-123"],
+            ["epic", "create", "Custom Epic", "--id", "EPIC-custom-123"],
             env, cwd
         )
 
@@ -244,7 +244,7 @@ class TestEpicCommands(TestGoTCLI):
 
         # Verify it appears in list
         result = self.run_cli(["epic", "list"], env, cwd)
-        assert "E-custom-123" in result.stdout or "Custom Epic" in result.stdout
+        assert "EPIC-custom-123" in result.stdout or "Custom Epic" in result.stdout
 
     def test_epic_show(self, got_env):
         """Test showing epic details."""
