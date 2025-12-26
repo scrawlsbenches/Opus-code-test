@@ -1,19 +1,22 @@
 {
-  "_checksum": "d9c056b5a63673c8",
-  "_written_at": "2025-12-26T04:39:37.362808+00:00",
+  "_checksum": "b355eeeefd1b4554",
+  "_written_at": "2025-12-26T04:40:15.025303+00:00",
   "data": {
     "created_at": "2025-12-26T04:39:37.356251+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20251226-043937-2269ae8c",
-    "metadata": {},
-    "modified_at": "2025-12-26T04:39:37.362694+00:00",
+    "metadata": {
+      "completed_at": "2025-12-26T04:40:15.014862+00:00",
+      "updated_at": "2025-12-26T04:40:15.014870+00:00"
+    },
+    "modified_at": "2025-12-26T04:40:15.025229+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "T6.5: Knowledge transfer document for v1.0 release",
-    "version": 2
+    "version": 4
   }
 }
