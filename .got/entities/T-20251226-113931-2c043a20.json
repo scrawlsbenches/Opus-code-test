@@ -1,0 +1,17 @@
+{
+  "_checksum": "46940238fbbc40b2",
+  "_written_at": "2025-12-26T11:39:31.317146+00:00",
+  "data": {
+    "created_at": "2025-12-26T11:39:31.312425+00:00",
+    "description": "From the December 2025 codebase audit, these stale comments were identified:\n\n1. cortical/got/versioned_store.py:354 - TODO about checksums\n2. cortical/got/api.py:1680 - HACK comment  \n3. scripts/got_utils.py:1445 - TODO placeholder\n4. Plus 2 other TODO/HACK comments found during audit\n\nAction needed:\n- Review each comment to determine if still relevant\n- Remove comments that are no longer valid\n- Update comments that need correction\n- Create follow-up tasks if TODOs need implementation\n\nThis was deferred from Stage 4 of the codebase cleanup audit.",
+    "entity_type": "task",
+    "id": "T-20251226-113931-2c043a20",
+    "metadata": {},
+    "modified_at": "2025-12-26T11:39:31.317088+00:00",
+    "priority": "low",
+    "properties": {},
+    "status": "pending",
+    "title": "Investigate and clean up stale TODO/HACK comments",
+    "version": 2
+  }
+}
