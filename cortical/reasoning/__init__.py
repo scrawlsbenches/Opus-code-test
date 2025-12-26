@@ -401,6 +401,11 @@ from .loom_hive import (
     LoomHiveConnector,
 )
 
+from .loom_cortex import (
+    LoomCortexConfig,
+    LoomCortexConnector,
+)
+
 # =============================================================================
 # CORTEX ABSTRACTION: Hierarchical Pattern Abstraction (Sprint 3)
 # =============================================================================
@@ -675,6 +680,10 @@ __all__ = [
     # === Loom-Hive Connector (Sprint 4) ===
     'LoomHiveConfig',
     'LoomHiveConnector',
+
+    # === Loom-Cortex Connector (Sprint 4) ===
+    'LoomCortexConfig',
+    'LoomCortexConnector',
 
     # === Cortex Abstraction (Sprint 3) ===
     'Abstraction',
