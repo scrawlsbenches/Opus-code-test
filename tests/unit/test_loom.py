@@ -678,3 +678,486 @@ class TestEdgeCases:
         signal = surprise_detector.compute_surprise(predictions, actual)
         # Some matched, some didn't
         assert 0.3 < signal.magnitude < 0.7
+
+
+# ==============================================================================
+# LOOM ENHANCED ATTENTION TESTS
+# ==============================================================================
+
+
+class TestLoomAttentionResult:
+    """Tests for LoomAttentionResult dataclass."""
+
+    def test_creation_with_defaults(self):
+        """Test creating LoomAttentionResult with minimal args."""
+        from cortical.reasoning.loom import LoomAttentionResult
+
+        result = LoomAttentionResult(
+            top_nodes=["a", "b", "c"],
+            weights={"a": 0.8, "b": 0.5, "c": 0.3},
+            mode_used=ThinkingMode.FAST,
+        )
+        assert result.top_nodes == ["a", "b", "c"]
+        assert result.weights == {"a": 0.8, "b": 0.5, "c": 0.3}
+        assert result.mode_used == ThinkingMode.FAST
+        assert result.surprise is None
+        assert result.pln_support == 0.0
+        assert result.slm_fluency == 0.0
+        assert result.fast_result is None
+        assert result.slow_result is None
+
+    def test_creation_with_all_args(self):
+        """Test creating LoomAttentionResult with all arguments."""
+        from cortical.reasoning.loom import LoomAttentionResult
+
+        signal = SurpriseSignal(magnitude=0.5, source="test")
+        result = LoomAttentionResult(
+            top_nodes=["x"],
+            weights={"x": 1.0},
+            mode_used=ThinkingMode.SLOW,
+            surprise=signal,
+            pln_support=0.8,
+            slm_fluency=0.7,
+            fast_result={"fast": "data"},
+            slow_result={"slow": "data"},
+        )
+        assert result.surprise is signal
+        assert result.pln_support == 0.8
+        assert result.slm_fluency == 0.7
+        assert result.fast_result == {"fast": "data"}
+        assert result.slow_result == {"slow": "data"}
+
+
+class TestLoomEnhancedAttention:
+    """Tests for LoomEnhancedAttention class."""
+
+    @pytest.fixture
+    def mock_graph(self):
+        """Create a mock SynapticMemoryGraph."""
+        graph = MagicMock()
+        graph.nodes = {
+            "node_a": MagicMock(content="neural network learning"),
+            "node_b": MagicMock(content="machine learning model"),
+            "node_c": MagicMock(content="deep learning algorithm"),
+        }
+        return graph
+
+    @pytest.fixture
+    def mock_attention_weights(self):
+        """Standard attention weights for testing."""
+        return {"node_a": 0.8, "node_b": 0.5, "node_c": 0.3}
+
+    @pytest.fixture
+    def mock_attention_layer(self, mock_attention_weights):
+        """Create a mock AttentionLayer."""
+        mock_layer = MagicMock()
+        mock_layer.attend.return_value = mock_attention_weights
+        return mock_layer
+
+    def test_init_without_slm_pln(self, mock_graph, mock_attention_layer):
+        """Test initialization without SLM or PLN."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=mock_attention_layer,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph)
+
+            assert enhanced._graph is mock_graph
+            assert enhanced._slm is None
+            assert enhanced._pln is None
+            assert enhanced._unified_attention is None
+            assert isinstance(enhanced._config, LoomConfig)
+
+    def test_init_with_slm(self, mock_graph, mock_attention_layer):
+        """Test initialization with SLM."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        mock_slm = MagicMock()
+        mock_unified = MagicMock()
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=mock_attention_layer,
+        ), patch(
+            "cortical.reasoning.prism_attention.UnifiedAttention",
+            return_value=mock_unified,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph, slm=mock_slm)
+
+            assert enhanced._slm is mock_slm
+            assert enhanced._unified_attention is mock_unified
+
+    def test_init_with_pln(self, mock_graph, mock_attention_layer):
+        """Test initialization with PLN."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        mock_pln = MagicMock()
+        mock_unified = MagicMock()
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=mock_attention_layer,
+        ), patch(
+            "cortical.reasoning.prism_attention.UnifiedAttention",
+            return_value=mock_unified,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph, pln=mock_pln)
+
+            assert enhanced._pln is mock_pln
+            assert enhanced._unified_attention is mock_unified
+
+    def test_init_with_custom_config(self, mock_graph, mock_attention_layer):
+        """Test initialization with custom config."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        config = LoomConfig(surprise_threshold=0.5)
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=mock_attention_layer,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph, config=config)
+
+            assert enhanced._config.surprise_threshold == 0.5
+
+    def test_attend_first_call_no_surprise(
+        self, mock_graph, mock_attention_layer, mock_attention_weights
+    ):
+        """Test attend on first call (no previous predictions)."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=mock_attention_layer,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph)
+            result = enhanced.attend("test query")
+
+            assert result.surprise is None
+            assert result.mode_used == ThinkingMode.FAST
+            assert "node_a" in result.top_nodes
+            assert result.weights == mock_attention_weights
+
+    def test_attend_second_call_with_surprise(
+        self, mock_graph, mock_attention_layer, mock_attention_weights
+    ):
+        """Test attend on second call (with previous predictions)."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=mock_attention_layer,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph)
+
+            # First call to set up predictions
+            enhanced.attend("query 1")
+
+            # Second call should compute surprise
+            result = enhanced.attend("query 2")
+
+            # Should have surprise computed (exact value depends on matching)
+            assert result.surprise is not None
+
+    def test_attend_with_force_mode_slow(
+        self, mock_graph, mock_attention_layer, mock_attention_weights
+    ):
+        """Test attend with forced SLOW mode."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=mock_attention_layer,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph)
+            result = enhanced.attend("test", force_mode=ThinkingMode.SLOW)
+
+            assert result.mode_used == ThinkingMode.SLOW
+
+    def test_attend_with_force_mode_fast(
+        self, mock_graph, mock_attention_layer, mock_attention_weights
+    ):
+        """Test attend with forced FAST mode."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=mock_attention_layer,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph)
+            result = enhanced.attend("test", force_mode=ThinkingMode.FAST)
+
+            assert result.mode_used == ThinkingMode.FAST
+
+    def test_attend_slow_mode_with_unified_attention(self, mock_graph):
+        """Test SLOW mode uses unified attention when available."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        mock_slm = MagicMock()
+
+        mock_attention_layer = MagicMock()
+        mock_attention_layer.attend.return_value = {"node_a": 0.5}
+
+        mock_unified = MagicMock()
+        mock_unified_result = MagicMock()
+        mock_unified_result.weights = {"unified_a": 0.9}
+        mock_unified_result.top_nodes = ["unified_a"]
+        mock_unified_result.pln_support = 0.8
+        mock_unified_result.slm_fluency = 0.7
+        mock_unified.attend.return_value = mock_unified_result
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=mock_attention_layer,
+        ), patch(
+            "cortical.reasoning.prism_attention.UnifiedAttention",
+            return_value=mock_unified,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph, slm=mock_slm)
+            result = enhanced.attend("test", force_mode=ThinkingMode.SLOW)
+
+            assert result.mode_used == ThinkingMode.SLOW
+            assert result.pln_support == 0.8
+            assert result.slm_fluency == 0.7
+            assert result.top_nodes == ["unified_a"]
+            assert result.slow_result is mock_unified_result
+
+    def test_get_loom(self, mock_graph, mock_attention_layer):
+        """Test get_loom returns the Loom instance."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=mock_attention_layer,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph)
+            loom = enhanced.get_loom()
+
+            assert isinstance(loom, Loom)
+
+    def test_get_transition_history(self, mock_graph, mock_attention_layer):
+        """Test get_transition_history delegates to Loom."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=mock_attention_layer,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph)
+            history = enhanced.get_transition_history()
+
+            assert history == []
+
+    def test_reset(self, mock_graph, mock_attention_layer, mock_attention_weights):
+        """Test reset clears state."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=mock_attention_layer,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph)
+
+            # Build up some state
+            enhanced.attend("query 1")
+            assert enhanced._last_predictions  # Should have predictions
+
+            # Reset
+            enhanced.reset()
+
+            assert enhanced._last_predictions == {}
+            assert enhanced.get_loom().get_current_mode() == ThinkingMode.FAST
+
+    def test_attend_with_empty_weights(self, mock_graph):
+        """Test attend handles empty attention weights gracefully."""
+        from unittest.mock import patch
+        from cortical.reasoning.loom import LoomEnhancedAttention
+
+        empty_attention_layer = MagicMock()
+        empty_attention_layer.attend.return_value = {}
+
+        with patch(
+            "cortical.reasoning.prism_attention.AttentionLayer",
+            return_value=empty_attention_layer,
+        ):
+            enhanced = LoomEnhancedAttention(mock_graph)
+            result = enhanced.attend("empty query")
+
+            assert result.top_nodes == []
+            assert result.weights == {}
+
+
+# ==============================================================================
+# PROTOCOL CONFORMANCE TESTS
+# ==============================================================================
+
+
+class TestProtocolConformance:
+    """Tests to verify protocol implementations are correct."""
+
+    def test_loom_implements_interface(self):
+        """Verify Loom implements LoomInterface correctly."""
+        from cortical.reasoning.loom import LoomInterface
+
+        loom = Loom()
+
+        # Verify all abstract methods are implemented
+        assert hasattr(loom, 'detect_surprise')
+        assert hasattr(loom, 'select_mode')
+        assert hasattr(loom, 'register_observer')
+        assert hasattr(loom, 'get_current_mode')
+        assert hasattr(loom, 'get_config')
+
+        # Verify it's a proper subclass
+        assert isinstance(loom, LoomInterface)
+
+    def test_surprise_detector_matches_protocol(self, surprise_detector):
+        """Verify SurpriseDetector matches SurpriseDetectorProtocol."""
+        # Check required methods exist and work
+        signal = surprise_detector.compute_surprise({"a": 0.5}, {"a"})
+        assert isinstance(signal, SurpriseSignal)
+
+        result = surprise_detector.should_engage_slow(signal)
+        assert isinstance(result, bool)
+
+    def test_mode_controller_matches_protocol(self, mode_controller):
+        """Verify ModeController matches ModeControllerProtocol."""
+        # Check required methods exist and work
+        mode = mode_controller.select_mode()
+        assert isinstance(mode, ThinkingMode)
+
+        history = mode_controller.get_transition_history()
+        assert isinstance(history, list)
+
+        # Record transition works
+        transition = ModeTransition(
+            from_mode=ThinkingMode.FAST,
+            to_mode=ThinkingMode.SLOW,
+            trigger=TransitionTrigger.EXPLICIT_REQUEST,
+        )
+        mode_controller.record_transition(transition)
+        assert len(mode_controller.get_transition_history()) == 1
+
+
+# ==============================================================================
+# OBSERVABILITY DISABLED TESTS
+# ==============================================================================
+
+
+class TestObservabilityDisabled:
+    """Tests for behavior when observability is disabled."""
+
+    def test_loom_no_observer_calls_when_disabled(self):
+        """Loom should not call observers when observability disabled."""
+        config = LoomConfig(enable_observability=False)
+        loom = Loom(config)
+
+        observer = MockObserver()
+        loom.register_observer(observer)
+
+        # Actions should work but not notify observers
+        signal = loom.detect_surprise({"a": 0.9}, {"b"})
+        loom.select_mode(signal)
+
+        # Observer should NOT have been notified
+        assert len(observer.surprises) == 0
+        assert len(observer.mode_selections) == 0
+
+    def test_mode_controller_no_notifications_when_no_observers(self, mode_controller):
+        """ModeController works fine with no observers registered."""
+        # This should not raise even with transition
+        signal = SurpriseSignal(magnitude=0.8, source="test")
+        mode = mode_controller.select_mode(surprise=signal)
+        assert mode == ThinkingMode.SLOW
+
+    def test_loom_select_mode_without_signal(self):
+        """Loom select_mode works without surprise signal."""
+        loom = Loom()
+        observer = MockObserver()
+        loom.register_observer(observer)
+
+        mode = loom.select_mode()
+
+        assert mode == ThinkingMode.FAST
+        # Observer should get mode selection notification
+        assert len(observer.mode_selections) == 1
+        assert "default" in observer.mode_selections[0][1]
+
+    def test_loom_select_mode_with_context(self):
+        """Loom select_mode with context kwargs."""
+        loom = Loom()
+
+        # Low confidence should trigger SLOW
+        mode = loom.select_mode(confidence=0.3)
+        assert mode == ThinkingMode.SLOW
+
+        # High complexity should trigger SLOW
+        loom.reset()
+        mode = loom.select_mode(complexity=0.9)
+        assert mode == ThinkingMode.SLOW
+
+
+# ==============================================================================
+# ADDITIONAL EDGE CASES
+# ==============================================================================
+
+
+class TestAdditionalEdgeCases:
+    """Additional edge case tests for full coverage."""
+
+    def test_mode_controller_double_registration(self):
+        """Registering same observer twice should not duplicate."""
+        controller = ModeController()
+        observer = MockObserver()
+
+        controller.register_observer(observer)
+        controller.register_observer(observer)  # Second registration
+
+        assert len(controller._observers) == 1
+
+    def test_mode_controller_unregister_nonexistent(self):
+        """Unregistering non-existent observer should not error."""
+        controller = ModeController()
+        observer = MockObserver()
+
+        # Should not raise
+        controller.unregister_observer(observer)
+
+    def test_force_mode_no_change(self):
+        """force_mode with same mode should not create transition."""
+        controller = ModeController()
+
+        # Already in FAST mode
+        controller.force_mode(ThinkingMode.FAST, reason="no change")
+
+        # No transition should be recorded
+        assert len(controller.get_transition_history()) == 0
+
+    def test_loom_observability_with_none_signal(self):
+        """Loom observability handles None signal in select_mode."""
+        config = LoomConfig(enable_observability=True)
+        loom = Loom(config)
+
+        observer = MockObserver()
+        loom.register_observer(observer)
+
+        # Select mode with no signal
+        mode = loom.select_mode(None)
+
+        assert mode == ThinkingMode.FAST
+        # Reason should mention "default"
+        assert "default" in observer.mode_selections[0][1]

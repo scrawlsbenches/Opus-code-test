@@ -320,6 +320,9 @@ from .prism_slm import (
     SynapticTransition,
     ContextWindow,
     TransitionGraph,
+    # Hive data structures (Sprint 2)
+    HiveNode,
+    HiveEdge,
     # Language model
     PRISMLanguageModel,
 )
@@ -376,6 +379,45 @@ from .loom import (
     # Type aliases
     TransitionCallback,
     SurpriseCallback,
+)
+
+# =============================================================================
+# HOMEOSTATIC REGULATION: Network Stability
+# =============================================================================
+
+from .homeostasis import (
+    HomeostasisConfig,
+    NodeState,
+    HomeostasisRegulator,
+    AdaptiveHomeostasisRegulator,
+)
+
+# =============================================================================
+# CORTEX ABSTRACTION: Hierarchical Pattern Abstraction (Sprint 3)
+# =============================================================================
+
+from .abstraction import (
+    # Core data structures
+    Abstraction,
+    PatternObservation,
+    # Pattern detection
+    PatternDetector,
+    # Abstraction engine
+    AbstractionEngine,
+)
+
+# =============================================================================
+# GOAL STACK: Goal Tracking with Monotonic Progress (Sprint 3)
+# =============================================================================
+
+from .goal_stack import (
+    # Enums
+    GoalStatus,
+    GoalPriority,
+    # Core data structures
+    Goal,
+    # Goal stack manager
+    GoalStack,
 )
 
 # =============================================================================
@@ -557,6 +599,8 @@ __all__ = [
     'SynapticTransition',
     'ContextWindow',
     'TransitionGraph',
+    'HiveNode',
+    'HiveEdge',
     'PRISMLanguageModel',
 
     # === PRISM-PLN: Probabilistic Logic Networks ===
@@ -603,4 +647,22 @@ __all__ = [
     'LoomEnhancedAttention',
     'TransitionCallback',
     'SurpriseCallback',
+
+    # === Homeostatic Regulation ===
+    'HomeostasisConfig',
+    'NodeState',
+    'HomeostasisRegulator',
+    'AdaptiveHomeostasisRegulator',
+
+    # === Cortex Abstraction (Sprint 3) ===
+    'Abstraction',
+    'PatternObservation',
+    'PatternDetector',
+    'AbstractionEngine',
+
+    # === Goal Stack (Sprint 3) ===
+    'GoalStatus',
+    'GoalPriority',
+    'Goal',
+    'GoalStack',
 ]

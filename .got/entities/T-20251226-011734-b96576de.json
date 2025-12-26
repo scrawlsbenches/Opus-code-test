@@ -1,0 +1,22 @@
+{
+  "_checksum": "574b6b4f4244acf5",
+  "_written_at": "2025-12-26T01:26:37.447289+00:00",
+  "data": {
+    "created_at": "2025-12-26T01:17:34.071096+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251226-011734-b96576de",
+    "metadata": {
+      "completed_at": "2025-12-26T01:26:37.437575+00:00",
+      "updated_at": "2025-12-26T01:26:37.437592+00:00"
+    },
+    "modified_at": "2025-12-26T01:26:37.447235+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "Implement form_abstraction method",
+    "version": 4
+  }
+}
