@@ -1,6 +1,6 @@
 {
-  "_checksum": "4a8179e54b4171c2",
-  "_written_at": "2025-12-26T04:47:51.803386+00:00",
+  "_checksum": "4babd6f332ae4f47",
+  "_written_at": "2025-12-26T04:49:36.636918+00:00",
   "data": {
     "created_at": "2025-12-26T04:47:51.797311+00:00",
     "entity_type": "sprint",
@@ -9,13 +9,13 @@
     "id": "S-024",
     "isolation": [],
     "metadata": {},
-    "modified_at": "2025-12-26T04:47:51.803287+00:00",
+    "modified_at": "2025-12-26T04:49:36.636851+00:00",
     "notes": [],
     "number": 24,
     "properties": {},
     "session_id": "",
-    "status": "available",
+    "status": "in_progress",
     "title": "Query API Enhancements",
-    "version": 2
+    "version": 4
   }
 }
