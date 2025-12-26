@@ -120,24 +120,31 @@ def generate_sprint_id(number: Optional[int] = None) -> str:
     return f"S-{datetime.now(timezone.utc).strftime('%Y-%m')}"
 
 
-def generate_epic_id() -> str:
+def generate_epic_id(name: Optional[str] = None) -> str:
     """
     Generate epic ID.
 
-    Format: E-YYYYMMDD-HHMMSS-XXXXXXXX where XXXXXXXX is random hex.
+    Args:
+        name: Optional descriptive name for the epic (e.g., 'got-db', 'woven-mind')
 
     Returns:
-        Epic ID string (e.g., 'E-20251222-143052-q7r8s9t0')
+        Epic ID string (e.g., 'EPIC-got-db' or 'EPIC-20251222-143052-q7r8s9t0')
 
     Note:
-        - Uses UTC timezone for consistency
-        - Random suffix provides ~4 billion unique values
-        - No 'epic:' prefix (that's legacy format)
+        - Uses EPIC- prefix (NOT E- which is reserved for Edge)
+        - If name provided, creates human-readable ID
+        - Otherwise uses timestamp for uniqueness
     """
-    now = datetime.now(timezone.utc)
-    timestamp = now.strftime("%Y%m%d-%H%M%S")
-    suffix = secrets.token_hex(4)  # 8 hex chars
-    return f"E-{timestamp}-{suffix}"
+    if name:
+        # Human-readable: name-based ID
+        safe_name = name.lower().replace(" ", "-").replace("_", "-")
+        return f"EPIC-{safe_name}"
+    else:
+        # Unique: timestamp-based ID
+        now = datetime.now(timezone.utc)
+        timestamp = now.strftime("%Y%m%d-%H%M%S")
+        suffix = secrets.token_hex(4)  # 8 hex chars
+        return f"EPIC-{timestamp}-{suffix}"
 
 
 def generate_handoff_id() -> str:

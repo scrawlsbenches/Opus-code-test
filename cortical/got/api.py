@@ -950,9 +950,8 @@ class GoTManager:
             return []
 
         epics = []
-        for entity_file in entities_dir.glob("E-*.json"):
+        for entity_file in entities_dir.glob("EPIC-*.json"):
             try:
-                # Check if this is an epic (not an edge)
                 epic = self._read_epic_file(entity_file)
                 if epic is None:
                     continue

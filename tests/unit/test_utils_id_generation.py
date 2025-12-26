@@ -157,15 +157,28 @@ class TestSprintId:
 class TestEpicId:
     """Tests for generate_epic_id()."""
 
-    def test_format(self):
-        """Epic ID has correct format."""
+    def test_format_without_name(self):
+        """Epic ID has correct format when no name provided."""
         epic_id = generate_epic_id()
-        assert epic_id.startswith("E-")
-        pattern = r'^E-\d{8}-\d{6}-[0-9a-f]{8}$'
+        assert epic_id.startswith("EPIC-")
+        pattern = r'^EPIC-\d{8}-\d{6}-[0-9a-f]{8}$'
         assert re.match(pattern, epic_id)
 
+    def test_format_with_name(self):
+        """Epic ID uses name when provided."""
+        epic_id = generate_epic_id("got-db")
+        assert epic_id == "EPIC-got-db"
+
+    def test_name_sanitization(self):
+        """Epic ID sanitizes name with spaces and underscores."""
+        epic_id = generate_epic_id("Woven Mind Integration")
+        assert epic_id == "EPIC-woven-mind-integration"
+
+        epic_id = generate_epic_id("some_feature")
+        assert epic_id == "EPIC-some-feature"
+
     def test_uses_secrets_module(self, monkeypatch):
-        """Epic ID uses cryptographically secure randomness."""
+        """Epic ID uses cryptographically secure randomness when no name."""
         import secrets
         calls = []
 
@@ -174,7 +187,7 @@ class TestEpicId:
             return "q7r8s9t0"[:n*2]
 
         monkeypatch.setattr(secrets, "token_hex", mock_token_hex)
-        result = generate_epic_id()
+        result = generate_epic_id()  # No name = timestamp-based
 
         assert calls == [4]  # 4 bytes = 8 hex chars
         assert result.endswith("-q7r8s9t0")

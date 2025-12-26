@@ -136,16 +136,21 @@ class TestSprintIdGeneration:
 class TestEpicIdGeneration:
     """Tests for generate_epic_id()."""
 
-    def test_format(self):
-        """Epic ID matches expected format."""
+    def test_format_without_name(self):
+        """Epic ID matches expected format when no name provided."""
         epic_id = generate_epic_id()
-        pattern = r"^E-\d{8}-\d{6}-[a-f0-9]{8}$"
+        pattern = r"^EPIC-\d{8}-\d{6}-[a-f0-9]{8}$"
         assert re.match(pattern, epic_id), f"Invalid format: {epic_id}"
 
     def test_prefix(self):
-        """Epic ID starts with E-."""
+        """Epic ID starts with EPIC-."""
         epic_id = generate_epic_id()
-        assert epic_id.startswith("E-")
+        assert epic_id.startswith("EPIC-")
+
+    def test_with_name(self):
+        """Epic ID uses name when provided."""
+        epic_id = generate_epic_id("test-feature")
+        assert epic_id == "EPIC-test-feature"
 
 
 class TestHandoffIdGeneration:
