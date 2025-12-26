@@ -1,19 +1,22 @@
 {
-  "_checksum": "e5c5db4712f6e211",
-  "_written_at": "2025-12-26T02:02:02.443981+00:00",
+  "_checksum": "e63fcfb0da268426",
+  "_written_at": "2025-12-26T02:36:05.472638+00:00",
   "data": {
     "created_at": "2025-12-26T02:02:02.437407+00:00",
     "description": "",
     "entity_type": "task",
     "id": "T-20251226-020202-fdc56fd1",
-    "metadata": {},
-    "modified_at": "2025-12-26T02:02:02.443915+00:00",
+    "metadata": {
+      "completed_at": "2025-12-26T02:36:05.463604+00:00",
+      "updated_at": "2025-12-26T02:36:05.463610+00:00"
+    },
+    "modified_at": "2025-12-26T02:36:05.472581+00:00",
     "priority": "high",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "T4.2: Connect Loom to enhanced Cortex",
-    "version": 2
+    "version": 4
   }
 }
