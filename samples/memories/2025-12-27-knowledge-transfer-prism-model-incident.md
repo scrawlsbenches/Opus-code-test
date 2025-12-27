@@ -166,62 +166,65 @@ benchmarks/codebase_slm/models/backups/
 | Dec 27, 01:45 | 079d0c00 | MODEL OVERWRITTEN (329 vocab) |
 | Dec 27, 01:56 | cc84e3d2 | Model restored from git |
 
-### Root Cause: Training Data Never Tracked
+### Root Cause: Corpus Not Regenerated Before Training
 
-**Critical finding:** `benchmarks/codebase_slm/corpus/` was added to `.gitignore` from day 1.
+**Critical finding:** The agent ran `train_augmented.py` without first running `generate_corpus.py`.
 
+The corpus IS regeneratable from the codebase:
+```bash
+python -m benchmarks.codebase_slm.generate_corpus --full
+# Produces: 35,582 patterns from 149 Python files + 254 Markdown files
 ```
-Commit 137e5585 added to .gitignore:
-  benchmarks/codebase_slm/corpus/
-```
 
-This means:
-1. `training_patterns.jsonl` was **never committed**
-2. Only the MODEL was tracked, not its source data
-3. The original 37,318 document corpus is **unrecoverable**
+But `corpus/` is gitignored, so it must be regenerated locally. The previous agent:
+1. Ran `train_augmented.py` directly
+2. `corpus/training_patterns.jsonl` didn't exist locally
+3. Script printed "No existing patterns found" (benign message!)
+4. Trained on only 2,094 lines instead of 37,676
+5. Produced tiny 329 vocab model
 
 ### Data Accounting
 
-| What | Lines | Status |
-|------|-------|--------|
-| Model (prism_augmented.json) | 692,026 | ✅ Tracked, restored |
-| augmented_corpus.txt | 1,814 | ✅ Tracked |
-| knowledge-base/*.md | 3,144 | ✅ Tracked |
-| corpus/training_patterns.jsonl | ~35,500 | ❌ **Never tracked** |
+| What | Lines | Tracked | Regeneratable |
+|------|-------|---------|---------------|
+| Model (prism_augmented.json) | 692,026 | ✅ Yes | From corpus |
+| augmented_corpus.txt | 2,094 | ✅ Yes | Manual |
+| knowledge-base/*.md | 3,144 | ✅ Yes | Manual |
+| corpus/training_patterns.jsonl | 35,582 | ❌ Gitignored | ✅ **Yes!** |
 
-**Gap:** Model had 37,318 docs but only ~5,000 lines of training data were committed.
+**Key insight:** The corpus is NOT lost - it's regenerated from the codebase each time.
 
-### Why 37K Documents?
+### Current vs Original
 
-The commit messages tell the story:
-- 137e5585: "27,998 training patterns generated"
-- 982c89b6: "35,504 total patterns"
+| Metric | Original Model | Current Regenerated |
+|--------|----------------|---------------------|
+| Patterns | 37,318 | **37,676** (+358) |
+| Vocabulary | 15,814 | **15,876** (+62) |
+| Tokens | 649,107 | **653,580** (+4,473) |
 
-The model was trained on **locally generated** data that was:
-1. Created by running `generate_corpus.py`
-2. Stored in `corpus/training_patterns.jsonl`
-3. **Never committed** (gitignored)
-4. Used to train the model that WAS committed
+The codebase has MORE content now, so regenerating produces MORE training data.
 
-### Prevention: Track Training Data
+### Prevention: Warn When Corpus Missing
 
-**Recommended change:** Remove `benchmarks/codebase_slm/corpus/` from `.gitignore`
+**Fix applied:** `train_augmented.py` now shows a loud warning when corpus is missing:
 
-This ensures:
-- Training data is versioned alongside models
-- Provenance is maintained
-- Models can be reproduced exactly
-
-Alternatively, add provenance hash to model:
-```json
-{
-  "_provenance": {
-    "corpus_hash": "sha256:abc123...",
-    "corpus_size": 35504,
-    "generated_at": "2025-12-27T00:00:00Z"
-  }
-}
 ```
+============================================================
+⚠️  WARNING: No training corpus found!
+============================================================
+
+The corpus/training_patterns.jsonl file is missing.
+This means training will only use augmented_corpus.txt (~2K lines)
+instead of the full corpus (~35K patterns).
+
+To generate the corpus, run:
+  python -m benchmarks.codebase_slm.generate_corpus --full
+
+Then re-run this training script.
+============================================================
+```
+
+This prevents silent training on insufficient data.
 
 ---
 

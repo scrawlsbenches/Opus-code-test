@@ -57,7 +57,23 @@ def load_existing_patterns():
     patterns_path = PROJECT_ROOT / "benchmarks" / "codebase_slm" / "corpus" / "training_patterns.jsonl"
 
     if not patterns_path.exists():
-        print("No existing patterns found")
+        print()
+        print("=" * 60)
+        print("⚠️  WARNING: No training corpus found!")
+        print("=" * 60)
+        print()
+        print("The corpus/training_patterns.jsonl file is missing.")
+        print("This means training will only use augmented_corpus.txt (~2K lines)")
+        print("instead of the full corpus (~35K patterns).")
+        print()
+        print("To generate the corpus, run:")
+        print("  python -m benchmarks.codebase_slm.generate_corpus --full")
+        print()
+        print("Then re-run this training script.")
+        print()
+        print("Proceeding with limited data (NOT RECOMMENDED)...")
+        print("=" * 60)
+        print()
         return [], None
 
     patterns = []
