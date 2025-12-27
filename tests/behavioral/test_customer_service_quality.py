@@ -13,6 +13,7 @@ Run with: pytest tests/behavioral/test_customer_service_quality.py -v
 import pytest
 
 
+@pytest.mark.slow
 class TestCustomerServiceRetrieval:
     """
     Test retrieval quality for customer service domain.
