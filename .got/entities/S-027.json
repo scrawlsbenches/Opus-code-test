@@ -1,6 +1,6 @@
 {
-  "_checksum": "535509df1a887014",
-  "_written_at": "2025-12-27T17:14:59.578478+00:00",
+  "_checksum": "f1ab1b4803b238c6",
+  "_written_at": "2025-12-27T17:15:06.291545+00:00",
   "data": {
     "created_at": "2025-12-27T17:09:59.797410+00:00",
     "entity_type": "sprint",
@@ -17,18 +17,22 @@
       {
         "completed": false,
         "description": "Build CLI for training SparkSLM from git history"
+      },
+      {
+        "completed": false,
+        "description": "Validate with perplexity benchmarks on held-out commits"
       }
     ],
     "id": "S-027",
     "isolation": [],
     "metadata": {},
-    "modified_at": "2025-12-27T17:14:59.578412+00:00",
+    "modified_at": "2025-12-27T17:15:06.291476+00:00",
     "notes": [],
     "number": 27,
     "properties": {},
     "session_id": "",
     "status": "available",
     "title": "SparkSLM Git History Training",
-    "version": 8
+    "version": 10
   }
 }
