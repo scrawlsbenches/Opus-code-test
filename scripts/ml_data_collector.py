@@ -61,6 +61,14 @@ Usage:
     python scripts/ml_data_collector.py backfill-lite -n 100  # Last 100 commits
     python scripts/ml_data_collector.py backfill-lite --all   # All history
 
+    # Backfill chat data from Claude Code transcripts
+    # Transcripts are stored at: ~/.claude/projects/<project-path>/*.jsonl
+    python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl --verbose
+    python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl --dry-run
+
+    # To find and process all transcripts for this project:
+    # find ~/.claude/projects -name "*.jsonl" -type f | xargs -I {} python scripts/ml_data_collector.py transcript --file "{}"
+
     # Test redaction patterns
     python scripts/ml_data_collector.py redact-test --text "api_key=secret123"
 
@@ -3398,6 +3406,18 @@ def main():
 
     if command == "commit":
         # Collect data for current or specified commit
+        if len(sys.argv) > 2 and sys.argv[2] in ("-h", "--help"):
+            print("Usage: ml_data_collector.py commit [COMMIT_HASH]")
+            print()
+            print("Collect rich context data for a commit.")
+            print()
+            print("Arguments:")
+            print("  COMMIT_HASH   Git commit hash (default: HEAD)")
+            print()
+            print("Examples:")
+            print("  ml_data_collector.py commit          # Collect HEAD commit")
+            print("  ml_data_collector.py commit abc123   # Collect specific commit")
+            return
         commit_hash = sys.argv[2] if len(sys.argv) > 2 else None
         context = collect_commit_data(commit_hash)
         save_commit_data(context)

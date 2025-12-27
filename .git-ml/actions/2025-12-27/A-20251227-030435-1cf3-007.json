@@ -1,0 +1,19 @@
+{
+  "id": "A-20251227-030435-1cf3-007",
+  "timestamp": "2025-12-27T02:30:50.128Z",
+  "session_id": "1cf3301b",
+  "action_type": "command",
+  "target": "",
+  "context": {
+    "tool": "Bash",
+    "input": {
+      "tool": "Bash",
+      "input": {
+        "command": "echo \"=== Current .git-ml/ sizes ===\"\ndu -sh .git-ml/*/ 2>/dev/null | sort -h\n\necho \"\"\necho \"=== What's in tracked/ (SHARED) ===\"\nls -lh .git-ml/tracked/\n\necho \"\"\necho \"=== What's in commits/ (IGNORED - regeneratable) ===\"\nls -lh .git-ml/commits/ 2>/dev/null || echo \"(empty or doesn't exist)\"\n\necho \"\"\necho \"=== What's in chats/ (IGNORED - YOUR TRAINING DATA!) ===\"\nls -lh .git-ml/chats/ 2>/dev/null || echo \"(empty - this is the problem!)\"",
+        "description": "Check ML data sizes"
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}

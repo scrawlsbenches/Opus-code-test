@@ -1,0 +1,87 @@
+{
+  "hash": "954e52cce22166ca14fb9f7dd65842fc2bea680e",
+  "message": "docs(benchmarks): Document corpus generation as Step 1 of pipeline",
+  "author": "Claude",
+  "timestamp": "2025-12-27 03:01:50 +0000",
+  "branch": "claude/accept-handoff-ctrSI",
+  "files_changed": [
+    "benchmarks/codebase_slm/generate_corpus.py"
+  ],
+  "insertions": 21,
+  "deletions": 0,
+  "hunks": [
+    {
+      "file": "benchmarks/codebase_slm/generate_corpus.py",
+      "function": null,
+      "start_line": 1,
+      "lines_added": [
+        "================================================================================",
+        "STEP 1 OF TWO-STEP TRAINING PIPELINE",
+        "================================================================================",
+        "",
+        "This script is STEP 1. After running this, run STEP 2 to train:",
+        "",
+        "    python -m benchmarks.codebase_slm.generate_corpus --full    # STEP 1 (this)",
+        "    python -m benchmarks.codebase_slm.train_augmented --dry-run # STEP 2 (train)",
+        "",
+        "What it extracts:",
+        "  - Python files in cortical/    → functions, classes, imports, docstrings",
+        "  - Markdown files in docs/      → sections, Q&A pairs, definitions",
+        "  - Markdown files in samples/   → knowledge-base entries, memories",
+        "  - GoT entities in .got/        → tasks, decisions, metadata",
+        "",
+        "Output:",
+        "  - corpus/training_patterns.jsonl  (~35,000 patterns)",
+        "  - This file is gitignored - regenerate after codebase changes!",
+        "",
+        "",
+        "See train_augmented.py docstring for the full pipeline documentation."
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "#!/usr/bin/env python3",
+        "\"\"\"",
+        "Generate training corpus for Repository-Native SLM.",
+        ""
+      ],
+      "context_after": [
+        "This script orchestrates the extraction and pattern generation pipeline",
+        "with batching, progress reporting, and timeout protection.",
+        "",
+        "Usage:",
+        "    # Quick test (5 files each)",
+        "    python -m benchmarks.codebase_slm.generate_corpus --quick",
+        "",
+        "    # Full generation",
+        "    python -m benchmarks.codebase_slm.generate_corpus --full",
+        "",
+        "    # Resume from cache",
+        "    python -m benchmarks.codebase_slm.generate_corpus --resume",
+        "\"\"\"",
+        "",
+        "import argparse",
+        "import sys",
+        "import time",
+        "from pathlib import Path",
+        "from datetime import datetime",
+        "",
+        "# Add project root to path",
+        "sys.path.insert(0, str(Path(__file__).parent.parent.parent))"
+      ],
+      "change_type": "add"
+    }
+  ],
+  "hour_of_day": 3,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": 48,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": "c7e7f25e",
+  "related_chats": [
+    "chat-20251227-015100-015a56"
+  ],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

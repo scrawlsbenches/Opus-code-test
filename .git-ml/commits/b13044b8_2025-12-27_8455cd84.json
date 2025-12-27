@@ -1,0 +1,102 @@
+{
+  "hash": "b13044b88739516a22f844715c88d956c4992dfe",
+  "message": "fix(ml): Configure Claude Code hooks and fix commit command",
+  "author": "Claude",
+  "timestamp": "2025-12-27 02:20:49 +0000",
+  "branch": "claude/accept-handoff-ctrSI",
+  "files_changed": [
+    ".claude/settings.local.json",
+    "scripts/ml_data_collector.py"
+  ],
+  "insertions": 24,
+  "deletions": 0,
+  "hunks": [
+    {
+      "file": ".claude/settings.local.json",
+      "function": null,
+      "start_line": 1,
+      "lines_added": [
+        "    \"SessionStart\": [",
+        "      {",
+        "        \"type\": \"command\",",
+        "        \"command\": \"bash scripts/ml-session-start-hook.sh\"",
+        "      }",
+        "    ],",
+        "    \"Stop\": [",
+        "      {",
+        "        \"type\": \"command\",",
+        "        \"command\": \"bash scripts/ml-session-capture-hook.sh\"",
+        "      }",
+        "    ]"
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "{",
+        "  \"hooks\": {"
+      ],
+      "context_after": [
+        "  }",
+        "}"
+      ],
+      "change_type": "add"
+    },
+    {
+      "file": "scripts/ml_data_collector.py",
+      "function": "def main():",
+      "start_line": 3391,
+      "lines_added": [
+        "        if len(sys.argv) > 2 and sys.argv[2] in (\"-h\", \"--help\"):",
+        "            print(\"Usage: ml_data_collector.py commit [COMMIT_HASH]\")",
+        "            print()",
+        "            print(\"Collect rich context data for a commit.\")",
+        "            print()",
+        "            print(\"Arguments:\")",
+        "            print(\"  COMMIT_HASH   Git commit hash (default: HEAD)\")",
+        "            print()",
+        "            print(\"Examples:\")",
+        "            print(\"  ml_data_collector.py commit          # Collect HEAD commit\")",
+        "            print(\"  ml_data_collector.py commit abc123   # Collect specific commit\")",
+        "            return"
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "    # Allow stats/estimate/validate/export/feedback/quality-report/orchestration even when collection is disabled",
+        "    read_only_commands = {\"stats\", \"estimate\", \"validate\", \"session\", \"export\", \"feedback\", \"quality-report\", \"orchestration\"}",
+        "",
+        "    # Check if collection is disabled (via ML_COLLECTION_ENABLED=0)",
+        "    if not ML_COLLECTION_ENABLED and command not in read_only_commands:",
+        "        # Silently exit for collection commands when disabled",
+        "        return",
+        "",
+        "    if command == \"commit\":",
+        "        # Collect data for current or specified commit"
+      ],
+      "context_after": [
+        "        commit_hash = sys.argv[2] if len(sys.argv) > 2 else None",
+        "        context = collect_commit_data(commit_hash)",
+        "        save_commit_data(context)",
+        "        # Also save lightweight version (trackable in git)",
+        "        lite_path = save_commit_lite(context)",
+        "        print(f\"Saved lightweight commit to {lite_path}\")",
+        "",
+        "    elif command == \"backfill\":",
+        "        # Backfill historical commits (no session linking for historical data)",
+        "        import argparse"
+      ],
+      "change_type": "add"
+    }
+  ],
+  "hour_of_day": 2,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": 762,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": "c7e7f25e",
+  "related_chats": [
+    "chat-20251227-015100-015a56"
+  ],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}

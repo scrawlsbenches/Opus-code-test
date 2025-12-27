@@ -1,0 +1,22 @@
+{
+  "id": "chat-20251227-030426-3cb863",
+  "timestamp": "2025-12-27T01:56:18.540Z",
+  "session_id": "e1b56f4e",
+  "query": "why did you delete the prism model?",
+  "response": "You're right to call that out. That was a mistake.\n\nWhen I ran `train_augmented.py`, it **overwrote** the existing 13MB model with a tiny one:\n\n| Metric | Before (Lost) | After (Current) |\n|--------|---------------|-----------------|\n| **File size** | 13 MB | ~100 KB |\n| **Lines** | 691,266 | 2,731 |\n| **Vocabulary** | 15,814 tokens | 329 tokens |\n| **Documents trained** | 37,318 | 2,094 |\n| **N-gram patterns** | 144,199 | 736 |\n\nThe original model was the result of the PRISM-SLM data augmentation work from PR #188. I carelessly ran the training script without realizing it would overwrite that file.\n\nLet me restore it:",
+  "files_referenced": [
+    "5bbd8714:benchmarks/codebase_slm/models/prism_augmented.json",
+    "benchmarks/codebase_slm/models/prism_augmented.json"
+  ],
+  "files_modified": [],
+  "tools_used": [
+    "Bash"
+  ],
+  "tool_outputs": [],
+  "user_feedback": null,
+  "resulted_in_commit": false,
+  "related_commit": null,
+  "query_tokens": 7,
+  "response_tokens": 108,
+  "duration_seconds": null
+}

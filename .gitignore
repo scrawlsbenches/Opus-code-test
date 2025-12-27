@@ -96,25 +96,22 @@ tasks/.current_session.json
 cortical/proto/schema_pb2.py
 cortical/proto/__pycache__/
 
-# ML training data - tiered sharing strategy
-# TRACKED IN GIT (small, shareable):
+# ML training data - TRACK EVERYTHING for model training
+# TRACKED IN GIT (training data - the whole point!):
 #   - .git-ml/tracked/       - JSONL files (commits.jsonl, sessions.jsonl, orchestration.jsonl)
 #   - .git-ml/shared/        - Aggregated patterns
-#   - .git-ml/commits-lite/  - Legacy individual files (being migrated)
-# LOCAL ONLY (large or sensitive):
-#   - .git-ml/commits/       - Full commit data with diffs (too large)
-#   - .git-ml/chats/         - Chat transcripts (sensitive)
+#   - .git-ml/commits/       - Full commit data with diffs (valuable context!)
+#   - .git-ml/chats/         - Chat transcripts (MOST VALUABLE training data!)
 #   - .git-ml/sessions/      - Full session data
-#   - .git-ml/actions/       - Tool usage
-#   - .git-ml/github/        - PR/Issue data (contains discussions)
-#   - .git-ml/orchestration/ - Individual orchestration files (use tracked/orchestration.jsonl)
-# Full commit data with diffs is too large for GitHub
-.git-ml/commits/
+#   - .git-ml/actions/       - Tool usage patterns
+#   - .git-ml/github/        - PR/Issue data
+# LOCAL ONLY (ephemeral/regeneratable):
+#   - .git-ml/models/        - Trained models (regenerate with train scripts)
+#   - .git-ml/cali/          - Local cache indices
+#   - .git-ml/predictions/   - Local prediction state
+#
 # Trained models are regeneratable (python scripts/ml_file_prediction.py train)
 .git-ml/models/
-.git-ml/chats/
-.git-ml/sessions/
-.git-ml/actions/
 # .git-ml/github/  # Uncomment to ignore PR/Issue data
 # .git-ml/orchestration/  # Uncomment to ignore individual orchestration JSON files
 .git-ml/current_session.json  # Session-specific data
@@ -161,3 +158,7 @@ corpus_dev/
 
 # Generated training corpus (regenerate with: python -m benchmarks.codebase_slm.generate_corpus --full)
 benchmarks/codebase_slm/corpus/
+
+# PRISM model backups (created by train_augmented.py safeguards)
+# These are local recovery copies, not meant for git
+benchmarks/codebase_slm/models/backups/
