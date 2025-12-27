@@ -1,0 +1,16 @@
+{
+  "_checksum": "5b2cc650a98774b0",
+  "_written_at": "2025-12-27T16:18:30.931211+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2025-12-27T16:18:30.927486+00:00",
+    "edge_type": "MOTIVATES",
+    "entity_type": "edge",
+    "id": "E-H-20251227-154444-f2e718d0-EPIC-cognitive-nlu-nlg-MOTIVATES",
+    "modified_at": "2025-12-27T16:18:30.931136+00:00",
+    "source_id": "H-20251227-154444-f2e718d0",
+    "target_id": "EPIC-cognitive-nlu-nlg",
+    "version": 2,
+    "weight": 1.0
+  }
+}
