@@ -2,8 +2,27 @@
 """
 Generate training corpus for Repository-Native SLM.
 
+================================================================================
+STEP 1 OF TWO-STEP TRAINING PIPELINE
+================================================================================
+
+This script is STEP 1. After running this, run STEP 2 to train:
+
+    python -m benchmarks.codebase_slm.generate_corpus --full    # STEP 1 (this)
+    python -m benchmarks.codebase_slm.train_augmented --dry-run # STEP 2 (train)
+
 This script orchestrates the extraction and pattern generation pipeline
 with batching, progress reporting, and timeout protection.
+
+What it extracts:
+  - Python files in cortical/    → functions, classes, imports, docstrings
+  - Markdown files in docs/      → sections, Q&A pairs, definitions
+  - Markdown files in samples/   → knowledge-base entries, memories
+  - GoT entities in .got/        → tasks, decisions, metadata
+
+Output:
+  - corpus/training_patterns.jsonl  (~35,000 patterns)
+  - This file is gitignored - regenerate after codebase changes!
 
 Usage:
     # Quick test (5 files each)
@@ -14,6 +33,8 @@ Usage:
 
     # Resume from cache
     python -m benchmarks.codebase_slm.generate_corpus --resume
+
+See train_augmented.py docstring for the full pipeline documentation.
 """
 
 import argparse
