@@ -3398,6 +3398,18 @@ def main():
 
     if command == "commit":
         # Collect data for current or specified commit
+        if len(sys.argv) > 2 and sys.argv[2] in ("-h", "--help"):
+            print("Usage: ml_data_collector.py commit [COMMIT_HASH]")
+            print()
+            print("Collect rich context data for a commit.")
+            print()
+            print("Arguments:")
+            print("  COMMIT_HASH   Git commit hash (default: HEAD)")
+            print()
+            print("Examples:")
+            print("  ml_data_collector.py commit          # Collect HEAD commit")
+            print("  ml_data_collector.py commit abc123   # Collect specific commit")
+            return
         commit_hash = sys.argv[2] if len(sys.argv) > 2 else None
         context = collect_commit_data(commit_hash)
         save_commit_data(context)

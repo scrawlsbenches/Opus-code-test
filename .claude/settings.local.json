@@ -1,4 +1,16 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "bash scripts/ml-session-start-hook.sh"
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "bash scripts/ml-session-capture-hook.sh"
+      }
+    ]
   }
 }
