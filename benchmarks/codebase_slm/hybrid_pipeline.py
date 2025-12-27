@@ -291,24 +291,58 @@ class HybridPipeline:
             'max_confidence': max(confidences) if confidences else 0,
         }
 
-    def export(self, path: Path, oversample: bool = True):
-        """Export patterns for training."""
+    def export(self, path: Path, oversample: bool = True,
+               weights: Optional[Dict[str, int]] = None):
+        """
+        Export patterns for training with configurable oversampling.
+
+        Weights are applied by source and category to balance training.
+        Default weights are tuned to fix 0% concept category performance.
+        """
+        # Default weights tuned from benchmark results:
+        # - concept: 0% (needs heavy oversampling)
+        # - file_location: 87.5% (dominant, needs less weight)
+        if weights is None:
+            weights = {
+                # Source weights
+                'source:pln': 15,              # Logical inference - type relationships
+                'source:dialogue': 10,         # Natural Q&A format
+                'source:curated_definitions': 20,  # Expert knowledge
+                'source:chat': 12,             # Real conversations
+                'source:spark': 4,             # Generated completions (less reliable)
+                'source:augmentation': 8,      # Mixed augmentation
+                # Category weights (multiplied with source)
+                'category:concept': 3.0,       # Boost concepts heavily
+                'category:definition': 2.5,    # Boost definitions
+                'category:type': 2.0,          # Type relationships
+                'category:how_to': 1.5,        # How-to guides
+                'category:location': 0.5,      # File locations (too dominant)
+                'category:completion': 0.8,    # Completions
+            }
+
         lines = []
+        category_counts = {}
 
         for p in self.patterns:
             formatted = p.to_training_format()
 
             if oversample:
-                # Repeat based on confidence and category importance
-                base_repeat = int(p.confidence * 5) + 1
+                # Get source weight
+                source_weight = weights.get(f'source:{p.source}', 8)
 
-                # Boost underperforming categories
-                if p.category == 'concept':
-                    base_repeat *= 3  # Concepts need more training
-                elif p.category == 'definition':
-                    base_repeat *= 2
+                # Get category multiplier
+                category_mult = weights.get(f'category:{p.category}', 1.0)
 
-                for _ in range(base_repeat):
+                # Confidence multiplier (0.7-1.3x based on confidence)
+                confidence_mult = 0.7 + (p.confidence * 0.6)
+
+                # Calculate final repeat count
+                repeat = max(1, int(source_weight * category_mult * confidence_mult))
+
+                # Track for statistics
+                category_counts[p.category] = category_counts.get(p.category, 0) + repeat
+
+                for _ in range(repeat):
                     lines.append(formatted)
             else:
                 lines.append(formatted)
@@ -316,6 +350,14 @@ class HybridPipeline:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, 'w') as f:
             f.write('\n'.join(lines))
+
+        # Print category distribution
+        if oversample and category_counts:
+            total = sum(category_counts.values())
+            print(f"\nOversampling distribution by category:")
+            for cat, count in sorted(category_counts.items(), key=lambda x: -x[1]):
+                pct = count / total * 100 if total > 0 else 0
+                print(f"  {cat}: {count} ({pct:.1f}%)")
 
         return len(lines)
 

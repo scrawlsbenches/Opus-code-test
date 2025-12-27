@@ -14,7 +14,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import sys
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -392,26 +392,69 @@ class DataAugmentationPipeline:
         self.patterns = filtered_patterns
         return filtered_patterns
 
-    def export_training_corpus(self, output_path: Path) -> int:
-        """Export augmented patterns as training corpus."""
-        training_lines = []
+    def export_training_corpus(self, output_path: Path,
+                                weights: Optional[Dict[str, int]] = None) -> int:
+        """
+        Export augmented patterns as training corpus with configurable oversampling.
 
+        Args:
+            output_path: Where to write the corpus
+            weights: Optional pattern type weights. Defaults to tuned weights.
+
+        The default weights are tuned to fix the 0% concept category issue:
+        - Concept patterns (definition, hierarchical) get 20x weight
+        - Chat Q&A patterns get 10x weight (real conversations)
+        - Completion patterns get 3x weight (generated, less reliable)
+        """
+        # Default weights tuned for balanced category performance
+        # These were derived from benchmark results showing:
+        # - file_location: 87.5% (too dominant)
+        # - concept: 0% (needs heavy oversampling)
+        if weights is None:
+            weights = {
+                'definition': 20,      # Concept explanations - critical for 0% concept
+                'hierarchical': 15,    # Type relationships - "X is a type of Y"
+                'chat_qa': 10,         # Real Q&A - high quality
+                'completion': 3,       # Generated sequences - less reliable
+                'pln_inference': 12,   # Logical inferences - good for relationships
+                'dialogue': 8,         # Agent dialogues - natural Q&A style
+            }
+
+        training_lines = []
         for pattern in self.patterns:
             training_lines.append(pattern.to_training_format())
 
-        # Oversample high-confidence patterns
+        # Oversample based on pattern type and confidence
         oversampled = []
+        type_counts = {}
+
         for pattern in self.patterns:
-            repeat = int(pattern.confidence * 10)  # 1-10x based on confidence
-            if pattern.pattern_type == 'definition':
-                repeat *= 5  # Extra weight for definitions (to fix concept category)
-            for _ in range(max(1, repeat)):
+            # Base weight from pattern type
+            base_weight = weights.get(pattern.pattern_type, 5)
+
+            # Confidence multiplier (0.5-1.5x based on confidence)
+            confidence_mult = 0.5 + pattern.confidence
+
+            # Calculate final repeat count
+            repeat = max(1, int(base_weight * confidence_mult))
+
+            # Track for statistics
+            type_counts[pattern.pattern_type] = type_counts.get(pattern.pattern_type, 0) + repeat
+
+            for _ in range(repeat):
                 oversampled.append(pattern.to_training_format())
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, 'w') as f:
             for line in oversampled:
                 f.write(line + '\n')
+
+        # Print weight distribution
+        total = sum(type_counts.values())
+        print(f"\nOversampling distribution:")
+        for ptype, count in sorted(type_counts.items(), key=lambda x: -x[1]):
+            pct = count / total * 100 if total > 0 else 0
+            print(f"  {ptype}: {count} ({pct:.1f}%)")
 
         return len(oversampled)
 
