@@ -153,29 +153,75 @@ benchmarks/codebase_slm/models/backups/
 
 ---
 
-## Open Questions
+## Forensic Analysis
 
-### Where Did the Original 37K Documents Come From?
+### Timeline Reconstruction
 
-The current corpus generation only produces ~19K patterns:
+| Date/Time | Commit | Event |
+|-----------|--------|-------|
+| Dec 26, 22:40 | 137e5585 | Generators added, 27,998 patterns generated |
+| Dec 26, 23:17 | 982c89b6 | Knowledge-base added, 35,504 patterns, 626K transitions |
+| Dec 26, 22:44 | 02dc3a58 | train_slm.py added |
+| **Dec 27, 00:04** | **2b458285** | **13MB model committed (37,318 docs)** |
+| Dec 27, 01:45 | 079d0c00 | MODEL OVERWRITTEN (329 vocab) |
+| Dec 27, 01:56 | cc84e3d2 | Model restored from git |
+
+### Root Cause: Training Data Never Tracked
+
+**Critical finding:** `benchmarks/codebase_slm/corpus/` was added to `.gitignore` from day 1.
+
 ```
-training_patterns.jsonl: 35,582 lines
-augmented_corpus.txt: 2,094 lines
-Total: ~19,392 training patterns
+Commit 137e5585 added to .gitignore:
+  benchmarks/codebase_slm/corpus/
 ```
 
-But the original model had **37,318 documents**. Possible explanations:
-1. Additional training data was used but not committed
-2. Multiple training runs accumulated data
-3. Different/larger corpus was used historically
+This means:
+1. `training_patterns.jsonl` was **never committed**
+2. Only the MODEL was tracked, not its source data
+3. The original 37,318 document corpus is **unrecoverable**
 
-**Action needed:** Investigate how to regenerate the full training corpus to match or exceed the original.
+### Data Accounting
 
-### Why Was file_location Score 88% in Baseline?
+| What | Lines | Status |
+|------|-------|--------|
+| Model (prism_augmented.json) | 692,026 | ✅ Tracked, restored |
+| augmented_corpus.txt | 1,814 | ✅ Tracked |
+| knowledge-base/*.md | 3,144 | ✅ Tracked |
+| corpus/training_patterns.jsonl | ~35,500 | ❌ **Never tracked** |
 
-The original model achieved 88% on file_location queries. Current training achieves only 50%. Need to understand:
-1. What training patterns produced the 88% score?
-2. How to replicate that training data?
+**Gap:** Model had 37,318 docs but only ~5,000 lines of training data were committed.
+
+### Why 37K Documents?
+
+The commit messages tell the story:
+- 137e5585: "27,998 training patterns generated"
+- 982c89b6: "35,504 total patterns"
+
+The model was trained on **locally generated** data that was:
+1. Created by running `generate_corpus.py`
+2. Stored in `corpus/training_patterns.jsonl`
+3. **Never committed** (gitignored)
+4. Used to train the model that WAS committed
+
+### Prevention: Track Training Data
+
+**Recommended change:** Remove `benchmarks/codebase_slm/corpus/` from `.gitignore`
+
+This ensures:
+- Training data is versioned alongside models
+- Provenance is maintained
+- Models can be reproduced exactly
+
+Alternatively, add provenance hash to model:
+```json
+{
+  "_provenance": {
+    "corpus_hash": "sha256:abc123...",
+    "corpus_size": 35504,
+    "generated_at": "2025-12-27T00:00:00Z"
+  }
+}
+```
 
 ---
 
