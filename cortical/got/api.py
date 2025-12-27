@@ -559,6 +559,26 @@ class GoTManager:
         """
         return self.create_decision(title, rationale, affects, **properties)
 
+    def get_decision(self, decision_id: str) -> Optional[Decision]:
+        """
+        Get a decision by ID (read-only).
+
+        Args:
+            decision_id: Decision identifier (D-...)
+
+        Returns:
+            Decision object or None if not found
+        """
+        entities_dir = self.got_dir / "entities"
+        decision_file = entities_dir / f"{decision_id}.json"
+        if not decision_file.exists():
+            return None
+        try:
+            return self._read_decision_file(decision_file)
+        except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+            logger.warning(f"Failed to read decision {decision_id}: {e}")
+            return None
+
     def add_edge(
         self,
         source_id: str,
