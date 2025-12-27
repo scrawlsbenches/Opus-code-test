@@ -100,10 +100,9 @@ class CognitiveIntegration:
         print(f"TRAINING ON DOMAIN: {domain.upper()}")
         print(f"{'='*60}")
 
-        # Train SparkSLM (n-grams)
+        # Train SparkSLM (n-grams) - must pass list of docs, not single strings
         print("\n1. Training SparkSLM (n-gram predictions)...")
-        for text in knowledge["texts"]:
-            self.ngram.train(text)
+        self.ngram.train(knowledge["texts"])  # Pass all texts as a list
         print(f"   ✓ Trained on {len(knowledge['texts'])} texts")
 
         # Train PRISM-SLM (synaptic)
