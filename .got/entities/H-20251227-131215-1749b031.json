@@ -1,0 +1,29 @@
+{
+  "_checksum": "3a561391c4b236bc",
+  "_written_at": "2025-12-27T13:12:15.063520+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "medium",
+      "task_status": "pending",
+      "task_title": "Automated Test Performance Tuning"
+    },
+    "created_at": "2025-12-27T13:12:15.060193+00:00",
+    "entity_type": "handoff",
+    "id": "H-20251227-131215-1749b031",
+    "initiated_at": "2025-12-27T13:12:15.060208+00:00",
+    "instructions": "# Test Performance Tuning Handoff\n\n## Context\nThis is an ongoing effort to maintain fast test execution for developer productivity.\nThe codebase has 10,000+ tests that can slow down if not properly maintained.\n\n## Background Knowledge\n**Read first:** `samples/memories/2025-12-27-session-knowledge-transfer-test-performance.md`\n\nThis document contains:\n- Root cause analysis of previous performance issues\n- Fixture scope guidelines and decision tree\n- Common mistakes and how to fix them\n- Baseline timing expectations\n\n## Investigation Steps\n\n### 1. Profile Current State\n```bash\n# Check default dev run time (should be < 5 min)\ntime python -m pytest tests/ -q --tb=no\n\n# Find slowest tests\npython -m pytest tests/ --durations=30 -q --tb=no 2>&1 | tail -40\n\n# Check what's excluded\npython -m pytest tests/ --collect-only -q 2>&1 | tail -5\n```\n\n### 2. Identify Issues\nLook for these anti-patterns:\n- Function-scoped fixtures creating expensive objects (GoTManager, shared_processor)\n- Tests not using shared fixtures from conftest.py\n- Performance tests not marked @slow\n- New test categories not auto-marked\n\n### 3. Check Fixture Usage\n```bash\n# Find tests creating GoTManager directly (should use fixtures)\ngrep -r \"GoTManager(\" tests/ --include=\"*.py\" | grep -v conftest | grep -v \"^Binary\"\n\n# Check fixture scope distribution\ngrep -r \"@pytest.fixture\" tests/ --include=\"*.py\" | grep -c \"scope=\"\n```\n\n### 4. Verify Guidelines in CLAUDE.md\nCheck that these sections exist and are current:\n- \"Test Performance Guidelines\" with budgets\n- \"Available Fixtures\" with GoT fixtures\n- Fixture scope decision tree\n\n## Performance Targets\n\n| Metric | Target | Action if Exceeded |\n|--------|--------|-------------------|\n| Smoke tests | < 10s | Investigate immediately |\n| Unit + smoke | < 2 min | Check for slow fixtures |\n| Default run | < 5 min | Mark slow tests |\n| Full suite | < 7 min | Optimize or parallelize |\n\n## Common Fixes\n\n1. **Slow fixture:** Change scope from function to class/session\n2. **Missing @slow:** Add to performance category in conftest.py\n3. **Direct GoTManager:** Replace with shared fixture\n4. **New test category:** Add auto-marking in pytest_collection_modifyitems\n\n## On Completion\nDocument findings and any changes made. Update knowledge transfer if patterns change.\n\n```bash\npython scripts/got_utils.py handoff complete <HANDOFF_ID> \\\n  --agent test-performance-agent \\\n  --result '{\"analyzed\": true, \"issues_found\": N, \"time_saved_seconds\": X}'\n```",
+    "modified_at": "2025-12-27T13:12:15.063434+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "initiated",
+    "target_agent": "test-performance-agent",
+    "task_id": "T-20251227-131147-7591c1a6",
+    "version": 2
+  }
+}
