@@ -62,6 +62,7 @@ PERFORMANCE NOTES
 
 from __future__ import annotations
 
+import logging
 from collections import deque
 from dataclasses import dataclass
 from typing import (
@@ -75,6 +76,9 @@ from typing import (
 
 from .api import GoTManager
 
+# Module logger for path finding operations
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class PathResult:
@@ -82,6 +86,52 @@ class PathResult:
     path: List[str]
     length: int
     edge_types: List[str]
+
+
+@dataclass
+class PathSearchResult:
+    """
+    Result of path search with truncation metadata.
+
+    Provides transparency when limits are hit, solving the silent
+    failure problem where users couldn't know if more paths existed.
+
+    Attributes:
+        paths: List of found paths (each path is list of node IDs)
+        truncated: True if search was stopped due to limits
+        truncation_reason: Why truncated ("max_paths", "max_length", None)
+        paths_found: Total paths found before stopping
+        limit_value: The limit that was hit (if truncated)
+
+    Example:
+        >>> result = PathFinder(manager).max_paths(10).all_paths(a, b)
+        >>> if result.truncated:
+        ...     print(f"Warning: Found {result.paths_found} paths, "
+        ...           f"stopped at {result.truncation_reason}={result.limit_value}")
+        >>> for path in result.paths:
+        ...     print(path)
+    """
+    paths: List[List[str]]
+    truncated: bool = False
+    truncation_reason: Optional[str] = None
+    paths_found: int = 0
+    limit_value: Optional[int] = None
+
+    def __iter__(self):
+        """Allow iteration over paths for backwards compatibility."""
+        return iter(self.paths)
+
+    def __len__(self):
+        """Allow len() for backwards compatibility."""
+        return len(self.paths)
+
+    def __bool__(self):
+        """Allow boolean check for backwards compatibility."""
+        return len(self.paths) > 0
+
+    def __getitem__(self, index):
+        """Allow indexing for backwards compatibility."""
+        return self.paths[index]
 
 
 class PathFinder:
@@ -217,7 +267,7 @@ class PathFinder:
         self,
         from_id: str,
         to_id: str
-    ) -> List[List[str]]:
+    ) -> PathSearchResult:
         """
         Find all paths between two nodes using DFS.
 
@@ -233,10 +283,22 @@ class PathFinder:
             to_id: Target node ID
 
         Returns:
-            List of paths (each path is list of node IDs)
+            PathSearchResult with paths and truncation metadata.
+            Backwards compatible: can iterate, check len(), index directly.
+
+        Example:
+            >>> result = PathFinder(manager).all_paths(a, b)
+            >>> if result.truncated:
+            ...     logger.warning(f"Search truncated: {result.truncation_reason}")
+            >>> for path in result:  # Works like list
+            ...     print(path)
         """
         if from_id == to_id:
-            return [[from_id]]
+            return PathSearchResult(
+                paths=[[from_id]],
+                truncated=False,
+                paths_found=1
+            )
 
         # Apply safety defaults if no explicit limits set
         effective_max_len = self._max_len
@@ -251,6 +313,13 @@ class PathFinder:
         adjacency = self._build_adjacency()
         paths: List[List[str]] = []
 
+        # Track truncation reason
+        truncation_info: Dict[str, Any] = {
+            "truncated": False,
+            "reason": None,
+            "limit_value": None
+        }
+
         self._dfs_all_paths(
             current=from_id,
             target=to_id,
@@ -259,10 +328,27 @@ class PathFinder:
             adjacency=adjacency,
             paths=paths,
             max_len=effective_max_len,
-            max_paths=effective_max_paths
+            max_paths=effective_max_paths,
+            truncation_info=truncation_info
         )
 
-        return paths
+        result = PathSearchResult(
+            paths=paths,
+            truncated=truncation_info["truncated"],
+            truncation_reason=truncation_info["reason"],
+            paths_found=len(paths),
+            limit_value=truncation_info["limit_value"]
+        )
+
+        # Log warning if truncated
+        if result.truncated:
+            logger.warning(
+                f"PathFinder.all_paths() truncated: {result.truncation_reason}="
+                f"{result.limit_value}, found {result.paths_found} paths. "
+                f"Use .max_paths(N) or .max_length(N) to adjust limits."
+            )
+
+        return result
 
     def path_exists(self, from_id: str, to_id: str) -> bool:
         """
@@ -368,7 +454,8 @@ class PathFinder:
         adjacency: Dict[str, List[str]],
         paths: List[List[str]],
         max_len: Optional[int] = None,
-        max_paths: Optional[int] = None
+        max_paths: Optional[int] = None,
+        truncation_info: Optional[Dict[str, Any]] = None
     ) -> bool:
         """
         DFS to find all paths.
@@ -382,29 +469,46 @@ class PathFinder:
             paths: Accumulator for found paths
             max_len: Maximum path length (None = no limit)
             max_paths: Maximum number of paths to find (None = no limit)
+            truncation_info: Dict to populate with truncation reason (mutated)
 
         Returns:
-            True if should continue searching, False if max_paths reached
+            True if should continue searching, False if limit reached
         """
-        # Check max length
+        # Check max length - note: this doesn't stop search, just skips this branch
         if max_len is not None and len(path) >= max_len:
+            # Record that we hit length limit (but continue other branches)
+            if truncation_info is not None and not truncation_info["truncated"]:
+                # Only record if this could have led to a valid path
+                # (we can't know for sure, so we mark as potentially truncated)
+                pass  # Length limit on a branch isn't necessarily truncation
             return True  # Continue searching other branches
 
         for neighbor in adjacency.get(current, []):
             # Check if we've found enough paths
             if max_paths is not None and len(paths) >= max_paths:
+                # TRUNCATION: We hit max_paths limit
+                if truncation_info is not None:
+                    truncation_info["truncated"] = True
+                    truncation_info["reason"] = "max_paths"
+                    truncation_info["limit_value"] = max_paths
                 return False  # Stop searching
 
             if neighbor == target:
                 paths.append(path + [neighbor])
                 # Check limit after adding path
                 if max_paths is not None and len(paths) >= max_paths:
+                    # TRUNCATION: We hit max_paths limit
+                    if truncation_info is not None:
+                        truncation_info["truncated"] = True
+                        truncation_info["reason"] = "max_paths"
+                        truncation_info["limit_value"] = max_paths
                     return False
             elif neighbor not in visited:
                 visited.add(neighbor)
                 should_continue = self._dfs_all_paths(
                     neighbor, target, path + [neighbor],
-                    visited, adjacency, paths, max_len, max_paths
+                    visited, adjacency, paths, max_len, max_paths,
+                    truncation_info
                 )
                 visited.remove(neighbor)
                 if not should_continue:

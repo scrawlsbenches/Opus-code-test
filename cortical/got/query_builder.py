@@ -35,6 +35,46 @@ Aggregation with GROUP BY:
     ... )
     {"pending": 5, "completed": 3, "in_progress": 2}
 
+AGGREGATION FUNCTIONS
+---------------------
+Available aggregation functions (import from cortical.got.query_builder):
+
+Count(): Count items in each group
+    >>> Query(manager).tasks().group_by("priority").aggregate(total=Count()).execute()
+    {"high": {"total": 5}, "medium": {"total": 3}, "low": {"total": 2}}
+
+Collect(field): Collect values into a list
+    >>> Query(manager).tasks().group_by("status").aggregate(ids=Collect("id")).execute()
+    {"pending": {"ids": ["T-001", "T-002"]}, "completed": {"ids": ["T-003"]}}
+
+Avg(field): Average of numeric field
+    >>> Query(manager).tasks().group_by("priority").aggregate(avg_time=Avg("duration")).execute()
+    {"high": {"avg_time": 4.5}, "medium": {"avg_time": 2.1}}
+
+Min(field) / Max(field): Minimum/maximum value
+    >>> Query(manager).tasks().group_by("status").aggregate(
+    ...     earliest=Min("created_at"),
+    ...     latest=Max("created_at")
+    ... ).execute()
+
+Multiple aggregations in one query:
+    >>> result = (
+    ...     Query(manager)
+    ...     .tasks()
+    ...     .group_by("status")
+    ...     .aggregate(
+    ...         count=Count(),
+    ...         ids=Collect("id"),
+    ...         avg_priority=Avg("priority_value")
+    ...     )
+    ...     .execute()
+    ... )
+    # Returns: {"pending": {"count": 5, "ids": [...], "avg_priority": 2.3}, ...}
+
+Without GROUP BY (aggregate all):
+    >>> Query(manager).tasks().aggregate(total=Count()).execute()
+    {"total": 42}
+
 Lazy iteration (memory efficient):
     >>> for task in Query(manager).tasks().iter():
     ...     process(task)
