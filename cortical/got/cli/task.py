@@ -362,7 +362,11 @@ def setup_task_parser(subparsers) -> None:
     # task complete
     complete_parser = task_subparsers.add_parser("complete", help="Complete a task")
     complete_parser.add_argument("task_id", help="Task ID")
-    complete_parser.add_argument("--retrospective", "-r", help="Retrospective notes")
+    complete_parser.add_argument(
+        "--retrospective", "--notes", "-r", "-n",
+        dest="retrospective",
+        help="Retrospective notes"
+    )
 
     # task block
     block_parser = task_subparsers.add_parser("block", help="Block a task")
@@ -385,7 +389,11 @@ def setup_task_parser(subparsers) -> None:
         help="New category"
     )
     update_parser.add_argument("--description", "-d", help="New description")
-    update_parser.add_argument("--retrospective", "-r", help="Retrospective notes")
+    update_parser.add_argument(
+        "--retrospective", "--notes", "-r", "-n",
+        dest="retrospective",
+        help="Retrospective notes"
+    )
 
     # task delete
     delete_parser = task_subparsers.add_parser("delete", help="Delete a task (transactional)")
