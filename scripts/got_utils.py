@@ -826,6 +826,25 @@ class TransactionalGoTAdapter:
             },
         )
 
+    def _tx_handoff_to_node(self, handoff) -> ThoughtNode:
+        """Convert Handoff to ThoughtNode for compatibility."""
+        return ThoughtNode(
+            id=handoff.id,
+            node_type=NodeType.TASK,  # Handoffs are task-like
+            content=f"Handoff: {handoff.task_id}",
+            properties={
+                "source_agent": handoff.source_agent,
+                "target_agent": handoff.target_agent,
+                "task_id": handoff.task_id,
+                "status": handoff.status,
+                "instructions": getattr(handoff, 'instructions', ''),
+            },
+            metadata={
+                "initiated_at": getattr(handoff, 'initiated_at', ''),
+                "completed_at": getattr(handoff, 'completed_at', ''),
+            },
+        )
+
     def create_task(
         self,
         title: str,
@@ -1271,10 +1290,10 @@ class TransactionalGoTAdapter:
             }
 
     def _get_entity_node(self, entity_id: str) -> Optional[ThoughtNode]:
-        """Get any entity (task, sprint, decision, epic) as a ThoughtNode.
+        """Get any entity (task, sprint, decision, epic, handoff) as a ThoughtNode.
 
         Args:
-            entity_id: ID of the entity (T-..., S-..., D-..., EPIC-...)
+            entity_id: ID of the entity (T-..., S-..., D-..., EPIC-..., H-...)
 
         Returns:
             ThoughtNode or None if not found
@@ -1303,12 +1322,19 @@ class TransactionalGoTAdapter:
             if epic:
                 return self._tx_epic_to_node(epic)
 
+        # Try handoff
+        if entity_id.startswith("H-"):
+            handoff = self._manager.get_handoff(entity_id)
+            if handoff:
+                return self._tx_handoff_to_node(handoff)
+
         # Fallback: try all types
         for getter, converter in [
             (self._manager.get_task, self._tx_task_to_node),
             (self._manager.get_sprint, self._tx_sprint_to_node),
             (self._manager.get_decision, self._tx_decision_to_node),
             (self._manager.get_epic, self._tx_epic_to_node),
+            (self._manager.get_handoff, self._tx_handoff_to_node),
         ]:
             try:
                 entity = getter(entity_id)
