@@ -1,19 +1,23 @@
 {
-  "_checksum": "d169a42af59907a2",
-  "_written_at": "2025-12-27T17:53:40.865983+00:00",
+  "_checksum": "2794daa294de49bf",
+  "_written_at": "2025-12-27T17:59:36.541916+00:00",
   "data": {
     "created_at": "2025-12-27T17:53:40.863228+00:00",
     "description": "\n## Problem\nThe relationships query was fixed to work for sprints (commit a0e979c8), but the fix is incomplete:\n\n### Missing Entity Types\nCurrent `_get_entity_node()` only handles:\n- T-* (tasks)\n- S-* (sprints)  \n- D-* (decisions)\n- EPIC-* (epics)\n\nMissing:\n- H-* (handoffs)\n- Any future entity types\n\n### Missing Edge Types\nCurrent `get_all_relationships()` only handles:\n- BLOCKS\n- DEPENDS_ON\n- CONTAINS\n\nMissing (26 types!):\n- REQUIRES, ENABLES, CONFLICTS, SUPPORTS, REFUTES, SIMILAR, CONTRADICTS\n- PRECEDES, TRIGGERS\n- ANSWERS, RAISES, EXPLORES, OBSERVES, SUGGESTS\n- IMPLEMENTS, TESTS, REFINES, MOTIVATES, JUSTIFIES, CAUSED_BY\n- HAS_OPTION, HAS_ASPECT, PART_OF\n\n## Proposed Solution\n1. Make `_get_entity_node()` discover entity types dynamically:\n   - Use entity prefix \u2192 getter mapping from a registry\n   - Or try all registered getters\n   \n2. Make edge type handling dynamic:\n   - Return dict with ALL edge types as keys\n   - Dynamically group by edge type rather than hardcoding\n   - Example: `{'BLOCKS': [...], 'DEPENDS_ON': [...], 'IMPLEMENTS': [...], ...}`\n\n3. Add extensibility:\n   - New entity types auto-discovered via ID prefix\n   - New edge types auto-included in results\n\n## Implementation Hints\n- Look at EdgeType enum for all edge types\n- Consider grouping results by edge direction (outgoing/incoming) AND type\n- Maybe return: `{'outgoing': {'BLOCKS': [...], 'CONTAINS': [...]}, 'incoming': {...}}`\n\n## Files to Modify\n- scripts/got_utils.py: `_get_entity_node()`, `get_all_relationships()`\n\n## Guardrails\n- DO: Maintain backward compatibility with existing result structure\n- DO: Add new keys for new edge types (don't remove existing keys)\n- DO: Handle unknown entity types gracefully (return None, don't crash)\n- DO NOT: Require code changes when new edge types are added\n",
     "entity_type": "task",
     "id": "T-20251227-175340-3aea7fc3",
-    "metadata": {},
-    "modified_at": "2025-12-27T17:53:40.865919+00:00",
+    "metadata": {
+      "completed_at": "2025-12-27T17:59:36.534715+00:00",
+      "updated_at": "2025-12-27T17:59:36.534727+00:00"
+    },
+    "modified_at": "2025-12-27T17:59:36.541845+00:00",
     "priority": "medium",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Completed in commit b45833b6. All 29 edge types now handled dynamically with proper grammatical conjugation for incoming edges."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Make GoT relationships query fully generic for all entity and edge types",
-    "version": 2
+    "version": 4
   }
 }
