@@ -1,19 +1,23 @@
 {
-  "_checksum": "854b704dd8b7de27",
-  "_written_at": "2025-12-27T23:40:30.972275+00:00",
+  "_checksum": "07d91c44d8658f6b",
+  "_written_at": "2025-12-27T23:47:24.527552+00:00",
   "data": {
     "created_at": "2025-12-27T21:15:05.922990+00:00",
     "description": "ADD EXPLICIT FILE PERMISSIONS AFTER ATOMIC WRITES\n\nFILE: cortical/utils/persistence.py (around line 44)\n\nPURPOSE: Ensure sensitive state files have restrictive permissions\n\nIMPLEMENTATION:\nAdd os.chmod() call after atomic write completes:\n```python\n# After rename\npath.chmod(0o600)  # Owner read/write only\n```\n\nConsider making permission configurable via parameter.\n\nACCEPTANCE CRITERIA:\n- New files created with 0o600 permissions\n- Existing functionality unchanged\n- Works on Linux/macOS (skip on Windows)\n\nGUARDRAILS - DO NOT:\n- Change atomic write behavior\n- Break Windows compatibility (make it conditional)\n- Add external dependencies\n\nVERIFY: \npython -c \"from cortical.utils.persistence import atomic_save; import tempfile; import os; f=tempfile.NamedTemporaryFile(delete=False); atomic_save(f.name, {'test': 1}); print(oct(os.stat(f.name).st_mode)[-3:])\"",
     "entity_type": "task",
     "id": "T-20251227-211505-d18a8816",
-    "metadata": {},
-    "modified_at": "2025-12-27T23:40:30.972239+00:00",
+    "metadata": {
+      "completed_at": "2025-12-27T23:47:24.520749+00:00",
+      "updated_at": "2025-12-27T23:47:24.520755+00:00"
+    },
+    "modified_at": "2025-12-27T23:47:24.527497+00:00",
     "priority": "low",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Added 0o600 permissions on Unix. Windows-safe. Configurable mode parameter."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Consider explicit file permissions after atomic writes",
-    "version": 4
+    "version": 6
   }
 }
