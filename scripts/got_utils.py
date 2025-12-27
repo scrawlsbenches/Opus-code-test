@@ -1346,19 +1346,23 @@ class TransactionalGoTAdapter:
         return None
 
     def get_all_relationships(self, entity_id: str) -> Dict[str, List[ThoughtNode]]:
-        """Get all relationships for any entity (task, sprint, epic, decision).
+        """Get all relationships for any entity (task, sprint, epic, decision, handoff).
 
-        Returns dict with keys:
-        - 'blocks': Entities this entity blocks
-        - 'blocked_by': Entities blocking this entity
-        - 'depends_on': Entities this entity depends on
-        - 'depended_by': Entities depending on this entity
-        - 'contains': Entities contained by this entity (for sprints/epics)
-        - 'contained_by': Entities containing this entity
+        Returns dict with keys for each edge type found:
+        - Outgoing edges: lowercase edge type (e.g., 'blocks', 'depends_on', 'transfers')
+        - Incoming edges: edge type + '_by' (e.g., 'blocked_by', 'depended_by', 'transferred_by')
+
+        Common keys (for backward compatibility):
+        - 'blocks' / 'blocked_by': BLOCKS edges
+        - 'depends_on' / 'depended_by': DEPENDS_ON edges
+        - 'contains' / 'contained_by': CONTAINS edges
+
+        All other edge types are handled dynamically.
         """
         clean_id = self._strip_prefix(entity_id)
 
-        result = {
+        # Initialize with common keys for backward compatibility
+        result: Dict[str, List[ThoughtNode]] = {
             'blocks': [],
             'blocked_by': [],
             'depends_on': [],
@@ -1367,31 +1371,84 @@ class TransactionalGoTAdapter:
             'contained_by': [],
         }
 
+        def get_outgoing_key(edge_type: str) -> str:
+            """Convert edge type to outgoing relationship key."""
+            return edge_type.lower()
+
+        def get_incoming_key(edge_type: str) -> str:
+            """Convert edge type to incoming relationship key.
+
+            Special cases for grammatically correct names:
+            - BLOCKS -> blocked_by
+            - CONTAINS -> contained_by
+            - TRANSFERS -> transferred_by
+            Others just get _by suffix.
+            """
+            et = edge_type.lower()
+            # Handle special grammatical cases
+            if et == 'blocks':
+                return 'blocked_by'
+            elif et == 'contains':
+                return 'contained_by'
+            elif et == 'transfers':
+                return 'transferred_by'
+            elif et == 'triggers':
+                return 'triggered_by'
+            elif et == 'enables':
+                return 'enabled_by'
+            elif et == 'requires':
+                return 'required_by'
+            elif et == 'supports':
+                return 'supported_by'
+            elif et == 'refutes':
+                return 'refuted_by'
+            elif et == 'precedes':
+                return 'preceded_by'
+            elif et == 'answers':
+                return 'answered_by'
+            elif et == 'raises':
+                return 'raised_by'
+            elif et == 'explores':
+                return 'explored_by'
+            elif et == 'observes':
+                return 'observed_by'
+            elif et == 'suggests':
+                return 'suggested_by'
+            elif et == 'implements':
+                return 'implemented_by'
+            elif et == 'tests':
+                return 'tested_by'
+            elif et == 'refines':
+                return 'refined_by'
+            elif et == 'motivates':
+                return 'motivated_by'
+            elif et == 'justifies':
+                return 'justified_by'
+            else:
+                # Default: just add _by
+                return f"{et}_by"
+
         try:
             # Get edges for this entity (API method works for any entity ID)
             outgoing, incoming = self._manager.get_edges_for_task(clean_id)
 
-            # Process outgoing edges
+            # Process outgoing edges - dynamically handle all edge types
             for edge in outgoing:
                 target_node = self._get_entity_node(edge.target_id)
                 if target_node:
-                    if edge.edge_type == "BLOCKS":
-                        result['blocks'].append(target_node)
-                    elif edge.edge_type == "DEPENDS_ON":
-                        result['depends_on'].append(target_node)
-                    elif edge.edge_type == "CONTAINS":
-                        result['contains'].append(target_node)
+                    key = get_outgoing_key(edge.edge_type)
+                    if key not in result:
+                        result[key] = []
+                    result[key].append(target_node)
 
-            # Process incoming edges
+            # Process incoming edges - dynamically handle all edge types
             for edge in incoming:
                 source_node = self._get_entity_node(edge.source_id)
                 if source_node:
-                    if edge.edge_type == "BLOCKS":
-                        result['blocked_by'].append(source_node)
-                    elif edge.edge_type == "DEPENDS_ON":
-                        result['depended_by'].append(source_node)
-                    elif edge.edge_type == "CONTAINS":
-                        result['contained_by'].append(source_node)
+                    key = get_incoming_key(edge.edge_type)
+                    if key not in result:
+                        result[key] = []
+                    result[key].append(source_node)
 
         except Exception as e:
             logger.error(f"Failed to get relationships for {entity_id}: {e}")
