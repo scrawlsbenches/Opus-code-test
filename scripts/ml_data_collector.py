@@ -61,6 +61,14 @@ Usage:
     python scripts/ml_data_collector.py backfill-lite -n 100  # Last 100 commits
     python scripts/ml_data_collector.py backfill-lite --all   # All history
 
+    # Backfill chat data from Claude Code transcripts
+    # Transcripts are stored at: ~/.claude/projects/<project-path>/*.jsonl
+    python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl --verbose
+    python scripts/ml_data_collector.py transcript --file /path/to/transcript.jsonl --dry-run
+
+    # To find and process all transcripts for this project:
+    # find ~/.claude/projects -name "*.jsonl" -type f | xargs -I {} python scripts/ml_data_collector.py transcript --file "{}"
+
     # Test redaction patterns
     python scripts/ml_data_collector.py redact-test --text "api_key=secret123"
 
