@@ -17,7 +17,7 @@ The Cortical Text Processor project demonstrates a **sophisticated, multi-tiered
 | Structure & Organization | ★★★★★ | Excellent multi-tiered hierarchy |
 | Content Quality | ★★★★☆ | High quality, some staleness |
 | AI-Agent Optimization | ★★★★★ | Industry-leading approach |
-| Maintenance & Freshness | ★★★☆☆ | Only 2/150 docs have "Last updated" |
+| Maintenance & Freshness | ★★★☆☆ | Only 4/169 docs (2.4%) have "Last updated" |
 | Discoverability | ★★★★☆ | Good indexes, could be more linked |
 | Code-Doc Synchronization | ★★★★☆ | Generally good, some drift |
 
@@ -148,7 +148,9 @@ This is a model for technical glossaries.
 
 ### 3.1 Missing "Last Updated" Dates (High Priority)
 
-Only **2 of 150 docs** have a "Last updated" timestamp. With 95K+ lines of documentation, staleness is a significant risk.
+Only **4 of 169 docs** (2.4%) have a "Last updated" timestamp. With 95K+ lines of documentation, staleness is a significant risk.
+
+Files with dates: `README.md`, `TIERED_LOCKING_INDEX.md`, `claude-usage.md`, `project-handover-plan.md`
 
 **Recommendation**: Add `*Last updated: YYYY-MM-DD*` footer to all docs and verify during code review.
 
