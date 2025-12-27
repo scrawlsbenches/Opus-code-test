@@ -1,19 +1,19 @@
 {
-  "_checksum": "0b736b17a08f3925",
-  "_written_at": "2025-12-27T21:14:46.164735+00:00",
+  "_checksum": "a751a91169e56815",
+  "_written_at": "2025-12-27T23:40:27.084478+00:00",
   "data": {
     "created_at": "2025-12-27T21:14:46.161316+00:00",
-    "description": "state_storage.py - optional enhancement to catch corrupted state early. Low priority.",
+    "description": "ADD JSON SCHEMA VALIDATION FOR STATE FILES\n\nFILE: cortical/got/state_storage.py (or create validator module)\n\nPURPOSE: Catch corrupted/invalid state files early with schema validation\n\nIMPLEMENTATION:\n1. Define JSON schema for GoT entity files\n2. Add optional validate_schema() function\n3. Call during load if validation enabled\n\nSCHEMA FIELDS:\n- id: string (required)\n- type: enum (task, decision, sprint, epic, handoff)\n- created_at: ISO datetime string\n- checksum: string\n\nACCEPTANCE CRITERIA:\n- Schema validates all entity types\n- Invalid entities raise clear error\n- Validation is optional (flag or config)\n- All existing tests pass\n\nGUARDRAILS - DO NOT:\n- Add external schema validation library\n- Break existing load/save operations\n- Make validation required by default\n\nVERIFY: pytest tests/unit/test_got*.py -v --tb=short",
     "entity_type": "task",
     "id": "T-20251227-211446-487ef767",
     "metadata": {},
-    "modified_at": "2025-12-27T21:14:46.164670+00:00",
+    "modified_at": "2025-12-27T23:40:27.084440+00:00",
     "priority": "low",
     "properties": {
       "category": "feature"
     },
     "status": "pending",
     "title": "Add JSON schema validation for state files",
-    "version": 2
+    "version": 4
   }
 }
