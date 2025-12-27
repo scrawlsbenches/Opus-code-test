@@ -1160,6 +1160,48 @@ task_id = generate_task_id()   # T-20251222-093045-a1b2c3d4
 plan_id = generate_plan_id()   # OP-20251222-093045-e5f6g7h8
 ```
 
+**❌ DON'T use Pattern.edge() for edge patterns:**
+```python
+# WRONG - Pattern.edge() has different signature
+pattern = Pattern().node("A").edge("A", "B", "DEPENDS_ON").node("B")
+
+# CORRECT - use outgoing() or incoming() for directed edges
+pattern = Pattern().node("A").outgoing("DEPENDS_ON").node("B")
+pattern = Pattern().node("A").incoming("BLOCKS").node("B")
+```
+
+**❌ DON'T pass arguments to PathFinder.explain():**
+```python
+# WRONG - explain() describes finder config, not a specific search
+plan = finder.explain(source_id, target_id)
+
+# CORRECT - explain() takes no arguments
+plan = finder.explain()  # Describes max_paths, max_length, directed settings
+```
+
+**❌ DON'T assume PatternMatch bindings are IDs:**
+```python
+# WRONG - bindings contain Task objects, not strings
+task_id = match.bindings["A"]
+finder.all_paths(task_id, other_id)
+
+# CORRECT - extract .id from the Task object
+task = match.bindings["A"]  # This is a Task object
+finder.all_paths(task.id, other_id)
+```
+
+**❌ DON'T forget PathFinder.all_paths() returns PathSearchResult:**
+```python
+# WRONG - all_paths() doesn't return a plain list
+paths = finder.all_paths(source, target)
+if len(paths) > 0:  # Works but misses metadata
+
+# CORRECT - use PathSearchResult attributes
+result = finder.all_paths(source, target)
+if len(result.paths) > 0:
+    print(f"Truncated: {result.truncated}")
+```
+
 ### Changing Validation Logic (IMPORTANT!)
 
 When modifying validation rules (e.g., parameter ranges, input constraints), **tests are scattered across multiple files**. Missing any will cause CI failures.
