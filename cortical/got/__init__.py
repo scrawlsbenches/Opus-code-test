@@ -142,6 +142,7 @@ from .orphan import (
 from .query_builder import (
     Query,
     QueryPlan,
+    QueryConfig,  # Per-query configuration
     AggregateFunction,
     Count,
     Collect,
@@ -288,6 +289,8 @@ __all__ = [
     'Avg',
     'Min',
     'Max',
+    # Query Configuration
+    'QueryConfig',
     # Query Logging
     'QueryLogLevel',
     'set_query_log_level',

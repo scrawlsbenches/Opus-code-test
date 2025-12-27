@@ -157,6 +157,68 @@ class QueryLogLevel(Enum):
     DEBUG = auto()
 
 
+@dataclass
+class QueryConfig:
+    """
+    Per-query configuration for the GoT Query API.
+
+    Allows fine-grained control over individual queries while maintaining
+    convenient module-level defaults for common cases.
+
+    PRECEDENCE: QueryConfig values > Module-level settings > Defaults
+
+    Attributes:
+        log_level: Logging verbosity (None = use module-level setting)
+        slow_query_threshold_ms: Threshold for slow query warnings (None = use module-level)
+        validate_syntax: Enable/disable query chain validation (None = use module-level)
+
+    Example:
+        # Use module-level defaults (convenient for most cases)
+        set_query_log_level(QueryLogLevel.INFO)
+        Query(manager).tasks().execute()  # Uses INFO level
+
+        # Override for specific query (debugging)
+        debug_config = QueryConfig(log_level=QueryLogLevel.DEBUG)
+        Query(manager, config=debug_config).tasks().execute()
+
+        # Disable validation for performance-critical loop
+        fast_config = QueryConfig(validate_syntax=False)
+        for item in items:
+            Query(manager, config=fast_config).tasks().where(id=item).first()
+
+    Note:
+        For simple use cases, the module-level functions remain available:
+        - set_query_log_level()
+        - set_slow_query_threshold()
+        - disable_syntax_validation()
+    """
+    log_level: Optional[QueryLogLevel] = None
+    slow_query_threshold_ms: Optional[float] = None
+    validate_syntax: Optional[bool] = None
+
+    def get_log_level(self) -> QueryLogLevel:
+        """Get effective log level (config > module-level)."""
+        if self.log_level is not None:
+            return self.log_level
+        return get_query_log_level()
+
+    def get_slow_query_threshold(self) -> float:
+        """Get effective slow query threshold (config > module-level)."""
+        if self.slow_query_threshold_ms is not None:
+            return self.slow_query_threshold_ms
+        return get_slow_query_threshold()
+
+    def is_syntax_validation_enabled(self) -> bool:
+        """Get effective syntax validation setting (config > module-level)."""
+        if self.validate_syntax is not None:
+            return self.validate_syntax
+        return _validate_syntax_enabled()
+
+
+# Default config instance (uses all module-level defaults)
+_default_config = QueryConfig()
+
+
 # Module-level logging configuration
 _query_log_level = QueryLogLevel.OFF
 _slow_query_threshold_ms = 100.0  # Default: 100ms
@@ -702,7 +764,12 @@ class Query(Generic[T]):
         )
     """
 
-    def __init__(self, manager: GoTManager, metrics: Optional[QueryMetrics] = None):
+    def __init__(
+        self,
+        manager: GoTManager,
+        metrics: Optional[QueryMetrics] = None,
+        config: Optional[QueryConfig] = None
+    ):
         """
         Initialize query builder with GoT manager.
 
@@ -710,9 +777,21 @@ class Query(Generic[T]):
             manager: GoTManager instance for entity access
             metrics: Optional QueryMetrics for timing/counting. If None, uses
                      module-level metrics (disabled by default).
+            config: Optional QueryConfig for per-query settings. If None, uses
+                    module-level settings. Allows fine-grained control over
+                    logging, validation, and thresholds for specific queries.
+
+        Example:
+            # Use module-level defaults
+            Query(manager).tasks().execute()
+
+            # Override for this query
+            debug_config = QueryConfig(log_level=QueryLogLevel.DEBUG)
+            Query(manager, config=debug_config).tasks().execute()
         """
         self._manager = manager
         self._metrics = metrics if metrics is not None else _default_metrics
+        self._config = config if config is not None else _default_config
         self._entity_type: Optional[EntityType] = None
         self._where_clauses: List[WhereClause] = []
         self._or_groups: List[OrGroup] = []
@@ -729,7 +808,7 @@ class Query(Generic[T]):
 
     def _validate_not_executed(self, method_name: str) -> None:
         """Validate that the query hasn't been executed yet."""
-        if not _validate_syntax_enabled():
+        if not self._config.is_syntax_validation_enabled():
             return
         if self._executed:
             raise QueryValidationError(
@@ -739,7 +818,7 @@ class Query(Generic[T]):
 
     def _validate_not_count_mode(self, method_name: str) -> None:
         """Validate that we're not in count mode (after .count())."""
-        if not _validate_syntax_enabled():
+        if not self._config.is_syntax_validation_enabled():
             return
         if self._count_mode and not self._group_by_fields:
             raise QueryValidationError(
@@ -749,7 +828,7 @@ class Query(Generic[T]):
 
     def _validate_no_pagination_before_grouping(self) -> None:
         """Validate that limit/offset haven't been set before group_by."""
-        if not _validate_syntax_enabled():
+        if not self._config.is_syntax_validation_enabled():
             return
         if self._limit_value is not None or self._offset_value > 0:
             raise QueryValidationError(
@@ -961,7 +1040,7 @@ class Query(Generic[T]):
         start_time = self._metrics.start_query(self._manager, entity_type_name)
 
         # DEBUG level: Log query plan before execution
-        log_level = get_query_log_level()
+        log_level = self._config.get_log_level()
         if log_level == QueryLogLevel.DEBUG:
             plan = self.explain()
             logger.debug(f"Executing query:\n{plan}")
@@ -1030,7 +1109,7 @@ class Query(Generic[T]):
         if log_level == QueryLogLevel.OFF:
             return
 
-        threshold = get_slow_query_threshold()
+        threshold = self._config.get_slow_query_threshold()
         is_slow = duration_ms > threshold
 
         if log_level == QueryLogLevel.ERROR:

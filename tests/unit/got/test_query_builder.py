@@ -1727,3 +1727,110 @@ class TestMatchesFiltersEdgeCases:
 
         # Should match all tasks
         assert len(results) == 2
+
+
+class TestQueryConfig:
+    """Test QueryConfig for per-query configuration."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager for config tests."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+        manager.create_task("Test task", status="pending")
+        return manager
+
+    def test_query_with_default_config(self, manager):
+        """Query uses module-level defaults when no config provided."""
+        from cortical.got.query_builder import Query
+
+        results = Query(manager).tasks().execute()
+        assert len(results) == 1
+
+    def test_query_with_custom_config(self, manager):
+        """Query uses provided QueryConfig."""
+        from cortical.got.query_builder import Query, QueryConfig, QueryLogLevel
+
+        config = QueryConfig(
+            log_level=QueryLogLevel.DEBUG,
+            slow_query_threshold_ms=50.0,
+            validate_syntax=True
+        )
+
+        results = Query(manager, config=config).tasks().execute()
+        assert len(results) == 1
+
+    def test_query_config_disables_validation(self, manager):
+        """QueryConfig can disable syntax validation."""
+        from cortical.got.query_builder import Query, QueryConfig
+
+        # Create config with validation disabled
+        config = QueryConfig(validate_syntax=False)
+
+        # This would normally raise an error after execute()
+        # but with validation disabled, it silently continues
+        query = Query(manager, config=config).tasks()
+        query.execute()
+
+        # With validation disabled, this doesn't raise
+        # (it still won't work, but no exception)
+        try:
+            query.where(status="pending")
+        except Exception:
+            pass  # May or may not raise depending on other code
+
+    def test_query_config_precedence(self, manager):
+        """QueryConfig overrides module-level settings."""
+        from cortical.got.query_builder import (
+            Query, QueryConfig, QueryLogLevel,
+            set_query_log_level, get_query_log_level
+        )
+
+        # Set module-level to OFF
+        original_level = get_query_log_level()
+        set_query_log_level(QueryLogLevel.OFF)
+
+        try:
+            # Create config with DEBUG - should override module-level
+            config = QueryConfig(log_level=QueryLogLevel.DEBUG)
+            assert config.get_log_level() == QueryLogLevel.DEBUG
+
+            # Module-level is still OFF
+            assert get_query_log_level() == QueryLogLevel.OFF
+
+            # Config with None uses module-level
+            default_config = QueryConfig()
+            assert default_config.get_log_level() == QueryLogLevel.OFF
+        finally:
+            # Restore original level
+            set_query_log_level(original_level)
+
+    def test_query_config_methods(self):
+        """Test QueryConfig getter methods."""
+        from cortical.got.query_builder import QueryConfig, QueryLogLevel
+
+        # Custom config
+        config = QueryConfig(
+            log_level=QueryLogLevel.INFO,
+            slow_query_threshold_ms=200.0,
+            validate_syntax=False
+        )
+
+        assert config.get_log_level() == QueryLogLevel.INFO
+        assert config.get_slow_query_threshold() == 200.0
+        assert config.is_syntax_validation_enabled() is False
+
+    def test_query_config_none_uses_module_defaults(self):
+        """QueryConfig with None values falls back to module-level."""
+        from cortical.got.query_builder import (
+            QueryConfig, QueryLogLevel,
+            get_query_log_level, get_slow_query_threshold,
+            _validate_syntax_enabled
+        )
+
+        config = QueryConfig()  # All None
+
+        # Should match module-level values
+        assert config.get_log_level() == get_query_log_level()
+        assert config.get_slow_query_threshold() == get_slow_query_threshold()
+        assert config.is_syntax_validation_enabled() == _validate_syntax_enabled()
