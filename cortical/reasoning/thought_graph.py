@@ -158,10 +158,14 @@ class ThoughtGraph:
             raise ValueError(f"Node {node_id} not found")
 
         # Remove all edges connected to this node
+        # Use edge indices for O(1) lookup instead of iterating all edges
         edges_to_remove = []
-        for edge in self.edges:
-            if edge.source_id == node_id or edge.target_id == node_id:
-                edges_to_remove.append(edge)
+
+        # Get all outgoing edges (where this node is the source)
+        edges_to_remove.extend(self._edges_from.get(node_id, []))
+
+        # Get all incoming edges (where this node is the target)
+        edges_to_remove.extend(self._edges_to.get(node_id, []))
 
         for edge in edges_to_remove:
             self.remove_edge(edge.source_id, edge.target_id, edge.edge_type)

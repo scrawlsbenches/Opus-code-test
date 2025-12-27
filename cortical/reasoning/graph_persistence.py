@@ -1224,12 +1224,28 @@ class GraphRecovery:
     Each level is attempted only if the previous level fails, ensuring
     graph state can always be recovered even after severe corruption.
 
-    Example:
-        >>> recovery = GraphRecovery(wal_dir='graph_wal', chunks_dir='graph_chunks')
-        >>> if recovery.needs_recovery():
-        ...     result = recovery.recover()
-        ...     if result.success:
-        ...         print(f"Recovered {result.nodes_recovered} nodes using Level {result.level_used}")
+    Examples
+    --------
+    Basic recovery check and execution:
+
+    >>> recovery = GraphRecovery(wal_dir="/path/to/.wal")
+    >>> if recovery.needs_recovery():
+    ...     result = recovery.recover()
+    ...     if result.success:
+    ...         graph = result.graph
+    ...         print(f"Recovered {len(graph.nodes)} nodes")
+
+    Recovery with specific preferences:
+
+    >>> result = recovery.recover(prefer_level=2)  # Try snapshot first
+    >>> print(f"Recovery level: {result.recovery_level}")
+
+    Handling recovery results:
+
+    >>> result = recovery.recover()
+    >>> if not result.success:
+    ...     print(f"Recovery failed: {result.error}")
+    ...     print(f"Tried levels: {result.levels_tried}")
     """
 
     def __init__(
