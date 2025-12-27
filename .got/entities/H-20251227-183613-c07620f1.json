@@ -1,0 +1,29 @@
+{
+  "_checksum": "96dd5a70ced007e5",
+  "_written_at": "2025-12-27T18:36:13.661626+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "high",
+      "task_status": "completed",
+      "task_title": "Validate GoT relationships query fix for all entity and edge types"
+    },
+    "created_at": "2025-12-27T18:36:13.658116+00:00",
+    "entity_type": "handoff",
+    "id": "H-20251227-183613-c07620f1",
+    "initiated_at": "2025-12-27T18:36:13.658145+00:00",
+    "instructions": "## Session Complete: GoT Relationships Query Validation\n\n### What Was Done\n- Validated relationships query for all 5 entity types (T-, S-, D-, EPIC-, H-)\n- Fixed missing get_decision() method in cortical/got/api.py\n- Marked slow behavioral test to skip in dev runs\n- Coverage at 88%\n\n### Commits on branch claude/handoff-validation-lnV4X\n- 1844972c: fix(got): Add get_decision method\n- d3833e49: test: Mark test_customer_service_quality as slow\n\n### Ready for Next Steps\nSee sprint status for options:\n- S-021 Training Pipeline: 95% (1 task remaining)\n- S-026 Schema Validation: 86% (1 task remaining)  \n- S-027 SparkSLM Git Training: 0% (8 tasks, new sprint)",
+    "modified_at": "2025-12-27T18:36:13.661542+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "initiated",
+    "target_agent": "next-session",
+    "task_id": "T-20251227-180219-59a2ce85",
+    "version": 2
+  }
+}
