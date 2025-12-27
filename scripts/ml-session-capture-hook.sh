@@ -74,6 +74,18 @@ python3 "$COLLECTOR" transcript \
 # Archive branch manifest (records files touched during session)
 python3 scripts/branch_manifest.py archive 2>/dev/null || true
 
+# Process tool use logs from this session
+if [[ -d .git-ml/tool_uses ]] && [[ -n "$session_id" ]]; then
+    tool_log=".git-ml/tool_uses/${session_id}.jsonl"
+    if [[ -f "$tool_log" ]]; then
+        tool_count=$(wc -l < "$tool_log" 2>/dev/null || echo "0")
+        echo "📊 Captured $tool_count tool uses this session"
+        # Merge into main actions log
+        cat "$tool_log" >> .git-ml/actions/tool_uses.jsonl 2>/dev/null || true
+        rm -f "$tool_log"
+    fi
+fi
+
 # Generate draft memory from session activity (Sprint 2.3)
 if [[ -f scripts/session_memory_generator.py ]]; then
     echo "📝 Generating session memory draft..."
