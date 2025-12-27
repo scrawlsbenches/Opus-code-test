@@ -13,16 +13,21 @@ Patterns are built by chaining .node() and .edge() calls:
 
     Pattern()
     .node("a", type="task")          # First node, named "a"
-    .edge("DEPENDS_ON")              # Edge connecting to next node
+    .out("DEPENDS_ON")               # A --DEPENDS_ON--> B
     .node("b", type="task")          # Second node, named "b"
 
 Node constraints:
     .node("name", type="task", status="pending", priority="high")
 
-Edge constraints:
-    .edge("DEPENDS_ON", direction="incoming")  # b depends on a
-    .edge("BLOCKS", direction="outgoing")      # a blocks b
-    .edge("CONTAINS", direction="any")         # either direction
+Edge methods (Gremlin-style, recommended):
+    .out("DEPENDS_ON")   # Follow outgoing: A --edge--> B
+    .in_("BLOCKS")       # Follow incoming: A <--edge-- B
+    .both("CONTAINS")    # Either direction
+
+Legacy edge method (still supported):
+    .edge("DEPENDS_ON", direction="outgoing")  # Same as .out()
+    .edge("BLOCKS", direction="incoming")      # Same as .in_()
+    .edge("CONTAINS", direction="any")         # Same as .both()
 
 ALGORITHM
 ---------
@@ -38,22 +43,28 @@ Use .limit() to cap results for large graphs.
 USAGE EXAMPLES
 --------------
 
-Find 3-node dependency chains:
-    >>> pattern = Pattern() \\
-    ...     .node("a", type="task") \\
-    ...     .edge("DEPENDS_ON", direction="incoming") \\
-    ...     .node("b", type="task") \\
-    ...     .edge("DEPENDS_ON", direction="incoming") \\
-    ...     .node("c", type="task")
+Find 3-node dependency chains (Gremlin-style):
+    >>> pattern = (Pattern()
+    ...     .node("a", type="task")
+    ...     .in_("DEPENDS_ON")        # b depends on a
+    ...     .node("b", type="task")
+    ...     .in_("DEPENDS_ON")        # c depends on b
+    ...     .node("c", type="task"))
     >>> for match in PatternMatcher(manager).find(pattern):
     ...     print(f"{match['c'].title} -> {match['b'].title} -> {match['a'].title}")
 
 Find tasks blocking high-priority work:
-    >>> pattern = Pattern() \\
-    ...     .node("blocker", type="task") \\
-    ...     .edge("BLOCKS", direction="outgoing") \\
-    ...     .node("blocked", type="task", priority="high")
+    >>> pattern = (Pattern()
+    ...     .node("blocker", type="task")
+    ...     .out("BLOCKS")            # blocker --BLOCKS--> blocked
+    ...     .node("blocked", type="task", priority="high"))
     >>> blockers = PatternMatcher(manager).find(pattern)
+
+Find connected tasks (either direction):
+    >>> pattern = (Pattern()
+    ...     .node("a", type="task")
+    ...     .both("DEPENDS_ON")       # Either direction
+    ...     .node("b", type="task"))
 
 Find first match only (more efficient):
     >>> match = PatternMatcher(manager).find_first(pattern)
@@ -63,14 +74,16 @@ Count matches:
 
 DIRECTION SEMANTICS
 -------------------
-Edge direction is relative to the PREVIOUS node in the pattern:
-- "outgoing": previous_node --edge--> current_node
-- "incoming": current_node --edge--> previous_node
-- "any": either direction
+Gremlin-style methods follow Apache TinkerPop conventions:
+- .out(type): Follow edge from previous → current (outgoing from previous)
+- .in_(type): Follow edge from current → previous (incoming to previous)
+- .both(type): Either direction
 
-For DEPENDS_ON where A depends on B (edge: A->B):
-    .node("A").edge("DEPENDS_ON", direction="outgoing").node("B")
-    Means: A --DEPENDS_ON--> B (A depends on B)
+For DEPENDS_ON where A depends on B (edge: A→B):
+    Pattern().node("A").out("DEPENDS_ON").node("B")
+    Matches: A --DEPENDS_ON--> B (A depends on B)
+
+Note: .in_() uses underscore to avoid Python's `in` keyword.
 """
 
 from __future__ import annotations
@@ -158,10 +171,16 @@ class Pattern:
 
         Args:
             edge_type: Type of edge (DEPENDS_ON, CONTAINS, etc.)
-            direction: "incoming", "outgoing", or "any"
+            direction: "incoming", "outgoing", or "any" (deprecated, use helper methods)
 
         Returns:
             Self for chaining
+
+        Note:
+            Prefer using the Gremlin-style helper methods for clarity:
+            - .out(edge_type) - Follow outgoing edges (A → B)
+            - .in_(edge_type) - Follow incoming edges (A ← B)
+            - .both(edge_type) - Either direction
         """
         if not self._last_was_node:
             raise ValueError("Edge must follow a node")
@@ -172,6 +191,64 @@ class Pattern:
         ))
         self._last_was_node = False
         return self
+
+    def out(self, edge_type: str) -> "Pattern":
+        """
+        Add an outgoing edge constraint (Gremlin-style).
+
+        Matches: previous_node --edge_type--> next_node
+
+        Example:
+            >>> # Find A that depends on B (A --DEPENDS_ON--> B)
+            >>> Pattern().node("A").out("DEPENDS_ON").node("B")
+
+        Args:
+            edge_type: Type of edge (DEPENDS_ON, BLOCKS, etc.)
+
+        Returns:
+            Self for chaining
+        """
+        return self.edge(edge_type, direction="outgoing")
+
+    def in_(self, edge_type: str) -> "Pattern":
+        """
+        Add an incoming edge constraint (Gremlin-style).
+
+        Matches: previous_node <--edge_type-- next_node
+
+        Example:
+            >>> # Find B where something depends on B (? --DEPENDS_ON--> B)
+            >>> Pattern().node("B").in_("DEPENDS_ON").node("A")
+
+        Note:
+            Named `in_` (with underscore) to avoid conflict with Python's
+            built-in `in` keyword. Follows Python convention for reserved words.
+
+        Args:
+            edge_type: Type of edge (DEPENDS_ON, BLOCKS, etc.)
+
+        Returns:
+            Self for chaining
+        """
+        return self.edge(edge_type, direction="incoming")
+
+    def both(self, edge_type: str) -> "Pattern":
+        """
+        Add a bidirectional edge constraint (Gremlin-style).
+
+        Matches: previous_node --edge_type-- next_node (either direction)
+
+        Example:
+            >>> # Find connected tasks regardless of direction
+            >>> Pattern().node("A").both("DEPENDS_ON").node("B")
+
+        Args:
+            edge_type: Type of edge (DEPENDS_ON, BLOCKS, etc.)
+
+        Returns:
+            Self for chaining
+        """
+        return self.edge(edge_type, direction="any")
 
     @property
     def node_count(self) -> int:
