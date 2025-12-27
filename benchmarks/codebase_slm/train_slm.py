@@ -2,31 +2,42 @@
 """
 Train PRISM-SLM on the generated repository corpus.
 
-This script demonstrates training a domain-specific SLM that understands
+This script trains a domain-specific SLM that understands
 the repository's code, documentation, and structure.
 
-Usage:
-    # Quick training (sample corpus)
-    python -m benchmarks.codebase_slm.train_slm --quick
+IMPORTANT: Use --dry-run to evaluate without saving, or --output to
+specify a custom output path.
 
-    # Full training
-    python -m benchmarks.codebase_slm.train_slm --full
+Usage:
+    # Quick training (sample corpus) - evaluate only
+    python -m benchmarks.codebase_slm.train_slm --quick --dry-run
+
+    # Full training with model save
+    python -m benchmarks.codebase_slm.train_slm --full --output prism_full.json
 
     # Interactive mode after training
-    python -m benchmarks.codebase_slm.train_slm --interactive
+    python -m benchmarks.codebase_slm.train_slm --quick --interactive
 """
 
 import argparse
+import hashlib
 import json
+import shutil
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from cortical.reasoning.prism_slm import PRISMLanguageModel
+
+# Default paths
+DEFAULT_MODEL_PATH = PROJECT_ROOT / "benchmarks" / "codebase_slm" / "models" / "prism_slm.json"
+BACKUP_DIR = PROJECT_ROOT / "benchmarks" / "codebase_slm" / "models" / "backups"
 
 
 def load_training_corpus(corpus_path: Path, limit: int = None) -> List[str]:
@@ -154,8 +165,82 @@ def interactive_mode(model: PRISMLanguageModel):
     print("\nGoodbye!")
 
 
+def backup_existing_model(model_path: Path) -> Optional[Path]:
+    """Create a backup of the existing model before overwriting."""
+    if not model_path.exists():
+        return None
+
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Create timestamped backup filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_name = f"{model_path.stem}_{timestamp}.json"
+    backup_path = BACKUP_DIR / backup_name
+
+    shutil.copy2(model_path, backup_path)
+    print(f"⚠️  Backed up existing model to: {backup_path}")
+
+    # Keep only last 5 backups per model type
+    pattern = f"{model_path.stem}_*.json"
+    backups = sorted(BACKUP_DIR.glob(pattern))
+    if len(backups) > 5:
+        for old_backup in backups[:-5]:
+            old_backup.unlink()
+            print(f"   Removed old backup: {old_backup.name}")
+
+    return backup_path
+
+
+def compute_corpus_hash(patterns: List[str]) -> str:
+    """Compute a hash of the training corpus for provenance."""
+    content = "\n".join(sorted(set(patterns)))
+    return hashlib.sha256(content.encode()).hexdigest()[:16]
+
+
+def save_model(model: PRISMLanguageModel, path: Path, provenance: dict):
+    """Save trained model with provenance metadata."""
+    # Get model internal state
+    model_data = {
+        # Provenance metadata
+        '_provenance': {
+            'trained_at': datetime.now().isoformat(),
+            'corpus_hash': provenance.get('corpus_hash', 'unknown'),
+            'corpus_size': provenance.get('corpus_size', 0),
+            'corpus_path': provenance.get('corpus_path', 'unknown'),
+            'script': 'train_slm.py',
+            'model_type': 'PRISMLanguageModel',
+            'context_size': model.context_size,
+        },
+        # Model data
+        'vocab_size': model.vocab_size,
+        'context_size': model.context_size,
+        'transitions': {
+            ' '.join(ctx): dict(trans)
+            for ctx, trans in model.graph._transitions.items()
+        },
+    }
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(path, 'w') as f:
+        json.dump(model_data, f, indent=2)
+
+    print(f"\n✓ Model saved to {path}")
+    print(f"  Corpus hash: {provenance.get('corpus_hash', 'unknown')}")
+    print(f"  Corpus size: {provenance.get('corpus_size', 0)} patterns")
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Train PRISM-SLM on repository corpus')
+    parser = argparse.ArgumentParser(
+        description='Train PRISM-SLM on repository corpus',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s --quick --dry-run           # Quick eval, no save
+  %(prog)s --full --output my_model.json  # Full training, save to file
+  %(prog)s --quick --interactive       # Quick train + interactive mode
+        """
+    )
     parser.add_argument('--quick', action='store_true', help='Quick training (1000 patterns)')
     parser.add_argument('--full', action='store_true', help='Full training (all patterns)')
     parser.add_argument('--interactive', action='store_true', help='Interactive mode after training')
@@ -163,13 +248,24 @@ def main():
                         default='benchmarks/codebase_slm/corpus/training_patterns.jsonl',
                         help='Path to training corpus')
     parser.add_argument('--context-size', type=int, default=3, help='Context window size')
+    parser.add_argument('--output', '-o', type=str,
+                        help='Save trained model to this path')
+    parser.add_argument('--dry-run', action='store_true',
+                        help='Evaluate only, do not save model')
+    parser.add_argument('--force', '-f', action='store_true',
+                        help='Overwrite existing model without backup')
     args = parser.parse_args()
 
     corpus_path = Path(args.corpus)
+    if not corpus_path.is_absolute():
+        corpus_path = PROJECT_ROOT / corpus_path
 
     print("=" * 60)
     print("Repository-Native SLM Training")
     print("=" * 60)
+
+    if args.dry_run:
+        print("⚠️  DRY RUN MODE - Model will NOT be saved")
     print()
 
     # Determine pattern limit
@@ -243,6 +339,30 @@ def main():
     print(f"\n{'=' * 60}")
     print(f"RESULTS: {correct}/{len(test_queries)} queries matched (≥50% of terms)")
     print(f"{'=' * 60}")
+
+    # Save model if --output specified (and not --dry-run)
+    if args.output and not args.dry_run:
+        model_path = Path(args.output)
+        if not model_path.is_absolute():
+            model_path = PROJECT_ROOT / "benchmarks" / "codebase_slm" / "models" / model_path
+
+        # Backup existing model (unless --force)
+        if model_path.exists() and not args.force:
+            backup_existing_model(model_path)
+        elif model_path.exists() and args.force:
+            print("⚠️  --force specified, skipping backup")
+
+        provenance = {
+            'corpus_hash': compute_corpus_hash(patterns),
+            'corpus_size': len(patterns),
+            'corpus_path': str(corpus_path),
+        }
+
+        save_model(model, model_path, provenance)
+    elif args.output and args.dry_run:
+        print("\n⚠️  DRY RUN - Model was NOT saved (would save to: {})".format(args.output))
+    elif not args.output and not args.dry_run:
+        print("\n💡 Tip: Use --output <path> to save the trained model")
 
     # Interactive mode
     if args.interactive:
