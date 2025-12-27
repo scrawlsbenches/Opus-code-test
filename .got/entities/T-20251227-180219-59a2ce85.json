@@ -1,0 +1,19 @@
+{
+  "_checksum": "5972cd50c8bd7666",
+  "_written_at": "2025-12-27T18:02:19.446413+00:00",
+  "data": {
+    "created_at": "2025-12-27T18:02:19.443145+00:00",
+    "description": "\n## Context\nSession 7K1pS fixed the GoT relationships query to work with all entity types and all 29 edge types.\n\n## Changes Made (commits a0e979c8, 33fab1ca, b45833b6)\n1. Added _get_entity_node() for generic entity lookup (T-, S-, D-, EPIC-, H-)\n2. Added converter methods for sprints, decisions, epics, handoffs\n3. Rewrote get_all_relationships() to handle all edge types dynamically\n4. Added grammatical conjugation for incoming edge names\n\n## Validation Checklist\n- [ ] Sprint relationships: `query \"relationships S-027\"` shows 8 contained tasks\n- [ ] Task relationships: `query \"relationships T-20251227-171020-2df0d769\"` shows depends_on, depended_by, contained_by\n- [ ] Handoff relationships: `query \"relationships H-20251224-070920-ab3027eb\"` shows transferred_by\n- [ ] Decision relationships: Find a decision with edges and verify\n- [ ] Epic relationships: Find an epic with edges and verify\n- [ ] Edge types: Verify TRANSFERS, IMPLEMENTS, or other non-standard edges work\n- [ ] Backward compat: Existing code using relationships still works\n- [ ] GoT validate passes\n\n## Knowledge Transfer\nRead: samples/memories/2025-12-27-knowledge-transfer-got-relationships-fix.md\n\n## Files Modified\n- scripts/got_utils.py (lines 772-846, 1292-1456)\n",
+    "entity_type": "task",
+    "id": "T-20251227-180219-59a2ce85",
+    "metadata": {},
+    "modified_at": "2025-12-27T18:02:19.446358+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Validate GoT relationships query fix for all entity and edge types",
+    "version": 2
+  }
+}
