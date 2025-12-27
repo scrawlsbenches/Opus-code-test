@@ -1,0 +1,15 @@
+{
+  "_checksum": "718af9298fb79f62",
+  "_written_at": "2025-12-27T03:34:10.731039+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2025-12-27T03:34:10.728624+00:00",
+    "entity_type": "decision",
+    "id": "D-20251227-033410-546510bb",
+    "modified_at": "2025-12-27T03:34:10.731007+00:00",
+    "properties": {},
+    "rationale": "New corpus training regressed file_location accuracy from 88% to 50%. The v2 model is saved for reference but the original (15,814 vocab, 37,318 docs) remains production. File location is the primary use case.",
+    "title": "Keep current PRISM model as default despite new corpus",
+    "version": 2
+  }
+}

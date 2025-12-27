@@ -6,6 +6,12 @@
         "command": "bash scripts/ml-session-start-hook.sh"
       }
     ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "bash scripts/ml-tool-capture-hook.sh"
+      }
+    ],
     "Stop": [
       {
         "type": "command",
