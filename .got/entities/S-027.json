@@ -1,6 +1,6 @@
 {
-  "_checksum": "5bb36abc7939ec56",
-  "_written_at": "2025-12-27T17:14:46.640434+00:00",
+  "_checksum": "01cde9cdbe9387b5",
+  "_written_at": "2025-12-27T17:14:52.943578+00:00",
   "data": {
     "created_at": "2025-12-27T17:09:59.797410+00:00",
     "entity_type": "sprint",
@@ -9,18 +9,22 @@
       {
         "completed": false,
         "description": "Implement weighted n-gram training in NGramModel"
+      },
+      {
+        "completed": false,
+        "description": "Create GitHistoryTrainer with branch-aware weighting"
       }
     ],
     "id": "S-027",
     "isolation": [],
     "metadata": {},
-    "modified_at": "2025-12-27T17:14:46.640388+00:00",
+    "modified_at": "2025-12-27T17:14:52.943517+00:00",
     "notes": [],
     "number": 27,
     "properties": {},
     "session_id": "",
     "status": "available",
     "title": "SparkSLM Git History Training",
-    "version": 4
+    "version": 6
   }
 }
