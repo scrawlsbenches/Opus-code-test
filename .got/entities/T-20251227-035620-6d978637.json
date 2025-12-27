@@ -1,19 +1,22 @@
 {
-  "_checksum": "7d55de7c067b68be",
-  "_written_at": "2025-12-27T03:56:20.267457+00:00",
+  "_checksum": "f4f6d9f41440dfd5",
+  "_written_at": "2025-12-27T10:08:00.214933+00:00",
   "data": {
     "created_at": "2025-12-27T03:56:20.264418+00:00",
     "description": "Replace confusing direction='incoming/outgoing' parameter with Gremlin-style methods: .out() for outgoing edges (A\u2192B), .in_() for incoming (B\u2190A), .both() for either direction (default). This follows Neo4j Cypher and Apache TinkerPop Gremlin standards.",
     "entity_type": "task",
     "id": "T-20251227-035620-6d978637",
-    "metadata": {},
-    "modified_at": "2025-12-27T03:56:20.267395+00:00",
+    "metadata": {
+      "started_at": "2025-12-27T10:08:00.208599+00:00",
+      "updated_at": "2025-12-27T10:08:00.208608+00:00"
+    },
+    "modified_at": "2025-12-27T10:08:00.214895+00:00",
     "priority": "medium",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "Improve edge direction API with Gremlin-style methods",
-    "version": 2
+    "version": 4
   }
 }
