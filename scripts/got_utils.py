@@ -56,6 +56,7 @@ from cortical.got.cli.task import (
     cmd_task_start,
     cmd_task_complete,
     cmd_task_block,
+    cmd_task_update,
     cmd_task_depends,
     cmd_task_delete,
 )

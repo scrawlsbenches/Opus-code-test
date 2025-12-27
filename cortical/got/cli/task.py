@@ -186,6 +186,51 @@ def cmd_task_depends(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
+def cmd_task_update(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got task update' command.
+
+    Updates task properties. Only specified fields are updated.
+    """
+    task_id = args.task_id
+
+    # Get existing task
+    task = manager.get_task(task_id)
+    if not task:
+        print(f"Task not found: {task_id}")
+        return 1
+
+    # Build updates dict from provided arguments
+    updates = {}
+
+    if getattr(args, 'title', None):
+        updates['title'] = args.title
+    if getattr(args, 'priority', None):
+        updates['priority'] = args.priority
+    if getattr(args, 'category', None):
+        updates['category'] = args.category
+    if getattr(args, 'description', None):
+        updates['description'] = args.description
+    if getattr(args, 'retrospective', None):
+        updates['retrospective'] = args.retrospective
+
+    if not updates:
+        print("No updates specified. Use --title, --priority, --category, --description, or --retrospective")
+        return 1
+
+    # Apply updates
+    if manager.update_task(task_id, **updates):
+        manager.save()
+        print(f"Updated: {task_id}")
+        for key, value in updates.items():
+            # Truncate long values for display
+            display_value = value if len(str(value)) < 60 else str(value)[:57] + "..."
+            print(f"  {key}: {display_value}")
+        return 0
+    else:
+        print(f"Failed to update: {task_id}")
+        return 1
+
+
 def cmd_task_delete(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got task delete' command.
 
@@ -325,6 +370,23 @@ def setup_task_parser(subparsers) -> None:
     block_parser.add_argument("--reason", "-r", required=True, help="Block reason")
     block_parser.add_argument("--blocker", "-b", help="Blocking task ID")
 
+    # task update
+    update_parser = task_subparsers.add_parser("update", help="Update a task's properties")
+    update_parser.add_argument("task_id", help="Task ID to update")
+    update_parser.add_argument("--title", "-t", help="New title")
+    update_parser.add_argument(
+        "--priority", "-p",
+        choices=VALID_PRIORITIES,
+        help="New priority"
+    )
+    update_parser.add_argument(
+        "--category", "-c",
+        choices=VALID_CATEGORIES,
+        help="New category"
+    )
+    update_parser.add_argument("--description", "-d", help="New description")
+    update_parser.add_argument("--retrospective", "-r", help="Retrospective notes")
+
     # task delete
     delete_parser = task_subparsers.add_parser("delete", help="Delete a task (transactional)")
     delete_parser.add_argument("task_id", help="Task ID to delete")
@@ -368,6 +430,7 @@ def handle_task_command(args, manager: "TransactionalGoTAdapter") -> int:
         "start": cmd_task_start,
         "complete": cmd_task_complete,
         "block": cmd_task_block,
+        "update": cmd_task_update,
         "delete": cmd_task_delete,
         "depends": cmd_task_depends,
     }
