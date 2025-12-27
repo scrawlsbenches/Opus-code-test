@@ -158,3 +158,7 @@ corpus_dev/
 .got/.got.lock
 .got/**/*.lock
 .spark_intelligence_model.json
+
+# Ensure git-ml tracked directories are not ignored
+!.git-ml/tracked/
+!.git-ml/tracked/**
