@@ -1,0 +1,19 @@
+{
+  "_checksum": "0da53d1490925fcc",
+  "_written_at": "2025-12-27T16:12:40.304678+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:12:40.300870+00:00",
+    "description": "## Goal (WHY)\nEnable the system to know what it knows and doesn't know - essential for targeted learning.\n\n## Interface Contract (WHAT)\n```python\n@dataclass\nclass KnowledgeGap:\n    domain: str\n    missing_concepts: Set[str]\n    missing_relations: Set[str]\n    estimated_importance: float  # How important is this gap?\n    \n@dataclass\nclass ConfidenceAssessment:\n    knowledge_coverage: float    # 0-1: How much relevant knowledge exists\n    inference_reliability: float # 0-1: How reliable are inference paths\n    uncertainty_sources: List[str]  # What's causing uncertainty\n    \nclass MetacognitiveMonitor:\n    def __init__(self, woven_mind: WovenMind):\n        self.mind = woven_mind\n        \n    def assess_confidence(self, query: str) -> ConfidenceAssessment:\n        '''Estimate confidence in answering a query.'''\n        \n    def identify_knowledge_gaps(self, domain: str) -> List[KnowledgeGap]:\n        '''Find what's missing in a knowledge domain.'''\n        \n    def suggest_learning_priorities(self) -> List[str]:\n        '''Recommend what to learn next.'''\n```\n\n## Integration Points\n- New file: cortical/reasoning/metacognition.py\n- Uses: WovenMind for confidence signals\n- Uses: PLN knowledge base for gap detection\n\n## Test Requirements\nLocation: tests/unit/test_metacognition.py (NEW file)\n\n```python\ndef test_assess_confidence_known_domain():\n    mind = WovenMind()\n    mind.train(\"neural networks process data\")\n    monitor = MetacognitiveMonitor(mind)\n    assessment = monitor.assess_confidence(\"neural\")\n    assert assessment.knowledge_coverage > 0.5\n\ndef test_assess_confidence_unknown_domain():\n    mind = WovenMind()\n    monitor = MetacognitiveMonitor(mind)\n    assessment = monitor.assess_confidence(\"quantum_entanglement_xyz\")\n    assert assessment.knowledge_coverage < 0.3\n\ndef test_identify_gaps():\n    # Test that gaps are correctly identified\n    gaps = monitor.identify_knowledge_gaps(\"physics\")\n    assert isinstance(gaps, list)\n```\n\nVerification: python -m pytest tests/unit/test_metacognition.py -v\n\n## Anti-Patterns\n- Do NOT require perfect knowledge - work with partial info\n- Do NOT make assessment expensive - should be fast\n- Do NOT ignore uncertainty sources\n\n## Freedom Zone\n- Gap detection algorithm\n- How to estimate importance\n- Learning priority heuristics\n\n## Reference: docs/epic-cognitive-nlu-nlg-knowledge-base.md",
+    "entity_type": "task",
+    "id": "T-20251227-161240-6cadaa51",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:12:40.304596+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement MetacognitiveMonitor for knowledge gap detection",
+    "version": 2
+  }
+}

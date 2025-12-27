@@ -98,6 +98,7 @@ class EdgeType(Enum):
     Temporal edges (time relationships):
     - PRECEDES: A must happen before B
     - TRIGGERS: A causes B to happen
+    - CAUSED_BY: A was caused by B (inverse of TRIGGERS, for root cause analysis)
     - BLOCKS: A prevents B until resolved
 
     Epistemic edges (knowledge relationships):
@@ -134,6 +135,7 @@ class EdgeType(Enum):
     # Temporal edges
     PRECEDES = "precedes"
     TRIGGERS = "triggers"
+    CAUSED_BY = "caused_by"  # Inverse of TRIGGERS: B was caused by A (for root cause analysis)
     BLOCKS = "blocks"
 
     # Epistemic edges

@@ -1,0 +1,19 @@
+{
+  "_checksum": "ec76f1fa1b6fdb81",
+  "_written_at": "2025-12-27T16:13:32.657525+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:13:32.654397+00:00",
+    "description": "## Goal (WHY)\nBefore building generative verification, understand what \"verify understanding through generation\" means in this codebase.\n\n## Exploration Questions\n1. How could we generate testable implications from understanding?\n2. What existing components could verify generated implications?\n3. How does SparkSLM generate text? Can it be used for implication generation?\n4. What would a \"refine understanding based on feedback\" loop look like?\n\n## Files to Read\n- cortical/reasoning/prism_slm.py (text generation)\n- cortical/spark/ngram.py (n-gram predictions)\n- cortical/query/search.py (verification against corpus)\n- cortical/reasoning/verification.py (existing verification patterns)\n\n## Deliverables\nReport with:\n1. Proposed GenerativeUnderstandingLoop architecture\n2. What \"implication\" means in this context\n3. How to verify generated implications\n4. Refinement strategy when verification fails\n\n## Anti-Patterns\n- Do NOT write code - exploration only\n- Do NOT overcomplicate - \"generate and check\" is the core idea\n\n## Reference: docs/epic-cognitive-nlu-nlg-knowledge-base.md\n## GoT: Review Sprint 1 and 2 patterns",
+    "entity_type": "task",
+    "id": "T-20251227-161332-3b5616fa",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:13:32.657467+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "arch"
+    },
+    "status": "pending",
+    "title": "EXPLORE: Investigate generative verification requirements",
+    "version": 2
+  }
+}

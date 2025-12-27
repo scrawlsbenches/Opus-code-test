@@ -1,0 +1,19 @@
+{
+  "_checksum": "706369a4fcd72886",
+  "_written_at": "2025-12-27T16:11:24.438805+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:11:24.435825+00:00",
+    "description": "## Goal (WHY)\nBefore building domain transfer, understand current analogy capabilities and identify what's missing.\n\n## Exploration Questions\n1. How does complete_analogy() currently work?\n2. What is a \"domain\" in the context of this codebase?\n3. How could we represent structural mappings between domains?\n4. What existing data structures could support domain transfer?\n\n## Files to Read\n- cortical/query/analogy.py (full file)\n- cortical/reasoning/prism_pln.py (for probabilistic domain links)\n- cortical/reasoning/thought_graph.py (for graph structures)\n- tests/unit/test_query_analogy.py (understand current tests)\n\n## Deliverables\nReport with:\n1. Current analogy capabilities and limitations\n2. Proposed Domain and StructuralMapping data structures\n3. How to represent \"water flows downhill\" maps to \"electricity flows through least resistance\"\n4. Integration strategy with existing code\n\n## Anti-Patterns\n- Do NOT write code - exploration only\n- Do NOT assume structure - read the actual code\n\n## Reference: docs/epic-cognitive-nlu-nlg-knowledge-base.md\n## GoT: Check Sprint 1 tasks for patterns",
+    "entity_type": "task",
+    "id": "T-20251227-161124-6004ecdf",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:11:24.438730+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "arch"
+    },
+    "status": "pending",
+    "title": "EXPLORE: Investigate analogy.py and identify domain transfer requirements",
+    "version": 2
+  }
+}

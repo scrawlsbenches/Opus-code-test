@@ -1,0 +1,19 @@
+{
+  "_checksum": "f62721451218a03c",
+  "_written_at": "2025-12-27T16:13:56.390660+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:13:56.386891+00:00",
+    "description": "## Goal (WHY)\nEnable representation of generated implications and their verification status.\n\n## Interface Contract (WHAT)\n```python\n@dataclass\nclass Implication:\n    source_understanding: str    # What we think we understand\n    generated_claim: str         # What we predict should be true\n    confidence: float            # How confident in this prediction\n    generation_method: str       # How was this generated (pln, ngram, etc.)\n\n@dataclass\nclass VerificationResult:\n    implication: Implication\n    verified: bool               # Did verification succeed?\n    evidence: List[str]          # Supporting or contradicting evidence\n    confidence: float            # Confidence in verification\n    method: str                  # How was this verified (corpus, pln, etc.)\n    \n@dataclass\nclass UnderstandingState:\n    original_input: str\n    current_model: Dict[str, Any]  # Internal representation\n    verified_implications: List[VerificationResult]\n    refinement_count: int          # How many times refined\n```\n\n## Integration Points\n- New file: cortical/reasoning/generative_loop.py\n- Will be used by: GenerativeUnderstandingLoop in next task\n\n## Test Requirements\nLocation: tests/unit/test_generative_loop.py (NEW file)\n\n```python\ndef test_implication_creation():\n    impl = Implication(\n        source_understanding=\"Python uses indentation\",\n        generated_claim=\"Mixing tabs and spaces causes errors\",\n        confidence=0.8,\n        generation_method=\"pln\"\n    )\n    assert impl.confidence == 0.8\n\ndef test_verification_result():\n    result = VerificationResult(\n        implication=impl,\n        verified=True,\n        evidence=[\"Found in style guide\"],\n        confidence=0.9,\n        method=\"corpus\"\n    )\n    assert result.verified\n```\n\nVerification: python -m pytest tests/unit/test_generative_loop.py -v\n\n## Anti-Patterns\n- Do NOT skip serialization (to_dict/from_dict)\n- Do NOT make structures too rigid\n- Do NOT forget confidence tracking\n\n## Freedom Zone\n- Additional metadata fields\n- Validation logic\n\n## Reference: docs/epic-cognitive-nlu-nlg-knowledge-base.md",
+    "entity_type": "task",
+    "id": "T-20251227-161356-a3a38367",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:13:56.390577+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add Implication and VerificationResult data structures",
+    "version": 2
+  }
+}

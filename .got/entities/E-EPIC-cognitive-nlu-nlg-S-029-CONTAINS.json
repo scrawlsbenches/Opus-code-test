@@ -1,0 +1,16 @@
+{
+  "_checksum": "52dbc2e751575c65",
+  "_written_at": "2025-12-27T18:47:49.397977+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2025-12-27T18:47:49.395682+00:00",
+    "edge_type": "CONTAINS",
+    "entity_type": "edge",
+    "id": "E-EPIC-cognitive-nlu-nlg-S-029-CONTAINS",
+    "modified_at": "2025-12-27T18:47:49.397947+00:00",
+    "source_id": "EPIC-cognitive-nlu-nlg",
+    "target_id": "S-029",
+    "version": 2,
+    "weight": 1.0
+  }
+}

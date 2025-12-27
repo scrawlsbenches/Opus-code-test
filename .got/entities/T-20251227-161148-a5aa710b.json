@@ -1,0 +1,19 @@
+{
+  "_checksum": "c9768a94d9dc9385",
+  "_written_at": "2025-12-27T16:11:48.663436+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:11:48.660289+00:00",
+    "description": "## Goal (WHY)\nEnable representation of knowledge domains and structural mappings between them for analogical transfer.\n\n## Interface Contract (WHAT)\n```python\n@dataclass\nclass Domain:\n    name: str\n    entities: Set[str]           # Things in this domain\n    relations: Dict[str, List[Tuple[str, str]]]  # relation_type -> [(entity1, entity2)]\n    properties: Dict[str, Dict[str, Any]]  # entity -> properties\n    \n@dataclass  \nclass StructuralMapping:\n    source_domain: Domain\n    target_domain: Domain\n    entity_mapping: Dict[str, str]     # source_entity -> target_entity\n    relation_mapping: Dict[str, str]   # source_relation -> target_relation\n    confidence: float                   # How good is this mapping?\n    \n    def transfer(self, source_fact: Tuple) -> Optional[Tuple]:\n        '''Transfer a fact from source to target domain.'''\n```\n\n## Integration Points\n- New file: cortical/reasoning/analogy_domains.py\n- Will be used by: Enhanced complete_analogy() in Sprint 2\n- May use: TruthValue from prism_pln.py for confidence\n\n## Test Requirements\nLocation: tests/unit/test_analogy_domains.py (NEW file)\n\n```python\ndef test_domain_creation():\n    domain = Domain(name=\"physics\", entities={\"water\", \"hill\"}, ...)\n    assert \"water\" in domain.entities\n\ndef test_structural_mapping():\n    water_domain = Domain(name=\"fluid\", ...)\n    electric_domain = Domain(name=\"electricity\", ...)\n    mapping = StructuralMapping(\n        source_domain=water_domain,\n        target_domain=electric_domain,\n        entity_mapping={\"water\": \"electricity\", \"hill\": \"resistance\"},\n        relation_mapping={\"flows_down\": \"flows_through\"},\n        confidence=0.8\n    )\n    assert mapping.confidence == 0.8\n\ndef test_transfer_fact():\n    # Test that (\"water\", \"flows_down\", \"hill\") maps to\n    # (\"electricity\", \"flows_through\", \"resistance\")\n```\n\nVerification: python -m pytest tests/unit/test_analogy_domains.py -v\n\n## Anti-Patterns\n- Do NOT overcomplicate - start simple, iterate\n- Do NOT couple to specific domain content\n- Do NOT skip serialization (to_dict/from_dict)\n\n## Freedom Zone\n- Additional metadata fields\n- Validation logic\n- Helper methods\n\n## Reference: docs/epic-cognitive-nlu-nlg-knowledge-base.md",
+    "entity_type": "task",
+    "id": "T-20251227-161148-a5aa710b",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:11:48.663362+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add Domain and StructuralMapping data structures",
+    "version": 2
+  }
+}

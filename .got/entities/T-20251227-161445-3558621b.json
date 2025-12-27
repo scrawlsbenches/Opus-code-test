@@ -1,0 +1,19 @@
+{
+  "_checksum": "1e54eefdcb4ae1ac",
+  "_written_at": "2025-12-27T16:14:45.429253+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:14:45.425559+00:00",
+    "description": "## Goal (WHY)\nConnect generative understanding with metacognition so that verification failures inform knowledge gap detection.\n\n## Interface Contract (WHAT)\n```python\nclass SelfAssessingMind:\n    '''Combines generative understanding with metacognition.'''\n    \n    def __init__(\n        self,\n        woven_mind: WovenMind,\n        gen_loop: GenerativeUnderstandingLoop,\n        metacog: MetacognitiveMonitor\n    ):\n        pass\n        \n    def learn_with_verification(self, input_text: str) -> LearningResult:\n        '''\n        1. Build understanding\n        2. Generate and verify implications\n        3. Update knowledge gaps based on failures\n        4. Return learning summary\n        '''\n        \n    def get_learning_recommendations(self) -> List[str]:\n        '''Suggest what to learn based on verification failures.'''\n```\n\n## Integration Points\n- New file: cortical/reasoning/self_assessing.py\n- Uses: GenerativeUnderstandingLoop from this sprint\n- Uses: MetacognitiveMonitor from Sprint 2\n- Uses: WovenMind for processing\n\n## Test Requirements\nLocation: tests/integration/test_self_assessing_integration.py (NEW file)\n\n```python\ndef test_learn_with_verification():\n    mind = WovenMind()\n    gen_loop = GenerativeUnderstandingLoop()\n    metacog = MetacognitiveMonitor(mind)\n    \n    assessor = SelfAssessingMind(mind, gen_loop, metacog)\n    result = assessor.learn_with_verification(\"neural networks\")\n    \n    assert result is not None\n    assert hasattr(result, 'understanding')\n\ndef test_learning_recommendations_after_failure():\n    # Verify that failed verifications lead to learning recommendations\n    pass\n```\n\nVerification: python -m pytest tests/integration/test_self_assessing_integration.py -v\n\n## Anti-Patterns\n- Do NOT tightly couple - each component should work alone\n- Do NOT require all components - graceful degradation\n- Do NOT make learning slow\n\n## Freedom Zone\n- Learning result format\n- Recommendation algorithm\n- How failures inform gaps\n\n## Reference: docs/epic-cognitive-nlu-nlg-knowledge-base.md",
+    "entity_type": "task",
+    "id": "T-20251227-161445-3558621b",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:14:45.429189+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Integrate GenerativeLoop with MetacognitiveMonitor",
+    "version": 2
+  }
+}

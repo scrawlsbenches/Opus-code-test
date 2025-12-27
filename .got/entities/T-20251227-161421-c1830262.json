@@ -1,0 +1,19 @@
+{
+  "_checksum": "fa079add506f4e24",
+  "_written_at": "2025-12-27T16:14:21.034760+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:14:21.031021+00:00",
+    "description": "## Goal (WHY)\nVerify understanding by generating implications and checking them - \"if you can't explain it, you don't understand it.\"\n\n## Interface Contract (WHAT)\n```python\nclass GenerativeUnderstandingLoop:\n    def __init__(\n        self,\n        pln: Optional[PLNReasoner] = None,\n        corpus_search: Optional[Callable] = None\n    ):\n        self.pln = pln\n        self.search = corpus_search\n        \n    def comprehend(self, input_text: str) -> UnderstandingState:\n        '''Build initial understanding of input.'''\n        \n    def generate_implications(\n        self,\n        understanding: UnderstandingState,\n        n: int = 3\n    ) -> List[Implication]:\n        '''Generate testable implications of understanding.'''\n        \n    def verify_implication(\n        self,\n        implication: Implication\n    ) -> VerificationResult:\n        '''Check if generated implication holds.'''\n        \n    def refine_understanding(\n        self,\n        state: UnderstandingState,\n        failed_verification: VerificationResult\n    ) -> UnderstandingState:\n        '''Update understanding based on verification failure.'''\n        \n    def understand(\n        self,\n        input_text: str,\n        max_iterations: int = 3\n    ) -> UnderstandingState:\n        '''\n        Full loop: comprehend -> generate -> verify -> refine.\n        \n        Iterates until all implications verify or max iterations reached.\n        '''\n```\n\n## Integration Points\n- Add to: cortical/reasoning/generative_loop.py\n- Uses: PLNReasoner for generating logical implications (optional)\n- Uses: corpus search for verification (optional)\n\n## Test Requirements\nLocation: tests/unit/test_generative_loop.py (add to existing)\n\n```python\ndef test_comprehend_returns_state():\n    loop = GenerativeUnderstandingLoop()\n    state = loop.comprehend(\"Python uses indentation\")\n    assert isinstance(state, UnderstandingState)\n\ndef test_generate_implications():\n    loop = GenerativeUnderstandingLoop()\n    state = loop.comprehend(\"Python uses indentation\")\n    implications = loop.generate_implications(state, n=2)\n    assert len(implications) <= 2\n\ndef test_full_understand_loop():\n    loop = GenerativeUnderstandingLoop()\n    final_state = loop.understand(\"Neural networks learn patterns\")\n    assert final_state.refinement_count >= 0\n```\n\nVerification: python -m pytest tests/unit/test_generative_loop.py -v\n\n## Anti-Patterns\n- Do NOT make PLN or search required - work without them\n- Do NOT infinite loop - always have max iterations\n- Do NOT ignore failed verifications\n\n## Freedom Zone\n- Implication generation algorithm\n- Verification strategy\n- Refinement strategy\n- When to stop iterating\n\n## Reference: docs/epic-cognitive-nlu-nlg-knowledge-base.md",
+    "entity_type": "task",
+    "id": "T-20251227-161421-c1830262",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:14:21.034668+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement GenerativeUnderstandingLoop",
+    "version": 2
+  }
+}

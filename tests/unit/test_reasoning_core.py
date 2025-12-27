@@ -76,6 +76,7 @@ class TestEdgeType:
         """Verify temporal edge types are defined."""
         assert EdgeType.PRECEDES.value == "precedes"
         assert EdgeType.TRIGGERS.value == "triggers"
+        assert EdgeType.CAUSED_BY.value == "caused_by"  # Inverse of TRIGGERS
         assert EdgeType.BLOCKS.value == "blocks"
 
     def test_epistemic_edges_exist(self):

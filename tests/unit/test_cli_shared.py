@@ -578,6 +578,9 @@ class TestConstants:
         assert "bugfix" in VALID_CATEGORIES
         assert "test" in VALID_CATEGORIES
         assert "docs" in VALID_CATEGORIES
+        # Research and exploration categories for investigation tasks
+        assert "research" in VALID_CATEGORIES
+        assert "exploration" in VALID_CATEGORIES
 
     def test_priority_scores_mapping(self):
         """PRIORITY_SCORES maps priorities to numeric scores."""

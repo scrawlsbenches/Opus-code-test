@@ -1,0 +1,19 @@
+{
+  "_checksum": "d61b416a9e2b0bab",
+  "_written_at": "2025-12-27T16:09:23.245482+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:09:23.241681+00:00",
+    "description": "## Goal (WHY)\nEnable PLN to track HOW it reached a conclusion, not just WHAT it concluded.\n\n## Interface Contract (WHAT)\n```python\n@dataclass\nclass InferenceStep:\n    rule_applied: str           # e.g., \"deduction\", \"abduction\"\n    premises: List[str]         # Input facts/rules used\n    conclusion: str             # What was derived\n    truth_value: TruthValue     # Confidence of this step\n    \n@dataclass\nclass ExplanationChain:\n    steps: List[InferenceStep]  # Ordered inference steps\n    final_conclusion: str\n    overall_confidence: TruthValue\n    \n    def to_natural_language(self) -> str:\n        '''Convert chain to human-readable explanation.'''\n```\n\n## Integration Points\n- Extends: cortical/reasoning/prism_pln.py\n- Used by: PLNReasoner.query() will return ExplanationChain\n- Data structure only - no logic changes yet\n\n## Test Requirements\nLocation: tests/unit/test_pln_explanation.py\n\n```python\ndef test_explanation_chain_creation():\n    step = InferenceStep(rule_applied=\"deduction\", ...)\n    chain = ExplanationChain(steps=[step], ...)\n    assert len(chain.steps) == 1\n\ndef test_to_natural_language():\n    chain = ExplanationChain(...)\n    text = chain.to_natural_language()\n    assert \"because\" in text.lower()\n```\n\nVerification: python -m pytest tests/unit/test_pln_explanation.py -v\n\n## Anti-Patterns\n- Do NOT change PLNReasoner.query() yet - just add data structure\n- Do NOT put tests in wrong location\n- Do NOT skip TDD - write tests first\n\n## Freedom Zone\n- Natural language format is up to you\n- Internal helper methods as needed\n- Field naming conventions\n\n## Reference: docs/epic-cognitive-nlu-nlg-knowledge-base.md",
+    "entity_type": "task",
+    "id": "T-20251227-160923-de6336b9",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:09:23.245407+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add ExplanationChain data structure to PLN",
+    "version": 2
+  }
+}

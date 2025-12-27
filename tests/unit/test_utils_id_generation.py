@@ -129,29 +129,31 @@ class TestEdgeId:
 class TestSprintId:
     """Tests for generate_sprint_id()."""
 
-    def test_numbered_format(self):
-        """Sprint ID with number has correct format."""
-        sprint_id = generate_sprint_id(number=5)
-        assert sprint_id == "S-005"
-
-    def test_numbered_padding(self):
-        """Sprint ID number is zero-padded to 3 digits."""
-        assert generate_sprint_id(number=1) == "S-001"
-        assert generate_sprint_id(number=42) == "S-042"
-        assert generate_sprint_id(number=999) == "S-999"
-
-    def test_default_format(self):
-        """Sprint ID without number uses year-month format."""
+    def test_timestamp_format(self):
+        """Sprint ID uses timestamp format for merge-free IDs."""
         sprint_id = generate_sprint_id()
-        now_utc = datetime.now(timezone.utc)
-        expected = f"S-{now_utc.strftime('%Y-%m')}"
-        assert sprint_id == expected
+        # Format: S-YYYYMMDD-HHMMSS-XXXXXXXX
+        pattern = r'^S-\d{8}-\d{6}-[a-f0-9]{8}$'
+        assert re.match(pattern, sprint_id), f"Invalid format: {sprint_id}"
 
-    def test_default_is_utc(self):
-        """Sprint ID uses UTC for year-month."""
+    def test_starts_with_prefix(self):
+        """Sprint ID starts with S- prefix."""
         sprint_id = generate_sprint_id()
-        pattern = r'^S-\d{4}-\d{2}$'
-        assert re.match(pattern, sprint_id)
+        assert sprint_id.startswith("S-")
+
+    def test_unique_ids(self):
+        """Each call generates a unique sprint ID."""
+        ids = {generate_sprint_id() for _ in range(10)}
+        assert len(ids) == 10  # All unique
+
+    def test_no_number_parameter(self):
+        """Sprint ID no longer uses number parameter (removed for merge-free design)."""
+        # Old: generate_sprint_id(number=5) -> "S-005"
+        # New: generate_sprint_id() -> "S-20251227-183500-a1b2c3d4"
+        # Number is now stored as metadata in Sprint entity, not in ID
+        sprint_id = generate_sprint_id()
+        assert "-" in sprint_id
+        assert len(sprint_id) > 10  # Timestamp IDs are longer than "S-005"
 
 
 class TestEpicId:

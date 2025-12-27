@@ -1,0 +1,19 @@
+{
+  "_checksum": "7aa3ad5345df6f99",
+  "_written_at": "2025-12-27T16:13:01.734482+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:13:01.730814+00:00",
+    "description": "## Goal (WHY)\nDemonstrate Sprint 2 capabilities: transferring knowledge between domains and self-assessing knowledge gaps.\n\n## Deliverable\nCreate: scripts/sprint_28_demo.py\n\n## Demo Requirements\n1. Show domain creation (e.g., \"fluid dynamics\" and \"electronics\")\n2. Show structural mapping registration\n3. Show knowledge transfer: fact in domain A -> inferred fact in domain B\n4. Show metacognitive assessment: \"I'm confident about X, uncertain about Y\"\n5. Show knowledge gap identification\n6. All assertions must pass\n\n## Test Requirements\nLocation: tests/integration/test_sprint_28_demo.py\n\n```python\ndef test_demo_runs_without_error():\n    result = subprocess.run([\"python\", \"scripts/sprint_28_demo.py\"], ...)\n    assert result.returncode == 0\n    assert b\"DEMO COMPLETE\" in result.stdout\n```\n\nVerification: python scripts/sprint_28_demo.py && python -m pytest tests/integration/test_sprint_28_demo.py -v\n\n## Anti-Patterns\n- Do NOT create demo without self-verification\n- Do NOT skip analogical transfer demonstration\n- Do NOT skip metacognition demonstration\n\n## Freedom Zone\n- Demo narrative and domain examples\n- Output formatting\n- Additional scenarios\n\n## Definition of Done (Sprint 2)\nWhen this task is complete, Sprint 2 is complete:\n- [ ] AnalogicalReasoner transfers knowledge between domains\n- [ ] MetacognitiveMonitor identifies knowledge gaps\n- [ ] Demo script runs and self-verifies\n- [ ] All tests pass with \u226595% coverage on new code\n\n## Reference: docs/definition-of-done.md",
+    "entity_type": "task",
+    "id": "T-20251227-161301-608e9049",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:13:01.734411+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Create Sprint 2 Demo: Analogical Transfer and Metacognition",
+    "version": 2
+  }
+}

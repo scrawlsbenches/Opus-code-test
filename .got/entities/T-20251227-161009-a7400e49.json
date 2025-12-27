@@ -1,0 +1,19 @@
+{
+  "_checksum": "9171bdb369179345",
+  "_written_at": "2025-12-27T16:10:09.858480+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:10:09.854350+00:00",
+    "description": "## Goal (WHY)\nEvery WovenMind output should include \"how sure are we?\" information.\n\n## Interface Contract (WHAT)\n```python\n@dataclass\nclass WovenMindResult:\n    mode: ThinkingMode\n    activations: Set[str]\n    surprise: Optional[float]\n    predictions: Dict[str, float]\n    source: str\n    metadata: Dict[str, Any]\n    confidence: float  # NEW: 0.0-1.0 confidence in this result\n    confidence_factors: Dict[str, float]  # NEW: breakdown of confidence sources\n```\n\n## Integration Points\n- Modifies: cortical/reasoning/woven_mind.py (WovenMindResult dataclass)\n- Affects: WovenMind.process() must compute and set confidence\n\n## Test Requirements\nLocation: tests/unit/test_woven_mind.py (add to existing)\n\n```python\ndef test_result_has_confidence():\n    mind = WovenMind()\n    mind.train(\"neural networks\")\n    result = mind.process([\"neural\"])\n    assert hasattr(result, 'confidence')\n    assert 0.0 <= result.confidence <= 1.0\n\ndef test_confidence_factors_present():\n    result = mind.process([\"neural\"])\n    assert 'confidence_factors' in dir(result)\n    assert isinstance(result.confidence_factors, dict)\n\ndef test_familiar_input_higher_confidence():\n    mind = WovenMind()\n    mind.train(\"familiar pattern\")\n    familiar = mind.process([\"familiar\"])\n    novel = mind.process([\"completely_unknown_xyz\"])\n    assert familiar.confidence > novel.confidence\n```\n\nVerification: python -m pytest tests/unit/test_woven_mind.py -v -k \"confidence\"\n\n## Anti-Patterns\n- Do NOT break existing WovenMindResult usage\n- Do NOT change serialization without updating to_dict/from_dict\n- Do NOT make confidence computation expensive\n\n## Freedom Zone\n- How confidence is computed (surprise-based, prediction-based, hybrid)\n- What factors to include in confidence_factors\n- Default confidence for edge cases\n\n## Reference: docs/woven-mind-user-guide.md",
+    "entity_type": "task",
+    "id": "T-20251227-161009-a7400e49",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:10:09.858400+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add confidence field to WovenMindResult",
+    "version": 2
+  }
+}

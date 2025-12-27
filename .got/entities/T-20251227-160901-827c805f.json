@@ -1,0 +1,19 @@
+{
+  "_checksum": "82491c99fac87d12",
+  "_written_at": "2025-12-27T16:09:01.642123+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:09:01.639569+00:00",
+    "description": "## Goal (WHY)\nBefore implementing explanation chains, understand how PLN inference works and where confidence signals exist in WovenMind.\n\n## Exploration Questions\n1. How does PLNReasoner.query() trace its inference path?\n2. Where are intermediate conclusions stored during inference?\n3. How does WovenMind.process() compute surprise and what confidence signals exist?\n4. What data structures would support explanation chains?\n\n## Files to Read\n- cortical/reasoning/prism_pln.py (full file)\n- cortical/reasoning/woven_mind.py (full file)\n- cortical/reasoning/loom.py (surprise detection)\n- tests/unit/test_woven_mind.py (understand expected behavior)\n\n## Deliverables\nReport with: 1) Diagram of inference flow, 2) List of confidence signals, 3) Proposed ExplanationChain structure, 4) Extension points identified.\n\n## Anti-Patterns\n- Do NOT write code yet - exploration only\n- Do NOT modify any files\n- Do NOT assume - read the actual code\n\n## Reference: docs/epic-cognitive-nlu-nlg-knowledge-base.md\n## GoT Context: Check handoff H-20251227-154444-f2e718d0",
+    "entity_type": "task",
+    "id": "T-20251227-160901-827c805f",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:09:01.642078+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "arch"
+    },
+    "status": "pending",
+    "title": "EXPLORE: Investigate PLN and WovenMind architecture for explanation capability",
+    "version": 2
+  }
+}

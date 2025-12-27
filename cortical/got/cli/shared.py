@@ -41,6 +41,8 @@ VALID_PRIORITIES = [
     PRIORITY_LOW,
 ]
 
+# Note: 'research' is for exploration/investigation tasks (read-only, no code changes)
+#       'exploration' is for discovery tasks that may lead to proposals
 VALID_CATEGORIES = [
     "arch",
     "feature",
@@ -53,6 +55,8 @@ VALID_CATEGORIES = [
     "security",
     "performance",
     "optimization",
+    "research",
+    "exploration",
 ]
 
 # Priority scoring for suggestion algorithms
