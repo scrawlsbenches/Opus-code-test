@@ -1,0 +1,19 @@
+{
+  "_checksum": "16ff7c088fa2539a",
+  "_written_at": "2025-12-27T17:12:13.732061+00:00",
+  "data": {
+    "created_at": "2025-12-27T17:12:13.728561+00:00",
+    "description": "\n## Knowledge Needed\n- Read: docs/design-git-training-data-structures.md (Streaming section)\n- Understand: Python generators and memory management\n- Review: git log pagination options\n\n## Implementation\n1. Generator-based commit streaming\n2. Batch processing with configurable batch size\n3. Memory-bounded processing (never load all commits)\n4. Progress reporting during streaming\n\n## Guardrails\n- DO: Use generators throughout the pipeline\n- DO: Support --batch-size CLI option\n- DO: Report memory usage during training\n- DO NOT: Break non-streaming path (keep both options)\n- DO NOT: Over-complicate for small repos\n- EXPLORE: Async/parallel commit fetching\n- EXPLORE: Resumable training (checkpoint support)\n\n## Success Criteria\n- Can train on repos with 100K+ commits\n- Memory usage stays bounded\n- Training speed comparable to batch approach\n- Works with existing deduplication\n",
+    "entity_type": "task",
+    "id": "T-20251227-171213-6d3b2766",
+    "metadata": {},
+    "modified_at": "2025-12-27T17:12:13.731997+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Streaming iterator pattern for memory-efficient training",
+    "version": 2
+  }
+}
