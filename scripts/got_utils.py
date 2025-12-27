@@ -183,8 +183,11 @@ PRIORITY_LOW = "low"
 VALID_PRIORITIES = [PRIORITY_CRITICAL, PRIORITY_HIGH, PRIORITY_MEDIUM, PRIORITY_LOW]
 
 # Category values
+# Note: 'research' is for exploration/investigation tasks (read-only, no code changes)
+#       'exploration' is for discovery tasks that may lead to proposals
 VALID_CATEGORIES = ["arch", "feature", "bugfix", "test", "docs", "refactor",
-                    "debt", "devex", "security", "performance", "optimization"]
+                    "debt", "devex", "security", "performance", "optimization",
+                    "research", "exploration"]
 
 # Auto-commit configuration (DEFAULT: ON)
 # GoT state is always safe to commit - it's just task/decision tracking data.
