@@ -2379,10 +2379,24 @@ The `load()` method auto-detects format based on file content (not extension):
 
 The Cortical Text Processor can index and search its own codebase, providing semantic search capabilities during development.
 
+> **⚠️ PERFORMANCE WARNING: Indexer is slow and needs tuning**
+>
+> Full indexing currently takes **~3 minutes** due to:
+> - 1.6GB of layer data (549K bigrams, 49K tokens)
+> - JSON serialization bottleneck in save phase (~94s)
+> - No streaming/compression for large corpora
+>
+> **Workarounds:**
+> - Use `--incremental` for subsequent runs (much faster)
+> - Use `--use-chunks` for git-friendly incremental saves
+> - Use `--format pkl` for faster saves (deprecated, security risk)
+>
+> **TODO:** Implement streaming JSON writes or compressed output format.
+
 ### Quick Start
 
 ```bash
-# Index the codebase (creates corpus_dev.json/, ~2s)
+# Index the codebase (creates corpus_dev.json/, ~3 minutes full, faster incremental)
 python scripts/index_codebase.py
 
 # Incremental update (only changed files)
