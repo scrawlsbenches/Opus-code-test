@@ -154,6 +154,127 @@ def pytest_collection_modifyitems(config, items):
 
 
 # =============================================================================
+# GOT (GRAPH OF THOUGHT) FIXTURES
+# =============================================================================
+# These shared fixtures prevent the common anti-pattern of each test creating
+# its own GoTManager with expensive disk I/O (~5s per creation).
+#
+# GUIDELINES:
+# - Use fresh_got_manager when your test MODIFIES state
+# - Use got_manager_with_sample_tasks for read-mostly tests (class-scoped)
+# - Never create GoTManager directly in tests - use these fixtures!
+
+import tempfile
+import shutil
+from pathlib import Path
+
+
+@pytest.fixture
+def fresh_got_manager(tmp_path):
+    """
+    Function-scoped fixture for a fresh, empty GoT manager.
+
+    Use when your test needs to create/modify tasks and needs isolation.
+    Each test gets its own empty manager.
+
+    Example:
+        def test_create_task(fresh_got_manager):
+            task = fresh_got_manager.create_task("My task")
+            assert task.title == "My task"
+    """
+    from cortical.got import GoTManager
+    got_dir = tmp_path / ".got"
+    return GoTManager(got_dir)
+
+
+@pytest.fixture(scope="class")
+def got_manager_with_sample_tasks(tmp_path_factory):
+    """
+    Class-scoped fixture with pre-populated sample tasks.
+
+    Creates 20 tasks with edges - shared across all tests in a class.
+    ~2s to create, but shared across many tests = huge time savings.
+
+    Use for read-mostly tests that don't modify critical state.
+
+    Provides:
+        manager: GoTManager with 20 tasks
+        tasks: List of created Task objects
+
+    Example:
+        class TestQueryFeatures:
+            def test_filter(self, got_manager_with_sample_tasks):
+                manager, tasks = got_manager_with_sample_tasks
+                results = Query(manager).tasks().where(status="pending").execute()
+    """
+    from cortical.got import GoTManager
+
+    temp_dir = tmp_path_factory.mktemp("got_sample")
+    got_dir = temp_dir / ".got"
+    manager = GoTManager(got_dir)
+
+    # Create sample tasks with variety
+    tasks = []
+    priorities = ["critical", "high", "medium", "low"]
+    statuses = ["pending", "in_progress", "completed"]
+
+    for i in range(20):
+        task = manager.create_task(
+            f"Sample Task {i}",
+            priority=priorities[i % len(priorities)]
+        )
+        if i % 3 == 0:
+            manager.update_task(task.id, status="in_progress")
+        elif i % 5 == 0:
+            manager.update_task(task.id, status="completed")
+        tasks.append(task)
+
+    # Add some edges for graph tests
+    for i in range(0, 15, 3):
+        manager.add_edge(tasks[i].id, tasks[i+1].id, "DEPENDS_ON")
+        manager.add_edge(tasks[i+1].id, tasks[i+2].id, "BLOCKS")
+
+    return manager, tasks
+
+
+@pytest.fixture(scope="class")
+def got_manager_large(tmp_path_factory):
+    """
+    Class-scoped fixture with 100 tasks for performance testing.
+
+    ~5s to create, but shared across all tests in a class.
+    Use for performance tests that need larger datasets.
+
+    Example:
+        class TestPerformance:
+            def test_query_scales(self, got_manager_large):
+                manager, tasks = got_manager_large
+                # Test with 100 tasks
+    """
+    from cortical.got import GoTManager
+
+    temp_dir = tmp_path_factory.mktemp("got_large")
+    got_dir = temp_dir / ".got"
+    manager = GoTManager(got_dir)
+
+    tasks = []
+    priorities = ["critical", "high", "medium", "low"]
+
+    for i in range(100):
+        task = manager.create_task(
+            f"Task {i}",
+            priority=priorities[i % len(priorities)]
+        )
+        tasks.append(task)
+
+    # Create chain of dependencies
+    for i in range(0, 90, 3):
+        manager.add_edge(tasks[i].id, tasks[i+1].id, "DEPENDS_ON")
+
+    return manager, tasks
+
+
+# =============================================================================
 # COVERAGE DETECTION
 # =============================================================================
 

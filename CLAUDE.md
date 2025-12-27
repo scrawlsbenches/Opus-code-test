@@ -1681,12 +1681,89 @@ class TestYourFeature(unittest.TestCase):
 
 ### Available Fixtures (pytest)
 
+**Processor Fixtures:**
+
 | Fixture | Scope | Description |
 |---------|-------|-------------|
 | `small_processor` | session | 25-doc synthetic corpus, pre-computed |
 | `shared_processor` | session | Full samples/ corpus (~125 docs) |
 | `fresh_processor` | function | Empty processor for isolated tests |
 | `small_corpus_docs` | function | Raw document dict |
+
+**GoT (Graph of Thought) Fixtures:**
+
+| Fixture | Scope | Description |
+|---------|-------|-------------|
+| `fresh_got_manager` | function | Empty GoT manager for isolation |
+| `got_manager_with_sample_tasks` | class | 20 tasks + edges, shared in class |
+| `got_manager_large` | class | 100 tasks + edges for perf tests |
+
+> **⚠️ NEVER create GoTManager directly in tests!** Use these shared fixtures.
+> Creating a GoTManager with tasks takes ~5s. Function-scoped fixtures recreate
+> this for every test, wasting massive amounts of time.
+
+### Test Performance Guidelines
+
+> **⚠️ CRITICAL: Tests must be fast. Slow tests kill developer productivity.**
+
+**Performance Budget:**
+
+| Category | Target | Enforcement |
+|----------|--------|-------------|
+| Individual test | < 1 second | Design goal |
+| Fixture setup | < 5 seconds | Mark `@pytest.mark.slow` if exceeded |
+| Full unit suite | < 2 minutes | CI gate |
+| Full test suite | < 5 minutes | CI gate |
+
+**Fixture Scope Guidelines:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                 FIXTURE SCOPE DECISION TREE                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  Does the test MODIFY fixture state?                                 │
+│  ├── YES → Use function scope (fresh_got_manager)                   │
+│  └── NO → Does fixture take > 1 second to create?                   │
+│           ├── YES → Use class or session scope                      │
+│           └── NO → Function scope is fine                           │
+│                                                                       │
+│  ANTI-PATTERN: Creating expensive fixtures in function scope         │
+│  This recreates the fixture for EVERY test!                          │
+│                                                                       │
+│  ❌ BAD (75s for 15 tests):                                          │
+│  @pytest.fixture  # function scope by default                        │
+│  def got_manager():                                                  │
+│      manager = GoTManager(...)  # 5s to create                       │
+│      for i in range(100): manager.create_task(...)  # +5s            │
+│      return manager                                                  │
+│                                                                       │
+│  ✅ GOOD (5s for 15 tests):                                          │
+│  @pytest.fixture(scope="class")                                      │
+│  def got_manager_large(tmp_path_factory):                            │
+│      ...  # Created once per class                                   │
+│                                                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Before Committing Tests:**
+
+```bash
+# Check timing of new tests
+pytest tests/your_new_tests.py --durations=10 -q
+
+# If any test setup exceeds 5s, refactor to use shared fixtures
+# or mark with @pytest.mark.slow
+```
+
+**Common Mistakes:**
+
+| Mistake | Impact | Fix |
+|---------|--------|-----|
+| Function-scoped expensive fixture | 5s × N tests wasted | Use class/session scope |
+| Creating GoTManager in each test | 5s per test | Use `got_manager_large` |
+| Not using tmp_path_factory | Slower cleanup | Use pytest's tmp_path_factory |
+| Disk I/O in mock tests | Unnecessary slowdown | Use MagicMock for perf tests |
 
 ### Test Markers for Optional Dependencies
 

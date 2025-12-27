@@ -9,6 +9,10 @@ KPI Targets (based on profiling with 50 tasks, 10 decisions, ~90 edges):
 
 These tests verify that Query API operations stay within acceptable bounds.
 Run with: python -m pytest tests/performance/test_got_query_perf.py -v -s
+
+PERFORMANCE NOTE:
+This file uses class-scoped fixtures from conftest.py (got_manager_large)
+to avoid recreating 100 tasks for each test. This saves ~70s per test run.
 """
 
 import time
@@ -43,54 +47,14 @@ CI_VARIANCE_FACTOR = 1.5
 
 
 class TestGoTQueryPerformance:
-    """Performance regression tests for GoT Query API."""
+    """Performance regression tests for GoT Query API.
 
-    @pytest.fixture
-    def got_manager(self):
-        """Create a GoT manager with representative test data."""
-        temp_dir = tempfile.mkdtemp()
-        got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+    Uses got_manager_large fixture (class-scoped) from conftest.py.
+    This creates 100 tasks ONCE for all tests in this class, saving ~70s.
+    """
 
-        # Create 50 tasks (representative workload)
-        tasks = []
-        for i in range(50):
-            priority = ["high", "medium", "low"][i % 3]
-            status = ["pending", "in_progress", "completed"][i % 3]
-            task = manager.create_task(
-                f"Task {i}: Performance test task",
-                priority=priority
-            )
-            if status != "pending":
-                if status == "in_progress":
-                    manager.update_task(task.id, status="in_progress")
-                else:
-                    manager.update_task(task.id, status="completed")
-            tasks.append(task)
-
-        # Create 10 decisions
-        decisions = []
-        for i in range(10):
-            decision = manager.create_decision(
-                f"Decision {i}: Performance test decision",
-                rationale=f"Rationale for decision {i}"
-            )
-            decisions.append(decision)
-
-        # Create ~90 edges (dependencies between tasks)
-        for i in range(len(tasks) - 1):
-            if i % 2 == 0:  # ~25 DEPENDS_ON edges
-                manager.add_edge(tasks[i].id, tasks[i + 1].id, "DEPENDS_ON")
-            if i % 3 == 0:  # ~17 BLOCKS edges
-                manager.add_edge(tasks[i].id, tasks[(i + 3) % len(tasks)].id, "BLOCKS")
-            if i % 4 == 0:  # ~12 RELATES_TO edges
-                manager.add_edge(tasks[i].id, decisions[i % 10].id, "RELATES_TO")
-
-        # Clear cache to ensure fair timing
-        manager.cache_clear()
-
-        yield manager, tasks, decisions
-        shutil.rmtree(temp_dir, ignore_errors=True)
+    # NOTE: We use the shared got_manager_large fixture from conftest.py
+    # which is class-scoped. This avoids the 5s+ fixture setup per test.
 
     def _measure(self, operation_name: str, fn, iterations: int = 5) -> float:
         """Measure average execution time over multiple iterations."""
@@ -109,9 +73,9 @@ class TestGoTQueryPerformance:
     # QUERY API TESTS
     # =========================================================================
 
-    def test_query_all_tasks(self, got_manager):
+    def test_query_all_tasks(self, got_manager_large):
         """Query all tasks should be < KPI target."""
-        manager, tasks, _ = got_manager
+        manager, tasks = got_manager_large
 
         avg_ms = self._measure(
             "Query: All tasks",
@@ -121,9 +85,9 @@ class TestGoTQueryPerformance:
         assert avg_ms < KPI_QUERY_MS * CI_VARIANCE_FACTOR, \
             f"Query all tasks took {avg_ms:.2f}ms, target is <{KPI_QUERY_MS}ms"
 
-    def test_query_filter_by_status(self, got_manager):
+    def test_query_filter_by_status(self, got_manager_large):
         """Query with status filter should be < KPI target."""
-        manager, _, _ = got_manager
+        manager, _ = got_manager_large
 
         avg_ms = self._measure(
             "Query: Filter by status",
@@ -133,9 +97,9 @@ class TestGoTQueryPerformance:
         assert avg_ms < KPI_QUERY_MS * CI_VARIANCE_FACTOR, \
             f"Query filter by status took {avg_ms:.2f}ms, target is <{KPI_QUERY_MS}ms"
 
-    def test_query_filter_by_priority(self, got_manager):
+    def test_query_filter_by_priority(self, got_manager_large):
         """Query with priority filter should be < KPI target."""
-        manager, _, _ = got_manager
+        manager, _ = got_manager_large
 
         avg_ms = self._measure(
             "Query: Filter by priority",
@@ -145,9 +109,9 @@ class TestGoTQueryPerformance:
         assert avg_ms < KPI_QUERY_MS * CI_VARIANCE_FACTOR, \
             f"Query filter by priority took {avg_ms:.2f}ms, target is <{KPI_QUERY_MS}ms"
 
-    def test_query_order_by(self, got_manager):
+    def test_query_order_by(self, got_manager_large):
         """Query with ordering should be < KPI target."""
-        manager, _, _ = got_manager
+        manager, _ = got_manager_large
 
         avg_ms = self._measure(
             "Query: Order by priority",
@@ -157,9 +121,9 @@ class TestGoTQueryPerformance:
         assert avg_ms < KPI_QUERY_MS * CI_VARIANCE_FACTOR, \
             f"Query order by took {avg_ms:.2f}ms, target is <{KPI_QUERY_MS}ms"
 
-    def test_query_pagination(self, got_manager):
+    def test_query_pagination(self, got_manager_large):
         """Query with pagination should be < KPI target."""
-        manager, _, _ = got_manager
+        manager, _ = got_manager_large
 
         avg_ms = self._measure(
             "Query: Pagination (limit 10)",
@@ -169,9 +133,9 @@ class TestGoTQueryPerformance:
         assert avg_ms < KPI_QUERY_MS * CI_VARIANCE_FACTOR, \
             f"Query pagination took {avg_ms:.2f}ms, target is <{KPI_QUERY_MS}ms"
 
-    def test_query_count(self, got_manager):
+    def test_query_count(self, got_manager_large):
         """Query count should be < KPI target."""
-        manager, _, _ = got_manager
+        manager, _ = got_manager_large
 
         avg_ms = self._measure(
             "Query: Count",
@@ -181,9 +145,9 @@ class TestGoTQueryPerformance:
         assert avg_ms < KPI_QUERY_MS * CI_VARIANCE_FACTOR, \
             f"Query count took {avg_ms:.2f}ms, target is <{KPI_QUERY_MS}ms"
 
-    def test_query_group_by(self, got_manager):
+    def test_query_group_by(self, got_manager_large):
         """Query group by with count should be < KPI target."""
-        manager, _, _ = got_manager
+        manager, _ = got_manager_large
 
         avg_ms = self._measure(
             "Query: Group by + count",
@@ -197,9 +161,9 @@ class TestGoTQueryPerformance:
     # GRAPH WALKER TESTS
     # =========================================================================
 
-    def test_walker_bfs_traversal(self, got_manager):
+    def test_walker_bfs_traversal(self, got_manager_large):
         """GraphWalker BFS should be < KPI target."""
-        manager, tasks, _ = got_manager
+        manager, tasks = got_manager_large
         start_id = tasks[0].id
 
         def walker_bfs():
@@ -213,9 +177,9 @@ class TestGoTQueryPerformance:
         assert avg_ms < KPI_WALKER_MS * CI_VARIANCE_FACTOR, \
             f"Walker BFS took {avg_ms:.2f}ms, target is <{KPI_WALKER_MS}ms"
 
-    def test_walker_dfs_traversal(self, got_manager):
+    def test_walker_dfs_traversal(self, got_manager_large):
         """GraphWalker DFS should be < KPI target."""
-        manager, tasks, _ = got_manager
+        manager, tasks = got_manager_large
         start_id = tasks[0].id
 
         def walker_dfs():
@@ -229,9 +193,9 @@ class TestGoTQueryPerformance:
         assert avg_ms < KPI_WALKER_MS * CI_VARIANCE_FACTOR, \
             f"Walker DFS took {avg_ms:.2f}ms, target is <{KPI_WALKER_MS}ms"
 
-    def test_walker_with_max_depth(self, got_manager):
+    def test_walker_with_max_depth(self, got_manager_large):
         """GraphWalker with max depth should be < KPI target."""
-        manager, tasks, _ = got_manager
+        manager, tasks = got_manager_large
         start_id = tasks[0].id
 
         def walker_depth():
@@ -249,9 +213,9 @@ class TestGoTQueryPerformance:
     # PATH FINDER TESTS
     # =========================================================================
 
-    def test_path_finder_shortest_path(self, got_manager):
+    def test_path_finder_shortest_path(self, got_manager_large):
         """PathFinder shortest path should be < KPI target."""
-        manager, tasks, _ = got_manager
+        manager, tasks = got_manager_large
         from_id = tasks[0].id
         to_id = tasks[10].id
 
@@ -263,9 +227,9 @@ class TestGoTQueryPerformance:
         assert avg_ms < KPI_PATH_FINDER_MS * CI_VARIANCE_FACTOR, \
             f"PathFinder shortest path took {avg_ms:.2f}ms, target is <{KPI_PATH_FINDER_MS}ms"
 
-    def test_path_finder_reachable_from(self, got_manager):
+    def test_path_finder_reachable_from(self, got_manager_large):
         """PathFinder reachable_from should be < KPI target."""
-        manager, tasks, _ = got_manager
+        manager, tasks = got_manager_large
         start_id = tasks[0].id
 
         avg_ms = self._measure(
@@ -276,9 +240,9 @@ class TestGoTQueryPerformance:
         assert avg_ms < KPI_PATH_FINDER_MS * CI_VARIANCE_FACTOR, \
             f"PathFinder reachable_from took {avg_ms:.2f}ms, target is <{KPI_PATH_FINDER_MS}ms"
 
-    def test_path_finder_connected_components(self, got_manager):
+    def test_path_finder_connected_components(self, got_manager_large):
         """PathFinder connected_components should be < KPI target."""
-        manager, _, _ = got_manager
+        manager, _ = got_manager_large
 
         avg_ms = self._measure(
             "PathFinder: Connected components",
@@ -289,9 +253,9 @@ class TestGoTQueryPerformance:
         assert avg_ms < KPI_PATH_FINDER_MS * 2 * CI_VARIANCE_FACTOR, \
             f"PathFinder connected_components took {avg_ms:.2f}ms, target is <{KPI_PATH_FINDER_MS * 2}ms"
 
-    def test_path_finder_all_paths_with_limits(self, got_manager):
+    def test_path_finder_all_paths_with_limits(self, got_manager_large):
         """PathFinder all_paths with limits should be < KPI target."""
-        manager, tasks, _ = got_manager
+        manager, tasks = got_manager_large
         from_id = tasks[0].id
         to_id = tasks[5].id
 
@@ -307,9 +271,9 @@ class TestGoTQueryPerformance:
     # PATTERN MATCHER TESTS
     # =========================================================================
 
-    def test_pattern_matcher_2_node(self, got_manager):
+    def test_pattern_matcher_2_node(self, got_manager_large):
         """PatternMatcher 2-node pattern should be < KPI target."""
-        manager, _, _ = got_manager
+        manager, _ = got_manager_large
 
         # Simple 2-node dependency pattern using fluent API
         pattern = Pattern().node("a", type="task").edge("DEPENDS_ON").node("b", type="task")
@@ -322,9 +286,9 @@ class TestGoTQueryPerformance:
         assert avg_ms < KPI_PATTERN_MS * CI_VARIANCE_FACTOR, \
             f"PatternMatcher 2-node took {avg_ms:.2f}ms, target is <{KPI_PATTERN_MS}ms"
 
-    def test_pattern_matcher_with_constraints(self, got_manager):
+    def test_pattern_matcher_with_constraints(self, got_manager_large):
         """PatternMatcher with constraints should be < KPI target."""
-        manager, _, _ = got_manager
+        manager, _ = got_manager_large
 
         # Pattern with status constraint using fluent API
         pattern = (
@@ -344,27 +308,21 @@ class TestGoTQueryPerformance:
 
 
 class TestCachePerformance:
-    """Test that caching provides expected speedup."""
+    """Test that caching provides expected speedup.
 
-    @pytest.fixture
-    def got_manager_with_tasks(self):
-        """Create a GoT manager with tasks for cache testing."""
-        temp_dir = tempfile.mkdtemp()
-        got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+    Uses fresh_got_manager (function-scoped) because cache tests need
+    isolated managers to test cold vs warm cache behavior.
+    """
 
-        # Create 50 tasks
+    def test_cache_provides_speedup(self, fresh_got_manager):
+        """Second query should be faster due to caching."""
+        manager = fresh_got_manager
+
+        # Create 50 tasks for this test
         for i in range(50):
             manager.create_task(f"Task {i}", priority="medium")
 
         manager.cache_clear()
-
-        yield manager
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
-    def test_cache_provides_speedup(self, got_manager_with_tasks):
-        """Second query should be faster due to caching."""
-        manager = got_manager_with_tasks
 
         # First query (cold cache)
         start = time.perf_counter()
@@ -388,9 +346,13 @@ class TestCachePerformance:
         assert warm_ms < cold_ms, "Warm cache should be faster than cold cache"
         assert stats['hits'] > 0, "Cache should have hits on second query"
 
-    def test_cache_hit_rate(self, got_manager_with_tasks):
+    def test_cache_hit_rate(self, fresh_got_manager):
         """After warm-up, hit rate should be high."""
-        manager = got_manager_with_tasks
+        manager = fresh_got_manager
+
+        # Create 50 tasks for this test
+        for i in range(50):
+            manager.create_task(f"Task {i}", priority="medium")
 
         # Warm up cache
         Query(manager).tasks().execute()
@@ -419,29 +381,17 @@ class TestCachePerformance:
 class TestQueryBuilderPerformance:
     """Tests for query builder performance with large datasets.
 
-    Moved from unit tests because they create 100 tasks per test,
-    which is appropriate for performance testing but not unit testing.
+    Uses got_manager_large fixture (class-scoped) from conftest.py.
+    This creates 100 tasks ONCE for all tests in this class.
     """
 
-    @pytest.fixture
-    def large_manager(self, tmp_path):
-        """Create manager with larger dataset for perf testing."""
-        got_dir = tmp_path / ".got"
-        manager = GoTManager(got_dir)
-
-        # Create 100 tasks
-        for i in range(100):
-            status = ["pending", "completed", "in_progress"][i % 3]
-            priority = ["low", "medium", "high", "critical"][i % 4]
-            manager.create_task(f"Task {i}", status=status, priority=priority)
-
-        return manager
-
-    def test_query_with_index_hint(self, large_manager):
+    def test_query_with_index_hint(self, got_manager_large):
         """Query can use index hints for optimization."""
+        manager, _ = got_manager_large
+
         # This should use status index if available
         results = (
-            Query(large_manager)
+            Query(manager)
             .tasks()
             .where(status="pending")
             .use_index("status")
@@ -450,9 +400,10 @@ class TestQueryBuilderPerformance:
 
         assert len(results) > 0
 
-    def test_lazy_iteration(self, large_manager):
+    def test_lazy_iteration(self, got_manager_large):
         """Results can be iterated lazily."""
-        query = Query(large_manager).tasks()
+        manager, _ = got_manager_large
+        query = Query(manager).tasks()
 
         # Should be able to iterate without loading all
         count = 0
@@ -463,10 +414,11 @@ class TestQueryBuilderPerformance:
 
         assert count == 10
 
-    def test_explain_query(self, large_manager):
+    def test_explain_query(self, got_manager_large):
         """explain() returns query execution plan."""
+        manager, _ = got_manager_large
         plan = (
-            Query(large_manager)
+            Query(manager)
             .tasks()
             .where(status="pending")
             .explain()
