@@ -1,0 +1,19 @@
+{
+  "id": "A-20251227-030435-1cf3-000",
+  "timestamp": "2025-12-27T01:27:58.549Z",
+  "session_id": "1cf3301b",
+  "action_type": "command",
+  "target": "",
+  "context": {
+    "tool": "Bash",
+    "input": {
+      "tool": "Bash",
+      "input": {
+        "command": "python scripts/got_utils.py handoff list --status initiated",
+        "description": "List pending handoffs awaiting acceptance"
+      }
+    }
+  },
+  "success": true,
+  "result_summary": null
+}
