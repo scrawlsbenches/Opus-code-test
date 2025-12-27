@@ -702,12 +702,12 @@ class GoTManager:
 
         Args:
             title: Sprint title
-            number: Optional sprint number (used for ID generation)
+            number: Optional sprint number (display metadata, not used in ID)
             epic_id: Optional epic ID this sprint belongs to
             **properties: Additional sprint properties
 
         Returns:
-            Created Sprint object
+            Created Sprint object with timestamp-based ID (merge-free)
 
         Raises:
             TransactionError: If commit fails
@@ -2300,8 +2300,8 @@ class TransactionContext:
         Returns:
             Created Sprint object
         """
-        number = kwargs.get("number")
-        sprint_id = generate_sprint_id(number=number)
+        # Use merge-free timestamp-based ID; number is stored as metadata only
+        sprint_id = generate_sprint_id()
         sprint = Sprint(
             id=sprint_id,
             title=title,

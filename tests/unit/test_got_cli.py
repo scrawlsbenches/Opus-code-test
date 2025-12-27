@@ -1398,18 +1398,16 @@ class TestIdGeneration:
         assert len(parts[2]) == 6  # HHMMSS
         assert len(parts[3]) == 8  # hex suffix
 
-    def test_generate_sprint_id_with_number(self):
-        """Sprint ID with number has correct format."""
-        sprint_id = generate_sprint_id(5)
-        assert sprint_id == "S-005"
-
-    def test_generate_sprint_id_without_number(self):
-        """Sprint ID without number uses date format."""
+    def test_generate_sprint_id_timestamp_format(self):
+        """Sprint ID uses timestamp format for merge-free IDs."""
         sprint_id = generate_sprint_id()
         assert sprint_id.startswith("S-")
-        # Format: S-YYYY-MM
+        # Format: S-YYYYMMDD-HHMMSS-XXXXXXXX
         parts = sprint_id.split("-")
-        assert len(parts) == 3
+        assert len(parts) == 4
+        assert len(parts[1]) == 8  # YYYYMMDD
+        assert len(parts[2]) == 6  # HHMMSS
+        assert len(parts[3]) == 8  # hex suffix
 
     def test_generate_decision_id_format(self):
         """Decision ID has correct format D-YYYYMMDD-HHMMSS-XXXXXXXX."""

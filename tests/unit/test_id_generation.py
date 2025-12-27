@@ -111,26 +111,23 @@ class TestEdgeIdGeneration:
 class TestSprintIdGeneration:
     """Tests for generate_sprint_id()."""
 
-    def test_with_number(self):
-        """Sprint ID with number uses S-NNN format."""
-        sprint_id = generate_sprint_id(number=5)
-        assert sprint_id == "S-005"
-
-    def test_with_large_number(self):
-        """Sprint ID handles large numbers."""
-        sprint_id = generate_sprint_id(number=123)
-        assert sprint_id == "S-123"
-
-    def test_without_number(self):
-        """Sprint ID without number uses year-month format."""
+    def test_timestamp_format(self):
+        """Sprint ID uses timestamp format for merge-free IDs."""
         sprint_id = generate_sprint_id()
-        pattern = r"^S-\d{4}-\d{2}$"
+        # Format: S-YYYYMMDD-HHMMSS-XXXXXXXX
+        pattern = r"^S-\d{8}-\d{6}-[a-f0-9]{8}$"
         assert re.match(pattern, sprint_id), f"Invalid format: {sprint_id}"
 
-    def test_number_zero(self):
-        """Sprint ID with number 0."""
-        sprint_id = generate_sprint_id(number=0)
-        assert sprint_id == "S-000"
+    def test_prefix(self):
+        """Sprint ID starts with S- prefix."""
+        sprint_id = generate_sprint_id()
+        assert sprint_id.startswith("S-")
+
+    def test_unique_per_call(self):
+        """Each call generates a unique ID."""
+        id1 = generate_sprint_id()
+        id2 = generate_sprint_id()
+        assert id1 != id2
 
 
 class TestEpicIdGeneration:

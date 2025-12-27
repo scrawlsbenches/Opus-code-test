@@ -23,8 +23,8 @@ Examples:
     >>> generate_handoff_id()
     'H-20251222-143052-u1v2w3x4'
 
-    >>> generate_sprint_id(number=5)
-    'S-005'
+    >>> generate_sprint_id()
+    'S-20251222-143052-m5n6o7p8'
 
     >>> generate_plan_id()
     'OP-20251222-143052-a1b2c3d4'
@@ -97,27 +97,26 @@ def generate_edge_id() -> str:
     return f"E-{timestamp}-{suffix}"
 
 
-def generate_sprint_id(number: Optional[int] = None) -> str:
+def generate_sprint_id() -> str:
     """
-    Generate sprint ID.
-
-    Args:
-        number: Optional sprint number. If provided, uses format S-NNN.
-                If None, uses current year-month format S-YYYY-MM.
+    Generate merge-free sprint ID using timestamp format.
 
     Returns:
-        Sprint ID string (e.g., 'S-005' or 'S-2025-12')
+        Sprint ID string (e.g., 'S-20251227-183500-a1b2c3d4')
+
+    Note:
+        Sprint numbers (1, 2, 3) should be stored as metadata in the sprint
+        entity, not as part of the ID. This prevents merge conflicts when
+        multiple branches create sprints concurrently.
 
     Examples:
-        >>> generate_sprint_id(number=5)
-        'S-005'
-
-        >>> generate_sprint_id()  # Current month
-        'S-2025-12'
+        >>> generate_sprint_id()
+        'S-20251227-183500-a1b2c3d4'
     """
-    if number is not None:
-        return f"S-{number:03d}"
-    return f"S-{datetime.now(timezone.utc).strftime('%Y-%m')}"
+    now = datetime.now(timezone.utc)
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    suffix = secrets.token_hex(4)
+    return f"S-{timestamp}-{suffix}"
 
 
 def generate_epic_id(name: Optional[str] = None) -> str:
