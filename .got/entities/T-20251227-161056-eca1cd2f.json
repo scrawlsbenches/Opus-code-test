@@ -1,0 +1,19 @@
+{
+  "_checksum": "91c936b193210ec1",
+  "_written_at": "2025-12-27T16:10:56.770677+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:10:56.767014+00:00",
+    "description": "## Goal (WHY)\nDemonstrate Sprint 1 capabilities with a runnable script that shows explanation chains and confidence tracking in action.\n\n## Deliverable\nCreate: scripts/sprint_27_demo.py\n\n```python\n#!/usr/bin/env python\n'''\nSprint 27 Demo: Explanation & Confidence\n\nShows:\n1. PLN inference with explanation chains\n2. WovenMind with confidence tracking\n3. Combined: SLOW mode with full explanations\n\nRun: python scripts/sprint_27_demo.py\n'''\n```\n\n## Demo Requirements\n1. Show PLN explaining a multi-step inference\n2. Show WovenMind returning confidence scores\n3. Show the difference between FAST (high confidence, no explanation) and SLOW (lower confidence, full explanation)\n4. All assertions must pass for demo to be \"done\"\n\n## Test Requirements\nLocation: tests/integration/test_sprint_27_demo.py\n\n```python\ndef test_demo_runs_without_error():\n    import subprocess\n    result = subprocess.run(\n        [\"python\", \"scripts/sprint_27_demo.py\"],\n        capture_output=True\n    )\n    assert result.returncode == 0\n    assert b\"DEMO COMPLETE\" in result.stdout\n```\n\nVerification: python scripts/sprint_27_demo.py && python -m pytest tests/integration/test_sprint_27_demo.py -v\n\n## Anti-Patterns\n- Do NOT create a demo that just prints without verification\n- Do NOT skip assertions - demo must self-verify\n- Do NOT put demo in wrong location (scripts/, not examples/)\n\n## Freedom Zone\n- Demo narrative and examples\n- Output formatting\n- Additional demonstration scenarios\n\n## Definition of Done (Sprint 1)\nWhen this task is complete, Sprint 1 is complete:\n- [ ] PLN.explain() returns ExplanationChain\n- [ ] WovenMindResult includes confidence\n- [ ] Demo script runs and self-verifies\n- [ ] All tests pass with \u226595% coverage on new code\n\n## Reference: docs/definition-of-done.md",
+    "entity_type": "task",
+    "id": "T-20251227-161056-eca1cd2f",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:10:56.770559+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Create Sprint 1 Demo: Explanation and Confidence",
+    "version": 2
+  }
+}

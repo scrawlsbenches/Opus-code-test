@@ -1,0 +1,19 @@
+{
+  "_checksum": "9d18724f1dfa82ef",
+  "_written_at": "2025-12-27T16:15:10.164477+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:15:10.159756+00:00",
+    "description": "## Goal (WHY)\nDemonstrate Sprint 3 capabilities: verifying understanding through generation and self-assessing learning needs.\n\n## Deliverable\nCreate: scripts/sprint_29_demo.py\n\n## Demo Requirements\n1. Show comprehension: building initial understanding of input\n2. Show implication generation: \"if X is true, then Y should be true\"\n3. Show verification: checking implications against corpus/PLN\n4. Show refinement: updating understanding when verification fails\n5. Show learning recommendations: what to learn based on gaps\n6. All assertions must pass\n\n## Test Requirements\nLocation: tests/integration/test_sprint_29_demo.py\n\n```python\ndef test_demo_runs_without_error():\n    result = subprocess.run([\"python\", \"scripts/sprint_29_demo.py\"], ...)\n    assert result.returncode == 0\n    assert b\"DEMO COMPLETE\" in result.stdout\n```\n\nVerification: python scripts/sprint_29_demo.py && python -m pytest tests/integration/test_sprint_29_demo.py -v\n\n## Anti-Patterns\n- Do NOT create demo without self-verification\n- Do NOT skip the generate-verify-refine cycle demonstration\n- Do NOT skip self-assessment demonstration\n\n## Freedom Zone\n- Demo narrative and examples\n- Output formatting\n- Additional scenarios\n\n## Definition of Done (Sprint 3 AND Epic)\nWhen this task is complete:\n- [ ] GenerativeUnderstandingLoop generates and verifies implications\n- [ ] SelfAssessingMind integrates with MetacognitiveMonitor\n- [ ] Demo script runs and self-verifies\n- [ ] All tests pass with \u226595% coverage on new code\n- [ ] Update cognitive_integration_demo.py with new capabilities\n\n## Final Epic Demo\nUpdate scripts/cognitive_integration_demo.py to include all Sprint 1-3 capabilities:\n- Explanation chains (Sprint 1)\n- Confidence tracking (Sprint 1)\n- Analogical transfer (Sprint 2)\n- Metacognitive assessment (Sprint 2)\n- Generative understanding (Sprint 3)\n- Self-assessment (Sprint 3)\n\n## Reference: docs/definition-of-done.md",
+    "entity_type": "task",
+    "id": "T-20251227-161510-9e442849",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:15:10.164395+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Create Sprint 3 Demo: Generative Understanding and Self-Assessment",
+    "version": 2
+  }
+}

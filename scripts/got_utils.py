@@ -131,6 +131,22 @@ from cortical.got.cli.backlog import setup_backlog_parser, handle_backlog_comman
 from cortical.got.cli.analyze import setup_analyze_parser, handle_analyze_command
 from cortical.got.cli.edge import setup_edge_parser, handle_edge_command
 
+# Import shared constants from canonical source (single source of truth)
+from cortical.got.cli.shared import (
+    STATUS_PENDING,
+    STATUS_IN_PROGRESS,
+    STATUS_COMPLETED,
+    STATUS_BLOCKED,
+    STATUS_DEFERRED,
+    VALID_STATUSES,
+    PRIORITY_CRITICAL,
+    PRIORITY_HIGH,
+    PRIORITY_MEDIUM,
+    PRIORITY_LOW,
+    VALID_PRIORITIES,
+    VALID_CATEGORIES,
+)
+
 # Import transactional backend (new)
 try:
     from cortical.got.api import GoTManager as TxGoTManager
@@ -164,27 +180,8 @@ TASKS_DIR = PROJECT_ROOT / "tasks"
 # Set GOT_USE_LEGACY=1 to force event-sourced backend (for debugging only)
 USE_TX_BACKEND = TX_BACKEND_AVAILABLE and os.environ.get("GOT_USE_LEGACY", "").lower() not in ("1", "true", "yes")
 
-# Status values
-STATUS_PENDING = "pending"
-STATUS_IN_PROGRESS = "in_progress"
-STATUS_COMPLETED = "completed"
-STATUS_BLOCKED = "blocked"
-STATUS_DEFERRED = "deferred"
-
-VALID_STATUSES = [STATUS_PENDING, STATUS_IN_PROGRESS, STATUS_COMPLETED,
-                  STATUS_BLOCKED, STATUS_DEFERRED]
-
-# Priority values
-PRIORITY_CRITICAL = "critical"
-PRIORITY_HIGH = "high"
-PRIORITY_MEDIUM = "medium"
-PRIORITY_LOW = "low"
-
-VALID_PRIORITIES = [PRIORITY_CRITICAL, PRIORITY_HIGH, PRIORITY_MEDIUM, PRIORITY_LOW]
-
-# Category values
-VALID_CATEGORIES = ["arch", "feature", "bugfix", "test", "docs", "refactor",
-                    "debt", "devex", "security", "performance", "optimization"]
+# NOTE: Status, Priority, and Category constants are imported from
+# cortical.got.cli.shared (single source of truth). See imports above.
 
 # Auto-commit configuration (DEFAULT: ON)
 # GoT state is always safe to commit - it's just task/decision tracking data.

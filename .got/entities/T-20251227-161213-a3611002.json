@@ -1,0 +1,19 @@
+{
+  "_checksum": "4ef46ddc12577197",
+  "_written_at": "2025-12-27T16:12:13.168618+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:12:13.165529+00:00",
+    "description": "## Goal (WHY)\nEnable transfer of knowledge from one domain to another through structural analogy.\n\n## Interface Contract (WHAT)\n```python\nclass AnalogicalReasoner:\n    def __init__(self, pln: Optional[PLNReasoner] = None):\n        self.mappings: List[StructuralMapping] = []\n        self.pln = pln  # Optional PLN for confidence scoring\n        \n    def register_mapping(self, mapping: StructuralMapping) -> None:\n        '''Register a domain mapping.'''\n        \n    def find_mapping(self, source: Domain, target: Domain) -> Optional[StructuralMapping]:\n        '''Find best mapping between domains.'''\n        \n    def transfer_inference(\n        self,\n        source_fact: Tuple[str, str, str],  # (entity, relation, entity)\n        target_domain: Domain\n    ) -> Optional[Tuple[Tuple, float]]:\n        '''\n        Transfer a fact to target domain with confidence.\n        \n        Returns: (transferred_fact, confidence) or None\n        '''\n        \n    def evaluate_analogy_quality(self, mapping: StructuralMapping) -> float:\n        '''Score analogy by structural depth and systematicity.'''\n```\n\n## Integration Points\n- New file: cortical/reasoning/analogical_reasoner.py\n- Uses: Domain, StructuralMapping from previous task\n- Uses: PLNReasoner for confidence (optional)\n\n## Test Requirements\nLocation: tests/unit/test_analogical_reasoner.py (NEW file)\n\n```python\ndef test_transfer_inference():\n    reasoner = AnalogicalReasoner()\n    water = Domain(name=\"fluid\", ...)\n    electric = Domain(name=\"electricity\", ...)\n    mapping = StructuralMapping(...)\n    reasoner.register_mapping(mapping)\n    \n    result = reasoner.transfer_inference(\n        (\"water\", \"flows_down\", \"hill\"),\n        electric\n    )\n    assert result is not None\n    transferred, confidence = result\n    assert transferred[1] == \"flows_through\"\n    \ndef test_no_mapping_returns_none():\n    reasoner = AnalogicalReasoner()\n    result = reasoner.transfer_inference((\"x\", \"y\", \"z\"), unknown_domain)\n    assert result is None\n```\n\nVerification: python -m pytest tests/unit/test_analogical_reasoner.py -v\n\n## Anti-Patterns\n- Do NOT require PLN - make it optional\n- Do NOT hard-code domain knowledge\n- Do NOT ignore confidence scores\n\n## Freedom Zone\n- Mapping search algorithm\n- Confidence computation method\n- Caching strategy\n\n## Reference: docs/epic-cognitive-nlu-nlg-knowledge-base.md",
+    "entity_type": "task",
+    "id": "T-20251227-161213-a3611002",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:12:13.168565+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement AnalogicalReasoner for cross-domain inference",
+    "version": 2
+  }
+}
