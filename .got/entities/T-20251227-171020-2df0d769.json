@@ -1,0 +1,19 @@
+{
+  "_checksum": "dbd54b81aca4f61e",
+  "_written_at": "2025-12-27T17:10:20.949867+00:00",
+  "data": {
+    "created_at": "2025-12-27T17:10:20.946140+00:00",
+    "description": "\n## Knowledge Needed\n- Read: cortical/spark/ngram.py (understand train() and count accumulation)\n- Read: cortical/spark/diff_tokenizer.py (tokenization of git diffs)\n- Read: samples/memories/2025-12-27-knowledge-transfer-sparkslm-git-training.md\n\n## Implementation\nCreate cortical/spark/git_trainer.py with:\n1. GitHistoryTrainer class\n2. WeightedCommit dataclass\n3. Branch weight tier system (main=1.0, claude/*=0.4, etc.)\n4. Quality signal detection (merged, tested, reverted)\n5. Temporal decay computation\n\n## Guardrails\n- DO: Follow existing SparkSLM patterns in cortical/spark/\n- DO: Use type hints and docstrings (Google style)\n- DO: Deduplicate by SHA (each commit processed once)\n- DO NOT: Modify NGramModel.train() yet (separate task)\n- DO NOT: Add external dependencies\n- EXPLORE: Consider generator-based streaming for memory efficiency\n- EXPLORE: Whether to use Bloom filter vs Set for deduplication\n\n## Success Criteria\n- Class can compute weights for commits\n- Deduplication works correctly\n- All quality signals detected\n- Unit tests pass\n",
+    "entity_type": "task",
+    "id": "T-20251227-171020-2df0d769",
+    "metadata": {},
+    "modified_at": "2025-12-27T17:10:20.949762+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Design and implement GitHistoryTrainer core class",
+    "version": 2
+  }
+}
