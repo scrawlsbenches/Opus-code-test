@@ -1,0 +1,19 @@
+{
+  "_checksum": "1175ae1ddb15714c",
+  "_written_at": "2025-12-27T21:14:52.279749+00:00",
+  "data": {
+    "created_at": "2025-12-27T21:14:52.275711+00:00",
+    "description": "Add explicit documentation about thread-safety in various modules. Low priority.",
+    "entity_type": "task",
+    "id": "T-20251227-211452-5feff398",
+    "metadata": {},
+    "modified_at": "2025-12-27T21:14:52.279688+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "docs"
+    },
+    "status": "pending",
+    "title": "Document thread-safety requirements",
+    "version": 2
+  }
+}
