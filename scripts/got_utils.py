@@ -1695,6 +1695,10 @@ class TransactionalGoTAdapter:
             },
         )
 
+    def delete_sprint(self, sprint_id: str, force: bool = False) -> None:
+        """Delete a sprint and all its connected edges."""
+        self._manager.delete_sprint(sprint_id, force=force)
+
     def claim_sprint(self, sprint_id: str, agent: str) -> ThoughtNode:
         """Claim a sprint for an agent."""
         sprint = self._manager.get_sprint(sprint_id)

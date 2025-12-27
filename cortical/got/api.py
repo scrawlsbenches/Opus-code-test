@@ -802,6 +802,63 @@ class GoTManager:
         sprints = self.list_sprints(status="in_progress")
         return sprints[0] if sprints else None
 
+    def delete_sprint(self, sprint_id: str, force: bool = False) -> None:
+        """
+        Delete a sprint and all its connected edges.
+
+        Args:
+            sprint_id: Sprint identifier to delete
+            force: If False, raise error if sprint has tasks
+
+        Raises:
+            TransactionError: If sprint has tasks (and force=False) or sprint not found
+        """
+        # Check if sprint exists
+        sprint = self.get_sprint(sprint_id)
+        if sprint is None:
+            raise TransactionError(f"Sprint not found: {sprint_id}")
+
+        # Check for contained tasks unless force is True
+        if not force:
+            tasks = self.get_sprint_tasks(sprint_id)
+            if tasks:
+                task_ids = [task.id for task in tasks]
+                raise TransactionError(
+                    f"Cannot delete sprint {sprint_id}: has tasks {task_ids}. "
+                    "Use force=True to override."
+                )
+
+        # Get all edges connected to this sprint
+        entities_dir = self.got_dir / "entities"
+        connected_edges = []
+        for edge_file in entities_dir.glob("E-*.json"):
+            try:
+                edge = self._read_edge_file(edge_file)
+                if edge is None:
+                    continue
+                if edge.source_id == sprint_id or edge.target_id == sprint_id:
+                    connected_edges.append(edge)
+            except (CorruptionError, json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping corrupted edge file {edge_file}: {e}")
+                continue
+
+        # Collect IDs for cache invalidation
+        ids_to_invalidate = [sprint_id] + [edge.id for edge in connected_edges]
+
+        # Delete sprint entity file
+        sprint_file = entities_dir / f"{sprint_id}.json"
+        if sprint_file.exists():
+            sprint_file.unlink()
+
+        # Delete all connected edge files
+        for edge in connected_edges:
+            edge_file = entities_dir / f"{edge.id}.json"
+            if edge_file.exists():
+                edge_file.unlink()
+
+        # Invalidate cache for deleted entities
+        self._cache_invalidate_many(ids_to_invalidate)
+
     def add_task_to_sprint(self, task_id: str, sprint_id: str) -> Edge:
         """
         Add a task to a sprint via CONTAINS edge.

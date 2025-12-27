@@ -108,6 +108,30 @@ def cmd_sprint_complete(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
+def cmd_sprint_delete(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got sprint delete' command."""
+    try:
+        sprint = manager.get_sprint(args.sprint_id)
+        if not sprint:
+            print(f"Sprint not found: {args.sprint_id}")
+            return 1
+
+        title = sprint.content
+        force = getattr(args, 'force', False)
+
+        manager.delete_sprint(args.sprint_id, force=force)
+        manager.save()
+
+        print(f"🗑️  Deleted: {args.sprint_id}")
+        print(f"   Title: {title}")
+        if force:
+            print("   (forced deletion)")
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+
 def cmd_sprint_claim(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got sprint claim' command."""
     try:
@@ -370,6 +394,15 @@ def setup_sprint_parser(subparsers) -> None:
     sprint_complete = sprint_subparsers.add_parser("complete", help="Complete a sprint")
     sprint_complete.add_argument("sprint_id", help="Sprint ID to complete")
 
+    # sprint delete
+    sprint_delete = sprint_subparsers.add_parser("delete", help="Delete a sprint")
+    sprint_delete.add_argument("sprint_id", help="Sprint ID to delete")
+    sprint_delete.add_argument(
+        "--force", "-f",
+        action="store_true",
+        help="Force deletion even if sprint has tasks"
+    )
+
     # sprint claim
     sprint_claim = sprint_subparsers.add_parser("claim", help="Claim sprint for an agent")
     sprint_claim.add_argument("sprint_id", help="Sprint ID to claim")
@@ -495,6 +528,7 @@ def handle_sprint_command(args, manager: "TransactionalGoTAdapter") -> int:
         "status": cmd_sprint_status,
         "start": cmd_sprint_start,
         "complete": cmd_sprint_complete,
+        "delete": cmd_sprint_delete,
         "claim": cmd_sprint_claim,
         "release": cmd_sprint_release,
         "link": cmd_sprint_link,
