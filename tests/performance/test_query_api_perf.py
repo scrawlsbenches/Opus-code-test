@@ -177,27 +177,15 @@ class TestPatternSearchResultOverhead:
 
 
 class TestTruncationTrackingOverhead:
-    """Test that truncation tracking doesn't slow down queries."""
+    """Test that truncation tracking doesn't slow down queries.
 
-    @pytest.fixture
-    def manager_with_chain(self):
-        """Create manager with a chain of tasks."""
-        temp_dir = tempfile.mkdtemp()
-        got_dir = Path(temp_dir) / ".got"
-        manager = GoTManager(got_dir)
+    Uses got_manager_large fixture (class-scoped) from conftest.py.
+    This saves ~3s per test by reusing the same 100-task dataset.
+    """
 
-        # Create 100 tasks
-        tasks = []
-        for i in range(100):
-            task = manager.create_task(f"Task {i}", priority="medium")
-            tasks.append(task)
-
-        yield manager, tasks
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
-    def test_pattern_find_with_limit_not_slower(self, manager_with_chain):
+    def test_pattern_find_with_limit_not_slower(self, got_manager_large):
         """PatternMatcher.find() with limit should not be significantly slower."""
-        manager, tasks = manager_with_chain
+        manager, tasks = got_manager_large
 
         pattern = Pattern().node("A")
 
