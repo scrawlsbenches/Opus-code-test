@@ -1,0 +1,19 @@
+{
+  "_checksum": "1bee995cead69274",
+  "_written_at": "2025-12-27T17:11:01.045726+00:00",
+  "data": {
+    "created_at": "2025-12-27T17:11:01.042070+00:00",
+    "description": "\n## Knowledge Needed\n- Read: docs/design-git-training-data-structures.md (Bloom filter section)\n- Understand: false positive rates and memory trade-offs\n- Review: Python's hashlib for hash functions\n\n## Implementation\nCreate cortical/utils/bloom_filter.py with:\n1. BloomFilter class with configurable size and hash count\n2. CommitBloomFilter specialized for SHA strings\n3. Optimal size calculation: m = -n*ln(p) / (ln(2)^2)\n4. Double hashing for k hash positions\n\n## Guardrails\n- DO: Make it generic (can be used for other deduplication)\n- DO: Document false positive rate clearly\n- DO: Provide memory_usage() method for monitoring\n- DO NOT: Over-engineer - simple implementation is fine\n- DO NOT: Use external bloom filter libraries\n- EXPLORE: Whether to use bytearray vs. bitarray\n- EXPLORE: Serialization for persistence across sessions\n\n## Success Criteria\n- 1% false positive rate at designed capacity\n- 97%+ memory savings vs Set[str]\n- O(1) add and contains operations\n- Unit tests for edge cases (empty, at capacity, over capacity)\n",
+    "entity_type": "task",
+    "id": "T-20251227-171101-23a01d80",
+    "metadata": {},
+    "modified_at": "2025-12-27T17:11:01.045634+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement Bloom filter for commit deduplication",
+    "version": 2
+  }
+}
