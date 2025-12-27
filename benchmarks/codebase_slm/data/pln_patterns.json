@@ -1,0 +1,800 @@
+[
+  {
+    "input": "What is gotmanager?",
+    "output": "gotmanager is a type of component",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is gotmanager?",
+    "output": "gotmanager is a type of component",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is edge?",
+    "output": "edge is a type of data_structure",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is edge?",
+    "output": "edge is a type of data_structure",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is lateral_connections?",
+    "output": "lateral_connections is a type of concept",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is lateral_connections?",
+    "output": "lateral_connections is a type of concept",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is processor?",
+    "output": "processor is located in cortical/processor/",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "Where is processor?",
+    "output": "processor is located in cortical/processor/",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_location"
+  },
+  {
+    "input": "What is algorithm?",
+    "output": "algorithm has processes",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is component?",
+    "output": "component has configures",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is algorithm?",
+    "output": "algorithm has computes",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is tfidf?",
+    "output": "tfidf is a type of algorithm",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is tfidf?",
+    "output": "tfidf is a type of algorithm",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is algorithm?",
+    "output": "algorithm has analyzes",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is minicolumn?",
+    "output": "minicolumn is a type of data_structure",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is minicolumn?",
+    "output": "minicolumn is a type of data_structure",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is sparksm?",
+    "output": "sparksm is a type of component",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is sparksm?",
+    "output": "sparksm is a type of component",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is data_structure?",
+    "output": "data_structure has connects",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is component?",
+    "output": "component has initializes",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is tfidf?",
+    "output": "tfidf uses document",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is gotmanager?",
+    "output": "gotmanager is located in cortical/got/api.py",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "Where is gotmanager?",
+    "output": "gotmanager is located in cortical/got/api.py",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_location"
+  },
+  {
+    "input": "What is wovenmind?",
+    "output": "wovenmind is a type of component",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is wovenmind?",
+    "output": "wovenmind is a type of component",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is pagerank?",
+    "output": "pagerank uses graph",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is clustering?",
+    "output": "clustering is a type of algorithm",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is clustering?",
+    "output": "clustering is a type of algorithm",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is activation?",
+    "output": "activation is a type of concept",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is activation?",
+    "output": "activation is a type of concept",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is component?",
+    "output": "component has executes",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is data_structure?",
+    "output": "data_structure has indexes",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is bm25?",
+    "output": "bm25 is a type of algorithm",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is bm25?",
+    "output": "bm25 is a type of algorithm",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is wovenmind?",
+    "output": "wovenmind contains cortex",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is pagerank?",
+    "output": "pagerank is located in cortical/analysis/pagerank.py",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "Where is pagerank?",
+    "output": "pagerank is located in cortical/analysis/pagerank.py",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_location"
+  },
+  {
+    "input": "What is processor?",
+    "output": "processor is a type of component",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is processor?",
+    "output": "processor is a type of component",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is louvain?",
+    "output": "louvain is a type of algorithm",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is louvain?",
+    "output": "louvain is a type of algorithm",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is hebbian_learning?",
+    "output": "hebbian_learning is a type of concept",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is hebbian_learning?",
+    "output": "hebbian_learning is a type of concept",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is pagerank?",
+    "output": "pagerank is a type of algorithm",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is pagerank?",
+    "output": "pagerank is a type of algorithm",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is graph?",
+    "output": "graph is a type of data_structure",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is graph?",
+    "output": "graph is a type of data_structure",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is gotmanager?",
+    "output": "gotmanager manages tasks",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is pagerank.py?",
+    "output": "pagerank.py is a type of file",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is pagerank.py?",
+    "output": "pagerank.py is a type of file",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is processor?",
+    "output": "processor uses pagerank",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is layer?",
+    "output": "layer is a type of data_structure",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is layer?",
+    "output": "layer is a type of data_structure",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is tokenizer.py?",
+    "output": "tokenizer.py is a type of file",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is tokenizer.py?",
+    "output": "tokenizer.py is a type of file",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is tokenizer?",
+    "output": "tokenizer is a type of component",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is tokenizer?",
+    "output": "tokenizer is a type of component",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is api.py?",
+    "output": "api.py is a type of file",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is api.py?",
+    "output": "api.py is a type of file",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "What is wovenmind?",
+    "output": "wovenmind is located in cortical/reasoning/woven_mind.py",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "Where is wovenmind?",
+    "output": "wovenmind is located in cortical/reasoning/woven_mind.py",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_location"
+  },
+  {
+    "input": "What is gotmanager?",
+    "output": "gotmanager manages decisions",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is tfidf?",
+    "output": "tfidf is located in cortical/analysis/tfidf.py",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "Where is tfidf?",
+    "output": "tfidf is located in cortical/analysis/tfidf.py",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_location"
+  },
+  {
+    "input": "What is tokenizer?",
+    "output": "tokenizer is located in cortical/tokenizer.py",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "Where is tokenizer?",
+    "output": "tokenizer is located in cortical/tokenizer.py",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_location"
+  },
+  {
+    "input": "What is data_structure?",
+    "output": "data_structure has stores",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is processor?",
+    "output": "processor contains tokenizer",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is wovenmind?",
+    "output": "wovenmind contains hive",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is louvain?",
+    "output": "louvain uses clustering",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What is tfidf.py?",
+    "output": "tfidf.py is a type of file",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_fact"
+  },
+  {
+    "input": "What type is tfidf.py?",
+    "output": "tfidf.py is a type of file",
+    "confidence": 1.0,
+    "source": "axiom",
+    "type": "pln_type"
+  },
+  {
+    "input": "Is minicolumn related to connects?",
+    "output": "minicolumn has connects",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is tfidf related to processes?",
+    "output": "tfidf has processes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is graph related to stores?",
+    "output": "graph has stores",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is minicolumn related to indexes?",
+    "output": "minicolumn has indexes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is wovenmind related to initializes?",
+    "output": "wovenmind has initializes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is clustering related to processes?",
+    "output": "clustering has processes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is tfidf related to computes?",
+    "output": "tfidf has computes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is processor related to initializes?",
+    "output": "processor has initializes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is layer related to stores?",
+    "output": "layer has stores",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is wovenmind related to executes?",
+    "output": "wovenmind has executes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is tfidf related to analyzes?",
+    "output": "tfidf has analyzes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is clustering related to computes?",
+    "output": "clustering has computes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is bm25 related to processes?",
+    "output": "bm25 has processes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is clustering related to analyzes?",
+    "output": "clustering has analyzes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is edge related to stores?",
+    "output": "edge has stores",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is tokenizer related to configures?",
+    "output": "tokenizer has configures",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is bm25 related to computes?",
+    "output": "bm25 has computes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is processor related to executes?",
+    "output": "processor has executes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is bm25 related to analyzes?",
+    "output": "bm25 has analyzes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is sparksm related to configures?",
+    "output": "sparksm has configures",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is graph related to connects?",
+    "output": "graph has connects",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is louvain related to processes?",
+    "output": "louvain has processes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is gotmanager related to configures?",
+    "output": "gotmanager has configures",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is pagerank related to processes?",
+    "output": "pagerank has processes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is graph related to indexes?",
+    "output": "graph has indexes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is louvain related to computes?",
+    "output": "louvain has computes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is tokenizer related to initializes?",
+    "output": "tokenizer has initializes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is minicolumn related to stores?",
+    "output": "minicolumn has stores",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is louvain related to analyzes?",
+    "output": "louvain has analyzes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is pagerank related to computes?",
+    "output": "pagerank has computes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is layer related to connects?",
+    "output": "layer has connects",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is sparksm related to initializes?",
+    "output": "sparksm has initializes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is pagerank related to analyzes?",
+    "output": "pagerank has analyzes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is tokenizer related to executes?",
+    "output": "tokenizer has executes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is layer related to indexes?",
+    "output": "layer has indexes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is gotmanager related to initializes?",
+    "output": "gotmanager has initializes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is edge related to connects?",
+    "output": "edge has connects",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is sparksm related to executes?",
+    "output": "sparksm has executes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is edge related to indexes?",
+    "output": "edge has indexes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is gotmanager related to executes?",
+    "output": "gotmanager has executes",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is wovenmind related to configures?",
+    "output": "wovenmind has configures",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  },
+  {
+    "input": "Is processor related to configures?",
+    "output": "processor has configures",
+    "confidence": 0.9,
+    "source": "inferred:property_inheritance",
+    "type": "pln_inferred"
+  }
+]
