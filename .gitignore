@@ -161,3 +161,7 @@ corpus_dev/
 
 # Generated training corpus (regenerate with: python -m benchmarks.codebase_slm.generate_corpus --full)
 benchmarks/codebase_slm/corpus/
+
+# PRISM model backups (created by train_augmented.py safeguards)
+# These are local recovery copies, not meant for git
+benchmarks/codebase_slm/models/backups/
