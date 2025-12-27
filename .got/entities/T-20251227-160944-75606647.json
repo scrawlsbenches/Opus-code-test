@@ -1,0 +1,19 @@
+{
+  "_checksum": "57c83c40a426fd5d",
+  "_written_at": "2025-12-27T16:09:44.591462+00:00",
+  "data": {
+    "created_at": "2025-12-27T16:09:44.587808+00:00",
+    "description": "## Goal (WHY)\nAllow users to ask \"Why did you conclude X?\" and get a traced explanation.\n\n## Interface Contract (WHAT)\n```python\nclass PLNReasoner:\n    def explain(self, query: str) -> ExplanationChain:\n        '''\n        Query with full explanation trace.\n        \n        Args:\n            query: The proposition to explain\n            \n        Returns:\n            ExplanationChain with all inference steps\n            \n        Example:\n            chain = reasoner.explain(\"canfly(tweety)\")\n            print(chain.to_natural_language())\n            # \"tweety can fly because tweety is a bird (99%) \n            #  and birds can fly (85%), therefore canfly(tweety) (84%)\"\n        '''\n```\n\n## Integration Points\n- Extends: PLNReasoner in cortical/reasoning/prism_pln.py\n- Uses: ExplanationChain from previous task\n- Modifies internal inference to track steps\n\n## Test Requirements\nLocation: tests/unit/test_pln_explanation.py (add to existing)\n\n```python\ndef test_explain_returns_chain():\n    reasoner = PLNReasoner()\n    reasoner.assert_fact(\"bird(tweety)\", strength=0.99)\n    reasoner.assert_rule(\"bird(X)\", \"canfly(X)\", strength=0.85)\n    chain = reasoner.explain(\"canfly(tweety)\")\n    assert isinstance(chain, ExplanationChain)\n    assert len(chain.steps) >= 1\n\ndef test_explain_tracks_premises():\n    # ... test that premises are captured\n    \ndef test_explain_unknown_returns_empty():\n    # ... test graceful handling of unknown queries\n```\n\nVerification: python -m pytest tests/unit/test_pln_explanation.py -v\n\n## Anti-Patterns\n- Do NOT break existing query() behavior\n- Do NOT change TruthValue logic\n- Do NOT skip edge cases (unknown queries, empty KB)\n\n## Freedom Zone\n- Internal tracking mechanism is up to you\n- Whether to cache explanations or recompute\n- Depth limit for explanation chains\n\n## Reference: docs/epic-cognitive-nlu-nlg-knowledge-base.md",
+    "entity_type": "task",
+    "id": "T-20251227-160944-75606647",
+    "metadata": {},
+    "modified_at": "2025-12-27T16:09:44.591382+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement PLNReasoner.explain() method",
+    "version": 2
+  }
+}
