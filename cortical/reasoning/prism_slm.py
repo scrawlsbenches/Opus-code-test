@@ -363,6 +363,27 @@ class TransitionGraph:
         """Get all transitions from a context."""
         return self._transitions.get(context, [])
 
+    def iter_all_transitions(self) -> Iterator[Tuple[Tuple[str, ...], List[SynapticTransition]]]:
+        """
+        Iterate over all context->transitions mappings.
+
+        Returns:
+            Iterator of (context, transitions) tuples.
+        """
+        return iter(self._transitions.items())
+
+    def contains_token(self, token: str) -> bool:
+        """
+        Check if a token exists in the vocabulary.
+
+        Args:
+            token: Token to check.
+
+        Returns:
+            True if token is in vocabulary, False otherwise.
+        """
+        return token in self._vocab
+
     def apply_decay(self, factor: float = 0.99) -> None:
         """Apply decay to all transitions."""
         for transitions in self._transitions.values():

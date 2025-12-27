@@ -487,13 +487,14 @@ class ThoughtGraph:
 
             for neighbor_id in self.get_neighbors(node_id):
                 if neighbor_id not in visited:
-                    dfs_cycle(neighbor_id, path[:])
+                    dfs_cycle(neighbor_id, path)
                 elif neighbor_id in rec_stack:
                     # Found a cycle
                     cycle_start = path.index(neighbor_id)
                     cycle = path[cycle_start:] + [neighbor_id]
                     cycles.append(cycle)
 
+            path.pop()
             rec_stack.remove(node_id)
 
         for node_id in self.nodes:
@@ -537,65 +538,76 @@ class ThoughtGraph:
 
     def find_bridges(self) -> List[str]:
         """
-        Find bridge nodes whose removal would disconnect the graph.
+        Find bridge nodes (articulation points) whose removal would disconnect the graph.
+
+        Uses Tarjan's algorithm with O(V+E) complexity instead of O(V²).
 
         Returns:
             List of bridge node IDs
         """
+        if not self.nodes:
+            return []
+
+        import sys
+        # Increase recursion limit for deep graphs
+        old_limit = sys.getrecursionlimit()
+        sys.setrecursionlimit(max(100000, len(self.nodes) * 2))
+
+        def get_all_neighbors(node_id: str) -> List[str]:
+            """Get neighbors treating graph as undirected."""
+            neighbors = []
+            # Outgoing edges
+            for edge in self._edges_from.get(node_id, []):
+                neighbors.append(edge.target_id)
+            # Incoming edges (treat as undirected)
+            for edge in self._edges_to.get(node_id, []):
+                neighbors.append(edge.source_id)
+            return neighbors
+
         bridges = []
+        disc = {}  # Discovery time for each node
+        low = {}   # Lowest discovery time reachable from subtree
+        parent = {}  # Parent in DFS tree
+        time = [0]  # Mutable counter for discovery time
 
-        # For each node, check if removing it increases connected components
-        original_components = self._count_connected_components()
+        def dfs(node_id: str, is_root: bool = False):
+            """DFS to find articulation points."""
+            children = 0
+            disc[node_id] = low[node_id] = time[0]
+            time[0] += 1
 
-        for node_id in list(self.nodes.keys()):
-            # Temporarily remove node
-            node = self.nodes[node_id]
-            edges_from = self._edges_from.get(node_id, []).copy()
-            edges_to = self._edges_to.get(node_id, []).copy()
+            for neighbor_id in get_all_neighbors(node_id):
+                if neighbor_id not in disc:
+                    # Unvisited neighbor
+                    children += 1
+                    parent[neighbor_id] = node_id
+                    dfs(neighbor_id, is_root=False)
 
-            del self.nodes[node_id]
-            if node_id in self._edges_from:
-                del self._edges_from[node_id]
-            if node_id in self._edges_to:
-                del self._edges_to[node_id]
+                    # Update low-link value
+                    low[node_id] = min(low[node_id], low[neighbor_id])
 
-            # Remove edges referencing this node
-            for edge in edges_from:
-                if edge.target_id in self._edges_to:
-                    self._edges_to[edge.target_id] = [
-                        e for e in self._edges_to[edge.target_id] if e.source_id != node_id
-                    ]
-            for edge in edges_to:
-                if edge.source_id in self._edges_from:
-                    self._edges_from[edge.source_id] = [
-                        e for e in self._edges_from[edge.source_id] if e.target_id != node_id
-                    ]
+                    # Articulation point conditions:
+                    # 1. Root with 2+ children
+                    if is_root and children > 1:
+                        if node_id not in bridges:
+                            bridges.append(node_id)
+                    # 2. Non-root where no back edge from subtree goes above node
+                    elif not is_root and low[neighbor_id] >= disc[node_id]:
+                        if node_id not in bridges:
+                            bridges.append(node_id)
 
-            # Count components
-            new_components = self._count_connected_components()
+                elif neighbor_id != parent.get(node_id):
+                    # Back edge (not to parent)
+                    low[node_id] = min(low[node_id], disc[neighbor_id])
 
-            # Restore node and edges
-            self.nodes[node_id] = node
-            if edges_from:
-                self._edges_from[node_id] = edges_from
-            if edges_to:
-                self._edges_to[node_id] = edges_to
-
-            for edge in edges_from:
-                if edge.target_id in self.nodes:
-                    if edge.target_id not in self._edges_to:
-                        self._edges_to[edge.target_id] = []
-                    self._edges_to[edge.target_id].append(edge)
-
-            for edge in edges_to:
-                if edge.source_id in self.nodes:
-                    if edge.source_id not in self._edges_from:
-                        self._edges_from[edge.source_id] = []
-                    self._edges_from[edge.source_id].append(edge)
-
-            # If removal increased components, it's a bridge
-            if new_components > original_components:
-                bridges.append(node_id)
+        # Run DFS from each unvisited node (handles disconnected components)
+        try:
+            for node_id in self.nodes:
+                if node_id not in disc:
+                    dfs(node_id, is_root=True)
+        finally:
+            # Restore original recursion limit
+            sys.setrecursionlimit(old_limit)
 
         return bridges
 
