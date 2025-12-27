@@ -1,0 +1,502 @@
+
+============================================================
+DIALOGUE 1: pagerank
+============================================================
+
+[TestEngineer] Q: What edge cases exist for pagerank?
+
+[TestEngineer] A: PageRank is a graph algorithm that computes importance scores by analyzing link structure. Nodes with more incoming links from important nodes rank higher. It uses iterative power iteration with a damping factor (default 0.85).
+
+[TestEngineer] Q: How do I test importance?
+
+[TestEngineer] A: the the the the the the the the the the
+
+[TestEngineer] Q: Is importance properly covered by tests?
+
+[TestEngineer] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 2: tfidf
+============================================================
+
+[TestEngineer] Q: How do I test tfidf?
+
+[ArchitectBot] A: TF-IDF (Term Frequency-Inverse Document Frequency) measures how important a word is to a document. It multiplies term frequency by the inverse of how many documents contain the term, highlighting distinctive words. You can find it in cortical/analysis/tfidf.py. Related concepts: bm25, search, relevance.
+
+[TestEngineer] Q: What edge cases exist for search?
+
+[ArchitectBot] A: the the the the the the the the the the
+
+[TestEngineer] Q: What edge cases exist for search?
+
+[ArchitectBot] A: the the the the the the the the the the
+
+[TestEngineer] Q: What edge cases exist for search?
+
+[ArchitectBot] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 3: tokenizer
+============================================================
+
+[NewDev] Q: Where can I find tokenizer?
+
+[AlgoExpert] A: The tokenizer processes text by splitting into tokens, applying optional stemming, removing stop words, and generating n-grams (bigrams, trigrams). It handles code identifiers specially with camelCase splitting.
+
+[NewDev] Q: I'm confused about stemming
+
+[AlgoExpert] A: the the the the the the the the the the
+
+[NewDev] Q: I'm confused about stemming
+
+[AlgoExpert] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 4: pagerank
+============================================================
+
+[AlgoExpert] Q: What's the complexity of pagerank?
+
+[TestEngineer] A: PageRank is a graph algorithm that computes importance scores by analyzing link structure. Nodes with more incoming links from important nodes rank higher. It uses iterative power iteration with a damping factor (default 0.85).
+
+[AlgoExpert] Q: What's the complexity of importance?
+
+[TestEngineer] A: the the the the the the the the the the
+
+[AlgoExpert] Q: How does importance compare to alternatives?
+
+[TestEngineer] A: the the the the the the the the the the
+
+[AlgoExpert] Q: What's the complexity of importance?
+
+[TestEngineer] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 5: wovenmind
+============================================================
+
+[TestEngineer] Q: How do I test wovenmind?
+
+[AlgoExpert] A: Woven Mind implements System 1 (fast, automatic via Hive) and System 2 (slow, deliberate via Cortex) processing. The Loom routes inputs based on surprise detection. Familiar patterns use fast mode, novel ones trigger slow reasoning.
+
+[TestEngineer] Q: How do I test hive?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 6: pagerank
+============================================================
+
+[AlgoExpert] Q: How does pagerank compare to alternatives?
+
+[ArchitectBot] A: PageRank is a graph algorithm that computes importance scores by analyzing link structure. Nodes with more incoming links from important nodes rank higher. It uses iterative power iteration with a damping factor (default 0.85). You can find it in cortical/analysis/pagerank.py. Related concepts: graph, importance, tfidf.
+
+[AlgoExpert] Q: What's the complexity of tfidf?
+
+[ArchitectBot] A: TF-IDF (Term Frequency-Inverse Document Frequency) measures how important a word is to a document. It multiplies term frequency by the inverse of how many documents contain the term, highlighting distinctive words. You can find it in cortical/analysis/tfidf.py. Related concepts: bm25, search, relevance.
+
+[AlgoExpert] Q: How does the search algorithm work?
+
+[ArchitectBot] A: the the the the the the the the the the
+
+[AlgoExpert] Q: How does the search algorithm work?
+
+[ArchitectBot] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 7: lateral_connections
+============================================================
+
+[AlgoExpert] Q: How does lateral_connections compare to alternatives?
+
+[ArchitectBot] A: Lateral connections are weighted edges between terms based on co-occurrence in documents. They enable query expansion and semantic similarity by connecting related concepts. You can find it in cortical/minicolumn.py. Related concepts: hebbian, cooccurrence, expansion.
+
+[AlgoExpert] Q: How does the expansion algorithm work?
+
+[ArchitectBot] A: the the the the the the the the the the
+
+[AlgoExpert] Q: How does expansion compare to alternatives?
+
+[ArchitectBot] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 8: tfidf
+============================================================
+
+[AlgoExpert] Q: What's the complexity of tfidf?
+
+[AlgoExpert] A: TF-IDF (Term Frequency-Inverse Document Frequency) measures how important a word is to a document. It multiplies term frequency by the inverse of how many documents contain the term, highlighting distinctive words.
+
+[AlgoExpert] Q: What's the complexity of bm25?
+
+[AlgoExpert] A: BM25 improves on TF-IDF by adding term frequency saturation (k1 parameter) and document length normalization (b parameter). It's the default scoring algorithm for search queries.
+
+
+============================================================
+DIALOGUE 9: minicolumn
+============================================================
+
+[AlgoExpert] Q: How does minicolumn compare to alternatives?
+
+[ArchitectBot] A: A Minicolumn stores a term with its lateral connections, typed connections, TF-IDF score, PageRank value, and document associations. It's the fundamental unit in the hierarchical layer structure. You can find it in cortical/minicolumn.py. Related concepts: layer, connections, tfidf.
+
+[AlgoExpert] Q: Can tfidf be optimized?
+
+[ArchitectBot] A: TF-IDF (Term Frequency-Inverse Document Frequency) measures how important a word is to a document. It multiplies term frequency by the inverse of how many documents contain the term, highlighting distinctive words. You can find it in cortical/analysis/tfidf.py. Related concepts: bm25, search, relevance.
+
+
+============================================================
+DIALOGUE 10: bm25
+============================================================
+
+[AlgoExpert] Q: How does the bm25 algorithm work?
+
+[AlgoExpert] A: BM25 improves on TF-IDF by adding term frequency saturation (k1 parameter) and document length normalization (b parameter). It's the default scoring algorithm for search queries.
+
+[AlgoExpert] Q: What's the complexity of search?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 11: wovenmind
+============================================================
+
+[NewDev] Q: Where can I find wovenmind?
+
+[TestEngineer] A: Woven Mind implements System 1 (fast, automatic via Hive) and System 2 (slow, deliberate via Cortex) processing. The Loom routes inputs based on surprise detection. Familiar patterns use fast mode, novel ones trigger slow reasoning.
+
+[NewDev] Q: I'm confused about surprise
+
+[TestEngineer] A: the the the the the the the the the the
+
+[NewDev] Q: What is surprise?
+
+[TestEngineer] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 12: pagerank
+============================================================
+
+[TestEngineer] Q: Is pagerank properly covered by tests?
+
+[ArchitectBot] A: PageRank is a graph algorithm that computes importance scores by analyzing link structure. Nodes with more incoming links from important nodes rank higher. It uses iterative power iteration with a damping factor (default 0.85). You can find it in cortical/analysis/pagerank.py. Related concepts: graph, importance, tfidf.
+
+[TestEngineer] Q: Is importance properly covered by tests?
+
+[ArchitectBot] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 13: gotmanager
+============================================================
+
+[AlgoExpert] Q: Can gotmanager be optimized?
+
+[TestEngineer] A: GoTManager provides task creation, decision logging, sprint management, and dependency tracking. It's the central interface for the Graph of Thought system that tracks work and decisions.
+
+[AlgoExpert] Q: What's the complexity of sprints?
+
+[TestEngineer] A: the the the the the the the the the the
+
+[AlgoExpert] Q: What's the complexity of sprints?
+
+[TestEngineer] A: the the the the the the the the the the
+
+[AlgoExpert] Q: Can sprints be optimized?
+
+[TestEngineer] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 14: wovenmind
+============================================================
+
+[AlgoExpert] Q: How does wovenmind compare to alternatives?
+
+[TestEngineer] A: Woven Mind implements System 1 (fast, automatic via Hive) and System 2 (slow, deliberate via Cortex) processing. The Loom routes inputs based on surprise detection. Familiar patterns use fast mode, novel ones trigger slow reasoning.
+
+[AlgoExpert] Q: How does hive compare to alternatives?
+
+[TestEngineer] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 15: hebbian_learning
+============================================================
+
+[NewDev] Q: Can you explain hebbian_learning?
+
+[AlgoExpert] A: Hebbian learning is the principle that connections between neurons that are activated together are strengthened. In this codebase, co-occurring terms build lateral connections with weights based on frequency.
+
+[NewDev] Q: What is weights?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+[NewDev] Q: Where can I find weights?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+[NewDev] Q: I'm confused about weights
+
+[AlgoExpert] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 16: gotmanager
+============================================================
+
+[AlgoExpert] Q: Can gotmanager be optimized?
+
+[TestEngineer] A: GoTManager provides task creation, decision logging, sprint management, and dependency tracking. It's the central interface for the Graph of Thought system that tracks work and decisions.
+
+[AlgoExpert] Q: How does the decisions algorithm work?
+
+[TestEngineer] A: the the the the the the the the the the
+
+[AlgoExpert] Q: How does the decisions algorithm work?
+
+[TestEngineer] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 17: minicolumn
+============================================================
+
+[AlgoExpert] Q: Can minicolumn be optimized?
+
+[AlgoExpert] A: A Minicolumn stores a term with its lateral connections, typed connections, TF-IDF score, PageRank value, and document associations. It's the fundamental unit in the hierarchical layer structure.
+
+[AlgoExpert] Q: How does the tfidf algorithm work?
+
+[AlgoExpert] A: TF-IDF (Term Frequency-Inverse Document Frequency) measures how important a word is to a document. It multiplies term frequency by the inverse of how many documents contain the term, highlighting distinctive words.
+
+[AlgoExpert] Q: How does the search algorithm work?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+[AlgoExpert] Q: How does the search algorithm work?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 18: louvain
+============================================================
+
+[TestEngineer] Q: Is louvain properly covered by tests?
+
+[ArchitectBot] A: Louvain is a community detection algorithm that finds clusters by optimizing modularity. It groups nodes that are more densely connected to each other than to the rest of the network. You can find it in cortical/analysis/clustering.py. Related concepts: clustering, community, graph.
+
+[TestEngineer] Q: What edge cases exist for community?
+
+[ArchitectBot] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 19: tokenizer
+============================================================
+
+[AlgoExpert] Q: How does tokenizer compare to alternatives?
+
+[TestEngineer] A: The tokenizer processes text by splitting into tokens, applying optional stemming, removing stop words, and generating n-grams (bigrams, trigrams). It handles code identifiers specially with camelCase splitting.
+
+[AlgoExpert] Q: How does tokens compare to alternatives?
+
+[TestEngineer] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 20: lateral_connections
+============================================================
+
+[TestEngineer] Q: Is lateral_connections properly covered by tests?
+
+[AlgoExpert] A: Lateral connections are weighted edges between terms based on co-occurrence in documents. They enable query expansion and semantic similarity by connecting related concepts.
+
+[TestEngineer] Q: What edge cases exist for cooccurrence?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 21: lateral_connections
+============================================================
+
+[TestEngineer] Q: What edge cases exist for lateral_connections?
+
+[AlgoExpert] A: Lateral connections are weighted edges between terms based on co-occurrence in documents. They enable query expansion and semantic similarity by connecting related concepts.
+
+[TestEngineer] Q: How do I test cooccurrence?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+[TestEngineer] Q: Is cooccurrence properly covered by tests?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+[TestEngineer] Q: What edge cases exist for cooccurrence?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 22: louvain
+============================================================
+
+[AlgoExpert] Q: What's the complexity of louvain?
+
+[AlgoExpert] A: Louvain is a community detection algorithm that finds clusters by optimizing modularity. It groups nodes that are more densely connected to each other than to the rest of the network.
+
+[AlgoExpert] Q: How does the clustering algorithm work?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+[AlgoExpert] Q: What's the complexity of clustering?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 23: gotmanager
+============================================================
+
+[AlgoExpert] Q: How does gotmanager compare to alternatives?
+
+[AlgoExpert] A: GoTManager provides task creation, decision logging, sprint management, and dependency tracking. It's the central interface for the Graph of Thought system that tracks work and decisions.
+
+[AlgoExpert] Q: How does tasks compare to alternatives?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+[AlgoExpert] Q: What's the complexity of tasks?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 24: gotmanager
+============================================================
+
+[TestEngineer] Q: Is gotmanager properly covered by tests?
+
+[AlgoExpert] A: GoTManager provides task creation, decision logging, sprint management, and dependency tracking. It's the central interface for the Graph of Thought system that tracks work and decisions.
+
+[TestEngineer] Q: What edge cases exist for decisions?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 25: gotmanager
+============================================================
+
+[AlgoExpert] Q: What's the complexity of gotmanager?
+
+[AlgoExpert] A: GoTManager provides task creation, decision logging, sprint management, and dependency tracking. It's the central interface for the Graph of Thought system that tracks work and decisions.
+
+[AlgoExpert] Q: What's the complexity of decisions?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+[AlgoExpert] Q: What's the complexity of decisions?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+[AlgoExpert] Q: How does the decisions algorithm work?
+
+[AlgoExpert] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 26: louvain
+============================================================
+
+[NewDev] Q: How do I use louvain?
+
+[TestEngineer] A: Louvain is a community detection algorithm that finds clusters by optimizing modularity. It groups nodes that are more densely connected to each other than to the rest of the network.
+
+[NewDev] Q: I'm confused about community
+
+[TestEngineer] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 27: gotmanager
+============================================================
+
+[NewDev] Q: I'm confused about gotmanager
+
+[TestEngineer] A: GoTManager provides task creation, decision logging, sprint management, and dependency tracking. It's the central interface for the Graph of Thought system that tracks work and decisions.
+
+[NewDev] Q: I'm confused about decisions
+
+[TestEngineer] A: the the the the the the the the the the
+
+[NewDev] Q: Can you explain decisions?
+
+[TestEngineer] A: the the the the the the the the the the
+
+[NewDev] Q: Can you explain decisions?
+
+[TestEngineer] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 28: gotmanager
+============================================================
+
+[NewDev] Q: Can you explain gotmanager?
+
+[ArchitectBot] A: GoTManager provides task creation, decision logging, sprint management, and dependency tracking. It's the central interface for the Graph of Thought system that tracks work and decisions. You can find it in cortical/got/api.py. Related concepts: tasks, decisions, sprints.
+
+[NewDev] Q: Can you explain decisions?
+
+[ArchitectBot] A: the the the the the the the the the the
+
+[NewDev] Q: How do I use decisions?
+
+[ArchitectBot] A: the the the the the the the the the the
+
+[NewDev] Q: Where can I find decisions?
+
+[ArchitectBot] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 29: gotmanager
+============================================================
+
+[AlgoExpert] Q: How does the gotmanager algorithm work?
+
+[TestEngineer] A: GoTManager provides task creation, decision logging, sprint management, and dependency tracking. It's the central interface for the Graph of Thought system that tracks work and decisions.
+
+[AlgoExpert] Q: What's the complexity of tasks?
+
+[TestEngineer] A: the the the the the the the the the the
+
+[AlgoExpert] Q: How does tasks compare to alternatives?
+
+[TestEngineer] A: the the the the the the the the the the
+
+
+============================================================
+DIALOGUE 30: wovenmind
+============================================================
+
+[AlgoExpert] Q: Can wovenmind be optimized?
+
+[ArchitectBot] A: Woven Mind implements System 1 (fast, automatic via Hive) and System 2 (slow, deliberate via Cortex) processing. The Loom routes inputs based on surprise detection. Familiar patterns use fast mode, novel ones trigger slow reasoning. You can find it in cortical/reasoning/woven_mind.py. Related concepts: hive, cortex, loom, surprise.
+
+[AlgoExpert] Q: Can surprise be optimized?
+
+[ArchitectBot] A: the the the the the the the the the the
+

@@ -1,21 +1,21 @@
 {
-  "_checksum": "e2ac860105f0fc12",
-  "_written_at": "2025-12-25T23:03:33.176420+00:00",
+  "_checksum": "86ed7cc874f48779",
+  "_written_at": "2025-12-26T22:32:55.083920+00:00",
   "data": {
-    "created_at": "2025-12-25T23:03:33.168734+00:00",
+    "created_at": "2025-12-26T22:32:55.079222+00:00",
     "entity_type": "sprint",
     "epic_id": "",
     "goals": [],
     "id": "S-021",
     "isolation": [],
     "metadata": {},
-    "modified_at": "2025-12-25T23:03:33.176364+00:00",
+    "modified_at": "2025-12-26T22:32:55.083879+00:00",
     "notes": [],
     "number": 21,
     "properties": {},
     "session_id": "",
     "status": "available",
-    "title": "The Loom Weaves",
+    "title": "Training Pipeline",
     "version": 2
   }
 }

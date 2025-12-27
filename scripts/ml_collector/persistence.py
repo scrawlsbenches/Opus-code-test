@@ -32,6 +32,7 @@ from .config import (
 )
 from .core import SchemaValidationError
 from .data_classes import CommitContext, ChatEntry, ActionEntry
+from .chunked_storage import store_chunked_chat
 
 
 logger = logging.getLogger(__name__)
@@ -407,7 +408,13 @@ def save_session_lite(session_summary: Dict[str, Any]):
 # ============================================================================
 
 def save_chat_entry(entry: ChatEntry, validate: bool = True):
-    """Save a chat entry to disk atomically with validation."""
+    """Save a chat entry to disk atomically with validation.
+
+    Saves to THREE locations for different purposes:
+    1. .git-ml/chats/ - Full data, organized by date (gitignored - local only)
+    2. .git-ml/tracked/chunked/ - Compressed, git-tracked (for sharing via git)
+    3. CALI storage - O(1) lookups (local cache)
+    """
     ensure_dirs()
 
     data = asdict(entry)
@@ -418,7 +425,7 @@ def save_chat_entry(entry: ChatEntry, validate: bool = True):
         if errors:
             raise SchemaValidationError(f"Chat validation failed: {errors}")
 
-    # Organize by date
+    # Organize by date (local storage - gitignored)
     date_dir = CHATS_DIR / entry.timestamp[:10]
     date_dir.mkdir(exist_ok=True)
 
@@ -431,6 +438,14 @@ def save_chat_entry(entry: ChatEntry, validate: bool = True):
     # Also write to CALI for O(1) lookups and git-friendly storage
     if cali_put('chat', entry.id, data):
         logger.debug(f"CALI: stored chat {entry.id}")
+
+    # Also write to chunked storage for git sharing
+    # This enables backfilling chat history across branches
+    try:
+        chunk_file = store_chunked_chat(data, entry.session_id)
+        logger.debug(f"Chunked storage: stored chat to {chunk_file}")
+    except Exception as e:
+        logger.warning(f"Failed to store chat in chunked storage: {e}")
 
 
 def log_chat(

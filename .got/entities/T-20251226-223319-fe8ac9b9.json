@@ -1,0 +1,19 @@
+{
+  "_checksum": "e68fd3dd439253a7",
+  "_written_at": "2025-12-26T22:33:19.162857+00:00",
+  "data": {
+    "created_at": "2025-12-26T22:33:19.160014+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251226-223319-fe8ac9b9",
+    "metadata": {},
+    "modified_at": "2025-12-26T22:33:19.162795+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "S20.2: Doc extractor - parse Markdown to extract sections, patterns, decisions",
+    "version": 2
+  }
+}
