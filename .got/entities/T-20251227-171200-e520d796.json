@@ -1,0 +1,19 @@
+{
+  "_checksum": "1e5c74607a384991",
+  "_written_at": "2025-12-27T17:12:00.823368+00:00",
+  "data": {
+    "created_at": "2025-12-27T17:12:00.820390+00:00",
+    "description": "\n## Knowledge Needed\n- Read: scripts/ml_data_collector.py (data collection)\n- Read: .git-ml/ structure (commits/, sessions/, etc.)\n- Understand: CommitContext and DiffHunk data classes\n\n## Implementation\n1. Read existing commit data from .git-ml/commits/\n2. Use cached diffs instead of re-extracting from git\n3. Leverage CI pass/fail data from .git-ml/\n4. Incorporate session data for workflow patterns\n\n## Guardrails\n- DO: Use existing data when available (faster)\n- DO: Fall back to git commands when data missing\n- DO: Handle missing/corrupt .git-ml/ gracefully\n- DO NOT: Require .git-ml/ to exist (must work on fresh repos)\n- DO NOT: Duplicate data extraction logic\n- EXPLORE: Whether to update .git-ml/ during training\n- EXPLORE: Caching trained model state in .git-ml/\n\n## Success Criteria\n- Training uses cached data when available\n- Falls back gracefully when cache missing\n- CI results enhance commit weights\n- No data extraction duplication\n",
+    "entity_type": "task",
+    "id": "T-20251227-171200-e520d796",
+    "metadata": {},
+    "modified_at": "2025-12-27T17:12:00.823309+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Integrate with existing ML data collection (.git-ml/)",
+    "version": 2
+  }
+}
