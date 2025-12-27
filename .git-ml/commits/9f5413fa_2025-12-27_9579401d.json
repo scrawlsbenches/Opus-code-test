@@ -1,0 +1,53 @@
+{
+  "hash": "9f5413fae0460d2ad29b0058ca5c9204633dd947",
+  "message": "fix(gitignore): Add PRISM model backups directory to ignore list",
+  "author": "Claude",
+  "timestamp": "2025-12-27 02:29:03 +0000",
+  "branch": "claude/accept-handoff-ctrSI",
+  "files_changed": [
+    ".gitignore"
+  ],
+  "insertions": 4,
+  "deletions": 0,
+  "hunks": [
+    {
+      "file": ".gitignore",
+      "function": "corpus_dev/",
+      "start_line": 154,
+      "lines_added": [
+        "",
+        "# PRISM model backups (created by train_augmented.py safeguards)",
+        "# These are local recovery copies, not meant for git",
+        "benchmarks/codebase_slm/models/backups/"
+      ],
+      "lines_removed": [],
+      "context_before": [
+        "",
+        "# GoT migration artifacts",
+        ".got-backup-*/",
+        ".got-tx/",
+        ".got/.got.lock",
+        ".got/**/*.lock",
+        ".spark_intelligence_model.json",
+        "",
+        "# Generated training corpus (regenerate with: python -m benchmarks.codebase_slm.generate_corpus --full)",
+        "benchmarks/codebase_slm/corpus/"
+      ],
+      "context_after": [],
+      "change_type": "add"
+    }
+  ],
+  "hour_of_day": 2,
+  "day_of_week": "Saturday",
+  "seconds_since_last_commit": 484,
+  "is_merge": false,
+  "is_initial": false,
+  "parent_count": 1,
+  "session_id": "c7e7f25e",
+  "related_chats": [
+    "chat-20251227-015100-015a56"
+  ],
+  "ci_result": null,
+  "reverted": false,
+  "amended": false
+}
