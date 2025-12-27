@@ -1,0 +1,19 @@
+{
+  "_checksum": "6b9a176c6061c5da",
+  "_written_at": "2025-12-27T22:54:14.912561+00:00",
+  "data": {
+    "created_at": "2025-12-27T22:54:14.909081+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251227-225414-64f51d5b",
+    "metadata": {},
+    "modified_at": "2025-12-27T22:54:14.912523+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "bugfix"
+    },
+    "status": "pending",
+    "title": "YAML Task Two",
+    "version": 2
+  }
+}
