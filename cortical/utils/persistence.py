@@ -7,13 +7,14 @@ write-to-temp-then-rename pattern, which ensures atomicity on POSIX systems.
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
 
-def atomic_write(path: Path, content: str, encoding: str = 'utf-8') -> None:
+def atomic_write(path: Path, content: str, encoding: str = 'utf-8', mode: int = 0o600) -> None:
     """
-    Write content to a file atomically.
+    Write content to a file atomically with explicit permissions.
 
     Uses write-to-temp-then-rename pattern to prevent data loss
     if the process crashes during write.
@@ -22,6 +23,7 @@ def atomic_write(path: Path, content: str, encoding: str = 'utf-8') -> None:
         path: Target file path
         content: String content to write
         encoding: Text encoding (default: utf-8)
+        mode: File permissions (default: 0o600, owner read/write only)
 
     Raises:
         OSError: If write or rename fails
@@ -42,6 +44,10 @@ def atomic_write(path: Path, content: str, encoding: str = 'utf-8') -> None:
 
         # Atomic rename (on POSIX systems)
         temp_path.rename(path)
+
+        # Set explicit permissions (skip on Windows)
+        if sys.platform != 'win32':
+            os.chmod(path, mode)
     except Exception:
         # Clean up temp file on failure
         if temp_path.exists():
@@ -49,9 +55,9 @@ def atomic_write(path: Path, content: str, encoding: str = 'utf-8') -> None:
         raise
 
 
-def atomic_write_json(path: Path, data: Any, indent: int = 2, encoding: str = 'utf-8') -> None:
+def atomic_write_json(path: Path, data: Any, indent: int = 2, encoding: str = 'utf-8', mode: int = 0o600) -> None:
     """
-    Write JSON data to a file atomically.
+    Write JSON data to a file atomically with explicit permissions.
 
     Uses write-to-temp-then-rename pattern to prevent data loss
     if the process crashes during write.
@@ -61,6 +67,7 @@ def atomic_write_json(path: Path, data: Any, indent: int = 2, encoding: str = 'u
         data: JSON-serializable data to write
         indent: JSON indentation level (default: 2)
         encoding: Text encoding (default: utf-8)
+        mode: File permissions (default: 0o600, owner read/write only)
 
     Raises:
         OSError: If write or rename fails
@@ -82,6 +89,10 @@ def atomic_write_json(path: Path, data: Any, indent: int = 2, encoding: str = 'u
 
         # Atomic rename (on POSIX systems)
         temp_path.rename(path)
+
+        # Set explicit permissions (skip on Windows)
+        if sys.platform != 'win32':
+            os.chmod(path, mode)
     except Exception:
         # Clean up temp file on failure
         if temp_path.exists():
