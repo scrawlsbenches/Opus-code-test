@@ -451,24 +451,155 @@ class CognitiveIntegration:
         return results
 
     def save_state(self, path: str):
-        """Save learned state to disk."""
-        # Note: Full persistence would require serializing each model
-        # This is a simplified example
-        state = {
+        """
+        Save all learned state to disk as JSON.
+
+        Creates a directory with separate files for each model:
+        - ngram.json: SparkSLM n-gram model
+        - prism_slm.json: PRISM synaptic language model
+        - woven_mind.json: WovenMind dual-process state
+        - pln.json: PLN knowledge base (facts and rules)
+        - metadata.json: Training metadata
+
+        Args:
+            path: Directory path to save state
+        """
+        save_dir = Path(path)
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        print(f"\n{'='*60}")
+        print(f"SAVING STATE TO: {save_dir}")
+        print(f"{'='*60}")
+
+        # 1. Save NGramModel
+        ngram_path = save_dir / "ngram.json"
+        self.ngram.save(str(ngram_path))
+        print(f"   ✓ SparkSLM saved to {ngram_path.name}")
+
+        # 2. Save PRISM-SLM
+        prism_path = save_dir / "prism_slm.json"
+        self.prism_slm.save(str(prism_path))
+        print(f"   ✓ PRISM-SLM saved to {prism_path.name}")
+
+        # 3. Save WovenMind
+        woven_path = save_dir / "woven_mind.json"
+        woven_state = self.woven.to_dict()
+        woven_path.write_text(json.dumps(woven_state, indent=2))
+        print(f"   ✓ WovenMind saved to {woven_path.name}")
+
+        # 4. Save PLN (manual serialization)
+        pln_path = save_dir / "pln.json"
+        pln_state = {
+            "facts": [
+                {"name": atom.name, "strength": atom.truth_value.strength,
+                 "confidence": atom.truth_value.confidence}
+                for atom in self.pln.graph._atoms.values()
+            ],
+            "rules": [
+                {"antecedent": key[0], "consequent": key[1],
+                 "strength": tv.strength, "confidence": tv.confidence}
+                for key, tv in self.pln._rules.items()
+            ]
+        }
+        pln_path.write_text(json.dumps(pln_state, indent=2))
+        print(f"   ✓ PLN saved to {pln_path.name} ({len(pln_state['facts'])} facts, {len(pln_state['rules'])} rules)")
+
+        # 5. Save metadata
+        metadata_path = save_dir / "metadata.json"
+        metadata = {
             "trained": self._trained,
+            "ngram_vocab_size": len(self.ngram.vocab),
             "pln_facts": self.pln.fact_count,
             "pln_rules": self.pln.rule_count,
+            "saved_at": str(Path(path).resolve()),
         }
-        Path(path).write_text(json.dumps(state, indent=2))
-        print(f"State saved to {path}")
+        metadata_path.write_text(json.dumps(metadata, indent=2))
+        print(f"   ✓ Metadata saved to {metadata_path.name}")
 
-    def load_state(self, path: str):
-        """Load state from disk."""
-        if Path(path).exists():
-            state = json.loads(Path(path).read_text())
-            print(f"Loaded state: {state}")
-            return state
-        return None
+        print(f"\n   State saved successfully!")
+        return save_dir
+
+    def load_state(self, path: str) -> bool:
+        """
+        Load all learned state from disk.
+
+        Args:
+            path: Directory path containing saved state
+
+        Returns:
+            True if loaded successfully, False otherwise
+        """
+        load_dir = Path(path)
+        if not load_dir.exists():
+            print(f"State directory not found: {load_dir}")
+            return False
+
+        print(f"\n{'='*60}")
+        print(f"LOADING STATE FROM: {load_dir}")
+        print(f"{'='*60}")
+
+        try:
+            # 1. Load NGramModel
+            ngram_path = load_dir / "ngram.json"
+            if ngram_path.exists():
+                from cortical.spark import NGramModel
+                self.ngram = NGramModel.load(str(ngram_path))
+                print(f"   ✓ SparkSLM loaded ({len(self.ngram.vocab)} vocab)")
+
+            # 2. Load PRISM-SLM
+            prism_path = load_dir / "prism_slm.json"
+            if prism_path.exists():
+                from cortical.reasoning.prism_slm import PRISMLanguageModel
+                self.prism_slm = PRISMLanguageModel.load(str(prism_path))
+                print(f"   ✓ PRISM-SLM loaded")
+
+            # 3. Load WovenMind
+            woven_path = load_dir / "woven_mind.json"
+            if woven_path.exists():
+                from cortical.reasoning.woven_mind import WovenMind
+                woven_state = json.loads(woven_path.read_text())
+                self.woven = WovenMind.from_dict(woven_state)
+                print(f"   ✓ WovenMind loaded")
+
+            # 4. Load PLN
+            pln_path = load_dir / "pln.json"
+            if pln_path.exists():
+                pln_state = json.loads(pln_path.read_text())
+                # Reinitialize and load facts/rules
+                from cortical.reasoning.prism_pln import PLNReasoner
+                self.pln = PLNReasoner()
+                for fact in pln_state.get("facts", []):
+                    self.pln.assert_fact(
+                        fact["name"],
+                        strength=fact["strength"],
+                        confidence=fact["confidence"]
+                    )
+                for rule in pln_state.get("rules", []):
+                    self.pln.assert_rule(
+                        rule["antecedent"],
+                        rule["consequent"],
+                        strength=rule["strength"],
+                        confidence=rule["confidence"]
+                    )
+                print(f"   ✓ PLN loaded ({self.pln.fact_count} facts, {self.pln.rule_count} rules)")
+
+            # 5. Load metadata
+            metadata_path = load_dir / "metadata.json"
+            if metadata_path.exists():
+                metadata = json.loads(metadata_path.read_text())
+                self._trained = metadata.get("trained", False)
+                print(f"   ✓ Metadata loaded")
+
+            # Reinitialize AnomalyDetector with loaded ngram
+            from cortical.spark import AnomalyDetector
+            self.anomaly = AnomalyDetector(ngram_model=self.ngram)
+
+            print(f"\n   State loaded successfully!")
+            return True
+
+        except Exception as e:
+            print(f"   ✗ Error loading state: {e}")
+            return False
 
 
 def main():
@@ -499,6 +630,18 @@ def main():
         type=str,
         help="Process a specific query"
     )
+    parser.add_argument(
+        "--save",
+        type=str,
+        metavar="PATH",
+        help="Save trained state to directory (e.g., --save ./cognitive_state)"
+    )
+    parser.add_argument(
+        "--load",
+        type=str,
+        metavar="PATH",
+        help="Load state from directory instead of training fresh"
+    )
 
     args = parser.parse_args()
 
@@ -509,7 +652,14 @@ def main():
 
     integration = CognitiveIntegration(verbose=args.verbose)
 
-    if args.section in ("all", "integration"):
+    # Load existing state or train fresh
+    if args.load:
+        if integration.load_state(args.load):
+            print("\nUsing loaded state (skipping training)")
+        else:
+            print("\nFailed to load, training fresh...")
+            integration.train_domain_knowledge(args.domain)
+    elif args.section in ("all", "integration"):
         integration.train_domain_knowledge(args.domain)
 
     if args.section == "pln" or args.section == "all":
@@ -529,6 +679,10 @@ def main():
         print(f"Mode: {result.woven_mode}")
         print(f"Status: {result.anomaly_status}")
         print(f"Response: {result.combined_response}")
+
+    # Save state if requested
+    if args.save:
+        integration.save_state(args.save)
 
     print(f"\n{'='*70}")
     print("DEMO COMPLETE")
