@@ -1,19 +1,19 @@
 {
-  "_checksum": "e3f587022d3f0ed7",
-  "_written_at": "2025-12-27T21:13:42.988077+00:00",
+  "_checksum": "27a1c805dd7bb235",
+  "_written_at": "2025-12-27T21:45:25.850478+00:00",
   "data": {
     "created_at": "2025-12-27T21:13:42.984650+00:00",
-    "description": "graph_persistence.py:103-105 has race condition. Protect _debounce_timer and _pending_commit with threading.Lock.",
+    "description": "ADD THREAD LOCK TO GitAutoCommitter DEBOUNCING\n\nFILE: cortical/reasoning/graph_persistence.py lines 103-105\nPROBLEM: Race condition - _debounce_timer accessed without lock\nSOLUTION: Add threading.Lock, protect timer/pending_commit access\n\nACCEPTANCE CRITERIA:\n- All tests pass: pytest tests/ -k git -v\n- Lock protects _debounce_timer and _pending_commit\n- No deadlocks (commit outside lock)\n\nGUARDRAILS - DO NOT:\n- Change public API\n- Hold lock during git operations\n- Modify unrelated classes\n\nVERIFY: pytest tests/unit/test_graph_persistence.py -v",
     "entity_type": "task",
     "id": "T-20251227-211342-84561c2f",
     "metadata": {},
-    "modified_at": "2025-12-27T21:13:42.988017+00:00",
+    "modified_at": "2025-12-27T21:45:25.850427+00:00",
     "priority": "high",
     "properties": {
       "category": "bugfix"
     },
     "status": "pending",
     "title": "Add thread lock to GitAutoCommitter debouncing",
-    "version": 2
+    "version": 6
   }
 }

@@ -1,19 +1,19 @@
 {
-  "_checksum": "475a3dc1b14fe8df",
-  "_written_at": "2025-12-27T21:14:08.542372+00:00",
+  "_checksum": "35232ec40108c7d4",
+  "_written_at": "2025-12-27T21:45:46.601616+00:00",
   "data": {
     "created_at": "2025-12-27T21:14:08.538968+00:00",
-    "description": "loom.py:692-694 has bare except Exception. Log to stderr with module name instead of silent pass.",
+    "description": "IMPROVE OBSERVER ERROR HANDLING IN LOOM\n\nFILE: cortical/reasoning/loom.py lines 692-694, 816-817, 848\nPROBLEM: Bare except Exception: pass hides errors\nSOLUTION: Add logger.exception() to log stack traces\n\nACCEPTANCE CRITERIA:\n- All tests pass: pytest tests/unit/test_loom.py -v\n- Errors logged with stack traces\n- Execution continues on observer failure\n\nGUARDRAILS - DO NOT:\n- Crash on observer failure\n- Change ModeController logic\n- Add new observer types\n\nVERIFY: pytest tests/unit/test_loom.py -v",
     "entity_type": "task",
     "id": "T-20251227-211408-1a736d3f",
     "metadata": {},
-    "modified_at": "2025-12-27T21:14:08.542299+00:00",
+    "modified_at": "2025-12-27T21:45:46.601567+00:00",
     "priority": "medium",
     "properties": {
       "category": "bugfix"
     },
     "status": "pending",
     "title": "Improve observer error handling in Loom",
-    "version": 2
+    "version": 6
   }
 }
