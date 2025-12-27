@@ -1,0 +1,19 @@
+{
+  "_checksum": "9e33e23298220314",
+  "_written_at": "2025-12-27T17:12:07.537460+00:00",
+  "data": {
+    "created_at": "2025-12-27T17:12:07.533851+00:00",
+    "description": "\n## Knowledge Needed\n- Read: cortical/spark/ngram.py (perplexity() method)\n- Understand: held-out validation for language models\n- Review: existing benchmark patterns in benchmarks/\n\n## Implementation\n1. Create train/validation split (80/20 by time)\n2. Measure perplexity on held-out commits\n3. Compare weighted vs. unweighted training\n4. Compare different half-life values\n5. Memory usage benchmarks\n\n## Guardrails\n- DO: Use temporal split (not random) to avoid leakage\n- DO: Report confidence intervals\n- DO: Compare against baseline (unweighted)\n- DO: Measure training time and memory\n- DO NOT: Optimize for benchmark scores alone\n- DO NOT: Test on training data\n- EXPLORE: Cross-branch validation (train on feature, test on main)\n- EXPLORE: Prediction accuracy for commit message completion\n\n## Success Criteria\n- Perplexity lower than unweighted baseline\n- Memory usage documented\n- Training time reasonable (<5 min for this repo)\n- Results reproducible\n",
+    "entity_type": "task",
+    "id": "T-20251227-171207-3221d1d2",
+    "metadata": {},
+    "modified_at": "2025-12-27T17:12:07.537370+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Validation and benchmarking for git-trained SparkSLM",
+    "version": 2
+  }
+}
