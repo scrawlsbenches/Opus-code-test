@@ -630,3 +630,48 @@ class TestAllNodeTypes:
         assert decision.id in path
         assert task.id in path
         assert sprint.id in path
+
+
+class TestPathFinderExplain:
+    """Test PathFinder.explain() method."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager for explain tests."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+        manager.create_task("T1", status="pending")
+        manager.create_task("T2", status="pending")
+        return manager
+
+    def test_explain_returns_path_plan(self, manager):
+        """explain() returns PathPlan with current config."""
+        from cortical.got.path_finder import PathFinder, PathPlan
+
+        plan = PathFinder(manager).via_edges("DEPENDS_ON").max_paths(50).explain()
+
+        assert isinstance(plan, PathPlan)
+        assert plan.edge_types == ["DEPENDS_ON"]
+        assert plan.max_paths == 50
+
+    def test_explain_shows_defaults(self, manager):
+        """explain() shows effective defaults."""
+        from cortical.got.path_finder import PathFinder
+
+        plan = PathFinder(manager).explain()
+
+        # Should show default limits
+        assert plan.max_paths == PathFinder.DEFAULT_MAX_PATHS
+        assert plan.max_length == PathFinder.DEFAULT_MAX_LENGTH
+        assert plan.bidirectional is True
+
+    def test_explain_str_output(self, manager):
+        """explain() produces readable string."""
+        from cortical.got.path_finder import PathFinder
+
+        plan = PathFinder(manager).via_edges("BLOCKS").directed().explain()
+        output = str(plan)
+
+        assert "Path Finding Plan" in output
+        assert "BLOCKS" in output
+        assert "Directed" in output

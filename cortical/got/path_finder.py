@@ -134,6 +134,73 @@ class PathSearchResult:
         return self.paths[index]
 
 
+@dataclass
+class PathPlan:
+    """
+    Execution plan for path finding operations.
+
+    Provides introspection into what a path finder will do without
+    actually executing the search. Useful for debugging and optimization.
+
+    Attributes:
+        algorithm: "BFS" for shortest_path, "DFS" for all_paths
+        from_id: Starting node ID (if set)
+        to_id: Target node ID (if set)
+        edge_types: Edge types to follow (None = all)
+        max_length: Maximum path length limit
+        max_paths: Maximum paths to find (all_paths only)
+        bidirectional: Whether edges are traversed in both directions
+        estimated_nodes: Estimated nodes to visit
+        estimated_complexity: "O(V+E)" for BFS, "O(V!)" worst case for DFS
+
+    Example:
+        >>> plan = PathFinder(manager).via_edges("DEPENDS_ON").explain()
+        >>> print(plan)
+        Path Finding Plan
+        ========================================
+        Algorithm: Not yet determined
+        ...
+    """
+    algorithm: Optional[str] = None
+    from_id: Optional[str] = None
+    to_id: Optional[str] = None
+    edge_types: Optional[List[str]] = None
+    max_length: Optional[int] = None
+    max_paths: Optional[int] = None
+    bidirectional: bool = True
+    estimated_nodes: int = 0
+    estimated_complexity: str = "unknown"
+
+    def __str__(self) -> str:
+        """Human-readable visualization of the path plan."""
+        lines = ["Path Finding Plan", "=" * 40]
+
+        lines.append(f"Algorithm: {self.algorithm or 'Not yet determined'}")
+
+        if self.from_id:
+            lines.append(f"From: {self.from_id}")
+        if self.to_id:
+            lines.append(f"To: {self.to_id}")
+
+        lines.append(f"Direction: {'Bidirectional' if self.bidirectional else 'Directed'}")
+
+        if self.edge_types:
+            lines.append(f"Edge types: {', '.join(self.edge_types)}")
+        else:
+            lines.append("Edge types: All")
+
+        if self.max_length is not None:
+            lines.append(f"Max length: {self.max_length}")
+        if self.max_paths is not None:
+            lines.append(f"Max paths: {self.max_paths}")
+
+        lines.append("")
+        lines.append(f"Estimated nodes: ~{self.estimated_nodes}")
+        lines.append(f"Complexity: {self.estimated_complexity}")
+
+        return "\n".join(lines)
+
+
 class PathFinder:
     """
     Fluent path finder for GoT graphs.
@@ -220,6 +287,53 @@ class PathFinder:
         """
         self._bidirectional = False
         return self
+
+    def explain(self) -> PathPlan:
+        """
+        Get path finding plan without executing.
+
+        Returns a PathPlan describing the current configuration of the
+        PathFinder. Useful for debugging and understanding what settings
+        are active before running an expensive path search.
+
+        Returns:
+            PathPlan with current configuration and complexity estimates
+
+        Example:
+            >>> plan = PathFinder(manager).via_edges("DEPENDS_ON").max_paths(50).explain()
+            >>> print(plan)
+            Path Finding Plan
+            ========================================
+            Algorithm: Not yet determined
+            Direction: Bidirectional
+            Edge types: DEPENDS_ON
+            Max paths: 50
+            ...
+        """
+        # Count nodes for estimation
+        node_count = len(self._get_all_node_ids())
+
+        # Determine effective limits
+        effective_max_len = self._max_len
+        effective_max_paths = self._max_paths
+
+        if self._use_defaults:
+            if effective_max_len is None:
+                effective_max_len = self.DEFAULT_MAX_LENGTH
+            if effective_max_paths is None:
+                effective_max_paths = self.DEFAULT_MAX_PATHS
+
+        return PathPlan(
+            algorithm=None,  # Not determined until actual method called
+            from_id=None,
+            to_id=None,
+            edge_types=self._edge_types,
+            max_length=effective_max_len,
+            max_paths=effective_max_paths,
+            bidirectional=self._bidirectional,
+            estimated_nodes=node_count,
+            estimated_complexity="O(V+E) for BFS, O(V!) for DFS"
+        )
 
     def shortest_path(
         self,

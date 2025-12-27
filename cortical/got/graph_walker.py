@@ -94,6 +94,73 @@ class TraversalNode:
     path: List[str] = field(default_factory=list)
 
 
+@dataclass
+class WalkerPlan:
+    """
+    Execution plan for graph walking operations.
+
+    Provides introspection into what a graph walker will do without
+    actually executing the traversal. Useful for debugging and optimization.
+
+    Attributes:
+        strategy: "BFS" or "DFS"
+        start_id: Starting node ID
+        max_depth: Maximum traversal depth (None = unlimited)
+        edge_types: Edge types to follow (None = all)
+        has_filter: Whether a node filter is configured
+        has_visitor: Whether a visitor function is configured
+        reverse_direction: Whether traversing in reverse direction
+        estimated_nodes: Estimated nodes in the graph
+
+    Example:
+        >>> plan = GraphWalker(manager).starting_from(node_id).bfs().explain()
+        >>> print(plan)
+        Walker Plan
+        ========================================
+        Strategy: BFS
+        Start: T-123
+        ...
+    """
+    strategy: str
+    start_id: Optional[str] = None
+    max_depth: Optional[int] = None
+    edge_types: Optional[List[str]] = None
+    has_filter: bool = False
+    has_visitor: bool = False
+    reverse_direction: bool = False
+    estimated_nodes: int = 0
+
+    def __str__(self) -> str:
+        """Human-readable visualization of the walker plan."""
+        lines = ["Walker Plan", "=" * 40]
+
+        lines.append(f"Strategy: {self.strategy}")
+
+        if self.start_id:
+            lines.append(f"Start: {self.start_id}")
+        else:
+            lines.append("Start: Not configured")
+
+        if self.max_depth is not None:
+            lines.append(f"Max depth: {self.max_depth}")
+        else:
+            lines.append("Max depth: Unlimited")
+
+        if self.edge_types:
+            lines.append(f"Edge types: {', '.join(self.edge_types)}")
+        else:
+            lines.append("Edge types: All")
+
+        lines.append(f"Direction: {'Reverse' if self.reverse_direction else 'Forward'}")
+        lines.append(f"Has filter: {self.has_filter}")
+        lines.append(f"Has visitor: {self.has_visitor}")
+
+        lines.append("")
+        lines.append(f"Estimated nodes: ~{self.estimated_nodes}")
+
+        return "\n".join(lines)
+
+
 class GraphWalker:
     """
     Fluent graph walker with visitor pattern.
@@ -236,6 +303,45 @@ class GraphWalker:
         """
         self._bidirectional = False
         return self
+
+    def explain(self) -> WalkerPlan:
+        """
+        Get walker execution plan without executing.
+
+        Returns a WalkerPlan describing the current configuration of the
+        GraphWalker. Useful for debugging and understanding what settings
+        are active before running an expensive traversal.
+
+        Returns:
+            WalkerPlan with current configuration
+
+        Example:
+            >>> plan = (GraphWalker(manager)
+            ...     .starting_from(task_id)
+            ...     .bfs()
+            ...     .max_depth(5)
+            ...     .explain())
+            >>> print(plan)
+            Walker Plan
+            ========================================
+            Strategy: BFS
+            Start: T-123
+            Max depth: 5
+            ...
+        """
+        # Count nodes for estimation
+        node_map = self._build_node_map()
+
+        return WalkerPlan(
+            strategy=self._strategy.name,
+            start_id=self._start_id,
+            max_depth=self._max_depth,
+            edge_types=self._edge_types,
+            has_filter=self._filter_fn is not None,
+            has_visitor=self._visitor is not None,
+            reverse_direction=self._reverse_direction,
+            estimated_nodes=len(node_map)
+        )
 
     def run(self) -> T:
         """

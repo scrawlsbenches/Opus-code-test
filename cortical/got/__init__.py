@@ -168,9 +168,9 @@ from .indexer import (
     IndexStats,
 )
 
-from .graph_walker import GraphWalker
+from .graph_walker import GraphWalker, WalkerPlan
 
-from .path_finder import PathFinder, PathSearchResult
+from .path_finder import PathFinder, PathSearchResult, PathPlan
 
 from .pattern_matcher import (
     Pattern,
@@ -307,9 +307,11 @@ __all__ = [
     'IndexStats',
     # Graph Walker
     'GraphWalker',
+    'WalkerPlan',
     # Path Finder
     'PathFinder',
     'PathSearchResult',
+    'PathPlan',
     # Pattern Matcher
     'Pattern',
     'PatternMatcher',
