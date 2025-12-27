@@ -167,16 +167,24 @@ class TestPathFinderLimits:
             .all_paths(tasks[0].id, tasks[-1].id)
         )
 
-        assert isinstance(paths, list)
+        # PathSearchResult is list-like (supports iteration, len, indexing)
+        from cortical.got.path_finder import PathSearchResult
+        assert isinstance(paths, PathSearchResult)
+        assert len(paths) >= 0  # Can use len()
+        for path in paths:  # Can iterate
+            assert isinstance(path, list)
 
     def test_all_paths_same_node(self, manager_with_graph):
         """all_paths should return single-node path when from==to."""
         manager, tasks = manager_with_graph
         finder = PathFinder(manager)
 
-        paths = finder.all_paths(tasks[0].id, tasks[0].id)
+        result = finder.all_paths(tasks[0].id, tasks[0].id)
 
-        assert paths == [[tasks[0].id]]
+        # PathSearchResult has .paths attribute
+        assert result.paths == [[tasks[0].id]]
+        # Also works via backwards-compatible iteration
+        assert list(result) == [[tasks[0].id]]
 
     def test_max_paths_limit_during_dfs(self, manager_with_dense_graph):
         """Test that max_paths limit is respected during DFS traversal."""
@@ -188,6 +196,33 @@ class TestPathFinderLimits:
 
         # Should stop after finding just 1 path
         assert len(paths) == 1
+
+    def test_truncation_metadata_on_limit_hit(self, manager_with_dense_graph):
+        """Test that PathSearchResult reports truncation when limits are hit."""
+        manager, start_id, end_id = manager_with_dense_graph
+
+        # Use a very small limit to trigger truncation
+        finder = PathFinder(manager).max_paths(1)
+        result = finder.all_paths(start_id, end_id)
+
+        # Should indicate truncation occurred
+        assert result.truncated is True
+        assert result.truncation_reason == "max_paths"
+        assert result.limit_value == 1
+        assert result.paths_found == 1
+
+    def test_no_truncation_when_all_paths_found(self, manager_with_graph):
+        """Test that PathSearchResult shows no truncation when all paths found."""
+        manager, tasks = manager_with_graph
+
+        # Linear chain should have exactly 1 path, well under default limits
+        finder = PathFinder(manager)
+        result = finder.all_paths(tasks[0].id, tasks[-1].id)
+
+        # Should NOT indicate truncation
+        assert result.truncated is False
+        assert result.truncation_reason is None
+        assert result.limit_value is None
 
 
 class TestPathFinderSafety:
@@ -595,3 +630,48 @@ class TestAllNodeTypes:
         assert decision.id in path
         assert task.id in path
         assert sprint.id in path
+
+
+class TestPathFinderExplain:
+    """Test PathFinder.explain() method."""
+
+    @pytest.fixture
+    def manager(self, tmp_path):
+        """Create manager for explain tests."""
+        got_dir = tmp_path / ".got"
+        manager = GoTManager(got_dir)
+        manager.create_task("T1", status="pending")
+        manager.create_task("T2", status="pending")
+        return manager
+
+    def test_explain_returns_path_plan(self, manager):
+        """explain() returns PathPlan with current config."""
+        from cortical.got.path_finder import PathFinder, PathPlan
+
+        plan = PathFinder(manager).via_edges("DEPENDS_ON").max_paths(50).explain()
+
+        assert isinstance(plan, PathPlan)
+        assert plan.edge_types == ["DEPENDS_ON"]
+        assert plan.max_paths == 50
+
+    def test_explain_shows_defaults(self, manager):
+        """explain() shows effective defaults."""
+        from cortical.got.path_finder import PathFinder
+
+        plan = PathFinder(manager).explain()
+
+        # Should show default limits
+        assert plan.max_paths == PathFinder.DEFAULT_MAX_PATHS
+        assert plan.max_length == PathFinder.DEFAULT_MAX_LENGTH
+        assert plan.bidirectional is True
+
+    def test_explain_str_output(self, manager):
+        """explain() produces readable string."""
+        from cortical.got.path_finder import PathFinder
+
+        plan = PathFinder(manager).via_edges("BLOCKS").directed().explain()
+        output = str(plan)
+
+        assert "Path Finding Plan" in output
+        assert "BLOCKS" in output
+        assert "Directed" in output

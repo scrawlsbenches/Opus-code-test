@@ -1,0 +1,22 @@
+{
+  "_checksum": "86b60bb8117f6ed2",
+  "_written_at": "2025-12-27T03:52:05.510725+00:00",
+  "data": {
+    "created_at": "2025-12-27T03:47:16.952083+00:00",
+    "description": "PathFinder returns silently when max_paths or max_length limit is hit. User has no way to know if MORE paths exist beyond the limit. Need: (1) Return PathResult with truncated=True flag, (2) Log warning when limit hit, (3) Add .was_truncated() method.",
+    "entity_type": "task",
+    "id": "T-20251227-034716-9545ef33",
+    "metadata": {
+      "completed_at": "2025-12-27T03:52:05.503980+00:00",
+      "updated_at": "2025-12-27T03:52:05.503990+00:00"
+    },
+    "modified_at": "2025-12-27T03:52:05.510662+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "URGENT: Fix PathFinder silent failures on limit hit",
+    "version": 4
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "_checksum": "30532006bff48aa1",
+  "_written_at": "2025-12-27T04:05:47.486450+00:00",
+  "data": {
+    "created_at": "2025-12-27T03:47:10.683758+00:00",
+    "description": "Add .explain() method to GraphWalker and PathFinder for debugging. Should show what nodes/paths would match without executing. Returns introspection plan similar to Query.explain().",
+    "entity_type": "task",
+    "id": "T-20251227-034710-000a2cee",
+    "metadata": {
+      "completed_at": "2025-12-27T04:05:47.479056+00:00",
+      "started_at": "2025-12-27T04:01:43.622204+00:00",
+      "updated_at": "2025-12-27T04:05:47.479072+00:00"
+    },
+    "modified_at": "2025-12-27T04:05:47.486405+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "Add explain() to GraphWalker and PathFinder",
+    "version": 6
+  }
+}

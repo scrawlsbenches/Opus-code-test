@@ -1,0 +1,23 @@
+{
+  "_checksum": "f6f51935d87d2dc8",
+  "_written_at": "2025-12-27T04:01:04.201248+00:00",
+  "data": {
+    "created_at": "2025-12-27T03:47:04.708575+00:00",
+    "description": "Add QueryConfig dataclass for per-query configuration with module-level state as fallback. Pattern: Object config > Module-level > Defaults. Allows both convenient defaults and specific overrides.",
+    "entity_type": "task",
+    "id": "T-20251227-034704-ec40e777",
+    "metadata": {
+      "completed_at": "2025-12-27T04:01:04.195484+00:00",
+      "started_at": "2025-12-27T03:56:52.358809+00:00",
+      "updated_at": "2025-12-27T04:01:04.195494+00:00"
+    },
+    "modified_at": "2025-12-27T04:01:04.201195+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "completed",
+    "title": "Add QueryConfig object with module-level fallback",
+    "version": 6
+  }
+}

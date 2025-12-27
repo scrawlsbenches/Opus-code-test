@@ -142,6 +142,7 @@ from .orphan import (
 from .query_builder import (
     Query,
     QueryPlan,
+    QueryConfig,  # Per-query configuration
     AggregateFunction,
     Count,
     Collect,
@@ -167,14 +168,16 @@ from .indexer import (
     IndexStats,
 )
 
-from .graph_walker import GraphWalker
+from .graph_walker import GraphWalker, WalkerPlan
 
-from .path_finder import PathFinder
+from .path_finder import PathFinder, PathSearchResult, PathPlan
 
 from .pattern_matcher import (
     Pattern,
     PatternMatcher,
     PatternMatch,
+    PatternSearchResult,
+    PatternPlan,
 )
 
 __all__ = [
@@ -288,6 +291,8 @@ __all__ = [
     'Avg',
     'Min',
     'Max',
+    # Query Configuration
+    'QueryConfig',
     # Query Logging
     'QueryLogLevel',
     'set_query_log_level',
@@ -304,10 +309,15 @@ __all__ = [
     'IndexStats',
     # Graph Walker
     'GraphWalker',
+    'WalkerPlan',
     # Path Finder
     'PathFinder',
+    'PathSearchResult',
+    'PathPlan',
     # Pattern Matcher
     'Pattern',
     'PatternMatcher',
     'PatternMatch',
+    'PatternSearchResult',
+    'PatternPlan',
 ]

@@ -33,7 +33,8 @@ GoT (Graph of Thought) is our task, sprint, and decision tracking system:
 | `python scripts/got_utils.py dashboard` | Overview of all tasks |
 | `python scripts/got_utils.py task create "Title" --priority high` | Create task |
 | `python scripts/got_utils.py task start T-XXX` | Start working on task |
-| `python scripts/got_utils.py task complete T-XXX` | Mark complete |
+| `python scripts/got_utils.py task complete T-XXX --notes "..."` | Mark complete with notes |
+| `python scripts/got_utils.py task update T-XXX --notes "..."` | Update task properties |
 | `python scripts/got_utils.py task show T-XXX` | Show task details |
 | `python scripts/got_utils.py task delete T-XXX [--force]` | Delete task (transactional) |
 | `python scripts/got_utils.py decision log "Decision" --rationale "Why"` | Log decision |
@@ -1157,6 +1158,48 @@ plan_id = f"plan-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 from cortical.utils.id_generation import generate_task_id, generate_plan_id
 task_id = generate_task_id()   # T-20251222-093045-a1b2c3d4
 plan_id = generate_plan_id()   # OP-20251222-093045-e5f6g7h8
+```
+
+**❌ DON'T use Pattern.edge() for edge patterns:**
+```python
+# WRONG - Pattern.edge() has different signature
+pattern = Pattern().node("A").edge("A", "B", "DEPENDS_ON").node("B")
+
+# CORRECT - use outgoing() or incoming() for directed edges
+pattern = Pattern().node("A").outgoing("DEPENDS_ON").node("B")
+pattern = Pattern().node("A").incoming("BLOCKS").node("B")
+```
+
+**❌ DON'T pass arguments to PathFinder.explain():**
+```python
+# WRONG - explain() describes finder config, not a specific search
+plan = finder.explain(source_id, target_id)
+
+# CORRECT - explain() takes no arguments
+plan = finder.explain()  # Describes max_paths, max_length, directed settings
+```
+
+**❌ DON'T assume PatternMatch bindings are IDs:**
+```python
+# WRONG - bindings contain Task objects, not strings
+task_id = match.bindings["A"]
+finder.all_paths(task_id, other_id)
+
+# CORRECT - extract .id from the Task object
+task = match.bindings["A"]  # This is a Task object
+finder.all_paths(task.id, other_id)
+```
+
+**❌ DON'T forget PathFinder.all_paths() returns PathSearchResult:**
+```python
+# WRONG - all_paths() doesn't return a plain list
+paths = finder.all_paths(source, target)
+if len(paths) > 0:  # Works but misses metadata
+
+# CORRECT - use PathSearchResult attributes
+result = finder.all_paths(source, target)
+if len(result.paths) > 0:
+    print(f"Truncated: {result.truncated}")
 ```
 
 ### Changing Validation Logic (IMPORTANT!)
