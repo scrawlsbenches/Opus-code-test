@@ -1,0 +1,19 @@
+{
+  "_checksum": "3c64364b65b8440d",
+  "_written_at": "2025-12-27T19:02:50.089929+00:00",
+  "data": {
+    "created_at": "2025-12-27T19:02:50.086422+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251227-190250-9b9c6cdc",
+    "metadata": {},
+    "modified_at": "2025-12-27T19:02:50.089870+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "research"
+    },
+    "status": "pending",
+    "title": "Test research task",
+    "version": 2
+  }
+}
