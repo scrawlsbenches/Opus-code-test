@@ -315,7 +315,7 @@ def setup_task_parser(subparsers) -> None:
         choices=VALID_CATEGORIES,
         default="feature"
     )
-    create_parser.add_argument("--description", "-d", default="")
+    create_parser.add_argument("--description", "--notes", "-d", default="")
     create_parser.add_argument("--sprint", "-s", help="Sprint ID")
     create_parser.add_argument(
         "--depends-on", "--depends",
