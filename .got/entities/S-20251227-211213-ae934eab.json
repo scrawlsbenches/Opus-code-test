@@ -1,0 +1,21 @@
+{
+  "_checksum": "76d6ed6bf5fe6a5e",
+  "_written_at": "2025-12-27T21:12:13.778176+00:00",
+  "data": {
+    "created_at": "2025-12-27T21:12:13.775677+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [],
+    "id": "S-20251227-211213-ae934eab",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2025-12-27T21:12:13.778143+00:00",
+    "notes": [],
+    "number": 31,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "Code Review Implementation",
+    "version": 2
+  }
+}
