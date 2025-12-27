@@ -13,6 +13,8 @@ build/
 
 # Generated corpus files
 corpus_dev.pkl
+corpus_dev/
+corpus_dev.json/
 *.pkl
 *.manifest.json
 *.pkl.hash
