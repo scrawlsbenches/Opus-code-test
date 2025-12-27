@@ -2,21 +2,99 @@
 """
 Train PRISM-SLM with augmented corpus and run benchmarks.
 
-IMPORTANT: This script saves models to disk. Use --dry-run to evaluate
-without saving, or --output to specify a custom output path.
+================================================================================
+TRAINING PIPELINE OVERVIEW
+================================================================================
 
-Usage:
-    # Dry run (evaluate only, no save)
-    python -m benchmarks.codebase_slm.train_augmented --dry-run
+This script is STEP 2 of a two-step process:
 
-    # Save to custom path (recommended)
-    python -m benchmarks.codebase_slm.train_augmented --output models/my_model.json
+  STEP 1: Generate corpus from codebase (REQUIRED FIRST!)
+  --------------------------------------------------------
+  python -m benchmarks.codebase_slm.generate_corpus --full
 
-    # Save to default path (creates backup first)
-    python -m benchmarks.codebase_slm.train_augmented
+  This extracts training patterns from:
+    - 149 Python files in cortical/ → functions, classes, imports
+    - 254 Markdown files in docs/ + samples/ → sections, Q&A pairs
+    - GoT entities → tasks, decisions, metadata
 
-    # Force overwrite without backup
-    python -m benchmarks.codebase_slm.train_augmented --force
+  Output: corpus/training_patterns.jsonl (~35,000 patterns)
+
+
+  STEP 2: Train model (THIS SCRIPT)
+  ----------------------------------
+  python -m benchmarks.codebase_slm.train_augmented --dry-run
+
+  This combines:
+    - corpus/training_patterns.jsonl (~35,000 patterns) ← from Step 1
+    - data/augmented_corpus.txt (~2,000 lines) ← curated definitions
+
+  Output: models/prism_augmented.json (~13MB, 37K docs, 15K vocab)
+
+
+================================================================================
+WHAT WENT WRONG (Dec 27, 2025 Incident)
+================================================================================
+
+An agent ran this script WITHOUT running generate_corpus.py first:
+  - corpus/training_patterns.jsonl didn't exist (gitignored, not tracked)
+  - Script printed "No existing patterns found" and continued
+  - Trained on only 2,094 lines instead of 37,676
+  - Result: 329 vocab model replaced 15,814 vocab model (98% loss!)
+
+The model was restored from git, and this warning was added.
+
+See: samples/memories/2025-12-27-knowledge-transfer-prism-model-incident.md
+
+
+================================================================================
+DATA SOURCES
+================================================================================
+
+1. corpus/training_patterns.jsonl (GENERATED, gitignored)
+   - Created by: generate_corpus.py --full
+   - Contains: ~35,000 Q&A and completion patterns
+   - Format: {"pattern_type": "qa", "input_text": "...", "target_text": "..."}
+   - MUST BE REGENERATED after codebase changes
+
+2. data/augmented_corpus.txt (TRACKED in git)
+   - Contains: ~2,000 curated concept definitions
+   - Format: Plain text, one pattern per line
+   - Example: "PageRank is a graph algorithm for computing node importance"
+
+3. samples/knowledge-base/*.md (TRACKED in git)
+   - Contains: 3,144 lines of curated Q&A pairs
+   - Used by generate_corpus.py to create patterns
+
+
+================================================================================
+USAGE
+================================================================================
+
+# ALWAYS run generate_corpus.py first!
+python -m benchmarks.codebase_slm.generate_corpus --full
+
+# Then train with dry-run to verify (RECOMMENDED)
+python -m benchmarks.codebase_slm.train_augmented --dry-run
+
+# Save to custom path (safest)
+python -m benchmarks.codebase_slm.train_augmented --output models/my_model.json
+
+# Save to default path (creates timestamped backup first)
+python -m benchmarks.codebase_slm.train_augmented
+
+# Force overwrite without backup (use with caution!)
+python -m benchmarks.codebase_slm.train_augmented --force
+
+
+================================================================================
+SAFEGUARDS
+================================================================================
+
+1. --dry-run: Evaluate without saving anything
+2. --output: Explicit path prevents accidental overwrites
+3. Auto-backup: Creates models/backups/prism_augmented_TIMESTAMP.json
+4. Provenance: Saves corpus hash and metadata in model's _provenance field
+5. Loud warning: Shows error if corpus/training_patterns.jsonl is missing
 """
 
 import argparse
