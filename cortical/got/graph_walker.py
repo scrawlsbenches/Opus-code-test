@@ -18,8 +18,14 @@ EDGE DIRECTION
 By default, edges are treated as BIDIRECTIONAL (undirected graph).
 This is usually what you want for "find all connected nodes".
 
+Direction methods (consistent with PatternMatcher):
+- .outgoing(): Only follow source->target direction (same as .directed())
+- .incoming(): Only follow target->source direction (same as .reverse())
+- .both(): Follow both directions (default, explicit reset)
+
+Legacy methods (still supported):
 - .directed(): Only follow source->target direction
-- .reverse(): Only follow target->source direction (for "what depends on me?")
+- .reverse(): Only follow target->source direction
 
 VISITOR PATTERN
 ---------------
@@ -302,6 +308,54 @@ class GraphWalker:
             Self for chaining
         """
         self._bidirectional = False
+        return self
+
+    def outgoing(self) -> "GraphWalker":
+        """
+        Only follow outgoing edges (source->target direction).
+
+        Alias for directed(). Consistent with PatternMatcher.outgoing().
+
+        Example:
+            >>> # Find what this task depends on (follow DEPENDS_ON outward)
+            >>> GraphWalker(manager).starting_from(task_id) \\
+            ...     .follow("DEPENDS_ON").outgoing().bfs().visit(fn).run()
+
+        Returns:
+            Self for chaining
+        """
+        return self.directed()
+
+    def incoming(self) -> "GraphWalker":
+        """
+        Only follow incoming edges (target->source direction).
+
+        Alias for reverse(). Consistent with PatternMatcher.incoming().
+
+        Example:
+            >>> # Find what depends on this task (follow DEPENDS_ON edges pointing here)
+            >>> GraphWalker(manager).starting_from(task_id) \\
+            ...     .follow("DEPENDS_ON").incoming().bfs().visit(fn).run()
+
+        Returns:
+            Self for chaining
+        """
+        return self.reverse()
+
+    def both(self) -> "GraphWalker":
+        """
+        Follow edges in both directions (bidirectional).
+
+        This is the default behavior. Useful for resetting after
+        calling directed()/outgoing()/incoming()/reverse().
+
+        Consistent with PatternMatcher.both().
+
+        Returns:
+            Self for chaining
+        """
+        self._bidirectional = True
+        self._reverse_direction = False
         return self
 
     def explain(self) -> WalkerPlan:

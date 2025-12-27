@@ -176,6 +176,8 @@ from .pattern_matcher import (
     Pattern,
     PatternMatcher,
     PatternMatch,
+    PatternSearchResult,
+    PatternPlan,
 )
 
 __all__ = [
@@ -316,4 +318,6 @@ __all__ = [
     'Pattern',
     'PatternMatcher',
     'PatternMatch',
+    'PatternSearchResult',
+    'PatternPlan',
 ]
