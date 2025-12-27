@@ -769,6 +769,63 @@ class TransactionalGoTAdapter:
             },
         )
 
+    def _tx_sprint_to_node(self, sprint) -> ThoughtNode:
+        """Convert Sprint to ThoughtNode for compatibility."""
+        return ThoughtNode(
+            id=sprint.id,
+            node_type=NodeType.CONTEXT,  # Sprints are contexts
+            content=sprint.title,
+            properties={
+                "title": sprint.title,
+                "status": sprint.status,
+                "number": getattr(sprint, 'number', None),
+                "epic_id": getattr(sprint, 'epic_id', None),
+                "goals": getattr(sprint, 'goals', []),
+                "notes": getattr(sprint, 'notes', ''),
+                **getattr(sprint, 'properties', {}),
+            },
+            metadata={
+                "created_at": getattr(sprint, 'created_at', ''),
+                "modified_at": getattr(sprint, 'modified_at', ''),
+            },
+        )
+
+    def _tx_decision_to_node(self, decision) -> ThoughtNode:
+        """Convert Decision to ThoughtNode for compatibility."""
+        return ThoughtNode(
+            id=decision.id,
+            node_type=NodeType.DECISION,
+            content=decision.title,
+            properties={
+                "title": decision.title,
+                "status": getattr(decision, 'status', 'accepted'),
+                "rationale": getattr(decision, 'rationale', ''),
+                **getattr(decision, 'properties', {}),
+            },
+            metadata={
+                "created_at": getattr(decision, 'created_at', ''),
+                "modified_at": getattr(decision, 'modified_at', ''),
+            },
+        )
+
+    def _tx_epic_to_node(self, epic) -> ThoughtNode:
+        """Convert Epic to ThoughtNode for compatibility."""
+        return ThoughtNode(
+            id=epic.id,
+            node_type=NodeType.CONTEXT,  # Epics are contexts
+            content=getattr(epic, 'title', epic.id),
+            properties={
+                "title": getattr(epic, 'title', epic.id),
+                "status": getattr(epic, 'status', 'active'),
+                "description": getattr(epic, 'description', ''),
+                **getattr(epic, 'properties', {}),
+            },
+            metadata={
+                "created_at": getattr(epic, 'created_at', ''),
+                "modified_at": getattr(epic, 'modified_at', ''),
+            },
+        )
+
     def create_task(
         self,
         title: str,
@@ -1213,50 +1270,105 @@ class TransactionalGoTAdapter:
                 "total_epics": 0,
             }
 
-    def get_all_relationships(self, task_id: str) -> Dict[str, List[ThoughtNode]]:
-        """Get all relationships for a task.
+    def _get_entity_node(self, entity_id: str) -> Optional[ThoughtNode]:
+        """Get any entity (task, sprint, decision, epic) as a ThoughtNode.
+
+        Args:
+            entity_id: ID of the entity (T-..., S-..., D-..., EPIC-...)
+
+        Returns:
+            ThoughtNode or None if not found
+        """
+        # Try task first (most common)
+        if entity_id.startswith("T-"):
+            task = self._manager.get_task(entity_id)
+            if task:
+                return self._tx_task_to_node(task)
+
+        # Try sprint
+        if entity_id.startswith("S-"):
+            sprint = self._manager.get_sprint(entity_id)
+            if sprint:
+                return self._tx_sprint_to_node(sprint)
+
+        # Try decision
+        if entity_id.startswith("D-"):
+            decision = self._manager.get_decision(entity_id)
+            if decision:
+                return self._tx_decision_to_node(decision)
+
+        # Try epic
+        if entity_id.startswith("EPIC-"):
+            epic = self._manager.get_epic(entity_id)
+            if epic:
+                return self._tx_epic_to_node(epic)
+
+        # Fallback: try all types
+        for getter, converter in [
+            (self._manager.get_task, self._tx_task_to_node),
+            (self._manager.get_sprint, self._tx_sprint_to_node),
+            (self._manager.get_decision, self._tx_decision_to_node),
+            (self._manager.get_epic, self._tx_epic_to_node),
+        ]:
+            try:
+                entity = getter(entity_id)
+                if entity:
+                    return converter(entity)
+            except Exception:
+                continue
+
+        return None
+
+    def get_all_relationships(self, entity_id: str) -> Dict[str, List[ThoughtNode]]:
+        """Get all relationships for any entity (task, sprint, epic, decision).
 
         Returns dict with keys:
-        - 'blocks': Tasks this task blocks
-        - 'blocked_by': Tasks blocking this task
-        - 'depends_on': Tasks this task depends on
-        - 'depended_by': Tasks depending on this task
+        - 'blocks': Entities this entity blocks
+        - 'blocked_by': Entities blocking this entity
+        - 'depends_on': Entities this entity depends on
+        - 'depended_by': Entities depending on this entity
+        - 'contains': Entities contained by this entity (for sprints/epics)
+        - 'contained_by': Entities containing this entity
         """
-        clean_id = self._strip_prefix(task_id)
+        clean_id = self._strip_prefix(entity_id)
 
         result = {
             'blocks': [],
             'blocked_by': [],
             'depends_on': [],
             'depended_by': [],
+            'contains': [],
+            'contained_by': [],
         }
 
         try:
-            # Get edges for this task
+            # Get edges for this entity (API method works for any entity ID)
             outgoing, incoming = self._manager.get_edges_for_task(clean_id)
 
             # Process outgoing edges
             for edge in outgoing:
-                target_task = self._manager.get_task(edge.target_id)
-                if target_task:
-                    target_node = self._tx_task_to_node(target_task)
+                target_node = self._get_entity_node(edge.target_id)
+                if target_node:
                     if edge.edge_type == "BLOCKS":
                         result['blocks'].append(target_node)
                     elif edge.edge_type == "DEPENDS_ON":
                         result['depends_on'].append(target_node)
+                    elif edge.edge_type == "CONTAINS":
+                        result['contains'].append(target_node)
 
             # Process incoming edges
             for edge in incoming:
-                source_task = self._manager.get_task(edge.source_id)
-                if source_task:
-                    source_node = self._tx_task_to_node(source_task)
+                source_node = self._get_entity_node(edge.source_id)
+                if source_node:
                     if edge.edge_type == "BLOCKS":
                         result['blocked_by'].append(source_node)
                     elif edge.edge_type == "DEPENDS_ON":
                         result['depended_by'].append(source_node)
+                    elif edge.edge_type == "CONTAINS":
+                        result['contained_by'].append(source_node)
 
         except Exception as e:
-            logger.error(f"Failed to get relationships for {task_id}: {e}")
+            logger.error(f"Failed to get relationships for {entity_id}: {e}")
 
         return result
 
