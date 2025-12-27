@@ -142,6 +142,8 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.smoke)
         elif '/performance/' in test_path or '\\performance\\' in test_path:
             item.add_marker(pytest.mark.performance)
+            # Performance tests are slow and excluded from default dev runs
+            item.add_marker(pytest.mark.slow)
             # Performance tests should skip under coverage
             if 'coverage' in sys.modules:
                 item.add_marker(pytest.mark.skip(
