@@ -1,0 +1,19 @@
+{
+  "_checksum": "dd6d77e0a561dba0",
+  "_written_at": "2025-12-27T17:11:07.531750+00:00",
+  "data": {
+    "created_at": "2025-12-27T17:11:07.528243+00:00",
+    "description": "\n## Knowledge Needed\n- Read: docs/design-git-training-data-structures.md (Quality signals section)\n- Understand: bit manipulation in Python\n- Review: commit quality signal detection patterns\n\n## Implementation\nCreate in cortical/spark/quality_signals.py:\n1. QualitySignals class with bit constants\n2. SHA \u2192 index mapping for O(1) lookup\n3. set_signal(sha, SIGNAL) and get_multiplier(sha)\n4. Weight multipliers per signal type\n\n## Guardrails\n- DO: Use power-of-2 bit constants for clarity\n- DO: Handle unknown SHAs gracefully (return 1.0 multiplier)\n- DO: Pre-allocate for expected capacity\n- DO NOT: Store strings - only indices and bytes\n- DO NOT: Make this public API yet (internal optimization)\n- EXPLORE: Whether to detect signals lazily or eagerly\n- EXPLORE: Combining with temporal decay in same structure\n\n## Success Criteria\n- 80%+ memory savings vs Dict[str, Dict[str, bool]]\n- All 8 signal types supported\n- Reverted signal correctly returns 0.0 multiplier\n- Thread-safe for future parallel processing\n",
+    "entity_type": "task",
+    "id": "T-20251227-171107-a756afae",
+    "metadata": {},
+    "modified_at": "2025-12-27T17:11:07.531670+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement QualitySignals bit-packed storage",
+    "version": 2
+  }
+}
