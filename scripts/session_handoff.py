@@ -4,7 +4,7 @@ Generate session handoff documents for knowledge transfer.
 
 Creates automatic handoff documents when ending a coding session, capturing:
 - Git status and branch information
-- Recently completed tasks
+- Recently completed tasks (from GoT)
 - Uncommitted changes
 - Suggested next steps
 
@@ -31,14 +31,17 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
-# Add scripts to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add project root to path
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
-from task_utils import load_all_tasks, Task, generate_session_id
+from cortical.utils.id_generation import generate_session_id
+from cortical.got.api import GoTManager
+from cortical.got.types import Task
 
-
-# Default output directory
+# Default directories
 MEMORIES_DIR = Path("samples/memories")
+GOT_DIR = PROJECT_ROOT / ".got"
 
 
 def gather_session_context() -> Dict[str, Any]:
@@ -80,67 +83,66 @@ def gather_session_context() -> Dict[str, Any]:
             ["git", "status", "--short"],
             capture_output=True,
             text=True,
-            timeout=2
+            timeout=5
         )
         if result.returncode == 0:
-            status_lines = result.stdout.strip().split('\n')
-            context['uncommitted_files'] = [
-                line.strip() for line in status_lines if line.strip()
-            ]
+            lines = result.stdout.strip().split('\n')
+            context['uncommitted_files'] = [l for l in lines if l.strip()]
 
-            # Create summary
-            if context['uncommitted_files']:
-                modified = sum(1 for line in context['uncommitted_files'] if line.startswith('M'))
-                added = sum(1 for line in context['uncommitted_files'] if line.startswith('A'))
-                deleted = sum(1 for line in context['uncommitted_files'] if line.startswith('D'))
-                untracked = sum(1 for line in context['uncommitted_files'] if line.startswith('??'))
-
+            # Generate summary
+            if not context['uncommitted_files']:
+                context['status_summary'] = "clean"
+            else:
+                staged = sum(1 for l in lines if l and l[0] != ' ' and l[0] != '?')
+                modified = sum(1 for l in lines if l and len(l) > 1 and l[1] == 'M')
+                untracked = sum(1 for l in lines if l.startswith('??'))
                 parts = []
+                if staged:
+                    parts.append(f"{staged} staged")
                 if modified:
                     parts.append(f"{modified} modified")
-                if added:
-                    parts.append(f"{added} added")
-                if deleted:
-                    parts.append(f"{deleted} deleted")
                 if untracked:
                     parts.append(f"{untracked} untracked")
-
-                context['status_summary'] = ', '.join(parts) if parts else 'clean'
-            else:
-                context['status_summary'] = 'clean'
+                context['status_summary'] = ", ".join(parts) if parts else "changes pending"
     except (subprocess.TimeoutExpired, FileNotFoundError):
-        context['status_summary'] = 'unknown'
+        context['status_summary'] = "unknown"
 
-    # Get recent commits (last 5)
+    # Get recent commits
     try:
         result = subprocess.run(
-            ["git", "log", "--pretty=format:%h|%s", "-n", "5"],
+            ["git", "log", "--oneline", "-5"],
             capture_output=True,
             text=True,
             timeout=2
         )
         if result.returncode == 0:
             for line in result.stdout.strip().split('\n'):
-                if '|' in line:
-                    commit_hash, message = line.split('|', 1)
-                    context['recent_commits'].append((commit_hash, message))
+                if line.strip():
+                    parts = line.split(' ', 1)
+                    if len(parts) == 2:
+                        context['recent_commits'].append((parts[0], parts[1]))
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
 
     return context
 
 
-def gather_completed_tasks(tasks_dir: str = "tasks") -> List[Task]:
+def gather_completed_tasks(got_dir: Path = GOT_DIR) -> List[Task]:
     """
-    Gather tasks completed today from task session files.
+    Gather tasks completed today from GoT.
 
     Args:
-        tasks_dir: Directory containing task session files
+        got_dir: GoT directory
 
     Returns:
         List of Task objects completed today, sorted by completion time
     """
-    all_tasks = load_all_tasks(tasks_dir)
+    try:
+        manager = GoTManager(got_dir)
+        all_tasks = manager.list_tasks(status="completed")
+    except Exception as e:
+        print(f"Warning: Could not load GoT tasks: {e}", file=sys.stderr)
+        return []
 
     # Get today's date range
     today = datetime.now().date()
@@ -150,11 +152,19 @@ def gather_completed_tasks(tasks_dir: str = "tasks") -> List[Task]:
     # Filter to completed tasks from today
     completed_today = []
     for task in all_tasks:
-        if task.status == 'completed' and task.completed_at:
+        if task.completed_at:
             try:
-                completed_time = datetime.fromisoformat(task.completed_at)
-                if today_start <= completed_time <= today_end:
-                    completed_today.append(task)
+                # Handle both ISO format and other formats
+                completed_str = task.completed_at
+                if isinstance(completed_str, str):
+                    # Remove timezone info if present for comparison
+                    if completed_str.endswith('Z'):
+                        completed_str = completed_str[:-1]
+                    elif '+' in completed_str:
+                        completed_str = completed_str.split('+')[0]
+                    completed_time = datetime.fromisoformat(completed_str)
+                    if today_start <= completed_time <= today_end:
+                        completed_today.append(task)
             except (ValueError, TypeError):
                 # Skip tasks with invalid completion dates
                 continue
@@ -223,16 +233,9 @@ def generate_handoff_document(
             if task.description:
                 lines.append(f"{task.description}")
 
-            # Handle retrospective (must be a dict)
-            if task.retrospective and isinstance(task.retrospective, dict):
-                if task.retrospective.get('notes'):
-                    lines.append(f"**Notes:** {task.retrospective['notes']}")
-                if task.retrospective.get('files_touched'):
-                    files = task.retrospective['files_touched']
-                    if files:
-                        lines.append("**Files modified:**")
-                        for file in files:
-                            lines.append(f"- `{file}`")
+            # Add notes if available
+            if task.notes:
+                lines.append(f"**Notes:** {task.notes}")
             lines.append("")
     else:
         lines.append("*No tasks completed this session*")
@@ -274,22 +277,25 @@ def generate_handoff_document(
         if modified_count > 0:
             next_steps.append("Review and commit uncommitted changes")
 
-    # Check for pending tasks
-    all_tasks = load_all_tasks("tasks")
-    pending = [t for t in all_tasks if t.status == 'pending']
-    in_progress = [t for t in all_tasks if t.status == 'in_progress']
+    # Check for pending tasks from GoT
+    try:
+        manager = GoTManager(GOT_DIR)
+        pending = manager.list_tasks(status="pending")
+        in_progress = manager.list_tasks(status="in_progress")
 
-    if in_progress:
-        for task in in_progress[:3]:  # Show first 3
-            next_steps.append(f"Continue: {task.title} ({task.id})")
+        if in_progress:
+            for task in in_progress[:3]:  # Show first 3
+                next_steps.append(f"Continue: {task.title} ({task.id})")
 
-    if pending:
-        high_priority = [t for t in pending if t.priority == 'high']
-        if high_priority:
-            for task in high_priority[:2]:  # Show first 2 high priority
-                next_steps.append(f"Start: {task.title} ({task.id})")
-        elif pending:
-            next_steps.append(f"Start next pending task ({len(pending)} available)")
+        if pending:
+            high_priority = [t for t in pending if t.priority in ('critical', 'high')]
+            if high_priority:
+                for task in high_priority[:2]:  # Show first 2 high priority
+                    next_steps.append(f"Start: {task.title} ({task.id})")
+            elif pending:
+                next_steps.append(f"Start next pending task ({len(pending)} available)")
+    except Exception:
+        pass  # Skip task suggestions if GoT unavailable
 
     # Add test and documentation reminders
     if completed_tasks:
@@ -300,7 +306,7 @@ def generate_handoff_document(
         for i, step in enumerate(next_steps, 1):
             lines.append(f"{i}. {step}")
     else:
-        lines.append("*Review pending tasks in `tasks/` directory*")
+        lines.append("*Check GoT for pending tasks: `python scripts/got_utils.py task list`*")
 
     lines.extend([
         "",
@@ -308,13 +314,8 @@ def generate_handoff_document(
         ""
     ])
 
-    # Collect all modified files from tasks and git status
+    # Collect all modified files from git status
     all_files = set()
-
-    for task in completed_tasks:
-        if task.retrospective and isinstance(task.retrospective, dict):
-            if task.retrospective.get('files_touched'):
-                all_files.update(task.retrospective['files_touched'])
 
     # Parse git status files
     for file_status in context['uncommitted_files']:
@@ -327,31 +328,47 @@ def generate_handoff_document(
         for file in sorted(all_files):
             lines.append(f"- `{file}`")
     else:
-        lines.append("*No files modified this session*")
+        lines.append("*No uncommitted file changes*")
 
     lines.extend([
         "",
         "---",
         "",
-        f"*Session handoff generated at: {timestamp}*"
+        "*Generated automatically by session_handoff.py*"
     ])
 
     return '\n'.join(lines)
 
 
-def generate_handoff_filename() -> str:
+def create_handoff_file(content: str, output_path: Optional[Path] = None) -> Path:
     """
-    Generate merge-safe handoff filename.
+    Create handoff file at specified path or generate unique filename.
+
+    Args:
+        content: Markdown content to write
+        output_path: Optional specific path. If None, generates timestamped filename.
 
     Returns:
-        Filename in format: session-handoff-YYYY-MM-DD_HH-MM-SS_XXXX.md
+        Path to created file
     """
-    now = datetime.now()
-    date_str = now.strftime("%Y-%m-%d")
-    time_str = now.strftime("%H-%M-%S")
-    session_id = generate_session_id()
+    if output_path is None:
+        # Generate unique filename
+        now = datetime.now()
+        date_str = now.strftime("%Y-%m-%d")
+        time_str = now.strftime("%H-%M-%S")
+        session_id = generate_session_id()
 
-    return f"session-handoff-{date_str}_{time_str}_{session_id}.md"
+        filename = f"session-handoff-{date_str}_{time_str}_{session_id}.md"
+        output_path = MEMORIES_DIR / filename
+
+    # Ensure directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write content
+    with open(output_path, 'w') as f:
+        f.write(content)
+
+    return output_path
 
 
 def main():
@@ -362,65 +379,48 @@ def main():
     )
 
     parser.add_argument(
+        "--output", "-o",
+        type=Path,
+        help="Output path for handoff document"
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Preview handoff document without creating file"
+        help="Preview document without creating file"
     )
     parser.add_argument(
-        "--output",
-        type=Path,
-        help="Custom output file path (default: auto-generated in samples/memories/)"
-    )
-    parser.add_argument(
-        "--title",
+        "--title", "-t",
         default="Session Handoff",
         help="Document title (default: 'Session Handoff')"
     )
     parser.add_argument(
-        "--tasks-dir",
-        default="tasks",
-        help="Directory containing task files (default: tasks/)"
+        "--got-dir",
+        type=Path,
+        default=GOT_DIR,
+        help=f"GoT directory (default: {GOT_DIR})"
     )
 
     args = parser.parse_args()
 
-    # Gather session information
+    # Gather context
     print("Gathering session context...")
     context = gather_session_context()
 
-    print("Loading completed tasks...")
-    completed_tasks = gather_completed_tasks(args.tasks_dir)
+    print("Loading completed tasks from GoT...")
+    completed_tasks = gather_completed_tasks(args.got_dir)
 
     # Generate document
-    print("Generating handoff document...")
-    document = generate_handoff_document(context, completed_tasks, args.title)
-
-    # Determine output path
-    if args.output:
-        output_path = args.output
-    else:
-        MEMORIES_DIR.mkdir(parents=True, exist_ok=True)
-        filename = generate_handoff_filename()
-        output_path = MEMORIES_DIR / filename
+    print(f"Found {len(completed_tasks)} tasks completed today")
+    content = generate_handoff_document(context, completed_tasks, args.title)
 
     if args.dry_run:
-        print("\n=== DRY RUN ===")
-        print(f"Would create: {output_path}")
-        print(f"\nDocument preview:\n")
-        print(document)
-        return
-
-    # Write file
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w') as f:
-        f.write(document)
-
-    print(f"\nCreated session handoff:")
-    print(f"  {output_path}")
-    print(f"\nNext steps:")
-    print(f"  1. Review: $EDITOR {output_path}")
-    print(f"  2. Commit: git add {output_path} && git commit -m 'memory: session handoff'")
-    print(f"  3. Re-index: python scripts/index_codebase.py --incremental")
+        print("\n" + "=" * 60)
+        print("DRY RUN - Document preview:")
+        print("=" * 60 + "\n")
+        print(content)
+    else:
+        output_path = create_handoff_file(content, args.output)
+        print(f"Created session handoff: {output_path}")
 
 
 if __name__ == "__main__":
