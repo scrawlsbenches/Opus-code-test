@@ -1,22 +1,24 @@
 {
-  "_checksum": "8c2fd7829f21aa43",
-  "_written_at": "2025-12-28T00:24:10.939532+00:00",
+  "_checksum": "bf8f2b5afcf9a7eb",
+  "_written_at": "2025-12-28T00:35:39.975905+00:00",
   "data": {
     "created_at": "2025-12-27T21:13:49.046369+00:00",
     "description": "got/api.py is 2,931 lines. Split query-related methods into got/query_api.py to improve maintainability.",
     "entity_type": "task",
     "id": "T-20251227-211349-fe82148a",
     "metadata": {
+      "completed_at": "2025-12-28T00:35:39.968769+00:00",
       "started_at": "2025-12-28T00:24:10.934196+00:00",
-      "updated_at": "2025-12-28T00:24:10.934200+00:00"
+      "updated_at": "2025-12-28T00:35:39.968775+00:00"
     },
-    "modified_at": "2025-12-28T00:24:10.939495+00:00",
+    "modified_at": "2025-12-28T00:35:39.975852+00:00",
     "priority": "high",
     "properties": {
-      "category": "refactor"
+      "category": "refactor",
+      "retrospective": "Extracted query methods to cortical/got/query_api.py (590 lines). GoTManager delegates to QueryAPI for find_tasks, get_blockers, get_dependents, list_* methods. Reduced api.py from 2931 to 2699 lines. All 10,087 tests pass."
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Extract GoT query API to separate module",
-    "version": 4
+    "version": 6
   }
 }
