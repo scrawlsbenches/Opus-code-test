@@ -1,0 +1,24 @@
+{
+  "_checksum": "4c32cc6ea98ca335",
+  "_written_at": "2025-12-27T21:13:10.067478+00:00",
+  "data": {
+    "created_at": "2025-12-27T21:12:28.201240+00:00",
+    "description": "Full architectural, security, and quality review completed. Document saved to docs/code-review-2025-12-27.md",
+    "entity_type": "task",
+    "id": "T-20251227-211228-f64af3d9",
+    "metadata": {
+      "completed_at": "2025-12-27T21:13:10.061173+00:00",
+      "started_at": "2025-12-27T21:13:03.886167+00:00",
+      "updated_at": "2025-12-27T21:13:10.061181+00:00"
+    },
+    "modified_at": "2025-12-27T21:13:10.067428+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "docs",
+      "retrospective": "Review complete. Score: 93/100. Document: docs/code-review-2025-12-27.md. 10,142 tests passing."
+    },
+    "status": "completed",
+    "title": "Complete comprehensive code review of codebase",
+    "version": 6
+  }
+}

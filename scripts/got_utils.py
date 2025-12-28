@@ -59,6 +59,7 @@ from cortical.got.cli.task import (
     cmd_task_update,
     cmd_task_depends,
     cmd_task_delete,
+    cmd_task_import,
 )
 from cortical.got.cli.sprint import (
     setup_sprint_parser,

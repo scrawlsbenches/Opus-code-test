@@ -31,7 +31,7 @@ GoT (Graph of Thought) is our task, sprint, and decision tracking system:
 | Command | Purpose |
 |---------|---------|
 | `python scripts/got_utils.py dashboard` | Overview of all tasks |
-| `python scripts/got_utils.py task create "Title" --priority high` | Create task |
+| `python scripts/got_utils.py task create "Title" --priority high [--sprint S-XXX]` | Create task (optionally add to sprint) |
 | `python scripts/got_utils.py task start T-XXX` | Start working on task |
 | `python scripts/got_utils.py task complete T-XXX --notes "..."` | Mark complete with notes |
 | `python scripts/got_utils.py task update T-XXX --notes "..."` | Update task properties |
