@@ -1,24 +1,24 @@
 {
-  "_checksum": "9ee184624a699141",
-  "_written_at": "2025-12-28T06:04:26.995890+00:00",
+  "_checksum": "ad884bba72df3fa7",
+  "_written_at": "2025-12-28T06:11:13.539995+00:00",
   "data": {
     "created_at": "2025-12-24T18:47:28.073274+00:00",
     "description": "Currently 'got_utils.py decision log' creates orphan decisions. Should prompt: 'Which task does this decision relate to?' to create JUSTIFIES edge automatically. Discovered during dog-fooding session.",
     "entity_type": "task",
     "id": "T-20251224-184728-21e04fff",
     "metadata": {
-      "completed_at": "2025-12-28T06:04:26.989333+00:00",
+      "completed_at": "2025-12-28T06:11:13.533519+00:00",
       "started_at": "2025-12-28T06:04:02.184823+00:00",
-      "updated_at": "2025-12-28T06:04:26.989342+00:00"
+      "updated_at": "2025-12-28T06:11:13.533528+00:00"
     },
-    "modified_at": "2025-12-28T06:04:26.995821+00:00",
+    "modified_at": "2025-12-28T06:11:13.539944+00:00",
     "priority": "low",
     "properties": {
       "category": "feature",
-      "retrospective": "\u2713 Implemented interactive task linkage prompt in cmd_decision_log\n\u2713 Shows up to 5 recent in-progress tasks after decision creation\n\u2713 Supports selection by number (1-5) or direct task ID input\n\u2713 Optional - user can press Enter to skip\n\u2713 Creates JUSTIFIES edge automatically when task is selected\n\u2713 Handles edge cases: no tasks, invalid input, EOFError, KeyboardInterrupt, edge creation errors\n\u2713 Added 10 comprehensive unit tests in tests/unit/got/test_cli_decision.py\n\u2713 All 40 decision CLI tests passing\n\u2713 Tested end-to-end with real decision logging"
+      "retrospective": "Added interactive task linkage prompt to decision log command with 10 new tests"
     },
     "status": "completed",
     "title": "Improve decision logging UX: prompt for task linkage when creating decisions",
-    "version": 6
+    "version": 8
   }
 }
