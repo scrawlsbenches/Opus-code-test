@@ -19,6 +19,7 @@ from cortical.got.cli.decision import (
     cmd_decision_why,
     setup_decision_parser,
     handle_decision_command,
+    _prompt_task_linkage,
 )
 
 
@@ -560,3 +561,211 @@ class TestHandleDecisionCommand:
         assert result == 1
         output = capsys.readouterr().out
         assert "Unknown decision subcommand" in output
+
+
+class TestPromptTaskLinkage:
+    """Tests for _prompt_task_linkage helper function."""
+
+    def test_prompt_with_tasks_select_by_number(self, monkeypatch, capsys):
+        """Select task by number."""
+        # Create mock task
+        mock_task = MagicMock()
+        mock_task.id = "T-20251228-001"
+        mock_task.content = "Test task for linking"
+
+        # Create mock manager
+        manager = MagicMock()
+        manager.list_tasks.return_value = [mock_task]
+
+        # Mock user input (select first task)
+        monkeypatch.setattr('builtins.input', lambda _: '1')
+
+        _prompt_task_linkage("D-20251228-001", manager)
+
+        # Verify edge was created
+        manager.add_edge.assert_called_once_with(
+            source_id="D-20251228-001",
+            target_id="T-20251228-001",
+            edge_type="JUSTIFIES"
+        )
+
+        output = capsys.readouterr().out
+        assert "Link to a task" in output
+        assert "T-20251228-001" in output
+        assert "✓ Linked" in output
+
+    def test_prompt_with_tasks_select_by_task_id(self, monkeypatch, capsys):
+        """Select task by entering task ID directly."""
+        mock_task = MagicMock()
+        mock_task.id = "T-20251228-002"
+        mock_task.content = "Another test task"
+
+        manager = MagicMock()
+        manager.list_tasks.return_value = [mock_task]
+
+        # Mock user input (enter task ID directly)
+        monkeypatch.setattr('builtins.input', lambda _: 'T-20251228-002')
+
+        _prompt_task_linkage("D-20251228-002", manager)
+
+        manager.add_edge.assert_called_once_with(
+            source_id="D-20251228-002",
+            target_id="T-20251228-002",
+            edge_type="JUSTIFIES"
+        )
+
+    def test_prompt_with_tasks_skip(self, monkeypatch, capsys):
+        """User presses Enter to skip linking."""
+        mock_task = MagicMock()
+        mock_task.id = "T-20251228-003"
+        mock_task.content = "Task to skip"
+
+        manager = MagicMock()
+        manager.list_tasks.return_value = [mock_task]
+
+        # Mock user input (empty string = skip)
+        monkeypatch.setattr('builtins.input', lambda _: '')
+
+        _prompt_task_linkage("D-20251228-003", manager)
+
+        # Verify no edge was created
+        manager.add_edge.assert_not_called()
+
+    def test_prompt_with_no_tasks(self, capsys):
+        """No prompt when no in-progress tasks exist."""
+        manager = MagicMock()
+        manager.list_tasks.return_value = []
+
+        _prompt_task_linkage("D-20251228-004", manager)
+
+        # Verify no prompt was shown
+        output = capsys.readouterr().out
+        assert "Link to a task" not in output
+        manager.add_edge.assert_not_called()
+
+    def test_prompt_with_invalid_number(self, monkeypatch, capsys):
+        """Invalid number selection."""
+        mock_task = MagicMock()
+        mock_task.id = "T-20251228-005"
+        mock_task.content = "Task"
+
+        manager = MagicMock()
+        manager.list_tasks.return_value = [mock_task]
+
+        # Mock user input (invalid number)
+        monkeypatch.setattr('builtins.input', lambda _: '99')
+
+        _prompt_task_linkage("D-20251228-005", manager)
+
+        output = capsys.readouterr().out
+        assert "Invalid selection" in output
+        manager.add_edge.assert_not_called()
+
+    def test_prompt_with_multiple_tasks(self, monkeypatch, capsys):
+        """Display multiple tasks limited to 5."""
+        # Create 7 mock tasks
+        mock_tasks = []
+        for i in range(7):
+            task = MagicMock()
+            task.id = f"T-20251228-{i:03d}"
+            task.content = f"Task {i}"
+            mock_tasks.append(task)
+
+        manager = MagicMock()
+        manager.list_tasks.return_value = mock_tasks
+
+        # Mock user input (select third task)
+        monkeypatch.setattr('builtins.input', lambda _: '3')
+
+        _prompt_task_linkage("D-20251228-006", manager)
+
+        output = capsys.readouterr().out
+        # Should only show first 5 tasks
+        assert "T-20251228-000" in output
+        assert "T-20251228-004" in output
+        assert "T-20251228-006" not in output  # 7th task not shown
+
+        # Should create edge to third task
+        manager.add_edge.assert_called_once_with(
+            source_id="D-20251228-006",
+            target_id="T-20251228-002",
+            edge_type="JUSTIFIES"
+        )
+
+    def test_prompt_with_long_task_title(self, monkeypatch, capsys):
+        """Long task titles are truncated."""
+        mock_task = MagicMock()
+        mock_task.id = "T-20251228-007"
+        mock_task.content = "This is a very long task title that should be truncated to fit nicely in the display"
+
+        manager = MagicMock()
+        manager.list_tasks.return_value = [mock_task]
+
+        monkeypatch.setattr('builtins.input', lambda _: '')
+
+        _prompt_task_linkage("D-20251228-007", manager)
+
+        output = capsys.readouterr().out
+        # Check that title is truncated (should end with "...")
+        assert "..." in output
+        # Full text shouldn't be in output
+        assert "fit nicely in the display" not in output
+
+    def test_prompt_handles_eoferror(self, monkeypatch):
+        """Handles EOFError gracefully (non-interactive mode)."""
+        mock_task = MagicMock()
+        mock_task.id = "T-20251228-008"
+        mock_task.content = "Task"
+
+        manager = MagicMock()
+        manager.list_tasks.return_value = [mock_task]
+
+        # Mock EOFError (e.g., when stdin is closed)
+        def raise_eoferror(_):
+            raise EOFError
+
+        monkeypatch.setattr('builtins.input', raise_eoferror)
+
+        # Should not raise exception
+        _prompt_task_linkage("D-20251228-008", manager)
+
+        manager.add_edge.assert_not_called()
+
+    def test_prompt_handles_keyboard_interrupt(self, monkeypatch):
+        """Handles KeyboardInterrupt gracefully (Ctrl+C)."""
+        mock_task = MagicMock()
+        mock_task.id = "T-20251228-009"
+        mock_task.content = "Task"
+
+        manager = MagicMock()
+        manager.list_tasks.return_value = [mock_task]
+
+        # Mock KeyboardInterrupt
+        def raise_keyboard_interrupt(_):
+            raise KeyboardInterrupt
+
+        monkeypatch.setattr('builtins.input', raise_keyboard_interrupt)
+
+        # Should not raise exception
+        _prompt_task_linkage("D-20251228-009", manager)
+
+        manager.add_edge.assert_not_called()
+
+    def test_prompt_handles_edge_creation_error(self, monkeypatch, capsys):
+        """Handles error during edge creation gracefully."""
+        mock_task = MagicMock()
+        mock_task.id = "T-20251228-010"
+        mock_task.content = "Task"
+
+        manager = MagicMock()
+        manager.list_tasks.return_value = [mock_task]
+        manager.add_edge.side_effect = Exception("Edge creation failed")
+
+        monkeypatch.setattr('builtins.input', lambda _: '1')
+
+        # Should not raise exception
+        _prompt_task_linkage("D-20251228-010", manager)
+
+        output = capsys.readouterr().out
+        assert "✗ Failed to create edge" in output
+        assert "Edge creation failed" in output
