@@ -4,7 +4,7 @@
 
 ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
-![Tests](https://img.shields.io/badge/tests-7520%2B%20passing-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-10254%2B%20passing-brightgreen.svg)
 ![Coverage](https://img.shields.io/badge/coverage-%3E90%25-brightgreen.svg)
 ![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-orange.svg)
 
@@ -502,7 +502,7 @@ cortical/
 │   └── pattern_matcher.py
 └── utils/               # Shared utilities
 
-tests/                   # 7,520+ tests
+tests/                   # 10,254+ tests
 ├── smoke/               # Quick sanity checks (~1s)
 ├── unit/                # Fast isolated tests
 ├── integration/         # Component interaction
