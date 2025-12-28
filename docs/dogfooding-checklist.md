@@ -110,7 +110,7 @@ When implementing search features, it's easy to test individual components in is
 
 - [ ] **Add new tasks immediately**
   - Why: Issues discovered during testing are easy to forget
-  - Command: `python scripts/new_task.py "Brief description" --priority high --category bugfix`
+  - Command: `python scripts/got_utils.py task create "Brief description" --priority high`
   - Document context:
     - When testing [feature], discovered [issue]
     - Query: [search query that revealed it]
@@ -125,9 +125,9 @@ When implementing search features, it's easy to test individual components in is
 - [ ] **Verify task tracking is current**
   - Why: Keeps project organized and scannable
   - Commands:
-    - View all: `python scripts/task_utils.py list`
-    - View summary: `python scripts/consolidate_tasks.py --summary`
-    - Mark complete: `python scripts/task_utils.py complete TASK_ID`
+    - View all: `python scripts/got_utils.py task list`
+    - View summary: `python scripts/got_utils.py dashboard`
+    - Mark complete: `python scripts/got_utils.py task complete TASK_ID --notes "..."`
 
 ---
 
@@ -136,11 +136,11 @@ When implementing search features, it's easy to test individual components in is
 - [ ] **All issues documented in task system?**
   - Why: Un-documented issues will be forgotten
   - Check: Review your testing notes and ensure every issue has a task
-  - Verify: `python scripts/task_utils.py list` shows all new tasks
+  - Verify: `python scripts/got_utils.py task list` shows all new tasks
 
 - [ ] **Task tracking current?**
   - Why: Provides quick overview of project health
-  - Verify: `python scripts/consolidate_tasks.py --summary` accurate
+  - Verify: `python scripts/got_utils.py dashboard` is accurate
 
 - [ ] **Changes committed and pushed?**
   - Why: Sharing findings with team prevents duplicate work
@@ -165,10 +165,10 @@ python scripts/search_codebase.py "what is a minicolumn" --verbose
 python scripts/search_codebase.py "my new function name" --verbose
 
 # 4. Document issues
-# python scripts/new_task.py "Issue found during testing" --priority high
+# python scripts/got_utils.py task create "Issue found during testing" --priority high
 
-# 5. Commit findings
-git add docs/ tasks/ (if new tasks created)
+# 5. Commit findings (GoT auto-commits task changes)
+git add docs/
 git commit -m "Add dog-fooding findings from feature X testing"
 ```
 

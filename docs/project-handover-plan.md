@@ -216,13 +216,13 @@ python showcase.py
 python scripts/repl.py corpus_dev.pkl
 
 # View task backlog
-python scripts/task_utils.py list
+python scripts/got_utils.py task list
 
 # View pending only
-python scripts/task_utils.py list --status pending
+python scripts/got_utils.py task list --status pending
 
 # Create new task
-python scripts/new_task.py "Task description" --priority high
+python scripts/got_utils.py task create "Task description" --priority high
 
 # Create memory entry (NEW!)
 python scripts/new_memory.py "What I learned today"
@@ -259,7 +259,7 @@ python scripts/search_codebase.py "your query"
 | Observability | `cortical/observability.py` |
 | Patterns | `cortical/patterns.py` |
 | Configuration | `cortical/config.py` |
-| Task management | `tasks/*.json` |
+| Task management | GoT (`.got/entities/`) |
 | Development guide | `CLAUDE.md` |
 | Contributing guide | `CONTRIBUTING.md` |
 
@@ -320,7 +320,7 @@ The project uses two task ID formats:
 1. **LEGACY-NNN**: Migrated from original TASK_LIST.md
 2. **T-YYYYMMDD-HHMMSS-XXXX-NNN**: New merge-friendly format
 
-Both are tracked in `tasks/*.json` files. Use `python scripts/task_utils.py` for management.
+Both legacy formats are now migrated to GoT. Use `python scripts/got_utils.py task list` for management.
 
 ---
 

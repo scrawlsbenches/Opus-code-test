@@ -23,16 +23,15 @@ Every observation during development carries information. What seems minor today
 Testing is a discovery process. Issues found during dog-fooding are **not distractions** - they are the primary signal that our assumptions need refinement.
 
 **Requirements:**
-- Add tasks immediately upon discovery: `python scripts/new_task.py "description"`
+- Add tasks immediately upon discovery: `python scripts/got_utils.py task create "description"`
 - Include severity/priority assessment with `--priority high`
 - Reference the test case or usage scenario that revealed it
 - Link to related code locations with absolute paths
 
 **Example:**
 ```bash
-python scripts/new_task.py "Fix passage-level search doc-type boosting" \
-  --priority medium \
-  --category bugfix
+python scripts/got_utils.py task create "Fix passage-level search doc-type boosting" \
+  --priority medium
 # Task location: /cortical/query/passages.py:find_passages_for_query
 # Issue: Document-level search applies doc-type boosting, but passage-level search does not
 # Discovered during dog-fooding test with code search queries
@@ -54,7 +53,7 @@ A workaround is technical debt with interest. Document it as such.
 
 **Requirements:**
 - Add a comment explaining WHY the workaround exists
-- Create a task with `python scripts/new_task.py` for the proper fix
+- Create a task with `python scripts/got_utils.py task create` for the proper fix
 - Reference the task ID in the workaround comment
 - Never let a workaround become permanent through neglect
 
@@ -131,10 +130,10 @@ Testing expands our understanding. New knowledge creates new work - embrace it.
 Task tracking provides project health metrics. Keep it current.
 
 **Requirements:**
-- Mark tasks complete: `python scripts/task_utils.py complete TASK_ID`
+- Mark tasks complete: `python scripts/got_utils.py task complete TASK_ID --notes "..."`
 - Include retrospective notes about what was learned
-- View summary: `python scripts/consolidate_tasks.py --summary`
-- Commit task file updates with the feature implementation
+- View summary: `python scripts/got_utils.py dashboard`
+- GoT state is auto-committed when tasks are modified
 
 ### Leave the codebase better documented than you found it
 
@@ -205,7 +204,7 @@ Violations aren't moral failures - they're opportunities to learn. When you noti
 
 1. Document it immediately
 2. Fix it if time permits
-3. Create a task if not: `python scripts/new_task.py "fix description"`
+3. Create a task if not: `python scripts/got_utils.py task create "fix description"`
 4. Improve processes to prevent recurrence
 
 ---
@@ -224,7 +223,7 @@ Violations aren't moral failures - they're opportunities to learn. When you noti
 1. Add explicit test case for passage-level doc-type boosting
 2. Run dog-fooding test and examine actual score contributions
 3. Document in `find_passages_for_query` docstring: "Note: Currently does not apply doc-type boosting"
-4. Create task immediately: `python scripts/new_task.py "Implement doc-type boosting for passage search"`
+4. Create task immediately: `python scripts/got_utils.py task create "Implement doc-type boosting for passage search"`
 5. Mark parent task as complete only after documenting this limitation
 
 **This is the standard.** Match it consistently, and the codebase will remain trustworthy.
