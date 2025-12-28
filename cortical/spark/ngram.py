@@ -137,6 +137,85 @@ class NGramModel:
         self._cached_frequent_words = None
         return self
 
+    def train_weighted(self, documents: List[str], weights: List[float]) -> 'NGramModel':
+        """
+        Train on documents with importance weights.
+
+        This allows assigning different importance to documents based on quality signals.
+        For example, main branch commits might have weight 1.0 while feature branch
+        commits have weight 0.4.
+
+        Args:
+            documents: List of document texts
+            weights: Corresponding weights (e.g., 1.0 for main, 0.4 for feature branch)
+
+        Returns:
+            self for method chaining
+
+        Raises:
+            ValueError: If documents and weights have different lengths
+        """
+        if len(documents) != len(weights):
+            raise ValueError("documents and weights must have same length")
+
+        for doc, weight in zip(documents, weights):
+            tokens = self._tokenize(doc)
+            if not tokens:
+                continue
+
+            self._accumulate_weighted(tokens, weight)
+
+        # Invalidate cache
+        self._cached_frequent_words = None
+        return self
+
+    def train_on_tokens_weighted(self, token_lists: List[List[str]], weights: List[float]) -> 'NGramModel':
+        """
+        Train on pre-tokenized documents with importance weights.
+
+        Args:
+            token_lists: List of token lists
+            weights: Corresponding weights for each document
+
+        Returns:
+            self for method chaining
+
+        Raises:
+            ValueError: If token_lists and weights have different lengths
+        """
+        if len(token_lists) != len(weights):
+            raise ValueError("token_lists and weights must have same length")
+
+        for tokens, weight in zip(token_lists, weights):
+            if not tokens:
+                continue
+
+            self._accumulate_weighted(tokens, weight)
+
+        # Invalidate cache
+        self._cached_frequent_words = None
+        return self
+
+    def _accumulate_weighted(self, tokens: List[str], weight: float) -> None:
+        """
+        Accumulate n-gram counts with weight multiplier.
+
+        Args:
+            tokens: List of tokens
+            weight: Weight to apply to this document's counts
+        """
+        # Update totals with weighted values
+        self.total_documents += weight  # Accumulate weight, not count
+        self.total_tokens += len(tokens) * weight
+
+        # Add tokens to vocabulary
+        self.vocab.update(tokens)
+
+        # Count n-grams with weight
+        for context, word in self._get_ngrams(tokens):
+            self.counts[context][word] += weight  # += weight instead of += 1
+            self.context_totals[context] += weight
+
     def finalize(self) -> 'NGramModel':
         """
         Finalize model after training - builds caches for fast fallback.
