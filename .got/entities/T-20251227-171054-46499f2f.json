@@ -1,19 +1,23 @@
 {
-  "_checksum": "946d66ce6210788e",
-  "_written_at": "2025-12-27T17:10:54.727569+00:00",
+  "_checksum": "25d2afcdad2c545a",
+  "_written_at": "2025-12-28T08:10:40.225645+00:00",
   "data": {
     "created_at": "2025-12-27T17:10:54.723907+00:00",
     "description": "\n## Knowledge Needed\n- Read: cortical/spark/ngram.py (current train() implementation)\n- Understand: count accumulation at lines 106-108\n- Understand: probability calculation with Laplace smoothing\n\n## Implementation\nExtend NGramModel with:\n1. train_weighted(documents, weights) method\n2. train_on_tokens_weighted(token_lists, weights) method\n3. Allow fractional count accumulation: count += weight instead of count += 1\n4. Update total_documents and total_tokens to accept floats\n\n## Guardrails\n- DO: Preserve backward compatibility (existing train() unchanged)\n- DO: Add new methods rather than modifying existing signatures\n- DO: Ensure probabilities still sum correctly with weighted counts\n- DO NOT: Break existing tests\n- DO NOT: Change the smoothing formula semantics\n- EXPLORE: Whether to store weights separately for debugging\n- EXPLORE: Weighted finalize() for frequency cache\n\n## Success Criteria\n- train_weighted() produces valid probability distributions\n- Existing tests still pass\n- New weighted tests demonstrate correct behavior\n- perplexity() works with weighted models\n",
     "entity_type": "task",
     "id": "T-20251227-171054-46499f2f",
-    "metadata": {},
-    "modified_at": "2025-12-27T17:10:54.727497+00:00",
+    "metadata": {
+      "completed_at": "2025-12-28T08:10:40.219568+00:00",
+      "updated_at": "2025-12-28T08:10:40.219572+00:00"
+    },
+    "modified_at": "2025-12-28T08:10:40.225601+00:00",
     "priority": "high",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Added train_weighted() and train_on_tokens_weighted() methods to NGramModel. Added 18 unit tests. All spark tests pass."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Add weighted training support to NGramModel",
-    "version": 2
+    "version": 4
   }
 }
