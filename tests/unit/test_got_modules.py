@@ -722,11 +722,11 @@ class TestGoTManagerAPI:
         assert dependents == []
 
     def test_got_manager_list_all_tasks(self, got_manager):
-        """list_all_tasks calls find_tasks with no filters."""
-        with patch.object(got_manager, 'find_tasks', return_value=[]) as mock_find:
+        """list_all_tasks delegates to query_api.list_all_tasks."""
+        with patch.object(got_manager.query_api, 'list_all_tasks', return_value=[]) as mock_list:
             result = got_manager.list_all_tasks()
 
-            mock_find.assert_called_once_with()
+            mock_list.assert_called_once_with()
             assert result == []
 
     def test_got_manager_get_edges_for_task_empty(self, got_manager):
