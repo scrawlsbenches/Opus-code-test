@@ -309,6 +309,35 @@ The GoT system (`python scripts/got_utils.py`) maintains:
 
 ---
 
+## 8. GoT (Graph of Thought) Task Review
+
+As part of this review, the 54 pending tasks in GoT were audited for stale references.
+
+### Findings
+
+| Check | Result |
+|-------|--------|
+| References to deleted `task_utils.py` | ✓ None found |
+| References to deleted `new_task.py` | ✓ None found |
+| References to deleted `merge-friendly-tasks.md` | ✓ None found |
+| References to old `processor.py` (now package) | ✓ None found |
+| Stale line number references | ⚠️ 1 found (fixed) |
+
+### Fixed: T-20251226-113931-2c043a20
+
+This task titled "Investigate and clean up stale TODO/HACK comments" referenced specific line numbers that no longer contain TODO/HACK comments:
+- `cortical/got/versioned_store.py:354` - No TODO found
+- `cortical/got/api.py:1680` - No HACK found
+- `scripts/got_utils.py:1445` - No TODO found
+
+**Action taken:** Marked task as completed with note that the TODOs have already been cleaned up.
+
+### Assessment
+
+GoT data is **clean** after the legacy task system removal. No orphaned references to deleted infrastructure.
+
+---
+
 ## Conclusion
 
 This documentation strategy is **exceptional** for a project of this complexity. The dual focus on human developers AND AI agents is forward-thinking. The main risks are:
