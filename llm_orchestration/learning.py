@@ -1,0 +1,1131 @@
+"""
+Learning System: Experience Capture and Pattern Extraction
+
+This module implements the "memory" that I lack natively. It captures
+experiences from executions, extracts patterns, and distills lessons
+that can inform future behavior.
+
+The key insight: I cannot learn through weight updates, but I CAN learn
+through accumulated experiences stored externally and retrieved contextually.
+
+Learning Flow:
+    Execute → Experience → Pattern → Lesson → Retrieval → Apply
+
+    1. EXECUTE: Run a goal through the orchestration system
+    2. EXPERIENCE: Capture what happened (actions, outcomes, context)
+    3. PATTERN: Identify recurring structures across experiences
+    4. LESSON: Distill actionable insights from patterns
+    5. RETRIEVAL: Find relevant lessons for current situation
+    6. APPLY: Use lessons to inform decisions
+
+This feeds into evolution.py for strategy improvement.
+"""
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum, auto
+from typing import (
+    Dict, List, Optional, Any, Set, Tuple,
+    Callable, Iterator, Protocol
+)
+from pathlib import Path
+import json
+import hashlib
+
+
+# =============================================================================
+# EXPERIENCE TYPES
+# =============================================================================
+
+class OutcomeType(Enum):
+    """How did an action/goal turn out?"""
+    SUCCESS = auto()       # Achieved intended result
+    PARTIAL = auto()       # Partially achieved
+    FAILURE = auto()       # Did not achieve
+    UNEXPECTED = auto()    # Achieved something different
+    BLOCKED = auto()       # Could not proceed
+    ABANDONED = auto()     # Gave up intentionally
+
+
+class ExperienceType(Enum):
+    """What kind of experience is this?"""
+    GOAL_EXECUTION = auto()     # A complete goal was executed
+    TASK_EXECUTION = auto()     # A single task was executed
+    DECISION_POINT = auto()     # A decision was made
+    RECOVERY = auto()           # Recovered from confusion/error
+    COLLABORATION = auto()      # Interaction between agents
+    DISCOVERY = auto()          # Found unexpected information
+    INSIGHT = auto()            # Realized something important
+
+
+@dataclass
+class Context:
+    """
+    The situation in which an experience occurred.
+
+    Context is crucial for learning - the same action can have
+    different outcomes in different contexts.
+    """
+    # What was the broader goal?
+    goal_type: str
+    goal_complexity: str  # simple, moderate, complex
+
+    # What resources were available?
+    available_tools: List[str] = field(default_factory=list)
+    available_agents: int = 1
+
+    # What was the state of the system?
+    prior_failures: int = 0
+    time_pressure: str = "none"  # none, moderate, high
+
+    # What constraints applied?
+    constraints: List[str] = field(default_factory=list)
+
+    # Domain/topic
+    domain: str = "general"
+
+    # Free-form context notes
+    notes: str = ""
+
+    def similarity_to(self, other: 'Context') -> float:
+        """How similar is this context to another?"""
+        score = 0.0
+        weights = {
+            'goal_type': 0.3,
+            'goal_complexity': 0.2,
+            'domain': 0.2,
+            'available_agents': 0.1,
+            'prior_failures': 0.1,
+            'time_pressure': 0.1
+        }
+
+        if self.goal_type == other.goal_type:
+            score += weights['goal_type']
+        if self.goal_complexity == other.goal_complexity:
+            score += weights['goal_complexity']
+        if self.domain == other.domain:
+            score += weights['domain']
+        if abs(self.available_agents - other.available_agents) <= 1:
+            score += weights['available_agents']
+        if abs(self.prior_failures - other.prior_failures) <= 2:
+            score += weights['prior_failures']
+        if self.time_pressure == other.time_pressure:
+            score += weights['time_pressure']
+
+        return score
+
+
+@dataclass
+class Action:
+    """A single action taken during execution."""
+    action_type: str          # What kind of action
+    description: str          # What was done
+    target: str              # What it was done to
+    parameters: Dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=datetime.now)
+    duration_ms: Optional[float] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'action_type': self.action_type,
+            'description': self.description,
+            'target': self.target,
+            'parameters': self.parameters,
+            'timestamp': self.timestamp.isoformat(),
+            'duration_ms': self.duration_ms
+        }
+
+
+@dataclass
+class Outcome:
+    """The result of an action or goal."""
+    outcome_type: OutcomeType
+    description: str
+
+    # What was achieved?
+    achieved: List[str] = field(default_factory=list)
+
+    # What was NOT achieved?
+    not_achieved: List[str] = field(default_factory=list)
+
+    # What was unexpected?
+    unexpected: List[str] = field(default_factory=list)
+
+    # Quality metrics
+    quality_score: Optional[float] = None  # 0-1
+    efficiency_score: Optional[float] = None  # 0-1
+
+    # Error information if applicable
+    error_type: Optional[str] = None
+    error_message: Optional[str] = None
+
+    def was_successful(self) -> bool:
+        return self.outcome_type == OutcomeType.SUCCESS
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'outcome_type': self.outcome_type.name,
+            'description': self.description,
+            'achieved': self.achieved,
+            'not_achieved': self.not_achieved,
+            'unexpected': self.unexpected,
+            'quality_score': self.quality_score,
+            'efficiency_score': self.efficiency_score,
+            'error_type': self.error_type,
+            'error_message': self.error_message
+        }
+
+
+@dataclass
+class Experience:
+    """
+    A complete record of something that happened.
+
+    This is the fundamental unit of learning. Each experience captures:
+    - What was the situation? (context)
+    - What was attempted? (intent, actions)
+    - What happened? (outcome)
+    - What was learned? (reflection)
+    """
+    id: str
+    experience_type: ExperienceType
+    timestamp: datetime
+
+    # The situation
+    context: Context
+
+    # What was intended
+    intent: str
+    strategy_used: Optional[str] = None
+
+    # What happened
+    actions: List[Action] = field(default_factory=list)
+    outcome: Optional[Outcome] = None
+
+    # Reflection (added after execution)
+    what_worked: List[str] = field(default_factory=list)
+    what_didnt_work: List[str] = field(default_factory=list)
+    would_do_differently: List[str] = field(default_factory=list)
+
+    # Connections to other experiences
+    related_experiences: List[str] = field(default_factory=list)
+    supersedes: Optional[str] = None  # If this replaces earlier experience
+
+    # Tags for retrieval
+    tags: Set[str] = field(default_factory=set)
+
+    def add_action(self, action: Action):
+        """Record an action taken during this experience."""
+        self.actions.append(action)
+
+    def complete(self, outcome: Outcome):
+        """Mark this experience as complete with an outcome."""
+        self.outcome = outcome
+
+    def reflect(
+        self,
+        what_worked: List[str],
+        what_didnt_work: List[str],
+        would_do_differently: List[str]
+    ):
+        """Add post-execution reflection."""
+        self.what_worked = what_worked
+        self.what_didnt_work = what_didnt_work
+        self.would_do_differently = would_do_differently
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize for persistence."""
+        return {
+            'id': self.id,
+            'experience_type': self.experience_type.name,
+            'timestamp': self.timestamp.isoformat(),
+            'context': {
+                'goal_type': self.context.goal_type,
+                'goal_complexity': self.context.goal_complexity,
+                'domain': self.context.domain,
+                'available_tools': self.context.available_tools,
+                'available_agents': self.context.available_agents,
+                'prior_failures': self.context.prior_failures,
+                'time_pressure': self.context.time_pressure,
+                'constraints': self.context.constraints,
+                'notes': self.context.notes
+            },
+            'intent': self.intent,
+            'strategy_used': self.strategy_used,
+            'actions': [a.to_dict() for a in self.actions],
+            'outcome': self.outcome.to_dict() if self.outcome else None,
+            'what_worked': self.what_worked,
+            'what_didnt_work': self.what_didnt_work,
+            'would_do_differently': self.would_do_differently,
+            'related_experiences': self.related_experiences,
+            'supersedes': self.supersedes,
+            'tags': list(self.tags)
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Experience':
+        """Deserialize from persistence."""
+        context = Context(
+            goal_type=data['context']['goal_type'],
+            goal_complexity=data['context']['goal_complexity'],
+            domain=data['context'].get('domain', 'general'),
+            available_tools=data['context'].get('available_tools', []),
+            available_agents=data['context'].get('available_agents', 1),
+            prior_failures=data['context'].get('prior_failures', 0),
+            time_pressure=data['context'].get('time_pressure', 'none'),
+            constraints=data['context'].get('constraints', []),
+            notes=data['context'].get('notes', '')
+        )
+
+        experience = cls(
+            id=data['id'],
+            experience_type=ExperienceType[data['experience_type']],
+            timestamp=datetime.fromisoformat(data['timestamp']),
+            context=context,
+            intent=data['intent'],
+            strategy_used=data.get('strategy_used')
+        )
+
+        # Reconstruct actions
+        for action_data in data.get('actions', []):
+            action = Action(
+                action_type=action_data['action_type'],
+                description=action_data['description'],
+                target=action_data['target'],
+                parameters=action_data.get('parameters', {}),
+                timestamp=datetime.fromisoformat(action_data['timestamp']),
+                duration_ms=action_data.get('duration_ms')
+            )
+            experience.actions.append(action)
+
+        # Reconstruct outcome
+        if data.get('outcome'):
+            outcome_data = data['outcome']
+            experience.outcome = Outcome(
+                outcome_type=OutcomeType[outcome_data['outcome_type']],
+                description=outcome_data['description'],
+                achieved=outcome_data.get('achieved', []),
+                not_achieved=outcome_data.get('not_achieved', []),
+                unexpected=outcome_data.get('unexpected', []),
+                quality_score=outcome_data.get('quality_score'),
+                efficiency_score=outcome_data.get('efficiency_score'),
+                error_type=outcome_data.get('error_type'),
+                error_message=outcome_data.get('error_message')
+            )
+
+        experience.what_worked = data.get('what_worked', [])
+        experience.what_didnt_work = data.get('what_didnt_work', [])
+        experience.would_do_differently = data.get('would_do_differently', [])
+        experience.related_experiences = data.get('related_experiences', [])
+        experience.supersedes = data.get('supersedes')
+        experience.tags = set(data.get('tags', []))
+
+        return experience
+
+
+# =============================================================================
+# EXPERIENCE STORE
+# =============================================================================
+
+class ExperienceStore:
+    """
+    Persistent storage for experiences.
+
+    Provides:
+    - Save/load experiences to files
+    - Query by context similarity
+    - Query by tags
+    - Query by outcome type
+    """
+
+    def __init__(self, storage_dir: Path):
+        self.storage_dir = Path(storage_dir)
+        self.storage_dir.mkdir(parents=True, exist_ok=True)
+        self._index: Dict[str, Experience] = {}
+        self._load_index()
+
+    def _load_index(self):
+        """Load all experiences into memory index."""
+        for exp_file in self.storage_dir.glob("*.json"):
+            try:
+                with open(exp_file, 'r') as f:
+                    data = json.load(f)
+                    experience = Experience.from_dict(data)
+                    self._index[experience.id] = experience
+            except (json.JSONDecodeError, KeyError) as e:
+                # Log but don't fail on corrupt files
+                print(f"Warning: Could not load {exp_file}: {e}")
+
+    def save(self, experience: Experience):
+        """Save an experience to persistent storage."""
+        self._index[experience.id] = experience
+
+        filepath = self.storage_dir / f"{experience.id}.json"
+        with open(filepath, 'w') as f:
+            json.dump(experience.to_dict(), f, indent=2)
+
+    def get(self, experience_id: str) -> Optional[Experience]:
+        """Retrieve an experience by ID."""
+        return self._index.get(experience_id)
+
+    def find_similar_context(
+        self,
+        context: Context,
+        min_similarity: float = 0.5,
+        limit: int = 10
+    ) -> List[Tuple[Experience, float]]:
+        """
+        Find experiences with similar contexts.
+
+        Returns list of (experience, similarity_score) tuples.
+        """
+        scored = []
+        for experience in self._index.values():
+            similarity = context.similarity_to(experience.context)
+            if similarity >= min_similarity:
+                scored.append((experience, similarity))
+
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return scored[:limit]
+
+    def find_by_tags(
+        self,
+        tags: Set[str],
+        match_all: bool = False
+    ) -> List[Experience]:
+        """Find experiences by tags."""
+        results = []
+        for experience in self._index.values():
+            if match_all:
+                if tags.issubset(experience.tags):
+                    results.append(experience)
+            else:
+                if tags.intersection(experience.tags):
+                    results.append(experience)
+        return results
+
+    def find_by_outcome(
+        self,
+        outcome_type: OutcomeType
+    ) -> List[Experience]:
+        """Find experiences by outcome type."""
+        return [
+            exp for exp in self._index.values()
+            if exp.outcome and exp.outcome.outcome_type == outcome_type
+        ]
+
+    def find_successful_for_context(
+        self,
+        context: Context,
+        limit: int = 5
+    ) -> List[Experience]:
+        """
+        Find successful experiences with similar contexts.
+
+        This is the key retrieval for learning - what worked before
+        in situations like this?
+        """
+        similar = self.find_similar_context(context, limit=limit * 2)
+        successful = [
+            exp for exp, _ in similar
+            if exp.outcome and exp.outcome.was_successful()
+        ]
+        return successful[:limit]
+
+    def find_failures_for_context(
+        self,
+        context: Context,
+        limit: int = 5
+    ) -> List[Experience]:
+        """
+        Find failed experiences with similar contexts.
+
+        This helps avoid repeating mistakes.
+        """
+        similar = self.find_similar_context(context, limit=limit * 2)
+        failures = [
+            exp for exp, _ in similar
+            if exp.outcome and exp.outcome.outcome_type == OutcomeType.FAILURE
+        ]
+        return failures[:limit]
+
+    def all_experiences(self) -> Iterator[Experience]:
+        """Iterate over all stored experiences."""
+        return iter(self._index.values())
+
+    def count(self) -> int:
+        """Total number of stored experiences."""
+        return len(self._index)
+
+
+# =============================================================================
+# PATTERN EXTRACTION
+# =============================================================================
+
+@dataclass
+class Pattern:
+    """
+    A recurring structure identified across experiences.
+
+    Patterns are the building blocks of lessons - they capture
+    regularities that can inform future behavior.
+    """
+    id: str
+    pattern_type: str  # sequence, association, outcome_predictor
+    description: str
+
+    # What contexts does this pattern apply to?
+    applicable_contexts: List[Dict[str, Any]] = field(default_factory=list)
+
+    # The pattern structure
+    structure: Dict[str, Any] = field(default_factory=dict)
+
+    # Evidence supporting this pattern
+    supporting_experiences: List[str] = field(default_factory=list)
+
+    # Statistical strength
+    occurrence_count: int = 0
+    success_rate: float = 0.0
+    confidence: float = 0.0
+
+    def add_evidence(self, experience_id: str, was_successful: bool):
+        """Add an experience as evidence for this pattern."""
+        self.supporting_experiences.append(experience_id)
+        self.occurrence_count += 1
+        if was_successful:
+            total_successes = self.success_rate * (self.occurrence_count - 1) + 1
+            self.success_rate = total_successes / self.occurrence_count
+        else:
+            total_successes = self.success_rate * (self.occurrence_count - 1)
+            self.success_rate = total_successes / self.occurrence_count
+
+        # Confidence grows with evidence (logarithmically)
+        import math
+        self.confidence = min(0.95, math.log(self.occurrence_count + 1) / 5)
+
+
+class PatternExtractor:
+    """
+    Extracts patterns from collections of experiences.
+
+    Pattern Types:
+    - SEQUENCE: Action A followed by Action B tends to succeed
+    - ASSOCIATION: Context X often co-occurs with Outcome Y
+    - STRATEGY: Strategy S works well for Goal Type G
+    - ANTI-PATTERN: This combination tends to fail
+    """
+
+    def __init__(self, store: ExperienceStore):
+        self.store = store
+        self.patterns: Dict[str, Pattern] = {}
+
+    def extract_sequence_patterns(
+        self,
+        min_occurrences: int = 3
+    ) -> List[Pattern]:
+        """
+        Find recurring action sequences that correlate with success.
+        """
+        sequences: Dict[str, List[Tuple[str, bool]]] = {}
+
+        for experience in self.store.all_experiences():
+            if len(experience.actions) < 2:
+                continue
+
+            # Extract action type sequences
+            action_types = [a.action_type for a in experience.actions]
+            was_successful = (
+                experience.outcome and
+                experience.outcome.was_successful()
+            )
+
+            # Look at pairs and triples
+            for i in range(len(action_types) - 1):
+                pair = f"{action_types[i]} -> {action_types[i+1]}"
+                if pair not in sequences:
+                    sequences[pair] = []
+                sequences[pair].append((experience.id, was_successful))
+
+            for i in range(len(action_types) - 2):
+                triple = f"{action_types[i]} -> {action_types[i+1]} -> {action_types[i+2]}"
+                if triple not in sequences:
+                    sequences[triple] = []
+                sequences[triple].append((experience.id, was_successful))
+
+        # Create patterns from frequent sequences
+        patterns = []
+        for seq, evidence in sequences.items():
+            if len(evidence) >= min_occurrences:
+                pattern_id = hashlib.md5(seq.encode()).hexdigest()[:12]
+                pattern = Pattern(
+                    id=f"seq_{pattern_id}",
+                    pattern_type="sequence",
+                    description=f"Action sequence: {seq}",
+                    structure={'sequence': seq.split(' -> ')}
+                )
+
+                for exp_id, was_successful in evidence:
+                    pattern.add_evidence(exp_id, was_successful)
+
+                patterns.append(pattern)
+                self.patterns[pattern.id] = pattern
+
+        return patterns
+
+    def extract_strategy_patterns(
+        self,
+        min_occurrences: int = 3
+    ) -> List[Pattern]:
+        """
+        Find which strategies work for which goal types.
+        """
+        strategy_outcomes: Dict[Tuple[str, str], List[Tuple[str, bool]]] = {}
+
+        for experience in self.store.all_experiences():
+            if not experience.strategy_used:
+                continue
+
+            key = (experience.strategy_used, experience.context.goal_type)
+            if key not in strategy_outcomes:
+                strategy_outcomes[key] = []
+
+            was_successful = (
+                experience.outcome and
+                experience.outcome.was_successful()
+            )
+            strategy_outcomes[key].append((experience.id, was_successful))
+
+        patterns = []
+        for (strategy, goal_type), evidence in strategy_outcomes.items():
+            if len(evidence) >= min_occurrences:
+                pattern_id = hashlib.md5(
+                    f"{strategy}_{goal_type}".encode()
+                ).hexdigest()[:12]
+
+                pattern = Pattern(
+                    id=f"strat_{pattern_id}",
+                    pattern_type="strategy",
+                    description=f"Strategy '{strategy}' for goal type '{goal_type}'",
+                    structure={'strategy': strategy, 'goal_type': goal_type}
+                )
+
+                for exp_id, was_successful in evidence:
+                    pattern.add_evidence(exp_id, was_successful)
+
+                patterns.append(pattern)
+                self.patterns[pattern.id] = pattern
+
+        return patterns
+
+    def extract_antipatterns(
+        self,
+        min_failures: int = 3
+    ) -> List[Pattern]:
+        """
+        Find patterns that correlate with failure.
+
+        These are things to AVOID doing.
+        """
+        failures = self.store.find_by_outcome(OutcomeType.FAILURE)
+
+        # Look for common elements in failures
+        failure_contexts: Dict[str, List[str]] = {
+            'goal_types': [],
+            'strategies': [],
+            'action_patterns': []
+        }
+
+        for exp in failures:
+            failure_contexts['goal_types'].append(exp.context.goal_type)
+            if exp.strategy_used:
+                failure_contexts['strategies'].append(exp.strategy_used)
+
+            if len(exp.actions) >= 2:
+                action_types = [a.action_type for a in exp.actions[:3]]
+                failure_contexts['action_patterns'].append(
+                    ' -> '.join(action_types)
+                )
+
+        patterns = []
+
+        # Find frequently failing goal types
+        from collections import Counter
+        for element, count in Counter(failure_contexts['goal_types']).items():
+            if count >= min_failures:
+                pattern = Pattern(
+                    id=f"anti_goal_{hashlib.md5(element.encode()).hexdigest()[:8]}",
+                    pattern_type="antipattern",
+                    description=f"Goal type '{element}' frequently fails",
+                    structure={'problematic_goal_type': element}
+                )
+                pattern.occurrence_count = count
+                pattern.success_rate = 0.0
+                patterns.append(pattern)
+                self.patterns[pattern.id] = pattern
+
+        return patterns
+
+    def get_pattern(self, pattern_id: str) -> Optional[Pattern]:
+        """Retrieve a specific pattern."""
+        return self.patterns.get(pattern_id)
+
+    def get_patterns_for_context(
+        self,
+        context: Context,
+        pattern_type: Optional[str] = None
+    ) -> List[Pattern]:
+        """Get patterns applicable to a given context."""
+        applicable = []
+
+        for pattern in self.patterns.values():
+            if pattern_type and pattern.pattern_type != pattern_type:
+                continue
+
+            # Check if pattern's context matches
+            if pattern.pattern_type == "strategy":
+                if pattern.structure.get('goal_type') == context.goal_type:
+                    applicable.append(pattern)
+            else:
+                # Default: include if confidence is high enough
+                if pattern.confidence >= 0.3:
+                    applicable.append(pattern)
+
+        return applicable
+
+
+# =============================================================================
+# LESSON SYSTEM
+# =============================================================================
+
+@dataclass
+class Lesson:
+    """
+    A distilled, actionable insight from patterns.
+
+    Lessons are the highest-level learning artifacts - they encode
+    what to do (or not do) in specific situations.
+    """
+    id: str
+    title: str
+    description: str
+
+    # When does this lesson apply?
+    applicable_conditions: Dict[str, Any] = field(default_factory=dict)
+
+    # What should be done?
+    recommendations: List[str] = field(default_factory=list)
+
+    # What should be avoided?
+    warnings: List[str] = field(default_factory=list)
+
+    # Evidence
+    supporting_patterns: List[str] = field(default_factory=list)
+    supporting_experiences: List[str] = field(default_factory=list)
+
+    # Confidence and age
+    confidence: float = 0.0
+    created_at: datetime = field(default_factory=datetime.now)
+    last_validated: Optional[datetime] = None
+    validation_count: int = 0
+
+    # Has this lesson been superseded?
+    superseded_by: Optional[str] = None
+
+    def is_applicable_to(self, context: Context) -> bool:
+        """Check if this lesson applies to a given context."""
+        conditions = self.applicable_conditions
+
+        if 'goal_types' in conditions:
+            if context.goal_type not in conditions['goal_types']:
+                return False
+
+        if 'domains' in conditions:
+            if context.domain not in conditions['domains']:
+                return False
+
+        if 'complexity' in conditions:
+            if context.goal_complexity not in conditions['complexity']:
+                return False
+
+        return True
+
+    def validate(self, was_helpful: bool):
+        """Record whether this lesson was helpful when applied."""
+        self.last_validated = datetime.now()
+        self.validation_count += 1
+
+        if was_helpful:
+            # Increase confidence
+            self.confidence = min(0.95, self.confidence + 0.05)
+        else:
+            # Decrease confidence
+            self.confidence = max(0.0, self.confidence - 0.1)
+
+
+class LessonDistiller:
+    """
+    Transforms patterns into actionable lessons.
+
+    This is the "wisdom extraction" component - it takes raw patterns
+    and creates lessons that can directly inform decisions.
+    """
+
+    def __init__(self, extractor: PatternExtractor, store: ExperienceStore):
+        self.extractor = extractor
+        self.store = store
+        self.lessons: Dict[str, Lesson] = {}
+
+    def distill_from_pattern(self, pattern: Pattern) -> Optional[Lesson]:
+        """
+        Create a lesson from a pattern.
+
+        Only creates lessons for patterns with sufficient confidence.
+        """
+        if pattern.confidence < 0.4:
+            return None
+
+        if pattern.pattern_type == "sequence":
+            return self._distill_sequence_lesson(pattern)
+        elif pattern.pattern_type == "strategy":
+            return self._distill_strategy_lesson(pattern)
+        elif pattern.pattern_type == "antipattern":
+            return self._distill_antipattern_lesson(pattern)
+
+        return None
+
+    def _distill_sequence_lesson(self, pattern: Pattern) -> Lesson:
+        """Create a lesson from a sequence pattern."""
+        sequence = pattern.structure.get('sequence', [])
+
+        if pattern.success_rate > 0.6:
+            lesson = Lesson(
+                id=f"lesson_{pattern.id}",
+                title=f"Effective sequence: {' → '.join(sequence)}",
+                description=f"The action sequence '{' → '.join(sequence)}' "
+                           f"has a {pattern.success_rate:.0%} success rate.",
+                recommendations=[
+                    f"Consider using the sequence: {' → '.join(sequence)}",
+                    f"This pattern has worked in {pattern.occurrence_count} cases"
+                ],
+                supporting_patterns=[pattern.id],
+                confidence=pattern.confidence * pattern.success_rate
+            )
+        else:
+            lesson = Lesson(
+                id=f"lesson_{pattern.id}",
+                title=f"Risky sequence: {' → '.join(sequence)}",
+                description=f"The action sequence '{' → '.join(sequence)}' "
+                           f"has only a {pattern.success_rate:.0%} success rate.",
+                warnings=[
+                    f"The sequence {' → '.join(sequence)} often fails",
+                    "Consider alternative approaches"
+                ],
+                supporting_patterns=[pattern.id],
+                confidence=pattern.confidence * (1 - pattern.success_rate)
+            )
+
+        self.lessons[lesson.id] = lesson
+        return lesson
+
+    def _distill_strategy_lesson(self, pattern: Pattern) -> Lesson:
+        """Create a lesson from a strategy pattern."""
+        strategy = pattern.structure.get('strategy', 'unknown')
+        goal_type = pattern.structure.get('goal_type', 'unknown')
+
+        if pattern.success_rate > 0.6:
+            lesson = Lesson(
+                id=f"lesson_{pattern.id}",
+                title=f"Strategy '{strategy}' works for '{goal_type}'",
+                description=f"When facing '{goal_type}' goals, the '{strategy}' "
+                           f"strategy succeeds {pattern.success_rate:.0%} of the time.",
+                applicable_conditions={'goal_types': [goal_type]},
+                recommendations=[
+                    f"Use the '{strategy}' strategy for '{goal_type}' goals"
+                ],
+                supporting_patterns=[pattern.id],
+                confidence=pattern.confidence * pattern.success_rate
+            )
+        else:
+            lesson = Lesson(
+                id=f"lesson_{pattern.id}",
+                title=f"Avoid '{strategy}' for '{goal_type}'",
+                description=f"The '{strategy}' strategy has poor results "
+                           f"for '{goal_type}' goals ({pattern.success_rate:.0%} success).",
+                applicable_conditions={'goal_types': [goal_type]},
+                warnings=[
+                    f"Avoid using '{strategy}' for '{goal_type}' goals"
+                ],
+                supporting_patterns=[pattern.id],
+                confidence=pattern.confidence * (1 - pattern.success_rate)
+            )
+
+        self.lessons[lesson.id] = lesson
+        return lesson
+
+    def _distill_antipattern_lesson(self, pattern: Pattern) -> Lesson:
+        """Create a lesson from an antipattern."""
+        lesson = Lesson(
+            id=f"lesson_{pattern.id}",
+            title=f"Warning: {pattern.description}",
+            description=pattern.description,
+            warnings=[
+                f"This has been observed in {pattern.occurrence_count} failures"
+            ],
+            supporting_patterns=[pattern.id],
+            confidence=pattern.confidence
+        )
+
+        self.lessons[lesson.id] = lesson
+        return lesson
+
+    def get_lessons_for_context(
+        self,
+        context: Context,
+        min_confidence: float = 0.3
+    ) -> List[Lesson]:
+        """Get all applicable lessons for a context."""
+        applicable = []
+
+        for lesson in self.lessons.values():
+            if lesson.confidence < min_confidence:
+                continue
+            if lesson.superseded_by:
+                continue
+            if lesson.is_applicable_to(context):
+                applicable.append(lesson)
+
+        # Sort by confidence
+        applicable.sort(key=lambda l: l.confidence, reverse=True)
+        return applicable
+
+    def distill_all(self, min_pattern_confidence: float = 0.4) -> List[Lesson]:
+        """Distill lessons from all patterns."""
+        lessons = []
+
+        for pattern in self.extractor.patterns.values():
+            if pattern.confidence >= min_pattern_confidence:
+                lesson = self.distill_from_pattern(pattern)
+                if lesson:
+                    lessons.append(lesson)
+
+        return lessons
+
+
+# =============================================================================
+# LEARNING CYCLE
+# =============================================================================
+
+class LearningCycle:
+    """
+    The complete learning loop.
+
+    Coordinates experience capture, pattern extraction, and lesson
+    distillation to enable continuous improvement.
+
+    Usage:
+        cycle = LearningCycle(storage_dir)
+
+        # During execution
+        experience = cycle.start_experience(context, intent)
+        experience.add_action(action)
+        cycle.complete_experience(experience, outcome)
+
+        # Before execution
+        lessons = cycle.get_guidance(context)
+
+        # Periodically
+        cycle.extract_and_distill()
+    """
+
+    def __init__(self, storage_dir: Path):
+        self.store = ExperienceStore(storage_dir / "experiences")
+        self.extractor = PatternExtractor(self.store)
+        self.distiller = LessonDistiller(self.extractor, self.store)
+
+        # Load any saved patterns and lessons
+        self._load_patterns(storage_dir / "patterns")
+        self._load_lessons(storage_dir / "lessons")
+
+    def _load_patterns(self, patterns_dir: Path):
+        """Load previously extracted patterns."""
+        if not patterns_dir.exists():
+            return
+
+        for pattern_file in patterns_dir.glob("*.json"):
+            try:
+                with open(pattern_file, 'r') as f:
+                    data = json.load(f)
+                    pattern = Pattern(
+                        id=data['id'],
+                        pattern_type=data['pattern_type'],
+                        description=data['description'],
+                        structure=data.get('structure', {}),
+                        supporting_experiences=data.get('supporting_experiences', []),
+                        occurrence_count=data.get('occurrence_count', 0),
+                        success_rate=data.get('success_rate', 0.0),
+                        confidence=data.get('confidence', 0.0)
+                    )
+                    self.extractor.patterns[pattern.id] = pattern
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+    def _load_lessons(self, lessons_dir: Path):
+        """Load previously distilled lessons."""
+        if not lessons_dir.exists():
+            return
+
+        for lesson_file in lessons_dir.glob("*.json"):
+            try:
+                with open(lesson_file, 'r') as f:
+                    data = json.load(f)
+                    lesson = Lesson(
+                        id=data['id'],
+                        title=data['title'],
+                        description=data['description'],
+                        applicable_conditions=data.get('applicable_conditions', {}),
+                        recommendations=data.get('recommendations', []),
+                        warnings=data.get('warnings', []),
+                        supporting_patterns=data.get('supporting_patterns', []),
+                        confidence=data.get('confidence', 0.0),
+                        validation_count=data.get('validation_count', 0)
+                    )
+                    self.distiller.lessons[lesson.id] = lesson
+            except (json.JSONDecodeError, KeyError):
+                pass
+
+    def start_experience(
+        self,
+        context: Context,
+        intent: str,
+        experience_type: ExperienceType = ExperienceType.GOAL_EXECUTION,
+        strategy: Optional[str] = None
+    ) -> Experience:
+        """Start tracking a new experience."""
+        exp_id = f"exp_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{id(context) % 10000:04d}"
+
+        experience = Experience(
+            id=exp_id,
+            experience_type=experience_type,
+            timestamp=datetime.now(),
+            context=context,
+            intent=intent,
+            strategy_used=strategy
+        )
+
+        return experience
+
+    def complete_experience(
+        self,
+        experience: Experience,
+        outcome: Outcome,
+        reflection: Optional[Dict[str, List[str]]] = None
+    ):
+        """Complete and save an experience."""
+        experience.complete(outcome)
+
+        if reflection:
+            experience.reflect(
+                what_worked=reflection.get('worked', []),
+                what_didnt_work=reflection.get('didnt_work', []),
+                would_do_differently=reflection.get('different', [])
+            )
+
+        # Auto-tag based on content
+        experience.tags.add(experience.context.goal_type)
+        experience.tags.add(experience.context.domain)
+        experience.tags.add(outcome.outcome_type.name.lower())
+
+        if experience.strategy_used:
+            experience.tags.add(f"strategy:{experience.strategy_used}")
+
+        self.store.save(experience)
+
+    def get_guidance(
+        self,
+        context: Context,
+        include_experiences: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Get guidance for a given context.
+
+        Returns lessons, relevant experiences, and warnings.
+        """
+        guidance = {
+            'lessons': [],
+            'recommendations': [],
+            'warnings': [],
+            'relevant_successes': [],
+            'relevant_failures': []
+        }
+
+        # Get applicable lessons
+        lessons = self.distiller.get_lessons_for_context(context)
+        guidance['lessons'] = lessons
+
+        for lesson in lessons:
+            guidance['recommendations'].extend(lesson.recommendations)
+            guidance['warnings'].extend(lesson.warnings)
+
+        if include_experiences:
+            # Get relevant past experiences
+            guidance['relevant_successes'] = self.store.find_successful_for_context(
+                context, limit=3
+            )
+            guidance['relevant_failures'] = self.store.find_failures_for_context(
+                context, limit=3
+            )
+
+        return guidance
+
+    def extract_and_distill(self) -> Dict[str, int]:
+        """
+        Run pattern extraction and lesson distillation.
+
+        Call this periodically to update learning.
+        """
+        results = {
+            'sequence_patterns': 0,
+            'strategy_patterns': 0,
+            'antipatterns': 0,
+            'lessons': 0
+        }
+
+        seq_patterns = self.extractor.extract_sequence_patterns()
+        results['sequence_patterns'] = len(seq_patterns)
+
+        strat_patterns = self.extractor.extract_strategy_patterns()
+        results['strategy_patterns'] = len(strat_patterns)
+
+        anti_patterns = self.extractor.extract_antipatterns()
+        results['antipatterns'] = len(anti_patterns)
+
+        lessons = self.distiller.distill_all()
+        results['lessons'] = len(lessons)
+
+        return results
+
+    def validate_lesson(self, lesson_id: str, was_helpful: bool):
+        """Record whether a lesson was helpful when applied."""
+        lesson = self.distiller.lessons.get(lesson_id)
+        if lesson:
+            lesson.validate(was_helpful)
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get statistics about the learning system."""
+        return {
+            'total_experiences': self.store.count(),
+            'total_patterns': len(self.extractor.patterns),
+            'total_lessons': len(self.distiller.lessons),
+            'patterns_by_type': {
+                'sequence': len([p for p in self.extractor.patterns.values()
+                                if p.pattern_type == 'sequence']),
+                'strategy': len([p for p in self.extractor.patterns.values()
+                                if p.pattern_type == 'strategy']),
+                'antipattern': len([p for p in self.extractor.patterns.values()
+                                   if p.pattern_type == 'antipattern'])
+            },
+            'high_confidence_lessons': len([
+                l for l in self.distiller.lessons.values()
+                if l.confidence >= 0.7
+            ])
+        }
