@@ -1,19 +1,22 @@
 {
-  "_checksum": "41260b5ff2f024ab",
-  "_written_at": "2025-12-28T00:16:55.514464+00:00",
+  "_checksum": "298213c8f2783896",
+  "_written_at": "2025-12-28T09:04:33.555557+00:00",
   "data": {
     "created_at": "2025-12-28T00:16:55.510804+00:00",
     "description": "FLAKY TEST IN CI: test_rapid_status_toggles\n\nFILE: tests/unit/test_got_index_concurrent.py:156\n\nSYMPTOM:\n- Test passes locally (10/10 runs)\n- Fails intermittently in CI with: \"Extra data: line 18 column 1 (char 445)\"\n- JSON file gets corrupted with multiple JSON objects\n\nROOT CAUSE (suspected):\n- CI environment has different timing characteristics\n- Race condition in concurrent file writes manifests under CI load\n- ProcessLock may not be fully protecting concurrent writes\n\nINVESTIGATION NEEDED:\n1. Review ProcessLock behavior under containerized environments\n2. Check if fcntl.flock works correctly in CI runner\n3. Consider adding retry logic to test or marking as flaky\n4. Consider increasing test robustness with explicit barriers\n\nWORKAROUND OPTIONS:\n- pytest-rerunfailures to retry flaky tests\n- Skip test in CI with @pytest.mark.skipif\n- Add synchronization barriers in test\n\nRelated: T-20251226-132353-68a469de (previous race condition fix)",
     "entity_type": "task",
     "id": "T-20251228-001655-2d99f5b0",
-    "metadata": {},
-    "modified_at": "2025-12-28T00:16:55.514398+00:00",
+    "metadata": {
+      "started_at": "2025-12-28T09:04:33.548971+00:00",
+      "updated_at": "2025-12-28T09:04:33.548977+00:00"
+    },
+    "modified_at": "2025-12-28T09:04:33.555505+00:00",
     "priority": "medium",
     "properties": {
       "category": "bugfix"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "Investigate flaky test_rapid_status_toggles in CI",
-    "version": 2
+    "version": 4
   }
 }
