@@ -46,6 +46,11 @@ from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
 from .config import DurabilityMode
 from .query_api import QueryAPI
+from .entity_validation import (
+    validate_entity_id,
+    validate_edge_relationship,
+    validate_sprint_id_current_format,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -104,47 +109,11 @@ def _require_current_sprint_id_format(entity_id: str) -> None:
         ValueError: If entity_id is a legacy-format sprint ID
 
     Note:
-        This prevents accidentally linking tasks to legacy sprint IDs
-        (S-NNN or S-sprint-NNN-slug) which should not receive new edges.
-        Use generate_sprint_id() to create new sprints with merge-safe IDs.
+        This is a compatibility wrapper that delegates to entity_validation module.
+        The full validation logic is in cortical/got/entity_validation.py.
     """
-    import re
-
-    # Only validate sprint IDs
-    if not entity_id.startswith('S-'):
-        return
-
-    # Current format: S-YYYYMMDD-HHMMSS-hash
-    generated_pattern = r'^S-\d{8}-\d{6}-[a-f0-9]{8}$'
-
-    if re.match(generated_pattern, entity_id):
-        return  # Valid current format
-
-    # Reject legacy formats
-    legacy_verbose_pattern = r'^S-sprint-\d+(-[\w-]+)?$'
-    legacy_short_pattern = r'^S-\d+$'
-
-    if re.match(legacy_verbose_pattern, entity_id):
-        raise ValueError(
-            f"Cannot link to legacy sprint ID '{entity_id}'. "
-            f"Legacy verbose format (S-sprint-NNN-*) is deprecated for new edges. "
-            f"Create a new sprint with 'got_utils.py sprint create' to get a "
-            f"merge-safe ID (S-YYYYMMDD-HHMMSS-hash)."
-        )
-
-    if re.match(legacy_short_pattern, entity_id):
-        raise ValueError(
-            f"Cannot link to legacy sprint ID '{entity_id}'. "
-            f"Legacy short format (S-NNN) is deprecated for new edges. "
-            f"Create a new sprint with 'got_utils.py sprint create' to get a "
-            f"merge-safe ID (S-YYYYMMDD-HHMMSS-hash)."
-        )
-
-    # Unknown format - also reject
-    raise ValueError(
-        f"Invalid sprint ID format '{entity_id}'. "
-        f"Expected format: S-YYYYMMDD-HHMMSS-hash (e.g., S-20251228-093045-a1b2c3d4)"
-    )
+    # Delegate to the canonical validation function
+    validate_sprint_id_current_format(entity_id)
 
 
 class GoTManager:
@@ -694,7 +663,8 @@ class GoTManager:
         target_id: str,
         edge_type: str,
         weight: float = 1.0,
-        validate_refs: bool = True
+        validate_refs: bool = True,
+        validate_relationship: bool = True
     ) -> Edge:
         """
         Add an edge between entities.
@@ -706,6 +676,8 @@ class GoTManager:
             weight: Edge weight (0.0-1.0)
             validate_refs: If True, verify source and target entities exist
                           (default: True for referential integrity)
+            validate_relationship: If True, validate entity types can be connected
+                                  by this edge type (default: True)
 
         Returns:
             Created Edge object
@@ -713,11 +685,24 @@ class GoTManager:
         Raises:
             TransactionError: If commit fails
             ValueError: If validate_refs=True and source/target doesn't exist
-            ValueError: If source/target is a legacy-format sprint ID
+            ValueError: If entity IDs have invalid format (including legacy sprint IDs)
+            ValueError: If validate_relationship=True and relationship is not allowed
+
+        Note:
+            Entity validation includes:
+            - ID format validation for all entity types
+            - Legacy sprint ID rejection (S-NNN, S-sprint-NNN-*)
+            - Relationship rules (which entity types can connect)
+            - Self-reference prevention
         """
-        # Validate sprint IDs use current format (reject legacy S-NNN, S-sprint-*)
-        _require_current_sprint_id_format(source_id)
-        _require_current_sprint_id_format(target_id)
+        # Full entity and relationship validation
+        # This validates: ID formats, legacy sprint rejection, relationship rules, self-reference
+        if validate_relationship:
+            validate_edge_relationship(source_id, target_id, edge_type)
+        else:
+            # Still validate sprint IDs use current format
+            _require_current_sprint_id_format(source_id)
+            _require_current_sprint_id_format(target_id)
 
         # Optional FK validation
         if validate_refs:
@@ -2209,7 +2194,14 @@ class TransactionContext:
         """
         return self.create_decision(title, rationale, **kwargs)
 
-    def add_edge(self, source_id: str, target_id: str, edge_type: str, **kwargs) -> Edge:
+    def add_edge(
+        self,
+        source_id: str,
+        target_id: str,
+        edge_type: str,
+        validate_relationship: bool = True,
+        **kwargs
+    ) -> Edge:
         """
         Add edge within transaction.
 
@@ -2217,17 +2209,32 @@ class TransactionContext:
             source_id: Source entity ID
             target_id: Target entity ID
             edge_type: Edge type
+            validate_relationship: If True, validate entity types can be connected
+                                  by this edge type (default: True)
             **kwargs: Additional edge fields (weight, confidence, etc.)
 
         Returns:
             Created Edge object
 
         Raises:
-            ValueError: If source/target is a legacy-format sprint ID
+            ValueError: If entity IDs have invalid format (including legacy sprint IDs)
+            ValueError: If validate_relationship=True and relationship is not allowed
+            ValueError: If self-reference detected (source_id == target_id)
+
+        Note:
+            Entity validation includes:
+            - ID format validation for all entity types
+            - Legacy sprint ID rejection (S-NNN, S-sprint-NNN-*)
+            - Relationship rules (which entity types can connect)
+            - Self-reference prevention
         """
-        # Validate sprint IDs use current format (reject legacy S-NNN, S-sprint-*)
-        _require_current_sprint_id_format(source_id)
-        _require_current_sprint_id_format(target_id)
+        # Full entity and relationship validation
+        if validate_relationship:
+            validate_edge_relationship(source_id, target_id, edge_type)
+        else:
+            # Still validate sprint IDs use current format
+            _require_current_sprint_id_format(source_id)
+            _require_current_sprint_id_format(target_id)
 
         edge = Edge(
             id="",  # Auto-generated in __post_init__
