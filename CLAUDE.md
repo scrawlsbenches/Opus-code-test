@@ -49,6 +49,13 @@ GoT (Graph of Thought) is our task, sprint, and decision tracking system:
 
 > **Note:** Sprint data is stored in `.got/entities/`. The file `tasks/CURRENT_SPRINT.md` is deprecated and kept for historical reference only.
 
+> **Sprint ID Formats:**
+> - **Generated (current)**: `S-YYYYMMDD-HHMMSS-hash` (e.g., `S-20251227-211213-ae934eab`)
+> - **Legacy verbose**: `S-sprint-NNN-slug` (e.g., `S-sprint-017-spark-slm`)
+> - **Legacy short**: `S-NNN` (e.g., `S-022`, `S-028`)
+>
+> All formats are supported for backward compatibility. New sprints automatically use the generated timestamp format to prevent merge conflicts across branches. Sprint numbers are stored as metadata within the sprint entity, not in the ID.
+
 > **⚠️ NEVER edit or delete GoT files directly!**
 >
 > GoT data in `.got/` is **transactional and event-sourced** with **checksum integrity**. Direct file manipulation:

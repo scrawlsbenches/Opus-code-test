@@ -2277,6 +2277,9 @@ class TransactionalGoTAdapter:
 
         Sprint queries:
         - "tasks in sprint <sprint_id>" - tasks contained in a sprint
+        - "what is in <sprint_id>" - tasks contained in a sprint
+        - "tasks in <sprint_id>" - tasks contained in a sprint (short form)
+        - "show sprint <sprint_id>" - sprint details with task count
         - "current sprint" / "active sprint" - sprint with in_progress status
         - "sprints" / "all sprints" - all sprints
 
@@ -2426,6 +2429,54 @@ class TransactionalGoTAdapter:
                             "status": task.status,
                             "priority": task.priority,
                         })
+
+        elif query_str.startswith("what is in "):
+            # Extract ID from original (case-sensitive)
+            sprint_id = original_query[11:].strip()
+            # Get tasks linked to sprint via CONTAINS edges
+            for edge in self._manager.list_edges():
+                if edge.source_id == sprint_id and edge.edge_type == "CONTAINS":
+                    task = self._manager.get_task(edge.target_id)
+                    if task:
+                        results.append({
+                            "id": task.id,
+                            "title": task.title,
+                            "status": task.status,
+                            "relation": "contained_in",
+                        })
+
+        elif query_str.startswith("tasks in "):
+            # Extract ID from original (case-sensitive)
+            sprint_id = original_query[9:].strip()
+            # Same logic as "what is in" but shorter form
+            for edge in self._manager.list_edges():
+                if edge.source_id == sprint_id and edge.edge_type == "CONTAINS":
+                    task = self._manager.get_task(edge.target_id)
+                    if task:
+                        results.append({
+                            "id": task.id,
+                            "title": task.title,
+                            "status": task.status,
+                            "relation": "contained_in",
+                        })
+
+        elif query_str.startswith("show sprint "):
+            # Extract ID from original (case-sensitive)
+            sprint_id = original_query[12:].strip()
+            sprint = self._manager.get_sprint(sprint_id)
+            if sprint:
+                # Count tasks in sprint
+                task_count = sum(
+                    1 for edge in self._manager.list_edges()
+                    if edge.source_id == sprint_id and edge.edge_type == "CONTAINS"
+                )
+                results.append({
+                    "id": sprint.id,
+                    "title": sprint.title,
+                    "status": sprint.status,
+                    "task_count": task_count,
+                    "relation": "sprint_info",
+                })
 
         elif query_str in ("current sprint", "active sprint"):
             for sprint in self._manager.list_sprints():

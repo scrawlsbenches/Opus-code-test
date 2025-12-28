@@ -40,7 +40,82 @@ def cmd_decision_log(args, manager: "TransactionalGoTAdapter") -> int:
         print(f"  Affects: {', '.join(args.affects)}")
     if args.alternatives:
         print(f"  Alternatives considered: {', '.join(args.alternatives)}")
+
+    # Prompt for task linkage (optional)
+    _prompt_task_linkage(decision_id, manager)
+
     return 0
+
+
+def _prompt_task_linkage(decision_id: str, manager: "TransactionalGoTAdapter") -> None:
+    """Prompt user to optionally link decision to a task.
+
+    Args:
+        decision_id: The decision ID to link
+        manager: GoT manager instance
+    """
+    # Get recent in-progress tasks
+    try:
+        tasks = manager.list_tasks(status="in_progress")
+        if not tasks:
+            # No in-progress tasks, skip prompt
+            return
+
+        # Limit to 5 most recent
+        tasks = tasks[:5]
+
+        print("\nLink to a task? Recent in-progress tasks:")
+        for i, task in enumerate(tasks, 1):
+            # Get task content/title
+            content = getattr(task, 'content', getattr(task, 'title', 'Untitled'))
+            task_id = getattr(task, 'id', str(task))
+            # Truncate long titles
+            if len(content) > 60:
+                content = content[:57] + "..."
+            print(f"  {i}. {task_id}: {content}")
+
+        # Get user input
+        try:
+            response = input("(Enter number, task ID, or press Enter to skip): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            # Handle non-interactive mode or Ctrl+C
+            print()
+            return
+
+        if not response:
+            # User pressed Enter to skip
+            return
+
+        # Parse response (number or task ID)
+        selected_task_id = None
+        if response.isdigit():
+            # User entered a number
+            idx = int(response) - 1
+            if 0 <= idx < len(tasks):
+                selected_task_id = getattr(tasks[idx], 'id', None)
+            else:
+                print(f"Invalid selection: {response}")
+                return
+        else:
+            # User entered a task ID directly
+            selected_task_id = response
+
+        if selected_task_id:
+            # Create JUSTIFIES edge: decision -> task
+            try:
+                manager.add_edge(
+                    source_id=decision_id,
+                    target_id=selected_task_id,
+                    edge_type="JUSTIFIES",
+                )
+                print(f"✓ Linked {decision_id} -> {selected_task_id} (JUSTIFIES)")
+            except Exception as e:
+                print(f"✗ Failed to create edge: {e}")
+
+    except Exception as e:
+        # Fail gracefully if anything goes wrong
+        import sys
+        print(f"Warning: Could not prompt for task linkage: {e}", file=sys.stderr)
 
 
 def cmd_decision_list(args, manager: "TransactionalGoTAdapter") -> int:

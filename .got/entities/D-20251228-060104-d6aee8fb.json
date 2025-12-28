@@ -1,0 +1,15 @@
+{
+  "_checksum": "f121dbf6246a30e8",
+  "_written_at": "2025-12-28T06:01:04.960903+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2025-12-28T06:01:04.957329+00:00",
+    "entity_type": "decision",
+    "id": "D-20251228-060104-d6aee8fb",
+    "modified_at": "2025-12-28T06:01:04.960825+00:00",
+    "properties": {},
+    "rationale": "Testing numbered selection",
+    "title": "Another test decision",
+    "version": 2
+  }
+}

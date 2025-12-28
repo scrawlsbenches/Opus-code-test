@@ -53,6 +53,42 @@ logger = logging.getLogger(__name__)
 # (canonical source for all ID generation across the codebase)
 
 
+def _validate_sprint_id_format(sprint_id: str) -> None:
+    """
+    Validate sprint ID format and log warning if non-standard.
+
+    Supports three formats:
+    - Generated (current): S-YYYYMMDD-HHMMSS-hash (e.g., S-20251227-211213-ae934eab)
+    - Legacy verbose: S-sprint-NNN-slug (e.g., S-sprint-017-spark-slm)
+    - Legacy short: S-NNN (e.g., S-022, S-028)
+
+    Args:
+        sprint_id: Sprint identifier to validate
+
+    Note:
+        This is a non-breaking validation - logs warning but does not raise errors.
+        All formats are supported for backward compatibility.
+    """
+    import re
+
+    # Check if ID matches any known format
+    generated_pattern = r'^S-\d{8}-\d{6}-[a-f0-9]{8}$'
+    legacy_verbose_pattern = r'^S-sprint-\d+(-[\w-]+)?$'  # Slug is optional
+    legacy_short_pattern = r'^S-\d+$'
+
+    if (re.match(generated_pattern, sprint_id) or
+        re.match(legacy_verbose_pattern, sprint_id) or
+        re.match(legacy_short_pattern, sprint_id)):
+        return  # Valid format
+
+    # Log warning for unrecognized format (but don't break)
+    logger.warning(
+        f"Sprint ID '{sprint_id}' does not match standard formats. "
+        f"Expected: S-YYYYMMDD-HHMMSS-hash (generated), "
+        f"S-sprint-NNN-slug (legacy verbose), or S-NNN (legacy short)"
+    )
+
+
 class GoTManager:
     """
     High-level API for Graph of Thought operations.
@@ -2177,6 +2213,9 @@ class TransactionContext:
         Raises:
             TransactionError: If sprint not found
         """
+        # Validate sprint ID format (non-breaking)
+        _validate_sprint_id_format(sprint_id)
+
         sprint = self.get_sprint(sprint_id)
         if sprint is None:
             raise TransactionError(f"Sprint not found: {sprint_id}")
@@ -2203,6 +2242,9 @@ class TransactionContext:
         Returns:
             Sprint object or None if not found
         """
+        # Validate sprint ID format (non-breaking)
+        _validate_sprint_id_format(sprint_id)
+
         entity = self.tx_manager.read(self.tx, sprint_id)
         if entity is None:
             return None

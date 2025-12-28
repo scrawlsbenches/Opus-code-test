@@ -18,6 +18,7 @@ Components:
 - SparkCodeIntelligence: Hybrid AST + N-gram code intelligence engine
 - IntentParser: Commit message intent parsing for code evolution model
 - CoChangeModel: Learn file co-change patterns from git history
+- GitHistoryTrainer: Weighted training from git commit history
 
 Usage:
     from cortical.spark import SparkPredictor
@@ -56,6 +57,7 @@ from .ast_index import ASTIndex, FunctionInfo, ClassInfo, ImportInfo
 from .intelligence import SparkCodeIntelligence
 from .intent_parser import IntentParser, IntentResult
 from .co_change import CoChangeModel, CoChangeEdge, Commit
+from .git_trainer import GitHistoryTrainer, WeightedCommit
 from .suggester import (
     SampleSuggester,
     DefinitionSuggestion,
@@ -112,6 +114,9 @@ __all__ = [
     'CoChangeModel',
     'CoChangeEdge',
     'Commit',
+    # Git History Training
+    'GitHistoryTrainer',
+    'WeightedCommit',
     # Sample Suggestion
     'SampleSuggester',
     'DefinitionSuggestion',
