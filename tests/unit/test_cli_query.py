@@ -756,3 +756,153 @@ class TestHandleQueryCommands:
         result = handle_query_commands(args, mock_manager)
 
         assert result is None
+
+
+class TestSprintQueries:
+    """Tests for sprint-related query patterns."""
+
+    @pytest.fixture
+    def mock_manager(self):
+        """Create a mock manager."""
+        manager = MagicMock()
+        return manager
+
+    @pytest.fixture
+    def mock_sprint(self):
+        """Create a mock sprint."""
+        sprint = MagicMock()
+        sprint.id = "S-028"
+        sprint.title = "Test Sprint"
+        sprint.status = "available"
+        return sprint
+
+    @pytest.fixture
+    def mock_tasks(self):
+        """Create mock tasks for testing."""
+        task1 = MagicMock()
+        task1.id = "T-001"
+        task1.title = "Task 1"
+        task1.status = "pending"
+
+        task2 = MagicMock()
+        task2.id = "T-002"
+        task2.title = "Task 2"
+        task2.status = "in_progress"
+
+        return [task1, task2]
+
+    @pytest.fixture
+    def mock_edges(self):
+        """Create mock CONTAINS edges."""
+        edge1 = MagicMock()
+        edge1.source_id = "S-028"
+        edge1.target_id = "T-001"
+        edge1.edge_type = "CONTAINS"
+
+        edge2 = MagicMock()
+        edge2.source_id = "S-028"
+        edge2.target_id = "T-002"
+        edge2.edge_type = "CONTAINS"
+
+        # Add a non-CONTAINS edge to test filtering
+        edge3 = MagicMock()
+        edge3.source_id = "S-028"
+        edge3.target_id = "T-003"
+        edge3.edge_type = "DEPENDS_ON"
+
+        return [edge1, edge2, edge3]
+
+    def test_what_is_in_query(self, mock_manager, mock_tasks, mock_edges, capsys):
+        """Test 'what is in S-XXX' query returns tasks in sprint."""
+        mock_manager.list_edges.return_value = mock_edges
+        mock_manager.get_task.side_effect = lambda tid: (
+            mock_tasks[0] if tid == "T-001" else
+            mock_tasks[1] if tid == "T-002" else
+            None
+        )
+        mock_manager.query.return_value = [
+            {"id": "T-001", "title": "Task 1", "status": "pending", "relation": "contained_in"},
+            {"id": "T-002", "title": "Task 2", "status": "in_progress", "relation": "contained_in"},
+        ]
+
+        args = Namespace(query_string=["what", "is", "in", "S-028"])
+        result = cmd_query(args, mock_manager)
+
+        assert result == 0
+        mock_manager.query.assert_called_once_with("what is in S-028")
+        captured = capsys.readouterr()
+        assert "T-001" in captured.out
+        assert "T-002" in captured.out
+        assert "contained_in" in captured.out
+
+    def test_tasks_in_query_short_form(self, mock_manager, mock_tasks, mock_edges, capsys):
+        """Test 'tasks in S-XXX' query (short form) returns tasks in sprint."""
+        mock_manager.list_edges.return_value = mock_edges
+        mock_manager.get_task.side_effect = lambda tid: (
+            mock_tasks[0] if tid == "T-001" else
+            mock_tasks[1] if tid == "T-002" else
+            None
+        )
+        mock_manager.query.return_value = [
+            {"id": "T-001", "title": "Task 1", "status": "pending", "relation": "contained_in"},
+            {"id": "T-002", "title": "Task 2", "status": "in_progress", "relation": "contained_in"},
+        ]
+
+        args = Namespace(query_string=["tasks", "in", "S-028"])
+        result = cmd_query(args, mock_manager)
+
+        assert result == 0
+        mock_manager.query.assert_called_once_with("tasks in S-028")
+        captured = capsys.readouterr()
+        assert "T-001" in captured.out
+        assert "T-002" in captured.out
+
+    def test_show_sprint_query(self, mock_manager, mock_sprint, mock_edges, capsys):
+        """Test 'show sprint S-XXX' query returns sprint details."""
+        mock_manager.get_sprint.return_value = mock_sprint
+        mock_manager.list_edges.return_value = mock_edges
+        mock_manager.query.return_value = [
+            {
+                "id": "S-028",
+                "title": "Test Sprint",
+                "status": "available",
+                "task_count": 2,
+                "relation": "sprint_info",
+            }
+        ]
+
+        args = Namespace(query_string=["show", "sprint", "S-028"])
+        result = cmd_query(args, mock_manager)
+
+        assert result == 0
+        mock_manager.query.assert_called_once_with("show sprint S-028")
+        captured = capsys.readouterr()
+        assert "S-028" in captured.out
+        assert "Test Sprint" in captured.out
+
+    def test_empty_sprint_returns_empty_list(self, mock_manager, capsys):
+        """Test that a sprint with no tasks returns empty results."""
+        # No CONTAINS edges for this sprint
+        mock_manager.list_edges.return_value = []
+        mock_manager.query.return_value = []
+
+        args = Namespace(query_string=["what", "is", "in", "S-999"])
+        result = cmd_query(args, mock_manager)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "No results found" in captured.out
+
+    def test_invalid_sprint_id_returns_empty_list(self, mock_manager, capsys):
+        """Test that an invalid sprint ID returns empty results."""
+        # Sprint doesn't exist
+        mock_manager.get_sprint.return_value = None
+        mock_manager.list_edges.return_value = []
+        mock_manager.query.return_value = []
+
+        args = Namespace(query_string=["show", "sprint", "S-INVALID"])
+        result = cmd_query(args, mock_manager)
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "No results found" in captured.out
