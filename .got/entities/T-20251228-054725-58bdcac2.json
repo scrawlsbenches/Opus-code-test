@@ -1,0 +1,19 @@
+{
+  "_checksum": "7dc53ca226a90833",
+  "_written_at": "2025-12-28T05:47:25.505190+00:00",
+  "data": {
+    "created_at": "2025-12-28T05:47:25.501184+00:00",
+    "description": "Add natural language support for sprint queries like 'what is in S-XXX', 'tasks in S-XXX', 'show sprint S-XXX'. Currently query language only supports task-related queries (what blocks, what depends on) but not sprint containment queries. The 'sprint tasks' command works but query language should also understand these patterns for consistency.",
+    "entity_type": "task",
+    "id": "T-20251228-054725-58bdcac2",
+    "metadata": {},
+    "modified_at": "2025-12-28T05:47:25.505103+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Enhance query language to support sprint queries",
+    "version": 2
+  }
+}
