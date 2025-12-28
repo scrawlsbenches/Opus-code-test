@@ -12,7 +12,6 @@ This module can be integrated into got_utils.py CLI or used standalone.
 """
 
 import json
-import yaml
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -317,6 +316,11 @@ def cmd_task_import(args, manager: "TransactionalGoTAdapter") -> int:
 
         # Detect format and parse
         if file_path.suffix in ['.yaml', '.yml']:
+            try:
+                import yaml
+            except ImportError:
+                print("Error: pyyaml is required for YAML files. Install with: pip install pyyaml")
+                return 1
             data = yaml.safe_load(content)
         elif file_path.suffix == '.json':
             data = json.loads(content)
@@ -325,6 +329,11 @@ def cmd_task_import(args, manager: "TransactionalGoTAdapter") -> int:
             try:
                 data = json.loads(content)
             except json.JSONDecodeError:
+                try:
+                    import yaml
+                except ImportError:
+                    print("Error: pyyaml is required for YAML files. Install with: pip install pyyaml")
+                    return 1
                 data = yaml.safe_load(content)
     except Exception as e:
         print(f"Error reading file: {e}")
