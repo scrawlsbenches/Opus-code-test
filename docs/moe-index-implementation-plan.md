@@ -807,13 +807,13 @@ tests/performance/test_moe_performance.py
 
 ## Appendix: Task Checklist Format
 
-For tracking during implementation, use the merge-friendly task system:
+For tracking during implementation, use the GoT task system:
 
 ```bash
 # Create implementation tasks
-python scripts/new_task.py "MoE Phase 1: Implement core types" --priority high --category arch
-python scripts/new_task.py "MoE Phase 1: Create test infrastructure" --priority high --category test
-python scripts/new_task.py "MoE Phase 2: Implement LexicalExpert" --priority high --category feature
+python scripts/got_utils.py task create "MoE Phase 1: Implement core types" --priority high
+python scripts/got_utils.py task create "MoE Phase 1: Create test infrastructure" --priority high
+python scripts/got_utils.py task create "MoE Phase 2: Implement LexicalExpert" --priority high
 # ... etc
 ```
 

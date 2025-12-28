@@ -1,0 +1,23 @@
+{
+  "_checksum": "cca66a629e6c5415",
+  "_written_at": "2025-12-27T22:57:11.258350+00:00",
+  "data": {
+    "created_at": "2025-12-27T21:14:58.881676+00:00",
+    "description": "ADD CRASH RECOVERY EXAMPLES TO GRAPH PERSISTENCE\n\nFILE: cortical/reasoning/graph_persistence.py\nLOCATION: Add examples in GraphRecovery class docstring\n\nADD EXAMPLES:\n1. Basic recovery check and execution\n2. Recovery with level preferences\n3. Handling RecoveryResult\n4. Integration with GitAutoCommitter\n\nFORMAT: Use Python doctest-compatible examples\n\nACCEPTANCE CRITERIA:\n- Examples in GraphRecovery docstring\n- Examples are syntactically correct\n- Show practical usage patterns\n\nVERIFY: grep -A 20 \"class GraphRecovery\" cortical/reasoning/graph_persistence.py",
+    "entity_type": "task",
+    "id": "T-20251227-211458-6d94d06b",
+    "metadata": {
+      "completed_at": "2025-12-27T22:57:11.251773+00:00",
+      "updated_at": "2025-12-27T22:57:11.251782+00:00"
+    },
+    "modified_at": "2025-12-27T22:57:11.258297+00:00",
+    "priority": "low",
+    "properties": {
+      "category": "docs",
+      "retrospective": "Added examples in GraphRecovery docstring. All 44 recovery tests pass."
+    },
+    "status": "completed",
+    "title": "Add crash recovery examples to graph_persistence.py",
+    "version": 6
+  }
+}

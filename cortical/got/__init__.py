@@ -99,6 +99,8 @@ from .api import (
     generate_decision_id,
 )
 
+from .query_api import QueryAPI
+
 from .protocol import GoTBackend
 
 from .schema import (
@@ -247,6 +249,8 @@ __all__ = [
     'TransactionContext',
     'generate_task_id',
     'generate_decision_id',
+    # Query API
+    'QueryAPI',
     # Protocol
     'GoTBackend',
     # Schema

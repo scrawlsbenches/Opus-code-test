@@ -2,14 +2,15 @@
 """
 CI Task Reporter - Intelligent pending task output for CI pipelines.
 
-This script outputs pending tasks in a CI-friendly format, suitable for:
+This script outputs pending tasks from GoT (Graph of Thought) in a CI-friendly
+format, suitable for:
 - GitHub Actions job summaries
 - Console output during CI runs
 - Slack/Discord notifications
 
 Features:
-- Groups by priority (high items first)
-- Shows estimated effort
+- Groups by priority (critical/high items first)
+- Shows task status
 - Provides actionable summary
 - Exits with non-zero code if high-priority tasks exist (optional)
 
@@ -31,23 +32,30 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Any
 
-# Add scripts to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add project root to path
+PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
-from task_utils import load_all_tasks, Task, DEFAULT_TASKS_DIR
+from cortical.got.api import GoTManager
+from cortical.got.types import Task
+
+# Default GoT directory
+GOT_DIR = PROJECT_ROOT / ".got"
 
 
-def get_pending_tasks(tasks_dir: str = DEFAULT_TASKS_DIR) -> List[Task]:
-    """Load only pending and in_progress tasks."""
-    all_tasks = load_all_tasks(tasks_dir)
-    return [t for t in all_tasks if t.status in ("pending", "in_progress")]
+def get_pending_tasks(got_dir: Path = GOT_DIR) -> List[Task]:
+    """Load only pending and in_progress tasks from GoT."""
+    manager = GoTManager(got_dir)
+    pending = manager.list_tasks(status="pending")
+    in_progress = manager.list_tasks(status="in_progress")
+    return pending + in_progress
 
 
 def group_by_priority(tasks: List[Task]) -> Dict[str, List[Task]]:
     """Group tasks by priority."""
-    grouped = {"high": [], "medium": [], "low": []}
+    grouped = {"critical": [], "high": [], "medium": [], "low": []}
     for task in tasks:
         priority = task.priority if task.priority in grouped else "medium"
         grouped[priority].append(task)
@@ -64,17 +72,19 @@ def format_console_report(tasks: List[Task]) -> str:
 
     # Summary header
     total = len(tasks)
+    critical_count = len(grouped["critical"])
     high_count = len(grouped["high"])
     in_progress = sum(1 for t in tasks if t.status == "in_progress")
 
     lines.append("=" * 60)
-    lines.append(f"📋 PENDING TASKS: {total} total ({high_count} high priority)")
+    lines.append(f"📋 PENDING TASKS: {total} total ({critical_count} critical, {high_count} high)")
     if in_progress:
         lines.append(f"   🔄 {in_progress} currently in progress")
     lines.append("=" * 60)
 
     # Priority sections
     priority_config = [
+        ("critical", "🔥 CRITICAL", "Immediate attention required!"),
         ("high", "🔴 HIGH PRIORITY", "These need attention!"),
         ("medium", "🟡 MEDIUM PRIORITY", ""),
         ("low", "🟢 LOW PRIORITY", ""),
@@ -89,15 +99,16 @@ def format_console_report(tasks: List[Task]) -> str:
 
         for task in grouped[priority]:
             status_marker = "🔄" if task.status == "in_progress" else "  "
-            effort_marker = {"small": "S", "medium": "M", "large": "L"}.get(task.effort, "?")
-            lines.append(f"  {status_marker} [{effort_marker}] {task.id}")
+            lines.append(f"  {status_marker} {task.id}")
             lines.append(f"       {task.title}")
 
     lines.append("")
     lines.append("=" * 60)
 
     # Actionable summary
-    if high_count > 0:
+    if critical_count > 0:
+        lines.append("🔥 CRITICAL TASKS REQUIRE IMMEDIATE ATTENTION")
+    elif high_count > 0:
         lines.append("⚠️  HIGH PRIORITY TASKS REQUIRE ATTENTION")
 
     return "\n".join(lines)
@@ -113,27 +124,33 @@ def format_github_markdown(tasks: List[Task]) -> str:
 
     # Summary header
     total = len(tasks)
+    critical_count = len(grouped["critical"])
     high_count = len(grouped["high"])
     in_progress = sum(1 for t in tasks if t.status == "in_progress")
 
     lines.append("## 📋 Pending Tasks Summary")
     lines.append("")
-    lines.append(f"| Metric | Count |")
+    lines.append("| Metric | Count |")
     lines.append("|--------|-------|")
     lines.append(f"| Total Pending | **{total}** |")
+    lines.append(f"| 🔥 Critical | {critical_count} |")
     lines.append(f"| 🔴 High Priority | {high_count} |")
     lines.append(f"| 🟡 Medium Priority | {len(grouped['medium'])} |")
     lines.append(f"| 🟢 Low Priority | {len(grouped['low'])} |")
     lines.append(f"| 🔄 In Progress | {in_progress} |")
     lines.append("")
 
-    # High priority callout
-    if high_count > 0:
+    # Critical/high priority callout
+    if critical_count > 0:
+        lines.append("> 🔥 **CRITICAL:** There are critical tasks that need immediate attention!")
+        lines.append("")
+    elif high_count > 0:
         lines.append("> ⚠️ **Attention:** There are high-priority tasks that need attention!")
         lines.append("")
 
     # Task tables by priority
     priority_config = [
+        ("critical", "### 🔥 Critical"),
         ("high", "### 🔴 High Priority"),
         ("medium", "### 🟡 Medium Priority"),
         ("low", "### 🟢 Low Priority"),
@@ -145,15 +162,17 @@ def format_github_markdown(tasks: List[Task]) -> str:
 
         lines.append(header)
         lines.append("")
-        lines.append("| Status | ID | Title | Effort | Category |")
-        lines.append("|--------|----|----|--------|----------|")
+        lines.append("| Status | ID | Title |")
+        lines.append("|--------|----|----|")
 
         for task in grouped[priority]:
             status = "🔄" if task.status == "in_progress" else "📋"
-            effort = {"small": "S", "medium": "M", "large": "L"}.get(task.effort, "?")
             # Escape pipe characters in title
             title = task.title.replace("|", "\\|")
-            lines.append(f"| {status} | `{task.id}` | {title} | {effort} | {task.category} |")
+            # Truncate long titles
+            if len(title) > 50:
+                title = title[:47] + "..."
+            lines.append(f"| {status} | `{task.id}` | {title} |")
 
         lines.append("")
 
@@ -163,13 +182,13 @@ def format_github_markdown(tasks: List[Task]) -> str:
     lines.append("")
     lines.append("```bash")
     lines.append("# List all tasks")
-    lines.append("python scripts/new_task.py --list")
+    lines.append("python scripts/got_utils.py task list")
     lines.append("")
     lines.append("# Complete a task")
-    lines.append("python scripts/new_task.py --complete T-XXXXX")
+    lines.append("python scripts/got_utils.py task complete T-XXXXX --notes \"...\"")
     lines.append("")
     lines.append("# Create new task")
-    lines.append('python scripts/new_task.py "Task title" --priority high')
+    lines.append("python scripts/got_utils.py task create \"Task title\" --priority high")
     lines.append("```")
     lines.append("</details>")
 
@@ -184,13 +203,14 @@ def format_quiet_report(tasks: List[Task]) -> str:
     grouped = group_by_priority(tasks)
     return (
         f"Tasks: {len(tasks)} pending "
-        f"(🔴{len(grouped['high'])} 🟡{len(grouped['medium'])} 🟢{len(grouped['low'])})"
+        f"(🔥{len(grouped['critical'])} 🔴{len(grouped['high'])} "
+        f"🟡{len(grouped['medium'])} 🟢{len(grouped['low'])})"
     )
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="CI Task Reporter - Output pending tasks for CI pipelines",
+        description="CI Task Reporter - Output pending tasks from GoT for CI pipelines",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )
@@ -201,15 +221,21 @@ def main():
     )
     parser.add_argument(
         "--fail-on-high", action="store_true",
-        help="Exit with code 1 if high-priority tasks exist"
+        help="Exit with code 1 if critical or high-priority tasks exist"
+    )
+    parser.add_argument(
+        "--fail-on-critical", action="store_true",
+        help="Exit with code 1 only if critical tasks exist"
     )
     parser.add_argument(
         "--quiet", "-q", action="store_true",
         help="Minimal output (summary line only)"
     )
     parser.add_argument(
-        "--dir", default=DEFAULT_TASKS_DIR,
-        help=f"Tasks directory (default: {DEFAULT_TASKS_DIR})"
+        "--got-dir",
+        type=Path,
+        default=GOT_DIR,
+        help=f"GoT directory (default: {GOT_DIR})"
     )
     parser.add_argument(
         "--output", "-o",
@@ -219,7 +245,11 @@ def main():
     args = parser.parse_args()
 
     # Load pending tasks
-    tasks = get_pending_tasks(args.dir)
+    try:
+        tasks = get_pending_tasks(args.got_dir)
+    except Exception as e:
+        print(f"Warning: Could not load GoT tasks: {e}", file=sys.stderr)
+        tasks = []
 
     # Format report
     if args.quiet:
@@ -244,11 +274,16 @@ def main():
             f.write(report + "\n")
 
     # Exit code logic
-    if args.fail_on_high:
-        grouped = group_by_priority(tasks)
-        if grouped["high"]:
-            print(f"\n❌ Failing: {len(grouped['high'])} high-priority tasks pending")
-            sys.exit(1)
+    grouped = group_by_priority(tasks)
+
+    if args.fail_on_critical and grouped["critical"]:
+        print(f"\n❌ Failing: {len(grouped['critical'])} critical tasks pending")
+        sys.exit(1)
+
+    if args.fail_on_high and (grouped["critical"] or grouped["high"]):
+        count = len(grouped["critical"]) + len(grouped["high"])
+        print(f"\n❌ Failing: {count} critical/high-priority tasks pending")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

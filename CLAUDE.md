@@ -31,7 +31,7 @@ GoT (Graph of Thought) is our task, sprint, and decision tracking system:
 | Command | Purpose |
 |---------|---------|
 | `python scripts/got_utils.py dashboard` | Overview of all tasks |
-| `python scripts/got_utils.py task create "Title" --priority high` | Create task |
+| `python scripts/got_utils.py task create "Title" --priority high [--sprint S-XXX]` | Create task (optionally add to sprint) |
 | `python scripts/got_utils.py task start T-XXX` | Start working on task |
 | `python scripts/got_utils.py task complete T-XXX --notes "..."` | Mark complete with notes |
 | `python scripts/got_utils.py task update T-XXX --notes "..."` | Update task properties |
@@ -258,7 +258,7 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 **Understand Through Testing**
 - Write a test to verify your understanding of the code
 - Use tests as executable documentation of behavior
-- Check `tasks/` directory or run `python scripts/task_utils.py list` to avoid duplicate work
+- Check GoT state with `python scripts/got_utils.py task list` to avoid duplicate work
 
 **Deep Analysis Over Trial-and-Error**
 - When debugging, write a failing test that reproduces the bug first
@@ -289,8 +289,7 @@ You are a **senior computational neuroscience engineer** with deep expertise in:
 **Dog-Food Everything**
 - Use the system to test itself when possible
 - Real usage reveals issues that unit tests miss
-- Create tasks using `scripts/new_task.py` or the task-manager skill
-- **Use merge-friendly task system** - see `tasks/` directory and `docs/merge-friendly-tasks.md`
+- Create tasks using `python scripts/got_utils.py task create "Title"` (GoT is the only task system)
 
 **Honest Assessment**
 - Acknowledge when something isn't working
@@ -339,7 +338,7 @@ Use these systems to maintain continuity:
 │  2. THOUGHT GRAPH (GoT via cortical/reasoning/)                      │
 │     └── Network of questions, decisions, hypotheses                  │
 │                                                                       │
-│  3. TASK STATE (tasks/*.json)                                        │
+│  3. TASK STATE (GoT via .got/entities/)                              │
 │     └── What needs to be done, what's complete                       │
 │                                                                       │
 │  4. MEMORY STATE (samples/memories/)                                 │
@@ -474,7 +473,7 @@ Use these to restore cognitive state:
 git branch -vv && cat .branch-state/active/*.json 2>/dev/null
 
 # See recent work context
-git log --oneline -10 && python scripts/task_utils.py list --status in_progress
+git log --oneline -10 && python scripts/got_utils.py task list --status in_progress
 
 # Read recent memories for context
 ls -t samples/memories/*.md | head -5 | xargs head -30
@@ -555,7 +554,7 @@ Always have backup plans:
 |---------|---------|
 | `/context-recovery` | Restore cognitive state from available sources |
 | `/woven-mind-director` | Orchestrate Woven Mind + PRISM marriage tasks |
-| `python scripts/task_utils.py list --status in_progress` | See active work |
+| `python scripts/got_utils.py task list --status in_progress` | See active work |
 | `git log --oneline -5` | Recent actions context |
 | `cat .branch-state/active/*.json` | Branch state |
 | `python scripts/reasoning_demo.py --quick` | Verify reasoning system works |
@@ -1471,7 +1470,7 @@ def test_delete_task_with_deps(self, mock_manager, mock_args):  # Mocked
    ```
 2. **Question assumptions** - the obvious culprit often isn't the real one
 3. **Build a complete picture** before running fixes
-4. **Document findings** - create tasks with `scripts/new_task.py` even if they contradict hypotheses
+4. **Document findings** - create tasks with `python scripts/got_utils.py task create` even if they contradict hypotheses
 
 ### When Implementing Features
 
@@ -1519,46 +1518,15 @@ Since you followed TDD, your tests already exist. Now verify everything works to
    ```
 5. **Check for regressions** in related functionality
 6. **Dog-food the feature** - test with real usage (see [dogfooding-checklist.md](docs/dogfooding-checklist.md))
-7. **Create follow-up tasks** - use `scripts/new_task.py` for issues discovered
+7. **Create follow-up tasks** - use `python scripts/got_utils.py task create` for issues discovered
 8. **Verify completion** - use [definition-of-done.md](docs/definition-of-done.md) checklist
-9. **Mark task complete** - update task status in `tasks/` (see below)
+9. **Mark task complete** - use `python scripts/got_utils.py task complete T-XXX`
 
-### Task Management (Merge-Friendly System)
+### Task Management
 
-**IMPORTANT:** This project uses a merge-friendly task system in `tasks/` directory.
+**Use GoT (Graph of Thought) for all task management.** See the "Quick Session Start" section at the top of this document for GoT commands.
 
-**Creating tasks:**
-```bash
-# Quick task creation
-python scripts/new_task.py "Fix the bug" --priority high --category bugfix
-
-# Or use TaskSession in Python
-from scripts.task_utils import TaskSession
-session = TaskSession()
-task = session.create_task(title="...", priority="high", category="arch")
-session.save()
-```
-
-**Viewing tasks:**
-```bash
-python scripts/task_utils.py list                    # All tasks
-python scripts/task_utils.py list --status pending   # Pending only
-python scripts/consolidate_tasks.py --summary        # Summary view
-```
-
-**Completing tasks:**
-```python
-from scripts.task_utils import TaskSession
-session = TaskSession.load("tasks/your_session.json")
-session.complete_task("T-20251213-143052-a1b2", retrospective="What was learned")
-session.save()
-```
-
-**Why this system:**
-- No merge conflicts (each session writes to unique files)
-- Works with parallel agents
-- Task IDs are timestamp-based and collision-free
-- See `docs/merge-friendly-tasks.md` for full documentation
+> **Note:** The `tasks/` directory and `task_utils.py` are legacy systems - do not use them for new work.
 
 ---
 
@@ -2229,7 +2197,7 @@ python examples/observability_demo.py
 | Generate session memory | `python scripts/session_memory_generator.py --session-id ID` |
 | Check wiki-links | `python scripts/resolve_wiki_links.py FILE` |
 | Find backlinks | `python scripts/resolve_wiki_links.py --backlinks FILE` |
-| Complete task with memory | `python scripts/task_utils.py complete TASK_ID --create-memory` |
+| Complete task | `python scripts/got_utils.py task complete TASK_ID --notes "..."` |
 | View sprint status | `python scripts/got_utils.py sprint status` |
 | List all sprints | `python scripts/got_utils.py sprint list` |
 | Create sprint | `python scripts/got_utils.py sprint create "Title" --number N` |
@@ -2881,9 +2849,8 @@ See `.claude/skills/ml-logger/SKILL.md` for detailed logging usage.
 - **Dog-fooding**: `docs/dogfooding-checklist.md` - checklist for testing with real usage
 - **Definition of Done**: `docs/definition-of-done.md` - when is a task truly complete?
 - **Text-as-Memories**: `docs/text-as-memories.md` - knowledge management guide
-- **Task Management**: `docs/merge-friendly-tasks.md` - merge-friendly task system with collision-free IDs
+- **Task Management**: Use GoT - see "Quick Session Start" section at top of this document
 - **ML Milestone Thresholds**: `docs/ml-milestone-thresholds.md` - why 500/2000/5000 commits for training
-- **Merge-Friendly Tasks**: See "Task Management (Merge-Friendly System)" section above for task workflow
 
 ---
 

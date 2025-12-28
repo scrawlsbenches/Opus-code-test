@@ -80,11 +80,11 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Validate tasks/*.json files
+    - name: Validate GoT State
       run: |
-        echo "=== Validating Task Files ==="
-        python scripts/validate_tasks.py
-        echo "✅ Task validation passed"
+        echo "=== Validating GoT State ==="
+        python scripts/got_utils.py validate
+        echo "✅ GoT validation passed"
 
     - name: Report Pending Tasks
       if: always()

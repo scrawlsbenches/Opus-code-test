@@ -1,0 +1,23 @@
+{
+  "_checksum": "77be0f3b53174dbd",
+  "_written_at": "2025-12-27T22:13:32.147912+00:00",
+  "data": {
+    "created_at": "2025-12-27T21:13:30.629687+00:00",
+    "description": "REPLACE find_bridges() WITH TARJAN'S O(V+E) ALGORITHM\n\nFILE: cortical/reasoning/thought_graph.py lines 538-600\nPROBLEM: Current O(V\u00b2) - removes each node, recounts components\nSOLUTION: Implement Tarjan's bridge-finding with DFS, track disc/low times\n\nACCEPTANCE CRITERIA:\n- All tests pass: pytest tests/unit/test_thought_graph.py -v\n- 1000-node graph bridge detection <1s\n- Method signature unchanged\n\nGUARDRAILS - DO NOT:\n- Change method signature\n- Modify other methods\n- Remove existing tests\n\nVERIFY: pytest tests/unit/test_thought_graph.py -v -k bridge",
+    "entity_type": "task",
+    "id": "T-20251227-211330-b9cb86da",
+    "metadata": {
+      "completed_at": "2025-12-27T22:13:32.141395+00:00",
+      "updated_at": "2025-12-27T22:13:32.141399+00:00"
+    },
+    "modified_at": "2025-12-27T22:13:32.147868+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "bugfix",
+      "retrospective": "Replaced O(V\u00b2) algorithm with Tarjan's O(V+E). Verified 0.014s for 1000 nodes."
+    },
+    "status": "completed",
+    "title": "Replace find_bridges() with Tarjan's O(V+E) algorithm",
+    "version": 8
+  }
+}

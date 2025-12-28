@@ -101,7 +101,7 @@ EOF
 | Template | Location | Use For |
 |----------|----------|---------|
 | Memory entry | `scripts/new_memory.py` | Daily learnings |
-| Task creation | `scripts/new_task.py` | New work items |
+| Task creation | `scripts/got_utils.py` | New work items (GoT) |
 | Test file | `tests/unit/` pattern | New test modules |
 
 ### Template Usage
@@ -110,8 +110,8 @@ EOF
 # Create memory (template auto-applied)
 python scripts/new_memory.py "what I learned today"
 
-# Create task (structured fields)
-python scripts/new_task.py "Fix the bug" --priority high --category bugfix
+# Create task (GoT)
+python scripts/got_utils.py task create "Fix the bug" --priority high
 
 # Check templates before creating new files
 ls -la samples/memories/*.md | head -3
@@ -228,7 +228,7 @@ echo "=== Recent Activity ==="
 git log --oneline -5
 echo ""
 echo "=== Current Tasks ==="
-python scripts/task_utils.py list --status in_progress 2>/dev/null || echo "No active tasks"
+python scripts/got_utils.py task list --status in_progress 2>/dev/null || echo "No active tasks"
 ```
 
 ---
@@ -290,10 +290,10 @@ fi
 ./scripts/clean_workspace.sh 2>/dev/null || git status --short
 
 # 2. Check sprint context
-cat tasks/CURRENT_SPRINT.md 2>/dev/null | head -30
+python scripts/got_utils.py sprint status 2>/dev/null
 
 # 3. Review active tasks
-python scripts/task_utils.py list --status pending | head -10
+python scripts/got_utils.py task list --status pending | head -10
 ```
 
 ### Before Each Task

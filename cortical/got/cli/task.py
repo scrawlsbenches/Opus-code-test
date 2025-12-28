@@ -12,6 +12,7 @@ This module can be integrated into got_utils.py CLI or used standalone.
 """
 
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .shared import (
@@ -284,6 +285,132 @@ def cmd_task_delete(args, manager: "TransactionalGoTAdapter") -> int:
         return 1
 
 
+def cmd_task_import(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got task import' command.
+
+    Imports tasks from a YAML or JSON file.
+
+    Expected file format:
+    ```yaml
+    tasks:
+      - title: "Task one"
+        priority: high
+        category: feature
+        description: "Optional description"
+      - title: "Task two"
+        priority: medium
+        category: bugfix
+    ```
+    """
+    file_path = Path(args.file)
+
+    # Check if file exists
+    if not file_path.exists():
+        print(f"Error: File not found: {file_path}")
+        return 1
+
+    # Read and parse file
+    try:
+        with open(file_path, 'r') as f:
+            content = f.read()
+
+        # Detect format and parse
+        if file_path.suffix in ['.yaml', '.yml']:
+            try:
+                import yaml
+            except ImportError:
+                print("Error: pyyaml is required for YAML files. Install with: pip install pyyaml")
+                return 1
+            data = yaml.safe_load(content)
+        elif file_path.suffix == '.json':
+            data = json.loads(content)
+        else:
+            # Try to detect by content
+            try:
+                data = json.loads(content)
+            except json.JSONDecodeError:
+                try:
+                    import yaml
+                except ImportError:
+                    print("Error: pyyaml is required for YAML files. Install with: pip install pyyaml")
+                    return 1
+                data = yaml.safe_load(content)
+    except Exception as e:
+        print(f"Error reading file: {e}")
+        return 1
+
+    # Validate structure
+    if not isinstance(data, dict) or 'tasks' not in data:
+        print("Error: File must contain a 'tasks' key with a list of tasks")
+        return 1
+
+    tasks_data = data['tasks']
+    if not isinstance(tasks_data, list):
+        print("Error: 'tasks' must be a list")
+        return 1
+
+    # Validate and create tasks
+    created_ids = []
+    errors = []
+
+    for i, task_data in enumerate(tasks_data, 1):
+        # Validate required fields
+        if not isinstance(task_data, dict):
+            errors.append(f"Task {i}: Must be a dictionary")
+            continue
+
+        if 'title' not in task_data:
+            errors.append(f"Task {i}: Missing required field 'title'")
+            continue
+
+        if 'priority' not in task_data:
+            errors.append(f"Task {i}: Missing required field 'priority'")
+            continue
+
+        # Validate priority
+        if task_data['priority'] not in VALID_PRIORITIES:
+            errors.append(f"Task {i}: Invalid priority '{task_data['priority']}'. Must be one of: {', '.join(VALID_PRIORITIES)}")
+            continue
+
+        # Validate category if provided
+        category = task_data.get('category', 'feature')
+        if category not in VALID_CATEGORIES:
+            errors.append(f"Task {i}: Invalid category '{category}'. Must be one of: {', '.join(VALID_CATEGORIES)}")
+            continue
+
+        # Create task
+        try:
+            task_id = manager.create_task(
+                title=task_data['title'],
+                priority=task_data['priority'],
+                category=category,
+                description=task_data.get('description', ''),
+                sprint_id=getattr(args, 'sprint', None),
+            )
+            created_ids.append(task_id)
+        except Exception as e:
+            errors.append(f"Task {i} ('{task_data['title']}'): {e}")
+
+    # Save if any tasks were created
+    if created_ids:
+        manager.save()
+
+    # Report results
+    if errors:
+        print(f"\n⚠️  Errors ({len(errors)}):")
+        for error in errors:
+            print(f"  - {error}")
+
+    if created_ids:
+        print(f"\n✅ Created {len(created_ids)} task(s):")
+        for task_id in created_ids:
+            print(f"  - {task_id}")
+        return 0
+    else:
+        print("\n❌ No tasks were created")
+        return 1
+
+
 # =============================================================================
 # CLI INTEGRATION
 # =============================================================================
@@ -414,6 +541,14 @@ def setup_task_parser(subparsers) -> None:
         help="Task ID to depend on"
     )
 
+    # task import
+    import_parser = task_subparsers.add_parser("import", help="Import tasks from YAML or JSON file")
+    import_parser.add_argument("file", help="Path to YAML or JSON file")
+    import_parser.add_argument(
+        "--sprint", "-s",
+        help="Sprint ID to add all imported tasks to"
+    )
+
 
 def handle_task_command(args, manager: "TransactionalGoTAdapter") -> int:
     """
@@ -441,6 +576,7 @@ def handle_task_command(args, manager: "TransactionalGoTAdapter") -> int:
         "update": cmd_task_update,
         "delete": cmd_task_delete,
         "depends": cmd_task_depends,
+        "import": cmd_task_import,
     }
 
     handler = command_handlers.get(args.task_command)

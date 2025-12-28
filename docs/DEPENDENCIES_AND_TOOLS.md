@@ -172,18 +172,15 @@ Located in `scripts/`:
 | `generate_ai_metadata.py` | Generate `.ai_meta` files | None |
 | `ask_codebase.py` | Natural language queries | None |
 
-### Task Management
+### Task Management (GoT)
 
 | Script | Purpose | Subprocess Calls |
 |--------|---------|------------------|
-| `task_utils.py` | Task CRUD operations | None |
-| `new_task.py` | Create new tasks | None |
-| `consolidate_tasks.py` | Merge task sessions | None |
-| `select_task.py` | Interactive task selection | None |
-| `suggest_tasks.py` | AI-powered task suggestions | `git` commands |
-| `migrate_legacy_tasks.py` | Migrate from TASK_LIST.md | None |
-| `ci_task_create.py` | Create tasks from CI | None |
-| `task_graph.py` | Visualize task dependencies | None |
+| `got_utils.py` | GoT task/sprint/decision management | `git` commands |
+| `ci_task_report.py` | CI task reporting from GoT | None |
+| `session_handoff.py` | Session handoff document generation | `git` commands |
+
+> **Note:** Legacy task scripts (`task_utils.py`, `new_task.py`, etc.) have been removed. Use `got_utils.py` for all task management.
 
 ### Analysis & Exploration
 

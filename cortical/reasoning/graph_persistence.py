@@ -33,6 +33,7 @@ import hashlib
 import json
 import os
 import subprocess
+import threading
 import time
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
@@ -100,7 +101,8 @@ class GitAutoCommitter:
         self.protected_branches: Set[str] = set(protected_branches or ['main', 'master'])
         self.repo_path = Path(repo_path or os.getcwd())
 
-        # Debouncing state
+        # Debouncing state (protected by lock for thread safety)
+        self._lock = threading.Lock()
         self._debounce_timer: Optional[Timer] = None
         self._pending_commit: Optional[tuple] = None
 
@@ -340,28 +342,35 @@ class GitAutoCommitter:
                 self.push_if_safe()
 
         elif self.mode == 'debounced':
-            # Cancel pending commit if any
-            if self._debounce_timer is not None:
-                self._debounce_timer.cancel()
-
-            # Store pending commit
-            self._pending_commit = (message, files, graph)
-
-            # Schedule debounced commit
+            # Schedule debounced commit (with thread-safe state management)
             def _do_debounced_commit():
-                if self._pending_commit is not None:
+                # Get pending commit inside lock
+                with self._lock:
+                    if self._pending_commit is None:
+                        return
                     msg, fls, grph = self._pending_commit
-                    success = self.auto_commit(msg, fls, validate_graph=grph)
-
-                    # Auto-push if enabled
-                    if success and self.auto_push:
-                        self.push_if_safe()
-
                     self._pending_commit = None
                     self._debounce_timer = None
 
-            self._debounce_timer = Timer(self.debounce_seconds, _do_debounced_commit)
-            self._debounce_timer.start()
+                # Execute commit OUTSIDE lock (slow operation)
+                success = self.auto_commit(msg, fls, validate_graph=grph)
+
+                # Auto-push if enabled
+                if success and self.auto_push:
+                    self.push_if_safe()
+
+            # Protect debouncing state with lock
+            with self._lock:
+                # Cancel pending commit if any
+                if self._debounce_timer is not None:
+                    self._debounce_timer.cancel()
+
+                # Store pending commit
+                self._pending_commit = (message, files, graph)
+
+                # Schedule new debounced commit
+                self._debounce_timer = Timer(self.debounce_seconds, _do_debounced_commit)
+                self._debounce_timer.start()
 
     def create_backup_branch(self, prefix: str = 'backup') -> Optional[str]:
         """
@@ -410,10 +419,11 @@ class GitAutoCommitter:
 
         Call this before destroying the committer instance.
         """
-        if self._debounce_timer is not None:
-            self._debounce_timer.cancel()
-            self._debounce_timer = None
-            self._pending_commit = None
+        with self._lock:
+            if self._debounce_timer is not None:
+                self._debounce_timer.cancel()
+                self._debounce_timer = None
+                self._pending_commit = None
 
 
 # ==============================================================================
@@ -1214,12 +1224,28 @@ class GraphRecovery:
     Each level is attempted only if the previous level fails, ensuring
     graph state can always be recovered even after severe corruption.
 
-    Example:
-        >>> recovery = GraphRecovery(wal_dir='graph_wal', chunks_dir='graph_chunks')
-        >>> if recovery.needs_recovery():
-        ...     result = recovery.recover()
-        ...     if result.success:
-        ...         print(f"Recovered {result.nodes_recovered} nodes using Level {result.level_used}")
+    Examples
+    --------
+    Basic recovery check and execution:
+
+    >>> recovery = GraphRecovery(wal_dir="/path/to/.wal")
+    >>> if recovery.needs_recovery():
+    ...     result = recovery.recover()
+    ...     if result.success:
+    ...         graph = result.graph
+    ...         print(f"Recovered {len(graph.nodes)} nodes")
+
+    Recovery with specific preferences:
+
+    >>> result = recovery.recover(prefer_level=2)  # Try snapshot first
+    >>> print(f"Recovery level: {result.recovery_level}")
+
+    Handling recovery results:
+
+    >>> result = recovery.recover()
+    >>> if not result.success:
+    ...     print(f"Recovery failed: {result.error}")
+    ...     print(f"Tried levels: {result.levels_tried}")
     """
 
     def __init__(

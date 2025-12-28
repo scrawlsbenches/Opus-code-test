@@ -394,7 +394,7 @@ class OrchestrationPlan:
         Args:
             title: Human-readable plan title
             goal: Dict with 'summary' and 'success_criteria' keys
-            parent_task_id: Optional parent task ID from task_utils
+            parent_task_id: Optional parent task ID from GoT
 
         Returns:
             New OrchestrationPlan object

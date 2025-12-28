@@ -38,7 +38,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 # Add parent to path for cortical imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from task_utils import generate_session_id
+from cortical.utils.id_generation import generate_session_id
 from cortical.utils.text import slugify
 
 

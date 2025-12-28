@@ -43,7 +43,7 @@ python -m unittest discover -s tests -v
 
 **Files to check:**
 - Source code docstrings
-- `/home/user/Opus-code-test/tasks/` directory
+- GoT state: `python scripts/got_utils.py task list`
 - `/home/user/Opus-code-test/CLAUDE.md`
 - `/home/user/Opus-code-test/docs/PATTERNS.md`
 
@@ -63,7 +63,7 @@ python -m unittest discover -s tests -v
   - Malformed input
   - Boundary conditions
 - [ ] Limitations documented:
-  - Known issues noted in docstrings or tasks/ directory
+  - Known issues noted in docstrings or tracked in GoT
   - Performance characteristics documented
   - Unsupported use cases called out
 
@@ -77,15 +77,15 @@ python scripts/search_codebase.py "your feature keywords"
 
 This is the step that is most often skipped but is critical for maintaining project knowledge.
 
-- [ ] All discovered issues added to tasks/:
+- [ ] All discovered issues added to GoT:
   - New tasks created with clear descriptions
   - Priority assigned (critical/high/medium/low)
   - Effort estimated (small/medium/large)
-  - Dependencies noted
+  - Dependencies noted via edges
 - [ ] Task list kept current:
-  - View all tasks: `python scripts/task_utils.py list`
-  - Create new task: `python scripts/new_task.py "description"`
-  - View summary: `python scripts/consolidate_tasks.py --summary`
+  - View all tasks: `python scripts/got_utils.py task list`
+  - Create new task: `python scripts/got_utils.py task create "description"`
+  - View summary: `python scripts/got_utils.py dashboard`
 - [ ] Related tasks cross-referenced:
   - Task IDs linked where relevant
   - Dependencies noted in task descriptions
@@ -146,7 +146,7 @@ Before marking a task as DONE, answer these questions:
 - [ ] Did I create tasks for any issues found during implementation?
 - [ ] Did I create tasks for any limitations discovered?
 - [ ] Did I create tasks for related work that would improve this feature?
-- [ ] Is the task list current: `python scripts/task_utils.py list`?
+- [ ] Is the task list current: `python scripts/got_utils.py task list`?
 
 ### Completeness
 - [ ] Is the code committed with a descriptive message?
@@ -179,7 +179,7 @@ Before marking a task as DONE, answer these questions:
 
 **Problem**: Issue gets forgotten and resurfaces later without context.
 
-**Solution**: Immediately add discovered issues to tasks/ via new_task.py, even if they're out of scope.
+**Solution**: Immediately add discovered issues to GoT via `got_utils.py task create`, even if they're out of scope.
 
 ### The "Partial Commit" Trap
 **Symptom**: Committing code changes but forgetting to commit documentation updates.
@@ -215,9 +215,9 @@ Copy this checklist into your task notes or PR description:
 - [ ] Limitations documented
 
 ### Issue Tracking Complete
-- [ ] New issues added to tasks/ via new_task.py
+- [ ] New issues added to GoT via `got_utils.py task create`
 - [ ] Task metadata updated
-- [ ] Dependencies noted
+- [ ] Dependencies noted via edges
 
 ### Truly Done
 - [ ] All files committed
@@ -250,7 +250,7 @@ Copy this checklist into your task notes or PR description:
          ▼                                │
 ┌─────────────────┐                       │
 │ Issue Tracking  │───────────────────────┘
-│ Complete        │  Add to tasks/ via CLI
+│ Complete        │  Add to GoT via CLI
 └────────┬────────┘
          │
          ▼
