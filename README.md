@@ -4,7 +4,7 @@
 
 ![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
-![Tests](https://img.shields.io/badge/tests-7520%2B%20passing-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-10254%2B%20passing-brightgreen.svg)
 ![Coverage](https://img.shields.io/badge/coverage-%3E90%25-brightgreen.svg)
 ![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-orange.svg)
 
@@ -254,9 +254,42 @@ Metadata files provide:
 The system indexes its own source code:
 
 ```bash
+# Quick incremental update (only changed files)
 python scripts/index_codebase.py --incremental
+
+# Search the indexed codebase
 python scripts/search_codebase.py "PageRank algorithm"
+python scripts/search_codebase.py "how to expand queries" --verbose
 ```
+
+**Indexer options:**
+
+```bash
+# Full rebuild with semantic analysis (slower, more thorough)
+python scripts/index_codebase.py --full-analysis --foreground
+
+# Resumable batch mode (for environments with timeouts)
+python scripts/index_codebase.py --full-analysis --batch --batch-size 20
+python scripts/index_codebase.py --full-analysis --batch  # Run again to continue
+
+# Check what would change without indexing
+python scripts/index_codebase.py --status
+
+# Git-friendly chunk-based storage (for team collaboration)
+python scripts/index_codebase.py --incremental --use-chunks
+
+# Compact old chunks (like git gc)
+python scripts/index_codebase.py --compact --use-chunks
+```
+
+| Option | Purpose |
+|--------|---------|
+| `--incremental` | Only re-index changed files |
+| `--full-analysis` | Run semantic PageRank and hybrid connections |
+| `--batch` | Process in resumable batches |
+| `--use-chunks` | Store as git-friendly JSON chunks |
+| `--status` | Show changes without indexing |
+| `--compact` | Consolidate old chunk files |
 
 This creates a feedback loop: implement search → test on real code → find relevance issues → fix → test again.
 
@@ -502,7 +535,7 @@ cortical/
 │   └── pattern_matcher.py
 └── utils/               # Shared utilities
 
-tests/                   # 7,520+ tests
+tests/                   # 10,254+ tests
 ├── smoke/               # Quick sanity checks (~1s)
 ├── unit/                # Fast isolated tests
 ├── integration/         # Component interaction
