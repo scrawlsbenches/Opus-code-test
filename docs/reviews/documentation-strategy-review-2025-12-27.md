@@ -39,9 +39,9 @@ The project employs a well-designed tiered documentation system:
 │   ├── architecture.md           ← Technical deep-dive
 │   ├── glossary.md               ← Terminology reference
 │   └── [thematic docs]           ← Categorized by purpose
-├── samples/memories/ (87 files)  ← Knowledge transfer documents
+├── samples/memories/ (89 files)  ← Knowledge transfer documents
 └── .claude/
-    ├── skills/ (7 skills)        ← AI agent skill definitions
+    ├── skills/ (6 skills)        ← AI agent skill definitions
     └── commands/ (12 commands)   ← Slash command implementations
 ```
 
@@ -51,8 +51,8 @@ The project employs a well-designed tiered documentation system:
 |----------|-------|-------|
 | CLAUDE.md | 1 | 2,890 |
 | docs/*.md | 169 | ~95,000 |
-| samples/memories/*.md | 87 | ~15,700 |
-| .claude/skills | 7 | - |
+| samples/memories/*.md | 89 | ~16,000 |
+| .claude/skills | 6 | - |
 | .claude/commands | 12 | - |
 | **Total** | **276+** | **~113,000+** |
 
@@ -166,14 +166,15 @@ Documentation files use inconsistent naming:
 
 **Recommendation**: Standardize on kebab-case for all new documentation; consider renaming for consistency.
 
-### 3.3 CONTRIBUTING.md Outdated (High Priority)
+### 3.3 CONTRIBUTING.md Partially Outdated (Medium Priority)
 
-The `CONTRIBUTING.md` references:
+The `CONTRIBUTING.md` has been partially updated:
 
-- `processor.py` (singular) — now a `processor/` package
-- Single-file structure in project tree — outdated
+- ✓ Task commands now use `got_utils.py` (recently fixed)
+- ❌ Line 112 still shows `processor.py` as singular file — now a `processor/` package
+- ❌ Project structure section shows outdated single-file architecture
 
-**Recommendation**: Update to reflect current mixin-based architecture.
+**Recommendation**: Update project structure diagram to show `processor/` package with mixins.
 
 ### 3.4 Orphaned/Uncategorized Docs (Medium Priority)
 
@@ -216,7 +217,7 @@ cat cortical/processor/__init__.py.ai_meta
 
 ### 4.2 Claude Skills (Excellent)
 
-7 skills in `.claude/skills/` with YAML frontmatter:
+6 skills in `.claude/skills/` with YAML frontmatter:
 
 ```yaml
 ---
