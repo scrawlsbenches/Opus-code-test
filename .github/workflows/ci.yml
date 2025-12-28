@@ -80,6 +80,9 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Install dependencies for validation
+      run: pip install pyyaml
+
     - name: Validate GoT State
       run: |
         echo "=== Validating GoT State ==="
