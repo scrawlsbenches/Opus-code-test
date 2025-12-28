@@ -300,3 +300,43 @@ class TestNormalizeId:
         """Unknown prefix returns unchanged."""
         normalized = normalize_id("unknown:T-123")
         assert normalized == "unknown:T-123"
+
+
+class TestLegacySprintIdRejection:
+    """Tests for _require_current_sprint_id_format()."""
+
+    def test_current_format_accepted(self):
+        """Current timestamp format is accepted."""
+        from cortical.got.api import _require_current_sprint_id_format
+        # Should not raise
+        _require_current_sprint_id_format("S-20251228-093045-a1b2c3d4")
+
+    def test_legacy_short_format_rejected(self):
+        """Legacy short format (S-NNN) is rejected."""
+        from cortical.got.api import _require_current_sprint_id_format
+        import pytest
+        with pytest.raises(ValueError, match="Legacy short format"):
+            _require_current_sprint_id_format("S-025")
+
+    def test_legacy_verbose_format_rejected(self):
+        """Legacy verbose format (S-sprint-NNN-*) is rejected."""
+        from cortical.got.api import _require_current_sprint_id_format
+        import pytest
+        with pytest.raises(ValueError, match="Legacy verbose format"):
+            _require_current_sprint_id_format("S-sprint-017-spark-slm")
+
+    def test_non_sprint_ids_ignored(self):
+        """Non-sprint IDs are not validated (no error)."""
+        from cortical.got.api import _require_current_sprint_id_format
+        # These should all pass without error
+        _require_current_sprint_id_format("T-20251228-093045-a1b2c3d4")
+        _require_current_sprint_id_format("D-20251228-093045-a1b2c3d4")
+        _require_current_sprint_id_format("EPIC-nlu")
+        _require_current_sprint_id_format("E-source-target-CONTAINS")
+
+    def test_error_message_includes_guidance(self):
+        """Error message includes guidance on creating new sprints."""
+        from cortical.got.api import _require_current_sprint_id_format
+        import pytest
+        with pytest.raises(ValueError, match="got_utils.py sprint create"):
+            _require_current_sprint_id_format("S-030")

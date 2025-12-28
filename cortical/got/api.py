@@ -89,6 +89,64 @@ def _validate_sprint_id_format(sprint_id: str) -> None:
     )
 
 
+def _require_current_sprint_id_format(entity_id: str) -> None:
+    """
+    Validate that sprint IDs use the current generated format.
+
+    This is a STRICT validation that REJECTS legacy formats when creating
+    new edges to sprints. Legacy sprints can still be read, but new
+    relationships should only link to current-format sprint IDs.
+
+    Args:
+        entity_id: Entity ID to validate (only checked if starts with 'S-')
+
+    Raises:
+        ValueError: If entity_id is a legacy-format sprint ID
+
+    Note:
+        This prevents accidentally linking tasks to legacy sprint IDs
+        (S-NNN or S-sprint-NNN-slug) which should not receive new edges.
+        Use generate_sprint_id() to create new sprints with merge-safe IDs.
+    """
+    import re
+
+    # Only validate sprint IDs
+    if not entity_id.startswith('S-'):
+        return
+
+    # Current format: S-YYYYMMDD-HHMMSS-hash
+    generated_pattern = r'^S-\d{8}-\d{6}-[a-f0-9]{8}$'
+
+    if re.match(generated_pattern, entity_id):
+        return  # Valid current format
+
+    # Reject legacy formats
+    legacy_verbose_pattern = r'^S-sprint-\d+(-[\w-]+)?$'
+    legacy_short_pattern = r'^S-\d+$'
+
+    if re.match(legacy_verbose_pattern, entity_id):
+        raise ValueError(
+            f"Cannot link to legacy sprint ID '{entity_id}'. "
+            f"Legacy verbose format (S-sprint-NNN-*) is deprecated for new edges. "
+            f"Create a new sprint with 'got_utils.py sprint create' to get a "
+            f"merge-safe ID (S-YYYYMMDD-HHMMSS-hash)."
+        )
+
+    if re.match(legacy_short_pattern, entity_id):
+        raise ValueError(
+            f"Cannot link to legacy sprint ID '{entity_id}'. "
+            f"Legacy short format (S-NNN) is deprecated for new edges. "
+            f"Create a new sprint with 'got_utils.py sprint create' to get a "
+            f"merge-safe ID (S-YYYYMMDD-HHMMSS-hash)."
+        )
+
+    # Unknown format - also reject
+    raise ValueError(
+        f"Invalid sprint ID format '{entity_id}'. "
+        f"Expected format: S-YYYYMMDD-HHMMSS-hash (e.g., S-20251228-093045-a1b2c3d4)"
+    )
+
+
 class GoTManager:
     """
     High-level API for Graph of Thought operations.
@@ -655,7 +713,12 @@ class GoTManager:
         Raises:
             TransactionError: If commit fails
             ValueError: If validate_refs=True and source/target doesn't exist
+            ValueError: If source/target is a legacy-format sprint ID
         """
+        # Validate sprint IDs use current format (reject legacy S-NNN, S-sprint-*)
+        _require_current_sprint_id_format(source_id)
+        _require_current_sprint_id_format(target_id)
+
         # Optional FK validation
         if validate_refs:
             if not self.tx_manager.store.exists(source_id):
@@ -2158,7 +2221,14 @@ class TransactionContext:
 
         Returns:
             Created Edge object
+
+        Raises:
+            ValueError: If source/target is a legacy-format sprint ID
         """
+        # Validate sprint IDs use current format (reject legacy S-NNN, S-sprint-*)
+        _require_current_sprint_id_format(source_id)
+        _require_current_sprint_id_format(target_id)
+
         edge = Edge(
             id="",  # Auto-generated in __post_init__
             source_id=source_id,
