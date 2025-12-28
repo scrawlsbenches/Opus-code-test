@@ -1,0 +1,15 @@
+{
+  "_checksum": "bdb10b4903a12a52",
+  "_written_at": "2025-12-28T06:04:04.560036+00:00",
+  "data": {
+    "affects": [],
+    "created_at": "2025-12-28T06:04:04.556656+00:00",
+    "entity_type": "decision",
+    "id": "D-20251228-060404-3d5936f7",
+    "modified_at": "2025-12-28T06:04:04.559973+00:00",
+    "properties": {},
+    "rationale": "Added _prompt_task_linkage() function that shows recent in-progress tasks after decision creation. Users can select by number (1-5), enter task ID directly, or press Enter to skip. Creates JUSTIFIES edge automatically. Handles edge cases: no tasks, invalid input, EOFError, KeyboardInterrupt. Includes 10 comprehensive unit tests.",
+    "title": "Implemented interactive task linkage prompt for decisions",
+    "version": 2
+  }
+}
