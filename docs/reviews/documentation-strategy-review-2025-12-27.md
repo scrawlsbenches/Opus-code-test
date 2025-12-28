@@ -166,15 +166,15 @@ Documentation files use inconsistent naming:
 
 **Recommendation**: Standardize on kebab-case for all new documentation; consider renaming for consistency.
 
-### 3.3 CONTRIBUTING.md Partially Outdated (Medium Priority)
+### 3.3 CONTRIBUTING.md ~~Partially Outdated~~ FIXED
 
-The `CONTRIBUTING.md` has been partially updated:
+The `CONTRIBUTING.md` has been updated:
 
-- ✓ Task commands now use `got_utils.py` (recently fixed)
-- ❌ Line 112 still shows `processor.py` as singular file — now a `processor/` package
-- ❌ Project structure section shows outdated single-file architecture
+- ✓ Task commands now use `got_utils.py`
+- ✓ Project structure now shows `processor/`, `query/`, `analysis/` packages
+- ✓ Added `got/` and `reasoning/` packages
 
-**Recommendation**: Update project structure diagram to show `processor/` package with mixins.
+**Status**: Fixed in this review session.
 
 ### 3.4 Orphaned/Uncategorized Docs (Medium Priority)
 
@@ -186,14 +186,11 @@ Many docs in `docs/` aren't referenced in `docs/README.md`:
 
 **Recommendation**: Either archive or add to README categories.
 
-### 3.5 quickstart.md References Deprecated Format (Low Priority)
+### 3.5 quickstart.md ~~References Deprecated Format~~ FIXED
 
-```python
-# Save the processed corpus
-processor.save("my_corpus.pkl")  # Uses deprecated pickle
-```
+Now uses JSON format with deprecation note for pickle.
 
-Should reference JSON format as the default.
+**Status**: Fixed in this review session.
 
 ### 3.6 Missing API Reference (Medium Priority)
 

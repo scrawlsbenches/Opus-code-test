@@ -139,12 +139,14 @@ Perfect for feeding context to LLMs in RAG systems.
 ## Saving and Loading
 
 ```python
-# Save the processed corpus
-processor.save("my_corpus.pkl")
+# Save the processed corpus (JSON format, recommended)
+processor.save("my_corpus")
 
 # Load it later (instant startup, no reprocessing)
-processor = CorticalTextProcessor.load("my_corpus.pkl")
+processor = CorticalTextProcessor.load("my_corpus")
 ```
+
+> **Note:** JSON is the default and recommended format. Pickle (`.pkl`) is deprecated due to security concerns.
 
 ## Next Steps
 

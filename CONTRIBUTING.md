@@ -109,22 +109,37 @@ def find_documents(
 
 ```
 cortical/
-├── processor.py      # Main API - CorticalTextProcessor class
-├── analysis.py       # Graph algorithms (PageRank, TF-IDF, clustering)
-├── query.py          # Search, retrieval, query expansion
-├── semantics.py      # Relation extraction, inheritance
-├── minicolumn.py     # Core data structures (Minicolumn, Edge)
-├── layers.py         # HierarchicalLayer with O(1) lookups
-├── embeddings.py     # Graph embeddings
-├── gaps.py           # Knowledge gap detection
-├── persistence.py    # Save/load functionality
-├── tokenizer.py      # Text tokenization
-└── config.py         # Configuration dataclass
+├── processor/           # Main API package (mixin-based composition)
+│   ├── __init__.py      # CorticalTextProcessor class
+│   ├── core.py          # Initialization, staleness tracking
+│   ├── documents.py     # Document add/remove/batch
+│   ├── compute.py       # PageRank, TF-IDF, clustering
+│   ├── query_api.py     # Search, expansion, retrieval
+│   ├── introspection.py # State inspection, summaries
+│   └── persistence_api.py # Save/load/export
+├── query/               # Search & retrieval package
+│   ├── expansion.py     # Query expansion
+│   ├── search.py        # Document search
+│   ├── passages.py      # RAG passage retrieval
+│   └── [6 more modules]
+├── analysis/            # Graph algorithms package
+│   ├── pagerank.py      # PageRank importance
+│   ├── tfidf.py         # TF-IDF weighting
+│   ├── clustering.py    # Louvain clustering
+│   └── [5 more modules]
+├── got/                 # Graph of Thought task tracking
+├── reasoning/           # Cognitive architecture (Woven Mind)
+├── minicolumn.py        # Core data structures
+├── layers.py            # HierarchicalLayer with O(1) lookups
+├── semantics.py         # Relation extraction
+├── persistence.py       # Save/load functionality
+├── tokenizer.py         # Text tokenization
+└── config.py            # Configuration dataclass
 
-tests/                # Unit tests (run with unittest)
-samples/              # Example documents for testing
-docs/                 # Extended documentation
-scripts/              # Utility scripts
+tests/                   # Unit, integration, smoke, performance tests
+samples/                 # Example documents and memories
+docs/                    # Extended documentation
+scripts/                 # Developer tools
 ```
 
 ## Making Changes
