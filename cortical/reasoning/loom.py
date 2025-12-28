@@ -38,6 +38,7 @@ See Also:
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass, field
@@ -59,6 +60,10 @@ from typing import (
 if TYPE_CHECKING:
     from .prism_attention import UnifiedAttention
     from .prism_got import SynapticMemoryGraph
+
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 
 # ==============================================================================
@@ -691,7 +696,7 @@ class ModeController:
                 observer.on_transition(transition)
             except Exception:
                 # Don't let observer errors break the controller
-                pass
+                logger.exception("Observer error in ModeController.record_transition")
 
     def get_transition_history(self) -> List[ModeTransition]:
         """
@@ -814,7 +819,7 @@ class Loom(LoomInterface):
                 try:
                     observer.on_surprise(signal)
                 except Exception:
-                    pass
+                    logger.exception("Observer error in Loom.detect_surprise")
 
         return signal
 
@@ -846,7 +851,7 @@ class Loom(LoomInterface):
                 try:
                     observer.on_mode_selected(mode, reason)
                 except Exception:
-                    pass
+                    logger.exception("Observer error in Loom.select_mode")
 
         return mode
 

@@ -1,0 +1,23 @@
+{
+  "_checksum": "2eb59fe94d5ff1e9",
+  "_written_at": "2025-12-27T22:56:56.954888+00:00",
+  "data": {
+    "created_at": "2025-12-27T21:28:34.222266+00:00",
+    "description": "ADD BATCH TASK IMPORT FROM YAML/JSON\n\nFILE: scripts/got_utils.py (add cmd_task_import function)\nFILE: cortical/got/api.py (add import_tasks method if needed)\n\nIMPLEMENTATION:\n1. Add argparse subcommand: task import FILE [--sprint SPRINT_ID]\n2. Support YAML and JSON formats\n3. Each task entry has: title, priority, category, description (optional)\n4. Validate entries before creating\n5. Report created task IDs\n\nYAML FORMAT EXAMPLE:\n```yaml\ntasks:\n  - title: \"Task one\"\n    priority: high\n    category: feature\n  - title: \"Task two\"\n    priority: medium\n```\n\nACCEPTANCE CRITERIA:\n- python scripts/got_utils.py task import tasks.yaml works\n- Validates required fields (title, priority)\n- Returns list of created task IDs\n- Test with: echo '{\"tasks\":[{\"title\":\"Test\",\"priority\":\"low\",\"category\":\"test\"}]}' > /tmp/test.json\n\nGUARDRAILS - DO NOT:\n- Modify existing task commands\n- Break existing CLI structure\n- Add external dependencies\n\nVERIFY: python scripts/got_utils.py task import --help",
+    "entity_type": "task",
+    "id": "T-20251227-212834-30a20208",
+    "metadata": {
+      "completed_at": "2025-12-27T22:56:56.947966+00:00",
+      "updated_at": "2025-12-27T22:56:56.947974+00:00"
+    },
+    "modified_at": "2025-12-27T22:56:56.954797+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature",
+      "retrospective": "Added task import command with YAML/JSON support. Tested with both formats."
+    },
+    "status": "completed",
+    "title": "Add batch task import from YAML/JSON file",
+    "version": 6
+  }
+}

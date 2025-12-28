@@ -270,7 +270,7 @@ class LoomHiveConnector:
 
                 # Spread to connected nodes by checking all contexts containing this node
                 # Use the graph's spreading activation if available, or manual lookup
-                for context, transitions in self.model.graph._transitions.items():
+                for context, transitions in self.model.graph.iter_all_transitions():
                     if node in context:
                         total_weight = sum(t.weight for t in transitions)
                         for transition in transitions:
@@ -306,7 +306,7 @@ class LoomHiveConnector:
             return self._hive_nodes[token_lower]
 
         # Check if token is in vocabulary - if so, create lazily
-        if token_lower in self.model.graph._vocab:
+        if self.model.graph.contains_token(token_lower):
             self._hive_nodes[token_lower] = HiveNode(id=token_lower)
             return self._hive_nodes[token_lower]
 

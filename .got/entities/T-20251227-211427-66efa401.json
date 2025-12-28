@@ -1,0 +1,23 @@
+{
+  "_checksum": "819df8f1c5d96330",
+  "_written_at": "2025-12-27T22:14:07.131786+00:00",
+  "data": {
+    "created_at": "2025-12-27T21:14:27.778622+00:00",
+    "description": "CREATE SECURITY.md DOCUMENTATION\n\nFILE: SECURITY.md (new file in repo root)\nSECTIONS: Security Policy, Supported Versions, Platform Support, Security Design\n\nACCEPTANCE CRITERIA:\n- SECURITY.md exists in repo root\n- Covers: zero deps, JSON-first, atomic writes, fcntl locking\n- README.md links to SECURITY.md\n\nGUARDRAILS - DO NOT:\n- Include specific vulnerability details\n- Make promises about response times\n- Modify CLAUDE.md\n\nVERIFY: test -f SECURITY.md && grep -q \"Security Policy\" SECURITY.md",
+    "entity_type": "task",
+    "id": "T-20251227-211427-66efa401",
+    "metadata": {
+      "completed_at": "2025-12-27T22:14:07.125135+00:00",
+      "updated_at": "2025-12-27T22:14:07.125146+00:00"
+    },
+    "modified_at": "2025-12-27T22:14:07.131724+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "docs",
+      "retrospective": "Created 142-line SECURITY.md with all required sections."
+    },
+    "status": "completed",
+    "title": "Create SECURITY.md documentation",
+    "version": 8
+  }
+}
