@@ -1,0 +1,19 @@
+{
+  "_checksum": "a0228faf4875b93a",
+  "_written_at": "2025-12-29T18:41:48.735161+00:00",
+  "data": {
+    "created_at": "2025-12-29T18:41:48.732099+00:00",
+    "description": "## Goal\nDefine merge strategies for combining forked minds.\n\n## Interface Contract\n```python\nclass MergeStrategy(Enum):\n    UNION = 'union'           # Keep all experiences\n    INTERSECTION = 'inter'    # Keep only shared conclusions\n    DIFF = 'diff'             # Highlight divergent reasoning\n    WEIGHTED = 'weighted'     # Weight by confidence\n\n@dataclass\nclass MergeResult:\n    merged_nodes: Set[str]\n    conflicts: List[MergeConflict]\n    divergence_points: List[str]\n    confidence: float\n```\n\n## Location\nNew file: cortical/reasoning/forking.py\n\n## Test Requirements\n- test_merge_strategy_enum()\n- test_merge_result_tracks_conflicts()",
+    "entity_type": "task",
+    "id": "T-20251229-184148-b1fe0bf4",
+    "metadata": {},
+    "modified_at": "2025-12-29T18:41:48.735097+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add MergeStrategy enum and MergeResult dataclass",
+    "version": 2
+  }
+}
