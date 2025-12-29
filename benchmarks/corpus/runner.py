@@ -48,6 +48,8 @@ from benchmarks.corpus.base import (
     CorpusBenchmark,
     CorpusBenchmarkCategory,
     CorpusCache,
+    SyntheticCorpusConfig,
+    SyntheticCorpusGenerator,
 )
 
 
@@ -88,23 +90,398 @@ def register_benchmark(cls: Type[CorpusBenchmark]) -> Type[CorpusBenchmark]:
 
 
 # =============================================================================
-# PLACEHOLDER BENCHMARKS (to be replaced with real implementations)
+# INDEXING BENCHMARKS
 # =============================================================================
+
+import time
+import statistics
+
+from cortical.processor import CorticalTextProcessor
+
 
 @register_benchmark
 class IndexingThroughputBenchmark(CorpusBenchmark):
-    """Placeholder for indexing throughput benchmark."""
+    """
+    Measure document indexing throughput (docs/sec) at various corpus sizes.
+
+    Tests process_document() performance across different corpus scales.
+    """
 
     name = "indexing_throughput"
     description = "Measure document indexing throughput (docs/sec)"
     corpus_category = CorpusBenchmarkCategory.INDEXING
 
+    # Test sizes for full and quick modes
+    FULL_SIZES = [50, 100, 500, 1000]
+    QUICK_SIZES = [25, 50, 100]
+
     def run(self) -> BenchmarkResult:
         result = self.create_result()
-        # Note: Real implementation will measure actual throughput
-        # For now, skip without adding metrics that have thresholds
-        result.status = BenchmarkStatus.SKIPPED
-        result.error_message = "Placeholder - run T-20251229-101547-acbfaa78 to implement"
+
+        # Determine which sizes to test
+        is_quick = self.config.get("quick", False)
+        sizes = self.QUICK_SIZES if is_quick else self.FULL_SIZES
+
+        # Generate synthetic documents for testing
+        generator = SyntheticCorpusGenerator(SyntheticCorpusConfig(
+            n_docs=max(sizes),
+            doc_length=self._corpus_config.doc_length,
+            vocab_size=self._corpus_config.vocab_size,
+            seed=42,  # Reproducible
+        ))
+        all_docs = generator.generate()
+        doc_items = list(all_docs.items())
+
+        for size in sizes:
+            # Create fresh processor for each size
+            processor = CorticalTextProcessor()
+
+            # Measure indexing time
+            start = time.perf_counter()
+            for i in range(size):
+                doc_id, text = doc_items[i]
+                processor.process_document(doc_id, text)
+            elapsed = time.perf_counter() - start
+
+            docs_per_sec = size / elapsed if elapsed > 0 else float('inf')
+
+            result.add_metric(
+                name=f"throughput_{size}_docs",
+                value=docs_per_sec,
+                unit="docs/sec",
+                threshold_min=10.0,  # At least 10 docs/sec
+            )
+
+            result.metadata[f"time_{size}_docs_ms"] = elapsed * 1000
+
+        return result
+
+
+@register_benchmark
+class IncrementalIndexingBenchmark(CorpusBenchmark):
+    """
+    Compare add_document_incremental() vs full recompute.
+
+    Measures the speedup factor when adding documents incrementally
+    versus reprocessing the entire corpus.
+    """
+
+    name = "incremental_indexing"
+    description = "Compare incremental vs full indexing performance"
+    corpus_category = CorpusBenchmarkCategory.INDEXING
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        # Get base corpus
+        is_quick = self.config.get("quick", False)
+        base_size = 25 if is_quick else 100
+        add_count = 5 if is_quick else 20
+
+        # Generate documents
+        generator = SyntheticCorpusGenerator(SyntheticCorpusConfig(
+            n_docs=base_size + add_count,
+            doc_length=self._corpus_config.doc_length,
+            vocab_size=self._corpus_config.vocab_size,
+            seed=42,
+        ))
+        all_docs = generator.generate()
+        doc_items = list(all_docs.items())
+
+        base_docs = doc_items[:base_size]
+        new_docs = doc_items[base_size:base_size + add_count]
+
+        # Method 1: Full recompute after each add
+        processor_full = CorticalTextProcessor()
+        for doc_id, text in base_docs:
+            processor_full.process_document(doc_id, text)
+        processor_full.compute_all()
+
+        full_times = []
+        for doc_id, text in new_docs:
+            start = time.perf_counter()
+            processor_full.process_document(doc_id, text)
+            processor_full.compute_all()
+            elapsed = time.perf_counter() - start
+            full_times.append(elapsed * 1000)  # ms
+
+        # Method 2: Incremental add
+        processor_incr = CorticalTextProcessor()
+        for doc_id, text in base_docs:
+            processor_incr.process_document(doc_id, text)
+        processor_incr.compute_all()
+
+        incr_times = []
+        for doc_id, text in new_docs:
+            start = time.perf_counter()
+            processor_incr.add_document_incremental(doc_id, text)
+            elapsed = time.perf_counter() - start
+            incr_times.append(elapsed * 1000)  # ms
+
+        # Calculate metrics
+        avg_full = statistics.mean(full_times) if full_times else 0
+        avg_incr = statistics.mean(incr_times) if incr_times else 0
+        speedup = avg_full / avg_incr if avg_incr > 0 else float('inf')
+
+        result.add_metric(
+            name="avg_full_recompute_ms",
+            value=avg_full,
+            unit="ms",
+        )
+        result.add_metric(
+            name="avg_incremental_ms",
+            value=avg_incr,
+            unit="ms",
+        )
+        result.add_metric(
+            name="speedup_factor",
+            value=speedup,
+            unit="x",
+            threshold_min=1.5,  # Incremental should be at least 1.5x faster
+        )
+
+        result.metadata.update({
+            "base_corpus_size": base_size,
+            "documents_added": add_count,
+            "full_times_ms": full_times,
+            "incr_times_ms": incr_times,
+        })
+
+        return result
+
+
+@register_benchmark
+class ComputeAllBenchmark(CorpusBenchmark):
+    """
+    Measure compute_all() phase-by-phase timing.
+
+    Reports time for each major phase:
+    - TF-IDF computation
+    - PageRank computation
+    - Clustering (Louvain)
+    - Bigram connections
+    - Semantics extraction
+    """
+
+    name = "compute_all_phases"
+    description = "Measure compute_all() phase timing breakdown"
+    corpus_category = CorpusBenchmarkCategory.ANALYSIS
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        # Create a fresh processor with corpus
+        generator = SyntheticCorpusGenerator(self._corpus_config)
+        corpus = generator.generate()
+
+        processor = CorticalTextProcessor()
+        for doc_id, text in corpus.items():
+            processor.process_document(doc_id, text)
+
+        # Time each phase individually
+        phases = {
+            "tfidf": lambda: processor.compute_tfidf(),
+            "pagerank": lambda: processor.compute_importance(),
+            "bigram_connections": lambda: processor.compute_bigram_connections(),
+            "concepts": lambda: processor.build_concept_clusters(),
+        }
+
+        total_time = 0
+        phase_times = {}
+
+        for phase_name, phase_func in phases.items():
+            start = time.perf_counter()
+            try:
+                phase_func()
+            except Exception as e:
+                result.metadata[f"{phase_name}_error"] = str(e)
+                continue
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            phase_times[phase_name] = elapsed_ms
+            total_time += elapsed_ms
+
+            result.add_metric(
+                name=f"{phase_name}_ms",
+                value=elapsed_ms,
+                unit="ms",
+            )
+
+        # Time semantics extraction (more expensive, optional)
+        start = time.perf_counter()
+        try:
+            processor.extract_corpus_semantics()
+            semantics_time = (time.perf_counter() - start) * 1000
+            phase_times["semantics"] = semantics_time
+            total_time += semantics_time
+
+            result.add_metric(
+                name="semantics_ms",
+                value=semantics_time,
+                unit="ms",
+            )
+        except Exception as e:
+            result.metadata["semantics_error"] = str(e)
+
+        # Add total and breakdown percentages
+        result.add_metric(
+            name="total_compute_ms",
+            value=total_time,
+            unit="ms",
+        )
+
+        result.metadata.update({
+            "corpus_size": self._corpus_config.n_docs,
+            "phase_times_ms": phase_times,
+            "phase_percentages": {
+                k: (v / total_time * 100) if total_time > 0 else 0
+                for k, v in phase_times.items()
+            },
+        })
+
+        return result
+
+
+@register_benchmark
+class BatchIndexingBenchmark(CorpusBenchmark):
+    """
+    Measure add_documents_batch() performance.
+
+    Compares batch insertion vs sequential process_document() calls.
+    """
+
+    name = "batch_indexing"
+    description = "Measure batch vs sequential document indexing"
+    corpus_category = CorpusBenchmarkCategory.INDEXING
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        is_quick = self.config.get("quick", False)
+        batch_size = 25 if is_quick else 100
+
+        # Generate documents
+        generator = SyntheticCorpusGenerator(SyntheticCorpusConfig(
+            n_docs=batch_size,
+            doc_length=self._corpus_config.doc_length,
+            vocab_size=self._corpus_config.vocab_size,
+            seed=42,
+        ))
+        corpus = generator.generate()
+        doc_items = list(corpus.items())
+
+        # Convert to batch format: List[Tuple[str, str, Optional[Dict]]]
+        batch_docs = [(doc_id, text, None) for doc_id, text in doc_items]
+
+        # Method 1: Sequential processing
+        processor_seq = CorticalTextProcessor()
+        start = time.perf_counter()
+        for doc_id, text in doc_items:
+            processor_seq.process_document(doc_id, text)
+        sequential_time = (time.perf_counter() - start) * 1000
+
+        # Method 2: Batch processing
+        processor_batch = CorticalTextProcessor()
+        start = time.perf_counter()
+        processor_batch.add_documents_batch(batch_docs, recompute='none', verbose=False)
+        batch_time = (time.perf_counter() - start) * 1000
+
+        speedup = sequential_time / batch_time if batch_time > 0 else float('inf')
+
+        result.add_metric(
+            name="sequential_ms",
+            value=sequential_time,
+            unit="ms",
+        )
+        result.add_metric(
+            name="batch_ms",
+            value=batch_time,
+            unit="ms",
+        )
+        # Note: batch API has overhead that makes it slower for small batches.
+        # This is informational - no threshold. For large batches, measure separately.
+        result.add_metric(
+            name="batch_speedup",
+            value=speedup,
+            unit="x",
+            # No threshold - this is informational. Batch overhead makes it
+            # slower for small batches but may be faster for very large batches.
+        )
+
+        result.metadata.update({
+            "batch_size": batch_size,
+            "sequential_docs_per_sec": batch_size / (sequential_time / 1000) if sequential_time > 0 else 0,
+            "batch_docs_per_sec": batch_size / (batch_time / 1000) if batch_time > 0 else 0,
+        })
+
+        return result
+
+
+@register_benchmark
+class LargeDocumentBenchmark(CorpusBenchmark):
+    """
+    Measure indexing performance for large documents.
+
+    Tests with documents of various sizes: 10KB, 100KB, 1MB equivalent.
+    """
+
+    name = "large_document_indexing"
+    description = "Measure indexing performance for large documents"
+    corpus_category = CorpusBenchmarkCategory.INDEXING
+
+    # Approximate word counts for target sizes (assuming ~5 chars/word + space)
+    SIZE_CONFIGS = {
+        "10KB": 1700,    # ~10,000 chars / 6 ≈ 1700 words
+        "100KB": 17000,  # ~100,000 chars / 6 ≈ 17000 words
+        "1MB": 170000,   # ~1,000,000 chars / 6 ≈ 170000 words (quick mode skips)
+    }
+
+    QUICK_SIZE_CONFIGS = {
+        "10KB": 1700,
+        "50KB": 8500,
+    }
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        is_quick = self.config.get("quick", False)
+        size_configs = self.QUICK_SIZE_CONFIGS if is_quick else self.SIZE_CONFIGS
+
+        for size_name, word_count in size_configs.items():
+            # Generate a large document
+            generator = SyntheticCorpusGenerator(SyntheticCorpusConfig(
+                n_docs=1,
+                doc_length=word_count,
+                vocab_size=5000,  # Larger vocab for big docs
+                seed=42,
+            ))
+            corpus = generator.generate()
+            doc_text = list(corpus.values())[0]
+
+            # Time indexing
+            processor = CorticalTextProcessor()
+            start = time.perf_counter()
+            processor.process_document(f"large_doc_{size_name}", doc_text)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+
+            # Calculate throughput in KB/sec
+            actual_size_kb = len(doc_text) / 1024
+            kb_per_sec = actual_size_kb / (elapsed_ms / 1000) if elapsed_ms > 0 else 0
+
+            result.add_metric(
+                name=f"time_{size_name.lower()}_ms",
+                value=elapsed_ms,
+                unit="ms",
+            )
+            result.add_metric(
+                name=f"throughput_{size_name.lower()}_kbps",
+                value=kb_per_sec,
+                unit="KB/sec",
+                threshold_min=100.0,  # At least 100 KB/sec
+            )
+
+            result.metadata[f"actual_size_{size_name.lower()}_kb"] = actual_size_kb
+            result.metadata[f"word_count_{size_name.lower()}"] = word_count
+
         return result
 
 
