@@ -1,0 +1,19 @@
+{
+  "_checksum": "24a23c3dc4d55b99",
+  "_written_at": "2025-12-29T00:52:23.492131+00:00",
+  "data": {
+    "created_at": "2025-12-29T00:52:23.489543+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251229-005223-23292521",
+    "metadata": {},
+    "modified_at": "2025-12-29T00:52:23.492097+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Continue CEL-GoT bridge testing and coverage improvement",
+    "version": 2
+  }
+}
