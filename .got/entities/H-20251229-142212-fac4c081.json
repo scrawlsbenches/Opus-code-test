@@ -1,0 +1,29 @@
+{
+  "_checksum": "3c806e236ed38069",
+  "_written_at": "2025-12-29T14:22:12.036673+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "medium",
+      "task_status": "pending",
+      "task_title": "Profile bigram_connections bottleneck (~65% of compute_all)"
+    },
+    "created_at": "2025-12-29T14:22:12.031205+00:00",
+    "entity_type": "handoff",
+    "id": "H-20251229-142212-fac4c081",
+    "initiated_at": "2025-12-29T14:22:12.031216+00:00",
+    "instructions": "## Context\nCorpus benchmarks implementation is complete. All 22 benchmarks pass.\n\n## Completed Work\n1. Implemented all 22 corpus benchmarks across 7 categories\n2. Added --use-corpus flag for real corpus benchmarking\n3. Knowledge transfer saved to samples/memories/2025-12-29-session-knowledge-transfer-corpus-benchmarks.md\n\n## Pending Task\nT-20251229-131355-f4b7e3a7 - Profile bigram_connections bottleneck\n\n## Issues Identified (Optional Follow-ups)\n1. fast_find_documents() is 7x slower on large corpus - optimization opportunity\n2. Batch APIs slower than sequential for small batches\n\n## Verification\n```bash\npython -m benchmarks.corpus.runner --all --quick\npython -m benchmarks.corpus.runner --category code_search --quick --use-corpus corpus_dev.json\n```\n\n## Branch\nclaude/got-handoff-acceptance-z49tf - clean, all pushed",
+    "modified_at": "2025-12-29T14:22:12.036624+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "initiated",
+    "target_agent": "next-agent",
+    "task_id": "T-20251229-131355-f4b7e3a7",
+    "version": 2
+  }
+}
