@@ -1,0 +1,39 @@
+{
+  "_checksum": "3e151b98347e1757",
+  "_written_at": "2025-12-29T01:10:35.167465+00:00",
+  "data": {
+    "accepted_at": "2025-12-29T01:00:15.807356+00:00",
+    "artifacts": [],
+    "completed_at": "2025-12-29T01:10:35.162749+00:00",
+    "context": {
+      "task_priority": "high",
+      "task_status": "pending",
+      "task_title": "Continue CEL-GoT bridge testing and coverage improvement"
+    },
+    "created_at": "2025-12-29T00:52:46.836551+00:00",
+    "entity_type": "handoff",
+    "id": "H-20251229-005246-d62b0af7",
+    "initiated_at": "2025-12-29T00:52:46.836567+00:00",
+    "instructions": "# HANDOFF: CEL-GoT Bridge Integration\n\n## WHERE WE ARE\nYou're picking up a CEL (Cognitive Event Lattice) testing and integration session.\nBranch: claude/optimize-got-storage-89KVM\n\n## WHAT WAS ACCOMPLISHED\n1. CEL test coverage: 16% \u2192 41%\n2. Created 155+ tests (behavioral, unit, integration)\n3. Verified real GoT data flows through CEL (218 tasks, 26 decisions)\n4. Full roundtrip working: GoT JSON \u2192 CEL Events \u2192 MerkleDAG \u2192 Query\n\n## THE DIRECTION\nWe're building toward replacing GoT's mutable entity model with CEL's \nimmutable event-sourced model. Current phase: VALIDATION (read-only testing).\n\nNext phase: Test the actual adapter code and materializer.\n\n## VALIDATION STEPS (DO THESE FIRST)\n1. python scripts/got_utils.py validate\n2. python -m pytest tests/integration/test_got_cel_bridge.py -v\n3. Read: samples/memories/2025-12-29-session-knowledge-transfer-cel-got-bridge.md\n\n## PRIORITY NEXT STEPS\n1. Test adapters/got.py with real GoT types (0% coverage)\n2. Test wisdom/materializer.py (21% coverage) \n3. Add causal chain tests (link events via edges)\n4. Test bidirectional sync (write CEL back to GoT)\n\n## KEY FILES\n- tests/integration/test_got_cel_bridge.py (real data tests)\n- tests/behavioral/test_cel_wisdom.py (62 user story tests)\n- cortical/cel/adapters/got.py (bridge code, untested)\n- cortical/cel/wisdom/materializer.py (state reconstruction)\n\n## GOTCHAS\n- BloomFilter uses .contains() not .may_contain()\n- MerkleDAG.ancestors() yields events, doesn't return list\n- Intention takes title= as first arg, not content=\n- GoT JSON has wrapper: {\"_checksum\": ..., \"data\": {...}}",
+    "modified_at": "2025-12-29T01:10:35.167410+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {
+      "adapters_got_coverage": 90,
+      "commits": [
+        "a9bd4504"
+      ],
+      "coverage_after": 54,
+      "coverage_before": 43,
+      "materializer_coverage": 89,
+      "success": true,
+      "tests_added": 107
+    },
+    "source_agent": "main",
+    "status": "completed",
+    "target_agent": "next-session-agent",
+    "task_id": "T-20251229-005223-23292521",
+    "version": 6
+  }
+}
