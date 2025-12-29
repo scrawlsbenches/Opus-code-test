@@ -208,20 +208,11 @@ def fast_find_documents(
                     for doc_id in col.document_ids:
                         candidate_docs[doc_id] += 0.5  # Lower weight for expansion
 
-    # Add documents whose names match query terms to candidates
-    # This ensures exact name matches are considered even if content doesn't match
-    if doc_name_boost > 1.0:
-        layer3 = layers.get(CorticalLayer.DOCUMENTS)
-        if layer3:
-            for doc_col in layer3.minicolumns.values():
-                doc_id = doc_col.content
-                doc_name_tokens = set(tokenizer.tokenize(doc_id.replace('_', ' ')))
-                matches = len(query_tokens & doc_name_tokens)
-                if matches > 0:
-                    # Ensure name-matching docs are in candidates
-                    # High initial score to prioritize them
-                    if doc_id not in candidate_docs:
-                        candidate_docs[doc_id] = matches * 2
+    # Note: Document name matching is handled by _apply_document_name_boost()
+    # after candidate scoring. We removed the O(n) pre-scan here because it
+    # negated the performance benefit of candidate filtering on large corpora.
+    # Documents with content matches get name boosts; pure name-only matches
+    # are not included in fast search (use standard search for those).
 
     if not candidate_docs:
         return []
@@ -255,7 +246,8 @@ def fast_find_documents(
         doc_scores[doc_id] = score
 
     # Apply document name boost after all scores calculated
-    _apply_document_name_boost(doc_scores, query_tokens, tokenizer, doc_name_boost)
+    layer3 = layers.get(CorticalLayer.DOCUMENTS)
+    _apply_document_name_boost(doc_scores, query_tokens, tokenizer, doc_name_boost, layer3)
 
     # Return top results
     sorted_docs = sorted(doc_scores.items(), key=lambda x: x[1], reverse=True)

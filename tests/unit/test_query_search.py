@@ -584,12 +584,17 @@ class TestFastFindDocuments:
         # high_score_doc should win on TF-IDF alone
         assert result[0][0] == "high_score_doc"
 
-    def test_exact_name_match_added_to_candidates(self):
+    def test_name_only_match_not_included_for_performance(self):
         """
-        Task #181: Exact name matches included in candidates even without content.
+        Performance optimization: fast_find_documents skips pure name-only matches.
 
-        Bug: fast_find_documents excluded docs whose name matched but content didn't.
-        Fix: Add name-matching docs to candidate set.
+        Previously (Task #181), we added O(n) scan to include docs whose name
+        matched even without content match. This caused 7x slowdown on large
+        corpora (see baseline-real-corpus.json: fast_speedup=0.139x).
+
+        Trade-off: fast_find_documents now requires content matches. Documents
+        with ONLY name matches are not included. Use find_documents_for_query
+        for comprehensive search including name-only matches.
         """
         # Create doc that has exact name match but no matching content
         layers = (
@@ -617,9 +622,11 @@ class TestFastFindDocuments:
             "distributed systems", layers, tokenizer, doc_name_boost=2.0
         )
 
-        # distributed_systems should be in results despite not having content match
+        # Name-only match is NOT included (intentional for performance)
         doc_ids = [doc_id for doc_id, _ in result]
-        assert "distributed_systems" in doc_ids
+        assert "distributed_systems" not in doc_ids
+        # Empty result is expected when query terms have no content matches
+        assert result == []
 
 
 # =============================================================================
