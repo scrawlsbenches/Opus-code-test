@@ -701,3 +701,186 @@ class TestHeapTopologicalSort:
         # A should come before B (earlier timestamp)
         assert result[1].content['name'] == 'A'
         assert result[2].content['name'] == 'B'
+
+
+# =============================================================================
+# STREAMING STORE TESTS
+# =============================================================================
+
+class TestStreamingEventStore:
+    """Tests for StreamingEventStore."""
+
+    @pytest.fixture
+    def temp_store_dir(self, tmp_path):
+        """Create a temporary directory for the store."""
+        store_dir = tmp_path / "streaming_store"
+        store_dir.mkdir()
+        return store_dir
+
+    def test_empty_store(self, temp_store_dir):
+        """Empty store should have count 0."""
+        from cortical.cel.performance.streaming_store import (
+            StreamingEventStore,
+            StoreConfig,
+        )
+
+        store = StreamingEventStore(temp_store_dir, StoreConfig())
+        assert store.count == 0
+
+    def test_append_and_get(self, temp_store_dir):
+        """Should be able to append and retrieve events."""
+        from cortical.cel.performance.streaming_store import (
+            StreamingEventStore,
+            StoreConfig,
+        )
+
+        store = StreamingEventStore(temp_store_dir, StoreConfig(batch_size=10))
+
+        # Create and append event
+        event = CognitiveEvent(
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            event_type=EventType.OBSERVATION,
+            causal_parents=(),
+            content={'test': 'data', 'entity_id': 'E-001'},
+            concepts=('test',),
+        )
+        store.append(event)
+        store.flush()
+
+        # Retrieve event
+        retrieved = store.get(event.id)
+        assert retrieved is not None
+        assert retrieved.id == event.id
+        assert retrieved.content['test'] == 'data'
+
+    def test_append_multiple_and_count(self, temp_store_dir):
+        """Should correctly count multiple events."""
+        from cortical.cel.performance.streaming_store import (
+            StreamingEventStore,
+            StoreConfig,
+        )
+
+        store = StreamingEventStore(temp_store_dir, StoreConfig(batch_size=5))
+
+        # Append multiple events
+        for i in range(10):
+            event = CognitiveEvent(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                event_type=EventType.OBSERVATION,
+                causal_parents=(),
+                content={'index': i, 'entity_id': f'E-{i % 3}'},
+                concepts=(f'concept_{i % 5}',),
+            )
+            store.append(event)
+
+        store.flush()
+        assert store.count == 10
+
+    def test_events_for_entity(self, temp_store_dir):
+        """Should query events by entity."""
+        from cortical.cel.performance.streaming_store import (
+            StreamingEventStore,
+            StoreConfig,
+        )
+
+        store = StreamingEventStore(temp_store_dir, StoreConfig())
+
+        # Create events for different entities
+        entity_1_events = []
+        for i in range(5):
+            event = CognitiveEvent(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                event_type=EventType.OBSERVATION,
+                causal_parents=(),
+                content={'entity_id': 'entity_1', 'seq': i},
+                concepts=(),
+            )
+            store.append(event)
+            entity_1_events.append(event.id)
+
+        for i in range(3):
+            event = CognitiveEvent(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                event_type=EventType.OBSERVATION,
+                causal_parents=(),
+                content={'entity_id': 'entity_2', 'seq': i},
+                concepts=(),
+            )
+            store.append(event)
+
+        store.flush()
+
+        # Query entity_1
+        results = store.events_for_entity('entity_1')
+        assert len(results) == 5
+
+    def test_lru_cache(self, temp_store_dir):
+        """LRU cache should work correctly."""
+        from cortical.cel.performance.streaming_store import LRUCache
+
+        cache = LRUCache(max_size=3)
+
+        cache.put('a', 1)
+        cache.put('b', 2)
+        cache.put('c', 3)
+
+        assert cache.get('a') == 1
+        assert cache.get('b') == 2
+        assert len(cache) == 3
+
+        # Adding 4th item should evict oldest (c, since a and b were accessed)
+        cache.put('d', 4)
+        assert len(cache) == 3
+        assert cache.get('c') is None  # Evicted
+        assert cache.get('d') == 4
+
+    def test_event_index(self, temp_store_dir):
+        """EventIndex should track event locations."""
+        from cortical.cel.performance.streaming_store import EventIndex
+
+        index = EventIndex()
+
+        # Add some events using the correct method
+        index.add('e1', 'seg1', 0)
+        index.add('e2', 'seg1', 1)
+        index.add('e3', 'seg2', 0)
+
+        assert index.count == 3
+        assert index.get_location('e1') == ('seg1', 0)
+        assert index.get_location('e2') == ('seg1', 1)
+        assert index.get_location('e3') == ('seg2', 0)
+        assert index.get_location('nonexistent') is None
+
+        # Check segment events
+        seg1_events = index.get_segment_events('seg1')
+        assert 'e1' in seg1_events
+        assert 'e2' in seg1_events
+
+    def test_batching_writer(self, temp_store_dir):
+        """BatchingWriter should batch writes correctly."""
+        from cortical.cel.performance.streaming_store import BatchingWriter, StoreConfig
+
+        flushed_events = []
+
+        def on_flush(events):
+            flushed_events.extend(events)
+
+        config = StoreConfig(batch_size=5)
+        writer = BatchingWriter(temp_store_dir, config, on_flush)
+
+        events = []
+        for i in range(12):
+            event = CognitiveEvent(
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                event_type=EventType.OBSERVATION,
+                causal_parents=(),
+                content={'index': i},
+                concepts=(),
+            )
+            writer.write(event)
+            events.append(event)
+
+        writer.flush()
+
+        # All events should have been flushed
+        assert len(flushed_events) == 12

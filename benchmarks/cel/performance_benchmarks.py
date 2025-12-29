@@ -605,6 +605,145 @@ class TemporalIndexBenchmark(BaseBenchmark):
         self._timestamps = []
 
 
+class StreamingStoreBenchmark(BaseBenchmark):
+    """
+    Benchmark streaming event store with write batching.
+
+    Measures:
+    - Append throughput (with batching)
+    - Get latency (with LRU cache)
+    - Index query performance
+    - Memory efficiency
+    """
+
+    name = "streaming_store"
+    description = "Benchmark streaming event store with batching and caching"
+    category = BenchmarkCategory.SCALE
+
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        super().__init__(config)
+        self.n_events = config.get("n_events", 5000) if config else 5000
+        self.n_queries = config.get("n_queries", 1000) if config else 1000
+        self._store = None
+        self._event_ids: List[str] = []
+        self._temp_dir = None
+
+    def setup(self) -> None:
+        """Create streaming store with test events."""
+        if not PERFORMANCE_AVAILABLE:
+            return
+
+        import tempfile
+        self._temp_dir = tempfile.mkdtemp()
+
+        try:
+            from cortical.cel.performance.streaming_store import (
+                StreamingEventStore,
+                StoreConfig,
+            )
+
+            config = StoreConfig(
+                events_per_segment=500,
+                event_cache_size=1000,
+                batch_size=50,
+            )
+            self._store = StreamingEventStore(Path(self._temp_dir), config)
+            self._event_ids = []
+
+            # Append events
+            for i in range(self.n_events):
+                entity_id = f'entity_{i % 100}'
+                event = create_test_event(i, entity_id=entity_id)
+                self._store.append(event)
+                self._event_ids.append(event.id)
+
+            # Flush to ensure all batched writes complete
+            self._store.flush()
+        except ImportError:
+            pass
+
+    def run(self) -> BenchmarkResult:
+        """Run the benchmark."""
+        result = BenchmarkResult(
+            benchmark_name=self.name,
+            category=self.category,
+            status=BenchmarkStatus.RUNNING,
+        )
+
+        if not PERFORMANCE_AVAILABLE or self._store is None:
+            result.status = BenchmarkStatus.SKIPPED
+            result.metadata['reason'] = 'Streaming store not available'
+            return result
+
+        # Measure get latency (cache misses first, then hits)
+        get_times_cold = []
+        get_times_hot = []
+
+        # Cold reads (cache miss)
+        sample_ids = random.sample(self._event_ids, min(100, len(self._event_ids)))
+        for event_id in sample_ids:
+            start = time.perf_counter()
+            event = self._store.get(event_id)
+            get_times_cold.append((time.perf_counter() - start) * 1000)
+
+        # Hot reads (cache hit - same IDs again)
+        for event_id in sample_ids:
+            start = time.perf_counter()
+            event = self._store.get(event_id)
+            get_times_hot.append((time.perf_counter() - start) * 1000)
+
+        # Measure entity query performance
+        entity_times = []
+        for _ in range(min(self.n_queries, 200)):
+            entity_id = f'entity_{random.randint(0, 99)}'
+            start = time.perf_counter()
+            event_ids = self._store.events_for_entity(entity_id)
+            entity_times.append((time.perf_counter() - start) * 1000)
+
+        result.add_metric(
+            "get_cold_avg",
+            statistics.mean(get_times_cold),
+            unit="ms",
+            threshold_max=5.0,  # Cold reads from disk <5ms
+        )
+        result.add_metric(
+            "get_hot_avg",
+            statistics.mean(get_times_hot),
+            unit="ms",
+            threshold_max=0.1,  # Hot reads from cache <0.1ms
+        )
+        result.add_metric(
+            "cache_speedup",
+            statistics.mean(get_times_cold) / statistics.mean(get_times_hot) if get_times_hot else 0,
+            unit="x",
+            threshold_min=10.0,  # Cache should provide 10x+ speedup
+        )
+        result.add_metric(
+            "entity_query_avg",
+            statistics.mean(entity_times),
+            unit="ms",
+            threshold_max=1.0,
+        )
+        result.add_metric(
+            "events_stored",
+            self._store.count,
+            unit="events",
+        )
+
+        result.metadata["n_events"] = self.n_events
+        result.metadata["cache_size"] = len(self._store._event_cache) if hasattr(self._store, '_event_cache') else 0
+
+        result.status = BenchmarkStatus.PASSED
+        return result
+
+    def teardown(self) -> None:
+        self._store = None
+        self._event_ids = []
+        if self._temp_dir:
+            import shutil
+            shutil.rmtree(self._temp_dir, ignore_errors=True)
+
+
 # =============================================================================
 # BENCHMARK RUNNER
 # =============================================================================
@@ -627,6 +766,7 @@ def run_all_performance_benchmarks(quick: bool = False) -> Dict[str, BenchmarkRe
         SnapshotRecoveryBenchmark(config),
         ConceptIndexBenchmark(config),
         TemporalIndexBenchmark(config),
+        StreamingStoreBenchmark(config),
     ]
 
     results = {}

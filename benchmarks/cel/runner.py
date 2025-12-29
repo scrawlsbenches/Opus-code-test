@@ -52,6 +52,15 @@ from .sanity_benchmarks import (
     CompactionSavingsEstimationBenchmark,
 )
 
+from .performance_benchmarks import (
+    EntityIndexBenchmark,
+    HeapTopologicalSortBenchmark,
+    SnapshotRecoveryBenchmark,
+    ConceptIndexBenchmark,
+    TemporalIndexBenchmark,
+    StreamingStoreBenchmark,
+)
+
 
 # =============================================================================
 # BENCHMARK REGISTRY
@@ -65,7 +74,7 @@ CATEGORY_MAP = {
     "correctness": BenchmarkCategory.STABILITY,  # Using STABILITY for correctness
 }
 
-# All available benchmarks (core + sanity)
+# All available benchmarks (core + sanity + performance)
 ALL_BENCHMARKS = [
     # Core CEL benchmarks
     EventAppendBenchmark,
@@ -83,6 +92,13 @@ ALL_BENCHMARKS = [
     HealthCheckAccuracyBenchmark,
     MigrationThroughputBenchmark,
     CompactionSavingsEstimationBenchmark,
+    # Performance optimization benchmarks
+    EntityIndexBenchmark,
+    HeapTopologicalSortBenchmark,
+    SnapshotRecoveryBenchmark,
+    ConceptIndexBenchmark,
+    TemporalIndexBenchmark,
+    StreamingStoreBenchmark,
 ]
 
 # Benchmark name to class mapping
@@ -107,6 +123,15 @@ BENCHMARKS_BY_CATEGORY = {
     ],
     "migration": [
         MigrationThroughputBenchmark,
+    ],
+    # Performance optimization category
+    "performance": [
+        EntityIndexBenchmark,
+        HeapTopologicalSortBenchmark,
+        SnapshotRecoveryBenchmark,
+        ConceptIndexBenchmark,
+        TemporalIndexBenchmark,
+        StreamingStoreBenchmark,
     ],
 }
 
