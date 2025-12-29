@@ -343,6 +343,136 @@ class ComputeAllBenchmark(CorpusBenchmark):
 
 
 @register_benchmark
+class BigramConnectionsBenchmark(CorpusBenchmark):
+    """
+    Dedicated benchmark for compute_bigram_connections performance.
+
+    Measures:
+    - Total execution time
+    - Connections created vs skipped
+    - Breakdown by connection type (component, chain, cooccurrence)
+    - Efficiency ratio (connections created / attempts)
+
+    This is the dominant phase in compute_all(), typically taking 65-80% of time.
+    """
+
+    name = "bigram_connections"
+    description = "Measure compute_bigram_connections() performance and statistics"
+    corpus_category = CorpusBenchmarkCategory.ANALYSIS
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        # Use larger corpus for meaningful measurements
+        is_quick = self.config.get("quick", False)
+        n_docs = 50 if is_quick else 100
+
+        # Create processor with corpus
+        generator = SyntheticCorpusGenerator(SyntheticCorpusConfig(
+            n_docs=n_docs,
+            doc_length=self._corpus_config.doc_length,
+            vocab_size=self._corpus_config.vocab_size,
+            seed=42,
+        ))
+        corpus = generator.generate()
+
+        processor = CorticalTextProcessor()
+        for doc_id, text in corpus.items():
+            processor.process_document(doc_id, text)
+
+        # Must compute TF-IDF first (bigram_connections uses it)
+        processor.compute_tfidf()
+
+        # Time bigram_connections
+        start = time.perf_counter()
+        stats = processor.compute_bigram_connections()
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        # Primary metric: execution time
+        result.add_metric(
+            name="execution_ms",
+            value=elapsed_ms,
+            unit="ms",
+        )
+
+        # Connection statistics
+        result.add_metric(
+            name="connections_created",
+            value=stats.get("connections_created", 0),
+            unit="count",
+        )
+
+        result.add_metric(
+            name="bigrams_count",
+            value=stats.get("bigrams", 0),
+            unit="count",
+        )
+
+        # Efficiency: what % of attempts resulted in connections
+        skipped = stats.get("skipped_max_connections", 0)
+        created = stats.get("connections_created", 0)
+        total_attempts = created + skipped
+        efficiency = (created / total_attempts * 100) if total_attempts > 0 else 100
+
+        result.add_metric(
+            name="efficiency_pct",
+            value=efficiency,
+            unit="%",
+        )
+
+        # Connection type breakdown
+        result.add_metric(
+            name="component_connections",
+            value=stats.get("component_connections", 0),
+            unit="count",
+        )
+        result.add_metric(
+            name="chain_connections",
+            value=stats.get("chain_connections", 0),
+            unit="count",
+        )
+        result.add_metric(
+            name="cooccurrence_connections",
+            value=stats.get("cooccurrence_connections", 0),
+            unit="count",
+        )
+
+        # Skipped stats (useful for optimization tracking)
+        result.add_metric(
+            name="skipped_max_connections",
+            value=stats.get("skipped_max_connections", 0),
+            unit="count",
+        )
+        result.add_metric(
+            name="skipped_common_terms",
+            value=stats.get("skipped_common_terms", 0),
+            unit="count",
+        )
+        result.add_metric(
+            name="skipped_large_docs",
+            value=stats.get("skipped_large_docs", 0),
+            unit="count",
+        )
+
+        # Throughput metric
+        if elapsed_ms > 0:
+            connections_per_sec = created / (elapsed_ms / 1000)
+            result.add_metric(
+                name="connections_per_second",
+                value=connections_per_sec,
+                unit="conn/s",
+            )
+
+        # Metadata for analysis
+        result.metadata.update({
+            "corpus_size": n_docs,
+            "full_stats": stats,
+        })
+
+        return result
+
+
+@register_benchmark
 class BatchIndexingBenchmark(CorpusBenchmark):
     """
     Measure add_documents_batch() performance.

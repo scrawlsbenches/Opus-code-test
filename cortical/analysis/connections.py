@@ -310,7 +310,8 @@ def compute_bigram_connections(
         """Queue bidirectional connection if not already connected and under limit."""
         nonlocal component_connections, chain_connections, cooccurrence_connections, skipped_max_connections
 
-        pair = tuple(sorted([b1.id, b2.id]))
+        # OPTIMIZATION: Direct comparison is faster than sorted() for 2 items
+        pair = (b1.id, b2.id) if b1.id < b2.id else (b2.id, b1.id)
         if pair in connected_pairs:
             # Already connected, just strengthen the connection (accumulate weight)
             pending_connections[b1.id][b2.id] += weight
@@ -349,6 +350,9 @@ def compute_bigram_connections(
             skipped_common_terms += 1
             continue
         for i, b1 in enumerate(bigram_list):
+            # OPTIMIZATION: Early bailout for bigrams at connection limit
+            if connection_counts[b1.id] >= max_connections_per_bigram:
+                continue
             for b2 in bigram_list[i+1:]:
                 # Weight by component's PageRank importance (if available)
                 weight = component_weight
@@ -361,6 +365,9 @@ def compute_bigram_connections(
             skipped_common_terms += 1
             continue
         for i, b1 in enumerate(bigram_list):
+            # OPTIMIZATION: Early bailout for bigrams at connection limit
+            if connection_counts[b1.id] >= max_connections_per_bigram:
+                continue
             for b2 in bigram_list[i+1:]:
                 weight = component_weight
                 add_connection(b1, b2, weight, 'component')
@@ -374,6 +381,9 @@ def compute_bigram_connections(
                 continue
             # term appears as right component in some bigrams and left in others
             for b_left in right_index[term]:  # ends with term
+                # OPTIMIZATION: Early bailout for bigrams at connection limit
+                if connection_counts[b_left.id] >= max_connections_per_bigram:
+                    continue
                 for b_right in left_index[term]:  # starts with term
                     if b_left.id != b_right.id:
                         add_connection(b_left, b_right, chain_weight, 'chain')
