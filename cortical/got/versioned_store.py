@@ -370,7 +370,9 @@ class VersionedStore:
                 with open(path, 'w', encoding='utf-8') as f:
                     json.dump(wrapper, f, indent=2, sort_keys=True)
                     f.flush()
-                    os.fsync(f.fileno())
+                    # Only fsync if durability mode requires it
+                    if self.durability != DurabilityMode.RELAXED:
+                        os.fsync(f.fileno())
 
                 # Verify by reading back and checking checksum
                 with open(path, 'r', encoding='utf-8') as f:

@@ -167,16 +167,22 @@ RELATIONSHIP_RULES: Dict[str, FrozenSet[Tuple[str, str]]] = {
         ("epic", "epic"),
     }),
 
-    # REFERENCES: Soft reference (very flexible)
+    # REFERENCES: Soft reference (very flexible - any entity can reference any entity)
     "REFERENCES": frozenset({
+        ("task", "task"),
+        ("task", "decision"),
         ("task", "document"),
+        ("task", "sprint"),
+        ("decision", "task"),
+        ("decision", "decision"),
         ("decision", "document"),
-        ("document", "document"),
-        ("sprint", "document"),
-        ("epic", "document"),
-        # Also allow reverse
         ("document", "task"),
         ("document", "decision"),
+        ("document", "document"),
+        ("sprint", "task"),
+        ("sprint", "document"),
+        ("epic", "sprint"),
+        ("epic", "document"),
     }),
 
     # TRANSFERS: Handoff relationship
