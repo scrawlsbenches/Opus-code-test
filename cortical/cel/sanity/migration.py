@@ -283,16 +283,16 @@ class SchemaMigrationEngine:
 
                 # Create compaction event linking old to new
                 compaction = Compaction(
-                    original_event_ids=(event.id,),
-                    compacted_content={
+                    compressed_events=(event.id,),
+                    snapshot={
                         'migration': plan.name,
                         'step': step.name,
                         'original_id': event.id,
                         'new_id': new_event.id,
                     },
-                    compression_ratio=1.0,  # No compression, just migration
+                    preserved_merkle_root=new_event.id,  # Link to migrated event
                 )
-                self._target.append(compaction.to_event())
+                self._target.append(compaction)
 
                 plan._events_processed += 1
 

@@ -39,6 +39,19 @@ from .benchmarks import (
     CompactionBenchmark,
 )
 
+from .sanity_benchmarks import (
+    ALL_SANITY_BENCHMARKS,
+    SANITY_BENCHMARK_MAP,
+    SANITY_BENCHMARKS_BY_CATEGORY,
+    CompactionScalabilityBenchmark,
+    SemanticClusteringBenchmark,
+    CausalChainBenchmark,
+    HealthMonitorLatencyBenchmark,
+    HealthCheckAccuracyBenchmark,
+    MigrationThroughputBenchmark,
+    CompactionSavingsEstimationBenchmark,
+)
+
 
 # =============================================================================
 # BENCHMARK REGISTRY
@@ -52,8 +65,9 @@ CATEGORY_MAP = {
     "correctness": BenchmarkCategory.STABILITY,  # Using STABILITY for correctness
 }
 
-# All available benchmarks
+# All available benchmarks (core + sanity)
 ALL_BENCHMARKS = [
+    # Core CEL benchmarks
     EventAppendBenchmark,
     MaterializationBenchmark,
     SemanticIndexBenchmark,
@@ -61,6 +75,14 @@ ALL_BENCHMARKS = [
     DAGTraversalBenchmark,
     ContentAddressingBenchmark,
     CompactionBenchmark,
+    # Sanity module benchmarks
+    CompactionScalabilityBenchmark,
+    SemanticClusteringBenchmark,
+    CausalChainBenchmark,
+    HealthMonitorLatencyBenchmark,
+    HealthCheckAccuracyBenchmark,
+    MigrationThroughputBenchmark,
+    CompactionSavingsEstimationBenchmark,
 ]
 
 # Benchmark name to class mapping
@@ -72,6 +94,20 @@ BENCHMARKS_BY_CATEGORY = {
     "memory": [CompactionBenchmark],
     "query": [SemanticIndexBenchmark, TimeTravelBenchmark, DAGTraversalBenchmark],
     "correctness": [ContentAddressingBenchmark],
+    # Sanity module categories
+    "compaction": [
+        CompactionScalabilityBenchmark,
+        SemanticClusteringBenchmark,
+        CausalChainBenchmark,
+        CompactionSavingsEstimationBenchmark,
+    ],
+    "health": [
+        HealthMonitorLatencyBenchmark,
+        HealthCheckAccuracyBenchmark,
+    ],
+    "migration": [
+        MigrationThroughputBenchmark,
+    ],
 }
 
 
