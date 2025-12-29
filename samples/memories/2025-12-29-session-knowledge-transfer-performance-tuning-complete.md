@@ -9,7 +9,12 @@
 
 ## Summary
 
-Completed scientific performance tuning achieving **245x improvement** in fast search and **22% faster** corpus load. Also established scaling benchmarks for capacity planning.
+Completed scientific performance tuning achieving:
+- **245x improvement** in fast search
+- **22% faster** corpus load
+- **51% faster** compute_all (index build)
+
+Also established scaling benchmarks for capacity planning.
 
 ---
 
@@ -66,6 +71,36 @@ col.typed_connections = {
 | Improvement | - | **22%** |
 
 **Commit:** `a9256211`
+
+---
+
+### 3. In-Place Edge Updates (51% faster compute_all)
+
+**Problem:** `compute_all` took 40.2s on 200 docs. Profiling showed `add_lateral_connections_batch` taking 10.2s with 85K calls.
+
+**Root cause:** Every weight update created a new Edge object:
+```python
+# OLD - creates new object every time
+typed[target_id] = Edge(
+    target_id=target_id,
+    weight=existing.weight + weight,  # New object just to update weight!
+    ...
+)
+```
+
+**Fix:** Modify Edge fields in place (Edge is a mutable dataclass):
+```python
+# NEW - modify in place
+typed[target_id].weight += weight
+```
+
+**Results:**
+| Metric | Before | After |
+|--------|--------|-------|
+| compute_all (200 docs) | 40.2s | 19.7s |
+| Improvement | - | **51%** |
+
+**Commit:** `be5c40f0`
 
 ---
 
