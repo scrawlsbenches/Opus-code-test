@@ -1,0 +1,19 @@
+{
+  "_checksum": "59a5adec7a83a01b",
+  "_written_at": "2025-12-29T18:40:22.968118+00:00",
+  "data": {
+    "created_at": "2025-12-29T18:40:22.964378+00:00",
+    "description": "## Goal\nTrack cognitive fatigue and automatically trigger consolidation.\n\n## Changes\nModify cortical/reasoning/woven_mind.py:\n- Add phenomenological_state attribute\n- Decrement attention_budget on each process() call\n- Auto-trigger consolidate() when budget exhausted\n\n## Interface\n```python\nclass WovenMind:\n    def __init__(self, attention_budget: float = 100.0):\n        self.state = PhenomenologicalState(attention_budget=attention_budget)\n    \n    def process(self, tokens: List[str]) -> WovenMindResult:\n        self.state = self.state.update(...)\n        if self.state.should_consolidate():\n            self.consolidate()\n            self.state.attention_budget = 100.0  # Reset\n```\n\n## Test Requirements\n- test_attention_budget_decrements()\n- test_auto_consolidation_when_exhausted()",
+    "entity_type": "task",
+    "id": "T-20251229-184022-48184d39",
+    "metadata": {},
+    "modified_at": "2025-12-29T18:40:22.968026+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add attention budget to WovenMind and trigger consolidation",
+    "version": 2
+  }
+}
