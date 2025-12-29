@@ -1,0 +1,19 @@
+{
+  "_checksum": "a0ef01a33fbb2c79",
+  "_written_at": "2025-12-29T23:49:21.612867+00:00",
+  "data": {
+    "created_at": "2025-12-29T23:49:21.609524+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251229-234921-81962e00",
+    "metadata": {},
+    "modified_at": "2025-12-29T23:49:21.612812+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Integrate CEL performance layer with materializer and event store",
+    "version": 2
+  }
+}
