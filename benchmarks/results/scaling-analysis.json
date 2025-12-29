@@ -1,0 +1,41 @@
+{
+  "timestamp": "2025-12-29T20:01:52.906100",
+  "corpus": {
+    "documents": 1199,
+    "tokens": 50646,
+    "bigrams": 570188
+  },
+  "load": {
+    "time_seconds": 34.5,
+    "per_1000_docs_seconds": 28.77,
+    "complexity": "O(n) - linear with docs"
+  },
+  "search": {
+    "avg_time_ms": 0.29,
+    "per_1000_docs_ms": 0.2459,
+    "complexity": "O(query_terms) - constant with corpus size"
+  },
+  "scaling_projections": {
+    "2400_docs": {
+      "load_seconds": 69,
+      "search_ms": 0.3
+    },
+    "6000_docs": {
+      "load_seconds": 172,
+      "search_ms": 0.3
+    },
+    "12000_docs": {
+      "load_seconds": 345,
+      "search_ms": 0.3
+    }
+  },
+  "bottlenecks": {
+    "load": "JSON parsing (24.7s of 34.5s = 72%)",
+    "search": "None - already O(query_terms)"
+  },
+  "recommendations": [
+    "Load: Consider binary format for 10K+ doc corpora",
+    "Load: Implement incremental/streaming load for large corpora",
+    "Search: Current performance is excellent, no changes needed"
+  ]
+}
