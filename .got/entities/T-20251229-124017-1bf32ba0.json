@@ -1,0 +1,19 @@
+{
+  "_checksum": "70593f65b457ffe0",
+  "_written_at": "2025-12-29T12:40:17.820071+00:00",
+  "data": {
+    "created_at": "2025-12-29T12:40:17.814602+00:00",
+    "description": "35 files have 'pass' in exception handlers masking errors. Critical files: graph_persistence.py, crisis_manager.py, claude_code_spawner.py. Convert to proper logging.",
+    "entity_type": "task",
+    "id": "T-20251229-124017-1bf32ba0",
+    "metadata": {},
+    "modified_at": "2025-12-29T12:40:17.820004+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add logging to 35 silent pass exception handlers",
+    "version": 2
+  }
+}
