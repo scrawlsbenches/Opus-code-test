@@ -142,7 +142,7 @@ class HealthReport:
         """Convert to a MetaCognition event for storage."""
         return MetaCognition(
             observation_type='health_check',
-            observation_data=self.to_dict(),
+            metrics=self.to_dict(),
             conclusions=[
                 f"Status: {self.status.name}",
                 f"Issues: {len(self.issues)}",

@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, Iterator, List, Optional, Set, Tuple
 
 from ..core.events import CognitiveEvent, Compaction, EventType
@@ -222,7 +222,7 @@ class TimeWindowCompactor(BaseCompactor):
 
     def identify_compactable(self) -> List[List[CognitiveEvent]]:
         """Identify time-window groups for compaction."""
-        cutoff = datetime.now() - self._min_age
+        cutoff = datetime.now(timezone.utc) - self._min_age
 
         # Group by entity_id and time window
         groups: Dict[Tuple[str, int], List[CognitiveEvent]] = {}
@@ -231,6 +231,9 @@ class TimeWindowCompactor(BaseCompactor):
             # Parse timestamp
             try:
                 ts = datetime.fromisoformat(event.timestamp)
+                # Ensure timezone-aware for comparison
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
             except ValueError:
                 continue
 
@@ -286,22 +289,25 @@ class TimeWindowCompactor(BaseCompactor):
 
         # Create compaction event
         compacted = Compaction(
-            original_event_ids=tuple(e.id for e in sorted_events),
-            compacted_content=summary,
-            compression_ratio=1 / len(sorted_events),
-        ).to_event()
+            compressed_events=tuple(e.id for e in sorted_events),
+            snapshot=summary,
+            preserved_merkle_root=last.id,  # Use last event's ID as merkle reference
+        )
 
         removed_ids = [e.id for e in sorted_events[:-1]]  # Keep last event
         return compacted, removed_ids
 
     def should_compact(self) -> bool:
         """Check if compaction is recommended."""
-        cutoff = datetime.now() - self._min_age
+        cutoff = datetime.now(timezone.utc) - self._min_age
         old_count = 0
 
         for event in self._store.iterate():
             try:
                 ts = datetime.fromisoformat(event.timestamp)
+                # Ensure timezone-aware for comparison
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
                 if ts < cutoff:
                     old_count += 1
             except ValueError:
@@ -440,10 +446,10 @@ class SemanticCompactor(BaseCompactor):
 
         # Create compaction event
         compacted = Compaction(
-            original_event_ids=tuple(e.id for e in events),
-            compacted_content=summary,
-            compression_ratio=1 / len(events),
-        ).to_event()
+            compressed_events=tuple(e.id for e in events),
+            snapshot=summary,
+            preserved_merkle_root=representative.id,  # Use representative as merkle reference
+        )
 
         # Remove all but representative
         removed_ids = [e.id for e in events if e.id != representative.id]
@@ -571,10 +577,10 @@ class CausalChainCompactor(BaseCompactor):
 
         # Create compaction event
         compacted = Compaction(
-            original_event_ids=tuple(e.id for e in events),
-            compacted_content=summary,
-            compression_ratio=2 / len(events),  # Keep first and last
-        ).to_event()
+            compressed_events=tuple(e.id for e in events),
+            snapshot=summary,
+            preserved_merkle_root=last.id,  # Use last event as merkle reference
+        )
 
         # Remove intermediate events
         removed_ids = [e.id for e in events[1:-1]]
