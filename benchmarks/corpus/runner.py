@@ -931,6 +931,329 @@ class QueryExpansionBenchmark(CorpusBenchmark):
 
 
 # =============================================================================
+# PASSAGE BENCHMARKS (Stage 1)
+# =============================================================================
+
+
+@register_benchmark
+class PassageRetrievalBenchmark(CorpusBenchmark):
+    """
+    Measure find_passages_for_query() latency percentiles.
+
+    Tests RAG-style passage retrieval performance with:
+    - Latency percentiles (p50/p90/p99)
+    - Quality metrics (passages found, coverage)
+    """
+
+    name = "passage_retrieval"
+    description = "Measure passage retrieval latency and quality"
+    corpus_category = CorpusBenchmarkCategory.PASSAGE
+
+    TEST_QUERIES = [
+        "concept0",
+        "concept1 concept2",
+        "word0 word1 word2",
+        "important concept5",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 30 if is_quick else 100
+
+        # Measure latencies
+        latencies_ms = []
+        passages_found = []
+
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            passages = processor.find_passages_for_query(query, top_n=5)
+            elapsed = (time.perf_counter() - start) * 1000
+            latencies_ms.append(elapsed)
+            passages_found.append(len(passages))
+
+        # Calculate percentiles
+        latencies_ms.sort()
+        n = len(latencies_ms)
+
+        def percentile(p: float) -> float:
+            idx = int(n * p / 100)
+            return latencies_ms[min(idx, n - 1)]
+
+        p50 = percentile(50)
+        p90 = percentile(90)
+        p99 = percentile(99)
+        mean_latency = sum(latencies_ms) / n
+
+        result.add_metric(
+            name="p50_latency_ms",
+            value=p50,
+            unit="ms",
+            threshold_max=200.0,  # Passage retrieval under 200ms
+        )
+        result.add_metric(
+            name="p90_latency_ms",
+            value=p90,
+            unit="ms",
+            threshold_max=500.0,
+        )
+        result.add_metric(
+            name="p99_latency_ms",
+            value=p99,
+            unit="ms",
+        )
+        result.add_metric(
+            name="mean_latency_ms",
+            value=mean_latency,
+            unit="ms",
+        )
+
+        # Quality metrics
+        avg_passages = statistics.mean(passages_found)
+        result.add_metric(
+            name="avg_passages_returned",
+            value=avg_passages,
+            unit="passages",
+            threshold_min=1.0,  # Should find at least 1 passage on average
+        )
+
+        # Calculate throughput
+        total_time_sec = sum(latencies_ms) / 1000
+        qps = n_iterations / total_time_sec if total_time_sec > 0 else 0
+
+        result.add_metric(
+            name="queries_per_second",
+            value=qps,
+            unit="qps",
+            threshold_min=5.0,  # At least 5 passage queries/sec
+        )
+
+        result.metadata.update({
+            "corpus_size": self._corpus_config.n_docs,
+            "iterations": n_iterations,
+            "queries_tested": self.TEST_QUERIES,
+            "passages_distribution": {
+                "min": min(passages_found),
+                "max": max(passages_found),
+                "avg": avg_passages,
+            },
+        })
+
+        return result
+
+
+# =============================================================================
+# PASSAGE BENCHMARKS (Stage 2)
+# =============================================================================
+
+
+@register_benchmark
+class ChunkSizeImpactBenchmark(CorpusBenchmark):
+    """
+    Compare passage retrieval with different chunk sizes.
+
+    Tests how chunk_size affects:
+    - Retrieval latency
+    - Number of passages returned
+    - Coverage of relevant content
+    """
+
+    name = "chunk_size_impact"
+    description = "Compare chunk sizes for passage retrieval"
+    corpus_category = CorpusBenchmarkCategory.PASSAGE
+
+    CHUNK_SIZES = [100, 200, 500, 1000]
+    QUICK_CHUNK_SIZES = [100, 200, 500]
+
+    TEST_QUERIES = [
+        "concept0",
+        "concept1 concept2",
+        "word0 word1",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        chunk_sizes = self.QUICK_CHUNK_SIZES if is_quick else self.CHUNK_SIZES
+        n_iterations = 15 if is_quick else 30
+
+        # Test each chunk size
+        for chunk_size in chunk_sizes:
+            overlap = chunk_size // 4  # 25% overlap
+
+            latencies_ms = []
+            passages_counts = []
+            total_chars = []
+
+            for i in range(n_iterations):
+                query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+                start = time.perf_counter()
+                passages = processor.find_passages_for_query(
+                    query,
+                    top_n=5,
+                    chunk_size=chunk_size,
+                    overlap=overlap,
+                )
+                elapsed = (time.perf_counter() - start) * 1000
+                latencies_ms.append(elapsed)
+                passages_counts.append(len(passages))
+
+                # Sum total characters returned
+                chars = sum(len(p[0]) for p in passages) if passages else 0
+                total_chars.append(chars)
+
+            avg_latency = statistics.mean(latencies_ms)
+            avg_passages = statistics.mean(passages_counts)
+            avg_chars = statistics.mean(total_chars)
+
+            result.add_metric(
+                name=f"latency_{chunk_size}_ms",
+                value=avg_latency,
+                unit="ms",
+            )
+            result.add_metric(
+                name=f"passages_{chunk_size}",
+                value=avg_passages,
+                unit="passages",
+            )
+            result.add_metric(
+                name=f"chars_{chunk_size}",
+                value=avg_chars,
+                unit="chars",
+            )
+
+        result.metadata.update({
+            "chunk_sizes_tested": chunk_sizes,
+            "iterations_per_size": n_iterations,
+            "queries": self.TEST_QUERIES,
+        })
+
+        return result
+
+
+# =============================================================================
+# PASSAGE BENCHMARKS (Stage 3)
+# =============================================================================
+
+
+@register_benchmark
+class PassageBatchBenchmark(CorpusBenchmark):
+    """
+    Measure find_passages_batch() performance.
+
+    Tests batch passage retrieval:
+    - Throughput for multiple concurrent queries
+    - Comparison with sequential single queries
+    """
+
+    name = "passage_batch"
+    description = "Measure batch passage retrieval throughput"
+    corpus_category = CorpusBenchmarkCategory.PASSAGE
+
+    TEST_QUERIES = [
+        "concept0",
+        "concept1 concept2",
+        "word0 word1",
+        "important concept5",
+        "concept3 word5",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_batches = 5 if is_quick else 10
+        batch_size = len(self.TEST_QUERIES)
+
+        # Sequential timing (one query at a time)
+        sequential_times = []
+        for _ in range(n_batches):
+            start = time.perf_counter()
+            for query in self.TEST_QUERIES:
+                processor.find_passages_for_query(query, top_n=3)
+            elapsed = (time.perf_counter() - start) * 1000
+            sequential_times.append(elapsed)
+
+        # Batch timing
+        batch_times = []
+        for _ in range(n_batches):
+            start = time.perf_counter()
+            processor.find_passages_batch(
+                self.TEST_QUERIES,
+                top_n=3,
+                chunk_size=200,
+                overlap=50,
+            )
+            elapsed = (time.perf_counter() - start) * 1000
+            batch_times.append(elapsed)
+
+        avg_sequential = statistics.mean(sequential_times)
+        avg_batch = statistics.mean(batch_times)
+
+        # Per-query latency
+        per_query_sequential = avg_sequential / batch_size
+        per_query_batch = avg_batch / batch_size
+
+        result.add_metric(
+            name="avg_sequential_total_ms",
+            value=avg_sequential,
+            unit="ms",
+        )
+        result.add_metric(
+            name="avg_batch_total_ms",
+            value=avg_batch,
+            unit="ms",
+        )
+        result.add_metric(
+            name="per_query_sequential_ms",
+            value=per_query_sequential,
+            unit="ms",
+        )
+        result.add_metric(
+            name="per_query_batch_ms",
+            value=per_query_batch,
+            unit="ms",
+        )
+
+        # Calculate speedup (batch may or may not be faster due to overhead)
+        speedup = avg_sequential / avg_batch if avg_batch > 0 else float('inf')
+        result.add_metric(
+            name="batch_speedup",
+            value=speedup,
+            unit="x",
+        )
+
+        # Throughput
+        queries_per_sec_seq = (batch_size * 1000) / avg_sequential if avg_sequential > 0 else 0
+        queries_per_sec_batch = (batch_size * 1000) / avg_batch if avg_batch > 0 else 0
+
+        result.add_metric(
+            name="throughput_sequential_qps",
+            value=queries_per_sec_seq,
+            unit="qps",
+        )
+        result.add_metric(
+            name="throughput_batch_qps",
+            value=queries_per_sec_batch,
+            unit="qps",
+        )
+
+        result.metadata.update({
+            "batch_size": batch_size,
+            "n_batches": n_batches,
+            "queries": self.TEST_QUERIES,
+        })
+
+        return result
+
+
+# =============================================================================
 # RUNNER
 # =============================================================================
 
