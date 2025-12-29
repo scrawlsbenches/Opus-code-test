@@ -1,0 +1,19 @@
+{
+  "_checksum": "e3d504222954e4ee",
+  "_written_at": "2025-12-29T18:39:29.069306+00:00",
+  "data": {
+    "created_at": "2025-12-29T18:39:29.064922+00:00",
+    "description": "## Goal\nDefine core phenomenological type enums.\n\n## Interface Contract\n```python\nclass Valence(Enum):\n    ECSTATIC = 1.0\n    PLEASANT = 0.5\n    NEUTRAL = 0.0\n    UNPLEASANT = -0.5\n    AGONIZING = -1.0\n\nclass AttentionLevel(Enum):\n    BACKGROUND = 0.0\n    PERIPHERAL = 0.25\n    FOCUSED = 0.5\n    ABSORBED = 0.75\n    HYPERFOCUSED = 1.0\n```\n\n## Location\nNew file: cortical/reasoning/phenomenology.py\n\n## Test Requirements\n- test_valence_enum_values()\n- test_attention_level_ordering()",
+    "entity_type": "task",
+    "id": "T-20251229-183929-f3c1a2ca",
+    "metadata": {},
+    "modified_at": "2025-12-29T18:39:29.069217+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Add Valence and AttentionLevel enums",
+    "version": 2
+  }
+}
