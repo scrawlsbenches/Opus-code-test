@@ -1,0 +1,19 @@
+{
+  "_checksum": "187648dcab1d56b5",
+  "_written_at": "2025-12-29T18:42:26.414800+00:00",
+  "data": {
+    "created_at": "2025-12-29T18:42:26.411217+00:00",
+    "description": "## Goal\nCoordinate multiple forked minds exploring different hypotheses.\n\n## Interface Contract\n```python\nclass ParallelHypothesisExplorer:\n    def __init__(self, base_mind: WovenMind):\n        self.base = base_mind\n        self.forks: Dict[str, ForkableMind] = {}\n    \n    def explore_hypotheses(\n        self,\n        hypotheses: List[str],\n        input_tokens: List[str]\n    ) -> Dict[str, WovenMindResult]:\n        '''Fork mind for each hypothesis, process, return results.'''\n        \n    def reconcile(self, strategy: MergeStrategy = MergeStrategy.WEIGHTED) -> ForkableMind:\n        '''Merge all forks back into unified mind.'''\n        \n    def best_hypothesis(self) -> Tuple[str, float]:\n        '''Return hypothesis with highest confidence result.'''\n```\n\n## Test Requirements\n- test_explore_creates_forks_per_hypothesis()\n- test_reconcile_merges_all_forks()\n- test_best_hypothesis_returns_highest_confidence()",
+    "entity_type": "task",
+    "id": "T-20251229-184226-dfbe3f85",
+    "metadata": {},
+    "modified_at": "2025-12-29T18:42:26.414745+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement ParallelHypothesisExplorer",
+    "version": 2
+  }
+}
