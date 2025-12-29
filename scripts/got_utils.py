@@ -1699,6 +1699,45 @@ class TransactionalGoTAdapter:
                 continue
         return decisions
 
+    def get_decision(self, decision_id: str) -> Optional[ThoughtNode]:
+        """Get a single decision by ID from TX backend."""
+        from cortical.got.types import Decision
+        entities_dir = self.got_dir / "entities"
+        decision_file = entities_dir / f"{decision_id}.json"
+
+        if not decision_file.exists():
+            return None
+
+        try:
+            with open(decision_file, 'r') as f:
+                wrapper = json.load(f)
+            data = wrapper.get("data", wrapper)
+            if data.get("entity_type") == "decision":
+                decision = Decision.from_dict(data)
+                return ThoughtNode(
+                    id=decision.id,
+                    node_type=NodeType.DECISION,
+                    content=decision.title,
+                    properties={
+                        "rationale": decision.rationale,
+                        "affects": decision.affects,
+                        "alternatives": decision.properties.get("alternatives", []),
+                    },
+                    metadata={
+                        "created_at": decision.created_at,
+                        "modified_at": decision.modified_at,
+                    },
+                )
+        except Exception:
+            return None
+        return None
+
+    def delete_decision(self, decision_id: str, force: bool = False) -> None:
+        """Delete a decision and its connected edges via TX backend."""
+        self._manager.delete_decision(decision_id, force=force)
+        # Invalidate cached graph
+        self._graph = None
+
     def get_decisions_for_task(self, task_id: str) -> List[ThoughtNode]:
         """Get decisions affecting a specific task."""
         all_decisions = self.list_decisions()

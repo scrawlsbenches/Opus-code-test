@@ -657,6 +657,57 @@ class GoTManager:
             logger.warning(f"Failed to read decision {decision_id}: {e}")
             return None
 
+    def delete_decision(self, decision_id: str, force: bool = False) -> None:
+        """
+        Delete a decision and all its connected edges.
+
+        Args:
+            decision_id: Decision identifier to delete (D-...)
+            force: If False, raise error if decision has edges (default: True behavior)
+
+        Raises:
+            TransactionError: If decision not found
+        """
+        # Check if decision exists
+        decision = self.get_decision(decision_id)
+        if decision is None:
+            raise TransactionError(f"Decision not found: {decision_id}")
+
+        # Find all edges connected to this decision
+        all_edges = self.list_edges()
+        connected_edges = [
+            e for e in all_edges
+            if e.source_id == decision_id or e.target_id == decision_id
+        ]
+
+        # Check for connected edges unless force is True
+        if not force and connected_edges:
+            edge_ids = [e.id for e in connected_edges]
+            raise TransactionError(
+                f"Cannot delete decision {decision_id}: has connected edges {edge_ids}. "
+                "Use force=True to override."
+            )
+
+        # Collect IDs for cache invalidation
+        ids_to_invalidate = [decision_id] + [edge.id for edge in connected_edges]
+
+        # Delete decision and all connected edges
+        entities_dir = self.got_dir / "entities"
+        decision_file = entities_dir / f"{decision_id}.json"
+
+        # Delete the decision entity file
+        if decision_file.exists():
+            decision_file.unlink()
+
+        # Delete all connected edge files
+        for edge in connected_edges:
+            edge_file = entities_dir / f"{edge.id}.json"
+            if edge_file.exists():
+                edge_file.unlink()
+
+        # Invalidate cache for deleted entities
+        self._cache_invalidate_many(ids_to_invalidate)
+
     def add_edge(
         self,
         source_id: str,
