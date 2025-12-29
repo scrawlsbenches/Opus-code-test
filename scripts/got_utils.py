@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import re
+import signal
 import sys
 import tempfile
 import time
@@ -2979,4 +2980,18 @@ def _run_with_auto_commit():
 
 
 if __name__ == "__main__":
-    sys.exit(_run_with_auto_commit())
+    # Handle SIGPIPE gracefully (e.g., when piping to `head`)
+    # This prevents BrokenPipeError when output is piped to commands that close early
+    try:
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    except AttributeError:
+        pass  # SIGPIPE not available on Windows
+
+    try:
+        sys.exit(_run_with_auto_commit())
+    except BrokenPipeError:
+        # Python flushes stdout on exit, which can raise BrokenPipeError
+        # Quietly close stdout and exit
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(0)
