@@ -28,6 +28,11 @@ from typing import Dict, Iterator, List, Optional, Sequence, Set
 
 from ..core.events import CognitiveEvent, EventType
 from ..core.references import CausalLink, EventHorizon, MerkleRoot
+from ..performance import OptimizedDAG
+from ..performance.optimized_dag import (
+    CausalViolationError as OptCausalViolationError,
+    DuplicateEventError as OptDuplicateEventError,
+)
 
 
 class CausalViolationError(Exception):
@@ -310,19 +315,27 @@ class FileSystemEventStore:
     Implements: EventStore protocol
     """
 
-    def __init__(self, base_path: Path):
+    def __init__(self, base_path: Path, use_optimized_dag: bool = True):
         """
         Initialize event store.
 
         Args:
             base_path: Directory for storage
+            use_optimized_dag: Use OptimizedDAG for O(n log n) causal ordering
+                              (default True). Set False for legacy MerkleDAG.
         """
         self.base_path = Path(base_path)
         self.events_path = self.base_path / "events"
         self.heads_path = self.base_path / "heads.json"
 
         # In-memory DAG for operations
-        self._dag = MerkleDAG()
+        # OptimizedDAG provides O(n log n) causal ordering via HeapTopologicalSort
+        # vs MerkleDAG's O(n² log n) naive sort
+        self._use_optimized = use_optimized_dag
+        if use_optimized_dag:
+            self._dag = OptimizedDAG()
+        else:
+            self._dag = MerkleDAG()
         self._loaded = False
 
         # Ensure directories exist
@@ -355,20 +368,30 @@ class FileSystemEventStore:
         # Build DAG in causal order
         # Sort by timestamp to ensure parents before children
         sorted_events = sorted(events.values(), key=lambda e: e.timestamp)
-        for event in sorted_events:
-            try:
-                self._dag.add(event)
-            except CausalViolationError:
-                # Parent not loaded yet - will be handled by second pass
-                pass
 
-        # Second pass for any missed events
-        for event in sorted_events:
-            if event.id not in self._dag.events:
+        # OptimizedDAG supports verify_parents=False for bulk loading
+        if self._use_optimized:
+            for event in sorted_events:
+                try:
+                    self._dag.add(event, verify_parents=False)
+                except OptDuplicateEventError:
+                    pass
+        else:
+            # Legacy MerkleDAG path
+            for event in sorted_events:
                 try:
                     self._dag.add(event)
-                except (CausalViolationError, DuplicateEventError):
+                except CausalViolationError:
+                    # Parent not loaded yet - will be handled by second pass
                     pass
+
+            # Second pass for any missed events
+            for event in sorted_events:
+                if event.id not in self._dag.events:
+                    try:
+                        self._dag.add(event)
+                    except (CausalViolationError, DuplicateEventError):
+                        pass
 
         # Restore heads from file (may differ from computed heads)
         # This handles the case where we have persisted heads
