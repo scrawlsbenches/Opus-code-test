@@ -255,10 +255,10 @@ class SnapshotManager:
             subdir = "full" if snapshot_type == "full" else "delta"
             file_path = self._base_path / subdir / f"{snapshot_id}.json"
 
-            self._write_snapshot(file_path, snapshot)
+            actual_path = self._write_snapshot(file_path, snapshot)
 
-            # Update metadata
-            metadata.size_bytes = file_path.stat().st_size
+            # Update metadata with actual file size
+            metadata.size_bytes = actual_path.stat().st_size
             self._metadata_cache[snapshot_id] = metadata
 
             # Track for delta snapshots
@@ -269,17 +269,23 @@ class SnapshotManager:
 
             return metadata
 
-    def _write_snapshot(self, path: Path, snapshot: Snapshot) -> None:
-        """Write snapshot to disk, optionally compressed."""
+    def _write_snapshot(self, path: Path, snapshot: Snapshot) -> Path:
+        """Write snapshot to disk, optionally compressed.
+
+        Returns:
+            The actual path written (may differ if compression is enabled).
+        """
         data = json.dumps(snapshot.to_dict(), separators=(',', ':'))
 
         if self._config.compress:
-            path = path.with_suffix('.json.gz')
-            with gzip.open(path, 'wt', encoding='utf-8') as f:
+            actual_path = path.with_suffix('.json.gz')
+            with gzip.open(actual_path, 'wt', encoding='utf-8') as f:
                 f.write(data)
+            return actual_path
         else:
             with open(path, 'w') as f:
                 f.write(data)
+            return path
 
     def _read_snapshot(self, path: Path) -> Snapshot:
         """Read snapshot from disk."""
