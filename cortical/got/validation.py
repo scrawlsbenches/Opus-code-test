@@ -138,6 +138,7 @@ RELATIONSHIP_RULES: Dict[str, FrozenSet[Tuple[str, str]]] = {
         ("sprint", "task"),      # Sprint contains tasks
         ("epic", "sprint"),      # Epic contains sprints
         ("team", "persona_profile"),  # Team contains profiles
+        ("task", "task"),        # Task contains sub-tasks (staged work breakdown)
     }),
 
     # PART_OF: Component membership (reverse of CONTAINS)
@@ -145,6 +146,7 @@ RELATIONSHIP_RULES: Dict[str, FrozenSet[Tuple[str, str]]] = {
         ("task", "sprint"),      # Task is part of sprint
         ("sprint", "epic"),      # Sprint is part of epic
         ("persona_profile", "team"),  # Profile is part of team
+        ("task", "task"),        # Sub-task is part of parent task
     }),
 
     # DEPENDS_ON: Dependency relationship

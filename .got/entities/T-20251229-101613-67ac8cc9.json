@@ -1,19 +1,24 @@
 {
-  "_checksum": "1008ff7d045d78f9",
-  "_written_at": "2025-12-29T10:16:13.887418+00:00",
+  "_checksum": "1ffb7d59a491c559",
+  "_written_at": "2025-12-29T13:21:58.888873+00:00",
   "data": {
     "created_at": "2025-12-29T10:16:13.884117+00:00",
     "description": "Benchmarks: intent_parsing (parse_intent_query latency and accuracy), code_concept_expansion (expand_query_for_code relevance), definition_lookup (find_definitions precision). Important for codebase search use case.",
     "entity_type": "task",
     "id": "T-20251229-101613-67ac8cc9",
-    "metadata": {},
-    "modified_at": "2025-12-29T10:16:13.887357+00:00",
+    "metadata": {
+      "completed_at": "2025-12-29T13:21:58.882447+00:00",
+      "started_at": "2025-12-29T13:20:11.171578+00:00",
+      "updated_at": "2025-12-29T13:21:58.882457+00:00"
+    },
+    "modified_at": "2025-12-29T13:21:58.888824+00:00",
     "priority": "medium",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Implemented 3 CODE_SEARCH benchmarks: intent_parsing (~6000 qps), code_concept_expansion, intent_search. All passing."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Implement code search benchmarks",
-    "version": 2
+    "version": 6
   }
 }

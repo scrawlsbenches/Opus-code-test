@@ -381,10 +381,15 @@ class CorpusBenchmark(BaseBenchmark):
 
     def setup(self) -> None:
         """Load or create processor from cache."""
-        self._processor = self._cache.get_or_create_processor(
-            self._corpus_config,
-            computed=True,
-        )
+        # Check if a pre-loaded processor was provided (--use-corpus)
+        loaded_processor = self.config.get("_loaded_processor")
+        if loaded_processor is not None:
+            self._processor = loaded_processor
+        else:
+            self._processor = self._cache.get_or_create_processor(
+                self._corpus_config,
+                computed=True,
+            )
 
     @abstractmethod
     def run(self) -> BenchmarkResult:

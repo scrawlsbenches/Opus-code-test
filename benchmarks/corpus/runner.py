@@ -12,6 +12,7 @@ Usage:
     python -m benchmarks.corpus.runner --all --quick
     python -m benchmarks.corpus.runner --all --output results.json
     python -m benchmarks.corpus.runner --all --compare baseline.json
+    python -m benchmarks.corpus.runner --all --use-corpus corpus_dev.json
 
 Categories:
     indexing    - Document processing throughput
@@ -48,6 +49,8 @@ from benchmarks.corpus.base import (
     CorpusBenchmark,
     CorpusBenchmarkCategory,
     CorpusCache,
+    SyntheticCorpusConfig,
+    SyntheticCorpusGenerator,
 )
 
 
@@ -88,23 +91,2006 @@ def register_benchmark(cls: Type[CorpusBenchmark]) -> Type[CorpusBenchmark]:
 
 
 # =============================================================================
-# PLACEHOLDER BENCHMARKS (to be replaced with real implementations)
+# INDEXING BENCHMARKS
 # =============================================================================
+
+import time
+import statistics
+
+from cortical.processor import CorticalTextProcessor
+
 
 @register_benchmark
 class IndexingThroughputBenchmark(CorpusBenchmark):
-    """Placeholder for indexing throughput benchmark."""
+    """
+    Measure document indexing throughput (docs/sec) at various corpus sizes.
+
+    Tests process_document() performance across different corpus scales.
+    """
 
     name = "indexing_throughput"
     description = "Measure document indexing throughput (docs/sec)"
     corpus_category = CorpusBenchmarkCategory.INDEXING
 
+    # Test sizes for full and quick modes
+    FULL_SIZES = [50, 100, 500, 1000]
+    QUICK_SIZES = [25, 50, 100]
+
     def run(self) -> BenchmarkResult:
         result = self.create_result()
-        # Note: Real implementation will measure actual throughput
-        # For now, skip without adding metrics that have thresholds
-        result.status = BenchmarkStatus.SKIPPED
-        result.error_message = "Placeholder - run T-20251229-101547-acbfaa78 to implement"
+
+        # Determine which sizes to test
+        is_quick = self.config.get("quick", False)
+        sizes = self.QUICK_SIZES if is_quick else self.FULL_SIZES
+
+        # Generate synthetic documents for testing
+        generator = SyntheticCorpusGenerator(SyntheticCorpusConfig(
+            n_docs=max(sizes),
+            doc_length=self._corpus_config.doc_length,
+            vocab_size=self._corpus_config.vocab_size,
+            seed=42,  # Reproducible
+        ))
+        all_docs = generator.generate()
+        doc_items = list(all_docs.items())
+
+        for size in sizes:
+            # Create fresh processor for each size
+            processor = CorticalTextProcessor()
+
+            # Measure indexing time
+            start = time.perf_counter()
+            for i in range(size):
+                doc_id, text = doc_items[i]
+                processor.process_document(doc_id, text)
+            elapsed = time.perf_counter() - start
+
+            docs_per_sec = size / elapsed if elapsed > 0 else float('inf')
+
+            result.add_metric(
+                name=f"throughput_{size}_docs",
+                value=docs_per_sec,
+                unit="docs/sec",
+                threshold_min=10.0,  # At least 10 docs/sec
+            )
+
+            result.metadata[f"time_{size}_docs_ms"] = elapsed * 1000
+
+        return result
+
+
+@register_benchmark
+class IncrementalIndexingBenchmark(CorpusBenchmark):
+    """
+    Compare add_document_incremental() vs full recompute.
+
+    Measures the speedup factor when adding documents incrementally
+    versus reprocessing the entire corpus.
+    """
+
+    name = "incremental_indexing"
+    description = "Compare incremental vs full indexing performance"
+    corpus_category = CorpusBenchmarkCategory.INDEXING
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        # Get base corpus
+        is_quick = self.config.get("quick", False)
+        base_size = 25 if is_quick else 100
+        add_count = 5 if is_quick else 20
+
+        # Generate documents
+        generator = SyntheticCorpusGenerator(SyntheticCorpusConfig(
+            n_docs=base_size + add_count,
+            doc_length=self._corpus_config.doc_length,
+            vocab_size=self._corpus_config.vocab_size,
+            seed=42,
+        ))
+        all_docs = generator.generate()
+        doc_items = list(all_docs.items())
+
+        base_docs = doc_items[:base_size]
+        new_docs = doc_items[base_size:base_size + add_count]
+
+        # Method 1: Full recompute after each add
+        processor_full = CorticalTextProcessor()
+        for doc_id, text in base_docs:
+            processor_full.process_document(doc_id, text)
+        processor_full.compute_all()
+
+        full_times = []
+        for doc_id, text in new_docs:
+            start = time.perf_counter()
+            processor_full.process_document(doc_id, text)
+            processor_full.compute_all()
+            elapsed = time.perf_counter() - start
+            full_times.append(elapsed * 1000)  # ms
+
+        # Method 2: Incremental add
+        processor_incr = CorticalTextProcessor()
+        for doc_id, text in base_docs:
+            processor_incr.process_document(doc_id, text)
+        processor_incr.compute_all()
+
+        incr_times = []
+        for doc_id, text in new_docs:
+            start = time.perf_counter()
+            processor_incr.add_document_incremental(doc_id, text)
+            elapsed = time.perf_counter() - start
+            incr_times.append(elapsed * 1000)  # ms
+
+        # Calculate metrics
+        avg_full = statistics.mean(full_times) if full_times else 0
+        avg_incr = statistics.mean(incr_times) if incr_times else 0
+        speedup = avg_full / avg_incr if avg_incr > 0 else float('inf')
+
+        result.add_metric(
+            name="avg_full_recompute_ms",
+            value=avg_full,
+            unit="ms",
+        )
+        result.add_metric(
+            name="avg_incremental_ms",
+            value=avg_incr,
+            unit="ms",
+        )
+        result.add_metric(
+            name="speedup_factor",
+            value=speedup,
+            unit="x",
+            threshold_min=1.5,  # Incremental should be at least 1.5x faster
+        )
+
+        result.metadata.update({
+            "base_corpus_size": base_size,
+            "documents_added": add_count,
+            "full_times_ms": full_times,
+            "incr_times_ms": incr_times,
+        })
+
+        return result
+
+
+@register_benchmark
+class ComputeAllBenchmark(CorpusBenchmark):
+    """
+    Measure compute_all() phase-by-phase timing.
+
+    Reports time for each major phase:
+    - TF-IDF computation
+    - PageRank computation
+    - Clustering (Louvain)
+    - Bigram connections
+    - Semantics extraction
+    """
+
+    name = "compute_all_phases"
+    description = "Measure compute_all() phase timing breakdown"
+    corpus_category = CorpusBenchmarkCategory.ANALYSIS
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        # Create a fresh processor with corpus
+        generator = SyntheticCorpusGenerator(self._corpus_config)
+        corpus = generator.generate()
+
+        processor = CorticalTextProcessor()
+        for doc_id, text in corpus.items():
+            processor.process_document(doc_id, text)
+
+        # Time each phase individually
+        phases = {
+            "tfidf": lambda: processor.compute_tfidf(),
+            "pagerank": lambda: processor.compute_importance(),
+            "bigram_connections": lambda: processor.compute_bigram_connections(),
+            "concepts": lambda: processor.build_concept_clusters(),
+        }
+
+        total_time = 0
+        phase_times = {}
+
+        for phase_name, phase_func in phases.items():
+            start = time.perf_counter()
+            try:
+                phase_func()
+            except Exception as e:
+                result.metadata[f"{phase_name}_error"] = str(e)
+                continue
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            phase_times[phase_name] = elapsed_ms
+            total_time += elapsed_ms
+
+            result.add_metric(
+                name=f"{phase_name}_ms",
+                value=elapsed_ms,
+                unit="ms",
+            )
+
+        # Time semantics extraction (more expensive, optional)
+        start = time.perf_counter()
+        try:
+            processor.extract_corpus_semantics()
+            semantics_time = (time.perf_counter() - start) * 1000
+            phase_times["semantics"] = semantics_time
+            total_time += semantics_time
+
+            result.add_metric(
+                name="semantics_ms",
+                value=semantics_time,
+                unit="ms",
+            )
+        except Exception as e:
+            result.metadata["semantics_error"] = str(e)
+
+        # Add total and breakdown percentages
+        result.add_metric(
+            name="total_compute_ms",
+            value=total_time,
+            unit="ms",
+        )
+
+        result.metadata.update({
+            "corpus_size": self._corpus_config.n_docs,
+            "phase_times_ms": phase_times,
+            "phase_percentages": {
+                k: (v / total_time * 100) if total_time > 0 else 0
+                for k, v in phase_times.items()
+            },
+        })
+
+        return result
+
+
+@register_benchmark
+class BatchIndexingBenchmark(CorpusBenchmark):
+    """
+    Measure add_documents_batch() performance.
+
+    Compares batch insertion vs sequential process_document() calls.
+    """
+
+    name = "batch_indexing"
+    description = "Measure batch vs sequential document indexing"
+    corpus_category = CorpusBenchmarkCategory.INDEXING
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        is_quick = self.config.get("quick", False)
+        batch_size = 25 if is_quick else 100
+
+        # Generate documents
+        generator = SyntheticCorpusGenerator(SyntheticCorpusConfig(
+            n_docs=batch_size,
+            doc_length=self._corpus_config.doc_length,
+            vocab_size=self._corpus_config.vocab_size,
+            seed=42,
+        ))
+        corpus = generator.generate()
+        doc_items = list(corpus.items())
+
+        # Convert to batch format: List[Tuple[str, str, Optional[Dict]]]
+        batch_docs = [(doc_id, text, None) for doc_id, text in doc_items]
+
+        # Method 1: Sequential processing
+        processor_seq = CorticalTextProcessor()
+        start = time.perf_counter()
+        for doc_id, text in doc_items:
+            processor_seq.process_document(doc_id, text)
+        sequential_time = (time.perf_counter() - start) * 1000
+
+        # Method 2: Batch processing
+        processor_batch = CorticalTextProcessor()
+        start = time.perf_counter()
+        processor_batch.add_documents_batch(batch_docs, recompute='none', verbose=False)
+        batch_time = (time.perf_counter() - start) * 1000
+
+        speedup = sequential_time / batch_time if batch_time > 0 else float('inf')
+
+        result.add_metric(
+            name="sequential_ms",
+            value=sequential_time,
+            unit="ms",
+        )
+        result.add_metric(
+            name="batch_ms",
+            value=batch_time,
+            unit="ms",
+        )
+        # Note: batch API has overhead that makes it slower for small batches.
+        # This is informational - no threshold. For large batches, measure separately.
+        result.add_metric(
+            name="batch_speedup",
+            value=speedup,
+            unit="x",
+            # No threshold - this is informational. Batch overhead makes it
+            # slower for small batches but may be faster for very large batches.
+        )
+
+        result.metadata.update({
+            "batch_size": batch_size,
+            "sequential_docs_per_sec": batch_size / (sequential_time / 1000) if sequential_time > 0 else 0,
+            "batch_docs_per_sec": batch_size / (batch_time / 1000) if batch_time > 0 else 0,
+        })
+
+        return result
+
+
+@register_benchmark
+class LargeDocumentBenchmark(CorpusBenchmark):
+    """
+    Measure indexing performance for large documents.
+
+    Tests with documents of various sizes: 10KB, 100KB, 1MB equivalent.
+    """
+
+    name = "large_document_indexing"
+    description = "Measure indexing performance for large documents"
+    corpus_category = CorpusBenchmarkCategory.INDEXING
+
+    # Approximate word counts for target sizes (assuming ~5 chars/word + space)
+    SIZE_CONFIGS = {
+        "10KB": 1700,    # ~10,000 chars / 6 ≈ 1700 words
+        "100KB": 17000,  # ~100,000 chars / 6 ≈ 17000 words
+        "1MB": 170000,   # ~1,000,000 chars / 6 ≈ 170000 words (quick mode skips)
+    }
+
+    QUICK_SIZE_CONFIGS = {
+        "10KB": 1700,
+        "50KB": 8500,
+    }
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        is_quick = self.config.get("quick", False)
+        size_configs = self.QUICK_SIZE_CONFIGS if is_quick else self.SIZE_CONFIGS
+
+        for size_name, word_count in size_configs.items():
+            # Generate a large document
+            generator = SyntheticCorpusGenerator(SyntheticCorpusConfig(
+                n_docs=1,
+                doc_length=word_count,
+                vocab_size=5000,  # Larger vocab for big docs
+                seed=42,
+            ))
+            corpus = generator.generate()
+            doc_text = list(corpus.values())[0]
+
+            # Time indexing
+            processor = CorticalTextProcessor()
+            start = time.perf_counter()
+            processor.process_document(f"large_doc_{size_name}", doc_text)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+
+            # Calculate throughput in KB/sec
+            actual_size_kb = len(doc_text) / 1024
+            kb_per_sec = actual_size_kb / (elapsed_ms / 1000) if elapsed_ms > 0 else 0
+
+            result.add_metric(
+                name=f"time_{size_name.lower()}_ms",
+                value=elapsed_ms,
+                unit="ms",
+            )
+            result.add_metric(
+                name=f"throughput_{size_name.lower()}_kbps",
+                value=kb_per_sec,
+                unit="KB/sec",
+                threshold_min=100.0,  # At least 100 KB/sec
+            )
+
+            result.metadata[f"actual_size_{size_name.lower()}_kb"] = actual_size_kb
+            result.metadata[f"word_count_{size_name.lower()}"] = word_count
+
+        return result
+
+
+# =============================================================================
+# QUERY BENCHMARKS (Stage 1)
+# =============================================================================
+
+from benchmarks.corpus.base import measure_latency_percentiles
+
+
+@register_benchmark
+class SearchLatencyBenchmark(CorpusBenchmark):
+    """
+    Measure search latency percentiles (p50/p90/p99).
+
+    Tests find_documents_for_query() performance with:
+    - Cold cache (first query)
+    - Warm cache (repeated queries)
+    - Various corpus sizes
+    """
+
+    name = "search_latency"
+    description = "Measure search latency percentiles (p50/p90/p99)"
+    corpus_category = CorpusBenchmarkCategory.QUERY
+
+    # Test queries (concept-based to match synthetic corpus)
+    TEST_QUERIES = [
+        "concept0",
+        "concept1 concept2",
+        "word0 word1 word2",
+        "concept5 important",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        # self._processor is pre-loaded and computed via setup()
+        processor = self._processor
+
+        # Cold cache test - first query
+        cold_query = self.TEST_QUERIES[0]
+        cold_start = time.perf_counter()
+        processor.find_documents_for_query(cold_query, top_n=5)
+        cold_latency_ms = (time.perf_counter() - cold_start) * 1000
+
+        result.add_metric(
+            name="cold_cache_latency_ms",
+            value=cold_latency_ms,
+            unit="ms",
+        )
+
+        # Warm cache test - measure percentiles over repeated queries
+        is_quick = self.config.get("quick", False)
+        n_iterations = 50 if is_quick else 200
+
+        latencies_ms = []
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            processor.find_documents_for_query(query, top_n=5)
+            elapsed = (time.perf_counter() - start) * 1000
+            latencies_ms.append(elapsed)
+
+        latencies_ms.sort()
+        n = len(latencies_ms)
+
+        def percentile(p: float) -> float:
+            idx = int(n * p / 100)
+            return latencies_ms[min(idx, n - 1)]
+
+        p50 = percentile(50)
+        p90 = percentile(90)
+        p99 = percentile(99)
+        mean_latency = sum(latencies_ms) / n
+
+        result.add_metric(
+            name="p50_latency_ms",
+            value=p50,
+            unit="ms",
+            threshold_max=100.0,  # Should be under 100ms
+        )
+        result.add_metric(
+            name="p90_latency_ms",
+            value=p90,
+            unit="ms",
+            threshold_max=200.0,  # p90 under 200ms
+        )
+        result.add_metric(
+            name="p99_latency_ms",
+            value=p99,
+            unit="ms",
+        )
+        result.add_metric(
+            name="mean_latency_ms",
+            value=mean_latency,
+            unit="ms",
+        )
+
+        # Calculate queries per second
+        total_time_sec = sum(latencies_ms) / 1000
+        qps = n_iterations / total_time_sec if total_time_sec > 0 else 0
+
+        result.add_metric(
+            name="queries_per_second",
+            value=qps,
+            unit="qps",
+            threshold_min=10.0,  # At least 10 queries/sec
+        )
+
+        result.metadata.update({
+            "corpus_size": self._corpus_config.n_docs,
+            "iterations": n_iterations,
+            "queries_tested": self.TEST_QUERIES,
+            "latency_distribution": {
+                "min_ms": min(latencies_ms),
+                "max_ms": max(latencies_ms),
+                "std_ms": (sum((x - mean_latency) ** 2 for x in latencies_ms) / n) ** 0.5,
+            },
+        })
+
+        return result
+
+
+@register_benchmark
+class ColdWarmCacheBenchmark(CorpusBenchmark):
+    """
+    Compare cold vs warm cache search performance.
+
+    Measures the speedup from query caching and pre-computed indices.
+    """
+
+    name = "cold_warm_cache"
+    description = "Compare cold vs warm cache search performance"
+    corpus_category = CorpusBenchmarkCategory.QUERY
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        # Create fresh processor for cold cache test
+        generator = SyntheticCorpusGenerator(self._corpus_config)
+        corpus = generator.generate()
+
+        processor = CorticalTextProcessor()
+        for doc_id, text in corpus.items():
+            processor.process_document(doc_id, text)
+        processor.compute_all()
+
+        test_query = "concept0 concept1"
+
+        # Cold cache - first query on fresh processor
+        cold_times = []
+        for _ in range(5):
+            # Create new processor each time for true cold cache
+            fresh_processor = CorticalTextProcessor()
+            for doc_id, text in corpus.items():
+                fresh_processor.process_document(doc_id, text)
+            fresh_processor.compute_all()
+
+            start = time.perf_counter()
+            fresh_processor.find_documents_for_query(test_query, top_n=5)
+            cold_times.append((time.perf_counter() - start) * 1000)
+
+        # Warm cache - repeated queries on same processor
+        warm_times = []
+        for _ in range(20):
+            start = time.perf_counter()
+            processor.find_documents_for_query(test_query, top_n=5)
+            warm_times.append((time.perf_counter() - start) * 1000)
+
+        avg_cold = statistics.mean(cold_times)
+        avg_warm = statistics.mean(warm_times)
+        speedup = avg_cold / avg_warm if avg_warm > 0 else float('inf')
+
+        result.add_metric(
+            name="avg_cold_cache_ms",
+            value=avg_cold,
+            unit="ms",
+        )
+        result.add_metric(
+            name="avg_warm_cache_ms",
+            value=avg_warm,
+            unit="ms",
+        )
+        result.add_metric(
+            name="cache_speedup",
+            value=speedup,
+            unit="x",
+        )
+
+        result.metadata.update({
+            "cold_samples": len(cold_times),
+            "warm_samples": len(warm_times),
+            "test_query": test_query,
+        })
+
+        return result
+
+
+# =============================================================================
+# QUERY BENCHMARKS (Stage 2)
+# =============================================================================
+
+
+@register_benchmark
+class FastSearchBenchmark(CorpusBenchmark):
+    """
+    Compare fast_find_documents() vs standard find_documents_for_query().
+
+    Measures the speedup from optimized search path.
+    """
+
+    name = "fast_search_comparison"
+    description = "Compare fast vs standard document search"
+    corpus_category = CorpusBenchmarkCategory.QUERY
+
+    TEST_QUERIES = [
+        "concept0",
+        "concept1 concept2",
+        "word0 word1",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 30 if is_quick else 100
+
+        # Standard search timing
+        standard_times = []
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            processor.find_documents_for_query(query, top_n=5)
+            elapsed = (time.perf_counter() - start) * 1000
+            standard_times.append(elapsed)
+
+        # Fast search timing
+        fast_times = []
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            processor.fast_find_documents(query, top_n=5)
+            elapsed = (time.perf_counter() - start) * 1000
+            fast_times.append(elapsed)
+
+        avg_standard = statistics.mean(standard_times)
+        avg_fast = statistics.mean(fast_times)
+        speedup = avg_standard / avg_fast if avg_fast > 0 else float('inf')
+
+        result.add_metric(
+            name="avg_standard_ms",
+            value=avg_standard,
+            unit="ms",
+        )
+        result.add_metric(
+            name="avg_fast_ms",
+            value=avg_fast,
+            unit="ms",
+        )
+        result.add_metric(
+            name="fast_speedup",
+            value=speedup,
+            unit="x",
+            # No threshold - fast search may not be faster on small synthetic corpora
+            # due to overhead. Real corpus testing needed for accurate speedup.
+        )
+
+        result.metadata.update({
+            "iterations": n_iterations,
+            "standard_p50_ms": sorted(standard_times)[len(standard_times) // 2],
+            "fast_p50_ms": sorted(fast_times)[len(fast_times) // 2],
+        })
+
+        return result
+
+
+@register_benchmark
+class GraphBoostedSearchBenchmark(CorpusBenchmark):
+    """
+    Measure graph_boosted_search() performance with PageRank signals.
+
+    Tests search with graph-based relevance boosting.
+    """
+
+    name = "graph_boosted_search"
+    description = "Measure graph-boosted search with PageRank signals"
+    corpus_category = CorpusBenchmarkCategory.QUERY
+
+    TEST_QUERIES = [
+        "concept0 important",
+        "concept1 concept2",
+        "word0 word1 word2",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 20 if is_quick else 50
+
+        # Standard search baseline
+        standard_times = []
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            processor.find_documents_for_query(query, top_n=5)
+            elapsed = (time.perf_counter() - start) * 1000
+            standard_times.append(elapsed)
+
+        # Graph-boosted search with default weights
+        boosted_times = []
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            processor.graph_boosted_search(
+                query,
+                top_n=5,
+                pagerank_weight=0.3,
+                proximity_weight=0.2,
+            )
+            elapsed = (time.perf_counter() - start) * 1000
+            boosted_times.append(elapsed)
+
+        avg_standard = statistics.mean(standard_times)
+        avg_boosted = statistics.mean(boosted_times)
+        overhead = (avg_boosted - avg_standard) / avg_standard * 100 if avg_standard > 0 else 0
+
+        result.add_metric(
+            name="avg_standard_ms",
+            value=avg_standard,
+            unit="ms",
+        )
+        result.add_metric(
+            name="avg_boosted_ms",
+            value=avg_boosted,
+            unit="ms",
+        )
+        result.add_metric(
+            name="overhead_percent",
+            value=overhead,
+            unit="%",
+            threshold_max=500.0,  # Overhead should be under 500%
+        )
+
+        result.metadata.update({
+            "iterations": n_iterations,
+            "pagerank_weight": 0.3,
+            "proximity_weight": 0.2,
+        })
+
+        return result
+
+
+# =============================================================================
+# QUERY BENCHMARKS (Stage 3)
+# =============================================================================
+
+
+@register_benchmark
+class QueryExpansionBenchmark(CorpusBenchmark):
+    """
+    Measure expand_query() overhead at various expansion depths.
+
+    Tests query expansion performance with different max_expansions values.
+    """
+
+    name = "query_expansion_overhead"
+    description = "Measure query expansion overhead at various depths"
+    corpus_category = CorpusBenchmarkCategory.QUERY
+
+    TEST_QUERIES = [
+        "concept0",
+        "concept1 concept2",
+        "word0",
+    ]
+
+    EXPANSION_DEPTHS = [5, 10, 20]
+    QUICK_DEPTHS = [5, 10]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        depths = self.QUICK_DEPTHS if is_quick else self.EXPANSION_DEPTHS
+        n_iterations = 20 if is_quick else 50
+
+        # Baseline: no expansion (direct tokenization)
+        baseline_times = []
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            # Just tokenize without expansion
+            processor.tokenizer.tokenize(query)
+            elapsed = (time.perf_counter() - start) * 1000
+            baseline_times.append(elapsed)
+
+        avg_baseline = statistics.mean(baseline_times)
+
+        result.add_metric(
+            name="baseline_tokenize_ms",
+            value=avg_baseline,
+            unit="ms",
+        )
+
+        # Test each expansion depth
+        for depth in depths:
+            expansion_times = []
+            expansion_counts = []
+
+            for i in range(n_iterations):
+                query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+                start = time.perf_counter()
+                expanded = processor.expand_query(query, max_expansions=depth)
+                elapsed = (time.perf_counter() - start) * 1000
+                expansion_times.append(elapsed)
+                expansion_counts.append(len(expanded))
+
+            avg_time = statistics.mean(expansion_times)
+            avg_count = statistics.mean(expansion_counts)
+            overhead = (avg_time - avg_baseline) / avg_baseline * 100 if avg_baseline > 0 else 0
+
+            result.add_metric(
+                name=f"expand_{depth}_ms",
+                value=avg_time,
+                unit="ms",
+            )
+            result.add_metric(
+                name=f"expand_{depth}_terms",
+                value=avg_count,
+                unit="terms",
+            )
+            result.add_metric(
+                name=f"expand_{depth}_overhead_pct",
+                value=overhead,
+                unit="%",
+            )
+
+        result.metadata.update({
+            "depths_tested": depths,
+            "iterations": n_iterations,
+            "queries": self.TEST_QUERIES,
+        })
+
+        return result
+
+
+# =============================================================================
+# PASSAGE BENCHMARKS (Stage 1)
+# =============================================================================
+
+
+@register_benchmark
+class PassageRetrievalBenchmark(CorpusBenchmark):
+    """
+    Measure find_passages_for_query() latency percentiles.
+
+    Tests RAG-style passage retrieval performance with:
+    - Latency percentiles (p50/p90/p99)
+    - Quality metrics (passages found, coverage)
+    """
+
+    name = "passage_retrieval"
+    description = "Measure passage retrieval latency and quality"
+    corpus_category = CorpusBenchmarkCategory.PASSAGE
+
+    TEST_QUERIES = [
+        "concept0",
+        "concept1 concept2",
+        "word0 word1 word2",
+        "important concept5",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 30 if is_quick else 100
+
+        # Measure latencies
+        latencies_ms = []
+        passages_found = []
+
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            passages = processor.find_passages_for_query(query, top_n=5)
+            elapsed = (time.perf_counter() - start) * 1000
+            latencies_ms.append(elapsed)
+            passages_found.append(len(passages))
+
+        # Calculate percentiles
+        latencies_ms.sort()
+        n = len(latencies_ms)
+
+        def percentile(p: float) -> float:
+            idx = int(n * p / 100)
+            return latencies_ms[min(idx, n - 1)]
+
+        p50 = percentile(50)
+        p90 = percentile(90)
+        p99 = percentile(99)
+        mean_latency = sum(latencies_ms) / n
+
+        result.add_metric(
+            name="p50_latency_ms",
+            value=p50,
+            unit="ms",
+            threshold_max=200.0,  # Passage retrieval under 200ms
+        )
+        result.add_metric(
+            name="p90_latency_ms",
+            value=p90,
+            unit="ms",
+            threshold_max=500.0,
+        )
+        result.add_metric(
+            name="p99_latency_ms",
+            value=p99,
+            unit="ms",
+        )
+        result.add_metric(
+            name="mean_latency_ms",
+            value=mean_latency,
+            unit="ms",
+        )
+
+        # Quality metrics
+        avg_passages = statistics.mean(passages_found)
+        result.add_metric(
+            name="avg_passages_returned",
+            value=avg_passages,
+            unit="passages",
+            threshold_min=1.0,  # Should find at least 1 passage on average
+        )
+
+        # Calculate throughput
+        total_time_sec = sum(latencies_ms) / 1000
+        qps = n_iterations / total_time_sec if total_time_sec > 0 else 0
+
+        result.add_metric(
+            name="queries_per_second",
+            value=qps,
+            unit="qps",
+            threshold_min=5.0,  # At least 5 passage queries/sec
+        )
+
+        result.metadata.update({
+            "corpus_size": self._corpus_config.n_docs,
+            "iterations": n_iterations,
+            "queries_tested": self.TEST_QUERIES,
+            "passages_distribution": {
+                "min": min(passages_found),
+                "max": max(passages_found),
+                "avg": avg_passages,
+            },
+        })
+
+        return result
+
+
+# =============================================================================
+# PASSAGE BENCHMARKS (Stage 2)
+# =============================================================================
+
+
+@register_benchmark
+class ChunkSizeImpactBenchmark(CorpusBenchmark):
+    """
+    Compare passage retrieval with different chunk sizes.
+
+    Tests how chunk_size affects:
+    - Retrieval latency
+    - Number of passages returned
+    - Coverage of relevant content
+    """
+
+    name = "chunk_size_impact"
+    description = "Compare chunk sizes for passage retrieval"
+    corpus_category = CorpusBenchmarkCategory.PASSAGE
+
+    CHUNK_SIZES = [100, 200, 500, 1000]
+    QUICK_CHUNK_SIZES = [100, 200, 500]
+
+    TEST_QUERIES = [
+        "concept0",
+        "concept1 concept2",
+        "word0 word1",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        chunk_sizes = self.QUICK_CHUNK_SIZES if is_quick else self.CHUNK_SIZES
+        n_iterations = 15 if is_quick else 30
+
+        # Test each chunk size
+        for chunk_size in chunk_sizes:
+            overlap = chunk_size // 4  # 25% overlap
+
+            latencies_ms = []
+            passages_counts = []
+            total_chars = []
+
+            for i in range(n_iterations):
+                query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+                start = time.perf_counter()
+                passages = processor.find_passages_for_query(
+                    query,
+                    top_n=5,
+                    chunk_size=chunk_size,
+                    overlap=overlap,
+                )
+                elapsed = (time.perf_counter() - start) * 1000
+                latencies_ms.append(elapsed)
+                passages_counts.append(len(passages))
+
+                # Sum total characters returned
+                chars = sum(len(p[0]) for p in passages) if passages else 0
+                total_chars.append(chars)
+
+            avg_latency = statistics.mean(latencies_ms)
+            avg_passages = statistics.mean(passages_counts)
+            avg_chars = statistics.mean(total_chars)
+
+            result.add_metric(
+                name=f"latency_{chunk_size}_ms",
+                value=avg_latency,
+                unit="ms",
+            )
+            result.add_metric(
+                name=f"passages_{chunk_size}",
+                value=avg_passages,
+                unit="passages",
+            )
+            result.add_metric(
+                name=f"chars_{chunk_size}",
+                value=avg_chars,
+                unit="chars",
+            )
+
+        result.metadata.update({
+            "chunk_sizes_tested": chunk_sizes,
+            "iterations_per_size": n_iterations,
+            "queries": self.TEST_QUERIES,
+        })
+
+        return result
+
+
+# =============================================================================
+# PASSAGE BENCHMARKS (Stage 3)
+# =============================================================================
+
+
+@register_benchmark
+class PassageBatchBenchmark(CorpusBenchmark):
+    """
+    Measure find_passages_batch() performance.
+
+    Tests batch passage retrieval:
+    - Throughput for multiple concurrent queries
+    - Comparison with sequential single queries
+    """
+
+    name = "passage_batch"
+    description = "Measure batch passage retrieval throughput"
+    corpus_category = CorpusBenchmarkCategory.PASSAGE
+
+    TEST_QUERIES = [
+        "concept0",
+        "concept1 concept2",
+        "word0 word1",
+        "important concept5",
+        "concept3 word5",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_batches = 5 if is_quick else 10
+        batch_size = len(self.TEST_QUERIES)
+
+        # Sequential timing (one query at a time)
+        sequential_times = []
+        for _ in range(n_batches):
+            start = time.perf_counter()
+            for query in self.TEST_QUERIES:
+                processor.find_passages_for_query(query, top_n=3)
+            elapsed = (time.perf_counter() - start) * 1000
+            sequential_times.append(elapsed)
+
+        # Batch timing
+        batch_times = []
+        for _ in range(n_batches):
+            start = time.perf_counter()
+            processor.find_passages_batch(
+                self.TEST_QUERIES,
+                top_n=3,
+                chunk_size=200,
+                overlap=50,
+            )
+            elapsed = (time.perf_counter() - start) * 1000
+            batch_times.append(elapsed)
+
+        avg_sequential = statistics.mean(sequential_times)
+        avg_batch = statistics.mean(batch_times)
+
+        # Per-query latency
+        per_query_sequential = avg_sequential / batch_size
+        per_query_batch = avg_batch / batch_size
+
+        result.add_metric(
+            name="avg_sequential_total_ms",
+            value=avg_sequential,
+            unit="ms",
+        )
+        result.add_metric(
+            name="avg_batch_total_ms",
+            value=avg_batch,
+            unit="ms",
+        )
+        result.add_metric(
+            name="per_query_sequential_ms",
+            value=per_query_sequential,
+            unit="ms",
+        )
+        result.add_metric(
+            name="per_query_batch_ms",
+            value=per_query_batch,
+            unit="ms",
+        )
+
+        # Calculate speedup (batch may or may not be faster due to overhead)
+        speedup = avg_sequential / avg_batch if avg_batch > 0 else float('inf')
+        result.add_metric(
+            name="batch_speedup",
+            value=speedup,
+            unit="x",
+        )
+
+        # Throughput
+        queries_per_sec_seq = (batch_size * 1000) / avg_sequential if avg_sequential > 0 else 0
+        queries_per_sec_batch = (batch_size * 1000) / avg_batch if avg_batch > 0 else 0
+
+        result.add_metric(
+            name="throughput_sequential_qps",
+            value=queries_per_sec_seq,
+            unit="qps",
+        )
+        result.add_metric(
+            name="throughput_batch_qps",
+            value=queries_per_sec_batch,
+            unit="qps",
+        )
+
+        result.metadata.update({
+            "batch_size": batch_size,
+            "n_batches": n_batches,
+            "queries": self.TEST_QUERIES,
+        })
+
+        return result
+
+
+# =============================================================================
+# CODE_SEARCH BENCHMARKS
+# =============================================================================
+
+
+@register_benchmark
+class IntentParsingBenchmark(CorpusBenchmark):
+    """
+    Measure parse_intent_query() performance.
+
+    Tests intent extraction from natural language queries:
+    - Parsing latency
+    - Intent detection accuracy (based on expected intents)
+    """
+
+    name = "intent_parsing"
+    description = "Measure intent query parsing latency"
+    corpus_category = CorpusBenchmarkCategory.CODE_SEARCH
+
+    # Test queries with expected intents
+    INTENT_QUERIES = [
+        ("where do we handle authentication", "location"),
+        ("how does the processor work", "explanation"),
+        ("what is pagerank", "definition"),
+        ("find all error handlers", "search"),
+        ("show me the config file", "search"),
+        ("why is this slow", "reason"),
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 50 if is_quick else 200
+
+        # Measure parsing latencies
+        latencies_ms = []
+        intents_detected = []
+
+        for i in range(n_iterations):
+            query, expected_intent = self.INTENT_QUERIES[i % len(self.INTENT_QUERIES)]
+            start = time.perf_counter()
+            parsed = processor.parse_intent_query(query)
+            elapsed = (time.perf_counter() - start) * 1000
+            latencies_ms.append(elapsed)
+
+            # Check if intent matches expected
+            actual_intent = parsed.get("intent", "unknown")
+            intents_detected.append(actual_intent == expected_intent)
+
+        latencies_ms.sort()
+        n = len(latencies_ms)
+
+        def percentile(p: float) -> float:
+            idx = int(n * p / 100)
+            return latencies_ms[min(idx, n - 1)]
+
+        p50 = percentile(50)
+        p99 = percentile(99)
+        mean_latency = sum(latencies_ms) / n
+
+        result.add_metric(
+            name="p50_latency_ms",
+            value=p50,
+            unit="ms",
+            threshold_max=10.0,  # Intent parsing should be very fast
+        )
+        result.add_metric(
+            name="p99_latency_ms",
+            value=p99,
+            unit="ms",
+        )
+        result.add_metric(
+            name="mean_latency_ms",
+            value=mean_latency,
+            unit="ms",
+        )
+
+        # Intent accuracy (informational - pattern matching has known limitations)
+        accuracy = sum(intents_detected) / len(intents_detected) * 100
+        result.add_metric(
+            name="intent_accuracy_pct",
+            value=accuracy,
+            unit="%",
+        )
+
+        # Throughput
+        total_time_sec = sum(latencies_ms) / 1000
+        qps = n_iterations / total_time_sec if total_time_sec > 0 else 0
+
+        result.add_metric(
+            name="queries_per_second",
+            value=qps,
+            unit="qps",
+            threshold_min=100.0,  # Should be very fast (no corpus access)
+        )
+
+        result.metadata.update({
+            "iterations": n_iterations,
+            "queries_tested": [q[0] for q in self.INTENT_QUERIES],
+        })
+
+        return result
+
+
+@register_benchmark
+class CodeConceptExpansionBenchmark(CorpusBenchmark):
+    """
+    Measure expand_query_for_code() performance.
+
+    Tests code-aware query expansion:
+    - Expansion latency
+    - Number of synonyms/related terms found
+    """
+
+    name = "code_concept_expansion"
+    description = "Measure code-aware query expansion"
+    corpus_category = CorpusBenchmarkCategory.CODE_SEARCH
+
+    CODE_QUERIES = [
+        "fetch data",      # Should expand to get/load/retrieve
+        "handle error",    # Should expand to catch/exception
+        "authenticate user",  # Should expand to login/auth
+        "parse json",
+        "validate input",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 30 if is_quick else 100
+
+        latencies_ms = []
+        expansion_counts = []
+
+        for i in range(n_iterations):
+            query = self.CODE_QUERIES[i % len(self.CODE_QUERIES)]
+            start = time.perf_counter()
+            expanded = processor.expand_query_for_code(query, max_expansions=20)
+            elapsed = (time.perf_counter() - start) * 1000
+            latencies_ms.append(elapsed)
+            expansion_counts.append(len(expanded))
+
+        latencies_ms.sort()
+        n = len(latencies_ms)
+
+        def percentile(p: float) -> float:
+            idx = int(n * p / 100)
+            return latencies_ms[min(idx, n - 1)]
+
+        p50 = percentile(50)
+        p99 = percentile(99)
+
+        result.add_metric(
+            name="p50_latency_ms",
+            value=p50,
+            unit="ms",
+            threshold_max=50.0,  # Code expansion under 50ms
+        )
+        result.add_metric(
+            name="p99_latency_ms",
+            value=p99,
+            unit="ms",
+        )
+
+        avg_expansions = statistics.mean(expansion_counts)
+        result.add_metric(
+            name="avg_expansions",
+            value=avg_expansions,
+            unit="terms",
+            # No threshold - synthetic corpus may not have code terms
+            # Real corpus testing should use actual code files
+        )
+
+        # Throughput
+        total_time_sec = sum(latencies_ms) / 1000
+        qps = n_iterations / total_time_sec if total_time_sec > 0 else 0
+
+        result.add_metric(
+            name="queries_per_second",
+            value=qps,
+            unit="qps",
+        )
+
+        result.metadata.update({
+            "iterations": n_iterations,
+            "queries_tested": self.CODE_QUERIES,
+            "expansion_distribution": {
+                "min": min(expansion_counts),
+                "max": max(expansion_counts),
+                "avg": avg_expansions,
+            },
+        })
+
+        return result
+
+
+@register_benchmark
+class IntentSearchBenchmark(CorpusBenchmark):
+    """
+    Measure search_by_intent() end-to-end performance.
+
+    Tests intent-based document search:
+    - Full search latency (parse + expand + rank)
+    - Result quality
+    """
+
+    name = "intent_search"
+    description = "Measure intent-based search performance"
+    corpus_category = CorpusBenchmarkCategory.CODE_SEARCH
+
+    INTENT_QUERIES = [
+        "where is the config",
+        "how does processing work",
+        "what is a concept",
+        "find error handlers",
+        "show authentication code",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 20 if is_quick else 50
+
+        latencies_ms = []
+        results_counts = []
+
+        for i in range(n_iterations):
+            query = self.INTENT_QUERIES[i % len(self.INTENT_QUERIES)]
+            start = time.perf_counter()
+            results = processor.search_by_intent(query, top_n=5)
+            elapsed = (time.perf_counter() - start) * 1000
+            latencies_ms.append(elapsed)
+            results_counts.append(len(results))
+
+        latencies_ms.sort()
+        n = len(latencies_ms)
+
+        def percentile(p: float) -> float:
+            idx = int(n * p / 100)
+            return latencies_ms[min(idx, n - 1)]
+
+        p50 = percentile(50)
+        p90 = percentile(90)
+
+        result.add_metric(
+            name="p50_latency_ms",
+            value=p50,
+            unit="ms",
+            threshold_max=100.0,
+        )
+        result.add_metric(
+            name="p90_latency_ms",
+            value=p90,
+            unit="ms",
+        )
+
+        avg_results = statistics.mean(results_counts)
+        result.add_metric(
+            name="avg_results_returned",
+            value=avg_results,
+            unit="results",
+        )
+
+        # Throughput
+        total_time_sec = sum(latencies_ms) / 1000
+        qps = n_iterations / total_time_sec if total_time_sec > 0 else 0
+
+        result.add_metric(
+            name="queries_per_second",
+            value=qps,
+            unit="qps",
+            threshold_min=10.0,
+        )
+
+        result.metadata.update({
+            "iterations": n_iterations,
+            "queries_tested": self.INTENT_QUERIES,
+        })
+
+        return result
+
+
+# =============================================================================
+# FINGERPRINT BENCHMARKS
+# =============================================================================
+
+
+@register_benchmark
+class FingerprintGenerationBenchmark(CorpusBenchmark):
+    """
+    Measure get_fingerprint() performance.
+
+    Tests semantic fingerprinting:
+    - Generation latency for various text sizes
+    - Fingerprint quality (terms captured)
+    """
+
+    name = "fingerprint_generation"
+    description = "Measure fingerprint generation speed"
+    corpus_category = CorpusBenchmarkCategory.FINGERPRINT
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 30 if is_quick else 100
+
+        # Generate test texts of various sizes
+        generator = SyntheticCorpusGenerator(SyntheticCorpusConfig(
+            n_docs=10,
+            doc_length=100,
+            vocab_size=500,
+            seed=42,
+        ))
+        test_docs = list(generator.generate().values())
+
+        latencies_ms = []
+        term_counts = []
+
+        for i in range(n_iterations):
+            text = test_docs[i % len(test_docs)]
+            start = time.perf_counter()
+            fp = processor.get_fingerprint(text, top_n=20)
+            elapsed = (time.perf_counter() - start) * 1000
+            latencies_ms.append(elapsed)
+            term_counts.append(fp.get("term_count", 0))
+
+        latencies_ms.sort()
+        n = len(latencies_ms)
+
+        def percentile(p: float) -> float:
+            idx = int(n * p / 100)
+            return latencies_ms[min(idx, n - 1)]
+
+        p50 = percentile(50)
+        p99 = percentile(99)
+
+        result.add_metric(
+            name="p50_latency_ms",
+            value=p50,
+            unit="ms",
+            threshold_max=50.0,  # Fingerprint generation under 50ms
+        )
+        result.add_metric(
+            name="p99_latency_ms",
+            value=p99,
+            unit="ms",
+        )
+
+        avg_terms = statistics.mean(term_counts) if term_counts else 0
+        result.add_metric(
+            name="avg_terms_captured",
+            value=avg_terms,
+            unit="terms",
+        )
+
+        # Throughput
+        total_time_sec = sum(latencies_ms) / 1000
+        fps = n_iterations / total_time_sec if total_time_sec > 0 else 0
+
+        result.add_metric(
+            name="fingerprints_per_second",
+            value=fps,
+            unit="fps",
+            threshold_min=50.0,  # At least 50 fingerprints/sec
+        )
+
+        result.metadata.update({
+            "iterations": n_iterations,
+            "test_doc_count": len(test_docs),
+        })
+
+        return result
+
+
+@register_benchmark
+class FingerprintComparisonBenchmark(CorpusBenchmark):
+    """
+    Measure compare_fingerprints() at scale.
+
+    Tests pairwise comparison:
+    - Comparison latency
+    - Quality of similarity scores
+    """
+
+    name = "fingerprint_comparison"
+    description = "Measure fingerprint comparison at scale"
+    corpus_category = CorpusBenchmarkCategory.FINGERPRINT
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+
+        # Generate test texts - some similar, some different
+        generator = SyntheticCorpusGenerator(SyntheticCorpusConfig(
+            n_docs=10,
+            doc_length=100,
+            vocab_size=500,
+            seed=42,
+        ))
+        test_docs = list(generator.generate().values())
+
+        # Pre-compute fingerprints
+        fingerprints = []
+        for doc in test_docs:
+            fp = processor.get_fingerprint(doc, top_n=20)
+            fingerprints.append(fp)
+
+        # Measure pairwise comparisons
+        n_comparisons = 20 if is_quick else 50
+        latencies_ms = []
+        similarity_scores = []
+
+        for i in range(n_comparisons):
+            fp1 = fingerprints[i % len(fingerprints)]
+            fp2 = fingerprints[(i + 1) % len(fingerprints)]
+
+            start = time.perf_counter()
+            comparison = processor.compare_fingerprints(fp1, fp2)
+            elapsed = (time.perf_counter() - start) * 1000
+            latencies_ms.append(elapsed)
+
+            # Extract similarity score
+            if "similarity" in comparison:
+                similarity_scores.append(comparison["similarity"])
+            elif "weighted_similarity" in comparison:
+                similarity_scores.append(comparison["weighted_similarity"])
+
+        latencies_ms.sort()
+        n = len(latencies_ms)
+
+        def percentile(p: float) -> float:
+            idx = int(n * p / 100)
+            return latencies_ms[min(idx, n - 1)]
+
+        p50 = percentile(50)
+        p99 = percentile(99)
+
+        result.add_metric(
+            name="p50_latency_ms",
+            value=p50,
+            unit="ms",
+            threshold_max=5.0,  # Comparison should be very fast
+        )
+        result.add_metric(
+            name="p99_latency_ms",
+            value=p99,
+            unit="ms",
+        )
+
+        # Throughput
+        total_time_sec = sum(latencies_ms) / 1000
+        cps = n_comparisons / total_time_sec if total_time_sec > 0 else 0
+
+        result.add_metric(
+            name="comparisons_per_second",
+            value=cps,
+            unit="cps",
+            threshold_min=100.0,  # At least 100 comparisons/sec
+        )
+
+        if similarity_scores:
+            result.add_metric(
+                name="avg_similarity",
+                value=statistics.mean(similarity_scores),
+                unit="",
+            )
+
+        result.metadata.update({
+            "comparisons": n_comparisons,
+            "fingerprints_used": len(fingerprints),
+        })
+
+        return result
+
+
+@register_benchmark
+class SimilarityDetectionBenchmark(CorpusBenchmark):
+    """
+    Measure similarity detection quality.
+
+    Tests:
+    - Ability to detect similar documents
+    - Similarity ranking (same doc > partial overlap > no overlap)
+    """
+
+    name = "similarity_detection"
+    description = "Measure similarity detection quality"
+    corpus_category = CorpusBenchmarkCategory.FINGERPRINT
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+
+        # Get actual documents from the corpus for meaningful comparison
+        doc_ids = list(processor.documents.keys())
+
+        if len(doc_ids) < 3:
+            result.status = BenchmarkStatus.SKIPPED
+            result.error_message = "Need at least 3 documents for similarity test"
+            return result
+
+        # Get texts from corpus
+        doc1_text = processor.documents[doc_ids[0]]
+        doc2_text = processor.documents[doc_ids[1]]
+        doc3_text = processor.documents[doc_ids[2]]
+
+        # Compute fingerprints
+        fp1 = processor.get_fingerprint(doc1_text)
+        fp2 = processor.get_fingerprint(doc2_text)
+        fp3 = processor.get_fingerprint(doc3_text)
+
+        # Self-similarity should be 1.0 (or close)
+        sim_self = processor.compare_fingerprints(fp1, fp1)
+
+        # Cross-document similarities
+        sim_1_2 = processor.compare_fingerprints(fp1, fp2)
+        sim_1_3 = processor.compare_fingerprints(fp1, fp3)
+        sim_2_3 = processor.compare_fingerprints(fp2, fp3)
+
+        # Extract similarity values (try multiple keys in order)
+        def get_sim(comp):
+            # Check for identical docs first
+            if comp.get("identical", False):
+                return 1.0
+            for key in ["overall_similarity", "term_similarity", "weighted_similarity", "similarity"]:
+                if key in comp:
+                    return comp[key]
+            return 0.0
+
+        score_self = get_sim(sim_self)
+        score_1_2 = get_sim(sim_1_2)
+        score_1_3 = get_sim(sim_1_3)
+        score_2_3 = get_sim(sim_2_3)
+
+        result.add_metric(
+            name="self_similarity",
+            value=score_self,
+            unit="",
+            threshold_min=0.9,  # Self-comparison should be near 1.0
+        )
+
+        avg_cross = (score_1_2 + score_1_3 + score_2_3) / 3
+        result.add_metric(
+            name="avg_cross_similarity",
+            value=avg_cross,
+            unit="",
+        )
+
+        # Self should be higher than cross (sanity check)
+        self_higher = score_self > max(score_1_2, score_1_3, score_2_3)
+        result.add_metric(
+            name="self_higher_than_cross",
+            value=1.0 if self_higher else 0.0,
+            unit="bool",
+        )
+
+        result.metadata.update({
+            "documents_compared": 3,
+            "cross_similarities": [score_1_2, score_1_3, score_2_3],
+        })
+
+        return result
+
+
+# =============================================================================
+# PERSISTENCE BENCHMARKS
+# =============================================================================
+
+import tempfile
+import shutil
+
+
+@register_benchmark
+class SaveCorpusBenchmark(CorpusBenchmark):
+    """
+    Measure corpus save performance.
+
+    Tests JSON directory save:
+    - Save latency for various corpus sizes
+    - Disk space efficiency
+    """
+
+    name = "save_corpus"
+    description = "Measure corpus save performance"
+    corpus_category = CorpusBenchmarkCategory.PERSISTENCE
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 3 if is_quick else 5
+
+        save_times = []
+        temp_dirs = []
+
+        try:
+            for _ in range(n_iterations):
+                # Create temp directory
+                temp_dir = tempfile.mkdtemp(prefix="bench_save_")
+                temp_dirs.append(temp_dir)
+                save_path = Path(temp_dir) / "corpus"
+
+                start = time.perf_counter()
+                processor.save(str(save_path), verbose=False)
+                elapsed = (time.perf_counter() - start) * 1000
+                save_times.append(elapsed)
+
+            avg_save = statistics.mean(save_times)
+            p50 = sorted(save_times)[len(save_times) // 2]
+
+            result.add_metric(
+                name="avg_save_ms",
+                value=avg_save,
+                unit="ms",
+            )
+            result.add_metric(
+                name="p50_save_ms",
+                value=p50,
+                unit="ms",
+                threshold_max=5000.0,  # Save under 5 seconds
+            )
+
+            # Calculate save throughput
+            n_docs = len(processor.documents)
+            docs_per_sec = (n_docs * 1000) / avg_save if avg_save > 0 else 0
+            result.add_metric(
+                name="docs_per_second",
+                value=docs_per_sec,
+                unit="docs/sec",
+            )
+
+            result.metadata.update({
+                "iterations": n_iterations,
+                "corpus_size": n_docs,
+            })
+
+        finally:
+            # Cleanup temp directories
+            for temp_dir in temp_dirs:
+                try:
+                    shutil.rmtree(temp_dir)
+                except Exception:
+                    pass
+
+        return result
+
+
+@register_benchmark
+class LoadCorpusBenchmark(CorpusBenchmark):
+    """
+    Measure corpus load performance.
+
+    Tests JSON directory load:
+    - Load latency
+    - Full state restoration
+    """
+
+    name = "load_corpus"
+    description = "Measure corpus load performance"
+    corpus_category = CorpusBenchmarkCategory.PERSISTENCE
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 3 if is_quick else 5
+
+        temp_dir = None
+        load_times = []
+
+        try:
+            # Save once to create loadable state
+            temp_dir = tempfile.mkdtemp(prefix="bench_load_")
+            save_path = Path(temp_dir) / "corpus"
+            processor.save(str(save_path), verbose=False)
+
+            # Measure load times
+            for _ in range(n_iterations):
+                start = time.perf_counter()
+                loaded = CorticalTextProcessor.load(str(save_path), verbose=False)
+                elapsed = (time.perf_counter() - start) * 1000
+                load_times.append(elapsed)
+
+                # Verify basic integrity
+                if len(loaded.documents) != len(processor.documents):
+                    result.error_message = "Document count mismatch after load"
+
+            avg_load = statistics.mean(load_times)
+            p50 = sorted(load_times)[len(load_times) // 2]
+
+            result.add_metric(
+                name="avg_load_ms",
+                value=avg_load,
+                unit="ms",
+            )
+            result.add_metric(
+                name="p50_load_ms",
+                value=p50,
+                unit="ms",
+                threshold_max=5000.0,  # Load under 5 seconds
+            )
+
+            # Calculate load throughput
+            n_docs = len(processor.documents)
+            docs_per_sec = (n_docs * 1000) / avg_load if avg_load > 0 else 0
+            result.add_metric(
+                name="docs_per_second",
+                value=docs_per_sec,
+                unit="docs/sec",
+            )
+
+            result.metadata.update({
+                "iterations": n_iterations,
+                "corpus_size": n_docs,
+            })
+
+        finally:
+            if temp_dir:
+                try:
+                    shutil.rmtree(temp_dir)
+                except Exception:
+                    pass
+
+        return result
+
+
+@register_benchmark
+class StateIntegrityBenchmark(CorpusBenchmark):
+    """
+    Verify save/load preserves full state.
+
+    Tests:
+    - Document count matches
+    - Query results match
+    - Metadata preserved
+    """
+
+    name = "state_integrity"
+    description = "Verify save/load preserves state"
+    corpus_category = CorpusBenchmarkCategory.PERSISTENCE
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        temp_dir = None
+
+        try:
+            # Save
+            temp_dir = tempfile.mkdtemp(prefix="bench_integrity_")
+            save_path = Path(temp_dir) / "corpus"
+            processor.save(str(save_path), verbose=False)
+
+            # Load
+            loaded = CorticalTextProcessor.load(str(save_path), verbose=False)
+
+            # Check document count
+            orig_docs = len(processor.documents)
+            loaded_docs = len(loaded.documents)
+            docs_match = orig_docs == loaded_docs
+
+            result.add_metric(
+                name="documents_match",
+                value=1.0 if docs_match else 0.0,
+                unit="bool",
+                threshold_min=1.0,  # Must match
+            )
+
+            # Check layer counts
+            layers_match = True
+            for layer_enum in processor.layers:
+                orig_count = processor.layers[layer_enum].column_count()
+                loaded_count = loaded.layers[layer_enum].column_count()
+                if orig_count != loaded_count:
+                    layers_match = False
+                    break
+
+            result.add_metric(
+                name="layers_match",
+                value=1.0 if layers_match else 0.0,
+                unit="bool",
+                threshold_min=1.0,
+            )
+
+            # Check query consistency (same query, same results)
+            test_query = "concept0"
+            orig_results = processor.find_documents_for_query(test_query, top_n=3)
+            loaded_results = loaded.find_documents_for_query(test_query, top_n=3)
+
+            # Compare result doc_ids (scores may have minor float differences)
+            orig_ids = [r[0] for r in orig_results]
+            loaded_ids = [r[0] for r in loaded_results]
+            query_match = orig_ids == loaded_ids
+
+            result.add_metric(
+                name="query_results_match",
+                value=1.0 if query_match else 0.0,
+                unit="bool",
+                threshold_min=1.0,
+            )
+
+            # Overall integrity
+            all_match = docs_match and layers_match and query_match
+            result.add_metric(
+                name="full_integrity",
+                value=1.0 if all_match else 0.0,
+                unit="bool",
+                threshold_min=1.0,
+            )
+
+            result.metadata.update({
+                "original_docs": orig_docs,
+                "loaded_docs": loaded_docs,
+                "layers_checked": len(processor.layers),
+            })
+
+        finally:
+            if temp_dir:
+                try:
+                    shutil.rmtree(temp_dir)
+                except Exception:
+                    pass
+
         return result
 
 
@@ -311,6 +2297,11 @@ Categories:
         default=None,
         help="Override corpus size (n_docs)",
     )
+    parser.add_argument(
+        "--use-corpus",
+        type=str,
+        help="Load a saved CorticalTextProcessor state instead of synthetic corpus",
+    )
 
     args = parser.parse_args()
 
@@ -326,6 +2317,19 @@ Categories:
     config = {"quick": args.quick}
     if args.corpus_size:
         config["n_docs"] = args.corpus_size
+    if args.use_corpus:
+        corpus_path = Path(args.use_corpus)
+        if not corpus_path.exists():
+            print(f"Error: Corpus path not found: {args.use_corpus}", file=sys.stderr)
+            return 1
+        print(f"Loading corpus from: {args.use_corpus}...")
+        try:
+            loaded_processor = CorticalTextProcessor.load(str(corpus_path), verbose=False)
+            config["_loaded_processor"] = loaded_processor
+            print(f"Loaded {len(loaded_processor.documents)} documents")
+        except Exception as e:
+            print(f"Error loading corpus: {e}", file=sys.stderr)
+            return 1
 
     # Create suite
     benchmarks = [args.benchmark] if args.benchmark else None
@@ -338,7 +2342,8 @@ Categories:
 
     # Run benchmarks
     mode = "quick" if args.quick else "full"
-    print(f"\nRunning {len(suite.benchmarks)} corpus benchmark(s) [{mode} mode]...")
+    corpus_mode = "real corpus" if args.use_corpus else "synthetic corpus"
+    print(f"\nRunning {len(suite.benchmarks)} corpus benchmark(s) [{mode} mode, {corpus_mode}]...")
     print("=" * 60)
 
     callback = progress_callback if args.verbose else None
