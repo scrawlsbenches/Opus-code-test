@@ -71,10 +71,12 @@ class TraceCategory(Enum):
     EVENT_STORE = "event_store"
     MATERIALIZATION = "materialization"
     SEMANTIC_INDEX = "semantic_index"
+    CAUSAL_DAG = "causal_dag"
     HEALTH_CHECK = "health_check"
     COMPACTION = "compaction"
     MIGRATION = "migration"
     QUERY = "query"
+    USER_CODE = "user_code"
     META = "meta"
 
 
