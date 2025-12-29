@@ -1,8 +1,8 @@
 {
-  "_checksum": "08aa39b359955fde",
-  "_written_at": "2025-12-29T11:46:45.820843+00:00",
+  "_checksum": "abae32d31dba93b7",
+  "_written_at": "2025-12-29T11:59:51.949250+00:00",
   "data": {
-    "accepted_at": "",
+    "accepted_at": "2025-12-29T11:59:51.944410+00:00",
     "artifacts": [],
     "completed_at": "",
     "context": {
@@ -15,15 +15,15 @@
     "id": "H-20251229-114645-4fad68f1",
     "initiated_at": "2025-12-29T11:46:45.817341+00:00",
     "instructions": "## Handoff: Query Benchmark Stage 1 - Basic Search Latency\n\n### Context\nThis is Stage 1 of a 3-stage query benchmark implementation. GoT now supports task\u2192sub-task hierarchies (CONTAINS edges).\n\n**Parent Task:** T-20251229-101554-c5d89023 (Implement query performance benchmarks)\n**This Task:** T-20251229-114219-aefd59c2 (Stage 1: Basic search latency)\n\n### Staged Approach (Decision D-20251229-114423-7bd8216c)\n- **Stage 1**: Basic search latency (p50/p90/p99) - THIS STAGE\n- **Stage 2**: Fast search + graph-boosted (T-20251229-114235-3d28760f)\n- **Stage 3**: Query expansion overhead (T-20251229-114242-2e413030)\n\n### What to Implement\n\nAdd to `benchmarks/corpus/runner.py`:\n\n1. **SearchLatencyBenchmark**\n   - Measure `find_documents_for_query()` at various corpus sizes\n   - Report p50, p90, p99 latencies\n   - Test cold cache (first query) vs warm cache (repeated)\n   - Use measure_latency_percentiles() helper from base.py\n\n```python\n@register_benchmark\nclass SearchLatencyBenchmark(CorpusBenchmark):\n    name = \"search_latency\"\n    description = \"Measure search latency percentiles (p50/p90/p99)\"\n    corpus_category = CorpusBenchmarkCategory.QUERY\n    \n    def run(self) -> BenchmarkResult:\n        result = self.create_result()\n        # Use self._processor (pre-loaded and computed)\n        # Run N queries and measure latencies\n        # Report cold vs warm cache difference\n        return result\n```\n\n### Key Files\n- `benchmarks/corpus/runner.py` - Add benchmark here\n- `benchmarks/corpus/base.py` - measure_latency_percentiles() helper\n\n### Verification\n```bash\npython -m benchmarks.corpus.runner --category query --quick\npython -m benchmarks.corpus.runner --list  # Should show QUERY category\n```\n\n### Checkpoint Before Stage 2\nAfter Stage 1 is complete and verified:\n1. Commit changes\n2. Run `python scripts/got_utils.py task complete T-20251229-114219-aefd59c2`\n3. Stage 2 can begin (depends on Stage 1)",
-    "modified_at": "2025-12-29T11:46:45.820753+00:00",
+    "modified_at": "2025-12-29T11:59:51.949188+00:00",
     "properties": {},
     "reject_reason": "",
     "rejected_at": "",
     "result": {},
     "source_agent": "main",
-    "status": "initiated",
+    "status": "accepted",
     "target_agent": "next-agent",
     "task_id": "T-20251229-114219-aefd59c2",
-    "version": 2
+    "version": 4
   }
 }
