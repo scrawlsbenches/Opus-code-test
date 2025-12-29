@@ -220,14 +220,8 @@ class Minicolumn:
             weight: Connection strength to add
         """
         if target_id in self.typed_connections:
-            existing = self.typed_connections[target_id]
-            self.typed_connections[target_id] = Edge(
-                target_id=target_id,
-                weight=existing.weight + weight,
-                relation_type=existing.relation_type,
-                confidence=existing.confidence,
-                source=existing.source
-            )
+            # OPTIMIZATION: Modify weight in place instead of creating new Edge
+            self.typed_connections[target_id].weight += weight
         else:
             self.typed_connections[target_id] = Edge(
                 target_id=target_id,
@@ -251,14 +245,8 @@ class Minicolumn:
         typed = self.typed_connections
         for target_id, weight in connections.items():
             if target_id in typed:
-                existing = typed[target_id]
-                typed[target_id] = Edge(
-                    target_id=target_id,
-                    weight=existing.weight + weight,
-                    relation_type=existing.relation_type,
-                    confidence=existing.confidence,
-                    source=existing.source
-                )
+                # OPTIMIZATION: Modify weight in place instead of creating new Edge
+                typed[target_id].weight += weight
             else:
                 typed[target_id] = Edge(
                     target_id=target_id,
@@ -332,6 +320,7 @@ class Minicolumn:
         """
         if target_id in self.typed_connections:
             # Accumulate weight, keep most informative metadata
+            # OPTIMIZATION: Modify Edge in place instead of creating new object
             existing = self.typed_connections[target_id]
             new_weight = existing.weight + weight
             # Prefer more specific relation types over 'co_occurrence'
@@ -341,13 +330,11 @@ class Minicolumn:
             # Prefer semantic/inferred over corpus
             source_priority = {'inferred': 3, 'semantic': 2, 'corpus': 1}
             new_source = source if source_priority.get(source, 0) > source_priority.get(existing.source, 0) else existing.source
-            self.typed_connections[target_id] = Edge(
-                target_id=target_id,
-                weight=new_weight,
-                relation_type=new_relation,
-                confidence=new_confidence,
-                source=new_source
-            )
+            # Update in place
+            existing.weight = new_weight
+            existing.relation_type = new_relation
+            existing.confidence = new_confidence
+            existing.source = new_source
         else:
             self.typed_connections[target_id] = Edge(
                 target_id=target_id,
