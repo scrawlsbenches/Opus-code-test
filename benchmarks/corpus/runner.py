@@ -12,6 +12,7 @@ Usage:
     python -m benchmarks.corpus.runner --all --quick
     python -m benchmarks.corpus.runner --all --output results.json
     python -m benchmarks.corpus.runner --all --compare baseline.json
+    python -m benchmarks.corpus.runner --all --use-corpus corpus_dev.json
 
 Categories:
     indexing    - Document processing throughput
@@ -2296,6 +2297,11 @@ Categories:
         default=None,
         help="Override corpus size (n_docs)",
     )
+    parser.add_argument(
+        "--use-corpus",
+        type=str,
+        help="Load a saved CorticalTextProcessor state instead of synthetic corpus",
+    )
 
     args = parser.parse_args()
 
@@ -2311,6 +2317,19 @@ Categories:
     config = {"quick": args.quick}
     if args.corpus_size:
         config["n_docs"] = args.corpus_size
+    if args.use_corpus:
+        corpus_path = Path(args.use_corpus)
+        if not corpus_path.exists():
+            print(f"Error: Corpus path not found: {args.use_corpus}", file=sys.stderr)
+            return 1
+        print(f"Loading corpus from: {args.use_corpus}...")
+        try:
+            loaded_processor = CorticalTextProcessor.load(str(corpus_path), verbose=False)
+            config["_loaded_processor"] = loaded_processor
+            print(f"Loaded {len(loaded_processor.documents)} documents")
+        except Exception as e:
+            print(f"Error loading corpus: {e}", file=sys.stderr)
+            return 1
 
     # Create suite
     benchmarks = [args.benchmark] if args.benchmark else None
@@ -2323,7 +2342,8 @@ Categories:
 
     # Run benchmarks
     mode = "quick" if args.quick else "full"
-    print(f"\nRunning {len(suite.benchmarks)} corpus benchmark(s) [{mode} mode]...")
+    corpus_mode = "real corpus" if args.use_corpus else "synthetic corpus"
+    print(f"\nRunning {len(suite.benchmarks)} corpus benchmark(s) [{mode} mode, {corpus_mode}]...")
     print("=" * 60)
 
     callback = progress_callback if args.verbose else None
