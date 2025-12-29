@@ -46,12 +46,12 @@ from .transaction import Transaction
 from .errors import TransactionError, CorruptionError
 from .config import DurabilityMode
 from .query_api import QueryAPI
-from .entity_validation import (
+from .validation import (
     validate_entity_id,
     validate_edge_relationship,
     validate_sprint_id_current_format,
+    validate_entity_file,
 )
-from .validation import validate_entity_file
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ Tests comprehensive validation of:
 """
 
 import pytest
-from cortical.got.entity_validation import (
+from cortical.got.validation import (
     validate_entity_id,
     validate_edge_relationship,
     validate_sprint_id_current_format,
@@ -342,6 +342,579 @@ class TestLegacyPatterns:
         pattern, msg = LEGACY_PATTERNS["task_legacy_prefix"]
         assert pattern.match("task:T-something")
         assert not pattern.match("T-20251228-093045-a1b2c3d4")
+
+
+class TestValidateEntity:
+    """Tests for validate_entity() data structure validation."""
+
+    def test_valid_task_entity(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "T-20251228-093045-a1b2c3d4",
+            "entity_type": "task",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "title": "Test task",
+            "status": "pending",
+            "priority": "medium",
+        }
+        is_valid, error = validate_entity(data)
+        assert is_valid, f"Should be valid: {error}"
+
+    def test_entity_not_dict(self):
+        from cortical.got.validation import validate_entity
+        is_valid, error = validate_entity("not a dict")
+        assert not is_valid
+        assert "must be a dictionary" in error
+
+    def test_missing_required_field_id(self):
+        from cortical.got.validation import validate_entity
+        data = {"entity_type": "task", "created_at": "2025-12-28T09:30:45+00:00"}
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Missing required field: id" in error
+
+    def test_missing_required_field_entity_type(self):
+        from cortical.got.validation import validate_entity
+        data = {"id": "T-123", "created_at": "2025-12-28T09:30:45+00:00"}
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Missing required field: entity_type" in error
+
+    def test_invalid_entity_type(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "T-123",
+            "entity_type": "invalid_type",
+            "created_at": "2025-12-28T09:30:45+00:00",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Invalid entity_type" in error
+
+    def test_empty_id_rejected(self):
+        from cortical.got.validation import validate_entity
+        data = {"id": "", "entity_type": "task", "created_at": "2025-12-28T09:30:45+00:00"}
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "non-empty string" in error
+
+    def test_id_not_string(self):
+        from cortical.got.validation import validate_entity
+        data = {"id": 123, "entity_type": "task", "created_at": "2025-12-28T09:30:45+00:00"}
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "non-empty string" in error
+
+    def test_invalid_created_at_timestamp(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "T-123",
+            "entity_type": "task",
+            "created_at": "not-a-timestamp",
+            "title": "Test",
+            "status": "pending",
+            "priority": "medium",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Invalid created_at timestamp" in error
+
+    def test_invalid_modified_at_timestamp(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "T-123",
+            "entity_type": "task",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "modified_at": "invalid-date",
+            "title": "Test",
+            "status": "pending",
+            "priority": "medium",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Invalid modified_at timestamp" in error
+
+    def test_invalid_version_not_positive(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "T-123",
+            "entity_type": "task",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "version": 0,  # Must be >= 1
+            "title": "Test",
+            "status": "pending",
+            "priority": "medium",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "positive integer" in error
+
+
+class TestValidateTaskSpecific:
+    """Tests for task-specific validation."""
+
+    def test_task_missing_title(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "T-123",
+            "entity_type": "task",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "status": "pending",
+            "priority": "medium",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Task missing required field: title" in error
+
+    def test_task_invalid_status(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "T-123",
+            "entity_type": "task",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "title": "Test",
+            "status": "invalid_status",
+            "priority": "medium",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Invalid task status" in error
+
+    def test_task_invalid_priority(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "T-123",
+            "entity_type": "task",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "title": "Test",
+            "status": "pending",
+            "priority": "invalid_priority",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Invalid task priority" in error
+
+
+class TestValidateDecisionSpecific:
+    """Tests for decision-specific validation."""
+
+    def test_decision_missing_title(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "D-123",
+            "entity_type": "decision",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "rationale": "Because reasons",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Decision missing required field: title" in error
+
+    def test_decision_missing_rationale(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "D-123",
+            "entity_type": "decision",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "title": "Test decision",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Decision missing required field: rationale" in error
+
+    def test_valid_decision(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "D-123",
+            "entity_type": "decision",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "title": "Test decision",
+            "rationale": "Because reasons",
+        }
+        is_valid, error = validate_entity(data)
+        assert is_valid, f"Should be valid: {error}"
+
+
+class TestValidateEdgeSpecific:
+    """Tests for edge-specific validation."""
+
+    def test_edge_missing_source_id(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "E-123",
+            "entity_type": "edge",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "target_id": "T-456",
+            "edge_type": "DEPENDS_ON",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Edge missing required field: source_id" in error
+
+    def test_edge_invalid_edge_type(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "E-123",
+            "entity_type": "edge",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "source_id": "T-123",
+            "target_id": "T-456",
+            "edge_type": "INVALID_TYPE",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Invalid edge_type" in error
+
+    def test_edge_invalid_weight(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "E-123",
+            "entity_type": "edge",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "source_id": "T-123",
+            "target_id": "T-456",
+            "edge_type": "DEPENDS_ON",
+            "weight": -1.0,  # Negative weight invalid
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "non-negative number" in error
+
+    def test_valid_edge(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "E-123",
+            "entity_type": "edge",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "source_id": "T-123",
+            "target_id": "T-456",
+            "edge_type": "DEPENDS_ON",
+            "weight": 1.0,
+        }
+        is_valid, error = validate_entity(data)
+        assert is_valid, f"Should be valid: {error}"
+
+
+class TestValidateSprintSpecific:
+    """Tests for sprint-specific validation."""
+
+    def test_sprint_missing_title(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "S-123",
+            "entity_type": "sprint",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "status": "available",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Sprint missing required field: title" in error
+
+    def test_sprint_invalid_status(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "S-123",
+            "entity_type": "sprint",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "title": "Sprint 1",
+            "status": "invalid_status",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Invalid sprint status" in error
+
+    def test_valid_sprint(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "S-123",
+            "entity_type": "sprint",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "title": "Sprint 1",
+            "status": "in_progress",
+        }
+        is_valid, error = validate_entity(data)
+        assert is_valid, f"Should be valid: {error}"
+
+
+class TestValidateEpicSpecific:
+    """Tests for epic-specific validation."""
+
+    def test_epic_missing_title(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "EPIC-123",
+            "entity_type": "epic",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "status": "active",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Epic missing required field: title" in error
+
+    def test_epic_invalid_status(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "EPIC-123",
+            "entity_type": "epic",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "title": "Epic 1",
+            "status": "invalid_status",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Invalid epic status" in error
+
+    def test_valid_epic(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "EPIC-123",
+            "entity_type": "epic",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "title": "Epic 1",
+            "status": "active",
+        }
+        is_valid, error = validate_entity(data)
+        assert is_valid, f"Should be valid: {error}"
+
+
+class TestValidateHandoffSpecific:
+    """Tests for handoff-specific validation."""
+
+    def test_handoff_missing_source_agent(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "H-123",
+            "entity_type": "handoff",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "target_agent": "agent-B",
+            "task_id": "T-456",
+            "status": "initiated",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Handoff missing required field: source_agent" in error
+
+    def test_handoff_invalid_status(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "H-123",
+            "entity_type": "handoff",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "source_agent": "agent-A",
+            "target_agent": "agent-B",
+            "task_id": "T-456",
+            "status": "invalid_status",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Invalid handoff status" in error
+
+    def test_valid_handoff(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "H-123",
+            "entity_type": "handoff",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "source_agent": "agent-A",
+            "target_agent": "agent-B",
+            "task_id": "T-456",
+            "status": "completed",
+        }
+        is_valid, error = validate_entity(data)
+        assert is_valid, f"Should be valid: {error}"
+
+
+class TestValidateDocumentSpecific:
+    """Tests for document-specific validation."""
+
+    def test_document_missing_path(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "DOC-123",
+            "entity_type": "document",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "doc_type": "markdown",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Document missing required field: path" in error
+
+    def test_valid_document(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "DOC-123",
+            "entity_type": "document",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "path": "/docs/readme.md",
+            "doc_type": "markdown",
+        }
+        is_valid, error = validate_entity(data)
+        assert is_valid, f"Should be valid: {error}"
+
+
+class TestValidateClaudeMdLayerSpecific:
+    """Tests for ClaudeMd layer-specific validation."""
+
+    def test_claudemd_missing_layer_type(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "CML-123",
+            "entity_type": "claudemd_layer",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "section_id": "section-1",
+            "title": "Test",
+            "content": "Content here",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "ClaudeMd layer missing required field: layer_type" in error
+
+    def test_valid_claudemd_layer(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "CML-123",
+            "entity_type": "claudemd_layer",
+            "created_at": "2025-12-28T09:30:45+00:00",
+            "layer_type": "L2",
+            "section_id": "section-1",
+            "title": "Test",
+            "content": "Content here",
+        }
+        is_valid, error = validate_entity(data)
+        assert is_valid, f"Should be valid: {error}"
+
+
+class TestValidateEntityFile:
+    """Tests for validate_entity_file() wrapper validation."""
+
+    def test_file_missing_data_wrapper(self):
+        from cortical.got.validation import validate_entity_file
+        file_data = {"_checksum": "abc123def456"}
+        is_valid, error = validate_entity_file(file_data)
+        assert not is_valid
+        assert "missing 'data' wrapper" in error
+
+    def test_file_missing_checksum(self):
+        from cortical.got.validation import validate_entity_file
+        file_data = {
+            "data": {
+                "id": "T-123",
+                "entity_type": "task",
+                "created_at": "2025-12-28T09:30:45+00:00",
+            }
+        }
+        is_valid, error = validate_entity_file(file_data)
+        assert not is_valid
+        assert "missing 'checksum' field" in error
+
+    def test_file_checksum_not_string(self):
+        from cortical.got.validation import validate_entity_file
+        file_data = {
+            "data": {
+                "id": "T-123",
+                "entity_type": "task",
+                "created_at": "2025-12-28T09:30:45+00:00",
+            },
+            "_checksum": 123,  # Not a string
+        }
+        is_valid, error = validate_entity_file(file_data)
+        assert not is_valid
+        assert "non-empty string" in error
+
+    def test_file_with_underscore_checksum(self):
+        from cortical.got.validation import validate_entity_file
+        file_data = {
+            "data": {
+                "id": "T-123",
+                "entity_type": "task",
+                "created_at": "2025-12-28T09:30:45+00:00",
+                "title": "Test",
+                "status": "pending",
+                "priority": "medium",
+            },
+            "_checksum": "abc123def456abcd",
+        }
+        is_valid, error = validate_entity_file(file_data)
+        assert is_valid, f"Should be valid: {error}"
+
+    def test_file_with_legacy_checksum(self):
+        from cortical.got.validation import validate_entity_file
+        file_data = {
+            "data": {
+                "id": "T-123",
+                "entity_type": "task",
+                "created_at": "2025-12-28T09:30:45+00:00",
+                "title": "Test",
+                "status": "pending",
+                "priority": "medium",
+            },
+            "checksum": "abc123def456abcd",  # Legacy field name
+        }
+        is_valid, error = validate_entity_file(file_data)
+        assert is_valid, f"Should be valid: {error}"
+
+
+class TestValidateChecksum:
+    """Tests for validate_checksum() format validation."""
+
+    def test_checksum_not_string(self):
+        from cortical.got.validation import validate_checksum
+        is_valid, error = validate_checksum({}, 12345)
+        assert not is_valid
+        assert "must be a string" in error
+
+    def test_checksum_empty(self):
+        from cortical.got.validation import validate_checksum
+        is_valid, error = validate_checksum({}, "")
+        assert not is_valid
+        assert "cannot be empty" in error
+
+    def test_checksum_not_hex(self):
+        from cortical.got.validation import validate_checksum
+        is_valid, error = validate_checksum({}, "not-a-hex-string!")
+        assert not is_valid
+        assert "hexadecimal" in error
+
+    def test_valid_checksum(self):
+        from cortical.got.validation import validate_checksum
+        is_valid, error = validate_checksum({}, "abc123def456abcd")
+        assert is_valid, f"Should be valid: {error}"
+
+    def test_valid_checksum_uppercase(self):
+        from cortical.got.validation import validate_checksum
+        is_valid, error = validate_checksum({}, "ABC123DEF456ABCD")
+        assert is_valid, f"Should be valid: {error}"
+
+
+class TestIsoDatetimeValidation:
+    """Tests for ISO datetime validation helper."""
+
+    def test_timestamp_not_string(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "T-123",
+            "entity_type": "task",
+            "created_at": 12345,  # Not a string
+            "title": "Test",
+            "status": "pending",
+            "priority": "medium",
+        }
+        is_valid, error = validate_entity(data)
+        assert not is_valid
+        assert "Invalid created_at timestamp" in error
+
+    def test_timestamp_with_z_suffix(self):
+        from cortical.got.validation import validate_entity
+        data = {
+            "id": "T-123",
+            "entity_type": "task",
+            "created_at": "2025-12-28T09:30:45Z",  # Z suffix
+            "title": "Test",
+            "status": "pending",
+            "priority": "medium",
+        }
+        is_valid, error = validate_entity(data)
+        assert is_valid, f"Should be valid: {error}"
 
 
 class TestIntegrationWithGoTManager:
