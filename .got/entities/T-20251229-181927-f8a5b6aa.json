@@ -1,0 +1,19 @@
+{
+  "_checksum": "c17cde1e9df96a68",
+  "_written_at": "2025-12-29T18:19:27.136511+00:00",
+  "data": {
+    "created_at": "2025-12-29T18:19:27.133279+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251229-181927-f8a5b6aa",
+    "metadata": {},
+    "modified_at": "2025-12-29T18:19:27.136461+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Scientific performance tuning - establish baseline and optimize",
+    "version": 2
+  }
+}
