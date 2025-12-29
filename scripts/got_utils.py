@@ -2069,9 +2069,18 @@ class TransactionalGoTAdapter:
             result.append(node)
         return result
 
-    def create_epic(self, name: str, epic_id: Optional[str] = None) -> str:
+    def create_epic(
+        self,
+        name: str,
+        epic_id: Optional[str] = None,
+        properties: Optional[Dict[str, Any]] = None
+    ) -> str:
         """Create a new epic using TX backend."""
-        epic = self._manager.create_epic(title=name, epic_id=epic_id)
+        epic = self._manager.create_epic(
+            title=name,
+            epic_id=epic_id,
+            properties=properties or {}
+        )
         return epic.id
 
     def get_epic(self, epic_id: str) -> Optional[ThoughtNode]:
@@ -2079,16 +2088,19 @@ class TransactionalGoTAdapter:
         epic = self._manager.get_epic(epic_id)
         if epic is None:
             return None
+        # Merge base properties with epic's custom properties
+        props = {
+            "name": epic.title,
+            "status": epic.status,
+            "phase": epic.phase,
+            "phases": epic.phases,
+        }
+        props.update(epic.properties)  # Include description and other custom properties
         return ThoughtNode(
             id=epic.id,
             node_type=NodeType.GOAL,
             content=epic.title,
-            properties={
-                "name": epic.title,
-                "status": epic.status,
-                "phase": epic.phase,
-                "phases": epic.phases,
-            },
+            properties=props,
             metadata={
                 "created_at": epic.created_at,
                 "modified_at": epic.modified_at,
