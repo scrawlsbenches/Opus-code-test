@@ -224,6 +224,173 @@ def compute_concept_connections(
 # =============================================================================
 
 @dataclass
+class BigramData:
+    """Serializable bigram data for process-based parallelism."""
+    id: str
+    left_term: str
+    right_term: str
+    document_ids: frozenset  # frozenset is hashable and picklable
+    tfidf: float
+
+
+@dataclass
+class SimpleWorkerResult:
+    """
+    Simple result for process-based workers.
+
+    Uses only basic types (tuples, dicts, ints) for easy pickling.
+    """
+    # List of (id1, id2, weight) tuples
+    connections: List[Tuple[str, str, float]] = field(default_factory=list)
+    # Statistics
+    component_connections: int = 0
+    chain_connections: int = 0
+    cooccurrence_connections: int = 0
+    skipped_common_terms: int = 0
+    skipped_large_docs: int = 0
+
+
+def _process_component_batch_simple(
+    component_items: List[Tuple[str, List[str]]],  # (component, [bigram_ids])
+    bigram_id_to_data: Dict[str, Tuple[str, str]],  # id -> (left, right)
+    component_weight: float,
+    max_bigrams_per_term: int,
+    max_connections_per_bigram: int
+) -> SimpleWorkerResult:
+    """
+    Process component batch using only simple serializable data.
+
+    This can run in a separate process (no GIL contention).
+    """
+    result = SimpleWorkerResult()
+    local_counts: Dict[str, int] = {}
+    seen_pairs: Set[Tuple[str, str]] = set()
+
+    for component, bigram_ids in component_items:
+        if len(bigram_ids) > max_bigrams_per_term:
+            result.skipped_common_terms += 1
+            continue
+
+        for i, id1 in enumerate(bigram_ids):
+            if local_counts.get(id1, 0) >= max_connections_per_bigram:
+                continue
+            for id2 in bigram_ids[i+1:]:
+                if local_counts.get(id2, 0) >= max_connections_per_bigram:
+                    continue
+
+                # Canonical pair
+                pair = (id1, id2) if id1 < id2 else (id2, id1)
+                if pair in seen_pairs:
+                    continue
+
+                seen_pairs.add(pair)
+                result.connections.append((id1, id2, component_weight))
+                local_counts[id1] = local_counts.get(id1, 0) + 1
+                local_counts[id2] = local_counts.get(id2, 0) + 1
+                result.component_connections += 1
+
+    return result
+
+
+def _process_chain_batch_simple(
+    terms: List[str],
+    left_index: Dict[str, List[str]],  # term -> [bigram_ids]
+    right_index: Dict[str, List[str]],  # term -> [bigram_ids]
+    chain_weight: float,
+    max_bigrams_per_term: int,
+    max_connections_per_bigram: int
+) -> SimpleWorkerResult:
+    """Process chain connections using simple data."""
+    result = SimpleWorkerResult()
+    local_counts: Dict[str, int] = {}
+    seen_pairs: Set[Tuple[str, str]] = set()
+
+    for term in terms:
+        if term not in right_index:
+            continue
+        left_list = left_index.get(term, [])
+        right_list = right_index.get(term, [])
+
+        if len(left_list) > max_bigrams_per_term or len(right_list) > max_bigrams_per_term:
+            continue
+
+        for id_left in right_list:  # ends with term
+            if local_counts.get(id_left, 0) >= max_connections_per_bigram:
+                continue
+            for id_right in left_list:  # starts with term
+                if id_left == id_right:
+                    continue
+                if local_counts.get(id_right, 0) >= max_connections_per_bigram:
+                    continue
+
+                pair = (id_left, id_right) if id_left < id_right else (id_right, id_left)
+                if pair in seen_pairs:
+                    continue
+
+                seen_pairs.add(pair)
+                result.connections.append((id_left, id_right, chain_weight))
+                local_counts[id_left] = local_counts.get(id_left, 0) + 1
+                local_counts[id_right] = local_counts.get(id_right, 0) + 1
+                result.chain_connections += 1
+
+    return result
+
+
+def _process_cooccurrence_batch_simple(
+    doc_items: List[Tuple[str, List[Tuple[str, frozenset, float]]]],  # (doc_id, [(bigram_id, doc_ids, tfidf)])
+    cooccurrence_weight: float,
+    min_shared_docs: int,
+    max_bigrams_per_doc: int,
+    max_connections_per_bigram: int,
+    importance_threshold: float
+) -> SimpleWorkerResult:
+    """Process co-occurrence connections using simple data."""
+    result = SimpleWorkerResult()
+    local_counts: Dict[str, int] = {}
+    seen_pairs: Set[Tuple[str, str]] = set()
+
+    for doc_id, bigram_data_list in doc_items:
+        if len(bigram_data_list) > max_bigrams_per_doc:
+            result.skipped_large_docs += 1
+            continue
+
+        # Filter to important bigrams
+        important = [(bid, docs, tfidf) for bid, docs, tfidf in bigram_data_list
+                     if tfidf >= importance_threshold]
+        if len(important) < 2:
+            continue
+
+        # Sort by importance
+        important.sort(key=lambda x: x[2], reverse=True)
+
+        for i, (id1, docs1, _) in enumerate(important):
+            if local_counts.get(id1, 0) >= max_connections_per_bigram:
+                continue
+            for id2, docs2, _ in important[i+1:]:
+                if local_counts.get(id2, 0) >= max_connections_per_bigram:
+                    continue
+
+                shared = docs1 & docs2
+                if len(shared) < min_shared_docs:
+                    continue
+
+                jaccard = len(shared) / len(docs1 | docs2)
+                weight = cooccurrence_weight * jaccard
+
+                pair = (id1, id2) if id1 < id2 else (id2, id1)
+                if pair in seen_pairs:
+                    continue
+
+                seen_pairs.add(pair)
+                result.connections.append((id1, id2, weight))
+                local_counts[id1] = local_counts.get(id1, 0) + 1
+                local_counts[id2] = local_counts.get(id2, 0) + 1
+                result.cooccurrence_connections += 1
+
+    return result
+
+
+@dataclass
 class WorkerResult:
     """Accumulator for parallel worker results (lock-free pattern)."""
     # Pairs as (min_id, max_id) tuples for deduplication
@@ -445,6 +612,224 @@ def _merge_worker_results(
     return merged_pairs, dict(merged_pending), stats
 
 
+def _merge_simple_results(
+    results: List[SimpleWorkerResult],
+    max_connections_per_bigram: int
+) -> Tuple[Dict[str, Dict[str, float]], int, Dict[str, int]]:
+    """
+    Merge results from process-based workers.
+
+    Returns:
+        - merged_pending: Combined pending connections {id1: {id2: weight}}
+        - connections_created: Count of unique connection pairs
+        - stats: Combined statistics dict
+    """
+    merged_pending: Dict[str, Dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    connection_counts: Dict[str, int] = defaultdict(int)
+    seen_pairs: Set[Tuple[str, str]] = set()
+
+    stats = {
+        'component_connections': 0,
+        'chain_connections': 0,
+        'cooccurrence_connections': 0,
+        'skipped_common_terms': 0,
+        'skipped_large_docs': 0,
+        'skipped_max_connections': 0
+    }
+
+    for result in results:
+        # Accumulate statistics
+        stats['component_connections'] += result.component_connections
+        stats['chain_connections'] += result.chain_connections
+        stats['cooccurrence_connections'] += result.cooccurrence_connections
+        stats['skipped_common_terms'] += result.skipped_common_terms
+        stats['skipped_large_docs'] += result.skipped_large_docs
+
+        # Merge connections with deduplication
+        for id1, id2, weight in result.connections:
+            pair = (id1, id2) if id1 < id2 else (id2, id1)
+
+            if pair in seen_pairs:
+                # Already merged, accumulate weight
+                merged_pending[id1][id2] += weight
+                merged_pending[id2][id1] += weight
+            else:
+                # Check connection limits
+                if (connection_counts[id1] >= max_connections_per_bigram or
+                    connection_counts[id2] >= max_connections_per_bigram):
+                    stats['skipped_max_connections'] += 1
+                    continue
+
+                seen_pairs.add(pair)
+                merged_pending[id1][id2] += weight
+                merged_pending[id2][id1] += weight
+                connection_counts[id1] += 1
+                connection_counts[id2] += 1
+
+    return dict(merged_pending), len(seen_pairs), stats
+
+
+def _compute_bigram_connections_parallel_process(
+    layer1: HierarchicalLayer,
+    bigrams: List[Minicolumn],
+    left_index: Dict[str, List[Minicolumn]],
+    right_index: Dict[str, List[Minicolumn]],
+    min_shared_docs: int,
+    component_weight: float,
+    chain_weight: float,
+    cooccurrence_weight: float,
+    max_bigrams_per_term: int,
+    max_bigrams_per_doc: int,
+    max_connections_per_bigram: int,
+    n_workers: int
+) -> Dict[str, Any]:
+    """
+    Process-based parallel implementation of bigram connection building.
+
+    Uses ProcessPoolExecutor to bypass Python's GIL for true CPU parallelism.
+    All data is serialized (pickled) before passing to worker processes.
+    """
+    all_results: List[SimpleWorkerResult] = []
+
+    def partition_list(items: List, n_parts: int) -> List[List]:
+        """Split list into n approximately equal parts."""
+        if not items:
+            return []
+        k, m = divmod(len(items), n_parts)
+        return [items[i * k + min(i, m):(i + 1) * k + min(i + 1, m)]
+                for i in range(n_parts)]
+
+    # =========================================================================
+    # STEP 1: Extract serializable data from Minicolumn objects
+    # =========================================================================
+
+    # Build ID -> (left_term, right_term) mapping for component processing
+    bigram_id_to_data: Dict[str, Tuple[str, str]] = {}
+    for bigram in bigrams:
+        parts = bigram.content.split(' ')
+        if len(parts) == 2:
+            bigram_id_to_data[bigram.id] = (parts[0], parts[1])
+
+    # Convert left_index: term -> [Minicolumn] to term -> [bigram_id]
+    left_index_simple: Dict[str, List[str]] = {
+        term: [b.id for b in blist] for term, blist in left_index.items()
+    }
+    right_index_simple: Dict[str, List[str]] = {
+        term: [b.id for b in blist] for term, blist in right_index.items()
+    }
+
+    # Build document index with serializable data
+    doc_to_bigrams_simple: Dict[str, List[Tuple[str, frozenset, float]]] = defaultdict(list)
+    for bigram in bigrams:
+        doc_ids_frozen = frozenset(bigram.document_ids)
+        for doc_id in bigram.document_ids:
+            doc_to_bigrams_simple[doc_id].append((bigram.id, doc_ids_frozen, bigram.tfidf))
+
+    # Compute importance threshold
+    tfidf_values = [b.tfidf for b in bigrams if b.tfidf > 0]
+    importance_threshold = sorted(tfidf_values)[len(tfidf_values) // 4] if tfidf_values else 0
+
+    # Prepare batch items
+    left_items = [(term, ids) for term, ids in left_index_simple.items()]
+    right_items = [(term, ids) for term, ids in right_index_simple.items()]
+    chain_terms = list(left_index_simple.keys())
+    doc_items = list(doc_to_bigrams_simple.items())
+
+    # =========================================================================
+    # STEP 2: Submit work to process pool
+    # =========================================================================
+
+    with ProcessPoolExecutor(max_workers=n_workers) as executor:
+        futures = []
+
+        # Submit left component batch jobs
+        for batch in partition_list(left_items, n_workers):
+            if batch:
+                futures.append(executor.submit(
+                    _process_component_batch_simple,
+                    batch,
+                    bigram_id_to_data,
+                    component_weight,
+                    max_bigrams_per_term,
+                    max_connections_per_bigram
+                ))
+
+        # Submit right component batch jobs
+        for batch in partition_list(right_items, n_workers):
+            if batch:
+                futures.append(executor.submit(
+                    _process_component_batch_simple,
+                    batch,
+                    bigram_id_to_data,
+                    component_weight,
+                    max_bigrams_per_term,
+                    max_connections_per_bigram
+                ))
+
+        # Submit chain batch jobs
+        for batch in partition_list(chain_terms, n_workers):
+            if batch:
+                futures.append(executor.submit(
+                    _process_chain_batch_simple,
+                    batch,
+                    left_index_simple,
+                    right_index_simple,
+                    chain_weight,
+                    max_bigrams_per_term,
+                    max_connections_per_bigram
+                ))
+
+        # Submit co-occurrence batch jobs
+        for batch in partition_list(doc_items, n_workers):
+            if batch:
+                futures.append(executor.submit(
+                    _process_cooccurrence_batch_simple,
+                    batch,
+                    cooccurrence_weight,
+                    min_shared_docs,
+                    max_bigrams_per_doc,
+                    max_connections_per_bigram,
+                    importance_threshold
+                ))
+
+        # Collect results
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                all_results.append(result)
+            except Exception as e:
+                import sys
+                print(f"Worker error: {e}", file=sys.stderr)
+
+    # =========================================================================
+    # STEP 3: Merge results and apply to Minicolumn objects
+    # =========================================================================
+
+    merged_pending, connections_created, stats = _merge_simple_results(
+        all_results, max_connections_per_bigram
+    )
+
+    # Apply all accumulated connections in batch
+    for bigram_id, connections in merged_pending.items():
+        bigram = layer1.get_by_id(bigram_id)
+        if bigram:
+            bigram.add_lateral_connections_batch(connections)
+
+    return {
+        'connections_created': connections_created,
+        'bigrams': len(bigrams),
+        'component_connections': stats['component_connections'],
+        'chain_connections': stats['chain_connections'],
+        'cooccurrence_connections': stats['cooccurrence_connections'],
+        'skipped_common_terms': stats['skipped_common_terms'],
+        'skipped_large_docs': stats['skipped_large_docs'],
+        'skipped_max_connections': stats['skipped_max_connections'],
+        'parallel': True,
+        'parallel_mode': 'process',
+        'n_workers': n_workers
+    }
+
+
 def _compute_bigram_connections_parallel(
     layer1: HierarchicalLayer,
     bigrams: List[Minicolumn],
@@ -462,8 +847,10 @@ def _compute_bigram_connections_parallel(
     """
     Parallel implementation of bigram connection building.
 
-    Uses thread-local accumulation with merge (map-reduce pattern).
-    No locks required - each worker builds its own result set.
+    DEPRECATED: This uses ThreadPoolExecutor which doesn't help CPU-bound work
+    due to Python's GIL. Use _compute_bigram_connections_parallel_process instead.
+
+    Kept for reference and potential I/O-bound variants.
     """
     all_results: List[WorkerResult] = []
 
@@ -576,6 +963,7 @@ def _compute_bigram_connections_parallel(
         'skipped_large_docs': stats['skipped_large_docs'],
         'skipped_max_connections': stats['skipped_max_connections'],
         'parallel': True,
+        'parallel_mode': 'thread',
         'n_workers': n_workers
     }
 
@@ -665,10 +1053,10 @@ def compute_bigram_connections(
             right_index[parts[1]].append(bigram)
 
     # =========================================================================
-    # PARALLEL EXECUTION PATH
+    # PARALLEL EXECUTION PATH (ProcessPoolExecutor for true CPU parallelism)
     # =========================================================================
     if n_workers is not None and n_workers > 1:
-        return _compute_bigram_connections_parallel(
+        return _compute_bigram_connections_parallel_process(
             layer1=layer1,
             bigrams=bigrams,
             left_index=dict(left_index),
