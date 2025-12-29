@@ -1,22 +1,24 @@
 {
-  "_checksum": "bff486360b80b9eb",
-  "_written_at": "2025-12-29T16:26:36.916149+00:00",
+  "_checksum": "c5b054dc604e8849",
+  "_written_at": "2025-12-29T16:30:47.323606+00:00",
   "data": {
     "created_at": "2025-12-29T13:13:55.638169+00:00",
     "description": "Benchmarks revealed bigram_connections takes ~103ms of ~160ms total compute time (65%). Investigate O(n\u00b2) patterns or optimization opportunities. Use scripts/profile_full_analysis.py or cProfile.",
     "entity_type": "task",
     "id": "T-20251229-131355-f4b7e3a7",
     "metadata": {
+      "completed_at": "2025-12-29T16:30:47.316985+00:00",
       "started_at": "2025-12-29T16:26:36.909056+00:00",
-      "updated_at": "2025-12-29T16:26:36.909065+00:00"
+      "updated_at": "2025-12-29T16:30:47.316992+00:00"
     },
-    "modified_at": "2025-12-29T16:26:36.916084+00:00",
+    "modified_at": "2025-12-29T16:30:47.323552+00:00",
     "priority": "medium",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Profiled compute_bigram_connections: takes 80% of compute_all time (6.6s of 8.2s on 100-doc corpus). Key finding: 62.7% of pair processing is wasted on maxed-out bigrams. Three optimizations identified: (1) Early bailout for maxed bigrams - ~2.2s savings, (2) Cheaper pair canonicalization - ~300ms savings, (3) Edge pooling - ~200ms savings. Knowledge transfer: samples/memories/2025-12-29-session-knowledge-transfer-bigram-profiling.md"
     },
-    "status": "in_progress",
+    "status": "completed",
     "title": "Profile bigram_connections bottleneck (~65% of compute_all)",
-    "version": 4
+    "version": 6
   }
 }
