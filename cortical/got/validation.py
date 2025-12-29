@@ -211,7 +211,7 @@ def validate_entity_file(file_data: dict, strict: bool = False) -> Tuple[bool, s
     GoT entity files have a wrapper structure:
     {
         "data": { ... entity fields ... },
-        "checksum": "..."
+        "_checksum": "..." or "checksum": "..."
     }
 
     Args:
@@ -225,11 +225,13 @@ def validate_entity_file(file_data: dict, strict: bool = False) -> Tuple[bool, s
     if 'data' not in file_data:
         return False, "Entity file missing 'data' wrapper"
 
-    if 'checksum' not in file_data:
+    # Accept both '_checksum' (current format) and 'checksum' (legacy)
+    checksum = file_data.get('_checksum') or file_data.get('checksum')
+    if not checksum:
         return False, "Entity file missing 'checksum' field"
 
     # Validate checksum is a string
-    if not isinstance(file_data['checksum'], str) or not file_data['checksum']:
+    if not isinstance(checksum, str) or not checksum:
         return False, "Field 'checksum' must be a non-empty string"
 
     # Validate the entity data

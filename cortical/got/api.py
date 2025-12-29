@@ -51,6 +51,7 @@ from .entity_validation import (
     validate_edge_relationship,
     validate_sprint_id_current_format,
 )
+from .validation import validate_entity_file
 
 logger = logging.getLogger(__name__)
 
@@ -1343,6 +1344,12 @@ class GoTManager:
         with open(file_path, "r") as f:
             wrapper = json.load(f)
 
+        # Validate entity file structure
+        is_valid, error = validate_entity_file(wrapper)
+        if not is_valid:
+            logger.warning(f"Invalid document file {file_path}: {error}")
+            return None
+
         data = wrapper.get("data", {})
         if data.get("entity_type") != "document":
             return None
@@ -1498,6 +1505,12 @@ class GoTManager:
         with open(path, 'r', encoding='utf-8') as f:
             wrapper = json.load(f)
 
+        # Validate entity file structure
+        is_valid, error = validate_entity_file(wrapper)
+        if not is_valid:
+            logger.warning(f"Invalid task file {path}: {error}")
+            return None
+
         data = wrapper.get("data", {})
         if data.get("entity_type") != "task":
             return None
@@ -1533,6 +1546,12 @@ class GoTManager:
         # Read from disk
         with open(path, 'r', encoding='utf-8') as f:
             wrapper = json.load(f)
+
+        # Validate entity file structure
+        is_valid, error = validate_entity_file(wrapper)
+        if not is_valid:
+            logger.warning(f"Invalid edge file {path}: {error}")
+            return None
 
         data = wrapper.get("data", {})
         if data.get("entity_type") != "edge":
@@ -1570,6 +1589,12 @@ class GoTManager:
         with open(path, 'r', encoding='utf-8') as f:
             wrapper = json.load(f)
 
+        # Validate entity file structure
+        is_valid, error = validate_entity_file(wrapper)
+        if not is_valid:
+            logger.warning(f"Invalid decision file {path}: {error}")
+            return None
+
         data = wrapper.get("data", {})
         if data.get("entity_type") != "decision":
             return None
@@ -1605,6 +1630,12 @@ class GoTManager:
         # Read from disk
         with open(path, 'r', encoding='utf-8') as f:
             wrapper = json.load(f)
+
+        # Validate entity file structure
+        is_valid, error = validate_entity_file(wrapper)
+        if not is_valid:
+            logger.warning(f"Invalid sprint file {path}: {error}")
+            return None
 
         data = wrapper.get("data", {})
         if data.get("entity_type") != "sprint":
@@ -1642,6 +1673,12 @@ class GoTManager:
         with open(path, 'r', encoding='utf-8') as f:
             wrapper = json.load(f)
 
+        # Validate entity file structure
+        is_valid, error = validate_entity_file(wrapper)
+        if not is_valid:
+            logger.warning(f"Invalid epic file {path}: {error}")
+            return None
+
         data = wrapper.get("data", {})
         if data.get("entity_type") != "epic":
             return None
@@ -1677,6 +1714,12 @@ class GoTManager:
         # Read from disk
         with open(path, 'r', encoding='utf-8') as f:
             wrapper = json.load(f)
+
+        # Validate entity file structure
+        is_valid, error = validate_entity_file(wrapper)
+        if not is_valid:
+            logger.warning(f"Invalid handoff file {path}: {error}")
+            return None
 
         data = wrapper.get("data", {})
         if data.get("entity_type") != "handoff":
@@ -2010,6 +2053,12 @@ class GoTManager:
         # Read from disk
         with open(path, 'r', encoding='utf-8') as f:
             wrapper = json.load(f)
+
+        # Validate entity file structure
+        is_valid, error = validate_entity_file(wrapper)
+        if not is_valid:
+            logger.warning(f"Invalid claudemd_layer file {path}: {error}")
+            return None
 
         data = wrapper.get("data", {})
         if data.get("entity_type") != "claudemd_layer":
