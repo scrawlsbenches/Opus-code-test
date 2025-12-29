@@ -440,7 +440,8 @@ class TestListMethods:
         """list_edges returns all edges."""
         task = manager.create_task("Task")
         decision = manager.create_decision("Decision", rationale="Why")
-        manager.add_edge(task.id, decision.id, "JUSTIFIES")
+        # Decision justifies task (correct direction: decision → task)
+        manager.add_edge(decision.id, task.id, "JUSTIFIES")
 
         edges = manager.list_edges()
         assert len(edges) == 1

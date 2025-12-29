@@ -1,0 +1,21 @@
+{
+  "_checksum": "aea42d6321928754",
+  "_written_at": "2025-12-29T10:33:34.603773+00:00",
+  "data": {
+    "created_at": "2025-12-29T10:33:34.600721+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [],
+    "id": "S-20251229-103334-ca0db6a9",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2025-12-29T10:33:34.603712+00:00",
+    "notes": [],
+    "number": 0,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "Historical Archive - Completed Work",
+    "version": 2
+  }
+}

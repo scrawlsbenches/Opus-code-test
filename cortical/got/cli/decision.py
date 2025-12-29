@@ -227,6 +227,31 @@ def cmd_decision_why(args, manager: "TransactionalGoTAdapter") -> int:
     return 0
 
 
+def cmd_decision_delete(args, manager: "TransactionalGoTAdapter") -> int:
+    """Handle 'got decision delete' command."""
+    decision_id = args.decision_id
+    force = getattr(args, 'force', False)
+
+    # Verify decision exists first
+    decision = manager.get_decision(decision_id)
+    if not decision:
+        print(f"Decision not found: {decision_id}")
+        return 1
+
+    try:
+        # Get the content/title - supports both ThoughtNode (content) and Decision (title)
+        title = getattr(decision, 'content', getattr(decision, 'title', 'Unknown'))
+        manager.delete_decision(decision_id, force=force)
+        print(f"Deleted decision: {decision_id}")
+        print(f"  Title: {title[:60]}..." if len(title) > 60 else f"  Title: {title}")
+        return 0
+    except Exception as e:
+        print(f"Failed to delete decision: {e}")
+        if not force:
+            print("Hint: Use --force to delete despite connected edges")
+        return 1
+
+
 # =============================================================================
 # CLI INTEGRATION
 # =============================================================================
@@ -287,6 +312,15 @@ def setup_decision_parser(subparsers) -> None:
     decision_why = decision_subparsers.add_parser("why", help="Ask why a task exists")
     decision_why.add_argument("task_id", help="Task ID to query")
 
+    # decision delete
+    decision_delete = decision_subparsers.add_parser("delete", help="Delete a decision")
+    decision_delete.add_argument("decision_id", help="Decision ID to delete")
+    decision_delete.add_argument(
+        "--force", "-f",
+        action="store_true",
+        help="Force delete even if decision has connected edges"
+    )
+
 
 def handle_decision_command(args, manager: "TransactionalGoTAdapter") -> int:
     """
@@ -308,6 +342,7 @@ def handle_decision_command(args, manager: "TransactionalGoTAdapter") -> int:
         "list": cmd_decision_list,
         "show": cmd_decision_show,
         "why": cmd_decision_why,
+        "delete": cmd_decision_delete,
     }
 
     handler = command_handlers.get(args.decision_command)

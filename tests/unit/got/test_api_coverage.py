@@ -949,59 +949,75 @@ class TestEdgeForeignKeyValidation:
     def test_add_edge_rejects_invalid_source(self, manager):
         """add_edge raises ValueError when source doesn't exist."""
         task = manager.create_task("Real task")
+        # Use valid-format ID that doesn't exist in store
+        fake_id = "T-20251229-000000-00000001"
 
         with pytest.raises(ValueError) as exc_info:
-            manager.add_edge("T-nonexistent", task.id, "DEPENDS_ON")
+            manager.add_edge(fake_id, task.id, "DEPENDS_ON")
 
         assert "Source entity not found" in str(exc_info.value)
-        assert "T-nonexistent" in str(exc_info.value)
+        assert fake_id in str(exc_info.value)
 
     def test_add_edge_rejects_invalid_target(self, manager):
         """add_edge raises ValueError when target doesn't exist."""
         task = manager.create_task("Real task")
+        # Use valid-format ID that doesn't exist in store
+        fake_id = "T-20251229-000000-00000002"
 
         with pytest.raises(ValueError) as exc_info:
-            manager.add_edge(task.id, "T-nonexistent", "DEPENDS_ON")
+            manager.add_edge(task.id, fake_id, "DEPENDS_ON")
 
         assert "Target entity not found" in str(exc_info.value)
-        assert "T-nonexistent" in str(exc_info.value)
+        assert fake_id in str(exc_info.value)
 
     def test_add_edge_rejects_both_invalid(self, manager):
         """add_edge raises ValueError when both source and target don't exist."""
+        # Use valid-format IDs that don't exist in store
+        fake_source = "T-20251229-000000-00000003"
+        fake_target = "T-20251229-000000-00000004"
+
         with pytest.raises(ValueError) as exc_info:
-            manager.add_edge("T-fake-source", "T-fake-target", "DEPENDS_ON")
+            manager.add_edge(fake_source, fake_target, "DEPENDS_ON")
 
         # Should fail on source first
         assert "Source entity not found" in str(exc_info.value)
 
     def test_add_edge_validate_refs_false_skips_check(self, manager):
         """add_edge with validate_refs=False skips reference validation."""
+        # Use valid-format IDs that don't exist in store
+        fake_source = "T-20251229-000000-00000005"
+        fake_target = "T-20251229-000000-00000006"
+
         # This allows creating edges to entities that may not be loaded yet
         edge = manager.add_edge(
-            "T-nonexistent-source",
-            "T-nonexistent-target",
+            fake_source,
+            fake_target,
             "DEPENDS_ON",
             validate_refs=False
         )
 
         # Edge is created even though entities don't exist
-        assert edge.source_id == "T-nonexistent-source"
-        assert edge.target_id == "T-nonexistent-target"
+        assert edge.source_id == fake_source
+        assert edge.target_id == fake_target
 
     def test_add_dependency_validates_refs(self, manager):
         """add_dependency also validates references."""
         task = manager.create_task("Real task")
+        # Use valid-format ID that doesn't exist in store
+        fake_id = "T-20251229-000000-00000007"
 
         with pytest.raises(ValueError) as exc_info:
-            manager.add_dependency("T-nonexistent", task.id)
+            manager.add_dependency(fake_id, task.id)
 
         assert "Source entity not found" in str(exc_info.value)
 
     def test_add_blocks_validates_refs(self, manager):
         """add_blocks also validates references."""
         task = manager.create_task("Real task")
+        # Use valid-format ID that doesn't exist in store
+        fake_id = "T-20251229-000000-00000008"
 
         with pytest.raises(ValueError) as exc_info:
-            manager.add_blocks("T-nonexistent", task.id)
+            manager.add_blocks(fake_id, task.id)
 
         assert "Source entity not found" in str(exc_info.value)

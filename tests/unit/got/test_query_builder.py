@@ -46,7 +46,8 @@ class TestFluentQueryBuilder:
 
         # Create decision
         self.decision = manager.create_decision("Use builder pattern", rationale="Cleaner API")
-        manager.add_edge(self.task1.id, self.decision.id, "JUSTIFIES")
+        # Decision justifies task (correct direction: decision → task)
+        manager.add_edge(self.decision.id, self.task1.id, "JUSTIFIES")
 
         return manager
 

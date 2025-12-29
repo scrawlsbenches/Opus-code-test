@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import json
+import time
 import threading
 from pathlib import Path
 from datetime import datetime, timezone
@@ -340,13 +341,20 @@ class VersionedStore:
         """Get path for entity history file (JSONL format)."""
         return self.history_dir / f"{entity_id}.jsonl"
 
-    def _write_with_checksum(self, path: Path, data: dict) -> None:
+    def _write_with_checksum(
+        self, path: Path, data: dict, max_retries: int = 3
+    ) -> None:
         """
-        Write JSON with embedded checksum wrapper.
+        Write JSON with embedded checksum wrapper and verify after write.
+
+        Uses write-then-verify pattern to detect corruption from concurrent
+        writes (e.g., in CI environments where fcntl.flock may not fully
+        synchronize across container layers).
 
         Args:
             path: File path to write to
             data: Entity data dictionary
+            max_retries: Maximum retry attempts on verification failure
         """
         checksum = compute_checksum(data)
         wrapper = {
@@ -355,8 +363,55 @@ class VersionedStore:
             "data": data
         }
 
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(wrapper, f, indent=2, sort_keys=True)
+        last_error: Optional[Exception] = None
+        for attempt in range(max_retries):
+            try:
+                # Write the file
+                with open(path, 'w', encoding='utf-8') as f:
+                    json.dump(wrapper, f, indent=2, sort_keys=True)
+                    f.flush()
+                    # Only fsync if durability mode requires it
+                    if self.durability != DurabilityMode.RELAXED:
+                        os.fsync(f.fileno())
+
+                # Verify by reading back and checking checksum
+                with open(path, 'r', encoding='utf-8') as f:
+                    read_back = json.load(f)
+
+                if read_back.get("_checksum") != checksum:
+                    raise CorruptionError(
+                        f"Write verification failed for {path.name}: "
+                        f"checksum mismatch after write",
+                        expected=checksum,
+                        actual=read_back.get("_checksum"),
+                        path=str(path)
+                    )
+
+                # Verify the data portion
+                actual_checksum = compute_checksum(read_back.get("data", {}))
+                if actual_checksum != checksum:
+                    raise CorruptionError(
+                        f"Write verification failed for {path.name}: "
+                        f"data checksum mismatch",
+                        expected=checksum,
+                        actual=actual_checksum,
+                        path=str(path)
+                    )
+
+                # Success - write verified
+                return
+
+            except (json.JSONDecodeError, CorruptionError) as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    # Exponential backoff: 0.01s, 0.02s, 0.04s
+                    time.sleep(0.01 * (2 ** attempt))
+                    continue
+                raise
+
+        # Should not reach here, but just in case
+        if last_error:
+            raise last_error
 
     def _read_and_verify(self, path: Path) -> dict:
         """

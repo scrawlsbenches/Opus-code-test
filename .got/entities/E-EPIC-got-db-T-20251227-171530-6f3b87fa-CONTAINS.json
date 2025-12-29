@@ -1,0 +1,16 @@
+{
+  "_checksum": "97fe904cb681f492",
+  "_written_at": "2025-12-28T08:56:41.163796+00:00",
+  "data": {
+    "confidence": 1.0,
+    "created_at": "2025-12-28T08:56:41.159463+00:00",
+    "edge_type": "CONTAINS",
+    "entity_type": "edge",
+    "id": "E-EPIC-got-db-T-20251227-171530-6f3b87fa-CONTAINS",
+    "modified_at": "2025-12-28T08:56:41.163736+00:00",
+    "source_id": "EPIC-got-db",
+    "target_id": "T-20251227-171530-6f3b87fa",
+    "version": 2,
+    "weight": 1.0
+  }
+}
