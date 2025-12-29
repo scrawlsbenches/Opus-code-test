@@ -1,0 +1,19 @@
+{
+  "_checksum": "93c8134267bf3321",
+  "_written_at": "2025-12-29T18:42:08.409075+00:00",
+  "data": {
+    "created_at": "2025-12-29T18:42:08.405689+00:00",
+    "description": "## Goal\nEnable parallel hypothesis exploration with later reconciliation.\n\n## Interface Contract\n```python\nclass ForkableMind:\n    def __init__(self, base_mind: Optional[WovenMind] = None):\n        self.mind = base_mind or WovenMind()\n        self.branch_id: str = generate_branch_id()\n        self.parent_branch: Optional[str] = None\n        self.divergence_point: Optional[str] = None\n    \n    def fork(self, divergence_point: str = None) -> 'ForkableMind':\n        '''Create parallel self with shared history up to divergence point.'''\n        \n    def merge(self, other: 'ForkableMind', strategy: MergeStrategy = MergeStrategy.UNION) -> MergeResult:\n        '''Combine experiences from parallel exploration.'''\n        \n    def get_lineage(self) -> List[str]:\n        '''Return branch history from root to current.'''\n```\n\n## Test Requirements\n- test_fork_creates_independent_copy()\n- test_fork_shares_history()\n- test_merge_union_keeps_all()\n- test_merge_intersection_keeps_shared()",
+    "entity_type": "task",
+    "id": "T-20251229-184208-a96cae79",
+    "metadata": {},
+    "modified_at": "2025-12-29T18:42:08.409012+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement ForkableMind with fork() and merge()",
+    "version": 2
+  }
+}
