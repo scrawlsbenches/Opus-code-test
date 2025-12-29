@@ -486,6 +486,201 @@ class LargeDocumentBenchmark(CorpusBenchmark):
 
 
 # =============================================================================
+# QUERY BENCHMARKS (Stage 1)
+# =============================================================================
+
+from benchmarks.corpus.base import measure_latency_percentiles
+
+
+@register_benchmark
+class SearchLatencyBenchmark(CorpusBenchmark):
+    """
+    Measure search latency percentiles (p50/p90/p99).
+
+    Tests find_documents_for_query() performance with:
+    - Cold cache (first query)
+    - Warm cache (repeated queries)
+    - Various corpus sizes
+    """
+
+    name = "search_latency"
+    description = "Measure search latency percentiles (p50/p90/p99)"
+    corpus_category = CorpusBenchmarkCategory.QUERY
+
+    # Test queries (concept-based to match synthetic corpus)
+    TEST_QUERIES = [
+        "concept0",
+        "concept1 concept2",
+        "word0 word1 word2",
+        "concept5 important",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        # self._processor is pre-loaded and computed via setup()
+        processor = self._processor
+
+        # Cold cache test - first query
+        cold_query = self.TEST_QUERIES[0]
+        cold_start = time.perf_counter()
+        processor.find_documents_for_query(cold_query, top_n=5)
+        cold_latency_ms = (time.perf_counter() - cold_start) * 1000
+
+        result.add_metric(
+            name="cold_cache_latency_ms",
+            value=cold_latency_ms,
+            unit="ms",
+        )
+
+        # Warm cache test - measure percentiles over repeated queries
+        is_quick = self.config.get("quick", False)
+        n_iterations = 50 if is_quick else 200
+
+        latencies_ms = []
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            processor.find_documents_for_query(query, top_n=5)
+            elapsed = (time.perf_counter() - start) * 1000
+            latencies_ms.append(elapsed)
+
+        latencies_ms.sort()
+        n = len(latencies_ms)
+
+        def percentile(p: float) -> float:
+            idx = int(n * p / 100)
+            return latencies_ms[min(idx, n - 1)]
+
+        p50 = percentile(50)
+        p90 = percentile(90)
+        p99 = percentile(99)
+        mean_latency = sum(latencies_ms) / n
+
+        result.add_metric(
+            name="p50_latency_ms",
+            value=p50,
+            unit="ms",
+            threshold_max=100.0,  # Should be under 100ms
+        )
+        result.add_metric(
+            name="p90_latency_ms",
+            value=p90,
+            unit="ms",
+            threshold_max=200.0,  # p90 under 200ms
+        )
+        result.add_metric(
+            name="p99_latency_ms",
+            value=p99,
+            unit="ms",
+        )
+        result.add_metric(
+            name="mean_latency_ms",
+            value=mean_latency,
+            unit="ms",
+        )
+
+        # Calculate queries per second
+        total_time_sec = sum(latencies_ms) / 1000
+        qps = n_iterations / total_time_sec if total_time_sec > 0 else 0
+
+        result.add_metric(
+            name="queries_per_second",
+            value=qps,
+            unit="qps",
+            threshold_min=10.0,  # At least 10 queries/sec
+        )
+
+        result.metadata.update({
+            "corpus_size": self._corpus_config.n_docs,
+            "iterations": n_iterations,
+            "queries_tested": self.TEST_QUERIES,
+            "latency_distribution": {
+                "min_ms": min(latencies_ms),
+                "max_ms": max(latencies_ms),
+                "std_ms": (sum((x - mean_latency) ** 2 for x in latencies_ms) / n) ** 0.5,
+            },
+        })
+
+        return result
+
+
+@register_benchmark
+class ColdWarmCacheBenchmark(CorpusBenchmark):
+    """
+    Compare cold vs warm cache search performance.
+
+    Measures the speedup from query caching and pre-computed indices.
+    """
+
+    name = "cold_warm_cache"
+    description = "Compare cold vs warm cache search performance"
+    corpus_category = CorpusBenchmarkCategory.QUERY
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        # Create fresh processor for cold cache test
+        generator = SyntheticCorpusGenerator(self._corpus_config)
+        corpus = generator.generate()
+
+        processor = CorticalTextProcessor()
+        for doc_id, text in corpus.items():
+            processor.process_document(doc_id, text)
+        processor.compute_all()
+
+        test_query = "concept0 concept1"
+
+        # Cold cache - first query on fresh processor
+        cold_times = []
+        for _ in range(5):
+            # Create new processor each time for true cold cache
+            fresh_processor = CorticalTextProcessor()
+            for doc_id, text in corpus.items():
+                fresh_processor.process_document(doc_id, text)
+            fresh_processor.compute_all()
+
+            start = time.perf_counter()
+            fresh_processor.find_documents_for_query(test_query, top_n=5)
+            cold_times.append((time.perf_counter() - start) * 1000)
+
+        # Warm cache - repeated queries on same processor
+        warm_times = []
+        for _ in range(20):
+            start = time.perf_counter()
+            processor.find_documents_for_query(test_query, top_n=5)
+            warm_times.append((time.perf_counter() - start) * 1000)
+
+        avg_cold = statistics.mean(cold_times)
+        avg_warm = statistics.mean(warm_times)
+        speedup = avg_cold / avg_warm if avg_warm > 0 else float('inf')
+
+        result.add_metric(
+            name="avg_cold_cache_ms",
+            value=avg_cold,
+            unit="ms",
+        )
+        result.add_metric(
+            name="avg_warm_cache_ms",
+            value=avg_warm,
+            unit="ms",
+        )
+        result.add_metric(
+            name="cache_speedup",
+            value=speedup,
+            unit="x",
+        )
+
+        result.metadata.update({
+            "cold_samples": len(cold_times),
+            "warm_samples": len(warm_times),
+            "test_query": test_query,
+        })
+
+        return result
+
+
+# =============================================================================
 # RUNNER
 # =============================================================================
 
