@@ -1,0 +1,19 @@
+{
+  "_checksum": "fb1a3bcbbbcd4334",
+  "_written_at": "2025-12-29T18:40:41.231820+00:00",
+  "data": {
+    "created_at": "2025-12-29T18:40:41.228390+00:00",
+    "description": "## Goal\nDemonstrate phenomenological state affecting reasoning behavior.\n\n## Demo Script\n```python\n# examples/phenomenology_demo.py\nmind = WovenMind(attention_budget=10.0)\n\n# Process until fatigued\nfor i in range(15):\n    result = mind.process(['test', 'input'])\n    print(f'Cycle {i}: valence={mind.state.valence:.2f}, budget={mind.state.attention_budget:.1f}')\n    if mind.state.should_consolidate():\n        print('  -> Auto-consolidation triggered!')\n```\n\n## Expected Output\nShows attention budget depleting, valence changing, and consolidation triggering.",
+    "entity_type": "task",
+    "id": "T-20251229-184041-f3a91ea6",
+    "metadata": {},
+    "modified_at": "2025-12-29T18:40:41.231722+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Create Sprint 31 Demo: Phenomenological State in Action",
+    "version": 2
+  }
+}
