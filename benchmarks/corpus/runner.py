@@ -681,6 +681,162 @@ class ColdWarmCacheBenchmark(CorpusBenchmark):
 
 
 # =============================================================================
+# QUERY BENCHMARKS (Stage 2)
+# =============================================================================
+
+
+@register_benchmark
+class FastSearchBenchmark(CorpusBenchmark):
+    """
+    Compare fast_find_documents() vs standard find_documents_for_query().
+
+    Measures the speedup from optimized search path.
+    """
+
+    name = "fast_search_comparison"
+    description = "Compare fast vs standard document search"
+    corpus_category = CorpusBenchmarkCategory.QUERY
+
+    TEST_QUERIES = [
+        "concept0",
+        "concept1 concept2",
+        "word0 word1",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 30 if is_quick else 100
+
+        # Standard search timing
+        standard_times = []
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            processor.find_documents_for_query(query, top_n=5)
+            elapsed = (time.perf_counter() - start) * 1000
+            standard_times.append(elapsed)
+
+        # Fast search timing
+        fast_times = []
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            processor.fast_find_documents(query, top_n=5)
+            elapsed = (time.perf_counter() - start) * 1000
+            fast_times.append(elapsed)
+
+        avg_standard = statistics.mean(standard_times)
+        avg_fast = statistics.mean(fast_times)
+        speedup = avg_standard / avg_fast if avg_fast > 0 else float('inf')
+
+        result.add_metric(
+            name="avg_standard_ms",
+            value=avg_standard,
+            unit="ms",
+        )
+        result.add_metric(
+            name="avg_fast_ms",
+            value=avg_fast,
+            unit="ms",
+        )
+        result.add_metric(
+            name="fast_speedup",
+            value=speedup,
+            unit="x",
+            threshold_min=1.0,  # Fast should be at least as fast
+        )
+
+        result.metadata.update({
+            "iterations": n_iterations,
+            "standard_p50_ms": sorted(standard_times)[len(standard_times) // 2],
+            "fast_p50_ms": sorted(fast_times)[len(fast_times) // 2],
+        })
+
+        return result
+
+
+@register_benchmark
+class GraphBoostedSearchBenchmark(CorpusBenchmark):
+    """
+    Measure graph_boosted_search() performance with PageRank signals.
+
+    Tests search with graph-based relevance boosting.
+    """
+
+    name = "graph_boosted_search"
+    description = "Measure graph-boosted search with PageRank signals"
+    corpus_category = CorpusBenchmarkCategory.QUERY
+
+    TEST_QUERIES = [
+        "concept0 important",
+        "concept1 concept2",
+        "word0 word1 word2",
+    ]
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 20 if is_quick else 50
+
+        # Standard search baseline
+        standard_times = []
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            processor.find_documents_for_query(query, top_n=5)
+            elapsed = (time.perf_counter() - start) * 1000
+            standard_times.append(elapsed)
+
+        # Graph-boosted search with default weights
+        boosted_times = []
+        for i in range(n_iterations):
+            query = self.TEST_QUERIES[i % len(self.TEST_QUERIES)]
+            start = time.perf_counter()
+            processor.graph_boosted_search(
+                query,
+                top_n=5,
+                pagerank_weight=0.3,
+                proximity_weight=0.2,
+            )
+            elapsed = (time.perf_counter() - start) * 1000
+            boosted_times.append(elapsed)
+
+        avg_standard = statistics.mean(standard_times)
+        avg_boosted = statistics.mean(boosted_times)
+        overhead = (avg_boosted - avg_standard) / avg_standard * 100 if avg_standard > 0 else 0
+
+        result.add_metric(
+            name="avg_standard_ms",
+            value=avg_standard,
+            unit="ms",
+        )
+        result.add_metric(
+            name="avg_boosted_ms",
+            value=avg_boosted,
+            unit="ms",
+        )
+        result.add_metric(
+            name="overhead_percent",
+            value=overhead,
+            unit="%",
+            threshold_max=500.0,  # Overhead should be under 500%
+        )
+
+        result.metadata.update({
+            "iterations": n_iterations,
+            "pagerank_weight": 0.3,
+            "proximity_weight": 0.2,
+        })
+
+        return result
+
+
+# =============================================================================
 # RUNNER
 # =============================================================================
 
