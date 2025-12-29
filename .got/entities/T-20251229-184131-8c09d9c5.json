@@ -1,0 +1,19 @@
+{
+  "_checksum": "d61841180b458eaf",
+  "_written_at": "2025-12-29T18:41:31.174377+00:00",
+  "data": {
+    "created_at": "2025-12-29T18:41:31.170549+00:00",
+    "description": "## Goal\nUnderstand what 'parallel hypothesis exploration' means for this architecture.\n\n## Exploration Questions\n1. What state needs to be copied when forking?\n2. How do forked minds diverge and track lineage?\n3. What merge strategies make sense (union, intersection, diff)?\n4. How does this relate to git branching semantics?\n\n## Files to Read\n- cortical/reasoning/thought_graph.py (graph structure)\n- cortical/reasoning/woven_mind.py (state to copy)\n- cortical/reasoning/graph_persistence.py (snapshots)\n\n## Deliverables\nReport with proposed ForkableMind architecture.",
+    "entity_type": "task",
+    "id": "T-20251229-184131-8c09d9c5",
+    "metadata": {},
+    "modified_at": "2025-12-29T18:41:31.174301+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "EXPLORE: Research mind forking requirements",
+    "version": 2
+  }
+}
