@@ -47,6 +47,36 @@ GoT (Graph of Thought) is our task, sprint, and decision tracking system:
 | `python scripts/got_utils.py sprint status` | Show current/active sprint |
 | `python scripts/got_utils.py sprint create "Title" --number N` | Create a new sprint |
 
+**Batch commands (multiple operations in one transaction):**
+
+```bash
+# Create sprint with tasks and dependencies in a single command
+python scripts/got_utils.py batch <<'EOF'
+sprint create "Sprint 28 - Feature X" --number 28 as sprint1
+
+task create "Implement core feature" --sprint $sprint1 --priority high as t1
+task create "Write unit tests" --sprint $sprint1 --priority medium as t2
+task create "Update documentation" --sprint $sprint1 --priority low as t3
+
+edge add $t2 $t1 DEPENDS_ON
+edge add $t3 $t1 DEPENDS_ON
+EOF
+```
+
+**Batch DSL syntax:**
+- Commands use same syntax as individual CLI commands
+- `as NAME` assigns an alias to the created entity
+- `$NAME` references a previously aliased entity
+- Empty lines and `# comments` are ignored
+- All operations are atomic (all succeed or all fail)
+
+| Flag | Purpose |
+|------|---------|
+| `--dry-run` | Preview operations without executing |
+| `--output-json` | Return created IDs as JSON (for scripting) |
+| `--file FILE` | Read batch script from file instead of stdin |
+| `--no-atomic` | Allow partial success (not recommended) |
+
 > **Note:** Sprint data is stored in `.got/entities/`. The file `tasks/CURRENT_SPRINT.md` is deprecated and kept for historical reference only.
 
 > **Sprint ID Formats:**
@@ -2262,6 +2292,11 @@ python examples/observability_demo.py
 | List edges | `python scripts/got_utils.py edge list [--type TYPE] [--source ID] [--target ID]` |
 | Show edge types | `python scripts/got_utils.py edge types` |
 | Edges for entity | `python scripts/got_utils.py edge for ENTITY_ID` |
+| **GoT Batch Operations** | |
+| Batch from stdin | `python scripts/got_utils.py batch <<'EOF' ... EOF` |
+| Batch from file | `python scripts/got_utils.py batch --file setup.got` |
+| Batch dry-run | `python scripts/got_utils.py batch --dry-run <<'EOF' ... EOF` |
+| Batch JSON output | `python scripts/got_utils.py batch --output-json <<'EOF' ... EOF` |
 | **GoT Query Language** | |
 | What blocks task | `python scripts/got_utils.py query "what blocks TASK_ID"` |
 | What depends on | `python scripts/got_utils.py query "what depends on TASK_ID"` |

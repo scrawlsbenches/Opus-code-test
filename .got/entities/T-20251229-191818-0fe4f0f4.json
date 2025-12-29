@@ -1,0 +1,24 @@
+{
+  "_checksum": "b132216a6cdeae14",
+  "_written_at": "2025-12-29T19:26:33.698602+00:00",
+  "data": {
+    "created_at": "2025-12-29T19:18:18.686883+00:00",
+    "description": "",
+    "entity_type": "task",
+    "id": "T-20251229-191818-0fe4f0f4",
+    "metadata": {
+      "completed_at": "2025-12-29T19:26:33.691343+00:00",
+      "started_at": "2025-12-29T19:18:36.335225+00:00",
+      "updated_at": "2025-12-29T19:26:33.691348+00:00"
+    },
+    "modified_at": "2025-12-29T19:26:33.698535+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature",
+      "retrospective": "Implemented batch CLI with heredoc DSL. Features: alias assignment (as NAME), variable resolution ($NAME), dry-run, JSON output, atomic transactions. Added tests (18 passing) and CLAUDE.md documentation."
+    },
+    "status": "completed",
+    "title": "Implement GoT batch operations CLI with heredoc DSL",
+    "version": 6
+  }
+}

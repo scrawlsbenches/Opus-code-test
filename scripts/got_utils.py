@@ -131,6 +131,7 @@ from cortical.got.cli.orphan import setup_orphan_parser, handle_orphan_command
 from cortical.got.cli.backlog import setup_backlog_parser, handle_backlog_command
 from cortical.got.cli.analyze import setup_analyze_parser, handle_analyze_command
 from cortical.got.cli.edge import setup_edge_parser, handle_edge_command
+from cortical.got.cli.batch import setup_batch_parser, handle_batch_command
 
 # Import shared constants from canonical source (single source of truth)
 from cortical.got.cli.shared import (
@@ -204,6 +205,7 @@ MUTATING_COMMANDS = {
     "epic": {"create"},
     "decision": {"log"},
     "handoff": {"initiate", "accept", "complete"},
+    "batch": True,  # Always mutating (creates multiple entities)
     "compact": True,  # Always mutating
     "migrate": True,
     "migrate-events": True,
@@ -2793,6 +2795,7 @@ VALID_COMMANDS = [
     "task", "sprint", "epic", "handoff", "decision", "doc", "query",
     "blocked", "active", "stats", "dashboard", "validate", "infer",
     "export", "backup", "sync", "orphan", "backlog", "analyze", "edge",
+    "batch",
 ]
 
 
@@ -2871,6 +2874,7 @@ def main():
     setup_backlog_parser(subparsers)
     setup_analyze_parser(subparsers)  # Graph analysis using fluent Query API
     setup_edge_parser(subparsers)  # Direct edge management
+    setup_batch_parser(subparsers)  # Batch operations with heredoc DSL
 
     # Pre-check for invalid commands to provide better error messages
     # This runs before argparse's default error handling
@@ -2931,6 +2935,9 @@ def main():
 
     elif args.command == "edge":
         return handle_edge_command(args, manager)
+
+    elif args.command == "batch":
+        return handle_batch_command(args, manager)
 
     # Query-related commands (query, blocked, active, stats, etc.)
     result = handle_query_commands(args, manager)
