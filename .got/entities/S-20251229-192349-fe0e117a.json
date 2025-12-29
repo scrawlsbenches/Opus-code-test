@@ -1,0 +1,21 @@
+{
+  "_checksum": "071ac27e1cc20b3c",
+  "_written_at": "2025-12-29T19:23:49.580298+00:00",
+  "data": {
+    "created_at": "2025-12-29T19:23:49.576485+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [],
+    "id": "S-20251229-192349-fe0e117a",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2025-12-29T19:23:49.580217+00:00",
+    "notes": [],
+    "number": 99,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "Test Batch Sprint",
+    "version": 2
+  }
+}
