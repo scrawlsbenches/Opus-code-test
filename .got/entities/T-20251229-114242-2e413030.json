@@ -1,19 +1,22 @@
 {
-  "_checksum": "1aa12416be571224",
-  "_written_at": "2025-12-29T11:42:42.343593+00:00",
+  "_checksum": "ae1580e48659fc28",
+  "_written_at": "2025-12-29T13:04:07.802762+00:00",
   "data": {
     "created_at": "2025-12-29T11:42:42.340129+00:00",
     "description": "Implement QueryExpansionBenchmark measuring expand_query() at various expansion depths (5, 10, 20). Measure overhead vs search quality tradeoff.",
     "entity_type": "task",
     "id": "T-20251229-114242-2e413030",
-    "metadata": {},
-    "modified_at": "2025-12-29T11:42:42.343537+00:00",
+    "metadata": {
+      "started_at": "2025-12-29T13:04:07.795735+00:00",
+      "updated_at": "2025-12-29T13:04:07.795743+00:00"
+    },
+    "modified_at": "2025-12-29T13:04:07.802713+00:00",
     "priority": "medium",
     "properties": {
       "category": "feature"
     },
-    "status": "pending",
+    "status": "in_progress",
     "title": "Stage 3: Query expansion overhead benchmarks",
-    "version": 2
+    "version": 4
   }
 }
