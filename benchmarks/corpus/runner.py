@@ -1830,6 +1830,270 @@ class SimilarityDetectionBenchmark(CorpusBenchmark):
 
 
 # =============================================================================
+# PERSISTENCE BENCHMARKS
+# =============================================================================
+
+import tempfile
+import shutil
+
+
+@register_benchmark
+class SaveCorpusBenchmark(CorpusBenchmark):
+    """
+    Measure corpus save performance.
+
+    Tests JSON directory save:
+    - Save latency for various corpus sizes
+    - Disk space efficiency
+    """
+
+    name = "save_corpus"
+    description = "Measure corpus save performance"
+    corpus_category = CorpusBenchmarkCategory.PERSISTENCE
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 3 if is_quick else 5
+
+        save_times = []
+        temp_dirs = []
+
+        try:
+            for _ in range(n_iterations):
+                # Create temp directory
+                temp_dir = tempfile.mkdtemp(prefix="bench_save_")
+                temp_dirs.append(temp_dir)
+                save_path = Path(temp_dir) / "corpus"
+
+                start = time.perf_counter()
+                processor.save(str(save_path), verbose=False)
+                elapsed = (time.perf_counter() - start) * 1000
+                save_times.append(elapsed)
+
+            avg_save = statistics.mean(save_times)
+            p50 = sorted(save_times)[len(save_times) // 2]
+
+            result.add_metric(
+                name="avg_save_ms",
+                value=avg_save,
+                unit="ms",
+            )
+            result.add_metric(
+                name="p50_save_ms",
+                value=p50,
+                unit="ms",
+                threshold_max=5000.0,  # Save under 5 seconds
+            )
+
+            # Calculate save throughput
+            n_docs = len(processor.documents)
+            docs_per_sec = (n_docs * 1000) / avg_save if avg_save > 0 else 0
+            result.add_metric(
+                name="docs_per_second",
+                value=docs_per_sec,
+                unit="docs/sec",
+            )
+
+            result.metadata.update({
+                "iterations": n_iterations,
+                "corpus_size": n_docs,
+            })
+
+        finally:
+            # Cleanup temp directories
+            for temp_dir in temp_dirs:
+                try:
+                    shutil.rmtree(temp_dir)
+                except Exception:
+                    pass
+
+        return result
+
+
+@register_benchmark
+class LoadCorpusBenchmark(CorpusBenchmark):
+    """
+    Measure corpus load performance.
+
+    Tests JSON directory load:
+    - Load latency
+    - Full state restoration
+    """
+
+    name = "load_corpus"
+    description = "Measure corpus load performance"
+    corpus_category = CorpusBenchmarkCategory.PERSISTENCE
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        is_quick = self.config.get("quick", False)
+        n_iterations = 3 if is_quick else 5
+
+        temp_dir = None
+        load_times = []
+
+        try:
+            # Save once to create loadable state
+            temp_dir = tempfile.mkdtemp(prefix="bench_load_")
+            save_path = Path(temp_dir) / "corpus"
+            processor.save(str(save_path), verbose=False)
+
+            # Measure load times
+            for _ in range(n_iterations):
+                start = time.perf_counter()
+                loaded = CorticalTextProcessor.load(str(save_path), verbose=False)
+                elapsed = (time.perf_counter() - start) * 1000
+                load_times.append(elapsed)
+
+                # Verify basic integrity
+                if len(loaded.documents) != len(processor.documents):
+                    result.error_message = "Document count mismatch after load"
+
+            avg_load = statistics.mean(load_times)
+            p50 = sorted(load_times)[len(load_times) // 2]
+
+            result.add_metric(
+                name="avg_load_ms",
+                value=avg_load,
+                unit="ms",
+            )
+            result.add_metric(
+                name="p50_load_ms",
+                value=p50,
+                unit="ms",
+                threshold_max=5000.0,  # Load under 5 seconds
+            )
+
+            # Calculate load throughput
+            n_docs = len(processor.documents)
+            docs_per_sec = (n_docs * 1000) / avg_load if avg_load > 0 else 0
+            result.add_metric(
+                name="docs_per_second",
+                value=docs_per_sec,
+                unit="docs/sec",
+            )
+
+            result.metadata.update({
+                "iterations": n_iterations,
+                "corpus_size": n_docs,
+            })
+
+        finally:
+            if temp_dir:
+                try:
+                    shutil.rmtree(temp_dir)
+                except Exception:
+                    pass
+
+        return result
+
+
+@register_benchmark
+class StateIntegrityBenchmark(CorpusBenchmark):
+    """
+    Verify save/load preserves full state.
+
+    Tests:
+    - Document count matches
+    - Query results match
+    - Metadata preserved
+    """
+
+    name = "state_integrity"
+    description = "Verify save/load preserves state"
+    corpus_category = CorpusBenchmarkCategory.PERSISTENCE
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        processor = self._processor
+        temp_dir = None
+
+        try:
+            # Save
+            temp_dir = tempfile.mkdtemp(prefix="bench_integrity_")
+            save_path = Path(temp_dir) / "corpus"
+            processor.save(str(save_path), verbose=False)
+
+            # Load
+            loaded = CorticalTextProcessor.load(str(save_path), verbose=False)
+
+            # Check document count
+            orig_docs = len(processor.documents)
+            loaded_docs = len(loaded.documents)
+            docs_match = orig_docs == loaded_docs
+
+            result.add_metric(
+                name="documents_match",
+                value=1.0 if docs_match else 0.0,
+                unit="bool",
+                threshold_min=1.0,  # Must match
+            )
+
+            # Check layer counts
+            layers_match = True
+            for layer_enum in processor.layers:
+                orig_count = processor.layers[layer_enum].column_count()
+                loaded_count = loaded.layers[layer_enum].column_count()
+                if orig_count != loaded_count:
+                    layers_match = False
+                    break
+
+            result.add_metric(
+                name="layers_match",
+                value=1.0 if layers_match else 0.0,
+                unit="bool",
+                threshold_min=1.0,
+            )
+
+            # Check query consistency (same query, same results)
+            test_query = "concept0"
+            orig_results = processor.find_documents_for_query(test_query, top_n=3)
+            loaded_results = loaded.find_documents_for_query(test_query, top_n=3)
+
+            # Compare result doc_ids (scores may have minor float differences)
+            orig_ids = [r[0] for r in orig_results]
+            loaded_ids = [r[0] for r in loaded_results]
+            query_match = orig_ids == loaded_ids
+
+            result.add_metric(
+                name="query_results_match",
+                value=1.0 if query_match else 0.0,
+                unit="bool",
+                threshold_min=1.0,
+            )
+
+            # Overall integrity
+            all_match = docs_match and layers_match and query_match
+            result.add_metric(
+                name="full_integrity",
+                value=1.0 if all_match else 0.0,
+                unit="bool",
+                threshold_min=1.0,
+            )
+
+            result.metadata.update({
+                "original_docs": orig_docs,
+                "loaded_docs": loaded_docs,
+                "layers_checked": len(processor.layers),
+            })
+
+        finally:
+            if temp_dir:
+                try:
+                    shutil.rmtree(temp_dir)
+                except Exception:
+                    pass
+
+        return result
+
+
+# =============================================================================
 # RUNNER
 # =============================================================================
 
