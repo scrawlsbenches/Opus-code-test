@@ -184,11 +184,32 @@ python -c "import cProfile; ..."
 
 ---
 
+## Regression Protection
+
+Performance regression guards added to prevent reintroducing these bugs:
+
+| Optimization | Test | Guard Type |
+|-------------|------|------------|
+| Fast search O(n) removal | `test_fast_search_must_be_faster_than_standard` | Timing comparison |
+| Fast search O(n) removal | `test_no_all_documents_iteration_in_fast_search` | Code pattern check |
+| Lazy Edge loading | `test_minicolumn_from_dict_defers_edge_creation` | State inspection |
+| In-place Edge updates | `test_add_lateral_connection_updates_in_place` | Object identity check |
+| In-place Edge updates | `test_add_lateral_connections_batch_updates_in_place` | Object identity check |
+
+**File:** `tests/regression/test_perf_regressions.py`
+**Commit:** `4594f5e3`
+
+These run automatically in CI as part of the regression test suite.
+
+---
+
 ## Tests Status
 
-- **687 tests passing** after all changes
+- **687+ tests passing** after all changes
 - All minicolumn, persistence, and query tests green
+- 5 new regression tests for performance guards
 
 ---
 
 *Generated: 2025-12-29*
+*Updated: 2025-12-29 (added regression protection)*
