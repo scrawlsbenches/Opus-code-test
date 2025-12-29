@@ -1,0 +1,19 @@
+{
+  "_checksum": "d55bf0772259d857",
+  "_written_at": "2025-12-29T12:40:04.465638+00:00",
+  "data": {
+    "created_at": "2025-12-29T12:40:04.462037+00:00",
+    "description": "Location: cortical/got/versioned_store.py:51-84. Two ProcessLocks with no defined acquisition order. Define and enforce lock ordering (alphabetical: history_lock \u2192 version_lock).",
+    "entity_type": "task",
+    "id": "T-20251229-124004-042ccc7d",
+    "metadata": {},
+    "modified_at": "2025-12-29T12:40:04.465564+00:00",
+    "priority": "critical",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Fix potential deadlock in versioned_store lock acquisition",
+    "version": 2
+  }
+}
