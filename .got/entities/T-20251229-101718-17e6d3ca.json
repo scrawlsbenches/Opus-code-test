@@ -1,19 +1,23 @@
 {
-  "_checksum": "ba99446d60f92320",
-  "_written_at": "2025-12-29T10:17:18.798137+00:00",
+  "_checksum": "532d1aa553164cae",
+  "_written_at": "2025-12-29T10:34:25.437474+00:00",
   "data": {
     "created_at": "2025-12-29T10:17:18.795022+00:00",
     "description": "Create a synthetic corpus generator that can create documents with: controllable size (chars), controllable vocabulary overlap, controllable concept density. Essential for reproducible benchmarks that don't depend on samples/ directory.",
     "entity_type": "task",
     "id": "T-20251229-101718-17e6d3ca",
-    "metadata": {},
-    "modified_at": "2025-12-29T10:17:18.798067+00:00",
+    "metadata": {
+      "completed_at": "2025-12-29T10:34:25.430120+00:00",
+      "updated_at": "2025-12-29T10:34:25.430133+00:00"
+    },
+    "modified_at": "2025-12-29T10:34:25.437423+00:00",
     "priority": "high",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Implemented SyntheticCorpusGenerator in benchmarks/corpus/base.py with SyntheticCorpusConfig dataclass. Features: controllable n_docs, doc_length, vocab_size, concept_count, concept_frequency, code_style, seed for reproducibility. Includes generate() and generate_with_queries() methods."
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Implement synthetic corpus generator for benchmarks",
-    "version": 2
+    "version": 4
   }
 }
