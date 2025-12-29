@@ -1,0 +1,29 @@
+{
+  "_checksum": "a098f30c1d799f20",
+  "_written_at": "2025-12-29T18:19:47.217419+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "high",
+      "task_status": "pending",
+      "task_title": "Scientific performance tuning - establish baseline and optimize"
+    },
+    "created_at": "2025-12-29T18:19:47.213872+00:00",
+    "entity_type": "handoff",
+    "id": "H-20251229-181947-a2ed6ed7",
+    "initiated_at": "2025-12-29T18:19:47.213886+00:00",
+    "instructions": "## Context\nPerformance tuning session was interrupted. Corpus is indexed and ready. Need to establish baseline before making any optimizations.\n\n## What's Done\n- Corpus indexed: `corpus_dev.json/` (1198 docs, 570K bigrams)\n- Synthetic benchmarks run (25 docs)\n- Knowledge transfer: `samples/memories/2025-12-29-session-knowledge-transfer-perf-tuning-baseline.md`\n\n## Immediate Next Step\nRun the full benchmark suite on the real corpus to establish baseline:\n\n```bash\npython -m benchmarks.corpus.runner --all --use-corpus corpus_dev.json --output benchmarks/results/baseline.json\n```\n\n## Scientific Method\n1. Establish baseline FIRST (no code changes)\n2. Analyze data to find actual bottlenecks\n3. Form hypothesis with predicted improvement\n4. Make ONE change\n5. Re-measure and compare\n\n## Suspected Issue (UNVERIFIED)\n`fast_find_documents` in `cortical/query/search.py:213-224` may have O(n) complexity iterating all documents. But verify with data first before assuming this is the bottleneck.\n\n## Key Files\n- `cortical/query/search.py` - fast_find_documents\n- `cortical/analysis/connections.py` - bigram_connections (recently optimized)\n- `benchmarks/corpus/runner.py` - benchmark suite\n\n## Branch\nWorking on: `claude/fix-got-handoff-api-czz09`",
+    "modified_at": "2025-12-29T18:19:47.217335+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "initiated",
+    "target_agent": "next-agent",
+    "task_id": "T-20251229-181927-f8a5b6aa",
+    "version": 2
+  }
+}
