@@ -1,0 +1,19 @@
+{
+  "_checksum": "469e55945f5f808d",
+  "_written_at": "2025-12-29T18:39:11.063806+00:00",
+  "data": {
+    "created_at": "2025-12-29T18:39:11.059975+00:00",
+    "description": "## Goal\nBefore implementing phenomenology, understand what valence/arousal tracking means for this codebase.\n\n## Exploration Questions\n1. How should valence affect mode switching in the Loom?\n2. What triggers arousal changes?\n3. How does mood persist across processing cycles?\n4. What is 'cognitive fatigue' in this context?\n\n## Files to Read\n- cortical/reasoning/loom.py (mode switching logic)\n- cortical/reasoning/woven_mind.py (main facade)\n- cortical/reasoning/crisis_manager.py (failure states)\n\n## Deliverables\nReport with proposed PhenomenologicalState architecture.",
+    "entity_type": "task",
+    "id": "T-20251229-183911-2f506b3e",
+    "metadata": {},
+    "modified_at": "2025-12-29T18:39:11.063731+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "EXPLORE: Research phenomenological state requirements",
+    "version": 2
+  }
+}

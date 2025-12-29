@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import re
+import signal
 import sys
 import tempfile
 import time
@@ -2070,9 +2071,18 @@ class TransactionalGoTAdapter:
             result.append(node)
         return result
 
-    def create_epic(self, name: str, epic_id: Optional[str] = None) -> str:
+    def create_epic(
+        self,
+        name: str,
+        epic_id: Optional[str] = None,
+        properties: Optional[Dict[str, Any]] = None
+    ) -> str:
         """Create a new epic using TX backend."""
-        epic = self._manager.create_epic(title=name, epic_id=epic_id)
+        epic = self._manager.create_epic(
+            title=name,
+            epic_id=epic_id,
+            properties=properties or {}
+        )
         return epic.id
 
     def get_epic(self, epic_id: str) -> Optional[ThoughtNode]:
@@ -2080,16 +2090,19 @@ class TransactionalGoTAdapter:
         epic = self._manager.get_epic(epic_id)
         if epic is None:
             return None
+        # Merge base properties with epic's custom properties
+        props = {
+            "name": epic.title,
+            "status": epic.status,
+            "phase": epic.phase,
+            "phases": epic.phases,
+        }
+        props.update(epic.properties)  # Include description and other custom properties
         return ThoughtNode(
             id=epic.id,
             node_type=NodeType.GOAL,
             content=epic.title,
-            properties={
-                "name": epic.title,
-                "status": epic.status,
-                "phase": epic.phase,
-                "phases": epic.phases,
-            },
+            properties=props,
             metadata={
                 "created_at": epic.created_at,
                 "modified_at": epic.modified_at,
@@ -2986,4 +2999,18 @@ def _run_with_auto_commit():
 
 
 if __name__ == "__main__":
-    sys.exit(_run_with_auto_commit())
+    # Handle SIGPIPE gracefully (e.g., when piping to `head`)
+    # This prevents BrokenPipeError when output is piped to commands that close early
+    try:
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+    except AttributeError:
+        pass  # SIGPIPE not available on Windows
+
+    try:
+        sys.exit(_run_with_auto_commit())
+    except BrokenPipeError:
+        # Python flushes stdout on exit, which can raise BrokenPipeError
+        # Quietly close stdout and exit
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(0)

@@ -1,0 +1,19 @@
+{
+  "_checksum": "eec4981959940670",
+  "_written_at": "2025-12-29T18:39:47.447162+00:00",
+  "data": {
+    "created_at": "2025-12-29T18:39:47.444133+00:00",
+    "description": "## Goal\nCentral state tracking for emotional/affective properties.\n\n## Interface Contract\n```python\n@dataclass\nclass PhenomenologicalState:\n    valence: float          # -1.0 to 1.0\n    arousal: float          # 0.0 to 1.0\n    salience: float         # 0.0 to 1.0 (how grabby)\n    confidence: float       # 0.0 to 1.0\n    attention_budget: float # Depletes with thinking, triggers consolidation\n    mood: Optional[str]     # Persistent state name\n    \n    def emotional_context(self) -> str:\n        '''Human-readable emotional state description.'''\n    \n    def should_consolidate(self) -> bool:\n        '''True if attention budget exhausted.'''\n    \n    def update(self, surprise: float, success: bool) -> 'PhenomenologicalState':\n        '''Return new state based on processing outcome.'''\n```\n\n## Test Requirements\n- test_emotional_context_mapping()\n- test_attention_budget_depletion()\n- test_update_on_success_increases_valence()",
+    "entity_type": "task",
+    "id": "T-20251229-183947-fe9233cd",
+    "metadata": {},
+    "modified_at": "2025-12-29T18:39:47.447105+00:00",
+    "priority": "high",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Implement PhenomenologicalState dataclass",
+    "version": 2
+  }
+}

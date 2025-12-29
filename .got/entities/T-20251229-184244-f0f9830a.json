@@ -1,0 +1,19 @@
+{
+  "_checksum": "ec7bb5156e24c782",
+  "_written_at": "2025-12-29T18:42:44.956577+00:00",
+  "data": {
+    "created_at": "2025-12-29T18:42:44.953185+00:00",
+    "description": "## Goal\nDemonstrate forking minds to explore contradictory hypotheses.\n\n## Demo Script\n```python\n# examples/forking_demo.py\nmind = WovenMind()\nmind.train('neural networks process information')\n\nexplorer = ParallelHypothesisExplorer(mind)\n\n# Explore contradictory hypotheses\nresults = explorer.explore_hypotheses(\n    hypotheses=[\n        'neural networks are like brains',\n        'neural networks are statistical models',\n        'neural networks are universal approximators'\n    ],\n    input_tokens=['neural', 'networks']\n)\n\nfor hyp, result in results.items():\n    print(f'{hyp}: confidence={result.confidence:.2f}')\n\nbest, conf = explorer.best_hypothesis()\nprint(f'Best hypothesis: {best} ({conf:.2f})')\n\n# Reconcile all perspectives\nunified = explorer.reconcile(MergeStrategy.WEIGHTED)\nprint(f'Unified mind has {len(unified.mind.hive.graph)} nodes')\n```\n\n## Expected Output\nShows parallel exploration and reconciliation.",
+    "entity_type": "task",
+    "id": "T-20251229-184244-f0f9830a",
+    "metadata": {},
+    "modified_at": "2025-12-29T18:42:44.956493+00:00",
+    "priority": "medium",
+    "properties": {
+      "category": "feature"
+    },
+    "status": "pending",
+    "title": "Create Sprint 32 Demo: Parallel Hypothesis Exploration",
+    "version": 2
+  }
+}

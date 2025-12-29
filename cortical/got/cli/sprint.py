@@ -293,9 +293,16 @@ def cmd_sprint_suggest(args, manager: "TransactionalGoTAdapter") -> int:
 
 def cmd_epic_create(args, manager: "TransactionalGoTAdapter") -> int:
     """Handle 'got epic create' command."""
+    # Build properties dict for custom fields
+    properties = {}
+    description = getattr(args, 'description', None)
+    if description:
+        properties['description'] = description
+
     epic_id = manager.create_epic(
         name=args.name,
         epic_id=getattr(args, 'epic_id', None),
+        properties=properties,  # Pass as nested dict, not **kwargs
     )
 
     manager.save()
@@ -336,6 +343,9 @@ def cmd_epic_show(args, manager: "TransactionalGoTAdapter") -> int:
 
     print(f"Epic: {epic.id}")
     print(f"  Name: {epic.content}")
+    description = epic.properties.get('description')
+    if description:
+        print(f"  Description: {description}")
     print(f"  Status: {epic.properties.get('status', '?')}")
     print(f"  Phase: {epic.properties.get('phase', '?')}")
 
@@ -479,6 +489,7 @@ def setup_epic_parser(subparsers) -> None:
     epic_create = epic_subparsers.add_parser("create", help="Create an epic")
     epic_create.add_argument("name", help="Epic name")
     epic_create.add_argument("--id", dest="epic_id", help="Custom epic ID")
+    epic_create.add_argument("--description", "-d", help="Epic description")
 
     # epic list
     epic_list = epic_subparsers.add_parser("list", help="List epics")

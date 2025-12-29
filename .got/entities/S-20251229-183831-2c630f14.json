@@ -1,0 +1,21 @@
+{
+  "_checksum": "fd9550f8afed3c3e",
+  "_written_at": "2025-12-29T18:38:31.081240+00:00",
+  "data": {
+    "created_at": "2025-12-29T18:38:31.077662+00:00",
+    "entity_type": "sprint",
+    "epic_id": "",
+    "goals": [],
+    "id": "S-20251229-183831-2c630f14",
+    "isolation": [],
+    "metadata": {},
+    "modified_at": "2025-12-29T18:38:31.081175+00:00",
+    "notes": [],
+    "number": 32,
+    "properties": {},
+    "session_id": "",
+    "status": "available",
+    "title": "Mind Forking & Parallel Hypothesis Exploration",
+    "version": 2
+  }
+}
