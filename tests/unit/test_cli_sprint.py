@@ -648,7 +648,7 @@ class TestCmdEpicCreate(unittest.TestCase):
         mock_manager = Mock()
         mock_manager.create_epic.return_value = "EPIC-001"
 
-        args = Namespace(name="Epic 1", epic_id=None)
+        args = Namespace(name="Epic 1", epic_id=None, description=None)
 
         with patch('builtins.print') as mock_print:
             result = cmd_epic_create(args, mock_manager)
@@ -657,6 +657,7 @@ class TestCmdEpicCreate(unittest.TestCase):
         mock_manager.create_epic.assert_called_once_with(
             name="Epic 1",
             epic_id=None,
+            properties={},
         )
         mock_manager.save.assert_called_once()
         mock_print.assert_called_with("Created: EPIC-001")
@@ -666,7 +667,7 @@ class TestCmdEpicCreate(unittest.TestCase):
         mock_manager = Mock()
         mock_manager.create_epic.return_value = "EPIC-CUSTOM"
 
-        args = Namespace(name="Custom Epic", epic_id="EPIC-CUSTOM")
+        args = Namespace(name="Custom Epic", epic_id="EPIC-CUSTOM", description=None)
 
         with patch('builtins.print'):
             result = cmd_epic_create(args, mock_manager)
@@ -675,6 +676,28 @@ class TestCmdEpicCreate(unittest.TestCase):
         mock_manager.create_epic.assert_called_once_with(
             name="Custom Epic",
             epic_id="EPIC-CUSTOM",
+            properties={},
+        )
+
+    def test_create_epic_with_description(self):
+        """Test epic creation with description."""
+        mock_manager = Mock()
+        mock_manager.create_epic.return_value = "EPIC-DESC"
+
+        args = Namespace(
+            name="Epic with Desc",
+            epic_id=None,
+            description="This is a detailed description"
+        )
+
+        with patch('builtins.print'):
+            result = cmd_epic_create(args, mock_manager)
+
+        self.assertEqual(result, 0)
+        mock_manager.create_epic.assert_called_once_with(
+            name="Epic with Desc",
+            epic_id=None,
+            properties={"description": "This is a detailed description"},
         )
 
 
