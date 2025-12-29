@@ -1,19 +1,24 @@
 {
-  "_checksum": "381a3383dfd33d3d",
-  "_written_at": "2025-12-29T10:15:17.806486+00:00",
+  "_checksum": "72c169992267fe2b",
+  "_written_at": "2025-12-29T10:32:32.840393+00:00",
   "data": {
     "created_at": "2025-12-29T10:15:17.803254+00:00",
     "description": "Create benchmarks/corpus/ directory structure, runner.py, __init__.py. Reuse base classes from woven_mind. Include corpus caching mechanism to avoid repeated loading.",
     "entity_type": "task",
     "id": "T-20251229-101517-69140d4a",
-    "metadata": {},
-    "modified_at": "2025-12-29T10:15:17.806428+00:00",
+    "metadata": {
+      "completed_at": "2025-12-29T10:32:32.834096+00:00",
+      "started_at": "2025-12-29T10:25:59.595084+00:00",
+      "updated_at": "2025-12-29T10:32:32.834105+00:00"
+    },
+    "modified_at": "2025-12-29T10:32:32.840348+00:00",
     "priority": "high",
     "properties": {
-      "category": "feature"
+      "category": "feature",
+      "retrospective": "Created benchmarks/corpus/ infrastructure with:\n- base.py: CorpusBenchmark base class, CorpusBenchmarkCategory enum, CorpusCache singleton, SyntheticCorpusGenerator\n- runner.py: CLI with --all, --quick, --category, --benchmark, --list, --output, --compare, --verbose, --corpus-size flags\n- __init__.py: Re-exports key classes\n- Corpus caching to avoid repeated loading (singleton pattern)\n- SKIPPED status preservation in execute() override\n- Placeholder indexing_throughput benchmark for testing infrastructure"
     },
-    "status": "pending",
+    "status": "completed",
     "title": "Set up corpus benchmark infrastructure",
-    "version": 2
+    "version": 6
   }
 }

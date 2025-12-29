@@ -1,0 +1,29 @@
+{
+  "_checksum": "a46f371070077b71",
+  "_written_at": "2025-12-29T11:23:04.738052+00:00",
+  "data": {
+    "accepted_at": "",
+    "artifacts": [],
+    "completed_at": "",
+    "context": {
+      "task_priority": "high",
+      "task_status": "pending",
+      "task_title": "Implement indexing performance benchmarks"
+    },
+    "created_at": "2025-12-29T11:23:04.735707+00:00",
+    "entity_type": "handoff",
+    "id": "H-20251229-112304-8a9f8944",
+    "initiated_at": "2025-12-29T11:23:04.735719+00:00",
+    "instructions": "## Handoff: Implement Indexing Performance Benchmarks\n\n### Context\nInfrastructure is complete. The corpus benchmark framework is ready in `benchmarks/corpus/`:\n- `base.py`: CorpusBenchmark, CorpusCache, SyntheticCorpusGenerator\n- `runner.py`: CLI with --quick, --category, --compare flags\n- Placeholder `indexing_throughput` benchmark exists but returns SKIPPED\n\n### What to Implement\nReplace the placeholder in `benchmarks/corpus/runner.py` with real implementation:\n\n1. **IndexingThroughputBenchmark** - Measure docs/sec at various corpus sizes\n   - Test with 50, 100, 500, 1000 docs (quick mode: 25, 50, 100)\n   - Measure time to process_document() for each\n   - Report docs_per_sec metric\n\n2. **IncrementalIndexingBenchmark** - Measure add_document_incremental() performance\n   - Compare against full recompute\n   - Show speedup factor\n\n3. **ComputeAllBenchmark** - Measure compute_all() phases\n   - Report time for PageRank, TF-IDF, clustering separately\n   - Identify bottlenecks\n\n### Key Files\n- `benchmarks/corpus/runner.py` - Add benchmarks here (use @register_benchmark decorator)\n- `benchmarks/corpus/base.py` - Base classes and utilities available\n- `benchmarks/cel/benchmarks.py` - Reference for benchmark patterns\n- `cortical/processor/` - CorticalTextProcessor implementation\n\n### Pattern to Follow\n```python\n@register_benchmark\nclass IndexingThroughputBenchmark(CorpusBenchmark):\n    name = \"indexing_throughput\"\n    description = \"Measure document indexing throughput (docs/sec)\"\n    corpus_category = CorpusBenchmarkCategory.INDEXING\n    \n    def run(self) -> BenchmarkResult:\n        result = self.create_result()\n        # Use self._processor from setup() - already loaded via cache\n        # Use measure_throughput() or measure_latency_percentiles() from base\n        # Add metrics with result.add_metric(name, value, unit, threshold_min/max)\n        return result\n```\n\n### Verification\n```bash\npython -m benchmarks.corpus.runner --category indexing --quick\npython -m benchmarks.corpus.runner --all --output results/corpus_baseline.json\n```\n\n### Don't Forget\n- Use CorpusCache to avoid repeated processor creation\n- Support both quick mode (small corpus) and full mode\n- Add reasonable threshold_min for throughput metrics (e.g., 10 docs/sec)",
+    "modified_at": "2025-12-29T11:23:04.738000+00:00",
+    "properties": {},
+    "reject_reason": "",
+    "rejected_at": "",
+    "result": {},
+    "source_agent": "main",
+    "status": "initiated",
+    "target_agent": "next-agent",
+    "task_id": "T-20251229-101547-acbfaa78",
+    "version": 2
+  }
+}
