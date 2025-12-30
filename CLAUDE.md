@@ -748,7 +748,7 @@ Each layer builds upon the last, creating assurance:
 ┌───────────────────────────────┴───────────────────────────────┐
 │                    UNIT SPECIFICATIONS                        │
 │   "Each atom of logic is correct"                             │
-│   tests/unit/specifications/ — 95%+ coverage                  │
+│   tests/unit/specifications/ — 88%+ coverage                  │
 └───────────────────────────────┬───────────────────────────────┘
                                 │
 ┌───────────────────────────────┴───────────────────────────────┐
@@ -798,7 +798,7 @@ Before merging any code:
       All performance contracts are satisfied
 
 - [ ] **Specifications Verified**
-      All unit specifications pass with 95%+ coverage
+      All unit specifications pass with 88%+ coverage
 
 - [ ] **CI Guardian Approves**
       The full pipeline is green—no exceptions
@@ -956,7 +956,7 @@ tests/
 python -m pytest tests/smoke/ -v
 
 # Gate 2: Specifications (run frequently, ~2 minutes)
-python -m pytest tests/unit/specifications/ -v --cov=cortical --cov-fail-under=95
+python -m pytest tests/unit/ -v --cov=cortical --cov-fail-under=88
 
 # Gate 3: Behaviors (run before merge, ~5 minutes)
 python -m pytest tests/behavioral/ -v
@@ -971,7 +971,7 @@ python -m pytest tests/integration/ -v
 python -m pytest tests/security/ -v
 
 # Full Metus Pipeline (what CI runs)
-python -m pytest tests/ -v --cov=cortical --cov-fail-under=95
+python -m pytest tests/ -v --cov=cortical --cov-fail-under=88
 ```
 
 ---

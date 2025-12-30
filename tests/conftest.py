@@ -15,6 +15,7 @@ Test Categories (markers):
 - @pytest.mark.performance: Timing-based tests (skip under coverage)
 - @pytest.mark.regression: Bug-specific regression tests
 - @pytest.mark.behavioral: User workflow and quality tests
+- @pytest.mark.contract: Performance contracts (sacred promises, block build on failure)
 - @pytest.mark.slow: Tests that take > 5 seconds
 
 Usage:
@@ -67,6 +68,9 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers", "behavioral: User workflow and quality tests"
+    )
+    config.addinivalue_line(
+        "markers", "contract: Performance contracts (sacred promises, block build on failure)"
     )
     config.addinivalue_line(
         "markers", "slow: Tests that take > 5 seconds"
@@ -142,13 +146,16 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.smoke)
         elif '/performance/' in test_path or '\\performance\\' in test_path:
             item.add_marker(pytest.mark.performance)
-            # Performance tests are slow and excluded from default dev runs
-            item.add_marker(pytest.mark.slow)
-            # Performance tests should skip under coverage
-            if 'coverage' in sys.modules:
-                item.add_marker(pytest.mark.skip(
-                    reason="Performance tests skip under coverage (10x+ overhead)"
-                ))
+            # Performance contracts are NOT slow - they run on every CI
+            # Only non-contract performance tests are marked slow
+            if '/contracts/' not in test_path and '\\contracts\\' not in test_path:
+                # Performance tests are slow and excluded from default dev runs
+                item.add_marker(pytest.mark.slow)
+                # Performance tests should skip under coverage
+                if 'coverage' in sys.modules:
+                    item.add_marker(pytest.mark.skip(
+                        reason="Performance tests skip under coverage (10x+ overhead)"
+                    ))
         elif '/regression/' in test_path or '\\regression\\' in test_path:
             item.add_marker(pytest.mark.regression)
         elif '/behavioral/' in test_path or '\\behavioral\\' in test_path:
