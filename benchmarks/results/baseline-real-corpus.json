@@ -1,0 +1,1547 @@
+{
+  "suite_name": "corpus_benchmarks",
+  "timestamp": "2025-12-29T18:51:28.379024",
+  "results": [
+    {
+      "benchmark_name": "indexing_throughput",
+      "category": "scale",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "throughput_50_docs",
+          "value": 809.7463926122072,
+          "unit": "docs/sec",
+          "threshold_min": 10.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "throughput_100_docs",
+          "value": 852.3902869073331,
+          "unit": "docs/sec",
+          "threshold_min": 10.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "throughput_500_docs",
+          "value": 528.216100830036,
+          "unit": "docs/sec",
+          "threshold_min": 10.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "throughput_1000_docs",
+          "value": 232.9413254691788,
+          "unit": "docs/sec",
+          "threshold_min": 10.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 5838.326710000047,
+      "timestamp": "2025-12-29T18:32:21.134485",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "time_50_docs_ms": 61.74772800000028,
+        "time_100_docs_ms": 117.31715099995199,
+        "time_500_docs_ms": 946.5822780000508,
+        "time_1000_docs_ms": 4292.926546999979
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "incremental_indexing",
+      "category": "scale",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "avg_full_recompute_ms",
+          "value": 10291.189727450019,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_incremental_ms",
+          "value": 5.348168400001896,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "speedup_factor",
+          "value": 1924.2456403291958,
+          "unit": "x",
+          "threshold_min": 1.5,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 214331.154545,
+      "timestamp": "2025-12-29T18:32:26.972842",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "base_corpus_size": 100,
+        "documents_added": 20,
+        "full_times_ms": [
+          4478.8906300000235,
+          6681.789140000092,
+          5257.416636000016,
+          8065.290817000005,
+          5388.844864000021,
+          5800.159005999944,
+          8831.759392000095,
+          6394.547538999973,
+          9794.31290599996,
+          7960.207506000074,
+          10900.945578999996,
+          8547.014821999937,
+          12168.81782600001,
+          12701.480300000072,
+          13506.614452999998,
+          11502.664927000069,
+          15752.21749299999,
+          16528.75964000009,
+          17634.072788000027,
+          17927.98828499997
+        ],
+        "incr_times_ms": [
+          5.735740999966765,
+          5.416079000042373,
+          5.49934299999677,
+          4.761063999922044,
+          4.802777000008973,
+          6.470817000035822,
+          5.335352999964016,
+          4.6615890000794025,
+          5.380216999924414,
+          4.7473479999098345,
+          4.83804999998938,
+          6.507693000003201,
+          4.814226999997118,
+          4.826438999998572,
+          5.369210000026214,
+          5.041355999992447,
+          5.041927000092983,
+          6.914251000011973,
+          5.601479999995718,
+          5.1984070000798965
+        ]
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "compute_all_phases",
+      "category": "regression",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "tfidf_ms",
+          "value": 4.551302999971085,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "pagerank_ms",
+          "value": 188.0583369999158,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "bigram_connections_ms",
+          "value": 1162.9810110000562,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "concepts_ms",
+          "value": 366.59425200002715,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "semantics_ms",
+          "value": 942.2652370000151,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "total_compute_ms",
+          "value": 2664.4501399999854,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 3010.209400000008,
+      "timestamp": "2025-12-29T18:36:01.304030",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "corpus_size": 100,
+        "phase_times_ms": {
+          "tfidf": 4.551302999971085,
+          "pagerank": 188.0583369999158,
+          "bigram_connections": 1162.9810110000562,
+          "concepts": 366.59425200002715,
+          "semantics": 942.2652370000151
+        },
+        "phase_percentages": {
+          "tfidf": 0.1708158442015774,
+          "pagerank": 7.058054274564764,
+          "bigram_connections": 43.648068077568254,
+          "concepts": 13.758720664220391,
+          "semantics": 35.36434113944502
+        }
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "bigram_connections",
+      "category": "regression",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "execution_ms",
+          "value": 1098.238508999998,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "connections_created",
+          "value": 242486,
+          "unit": "count",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "bigrams_count",
+          "value": 9806,
+          "unit": "count",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "efficiency_pct",
+          "value": 54.06672107096193,
+          "unit": "%",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "component_connections",
+          "value": 95258,
+          "unit": "count",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "chain_connections",
+          "value": 99303,
+          "unit": "count",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "cooccurrence_connections",
+          "value": 47925,
+          "unit": "count",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "skipped_max_connections",
+          "value": 206008,
+          "unit": "count",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "skipped_common_terms",
+          "value": 0,
+          "unit": "count",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "skipped_large_docs",
+          "value": 0,
+          "unit": "count",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "connections_per_second",
+          "value": 220795.3900840682,
+          "unit": "conn/s",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 1445.3997009999284,
+      "timestamp": "2025-12-29T18:36:04.314278",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "corpus_size": 100,
+        "full_stats": {
+          "connections_created": 242486,
+          "bigrams": 9806,
+          "component_connections": 95258,
+          "chain_connections": 99303,
+          "cooccurrence_connections": 47925,
+          "skipped_common_terms": 0,
+          "skipped_large_docs": 0,
+          "skipped_max_connections": 206008
+        }
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "batch_indexing",
+      "category": "scale",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "sequential_ms",
+          "value": 168.37938499998018,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "batch_ms",
+          "value": 154.70734200005154,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "batch_speedup",
+          "value": 1.0883735886298407,
+          "unit": "x",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 381.36636900003396,
+      "timestamp": "2025-12-29T18:36:05.759709",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "batch_size": 100,
+        "sequential_docs_per_sec": 593.8969310287704,
+        "batch_docs_per_sec": 646.3817341000318
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "large_document_indexing",
+      "category": "scale",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "time_10kb_ms",
+          "value": 25.377413999990495,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "throughput_10kb_kbps",
+          "value": 575.3762972068577,
+          "unit": "KB/sec",
+          "threshold_min": 100.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "time_100kb_ms",
+          "value": 281.75796499999706,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "throughput_100kb_kbps",
+          "value": 517.1250493752733,
+          "unit": "KB/sec",
+          "threshold_min": 100.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "time_1mb_ms",
+          "value": 5512.895108000066,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "throughput_1mb_kbps",
+          "value": 264.3151326147964,
+          "unit": "KB/sec",
+          "threshold_min": 100.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 6293.598399999951,
+      "timestamp": "2025-12-29T18:36:06.141102",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "actual_size_10kb_kb": 14.6015625,
+        "word_count_10kb": 1700,
+        "actual_size_100kb_kb": 145.7041015625,
+        "word_count_100kb": 17000,
+        "actual_size_1mb_kb": 1457.1416015625,
+        "word_count_1mb": 170000
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "search_latency",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "cold_cache_latency_ms",
+          "value": 1.183329000014055,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "p50_latency_ms",
+          "value": 0.5395970000563466,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": 100.0,
+          "is_passing": true
+        },
+        {
+          "name": "p90_latency_ms",
+          "value": 0.943203000019821,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": 200.0,
+          "is_passing": true
+        },
+        {
+          "name": "p99_latency_ms",
+          "value": 1.338844000088102,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "mean_latency_ms",
+          "value": 0.41381590000071355,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "queries_per_second",
+          "value": 2416.5335358024563,
+          "unit": "qps",
+          "threshold_min": 10.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 84.26662699991994,
+      "timestamp": "2025-12-29T18:36:12.434731",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "corpus_size": 100,
+        "iterations": 200,
+        "queries_tested": [
+          "concept0",
+          "concept1 concept2",
+          "word0 word1 word2",
+          "concept5 important"
+        ],
+        "latency_distribution": {
+          "min_ms": 0.01039500000388216,
+          "max_ms": 2.4072260000593815,
+          "std_ms": 0.42900405221112997
+        }
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "cold_warm_cache",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "avg_cold_cache_ms",
+          "value": 0.34163780001108535,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_warm_cache_ms",
+          "value": 0.13217704997714463,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "cache_speedup",
+          "value": 2.5846983275096513,
+          "unit": "x",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 16575.02465099992,
+      "timestamp": "2025-12-29T18:36:12.519015",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "cold_samples": 5,
+        "warm_samples": 20,
+        "test_query": "concept0 concept1"
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "fast_search_comparison",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "avg_standard_ms",
+          "value": 0.4956882199996926,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_fast_ms",
+          "value": 3.5710665799979324,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "fast_speedup",
+          "value": 0.13880677072113834,
+          "unit": "x",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 407.1686109999746,
+      "timestamp": "2025-12-29T18:36:29.094071",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "iterations": 100,
+        "standard_p50_ms": 0.5028350000202408,
+        "fast_p50_ms": 3.548034999994343
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "graph_boosted_search",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "avg_standard_ms",
+          "value": 0.5123025199941367,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_boosted_ms",
+          "value": 0.4194134799945459,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "overhead_percent",
+          "value": -18.13167735357887,
+          "unit": "%",
+          "threshold_min": null,
+          "threshold_max": 500.0,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 46.862886000099024,
+      "timestamp": "2025-12-29T18:36:29.501254",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "iterations": 50,
+        "pagerank_weight": 0.3,
+        "proximity_weight": 0.2
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "query_expansion_overhead",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "baseline_tokenize_ms",
+          "value": 0.0015384800076390093,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "expand_5_ms",
+          "value": 0.030433819993049838,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "expand_5_terms",
+          "value": 4.3,
+          "unit": "terms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "expand_5_overhead_pct",
+          "value": 1878.174551631279,
+          "unit": "%",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "expand_10_ms",
+          "value": 0.027264459993148193,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "expand_10_terms",
+          "value": 4.64,
+          "unit": "terms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "expand_10_overhead_pct",
+          "value": 1672.1686247316875,
+          "unit": "%",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "expand_20_ms",
+          "value": 0.030162359994392318,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "expand_20_terms",
+          "value": 4.64,
+          "unit": "terms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "expand_20_overhead_pct",
+          "value": 1860.5298635424094,
+          "unit": "%",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 4.838344000063444,
+      "timestamp": "2025-12-29T18:36:29.548133",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "depths_tested": [
+          5,
+          10,
+          20
+        ],
+        "iterations": 50,
+        "queries": [
+          "concept0",
+          "concept1 concept2",
+          "word0"
+        ]
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "passage_retrieval",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "p50_latency_ms",
+          "value": 18.35797800004002,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": 200.0,
+          "is_passing": true
+        },
+        {
+          "name": "p90_latency_ms",
+          "value": 24.706048999973973,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": 500.0,
+          "is_passing": true
+        },
+        {
+          "name": "p99_latency_ms",
+          "value": 26.959729000054722,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "mean_latency_ms",
+          "value": 10.991662649994396,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_passages_returned",
+          "value": 2.5,
+          "unit": "passages",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "queries_per_second",
+          "value": 90.97804689270643,
+          "unit": "qps",
+          "threshold_min": 5.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 1099.4741780000368,
+      "timestamp": "2025-12-29T18:36:29.552982",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "corpus_size": 100,
+        "iterations": 100,
+        "queries_tested": [
+          "concept0",
+          "concept1 concept2",
+          "word0 word1 word2",
+          "important concept5"
+        ],
+        "passages_distribution": {
+          "min": 0,
+          "max": 5,
+          "avg": 2.5
+        }
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "chunk_size_impact",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "latency_100_ms",
+          "value": 17.443319299998922,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "passages_100",
+          "value": 3.3333333333333335,
+          "unit": "passages",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "chars_100",
+          "value": 401.3333333333333,
+          "unit": "chars",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "latency_200_ms",
+          "value": 15.36494686667235,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "passages_200",
+          "value": 3.3333333333333335,
+          "unit": "passages",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "chars_200",
+          "value": 657,
+          "unit": "chars",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "latency_500_ms",
+          "value": 14.196043933327473,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "passages_500",
+          "value": 3.3333333333333335,
+          "unit": "passages",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "chars_500",
+          "value": 1966.6666666666667,
+          "unit": "chars",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "latency_1000_ms",
+          "value": 13.968956333326332,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "passages_1000",
+          "value": 3.3333333333333335,
+          "unit": "passages",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "chars_1000",
+          "value": 3496,
+          "unit": "chars",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 1830.2006620000384,
+      "timestamp": "2025-12-29T18:36:30.652479",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "chunk_sizes_tested": [
+          100,
+          200,
+          500,
+          1000
+        ],
+        "iterations_per_size": 30,
+        "queries": [
+          "concept0",
+          "concept1 concept2",
+          "word0 word1"
+        ]
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "passage_batch",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "avg_sequential_total_ms",
+          "value": 36.184508999974696,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_batch_total_ms",
+          "value": 112.47091389999468,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "per_query_sequential_ms",
+          "value": 7.236901799994939,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "per_query_batch_ms",
+          "value": 22.494182779998937,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "batch_speedup",
+          "value": 0.3217232593321748,
+          "unit": "x",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "throughput_sequential_qps",
+          "value": 138.1806783671846,
+          "unit": "qps",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "throughput_batch_qps",
+          "value": 44.45593822102157,
+          "unit": "qps",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 1486.7698430000473,
+      "timestamp": "2025-12-29T18:36:32.482699",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "batch_size": 5,
+        "n_batches": 10,
+        "queries": [
+          "concept0",
+          "concept1 concept2",
+          "word0 word1",
+          "important concept5",
+          "concept3 word5"
+        ]
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "intent_parsing",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "p50_latency_ms",
+          "value": 0.0040989999661178445,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": 10.0,
+          "is_passing": true
+        },
+        {
+          "name": "p99_latency_ms",
+          "value": 0.01506999990397162,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "mean_latency_ms",
+          "value": 0.005297074998793505,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "intent_accuracy_pct",
+          "value": 66.5,
+          "unit": "%",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "queries_per_second",
+          "value": 188783.43240897407,
+          "unit": "qps",
+          "threshold_min": 100.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 1.2263060000350379,
+      "timestamp": "2025-12-29T18:36:33.969488",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "iterations": 200,
+        "queries_tested": [
+          "where do we handle authentication",
+          "how does the processor work",
+          "what is pagerank",
+          "find all error handlers",
+          "show me the config file",
+          "why is this slow"
+        ]
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "code_concept_expansion",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "p50_latency_ms",
+          "value": 1.990216000081091,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": 50.0,
+          "is_passing": true
+        },
+        {
+          "name": "p99_latency_ms",
+          "value": 6.742943999938689,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_expansions",
+          "value": 12.2,
+          "unit": "terms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "queries_per_second",
+          "value": 473.44072793219823,
+          "unit": "qps",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 211.4944380000452,
+      "timestamp": "2025-12-29T18:36:33.970720",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "iterations": 100,
+        "queries_tested": [
+          "fetch data",
+          "handle error",
+          "authenticate user",
+          "parse json",
+          "validate input"
+        ],
+        "expansion_distribution": {
+          "min": 9,
+          "max": 15,
+          "avg": 12.2
+        }
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "intent_search",
+      "category": "quality",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "p50_latency_ms",
+          "value": 0.2834219999385823,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": 100.0,
+          "is_passing": true
+        },
+        {
+          "name": "p90_latency_ms",
+          "value": 0.41123199991943693,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_results_returned",
+          "value": 5,
+          "unit": "results",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "queries_per_second",
+          "value": 3453.729897046898,
+          "unit": "qps",
+          "threshold_min": 10.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 14.61089599990828,
+      "timestamp": "2025-12-29T18:36:34.182232",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "iterations": 50,
+        "queries_tested": [
+          "where is the config",
+          "how does processing work",
+          "what is a concept",
+          "find error handlers",
+          "show authentication code"
+        ]
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "fingerprint_generation",
+      "category": "stability",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "p50_latency_ms",
+          "value": 0.13745199998993485,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": 50.0,
+          "is_passing": true
+        },
+        {
+          "name": "p99_latency_ms",
+          "value": 0.26048299991998647,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_terms_captured",
+          "value": 90.4,
+          "unit": "terms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "fingerprints_per_second",
+          "value": 6884.673051870939,
+          "unit": "fps",
+          "threshold_min": 50.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 15.118005000090307,
+      "timestamp": "2025-12-29T18:36:34.196858",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "iterations": 100,
+        "test_doc_count": 10
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "fingerprint_comparison",
+      "category": "stability",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "p50_latency_ms",
+          "value": 0.06631199994444614,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": 5.0,
+          "is_passing": true
+        },
+        {
+          "name": "p99_latency_ms",
+          "value": 0.10453799995957525,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "comparisons_per_second",
+          "value": 14396.124330509549,
+          "unit": "cps",
+          "threshold_min": 100.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 5.686038000021654,
+      "timestamp": "2025-12-29T18:36:34.211991",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "comparisons": 50,
+        "fingerprints_used": 10
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "similarity_detection",
+      "category": "stability",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "self_similarity",
+          "value": 1.0,
+          "unit": "",
+          "threshold_min": 0.9,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "avg_cross_similarity",
+          "value": 0.4562637693140295,
+          "unit": "",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "self_higher_than_cross",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 6.58494900005735,
+      "timestamp": "2025-12-29T18:36:34.217690",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "documents_compared": 3,
+        "cross_similarities": [
+          0.4584380527990614,
+          0.4559015382552557,
+          0.45445171688777153
+        ]
+      },
+      "is_passing": true
+    },
+    {
+      "benchmark_name": "save_corpus",
+      "category": "scale",
+      "status": "failed",
+      "metrics": [
+        {
+          "name": "avg_save_ms",
+          "value": 92010.21740020002,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "p50_save_ms",
+          "value": 91628.85893700013,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": 5000.0,
+          "is_passing": false
+        },
+        {
+          "name": "docs_per_second",
+          "value": 13.031161471827948,
+          "unit": "docs/sec",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 461385.70196599996,
+      "timestamp": "2025-12-29T18:36:34.224283",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "iterations": 5,
+        "corpus_size": 1199
+      },
+      "is_passing": false
+    },
+    {
+      "benchmark_name": "load_corpus",
+      "category": "scale",
+      "status": "failed",
+      "metrics": [
+        {
+          "name": "avg_load_ms",
+          "value": 41265.27257540001,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "p50_load_ms",
+          "value": 41142.84004399997,
+          "unit": "ms",
+          "threshold_min": null,
+          "threshold_max": 5000.0,
+          "is_passing": false
+        },
+        {
+          "name": "docs_per_second",
+          "value": 29.055908883412418,
+          "unit": "docs/sec",
+          "threshold_min": null,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 303048.85441800003,
+      "timestamp": "2025-12-29T18:44:15.610014",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "iterations": 5,
+        "corpus_size": 1199
+      },
+      "is_passing": false
+    },
+    {
+      "benchmark_name": "state_integrity",
+      "category": "scale",
+      "status": "passed",
+      "metrics": [
+        {
+          "name": "documents_match",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "layers_match",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "query_results_match",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        },
+        {
+          "name": "full_integrity",
+          "value": 1.0,
+          "unit": "bool",
+          "threshold_min": 1.0,
+          "threshold_max": null,
+          "is_passing": true
+        }
+      ],
+      "duration_ms": 129717.31483999998,
+      "timestamp": "2025-12-29T18:49:18.658903",
+      "error_message": null,
+      "metadata": {
+        "corpus_config": {
+          "n_docs": 100,
+          "doc_length": 100,
+          "vocab_size": 1000
+        },
+        "original_docs": 1199,
+        "loaded_docs": 1199,
+        "layers_checked": 4
+      },
+      "is_passing": true
+    }
+  ]
+}

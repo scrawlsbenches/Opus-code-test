@@ -91,7 +91,8 @@ class Minicolumn:
 
     __slots__ = [
         'id', 'content', 'layer', 'activation', 'occurrence_count',
-        'document_ids', '_lateral_cache', '_lateral_cache_valid', 'typed_connections',
+        'document_ids', '_lateral_cache', '_lateral_cache_valid',
+        '_typed_connections', '_typed_connections_raw',  # Lazy loading support
         'feedforward_sources', 'feedforward_connections', 'feedback_connections',
         'tfidf', 'tfidf_per_doc', 'pagerank', 'cluster_id',
         'doc_occurrence_counts', 'name_tokens'
@@ -114,7 +115,8 @@ class Minicolumn:
         self.document_ids: Set[str] = set()
         self._lateral_cache: Dict[str, float] = {}  # Cached view of typed_connections weights
         self._lateral_cache_valid: bool = True  # Cache starts valid (empty matches empty)
-        self.typed_connections: Dict[str, Edge] = {}  # Single source of truth for connections
+        self._typed_connections: Dict[str, Edge] = {}  # Converted Edge objects
+        self._typed_connections_raw: Optional[Dict[str, Dict]] = None  # Raw dict for lazy loading
         self.feedforward_sources: Set[str] = set()  # Set for O(1) membership testing
         self.feedforward_connections: Dict[str, float] = {}  # Weighted links to lower layer
         self.feedback_connections: Dict[str, float] = {}  # Weighted links to higher layer
@@ -124,6 +126,33 @@ class Minicolumn:
         self.cluster_id: Optional[int] = None
         self.doc_occurrence_counts: Dict[str, int] = {}
         self.name_tokens: Optional[Set[str]] = None  # Cached tokenized name for document minicolumns
+
+    @property
+    def typed_connections(self) -> Dict[str, Edge]:
+        """
+        Get typed connections, converting from raw dict on first access.
+
+        This implements lazy loading to speed up corpus load times.
+        Edge objects are only created when connections are actually accessed.
+
+        Returns:
+            Dictionary mapping target_id to Edge objects
+        """
+        if self._typed_connections_raw is not None:
+            # Lazy conversion from raw dict to Edge objects
+            self._typed_connections = {
+                target_id: Edge.from_dict(edge_data)
+                for target_id, edge_data in self._typed_connections_raw.items()
+            }
+            self._typed_connections_raw = None  # Clear raw data after conversion
+        return self._typed_connections
+
+    @typed_connections.setter
+    def typed_connections(self, value: Dict[str, Edge]) -> None:
+        """Set typed connections directly (used when building connections)."""
+        self._typed_connections = value
+        self._typed_connections_raw = None  # Clear any pending raw data
+        self._lateral_cache_valid = False  # Invalidate lateral cache
 
     @property
     def lateral_connections(self) -> Dict[str, float]:
@@ -191,14 +220,8 @@ class Minicolumn:
             weight: Connection strength to add
         """
         if target_id in self.typed_connections:
-            existing = self.typed_connections[target_id]
-            self.typed_connections[target_id] = Edge(
-                target_id=target_id,
-                weight=existing.weight + weight,
-                relation_type=existing.relation_type,
-                confidence=existing.confidence,
-                source=existing.source
-            )
+            # OPTIMIZATION: Modify weight in place instead of creating new Edge
+            self.typed_connections[target_id].weight += weight
         else:
             self.typed_connections[target_id] = Edge(
                 target_id=target_id,
@@ -222,14 +245,8 @@ class Minicolumn:
         typed = self.typed_connections
         for target_id, weight in connections.items():
             if target_id in typed:
-                existing = typed[target_id]
-                typed[target_id] = Edge(
-                    target_id=target_id,
-                    weight=existing.weight + weight,
-                    relation_type=existing.relation_type,
-                    confidence=existing.confidence,
-                    source=existing.source
-                )
+                # OPTIMIZATION: Modify weight in place instead of creating new Edge
+                typed[target_id].weight += weight
             else:
                 typed[target_id] = Edge(
                     target_id=target_id,
@@ -303,6 +320,7 @@ class Minicolumn:
         """
         if target_id in self.typed_connections:
             # Accumulate weight, keep most informative metadata
+            # OPTIMIZATION: Modify Edge in place instead of creating new object
             existing = self.typed_connections[target_id]
             new_weight = existing.weight + weight
             # Prefer more specific relation types over 'co_occurrence'
@@ -312,13 +330,11 @@ class Minicolumn:
             # Prefer semantic/inferred over corpus
             source_priority = {'inferred': 3, 'semantic': 2, 'corpus': 1}
             new_source = source if source_priority.get(source, 0) > source_priority.get(existing.source, 0) else existing.source
-            self.typed_connections[target_id] = Edge(
-                target_id=target_id,
-                weight=new_weight,
-                relation_type=new_relation,
-                confidence=new_confidence,
-                source=new_source
-            )
+            # Update in place
+            existing.weight = new_weight
+            existing.relation_type = new_relation
+            existing.confidence = new_confidence
+            existing.source = new_source
         else:
             self.typed_connections[target_id] = Edge(
                 target_id=target_id,
@@ -479,15 +495,13 @@ class Minicolumn:
         col.document_ids = set(data.get('document_ids', []))
 
         # Handle connection deserialization with backward compatibility
+        # Uses lazy loading to defer Edge object creation until first access
         typed_conn_data = data.get('typed_connections', {})
         lateral_conn_data = data.get('lateral_connections', {})
 
         if typed_conn_data:
-            # New format: deserialize typed connections directly
-            col.typed_connections = {
-                target_id: Edge.from_dict(edge_data)
-                for target_id, edge_data in typed_conn_data.items()
-            }
+            # New format: store raw data for lazy conversion
+            col._typed_connections_raw = typed_conn_data  # Defer Edge.from_dict calls
             col._lateral_cache_valid = False  # Will rebuild on first access
         elif lateral_conn_data:
             # Old format: convert lateral_connections to typed_connections
