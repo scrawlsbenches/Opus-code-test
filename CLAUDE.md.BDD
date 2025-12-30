@@ -1,0 +1,887 @@
+# CLAUDE.md.BDD - Metus Development Philosophy
+
+---
+
+## METUS
+
+**Mindful Execution Through Unwavering Specification**
+
+---
+
+## The Philosophy
+
+Metus is not fear. Metus is *reverence*—a profound respect for the craft that manifests as discipline.
+
+We hold reverence for:
+- **The User** — whose stories define what we build
+- **The Behavior** — which we describe before we create
+- **The Performance** — which we contract, not merely measure
+- **The Build** — our guardian that never sleeps, never lies
+
+Metus is the voice that whispers: *"Prove you understand before you proceed."*
+
+---
+
+## The Five Tenets of Metus
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                         T H E   F I V E   T E N E T S                    │
+│                                                                          │
+│  ═══════════════════════════════════════════════════════════════════    │
+│                                                                          │
+│   I.   BEHAVIOR PRECEDES IMPLEMENTATION                                  │
+│        We describe what the system should do before writing              │
+│        a single line of code. The scenario is the specification.         │
+│                                                                          │
+│  ═══════════════════════════════════════════════════════════════════    │
+│                                                                          │
+│   II.  PERFORMANCE IS A SACRED CONTRACT                                  │
+│        Speed is not optimized once—it is defended eternally.             │
+│        We write contracts. We guard them. We honor them.                 │
+│                                                                          │
+│  ═══════════════════════════════════════════════════════════════════    │
+│                                                                          │
+│   III. THE BUILD SERVER IS THE ARBITER OF TRUTH                         │
+│        When we disagree with CI, CI is correct.                          │
+│        Green locally means nothing. Green in CI means everything.        │
+│                                                                          │
+│  ═══════════════════════════════════════════════════════════════════    │
+│                                                                          │
+│   IV.  UNDERSTANDING IS DEMONSTRATED THROUGH AUTOMATION                  │
+│        "I think I understand" is worthless.                              │
+│        "Here is an executable scenario that proves I understand" is law. │
+│                                                                          │
+│  ═══════════════════════════════════════════════════════════════════    │
+│                                                                          │
+│   V.   ELEGANCE IS NOT OPTIONAL                                         │
+│        Our code communicates. Our tests tell stories.                    │
+│        Our documentation speaks with clarity and grace.                  │
+│        Craft is not vanity—it is respect for those who follow.          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## The Metus Development Cycle
+
+```
+                              ┌───────────────┐
+                              │   DISCOVER    │
+                              │               │
+                              │ "What story   │
+                              │  does the     │
+                              │  user tell?"  │
+                              └───────┬───────┘
+                                      │
+                                      ▼
+        ┌─────────────────────────────────────────────────────┐
+        │                                                      │
+        │            Write the User Story                      │
+        │                                                      │
+        │   As a [role],                                       │
+        │   I want [capability],                               │
+        │   So that [benefit].                                 │
+        │                                                      │
+        └─────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+                              ┌───────────────┐
+                              │   FORMULATE   │
+                              │               │
+                              │ "How will we  │
+                              │  know it      │
+                              │  works?"      │
+                              └───────┬───────┘
+                                      │
+                                      ▼
+        ┌─────────────────────────────────────────────────────┐
+        │                                                      │
+        │            Write Executable Scenarios                │
+        │                                                      │
+        │   Given [context],                                   │
+        │   When [action],                                     │
+        │   Then [observable outcome].                         │
+        │                                                      │
+        └─────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+                              ┌───────────────┐
+                              │   AUTOMATE    │
+                              │               │
+                              │ "Make the     │
+                              │  scenarios    │
+                              │  pass."       │
+                              └───────┬───────┘
+                                      │
+                                      ▼
+        ┌─────────────────────────────────────────────────────┐
+        │                                                      │
+        │            Implement & Refine                        │
+        │                                                      │
+        │   Write only what is needed.                         │
+        │   Let scenarios guide design.                        │
+        │   Refactor with confidence—scenarios protect you.    │
+        │                                                      │
+        └─────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+                              ┌───────────────┐
+                              │   CERTIFY     │
+                              │               │
+                              │ "Does CI      │
+                              │  approve?"    │
+                              └───────┬───────┘
+                                      │
+                          ┌───────────┴───────────┐
+                          │                       │
+                          ▼                       ▼
+                    ┌──────────┐           ┌──────────┐
+                    │  GREEN   │           │   RED    │
+                    │          │           │          │
+                    │ Proceed  │           │  STOP    │
+                    │ with     │           │          │
+                    │ honor    │           │ Fix now. │
+                    └──────────┘           │ No       │
+                                           │ excuses. │
+                                           └──────────┘
+```
+
+---
+
+## The Three Pillars of Assurance
+
+### Pillar I: Behavioral Scenarios — *The Shared Understanding*
+
+Behavioral scenarios answer: **"What should the system do, from the user's perspective?"**
+
+They are:
+- Written in **Given-When-Then** format
+- Named as **user stories**, not technical descriptions
+- The **single source of truth** for system behavior
+- **Living documentation** that never goes stale
+
+```python
+# tests/behavioral/corpus_search_stories.py
+
+class ResearcherSearchesForKnowledge:
+    """
+    Epic: Knowledge Discovery
+
+    As a researcher with a vast document collection,
+    I want to search using natural concepts,
+    So that I discover insights I didn't know to look for.
+    """
+
+    def scenario_concept_search_transcends_keywords(self, corpus):
+        """
+        Scenario: Finding documents by concept, not just keywords
+
+        Given a corpus with documents about 'machine learning'
+        And documents about 'statistical inference'
+        When I search for 'AI prediction methods'
+        Then I find documents from both domains
+        Because the system understands conceptual relationships.
+        """
+        # Given
+        corpus.add("ml_regression.md", "Machine learning regression models predict...")
+        corpus.add("stats_bayes.md", "Bayesian statistical inference enables prediction...")
+
+        # When
+        results = corpus.search("AI prediction methods")
+
+        # Then
+        found_ids = {r.doc_id for r in results}
+        assert "ml_regression.md" in found_ids
+        assert "stats_bayes.md" in found_ids
+
+    def scenario_search_respects_user_time(self, corpus, performance):
+        """
+        Scenario: Search is always fast
+
+        Given a corpus of 10,000 documents
+        When I execute any search query
+        Then results appear in under 100 milliseconds
+        Because researcher flow must never be interrupted.
+        """
+        # Given
+        corpus.load_benchmark_corpus(size=10_000)
+
+        # When
+        latency = performance.measure(lambda: corpus.search("any query"))
+
+        # Then
+        assert latency.p95_ms < 100, f"Search too slow: {latency.p95_ms}ms"
+```
+
+**Location**: `tests/behavioral/`
+**Naming**: `{user_role}_{action}_stories.py`
+**Format**: Classes are epics, methods are scenarios
+
+---
+
+### Pillar II: Performance Contracts — *The Promises We Keep*
+
+Performance contracts answer: **"What speed and efficiency do we guarantee?"**
+
+They are:
+- **Explicit promises** with defined thresholds
+- **Defended continuously** against regression
+- **Renegotiated deliberately** if requirements change
+
+```python
+# tests/performance/contracts/search_contract.py
+
+"""
+╔══════════════════════════════════════════════════════════════════════╗
+║                     SEARCH PERFORMANCE CONTRACT                       ║
+╠══════════════════════════════════════════════════════════════════════╣
+║  Ratified:     2024-12-30                                            ║
+║  Guardian:     CI Pipeline                                            ║
+║  Renegotiation: Requires team review + documented justification      ║
+╠══════════════════════════════════════════════════════════════════════╣
+║                                                                       ║
+║  We solemnly contract the following guarantees:                      ║
+║                                                                       ║
+║  • Search latency p50 < 50ms   for corpus ≤ 10,000 docs             ║
+║  • Search latency p99 < 200ms  for corpus ≤ 10,000 docs             ║
+║  • Memory usage < 100MB per 1,000 documents                          ║
+║  • Index build time < 5 seconds for 1,000 documents                  ║
+║                                                                       ║
+╚══════════════════════════════════════════════════════════════════════╝
+"""
+
+import pytest
+from statistics import median
+from typing import List
+
+
+def percentile(data: List[float], p: int) -> float:
+    """Calculate the p-th percentile of a list."""
+    sorted_data = sorted(data)
+    index = int(len(sorted_data) * p / 100)
+    return sorted_data[min(index, len(sorted_data) - 1)]
+
+
+class SearchPerformanceContract:
+    """
+    This contract is enforced on every CI run.
+    Breaking this contract blocks the build.
+    There are no exceptions.
+    """
+
+    # The sacred numbers
+    CORPUS_SIZE = 10_000
+    P50_LATENCY_MS = 50
+    P99_LATENCY_MS = 200
+    MEMORY_PER_1K_DOCS_MB = 100
+    INDEX_TIME_PER_1K_DOCS_S = 5
+
+    @pytest.mark.contract
+    def test_p50_latency_honored(self, benchmark_corpus):
+        """We promise: half of all searches complete in under 50ms."""
+        latencies = self._measure_searches(benchmark_corpus, n=1000)
+        p50 = percentile(latencies, 50)
+
+        assert p50 < self.P50_LATENCY_MS, (
+            f"CONTRACT VIOLATION: p50 latency is {p50:.1f}ms, "
+            f"contract requires <{self.P50_LATENCY_MS}ms"
+        )
+
+    @pytest.mark.contract
+    def test_p99_latency_honored(self, benchmark_corpus):
+        """We promise: 99% of searches complete in under 200ms."""
+        latencies = self._measure_searches(benchmark_corpus, n=1000)
+        p99 = percentile(latencies, 99)
+
+        assert p99 < self.P99_LATENCY_MS, (
+            f"CONTRACT VIOLATION: p99 latency is {p99:.1f}ms, "
+            f"contract requires <{self.P99_LATENCY_MS}ms"
+        )
+
+    @pytest.mark.contract
+    def test_memory_bounded(self, benchmark_corpus):
+        """We promise: memory usage scales linearly and predictably."""
+        import tracemalloc
+
+        tracemalloc.start()
+        benchmark_corpus.search("test query")
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+        peak_mb = peak / 1024 / 1024
+        expected_max = (self.CORPUS_SIZE / 1000) * self.MEMORY_PER_1K_DOCS_MB
+
+        assert peak_mb < expected_max, (
+            f"CONTRACT VIOLATION: memory usage is {peak_mb:.1f}MB, "
+            f"contract requires <{expected_max:.1f}MB"
+        )
+
+    def _measure_searches(self, corpus, n: int) -> List[float]:
+        """Execute n searches and return latencies in milliseconds."""
+        import time
+        import random
+
+        queries = ["machine learning", "neural networks", "data analysis",
+                   "algorithm", "optimization", "prediction"]
+        latencies = []
+
+        for _ in range(n):
+            query = random.choice(queries)
+            start = time.perf_counter()
+            corpus.search(query)
+            elapsed_ms = (time.perf_counter() - start) * 1000
+            latencies.append(elapsed_ms)
+
+        return latencies
+```
+
+**Location**: `tests/performance/contracts/`
+**Marker**: `@pytest.mark.contract`
+**Enforcement**: CI fails on violation—no override possible
+
+---
+
+### Pillar III: Unit Specifications — *The Precise Details*
+
+Unit specifications answer: **"What exactly does this one piece do?"**
+
+They are:
+- **Atomic proofs** of implementation correctness
+- **Safety nets** enabling fearless refactoring
+- **Edge case documentation** for complex logic
+
+```python
+# tests/unit/specifications/tokenizer_spec.py
+
+class TokenizerSpecification:
+    """
+    These specifications document the precise behavior of tokenization.
+    Each specification is a fact about the system that must remain true.
+    """
+
+    def spec_bigrams_use_space_separator(self):
+        """
+        SPECIFICATION: Bigrams are joined with spaces, never underscores.
+
+        This is load-bearing behavior. Changing it breaks persistence
+        compatibility and query expansion. It is documented here so
+        that no future developer changes it unknowingly.
+        """
+        tokenizer = Tokenizer()
+        bigrams = tokenizer.extract_bigrams(["neural", "networks"])
+
+        assert "neural networks" in bigrams
+        assert "neural_networks" not in bigrams
+
+    def spec_stopwords_removed_before_bigram_creation(self):
+        """
+        SPECIFICATION: Stop words are removed before creating bigrams.
+
+        "the neural networks" becomes bigram "neural networks",
+        not "the neural" and "neural networks".
+        """
+        tokenizer = Tokenizer()
+        bigrams = tokenizer.extract_bigrams(["the", "neural", "networks"])
+
+        assert "neural networks" in bigrams
+        assert "the neural" not in bigrams
+
+    def spec_empty_input_returns_empty_output(self):
+        """
+        SPECIFICATION: Empty input produces empty output, never errors.
+
+        Defensive behavior: the tokenizer gracefully handles edge cases.
+        """
+        tokenizer = Tokenizer()
+
+        assert tokenizer.tokenize("") == []
+        assert tokenizer.tokenize(None) == []
+        assert tokenizer.extract_bigrams([]) == []
+
+    def spec_unicode_handled_gracefully(self):
+        """
+        SPECIFICATION: Unicode text is tokenized without errors.
+
+        International users exist. Their text must work.
+        """
+        tokenizer = Tokenizer()
+
+        # Japanese
+        tokens_ja = tokenizer.tokenize("機械学習")
+        assert len(tokens_ja) >= 1
+
+        # Emoji (should be handled, not crash)
+        tokens_emoji = tokenizer.tokenize("AI is cool 🚀")
+        assert "cool" in tokens_emoji or len(tokens_emoji) >= 2
+```
+
+**Location**: `tests/unit/specifications/`
+**Naming**: `{module}_spec.py`
+**Purpose**: Facts that must never change (or change deliberately)
+
+---
+
+## The CI Guardian
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                        THE CI GUARDIAN OATH                              │
+│                                                                          │
+│   The build server is not a suggestion. It is the law.                  │
+│                                                                          │
+│   When CI speaks, we listen.                                            │
+│   When CI fails, we stop.                                               │
+│   When CI passes, we may proceed—but only then.                         │
+│                                                                          │
+│   "It works on my machine" is not a defense.                            │
+│   "It's just a flaky test" is not an excuse.                            │
+│   "I'll fix it later" is not acceptable.                                │
+│                                                                          │
+│   CI is our guardian. We trust it absolutely.                           │
+│   We maintain it diligently. We never ignore it.                        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### CI Pipeline Structure
+
+```yaml
+# .github/workflows/metus.yml
+
+name: Metus Guardian
+
+on: [push, pull_request]
+
+jobs:
+  # ═══════════════════════════════════════════════════════════
+  # GATE 1: Smoke - Does the system breathe?
+  # ═══════════════════════════════════════════════════════════
+  smoke:
+    name: "🚬 Smoke Test"
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run smoke tests
+        run: python -m pytest tests/smoke/ -v --tb=short
+    # If smoke fails, nothing else runs. Fast feedback.
+
+  # ═══════════════════════════════════════════════════════════
+  # GATE 2: Specifications - Do we understand the atoms?
+  # ═══════════════════════════════════════════════════════════
+  specifications:
+    name: "🔬 Unit Specifications"
+    needs: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run unit specifications with coverage
+        run: |
+          python -m pytest tests/unit/ -v \
+            --cov=cortical --cov-report=xml \
+            --cov-fail-under=95
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+
+  # ═══════════════════════════════════════════════════════════
+  # GATE 3: Behaviors - Do the user stories work?
+  # ═══════════════════════════════════════════════════════════
+  behaviors:
+    name: "🎭 Behavioral Scenarios"
+    needs: specifications
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run behavioral scenarios
+        run: python -m pytest tests/behavioral/ -v --tb=long
+
+  # ═══════════════════════════════════════════════════════════
+  # GATE 4: Contracts - Are our promises kept?
+  # ═══════════════════════════════════════════════════════════
+  contracts:
+    name: "📊 Performance Contracts"
+    needs: behaviors
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run performance contracts
+        run: |
+          python -m pytest tests/performance/contracts/ -v \
+            -m contract --tb=long
+    # Contract violations are build failures. No exceptions.
+
+  # ═══════════════════════════════════════════════════════════
+  # GATE 5: Integration - Does it all work together?
+  # ═══════════════════════════════════════════════════════════
+  integration:
+    name: "🔗 Integration"
+    needs: contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run integration tests
+        run: python -m pytest tests/integration/ -v
+
+  # ═══════════════════════════════════════════════════════════
+  # GATE 6: Security - Is it safe?
+  # ═══════════════════════════════════════════════════════════
+  security:
+    name: "🔒 Security Scan"
+    needs: integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run security tests
+        run: python -m pytest tests/security/ -v
+```
+
+---
+
+## The Confidence Ladder
+
+Each layer builds upon the last, creating assurance:
+
+```
+                    ┌─────────────────────────┐
+                    │   PRODUCTION READY      │  ← All layers green
+                    │   "Ship it with honor"  │
+                    └───────────┬─────────────┘
+                                │
+            ┌───────────────────┴───────────────────┐
+            │         BEHAVIORAL SCENARIOS          │
+            │   "The user stories work end-to-end"  │
+            │   tests/behavioral/ — Living docs     │
+            └───────────────────┬───────────────────┘
+                                │
+        ┌───────────────────────┴───────────────────────┐
+        │           PERFORMANCE CONTRACTS               │
+        │   "Our promises are kept"                     │
+        │   tests/performance/contracts/ — Sacred       │
+        └───────────────────────┬───────────────────────┘
+                                │
+    ┌───────────────────────────┴───────────────────────────┐
+    │                INTEGRATION TESTS                      │
+    │   "The components work together"                      │
+    │   tests/integration/ — Component boundaries           │
+    └───────────────────────────┬───────────────────────────┘
+                                │
+┌───────────────────────────────┴───────────────────────────────┐
+│                    UNIT SPECIFICATIONS                        │
+│   "Each atom of logic is correct"                             │
+│   tests/unit/specifications/ — 95%+ coverage                  │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+┌───────────────────────────────┴───────────────────────────────┐
+│                      SMOKE TESTS                              │
+│   "The system breathes"                                       │
+│   tests/smoke/ — <1 second, run constantly                    │
+└───────────────────────────────────────────────────────────────┘
+```
+
+**Run from bottom to top.** If smoke fails, don't waste time on slower tests.
+**Read from top to bottom.** To understand the system, start with behavioral scenarios.
+
+---
+
+## The Metus Checklists
+
+### Pre-Implementation Checklist
+
+Before writing any code:
+
+```markdown
+- [ ] **Story Written**
+      I have a user story: "As a [role], I want [capability], so that [benefit]"
+
+- [ ] **Scenarios Defined**
+      I have Given-When-Then scenarios that define success
+
+- [ ] **Contracts Identified**
+      I know which performance contracts apply to this work
+
+- [ ] **Specifications Listed**
+      I know which unit behaviors I will need to implement
+
+- [ ] **Edge Cases Considered**
+      I have thought about what could go wrong
+```
+
+### Pre-Merge Checklist
+
+Before merging any code:
+
+```markdown
+- [ ] **Scenarios Pass**
+      All behavioral scenarios are green
+
+- [ ] **Contracts Honored**
+      All performance contracts are satisfied
+
+- [ ] **Specifications Verified**
+      All unit specifications pass with 95%+ coverage
+
+- [ ] **CI Guardian Approves**
+      The full pipeline is green—no exceptions
+
+- [ ] **No Warnings Ignored**
+      Every warning is addressed or explicitly accepted with justification
+
+- [ ] **Documentation Updated**
+      If behavior changed, scenarios were updated to match
+```
+
+### Contract Renegotiation Checklist
+
+Before changing a performance contract:
+
+```markdown
+- [ ] **Justification Documented**
+      Why must the contract change? What drove this decision?
+
+- [ ] **Impact Assessed**
+      Who is affected? What user experiences will change?
+
+- [ ] **Team Reviewed**
+      The change was discussed, not made unilaterally
+
+- [ ] **New Baseline Established**
+      The new contract values are based on measurements, not wishes
+
+- [ ] **Announcement Made**
+      Users/stakeholders are informed of the change
+```
+
+---
+
+## The Metus Vocabulary
+
+| Term | Meaning | Not This |
+|------|---------|----------|
+| **Scenario** | An executable description of user behavior | "test" |
+| **Contract** | A performance guarantee we defend | "benchmark" |
+| **Specification** | A precise fact about atomic behavior | "unit test" |
+| **Guardian** | The CI pipeline that protects quality | "CI/CD" |
+| **Story** | The user's narrative justifying a feature | "requirement" |
+| **Violation** | When a contract or spec fails—build stops | "failure" |
+| **Renegotiation** | Deliberately changing a contract | "relaxing constraints" |
+
+---
+
+## Writing Scenarios That Tell Stories
+
+### Class Names: The User's Epic
+
+```python
+# ❌ Technical naming (who is this for?)
+class TestQueryExpansion:
+    def test_expand_query_with_synonyms(self): ...
+
+# ✅ Story-driven naming (I understand the user!)
+class ResearcherExpandsSearchToFindMoreResults:
+    """
+    As a researcher searching for 'ML',
+    I want my search to also find 'machine learning' documents,
+    So that I don't miss relevant results due to terminology.
+    """
+    def scenario_acronyms_expand_to_full_terms(self): ...
+    def scenario_synonyms_surface_related_concepts(self): ...
+    def scenario_expansion_does_not_dilute_precision(self): ...
+```
+
+### Method Names: The Scenario
+
+```python
+# ❌ Describes implementation
+def test_tfidf_computation(self): ...
+
+# ✅ Describes observable behavior
+def scenario_rare_terms_rank_higher_than_common_terms(self): ...
+def scenario_document_mentioning_query_ten_times_beats_one_mention(self): ...
+```
+
+### The Given-When-Then Pattern
+
+Every scenario tells a three-act story:
+
+```python
+def scenario_user_finds_related_documents_across_domains(self):
+    """
+    Scenario: Cross-domain discovery
+
+    Given a corpus with documents from multiple fields
+    When a user searches for a concept
+    Then results span multiple domains
+    Because insights often live at boundaries.
+    """
+
+    # GIVEN a corpus with documents from multiple fields
+    corpus = create_corpus_with(
+        neuroscience_docs=10,
+        machine_learning_docs=10,
+        philosophy_docs=10
+    )
+
+    # WHEN a user searches for "neural networks"
+    results = corpus.search("neural networks")
+
+    # THEN results span multiple domains
+    domains = {r.metadata["domain"] for r in results}
+    assert len(domains) >= 2, "Should surface cross-domain connections"
+```
+
+---
+
+## Directory Structure Under Metus
+
+```
+tests/
+├── smoke/                          # Gate 1: Does it breathe?
+│   └── test_smoke.py               # <1 second, run constantly
+│
+├── unit/
+│   └── specifications/             # Gate 2: Atomic truths
+│       ├── tokenizer_spec.py
+│       ├── pagerank_spec.py
+│       ├── tfidf_spec.py
+│       └── ...
+│
+├── integration/                    # Gate 5: Components together
+│   ├── test_search_pipeline.py
+│   ├── test_indexing_workflow.py
+│   └── ...
+│
+├── behavioral/                     # Gate 3: User stories
+│   ├── researcher_searches_corpus.py
+│   ├── developer_indexes_codebase.py
+│   ├── analyst_discovers_patterns.py
+│   └── system_handles_failures.py
+│
+├── performance/
+│   └── contracts/                  # Gate 4: Sacred promises
+│       ├── search_contract.py
+│       ├── indexing_contract.py
+│       └── memory_contract.py
+│
+└── security/                       # Gate 6: Safety
+    ├── test_injection.py
+    └── test_fuzzing.py
+```
+
+---
+
+## Quick Reference: Running Tests by Gate
+
+```bash
+# Gate 1: Smoke (run constantly, <1 second)
+python -m pytest tests/smoke/ -v
+
+# Gate 2: Specifications (run frequently, ~2 minutes)
+python -m pytest tests/unit/specifications/ -v --cov=cortical --cov-fail-under=95
+
+# Gate 3: Behaviors (run before merge, ~5 minutes)
+python -m pytest tests/behavioral/ -v
+
+# Gate 4: Contracts (run before merge, ~10 minutes)
+python -m pytest tests/performance/contracts/ -v -m contract
+
+# Gate 5: Integration (run before merge, ~10 minutes)
+python -m pytest tests/integration/ -v
+
+# Gate 6: Security (run before release)
+python -m pytest tests/security/ -v
+
+# Full Metus Pipeline (what CI runs)
+python -m pytest tests/ -v --cov=cortical --cov-fail-under=95
+```
+
+---
+
+## The Metus Way: Summary
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                          THE METUS WAY                                   │
+│                                                                          │
+│         "We describe behavior, then make it true."                      │
+│                                                                          │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                  │
+│  │   STORY     │───▶│  SCENARIO   │───▶│    CODE     │                  │
+│  │             │    │             │    │             │                  │
+│  │  The Why    │    │  The What   │    │  The How    │                  │
+│  └─────────────┘    └─────────────┘    └─────────────┘                  │
+│                                                                          │
+│  Stories give us purpose.                                               │
+│  Scenarios give us proof.                                               │
+│  Code gives us capability.                                              │
+│                                                                          │
+│  Without a story, we build the wrong thing.                             │
+│  Without scenarios, we can't prove it works.                            │
+│  Without code, nothing happens.                                         │
+│                                                                          │
+│  All three. In that order. Always.                                      │
+│                                                                          │
+│  ─────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│  This is Metus.                                                         │
+│  Mindful Execution Through Unwavering Specification.                    │
+│                                                                          │
+│  We don't hope our code works.                                          │
+│  We don't assume our code is fast.                                      │
+│  We don't trust that nothing broke.                                     │
+│                                                                          │
+│  We prove it. Every time. With reverence.                               │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+*Metus: Because excellence is not an accident—it is a discipline.*
