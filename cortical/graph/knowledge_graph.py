@@ -37,6 +37,9 @@ from ..layers import CorticalLayer, HierarchicalLayer
 from ..tokenizer import Tokenizer
 from ..constants import RELATION_WEIGHTS
 
+# Integration adapters (lazy import to avoid circular dependencies)
+# These are imported when integration is enabled
+
 
 # Module-level tokenizer instance
 _tokenizer = Tokenizer()
@@ -202,18 +205,39 @@ class SemanticKnowledgeGraph:
         self._enable_prism = enable_prism
         self._enable_spark = enable_spark
 
-        # Subsystems (lazy initialized)
-        self._cel_container = None
-        self._got_manager = None
-        self._woven_mind = None
-        self._prism_reasoner = None
-        self._spark_predictor = None
+        # Subsystems (lazy initialized via adapters)
+        self._cel_adapter = None
+        self._got_adapter = None
+        self._woven_mind_adapter = None
+        self._prism_adapter = None
+        self._spark_adapter = None
+
+        # Initialize adapters if enabled
+        if self._enable_cel:
+            from .integrations import CELAdapter
+            self._cel_adapter = CELAdapter()
+
+        if self._enable_got:
+            from .integrations import GoTAdapter
+            self._got_adapter = GoTAdapter()
+
+        if self._enable_woven_mind:
+            from .integrations import WovenMindAdapter
+            self._woven_mind_adapter = WovenMindAdapter()
+
+        if self._enable_prism:
+            from .integrations import PRISMAdapter
+            self._prism_adapter = PRISMAdapter()
+
+        if self._enable_spark:
+            from .integrations import SparkSLMAdapter
+            self._spark_adapter = SparkSLMAdapter()
 
         # Build state
         self._built = False
         self._build_time: Optional[float] = None
 
-        # CEL event log (simplified, real CEL would be in cel/)
+        # CEL event log (for backwards compatibility)
         self._cel_events: List[Dict[str, Any]] = []
 
         # PRISM plasticity tracking
@@ -895,3 +919,486 @@ class SemanticKnowledgeGraph:
                 'spark': self._enable_spark,
             },
         }
+
+    # =========================================================================
+    # CEL Integration Methods
+    # =========================================================================
+
+    def get_cel_events_typed(self) -> List[Any]:
+        """Get CEL events as typed CELEvent objects."""
+        if self._cel_adapter:
+            return self._cel_adapter.get_events()
+        # Return backwards-compatible format
+        from .integrations import CELEvent
+        return [
+            CELEvent(
+                event_id=f"legacy_{i}",
+                event_type=e.get('data', {}).get('type', 'unknown'),
+                timestamp=datetime.fromisoformat(e['timestamp']),
+                data=e.get('data', {}),
+            )
+            for i, e in enumerate(self._cel_events)
+        ]
+
+    # =========================================================================
+    # GoT Integration Methods
+    # =========================================================================
+
+    def create_linked_task(
+        self,
+        title: str,
+        related_query: str,
+        description: str = "",
+    ) -> Optional[Any]:
+        """
+        Create a GoT task linked to relevant graph nodes.
+
+        Args:
+            title: Task title
+            related_query: Query to find related nodes
+            description: Task description
+
+        Returns:
+            LinkedTask if GoT enabled, None otherwise
+        """
+        if not self._enable_got or not self._got_adapter:
+            return None
+
+        # Find related nodes via search
+        results = self.search(related_query, limit=5)
+        related_nodes = []
+        for r in results:
+            doc_node_id = f"doc:{r.doc_id}"
+            if doc_node_id in self._nodes:
+                related_nodes.append(self._nodes[doc_node_id])
+
+        # Also find token nodes
+        query_tokens = tokenize(related_query)
+        for token in query_tokens[:3]:
+            token_id = f"token:{token}"
+            if token_id in self._nodes:
+                related_nodes.append(self._nodes[token_id])
+
+        task = self._got_adapter.create_task(
+            title=title,
+            related_nodes=related_nodes,
+            related_query=related_query,
+            description=description,
+        )
+
+        # Log to CEL if enabled
+        if self._cel_adapter:
+            self._cel_adapter.log_event("task_created", {
+                "task_id": task.task_id,
+                "title": title,
+                "related_nodes": len(related_nodes),
+            })
+
+        return task
+
+    def get_linked_tasks(self, status: Optional[str] = None) -> List[Any]:
+        """Get linked tasks."""
+        if self._got_adapter:
+            return self._got_adapter.get_tasks(status)
+        return []
+
+    def get_linked_decisions(self) -> List[Any]:
+        """Get linked decisions."""
+        if self._got_adapter:
+            return self._got_adapter.get_decisions()
+        return []
+
+    # =========================================================================
+    # WovenMind Integration Methods
+    # =========================================================================
+
+    def train_woven_mind(self, text: str) -> None:
+        """
+        Train WovenMind on text patterns.
+
+        Args:
+            text: Text to train on
+        """
+        if self._woven_mind_adapter:
+            self._woven_mind_adapter.train(text)
+
+    def process_with_woven_mind(
+        self,
+        context: str,
+        mode: Optional[str] = None,
+    ) -> Optional[Any]:
+        """
+        Process context through WovenMind dual-process cognition.
+
+        Args:
+            context: Text context to process
+            mode: Optional mode ('FAST', 'SLOW', or None for AUTO)
+
+        Returns:
+            WovenMindResult if enabled, None otherwise
+        """
+        if not self._woven_mind_adapter:
+            return None
+
+        from .integrations import ThinkingMode
+
+        thinking_mode = None
+        if mode == "FAST":
+            thinking_mode = ThinkingMode.FAST
+        elif mode == "SLOW":
+            thinking_mode = ThinkingMode.SLOW
+
+        tokens = context.split()
+        result = self._woven_mind_adapter.process(tokens, mode=thinking_mode)
+
+        # If SLOW mode, explore graph for related concepts
+        if result.mode == "SLOW":
+            for token in tokens[:5]:
+                activations = self.spread_activation(token, hops=1)
+                result.explored_concepts.extend(list(activations.keys())[:3])
+
+        # Log to CEL if enabled
+        if self._cel_adapter:
+            self._cel_adapter.log_event("woven_mind_process", {
+                "mode": result.mode,
+                "surprise": result.surprise_level,
+                "concepts_explored": len(result.explored_concepts),
+            })
+
+        return result
+
+    def consolidate_woven_mind(self) -> Optional[Any]:
+        """
+        Consolidate WovenMind patterns (memory "sleep").
+
+        Returns:
+            ConsolidationResult if enabled, None otherwise
+        """
+        if not self._woven_mind_adapter:
+            return None
+
+        result = self._woven_mind_adapter.consolidate()
+
+        # Optionally add high-frequency patterns as concept nodes
+        for pattern in result.high_frequency_patterns[:5]:
+            concept_id = f"concept:{pattern.replace(' ', '_')}"
+            if concept_id not in self._nodes:
+                self._nodes[concept_id] = GraphNode(
+                    id=concept_id,
+                    content=pattern,
+                    layer=CorticalLayer.CONCEPTS,
+                    properties={'source': 'consolidation'},
+                )
+
+        return result
+
+    # =========================================================================
+    # PRISM Integration Methods
+    # =========================================================================
+
+    def search_with_attention(
+        self,
+        query: str,
+        attention_focus: Optional[str] = None,
+        limit: int = 10,
+    ) -> List[SearchResult]:
+        """
+        Search with PRISM attention modulation.
+
+        Args:
+            query: Search query
+            attention_focus: Focus area (e.g., 'error_handling', 'security')
+            limit: Maximum results
+
+        Returns:
+            List of SearchResult with attention-modulated ranking
+        """
+        # Get base results
+        results = self.search(query, limit=limit * 2)  # Get more to re-rank
+
+        if not self._prism_adapter or not attention_focus:
+            return results[:limit]
+
+        # Apply attention to re-rank
+        attention = self._prism_adapter.compute_attention(
+            query=attention_focus,
+            candidates=[r.content for r in results],
+            focus=attention_focus,
+        )
+
+        # Boost scores based on attention
+        for result in results:
+            attention_weight = attention.focus_weights.get(result.content, 0.5)
+            result.score *= (1 + attention_weight)
+
+        # Re-sort
+        results.sort(key=lambda r: r.score, reverse=True)
+        return results[:limit]
+
+    def activate_path(self, node_ids: List[str]) -> None:
+        """
+        Activate a path through the graph (for PRISM plasticity).
+
+        Args:
+            node_ids: List of node IDs in the path
+        """
+        if not self._prism_adapter:
+            return
+
+        # Strengthen connections along the path
+        for i in range(len(node_ids) - 1):
+            source = node_ids[i]
+            target = node_ids[i + 1]
+            self._prism_adapter.strengthen_connection(source, target)
+            self._prism_adapter.record_activation(source)
+
+        if node_ids:
+            self._prism_adapter.record_activation(node_ids[-1])
+
+    def get_edge_weight(self, source: str, target: str) -> float:
+        """Get the effective weight of an edge (including PRISM modulation)."""
+        # Base weight from graph
+        base_weight = 1.0
+        for edge in self._edge_index.get(source, []):
+            if edge.target_id == target:
+                base_weight = edge.weight
+                break
+
+        # PRISM modulation
+        if self._prism_adapter:
+            prism_strength = self._prism_adapter.get_connection_strength(source, target)
+            return base_weight * prism_strength
+
+        return base_weight
+
+    def apply_plasticity_decay(self) -> int:
+        """Apply decay to learned connections."""
+        if self._prism_adapter:
+            return self._prism_adapter.apply_decay()
+        return 0
+
+    # =========================================================================
+    # SparkSLM Integration Methods
+    # =========================================================================
+
+    def train_spark(self, text: str) -> None:
+        """
+        Train SparkSLM on text.
+
+        Args:
+            text: Text to train on
+        """
+        if self._spark_adapter:
+            self._spark_adapter.train(text)
+
+    def train_spark_on_corpus(self) -> None:
+        """Train SparkSLM on all documents in the corpus."""
+        if not self._spark_adapter:
+            return
+
+        for content in self._documents.values():
+            self._spark_adapter.train(content)
+
+    def search_with_priming(
+        self,
+        query: str,
+        limit: int = 10,
+    ) -> Any:
+        """
+        Search with SparkSLM priming for query expansion.
+
+        Args:
+            query: Search query
+            limit: Maximum results
+
+        Returns:
+            Object with results and priming info
+        """
+        from dataclasses import dataclass
+
+        @dataclass
+        class PrimedSearchResult:
+            results: List[SearchResult]
+            primed_terms: List[str]
+            predicted_next: List[Tuple[str, float]]
+
+        primed_terms = []
+        predicted_next = []
+
+        if self._spark_adapter:
+            prime_result = self._spark_adapter.prime(query)
+            primed_terms = prime_result.primed_terms
+            predicted_next = prime_result.predicted_next
+
+            # Expand query with primed terms
+            expanded_query = query + " " + " ".join(primed_terms[:3])
+        else:
+            expanded_query = query
+
+        results = self.search(expanded_query, limit=limit)
+
+        return PrimedSearchResult(
+            results=results,
+            primed_terms=primed_terms,
+            predicted_next=predicted_next,
+        )
+
+    def detect_anomalies(self, doc_id: str) -> Any:
+        """
+        Detect anomalies in a document using SparkSLM.
+
+        Args:
+            doc_id: Document ID to analyze
+
+        Returns:
+            AnomalyResult if SparkSLM enabled
+        """
+        if not self._spark_adapter:
+            from .integrations import AnomalyResult
+            return AnomalyResult(
+                is_anomalous=False,
+                anomaly_score=0.0,
+                unusual_patterns=[],
+                expected_patterns=[],
+            )
+
+        content = self._documents.get(doc_id, "")
+        return self._spark_adapter.detect_anomalies(content)
+
+    # =========================================================================
+    # Cognitive Orchestration Methods
+    # =========================================================================
+
+    def cognitive_process(
+        self,
+        query: str,
+        mode: str = "full_integration",
+    ) -> Any:
+        """
+        Process a query through the full cognitive pipeline.
+
+        Integrates all enabled subsystems:
+        1. SparkSLM priming
+        2. Graph search
+        3. WovenMind mode selection
+        4. PRISM attention
+        5. GoT task tracking
+        6. CEL event logging
+
+        Args:
+            query: Query to process
+            mode: Processing mode
+
+        Returns:
+            CognitiveResult with contributions from all systems
+        """
+        from dataclasses import dataclass, field as dc_field
+
+        @dataclass
+        class CognitiveResult:
+            query: str
+            spark_priming: Optional[Any] = None
+            graph_results: List[SearchResult] = dc_field(default_factory=list)
+            woven_mind_mode: Optional[str] = None
+            attention_focus: Optional[str] = None
+            events_logged: int = 0
+            processing_time_ms: float = 0.0
+
+        start_time = time.time()
+        result = CognitiveResult(query=query)
+        events_logged = 0
+
+        # 1. SparkSLM priming
+        if self._spark_adapter:
+            prime_result = self._spark_adapter.prime(query)
+            result.spark_priming = prime_result
+
+        # 2. Graph search
+        result.graph_results = self.search(query, limit=5)
+
+        # 3. WovenMind processing
+        if self._woven_mind_adapter:
+            wm_result = self.process_with_woven_mind(query)
+            if wm_result:
+                result.woven_mind_mode = wm_result.mode
+                events_logged += 1
+
+        # 4. PRISM attention (if we have results to focus on)
+        if self._prism_adapter and result.graph_results:
+            attention = self._prism_adapter.compute_attention(
+                query=query,
+                candidates=[r.content for r in result.graph_results],
+            )
+            result.attention_focus = attention.attention_mode
+
+        # 5. Log to CEL
+        if self._cel_adapter:
+            self._cel_adapter.log_event("cognitive_process", {
+                "query": query,
+                "mode": mode,
+                "results_count": len(result.graph_results),
+                "woven_mind_mode": result.woven_mind_mode,
+            })
+            events_logged += 1
+
+        result.events_logged = events_logged
+        result.processing_time_ms = (time.time() - start_time) * 1000
+
+        return result
+
+    def search_multihop(
+        self,
+        query: str,
+        max_hops: int = 2,
+        limit: int = 10,
+    ) -> List[SearchResult]:
+        """
+        Search with multi-hop reasoning through the graph.
+
+        Finds documents connected through intermediate concepts.
+
+        Args:
+            query: Search query
+            max_hops: Maximum hops to traverse
+            limit: Maximum results
+
+        Returns:
+            List of SearchResult including multi-hop connections
+        """
+        # Direct search first
+        direct_results = self.search(query, limit=limit)
+        direct_doc_ids = {r.doc_id for r in direct_results}
+
+        # Get query tokens and spread activation
+        query_tokens = tokenize(query)
+        all_activations: Dict[str, float] = {}
+
+        for token in query_tokens:
+            activations = self.spread_activation(token, hops=max_hops)
+            for node, score in activations.items():
+                all_activations[node] = max(all_activations.get(node, 0), score)
+
+        # Find documents connected to activated nodes
+        multihop_results = []
+        for node_name, activation in sorted(all_activations.items(), key=lambda x: x[1], reverse=True):
+            # Check if this node connects to any document
+            node_id = f"token:{node_name}" if not node_name.startswith(("token:", "doc:")) else node_name
+
+            for edge in self._edge_index.get(node_id, []):
+                if edge.target_id.startswith("doc:"):
+                    doc_id = edge.target_id[4:]
+                    if doc_id not in direct_doc_ids and doc_id in self._documents:
+                        content = self._documents[doc_id]
+                        multihop_results.append(SearchResult(
+                            doc_id=doc_id,
+                            score=activation * edge.weight,
+                            content=content[:200],
+                            metadata=self._doc_metadata.get(doc_id, {}),
+                            matched_terms=[node_name],
+                        ))
+                        direct_doc_ids.add(doc_id)
+
+        # Combine and sort
+        all_results = direct_results + multihop_results
+        all_results.sort(key=lambda r: r.score, reverse=True)
+        return all_results[:limit]

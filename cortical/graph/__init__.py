@@ -40,7 +40,26 @@ from .knowledge_graph import (
     LayerStatistics,
 )
 
+# Integration adapters (optional imports)
+from .integrations import (
+    CELAdapter,
+    CELEvent,
+    GoTAdapter,
+    LinkedTask,
+    LinkedDecision,
+    WovenMindAdapter,
+    WovenMindResult,
+    ConsolidationResult,
+    ThinkingMode,
+    PRISMAdapter,
+    AttentionResult,
+    SparkSLMAdapter,
+    PrimeResult,
+    AnomalyResult,
+)
+
 __all__ = [
+    # Core
     'SemanticKnowledgeGraph',
     'GraphNode',
     'GraphEdge',
@@ -48,4 +67,19 @@ __all__ = [
     'RelationType',
     'SearchResult',
     'LayerStatistics',
+    # Integration adapters
+    'CELAdapter',
+    'CELEvent',
+    'GoTAdapter',
+    'LinkedTask',
+    'LinkedDecision',
+    'WovenMindAdapter',
+    'WovenMindResult',
+    'ConsolidationResult',
+    'ThinkingMode',
+    'PRISMAdapter',
+    'AttentionResult',
+    'SparkSLMAdapter',
+    'PrimeResult',
+    'AnomalyResult',
 ]
