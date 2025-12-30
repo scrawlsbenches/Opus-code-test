@@ -1,5 +1,7 @@
 # Metus Development Philosophy
 
+*Last updated: 2025-12-30*
+
 ---
 
 ## Quick Start for Developers
