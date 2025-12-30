@@ -1,0 +1,121 @@
+Behavior Driven Development: Executable Specifications and Shared Understanding
+
+Behavior driven development bridges the gap between technical implementation
+and business requirements. By expressing system behavior in natural language
+scenarios that execute as tests, BDD creates living documentation that
+stakeholders and developers share.
+
+The Given-When-Then format structures scenarios as three-act stories. Given
+establishes preconditions and context. When describes the action or trigger.
+Then specifies observable outcomes. This pattern transforms abstract
+requirements into concrete, verifiable behaviors that leave no room for
+misinterpretation.
+
+Scenarios begin with user stories that explain purpose. "As a researcher,
+I want to search my document collection, so that I can discover relevant
+information without remembering exact titles." The story format grounds
+technical work in human need, ensuring features serve genuine purposes
+rather than implementing technology for its own sake.
+
+Ubiquitous language emerges from collaborative scenario writing. When
+business experts and developers create scenarios together, they forge shared
+vocabulary. Terms gain precise meanings that both parties understand. This
+common language prevents miscommunication and ensures implementations match
+intentions.
+
+Discovery workshops bring stakeholders together to explore requirements.
+Before coding begins, teams discuss examples that illustrate desired behavior.
+Edge cases surface early. Ambiguities resolve before they become bugs.
+Concrete examples prove understanding better than abstract specifications.
+
+Example mapping accelerates discovery sessions. Teams capture rules, examples,
+and questions on colored cards. Rules state constraints or requirements.
+Examples illustrate how rules apply in specific situations. Questions flag
+uncertainties requiring resolution. This visual technique reveals
+requirement complexity and coverage.
+
+Scenarios serve as acceptance criteria. A feature is complete when its
+scenarios pass. This clear definition of done prevents endless refinement
+and scope creep. Stakeholders can verify implementation by reading scenario
+outcomes rather than inspecting code they cannot understand.
+
+Executable scenarios automate verification. Natural language scenarios
+connect to step definitions that perform actual system operations. Running
+scenarios proves the system behaves as specified. Failures indicate either
+bugs or changed requirements, both valuable information to surface.
+
+Living documentation never becomes stale. Because scenarios execute against
+the actual system, they must stay current to pass. Traditional documentation
+drifts from reality over time, but executable specifications fail if they
+fall out of sync. Reading scenarios reveals current system behavior with
+confidence.
+
+Outside-in development flows from scenarios to implementation. Write the
+scenario first, describing desired behavior before any code exists. Then
+implement just enough to make the scenario pass. This discipline ensures
+code serves specified purposes rather than speculative future needs.
+
+Thin slices deliver value incrementally. Rather than building complete
+features in isolation, BDD encourages implementing narrow slices through
+all layers. A single scenario might touch user interface, business logic,
+and data storage. Completing thin slices provides rapid feedback and early
+integration.
+
+Scenario outlines reduce duplication for similar cases. When multiple
+scenarios differ only in specific values, outlines parameterize the shared
+structure. Example tables supply concrete values. This technique tests
+many cases without redundant scenario definitions.
+
+Background clauses share common setup across scenarios. When every scenario
+in a feature requires the same given steps, background factors them out.
+This eliminates repetition while maintaining readability. Each scenario
+remains complete and understandable without redundant boilerplate.
+
+Tags organize scenarios for selective execution. Marking scenarios with
+metadata like scope, component, or risk enables targeted test runs.
+Developers might run only scenarios related to current work. Continuous
+integration might skip slow scenarios on every commit but run all scenarios
+nightly.
+
+Anti-patterns undermine BDD effectiveness. Incidental detail clutters
+scenarios with implementation specifics that obscure intent. Technical
+jargon excludes stakeholders from understanding. Testing through the UI
+creates slow, brittle scenarios. Effective BDD maintains scenarios at the
+appropriate abstraction level.
+
+Imperative scenarios prescribe specific steps. Declarative scenarios describe
+desired outcomes. "Given I am logged in" (declarative) serves better than
+"Given I navigate to login, enter username, enter password, click submit"
+(imperative). Declarative scenarios communicate intent; implementation
+details belong in step definitions.
+
+Scenario independence prevents cascading failures. Each scenario should
+establish its own preconditions and clean up afterward. When scenarios share
+state, failures in one scenario corrupt others. Randomizing execution order
+exposes hidden dependencies that undermine test reliability.
+
+Ports and adapters architecture supports BDD. System behavior concentrates
+in the core domain, independent of infrastructure. Scenarios can exercise
+the domain directly without slow external dependencies. Thin infrastructure
+adapters handle integration that is tested separately.
+
+Specification by example connects requirements to tests. Requirements without
+examples are ambiguous. Tests without connection to requirements might
+verify the wrong things. BDD unifies specification and verification, ensuring
+implementations satisfy actual needs.
+
+Continuous discovery keeps scenarios current. As understanding evolves,
+scenarios must evolve with it. Regular refinement removes obsolete scenarios,
+updates changed behaviors, and adds coverage for new capabilities. The
+scenario suite remains a reliable guide to system behavior.
+
+The three amigos practice brings diverse perspectives to scenario refinement.
+A developer provides technical insight. A tester explores edge cases. A
+business analyst ensures business validity. This collaboration produces
+robust scenarios that multiple viewpoints have examined.
+
+BDD scales to complex systems through feature files organized by capability.
+Each file collects related scenarios describing one aspect of system behavior.
+Navigation through feature files reveals system capabilities at a glance.
+New team members learn the system by reading its executable documentation.
+

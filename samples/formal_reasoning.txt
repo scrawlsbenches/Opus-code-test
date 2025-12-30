@@ -1,0 +1,108 @@
+Formal Reasoning: Logic, Inference, and Argumentation
+
+Formal reasoning provides the structure underlying valid thought. Unlike
+informal persuasion, formal logic offers precise rules that distinguish
+correct inference from fallacy. Mastering these patterns enables clearer
+thinking and rigorous analysis across domains.
+
+Deductive reasoning proceeds from premises to guaranteed conclusions. If
+all humans are mortal and Socrates is human, then Socrates is necessarily
+mortal. The conclusion cannot be false if the premises are true. Deduction
+preserves truth with certainty but cannot expand beyond what premises contain.
+
+Inductive reasoning generalizes from observations to broader conclusions.
+Having observed thousands of white swans, we might conclude all swans are
+white. Induction supports scientific discovery and everyday learning but
+offers only probable, not certain, conclusions. The black swan discovery
+exemplifies induction's inherent fallibility.
+
+Abductive reasoning infers the best explanation for observed phenomena.
+Given wet streets, we abductively conclude it probably rained. Multiple
+explanations might fit the evidence; abduction selects the most plausible.
+Diagnostic reasoning and hypothesis formation rely heavily on abductive
+inference.
+
+Propositional logic formalizes reasoning about statements. Propositions
+are declarative sentences that are either true or false. Logical connectives
+combine propositions: conjunction joins with "and," disjunction with "or,"
+negation reverses truth value. Truth tables enumerate all possible truth
+value combinations, validating or refuting argument forms.
+
+Modus ponens affirms the consequent from conditional and antecedent. If P
+implies Q, and P is true, then Q follows necessarily. This fundamental
+inference pattern underlies countless arguments. Modus tollens denies the
+antecedent by denying the consequent: if P implies Q and Q is false, then
+P must be false.
+
+Predicate logic extends propositional logic with quantifiers and predicates.
+Universal quantification asserts something holds for all members of a domain.
+Existential quantification asserts something holds for at least one member.
+Predicates attribute properties to objects. This richer language captures
+arguments that propositional logic cannot express.
+
+Syllogistic reasoning, developed by Aristotle, analyzes arguments with two
+premises and a conclusion involving categorical statements. All A are B, all
+B are C, therefore all A are C exemplifies Barbara, one valid syllogistic
+form. Medieval logicians catalogued all valid syllogisms, creating a complete
+theory of categorical inference.
+
+Logical fallacies represent invalid reasoning patterns that often appear
+persuasive. Ad hominem attacks the person rather than the argument. Straw
+man misrepresents the opponent's position. Appeal to authority substitutes
+prestige for evidence. False dilemma presents only two options when more
+exist. Recognizing fallacies protects against deception.
+
+Circular reasoning assumes what it purports to prove. The conclusion appears
+among the premises, disguised through reformulation. "The Bible is true
+because it is God's word, and it is God's word because the Bible says so"
+illustrates this fallacy. Valid arguments must establish conclusions from
+independent premises.
+
+Non sequitur conclusions do not follow from their premises. The logical
+connection is missing or broken. "I studied hard, therefore the test was
+easy" illustrates a conclusion unrelated to its supposed support. Valid
+inference requires genuine logical connection, not mere temporal sequence
+or association.
+
+Mathematical proof exemplifies rigorous deductive reasoning. Theorems follow
+necessarily from axioms through valid inference rules. Direct proof establishes
+conclusions by sequential reasoning. Proof by contradiction assumes the
+negation and derives impossibility. Mathematical induction proves statements
+about all natural numbers through base case and inductive step.
+
+Modal logic extends classical logic with possibility and necessity. Some
+statements are necessarily true, true in all possible worlds. Others are
+possibly true, true in at least one possible world. Modal operators formalize
+these distinctions, enabling precise reasoning about what must be versus
+what could be.
+
+Probabilistic reasoning handles uncertainty quantitatively. Bayes' theorem
+updates prior probabilities given new evidence. Conditional probability
+captures how one event's likelihood depends on another. Expected value
+weighs outcomes by their probabilities. Probabilistic inference extends
+logic to the ubiquitous uncertainty of real-world reasoning.
+
+Analogical reasoning draws conclusions from similarity. If two situations
+share relevant features, conclusions from one may transfer to the other.
+Legal precedent relies on analogical reasoning: similar cases deserve similar
+treatment. The strength of analogical arguments depends on the relevance
+and depth of shared properties.
+
+Argumentation theory studies how arguments work in practice. Toulmin's
+model identifies claim, grounds, warrant, backing, qualifier, and rebuttal.
+Pragma-dialectics analyzes argumentation as critical discussion aimed at
+resolving disagreement. These frameworks illuminate real-world reasoning
+beyond formal logic's idealized scope.
+
+Critical thinking applies reasoning skills to evaluate claims. It demands
+evidence, considers alternatives, and suspends judgment when warranted.
+Critical thinkers distinguish correlation from causation, recognize bias,
+and proportion belief to evidence. These skills defend against manipulation
+and enable autonomous judgment.
+
+Reasoning under constraints addresses practical limitations. Limited time,
+incomplete information, and bounded cognitive resources force satisficing
+rather than optimizing. Heuristics provide reasonable decisions without
+exhaustive analysis. Effective reasoning adapts its standards to context
+and available resources.
+
