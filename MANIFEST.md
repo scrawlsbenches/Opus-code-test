@@ -30,6 +30,8 @@
 
 ## Architecture at a Glance
 
+> **Deep Dive:** For comprehensive architecture documentation including cognitive systems, see [`docs/architecture.md`](docs/architecture.md)
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              USER / APPLICATION                              │
@@ -127,6 +129,8 @@ Documents → Tokenizer → Minicolumns → Graph → Analysis → Query Results
 ## Glossary
 
 > *Plain English for our metaphorical terms*
+>
+> **Deep Dive:** For comprehensive term definitions including cognitive systems, see [`docs/glossary.md`](docs/glossary.md)
 
 | Term | Plain English | Location |
 |------|---------------|----------|
@@ -248,6 +252,8 @@ python -m pytest tests/performance/ -m contract  # Performance contracts
 |------|---------|
 | `CLAUDE.md` | Development philosophy (Metus BDD) |
 | `MANIFEST.md` | This file — repository navigation |
+| `docs/architecture.md` | Deep-dive architecture (cognitive systems, CEL, GoT) |
+| `docs/glossary.md` | Comprehensive glossary with all terms |
 | `showcase.py` | Interactive demo of main features |
 | `pyproject.toml` | Project configuration |
 | `cortical/__init__.py` | Public API exports |
@@ -259,8 +265,9 @@ python -m pytest tests/performance/ -m contract  # Performance contracts
 | Question | Resource |
 |----------|----------|
 | "How do I use X?" | Check `examples/` for demos |
-| "What does X mean?" | See [Glossary](#glossary) above |
+| "What does X mean?" | See [Glossary](#glossary) or [`docs/glossary.md`](docs/glossary.md) |
 | "Where is X?" | See [Where To Find Things](#where-to-find-things) |
+| "How does the architecture work?" | See [`docs/architecture.md`](docs/architecture.md) |
 | "How do I test?" | See [Test Structure](#test-structure-metus-aligned) |
 | "What's the philosophy?" | Read `CLAUDE.md` (Metus) |
 
