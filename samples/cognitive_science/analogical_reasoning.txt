@@ -1,0 +1,45 @@
+Analogical Reasoning
+
+Analogical reasoning is the cognitive process of transferring knowledge from a familiar domain (the source or base) to a novel domain (the target) based on structural similarities between them. This capacity underlies scientific discovery, creative problem-solving, and everyday understanding, enabling humans to leverage past experience when encountering new situations.
+
+The structure-mapping theory, developed by Dedre Gentner, provides a foundational framework for understanding analogy. According to this theory, analogical comparison involves aligning the relational structure of two domains rather than matching surface features. A good analogy preserves the system of relations even when the objects involved differ substantially in their attributes.
+
+Consider the classic analogy between the atom and the solar system. The sun and nucleus share few surface features, yet the relational structure of objects orbiting a central body maps systematically between domains. This structural alignment enabled Rutherford to develop the planetary model of the atom by importing organizational principles from astronomy.
+
+The analogical reasoning process involves several distinct stages: retrieval, mapping, evaluation, and inference. Retrieval accesses potential source analogs from memory when encountering a target problem. Mapping establishes correspondences between source and target elements. Evaluation assesses the quality of the mapping. Inference generates new knowledge about the target based on the established correspondences.
+
+Retrieval is often the most challenging stage because surface similarity typically dominates access to memory even though structural similarity determines analogical quality. People readily recall analogies with similar surface features but struggle to retrieve structurally similar analogs with different surface characteristics, explaining why good analogies are often not spontaneously noticed.
+
+The systematicity principle guides analogical mapping by favoring connected systems of relations over isolated matches. Higher-order relations that connect lower-order relations receive priority, creating deep structural correspondences. This principle explains why humans prefer analogies with coherent explanatory structure over those matching only superficial patterns.
+
+Relational complexity affects analogical reasoning difficulty. Simple analogies involving single relations are mastered early in development, while complex analogies requiring coordination of multiple nested relations develop more gradually. Working memory capacity constrains how many relations can be simultaneously maintained during analogical mapping.
+
+The development of analogical reasoning shows clear age-related changes. Young children can perform simple relational matches but struggle with complex structure mapping. Around age four, children begin solving simple analogies, with the ability to handle increasingly complex relational structures continuing to develop through adolescence.
+
+Patricia Cheng's pragmatic reasoning schemas suggest that some analogical structures are abstracted from experience into domain-general reasoning patterns. Permission schemas, causation schemas, and other abstract relational structures facilitate analogical transfer by providing ready-made structural templates applicable across domains.
+
+Near transfer involves applying analogies between similar domains, while far transfer crosses significant domain boundaries. Educational research consistently finds near transfer easier than far transfer, with spontaneous far transfer particularly rare. Explicit comparison between examples can promote abstraction of transferable relational structure.
+
+Negative transfer occurs when analogical mapping imports inappropriate structural features from source to target. Misleading surface similarities can trigger retrieval of inappropriate analogs, while over-application of structural correspondences can generate incorrect inferences. Recognizing the limits of analogical validity requires metacognitive awareness of analogy as a reasoning strategy.
+
+The role of analogy in scientific discovery has been extensively documented. Darwin used artificial selection as an analog for natural selection. Maxwell developed electromagnetic theory through analogies to fluid flow and mechanical systems. Kekulé allegedly discovered the benzene ring structure through analogy to a snake biting its tail.
+
+Case-based reasoning in artificial intelligence implements analogical principles computationally. Systems store previous problem-solving episodes as cases and retrieve relevant cases when facing new problems. Solutions from similar cases are adapted for current problems, with successful adaptations stored as new cases. This approach captures how human expertise often relies on accumulated analogical experience.
+
+Analogical encoding involves comparing two analogs to extract common relational structure. Rather than studying examples in isolation, comparing cases highlights shared structure and promotes abstraction of transferable principles. Educational interventions using analogical encoding improve learning and transfer in domains ranging from mathematics to negotiation.
+
+Cross-domain mapping enables analogical inference but also creates systematic limitations. Relations that exist in the source but lack targets in the target domain suggest candidate inferences. However, unmapped source structure may not validly apply to the target, requiring careful evaluation of analogical soundness.
+
+Conceptual combination during novel category formation often involves analogical extension. Understanding what a "computer virus" means requires mapping from biological viruses, inheriting properties like self-replication and harmful effects while recognizing that computer viruses lack physical substance. Such analogical extension enables flexible conceptual expansion.
+
+The neural basis of analogical reasoning involves prefrontal and parietal regions that support relational integration and working memory. Rostrolateral prefrontal cortex shows particular involvement in complex relational reasoning. Individual differences in analogy performance correlate with executive function measures and prefrontal integrity.
+
+Analogical reasoning interacts with other cognitive processes including perception, memory, and language. Spatial metaphors for time rely on analogical mapping between spatial and temporal domains. Understanding abstract concepts often depends on analogical grounding in more concrete experience.
+
+Expertise affects analogical retrieval and mapping by changing what counts as similar. Novices retrieve analogs based on surface features while experts retrieve based on structural principles. A physicist sees problems involving conservation of energy as similar regardless of surface features, while novices may group problems by whether they involve springs or inclined planes.
+
+The gentner career of metaphor hypothesis proposes that metaphors often begin as novel analogies with complex relational structure and become conventionalized into category assertions with simplified relational content. Understanding this progression illuminates the relationship between analogical reasoning and figurative language comprehension.
+
+Computational models of analogy include SME (Structure-Mapping Engine), LISA (Learning and Inference with Schemas and Analogies), and AMBR (Associative Memory-Based Reasoning). These models implement different aspects of analogical processing, from structure mapping algorithms to hybrid symbolic-connectionist architectures.
+
+Analogical reasoning provides a foundation for human cognitive flexibility, enabling application of existing knowledge to novel situations through structural abstraction. This capacity for seeing the same relational pattern instantiated in different domains underlies both everyday reasoning and exceptional creative insight.

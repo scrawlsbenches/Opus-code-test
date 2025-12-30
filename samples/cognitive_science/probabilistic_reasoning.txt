@@ -1,0 +1,47 @@
+Probabilistic Reasoning
+
+Probabilistic reasoning is the cognitive capacity to reason under uncertainty, making inferences and decisions when outcomes are not determined with certainty. This capacity enables adaptive behavior in an inherently uncertain world, supporting prediction, learning, and decision-making across domains from everyday judgment to scientific inference.
+
+The normative standard for probabilistic reasoning is provided by probability theory and Bayesian inference. Bayes' theorem specifies how rational agents should update beliefs given evidence: posterior probability equals prior probability multiplied by likelihood, normalized by evidence probability. This framework provides a benchmark against which human probabilistic judgment can be evaluated.
+
+The heuristics and biases research program, pioneered by Amos Tversky and Daniel Kahneman, documented systematic departures from normative probability. People rely on cognitive shortcuts that often yield reasonable judgments but can produce predictable errors. Understanding these heuristics and their associated biases has transformed understanding of human judgment and decision-making.
+
+The representativeness heuristic judges probability by similarity to category prototypes. When asked whether Linda is more likely a bank teller or a feminist bank teller, many people choose the conjunction despite its mathematical impossibility being more likely than a single constituent. The detailed description of Linda's feminist attitudes makes the conjunction more representative despite being less probable.
+
+The availability heuristic estimates frequency and probability based on ease of retrieval from memory. Dramatic events like plane crashes come to mind easily and are judged more probable, while mundane risks like heart disease receive less attention. Media coverage amplifies availability, distorting risk perception toward covered events.
+
+Base rate neglect occurs when people ignore prior probabilities in favor of case-specific information. Given that 1% of a population has a disease and a test with 90% accuracy yields a positive result, many people dramatically overestimate the probability of actually having the disease, ignoring the impact of the low base rate on posterior probability.
+
+Anchoring describes how initial values influence subsequent probability estimates even when the anchor is arbitrary or irrelevant. Adjustments from anchors are typically insufficient, leaving final estimates biased toward starting points. This effect persists even when anchors are transparently random, demonstrating the automatic nature of anchoring.
+
+The development of probabilistic reasoning shows substantial change from childhood through adulthood. Young children show early sensitivity to probability but struggle with explicit probabilistic judgment. Understanding of proportional reasoning, necessary for many probability calculations, develops gradually through middle childhood and adolescence.
+
+Intuitive statistics research suggests that humans possess evolved capacities for tracking frequencies that can be harnessed for probabilistic reasoning. Natural frequency formats often improve probabilistic judgment relative to probability formats. Presenting base rates as "1 in 100" rather than "1%" can substantially improve Bayesian reasoning performance.
+
+Individual differences in probabilistic reasoning are substantial and consequential. Numeracy, the ability to understand and use numerical information, predicts probabilistic judgment accuracy. Even basic mathematical ability variations affect interpretation of risk information with implications for medical decision-making and financial choice.
+
+The ecological rationality perspective argues that heuristics that appear biased under laboratory conditions may be well-adapted to natural environments. Probability formats encountered in everyday experience differ from those in formal problems. Evolutionary mismatch between ancestral and modern probabilistic environments may explain some apparent biases.
+
+Probability estimation differs for single events versus frequencies. People show different intuitions about "the probability of rain tomorrow" versus "the proportion of days it will rain." Reference class problems arise because single events can be assigned to multiple classes with different base rates, making unique event probability potentially indeterminate.
+
+Overconfidence is a robust finding in calibration studies where people assess the accuracy of their beliefs. When people express 90% confidence, they are correct substantially less than 90% of the time. This overconfidence extends from general knowledge to professional domains including medicine, law, and finance.
+
+The hot-hand fallacy and gambler's fallacy represent opposite errors in reasoning about sequences. The gambler's fallacy expects independent events to balance out, predicting tails after a run of heads. The hot-hand fallacy sees patterns in random sequences, expecting streaks to continue. Both reflect difficulty fully appreciating statistical independence.
+
+Conjunction and disjunction errors violate fundamental probability axioms. Beyond the Linda problem, people systematically underestimate disjunction probabilities and overestimate conjunction probabilities. Understanding that P(A or B) must equal or exceed P(A) and P(A and B) must equal or be less than P(A) is not intuitive.
+
+Conditional probability poses particular difficulties. Many probability estimation errors involve failure to properly condition on available information. The prosecutor's fallacy confuses P(evidence|innocence) with P(innocence|evidence), leading to overweighting of forensic evidence in legal contexts.
+
+Risk perception involves probabilistic reasoning applied to potential harms. People distinguish differently between risks that are voluntary versus imposed, familiar versus novel, and controllable versus uncontrollable. These qualitative risk characteristics affect perceived probability and acceptability beyond objective risk statistics.
+
+The affect heuristic uses emotional reactions as cues for probabilistic judgment. Activities that feel good are judged lower risk and higher benefit, while activities that feel bad are judged higher risk and lower benefit. This inverse correlation between perceived risk and benefit contradicts the typical positive correlation in reality.
+
+Training can improve probabilistic reasoning, though transfer is often limited. Statistical training improves judgment on similar problems but may not generalize broadly. Teaching the underlying principles of probability theory along with extensive practice across varied examples produces more robust improvement.
+
+Neural substrates of probabilistic reasoning involve distributed networks including prefrontal cortex for integration and decision-making, parietal cortex for numerical processing, and dopaminergic systems for learning from probabilistic feedback. Individual differences in probabilistic reasoning correlate with activity and connectivity in these regions.
+
+Computational models of probabilistic reasoning include both rational Bayesian models and process models of heuristic judgment. Sampling models propose that apparent biases reflect memory retrieval limitations producing imperfect samples from probability distributions. These models bridge normative and descriptive approaches to probabilistic cognition.
+
+Probabilistic reasoning in social domains involves additional complexity. Attributing behavior to causes, predicting others' actions, and navigating strategic interactions all require reasoning under uncertainty about mental states. Social probability judgment combines general probabilistic capacities with theory of mind and social knowledge.
+
+Understanding probabilistic reasoning has important applications in risk communication, medical decision-making, and public policy. Presenting probabilistic information in natural formats, providing base rate context, and accounting for emotional responses can improve judgment and choice in high-stakes decisions where probabilistic reasoning matters most.
