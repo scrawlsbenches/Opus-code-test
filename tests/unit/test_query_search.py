@@ -1803,3 +1803,337 @@ class TestGraphBoostedSearchEdgeCases:
 
         # Should handle zero values gracefully
         assert len(results) >= 1
+
+
+# =============================================================================
+# FRESHNESS DECAY FUNCTION TESTS
+# =============================================================================
+
+
+class TestComputeDecayFactor:
+    """
+    Unit specifications for _compute_decay_factor function.
+
+    These tests ensure the decay factor calculation is correct for all
+    decay types and edge cases.
+    """
+
+    def test_linear_decay_day_zero_full_boost(self):
+        """Day 0 gets full decay factor of 1.0 with linear decay."""
+        from cortical.query.search import _compute_decay_factor
+
+        factor = _compute_decay_factor(days_old=0, window_days=7, decay_function="linear")
+        assert factor == pytest.approx(1.0)
+
+    def test_linear_decay_mid_window(self):
+        """Mid-window gets ~0.5 decay factor with linear decay."""
+        from cortical.query.search import _compute_decay_factor
+
+        # Day 3.5 of 7-day window = exactly halfway
+        factor = _compute_decay_factor(days_old=3.5, window_days=7, decay_function="linear")
+        assert factor == pytest.approx(0.5)
+
+    def test_linear_decay_at_boundary_zero_boost(self):
+        """Day at window boundary gets zero decay factor."""
+        from cortical.query.search import _compute_decay_factor
+
+        factor = _compute_decay_factor(days_old=7, window_days=7, decay_function="linear")
+        assert factor == pytest.approx(0.0)
+
+    def test_linear_decay_beyond_window_zero_boost(self):
+        """Days beyond window get zero decay factor."""
+        from cortical.query.search import _compute_decay_factor
+
+        factor = _compute_decay_factor(days_old=10, window_days=7, decay_function="linear")
+        assert factor == pytest.approx(0.0)
+
+    def test_exponential_decay_day_zero_full_boost(self):
+        """Day 0 gets full decay factor of 1.0 with exponential decay."""
+        from cortical.query.search import _compute_decay_factor
+
+        factor = _compute_decay_factor(days_old=0, window_days=7, decay_function="exponential")
+        assert factor == pytest.approx(1.0)
+
+    def test_exponential_decay_at_boundary_zero_boost(self):
+        """Day at window boundary gets zero decay factor with exponential."""
+        from cortical.query.search import _compute_decay_factor
+
+        factor = _compute_decay_factor(days_old=7, window_days=7, decay_function="exponential")
+        assert factor == pytest.approx(0.0)
+
+    def test_exponential_decay_front_loads_freshness(self):
+        """Exponential decay drops faster early than linear."""
+        from cortical.query.search import _compute_decay_factor
+
+        # At day 2 of 7, exponential should be lower than linear
+        exp_factor = _compute_decay_factor(days_old=2, window_days=7, decay_function="exponential")
+        lin_factor = _compute_decay_factor(days_old=2, window_days=7, decay_function="linear")
+
+        # Linear at day 2/7 = 1 - 2/7 ≈ 0.714
+        assert lin_factor == pytest.approx(1 - 2/7)
+        # Exponential should be lower (faster decay)
+        assert exp_factor < lin_factor
+
+    def test_decay_none_full_boost_within_window(self):
+        """decay='none' gives full 1.0 for any day within window."""
+        from cortical.query.search import _compute_decay_factor
+
+        # Day 0
+        assert _compute_decay_factor(0, 7, "none") == pytest.approx(1.0)
+        # Day 3
+        assert _compute_decay_factor(3, 7, "none") == pytest.approx(1.0)
+        # Day 6.9 (just before boundary)
+        assert _compute_decay_factor(6.9, 7, "none") == pytest.approx(1.0)
+
+    def test_decay_none_zero_boost_at_boundary(self):
+        """decay='none' gives 0.0 at and beyond window boundary."""
+        from cortical.query.search import _compute_decay_factor
+
+        assert _compute_decay_factor(7, 7, "none") == pytest.approx(0.0)
+        assert _compute_decay_factor(10, 7, "none") == pytest.approx(0.0)
+
+    def test_negative_days_treated_as_zero(self):
+        """Negative days (future dates) are treated as day 0."""
+        from cortical.query.search import _compute_decay_factor
+
+        # Future document should get full boost
+        factor = _compute_decay_factor(days_old=-5, window_days=7, decay_function="linear")
+        assert factor == pytest.approx(1.0)
+
+    def test_unknown_decay_function_falls_back_to_linear(self):
+        """Unknown decay function falls back to linear."""
+        from cortical.query.search import _compute_decay_factor
+
+        # Unknown decay type
+        factor = _compute_decay_factor(days_old=3.5, window_days=7, decay_function="unknown")
+        expected = 1.0 - 3.5/7  # Linear calculation
+        assert factor == pytest.approx(expected)
+
+    def test_custom_window_size(self):
+        """Decay works correctly with custom window sizes."""
+        from cortical.query.search import _compute_decay_factor
+
+        # 14-day window
+        factor = _compute_decay_factor(days_old=7, window_days=14, decay_function="linear")
+        assert factor == pytest.approx(0.5)  # Halfway through 14-day window
+
+        # 3-day window
+        factor = _compute_decay_factor(days_old=1.5, window_days=3, decay_function="linear")
+        assert factor == pytest.approx(0.5)  # Halfway through 3-day window
+
+    def test_zero_window_edge_case(self):
+        """Zero window days returns 0.0 (avoid division by zero)."""
+        from cortical.query.search import _compute_decay_factor
+
+        # With 0-day window, any age >= 0 should return 0
+        factor = _compute_decay_factor(days_old=0, window_days=0, decay_function="linear")
+        assert factor == pytest.approx(0.0)
+
+
+class TestApplyFreshnessBoostUnit:
+    """
+    Unit specifications for _apply_freshness_boost function.
+
+    Tests the in-place modification of document scores based on freshness.
+    """
+
+    def test_no_boost_when_factor_is_one(self):
+        """freshness_boost=1.0 doesn't modify scores."""
+        from cortical.query.search import _apply_freshness_boost
+        from datetime import datetime
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        doc_scores = {"doc1": 10.0}
+        doc_metadata = {"doc1": {"timestamp": today}}
+
+        _apply_freshness_boost(doc_scores, doc_metadata, freshness_boost=1.0)
+
+        assert doc_scores["doc1"] == pytest.approx(10.0)
+
+    def test_no_boost_when_metadata_empty(self):
+        """Empty metadata doesn't crash and doesn't modify scores."""
+        from cortical.query.search import _apply_freshness_boost
+
+        doc_scores = {"doc1": 10.0}
+        _apply_freshness_boost(doc_scores, {}, freshness_boost=1.5)
+        assert doc_scores["doc1"] == pytest.approx(10.0)
+
+    def test_no_boost_when_metadata_none(self):
+        """None metadata doesn't crash and doesn't modify scores."""
+        from cortical.query.search import _apply_freshness_boost
+
+        doc_scores = {"doc1": 10.0}
+        _apply_freshness_boost(doc_scores, None, freshness_boost=1.5)
+        assert doc_scores["doc1"] == pytest.approx(10.0)
+
+    def test_no_boost_when_scores_empty(self):
+        """Empty scores dict doesn't crash."""
+        from cortical.query.search import _apply_freshness_boost
+        from datetime import datetime
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        doc_scores = {}
+        doc_metadata = {"doc1": {"timestamp": today}}
+
+        _apply_freshness_boost(doc_scores, doc_metadata, freshness_boost=1.5)
+        assert doc_scores == {}
+
+    def test_doc_without_timestamp_not_boosted(self):
+        """Documents without timestamp metadata are not boosted."""
+        from cortical.query.search import _apply_freshness_boost
+
+        doc_scores = {"doc1": 10.0}
+        doc_metadata = {"doc1": {"other_field": "value"}}  # No timestamp
+
+        _apply_freshness_boost(doc_scores, doc_metadata, freshness_boost=1.5)
+        assert doc_scores["doc1"] == pytest.approx(10.0)
+
+    def test_invalid_timestamp_format_skipped(self):
+        """Invalid timestamp format doesn't crash, doc not boosted."""
+        from cortical.query.search import _apply_freshness_boost
+
+        doc_scores = {"doc1": 10.0}
+        doc_metadata = {"doc1": {"timestamp": "invalid-date"}}
+
+        _apply_freshness_boost(doc_scores, doc_metadata, freshness_boost=1.5)
+        assert doc_scores["doc1"] == pytest.approx(10.0)
+
+    def test_full_boost_for_today_document(self):
+        """Document from today gets full boost with linear decay."""
+        from cortical.query.search import _apply_freshness_boost
+        from datetime import datetime
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        doc_scores = {"doc1": 10.0}
+        doc_metadata = {"doc1": {"timestamp": today}}
+
+        _apply_freshness_boost(
+            doc_scores, doc_metadata,
+            freshness_boost=1.5,
+            freshness_decay="linear"
+        )
+
+        # Full 1.5x boost
+        assert doc_scores["doc1"] == pytest.approx(15.0)
+
+    def test_graduated_boost_mid_window(self):
+        """Document mid-window gets partial boost with linear decay."""
+        from cortical.query.search import _apply_freshness_boost
+        from datetime import datetime, timedelta
+
+        # 3 days ago in a 7-day window
+        # Decay factor = 1 - 3/7 = 4/7 ≈ 0.571
+        # Boost = 1.0 + 0.5 * 0.571 ≈ 1.286
+        mid_date = (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d")
+        doc_scores = {"doc1": 10.0}
+        doc_metadata = {"doc1": {"timestamp": mid_date}}
+
+        _apply_freshness_boost(
+            doc_scores, doc_metadata,
+            freshness_boost=1.5,
+            freshness_decay="linear",
+            freshness_window_days=7
+        )
+
+        # Decay factor = 4/7, boost = 1.0 + (0.5 * 4/7) = 1.0 + 2/7 ≈ 1.286
+        decay_factor = 4.0 / 7.0
+        expected_boost = 1.0 + (0.5 * decay_factor)
+        expected_score = 10.0 * expected_boost
+        assert doc_scores["doc1"] == pytest.approx(expected_score, rel=0.01)
+
+    def test_no_boost_beyond_window(self):
+        """Document beyond window gets no boost."""
+        from cortical.query.search import _apply_freshness_boost
+        from datetime import datetime, timedelta
+
+        old_date = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
+        doc_scores = {"doc1": 10.0}
+        doc_metadata = {"doc1": {"timestamp": old_date}}
+
+        _apply_freshness_boost(
+            doc_scores, doc_metadata,
+            freshness_boost=1.5,
+            freshness_decay="linear",
+            freshness_window_days=7
+        )
+
+        # No boost
+        assert doc_scores["doc1"] == pytest.approx(10.0)
+
+    def test_invalid_decay_function_uses_default(self):
+        """Invalid decay function falls back to default (linear)."""
+        from cortical.query.search import _apply_freshness_boost
+        from datetime import datetime
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        doc_scores = {"doc1": 10.0}
+        doc_metadata = {"doc1": {"timestamp": today}}
+
+        _apply_freshness_boost(
+            doc_scores, doc_metadata,
+            freshness_boost=1.5,
+            freshness_decay="invalid_function"
+        )
+
+        # Should still work with default linear
+        assert doc_scores["doc1"] == pytest.approx(15.0)
+
+    def test_multiple_documents_boosted_independently(self):
+        """Each document gets its own freshness boost based on age."""
+        from cortical.query.search import _apply_freshness_boost
+        from datetime import datetime, timedelta
+
+        today = datetime.now()
+        today_str = today.strftime("%Y-%m-%d")
+        three_days_ago = (today - timedelta(days=3)).strftime("%Y-%m-%d")
+        ten_days_ago = (today - timedelta(days=10)).strftime("%Y-%m-%d")
+
+        doc_scores = {"new": 10.0, "mid": 10.0, "old": 10.0}
+        doc_metadata = {
+            "new": {"timestamp": today_str},
+            "mid": {"timestamp": three_days_ago},
+            "old": {"timestamp": ten_days_ago}
+        }
+
+        _apply_freshness_boost(
+            doc_scores, doc_metadata,
+            freshness_boost=1.5,
+            freshness_decay="linear",
+            freshness_window_days=7
+        )
+
+        # New gets full boost
+        assert doc_scores["new"] == pytest.approx(15.0)
+        # Mid gets partial boost (3/7 through window, so decay = 4/7 ≈ 0.571)
+        # boost = 1.0 + 0.5 * 0.571 ≈ 1.286
+        assert doc_scores["mid"] > 12.0 and doc_scores["mid"] < 15.0
+        # Old gets no boost
+        assert doc_scores["old"] == pytest.approx(10.0)
+
+    def test_custom_window_respected(self):
+        """Custom freshness_window_days is respected."""
+        from cortical.query.search import _apply_freshness_boost
+        from datetime import datetime, timedelta
+
+        # 10 days ago - outside 7-day window but inside 14-day window
+        ten_days_ago = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
+        doc_scores = {"doc1": 10.0}
+        doc_metadata = {"doc1": {"timestamp": ten_days_ago}}
+
+        # With 7-day window, should get no boost
+        _apply_freshness_boost(
+            doc_scores.copy(), doc_metadata,
+            freshness_boost=1.5,
+            freshness_window_days=7
+        )
+
+        # With 14-day window, should get boost
+        doc_scores_14 = {"doc1": 10.0}
+        _apply_freshness_boost(
+            doc_scores_14, doc_metadata,
+            freshness_boost=1.5,
+            freshness_window_days=14
+        )
+
+        assert doc_scores_14["doc1"] > 10.0  # Got some boost
+
