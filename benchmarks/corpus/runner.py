@@ -473,6 +473,130 @@ class BigramConnectionsBenchmark(CorpusBenchmark):
 
 
 @register_benchmark
+class ParallelBigramConnectionsBenchmark(CorpusBenchmark):
+    """
+    Compare sequential vs parallel compute_bigram_connections() performance.
+
+    Measures:
+    - Sequential execution time
+    - Parallel execution time (2 workers)
+    - Shared memory size overhead
+    - Connection count correctness
+    - Speedup factor
+
+    This tests the shared memory parallelization of bigram connections.
+    """
+
+    name = "parallel_bigram_connections"
+    description = "Compare sequential vs parallel bigram connections"
+    corpus_category = CorpusBenchmarkCategory.ANALYSIS
+
+    def run(self) -> BenchmarkResult:
+        result = self.create_result()
+
+        # Use larger corpus for meaningful parallel measurements
+        is_quick = self.config.get("quick", False)
+        n_docs = 100 if is_quick else 300
+
+        # Create processor with corpus
+        generator = SyntheticCorpusGenerator(SyntheticCorpusConfig(
+            n_docs=n_docs,
+            doc_length=self._corpus_config.doc_length,
+            vocab_size=self._corpus_config.vocab_size,
+            seed=42,
+        ))
+        corpus = generator.generate()
+
+        # Build two separate processors (to avoid cache effects)
+        processor_seq = CorticalTextProcessor()
+        processor_par = CorticalTextProcessor()
+        for doc_id, text in corpus.items():
+            processor_seq.process_document(doc_id, text)
+            processor_par.process_document(doc_id, text)
+
+        processor_seq.compute_tfidf()
+        processor_par.compute_tfidf()
+
+        # Get bigram count
+        from cortical.layers import CorticalLayer
+        bigram_count = processor_seq.layers[CorticalLayer.BIGRAMS].column_count()
+
+        # Sequential timing
+        start = time.perf_counter()
+        stats_seq = processor_seq.compute_bigram_connections(n_workers=None, verbose=False)
+        elapsed_seq = (time.perf_counter() - start) * 1000
+
+        # Parallel timing (2 workers)
+        start = time.perf_counter()
+        stats_par = processor_par.compute_bigram_connections(n_workers=2, verbose=False)
+        elapsed_par = (time.perf_counter() - start) * 1000
+
+        # Calculate speedup
+        speedup = elapsed_seq / elapsed_par if elapsed_par > 0 else 0
+
+        result.add_metric(
+            name="sequential_ms",
+            value=elapsed_seq,
+            unit="ms",
+        )
+        result.add_metric(
+            name="parallel_ms",
+            value=elapsed_par,
+            unit="ms",
+        )
+        result.add_metric(
+            name="speedup",
+            value=speedup,
+            unit="x",
+            # No strict threshold - parallel may be slower for small corpora
+        )
+        result.add_metric(
+            name="bigrams_count",
+            value=bigram_count,
+            unit="count",
+        )
+        result.add_metric(
+            name="connections_sequential",
+            value=stats_seq.get("connections_created", 0),
+            unit="count",
+        )
+        result.add_metric(
+            name="connections_parallel",
+            value=stats_par.get("connections_created", 0),
+            unit="count",
+        )
+
+        # Check for shared memory size
+        shm_size_mb = stats_par.get("shared_memory_size_mb", 0)
+        result.add_metric(
+            name="shared_memory_mb",
+            value=shm_size_mb,
+            unit="MB",
+        )
+
+        # Connection count consistency check
+        conn_seq = stats_seq.get("connections_created", 0)
+        conn_par = stats_par.get("connections_created", 0)
+        # Note: parallel may have different count due to algorithm differences
+        # This is informational, not a failure
+        diff_pct = abs(conn_seq - conn_par) / conn_seq * 100 if conn_seq > 0 else 0
+        result.add_metric(
+            name="connection_diff_pct",
+            value=diff_pct,
+            unit="%",
+        )
+
+        result.metadata.update({
+            "corpus_size": n_docs,
+            "bigrams": bigram_count,
+            "sequential_stats": stats_seq,
+            "parallel_stats": stats_par,
+        })
+
+        return result
+
+
+@register_benchmark
 class BatchIndexingBenchmark(CorpusBenchmark):
     """
     Measure add_documents_batch() performance.

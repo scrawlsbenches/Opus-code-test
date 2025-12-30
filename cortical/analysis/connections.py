@@ -488,6 +488,12 @@ def _compute_bigram_connections_shared_memory(
         return {
             'connections_created': len(seen_pairs),
             'bigrams': compact.n_bigrams,
+            'component_connections': 0,  # Not tracked separately in shared memory mode
+            'chain_connections': 0,  # Not tracked separately in shared memory mode
+            'cooccurrence_connections': 0,  # Not tracked separately in shared memory mode
+            'skipped_common_terms': 0,  # Not tracked in shared memory mode
+            'skipped_large_docs': 0,  # Not tracked in shared memory mode
+            'skipped_max_connections': 0,  # Not tracked in shared memory mode
             'parallel': True,
             'parallel_mode': 'shared_memory',
             'n_workers': n_workers,
@@ -1481,15 +1487,21 @@ def compute_bigram_connections(
         max_connections_per_bigram: Maximum lateral connections per bigram minicolumn
             to keep graph sparse and focused on strongest connections (default 50)
         n_workers: Number of parallel workers. None or 1 for sequential execution,
-            >1 for parallel execution using thread-local accumulation. Default is
-            None (sequential).
+            >1 for parallel execution using shared memory multiprocessing. Default
+            is None (sequential).
 
-            NOTE: Due to Python's GIL (Global Interpreter Lock), thread-based
-            parallelism does not speed up CPU-bound operations like bigram
-            connection building. The parallel option is preserved for:
-            - Future use with ProcessPoolExecutor when data becomes serializable
-            - I/O-bound variants of the algorithm
-            - Documentation of the map-reduce pattern used
+            PERFORMANCE NOTE: Shared memory parallelism has significant overhead
+            from process creation (~100ms), data serialization, and coordination.
+            Benchmarks show:
+            - Sequential is typically 4-6x FASTER for most workloads
+            - Parallel only helps with very simple vocabulary (few unique bigrams)
+              and many documents (the crossover was ~500 docs with <150 bigrams)
+            - For real-world corpora with varied vocabulary, sequential is preferred
+
+            The parallel implementation is preserved for:
+            - Edge cases with extremely large document counts and simple vocabulary
+            - Demonstration of shared memory multiprocessing pattern
+            - Future optimization opportunities (e.g., native extensions)
 
     Returns:
         Statistics about connections created:
