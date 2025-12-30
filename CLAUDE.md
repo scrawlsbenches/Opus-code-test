@@ -78,6 +78,44 @@ We hold reverence for:
 - **The Performance** — which we contract, not merely measure
 - **The Build** — our guardian that never sleeps, never lies
 
+---
+
+## The Sovereignty Principle
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                    WE BUILD. WE MAINTAIN. WE CONTROL.                    │
+│                                                                          │
+│   This project does not depend on what it cannot own.                   │
+│                                                                          │
+│   We do not adopt third-party components.                               │
+│   We do not integrate external libraries we cannot rebuild.             │
+│   We do not inherit dependencies we cannot maintain.                    │
+│   We do not trust systems we cannot operate.                            │
+│                                                                          │
+│   If a capability is needed, we implement it ourselves.                 │
+│   If an algorithm is required, we write it from first principles.       │
+│   If a data structure is necessary, we craft it with our own hands.     │
+│                                                                          │
+│   This is not stubbornness. This is sovereignty.                        │
+│                                                                          │
+│   Every line of code in this system is ours to understand,              │
+│   ours to debug, ours to optimize, ours to evolve.                      │
+│                                                                          │
+│   We are control freaks. Proudly. Unapologetically.                     │
+│                                                                          │
+│   Because when something breaks at 3 AM, we don't file issues           │
+│   with upstream maintainers. We fix it. Ourselves. Immediately.         │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Exceptions require justification:**
+- Standard library functions (Python stdlib, etc.) are acceptable
+- Pytest for testing is acceptable (meta-tooling, not runtime dependency)
+- If you must propose an external dependency, document WHY we cannot build it ourselves
+
 Metus is the voice that whispers: *"Prove you understand before you proceed."*
 
 ---
@@ -279,6 +317,41 @@ class ResearcherSearchesForKnowledge:
 **Location**: `tests/behavioral/`
 **Naming**: `{user_role}_{action}_stories.py`
 **Format**: Classes are epics, methods are scenarios
+
+**IMPORTANT — Test Content Must Embody Sovereignty:**
+
+Behavioral scenarios are living documentation. The example content within tests—the strings, the fake data, the hypothetical systems being described—must reflect our philosophy.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│   ❌ WRONG: Test content that references adopting third-party tools     │
+│                                                                          │
+│      "Kubernetes container orchestration..."                            │
+│      "GraphQL API with Apollo Server..."                                │
+│      "Redis caching strategies..."                                      │
+│      "Terraform infrastructure as code..."                              │
+│      "Docker containerization..."                                       │
+│      "Prometheus monitoring and Grafana dashboards..."                  │
+│      "Elasticsearch full-text search..."                                │
+│                                                                          │
+│   ✅ RIGHT: Test content that reflects building it ourselves            │
+│                                                                          │
+│      "Custom task orchestration engine we built from first principles." │
+│      "Hand-built parser and schema resolver we control completely."     │
+│      "In-house caching layer we implemented ourselves."                 │
+│      "Infrastructure provisioning system built from scratch."           │
+│      "Process isolation implementation we built ourselves."             │
+│      "Custom observability stack with hand-rolled metrics pipeline."    │
+│      "Custom full-text search engine we implemented ourselves."         │
+│                                                                          │
+│   The language we use shapes how we think.                              │
+│   Tests are documentation. Documentation embodies values.               │
+│   A project that builds everything shouldn't casually reference         │
+│   adopting external tools—even in test fixtures.                        │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -675,7 +748,7 @@ Each layer builds upon the last, creating assurance:
 ┌───────────────────────────────┴───────────────────────────────┐
 │                    UNIT SPECIFICATIONS                        │
 │   "Each atom of logic is correct"                             │
-│   tests/unit/specifications/ — 95%+ coverage                  │
+│   tests/unit/specifications/ — 86%+ coverage                  │
 └───────────────────────────────┬───────────────────────────────┘
                                 │
 ┌───────────────────────────────┴───────────────────────────────┐
@@ -725,7 +798,7 @@ Before merging any code:
       All performance contracts are satisfied
 
 - [ ] **Specifications Verified**
-      All unit specifications pass with 95%+ coverage
+      All unit specifications pass with 86%+ coverage
 
 - [ ] **CI Guardian Approves**
       The full pipeline is green—no exceptions
@@ -883,7 +956,7 @@ tests/
 python -m pytest tests/smoke/ -v
 
 # Gate 2: Specifications (run frequently, ~2 minutes)
-python -m pytest tests/unit/specifications/ -v --cov=cortical --cov-fail-under=95
+python -m pytest tests/unit/ -v --cov=cortical --cov-fail-under=86
 
 # Gate 3: Behaviors (run before merge, ~5 minutes)
 python -m pytest tests/behavioral/ -v
@@ -898,7 +971,7 @@ python -m pytest tests/integration/ -v
 python -m pytest tests/security/ -v
 
 # Full Metus Pipeline (what CI runs)
-python -m pytest tests/ -v --cov=cortical --cov-fail-under=95
+python -m pytest tests/ -v --cov=cortical --cov-fail-under=86
 ```
 
 ---

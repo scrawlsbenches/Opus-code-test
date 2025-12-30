@@ -96,6 +96,19 @@ DEFAULT_FRESHNESS_BOOST: float = 1.5
 # Number of days within which a document is considered "fresh"
 FRESHNESS_WINDOW_DAYS: int = 7
 
+# Valid decay function types for freshness boost
+# - "linear": Boost decays linearly from full boost at day 0 to 1.0 at window boundary
+# - "exponential": Boost decays exponentially, front-loading freshness for newest docs
+# - "none": Binary boost (original behavior) - full boost within window, none outside
+FRESHNESS_DECAY_FUNCTIONS: FrozenSet[str] = frozenset([
+    "linear",
+    "exponential",
+    "none",
+])
+
+# Default decay function for freshness boost
+DEFAULT_FRESHNESS_DECAY: str = "linear"
+
 
 # NOTE: LAYER_COLORS and LAYER_NAMES are defined in persistence.py
 # because they use CorticalLayer enum keys for type safety in exports.

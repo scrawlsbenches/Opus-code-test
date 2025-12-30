@@ -311,7 +311,9 @@ class QueryMixin:
         use_semantic: bool = True,
         filter_code_stop_words: bool = True,
         test_file_penalty: float = 0.8,
-        freshness_boost: float = 1.0
+        freshness_boost: float = 1.0,
+        freshness_decay: str = "linear",
+        freshness_window_days: int = 7
     ) -> List[Tuple[str, float]]:
         """
         Find documents most relevant to a query.
@@ -325,9 +327,15 @@ class QueryMixin:
                                     from expansion. Reduces noise in code search. (default True)
             test_file_penalty: Multiplier for test files to rank them lower (default 0.8).
                                Set to 1.0 to disable penalty.
-            freshness_boost: Multiplier for documents added within the freshness window
-                             (default 7 days). Recent documents get their score multiplied
-                             by this factor. Set to 1.0 to disable. Default: 1.0 (disabled).
+            freshness_boost: Maximum multiplier for documents within the freshness window.
+                             Recent documents get their score multiplied by a graduated
+                             boost based on age. Set to 1.0 to disable. Default: 1.0 (disabled).
+            freshness_decay: Decay function for freshness boost. Options:
+                             - "linear": Boost decays linearly from full at day 0 to 1.0 at boundary
+                             - "exponential": Boost decays exponentially (front-loads freshness)
+                             - "none": Binary boost (full boost within window, none outside)
+                             Default: "linear".
+            freshness_window_days: Number of days within which a document is "fresh" (default 7).
 
         Returns:
             List of (doc_id, score) tuples ranked by relevance
@@ -351,7 +359,9 @@ class QueryMixin:
             filter_code_stop_words=filter_code_stop_words,
             test_file_penalty=test_file_penalty,
             freshness_boost=freshness_boost,
-            doc_metadata=self.document_metadata
+            doc_metadata=self.document_metadata,
+            freshness_decay=freshness_decay,
+            freshness_window_days=freshness_window_days
         )
 
     def fast_find_documents(
