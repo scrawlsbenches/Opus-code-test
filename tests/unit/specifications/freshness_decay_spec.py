@@ -13,7 +13,7 @@ DO NOT CHANGE these specifications without:
 2. Assessing backward compatibility impact
 3. Updating dependent documentation
 
-Ratified: 2024-12-30
+Ratified: 2025-12-30
 Guardian: CI Pipeline
 """
 
