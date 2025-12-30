@@ -1,4 +1,4 @@
-# CLAUDE.md.BDD - Metus Development Philosophy
+# Metus Development Philosophy
 
 ---
 
