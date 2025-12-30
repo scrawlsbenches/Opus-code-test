@@ -78,6 +78,44 @@ We hold reverence for:
 - **The Performance** — which we contract, not merely measure
 - **The Build** — our guardian that never sleeps, never lies
 
+---
+
+## The Sovereignty Principle
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│                    WE BUILD. WE MAINTAIN. WE CONTROL.                    │
+│                                                                          │
+│   This project does not depend on what it cannot own.                   │
+│                                                                          │
+│   We do not adopt third-party components.                               │
+│   We do not integrate external libraries we cannot rebuild.             │
+│   We do not inherit dependencies we cannot maintain.                    │
+│   We do not trust systems we cannot operate.                            │
+│                                                                          │
+│   If a capability is needed, we implement it ourselves.                 │
+│   If an algorithm is required, we write it from first principles.       │
+│   If a data structure is necessary, we craft it with our own hands.     │
+│                                                                          │
+│   This is not stubbornness. This is sovereignty.                        │
+│                                                                          │
+│   Every line of code in this system is ours to understand,              │
+│   ours to debug, ours to optimize, ours to evolve.                      │
+│                                                                          │
+│   We are control freaks. Proudly. Unapologetically.                     │
+│                                                                          │
+│   Because when something breaks at 3 AM, we don't file issues           │
+│   with upstream maintainers. We fix it. Ourselves. Immediately.         │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Exceptions require justification:**
+- Standard library functions (Python stdlib, etc.) are acceptable
+- Pytest for testing is acceptable (meta-tooling, not runtime dependency)
+- If you must propose an external dependency, document WHY we cannot build it ourselves
+
 Metus is the voice that whispers: *"Prove you understand before you proceed."*
 
 ---

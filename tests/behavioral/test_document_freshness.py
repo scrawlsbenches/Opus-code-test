@@ -352,19 +352,21 @@ class TestGraduatedFreshnessDecay:
 
         fresh_processor.process_document(
             "today_doc",
-            "Kubernetes container orchestration and deployment strategies.",
+            "Custom task orchestration engine design and deployment strategies. "
+            "We built our own scheduler from first principles.",
             metadata={"timestamp": today_str}
         )
         fresh_processor.process_document(
             "old_doc",
-            "Kubernetes container orchestration and deployment strategies.",
+            "Custom task orchestration engine design and deployment strategies. "
+            "We built our own scheduler from first principles.",
             metadata={"timestamp": thirty_days_ago}
         )
         fresh_processor.compute_all(verbose=False)
 
         # When I search with linear decay
         results = fresh_processor.find_documents_for_query(
-            "kubernetes container",
+            "task orchestration engine",
             top_n=5,
             freshness_boost=1.5,
             freshness_decay="linear"
@@ -400,8 +402,8 @@ class TestGraduatedFreshnessDecay:
         six_days_ago = (today - timedelta(days=6)).strftime("%Y-%m-%d")
 
         content = (
-            "GraphQL API design with Apollo Server and schema stitching. "
-            "Modern API development patterns for microservices."
+            "Custom query language design with hand-built parser and schema resolver. "
+            "In-house API patterns for our service architecture we control completely."
         )
 
         fresh_processor.process_document(
@@ -416,7 +418,7 @@ class TestGraduatedFreshnessDecay:
 
         # When I search with linear decay
         results = fresh_processor.find_documents_for_query(
-            "GraphQL API design",
+            "query language parser",
             top_n=5,
             freshness_boost=1.5,
             freshness_decay="linear"
@@ -449,8 +451,8 @@ class TestGraduatedFreshnessDecay:
         ten_days_ago = (today - timedelta(days=10)).strftime("%Y-%m-%d")
 
         content = (
-            "Redis caching strategies for high-performance web applications. "
-            "In-memory data structure store optimization techniques."
+            "In-house caching layer strategies for high-performance applications. "
+            "Custom in-memory data structure design and optimization techniques."
         )
 
         fresh_processor.process_document(
@@ -465,7 +467,7 @@ class TestGraduatedFreshnessDecay:
 
         # When I search with linear decay
         results = fresh_processor.find_documents_for_query(
-            "Redis caching",
+            "caching layer strategies",
             top_n=5,
             freshness_boost=1.5,
             freshness_decay="linear"
@@ -498,8 +500,8 @@ class TestGraduatedFreshnessDecay:
         five_days_ago = (today - timedelta(days=5)).strftime("%Y-%m-%d")
 
         content = (
-            "Terraform infrastructure as code for cloud resource management. "
-            "HashiCorp configuration language for DevOps automation."
+            "Infrastructure provisioning system built from scratch. "
+            "Custom declarative configuration language for automation we own entirely."
         )
 
         fresh_processor.process_document(
@@ -518,7 +520,7 @@ class TestGraduatedFreshnessDecay:
 
         # When I search with exponential decay
         results_exp = fresh_processor.find_documents_for_query(
-            "Terraform infrastructure",
+            "infrastructure provisioning system",
             top_n=5,
             freshness_boost=1.5,
             freshness_decay="exponential"
@@ -546,8 +548,8 @@ class TestGraduatedFreshnessDecay:
         six_days_ago = (today - timedelta(days=6)).strftime("%Y-%m-%d")
 
         content = (
-            "Docker containerization best practices and Dockerfile optimization. "
-            "Container security and multi-stage builds for production."
+            "Process isolation implementation we built ourselves. "
+            "Custom sandboxing and multi-stage compilation for production systems."
         )
 
         fresh_processor.process_document(
@@ -562,7 +564,7 @@ class TestGraduatedFreshnessDecay:
 
         # When I search with decay="none" (binary boost)
         results = fresh_processor.find_documents_for_query(
-            "Docker containerization",
+            "process isolation sandboxing",
             top_n=5,
             freshness_boost=1.5,
             freshness_decay="none"
@@ -594,8 +596,8 @@ class TestGraduatedFreshnessDecay:
         five_days_ago = (today - timedelta(days=5)).strftime("%Y-%m-%d")
 
         content = (
-            "Prometheus monitoring and Grafana dashboards for observability. "
-            "Metrics collection and alerting for distributed systems."
+            "Custom observability stack with hand-rolled metrics pipeline. "
+            "In-house telemetry collection and alerting for our distributed systems."
         )
 
         fresh_processor.process_document(
@@ -610,7 +612,7 @@ class TestGraduatedFreshnessDecay:
 
         # When I search without specifying decay (should default to linear)
         results_default = fresh_processor.find_documents_for_query(
-            "Prometheus monitoring",
+            "observability metrics pipeline",
             top_n=5,
             freshness_boost=1.5
             # No freshness_decay parameter - should default to linear
@@ -618,7 +620,7 @@ class TestGraduatedFreshnessDecay:
 
         # And when I search with explicit linear decay
         results_linear = fresh_processor.find_documents_for_query(
-            "Prometheus monitoring",
+            "observability metrics pipeline",
             top_n=5,
             freshness_boost=1.5,
             freshness_decay="linear"
@@ -647,8 +649,8 @@ class TestGraduatedFreshnessDecay:
         twelve_days_ago = (today - timedelta(days=12)).strftime("%Y-%m-%d")
 
         content = (
-            "Elasticsearch full-text search and aggregation queries. "
-            "Distributed search engine optimization and cluster management."
+            "Custom full-text search engine with aggregation we implemented ourselves. "
+            "Distributed index optimization and cluster coordination built from scratch."
         )
 
         fresh_processor.process_document(
@@ -663,7 +665,7 @@ class TestGraduatedFreshnessDecay:
 
         # When I search with linear decay and 14-day window
         results = fresh_processor.find_documents_for_query(
-            "Elasticsearch search",
+            "full-text search engine",
             top_n=5,
             freshness_boost=1.5,
             freshness_decay="linear",
