@@ -425,3 +425,382 @@ Measure of how much experts disagree on predictions. High disagreement reduces e
 | CalibrationTracker | `scripts/hubris/calibration_tracker.py` |
 | Staking | `scripts/hubris/staking.py` |
 | Hubris CLI | `scripts/hubris_cli.py` |
+
+---
+
+## Cognitive Event Lattice (CEL)
+
+The CEL is a self-referential, self-maintaining cognitive substrate for machine reasoning. Built on two intertwined strands.
+
+**Location:** `cortical/cel/`
+
+### Wisdom Strand
+The knowledge and memory component of CEL. Stores what the system knows.
+
+**Location:** `cortical/cel/wisdom/`
+
+**Components:**
+- `dag.py`: Merkle-linked DAG for knowledge representation
+- `materializer.py`: Lazy projection of events into entities
+- `semantic.py`: Bloom filters and embeddings for fast access
+
+### Sanity Strand
+The validation and health component of CEL. Keeps the system coherent.
+
+**Location:** `cortical/cel/sanity/`
+
+**Components:**
+- `health.py`: Self-monitoring and metric collection
+- `migration.py`: Schema evolution without data loss
+- `compaction.py`: Semantic compression preserving meaning
+
+### CognitiveEvent
+The fundamental unit of CEL. Events are immutable, content-addressed, and causally linked.
+
+**Location:** `cortical/cel/core/events.py`
+
+**Event Types:**
+- `Observation`: Something happened (passive)
+- `Intention`: Something should happen (active/task)
+- `Fulfillment`: An intention was completed
+- `Invalidation`: Something is no longer true
+- `Compaction`: Events were compressed
+- `MetaCognition`: System observing itself
+
+### Merkle DAG
+Directed Acyclic Graph where events are identified by their content hash. Provides append-only, verifiable storage.
+
+**Properties:**
+- Content-addressed: ID = hash of content
+- Causally ordered: Parents must exist before children
+- Verifiable: Hash chain ensures integrity
+
+**Location:** `cortical/cel/wisdom/dag.py`
+
+### Event Horizon
+The boundary of known events. Used for synchronization and consistency checks.
+
+**Location:** `cortical/cel/core/references.py`
+
+### Compaction
+Reducing storage while preserving semantic meaning. Works at the semantic level, not bit-level compression.
+
+**Strategies:**
+- Time Window: Compress events older than threshold
+- Semantic: Merge semantically similar events
+- Causal: Flatten redundant causal chains
+- Archival: Move old events to cold storage
+
+**Location:** `cortical/cel/sanity/compaction.py`
+
+---
+
+## Graph of Thought (GoT)
+
+Transactional task and decision tracking system with ACID guarantees.
+
+**Location:** `cortical/got/`
+
+### Task
+A unit of work to be completed. Has status, priority, and relationships to other entities.
+
+**Location:** `cortical/got/api.py`
+
+### Decision
+A recorded choice with rationale. Links to tasks that implement it.
+
+**Location:** `cortical/got/api.py`
+
+### Sprint
+A time-boxed collection of tasks for agile planning.
+
+**Location:** `cortical/got/api.py`
+
+### Write-Ahead Log (WAL)
+Durability mechanism that logs operations before applying them. Enables crash recovery.
+
+**Location:** `cortical/got/wal.py`
+
+### Snapshot Isolation
+Transaction isolation level where each transaction sees a consistent snapshot of data.
+
+**Location:** `cortical/got/transaction.py`
+
+### Versioned Store
+File-based storage with checksums and version tracking.
+
+**Location:** `cortical/got/versioned_store.py`
+
+### Graph Walker
+Visitor pattern implementation for traversing the GoT graph.
+
+**Location:** `cortical/got/graph_walker.py`
+
+### Query Builder
+Fluent API for building GoT queries with SQL-like chaining.
+
+**Location:** `cortical/got/query_builder.py`
+
+---
+
+## Dual-Process Cognition
+
+The reasoning system implements dual-process theory from cognitive psychology.
+
+### Woven Mind
+The facade that integrates fast (System 1) and slow (System 2) thinking. Main entry point for cognitive operations.
+
+**Location:** `cortical/reasoning/woven_mind.py`
+
+### The Loom
+Decision point that routes queries to fast or slow processing based on surprise detection and complexity analysis.
+
+**Location:** `cortical/reasoning/loom.py`
+
+**Decision Factors:**
+- Query complexity
+- Surprise level (deviation from predictions)
+- Available time budget
+- Historical accuracy
+
+### Hive
+System 1 connector—fast, automatic, pattern-based processing. Uses cached patterns and statistical predictions.
+
+**Location:** `cortical/reasoning/loom_hive.py`
+
+**Characteristics:**
+- Fast (<100ms typical)
+- Pattern matching
+- Intuitive responses
+- May be inaccurate for novel situations
+
+### Cortex
+System 2 connector—slow, deliberate, analytical processing. Uses multi-step reasoning and verification.
+
+**Location:** `cortical/reasoning/loom_cortex.py`
+
+**Characteristics:**
+- Slower (seconds to minutes)
+- Step-by-step reasoning
+- Higher accuracy
+- Resource intensive
+
+### Surprise Detection
+Mechanism for identifying when fast processing is insufficient. High surprise triggers escalation to slow processing.
+
+**Location:** `cortical/reasoning/loom.py`
+
+### Consolidation
+Sleep-like process that transfers learned patterns from Hive (working memory) to Cortex (long-term knowledge).
+
+**Location:** `cortical/reasoning/consolidation.py`
+
+---
+
+## Reasoning Framework
+
+### QAPV Cycle
+Question → Answer → Produce → Verify. The core cognitive loop for complex reasoning.
+
+**Location:** `cortical/reasoning/cognitive_loop.py`
+
+**Phases:**
+1. **Question**: Identify what needs to be determined
+2. **Answer**: Generate candidate responses
+3. **Produce**: Create artifacts (code, docs, etc.)
+4. **Verify**: Validate outputs against requirements
+
+### Nested Loop
+QAPV loops can contain sub-loops for hierarchical reasoning. Parent loops wait for child loops to complete.
+
+**Location:** `cortical/reasoning/nested_loop.py`
+
+### Thought Graph
+Graph-based representation of reasoning steps. Nodes are thoughts, edges are logical connections.
+
+**Location:** `cortical/reasoning/thought_graph.py`
+
+### ThoughtNode
+A single unit of reasoning in the thought graph. Has type, content, and confidence.
+
+**Location:** `cortical/reasoning/graph_of_thought.py`
+
+### Crisis Manager
+Failure detection, analysis, and recovery. Handles reasoning failures gracefully.
+
+**Location:** `cortical/reasoning/crisis_manager.py`
+
+### Homeostasis
+System health monitoring and self-regulation. Maintains cognitive equilibrium.
+
+**Location:** `cortical/reasoning/homeostasis.py`
+
+### Goal Stack
+Hierarchical management of reasoning goals. Supports goal decomposition and prioritization.
+
+**Location:** `cortical/reasoning/goal_stack.py`
+
+### Attention Router
+Routes queries to appropriate processing mode based on content analysis.
+
+**Location:** `cortical/reasoning/attention_router.py`
+
+### Verification Levels
+Multi-level verification within QAPV cycles:
+- Unit: Individual component correctness
+- Integration: Component interaction
+- End-to-End: Full workflow validation
+- Acceptance: User requirement satisfaction
+
+**Location:** `cortical/reasoning/verification.py`
+
+---
+
+## SparkSLM
+
+Statistical First-Blitz Language Model for fast predictions.
+
+**Location:** `cortical/spark/`
+
+### NGramModel
+N-gram based statistical model for word prediction.
+
+**Location:** `cortical/spark/ngram.py`
+
+### SparkPredictor
+Main facade for Spark predictions. Combines multiple prediction strategies.
+
+**Location:** `cortical/spark/predictor.py`
+
+### SparkCodeIntelligence
+Hybrid engine combining AST analysis with N-gram statistics for code understanding.
+
+**Location:** `cortical/spark/intelligence.py`
+
+### AnomalyDetector
+Detects unusual inputs including potential prompt injection attacks.
+
+**Location:** `cortical/spark/anomaly.py`
+
+### AlignmentIndex
+Stores user-defined terms and patterns for personalized predictions.
+
+**Location:** `cortical/spark/alignment.py`
+
+### GitHistoryTrainer
+Trains Spark models from git commit history, weighting by recency and commit type.
+
+**Location:** `cortical/spark/git_trainer.py`
+
+### CodeTokenizer
+Tokenizer that preserves programming punctuation and operators.
+
+**Location:** `cortical/spark/tokenizer.py`
+
+### Co-Change Patterns
+Learned patterns of which files change together, extracted from git history.
+
+**Location:** `cortical/spark/co_change.py`
+
+---
+
+## PRISM
+
+Probabilistic Reasoning In Semantic Models. Advanced reasoning with uncertainty.
+
+### PRISM Attention
+Probabilistic attention mechanism for focusing reasoning resources.
+
+**Location:** `cortical/reasoning/prism_attention.py`
+
+### PRISM GoT
+PRISM-enhanced Graph of Thought with probabilistic node weights.
+
+**Location:** `cortical/reasoning/prism_got.py`
+
+### PRISM PLN
+Programming Language Notation for PRISM—structured representation of reasoning patterns.
+
+**Location:** `cortical/reasoning/prism_pln.py`
+
+### PRISM SLM
+PRISM Statistical Language Model integration.
+
+**Location:** `cortical/reasoning/prism_slm.py`
+
+---
+
+## Development Philosophy
+
+### Metus
+**M**indful **E**xecution **T**hrough **U**nwavering **S**pecification. The project's BDD philosophy.
+
+**Location:** `CLAUDE.md`
+
+**Five Tenets:**
+1. Behavior precedes implementation
+2. Performance is a sacred contract
+3. The build server is the arbiter of truth
+4. Understanding is demonstrated through automation
+5. Elegance is not optional
+
+### Behavioral Scenario
+Executable specification of user behavior in Given-When-Then format. Not a "test"—a specification.
+
+**Location:** `tests/behavioral/`
+
+### Performance Contract
+Explicit performance guarantee with defined thresholds. Defended continuously, renegotiated deliberately.
+
+**Location:** `tests/performance/contracts/`
+
+### Unit Specification
+Precise fact about atomic behavior. Safety net enabling fearless refactoring.
+
+**Location:** `tests/unit/specifications/`
+
+### CI Guardian
+The CI pipeline that protects code quality. When CI fails, work stops.
+
+**Location:** `.github/workflows/`
+
+### Confidence Ladder
+Test hierarchy from smoke tests to behavioral scenarios:
+1. Smoke (system breathes)
+2. Unit Specifications (atoms correct)
+3. Integration (components work together)
+4. Performance Contracts (promises kept)
+5. Behavioral Scenarios (user stories work)
+
+---
+
+## File Locations Quick Reference (Extended)
+
+| Term | Primary File |
+|------|--------------|
+| CEL | `cortical/cel/` |
+| Wisdom Strand | `cortical/cel/wisdom/` |
+| Sanity Strand | `cortical/cel/sanity/` |
+| CognitiveEvent | `cortical/cel/core/events.py` |
+| Merkle DAG | `cortical/cel/wisdom/dag.py` |
+| Compaction | `cortical/cel/sanity/compaction.py` |
+| GoT API | `cortical/got/api.py` |
+| GoT WAL | `cortical/got/wal.py` |
+| GoT Transactions | `cortical/got/transaction.py` |
+| Query Builder | `cortical/got/query_builder.py` |
+| Woven Mind | `cortical/reasoning/woven_mind.py` |
+| The Loom | `cortical/reasoning/loom.py` |
+| Hive (System 1) | `cortical/reasoning/loom_hive.py` |
+| Cortex (System 2) | `cortical/reasoning/loom_cortex.py` |
+| QAPV Loop | `cortical/reasoning/cognitive_loop.py` |
+| Thought Graph | `cortical/reasoning/thought_graph.py` |
+| Crisis Manager | `cortical/reasoning/crisis_manager.py` |
+| SparkSLM | `cortical/spark/` |
+| NGramModel | `cortical/spark/ngram.py` |
+| SparkPredictor | `cortical/spark/predictor.py` |
+| AnomalyDetector | `cortical/spark/anomaly.py` |
+| PRISM Attention | `cortical/reasoning/prism_attention.py` |
+| PRISM GoT | `cortical/reasoning/prism_got.py` |
+| Metus Philosophy | `CLAUDE.md` |
+| Behavioral Scenarios | `tests/behavioral/` |
+| Performance Contracts | `tests/performance/contracts/` |
