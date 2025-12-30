@@ -1005,3 +1005,454 @@ LRU cache for query expansion results. Cleared after `compute_all()`.
 │              (lateral: co-occurrence within window)         │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+# Part 3: Cognitive Systems Architecture
+
+This section describes the advanced cognitive systems that extend the core text processor: CEL (Cognitive Event Lattice), GoT (Graph of Thought), and the Reasoning Framework.
+
+## System Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           APPLICATION LAYER                                  │
+│                                                                              │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐             │
+│  │   scripts/      │  │   examples/     │  │   benchmarks/   │             │
+│  │   CLI tools     │  │   demos         │  │   performance   │             │
+│  └────────┬────────┘  └────────┬────────┘  └────────┬────────┘             │
+└───────────┼─────────────────────┼─────────────────────┼─────────────────────┘
+            │                     │                     │
+            ▼                     ▼                     ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         COGNITIVE LAYER                                      │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                      reasoning/ (Woven Mind)                          │  │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                │  │
+│  │  │  woven_mind  │  │    loom      │  │  cognitive   │                │  │
+│  │  │   (facade)   │──│  (routing)   │──│    loop      │                │  │
+│  │  └──────────────┘  └──────┬───────┘  └──────────────┘                │  │
+│  │                           │                                           │  │
+│  │              ┌────────────┴────────────┐                             │  │
+│  │              ▼                         ▼                             │  │
+│  │       ┌──────────────┐          ┌──────────────┐                     │  │
+│  │       │  loom_hive   │          │ loom_cortex  │                     │  │
+│  │       │  (System 1)  │          │  (System 2)  │                     │  │
+│  │       │    FAST      │          │    SLOW      │                     │  │
+│  │       └──────────────┘          └──────────────┘                     │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                         spark/ (SparkSLM)                             │  │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                │  │
+│  │  │  predictor   │  │   ngram      │  │ intelligence │                │  │
+│  │  │   (facade)   │──│   model      │──│  (hybrid)    │                │  │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘                │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+            │                                       │
+            ▼                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        PERSISTENCE LAYER                                     │
+│                                                                              │
+│  ┌───────────────────────────────┐  ┌───────────────────────────────────┐  │
+│  │           got/                │  │             cel/                   │  │
+│  │    (Graph of Thought)         │  │   (Cognitive Event Lattice)        │  │
+│  │                               │  │                                    │  │
+│  │  • Task/Decision tracking     │  │  • Event sourcing                  │  │
+│  │  • ACID transactions          │  │  • Wisdom strand (knowledge)       │  │
+│  │  • Sprint management          │  │  • Sanity strand (health)          │  │
+│  │  • Write-Ahead Log            │  │  • Merkle DAG                      │  │
+│  └───────────────────────────────┘  └───────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+            │                                       │
+            ▼                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          STORAGE LAYER                                       │
+│                                                                              │
+│  ┌───────────────────────────────┐  ┌───────────────────────────────────┐  │
+│  │        .got/ directory        │  │    File system / chunk storage    │  │
+│  │  entities/, events/, indexes/ │  │    JSON, Pickle, WAL files        │  │
+│  └───────────────────────────────┘  └───────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Cognitive Event Lattice (CEL)
+
+The CEL is a self-referential cognitive substrate built on event sourcing principles.
+
+### Double Helix Architecture
+
+```
+                    ┌─────────────────────────────────────┐
+                    │          CEL CONTAINER              │
+                    │      (Dependency Injection)         │
+                    └──────────────┬──────────────────────┘
+                                   │
+                    ┌──────────────┴──────────────┐
+                    │                             │
+                    ▼                             ▼
+        ┌───────────────────────┐   ┌───────────────────────┐
+        │    WISDOM STRAND      │   │    SANITY STRAND      │
+        │                       │   │                       │
+        │  What the system      │   │  Keeping the system   │
+        │  KNOWS                │   │  COHERENT             │
+        │                       │   │                       │
+        │  ┌─────────────────┐  │   │  ┌─────────────────┐  │
+        │  │     dag.py      │  │   │  │   health.py     │  │
+        │  │  Merkle-linked  │  │   │  │  Self-monitor   │  │
+        │  │  event storage  │  │   │  │  & diagnostics  │  │
+        │  └─────────────────┘  │   │  └─────────────────┘  │
+        │                       │   │                       │
+        │  ┌─────────────────┐  │   │  ┌─────────────────┐  │
+        │  │ materializer.py │  │   │  │  migration.py   │  │
+        │  │  Lazy entity    │  │   │  │  Schema         │  │
+        │  │  projection     │  │   │  │  evolution      │  │
+        │  └─────────────────┘  │   │  └─────────────────┘  │
+        │                       │   │                       │
+        │  ┌─────────────────┐  │   │  ┌─────────────────┐  │
+        │  │   semantic.py   │  │   │  │  compaction.py  │  │
+        │  │  Bloom filters  │  │   │  │  Semantic       │  │
+        │  │  & embeddings   │  │   │  │  compression    │  │
+        │  └─────────────────┘  │   │  └─────────────────┘  │
+        └───────────────────────┘   └───────────────────────┘
+```
+
+### Event Flow
+
+```
+    New Information
+          │
+          ▼
+    ┌─────────────┐
+    │   CREATE    │
+    │   EVENT     │
+    │ (immutable) │
+    └──────┬──────┘
+           │
+           ▼
+    ┌─────────────┐     ┌─────────────┐
+    │   APPEND    │────▶│  MERKLE DAG │
+    │   TO DAG    │     │  (verified) │
+    └──────┬──────┘     └─────────────┘
+           │
+           ▼
+    ┌─────────────┐     ┌─────────────┐
+    │ MATERIALIZE │────▶│   ENTITY    │
+    │   (lazy)    │     │   STATE     │
+    └──────┬──────┘     └─────────────┘
+           │
+           ▼
+    ┌─────────────┐
+    │   INDEX     │
+    │  (semantic) │
+    └─────────────┘
+```
+
+### CEL Event Types
+
+| Event Type | Purpose | Example |
+|------------|---------|---------|
+| **Observation** | Record something that happened | "User searched for X" |
+| **Intention** | Record something that should happen | "Need to process document Y" |
+| **Fulfillment** | Record completion of intention | "Document Y processed" |
+| **Invalidation** | Record that something is no longer true | "Cache entry expired" |
+| **Compaction** | Record that events were compressed | "Events 1-100 → summary" |
+| **MetaCognition** | System observing itself | "Performance degraded" |
+
+---
+
+## Graph of Thought (GoT)
+
+Transactional task and decision tracking with ACID guarantees.
+
+### GoT Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              GoT API LAYER                                   │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │                           api.py                                        ││
+│  │  create_task() | update_task() | create_decision() | create_sprint()   ││
+│  └──────────────────────────────────┬──────────────────────────────────────┘│
+└─────────────────────────────────────┼───────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           TRANSACTION LAYER                                  │
+│                                                                              │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐          │
+│  │  transaction.py  │  │   tx_manager.py  │  │     wal.py       │          │
+│  │  ACID semantics  │  │  Lifecycle mgmt  │  │  Write-Ahead Log │          │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘          │
+└─────────────────────────────────────┬───────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                             QUERY LAYER                                      │
+│                                                                              │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐          │
+│  │  query_builder   │  │   query_api.py   │  │  graph_walker    │          │
+│  │  Fluent queries  │  │  Search/filter   │  │  Traversal       │          │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘          │
+│                                                                              │
+│  ┌──────────────────┐  ┌──────────────────┐                                 │
+│  │  path_finder.py  │  │ pattern_matcher  │                                 │
+│  │  Shortest paths  │  │  Subgraph match  │                                 │
+│  └──────────────────┘  └──────────────────┘                                 │
+└─────────────────────────────────────┬───────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            STORAGE LAYER                                     │
+│                                                                              │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐          │
+│  │ versioned_store  │  │    indexer.py    │  │   recovery.py    │          │
+│  │  Checksummed     │  │  Fast lookups    │  │  Crash recovery  │          │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘          │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+                          ┌───────────────────────┐
+                          │    .got/ directory    │
+                          │  ├── entities/        │
+                          │  ├── events/          │
+                          │  ├── indexes/         │
+                          │  └── snapshots/       │
+                          └───────────────────────┘
+```
+
+### GoT Entity Relationships
+
+```
+                    ┌─────────────┐
+                    │   SPRINT    │
+                    │             │
+                    │  name       │
+                    │  start_date │
+                    │  end_date   │
+                    └──────┬──────┘
+                           │ contains
+                           ▼
+    ┌──────────────────────────────────────────┐
+    │                  TASK                     │
+    │                                          │
+    │  id, title, status, priority             │
+    │  description, assignee                   │
+    └─────────┬────────────────────┬───────────┘
+              │                    │
+              │ implements         │ blocks/depends
+              ▼                    ▼
+    ┌─────────────────┐    ┌─────────────────┐
+    │    DECISION     │    │   OTHER TASK    │
+    │                 │    │                 │
+    │  title          │    │                 │
+    │  rationale      │    │                 │
+    │  status         │    │                 │
+    └─────────────────┘    └─────────────────┘
+```
+
+---
+
+## Reasoning Framework (Woven Mind)
+
+Dual-process cognitive architecture inspired by Kahneman's System 1/System 2.
+
+### Woven Mind Architecture
+
+```
+                         ┌─────────────────────┐
+                         │    USER REQUEST     │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │    WOVEN MIND       │
+                         │      (facade)       │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │      THE LOOM       │
+                         │                     │
+                         │  Analyzes:          │
+                         │  • Complexity       │
+                         │  • Surprise level   │
+                         │  • Time budget      │
+                         │  • Historical data  │
+                         └──────────┬──────────┘
+                                    │
+                    ┌───────────────┴───────────────┐
+                    │                               │
+            Low complexity                  High complexity
+            Low surprise                    High surprise
+                    │                               │
+                    ▼                               ▼
+         ┌─────────────────────┐      ┌─────────────────────┐
+         │        HIVE         │      │       CORTEX        │
+         │     (System 1)      │      │     (System 2)      │
+         │                     │      │                     │
+         │  • Pattern cache    │      │  • QAPV loops       │
+         │  • N-gram predict   │      │  • Multi-step       │
+         │  • Fast (<100ms)    │      │  • Verification     │
+         │  • Intuitive        │      │  • Slow (seconds)   │
+         └──────────┬──────────┘      └──────────┬──────────┘
+                    │                               │
+                    └───────────────┬───────────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │      RESPONSE       │
+                         └─────────────────────┘
+```
+
+### QAPV Cognitive Loop
+
+```
+    ┌─────────────────────────────────────────────────────────────┐
+    │                     QAPV CYCLE                               │
+    │                                                              │
+    │      ┌──────────┐         ┌──────────┐                      │
+    │      │ QUESTION │────────▶│  ANSWER  │                      │
+    │      │          │         │          │                      │
+    │      │ "What do │         │ Generate │                      │
+    │      │ we need  │         │ candidate│                      │
+    │      │ to know?"│         │ responses│                      │
+    │      └──────────┘         └────┬─────┘                      │
+    │                                │                             │
+    │                                ▼                             │
+    │      ┌──────────┐         ┌──────────┐                      │
+    │      │  VERIFY  │◀────────│ PRODUCE  │                      │
+    │      │          │         │          │                      │
+    │      │ Validate │         │ Create   │                      │
+    │      │ against  │         │ artifacts│                      │
+    │      │ criteria │         │ (code,   │                      │
+    │      └────┬─────┘         │ docs)    │                      │
+    │           │               └──────────┘                      │
+    │           │                                                  │
+    │           ▼                                                  │
+    │    ┌─────────────┐                                          │
+    │    │   PASSED?   │                                          │
+    │    └──────┬──────┘                                          │
+    │           │                                                  │
+    │     ┌─────┴─────┐                                           │
+    │     │           │                                           │
+    │    YES          NO ──────▶ Loop back to QUESTION            │
+    │     │                                                        │
+    │     ▼                                                        │
+    │  COMPLETE                                                    │
+    │                                                              │
+    └─────────────────────────────────────────────────────────────┘
+```
+
+### Nested Loops
+
+```
+    PARENT QAPV
+    ┌─────────────────────────────────────────────┐
+    │  Q: "How do we implement feature X?"        │
+    │  A: "Break into subtasks A, B, C"           │
+    │  P: ─────────────────────────────────────── │
+    │     │                                       │
+    │     │   CHILD QAPV (Subtask A)              │
+    │     │   ┌────────────────────────────┐     │
+    │     │   │  Q: "How to do A?"         │     │
+    │     │   │  A: "Use approach Y"       │     │
+    │     │   │  P: [implement]            │     │
+    │     │   │  V: [verify A works]       │     │
+    │     │   └────────────────────────────┘     │
+    │     │                                       │
+    │     │   CHILD QAPV (Subtask B)              │
+    │     │   ┌────────────────────────────┐     │
+    │     │   │  Q: "How to do B?"         │     │
+    │     │   │  ...                        │     │
+    │     │   └────────────────────────────┘     │
+    │     │                                       │
+    │  V: Verify all subtasks complete            │
+    └─────────────────────────────────────────────┘
+```
+
+---
+
+## SparkSLM Architecture
+
+Statistical First-Blitz Language Model for fast predictions.
+
+```
+                    ┌─────────────────────┐
+                    │   SparkPredictor    │
+                    │      (facade)       │
+                    └──────────┬──────────┘
+                               │
+          ┌────────────────────┼────────────────────┐
+          │                    │                    │
+          ▼                    ▼                    ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│   NGramModel    │  │  AlignmentIndex │  │ AnomalyDetector │
+│                 │  │                 │  │                 │
+│ • Word predict  │  │ • User terms    │  │ • Unusual input │
+│ • Statistical   │  │ • Custom defs   │  │ • Injection     │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+          │
+          ▼
+┌─────────────────────────────────────────────────────────────┐
+│               SparkCodeIntelligence                          │
+│                                                              │
+│  Hybrid engine: AST analysis + N-gram statistics             │
+│                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │  AST Index   │  │ Co-Change    │  │ Git Trainer  │      │
+│  │  Structural  │  │ Patterns     │  │ History-     │      │
+│  │  analysis    │  │ File groups  │  │ weighted     │      │
+│  └──────────────┘  └──────────────┘  └──────────────┘      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Integration Points
+
+### CEL ↔ GoT Bridge
+
+```
+┌─────────────────┐                    ┌─────────────────┐
+│       GoT       │                    │       CEL       │
+│                 │                    │                 │
+│  Task created   │───────────────────▶│  Intention      │
+│                 │   cel/adapters/    │  event logged   │
+│                 │      got.py        │                 │
+│  Task completed │───────────────────▶│  Fulfillment    │
+│                 │                    │  event logged   │
+└─────────────────┘                    └─────────────────┘
+```
+
+### Reasoning ↔ Spark Integration
+
+```
+┌─────────────────┐                    ┌─────────────────┐
+│   Woven Mind    │                    │    SparkSLM     │
+│                 │                    │                 │
+│  HIVE requests  │───────────────────▶│  Fast predict   │
+│  fast prediction│                    │  from n-grams   │
+│                 │                    │                 │
+│  CORTEX uses    │───────────────────▶│  Anomaly check  │
+│  for validation │                    │  on inputs      │
+└─────────────────┘                    └─────────────────┘
+```
+
+---
+
+## File Reference
+
+| System | Primary Location | Key Files |
+|--------|------------------|-----------|
+| **CEL** | `cortical/cel/` | `wisdom/dag.py`, `sanity/compaction.py`, `core/events.py` |
+| **GoT** | `cortical/got/` | `api.py`, `transaction.py`, `wal.py`, `query_builder.py` |
+| **Reasoning** | `cortical/reasoning/` | `woven_mind.py`, `loom.py`, `cognitive_loop.py` |
+| **Spark** | `cortical/spark/` | `predictor.py`, `ngram.py`, `intelligence.py` |
+| **CLI** | `cortical/got/cli/` | `task.py`, `decision.py`, `sprint.py` |
