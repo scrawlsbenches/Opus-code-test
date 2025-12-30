@@ -166,6 +166,8 @@ class SemanticKnowledgeGraph:
         enable_woven_mind: bool = False,
         enable_prism: bool = False,
         enable_spark: bool = False,
+        persistence_dir: Optional[str] = None,
+        use_real_expansion: bool = False,
     ):
         """
         Initialize the Semantic Knowledge Graph.
@@ -176,6 +178,8 @@ class SemanticKnowledgeGraph:
             enable_woven_mind: Enable dual-process cognition
             enable_prism: Enable PRISM plasticity
             enable_spark: Enable SparkSLM prediction
+            persistence_dir: Directory for WAL and state storage (enables persistence)
+            use_real_expansion: Use cortical/query/expansion.py for query expansion
         """
         self.id = str(uuid.uuid4())[:8]
         self.created_at = datetime.now()
@@ -189,7 +193,7 @@ class SemanticKnowledgeGraph:
         self._documents: Dict[str, str] = {}  # doc_id -> content
         self._doc_metadata: Dict[str, Dict[str, Any]] = {}
 
-        # Layers
+        # Layers (used by real expansion)
         self._layers: Dict[CorticalLayer, HierarchicalLayer] = {
             layer: HierarchicalLayer(layer)
             for layer in CorticalLayer
@@ -204,6 +208,24 @@ class SemanticKnowledgeGraph:
         self._enable_woven_mind = enable_woven_mind
         self._enable_prism = enable_prism
         self._enable_spark = enable_spark
+        self._use_real_expansion = use_real_expansion
+        self._persistence_dir = persistence_dir
+
+        # Persistence (WAL and state storage)
+        self._wal_writer = None
+        self._wal_enabled = False
+        if persistence_dir:
+            self._init_persistence(persistence_dir)
+
+        # Build state
+        self._built = False
+        self._build_time: Optional[float] = None
+
+        # CEL event log (for backwards compatibility)
+        self._cel_events: List[Dict[str, Any]] = []
+
+        # PRISM plasticity tracking
+        self._connection_strengths: Dict[Tuple[str, str], float] = {}
 
         # Subsystems (lazy initialized via adapters)
         self._cel_adapter = None
@@ -233,15 +255,17 @@ class SemanticKnowledgeGraph:
             from .integrations import SparkSLMAdapter
             self._spark_adapter = SparkSLMAdapter()
 
-        # Build state
-        self._built = False
-        self._build_time: Optional[float] = None
-
-        # CEL event log (for backwards compatibility)
-        self._cel_events: List[Dict[str, Any]] = []
-
-        # PRISM plasticity tracking
-        self._connection_strengths: Dict[Tuple[str, str], float] = {}
+    def _init_persistence(self, persistence_dir: str) -> None:
+        """Initialize persistence layer (WAL and state storage)."""
+        import os
+        try:
+            from ..wal import WALWriter
+            os.makedirs(persistence_dir, exist_ok=True)
+            self._wal_writer = WALWriter(persistence_dir)
+            self._wal_enabled = True
+        except ImportError:
+            # WAL not available, continue without persistence
+            self._wal_enabled = False
 
     def add_document(
         self,
@@ -260,6 +284,19 @@ class SemanticKnowledgeGraph:
         self._documents[doc_id] = content
         self._doc_metadata[doc_id] = metadata or {}
 
+        # Log to WAL for persistence
+        if self._wal_enabled and self._wal_writer:
+            from ..wal import WALEntry
+            entry = WALEntry(
+                operation="add_document",
+                doc_id=doc_id,
+                payload={
+                    "content": content,
+                    "metadata": metadata or {},
+                },
+            )
+            self._wal_writer.append(entry)
+
         # Log CEL event
         if self._enable_cel:
             self._log_cel_event("OBSERVATION", {
@@ -277,6 +314,17 @@ class SemanticKnowledgeGraph:
             del self._documents[doc_id]
             if doc_id in self._doc_metadata:
                 del self._doc_metadata[doc_id]
+
+            # Log to WAL for persistence
+            if self._wal_enabled and self._wal_writer:
+                from ..wal import WALEntry
+                entry = WALEntry(
+                    operation="remove_document",
+                    doc_id=doc_id,
+                    payload={},
+                )
+                self._wal_writer.append(entry)
+
             self._built = False
             return True
         return False
@@ -561,18 +609,39 @@ class SemanticKnowledgeGraph:
 
         query_tokens = tokenize(query)
 
-        # Query expansion
+        # Query expansion - use real expansion module if enabled
         if expand_query:
-            expanded_tokens = set(query_tokens)
-            for token in query_tokens:
-                token_id = f"token:{token}"
-                if token_id in self._nodes:
-                    # Add connected tokens (lateral)
-                    for edge in self._edge_index.get(token_id, []):
-                        if edge.connection_type == ConnectionType.LATERAL:
-                            if edge.target_id.startswith("token:"):
-                                expanded_tokens.add(edge.target_id[6:])
-            query_tokens = list(expanded_tokens)
+            if self._use_real_expansion:
+                # Use cortical/query/expansion.py for sophisticated expansion
+                try:
+                    from ..query.expansion import expand_query as real_expand
+                    expanded_terms = real_expand(
+                        query_text=query,
+                        layers=self._layers,
+                        tokenizer=_tokenizer,
+                        max_expansions=10,
+                        use_lateral=True,
+                        use_concepts=True,
+                        use_variants=True,
+                    )
+                    # Convert weighted terms to token list (include original + expanded)
+                    query_tokens = list(expanded_terms.keys())
+                except ImportError:
+                    # Fallback to basic expansion if module not available
+                    pass
+
+            # Fallback: basic lateral expansion if real expansion not used or failed
+            if not self._use_real_expansion or not query_tokens:
+                expanded_tokens = set(tokenize(query))  # Re-tokenize to get original
+                for token in list(expanded_tokens):
+                    token_id = f"token:{token}"
+                    if token_id in self._nodes:
+                        # Add connected tokens (lateral)
+                        for edge in self._edge_index.get(token_id, []):
+                            if edge.connection_type == ConnectionType.LATERAL:
+                                if edge.target_id.startswith("token:"):
+                                    expanded_tokens.add(edge.target_id[6:])
+                query_tokens = list(expanded_tokens)
 
         # Score documents
         results = []
@@ -1402,3 +1471,138 @@ class SemanticKnowledgeGraph:
         all_results = direct_results + multihop_results
         all_results.sort(key=lambda r: r.score, reverse=True)
         return all_results[:limit]
+
+    # ==========================================================================
+    # Persistence Methods
+    # ==========================================================================
+
+    def save(self, state_dir: Optional[str] = None) -> None:
+        """
+        Save the knowledge graph state to disk.
+
+        Uses the StateWriter from cortical/state_storage.py for git-friendly
+        JSON persistence. Documents, layers, and computed values are saved
+        in a structured directory format.
+
+        Args:
+            state_dir: Directory to save state (defaults to persistence_dir)
+        """
+        save_dir = state_dir or self._persistence_dir
+        if not save_dir:
+            raise ValueError("No persistence directory configured. "
+                           "Pass state_dir or initialize with persistence_dir=...")
+
+        try:
+            from ..state_storage import StateWriter
+        except ImportError:
+            raise ImportError("state_storage module not available for persistence")
+
+        writer = StateWriter(save_dir)
+
+        # Save all state (documents, layers, metadata)
+        writer.save_all(
+            layers=self._layers,
+            documents=self._documents,
+            document_metadata=self._doc_metadata,
+        )
+
+        # Log to WAL if enabled
+        if self._wal_enabled and self._wal_writer:
+            from ..wal import WALEntry
+            entry = WALEntry(
+                operation="snapshot",
+                payload={"state_dir": save_dir, "doc_count": len(self._documents)},
+            )
+            self._wal_writer.append(entry)
+
+        # Log CEL event
+        if self._enable_cel:
+            self._log_cel_event("OBSERVATION", {
+                "type": "graph_saved",
+                "state_dir": save_dir,
+                "document_count": len(self._documents),
+                "node_count": len(self._nodes),
+            })
+
+    @classmethod
+    def load(cls, state_dir: str, **kwargs) -> 'SemanticKnowledgeGraph':
+        """
+        Load a knowledge graph from saved state.
+
+        Uses the StateLoader from cortical/state_storage.py to load
+        previously saved graph state.
+
+        Args:
+            state_dir: Directory containing saved state
+            **kwargs: Additional arguments passed to __init__
+
+        Returns:
+            New SemanticKnowledgeGraph instance with loaded state
+        """
+        try:
+            from ..state_storage import StateLoader
+        except ImportError:
+            raise ImportError("state_storage module not available for persistence")
+
+        loader = StateLoader(state_dir)
+        layers, documents, metadata, _, _ = loader.load_all()
+
+        # Create new instance
+        skg = cls(persistence_dir=state_dir, **kwargs)
+
+        # Load documents
+        for doc_id, content in documents.items():
+            doc_meta = metadata.get(doc_id, {})
+            # Add directly without WAL logging (this is a load, not a new add)
+            skg._documents[doc_id] = content
+            skg._doc_metadata[doc_id] = doc_meta
+
+        # Copy loaded layers
+        skg._layers = layers
+
+        # Build the graph from loaded state
+        skg.build()
+
+        return skg
+
+    def replay_wal(self) -> int:
+        """
+        Replay WAL entries to recover state after crash.
+
+        Returns:
+            Number of operations replayed
+        """
+        if not self._persistence_dir:
+            return 0
+
+        try:
+            from ..wal import WALRecovery
+        except ImportError:
+            return 0
+
+        recovery = WALRecovery(self._persistence_dir)
+        if not recovery.needs_recovery():
+            return 0
+
+        replayed = 0
+        for entry in recovery.replay_from_snapshot():
+            if entry.operation == "add_document":
+                doc_id = entry.doc_id
+                content = entry.payload.get("content", "")
+                metadata = entry.payload.get("metadata", {})
+                # Add without re-logging to WAL
+                self._documents[doc_id] = content
+                self._doc_metadata[doc_id] = metadata
+                replayed += 1
+            elif entry.operation == "remove_document":
+                doc_id = entry.doc_id
+                if doc_id in self._documents:
+                    del self._documents[doc_id]
+                    if doc_id in self._doc_metadata:
+                        del self._doc_metadata[doc_id]
+                replayed += 1
+
+        if replayed > 0:
+            self._built = False
+
+        return replayed
