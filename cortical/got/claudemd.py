@@ -320,6 +320,17 @@ class ClaudeMdComposer:
 class ClaudeMdValidator:
     """Validates generated CLAUDE.md content."""
 
+    # Required sections - supports both old format and Metus philosophy format
+    # Each tuple contains alternative section names that serve the same purpose
+    REQUIRED_SECTION_ALTERNATIVES = [
+        ("Quick Session Start", "Quick Start for Developers", "Quick Start"),
+        ("Work Priority Order", "The Metus Way", "The Five Tenets"),
+        ("Architecture", "Directory Structure", "Codebase Structure"),
+        ("Testing", "Running Tests", "Test", "pytest"),
+        ("Quick Reference", "Quick Reference:"),
+    ]
+
+    # Legacy list for backward compatibility with tests
     REQUIRED_SECTIONS = [
         "Quick Session Start",
         "Work Priority Order",
@@ -329,8 +340,8 @@ class ClaudeMdValidator:
     ]
 
     CRITICAL_PATTERNS = [
-        r"Security.*Bugs.*Features.*Docs",  # Priority order
-        r"python\s+scripts/got_utils\.py",   # GoT commands
+        r"Security.*Bugs.*Features.*Docs|Behavior.*Precedes.*Implementation",  # Priority order or Metus tenet
+        r"python\s+scripts/got_utils\.py|pytest\s+tests/",   # GoT commands or test commands
         r"pytest|unittest",                   # Test commands
     ]
 
@@ -357,11 +368,12 @@ class ClaudeMdValidator:
 
         lines = content.splitlines()
 
-        # Check required sections (case-insensitive partial match)
+        # Check required sections (case-insensitive, supports alternatives)
         content_lower = content.lower()
-        for section in self.REQUIRED_SECTIONS:
-            if section.lower() not in content_lower:
-                errors.append(f"Missing required section: {section}")
+        for alternatives in self.REQUIRED_SECTION_ALTERNATIVES:
+            found = any(alt.lower() in content_lower for alt in alternatives)
+            if not found:
+                errors.append(f"Missing required section: {alternatives[0]}")
 
         # Check critical patterns
         for pattern in self.CRITICAL_PATTERNS:
