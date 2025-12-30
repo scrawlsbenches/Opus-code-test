@@ -915,7 +915,6 @@ class ComputeMixin:
         max_bigrams_per_term: int = 100,
         max_bigrams_per_doc: int = 500,
         max_connections_per_bigram: int = 50,
-        n_workers: Optional[int] = None,
         verbose: bool = True
     ) -> Dict[str, Any]:
         """
@@ -929,9 +928,6 @@ class ComputeMixin:
             max_bigrams_per_term: Skip terms appearing in more than this many bigrams
             max_bigrams_per_doc: Skip documents with more than this many bigrams
             max_connections_per_bigram: Maximum lateral connections per bigram
-            n_workers: Number of parallel workers. None or 1 for sequential,
-                >1 for parallel execution using map-reduce pattern.
-                NOTE: Threading doesn't speed up CPU-bound Python due to GIL.
             verbose: Print progress messages
 
         Returns:
@@ -945,8 +941,7 @@ class ComputeMixin:
             cooccurrence_weight=cooccurrence_weight,
             max_bigrams_per_term=max_bigrams_per_term,
             max_bigrams_per_doc=max_bigrams_per_doc,
-            max_connections_per_bigram=max_connections_per_bigram,
-            n_workers=n_workers
+            max_connections_per_bigram=max_connections_per_bigram
         )
         if verbose:
             skipped_terms = stats.get('skipped_common_terms', 0)
