@@ -1,0 +1,256 @@
+PRISM Attention: Biologically-Inspired Focus and Weighting
+==========================================================
+
+Overview
+--------
+Attention in PRISM determines which nodes, edges, and patterns receive
+computational focus. Unlike fixed attention mechanisms, PRISM attention
+is dynamic - it learns from experience what deserves focus and what can
+be safely ignored. This mirrors the brain's selective attention system.
+
+
+The Attention Problem
+---------------------
+
+In any reasoning graph, not everything matters equally:
+
+  Question: "How to implement caching?"
+      |
+      +-- Hypothesis: "Use in-memory cache" (highly relevant)
+      +-- Hypothesis: "Use distributed cache" (highly relevant)
+      +-- Evidence: "Memory is cheap" (somewhat relevant)
+      +-- Tangent: "Cache eviction policies" (might be relevant)
+      +-- Noise: "Weather in Tokyo" (irrelevant)
+
+Without attention:
+  - All nodes get equal consideration
+  - Processing is slow and unfocused
+  - Irrelevant paths pollute reasoning
+
+With attention:
+  - Relevant nodes are amplified
+  - Irrelevant nodes are suppressed
+  - Reasoning stays on track
+
+
+Attention Types
+---------------
+
+1. STRUCTURAL ATTENTION
+   Based on graph topology:
+   - Nodes with many incoming edges get more attention (hubs)
+   - Nodes on shortest paths between query and goal
+   - Nodes in dense local clusters
+
+2. SEMANTIC ATTENTION
+   Based on content similarity:
+   - Nodes containing query terms
+   - Nodes semantically related to active concepts
+   - Nodes in the same domain/category
+
+3. TEMPORAL ATTENTION
+   Based on recency and activation:
+   - Recently activated nodes get boosted
+   - Nodes activated in similar past sessions
+   - Nodes with high activation frequency
+
+4. SYNAPTIC ATTENTION
+   Based on learned importance:
+   - Nodes with high-weight incoming edges
+   - Nodes that led to successful predictions
+   - Nodes that received positive reinforcement
+
+
+The Attention Equation
+----------------------
+
+For each node, compute attention score:
+
+  attention(node) = w1 * structural(node)
+                  + w2 * semantic(node)
+                  + w3 * temporal(node)
+                  + w4 * synaptic(node)
+
+Where weights (w1-w4) are themselves learned through experience.
+
+After computing scores, normalize and apply softmax:
+
+  focus(node) = softmax(attention(node) / temperature)
+
+Temperature controls focus sharpness:
+  - Low temperature (0.1): sharp focus on top nodes
+  - High temperature (2.0): broad, diffuse attention
+
+
+Attention Heads
+---------------
+
+PRISM supports multiple attention "heads" - parallel attention mechanisms
+that focus on different aspects simultaneously:
+
+  Head 1: Structural (find hub nodes)
+  Head 2: Semantic (find related concepts)
+  Head 3: Temporal (find recent patterns)
+  Head 4: Task-specific (custom attention for this query)
+
+Outputs are combined:
+
+  +--------+   +--------+   +--------+   +--------+
+  | Head 1 |   | Head 2 |   | Head 3 |   | Head 4 |
+  +---+----+   +---+----+   +---+----+   +---+----+
+      |            |            |            |
+      v            v            v            v
+  +------------------------------------------+
+  |        Attention Aggregation             |
+  +------------------------------------------+
+                     |
+                     v
+              [Final Focus]
+
+
+Self-Attention on Reasoning Paths
+---------------------------------
+
+When traversing a reasoning path, attention determines what to remember:
+
+  Path: [Question] -> [Hypothesis] -> [Evidence] -> [Conclusion]
+
+At each step, self-attention asks:
+  - What from earlier in the path is still relevant?
+  - What can be safely forgotten?
+  - What needs to be carried forward?
+
+This prevents reasoning from "losing track" of the original question
+while exploring deep paths.
+
+Example:
+  Step 1: "How to cache?" <- focus 1.0
+  Step 2: "Use Redis" <- focus 0.9, Question 0.8
+  Step 3: "Redis config details" <- focus 0.7, Question 0.4, Redis 0.6
+  Step 4: "Specific timeout setting" <- focus 0.8, Question 0.2, Redis 0.3
+
+The original question fades but doesn't disappear entirely.
+
+
+Attention Decay
+---------------
+
+Attention naturally decays over time:
+
+  Initial activation: attention = 1.0
+  After 1 step: attention = 0.9
+  After 5 steps: attention = 0.59
+  After 10 steps: attention = 0.35
+
+This models the "forgetting curve" and prevents stale context from
+dominating. The decay rate is configurable:
+
+  rules = AttentionRules(
+      decay_per_step=0.1,    # Slow decay
+      minimum_attention=0.05  # Floor to prevent complete loss
+  )
+
+
+Saliency and Surprise
+---------------------
+
+Unexpected nodes grab attention automatically:
+
+  Expected transition: "neural" -> "network"  (no surprise)
+  Unexpected transition: "neural" -> "telescope" (surprise!)
+
+Surprise is computed as:
+
+  surprise = -log(P(transition))
+
+High-surprise transitions:
+  - Get immediate attention boost
+  - Are remembered more strongly
+  - Trigger deeper exploration
+
+This models the brain's orienting response to novelty.
+
+
+Attention Bottleneck
+--------------------
+
+PRISM enforces an attention budget - total attention is finite:
+
+  Total attention capacity: 1.0
+  Node A: 0.4  (highly relevant)
+  Node B: 0.3  (relevant)
+  Node C: 0.2  (somewhat relevant)
+  Node D: 0.1  (marginally relevant)
+  -----------
+  Total: 1.0
+
+This forces trade-offs:
+  - Attending to one thing means ignoring others
+  - More nodes = less attention per node
+  - Focused queries outperform vague ones
+
+
+Implementation Pattern
+----------------------
+
+  from cortical.reasoning.prism_attention import (
+      AttentionMechanism,
+      AttentionHead,
+      AttentionRules,
+  )
+
+  # Create attention mechanism
+  attention = AttentionMechanism(
+      heads=[
+          AttentionHead(type="structural", weight=0.3),
+          AttentionHead(type="semantic", weight=0.4),
+          AttentionHead(type="temporal", weight=0.2),
+          AttentionHead(type="synaptic", weight=0.1),
+      ],
+      temperature=0.5,
+      rules=AttentionRules(decay_per_step=0.1)
+  )
+
+  # Compute attention over nodes
+  focus = attention.compute(
+      query="How to implement caching?",
+      nodes=graph.get_active_nodes(),
+      context=current_reasoning_path
+  )
+
+  # Get top-attended nodes
+  top_nodes = focus.top_k(k=5)
+
+
+Applications
+------------
+
+1. SEARCH RESULT RANKING
+   Weight results by attention to query terms
+
+2. REASONING PRUNING
+   Ignore low-attention branches to save computation
+
+3. MEMORY CONSOLIDATION
+   High-attention experiences are remembered longer
+
+4. EXPLANATION GENERATION
+   Highlight what the system paid attention to
+
+5. QUERY REFINEMENT
+   Suggest focus areas based on attention distribution
+
+
+The Biological Metaphor
+-----------------------
+
+The brain's attention system involves the prefrontal cortex (executive
+attention), parietal cortex (spatial attention), and pulvinar nucleus
+(filtering). Attention is not a single mechanism but a collection of
+interacting systems that together determine what reaches consciousness.
+
+PRISM's multi-head attention mirrors this - different mechanisms handle
+different types of relevance, and their outputs are integrated to
+produce focused, efficient reasoning that ignores the irrelevant
+while highlighting what matters.
+

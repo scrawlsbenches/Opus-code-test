@@ -1,0 +1,327 @@
+PRISM Research Development Methodology
+======================================
+
+Overview
+--------
+Developing PRISM requires a disciplined approach that balances theoretical
+foundations with empirical validation. This document outlines the research
+methodology used to evolve PRISM from concept to implementation.
+
+
+The Research Cycle
+------------------
+
+PRISM development follows an iterative cycle:
+
+  +-----------------+
+  |   HYPOTHESIZE   |  <- What should the system do?
+  +--------+--------+
+           |
+           v
+  +-----------------+
+  |    FORMALIZE    |  <- Write it as a scenario
+  +--------+--------+
+           |
+           v
+  +-----------------+
+  |   IMPLEMENT     |  <- Build the minimum viable version
+  +--------+--------+
+           |
+           v
+  +-----------------+
+  |    MEASURE      |  <- Does it work? How well?
+  +--------+--------+
+           |
+           v
+  +-----------------+
+  |     REFINE      |  <- Adjust based on evidence
+  +--------+--------+
+           |
+           +--------> (back to HYPOTHESIZE)
+
+
+Phase 1: Theoretical Foundation
+-------------------------------
+
+Before writing code, establish the conceptual framework:
+
+BIOLOGICAL INSPIRATION
+  - Study neuroscience literature on synaptic plasticity
+  - Understand Hebbian learning mechanisms
+  - Review long-term potentiation and depression
+  - Map biological concepts to computational analogs
+
+FORMAL SPECIFICATION
+  - Define what a "thought" is computationally
+  - Specify what "learning" means in this context
+  - Establish invariants the system must maintain
+  - Document edge cases and boundary conditions
+
+EXPECTED BEHAVIORS
+  - What should happen when two thoughts co-activate?
+  - How should unused connections decay?
+  - What predictions should the system make?
+  - How should success/failure affect the graph?
+
+
+Phase 2: Behavioral Scenarios
+-----------------------------
+
+Write scenarios BEFORE implementation (Metus principle):
+
+  class ResearcherDevelopsReasoning:
+      """
+      As a researcher developing PRISM,
+      I want to validate that Hebbian learning works,
+      So that I can trust the foundation before building on it.
+      """
+
+      def scenario_coactivation_strengthens_connections(self, graph):
+          """
+          Given two connected nodes
+          When they are activated together repeatedly
+          Then their connection strengthens
+          Because neurons that fire together wire together.
+          """
+          # Given
+          graph.add_edge("A", "B", weight=0.5)
+
+          # When
+          for _ in range(10):
+              graph.coactivate("A", "B")
+
+          # Then
+          edge = graph.get_edge("A", "B")
+          assert edge.weight > 0.5, "Connection should strengthen"
+
+These scenarios become the definition of correctness.
+
+
+Phase 3: Minimal Implementation
+-------------------------------
+
+Implement ONLY what's needed to pass the scenarios:
+
+WRONG APPROACH:
+  "Let me build a complete graph database with all features
+   because we might need them someday."
+
+RIGHT APPROACH:
+  "The scenario needs coactivation to strengthen edges.
+   I will implement exactly that and nothing more."
+
+This prevents over-engineering and keeps the system focused on
+validated requirements.
+
+
+Phase 4: Empirical Validation
+-----------------------------
+
+After scenarios pass, validate with real-world data:
+
+BENCHMARK CORPORA
+  - Test with diverse document collections
+  - Measure actual learning rates
+  - Validate decay curves match expectations
+
+PERFORMANCE CONTRACTS
+  - Search latency under load
+  - Memory usage at scale
+  - Learning convergence speed
+
+ABLATION STUDIES
+  - What happens without Hebbian learning?
+  - What happens without decay?
+  - Which components contribute most to accuracy?
+
+
+Phase 5: Iterative Refinement
+-----------------------------
+
+Based on measurements, refine the model:
+
+  Observation: "Decay is too aggressive, old knowledge lost too fast"
+
+  Hypothesis: "Reduce decay rate from 0.05 to 0.02 per cycle"
+
+  New Scenario:
+      def scenario_old_knowledge_persists_reasonably(self, graph):
+          """Knowledge should persist for at least 100 cycles of inactivity."""
+          # Setup, action, assertion...
+
+  Implementation: Adjust decay_rate parameter
+
+  Validation: Re-run benchmarks, ensure improvement
+
+
+Research Documentation Standards
+--------------------------------
+
+Every significant change requires:
+
+1. HYPOTHESIS DOCUMENT
+   - What problem are we solving?
+   - What do we expect to happen?
+   - What would prove us wrong?
+
+2. BEHAVIORAL SCENARIOS
+   - Executable specifications
+   - Given-When-Then format
+   - Edge case coverage
+
+3. PERFORMANCE BASELINE
+   - Measure before the change
+   - Define acceptable thresholds
+   - Set up regression detection
+
+4. IMPLEMENTATION NOTES
+   - Design decisions and rationale
+   - Rejected alternatives and why
+   - Known limitations
+
+5. RESULTS ANALYSIS
+   - Did it work as expected?
+   - What surprised us?
+   - What follow-up questions emerged?
+
+
+Experimental Branches
+---------------------
+
+Risky experiments happen on dedicated branches:
+
+  experiment/hebbian-rate-exploration
+  experiment/alternative-decay-functions
+  experiment/multi-head-attention-v2
+
+Rules for experimental branches:
+  - May break existing scenarios temporarily
+  - Must not be merged until scenarios pass
+  - Should be time-boxed (abandon after N days if no progress)
+  - Results documented even if experiment fails
+
+
+Measuring Research Progress
+---------------------------
+
+Track these metrics across development:
+
+CORRECTNESS
+  - Scenario pass rate (target: 100%)
+  - Regression frequency
+  - Bug discovery rate
+
+PERFORMANCE
+  - Latency percentiles (p50, p95, p99)
+  - Memory efficiency
+  - Throughput under load
+
+LEARNING QUALITY
+  - Prediction accuracy on held-out data
+  - Convergence speed
+  - Generalization to new domains
+
+DEVELOPMENT VELOCITY
+  - Time from hypothesis to validated implementation
+  - Iteration cycle duration
+  - Code coverage trends
+
+
+Managing Research Uncertainty
+-----------------------------
+
+Not everything will work. Handle uncertainty gracefully:
+
+EXPLICIT UNKNOWNS
+  Document what we don't know:
+  - "Optimal Hebbian rate is unknown - currently 0.15 based on intuition"
+  - "Decay function shape is assumed exponential - needs validation"
+
+CONFIDENCE LEVELS
+  Mark claims with confidence:
+  - HIGH: Validated through multiple experiments
+  - MEDIUM: Supported by some evidence
+  - LOW: Theoretical / not yet tested
+
+REVERSIBLE DECISIONS
+  Prefer designs that can be changed:
+  - Configuration over hard-coding
+  - Interfaces over concrete implementations
+  - Feature flags for experimental code
+
+
+The Sovereignty Principle in Research
+-------------------------------------
+
+PRISM is built from first principles, not borrowed components:
+
+WRONG:
+  "Let's use NetworkX for the graph structure."
+
+RIGHT:
+  "Let's build our own graph that natively supports synaptic edges,
+   activation traces, and Hebbian updates."
+
+This ensures:
+  - Deep understanding of every component
+  - Ability to modify anything
+  - No external dependency risks
+  - Perfect fit for our requirements
+
+
+Research Ethics
+---------------
+
+REPRODUCIBILITY
+  - All experiments should be reproducible
+  - Random seeds documented
+  - Environment specifications captured
+
+HONEST REPORTING
+  - Report failures as well as successes
+  - Don't cherry-pick favorable results
+  - Document unexpected behaviors
+
+INTELLECTUAL HONESTY
+  - Credit prior work appropriately
+  - Acknowledge limitations
+  - Distinguish fact from speculation
+
+
+Collaboration Patterns
+----------------------
+
+When multiple researchers work on PRISM:
+
+SHARED SCENARIOS
+  - Scenarios are the common language
+  - Disagreements resolved by writing failing scenarios
+  - "Show me a scenario where your approach fails"
+
+CLEAN INTERFACES
+  - Components communicate through defined contracts
+  - Internal implementation details are private
+  - Integration happens through documented APIs
+
+KNOWLEDGE TRANSFER
+  - Regular documentation updates
+  - Session summaries for complex work
+  - Explicit handoff procedures
+
+
+Summary
+-------
+
+PRISM research methodology:
+
+1. START with biological inspiration and theory
+2. FORMALIZE as behavioral scenarios before coding
+3. IMPLEMENT only what scenarios require
+4. MEASURE against real-world data and benchmarks
+5. REFINE iteratively based on evidence
+6. DOCUMENT everything - successes and failures
+
+This disciplined approach ensures PRISM evolves based on evidence
+rather than assumption, building a solid foundation that supports
+increasingly sophisticated reasoning capabilities.
+

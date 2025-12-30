@@ -1,0 +1,216 @@
+PRISM-SLM: Statistical Language Model with Synaptic Learning
+=============================================================
+
+Overview
+--------
+PRISM-SLM is a statistical language model that learns text patterns through
+synaptic transitions. Unlike fixed n-gram models, PRISM-SLM transitions
+between tokens behave like synapses - strengthening when patterns repeat
+and decaying when unused. This creates a self-improving language model that
+adapts to domain-specific vocabulary and writing styles.
+
+
+Core Architecture
+-----------------
+
+1. TRANSITION GRAPH
+   A directed graph where:
+   - Nodes represent tokens (words, subwords, or characters)
+   - Edges represent observed transitions between tokens
+   - Edge weights encode transition probability AND confidence
+   - Multiple edges can connect the same nodes (with different contexts)
+
+2. SYNAPTIC TRANSITIONS
+   Each transition tracks:
+   - frequency: how often this transition was observed
+   - strength: normalized probability (0.0 to 1.0)
+   - confidence: based on sample size
+   - decay_factor: how quickly it weakens without reinforcement
+   - context: optional n-gram history for context-sensitive weights
+
+3. HEBBIAN VOCABULARY
+   "Words that occur together wire together"
+   - Co-occurring tokens strengthen their connections
+   - Frequent bigrams become preferred paths
+   - Rare combinations remain weak but accessible
+   - Domain jargon naturally emerges as strong pathways
+
+
+Learning Process
+----------------
+
+Training on text:
+  "The neural network learns from data"
+
+  After tokenization: [the, neural, network, learns, from, data]
+
+  Transitions created:
+    the -> neural    (weight += 0.1)
+    neural -> network (weight += 0.1)
+    network -> learns (weight += 0.1)
+    learns -> from   (weight += 0.1)
+    from -> data     (weight += 0.1)
+
+After training on more similar text:
+
+  the -> neural     (weight = 0.8)   <- common in corpus
+  neural -> network (weight = 0.9)   <- very common phrase
+  neural -> pathway (weight = 0.3)   <- also seen, less common
+  network -> learns (weight = 0.5)   <- moderate
+  network -> topology (weight = 0.4) <- alternative continuation
+
+
+Generation Modes
+----------------
+
+DETERMINISTIC (temperature = 0.0)
+  Always choose the highest-weight transition.
+  Produces predictable, repetitive output.
+
+  Prompt: "The neural"
+  Output: "The neural network architecture provides..." (same every time)
+
+BALANCED (temperature = 1.0)
+  Sample proportionally to weights.
+  Natural variation while respecting learned patterns.
+
+  Prompt: "The neural"
+  Output: "The neural substrate exhibits plasticity..."
+  Output: "The neural connections strengthen over time..."
+
+CREATIVE (temperature > 1.5)
+  Flatten the probability distribution.
+  Explore unlikely but valid transitions.
+
+  Prompt: "The neural"
+  Output: "The neural gossamer weaves through consciousness..."
+
+
+Hebbian Hive Architecture
+-------------------------
+
+PRISM-SLM uses a specialized structure called the "Hebbian Hive":
+
+  +-----------------+
+  |   TOKEN LAYER   |  <- Individual tokens with activation traces
+  +-----------------+
+          |
+          v
+  +-----------------+
+  |  SYNAPSE LAYER  |  <- Transition weights between tokens
+  +-----------------+
+          |
+          v
+  +-----------------+
+  | PATTERN LAYER   |  <- Learned sequences and phrases
+  +-----------------+
+          |
+          v
+  +-----------------+
+  |  CONTEXT LAYER  |  <- n-gram history for disambiguation
+  +-----------------+
+
+Each layer communicates bidirectionally:
+- Forward: predict next token given history
+- Backward: update weights based on prediction success
+
+
+Temporal Decay
+--------------
+
+Without reinforcement, transitions weaken:
+
+  Day 1: "neural -> network" (weight = 0.9, frequent use)
+  Day 7: "neural -> network" (weight = 0.75, no recent use)
+  Day 30: "neural -> network" (weight = 0.5, forgotten)
+
+This models:
+- Forgetting outdated terminology
+- Adapting to changing vocabularies
+- Prioritizing recently encountered patterns
+
+Apply global decay periodically:
+  graph.apply_temporal_decay(decay_rate=0.98)
+
+
+Prediction and Completion
+-------------------------
+
+Given partial input, PRISM-SLM predicts continuations:
+
+  Input: "The system processes"
+
+  Predictions:
+    1. "requests" (probability=0.35, confidence=0.9)
+    2. "data"     (probability=0.28, confidence=0.85)
+    3. "signals"  (probability=0.15, confidence=0.7)
+
+Confidence reflects:
+- How often this pattern was seen
+- How recently it was reinforced
+- How consistent the observations were
+
+
+Simple Usage
+------------
+
+  from cortical.reasoning import (
+      SynapticTransitionGraph,
+      SynapticLanguageModel,
+  )
+
+  # Create model
+  model = SynapticLanguageModel()
+
+  # Train on corpus
+  model.train_on_text("The neural network learns from experience...")
+  model.train_on_text("Neural pathways strengthen with use...")
+
+  # Generate continuation
+  completion = model.generate(
+      prompt="The neural",
+      max_tokens=20,
+      temperature=1.0
+  )
+
+  # Get predictions
+  predictions = model.predict_next_token("The neural")
+
+
+Applications
+------------
+
+1. Domain-specific text generation
+2. Code completion with project vocabulary
+3. Writing style adaptation
+4. Terminology suggestion
+5. Autocomplete that learns user preferences
+
+
+Integration with PRISM-GoT
+--------------------------
+
+Language models can inform reasoning:
+- Generate hypotheses from partial information
+- Expand queries with likely continuations
+- Predict reasoning steps based on past patterns
+
+Reasoning can inform generation:
+- Use high-confidence reasoning paths as templates
+- Weight generation toward successful historical patterns
+- Apply logical constraints to generated text
+
+
+The Biological Metaphor
+-----------------------
+
+In Broca's and Wernicke's areas, neural pathways between language
+representations strengthen through use. Frequently spoken phrases become
+nearly automatic - we don't consciously construct "How are you?" each time.
+Rarely used vocabulary remains accessible but requires more activation.
+
+PRISM-SLM mirrors this: common patterns flow easily while unusual
+constructions require deliberate "effort" (higher temperature / more
+sampling iterations). The model's vocabulary reflects what it has
+experienced, not what it was programmed to know.
+
