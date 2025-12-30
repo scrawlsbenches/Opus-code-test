@@ -484,14 +484,15 @@ class TestGraduatedFreshnessDecay:
             f"Day 7 and Day 10 docs should have similar scores, ratio: {ratio:.3f}"
         )
 
-    def test_exponential_decay_front_loads_freshness(self, fresh_processor):
+    def test_exponential_decay_concentrates_boost_on_newest(self, fresh_processor):
         """
-        Scenario: Exponential decay favors very recent documents more strongly
+        Scenario: Exponential decay concentrates boost heavily on newest documents
 
         Given documents at days 0, 2, and 5
         When I search with exponential decay enabled
-        Then the score gap between day 0 and day 2 is larger than linear decay
-        Because exponential decay front-loads the boost for newest documents.
+        Then the ranking preserves freshness order (today > 2days > 5days)
+        Because exponential decay still respects document age ordering,
+        but with steeper drop-off that heavily favors the most recent docs.
         """
         # Given documents at different ages
         today = datetime.now()
