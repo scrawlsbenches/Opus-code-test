@@ -12,12 +12,14 @@ This module provides:
 - Related document discovery
 """
 
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 from ..layers import CorticalLayer, HierarchicalLayer
 from ..tokenizer import Tokenizer
 from ..code_concepts import get_related_terms
+from ..constants import FRESHNESS_WINDOW_DAYS
 
 from .expansion import expand_query, get_expanded_query_terms
 from .utils import get_tfidf_score, is_test_file
@@ -79,6 +81,51 @@ def _apply_document_name_boost(
         doc_scores[doc_id] *= boost
 
 
+def _apply_freshness_boost(
+    doc_scores: Dict[str, float],
+    doc_metadata: Optional[Dict[str, Dict[str, Any]]],
+    freshness_boost: float,
+    freshness_window_days: int = FRESHNESS_WINDOW_DAYS
+) -> None:
+    """
+    Apply freshness boost to scores for recently added documents in-place.
+
+    Documents with a timestamp within the freshness window get their scores
+    multiplied by the freshness_boost factor. Documents without timestamps
+    or with timestamps outside the window are not boosted.
+
+    Args:
+        doc_scores: Dictionary of doc_id -> score (modified in-place)
+        doc_metadata: Dictionary of doc_id -> metadata dict containing timestamps
+        freshness_boost: Boost factor for fresh documents (e.g., 1.5 = 50% boost)
+        freshness_window_days: Number of days within which a document is "fresh"
+    """
+    if freshness_boost <= 1.0 or not doc_scores or not doc_metadata:
+        return
+
+    # Calculate the cutoff date for freshness
+    today = datetime.now()
+    cutoff_date = today - timedelta(days=freshness_window_days)
+
+    for doc_id in doc_scores:
+        metadata = doc_metadata.get(doc_id, {})
+        timestamp_str = metadata.get('timestamp')
+
+        if not timestamp_str:
+            continue
+
+        try:
+            # Parse timestamp - supports YYYY-MM-DD format
+            doc_date = datetime.strptime(timestamp_str, "%Y-%m-%d")
+
+            # Apply boost if document is within freshness window
+            if doc_date >= cutoff_date:
+                doc_scores[doc_id] *= freshness_boost
+        except (ValueError, TypeError):
+            # Invalid timestamp format - skip this document
+            continue
+
+
 def find_documents_for_query(
     query_text: str,
     layers: Dict[CorticalLayer, HierarchicalLayer],
@@ -89,7 +136,9 @@ def find_documents_for_query(
     use_semantic: bool = True,
     doc_name_boost: float = 2.0,
     filter_code_stop_words: bool = True,
-    test_file_penalty: float = 0.8
+    test_file_penalty: float = 0.8,
+    freshness_boost: float = 1.0,
+    doc_metadata: Optional[Dict[str, Dict[str, Any]]] = None
 ) -> List[Tuple[str, float]]:
     """
     Find documents most relevant to a query using TF-IDF and optional expansion.
@@ -107,6 +156,10 @@ def find_documents_for_query(
                                 from expansion candidates. Reduces noise in code search. (default True)
         test_file_penalty: Multiplier for test files to rank them lower (default 0.8).
                            Set to 1.0 to disable penalty.
+        freshness_boost: Multiplier for documents added within the freshness window
+                         (default 7 days). Set to 1.0 to disable. Default: 1.0 (disabled).
+        doc_metadata: Optional document metadata dict for freshness boost.
+                      Expected format: {doc_id: {"timestamp": "YYYY-MM-DD", ...}}
 
     Returns:
         List of (doc_id, score) tuples ranked by relevance
@@ -142,6 +195,10 @@ def find_documents_for_query(
         for doc_id in list(doc_scores.keys()):
             if is_test_file(doc_id):
                 doc_scores[doc_id] *= test_file_penalty
+
+    # Apply freshness boost to recent documents
+    if freshness_boost > 1.0 and doc_metadata:
+        _apply_freshness_boost(doc_scores, doc_metadata, freshness_boost)
 
     sorted_docs = sorted(doc_scores.items(), key=lambda x: -x[1])
     return sorted_docs[:top_n]
